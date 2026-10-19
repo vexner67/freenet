@@ -148,10 +148,9 @@ const updateUserQuery = `
 		nsfw = $49,
 		post_view = $50,
 		timezone_offset = $51,
-		notes_read = $52,
-		chats_invite = $53,
-		closed = $54,
-		gifts_read = $55,
+		chats_invite = $52,
+		closed = $53,
+		gifts_read = $54,
 		updated_at = now()
 	WHERE id = $1
 `
@@ -223,7 +222,6 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		ui.NSFW.String(),
 		ui.PostView.String(),
 		timezoneToDB(ui.Timezone),
-		pr.NotesRead.String(),
 		pr.ChatsInvite.String(),
 		pr.Closed,
 		pr.GiftsRead.String(),
@@ -420,7 +418,6 @@ const userColumns = `
 		nsfw,
 		post_view,
 		timezone_offset,
-		notes_read,
 		chats_invite,
 		closed,
 		gifts_read,
@@ -488,7 +485,6 @@ const qualifiedUserColumns = `
 		u.nsfw,
 		u.post_view,
 		u.timezone_offset,
-		u.notes_read,
 		u.chats_invite,
 		u.closed,
 		u.gifts_read,
@@ -633,7 +629,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		extraFields                                []byte
 		hideBirthYear                              bool
 		reads                                      [5]string
-		notesRead, chatsInvite, giftsRead          string
+		chatsInvite, giftsRead                     string
 		lastSeen                                   *time.Time
 		backdrop                                   [2]*uuid.UUID
 		avatarStyle, mainPage                      string
@@ -682,7 +678,6 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&backdrop[0], &backdrop[1],
 		&avatarStyle, &mainPage, &hiddenMenu,
 		&theme, &hideRating, &nsfw, &postView, &timezone,
-		&notesRead,
 		&chatsInvite,
 		&privacy.Closed,
 		&giftsRead,
@@ -707,7 +702,6 @@ func scanUser(row pgx.Row) (*user.User, error) {
 	privacy.PageRead, privacy.InfoRead = user.Audience(reads[0]), user.Audience(reads[1])
 	privacy.PhotosRead, privacy.FriendsRead = user.Audience(reads[2]), user.Audience(reads[3])
 	privacy.OnlineRead = user.Audience(reads[4])
-	privacy.NotesRead = user.Audience(notesRead)
 	privacy.GiftsRead = user.Audience(giftsRead)
 	privacy.ChatsInvite = user.MessagesWrite(chatsInvite)
 

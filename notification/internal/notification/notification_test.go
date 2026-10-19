@@ -49,8 +49,6 @@ func TestEvent_Validate(t *testing.T) {
 		{"like of a photo", notification.Event{Kind: notification.KindPhotoLike, RecipientID: ann, ActorID: bob, PostID: post}, nil},
 		{"like of a photo with a comment", notification.Event{Kind: notification.KindPhotoLike, RecipientID: ann, ActorID: bob, PostID: post, CommentID: comment}, notification.ErrTargetMismatch},
 		{"comment of a photo", notification.Event{Kind: notification.KindPhotoComment, RecipientID: ann, ActorID: bob, PostID: post, CommentID: comment}, nil},
-		{"comment of a note", notification.Event{Kind: notification.KindNoteComment, RecipientID: ann, ActorID: bob, PostID: post, CommentID: comment}, nil},
-		{"comment of a note without the comment", notification.Event{Kind: notification.KindNoteComment, RecipientID: ann, ActorID: bob, PostID: post}, notification.ErrTargetMismatch},
 		{"comment of a photo without the comment", notification.Event{Kind: notification.KindPhotoComment, RecipientID: ann, ActorID: bob, PostID: post}, notification.ErrTargetMismatch},
 		{"like of a topic message", notification.Event{Kind: notification.KindTopicMessageLike, RecipientID: ann, ActorID: bob, PostID: post, CommentID: comment}, nil},
 		{"like of a topic message without the message", notification.Event{Kind: notification.KindTopicMessageLike, RecipientID: ann, ActorID: bob, PostID: post}, notification.ErrTargetMismatch},

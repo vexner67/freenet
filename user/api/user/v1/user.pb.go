@@ -983,8 +983,8 @@ type InterfaceSettings struct {
 	AvatarStyle string `protobuf:"bytes,1,opt,name=avatar_style,json=avatarStyle,proto3" json:"avatar_style,omitempty"`
 	// "page" (the default) or "feed": where the site opens.
 	MainPage string `protobuf:"bytes,2,opt,name=main_page,json=mainPage,proto3" json:"main_page,omitempty"`
-	// The links taken out of the left menu: "photos", "messages", "notes",
-	// "groups", "feed", "notifications".
+	// The links taken out of the left menu: "photos", "messages", "groups",
+	// "feed", "notifications".
 	HiddenMenu []string `protobuf:"bytes,3,rep,name=hidden_menu,json=hiddenMenu,proto3" json:"hidden_menu,omitempty"`
 	// "default", "blue" or "dark": the look of the whole site.
 	Theme string `protobuf:"bytes,4,opt,name=theme,proto3" json:"theme,omitempty"`
@@ -1441,9 +1441,6 @@ type PrivacySettings struct {
 	// owner was last online after a long absence ("Кто видит мою
 	// неактивность"); anyone sees a short one, as on openvk.
 	OnlineRead Audience `protobuf:"varint,12,opt,name=online_read,json=onlineRead,proto3,enum=user.v1.Audience" json:"online_read,omitempty"`
-	// Who sees the notes ("Кому видно мои заметки"); unspecified, as from
-	// a client that does not know it, is everyone.
-	NotesRead Audience `protobuf:"varint,13,opt,name=notes_read,json=notesRead,proto3,enum=user.v1.Audience" json:"notes_read,omitempty"`
 	// Who may add the owner to group chats ("Кто может добавлять меня в
 	// чаты"); unspecified, as from a client that does not know it, is the
 	// people the owner follows.
@@ -1568,13 +1565,6 @@ func (x *PrivacySettings) GetFriendsRead() Audience {
 func (x *PrivacySettings) GetOnlineRead() Audience {
 	if x != nil {
 		return x.OnlineRead
-	}
-	return Audience_AUDIENCE_UNSPECIFIED
-}
-
-func (x *PrivacySettings) GetNotesRead() Audience {
-	if x != nil {
-		return x.NotesRead
 	}
 	return Audience_AUDIENCE_UNSPECIFIED
 }
@@ -3993,8 +3983,6 @@ type GetAccessResponse struct {
 	Friends bool `protobuf:"varint,4,opt,name=friends,proto3" json:"friends,omitempty"`
 	// The communities the user is in.
 	Clubs bool `protobuf:"varint,5,opt,name=clubs,proto3" json:"clubs,omitempty"`
-	// The notes.
-	Notes bool `protobuf:"varint,6,opt,name=notes,proto3" json:"notes,omitempty"`
 	// The gifts.
 	Gifts         bool `protobuf:"varint,7,opt,name=gifts,proto3" json:"gifts,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -4062,13 +4050,6 @@ func (x *GetAccessResponse) GetFriends() bool {
 func (x *GetAccessResponse) GetClubs() bool {
 	if x != nil {
 		return x.Clubs
-	}
-	return false
-}
-
-func (x *GetAccessResponse) GetNotes() bool {
-	if x != nil {
-		return x.Notes
 	}
 	return false
 }
@@ -7540,7 +7521,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"ExtraField\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12)\n" +
-	"\x05place\x18\x03 \x01(\x0e2\x13.user.v1.FieldPlaceR\x05place\"\x96\x06\n" +
+	"\x05place\x18\x03 \x01(\x0e2\x13.user.v1.FieldPlaceR\x05place\"\xf6\x05\n" +
 	"\x0fPrivacySettings\x12#\n" +
 	"\rshow_birthday\x18\x01 \x01(\bR\fshowBirthday\x12+\n" +
 	"\x11show_relationship\x18\x02 \x01(\bR\x10showRelationship\x12%\n" +
@@ -7558,13 +7539,12 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"photosRead\x124\n" +
 	"\ffriends_read\x18\v \x01(\x0e2\x11.user.v1.AudienceR\vfriendsRead\x122\n" +
 	"\vonline_read\x18\f \x01(\x0e2\x11.user.v1.AudienceR\n" +
-	"onlineRead\x120\n" +
-	"\n" +
-	"notes_read\x18\r \x01(\x0e2\x11.user.v1.AudienceR\tnotesRead\x129\n" +
+	"onlineRead\x129\n" +
 	"\fchats_invite\x18\x0e \x01(\x0e2\x16.user.v1.MessagesWriteR\vchatsInvite\x12\x16\n" +
 	"\x06closed\x18\x0f \x01(\bR\x06closed\x120\n" +
 	"\n" +
-	"gifts_read\x18\x10 \x01(\x0e2\x11.user.v1.AudienceR\tgiftsRead\"\x86\t\n" +
+	"gifts_read\x18\x10 \x01(\x0e2\x11.user.v1.AudienceR\tgiftsReadJ\x04\b\r\x10\x0eR\n" +
+	"notes_read\"\x86\t\n" +
 	"\rPublicProfile\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -7716,15 +7696,14 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x15CanPostOnWallResponse\x12\x18\n" +
 	"\aallowed\x18\x01 \x01(\bR\aallowed\"+\n" +
 	"\x10GetAccessRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"\xaf\x01\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\xa6\x01\n" +
 	"\x11GetAccessResponse\x12\x12\n" +
 	"\x04page\x18\x01 \x01(\bR\x04page\x12\x12\n" +
 	"\x04info\x18\x02 \x01(\bR\x04info\x12\x16\n" +
 	"\x06photos\x18\x03 \x01(\bR\x06photos\x12\x18\n" +
 	"\afriends\x18\x04 \x01(\bR\afriends\x12\x14\n" +
 	"\x05clubs\x18\x05 \x01(\bR\x05clubs\x12\x14\n" +
-	"\x05notes\x18\x06 \x01(\bR\x05notes\x12\x14\n" +
-	"\x05gifts\x18\a \x01(\bR\x05gifts\"M\n" +
+	"\x05gifts\x18\a \x01(\bR\x05giftsJ\x04\b\x06\x10\aR\x05notes\"M\n" +
 	"\x11CanMessageRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1f\n" +
 	"\vwrote_first\x18\x02 \x01(\bR\n" +
@@ -8232,188 +8211,187 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	1,   // 23: user.v1.PrivacySettings.photos_read:type_name -> user.v1.Audience
 	1,   // 24: user.v1.PrivacySettings.friends_read:type_name -> user.v1.Audience
 	1,   // 25: user.v1.PrivacySettings.online_read:type_name -> user.v1.Audience
-	1,   // 26: user.v1.PrivacySettings.notes_read:type_name -> user.v1.Audience
-	3,   // 27: user.v1.PrivacySettings.chats_invite:type_name -> user.v1.MessagesWrite
-	1,   // 28: user.v1.PrivacySettings.gifts_read:type_name -> user.v1.Audience
-	5,   // 29: user.v1.PublicProfile.gender:type_name -> user.v1.Gender
-	6,   // 30: user.v1.PublicProfile.relationship:type_name -> user.v1.Relationship
-	7,   // 31: user.v1.PublicProfile.worldview:type_name -> user.v1.Worldview
-	8,   // 32: user.v1.PublicProfile.political_views:type_name -> user.v1.PoliticalViews
-	128, // 33: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
-	15,  // 34: user.v1.PublicProfile.contacts:type_name -> user.v1.Contacts
-	16,  // 35: user.v1.PublicProfile.interests:type_name -> user.v1.Interests
-	17,  // 36: user.v1.PublicProfile.extra_fields:type_name -> user.v1.ExtraField
-	128, // 37: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
-	128, // 38: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
-	11,  // 39: user.v1.PublicProfile.ban:type_name -> user.v1.Ban
-	10,  // 40: user.v1.GetMeResponse.user:type_name -> user.v1.User
-	5,   // 41: user.v1.UpdateProfileRequest.gender:type_name -> user.v1.Gender
-	6,   // 42: user.v1.UpdateProfileRequest.relationship:type_name -> user.v1.Relationship
-	7,   // 43: user.v1.UpdateProfileRequest.worldview:type_name -> user.v1.Worldview
-	8,   // 44: user.v1.UpdateProfileRequest.political_views:type_name -> user.v1.PoliticalViews
-	128, // 45: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
-	10,  // 46: user.v1.UpdateProfileResponse.user:type_name -> user.v1.User
-	15,  // 47: user.v1.UpdateContactsRequest.contacts:type_name -> user.v1.Contacts
-	10,  // 48: user.v1.UpdateContactsResponse.user:type_name -> user.v1.User
-	16,  // 49: user.v1.UpdateInterestsRequest.interests:type_name -> user.v1.Interests
-	10,  // 50: user.v1.UpdateInterestsResponse.user:type_name -> user.v1.User
-	17,  // 51: user.v1.UpdateExtraFieldsRequest.fields:type_name -> user.v1.ExtraField
-	10,  // 52: user.v1.UpdateExtraFieldsResponse.user:type_name -> user.v1.User
-	19,  // 53: user.v1.GetProfileResponse.profile:type_name -> user.v1.PublicProfile
-	18,  // 54: user.v1.UpdatePrivacyRequest.privacy:type_name -> user.v1.PrivacySettings
-	10,  // 55: user.v1.UpdatePrivacyResponse.user:type_name -> user.v1.User
-	19,  // 56: user.v1.GetProfilesResponse.profiles:type_name -> user.v1.PublicProfile
-	19,  // 57: user.v1.ListFollowsResponse.users:type_name -> user.v1.PublicProfile
-	10,  // 58: user.v1.UpdateStatusResponse.user:type_name -> user.v1.User
-	10,  // 59: user.v1.UpdateNicknameResponse.user:type_name -> user.v1.User
-	10,  // 60: user.v1.SetAvatarResponse.user:type_name -> user.v1.User
-	9,   // 61: user.v1.SetBackdropRequest.side:type_name -> user.v1.BackdropSide
-	10,  // 62: user.v1.SetBackdropResponse.user:type_name -> user.v1.User
-	19,  // 63: user.v1.SearchUsersResponse.users:type_name -> user.v1.PublicProfile
-	19,  // 64: user.v1.ListBlockedResponse.users:type_name -> user.v1.PublicProfile
-	78,  // 65: user.v1.ResolveInvitesResponse.invitees:type_name -> user.v1.Invitee
-	10,  // 66: user.v1.DeactivateAccountResponse.user:type_name -> user.v1.User
-	10,  // 67: user.v1.ReactivateAccountResponse.user:type_name -> user.v1.User
-	91,  // 68: user.v1.GetGiftCatalogResponse.collections:type_name -> user.v1.GiftCollection
-	94,  // 69: user.v1.SendGiftResponse.gift:type_name -> user.v1.Gift
-	128, // 70: user.v1.Gift.sent_at:type_name -> google.protobuf.Timestamp
-	19,  // 71: user.v1.Gift.sender:type_name -> user.v1.PublicProfile
-	94,  // 72: user.v1.ListGiftsResponse.gifts:type_name -> user.v1.Gift
-	103, // 73: user.v1.CreateVoucherResponse.voucher:type_name -> user.v1.Voucher
-	103, // 74: user.v1.ListVouchersResponse.vouchers:type_name -> user.v1.Voucher
-	128, // 75: user.v1.BanUserRequest.until:type_name -> google.protobuf.Timestamp
-	114, // 76: user.v1.GetStickerCatalogResponse.packs:type_name -> user.v1.StickerPack
-	114, // 77: user.v1.ListMyStickerPacksResponse.packs:type_name -> user.v1.StickerPack
-	114, // 78: user.v1.CreateStickerPackResponse.pack:type_name -> user.v1.StickerPack
-	114, // 79: user.v1.EditStickerPackResponse.pack:type_name -> user.v1.StickerPack
-	127, // 80: user.v1.GetStickerAuthorsResponse.authors:type_name -> user.v1.GetStickerAuthorsResponse.AuthorsEntry
-	20,  // 81: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
-	22,  // 82: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
-	24,  // 83: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
-	49,  // 84: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
-	51,  // 85: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
-	34,  // 86: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
-	13,  // 87: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
-	26,  // 88: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
-	28,  // 89: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
-	30,  // 90: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
-	48,  // 91: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
-	54,  // 92: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
-	32,  // 93: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
-	36,  // 94: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
-	56,  // 95: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
-	38,  // 96: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
-	40,  // 97: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
-	39,  // 98: user.v1.UserService.AcceptInvite:input_type -> user.v1.AcceptInviteRequest
-	41,  // 99: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
-	43,  // 100: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
-	43,  // 101: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
-	44,  // 102: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
-	45,  // 103: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
-	58,  // 104: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
-	62,  // 105: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
-	74,  // 106: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
-	76,  // 107: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
-	79,  // 108: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
-	60,  // 109: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
-	64,  // 110: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
-	65,  // 111: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
-	66,  // 112: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
-	68,  // 113: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
-	70,  // 114: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
-	71,  // 115: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
-	72,  // 116: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
-	81,  // 117: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
-	89,  // 118: user.v1.UserService.GetGiftCatalog:input_type -> user.v1.GetGiftCatalogRequest
-	92,  // 119: user.v1.UserService.SendGift:input_type -> user.v1.SendGiftRequest
-	95,  // 120: user.v1.UserService.ListGifts:input_type -> user.v1.ListGiftsRequest
-	97,  // 121: user.v1.UserService.DeleteGift:input_type -> user.v1.DeleteGiftRequest
-	98,  // 122: user.v1.UserService.SetGiftPrice:input_type -> user.v1.SetGiftPriceRequest
-	112, // 123: user.v1.UserService.GetStickerCatalog:input_type -> user.v1.GetStickerCatalogRequest
-	115, // 124: user.v1.UserService.AddStickerPack:input_type -> user.v1.AddStickerPackRequest
-	116, // 125: user.v1.UserService.RemoveStickerPack:input_type -> user.v1.RemoveStickerPackRequest
-	117, // 126: user.v1.UserService.ListMyStickerPacks:input_type -> user.v1.ListMyStickerPacksRequest
-	119, // 127: user.v1.UserService.CreateStickerPack:input_type -> user.v1.CreateStickerPackRequest
-	121, // 128: user.v1.UserService.EditStickerPack:input_type -> user.v1.EditStickerPackRequest
-	123, // 129: user.v1.UserService.DeleteStickerPack:input_type -> user.v1.DeleteStickerPackRequest
-	125, // 130: user.v1.UserService.GetStickerAuthors:input_type -> user.v1.GetStickerAuthorsRequest
-	99,  // 131: user.v1.UserService.TransferVotes:input_type -> user.v1.TransferVotesRequest
-	101, // 132: user.v1.UserService.RedeemVoucher:input_type -> user.v1.RedeemVoucherRequest
-	104, // 133: user.v1.UserService.CreateVoucher:input_type -> user.v1.CreateVoucherRequest
-	106, // 134: user.v1.UserService.ListVouchers:input_type -> user.v1.ListVouchersRequest
-	108, // 135: user.v1.UserService.DeleteVoucher:input_type -> user.v1.DeleteVoucherRequest
-	109, // 136: user.v1.UserService.SetVerified:input_type -> user.v1.SetVerifiedRequest
-	110, // 137: user.v1.UserService.BanUser:input_type -> user.v1.BanUserRequest
-	111, // 138: user.v1.UserService.UnbanUser:input_type -> user.v1.UnbanUserRequest
-	83,  // 139: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
-	85,  // 140: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
-	87,  // 141: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
-	21,  // 142: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
-	23,  // 143: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
-	25,  // 144: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
-	50,  // 145: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
-	52,  // 146: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
-	35,  // 147: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
-	14,  // 148: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
-	27,  // 149: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
-	29,  // 150: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
-	31,  // 151: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
-	53,  // 152: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
-	55,  // 153: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
-	33,  // 154: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
-	37,  // 155: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
-	57,  // 156: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
-	129, // 157: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
-	129, // 158: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
-	129, // 159: user.v1.UserService.AcceptInvite:output_type -> google.protobuf.Empty
-	42,  // 160: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
-	47,  // 161: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
-	47,  // 162: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
-	129, // 163: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
-	46,  // 164: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
-	59,  // 165: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
-	63,  // 166: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
-	75,  // 167: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
-	77,  // 168: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
-	80,  // 169: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
-	61,  // 170: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
-	129, // 171: user.v1.UserService.Block:output_type -> google.protobuf.Empty
-	129, // 172: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
-	67,  // 173: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
-	69,  // 174: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
-	129, // 175: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
-	129, // 176: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
-	73,  // 177: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
-	82,  // 178: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
-	90,  // 179: user.v1.UserService.GetGiftCatalog:output_type -> user.v1.GetGiftCatalogResponse
-	93,  // 180: user.v1.UserService.SendGift:output_type -> user.v1.SendGiftResponse
-	96,  // 181: user.v1.UserService.ListGifts:output_type -> user.v1.ListGiftsResponse
-	129, // 182: user.v1.UserService.DeleteGift:output_type -> google.protobuf.Empty
-	129, // 183: user.v1.UserService.SetGiftPrice:output_type -> google.protobuf.Empty
-	113, // 184: user.v1.UserService.GetStickerCatalog:output_type -> user.v1.GetStickerCatalogResponse
-	129, // 185: user.v1.UserService.AddStickerPack:output_type -> google.protobuf.Empty
-	129, // 186: user.v1.UserService.RemoveStickerPack:output_type -> google.protobuf.Empty
-	118, // 187: user.v1.UserService.ListMyStickerPacks:output_type -> user.v1.ListMyStickerPacksResponse
-	120, // 188: user.v1.UserService.CreateStickerPack:output_type -> user.v1.CreateStickerPackResponse
-	122, // 189: user.v1.UserService.EditStickerPack:output_type -> user.v1.EditStickerPackResponse
-	124, // 190: user.v1.UserService.DeleteStickerPack:output_type -> user.v1.DeleteStickerPackResponse
-	126, // 191: user.v1.UserService.GetStickerAuthors:output_type -> user.v1.GetStickerAuthorsResponse
-	100, // 192: user.v1.UserService.TransferVotes:output_type -> user.v1.TransferVotesResponse
-	102, // 193: user.v1.UserService.RedeemVoucher:output_type -> user.v1.RedeemVoucherResponse
-	105, // 194: user.v1.UserService.CreateVoucher:output_type -> user.v1.CreateVoucherResponse
-	107, // 195: user.v1.UserService.ListVouchers:output_type -> user.v1.ListVouchersResponse
-	129, // 196: user.v1.UserService.DeleteVoucher:output_type -> google.protobuf.Empty
-	129, // 197: user.v1.UserService.SetVerified:output_type -> google.protobuf.Empty
-	129, // 198: user.v1.UserService.BanUser:output_type -> google.protobuf.Empty
-	129, // 199: user.v1.UserService.UnbanUser:output_type -> google.protobuf.Empty
-	84,  // 200: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
-	86,  // 201: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
-	88,  // 202: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
-	142, // [142:203] is the sub-list for method output_type
-	81,  // [81:142] is the sub-list for method input_type
-	81,  // [81:81] is the sub-list for extension type_name
-	81,  // [81:81] is the sub-list for extension extendee
-	0,   // [0:81] is the sub-list for field type_name
+	3,   // 26: user.v1.PrivacySettings.chats_invite:type_name -> user.v1.MessagesWrite
+	1,   // 27: user.v1.PrivacySettings.gifts_read:type_name -> user.v1.Audience
+	5,   // 28: user.v1.PublicProfile.gender:type_name -> user.v1.Gender
+	6,   // 29: user.v1.PublicProfile.relationship:type_name -> user.v1.Relationship
+	7,   // 30: user.v1.PublicProfile.worldview:type_name -> user.v1.Worldview
+	8,   // 31: user.v1.PublicProfile.political_views:type_name -> user.v1.PoliticalViews
+	128, // 32: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
+	15,  // 33: user.v1.PublicProfile.contacts:type_name -> user.v1.Contacts
+	16,  // 34: user.v1.PublicProfile.interests:type_name -> user.v1.Interests
+	17,  // 35: user.v1.PublicProfile.extra_fields:type_name -> user.v1.ExtraField
+	128, // 36: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
+	128, // 37: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
+	11,  // 38: user.v1.PublicProfile.ban:type_name -> user.v1.Ban
+	10,  // 39: user.v1.GetMeResponse.user:type_name -> user.v1.User
+	5,   // 40: user.v1.UpdateProfileRequest.gender:type_name -> user.v1.Gender
+	6,   // 41: user.v1.UpdateProfileRequest.relationship:type_name -> user.v1.Relationship
+	7,   // 42: user.v1.UpdateProfileRequest.worldview:type_name -> user.v1.Worldview
+	8,   // 43: user.v1.UpdateProfileRequest.political_views:type_name -> user.v1.PoliticalViews
+	128, // 44: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
+	10,  // 45: user.v1.UpdateProfileResponse.user:type_name -> user.v1.User
+	15,  // 46: user.v1.UpdateContactsRequest.contacts:type_name -> user.v1.Contacts
+	10,  // 47: user.v1.UpdateContactsResponse.user:type_name -> user.v1.User
+	16,  // 48: user.v1.UpdateInterestsRequest.interests:type_name -> user.v1.Interests
+	10,  // 49: user.v1.UpdateInterestsResponse.user:type_name -> user.v1.User
+	17,  // 50: user.v1.UpdateExtraFieldsRequest.fields:type_name -> user.v1.ExtraField
+	10,  // 51: user.v1.UpdateExtraFieldsResponse.user:type_name -> user.v1.User
+	19,  // 52: user.v1.GetProfileResponse.profile:type_name -> user.v1.PublicProfile
+	18,  // 53: user.v1.UpdatePrivacyRequest.privacy:type_name -> user.v1.PrivacySettings
+	10,  // 54: user.v1.UpdatePrivacyResponse.user:type_name -> user.v1.User
+	19,  // 55: user.v1.GetProfilesResponse.profiles:type_name -> user.v1.PublicProfile
+	19,  // 56: user.v1.ListFollowsResponse.users:type_name -> user.v1.PublicProfile
+	10,  // 57: user.v1.UpdateStatusResponse.user:type_name -> user.v1.User
+	10,  // 58: user.v1.UpdateNicknameResponse.user:type_name -> user.v1.User
+	10,  // 59: user.v1.SetAvatarResponse.user:type_name -> user.v1.User
+	9,   // 60: user.v1.SetBackdropRequest.side:type_name -> user.v1.BackdropSide
+	10,  // 61: user.v1.SetBackdropResponse.user:type_name -> user.v1.User
+	19,  // 62: user.v1.SearchUsersResponse.users:type_name -> user.v1.PublicProfile
+	19,  // 63: user.v1.ListBlockedResponse.users:type_name -> user.v1.PublicProfile
+	78,  // 64: user.v1.ResolveInvitesResponse.invitees:type_name -> user.v1.Invitee
+	10,  // 65: user.v1.DeactivateAccountResponse.user:type_name -> user.v1.User
+	10,  // 66: user.v1.ReactivateAccountResponse.user:type_name -> user.v1.User
+	91,  // 67: user.v1.GetGiftCatalogResponse.collections:type_name -> user.v1.GiftCollection
+	94,  // 68: user.v1.SendGiftResponse.gift:type_name -> user.v1.Gift
+	128, // 69: user.v1.Gift.sent_at:type_name -> google.protobuf.Timestamp
+	19,  // 70: user.v1.Gift.sender:type_name -> user.v1.PublicProfile
+	94,  // 71: user.v1.ListGiftsResponse.gifts:type_name -> user.v1.Gift
+	103, // 72: user.v1.CreateVoucherResponse.voucher:type_name -> user.v1.Voucher
+	103, // 73: user.v1.ListVouchersResponse.vouchers:type_name -> user.v1.Voucher
+	128, // 74: user.v1.BanUserRequest.until:type_name -> google.protobuf.Timestamp
+	114, // 75: user.v1.GetStickerCatalogResponse.packs:type_name -> user.v1.StickerPack
+	114, // 76: user.v1.ListMyStickerPacksResponse.packs:type_name -> user.v1.StickerPack
+	114, // 77: user.v1.CreateStickerPackResponse.pack:type_name -> user.v1.StickerPack
+	114, // 78: user.v1.EditStickerPackResponse.pack:type_name -> user.v1.StickerPack
+	127, // 79: user.v1.GetStickerAuthorsResponse.authors:type_name -> user.v1.GetStickerAuthorsResponse.AuthorsEntry
+	20,  // 80: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
+	22,  // 81: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
+	24,  // 82: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
+	49,  // 83: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
+	51,  // 84: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
+	34,  // 85: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
+	13,  // 86: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
+	26,  // 87: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
+	28,  // 88: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
+	30,  // 89: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
+	48,  // 90: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
+	54,  // 91: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
+	32,  // 92: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
+	36,  // 93: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
+	56,  // 94: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
+	38,  // 95: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
+	40,  // 96: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
+	39,  // 97: user.v1.UserService.AcceptInvite:input_type -> user.v1.AcceptInviteRequest
+	41,  // 98: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
+	43,  // 99: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
+	43,  // 100: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
+	44,  // 101: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
+	45,  // 102: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
+	58,  // 103: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
+	62,  // 104: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
+	74,  // 105: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
+	76,  // 106: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
+	79,  // 107: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
+	60,  // 108: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
+	64,  // 109: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
+	65,  // 110: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
+	66,  // 111: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
+	68,  // 112: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
+	70,  // 113: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
+	71,  // 114: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
+	72,  // 115: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
+	81,  // 116: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
+	89,  // 117: user.v1.UserService.GetGiftCatalog:input_type -> user.v1.GetGiftCatalogRequest
+	92,  // 118: user.v1.UserService.SendGift:input_type -> user.v1.SendGiftRequest
+	95,  // 119: user.v1.UserService.ListGifts:input_type -> user.v1.ListGiftsRequest
+	97,  // 120: user.v1.UserService.DeleteGift:input_type -> user.v1.DeleteGiftRequest
+	98,  // 121: user.v1.UserService.SetGiftPrice:input_type -> user.v1.SetGiftPriceRequest
+	112, // 122: user.v1.UserService.GetStickerCatalog:input_type -> user.v1.GetStickerCatalogRequest
+	115, // 123: user.v1.UserService.AddStickerPack:input_type -> user.v1.AddStickerPackRequest
+	116, // 124: user.v1.UserService.RemoveStickerPack:input_type -> user.v1.RemoveStickerPackRequest
+	117, // 125: user.v1.UserService.ListMyStickerPacks:input_type -> user.v1.ListMyStickerPacksRequest
+	119, // 126: user.v1.UserService.CreateStickerPack:input_type -> user.v1.CreateStickerPackRequest
+	121, // 127: user.v1.UserService.EditStickerPack:input_type -> user.v1.EditStickerPackRequest
+	123, // 128: user.v1.UserService.DeleteStickerPack:input_type -> user.v1.DeleteStickerPackRequest
+	125, // 129: user.v1.UserService.GetStickerAuthors:input_type -> user.v1.GetStickerAuthorsRequest
+	99,  // 130: user.v1.UserService.TransferVotes:input_type -> user.v1.TransferVotesRequest
+	101, // 131: user.v1.UserService.RedeemVoucher:input_type -> user.v1.RedeemVoucherRequest
+	104, // 132: user.v1.UserService.CreateVoucher:input_type -> user.v1.CreateVoucherRequest
+	106, // 133: user.v1.UserService.ListVouchers:input_type -> user.v1.ListVouchersRequest
+	108, // 134: user.v1.UserService.DeleteVoucher:input_type -> user.v1.DeleteVoucherRequest
+	109, // 135: user.v1.UserService.SetVerified:input_type -> user.v1.SetVerifiedRequest
+	110, // 136: user.v1.UserService.BanUser:input_type -> user.v1.BanUserRequest
+	111, // 137: user.v1.UserService.UnbanUser:input_type -> user.v1.UnbanUserRequest
+	83,  // 138: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
+	85,  // 139: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
+	87,  // 140: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
+	21,  // 141: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
+	23,  // 142: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
+	25,  // 143: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
+	50,  // 144: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
+	52,  // 145: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
+	35,  // 146: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
+	14,  // 147: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
+	27,  // 148: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
+	29,  // 149: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
+	31,  // 150: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
+	53,  // 151: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
+	55,  // 152: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
+	33,  // 153: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
+	37,  // 154: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
+	57,  // 155: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
+	129, // 156: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
+	129, // 157: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
+	129, // 158: user.v1.UserService.AcceptInvite:output_type -> google.protobuf.Empty
+	42,  // 159: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
+	47,  // 160: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
+	47,  // 161: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
+	129, // 162: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
+	46,  // 163: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
+	59,  // 164: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
+	63,  // 165: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
+	75,  // 166: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
+	77,  // 167: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
+	80,  // 168: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
+	61,  // 169: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
+	129, // 170: user.v1.UserService.Block:output_type -> google.protobuf.Empty
+	129, // 171: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
+	67,  // 172: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
+	69,  // 173: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
+	129, // 174: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
+	129, // 175: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
+	73,  // 176: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
+	82,  // 177: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
+	90,  // 178: user.v1.UserService.GetGiftCatalog:output_type -> user.v1.GetGiftCatalogResponse
+	93,  // 179: user.v1.UserService.SendGift:output_type -> user.v1.SendGiftResponse
+	96,  // 180: user.v1.UserService.ListGifts:output_type -> user.v1.ListGiftsResponse
+	129, // 181: user.v1.UserService.DeleteGift:output_type -> google.protobuf.Empty
+	129, // 182: user.v1.UserService.SetGiftPrice:output_type -> google.protobuf.Empty
+	113, // 183: user.v1.UserService.GetStickerCatalog:output_type -> user.v1.GetStickerCatalogResponse
+	129, // 184: user.v1.UserService.AddStickerPack:output_type -> google.protobuf.Empty
+	129, // 185: user.v1.UserService.RemoveStickerPack:output_type -> google.protobuf.Empty
+	118, // 186: user.v1.UserService.ListMyStickerPacks:output_type -> user.v1.ListMyStickerPacksResponse
+	120, // 187: user.v1.UserService.CreateStickerPack:output_type -> user.v1.CreateStickerPackResponse
+	122, // 188: user.v1.UserService.EditStickerPack:output_type -> user.v1.EditStickerPackResponse
+	124, // 189: user.v1.UserService.DeleteStickerPack:output_type -> user.v1.DeleteStickerPackResponse
+	126, // 190: user.v1.UserService.GetStickerAuthors:output_type -> user.v1.GetStickerAuthorsResponse
+	100, // 191: user.v1.UserService.TransferVotes:output_type -> user.v1.TransferVotesResponse
+	102, // 192: user.v1.UserService.RedeemVoucher:output_type -> user.v1.RedeemVoucherResponse
+	105, // 193: user.v1.UserService.CreateVoucher:output_type -> user.v1.CreateVoucherResponse
+	107, // 194: user.v1.UserService.ListVouchers:output_type -> user.v1.ListVouchersResponse
+	129, // 195: user.v1.UserService.DeleteVoucher:output_type -> google.protobuf.Empty
+	129, // 196: user.v1.UserService.SetVerified:output_type -> google.protobuf.Empty
+	129, // 197: user.v1.UserService.BanUser:output_type -> google.protobuf.Empty
+	129, // 198: user.v1.UserService.UnbanUser:output_type -> google.protobuf.Empty
+	84,  // 199: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
+	86,  // 200: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
+	88,  // 201: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
+	141, // [141:202] is the sub-list for method output_type
+	80,  // [80:141] is the sub-list for method input_type
+	80,  // [80:80] is the sub-list for extension type_name
+	80,  // [80:80] is the sub-list for extension extendee
+	0,   // [0:80] is the sub-list for field type_name
 }
 
 func init() { file_api_user_v1_user_proto_init() }

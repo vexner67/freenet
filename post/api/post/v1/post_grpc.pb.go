@@ -118,16 +118,6 @@ const (
 	PostService_LikePhotoComment_FullMethodName       = "/post.v1.PostService/LikePhotoComment"
 	PostService_UnlikePhotoComment_FullMethodName     = "/post.v1.PostService/UnlikePhotoComment"
 	PostService_ListPhotoCommentLikers_FullMethodName = "/post.v1.PostService/ListPhotoCommentLikers"
-	PostService_CreateNote_FullMethodName             = "/post.v1.PostService/CreateNote"
-	PostService_GetNote_FullMethodName                = "/post.v1.PostService/GetNote"
-	PostService_ListNotes_FullMethodName              = "/post.v1.PostService/ListNotes"
-	PostService_EditNote_FullMethodName               = "/post.v1.PostService/EditNote"
-	PostService_DeleteNote_FullMethodName             = "/post.v1.PostService/DeleteNote"
-	PostService_CreateNoteComment_FullMethodName      = "/post.v1.PostService/CreateNoteComment"
-	PostService_DeleteNoteComment_FullMethodName      = "/post.v1.PostService/DeleteNoteComment"
-	PostService_ListNoteComments_FullMethodName       = "/post.v1.PostService/ListNoteComments"
-	PostService_GetNoteComment_FullMethodName         = "/post.v1.PostService/GetNoteComment"
-	PostService_GetNoteComments_FullMethodName        = "/post.v1.PostService/GetNoteComments"
 	PostService_AddDocument_FullMethodName            = "/post.v1.PostService/AddDocument"
 	PostService_ListDocuments_FullMethodName          = "/post.v1.PostService/ListDocuments"
 	PostService_GetDocuments_FullMethodName           = "/post.v1.PostService/GetDocuments"
@@ -415,28 +405,6 @@ type PostServiceClient interface {
 	UnlikePhotoComment(ctx context.Context, in *UnlikePhotoCommentRequest, opts ...grpc.CallOption) (*UnlikePhotoCommentResponse, error)
 	// Who put a heart on a comment of a photo, newest first. Public.
 	ListPhotoCommentLikers(ctx context.Context, in *ListPhotoCommentLikersRequest, opts ...grpc.CallOption) (*ListPhotoCommentLikersResponse, error)
-	// Notes ("Заметки" of openvk): a person's titled texts, kept apart from
-	// the wall. Reading is public: who sees the notes of a person is the
-	// person's (the user service), which the caller asks. Only the author
-	// changes and deletes a note; a deleted note takes its comments.
-	CreateNote(ctx context.Context, in *CreateNoteRequest, opts ...grpc.CallOption) (*CreateNoteResponse, error)
-	GetNote(ctx context.Context, in *GetNoteRequest, opts ...grpc.CallOption) (*GetNoteResponse, error)
-	// Public: the notes of a person, newest first.
-	ListNotes(ctx context.Context, in *ListNotesRequest, opts ...grpc.CallOption) (*ListNotesResponse, error)
-	EditNote(ctx context.Context, in *EditNoteRequest, opts ...grpc.CallOption) (*EditNoteResponse, error)
-	DeleteNote(ctx context.Context, in *DeleteNoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// A comment under a note, text only; the author of the note hears
-	// about it. The caller has checked who may comment.
-	CreateNoteComment(ctx context.Context, in *CreateNoteCommentRequest, opts ...grpc.CallOption) (*CreateNoteCommentResponse, error)
-	// By its author or the author of the note.
-	DeleteNoteComment(ctx context.Context, in *DeleteNoteCommentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Public: the comments of a note, oldest first.
-	ListNoteComments(ctx context.Context, in *ListNoteCommentsRequest, opts ...grpc.CallOption) (*ListNoteCommentsResponse, error)
-	// Public: one comment, whole.
-	GetNoteComment(ctx context.Context, in *GetNoteCommentRequest, opts ...grpc.CallOption) (*GetNoteCommentResponse, error)
-	// Public: the comments with these IDs that exist, in no particular
-	// order, for notifications.
-	GetNoteComments(ctx context.Context, in *GetNoteCommentsRequest, opts ...grpc.CallOption) (*GetNoteCommentsResponse, error)
 	// Documents ("Мои Документы" of openvk): files of a person whose bytes
 	// the media service keeps under the same ID; posts and messages attach
 	// them. Only the owner lists, renames and deletes them.
@@ -1477,106 +1445,6 @@ func (c *postServiceClient) ListPhotoCommentLikers(ctx context.Context, in *List
 	return out, nil
 }
 
-func (c *postServiceClient) CreateNote(ctx context.Context, in *CreateNoteRequest, opts ...grpc.CallOption) (*CreateNoteResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateNoteResponse)
-	err := c.cc.Invoke(ctx, PostService_CreateNote_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *postServiceClient) GetNote(ctx context.Context, in *GetNoteRequest, opts ...grpc.CallOption) (*GetNoteResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetNoteResponse)
-	err := c.cc.Invoke(ctx, PostService_GetNote_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *postServiceClient) ListNotes(ctx context.Context, in *ListNotesRequest, opts ...grpc.CallOption) (*ListNotesResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListNotesResponse)
-	err := c.cc.Invoke(ctx, PostService_ListNotes_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *postServiceClient) EditNote(ctx context.Context, in *EditNoteRequest, opts ...grpc.CallOption) (*EditNoteResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(EditNoteResponse)
-	err := c.cc.Invoke(ctx, PostService_EditNote_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *postServiceClient) DeleteNote(ctx context.Context, in *DeleteNoteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, PostService_DeleteNote_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *postServiceClient) CreateNoteComment(ctx context.Context, in *CreateNoteCommentRequest, opts ...grpc.CallOption) (*CreateNoteCommentResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateNoteCommentResponse)
-	err := c.cc.Invoke(ctx, PostService_CreateNoteComment_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *postServiceClient) DeleteNoteComment(ctx context.Context, in *DeleteNoteCommentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, PostService_DeleteNoteComment_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *postServiceClient) ListNoteComments(ctx context.Context, in *ListNoteCommentsRequest, opts ...grpc.CallOption) (*ListNoteCommentsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListNoteCommentsResponse)
-	err := c.cc.Invoke(ctx, PostService_ListNoteComments_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *postServiceClient) GetNoteComment(ctx context.Context, in *GetNoteCommentRequest, opts ...grpc.CallOption) (*GetNoteCommentResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetNoteCommentResponse)
-	err := c.cc.Invoke(ctx, PostService_GetNoteComment_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *postServiceClient) GetNoteComments(ctx context.Context, in *GetNoteCommentsRequest, opts ...grpc.CallOption) (*GetNoteCommentsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetNoteCommentsResponse)
-	err := c.cc.Invoke(ctx, PostService_GetNoteComments_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *postServiceClient) AddDocument(ctx context.Context, in *AddDocumentRequest, opts ...grpc.CallOption) (*AddDocumentResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AddDocumentResponse)
@@ -1988,28 +1856,6 @@ type PostServiceServer interface {
 	UnlikePhotoComment(context.Context, *UnlikePhotoCommentRequest) (*UnlikePhotoCommentResponse, error)
 	// Who put a heart on a comment of a photo, newest first. Public.
 	ListPhotoCommentLikers(context.Context, *ListPhotoCommentLikersRequest) (*ListPhotoCommentLikersResponse, error)
-	// Notes ("Заметки" of openvk): a person's titled texts, kept apart from
-	// the wall. Reading is public: who sees the notes of a person is the
-	// person's (the user service), which the caller asks. Only the author
-	// changes and deletes a note; a deleted note takes its comments.
-	CreateNote(context.Context, *CreateNoteRequest) (*CreateNoteResponse, error)
-	GetNote(context.Context, *GetNoteRequest) (*GetNoteResponse, error)
-	// Public: the notes of a person, newest first.
-	ListNotes(context.Context, *ListNotesRequest) (*ListNotesResponse, error)
-	EditNote(context.Context, *EditNoteRequest) (*EditNoteResponse, error)
-	DeleteNote(context.Context, *DeleteNoteRequest) (*emptypb.Empty, error)
-	// A comment under a note, text only; the author of the note hears
-	// about it. The caller has checked who may comment.
-	CreateNoteComment(context.Context, *CreateNoteCommentRequest) (*CreateNoteCommentResponse, error)
-	// By its author or the author of the note.
-	DeleteNoteComment(context.Context, *DeleteNoteCommentRequest) (*emptypb.Empty, error)
-	// Public: the comments of a note, oldest first.
-	ListNoteComments(context.Context, *ListNoteCommentsRequest) (*ListNoteCommentsResponse, error)
-	// Public: one comment, whole.
-	GetNoteComment(context.Context, *GetNoteCommentRequest) (*GetNoteCommentResponse, error)
-	// Public: the comments with these IDs that exist, in no particular
-	// order, for notifications.
-	GetNoteComments(context.Context, *GetNoteCommentsRequest) (*GetNoteCommentsResponse, error)
 	// Documents ("Мои Документы" of openvk): files of a person whose bytes
 	// the media service keeps under the same ID; posts and messages attach
 	// them. Only the owner lists, renames and deletes them.
@@ -2363,36 +2209,6 @@ func (UnimplementedPostServiceServer) UnlikePhotoComment(context.Context, *Unlik
 }
 func (UnimplementedPostServiceServer) ListPhotoCommentLikers(context.Context, *ListPhotoCommentLikersRequest) (*ListPhotoCommentLikersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPhotoCommentLikers not implemented")
-}
-func (UnimplementedPostServiceServer) CreateNote(context.Context, *CreateNoteRequest) (*CreateNoteResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method CreateNote not implemented")
-}
-func (UnimplementedPostServiceServer) GetNote(context.Context, *GetNoteRequest) (*GetNoteResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetNote not implemented")
-}
-func (UnimplementedPostServiceServer) ListNotes(context.Context, *ListNotesRequest) (*ListNotesResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ListNotes not implemented")
-}
-func (UnimplementedPostServiceServer) EditNote(context.Context, *EditNoteRequest) (*EditNoteResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method EditNote not implemented")
-}
-func (UnimplementedPostServiceServer) DeleteNote(context.Context, *DeleteNoteRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method DeleteNote not implemented")
-}
-func (UnimplementedPostServiceServer) CreateNoteComment(context.Context, *CreateNoteCommentRequest) (*CreateNoteCommentResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method CreateNoteComment not implemented")
-}
-func (UnimplementedPostServiceServer) DeleteNoteComment(context.Context, *DeleteNoteCommentRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method DeleteNoteComment not implemented")
-}
-func (UnimplementedPostServiceServer) ListNoteComments(context.Context, *ListNoteCommentsRequest) (*ListNoteCommentsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ListNoteComments not implemented")
-}
-func (UnimplementedPostServiceServer) GetNoteComment(context.Context, *GetNoteCommentRequest) (*GetNoteCommentResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetNoteComment not implemented")
-}
-func (UnimplementedPostServiceServer) GetNoteComments(context.Context, *GetNoteCommentsRequest) (*GetNoteCommentsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetNoteComments not implemented")
 }
 func (UnimplementedPostServiceServer) AddDocument(context.Context, *AddDocumentRequest) (*AddDocumentResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddDocument not implemented")
@@ -4221,186 +4037,6 @@ func _PostService_ListPhotoCommentLikers_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PostService_CreateNote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateNoteRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PostServiceServer).CreateNote(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PostService_CreateNote_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PostServiceServer).CreateNote(ctx, req.(*CreateNoteRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _PostService_GetNote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetNoteRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PostServiceServer).GetNote(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PostService_GetNote_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PostServiceServer).GetNote(ctx, req.(*GetNoteRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _PostService_ListNotes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListNotesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PostServiceServer).ListNotes(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PostService_ListNotes_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PostServiceServer).ListNotes(ctx, req.(*ListNotesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _PostService_EditNote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EditNoteRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PostServiceServer).EditNote(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PostService_EditNote_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PostServiceServer).EditNote(ctx, req.(*EditNoteRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _PostService_DeleteNote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteNoteRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PostServiceServer).DeleteNote(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PostService_DeleteNote_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PostServiceServer).DeleteNote(ctx, req.(*DeleteNoteRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _PostService_CreateNoteComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateNoteCommentRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PostServiceServer).CreateNoteComment(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PostService_CreateNoteComment_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PostServiceServer).CreateNoteComment(ctx, req.(*CreateNoteCommentRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _PostService_DeleteNoteComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteNoteCommentRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PostServiceServer).DeleteNoteComment(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PostService_DeleteNoteComment_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PostServiceServer).DeleteNoteComment(ctx, req.(*DeleteNoteCommentRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _PostService_ListNoteComments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListNoteCommentsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PostServiceServer).ListNoteComments(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PostService_ListNoteComments_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PostServiceServer).ListNoteComments(ctx, req.(*ListNoteCommentsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _PostService_GetNoteComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetNoteCommentRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PostServiceServer).GetNoteComment(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PostService_GetNoteComment_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PostServiceServer).GetNoteComment(ctx, req.(*GetNoteCommentRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _PostService_GetNoteComments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetNoteCommentsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(PostServiceServer).GetNoteComments(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: PostService_GetNoteComments_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PostServiceServer).GetNoteComments(ctx, req.(*GetNoteCommentsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _PostService_AddDocument_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddDocumentRequest)
 	if err := dec(in); err != nil {
@@ -5051,46 +4687,6 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListPhotoCommentLikers",
 			Handler:    _PostService_ListPhotoCommentLikers_Handler,
-		},
-		{
-			MethodName: "CreateNote",
-			Handler:    _PostService_CreateNote_Handler,
-		},
-		{
-			MethodName: "GetNote",
-			Handler:    _PostService_GetNote_Handler,
-		},
-		{
-			MethodName: "ListNotes",
-			Handler:    _PostService_ListNotes_Handler,
-		},
-		{
-			MethodName: "EditNote",
-			Handler:    _PostService_EditNote_Handler,
-		},
-		{
-			MethodName: "DeleteNote",
-			Handler:    _PostService_DeleteNote_Handler,
-		},
-		{
-			MethodName: "CreateNoteComment",
-			Handler:    _PostService_CreateNoteComment_Handler,
-		},
-		{
-			MethodName: "DeleteNoteComment",
-			Handler:    _PostService_DeleteNoteComment_Handler,
-		},
-		{
-			MethodName: "ListNoteComments",
-			Handler:    _PostService_ListNoteComments_Handler,
-		},
-		{
-			MethodName: "GetNoteComment",
-			Handler:    _PostService_GetNoteComment_Handler,
-		},
-		{
-			MethodName: "GetNoteComments",
-			Handler:    _PostService_GetNoteComments_Handler,
 		},
 		{
 			MethodName: "AddDocument",

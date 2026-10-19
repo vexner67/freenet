@@ -31,10 +31,6 @@ type notificationPage struct {
 			ID    string `json:"id"`
 			Small string `json:"small"`
 		} `json:"photo"`
-		Note *struct {
-			ID    string `json:"id"`
-			Title string `json:"title"`
-		} `json:"note"`
 	} `json:"notifications"`
 	NextCursor string `json:"nextCursor"`
 	NewestID   string `json:"newestId"`
@@ -55,9 +51,9 @@ func TestListNotifications(t *testing.T) {
 	}
 
 	// The follow by a vanished account, the like of a deleted post, the
-	// message in a deleted topic, the like of a deleted photo and the
-	// comments under a deleted note and deleted themselves are left out.
-	if len(got.Notifications) != 20 {
+	// message in a deleted topic and the like of a deleted photo are left
+	// out.
+	if len(got.Notifications) != 19 {
 		t.Fatalf("notifications = %+v", got.Notifications)
 	}
 
@@ -84,20 +80,15 @@ func TestListNotifications(t *testing.T) {
 		t.Fatalf("mention under a photo = %+v", m)
 	}
 
-	// A comment under a note names the note and quotes the comment.
 	// A gift names no post: only who sent it.
-	if g := got.Notifications[17]; g.Type != "gift" || g.Actor["nickname"] != "bob" || g.Post != nil || g.Comment != nil {
+	if g := got.Notifications[16]; g.Type != "gift" || g.Actor["nickname"] != "bob" || g.Post != nil || g.Comment != nil {
 		t.Fatalf("gift = %+v", g)
 	}
 	// A like and a comment of a story say only who did it.
 	for i, kind := range []string{"story_like", "story_comment"} {
-		if s := got.Notifications[18+i]; s.Type != kind || s.Actor["nickname"] != "bob" || s.Post != nil || s.Comment != nil {
+		if s := got.Notifications[17+i]; s.Type != kind || s.Actor["nickname"] != "bob" || s.Post != nil || s.Comment != nil {
 			t.Fatalf("%s = %+v", kind, s)
 		}
-	}
-	if c := got.Notifications[16]; c.Type != "note_comment" || c.Note == nil || c.Note.ID != "note1" || c.Note.Title != "Про котов" ||
-		c.Post != nil || c.Comment == nil || c.Comment.ID != "nc1" || c.Comment.Text != "мяу" {
-		t.Fatalf("comment under a note = %+v", c)
 	}
 
 	// A mention names the post, the post and the comment, or the topic.

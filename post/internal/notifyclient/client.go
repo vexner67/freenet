@@ -53,7 +53,6 @@ var kinds = map[service.EventKind]notificationv1.Kind{
 	service.EventPhotoLike:        notificationv1.Kind_KIND_PHOTO_LIKE,
 	service.EventPhotoComment:     notificationv1.Kind_KIND_PHOTO_COMMENT,
 	service.EventTopicMessageLike: notificationv1.Kind_KIND_TOPIC_MESSAGE_LIKE,
-	service.EventNoteComment:      notificationv1.Kind_KIND_NOTE_COMMENT,
 
 	service.EventStoryLike:    notificationv1.Kind_KIND_STORY_LIKE,
 	service.EventStoryComment: notificationv1.Kind_KIND_STORY_COMMENT,
@@ -134,7 +133,7 @@ func (d *Deliverer) Deliver(ctx context.Context, m outbox.Message) error {
 
 // Key is the outbox.Key of the stream: what a message is about. Events
 // and the forgetting of a post are about that post (or the topic, photo
-// or note in its place), so those about different posts go at the same
+// or story in its place), so those about different posts go at the same
 // time and a like never overtakes its taking back. The forgetting of a
 // comment does not say its post and waits for everything before it.
 func Key(m outbox.Message) string {

@@ -94,8 +94,9 @@ enum Kind {
   reserved "KIND_EVENT_REMINDER";
   // The actor named the recipient in comment_id under the photo post_id.
   KIND_PHOTO_MENTION = 19;
-  // The actor wrote comment_id under the recipient's note post_id.
-  KIND_NOTE_COMMENT = 20;
+  // The comments of notes, which are gone.
+  reserved 20;
+  reserved "KIND_NOTE_COMMENT";
   // The actor sent the recipient a gift; post_id is the sent gift, which
   // the user service keeps.
   KIND_GIFT = 21;

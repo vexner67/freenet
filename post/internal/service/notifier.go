@@ -48,9 +48,6 @@ const (
 	// EventPhotoMention: the comment CommentID under the photo PostID
 	// names the recipient.
 	EventPhotoMention
-	// EventNoteComment: the comment CommentID under the recipient's
-	// note PostID.
-	EventNoteComment
 	// EventStoryLike: a like of the recipient's story PostID.
 	EventStoryLike
 	// EventStoryComment: the comment CommentID under the recipient's

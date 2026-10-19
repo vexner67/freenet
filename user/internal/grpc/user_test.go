@@ -266,7 +266,7 @@ func TestPrivacyFlow(t *testing.T) {
 		Privacy: &userv1.PrivacySettings{
 			ShowWorldview: true, WallWrite: userv1.WallWrite_WALL_WRITE_EVERYONE, MessagesWrite: userv1.MessagesWrite_MESSAGES_WRITE_FOLLOWING, ClubsRead: userv1.ClubsRead_CLUBS_READ_FOLLOWING,
 			PageRead: userv1.Audience_AUDIENCE_EVERYONE, InfoRead: userv1.Audience_AUDIENCE_EVERYONE, PhotosRead: userv1.Audience_AUDIENCE_USERS, FriendsRead: userv1.Audience_AUDIENCE_ONLY_ME, OnlineRead: userv1.Audience_AUDIENCE_EVERYONE,
-			NotesRead: userv1.Audience_AUDIENCE_ONLY_ME,
+			GiftsRead: userv1.Audience_AUDIENCE_ONLY_ME,
 		},
 	})
 	if err != nil {
@@ -277,17 +277,17 @@ func TestPrivacyFlow(t *testing.T) {
 		t.Fatalf("chats_invite left out = %v", got)
 	}
 	if pr := updated.GetUser().GetPrivacy(); !pr.GetShowWorldview() || pr.GetWallWrite() != userv1.WallWrite_WALL_WRITE_EVERYONE ||
-		pr.GetClubsRead() != userv1.ClubsRead_CLUBS_READ_FOLLOWING || pr.GetNotesRead() != userv1.Audience_AUDIENCE_ONLY_ME {
+		pr.GetClubsRead() != userv1.ClubsRead_CLUBS_READ_FOLLOWING || pr.GetGiftsRead() != userv1.Audience_AUDIENCE_ONLY_ME {
 		t.Fatalf("settings not returned: %+v", pr)
 	}
 
 	// Public: an anonymous viewer is not among the people Ann follows; Ann
 	// herself sees her clubs.
 	annID := updated.GetUser().GetId()
-	if can, err := s.client.GetAccess(context.Background(), &userv1.GetAccessRequest{UserId: annID}); err != nil || can.GetClubs() || can.GetNotes() || !can.GetPage() {
+	if can, err := s.client.GetAccess(context.Background(), &userv1.GetAccessRequest{UserId: annID}); err != nil || can.GetClubs() || can.GetGifts() || !can.GetPage() {
 		t.Fatalf("GetAccess anonymously = %v, %v", can, err)
 	}
-	if can, err := s.client.GetAccess(ann, &userv1.GetAccessRequest{UserId: annID}); err != nil || !can.GetClubs() || !can.GetNotes() {
+	if can, err := s.client.GetAccess(ann, &userv1.GetAccessRequest{UserId: annID}); err != nil || !can.GetClubs() || !can.GetGifts() {
 		t.Fatalf("GetAccess by ann = %v, %v", can, err)
 	}
 

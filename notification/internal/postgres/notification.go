@@ -189,7 +189,7 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 	switch e.Kind {
 	case notification.KindLike, notification.KindPhotoLike, notification.KindStoryLike:
 		_, err = r.pool.Exec(ctx, deleteLikeNotificationQuery, string(e.Kind), e.ActorID, e.PostID)
-	case notification.KindComment, notification.KindPhotoComment, notification.KindNoteComment, notification.KindStoryComment:
+	case notification.KindComment, notification.KindPhotoComment, notification.KindStoryComment:
 		_, err = r.pool.Exec(ctx, deleteCommentNotificationQuery, string(e.Kind), e.CommentID)
 	case notification.KindFollow:
 		_, err = r.pool.Exec(ctx, deleteFollowNotificationQuery, e.ActorID, e.RecipientID)

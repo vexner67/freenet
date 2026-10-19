@@ -67,14 +67,13 @@ type MenuItem string
 const (
 	MenuPhotos        MenuItem = "photos"
 	MenuMessages      MenuItem = "messages"
-	MenuNotes         MenuItem = "notes"
 	MenuGroups        MenuItem = "groups"
 	MenuFeed          MenuItem = "feed"
 	MenuNotifications MenuItem = "notifications"
 )
 
 // menuItems are all of them, in the order of the menu.
-var menuItems = []MenuItem{MenuPhotos, MenuMessages, MenuNotes, MenuGroups, MenuFeed, MenuNotifications}
+var menuItems = []MenuItem{MenuPhotos, MenuMessages, MenuGroups, MenuFeed, MenuNotifications}
 
 func (m MenuItem) String() string {
 	return string(m)

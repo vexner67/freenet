@@ -192,11 +192,8 @@ func (a *App) build(cfg config.Config) error {
 				Topics: repos.topics, Messages: repos.topicMessages, Likes: repos.topicMessages, Tx: repos.tx,
 				Notifier: notifier, Photos: photos, Moderators: moderators, Pages: repos.pages,
 			}),
-			Albums: albums,
-			Polls:  service.NewPollService(service.PollDeps{Polls: repos.polls, Posts: repos.posts, Moderators: moderators, Walls: repos.sources, Tx: repos.tx}),
-			Notes: service.NewNoteService(service.NoteDeps{
-				Notes: repos.notes, Comments: repos.noteComments, Tx: repos.tx, Notifier: notifier, Pages: repos.pages,
-			}),
+			Albums:    albums,
+			Polls:     service.NewPollService(service.PollDeps{Polls: repos.polls, Posts: repos.posts, Moderators: moderators, Walls: repos.sources, Tx: repos.tx}),
 			Documents: service.NewDocumentService(repos.documents, repos.tx, photos),
 			Stories:   a.stories,
 			Faves: service.NewFaveService(service.FaveDeps{
@@ -206,7 +203,7 @@ func (a *App) build(cfg config.Config) error {
 			Purge: service.NewPurgeService(service.PurgeDeps{
 				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Suggestions: repos.suggestions,
 				Votes:  repos.polls,
-				Topics: repos.topics, Albums: repos.albums, Notes: repos.notes, Tx: repos.tx, Notifier: notifier, Photos: photos,
+				Topics: repos.topics, Albums: repos.albums, Tx: repos.tx, Notifier: notifier, Photos: photos,
 				Held: repos.held, Sources: repos.sources, Postponed: repos.postponed, Documents: repos.documents,
 				Stories: repos.stories,
 			}),
@@ -287,10 +284,6 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		postv1.PostService_EditAlbumPhoto_FullMethodName: cfg.EditLimits,
 		postv1.PostService_SetAlbumCover_FullMethodName:  cfg.EditLimits,
 		postv1.PostService_MoveAlbumPhoto_FullMethodName: cfg.EditLimits,
-		// A note is a post of the notes, a comment under it a comment.
-		postv1.PostService_CreateNote_FullMethodName:        cfg.PostLimits,
-		postv1.PostService_EditNote_FullMethodName:          cfg.EditLimits,
-		postv1.PostService_CreateNoteComment_FullMethodName: cfg.CommentLimits,
 		// A document is added after every upload, which media counts too.
 		postv1.PostService_AddDocument_FullMethodName:    cfg.PostLimits,
 		postv1.PostService_RenameDocument_FullMethodName: cfg.EditLimits,
@@ -475,10 +468,6 @@ type repositories struct {
 		service.PollRepository
 		service.ReactionEraser
 	}
-	notes interface {
-		service.NoteRepository
-		service.NoteEraser
-	}
 	documents interface {
 		service.DocumentRepository
 		service.DocumentEraser
@@ -495,9 +484,8 @@ type repositories struct {
 	// pages knows the deleted pages, for what is read by its ID.
 	pages service.Pages
 	// sources are whom each reader reads in the news.
-	sources      service.SourceRepository
-	noteComments service.NoteCommentRepository
-	albumPhotos  interface {
+	sources     service.SourceRepository
+	albumPhotos interface {
 		service.AlbumPhotoRepository
 		service.FavePhotos
 	}
@@ -519,7 +507,6 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		store := inmem.NewStore()
 		topics := inmem.NewTopicRepository()
 		albums := inmem.NewAlbumRepository()
-		notes := inmem.NewNoteRepository()
 		return repositories{
 			posts:        store.Posts(),
 			likes:        store.Likes(),
@@ -536,11 +523,10 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			albumPhotos:   albums.Photos(),
 			photoLikes:    albums.PhotoLikes(),
 			photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
-			notes: notes, noteComments: notes.Comments(),
 			documents: inmem.NewDocumentRepository(),
 			stories:   store.Stories(), storyViews: store.StoryViews(),
 			storyLikes: store.StoryLikes(), storyComments: store.StoryComments(),
-			held: []service.ReactionHolder{store.Holds(), topics, albums, notes},
+			held: []service.ReactionHolder{store.Holds(), topics, albums},
 			// Every store is told of a deleted page; one answers for all.
 			pages:   store.Holds(),
 			sources: store.Sources(),
@@ -574,7 +560,6 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 
 	topics := postgres.NewTopicRepository(a.pool)
 	albums := postgres.NewAlbumRepository(a.pool)
-	notes := postgres.NewNoteRepository(a.pool)
 	held := postgres.NewHoldRepository(a.pool)
 
 	return repositories{
@@ -593,7 +578,6 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		albumPhotos:   albums.Photos(),
 		photoLikes:    albums.PhotoLikes(),
 		photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
-		notes: notes, noteComments: notes.Comments(),
 		documents: postgres.NewDocumentRepository(a.pool),
 		stories:   postgres.NewStoryRepository(a.pool), storyViews: postgres.NewStoryViewRepository(a.pool),
 		storyLikes: postgres.NewStoryLikeRepository(a.pool), storyComments: postgres.NewStoryCommentRepository(a.pool),

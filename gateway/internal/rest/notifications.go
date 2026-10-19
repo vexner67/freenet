@@ -33,13 +33,6 @@ type notificationJSON struct {
 	// Photo is the photo of an album a photo_like or a photo_comment is
 	// about.
 	Photo *photoJSON `json:"photo,omitempty"`
-	// Note is the note a note_comment was left under.
-	Note *notificationNoteJSON `json:"note,omitempty"`
-}
-
-type notificationNoteJSON struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
 }
 
 type notificationTopicJSON struct {
@@ -93,10 +86,6 @@ const (
 	kindPhotoMention = "photo_mention"
 )
 
-// kindNoteComment names a note by PostID and a comment under it by
-// CommentID ("оставил комментарий под вашей заметкой" of openvk).
-const kindNoteComment = "note_comment"
-
 // namesTopic tells whether PostID of a notification of kind is a topic
 // and its CommentID a message of it.
 func namesTopic(kind string) bool {
@@ -133,12 +122,12 @@ func namesStory(kind string) bool {
 // namesPost tells whether PostID of a notification of kind is a post, and
 // namesComment whether its CommentID is a comment.
 func namesPost(kind string) bool {
-	return kind != kindSuggestedPost && kind != kindNoteComment && kind != kindGift && kind != kindVotes &&
+	return kind != kindSuggestedPost && kind != kindGift && kind != kindVotes &&
 		!namesTopic(kind) && !namesPhoto(kind) && !namesStory(kind)
 }
 
 func namesComment(kind string) bool {
-	return kind != kindNoteComment && !namesTopic(kind) && !namesPhoto(kind) && !namesStory(kind)
+	return !namesTopic(kind) && !namesPhoto(kind) && !namesStory(kind)
 }
 
 // targets are what a page of notifications refers to, by ID; what was
@@ -149,9 +138,8 @@ type targets struct {
 	comments map[string]model.Comment
 	topics   map[string]model.Topic
 	photos   map[string]model.AlbumPhoto
-	notes    map[string]model.Note
 	// quotes are what the messages of topics and the comments of photos
-	// and notes that notifications name say, by ID.
+	// that notifications name say, by ID.
 	quotes map[string]string
 }
 
@@ -219,7 +207,7 @@ func notificationBox(r *http.Request) (bool, error) {
 }
 
 func (a *api) notificationTargets(r *http.Request, token string, notifications []model.Notification) (targets, error) {
-	var actorIDs, postIDs, commentIDs, topicIDs, photoIDs, messageIDs, photoCommentIDs, noteIDs, noteCommentIDs []string
+	var actorIDs, postIDs, commentIDs, topicIDs, photoIDs, messageIDs, photoCommentIDs []string
 
 	for _, n := range notifications {
 		actorIDs = append(actorIDs, n.ActorID)
@@ -240,10 +228,6 @@ func (a *api) notificationTargets(r *http.Request, token string, notifications [
 			if n.CommentID != "" {
 				photoCommentIDs = append(photoCommentIDs, n.CommentID)
 			}
-		}
-		if n.Kind == kindNoteComment {
-			noteIDs = append(noteIDs, n.PostID)
-			noteCommentIDs = append(noteCommentIDs, n.CommentID)
 		}
 	}
 
@@ -286,11 +270,7 @@ func (a *api) notificationTargets(r *http.Request, token string, notifications [
 		return targets{}, err
 	}
 
-	if t.notes, err = a.notificationNotes(r, token, unique(noteIDs)); err != nil {
-		return targets{}, err
-	}
-
-	if t.quotes, err = a.notificationQuotes(r, unique(messageIDs), unique(photoCommentIDs), unique(noteCommentIDs)); err != nil {
+	if t.quotes, err = a.notificationQuotes(r, unique(messageIDs), unique(photoCommentIDs)); err != nil {
 		return targets{}, err
 	}
 
@@ -298,20 +278,9 @@ func (a *api) notificationTargets(r *http.Request, token string, notifications [
 }
 
 // notificationQuotes reads what the messages of topics and the comments
-// of photos and notes a page of notifications names say, each kind in one
-// request.
-func (a *api) notificationQuotes(r *http.Request, messageIDs, photoCommentIDs, noteCommentIDs []string) (map[string]string, error) {
-	quotes := make(map[string]string, len(messageIDs)+len(photoCommentIDs)+len(noteCommentIDs))
-
-	if len(noteCommentIDs) > 0 {
-		comments, err := a.notes.CommentsByID(r.Context(), noteCommentIDs)
-		if err != nil {
-			return nil, err
-		}
-		for _, c := range comments {
-			quotes[c.ID] = c.Text
-		}
-	}
+// of photos a page of notifications names say, each kind in one request.
+func (a *api) notificationQuotes(r *http.Request, messageIDs, photoCommentIDs []string) (map[string]string, error) {
+	quotes := make(map[string]string, len(messageIDs)+len(photoCommentIDs))
 
 	if len(messageIDs) > 0 {
 		messages, err := a.topics.MessagesByID(r.Context(), messageIDs)
@@ -337,26 +306,6 @@ func (a *api) notificationQuotes(r *http.Request, messageIDs, photoCommentIDs, n
 }
 
 // notificationPhotos reads the photos a page of notifications names, as
-// notificationNotes reads the notes a page of notifications names, as
-// notificationTopics reads the topics. They are the reader's own.
-func (a *api) notificationNotes(r *http.Request, token string, ids []string) (map[string]model.Note, error) {
-	notes := make(map[string]model.Note, len(ids))
-
-	for _, id := range ids {
-		note, err := a.notes.Get(r.Context(), token, id)
-		if failure.From(err).Kind == failure.NotFound {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		notes[id] = note
-	}
-
-	return notes, nil
-}
-
 // notificationTopics reads the topics. They are the reader's own.
 func (a *api) notificationPhotos(r *http.Request, token string, ids []string) (map[string]model.AlbumPhoto, error) {
 	photos := make(map[string]model.AlbumPhoto, len(ids))
@@ -429,18 +378,6 @@ func toNotificationJSON(n model.Notification, t targets) (notificationJSON, bool
 		}
 		shown := toPhotoJSON(photo.AuthorID, photo.ID)
 		item.Photo = &shown
-		item.Comment = quoted(n, t)
-
-		return item, true
-	}
-
-	if n.Kind == kindNoteComment {
-		note, ok := t.notes[n.PostID]
-		// A comment that is gone leaves nothing to tell about.
-		if _, said := t.quotes[n.CommentID]; !ok || !said {
-			return notificationJSON{}, false
-		}
-		item.Note = &notificationNoteJSON{ID: note.ID, Title: note.Title}
 		item.Comment = quoted(n, t)
 
 		return item, true

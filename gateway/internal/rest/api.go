@@ -311,23 +311,6 @@ type Faves interface {
 	OwnPosts(ctx context.Context, accessToken, cursor string, limit int) (model.PostPage, error)
 }
 
-// Notes are the notes of people ("Заметки") and the comments under them.
-type Notes interface {
-	Create(ctx context.Context, accessToken, title, text string) (model.Note, error)
-	// Get is a note with its whole text; List carries the beginnings.
-	Get(ctx context.Context, accessToken, id string) (model.Note, error)
-	List(ctx context.Context, accessToken, authorID, cursor string, limit int) (model.NotePage, error)
-	Edit(ctx context.Context, accessToken, id, title, text string) (model.Note, error)
-	Delete(ctx context.Context, accessToken, id string) error
-	Comment(ctx context.Context, accessToken, noteID, text string) (model.NoteComment, error)
-	DeleteComment(ctx context.Context, accessToken, id string) error
-	Comments(ctx context.Context, accessToken, noteID, cursor string, limit int) (model.NoteCommentPage, error)
-	// CommentByID is a comment with its whole text; CommentsByID are
-	// those that exist, with the beginnings of their texts.
-	CommentByID(ctx context.Context, id string) (model.NoteComment, error)
-	CommentsByID(ctx context.Context, ids []string) ([]model.NoteComment, error)
-}
-
 type Notifications interface {
 	List(ctx context.Context, accessToken string, unread bool, cursor string, limit int) (model.NotificationPage, error)
 	CountUnread(ctx context.Context, accessToken string) (int, error)
@@ -504,7 +487,6 @@ type Backends struct {
 	Chats         Chats
 	Topics        Topics
 	Albums        Albums
-	Notes         Notes
 	Faves         Faves
 	Gifts         Gifts
 	Stickers      Stickers
@@ -533,7 +515,6 @@ type api struct {
 	clubs             Clubs
 	topics            Topics
 	albums            Albums
-	notes             Notes
 	faves             Faves
 	gifts             Gifts
 	stickers          Stickers
@@ -811,16 +792,6 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/ban", a.unban)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/verification", a.verifyClub)
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/verification", a.verifyClub)
-
-	mux.HandleFunc("GET /api/v1/users/{nickname}/notes", a.listUserNotes)
-	mux.HandleFunc("POST /api/v1/me/notes", a.createNote)
-	mux.HandleFunc("GET /api/v1/notes/{id}", a.getNote)
-	mux.HandleFunc("PATCH /api/v1/notes/{id}", a.editNote)
-	mux.HandleFunc("DELETE /api/v1/notes/{id}", a.deleteNote)
-	mux.HandleFunc("GET /api/v1/notes/{id}/comments", a.listNoteComments)
-	mux.HandleFunc("POST /api/v1/notes/{id}/comments", a.createNoteComment)
-	mux.HandleFunc("DELETE /api/v1/note-comments/{id}", a.deleteNoteComment)
-	mux.HandleFunc("GET /api/v1/note-comments/{id}/text", a.noteCommentText)
 
 	mux.HandleFunc("PUT /api/v1/me/avatar", a.uploadAvatar)
 	mux.HandleFunc("DELETE /api/v1/me/avatar", a.deleteAvatar)

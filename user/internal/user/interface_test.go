@@ -34,13 +34,13 @@ func TestNewInterface(t *testing.T) {
 				offset := 180
 				*f = user.InterfaceForm{
 					AvatarStyle: "round", Theme: "dark", HideRating: true, NSFW: "show", PostView: "microblog",
-					MainPage: "feed", Timezone: &offset, HiddenMenu: []string{"notifications", "notes", "photos", "photos"},
+					MainPage: "feed", Timezone: &offset, HiddenMenu: []string{"notifications", "groups", "photos", "photos"},
 				}
 			},
 			user.Interface{
 				AvatarStyle: user.AvatarsRound, Theme: user.ThemeDark, HideRating: true, NSFW: user.NSFWShow,
 				PostView: user.PostViewMicroblog, MainPage: user.MainPageFeed, Timezone: moscow,
-				HiddenMenu: []user.MenuItem{user.MenuPhotos, user.MenuNotes, user.MenuNotifications},
+				HiddenMenu: []user.MenuItem{user.MenuPhotos, user.MenuGroups, user.MenuNotifications},
 			},
 			nil,
 		},

@@ -15,7 +15,6 @@ var (
 	photosPart  = pagePartRule{func(a model.Access) bool { return a.Photos }, "this user's photos are hidden"}
 	friendsPart = pagePartRule{func(a model.Access) bool { return a.Friends }, "this user's follows are hidden"}
 	clubsPart   = pagePartRule{func(a model.Access) bool { return a.Clubs }, "this user's clubs are hidden"}
-	notesPart   = pagePartRule{func(a model.Access) bool { return a.Notes }, "this user's notes are hidden"}
 	giftsPart   = pagePartRule{func(a model.Access) bool { return a.Gifts }, "this user's gifts are hidden"}
 )
 

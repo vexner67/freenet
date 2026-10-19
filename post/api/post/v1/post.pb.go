@@ -10712,1138 +10712,6 @@ func (x *CountPostsResponse) GetCount() int32 {
 	return 0
 }
 
-// A note of a person: a title and a text.
-type Note struct {
-	state        protoimpl.MessageState `protogen:"open.v1"`
-	Id           string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	AuthorId     string                 `protobuf:"bytes,2,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
-	Title        string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	Text         string                 `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
-	CommentCount int32                  `protobuf:"varint,5,opt,name=comment_count,json=commentCount,proto3" json:"comment_count,omitempty"`
-	CreatedAt    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	// Unset for a note never changed.
-	EditedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=edited_at,json=editedAt,proto3" json:"edited_at,omitempty"`
-	// The caller wrote it.
-	Mine bool `protobuf:"varint,8,opt,name=mine,proto3" json:"mine,omitempty"`
-	// The text was cut to text_limit of the request.
-	TextCut       bool `protobuf:"varint,9,opt,name=text_cut,json=textCut,proto3" json:"text_cut,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Note) Reset() {
-	*x = Note{}
-	mi := &file_api_post_v1_post_proto_msgTypes[178]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Note) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Note) ProtoMessage() {}
-
-func (x *Note) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[178]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Note.ProtoReflect.Descriptor instead.
-func (*Note) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{178}
-}
-
-func (x *Note) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *Note) GetAuthorId() string {
-	if x != nil {
-		return x.AuthorId
-	}
-	return ""
-}
-
-func (x *Note) GetTitle() string {
-	if x != nil {
-		return x.Title
-	}
-	return ""
-}
-
-func (x *Note) GetText() string {
-	if x != nil {
-		return x.Text
-	}
-	return ""
-}
-
-func (x *Note) GetCommentCount() int32 {
-	if x != nil {
-		return x.CommentCount
-	}
-	return 0
-}
-
-func (x *Note) GetCreatedAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.CreatedAt
-	}
-	return nil
-}
-
-func (x *Note) GetEditedAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.EditedAt
-	}
-	return nil
-}
-
-func (x *Note) GetMine() bool {
-	if x != nil {
-		return x.Mine
-	}
-	return false
-}
-
-func (x *Note) GetTextCut() bool {
-	if x != nil {
-		return x.TextCut
-	}
-	return false
-}
-
-// A comment under a note.
-type NoteComment struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	NoteId    string                 `protobuf:"bytes,2,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
-	AuthorId  string                 `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
-	Text      string                 `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
-	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	// The caller wrote it.
-	Mine bool `protobuf:"varint,6,opt,name=mine,proto3" json:"mine,omitempty"`
-	// The text was cut to text_limit of the request.
-	TextCut       bool `protobuf:"varint,7,opt,name=text_cut,json=textCut,proto3" json:"text_cut,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *NoteComment) Reset() {
-	*x = NoteComment{}
-	mi := &file_api_post_v1_post_proto_msgTypes[179]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *NoteComment) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*NoteComment) ProtoMessage() {}
-
-func (x *NoteComment) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[179]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use NoteComment.ProtoReflect.Descriptor instead.
-func (*NoteComment) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{179}
-}
-
-func (x *NoteComment) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *NoteComment) GetNoteId() string {
-	if x != nil {
-		return x.NoteId
-	}
-	return ""
-}
-
-func (x *NoteComment) GetAuthorId() string {
-	if x != nil {
-		return x.AuthorId
-	}
-	return ""
-}
-
-func (x *NoteComment) GetText() string {
-	if x != nil {
-		return x.Text
-	}
-	return ""
-}
-
-func (x *NoteComment) GetCreatedAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.CreatedAt
-	}
-	return nil
-}
-
-func (x *NoteComment) GetMine() bool {
-	if x != nil {
-		return x.Mine
-	}
-	return false
-}
-
-func (x *NoteComment) GetTextCut() bool {
-	if x != nil {
-		return x.TextCut
-	}
-	return false
-}
-
-type CreateNoteRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// One line, up to 256 characters.
-	Title string `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
-	// Up to 60000 characters, never empty.
-	Text          string `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateNoteRequest) Reset() {
-	*x = CreateNoteRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[180]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateNoteRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateNoteRequest) ProtoMessage() {}
-
-func (x *CreateNoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[180]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateNoteRequest.ProtoReflect.Descriptor instead.
-func (*CreateNoteRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{180}
-}
-
-func (x *CreateNoteRequest) GetTitle() string {
-	if x != nil {
-		return x.Title
-	}
-	return ""
-}
-
-func (x *CreateNoteRequest) GetText() string {
-	if x != nil {
-		return x.Text
-	}
-	return ""
-}
-
-type CreateNoteResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Note          *Note                  `protobuf:"bytes,1,opt,name=note,proto3" json:"note,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateNoteResponse) Reset() {
-	*x = CreateNoteResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[181]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateNoteResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateNoteResponse) ProtoMessage() {}
-
-func (x *CreateNoteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[181]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateNoteResponse.ProtoReflect.Descriptor instead.
-func (*CreateNoteResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{181}
-}
-
-func (x *CreateNoteResponse) GetNote() *Note {
-	if x != nil {
-		return x.Note
-	}
-	return nil
-}
-
-type GetNoteRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetNoteRequest) Reset() {
-	*x = GetNoteRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[182]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetNoteRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetNoteRequest) ProtoMessage() {}
-
-func (x *GetNoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[182]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetNoteRequest.ProtoReflect.Descriptor instead.
-func (*GetNoteRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{182}
-}
-
-func (x *GetNoteRequest) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-type GetNoteResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Note          *Note                  `protobuf:"bytes,1,opt,name=note,proto3" json:"note,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetNoteResponse) Reset() {
-	*x = GetNoteResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[183]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetNoteResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetNoteResponse) ProtoMessage() {}
-
-func (x *GetNoteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[183]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetNoteResponse.ProtoReflect.Descriptor instead.
-func (*GetNoteResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{183}
-}
-
-func (x *GetNoteResponse) GetNote() *Note {
-	if x != nil {
-		return x.Note
-	}
-	return nil
-}
-
-type ListNotesRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	AuthorId string                 `protobuf:"bytes,1,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
-	// Empty for the newest, else next_cursor of the previous page.
-	Cursor string `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
-	Limit  int32  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
-	// The texts are cut to this many characters and say so (text_cut); 0
-	// for whole texts.
-	TextLimit     int32 `protobuf:"varint,4,opt,name=text_limit,json=textLimit,proto3" json:"text_limit,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListNotesRequest) Reset() {
-	*x = ListNotesRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[184]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListNotesRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListNotesRequest) ProtoMessage() {}
-
-func (x *ListNotesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[184]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListNotesRequest.ProtoReflect.Descriptor instead.
-func (*ListNotesRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{184}
-}
-
-func (x *ListNotesRequest) GetAuthorId() string {
-	if x != nil {
-		return x.AuthorId
-	}
-	return ""
-}
-
-func (x *ListNotesRequest) GetCursor() string {
-	if x != nil {
-		return x.Cursor
-	}
-	return ""
-}
-
-func (x *ListNotesRequest) GetLimit() int32 {
-	if x != nil {
-		return x.Limit
-	}
-	return 0
-}
-
-func (x *ListNotesRequest) GetTextLimit() int32 {
-	if x != nil {
-		return x.TextLimit
-	}
-	return 0
-}
-
-type ListNotesResponse struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	Notes      []*Note                `protobuf:"bytes,1,rep,name=notes,proto3" json:"notes,omitempty"`
-	NextCursor string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
-	// The notes of the author on all pages.
-	Total         int32 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListNotesResponse) Reset() {
-	*x = ListNotesResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[185]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListNotesResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListNotesResponse) ProtoMessage() {}
-
-func (x *ListNotesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[185]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListNotesResponse.ProtoReflect.Descriptor instead.
-func (*ListNotesResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{185}
-}
-
-func (x *ListNotesResponse) GetNotes() []*Note {
-	if x != nil {
-		return x.Notes
-	}
-	return nil
-}
-
-func (x *ListNotesResponse) GetNextCursor() string {
-	if x != nil {
-		return x.NextCursor
-	}
-	return ""
-}
-
-func (x *ListNotesResponse) GetTotal() int32 {
-	if x != nil {
-		return x.Total
-	}
-	return 0
-}
-
-type EditNoteRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Text          string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *EditNoteRequest) Reset() {
-	*x = EditNoteRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[186]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *EditNoteRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*EditNoteRequest) ProtoMessage() {}
-
-func (x *EditNoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[186]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use EditNoteRequest.ProtoReflect.Descriptor instead.
-func (*EditNoteRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{186}
-}
-
-func (x *EditNoteRequest) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-func (x *EditNoteRequest) GetTitle() string {
-	if x != nil {
-		return x.Title
-	}
-	return ""
-}
-
-func (x *EditNoteRequest) GetText() string {
-	if x != nil {
-		return x.Text
-	}
-	return ""
-}
-
-type EditNoteResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Note          *Note                  `protobuf:"bytes,1,opt,name=note,proto3" json:"note,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *EditNoteResponse) Reset() {
-	*x = EditNoteResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[187]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *EditNoteResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*EditNoteResponse) ProtoMessage() {}
-
-func (x *EditNoteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[187]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use EditNoteResponse.ProtoReflect.Descriptor instead.
-func (*EditNoteResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{187}
-}
-
-func (x *EditNoteResponse) GetNote() *Note {
-	if x != nil {
-		return x.Note
-	}
-	return nil
-}
-
-type DeleteNoteRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *DeleteNoteRequest) Reset() {
-	*x = DeleteNoteRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[188]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DeleteNoteRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DeleteNoteRequest) ProtoMessage() {}
-
-func (x *DeleteNoteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[188]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DeleteNoteRequest.ProtoReflect.Descriptor instead.
-func (*DeleteNoteRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{188}
-}
-
-func (x *DeleteNoteRequest) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-type CreateNoteCommentRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	NoteId        string                 `protobuf:"bytes,1,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
-	Text          string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateNoteCommentRequest) Reset() {
-	*x = CreateNoteCommentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[189]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateNoteCommentRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateNoteCommentRequest) ProtoMessage() {}
-
-func (x *CreateNoteCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[189]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateNoteCommentRequest.ProtoReflect.Descriptor instead.
-func (*CreateNoteCommentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{189}
-}
-
-func (x *CreateNoteCommentRequest) GetNoteId() string {
-	if x != nil {
-		return x.NoteId
-	}
-	return ""
-}
-
-func (x *CreateNoteCommentRequest) GetText() string {
-	if x != nil {
-		return x.Text
-	}
-	return ""
-}
-
-type CreateNoteCommentResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Comment       *NoteComment           `protobuf:"bytes,1,opt,name=comment,proto3" json:"comment,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *CreateNoteCommentResponse) Reset() {
-	*x = CreateNoteCommentResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[190]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *CreateNoteCommentResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*CreateNoteCommentResponse) ProtoMessage() {}
-
-func (x *CreateNoteCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[190]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use CreateNoteCommentResponse.ProtoReflect.Descriptor instead.
-func (*CreateNoteCommentResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{190}
-}
-
-func (x *CreateNoteCommentResponse) GetComment() *NoteComment {
-	if x != nil {
-		return x.Comment
-	}
-	return nil
-}
-
-type DeleteNoteCommentRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *DeleteNoteCommentRequest) Reset() {
-	*x = DeleteNoteCommentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[191]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *DeleteNoteCommentRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*DeleteNoteCommentRequest) ProtoMessage() {}
-
-func (x *DeleteNoteCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[191]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use DeleteNoteCommentRequest.ProtoReflect.Descriptor instead.
-func (*DeleteNoteCommentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{191}
-}
-
-func (x *DeleteNoteCommentRequest) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-type ListNoteCommentsRequest struct {
-	state  protoimpl.MessageState `protogen:"open.v1"`
-	NoteId string                 `protobuf:"bytes,1,opt,name=note_id,json=noteId,proto3" json:"note_id,omitempty"`
-	// Empty for the oldest, else next_cursor of the previous page.
-	Cursor string `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
-	Limit  int32  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
-	// The texts are cut to this many characters and say so (text_cut); 0
-	// for whole texts.
-	TextLimit     int32 `protobuf:"varint,4,opt,name=text_limit,json=textLimit,proto3" json:"text_limit,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListNoteCommentsRequest) Reset() {
-	*x = ListNoteCommentsRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[192]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListNoteCommentsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListNoteCommentsRequest) ProtoMessage() {}
-
-func (x *ListNoteCommentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[192]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListNoteCommentsRequest.ProtoReflect.Descriptor instead.
-func (*ListNoteCommentsRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{192}
-}
-
-func (x *ListNoteCommentsRequest) GetNoteId() string {
-	if x != nil {
-		return x.NoteId
-	}
-	return ""
-}
-
-func (x *ListNoteCommentsRequest) GetCursor() string {
-	if x != nil {
-		return x.Cursor
-	}
-	return ""
-}
-
-func (x *ListNoteCommentsRequest) GetLimit() int32 {
-	if x != nil {
-		return x.Limit
-	}
-	return 0
-}
-
-func (x *ListNoteCommentsRequest) GetTextLimit() int32 {
-	if x != nil {
-		return x.TextLimit
-	}
-	return 0
-}
-
-type ListNoteCommentsResponse struct {
-	state      protoimpl.MessageState `protogen:"open.v1"`
-	Comments   []*NoteComment         `protobuf:"bytes,1,rep,name=comments,proto3" json:"comments,omitempty"`
-	NextCursor string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
-	// The comments of the note on all pages.
-	Total         int32 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ListNoteCommentsResponse) Reset() {
-	*x = ListNoteCommentsResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[193]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ListNoteCommentsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ListNoteCommentsResponse) ProtoMessage() {}
-
-func (x *ListNoteCommentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[193]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ListNoteCommentsResponse.ProtoReflect.Descriptor instead.
-func (*ListNoteCommentsResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{193}
-}
-
-func (x *ListNoteCommentsResponse) GetComments() []*NoteComment {
-	if x != nil {
-		return x.Comments
-	}
-	return nil
-}
-
-func (x *ListNoteCommentsResponse) GetNextCursor() string {
-	if x != nil {
-		return x.NextCursor
-	}
-	return ""
-}
-
-func (x *ListNoteCommentsResponse) GetTotal() int32 {
-	if x != nil {
-		return x.Total
-	}
-	return 0
-}
-
-type GetNoteCommentRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetNoteCommentRequest) Reset() {
-	*x = GetNoteCommentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[194]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetNoteCommentRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetNoteCommentRequest) ProtoMessage() {}
-
-func (x *GetNoteCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[194]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetNoteCommentRequest.ProtoReflect.Descriptor instead.
-func (*GetNoteCommentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{194}
-}
-
-func (x *GetNoteCommentRequest) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
-}
-
-type GetNoteCommentResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Comment       *NoteComment           `protobuf:"bytes,1,opt,name=comment,proto3" json:"comment,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetNoteCommentResponse) Reset() {
-	*x = GetNoteCommentResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[195]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetNoteCommentResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetNoteCommentResponse) ProtoMessage() {}
-
-func (x *GetNoteCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[195]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetNoteCommentResponse.ProtoReflect.Descriptor instead.
-func (*GetNoteCommentResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{195}
-}
-
-func (x *GetNoteCommentResponse) GetComment() *NoteComment {
-	if x != nil {
-		return x.Comment
-	}
-	return nil
-}
-
-type GetNoteCommentsRequest struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// At most 50.
-	Ids []string `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
-	// The texts are cut to this many characters and say so (text_cut); 0
-	// for whole texts.
-	TextLimit     int32 `protobuf:"varint,2,opt,name=text_limit,json=textLimit,proto3" json:"text_limit,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetNoteCommentsRequest) Reset() {
-	*x = GetNoteCommentsRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[196]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetNoteCommentsRequest) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetNoteCommentsRequest) ProtoMessage() {}
-
-func (x *GetNoteCommentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[196]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetNoteCommentsRequest.ProtoReflect.Descriptor instead.
-func (*GetNoteCommentsRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{196}
-}
-
-func (x *GetNoteCommentsRequest) GetIds() []string {
-	if x != nil {
-		return x.Ids
-	}
-	return nil
-}
-
-func (x *GetNoteCommentsRequest) GetTextLimit() int32 {
-	if x != nil {
-		return x.TextLimit
-	}
-	return 0
-}
-
-type GetNoteCommentsResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Comments      []*NoteComment         `protobuf:"bytes,1,rep,name=comments,proto3" json:"comments,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *GetNoteCommentsResponse) Reset() {
-	*x = GetNoteCommentsResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[197]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *GetNoteCommentsResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*GetNoteCommentsResponse) ProtoMessage() {}
-
-func (x *GetNoteCommentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[197]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use GetNoteCommentsResponse.ProtoReflect.Descriptor instead.
-func (*GetNoteCommentsResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{197}
-}
-
-func (x *GetNoteCommentsResponse) GetComments() []*NoteComment {
-	if x != nil {
-		return x.Comments
-	}
-	return nil
-}
-
 // A file of "Мои Документы".
 type Document struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
@@ -11861,7 +10729,7 @@ type Document struct {
 
 func (x *Document) Reset() {
 	*x = Document{}
-	mi := &file_api_post_v1_post_proto_msgTypes[198]
+	mi := &file_api_post_v1_post_proto_msgTypes[178]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11873,7 +10741,7 @@ func (x *Document) String() string {
 func (*Document) ProtoMessage() {}
 
 func (x *Document) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[198]
+	mi := &file_api_post_v1_post_proto_msgTypes[178]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11886,7 +10754,7 @@ func (x *Document) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Document.ProtoReflect.Descriptor instead.
 func (*Document) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{198}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{178}
 }
 
 func (x *Document) GetId() string {
@@ -11944,7 +10812,7 @@ type AddDocumentRequest struct {
 
 func (x *AddDocumentRequest) Reset() {
 	*x = AddDocumentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[199]
+	mi := &file_api_post_v1_post_proto_msgTypes[179]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11956,7 +10824,7 @@ func (x *AddDocumentRequest) String() string {
 func (*AddDocumentRequest) ProtoMessage() {}
 
 func (x *AddDocumentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[199]
+	mi := &file_api_post_v1_post_proto_msgTypes[179]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11969,7 +10837,7 @@ func (x *AddDocumentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddDocumentRequest.ProtoReflect.Descriptor instead.
 func (*AddDocumentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{199}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{179}
 }
 
 func (x *AddDocumentRequest) GetId() string {
@@ -12002,7 +10870,7 @@ type AddDocumentResponse struct {
 
 func (x *AddDocumentResponse) Reset() {
 	*x = AddDocumentResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[200]
+	mi := &file_api_post_v1_post_proto_msgTypes[180]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12014,7 +10882,7 @@ func (x *AddDocumentResponse) String() string {
 func (*AddDocumentResponse) ProtoMessage() {}
 
 func (x *AddDocumentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[200]
+	mi := &file_api_post_v1_post_proto_msgTypes[180]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12027,7 +10895,7 @@ func (x *AddDocumentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddDocumentResponse.ProtoReflect.Descriptor instead.
 func (*AddDocumentResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{200}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{180}
 }
 
 func (x *AddDocumentResponse) GetDocument() *Document {
@@ -12048,7 +10916,7 @@ type ListDocumentsRequest struct {
 
 func (x *ListDocumentsRequest) Reset() {
 	*x = ListDocumentsRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[201]
+	mi := &file_api_post_v1_post_proto_msgTypes[181]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12060,7 +10928,7 @@ func (x *ListDocumentsRequest) String() string {
 func (*ListDocumentsRequest) ProtoMessage() {}
 
 func (x *ListDocumentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[201]
+	mi := &file_api_post_v1_post_proto_msgTypes[181]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12073,7 +10941,7 @@ func (x *ListDocumentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDocumentsRequest.ProtoReflect.Descriptor instead.
 func (*ListDocumentsRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{201}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{181}
 }
 
 func (x *ListDocumentsRequest) GetCursor() string {
@@ -12102,7 +10970,7 @@ type ListDocumentsResponse struct {
 
 func (x *ListDocumentsResponse) Reset() {
 	*x = ListDocumentsResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[202]
+	mi := &file_api_post_v1_post_proto_msgTypes[182]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12114,7 +10982,7 @@ func (x *ListDocumentsResponse) String() string {
 func (*ListDocumentsResponse) ProtoMessage() {}
 
 func (x *ListDocumentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[202]
+	mi := &file_api_post_v1_post_proto_msgTypes[182]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12127,7 +10995,7 @@ func (x *ListDocumentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListDocumentsResponse.ProtoReflect.Descriptor instead.
 func (*ListDocumentsResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{202}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{182}
 }
 
 func (x *ListDocumentsResponse) GetDocuments() []*Document {
@@ -12161,7 +11029,7 @@ type GetDocumentsRequest struct {
 
 func (x *GetDocumentsRequest) Reset() {
 	*x = GetDocumentsRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[203]
+	mi := &file_api_post_v1_post_proto_msgTypes[183]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12173,7 +11041,7 @@ func (x *GetDocumentsRequest) String() string {
 func (*GetDocumentsRequest) ProtoMessage() {}
 
 func (x *GetDocumentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[203]
+	mi := &file_api_post_v1_post_proto_msgTypes[183]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12186,7 +11054,7 @@ func (x *GetDocumentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDocumentsRequest.ProtoReflect.Descriptor instead.
 func (*GetDocumentsRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{203}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{183}
 }
 
 func (x *GetDocumentsRequest) GetIds() []string {
@@ -12205,7 +11073,7 @@ type GetDocumentsResponse struct {
 
 func (x *GetDocumentsResponse) Reset() {
 	*x = GetDocumentsResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[204]
+	mi := &file_api_post_v1_post_proto_msgTypes[184]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12217,7 +11085,7 @@ func (x *GetDocumentsResponse) String() string {
 func (*GetDocumentsResponse) ProtoMessage() {}
 
 func (x *GetDocumentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[204]
+	mi := &file_api_post_v1_post_proto_msgTypes[184]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12230,7 +11098,7 @@ func (x *GetDocumentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDocumentsResponse.ProtoReflect.Descriptor instead.
 func (*GetDocumentsResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{204}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{184}
 }
 
 func (x *GetDocumentsResponse) GetDocuments() []*Document {
@@ -12250,7 +11118,7 @@ type RenameDocumentRequest struct {
 
 func (x *RenameDocumentRequest) Reset() {
 	*x = RenameDocumentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[205]
+	mi := &file_api_post_v1_post_proto_msgTypes[185]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12262,7 +11130,7 @@ func (x *RenameDocumentRequest) String() string {
 func (*RenameDocumentRequest) ProtoMessage() {}
 
 func (x *RenameDocumentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[205]
+	mi := &file_api_post_v1_post_proto_msgTypes[185]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12275,7 +11143,7 @@ func (x *RenameDocumentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameDocumentRequest.ProtoReflect.Descriptor instead.
 func (*RenameDocumentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{205}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{185}
 }
 
 func (x *RenameDocumentRequest) GetId() string {
@@ -12301,7 +11169,7 @@ type RenameDocumentResponse struct {
 
 func (x *RenameDocumentResponse) Reset() {
 	*x = RenameDocumentResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[206]
+	mi := &file_api_post_v1_post_proto_msgTypes[186]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12313,7 +11181,7 @@ func (x *RenameDocumentResponse) String() string {
 func (*RenameDocumentResponse) ProtoMessage() {}
 
 func (x *RenameDocumentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[206]
+	mi := &file_api_post_v1_post_proto_msgTypes[186]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12326,7 +11194,7 @@ func (x *RenameDocumentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenameDocumentResponse.ProtoReflect.Descriptor instead.
 func (*RenameDocumentResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{206}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{186}
 }
 
 func (x *RenameDocumentResponse) GetDocument() *Document {
@@ -12345,7 +11213,7 @@ type DeleteDocumentRequest struct {
 
 func (x *DeleteDocumentRequest) Reset() {
 	*x = DeleteDocumentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[207]
+	mi := &file_api_post_v1_post_proto_msgTypes[187]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12357,7 +11225,7 @@ func (x *DeleteDocumentRequest) String() string {
 func (*DeleteDocumentRequest) ProtoMessage() {}
 
 func (x *DeleteDocumentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[207]
+	mi := &file_api_post_v1_post_proto_msgTypes[187]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12370,7 +11238,7 @@ func (x *DeleteDocumentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteDocumentRequest.ProtoReflect.Descriptor instead.
 func (*DeleteDocumentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{207}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{187}
 }
 
 func (x *DeleteDocumentRequest) GetId() string {
@@ -12408,7 +11276,7 @@ type Story struct {
 
 func (x *Story) Reset() {
 	*x = Story{}
-	mi := &file_api_post_v1_post_proto_msgTypes[208]
+	mi := &file_api_post_v1_post_proto_msgTypes[188]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12420,7 +11288,7 @@ func (x *Story) String() string {
 func (*Story) ProtoMessage() {}
 
 func (x *Story) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[208]
+	mi := &file_api_post_v1_post_proto_msgTypes[188]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12433,7 +11301,7 @@ func (x *Story) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Story.ProtoReflect.Descriptor instead.
 func (*Story) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{208}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{188}
 }
 
 func (x *Story) GetId() string {
@@ -12531,7 +11399,7 @@ type CreateStoryRequest struct {
 
 func (x *CreateStoryRequest) Reset() {
 	*x = CreateStoryRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[209]
+	mi := &file_api_post_v1_post_proto_msgTypes[189]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12543,7 +11411,7 @@ func (x *CreateStoryRequest) String() string {
 func (*CreateStoryRequest) ProtoMessage() {}
 
 func (x *CreateStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[209]
+	mi := &file_api_post_v1_post_proto_msgTypes[189]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12556,7 +11424,7 @@ func (x *CreateStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateStoryRequest.ProtoReflect.Descriptor instead.
 func (*CreateStoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{209}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{189}
 }
 
 func (x *CreateStoryRequest) GetPhotoId() string {
@@ -12582,7 +11450,7 @@ type CreateStoryResponse struct {
 
 func (x *CreateStoryResponse) Reset() {
 	*x = CreateStoryResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[210]
+	mi := &file_api_post_v1_post_proto_msgTypes[190]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12594,7 +11462,7 @@ func (x *CreateStoryResponse) String() string {
 func (*CreateStoryResponse) ProtoMessage() {}
 
 func (x *CreateStoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[210]
+	mi := &file_api_post_v1_post_proto_msgTypes[190]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12607,7 +11475,7 @@ func (x *CreateStoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateStoryResponse.ProtoReflect.Descriptor instead.
 func (*CreateStoryResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{210}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{190}
 }
 
 func (x *CreateStoryResponse) GetStory() *Story {
@@ -12629,7 +11497,7 @@ type ListFeedStoriesRequest struct {
 
 func (x *ListFeedStoriesRequest) Reset() {
 	*x = ListFeedStoriesRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[211]
+	mi := &file_api_post_v1_post_proto_msgTypes[191]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12641,7 +11509,7 @@ func (x *ListFeedStoriesRequest) String() string {
 func (*ListFeedStoriesRequest) ProtoMessage() {}
 
 func (x *ListFeedStoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[211]
+	mi := &file_api_post_v1_post_proto_msgTypes[191]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12654,7 +11522,7 @@ func (x *ListFeedStoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeedStoriesRequest.ProtoReflect.Descriptor instead.
 func (*ListFeedStoriesRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{211}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{191}
 }
 
 func (x *ListFeedStoriesRequest) GetHiddenAuthorIds() []string {
@@ -12680,7 +11548,7 @@ type ListFeedStoriesResponse struct {
 
 func (x *ListFeedStoriesResponse) Reset() {
 	*x = ListFeedStoriesResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[212]
+	mi := &file_api_post_v1_post_proto_msgTypes[192]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12692,7 +11560,7 @@ func (x *ListFeedStoriesResponse) String() string {
 func (*ListFeedStoriesResponse) ProtoMessage() {}
 
 func (x *ListFeedStoriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[212]
+	mi := &file_api_post_v1_post_proto_msgTypes[192]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12705,7 +11573,7 @@ func (x *ListFeedStoriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeedStoriesResponse.ProtoReflect.Descriptor instead.
 func (*ListFeedStoriesResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{212}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{192}
 }
 
 func (x *ListFeedStoriesResponse) GetStories() []*Story {
@@ -12726,7 +11594,7 @@ type ListUserStoriesRequest struct {
 
 func (x *ListUserStoriesRequest) Reset() {
 	*x = ListUserStoriesRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[213]
+	mi := &file_api_post_v1_post_proto_msgTypes[193]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12738,7 +11606,7 @@ func (x *ListUserStoriesRequest) String() string {
 func (*ListUserStoriesRequest) ProtoMessage() {}
 
 func (x *ListUserStoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[213]
+	mi := &file_api_post_v1_post_proto_msgTypes[193]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12751,7 +11619,7 @@ func (x *ListUserStoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUserStoriesRequest.ProtoReflect.Descriptor instead.
 func (*ListUserStoriesRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{213}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{193}
 }
 
 func (x *ListUserStoriesRequest) GetUserId() string {
@@ -12777,7 +11645,7 @@ type ListUserStoriesResponse struct {
 
 func (x *ListUserStoriesResponse) Reset() {
 	*x = ListUserStoriesResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[214]
+	mi := &file_api_post_v1_post_proto_msgTypes[194]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12789,7 +11657,7 @@ func (x *ListUserStoriesResponse) String() string {
 func (*ListUserStoriesResponse) ProtoMessage() {}
 
 func (x *ListUserStoriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[214]
+	mi := &file_api_post_v1_post_proto_msgTypes[194]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12802,7 +11670,7 @@ func (x *ListUserStoriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUserStoriesResponse.ProtoReflect.Descriptor instead.
 func (*ListUserStoriesResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{214}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{194}
 }
 
 func (x *ListUserStoriesResponse) GetStories() []*Story {
@@ -12821,7 +11689,7 @@ type GetStoryRequest struct {
 
 func (x *GetStoryRequest) Reset() {
 	*x = GetStoryRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[215]
+	mi := &file_api_post_v1_post_proto_msgTypes[195]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12833,7 +11701,7 @@ func (x *GetStoryRequest) String() string {
 func (*GetStoryRequest) ProtoMessage() {}
 
 func (x *GetStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[215]
+	mi := &file_api_post_v1_post_proto_msgTypes[195]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12846,7 +11714,7 @@ func (x *GetStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStoryRequest.ProtoReflect.Descriptor instead.
 func (*GetStoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{215}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{195}
 }
 
 func (x *GetStoryRequest) GetId() string {
@@ -12865,7 +11733,7 @@ type GetStoryResponse struct {
 
 func (x *GetStoryResponse) Reset() {
 	*x = GetStoryResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[216]
+	mi := &file_api_post_v1_post_proto_msgTypes[196]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12877,7 +11745,7 @@ func (x *GetStoryResponse) String() string {
 func (*GetStoryResponse) ProtoMessage() {}
 
 func (x *GetStoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[216]
+	mi := &file_api_post_v1_post_proto_msgTypes[196]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12890,7 +11758,7 @@ func (x *GetStoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStoryResponse.ProtoReflect.Descriptor instead.
 func (*GetStoryResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{216}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{196}
 }
 
 func (x *GetStoryResponse) GetStory() *Story {
@@ -12909,7 +11777,7 @@ type ViewStoryRequest struct {
 
 func (x *ViewStoryRequest) Reset() {
 	*x = ViewStoryRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[217]
+	mi := &file_api_post_v1_post_proto_msgTypes[197]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12921,7 +11789,7 @@ func (x *ViewStoryRequest) String() string {
 func (*ViewStoryRequest) ProtoMessage() {}
 
 func (x *ViewStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[217]
+	mi := &file_api_post_v1_post_proto_msgTypes[197]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12934,7 +11802,7 @@ func (x *ViewStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ViewStoryRequest.ProtoReflect.Descriptor instead.
 func (*ViewStoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{217}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{197}
 }
 
 func (x *ViewStoryRequest) GetId() string {
@@ -12957,7 +11825,7 @@ type ListStoryViewersRequest struct {
 
 func (x *ListStoryViewersRequest) Reset() {
 	*x = ListStoryViewersRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[218]
+	mi := &file_api_post_v1_post_proto_msgTypes[198]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12969,7 +11837,7 @@ func (x *ListStoryViewersRequest) String() string {
 func (*ListStoryViewersRequest) ProtoMessage() {}
 
 func (x *ListStoryViewersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[218]
+	mi := &file_api_post_v1_post_proto_msgTypes[198]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12982,7 +11850,7 @@ func (x *ListStoryViewersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListStoryViewersRequest.ProtoReflect.Descriptor instead.
 func (*ListStoryViewersRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{218}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{198}
 }
 
 func (x *ListStoryViewersRequest) GetId() string {
@@ -13017,7 +11885,7 @@ type StoryViewer struct {
 
 func (x *StoryViewer) Reset() {
 	*x = StoryViewer{}
-	mi := &file_api_post_v1_post_proto_msgTypes[219]
+	mi := &file_api_post_v1_post_proto_msgTypes[199]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13029,7 +11897,7 @@ func (x *StoryViewer) String() string {
 func (*StoryViewer) ProtoMessage() {}
 
 func (x *StoryViewer) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[219]
+	mi := &file_api_post_v1_post_proto_msgTypes[199]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13042,7 +11910,7 @@ func (x *StoryViewer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StoryViewer.ProtoReflect.Descriptor instead.
 func (*StoryViewer) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{219}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{199}
 }
 
 func (x *StoryViewer) GetUserId() string {
@@ -13072,7 +11940,7 @@ type ListStoryViewersResponse struct {
 
 func (x *ListStoryViewersResponse) Reset() {
 	*x = ListStoryViewersResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[220]
+	mi := &file_api_post_v1_post_proto_msgTypes[200]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13084,7 +11952,7 @@ func (x *ListStoryViewersResponse) String() string {
 func (*ListStoryViewersResponse) ProtoMessage() {}
 
 func (x *ListStoryViewersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[220]
+	mi := &file_api_post_v1_post_proto_msgTypes[200]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13097,7 +11965,7 @@ func (x *ListStoryViewersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListStoryViewersResponse.ProtoReflect.Descriptor instead.
 func (*ListStoryViewersResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{220}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{200}
 }
 
 func (x *ListStoryViewersResponse) GetViewers() []*StoryViewer {
@@ -13130,7 +11998,7 @@ type DeleteStoryRequest struct {
 
 func (x *DeleteStoryRequest) Reset() {
 	*x = DeleteStoryRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[221]
+	mi := &file_api_post_v1_post_proto_msgTypes[201]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13142,7 +12010,7 @@ func (x *DeleteStoryRequest) String() string {
 func (*DeleteStoryRequest) ProtoMessage() {}
 
 func (x *DeleteStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[221]
+	mi := &file_api_post_v1_post_proto_msgTypes[201]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13155,7 +12023,7 @@ func (x *DeleteStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteStoryRequest.ProtoReflect.Descriptor instead.
 func (*DeleteStoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{221}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{201}
 }
 
 func (x *DeleteStoryRequest) GetId() string {
@@ -13174,7 +12042,7 @@ type LikeStoryRequest struct {
 
 func (x *LikeStoryRequest) Reset() {
 	*x = LikeStoryRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[222]
+	mi := &file_api_post_v1_post_proto_msgTypes[202]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13186,7 +12054,7 @@ func (x *LikeStoryRequest) String() string {
 func (*LikeStoryRequest) ProtoMessage() {}
 
 func (x *LikeStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[222]
+	mi := &file_api_post_v1_post_proto_msgTypes[202]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13199,7 +12067,7 @@ func (x *LikeStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikeStoryRequest.ProtoReflect.Descriptor instead.
 func (*LikeStoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{222}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{202}
 }
 
 func (x *LikeStoryRequest) GetId() string {
@@ -13218,7 +12086,7 @@ type UnlikeStoryRequest struct {
 
 func (x *UnlikeStoryRequest) Reset() {
 	*x = UnlikeStoryRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[223]
+	mi := &file_api_post_v1_post_proto_msgTypes[203]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13230,7 +12098,7 @@ func (x *UnlikeStoryRequest) String() string {
 func (*UnlikeStoryRequest) ProtoMessage() {}
 
 func (x *UnlikeStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[223]
+	mi := &file_api_post_v1_post_proto_msgTypes[203]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13243,7 +12111,7 @@ func (x *UnlikeStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnlikeStoryRequest.ProtoReflect.Descriptor instead.
 func (*UnlikeStoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{223}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{203}
 }
 
 func (x *UnlikeStoryRequest) GetId() string {
@@ -13269,7 +12137,7 @@ type StoryComment struct {
 
 func (x *StoryComment) Reset() {
 	*x = StoryComment{}
-	mi := &file_api_post_v1_post_proto_msgTypes[224]
+	mi := &file_api_post_v1_post_proto_msgTypes[204]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13281,7 +12149,7 @@ func (x *StoryComment) String() string {
 func (*StoryComment) ProtoMessage() {}
 
 func (x *StoryComment) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[224]
+	mi := &file_api_post_v1_post_proto_msgTypes[204]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13294,7 +12162,7 @@ func (x *StoryComment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StoryComment.ProtoReflect.Descriptor instead.
 func (*StoryComment) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{224}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{204}
 }
 
 func (x *StoryComment) GetId() string {
@@ -13350,7 +12218,7 @@ type CreateStoryCommentRequest struct {
 
 func (x *CreateStoryCommentRequest) Reset() {
 	*x = CreateStoryCommentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[225]
+	mi := &file_api_post_v1_post_proto_msgTypes[205]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13362,7 +12230,7 @@ func (x *CreateStoryCommentRequest) String() string {
 func (*CreateStoryCommentRequest) ProtoMessage() {}
 
 func (x *CreateStoryCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[225]
+	mi := &file_api_post_v1_post_proto_msgTypes[205]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13375,7 +12243,7 @@ func (x *CreateStoryCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateStoryCommentRequest.ProtoReflect.Descriptor instead.
 func (*CreateStoryCommentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{225}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{205}
 }
 
 func (x *CreateStoryCommentRequest) GetStoryId() string {
@@ -13401,7 +12269,7 @@ type CreateStoryCommentResponse struct {
 
 func (x *CreateStoryCommentResponse) Reset() {
 	*x = CreateStoryCommentResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[226]
+	mi := &file_api_post_v1_post_proto_msgTypes[206]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13413,7 +12281,7 @@ func (x *CreateStoryCommentResponse) String() string {
 func (*CreateStoryCommentResponse) ProtoMessage() {}
 
 func (x *CreateStoryCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[226]
+	mi := &file_api_post_v1_post_proto_msgTypes[206]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13426,7 +12294,7 @@ func (x *CreateStoryCommentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateStoryCommentResponse.ProtoReflect.Descriptor instead.
 func (*CreateStoryCommentResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{226}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{206}
 }
 
 func (x *CreateStoryCommentResponse) GetComment() *StoryComment {
@@ -13449,7 +12317,7 @@ type ListStoryCommentsRequest struct {
 
 func (x *ListStoryCommentsRequest) Reset() {
 	*x = ListStoryCommentsRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[227]
+	mi := &file_api_post_v1_post_proto_msgTypes[207]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13461,7 +12329,7 @@ func (x *ListStoryCommentsRequest) String() string {
 func (*ListStoryCommentsRequest) ProtoMessage() {}
 
 func (x *ListStoryCommentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[227]
+	mi := &file_api_post_v1_post_proto_msgTypes[207]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13474,7 +12342,7 @@ func (x *ListStoryCommentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListStoryCommentsRequest.ProtoReflect.Descriptor instead.
 func (*ListStoryCommentsRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{227}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{207}
 }
 
 func (x *ListStoryCommentsRequest) GetStoryId() string {
@@ -13511,7 +12379,7 @@ type ListStoryCommentsResponse struct {
 
 func (x *ListStoryCommentsResponse) Reset() {
 	*x = ListStoryCommentsResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[228]
+	mi := &file_api_post_v1_post_proto_msgTypes[208]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13523,7 +12391,7 @@ func (x *ListStoryCommentsResponse) String() string {
 func (*ListStoryCommentsResponse) ProtoMessage() {}
 
 func (x *ListStoryCommentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[228]
+	mi := &file_api_post_v1_post_proto_msgTypes[208]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13536,7 +12404,7 @@ func (x *ListStoryCommentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListStoryCommentsResponse.ProtoReflect.Descriptor instead.
 func (*ListStoryCommentsResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{228}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{208}
 }
 
 func (x *ListStoryCommentsResponse) GetComments() []*StoryComment {
@@ -13569,7 +12437,7 @@ type DeleteStoryCommentRequest struct {
 
 func (x *DeleteStoryCommentRequest) Reset() {
 	*x = DeleteStoryCommentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[229]
+	mi := &file_api_post_v1_post_proto_msgTypes[209]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13581,7 +12449,7 @@ func (x *DeleteStoryCommentRequest) String() string {
 func (*DeleteStoryCommentRequest) ProtoMessage() {}
 
 func (x *DeleteStoryCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[229]
+	mi := &file_api_post_v1_post_proto_msgTypes[209]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13594,7 +12462,7 @@ func (x *DeleteStoryCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteStoryCommentRequest.ProtoReflect.Descriptor instead.
 func (*DeleteStoryCommentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{229}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{209}
 }
 
 func (x *DeleteStoryCommentRequest) GetId() string {
@@ -14367,83 +13235,7 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\acomment\x18\x01 \x01(\v2\x15.post.v1.PhotoCommentR\acomment\"\x13\n" +
 	"\x11CountPostsRequest\"*\n" +
 	"\x12CountPostsResponse\x12\x14\n" +
-	"\x05count\x18\x01 \x01(\x05R\x05count\"\xa5\x02\n" +
-	"\x04Note\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
-	"\tauthor_id\x18\x02 \x01(\tR\bauthorId\x12\x14\n" +
-	"\x05title\x18\x03 \x01(\tR\x05title\x12\x12\n" +
-	"\x04text\x18\x04 \x01(\tR\x04text\x12#\n" +
-	"\rcomment_count\x18\x05 \x01(\x05R\fcommentCount\x129\n" +
-	"\n" +
-	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x127\n" +
-	"\tedited_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\beditedAt\x12\x12\n" +
-	"\x04mine\x18\b \x01(\bR\x04mine\x12\x19\n" +
-	"\btext_cut\x18\t \x01(\bR\atextCut\"\xd1\x01\n" +
-	"\vNoteComment\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
-	"\anote_id\x18\x02 \x01(\tR\x06noteId\x12\x1b\n" +
-	"\tauthor_id\x18\x03 \x01(\tR\bauthorId\x12\x12\n" +
-	"\x04text\x18\x04 \x01(\tR\x04text\x129\n" +
-	"\n" +
-	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x12\n" +
-	"\x04mine\x18\x06 \x01(\bR\x04mine\x12\x19\n" +
-	"\btext_cut\x18\a \x01(\bR\atextCut\"=\n" +
-	"\x11CreateNoteRequest\x12\x14\n" +
-	"\x05title\x18\x01 \x01(\tR\x05title\x12\x12\n" +
-	"\x04text\x18\x02 \x01(\tR\x04text\"7\n" +
-	"\x12CreateNoteResponse\x12!\n" +
-	"\x04note\x18\x01 \x01(\v2\r.post.v1.NoteR\x04note\" \n" +
-	"\x0eGetNoteRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"4\n" +
-	"\x0fGetNoteResponse\x12!\n" +
-	"\x04note\x18\x01 \x01(\v2\r.post.v1.NoteR\x04note\"|\n" +
-	"\x10ListNotesRequest\x12\x1b\n" +
-	"\tauthor_id\x18\x01 \x01(\tR\bauthorId\x12\x16\n" +
-	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x1d\n" +
-	"\n" +
-	"text_limit\x18\x04 \x01(\x05R\ttextLimit\"o\n" +
-	"\x11ListNotesResponse\x12#\n" +
-	"\x05notes\x18\x01 \x03(\v2\r.post.v1.NoteR\x05notes\x12\x1f\n" +
-	"\vnext_cursor\x18\x02 \x01(\tR\n" +
-	"nextCursor\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x05R\x05total\"K\n" +
-	"\x0fEditNoteRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
-	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
-	"\x04text\x18\x03 \x01(\tR\x04text\"5\n" +
-	"\x10EditNoteResponse\x12!\n" +
-	"\x04note\x18\x01 \x01(\v2\r.post.v1.NoteR\x04note\"#\n" +
-	"\x11DeleteNoteRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"G\n" +
-	"\x18CreateNoteCommentRequest\x12\x17\n" +
-	"\anote_id\x18\x01 \x01(\tR\x06noteId\x12\x12\n" +
-	"\x04text\x18\x02 \x01(\tR\x04text\"K\n" +
-	"\x19CreateNoteCommentResponse\x12.\n" +
-	"\acomment\x18\x01 \x01(\v2\x14.post.v1.NoteCommentR\acomment\"*\n" +
-	"\x18DeleteNoteCommentRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x7f\n" +
-	"\x17ListNoteCommentsRequest\x12\x17\n" +
-	"\anote_id\x18\x01 \x01(\tR\x06noteId\x12\x16\n" +
-	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x1d\n" +
-	"\n" +
-	"text_limit\x18\x04 \x01(\x05R\ttextLimit\"\x83\x01\n" +
-	"\x18ListNoteCommentsResponse\x120\n" +
-	"\bcomments\x18\x01 \x03(\v2\x14.post.v1.NoteCommentR\bcomments\x12\x1f\n" +
-	"\vnext_cursor\x18\x02 \x01(\tR\n" +
-	"nextCursor\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x05R\x05total\"'\n" +
-	"\x15GetNoteCommentRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"H\n" +
-	"\x16GetNoteCommentResponse\x12.\n" +
-	"\acomment\x18\x01 \x01(\v2\x14.post.v1.NoteCommentR\acomment\"I\n" +
-	"\x16GetNoteCommentsRequest\x12\x10\n" +
-	"\x03ids\x18\x01 \x03(\tR\x03ids\x12\x1d\n" +
-	"\n" +
-	"text_limit\x18\x02 \x01(\x05R\ttextLimit\"K\n" +
-	"\x17GetNoteCommentsResponse\x120\n" +
-	"\bcomments\x18\x01 \x03(\v2\x14.post.v1.NoteCommentR\bcomments\"\xaa\x01\n" +
+	"\x05count\x18\x01 \x01(\x05R\x05count\"\xaa\x01\n" +
 	"\bDocument\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bowner_id\x18\x02 \x01(\tR\aownerId\x12\x12\n" +
@@ -14566,7 +13358,7 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\tAlbumKind\x12\x13\n" +
 	"\x0fALBUM_KIND_NONE\x10\x00\x12\x16\n" +
 	"\x12ALBUM_KIND_AVATARS\x10\x01\x12\x13\n" +
-	"\x0fALBUM_KIND_WALL\x10\x022\xa8J\n" +
+	"\x0fALBUM_KIND_WALL\x10\x022\xaeD\n" +
 	"\vPostService\x12E\n" +
 	"\n" +
 	"CreatePost\x12\x1a.post.v1.CreatePostRequest\x1a\x1b.post.v1.CreatePostResponse\x12@\n" +
@@ -14672,19 +13464,7 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x10GetPhotoComments\x12 .post.v1.GetPhotoCommentsRequest\x1a!.post.v1.GetPhotoCommentsResponse\x12W\n" +
 	"\x10LikePhotoComment\x12 .post.v1.LikePhotoCommentRequest\x1a!.post.v1.LikePhotoCommentResponse\x12]\n" +
 	"\x12UnlikePhotoComment\x12\".post.v1.UnlikePhotoCommentRequest\x1a#.post.v1.UnlikePhotoCommentResponse\x12i\n" +
-	"\x16ListPhotoCommentLikers\x12&.post.v1.ListPhotoCommentLikersRequest\x1a'.post.v1.ListPhotoCommentLikersResponse\x12E\n" +
-	"\n" +
-	"CreateNote\x12\x1a.post.v1.CreateNoteRequest\x1a\x1b.post.v1.CreateNoteResponse\x12<\n" +
-	"\aGetNote\x12\x17.post.v1.GetNoteRequest\x1a\x18.post.v1.GetNoteResponse\x12B\n" +
-	"\tListNotes\x12\x19.post.v1.ListNotesRequest\x1a\x1a.post.v1.ListNotesResponse\x12?\n" +
-	"\bEditNote\x12\x18.post.v1.EditNoteRequest\x1a\x19.post.v1.EditNoteResponse\x12@\n" +
-	"\n" +
-	"DeleteNote\x12\x1a.post.v1.DeleteNoteRequest\x1a\x16.google.protobuf.Empty\x12Z\n" +
-	"\x11CreateNoteComment\x12!.post.v1.CreateNoteCommentRequest\x1a\".post.v1.CreateNoteCommentResponse\x12N\n" +
-	"\x11DeleteNoteComment\x12!.post.v1.DeleteNoteCommentRequest\x1a\x16.google.protobuf.Empty\x12W\n" +
-	"\x10ListNoteComments\x12 .post.v1.ListNoteCommentsRequest\x1a!.post.v1.ListNoteCommentsResponse\x12Q\n" +
-	"\x0eGetNoteComment\x12\x1e.post.v1.GetNoteCommentRequest\x1a\x1f.post.v1.GetNoteCommentResponse\x12T\n" +
-	"\x0fGetNoteComments\x12\x1f.post.v1.GetNoteCommentsRequest\x1a .post.v1.GetNoteCommentsResponse\x12H\n" +
+	"\x16ListPhotoCommentLikers\x12&.post.v1.ListPhotoCommentLikersRequest\x1a'.post.v1.ListPhotoCommentLikersResponse\x12H\n" +
 	"\vAddDocument\x12\x1b.post.v1.AddDocumentRequest\x1a\x1c.post.v1.AddDocumentResponse\x12N\n" +
 	"\rListDocuments\x12\x1d.post.v1.ListDocumentsRequest\x1a\x1e.post.v1.ListDocumentsResponse\x12K\n" +
 	"\fGetDocuments\x12\x1c.post.v1.GetDocumentsRequest\x1a\x1d.post.v1.GetDocumentsResponse\x12Q\n" +
@@ -14713,7 +13493,7 @@ func file_api_post_v1_post_proto_rawDescGZIP() []byte {
 }
 
 var file_api_post_v1_post_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_api_post_v1_post_proto_msgTypes = make([]protoimpl.MessageInfo, 230)
+var file_api_post_v1_post_proto_msgTypes = make([]protoimpl.MessageInfo, 210)
 var file_api_post_v1_post_proto_goTypes = []any{
 	(WallFilter)(0),                        // 0: post.v1.WallFilter
 	(AlbumKind)(0),                         // 1: post.v1.AlbumKind
@@ -14895,84 +13675,64 @@ var file_api_post_v1_post_proto_goTypes = []any{
 	(*GetPhotoCommentResponse)(nil),        // 177: post.v1.GetPhotoCommentResponse
 	(*CountPostsRequest)(nil),              // 178: post.v1.CountPostsRequest
 	(*CountPostsResponse)(nil),             // 179: post.v1.CountPostsResponse
-	(*Note)(nil),                           // 180: post.v1.Note
-	(*NoteComment)(nil),                    // 181: post.v1.NoteComment
-	(*CreateNoteRequest)(nil),              // 182: post.v1.CreateNoteRequest
-	(*CreateNoteResponse)(nil),             // 183: post.v1.CreateNoteResponse
-	(*GetNoteRequest)(nil),                 // 184: post.v1.GetNoteRequest
-	(*GetNoteResponse)(nil),                // 185: post.v1.GetNoteResponse
-	(*ListNotesRequest)(nil),               // 186: post.v1.ListNotesRequest
-	(*ListNotesResponse)(nil),              // 187: post.v1.ListNotesResponse
-	(*EditNoteRequest)(nil),                // 188: post.v1.EditNoteRequest
-	(*EditNoteResponse)(nil),               // 189: post.v1.EditNoteResponse
-	(*DeleteNoteRequest)(nil),              // 190: post.v1.DeleteNoteRequest
-	(*CreateNoteCommentRequest)(nil),       // 191: post.v1.CreateNoteCommentRequest
-	(*CreateNoteCommentResponse)(nil),      // 192: post.v1.CreateNoteCommentResponse
-	(*DeleteNoteCommentRequest)(nil),       // 193: post.v1.DeleteNoteCommentRequest
-	(*ListNoteCommentsRequest)(nil),        // 194: post.v1.ListNoteCommentsRequest
-	(*ListNoteCommentsResponse)(nil),       // 195: post.v1.ListNoteCommentsResponse
-	(*GetNoteCommentRequest)(nil),          // 196: post.v1.GetNoteCommentRequest
-	(*GetNoteCommentResponse)(nil),         // 197: post.v1.GetNoteCommentResponse
-	(*GetNoteCommentsRequest)(nil),         // 198: post.v1.GetNoteCommentsRequest
-	(*GetNoteCommentsResponse)(nil),        // 199: post.v1.GetNoteCommentsResponse
-	(*Document)(nil),                       // 200: post.v1.Document
-	(*AddDocumentRequest)(nil),             // 201: post.v1.AddDocumentRequest
-	(*AddDocumentResponse)(nil),            // 202: post.v1.AddDocumentResponse
-	(*ListDocumentsRequest)(nil),           // 203: post.v1.ListDocumentsRequest
-	(*ListDocumentsResponse)(nil),          // 204: post.v1.ListDocumentsResponse
-	(*GetDocumentsRequest)(nil),            // 205: post.v1.GetDocumentsRequest
-	(*GetDocumentsResponse)(nil),           // 206: post.v1.GetDocumentsResponse
-	(*RenameDocumentRequest)(nil),          // 207: post.v1.RenameDocumentRequest
-	(*RenameDocumentResponse)(nil),         // 208: post.v1.RenameDocumentResponse
-	(*DeleteDocumentRequest)(nil),          // 209: post.v1.DeleteDocumentRequest
-	(*Story)(nil),                          // 210: post.v1.Story
-	(*CreateStoryRequest)(nil),             // 211: post.v1.CreateStoryRequest
-	(*CreateStoryResponse)(nil),            // 212: post.v1.CreateStoryResponse
-	(*ListFeedStoriesRequest)(nil),         // 213: post.v1.ListFeedStoriesRequest
-	(*ListFeedStoriesResponse)(nil),        // 214: post.v1.ListFeedStoriesResponse
-	(*ListUserStoriesRequest)(nil),         // 215: post.v1.ListUserStoriesRequest
-	(*ListUserStoriesResponse)(nil),        // 216: post.v1.ListUserStoriesResponse
-	(*GetStoryRequest)(nil),                // 217: post.v1.GetStoryRequest
-	(*GetStoryResponse)(nil),               // 218: post.v1.GetStoryResponse
-	(*ViewStoryRequest)(nil),               // 219: post.v1.ViewStoryRequest
-	(*ListStoryViewersRequest)(nil),        // 220: post.v1.ListStoryViewersRequest
-	(*StoryViewer)(nil),                    // 221: post.v1.StoryViewer
-	(*ListStoryViewersResponse)(nil),       // 222: post.v1.ListStoryViewersResponse
-	(*DeleteStoryRequest)(nil),             // 223: post.v1.DeleteStoryRequest
-	(*LikeStoryRequest)(nil),               // 224: post.v1.LikeStoryRequest
-	(*UnlikeStoryRequest)(nil),             // 225: post.v1.UnlikeStoryRequest
-	(*StoryComment)(nil),                   // 226: post.v1.StoryComment
-	(*CreateStoryCommentRequest)(nil),      // 227: post.v1.CreateStoryCommentRequest
-	(*CreateStoryCommentResponse)(nil),     // 228: post.v1.CreateStoryCommentResponse
-	(*ListStoryCommentsRequest)(nil),       // 229: post.v1.ListStoryCommentsRequest
-	(*ListStoryCommentsResponse)(nil),      // 230: post.v1.ListStoryCommentsResponse
-	(*DeleteStoryCommentRequest)(nil),      // 231: post.v1.DeleteStoryCommentRequest
-	(*timestamppb.Timestamp)(nil),          // 232: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                  // 233: google.protobuf.Empty
+	(*Document)(nil),                       // 180: post.v1.Document
+	(*AddDocumentRequest)(nil),             // 181: post.v1.AddDocumentRequest
+	(*AddDocumentResponse)(nil),            // 182: post.v1.AddDocumentResponse
+	(*ListDocumentsRequest)(nil),           // 183: post.v1.ListDocumentsRequest
+	(*ListDocumentsResponse)(nil),          // 184: post.v1.ListDocumentsResponse
+	(*GetDocumentsRequest)(nil),            // 185: post.v1.GetDocumentsRequest
+	(*GetDocumentsResponse)(nil),           // 186: post.v1.GetDocumentsResponse
+	(*RenameDocumentRequest)(nil),          // 187: post.v1.RenameDocumentRequest
+	(*RenameDocumentResponse)(nil),         // 188: post.v1.RenameDocumentResponse
+	(*DeleteDocumentRequest)(nil),          // 189: post.v1.DeleteDocumentRequest
+	(*Story)(nil),                          // 190: post.v1.Story
+	(*CreateStoryRequest)(nil),             // 191: post.v1.CreateStoryRequest
+	(*CreateStoryResponse)(nil),            // 192: post.v1.CreateStoryResponse
+	(*ListFeedStoriesRequest)(nil),         // 193: post.v1.ListFeedStoriesRequest
+	(*ListFeedStoriesResponse)(nil),        // 194: post.v1.ListFeedStoriesResponse
+	(*ListUserStoriesRequest)(nil),         // 195: post.v1.ListUserStoriesRequest
+	(*ListUserStoriesResponse)(nil),        // 196: post.v1.ListUserStoriesResponse
+	(*GetStoryRequest)(nil),                // 197: post.v1.GetStoryRequest
+	(*GetStoryResponse)(nil),               // 198: post.v1.GetStoryResponse
+	(*ViewStoryRequest)(nil),               // 199: post.v1.ViewStoryRequest
+	(*ListStoryViewersRequest)(nil),        // 200: post.v1.ListStoryViewersRequest
+	(*StoryViewer)(nil),                    // 201: post.v1.StoryViewer
+	(*ListStoryViewersResponse)(nil),       // 202: post.v1.ListStoryViewersResponse
+	(*DeleteStoryRequest)(nil),             // 203: post.v1.DeleteStoryRequest
+	(*LikeStoryRequest)(nil),               // 204: post.v1.LikeStoryRequest
+	(*UnlikeStoryRequest)(nil),             // 205: post.v1.UnlikeStoryRequest
+	(*StoryComment)(nil),                   // 206: post.v1.StoryComment
+	(*CreateStoryCommentRequest)(nil),      // 207: post.v1.CreateStoryCommentRequest
+	(*CreateStoryCommentResponse)(nil),     // 208: post.v1.CreateStoryCommentResponse
+	(*ListStoryCommentsRequest)(nil),       // 209: post.v1.ListStoryCommentsRequest
+	(*ListStoryCommentsResponse)(nil),      // 210: post.v1.ListStoryCommentsResponse
+	(*DeleteStoryCommentRequest)(nil),      // 211: post.v1.DeleteStoryCommentRequest
+	(*timestamppb.Timestamp)(nil),          // 212: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                  // 213: google.protobuf.Empty
 }
 var file_api_post_v1_post_proto_depIdxs = []int32{
-	232, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
-	232, // 1: post.v1.Post.edited_at:type_name -> google.protobuf.Timestamp
-	232, // 2: post.v1.Post.editable_until:type_name -> google.protobuf.Timestamp
+	212, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
+	212, // 1: post.v1.Post.edited_at:type_name -> google.protobuf.Timestamp
+	212, // 2: post.v1.Post.editable_until:type_name -> google.protobuf.Timestamp
 	3,   // 3: post.v1.Post.link:type_name -> post.v1.Link
-	232, // 4: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
-	232, // 5: post.v1.Suggestion.created_at:type_name -> google.protobuf.Timestamp
+	212, // 4: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
+	212, // 5: post.v1.Suggestion.created_at:type_name -> google.protobuf.Timestamp
 	5,   // 6: post.v1.SuggestPostResponse.suggestion:type_name -> post.v1.Suggestion
 	5,   // 7: post.v1.ListSuggestionsResponse.suggestions:type_name -> post.v1.Suggestion
 	2,   // 8: post.v1.PublishSuggestionResponse.post:type_name -> post.v1.Post
-	232, // 9: post.v1.PostponedPost.publish_at:type_name -> google.protobuf.Timestamp
-	232, // 10: post.v1.PostponedPost.created_at:type_name -> google.protobuf.Timestamp
-	232, // 11: post.v1.PostponePostRequest.publish_at:type_name -> google.protobuf.Timestamp
+	212, // 9: post.v1.PostponedPost.publish_at:type_name -> google.protobuf.Timestamp
+	212, // 10: post.v1.PostponedPost.created_at:type_name -> google.protobuf.Timestamp
+	212, // 11: post.v1.PostponePostRequest.publish_at:type_name -> google.protobuf.Timestamp
 	13,  // 12: post.v1.PostponePostResponse.postponed:type_name -> post.v1.PostponedPost
 	13,  // 13: post.v1.ListPostponedResponse.postponed:type_name -> post.v1.PostponedPost
 	13,  // 14: post.v1.GetPostponedResponse.postponed:type_name -> post.v1.PostponedPost
-	232, // 15: post.v1.EditPostponedRequest.publish_at:type_name -> google.protobuf.Timestamp
+	212, // 15: post.v1.EditPostponedRequest.publish_at:type_name -> google.protobuf.Timestamp
 	13,  // 16: post.v1.EditPostponedResponse.postponed:type_name -> post.v1.PostponedPost
 	2,   // 17: post.v1.PublishPostponedResponse.post:type_name -> post.v1.Post
 	26,  // 18: post.v1.CreatePostRequest.poll:type_name -> post.v1.PollDraft
 	3,   // 19: post.v1.CreatePostRequest.link:type_name -> post.v1.Link
 	28,  // 20: post.v1.Poll.options:type_name -> post.v1.PollOption
-	232, // 21: post.v1.Poll.ends_at:type_name -> google.protobuf.Timestamp
+	212, // 21: post.v1.Poll.ends_at:type_name -> google.protobuf.Timestamp
 	27,  // 22: post.v1.GetPollsResponse.polls:type_name -> post.v1.Poll
 	27,  // 23: post.v1.VotePollResponse.poll:type_name -> post.v1.Poll
 	27,  // 24: post.v1.RetractPollVoteResponse.poll:type_name -> post.v1.Poll
@@ -14994,10 +13754,10 @@ var file_api_post_v1_post_proto_depIdxs = []int32{
 	4,   // 40: post.v1.ListCommentsResponse.comments:type_name -> post.v1.Comment
 	4,   // 41: post.v1.GetCommentsResponse.comments:type_name -> post.v1.Comment
 	4,   // 42: post.v1.ListLastCommentsResponse.comments:type_name -> post.v1.Comment
-	232, // 43: post.v1.Topic.created_at:type_name -> google.protobuf.Timestamp
-	232, // 44: post.v1.Topic.updated_at:type_name -> google.protobuf.Timestamp
+	212, // 43: post.v1.Topic.created_at:type_name -> google.protobuf.Timestamp
+	212, // 44: post.v1.Topic.updated_at:type_name -> google.protobuf.Timestamp
 	104, // 45: post.v1.Topic.last_message:type_name -> post.v1.TopicMessage
-	232, // 46: post.v1.TopicMessage.created_at:type_name -> google.protobuf.Timestamp
+	212, // 46: post.v1.TopicMessage.created_at:type_name -> google.protobuf.Timestamp
 	104, // 47: post.v1.GetTopicMessagesResponse.messages:type_name -> post.v1.TopicMessage
 	103, // 48: post.v1.CreateTopicResponse.topic:type_name -> post.v1.Topic
 	103, // 49: post.v1.GetTopicResponse.topic:type_name -> post.v1.Topic
@@ -15005,11 +13765,11 @@ var file_api_post_v1_post_proto_depIdxs = []int32{
 	103, // 51: post.v1.EditTopicResponse.topic:type_name -> post.v1.Topic
 	104, // 52: post.v1.CreateTopicMessageResponse.message:type_name -> post.v1.TopicMessage
 	104, // 53: post.v1.ListTopicMessagesResponse.messages:type_name -> post.v1.TopicMessage
-	232, // 54: post.v1.Album.created_at:type_name -> google.protobuf.Timestamp
-	232, // 55: post.v1.Album.updated_at:type_name -> google.protobuf.Timestamp
+	212, // 54: post.v1.Album.created_at:type_name -> google.protobuf.Timestamp
+	212, // 55: post.v1.Album.updated_at:type_name -> google.protobuf.Timestamp
 	128, // 56: post.v1.Album.cover:type_name -> post.v1.AlbumPhoto
 	1,   // 57: post.v1.Album.kind:type_name -> post.v1.AlbumKind
-	232, // 58: post.v1.AlbumPhoto.created_at:type_name -> google.protobuf.Timestamp
+	212, // 58: post.v1.AlbumPhoto.created_at:type_name -> google.protobuf.Timestamp
 	127, // 59: post.v1.CreateAlbumResponse.album:type_name -> post.v1.Album
 	127, // 60: post.v1.GetAlbumResponse.album:type_name -> post.v1.Album
 	127, // 61: post.v1.ListAlbumsResponse.albums:type_name -> post.v1.Album
@@ -15021,289 +13781,258 @@ var file_api_post_v1_post_proto_depIdxs = []int32{
 	128, // 67: post.v1.GetAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
 	127, // 68: post.v1.GetAlbumPhotoResponse.album:type_name -> post.v1.Album
 	128, // 69: post.v1.EditAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
-	232, // 70: post.v1.PhotoComment.created_at:type_name -> google.protobuf.Timestamp
+	212, // 70: post.v1.PhotoComment.created_at:type_name -> google.protobuf.Timestamp
 	158, // 71: post.v1.GetPhotoCommentsResponse.comments:type_name -> post.v1.PhotoComment
 	158, // 72: post.v1.CreatePhotoCommentResponse.comment:type_name -> post.v1.PhotoComment
 	158, // 73: post.v1.ListPhotoCommentsResponse.comments:type_name -> post.v1.PhotoComment
 	5,   // 74: post.v1.GetSuggestionResponse.suggestion:type_name -> post.v1.Suggestion
 	104, // 75: post.v1.GetTopicMessageResponse.message:type_name -> post.v1.TopicMessage
 	158, // 76: post.v1.GetPhotoCommentResponse.comment:type_name -> post.v1.PhotoComment
-	232, // 77: post.v1.Note.created_at:type_name -> google.protobuf.Timestamp
-	232, // 78: post.v1.Note.edited_at:type_name -> google.protobuf.Timestamp
-	232, // 79: post.v1.NoteComment.created_at:type_name -> google.protobuf.Timestamp
-	180, // 80: post.v1.CreateNoteResponse.note:type_name -> post.v1.Note
-	180, // 81: post.v1.GetNoteResponse.note:type_name -> post.v1.Note
-	180, // 82: post.v1.ListNotesResponse.notes:type_name -> post.v1.Note
-	180, // 83: post.v1.EditNoteResponse.note:type_name -> post.v1.Note
-	181, // 84: post.v1.CreateNoteCommentResponse.comment:type_name -> post.v1.NoteComment
-	181, // 85: post.v1.ListNoteCommentsResponse.comments:type_name -> post.v1.NoteComment
-	181, // 86: post.v1.GetNoteCommentResponse.comment:type_name -> post.v1.NoteComment
-	181, // 87: post.v1.GetNoteCommentsResponse.comments:type_name -> post.v1.NoteComment
-	232, // 88: post.v1.Document.created_at:type_name -> google.protobuf.Timestamp
-	200, // 89: post.v1.AddDocumentResponse.document:type_name -> post.v1.Document
-	200, // 90: post.v1.ListDocumentsResponse.documents:type_name -> post.v1.Document
-	200, // 91: post.v1.GetDocumentsResponse.documents:type_name -> post.v1.Document
-	200, // 92: post.v1.RenameDocumentResponse.document:type_name -> post.v1.Document
-	232, // 93: post.v1.Story.created_at:type_name -> google.protobuf.Timestamp
-	232, // 94: post.v1.Story.expires_at:type_name -> google.protobuf.Timestamp
-	210, // 95: post.v1.CreateStoryResponse.story:type_name -> post.v1.Story
-	210, // 96: post.v1.ListFeedStoriesResponse.stories:type_name -> post.v1.Story
-	210, // 97: post.v1.ListUserStoriesResponse.stories:type_name -> post.v1.Story
-	210, // 98: post.v1.GetStoryResponse.story:type_name -> post.v1.Story
-	232, // 99: post.v1.StoryViewer.viewed_at:type_name -> google.protobuf.Timestamp
-	221, // 100: post.v1.ListStoryViewersResponse.viewers:type_name -> post.v1.StoryViewer
-	232, // 101: post.v1.StoryComment.created_at:type_name -> google.protobuf.Timestamp
-	226, // 102: post.v1.CreateStoryCommentResponse.comment:type_name -> post.v1.StoryComment
-	226, // 103: post.v1.ListStoryCommentsResponse.comments:type_name -> post.v1.StoryComment
-	25,  // 104: post.v1.PostService.CreatePost:input_type -> post.v1.CreatePostRequest
-	40,  // 105: post.v1.PostService.DeletePost:input_type -> post.v1.DeletePostRequest
-	38,  // 106: post.v1.PostService.RepostPost:input_type -> post.v1.RepostPostRequest
-	41,  // 107: post.v1.PostService.EditPost:input_type -> post.v1.EditPostRequest
-	43,  // 108: post.v1.PostService.PinPost:input_type -> post.v1.PinPostRequest
-	44,  // 109: post.v1.PostService.UnpinPost:input_type -> post.v1.UnpinPostRequest
-	45,  // 110: post.v1.PostService.ArchivePost:input_type -> post.v1.ArchivePostRequest
-	50,  // 111: post.v1.PostService.UnarchivePost:input_type -> post.v1.UnarchivePostRequest
-	46,  // 112: post.v1.PostService.ArchiveWall:input_type -> post.v1.ArchiveWallRequest
-	48,  // 113: post.v1.PostService.ListWallYears:input_type -> post.v1.ListWallYearsRequest
-	51,  // 114: post.v1.PostService.CloseComments:input_type -> post.v1.CloseCommentsRequest
-	52,  // 115: post.v1.PostService.OpenComments:input_type -> post.v1.OpenCommentsRequest
-	53,  // 116: post.v1.PostService.GetPost:input_type -> post.v1.GetPostRequest
-	55,  // 117: post.v1.PostService.GetPosts:input_type -> post.v1.GetPostsRequest
-	178, // 118: post.v1.PostService.CountPosts:input_type -> post.v1.CountPostsRequest
-	57,  // 119: post.v1.PostService.ListPosts:input_type -> post.v1.ListPostsRequest
-	59,  // 120: post.v1.PostService.ListFeed:input_type -> post.v1.ListFeedRequest
-	61,  // 121: post.v1.PostService.LikePost:input_type -> post.v1.LikePostRequest
-	63,  // 122: post.v1.PostService.UnlikePost:input_type -> post.v1.UnlikePostRequest
-	65,  // 123: post.v1.PostService.ListPostLikers:input_type -> post.v1.ListPostLikersRequest
-	77,  // 124: post.v1.PostService.ListReposts:input_type -> post.v1.ListRepostsRequest
-	79,  // 125: post.v1.PostService.ListCommentLikers:input_type -> post.v1.ListCommentLikersRequest
-	67,  // 126: post.v1.PostService.ListLikedPosts:input_type -> post.v1.ListLikedPostsRequest
-	69,  // 127: post.v1.PostService.ListLikedComments:input_type -> post.v1.ListLikedCommentsRequest
-	71,  // 128: post.v1.PostService.ListLikedAlbumPhotos:input_type -> post.v1.ListLikedAlbumPhotosRequest
-	73,  // 129: post.v1.PostService.ListOwnPosts:input_type -> post.v1.ListOwnPostsRequest
-	75,  // 130: post.v1.PostService.SearchPosts:input_type -> post.v1.SearchPostsRequest
-	29,  // 131: post.v1.PostService.GetPolls:input_type -> post.v1.GetPollsRequest
-	31,  // 132: post.v1.PostService.VotePoll:input_type -> post.v1.VotePollRequest
-	33,  // 133: post.v1.PostService.RetractPollVote:input_type -> post.v1.RetractPollVoteRequest
-	35,  // 134: post.v1.PostService.ListPollVoters:input_type -> post.v1.ListPollVotersRequest
-	81,  // 135: post.v1.PostService.CreateComment:input_type -> post.v1.CreateCommentRequest
-	83,  // 136: post.v1.PostService.DeleteComment:input_type -> post.v1.DeleteCommentRequest
-	84,  // 137: post.v1.PostService.LikeComment:input_type -> post.v1.LikeCommentRequest
-	86,  // 138: post.v1.PostService.UnlikeComment:input_type -> post.v1.UnlikeCommentRequest
-	88,  // 139: post.v1.PostService.ListComments:input_type -> post.v1.ListCommentsRequest
-	90,  // 140: post.v1.PostService.GetComments:input_type -> post.v1.GetCommentsRequest
-	92,  // 141: post.v1.PostService.ListLastComments:input_type -> post.v1.ListLastCommentsRequest
-	6,   // 142: post.v1.PostService.SuggestPost:input_type -> post.v1.SuggestPostRequest
-	8,   // 143: post.v1.PostService.ListSuggestions:input_type -> post.v1.ListSuggestionsRequest
-	172, // 144: post.v1.PostService.GetSuggestion:input_type -> post.v1.GetSuggestionRequest
-	10,  // 145: post.v1.PostService.PublishSuggestion:input_type -> post.v1.PublishSuggestionRequest
-	12,  // 146: post.v1.PostService.DeleteSuggestion:input_type -> post.v1.DeleteSuggestionRequest
-	14,  // 147: post.v1.PostService.PostponePost:input_type -> post.v1.PostponePostRequest
-	16,  // 148: post.v1.PostService.ListPostponed:input_type -> post.v1.ListPostponedRequest
-	18,  // 149: post.v1.PostService.GetPostponed:input_type -> post.v1.GetPostponedRequest
-	20,  // 150: post.v1.PostService.EditPostponed:input_type -> post.v1.EditPostponedRequest
-	22,  // 151: post.v1.PostService.PublishPostponed:input_type -> post.v1.PublishPostponedRequest
-	24,  // 152: post.v1.PostService.DeletePostponed:input_type -> post.v1.DeletePostponedRequest
-	211, // 153: post.v1.PostService.CreateStory:input_type -> post.v1.CreateStoryRequest
-	213, // 154: post.v1.PostService.ListFeedStories:input_type -> post.v1.ListFeedStoriesRequest
-	215, // 155: post.v1.PostService.ListUserStories:input_type -> post.v1.ListUserStoriesRequest
-	217, // 156: post.v1.PostService.GetStory:input_type -> post.v1.GetStoryRequest
-	219, // 157: post.v1.PostService.ViewStory:input_type -> post.v1.ViewStoryRequest
-	220, // 158: post.v1.PostService.ListStoryViewers:input_type -> post.v1.ListStoryViewersRequest
-	223, // 159: post.v1.PostService.DeleteStory:input_type -> post.v1.DeleteStoryRequest
-	224, // 160: post.v1.PostService.LikeStory:input_type -> post.v1.LikeStoryRequest
-	225, // 161: post.v1.PostService.UnlikeStory:input_type -> post.v1.UnlikeStoryRequest
-	227, // 162: post.v1.PostService.CreateStoryComment:input_type -> post.v1.CreateStoryCommentRequest
-	229, // 163: post.v1.PostService.ListStoryComments:input_type -> post.v1.ListStoryCommentsRequest
-	231, // 164: post.v1.PostService.DeleteStoryComment:input_type -> post.v1.DeleteStoryCommentRequest
-	113, // 165: post.v1.PostService.CreateTopic:input_type -> post.v1.CreateTopicRequest
-	115, // 166: post.v1.PostService.GetTopic:input_type -> post.v1.GetTopicRequest
-	117, // 167: post.v1.PostService.ListTopics:input_type -> post.v1.ListTopicsRequest
-	119, // 168: post.v1.PostService.EditTopic:input_type -> post.v1.EditTopicRequest
-	121, // 169: post.v1.PostService.DeleteTopic:input_type -> post.v1.DeleteTopicRequest
-	122, // 170: post.v1.PostService.CreateTopicMessage:input_type -> post.v1.CreateTopicMessageRequest
-	124, // 171: post.v1.PostService.ListTopicMessages:input_type -> post.v1.ListTopicMessagesRequest
-	174, // 172: post.v1.PostService.GetTopicMessage:input_type -> post.v1.GetTopicMessageRequest
-	126, // 173: post.v1.PostService.DeleteTopicMessage:input_type -> post.v1.DeleteTopicMessageRequest
-	105, // 174: post.v1.PostService.LikeTopicMessage:input_type -> post.v1.LikeTopicMessageRequest
-	107, // 175: post.v1.PostService.UnlikeTopicMessage:input_type -> post.v1.UnlikeTopicMessageRequest
-	109, // 176: post.v1.PostService.ListTopicMessageLikers:input_type -> post.v1.ListTopicMessageLikersRequest
-	111, // 177: post.v1.PostService.GetTopicMessages:input_type -> post.v1.GetTopicMessagesRequest
-	129, // 178: post.v1.PostService.CreateAlbum:input_type -> post.v1.CreateAlbumRequest
-	131, // 179: post.v1.PostService.GetAlbum:input_type -> post.v1.GetAlbumRequest
-	133, // 180: post.v1.PostService.ListAlbums:input_type -> post.v1.ListAlbumsRequest
-	135, // 181: post.v1.PostService.EditAlbum:input_type -> post.v1.EditAlbumRequest
-	137, // 182: post.v1.PostService.DeleteAlbum:input_type -> post.v1.DeleteAlbumRequest
-	139, // 183: post.v1.PostService.AddAlbumPhotos:input_type -> post.v1.AddAlbumPhotosRequest
-	141, // 184: post.v1.PostService.AddAvatarPhoto:input_type -> post.v1.AddAvatarPhotoRequest
-	143, // 185: post.v1.PostService.ListAlbumPhotos:input_type -> post.v1.ListAlbumPhotosRequest
-	145, // 186: post.v1.PostService.GetAlbumPhoto:input_type -> post.v1.GetAlbumPhotoRequest
-	147, // 187: post.v1.PostService.EditAlbumPhoto:input_type -> post.v1.EditAlbumPhotoRequest
-	149, // 188: post.v1.PostService.DeleteAlbumPhoto:input_type -> post.v1.DeleteAlbumPhotoRequest
-	150, // 189: post.v1.PostService.SetAlbumCover:input_type -> post.v1.SetAlbumCoverRequest
-	151, // 190: post.v1.PostService.MoveAlbumPhoto:input_type -> post.v1.MoveAlbumPhotoRequest
-	152, // 191: post.v1.PostService.LikeAlbumPhoto:input_type -> post.v1.LikeAlbumPhotoRequest
-	154, // 192: post.v1.PostService.UnlikeAlbumPhoto:input_type -> post.v1.UnlikeAlbumPhotoRequest
-	156, // 193: post.v1.PostService.ListAlbumPhotoLikers:input_type -> post.v1.ListAlbumPhotoLikersRequest
-	159, // 194: post.v1.PostService.CreatePhotoComment:input_type -> post.v1.CreatePhotoCommentRequest
-	169, // 195: post.v1.PostService.DeletePhotoComment:input_type -> post.v1.DeletePhotoCommentRequest
-	170, // 196: post.v1.PostService.ListPhotoComments:input_type -> post.v1.ListPhotoCommentsRequest
-	176, // 197: post.v1.PostService.GetPhotoComment:input_type -> post.v1.GetPhotoCommentRequest
-	160, // 198: post.v1.PostService.GetPhotoComments:input_type -> post.v1.GetPhotoCommentsRequest
-	162, // 199: post.v1.PostService.LikePhotoComment:input_type -> post.v1.LikePhotoCommentRequest
-	164, // 200: post.v1.PostService.UnlikePhotoComment:input_type -> post.v1.UnlikePhotoCommentRequest
-	166, // 201: post.v1.PostService.ListPhotoCommentLikers:input_type -> post.v1.ListPhotoCommentLikersRequest
-	182, // 202: post.v1.PostService.CreateNote:input_type -> post.v1.CreateNoteRequest
-	184, // 203: post.v1.PostService.GetNote:input_type -> post.v1.GetNoteRequest
-	186, // 204: post.v1.PostService.ListNotes:input_type -> post.v1.ListNotesRequest
-	188, // 205: post.v1.PostService.EditNote:input_type -> post.v1.EditNoteRequest
-	190, // 206: post.v1.PostService.DeleteNote:input_type -> post.v1.DeleteNoteRequest
-	191, // 207: post.v1.PostService.CreateNoteComment:input_type -> post.v1.CreateNoteCommentRequest
-	193, // 208: post.v1.PostService.DeleteNoteComment:input_type -> post.v1.DeleteNoteCommentRequest
-	194, // 209: post.v1.PostService.ListNoteComments:input_type -> post.v1.ListNoteCommentsRequest
-	196, // 210: post.v1.PostService.GetNoteComment:input_type -> post.v1.GetNoteCommentRequest
-	198, // 211: post.v1.PostService.GetNoteComments:input_type -> post.v1.GetNoteCommentsRequest
-	201, // 212: post.v1.PostService.AddDocument:input_type -> post.v1.AddDocumentRequest
-	203, // 213: post.v1.PostService.ListDocuments:input_type -> post.v1.ListDocumentsRequest
-	205, // 214: post.v1.PostService.GetDocuments:input_type -> post.v1.GetDocumentsRequest
-	207, // 215: post.v1.PostService.RenameDocument:input_type -> post.v1.RenameDocumentRequest
-	209, // 216: post.v1.PostService.DeleteDocument:input_type -> post.v1.DeleteDocumentRequest
-	94,  // 217: post.v1.PostService.PurgeUser:input_type -> post.v1.PurgeUserRequest
-	95,  // 218: post.v1.PostService.PurgeClub:input_type -> post.v1.PurgeClubRequest
-	96,  // 219: post.v1.PostService.HoldUserReactions:input_type -> post.v1.HoldUserReactionsRequest
-	102, // 220: post.v1.PostService.ReleaseUserReactions:input_type -> post.v1.ReleaseUserReactionsRequest
-	97,  // 221: post.v1.PostService.FollowSource:input_type -> post.v1.FollowSourceRequest
-	98,  // 222: post.v1.PostService.UnfollowSource:input_type -> post.v1.UnfollowSourceRequest
-	99,  // 223: post.v1.PostService.SyncSources:input_type -> post.v1.SyncSourcesRequest
-	100, // 224: post.v1.PostService.CloseWall:input_type -> post.v1.CloseWallRequest
-	101, // 225: post.v1.PostService.OpenWall:input_type -> post.v1.OpenWallRequest
-	37,  // 226: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
-	233, // 227: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
-	39,  // 228: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
-	42,  // 229: post.v1.PostService.EditPost:output_type -> post.v1.EditPostResponse
-	233, // 230: post.v1.PostService.PinPost:output_type -> google.protobuf.Empty
-	233, // 231: post.v1.PostService.UnpinPost:output_type -> google.protobuf.Empty
-	233, // 232: post.v1.PostService.ArchivePost:output_type -> google.protobuf.Empty
-	233, // 233: post.v1.PostService.UnarchivePost:output_type -> google.protobuf.Empty
-	47,  // 234: post.v1.PostService.ArchiveWall:output_type -> post.v1.ArchiveWallResponse
-	49,  // 235: post.v1.PostService.ListWallYears:output_type -> post.v1.ListWallYearsResponse
-	233, // 236: post.v1.PostService.CloseComments:output_type -> google.protobuf.Empty
-	233, // 237: post.v1.PostService.OpenComments:output_type -> google.protobuf.Empty
-	54,  // 238: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
-	56,  // 239: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
-	179, // 240: post.v1.PostService.CountPosts:output_type -> post.v1.CountPostsResponse
-	58,  // 241: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
-	60,  // 242: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
-	62,  // 243: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
-	64,  // 244: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
-	66,  // 245: post.v1.PostService.ListPostLikers:output_type -> post.v1.ListPostLikersResponse
-	78,  // 246: post.v1.PostService.ListReposts:output_type -> post.v1.ListRepostsResponse
-	80,  // 247: post.v1.PostService.ListCommentLikers:output_type -> post.v1.ListCommentLikersResponse
-	68,  // 248: post.v1.PostService.ListLikedPosts:output_type -> post.v1.ListLikedPostsResponse
-	70,  // 249: post.v1.PostService.ListLikedComments:output_type -> post.v1.ListLikedCommentsResponse
-	72,  // 250: post.v1.PostService.ListLikedAlbumPhotos:output_type -> post.v1.ListLikedAlbumPhotosResponse
-	74,  // 251: post.v1.PostService.ListOwnPosts:output_type -> post.v1.ListOwnPostsResponse
-	76,  // 252: post.v1.PostService.SearchPosts:output_type -> post.v1.SearchPostsResponse
-	30,  // 253: post.v1.PostService.GetPolls:output_type -> post.v1.GetPollsResponse
-	32,  // 254: post.v1.PostService.VotePoll:output_type -> post.v1.VotePollResponse
-	34,  // 255: post.v1.PostService.RetractPollVote:output_type -> post.v1.RetractPollVoteResponse
-	36,  // 256: post.v1.PostService.ListPollVoters:output_type -> post.v1.ListPollVotersResponse
-	82,  // 257: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
-	233, // 258: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
-	85,  // 259: post.v1.PostService.LikeComment:output_type -> post.v1.LikeCommentResponse
-	87,  // 260: post.v1.PostService.UnlikeComment:output_type -> post.v1.UnlikeCommentResponse
-	89,  // 261: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
-	91,  // 262: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
-	93,  // 263: post.v1.PostService.ListLastComments:output_type -> post.v1.ListLastCommentsResponse
-	7,   // 264: post.v1.PostService.SuggestPost:output_type -> post.v1.SuggestPostResponse
-	9,   // 265: post.v1.PostService.ListSuggestions:output_type -> post.v1.ListSuggestionsResponse
-	173, // 266: post.v1.PostService.GetSuggestion:output_type -> post.v1.GetSuggestionResponse
-	11,  // 267: post.v1.PostService.PublishSuggestion:output_type -> post.v1.PublishSuggestionResponse
-	233, // 268: post.v1.PostService.DeleteSuggestion:output_type -> google.protobuf.Empty
-	15,  // 269: post.v1.PostService.PostponePost:output_type -> post.v1.PostponePostResponse
-	17,  // 270: post.v1.PostService.ListPostponed:output_type -> post.v1.ListPostponedResponse
-	19,  // 271: post.v1.PostService.GetPostponed:output_type -> post.v1.GetPostponedResponse
-	21,  // 272: post.v1.PostService.EditPostponed:output_type -> post.v1.EditPostponedResponse
-	23,  // 273: post.v1.PostService.PublishPostponed:output_type -> post.v1.PublishPostponedResponse
-	233, // 274: post.v1.PostService.DeletePostponed:output_type -> google.protobuf.Empty
-	212, // 275: post.v1.PostService.CreateStory:output_type -> post.v1.CreateStoryResponse
-	214, // 276: post.v1.PostService.ListFeedStories:output_type -> post.v1.ListFeedStoriesResponse
-	216, // 277: post.v1.PostService.ListUserStories:output_type -> post.v1.ListUserStoriesResponse
-	218, // 278: post.v1.PostService.GetStory:output_type -> post.v1.GetStoryResponse
-	233, // 279: post.v1.PostService.ViewStory:output_type -> google.protobuf.Empty
-	222, // 280: post.v1.PostService.ListStoryViewers:output_type -> post.v1.ListStoryViewersResponse
-	233, // 281: post.v1.PostService.DeleteStory:output_type -> google.protobuf.Empty
-	233, // 282: post.v1.PostService.LikeStory:output_type -> google.protobuf.Empty
-	233, // 283: post.v1.PostService.UnlikeStory:output_type -> google.protobuf.Empty
-	228, // 284: post.v1.PostService.CreateStoryComment:output_type -> post.v1.CreateStoryCommentResponse
-	230, // 285: post.v1.PostService.ListStoryComments:output_type -> post.v1.ListStoryCommentsResponse
-	233, // 286: post.v1.PostService.DeleteStoryComment:output_type -> google.protobuf.Empty
-	114, // 287: post.v1.PostService.CreateTopic:output_type -> post.v1.CreateTopicResponse
-	116, // 288: post.v1.PostService.GetTopic:output_type -> post.v1.GetTopicResponse
-	118, // 289: post.v1.PostService.ListTopics:output_type -> post.v1.ListTopicsResponse
-	120, // 290: post.v1.PostService.EditTopic:output_type -> post.v1.EditTopicResponse
-	233, // 291: post.v1.PostService.DeleteTopic:output_type -> google.protobuf.Empty
-	123, // 292: post.v1.PostService.CreateTopicMessage:output_type -> post.v1.CreateTopicMessageResponse
-	125, // 293: post.v1.PostService.ListTopicMessages:output_type -> post.v1.ListTopicMessagesResponse
-	175, // 294: post.v1.PostService.GetTopicMessage:output_type -> post.v1.GetTopicMessageResponse
-	233, // 295: post.v1.PostService.DeleteTopicMessage:output_type -> google.protobuf.Empty
-	106, // 296: post.v1.PostService.LikeTopicMessage:output_type -> post.v1.LikeTopicMessageResponse
-	108, // 297: post.v1.PostService.UnlikeTopicMessage:output_type -> post.v1.UnlikeTopicMessageResponse
-	110, // 298: post.v1.PostService.ListTopicMessageLikers:output_type -> post.v1.ListTopicMessageLikersResponse
-	112, // 299: post.v1.PostService.GetTopicMessages:output_type -> post.v1.GetTopicMessagesResponse
-	130, // 300: post.v1.PostService.CreateAlbum:output_type -> post.v1.CreateAlbumResponse
-	132, // 301: post.v1.PostService.GetAlbum:output_type -> post.v1.GetAlbumResponse
-	134, // 302: post.v1.PostService.ListAlbums:output_type -> post.v1.ListAlbumsResponse
-	136, // 303: post.v1.PostService.EditAlbum:output_type -> post.v1.EditAlbumResponse
-	233, // 304: post.v1.PostService.DeleteAlbum:output_type -> google.protobuf.Empty
-	140, // 305: post.v1.PostService.AddAlbumPhotos:output_type -> post.v1.AddAlbumPhotosResponse
-	142, // 306: post.v1.PostService.AddAvatarPhoto:output_type -> post.v1.AddAvatarPhotoResponse
-	144, // 307: post.v1.PostService.ListAlbumPhotos:output_type -> post.v1.ListAlbumPhotosResponse
-	146, // 308: post.v1.PostService.GetAlbumPhoto:output_type -> post.v1.GetAlbumPhotoResponse
-	148, // 309: post.v1.PostService.EditAlbumPhoto:output_type -> post.v1.EditAlbumPhotoResponse
-	233, // 310: post.v1.PostService.DeleteAlbumPhoto:output_type -> google.protobuf.Empty
-	233, // 311: post.v1.PostService.SetAlbumCover:output_type -> google.protobuf.Empty
-	233, // 312: post.v1.PostService.MoveAlbumPhoto:output_type -> google.protobuf.Empty
-	153, // 313: post.v1.PostService.LikeAlbumPhoto:output_type -> post.v1.LikeAlbumPhotoResponse
-	155, // 314: post.v1.PostService.UnlikeAlbumPhoto:output_type -> post.v1.UnlikeAlbumPhotoResponse
-	157, // 315: post.v1.PostService.ListAlbumPhotoLikers:output_type -> post.v1.ListAlbumPhotoLikersResponse
-	168, // 316: post.v1.PostService.CreatePhotoComment:output_type -> post.v1.CreatePhotoCommentResponse
-	233, // 317: post.v1.PostService.DeletePhotoComment:output_type -> google.protobuf.Empty
-	171, // 318: post.v1.PostService.ListPhotoComments:output_type -> post.v1.ListPhotoCommentsResponse
-	177, // 319: post.v1.PostService.GetPhotoComment:output_type -> post.v1.GetPhotoCommentResponse
-	161, // 320: post.v1.PostService.GetPhotoComments:output_type -> post.v1.GetPhotoCommentsResponse
-	163, // 321: post.v1.PostService.LikePhotoComment:output_type -> post.v1.LikePhotoCommentResponse
-	165, // 322: post.v1.PostService.UnlikePhotoComment:output_type -> post.v1.UnlikePhotoCommentResponse
-	167, // 323: post.v1.PostService.ListPhotoCommentLikers:output_type -> post.v1.ListPhotoCommentLikersResponse
-	183, // 324: post.v1.PostService.CreateNote:output_type -> post.v1.CreateNoteResponse
-	185, // 325: post.v1.PostService.GetNote:output_type -> post.v1.GetNoteResponse
-	187, // 326: post.v1.PostService.ListNotes:output_type -> post.v1.ListNotesResponse
-	189, // 327: post.v1.PostService.EditNote:output_type -> post.v1.EditNoteResponse
-	233, // 328: post.v1.PostService.DeleteNote:output_type -> google.protobuf.Empty
-	192, // 329: post.v1.PostService.CreateNoteComment:output_type -> post.v1.CreateNoteCommentResponse
-	233, // 330: post.v1.PostService.DeleteNoteComment:output_type -> google.protobuf.Empty
-	195, // 331: post.v1.PostService.ListNoteComments:output_type -> post.v1.ListNoteCommentsResponse
-	197, // 332: post.v1.PostService.GetNoteComment:output_type -> post.v1.GetNoteCommentResponse
-	199, // 333: post.v1.PostService.GetNoteComments:output_type -> post.v1.GetNoteCommentsResponse
-	202, // 334: post.v1.PostService.AddDocument:output_type -> post.v1.AddDocumentResponse
-	204, // 335: post.v1.PostService.ListDocuments:output_type -> post.v1.ListDocumentsResponse
-	206, // 336: post.v1.PostService.GetDocuments:output_type -> post.v1.GetDocumentsResponse
-	208, // 337: post.v1.PostService.RenameDocument:output_type -> post.v1.RenameDocumentResponse
-	233, // 338: post.v1.PostService.DeleteDocument:output_type -> google.protobuf.Empty
-	233, // 339: post.v1.PostService.PurgeUser:output_type -> google.protobuf.Empty
-	233, // 340: post.v1.PostService.PurgeClub:output_type -> google.protobuf.Empty
-	233, // 341: post.v1.PostService.HoldUserReactions:output_type -> google.protobuf.Empty
-	233, // 342: post.v1.PostService.ReleaseUserReactions:output_type -> google.protobuf.Empty
-	233, // 343: post.v1.PostService.FollowSource:output_type -> google.protobuf.Empty
-	233, // 344: post.v1.PostService.UnfollowSource:output_type -> google.protobuf.Empty
-	233, // 345: post.v1.PostService.SyncSources:output_type -> google.protobuf.Empty
-	233, // 346: post.v1.PostService.CloseWall:output_type -> google.protobuf.Empty
-	233, // 347: post.v1.PostService.OpenWall:output_type -> google.protobuf.Empty
-	226, // [226:348] is the sub-list for method output_type
-	104, // [104:226] is the sub-list for method input_type
-	104, // [104:104] is the sub-list for extension type_name
-	104, // [104:104] is the sub-list for extension extendee
-	0,   // [0:104] is the sub-list for field type_name
+	212, // 77: post.v1.Document.created_at:type_name -> google.protobuf.Timestamp
+	180, // 78: post.v1.AddDocumentResponse.document:type_name -> post.v1.Document
+	180, // 79: post.v1.ListDocumentsResponse.documents:type_name -> post.v1.Document
+	180, // 80: post.v1.GetDocumentsResponse.documents:type_name -> post.v1.Document
+	180, // 81: post.v1.RenameDocumentResponse.document:type_name -> post.v1.Document
+	212, // 82: post.v1.Story.created_at:type_name -> google.protobuf.Timestamp
+	212, // 83: post.v1.Story.expires_at:type_name -> google.protobuf.Timestamp
+	190, // 84: post.v1.CreateStoryResponse.story:type_name -> post.v1.Story
+	190, // 85: post.v1.ListFeedStoriesResponse.stories:type_name -> post.v1.Story
+	190, // 86: post.v1.ListUserStoriesResponse.stories:type_name -> post.v1.Story
+	190, // 87: post.v1.GetStoryResponse.story:type_name -> post.v1.Story
+	212, // 88: post.v1.StoryViewer.viewed_at:type_name -> google.protobuf.Timestamp
+	201, // 89: post.v1.ListStoryViewersResponse.viewers:type_name -> post.v1.StoryViewer
+	212, // 90: post.v1.StoryComment.created_at:type_name -> google.protobuf.Timestamp
+	206, // 91: post.v1.CreateStoryCommentResponse.comment:type_name -> post.v1.StoryComment
+	206, // 92: post.v1.ListStoryCommentsResponse.comments:type_name -> post.v1.StoryComment
+	25,  // 93: post.v1.PostService.CreatePost:input_type -> post.v1.CreatePostRequest
+	40,  // 94: post.v1.PostService.DeletePost:input_type -> post.v1.DeletePostRequest
+	38,  // 95: post.v1.PostService.RepostPost:input_type -> post.v1.RepostPostRequest
+	41,  // 96: post.v1.PostService.EditPost:input_type -> post.v1.EditPostRequest
+	43,  // 97: post.v1.PostService.PinPost:input_type -> post.v1.PinPostRequest
+	44,  // 98: post.v1.PostService.UnpinPost:input_type -> post.v1.UnpinPostRequest
+	45,  // 99: post.v1.PostService.ArchivePost:input_type -> post.v1.ArchivePostRequest
+	50,  // 100: post.v1.PostService.UnarchivePost:input_type -> post.v1.UnarchivePostRequest
+	46,  // 101: post.v1.PostService.ArchiveWall:input_type -> post.v1.ArchiveWallRequest
+	48,  // 102: post.v1.PostService.ListWallYears:input_type -> post.v1.ListWallYearsRequest
+	51,  // 103: post.v1.PostService.CloseComments:input_type -> post.v1.CloseCommentsRequest
+	52,  // 104: post.v1.PostService.OpenComments:input_type -> post.v1.OpenCommentsRequest
+	53,  // 105: post.v1.PostService.GetPost:input_type -> post.v1.GetPostRequest
+	55,  // 106: post.v1.PostService.GetPosts:input_type -> post.v1.GetPostsRequest
+	178, // 107: post.v1.PostService.CountPosts:input_type -> post.v1.CountPostsRequest
+	57,  // 108: post.v1.PostService.ListPosts:input_type -> post.v1.ListPostsRequest
+	59,  // 109: post.v1.PostService.ListFeed:input_type -> post.v1.ListFeedRequest
+	61,  // 110: post.v1.PostService.LikePost:input_type -> post.v1.LikePostRequest
+	63,  // 111: post.v1.PostService.UnlikePost:input_type -> post.v1.UnlikePostRequest
+	65,  // 112: post.v1.PostService.ListPostLikers:input_type -> post.v1.ListPostLikersRequest
+	77,  // 113: post.v1.PostService.ListReposts:input_type -> post.v1.ListRepostsRequest
+	79,  // 114: post.v1.PostService.ListCommentLikers:input_type -> post.v1.ListCommentLikersRequest
+	67,  // 115: post.v1.PostService.ListLikedPosts:input_type -> post.v1.ListLikedPostsRequest
+	69,  // 116: post.v1.PostService.ListLikedComments:input_type -> post.v1.ListLikedCommentsRequest
+	71,  // 117: post.v1.PostService.ListLikedAlbumPhotos:input_type -> post.v1.ListLikedAlbumPhotosRequest
+	73,  // 118: post.v1.PostService.ListOwnPosts:input_type -> post.v1.ListOwnPostsRequest
+	75,  // 119: post.v1.PostService.SearchPosts:input_type -> post.v1.SearchPostsRequest
+	29,  // 120: post.v1.PostService.GetPolls:input_type -> post.v1.GetPollsRequest
+	31,  // 121: post.v1.PostService.VotePoll:input_type -> post.v1.VotePollRequest
+	33,  // 122: post.v1.PostService.RetractPollVote:input_type -> post.v1.RetractPollVoteRequest
+	35,  // 123: post.v1.PostService.ListPollVoters:input_type -> post.v1.ListPollVotersRequest
+	81,  // 124: post.v1.PostService.CreateComment:input_type -> post.v1.CreateCommentRequest
+	83,  // 125: post.v1.PostService.DeleteComment:input_type -> post.v1.DeleteCommentRequest
+	84,  // 126: post.v1.PostService.LikeComment:input_type -> post.v1.LikeCommentRequest
+	86,  // 127: post.v1.PostService.UnlikeComment:input_type -> post.v1.UnlikeCommentRequest
+	88,  // 128: post.v1.PostService.ListComments:input_type -> post.v1.ListCommentsRequest
+	90,  // 129: post.v1.PostService.GetComments:input_type -> post.v1.GetCommentsRequest
+	92,  // 130: post.v1.PostService.ListLastComments:input_type -> post.v1.ListLastCommentsRequest
+	6,   // 131: post.v1.PostService.SuggestPost:input_type -> post.v1.SuggestPostRequest
+	8,   // 132: post.v1.PostService.ListSuggestions:input_type -> post.v1.ListSuggestionsRequest
+	172, // 133: post.v1.PostService.GetSuggestion:input_type -> post.v1.GetSuggestionRequest
+	10,  // 134: post.v1.PostService.PublishSuggestion:input_type -> post.v1.PublishSuggestionRequest
+	12,  // 135: post.v1.PostService.DeleteSuggestion:input_type -> post.v1.DeleteSuggestionRequest
+	14,  // 136: post.v1.PostService.PostponePost:input_type -> post.v1.PostponePostRequest
+	16,  // 137: post.v1.PostService.ListPostponed:input_type -> post.v1.ListPostponedRequest
+	18,  // 138: post.v1.PostService.GetPostponed:input_type -> post.v1.GetPostponedRequest
+	20,  // 139: post.v1.PostService.EditPostponed:input_type -> post.v1.EditPostponedRequest
+	22,  // 140: post.v1.PostService.PublishPostponed:input_type -> post.v1.PublishPostponedRequest
+	24,  // 141: post.v1.PostService.DeletePostponed:input_type -> post.v1.DeletePostponedRequest
+	191, // 142: post.v1.PostService.CreateStory:input_type -> post.v1.CreateStoryRequest
+	193, // 143: post.v1.PostService.ListFeedStories:input_type -> post.v1.ListFeedStoriesRequest
+	195, // 144: post.v1.PostService.ListUserStories:input_type -> post.v1.ListUserStoriesRequest
+	197, // 145: post.v1.PostService.GetStory:input_type -> post.v1.GetStoryRequest
+	199, // 146: post.v1.PostService.ViewStory:input_type -> post.v1.ViewStoryRequest
+	200, // 147: post.v1.PostService.ListStoryViewers:input_type -> post.v1.ListStoryViewersRequest
+	203, // 148: post.v1.PostService.DeleteStory:input_type -> post.v1.DeleteStoryRequest
+	204, // 149: post.v1.PostService.LikeStory:input_type -> post.v1.LikeStoryRequest
+	205, // 150: post.v1.PostService.UnlikeStory:input_type -> post.v1.UnlikeStoryRequest
+	207, // 151: post.v1.PostService.CreateStoryComment:input_type -> post.v1.CreateStoryCommentRequest
+	209, // 152: post.v1.PostService.ListStoryComments:input_type -> post.v1.ListStoryCommentsRequest
+	211, // 153: post.v1.PostService.DeleteStoryComment:input_type -> post.v1.DeleteStoryCommentRequest
+	113, // 154: post.v1.PostService.CreateTopic:input_type -> post.v1.CreateTopicRequest
+	115, // 155: post.v1.PostService.GetTopic:input_type -> post.v1.GetTopicRequest
+	117, // 156: post.v1.PostService.ListTopics:input_type -> post.v1.ListTopicsRequest
+	119, // 157: post.v1.PostService.EditTopic:input_type -> post.v1.EditTopicRequest
+	121, // 158: post.v1.PostService.DeleteTopic:input_type -> post.v1.DeleteTopicRequest
+	122, // 159: post.v1.PostService.CreateTopicMessage:input_type -> post.v1.CreateTopicMessageRequest
+	124, // 160: post.v1.PostService.ListTopicMessages:input_type -> post.v1.ListTopicMessagesRequest
+	174, // 161: post.v1.PostService.GetTopicMessage:input_type -> post.v1.GetTopicMessageRequest
+	126, // 162: post.v1.PostService.DeleteTopicMessage:input_type -> post.v1.DeleteTopicMessageRequest
+	105, // 163: post.v1.PostService.LikeTopicMessage:input_type -> post.v1.LikeTopicMessageRequest
+	107, // 164: post.v1.PostService.UnlikeTopicMessage:input_type -> post.v1.UnlikeTopicMessageRequest
+	109, // 165: post.v1.PostService.ListTopicMessageLikers:input_type -> post.v1.ListTopicMessageLikersRequest
+	111, // 166: post.v1.PostService.GetTopicMessages:input_type -> post.v1.GetTopicMessagesRequest
+	129, // 167: post.v1.PostService.CreateAlbum:input_type -> post.v1.CreateAlbumRequest
+	131, // 168: post.v1.PostService.GetAlbum:input_type -> post.v1.GetAlbumRequest
+	133, // 169: post.v1.PostService.ListAlbums:input_type -> post.v1.ListAlbumsRequest
+	135, // 170: post.v1.PostService.EditAlbum:input_type -> post.v1.EditAlbumRequest
+	137, // 171: post.v1.PostService.DeleteAlbum:input_type -> post.v1.DeleteAlbumRequest
+	139, // 172: post.v1.PostService.AddAlbumPhotos:input_type -> post.v1.AddAlbumPhotosRequest
+	141, // 173: post.v1.PostService.AddAvatarPhoto:input_type -> post.v1.AddAvatarPhotoRequest
+	143, // 174: post.v1.PostService.ListAlbumPhotos:input_type -> post.v1.ListAlbumPhotosRequest
+	145, // 175: post.v1.PostService.GetAlbumPhoto:input_type -> post.v1.GetAlbumPhotoRequest
+	147, // 176: post.v1.PostService.EditAlbumPhoto:input_type -> post.v1.EditAlbumPhotoRequest
+	149, // 177: post.v1.PostService.DeleteAlbumPhoto:input_type -> post.v1.DeleteAlbumPhotoRequest
+	150, // 178: post.v1.PostService.SetAlbumCover:input_type -> post.v1.SetAlbumCoverRequest
+	151, // 179: post.v1.PostService.MoveAlbumPhoto:input_type -> post.v1.MoveAlbumPhotoRequest
+	152, // 180: post.v1.PostService.LikeAlbumPhoto:input_type -> post.v1.LikeAlbumPhotoRequest
+	154, // 181: post.v1.PostService.UnlikeAlbumPhoto:input_type -> post.v1.UnlikeAlbumPhotoRequest
+	156, // 182: post.v1.PostService.ListAlbumPhotoLikers:input_type -> post.v1.ListAlbumPhotoLikersRequest
+	159, // 183: post.v1.PostService.CreatePhotoComment:input_type -> post.v1.CreatePhotoCommentRequest
+	169, // 184: post.v1.PostService.DeletePhotoComment:input_type -> post.v1.DeletePhotoCommentRequest
+	170, // 185: post.v1.PostService.ListPhotoComments:input_type -> post.v1.ListPhotoCommentsRequest
+	176, // 186: post.v1.PostService.GetPhotoComment:input_type -> post.v1.GetPhotoCommentRequest
+	160, // 187: post.v1.PostService.GetPhotoComments:input_type -> post.v1.GetPhotoCommentsRequest
+	162, // 188: post.v1.PostService.LikePhotoComment:input_type -> post.v1.LikePhotoCommentRequest
+	164, // 189: post.v1.PostService.UnlikePhotoComment:input_type -> post.v1.UnlikePhotoCommentRequest
+	166, // 190: post.v1.PostService.ListPhotoCommentLikers:input_type -> post.v1.ListPhotoCommentLikersRequest
+	181, // 191: post.v1.PostService.AddDocument:input_type -> post.v1.AddDocumentRequest
+	183, // 192: post.v1.PostService.ListDocuments:input_type -> post.v1.ListDocumentsRequest
+	185, // 193: post.v1.PostService.GetDocuments:input_type -> post.v1.GetDocumentsRequest
+	187, // 194: post.v1.PostService.RenameDocument:input_type -> post.v1.RenameDocumentRequest
+	189, // 195: post.v1.PostService.DeleteDocument:input_type -> post.v1.DeleteDocumentRequest
+	94,  // 196: post.v1.PostService.PurgeUser:input_type -> post.v1.PurgeUserRequest
+	95,  // 197: post.v1.PostService.PurgeClub:input_type -> post.v1.PurgeClubRequest
+	96,  // 198: post.v1.PostService.HoldUserReactions:input_type -> post.v1.HoldUserReactionsRequest
+	102, // 199: post.v1.PostService.ReleaseUserReactions:input_type -> post.v1.ReleaseUserReactionsRequest
+	97,  // 200: post.v1.PostService.FollowSource:input_type -> post.v1.FollowSourceRequest
+	98,  // 201: post.v1.PostService.UnfollowSource:input_type -> post.v1.UnfollowSourceRequest
+	99,  // 202: post.v1.PostService.SyncSources:input_type -> post.v1.SyncSourcesRequest
+	100, // 203: post.v1.PostService.CloseWall:input_type -> post.v1.CloseWallRequest
+	101, // 204: post.v1.PostService.OpenWall:input_type -> post.v1.OpenWallRequest
+	37,  // 205: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
+	213, // 206: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
+	39,  // 207: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
+	42,  // 208: post.v1.PostService.EditPost:output_type -> post.v1.EditPostResponse
+	213, // 209: post.v1.PostService.PinPost:output_type -> google.protobuf.Empty
+	213, // 210: post.v1.PostService.UnpinPost:output_type -> google.protobuf.Empty
+	213, // 211: post.v1.PostService.ArchivePost:output_type -> google.protobuf.Empty
+	213, // 212: post.v1.PostService.UnarchivePost:output_type -> google.protobuf.Empty
+	47,  // 213: post.v1.PostService.ArchiveWall:output_type -> post.v1.ArchiveWallResponse
+	49,  // 214: post.v1.PostService.ListWallYears:output_type -> post.v1.ListWallYearsResponse
+	213, // 215: post.v1.PostService.CloseComments:output_type -> google.protobuf.Empty
+	213, // 216: post.v1.PostService.OpenComments:output_type -> google.protobuf.Empty
+	54,  // 217: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
+	56,  // 218: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
+	179, // 219: post.v1.PostService.CountPosts:output_type -> post.v1.CountPostsResponse
+	58,  // 220: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
+	60,  // 221: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
+	62,  // 222: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
+	64,  // 223: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
+	66,  // 224: post.v1.PostService.ListPostLikers:output_type -> post.v1.ListPostLikersResponse
+	78,  // 225: post.v1.PostService.ListReposts:output_type -> post.v1.ListRepostsResponse
+	80,  // 226: post.v1.PostService.ListCommentLikers:output_type -> post.v1.ListCommentLikersResponse
+	68,  // 227: post.v1.PostService.ListLikedPosts:output_type -> post.v1.ListLikedPostsResponse
+	70,  // 228: post.v1.PostService.ListLikedComments:output_type -> post.v1.ListLikedCommentsResponse
+	72,  // 229: post.v1.PostService.ListLikedAlbumPhotos:output_type -> post.v1.ListLikedAlbumPhotosResponse
+	74,  // 230: post.v1.PostService.ListOwnPosts:output_type -> post.v1.ListOwnPostsResponse
+	76,  // 231: post.v1.PostService.SearchPosts:output_type -> post.v1.SearchPostsResponse
+	30,  // 232: post.v1.PostService.GetPolls:output_type -> post.v1.GetPollsResponse
+	32,  // 233: post.v1.PostService.VotePoll:output_type -> post.v1.VotePollResponse
+	34,  // 234: post.v1.PostService.RetractPollVote:output_type -> post.v1.RetractPollVoteResponse
+	36,  // 235: post.v1.PostService.ListPollVoters:output_type -> post.v1.ListPollVotersResponse
+	82,  // 236: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
+	213, // 237: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
+	85,  // 238: post.v1.PostService.LikeComment:output_type -> post.v1.LikeCommentResponse
+	87,  // 239: post.v1.PostService.UnlikeComment:output_type -> post.v1.UnlikeCommentResponse
+	89,  // 240: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
+	91,  // 241: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
+	93,  // 242: post.v1.PostService.ListLastComments:output_type -> post.v1.ListLastCommentsResponse
+	7,   // 243: post.v1.PostService.SuggestPost:output_type -> post.v1.SuggestPostResponse
+	9,   // 244: post.v1.PostService.ListSuggestions:output_type -> post.v1.ListSuggestionsResponse
+	173, // 245: post.v1.PostService.GetSuggestion:output_type -> post.v1.GetSuggestionResponse
+	11,  // 246: post.v1.PostService.PublishSuggestion:output_type -> post.v1.PublishSuggestionResponse
+	213, // 247: post.v1.PostService.DeleteSuggestion:output_type -> google.protobuf.Empty
+	15,  // 248: post.v1.PostService.PostponePost:output_type -> post.v1.PostponePostResponse
+	17,  // 249: post.v1.PostService.ListPostponed:output_type -> post.v1.ListPostponedResponse
+	19,  // 250: post.v1.PostService.GetPostponed:output_type -> post.v1.GetPostponedResponse
+	21,  // 251: post.v1.PostService.EditPostponed:output_type -> post.v1.EditPostponedResponse
+	23,  // 252: post.v1.PostService.PublishPostponed:output_type -> post.v1.PublishPostponedResponse
+	213, // 253: post.v1.PostService.DeletePostponed:output_type -> google.protobuf.Empty
+	192, // 254: post.v1.PostService.CreateStory:output_type -> post.v1.CreateStoryResponse
+	194, // 255: post.v1.PostService.ListFeedStories:output_type -> post.v1.ListFeedStoriesResponse
+	196, // 256: post.v1.PostService.ListUserStories:output_type -> post.v1.ListUserStoriesResponse
+	198, // 257: post.v1.PostService.GetStory:output_type -> post.v1.GetStoryResponse
+	213, // 258: post.v1.PostService.ViewStory:output_type -> google.protobuf.Empty
+	202, // 259: post.v1.PostService.ListStoryViewers:output_type -> post.v1.ListStoryViewersResponse
+	213, // 260: post.v1.PostService.DeleteStory:output_type -> google.protobuf.Empty
+	213, // 261: post.v1.PostService.LikeStory:output_type -> google.protobuf.Empty
+	213, // 262: post.v1.PostService.UnlikeStory:output_type -> google.protobuf.Empty
+	208, // 263: post.v1.PostService.CreateStoryComment:output_type -> post.v1.CreateStoryCommentResponse
+	210, // 264: post.v1.PostService.ListStoryComments:output_type -> post.v1.ListStoryCommentsResponse
+	213, // 265: post.v1.PostService.DeleteStoryComment:output_type -> google.protobuf.Empty
+	114, // 266: post.v1.PostService.CreateTopic:output_type -> post.v1.CreateTopicResponse
+	116, // 267: post.v1.PostService.GetTopic:output_type -> post.v1.GetTopicResponse
+	118, // 268: post.v1.PostService.ListTopics:output_type -> post.v1.ListTopicsResponse
+	120, // 269: post.v1.PostService.EditTopic:output_type -> post.v1.EditTopicResponse
+	213, // 270: post.v1.PostService.DeleteTopic:output_type -> google.protobuf.Empty
+	123, // 271: post.v1.PostService.CreateTopicMessage:output_type -> post.v1.CreateTopicMessageResponse
+	125, // 272: post.v1.PostService.ListTopicMessages:output_type -> post.v1.ListTopicMessagesResponse
+	175, // 273: post.v1.PostService.GetTopicMessage:output_type -> post.v1.GetTopicMessageResponse
+	213, // 274: post.v1.PostService.DeleteTopicMessage:output_type -> google.protobuf.Empty
+	106, // 275: post.v1.PostService.LikeTopicMessage:output_type -> post.v1.LikeTopicMessageResponse
+	108, // 276: post.v1.PostService.UnlikeTopicMessage:output_type -> post.v1.UnlikeTopicMessageResponse
+	110, // 277: post.v1.PostService.ListTopicMessageLikers:output_type -> post.v1.ListTopicMessageLikersResponse
+	112, // 278: post.v1.PostService.GetTopicMessages:output_type -> post.v1.GetTopicMessagesResponse
+	130, // 279: post.v1.PostService.CreateAlbum:output_type -> post.v1.CreateAlbumResponse
+	132, // 280: post.v1.PostService.GetAlbum:output_type -> post.v1.GetAlbumResponse
+	134, // 281: post.v1.PostService.ListAlbums:output_type -> post.v1.ListAlbumsResponse
+	136, // 282: post.v1.PostService.EditAlbum:output_type -> post.v1.EditAlbumResponse
+	213, // 283: post.v1.PostService.DeleteAlbum:output_type -> google.protobuf.Empty
+	140, // 284: post.v1.PostService.AddAlbumPhotos:output_type -> post.v1.AddAlbumPhotosResponse
+	142, // 285: post.v1.PostService.AddAvatarPhoto:output_type -> post.v1.AddAvatarPhotoResponse
+	144, // 286: post.v1.PostService.ListAlbumPhotos:output_type -> post.v1.ListAlbumPhotosResponse
+	146, // 287: post.v1.PostService.GetAlbumPhoto:output_type -> post.v1.GetAlbumPhotoResponse
+	148, // 288: post.v1.PostService.EditAlbumPhoto:output_type -> post.v1.EditAlbumPhotoResponse
+	213, // 289: post.v1.PostService.DeleteAlbumPhoto:output_type -> google.protobuf.Empty
+	213, // 290: post.v1.PostService.SetAlbumCover:output_type -> google.protobuf.Empty
+	213, // 291: post.v1.PostService.MoveAlbumPhoto:output_type -> google.protobuf.Empty
+	153, // 292: post.v1.PostService.LikeAlbumPhoto:output_type -> post.v1.LikeAlbumPhotoResponse
+	155, // 293: post.v1.PostService.UnlikeAlbumPhoto:output_type -> post.v1.UnlikeAlbumPhotoResponse
+	157, // 294: post.v1.PostService.ListAlbumPhotoLikers:output_type -> post.v1.ListAlbumPhotoLikersResponse
+	168, // 295: post.v1.PostService.CreatePhotoComment:output_type -> post.v1.CreatePhotoCommentResponse
+	213, // 296: post.v1.PostService.DeletePhotoComment:output_type -> google.protobuf.Empty
+	171, // 297: post.v1.PostService.ListPhotoComments:output_type -> post.v1.ListPhotoCommentsResponse
+	177, // 298: post.v1.PostService.GetPhotoComment:output_type -> post.v1.GetPhotoCommentResponse
+	161, // 299: post.v1.PostService.GetPhotoComments:output_type -> post.v1.GetPhotoCommentsResponse
+	163, // 300: post.v1.PostService.LikePhotoComment:output_type -> post.v1.LikePhotoCommentResponse
+	165, // 301: post.v1.PostService.UnlikePhotoComment:output_type -> post.v1.UnlikePhotoCommentResponse
+	167, // 302: post.v1.PostService.ListPhotoCommentLikers:output_type -> post.v1.ListPhotoCommentLikersResponse
+	182, // 303: post.v1.PostService.AddDocument:output_type -> post.v1.AddDocumentResponse
+	184, // 304: post.v1.PostService.ListDocuments:output_type -> post.v1.ListDocumentsResponse
+	186, // 305: post.v1.PostService.GetDocuments:output_type -> post.v1.GetDocumentsResponse
+	188, // 306: post.v1.PostService.RenameDocument:output_type -> post.v1.RenameDocumentResponse
+	213, // 307: post.v1.PostService.DeleteDocument:output_type -> google.protobuf.Empty
+	213, // 308: post.v1.PostService.PurgeUser:output_type -> google.protobuf.Empty
+	213, // 309: post.v1.PostService.PurgeClub:output_type -> google.protobuf.Empty
+	213, // 310: post.v1.PostService.HoldUserReactions:output_type -> google.protobuf.Empty
+	213, // 311: post.v1.PostService.ReleaseUserReactions:output_type -> google.protobuf.Empty
+	213, // 312: post.v1.PostService.FollowSource:output_type -> google.protobuf.Empty
+	213, // 313: post.v1.PostService.UnfollowSource:output_type -> google.protobuf.Empty
+	213, // 314: post.v1.PostService.SyncSources:output_type -> google.protobuf.Empty
+	213, // 315: post.v1.PostService.CloseWall:output_type -> google.protobuf.Empty
+	213, // 316: post.v1.PostService.OpenWall:output_type -> google.protobuf.Empty
+	205, // [205:317] is the sub-list for method output_type
+	93,  // [93:205] is the sub-list for method input_type
+	93,  // [93:93] is the sub-list for extension type_name
+	93,  // [93:93] is the sub-list for extension extendee
+	0,   // [0:93] is the sub-list for field type_name
 }
 
 func init() { file_api_post_v1_post_proto_init() }
@@ -15318,7 +14047,7 @@ func file_api_post_v1_post_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_post_v1_post_proto_rawDesc), len(file_api_post_v1_post_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   230,
+			NumMessages:   210,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

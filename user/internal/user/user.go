@@ -66,9 +66,6 @@ type Privacy struct {
 	// OnlineRead is "Кто видит мою неактивность": who sees when the owner
 	// was last online after a long absence (see LastSeen).
 	OnlineRead Audience
-	// NotesRead is "Кому видно мои заметки"; empty in UpdatePrivacy, as
-	// from a client that does not know it, means everyone.
-	NotesRead Audience
 	// GiftsRead is "Кому видны мои подарки"; empty in UpdatePrivacy, as
 	// from a client that does not know it, means everyone.
 	GiftsRead Audience
@@ -181,7 +178,7 @@ func New(email Email) (*User, error) {
 		privacy: Privacy{
 			WallWrite: DefaultWallWrite, MessagesWrite: DefaultMessagesWrite, ClubsRead: DefaultClubsRead,
 			PageRead: AudienceEveryone, InfoRead: AudienceEveryone, PhotosRead: AudienceEveryone, FriendsRead: AudienceEveryone,
-			OnlineRead: AudienceEveryone, NotesRead: AudienceEveryone, GiftsRead: AudienceEveryone,
+			OnlineRead: AudienceEveryone, GiftsRead: AudienceEveryone,
 			ChatsInvite: DefaultChatsInvite,
 		},
 		ui: DefaultInterface(),
@@ -288,10 +285,6 @@ func (u *User) UpdatePrivacy(privacy Privacy) error {
 		return err
 	}
 
-	if privacy.NotesRead == "" {
-		privacy.NotesRead = AudienceEveryone
-	}
-
 	if privacy.GiftsRead == "" {
 		privacy.GiftsRead = AudienceEveryone
 	}
@@ -304,7 +297,7 @@ func (u *User) UpdatePrivacy(privacy Privacy) error {
 		return err
 	}
 
-	for _, a := range []Audience{privacy.InfoRead, privacy.PhotosRead, privacy.FriendsRead, privacy.OnlineRead, privacy.NotesRead, privacy.GiftsRead} {
+	for _, a := range []Audience{privacy.InfoRead, privacy.PhotosRead, privacy.FriendsRead, privacy.OnlineRead, privacy.GiftsRead} {
 		if _, err := NewAudience(a.String()); err != nil {
 			return err
 		}

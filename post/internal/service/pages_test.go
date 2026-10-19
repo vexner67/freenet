@@ -20,8 +20,7 @@ func TestDeletedPages_ByID(t *testing.T) {
 	ann, bob, club := uuid.New(), uuid.New(), uuid.New()
 
 	store := inmem.NewStore()
-	notesRepo := inmem.NewNoteRepository()
-	holders := []service.ReactionHolder{store.Holds(), notesRepo}
+	holders := []service.ReactionHolder{store.Holds()}
 
 	posts := service.NewPostService(service.PostDeps{
 		Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{},
@@ -31,7 +30,6 @@ func TestDeletedPages_ByID(t *testing.T) {
 		Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: fakeTx{}, Notifier: &fakeNotifier{},
 		Photos: &fakePhotos{}, Moderators: fakeModerators{}, Pages: store.Holds(),
 	})
-	notes := service.NewNoteService(service.NoteDeps{Notes: notesRepo, Comments: notesRepo.Comments(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Pages: notesRepo})
 
 	say := func(wallID, authorID uuid.UUID, fromWall bool) *post.Post {
 		t.Helper()
@@ -52,15 +50,6 @@ func TestDeletedPages_ByID(t *testing.T) {
 		t.Fatal(err)
 	}
 	hers, err := comments.Create(ctx, service.CommentInput{AuthorID: ann, PostID: anns.ID(), Content: post.RestoreCommentContent("да", nil)})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	note, err := notes.Create(ctx, bob, "Про котов", "Коты спят.")
-	if err != nil {
-		t.Fatal(err)
-	}
-	noted, err := notes.Comment(ctx, bob, note.ID(), "ещё")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,21 +91,6 @@ func TestDeletedPages_ByID(t *testing.T) {
 		}
 		if found, err := comments.GetMany(ctx, []uuid.UUID{bobs.ID(), hers.ID()}); err != nil || len(found) != want {
 			t.Errorf("%s: comments = %d, %v; want %d", when, len(found), err, want)
-		}
-
-		if _, err := notes.Get(ctx, note.ID()); errors.Is(err, post.ErrNoteNotFound) != gone || (!gone && err != nil) {
-			t.Errorf("%s: the note: %v", when, err)
-		}
-		if _, err := notes.CommentByID(ctx, noted.ID()); errors.Is(err, post.ErrCommentNotFound) != gone || (!gone && err != nil) {
-			t.Errorf("%s: the comment of the note: %v", when, err)
-		}
-
-		want = 1
-		if gone {
-			want = 0
-		}
-		if found, err := notes.CommentsByID(ctx, []uuid.UUID{noted.ID()}); err != nil || len(found) != want {
-			t.Errorf("%s: comments of the note = %d, %v; want %d", when, len(found), err, want)
 		}
 	}
 
