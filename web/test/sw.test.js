@@ -72,6 +72,8 @@ test('a community is the title of what it did', () => {
 
   assert.equal(notificationOf({ type: 'notification', kind: 'suggested_post', id: 'n1', actor: cats }).url, '/club/cats/suggested');
   assert.equal(notificationOf({ type: 'notification', kind: 'like', id: 'n1', actor: cats }).body, 'Оценило вашу запись.');
+  assert.equal(notificationOf({ type: 'notification', kind: 'club_verified', id: 'n1', actor: cats }).url, '/club/cats');
+  assert.equal(notificationOf({ type: 'notification', kind: 'verified', id: 'n1', actor: ann }).body, 'Подтвердила вашу страницу.');
 });
 
 test('the worker listens for pushes and clicks', () => {

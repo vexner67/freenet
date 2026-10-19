@@ -325,6 +325,55 @@ func TestRepositories(t *testing.T) {
 			t.Fatalf("notifications after it is taken back = %d, want 0", got)
 		}
 	})
+	t.Run("checkmarks", func(t *testing.T) {
+		count := func() int {
+			t.Helper()
+
+			got, err := repo.List(ctx, service.Query{RecipientID: bob, Unread: true, Limit: 10})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			return len(got)
+		}
+		save := func(e notification.Event) {
+			t.Helper()
+
+			n, err := notification.New(e, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err = repo.Save(ctx, n); err != nil {
+				t.Fatalf("Save: %v", err)
+			}
+		}
+
+		before := count()
+
+		// One per page, whichever administrator gave it, taken back by
+		// any of them.
+		save(notification.Event{Kind: notification.KindVerified, RecipientID: bob, ActorID: uuid.New()})
+		save(notification.Event{Kind: notification.KindVerified, RecipientID: bob, ActorID: uuid.New()})
+		// One per community, whoever owns it.
+		club := uuid.New()
+		save(notification.Event{Kind: notification.KindClubVerified, RecipientID: bob, ActorID: club})
+		save(notification.Event{Kind: notification.KindClubVerified, RecipientID: uuid.New(), ActorID: club})
+
+		if got := count() - before; got != 2 {
+			t.Fatalf("notifications about the checkmarks = %d, want 2", got)
+		}
+
+		if err := repo.Delete(ctx, notification.Event{Kind: notification.KindVerified, RecipientID: bob, ActorID: uuid.New()}); err != nil {
+			t.Fatal(err)
+		}
+		if err := repo.Delete(ctx, notification.Event{Kind: notification.KindClubVerified, RecipientID: uuid.New(), ActorID: club}); err != nil {
+			t.Fatal(err)
+		}
+
+		if got := count() - before; got != 0 {
+			t.Fatalf("notifications after they are taken back = %d, want 0", got)
+		}
+	})
 	t.Run("accepted post", func(t *testing.T) {
 		published, club := uuid.New(), uuid.New()
 		e := notification.Event{Kind: notification.KindPostAccepted, RecipientID: bob, ActorID: club, PostID: published}
