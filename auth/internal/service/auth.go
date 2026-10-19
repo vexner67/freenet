@@ -29,10 +29,12 @@ var (
 )
 
 // Account is auth's view of a user: who it is and whether the page is
-// deleted, which restricts its access tokens to restoring it.
+// deleted, which restricts its access tokens to restoring it, or blocked
+// by the administrators, which restricts them to reading why.
 type Account struct {
 	UserID      uuid.UUID
 	Deactivated bool
+	Banned      bool
 }
 
 // UserProvider is auth's view of the user service.
@@ -103,8 +105,8 @@ type RefreshClaims struct {
 }
 
 type TokenProvider interface {
-	// CreateAccessToken marks the token of a deleted page (deactivated).
-	CreateAccessToken(userID, sessionID, tokenID string, deactivated bool) (string, error)
+	// CreateAccessToken marks the token of a deleted or a blocked page.
+	CreateAccessToken(acc Account, sessionID, tokenID string) (string, error)
 	CreateRefreshToken(userID, sessionID, tokenID string) (string, error)
 	// ParseRefreshToken returns ErrInvalidRefreshToken for a token that is
 	// malformed, expired, forged or not a refresh token.
@@ -399,12 +401,7 @@ func (s *AuthService) issueTokens(acc Account, sessionID uuid.UUID) (TokenPair, 
 		return TokenPair{}, errs.Wrap("uuid.NewV7", err)
 	}
 
-	accessToken, err := s.tokenProvider.CreateAccessToken(
-		acc.UserID.String(),
-		sessionID.String(),
-		accessTokenID.String(),
-		acc.Deactivated,
-	)
+	accessToken, err := s.tokenProvider.CreateAccessToken(acc, sessionID.String(), accessTokenID.String())
 	if err != nil {
 		return TokenPair{}, errs.Wrap("s.tokenProvider.CreateAccessToken", err)
 	}

@@ -39,12 +39,20 @@ func New(cfg Config) *JWT {
 	}
 }
 
-func (j *JWT) CreateAccessToken(userID, sessionID, tokenID string, deactivated bool) (string, error) {
-	return j.create(token{typ: jwtauth.AccessToken, ttl: j.accessTTL, userID: userID, sessionID: sessionID, id: tokenID, deactivated: deactivated})
+func (j *JWT) CreateAccessToken(acc service.Account, sessionID, tokenID string) (string, error) {
+	return j.create(token{
+		typ:         jwtauth.AccessToken,
+		ttl:         j.accessTTL,
+		userID:      acc.UserID.String(),
+		sessionID:   sessionID,
+		id:          tokenID,
+		deactivated: acc.Deactivated,
+		banned:      acc.Banned,
+	})
 }
 
 // CreateRefreshToken: a refresh token never says whether the page is
-// deleted, RefreshToken asks the user service each time.
+// deleted or blocked, RefreshToken asks the user service each time.
 func (j *JWT) CreateRefreshToken(userID, sessionID, tokenID string) (string, error) {
 	return j.create(token{typ: jwtauth.RefreshToken, ttl: j.refreshTTL, userID: userID, sessionID: sessionID, id: tokenID})
 }
@@ -57,6 +65,7 @@ type token struct {
 	sessionID   string
 	id          string
 	deactivated bool
+	banned      bool
 }
 
 func (j *JWT) ParseRefreshToken(token string) (service.RefreshClaims, error) {
@@ -87,6 +96,7 @@ func (j *JWT) create(t token) (string, error) {
 		TokenType:   t.typ,
 		SessionID:   t.sessionID,
 		Deactivated: t.deactivated,
+		Banned:      t.banned,
 	}
 
 	token, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(j.privateKey)
