@@ -64,6 +64,7 @@ func registerPages(mux *http.ServeMux, dir string) {
 	mux.Handle("GET /about", site.page(dir, "about.html"))
 	mux.Handle("GET /terms", site.page(dir, "terms.html"))
 	mux.Handle("GET /help", site.page(dir, "help.html"))
+	mux.Handle("GET /language", site.page(dir, "language.html"))
 	mux.Handle("GET /invite", site.page(dir, "invite.html"))
 	mux.Handle("GET /groups", site.page(dir, "groups.html"))
 	mux.Handle("GET /groups/create", site.page(dir, "club-create.html"))
