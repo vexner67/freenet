@@ -1,10 +1,11 @@
 // Stories, VK's "истории" (openvk has none): a photo with a few words shown
 // for a day. Above the news is a row of circles, one per person with live
 // stories, a ring around those not viewed yet; a click opens them over
-// the whole screen, one after another, as VK plays them.
+// the whole screen, one after another, as VK plays them. Under each are
+// a heart and the comments, which open over the lower part of the photo.
 
 import { api } from './api.js';
-import { storyAge, storyViewers, storyViews } from './labels.js';
+import { storyAge, storyComments, storyViewers, storyViews } from './labels.js';
 import { avatarURL, el, fullName, pagePath, showError, verifiedMark } from './layout.js';
 import { openLikers } from './likers.js';
 import { button, openModal } from './modal.js';
@@ -12,6 +13,8 @@ import { button, openModal } from './modal.js';
 // How long a story is shown before the next one, as on VK.
 const STORY_SHOWN = 6000;
 const MAX_TEXT = 200;
+const MAX_COMMENT = 1000;
+const COMMENTS_PAGE = 50;
 
 // viewers is what the box of who viewed a story lists.
 const viewers = {
@@ -77,9 +80,12 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
   const photo = el('img', { className: 'story-photo', alt: '' });
   const text = el('div', { className: 'story-text' });
   const foot = el('div', { className: 'story-foot' });
+  const comments = el('div', { className: 'story-comments', hidden: true });
+  // The comments lie over the zones that turn the stories.
   const stage = el('div', { className: 'story-stage' }, photo, text,
     el('a', { className: 'story-zone story-zone-prev', onclick: () => step(-1) }),
-    el('a', { className: 'story-zone story-zone-next', onclick: () => step(1) }));
+    el('a', { className: 'story-zone story-zone-next', onclick: () => step(1) }),
+    comments);
   const box = el('div', { className: 'story-box' }, progress, head, stage, foot);
   const overlay = el('div', { className: 'story-viewer' }, box,
     el('a', { className: 'viewer-nav viewer-prev', textContent: '‹', onclick: () => step(-1) }),
@@ -89,10 +95,10 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
     return authors[author].stories[story];
   }
 
-  // paused: a box over the stories (who viewed, deleting) or a tab in
-  // the background stops the time.
+  // paused: a box over the stories (who viewed, deleting), the comments
+  // or a tab in the background stops the time.
   function paused() {
-    return !ready || document.hidden || document.querySelector('.modal') !== null;
+    return !ready || document.hidden || !comments.hidden || document.querySelector('.modal') !== null;
   }
 
   function tick(now) {
@@ -131,8 +137,9 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
       el('a', { className: 'story-close', textContent: '×', title: 'Закрыть', onclick: close }));
     text.textContent = s.text;
     text.hidden = !s.text;
-    foot.replaceChildren(...(s.mine ? ownLinks(s) : []));
-    foot.hidden = !s.mine;
+    comments.hidden = true;
+    comments.replaceChildren();
+    renderFoot(s);
 
     photo.onload = photo.onerror = () => {
       ready = true;
@@ -150,6 +157,126 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
     entry.viewed = entry.stories.every((x) => x.viewed);
     api.viewStory(s.id).catch(() => {}); // Not counted this time: nothing to show for it.
     onChange();
+  }
+
+  function renderFoot(s) {
+    const heart = el('a', {
+      className: s.liked ? 'story-like story-liked' : 'story-like',
+      title: s.liked ? 'Вам нравится' : 'Нравится',
+      onclick: () => toggleLike(s),
+    }, '♥', s.likes > 0 ? ` ${s.likes}` : '');
+    const talk = el('a', { textContent: storyComments(s.comments), onclick: () => toggleComments(s) });
+
+    foot.replaceChildren(heart, talk, ...(s.mine ? ownLinks(s) : []));
+  }
+
+  let liking = false;
+
+  async function toggleLike(s) {
+    if (liking) return;
+    liking = true;
+
+    const liked = !s.liked;
+    try {
+      await (liked ? api.likeStory(s.id) : api.unlikeStory(s.id));
+      s.liked = liked;
+      s.likes += liked ? 1 : -1;
+    } catch {
+      // The heart stays as it was: nothing else to show for it.
+    } finally {
+      liking = false;
+    }
+
+    if (current() === s) renderFoot(s);
+  }
+
+  function toggleComments(s) {
+    if (!comments.hidden) {
+      comments.hidden = true;
+      return;
+    }
+
+    comments.hidden = false;
+    loadComments(s);
+  }
+
+  // loadComments fills the comments over the photo: the oldest first,
+  // a form for a new one below them.
+  async function loadComments(s) {
+    const list = el('div', { className: 'story-comment-list' });
+    const more = el('a', { className: 'story-comments-more', textContent: 'Показать ещё', hidden: true });
+    const error = el('div', { className: 'error', hidden: true });
+    const field = el('textarea', { maxLength: MAX_COMMENT, placeholder: 'Ваш комментарий...', ariaLabel: 'Ваш комментарий' });
+    const send = el('button', { type: 'submit', textContent: 'Отправить' });
+    const form = el('form', { className: 'story-comment-form' }, field, send);
+    let cursor = '';
+
+    async function page() {
+      try {
+        const got = await api.storyComments(s.id, cursor, COMMENTS_PAGE);
+        list.append(...got.comments.map((c) => commentNode(s, c)));
+        cursor = got.nextCursor;
+        more.hidden = !cursor;
+        if (!cursor && list.children.length === 0) {
+          list.append(el('p', { className: 'story-comments-empty', textContent: 'Комментариев пока нет.' }));
+        }
+      } catch (e) {
+        showError(error, e);
+      }
+    }
+
+    more.addEventListener('click', page);
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!field.value.trim()) return;
+
+      send.disabled = true;
+      try {
+        const c = await api.commentStory(s.id, field.value);
+        list.querySelector('.story-comments-empty')?.remove();
+        list.append(commentNode(s, c));
+        list.scrollTop = list.scrollHeight;
+        field.value = '';
+        s.comments++;
+        renderFoot(s);
+      } catch (e) {
+        showError(error, e);
+      } finally {
+        send.disabled = false;
+      }
+    });
+
+    comments.replaceChildren(list, more, error, form);
+    await page();
+  }
+
+  function commentNode(s, c) {
+    const node = el('div', { className: 'story-comment' },
+      el('a', { href: pagePath(c.author) }, el('img', { src: avatarURL(c.author, 'small'), alt: '' })),
+      el('div', {},
+        el('a', { className: 'story-comment-author', href: pagePath(c.author) }, fullName(c.author), verifiedMark(c.author)),
+        el('div', { className: 'story-comment-text', textContent: c.text }),
+        el('span', { className: 'story-age', textContent: storyAge(c.createdAt) })));
+
+    // Its author and the author of the story delete it.
+    if (c.mine || s.mine) {
+      node.lastChild.append(' ', el('a', {
+        className: 'story-comment-delete',
+        textContent: 'Удалить',
+        onclick: async () => {
+          try {
+            await api.deleteStoryComment(c.id);
+          } catch {
+            return; // Gone already, or not ours: it stays until the next look.
+          }
+          node.remove();
+          s.comments = Math.max(0, s.comments - 1);
+          renderFoot(s);
+        },
+      }));
+    }
+
+    return node;
   }
 
   function ownLinks(s) {
@@ -228,8 +355,8 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
   }
 
   function onKey(event) {
-    // A box over the stories has the keys.
-    if (document.querySelector('.modal')) return;
+    // A box over the stories and the comment being written have the keys.
+    if (document.querySelector('.modal') || event.target.closest?.('textarea, input')) return;
 
     if (event.key === 'Escape') close();
     if (event.key === 'ArrowRight') step(1);

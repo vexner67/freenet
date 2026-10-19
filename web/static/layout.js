@@ -214,7 +214,7 @@ function menuLink(me, item, href, text, counter) {
     counter && el('span', { className: 'counter', id: counter, hidden: true }));
 }
 
-async function logout(event) {
+export async function logout(event) {
   event.preventDefault();
   // While the token still works: the pushes of this browser are no longer
   // the account's.
@@ -474,7 +474,8 @@ export function renderChrome(me) {
   document.body.classList.toggle('guest', !me);
   if (me) signedInAs(me.id);
 
-  if (me?.deactivated) {
+  // A deleted or blocked page has only the way to itself and out.
+  if (me?.deactivated || me?.ban) {
     renderDeactivatedChrome(me, links, menu);
     return;
   }

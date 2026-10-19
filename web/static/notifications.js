@@ -163,6 +163,16 @@ function notificationText(n) {
       el('a', { href: notePath(n.note) }, el('b', { textContent: `«${n.note.title}»` })), said(n)];
   }
 
+  // A like and a comment of your story, as VK tells them; the story lives
+  // a day, and the notification goes with it.
+  if (n.type === 'story_like') {
+    return [name, ` ${notificationVerb('like', n.actor)} вашу `, el('b', { textContent: 'историю' }), '.'];
+  }
+
+  if (n.type === 'story_comment') {
+    return [name, ` ${notificationVerb('comment', n.actor)} комментарий под вашей `, el('b', { textContent: 'историей' }), '.'];
+  }
+
   // openvk's "отправил вам подарок"; the gifts are on your page.
   if (n.type === 'gift') {
     return [name, ` ${notificationVerb('gift', n.actor)} вам `, el('a', { href: '/gifts' }, el('b', { textContent: 'подарок' })), '.'];

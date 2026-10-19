@@ -1,6 +1,6 @@
 import { api, currentUser, started } from './api.js';
-import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows } from './labels.js';
-import { $, el, fullName, hideError, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
+import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName } from './labels.js';
+import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
 import { notesBlock } from './notes.js';
@@ -399,6 +399,56 @@ function renderDeactivated(profile, isOwner) {
   }
 }
 
+// renderBanned is a page the administrators of the site blocked: others
+// read openvk's "К сожалению, нам пришлось заблокировать страницу
+// пользователя …" with the reason, its owner openvk's "вы были
+// верискокнуты" with the way out; an administrator may lift the block.
+function renderBanned(profile, isOwner) {
+  const name = fullName(profile);
+  const ban = profile.ban;
+
+  document.title = `${name} | Freenet`;
+  $('title').replaceChildren(name, verifiedMark(profile));
+  $('title-aside').textContent = '@' + profile.nickname;
+  $('name').textContent = name;
+  $('status').textContent = 'Пользователь заблокирован';
+  $('status').classList.add('empty');
+  $('profile').hidden = false;
+
+  if (isOwner) {
+    $('profile-content').replaceChildren(el('div', { className: 'banned-info' },
+      el('p', {}, 'Извините, ', el('b', { textContent: name }), ', но вы были верискокнуты.'),
+      el('p', {}, 'А причина этому проста: ', el('b', { textContent: ban.reason }), '.'),
+      ban.until
+        ? el('p', {}, 'На этот раз нам пришлось заблокировать вас до ', el('b', { textContent: formatDateTime(ban.until) }), '.')
+        : el('p', { textContent: 'К сожалению, на этот раз нам пришлось заблокировать вас навсегда.' }),
+      el('p', {}, 'Вы всё ещё можете ', el('a', { href: '/', textContent: 'выйти', onclick: logout }), '.'),
+    ));
+    return;
+  }
+
+  const info = el('div', { className: 'banned-info' },
+    el('p', {}, 'К сожалению, нам пришлось заблокировать страницу пользователя ', el('b', { textContent: genitiveName(profile) }), '.'),
+    el('p', {}, 'Комментарий модератора: ', el('b', { textContent: ban.reason }), '.'),
+    el('p', {}, 'Пользователь заблокирован ', el('b', { textContent: banEnd(ban) }), '.'),
+  );
+
+  if (me?.admin) {
+    const lift = el('a', { textContent: 'Разблокировать пользователя' });
+    lift.addEventListener('click', async () => {
+      try {
+        await api.unban(profile.nickname);
+        location.reload();
+      } catch (e) {
+        showError($('error'), e);
+      }
+    });
+    info.append(el('p', {}, lift));
+  }
+
+  $('profile-content').replaceChildren(info);
+}
+
 async function reactivate() {
   try {
     await api.reactivate();
@@ -416,10 +466,13 @@ renderChrome(me);
 try {
   // The public profile also brings the follow counters; the owner sees the
   // whole profile from /me. A deleted page sees others as a guest does.
-  const profile = await (me?.deactivated ? api.publicProfile(nickname) : wanted);
+  const profile = await (me?.deactivated || me?.ban ? api.publicProfile(nickname) : wanted);
   const isOwner = Boolean(me) && me.id === profile.id;
 
-  if (profile.deactivated) {
+  if (profile.ban) {
+    renderBanned(profile, isOwner);
+    initPhoto(profile, false);
+  } else if (profile.deactivated) {
     renderDeactivated(profile, isOwner);
     initPhoto(profile, false);
   } else if (profile.pageHidden && !profile.closed) {
@@ -456,7 +509,7 @@ try {
   }
 
   // As on openvk, also on the page of whoever blacklisted the viewer.
-  if (me && !isOwner && !profile.deactivated && (!profile.pageHidden || profile.closed)) {
+  if (me && !isOwner && !profile.deactivated && !profile.ban && (!profile.pageHidden || profile.closed)) {
     initBlacklistLink(profile, () => location.reload());
     initIgnoreLink($('ignore'), {
       kind: 'user',

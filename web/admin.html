@@ -31,6 +31,7 @@
         <div class="aui-nav-heading">Пользовательский контент</div>
         <a class="aui-nav-item" href="/admin/users" title="Пользователи"><span class="aui-icon aui-icon-users"></span><span class="aui-nav-item-label">Пользователи</span></a>
         <a class="aui-nav-item" href="/admin/clubs" title="Группы"><span class="aui-icon aui-icon-clubs"></span><span class="aui-nav-item-label">Группы</span></a>
+        <a class="aui-nav-item" href="/admin/bans" title="Блокировки"><span class="aui-icon aui-icon-ban"></span><span class="aui-nav-item-label">Блокировки</span></a>
       </div>
       <div class="aui-sidebar-group">
         <div class="aui-nav-heading">Платные услуги</div>
@@ -79,7 +80,7 @@
     </section>
 
     <section id="users" hidden>
-      <h1 class="aui-page-heading">Пользователи</h1>
+      <h1 class="aui-page-heading" id="users-title">Пользователи</h1>
       <form class="aui admin-search" id="user-search" action="/admin/users" role="search">
         <input class="text" type="search" id="user-query" name="q" maxlength="64" placeholder="Поиск пользователей" autocomplete="off" aria-label="Поиск пользователей">
         <button class="aui-button" type="submit">Найти</button>
@@ -92,6 +93,7 @@
               <th>Пользователь</th>
               <th>Адрес страницы</th>
               <th>Верификация</th>
+              <th>Блокировка</th>
             </tr>
           </thead>
           <tbody id="user-rows"></tbody>
@@ -199,6 +201,40 @@
       </form>
     </section>
   </main>
+</div>
+
+<div class="aui-blanket" id="ban-dialog" hidden>
+  <section class="aui-dialog" role="dialog" aria-modal="true" aria-labelledby="ban-title">
+    <header class="aui-dialog-header"><h2 id="ban-title">Заблокировать пользователя</h2></header>
+    <form class="aui aui-dialog-content" id="ban-form">
+      <p id="ban-about"></p>
+      <div class="field-group">
+        <label for="ban-reason">Причина блокировки</label>
+        <input class="text" type="text" id="ban-reason" maxlength="255" required autocomplete="off">
+        <div class="description">Её увидят сам пользователь и те, кто откроет его страницу.</div>
+      </div>
+      <div class="field-group">
+        <label for="ban-term">Срок</label>
+        <select class="select" id="ban-term">
+          <option value="day">на сутки</option>
+          <option value="week">на неделю</option>
+          <option value="month" selected>на месяц</option>
+          <option value="year">на год</option>
+          <option value="forever">навсегда</option>
+          <option value="date">до даты…</option>
+        </select>
+      </div>
+      <div class="field-group" id="ban-date-group" hidden>
+        <label for="ban-date">Заблокировать до</label>
+        <input class="text" type="datetime-local" id="ban-date">
+      </div>
+      <p class="aui-message aui-message-error" id="ban-error" hidden></p>
+      <div class="buttons-container">
+        <button class="aui-button aui-button-primary" type="submit">Заблокировать</button>
+        <button class="aui-button aui-button-link" type="button" id="ban-cancel">Отмена</button>
+      </div>
+    </form>
+  </section>
 </div>
 </body>
 </html>
