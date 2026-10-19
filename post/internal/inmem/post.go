@@ -42,6 +42,10 @@ type Store struct {
 	// stories are the stories told, and storyViews story → its views.
 	stories    map[uuid.UUID]*post.Story
 	storyViews map[uuid.UUID][]storyView
+	// storyLikes are who liked each story; storyComments the comments
+	// under stories, by ID.
+	storyLikes    map[uuid.UUID]map[uuid.UUID]bool
+	storyComments map[uuid.UUID]*post.StoryComment
 }
 
 func NewStore() *Store {

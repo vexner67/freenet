@@ -171,7 +171,8 @@ func (a *App) build(cfg config.Config) error {
 	})
 	a.postponedEvery = cfg.PostponedInterval
 	a.stories = service.NewStoryService(service.StoryDeps{
-		Stories: repos.stories, Views: repos.storyViews, Tx: repos.tx, Photos: photos,
+		Stories: repos.stories, Views: repos.storyViews, Likes: repos.storyLikes, Comments: repos.storyComments,
+		Tx: repos.tx, Photos: photos, Notifier: notifier,
 	})
 	a.storiesEvery = cfg.StoryCleanupInterval
 
@@ -293,6 +294,11 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		// A document is added after every upload, which media counts too.
 		postv1.PostService_AddDocument_FullMethodName:    cfg.PostLimits,
 		postv1.PostService_RenameDocument_FullMethodName: cfg.EditLimits,
+		// A story is told, liked and commented as a post.
+		postv1.PostService_CreateStory_FullMethodName:        cfg.PostLimits,
+		postv1.PostService_LikeStory_FullMethodName:          cfg.LikeLimits,
+		postv1.PostService_UnlikeStory_FullMethodName:        cfg.LikeLimits,
+		postv1.PostService_CreateStoryComment_FullMethodName: cfg.CommentLimits,
 	}
 }
 
@@ -481,7 +487,9 @@ type repositories struct {
 		service.StoryRepository
 		service.StoryEraser
 	}
-	storyViews service.StoryViewRepository
+	storyViews    service.StoryViewRepository
+	storyLikes    service.StoryLikeRepository
+	storyComments service.StoryCommentRepository
 	// held keep the likes and votes of deleted pages aside.
 	held []service.ReactionHolder
 	// pages knows the deleted pages, for what is read by its ID.
@@ -531,6 +539,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			notes: notes, noteComments: notes.Comments(),
 			documents: inmem.NewDocumentRepository(),
 			stories:   store.Stories(), storyViews: store.StoryViews(),
+			storyLikes: store.StoryLikes(), storyComments: store.StoryComments(),
 			held: []service.ReactionHolder{store.Holds(), topics, albums, notes},
 			// Every store is told of a deleted page; one answers for all.
 			pages:   store.Holds(),
@@ -587,6 +596,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		notes: notes, noteComments: notes.Comments(),
 		documents: postgres.NewDocumentRepository(a.pool),
 		stories:   postgres.NewStoryRepository(a.pool), storyViews: postgres.NewStoryViewRepository(a.pool),
+		storyLikes: postgres.NewStoryLikeRepository(a.pool), storyComments: postgres.NewStoryCommentRepository(a.pool),
 		held:    []service.ReactionHolder{held},
 		pages:   held,
 		sources: postgres.NewSourceRepository(a.pool),

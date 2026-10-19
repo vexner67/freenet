@@ -172,6 +172,8 @@ service PostService {
   rpc ListFeedStories(ListFeedStoriesRequest) returns (ListFeedStoriesResponse);
   // The live stories of one person the caller sees, the oldest first.
   rpc ListUserStories(ListUserStoriesRequest) returns (ListUserStoriesResponse);
+  // A live story the caller sees.
+  rpc GetStory(GetStoryRequest) returns (GetStoryResponse);
   // The caller viewed a story they see; once is enough. Their own is not
   // counted.
   rpc ViewStory(ViewStoryRequest) returns (google.protobuf.Empty);
@@ -179,6 +181,17 @@ service PostService {
   rpc ListStoryViewers(ListStoryViewersRequest) returns (ListStoryViewersResponse);
   // The author deletes a story with its photo.
   rpc DeleteStory(DeleteStoryRequest) returns (google.protobuf.Empty);
+  // The caller likes a story they see, or takes the like back; both are
+  // idempotent. Its author hears of the like.
+  rpc LikeStory(LikeStoryRequest) returns (google.protobuf.Empty);
+  rpc UnlikeStory(UnlikeStoryRequest) returns (google.protobuf.Empty);
+  // The caller comments a story they see, in text only; its author hears
+  // of it. The caller of CreateStoryComment has checked the blacklist.
+  rpc CreateStoryComment(CreateStoryCommentRequest) returns (CreateStoryCommentResponse);
+  // The comments of a story the caller sees, the oldest first.
+  rpc ListStoryComments(ListStoryCommentsRequest) returns (ListStoryCommentsResponse);
+  // The author of a comment or of its story deletes it.
+  rpc DeleteStoryComment(DeleteStoryCommentRequest) returns (google.protobuf.Empty);
 
   // The discussions of communities ("Обсуждения" of openvk). The caller
   // of CreateTopic has checked with the club service that the author may
@@ -1901,6 +1914,11 @@ message Story {
   bool mine = 8;
   // Of the caller's own: how many others viewed it.
   int32 views = 9;
+  // The caller liked it.
+  bool liked = 10;
+  // How many liked and commented it, deleted pages aside.
+  int32 like_count = 11;
+  int32 comment_count = 12;
 }
 
 message CreateStoryRequest {
@@ -1934,6 +1952,14 @@ message ListUserStoriesResponse {
   repeated Story stories = 1;
 }
 
+message GetStoryRequest {
+  string id = 1;
+}
+
+message GetStoryResponse {
+  Story story = 1;
+}
+
 message ViewStoryRequest {
   string id = 1;
 }
@@ -1961,5 +1987,54 @@ message ListStoryViewersResponse {
 }
 
 message DeleteStoryRequest {
+  string id = 1;
+}
+
+message LikeStoryRequest {
+  string id = 1;
+}
+
+message UnlikeStoryRequest {
+  string id = 1;
+}
+
+// StoryComment is a few words under a story.
+message StoryComment {
+  string id = 1;
+  string story_id = 2;
+  string author_id = 3;
+  string text = 4;
+  google.protobuf.Timestamp created_at = 5;
+  // The caller wrote it.
+  bool mine = 6;
+}
+
+message CreateStoryCommentRequest {
+  string story_id = 1;
+  // 1-1000 characters.
+  string text = 2;
+}
+
+message CreateStoryCommentResponse {
+  StoryComment comment = 1;
+}
+
+message ListStoryCommentsRequest {
+  string story_id = 1;
+  // Empty for the oldest comments, else next_cursor of the previous page.
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+}
+
+message ListStoryCommentsResponse {
+  repeated StoryComment comments = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  // How many comments it has.
+  int32 total = 3;
+}
+
+message DeleteStoryCommentRequest {
   string id = 1;
 }

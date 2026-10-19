@@ -72,9 +72,15 @@ const (
 	PostService_CreateStory_FullMethodName            = "/post.v1.PostService/CreateStory"
 	PostService_ListFeedStories_FullMethodName        = "/post.v1.PostService/ListFeedStories"
 	PostService_ListUserStories_FullMethodName        = "/post.v1.PostService/ListUserStories"
+	PostService_GetStory_FullMethodName               = "/post.v1.PostService/GetStory"
 	PostService_ViewStory_FullMethodName              = "/post.v1.PostService/ViewStory"
 	PostService_ListStoryViewers_FullMethodName       = "/post.v1.PostService/ListStoryViewers"
 	PostService_DeleteStory_FullMethodName            = "/post.v1.PostService/DeleteStory"
+	PostService_LikeStory_FullMethodName              = "/post.v1.PostService/LikeStory"
+	PostService_UnlikeStory_FullMethodName            = "/post.v1.PostService/UnlikeStory"
+	PostService_CreateStoryComment_FullMethodName     = "/post.v1.PostService/CreateStoryComment"
+	PostService_ListStoryComments_FullMethodName      = "/post.v1.PostService/ListStoryComments"
+	PostService_DeleteStoryComment_FullMethodName     = "/post.v1.PostService/DeleteStoryComment"
 	PostService_CreateTopic_FullMethodName            = "/post.v1.PostService/CreateTopic"
 	PostService_GetTopic_FullMethodName               = "/post.v1.PostService/GetTopic"
 	PostService_ListTopics_FullMethodName             = "/post.v1.PostService/ListTopics"
@@ -298,6 +304,8 @@ type PostServiceClient interface {
 	ListFeedStories(ctx context.Context, in *ListFeedStoriesRequest, opts ...grpc.CallOption) (*ListFeedStoriesResponse, error)
 	// The live stories of one person the caller sees, the oldest first.
 	ListUserStories(ctx context.Context, in *ListUserStoriesRequest, opts ...grpc.CallOption) (*ListUserStoriesResponse, error)
+	// A live story the caller sees.
+	GetStory(ctx context.Context, in *GetStoryRequest, opts ...grpc.CallOption) (*GetStoryResponse, error)
 	// The caller viewed a story they see; once is enough. Their own is not
 	// counted.
 	ViewStory(ctx context.Context, in *ViewStoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -305,6 +313,17 @@ type PostServiceClient interface {
 	ListStoryViewers(ctx context.Context, in *ListStoryViewersRequest, opts ...grpc.CallOption) (*ListStoryViewersResponse, error)
 	// The author deletes a story with its photo.
 	DeleteStory(ctx context.Context, in *DeleteStoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The caller likes a story they see, or takes the like back; both are
+	// idempotent. Its author hears of the like.
+	LikeStory(ctx context.Context, in *LikeStoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	UnlikeStory(ctx context.Context, in *UnlikeStoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The caller comments a story they see, in text only; its author hears
+	// of it. The caller of CreateStoryComment has checked the blacklist.
+	CreateStoryComment(ctx context.Context, in *CreateStoryCommentRequest, opts ...grpc.CallOption) (*CreateStoryCommentResponse, error)
+	// The comments of a story the caller sees, the oldest first.
+	ListStoryComments(ctx context.Context, in *ListStoryCommentsRequest, opts ...grpc.CallOption) (*ListStoryCommentsResponse, error)
+	// The author of a comment or of its story deletes it.
+	DeleteStoryComment(ctx context.Context, in *DeleteStoryCommentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// The discussions of communities ("Обсуждения" of openvk). The caller
 	// of CreateTopic has checked with the club service that the author may
 	// start a topic there and, with from_wall, speak for the community, and
@@ -998,6 +1017,16 @@ func (c *postServiceClient) ListUserStories(ctx context.Context, in *ListUserSto
 	return out, nil
 }
 
+func (c *postServiceClient) GetStory(ctx context.Context, in *GetStoryRequest, opts ...grpc.CallOption) (*GetStoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetStoryResponse)
+	err := c.cc.Invoke(ctx, PostService_GetStory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) ViewStory(ctx context.Context, in *ViewStoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -1022,6 +1051,56 @@ func (c *postServiceClient) DeleteStory(ctx context.Context, in *DeleteStoryRequ
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, PostService_DeleteStory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) LikeStory(ctx context.Context, in *LikeStoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_LikeStory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) UnlikeStory(ctx context.Context, in *UnlikeStoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_UnlikeStory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) CreateStoryComment(ctx context.Context, in *CreateStoryCommentRequest, opts ...grpc.CallOption) (*CreateStoryCommentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateStoryCommentResponse)
+	err := c.cc.Invoke(ctx, PostService_CreateStoryComment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListStoryComments(ctx context.Context, in *ListStoryCommentsRequest, opts ...grpc.CallOption) (*ListStoryCommentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListStoryCommentsResponse)
+	err := c.cc.Invoke(ctx, PostService_ListStoryComments_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) DeleteStoryComment(ctx context.Context, in *DeleteStoryCommentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_DeleteStoryComment_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1798,6 +1877,8 @@ type PostServiceServer interface {
 	ListFeedStories(context.Context, *ListFeedStoriesRequest) (*ListFeedStoriesResponse, error)
 	// The live stories of one person the caller sees, the oldest first.
 	ListUserStories(context.Context, *ListUserStoriesRequest) (*ListUserStoriesResponse, error)
+	// A live story the caller sees.
+	GetStory(context.Context, *GetStoryRequest) (*GetStoryResponse, error)
 	// The caller viewed a story they see; once is enough. Their own is not
 	// counted.
 	ViewStory(context.Context, *ViewStoryRequest) (*emptypb.Empty, error)
@@ -1805,6 +1886,17 @@ type PostServiceServer interface {
 	ListStoryViewers(context.Context, *ListStoryViewersRequest) (*ListStoryViewersResponse, error)
 	// The author deletes a story with its photo.
 	DeleteStory(context.Context, *DeleteStoryRequest) (*emptypb.Empty, error)
+	// The caller likes a story they see, or takes the like back; both are
+	// idempotent. Its author hears of the like.
+	LikeStory(context.Context, *LikeStoryRequest) (*emptypb.Empty, error)
+	UnlikeStory(context.Context, *UnlikeStoryRequest) (*emptypb.Empty, error)
+	// The caller comments a story they see, in text only; its author hears
+	// of it. The caller of CreateStoryComment has checked the blacklist.
+	CreateStoryComment(context.Context, *CreateStoryCommentRequest) (*CreateStoryCommentResponse, error)
+	// The comments of a story the caller sees, the oldest first.
+	ListStoryComments(context.Context, *ListStoryCommentsRequest) (*ListStoryCommentsResponse, error)
+	// The author of a comment or of its story deletes it.
+	DeleteStoryComment(context.Context, *DeleteStoryCommentRequest) (*emptypb.Empty, error)
 	// The discussions of communities ("Обсуждения" of openvk). The caller
 	// of CreateTopic has checked with the club service that the author may
 	// start a topic there and, with from_wall, speak for the community, and
@@ -2134,6 +2226,9 @@ func (UnimplementedPostServiceServer) ListFeedStories(context.Context, *ListFeed
 func (UnimplementedPostServiceServer) ListUserStories(context.Context, *ListUserStoriesRequest) (*ListUserStoriesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListUserStories not implemented")
 }
+func (UnimplementedPostServiceServer) GetStory(context.Context, *GetStoryRequest) (*GetStoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetStory not implemented")
+}
 func (UnimplementedPostServiceServer) ViewStory(context.Context, *ViewStoryRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method ViewStory not implemented")
 }
@@ -2142,6 +2237,21 @@ func (UnimplementedPostServiceServer) ListStoryViewers(context.Context, *ListSto
 }
 func (UnimplementedPostServiceServer) DeleteStory(context.Context, *DeleteStoryRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteStory not implemented")
+}
+func (UnimplementedPostServiceServer) LikeStory(context.Context, *LikeStoryRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method LikeStory not implemented")
+}
+func (UnimplementedPostServiceServer) UnlikeStory(context.Context, *UnlikeStoryRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnlikeStory not implemented")
+}
+func (UnimplementedPostServiceServer) CreateStoryComment(context.Context, *CreateStoryCommentRequest) (*CreateStoryCommentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateStoryComment not implemented")
+}
+func (UnimplementedPostServiceServer) ListStoryComments(context.Context, *ListStoryCommentsRequest) (*ListStoryCommentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListStoryComments not implemented")
+}
+func (UnimplementedPostServiceServer) DeleteStoryComment(context.Context, *DeleteStoryCommentRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteStoryComment not implemented")
 }
 func (UnimplementedPostServiceServer) CreateTopic(context.Context, *CreateTopicRequest) (*CreateTopicResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateTopic not implemented")
@@ -3283,6 +3393,24 @@ func _PostService_ListUserStories_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_GetStory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetStoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetStory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetStory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetStory(ctx, req.(*GetStoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_ViewStory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ViewStoryRequest)
 	if err := dec(in); err != nil {
@@ -3333,6 +3461,96 @@ func _PostService_DeleteStory_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).DeleteStory(ctx, req.(*DeleteStoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_LikeStory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LikeStoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).LikeStory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_LikeStory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).LikeStory(ctx, req.(*LikeStoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_UnlikeStory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnlikeStoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).UnlikeStory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_UnlikeStory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).UnlikeStory(ctx, req.(*UnlikeStoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_CreateStoryComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateStoryCommentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).CreateStoryComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_CreateStoryComment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).CreateStoryComment(ctx, req.(*CreateStoryCommentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListStoryComments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListStoryCommentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListStoryComments(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListStoryComments_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListStoryComments(ctx, req.(*ListStoryCommentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_DeleteStoryComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteStoryCommentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).DeleteStoryComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_DeleteStoryComment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).DeleteStoryComment(ctx, req.(*DeleteStoryCommentRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4651,6 +4869,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PostService_ListUserStories_Handler,
 		},
 		{
+			MethodName: "GetStory",
+			Handler:    _PostService_GetStory_Handler,
+		},
+		{
 			MethodName: "ViewStory",
 			Handler:    _PostService_ViewStory_Handler,
 		},
@@ -4661,6 +4883,26 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteStory",
 			Handler:    _PostService_DeleteStory_Handler,
+		},
+		{
+			MethodName: "LikeStory",
+			Handler:    _PostService_LikeStory_Handler,
+		},
+		{
+			MethodName: "UnlikeStory",
+			Handler:    _PostService_UnlikeStory_Handler,
+		},
+		{
+			MethodName: "CreateStoryComment",
+			Handler:    _PostService_CreateStoryComment_Handler,
+		},
+		{
+			MethodName: "ListStoryComments",
+			Handler:    _PostService_ListStoryComments_Handler,
+		},
+		{
+			MethodName: "DeleteStoryComment",
+			Handler:    _PostService_DeleteStoryComment_Handler,
 		},
 		{
 			MethodName: "CreateTopic",

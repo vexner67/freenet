@@ -211,12 +211,21 @@ const (
 		DELETE FROM story_views
 		WHERE viewer_id = $1
 	`
+	deleteUserStoryLikesQuery = `
+		DELETE FROM story_likes
+		WHERE user_id = $1
+	`
+	deleteUserStoryCommentsQuery = `
+		DELETE FROM story_comments
+		WHERE author_id = $1
+	`
 )
 
-// DeleteByUser deletes the stories the user told and their views of
-// others'; media erases the photos with the rest of the user.
+// DeleteByUser deletes the stories the user told and their views, likes
+// and comments of others'; media erases the photos with the rest of the
+// user.
 func (r *StoryRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
-	for _, query := range []string{deleteUserStoriesQuery, deleteUserStoryViewsQuery} {
+	for _, query := range []string{deleteUserStoriesQuery, deleteUserStoryViewsQuery, deleteUserStoryLikesQuery, deleteUserStoryCommentsQuery} {
 		if _, err := r.conn(ctx).Exec(ctx, query, userID); err != nil {
 			return errs.Wrap("r.conn.Exec", err)
 		}

@@ -48,6 +48,34 @@ type StoryViewRepository interface {
 	Count(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]int, error)
 }
 
+// StoryLikeRepository keeps who liked which story.
+type StoryLikeRepository interface {
+	// Like tells whether the like is new; post.ErrStoryNotFound when the
+	// story is gone.
+	Like(ctx context.Context, storyID, userID uuid.UUID, at time.Time) (bool, error)
+	// Unlike tells whether there was a like to take.
+	Unlike(ctx context.Context, storyID, userID uuid.UUID) (bool, error)
+	// Liked tells which of the stories userID liked.
+	Liked(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) (map[uuid.UUID]bool, error)
+	// Count counts the likes of the stories, but those of deleted pages.
+	Count(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]int, error)
+}
+
+// StoryCommentRepository keeps the comments under stories.
+type StoryCommentRepository interface {
+	// Save returns post.ErrStoryNotFound when the story is gone.
+	Save(ctx context.Context, c *post.StoryComment) error
+	// Get and Delete return post.ErrStoryCommentNotFound.
+	Get(ctx context.Context, id uuid.UUID) (*post.StoryComment, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+	// List returns up to limit comments of a story after the ID (uuid.Nil:
+	// from the first), the oldest first; those of deleted pages are left
+	// out.
+	List(ctx context.Context, storyID, after uuid.UUID, limit int) ([]*post.StoryComment, error)
+	// Count counts the comments of the stories, but those of deleted pages.
+	Count(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]int, error)
+}
+
 // StoryAudience is who looks at stories: Viewer, without the stories of
 // the people Hidden (the blacklist) and Ignored (the news leave them out).
 type StoryAudience struct {
@@ -68,12 +96,24 @@ type ViewCursor struct {
 	ViewerID uuid.UUID
 }
 
-// StoryPage is stories shown to a viewer: which they viewed and, of their
-// own, how many viewed them.
+// StoryPage is stories shown to a viewer: which they viewed and liked,
+// how many liked and commented each and, of their own, how many viewed
+// them.
 type StoryPage struct {
-	Stories []*post.Story
-	Viewed  map[uuid.UUID]bool
-	Views   map[uuid.UUID]int
+	Stories  []*post.Story
+	Viewed   map[uuid.UUID]bool
+	Views    map[uuid.UUID]int
+	Liked    map[uuid.UUID]bool
+	Likes    map[uuid.UUID]int
+	Comments map[uuid.UUID]int
+}
+
+// StoryCommentPage is a page of the comments of a story; Total counts them
+// all, Next is where the next page starts (uuid.Nil: none).
+type StoryCommentPage struct {
+	Comments []*post.StoryComment
+	Next     uuid.UUID
+	Total    int
 }
 
 // ViewerPage is a page of the viewers of a story; Total counts them all.
@@ -86,19 +126,26 @@ type ViewerPage struct {
 // StoryService keeps the stories, VK's "истории": a photo shown for a
 // day to those who read its author.
 type StoryService struct {
-	stories StoryRepository
-	views   StoryViewRepository
-	tx      TxManager
-	photos  PhotoKeeper
-	now     func() time.Time
+	stories  StoryRepository
+	views    StoryViewRepository
+	likes    StoryLikeRepository
+	comments StoryCommentRepository
+	tx       TxManager
+	photos   PhotoKeeper
+	notifier Notifier
+	now      func() time.Time
 }
 
 // StoryDeps are what StoryService works with.
 type StoryDeps struct {
-	Stories StoryRepository
-	Views   StoryViewRepository
-	Tx      TxManager
-	Photos  PhotoKeeper
+	Stories  StoryRepository
+	Views    StoryViewRepository
+	Likes    StoryLikeRepository
+	Comments StoryCommentRepository
+	Tx       TxManager
+	Photos   PhotoKeeper
+	// Notifier tells the author of a story of its likes and comments.
+	Notifier Notifier
 	// Now is the clock; nil: time.Now.
 	Now func() time.Time
 }
@@ -109,7 +156,10 @@ func NewStoryService(d StoryDeps) *StoryService {
 		now = time.Now
 	}
 
-	return &StoryService{stories: d.Stories, views: d.Views, tx: d.Tx, photos: d.Photos, now: now}
+	return &StoryService{
+		stories: d.Stories, views: d.Views, likes: d.Likes, comments: d.Comments,
+		tx: d.Tx, photos: d.Photos, notifier: d.Notifier, now: now,
+	}
 }
 
 // Tell tells a story of authorID with a photo the caller found theirs; the
@@ -251,6 +301,18 @@ func (s *StoryService) page(ctx context.Context, viewerID uuid.UUID, stories []*
 		return StoryPage{}, errs.Wrap("s.views.Viewed", err)
 	}
 
+	if page.Liked, err = s.likes.Liked(ctx, viewerID, all); err != nil {
+		return StoryPage{}, errs.Wrap("s.likes.Liked", err)
+	}
+
+	if page.Likes, err = s.likes.Count(ctx, all); err != nil {
+		return StoryPage{}, errs.Wrap("s.likes.Count", err)
+	}
+
+	if page.Comments, err = s.comments.Count(ctx, all); err != nil {
+		return StoryPage{}, errs.Wrap("s.comments.Count", err)
+	}
+
 	if len(own) > 0 {
 		if page.Views, err = s.views.Count(ctx, own); err != nil {
 			return StoryPage{}, errs.Wrap("s.views.Count", err)
@@ -349,14 +411,170 @@ func (s *StoryService) DeleteExpired(ctx context.Context) (int, error) {
 	return deleted, errs.Wrap("s.drop", errors.Join(failed...))
 }
 
-// drop deletes a story and, in the same transaction, its photo.
+// drop deletes a story and, in the same transaction, its photo and the
+// notifications of its likes and comments, which go with it.
 func (s *StoryService) drop(ctx context.Context, story *post.Story) error {
 	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.stories.Delete(ctx, story.ID()); err != nil {
 			return errs.Wrap("s.stories.Delete", err)
 		}
 
+		if err := s.notifier.ForgetPost(ctx, story.ID()); err != nil {
+			return errs.Wrap("s.notifier.ForgetPost", err)
+		}
+
 		return errs.Wrap("s.photos.Delete", s.photos.Delete(ctx, story.AuthorID(), []uuid.UUID{story.PhotoID()}))
+	})
+
+	return errs.Wrap("s.tx.WithinTx", err)
+}
+
+// Get is a live story viewerID sees, with what the page tells of it.
+func (s *StoryService) Get(ctx context.Context, viewerID, id uuid.UUID) (StoryPage, error) {
+	story, err := s.stories.Seen(ctx, id, viewerID, s.now())
+	if err != nil {
+		return StoryPage{}, errs.Wrap("s.stories.Seen", err)
+	}
+
+	return s.page(ctx, viewerID, []*post.Story{story})
+}
+
+// Like likes a story userID sees; its author hears of it, but of their
+// own. Liking again changes nothing.
+func (s *StoryService) Like(ctx context.Context, userID, id uuid.UUID) error {
+	now := s.now()
+
+	story, err := s.stories.Seen(ctx, id, userID, now)
+	if err != nil {
+		return errs.Wrap("s.stories.Seen", err)
+	}
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		added, err := s.likes.Like(ctx, story.ID(), userID, now)
+		if err != nil || !added || !story.Notifies(userID) {
+			return errs.Wrap("s.likes.Like", err)
+		}
+
+		return errs.Wrap("s.notifier.Notify", s.notifier.Notify(ctx, storyLiked(story, userID)))
+	})
+
+	return errs.Wrap("s.tx.WithinTx", err)
+}
+
+// Unlike takes userID's like of a story and its notification back.
+func (s *StoryService) Unlike(ctx context.Context, userID, id uuid.UUID) error {
+	story, err := s.stories.Get(ctx, id)
+	if err != nil {
+		return errs.Wrap("s.stories.Get", err)
+	}
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		removed, err := s.likes.Unlike(ctx, story.ID(), userID)
+		if err != nil || !removed || !story.Notifies(userID) {
+			return errs.Wrap("s.likes.Unlike", err)
+		}
+
+		return errs.Wrap("s.notifier.Retract", s.notifier.Retract(ctx, storyLiked(story, userID)))
+	})
+
+	return errs.Wrap("s.tx.WithinTx", err)
+}
+
+func storyLiked(story *post.Story, userID uuid.UUID) Event {
+	return Event{Kind: EventStoryLike, RecipientID: story.AuthorID(), ActorID: userID, PostID: story.ID()}
+}
+
+// Comment comments a story authorID sees; its author hears of it, but of
+// their own.
+func (s *StoryService) Comment(ctx context.Context, authorID, id uuid.UUID, text post.CommentText) (*post.StoryComment, error) {
+	now := s.now()
+
+	story, err := s.stories.Seen(ctx, id, authorID, now)
+	if err != nil {
+		return nil, errs.Wrap("s.stories.Seen", err)
+	}
+
+	c, err := post.NewStoryComment(story.ID(), authorID, text, now)
+	if err != nil {
+		return nil, errs.Wrap("post.NewStoryComment", err)
+	}
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.comments.Save(ctx, c); err != nil {
+			return errs.Wrap("s.comments.Save", err)
+		}
+
+		if !story.Notifies(authorID) {
+			return nil
+		}
+
+		return errs.Wrap("s.notifier.Notify", s.notifier.Notify(ctx, Event{
+			Kind: EventStoryComment, RecipientID: story.AuthorID(), ActorID: authorID, PostID: story.ID(), CommentID: c.ID(),
+		}))
+	})
+	if err != nil {
+		return nil, errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return c, nil
+}
+
+// Comments pages the comments of a story viewerID sees, the oldest first.
+func (s *StoryService) Comments(ctx context.Context, viewerID, id, after uuid.UUID, size int) (StoryCommentPage, error) {
+	story, err := s.stories.Seen(ctx, id, viewerID, s.now())
+	if err != nil {
+		return StoryCommentPage{}, errs.Wrap("s.stories.Seen", err)
+	}
+
+	if size <= 0 || size > MaxPageSize {
+		size = DefaultPageSize
+	}
+
+	comments, err := s.comments.List(ctx, story.ID(), after, size+1)
+	if err != nil {
+		return StoryCommentPage{}, errs.Wrap("s.comments.List", err)
+	}
+
+	counts, err := s.comments.Count(ctx, []uuid.UUID{story.ID()})
+	if err != nil {
+		return StoryCommentPage{}, errs.Wrap("s.comments.Count", err)
+	}
+
+	page := StoryCommentPage{Comments: comments, Total: counts[story.ID()]}
+	if len(comments) > size {
+		page.Comments = comments[:size]
+		page.Next = comments[size-1].ID()
+	}
+
+	return page, nil
+}
+
+// DeleteComment deletes a comment of a story, for its author or the
+// author of the story, with its notification.
+func (s *StoryService) DeleteComment(ctx context.Context, requesterID, id uuid.UUID) error {
+	c, err := s.comments.Get(ctx, id)
+	if err != nil {
+		return errs.Wrap("s.comments.Get", err)
+	}
+
+	story, err := s.stories.Get(ctx, c.StoryID())
+	if errors.Is(err, post.ErrStoryNotFound) {
+		return post.ErrStoryCommentNotFound
+	}
+	if err != nil {
+		return errs.Wrap("s.stories.Get", err)
+	}
+
+	if err = c.CheckDelete(requesterID, story); err != nil {
+		return errs.Wrap("c.CheckDelete", err)
+	}
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.comments.Delete(ctx, c.ID()); err != nil {
+			return errs.Wrap("s.comments.Delete", err)
+		}
+
+		return errs.Wrap("s.notifier.ForgetComment", s.notifier.ForgetComment(ctx, c.ID()))
 	})
 
 	return errs.Wrap("s.tx.WithinTx", err)
