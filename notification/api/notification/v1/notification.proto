@@ -105,10 +105,16 @@ enum Kind {
   // The actor signed up by the recipient's invitation link ("Пригласить"
   // of openvk) and follows the recipient now.
   KIND_INVITE = 23;
+  // An administrator of the site, the actor, gave the recipient's page
+  // the checkmark; one per page, taken back with it.
+  KIND_VERIFIED = 24;
+  // The actor, a community the recipient owns, got the checkmark of the
+  // administrators of the site; one per community, taken back with it.
+  KIND_CLUB_VERIFIED = 25;
 }
 
-// Event: post_id is set for all but follows, invitations and appointments
-// (of a gift it is the sent gift, of votes the transfer),
+// Event: post_id is set for all but follows, invitations, appointments
+// and checkmarks (of a gift it is the sent gift, of votes the transfer),
 // comment_id for comments, replies, comment likes, messages of topics
 // and mentions in comments and topics.
 message Event {

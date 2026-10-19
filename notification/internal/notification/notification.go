@@ -76,6 +76,13 @@ const (
 	// KindInvite: the actor signed up by the recipient's invitation link
 	// and follows the recipient now.
 	KindInvite Kind = "invite"
+	// KindVerified: the actor, an administrator of the site, gave the
+	// recipient's page the checkmark. One per page, whoever gave it.
+	KindVerified Kind = "verified"
+	// KindClubVerified: the actor, a community the recipient owns, got the
+	// checkmark of the administrators of the site. One per community,
+	// whoever owns it.
+	KindClubVerified Kind = "club_verified"
 )
 
 var (
@@ -88,7 +95,8 @@ var (
 )
 
 // Event is what happened, to whom and by whom. PostID is set for all but
-// follows, invitations and appointments (it is the photo or the topic for theirs),
+// follows, invitations, appointments and checkmarks (it is the photo or
+// the topic for theirs),
 // CommentID for comments, replies, comment likes, messages of topics and
 // their likes, comments of photos and mentions in comments and topics;
 // unused IDs are uuid.Nil.
@@ -125,7 +133,7 @@ func (e Event) Validate() error {
 	case KindComment, KindCommentReply, KindCommentLike, KindTopicMessage, KindCommentMention, KindTopicMention,
 		KindPhotoComment, KindTopicMessageLike, KindPhotoMention, KindNoteComment:
 		ok = hasPost && hasComment
-	case KindFollow, KindClubAdmin, KindInvite:
+	case KindFollow, KindClubAdmin, KindInvite, KindVerified, KindClubVerified:
 		ok = !hasPost && !hasComment
 	default:
 		return ErrUnknownKind

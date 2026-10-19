@@ -79,6 +79,12 @@ const (
 	// The actor signed up by the recipient's invitation link ("Пригласить"
 	// of openvk) and follows the recipient now.
 	Kind_KIND_INVITE Kind = 23
+	// An administrator of the site, the actor, gave the recipient's page
+	// the checkmark; one per page, taken back with it.
+	Kind_KIND_VERIFIED Kind = 24
+	// The actor, a community the recipient owns, got the checkmark of the
+	// administrators of the site; one per community, taken back with it.
+	Kind_KIND_CLUB_VERIFIED Kind = 25
 )
 
 // Enum value maps for Kind.
@@ -107,6 +113,8 @@ var (
 		21: "KIND_GIFT",
 		22: "KIND_VOTES",
 		23: "KIND_INVITE",
+		24: "KIND_VERIFIED",
+		25: "KIND_CLUB_VERIFIED",
 	}
 	Kind_value = map[string]int32{
 		"KIND_UNSPECIFIED":        0,
@@ -132,6 +140,8 @@ var (
 		"KIND_GIFT":               21,
 		"KIND_VOTES":              22,
 		"KIND_INVITE":             23,
+		"KIND_VERIFIED":           24,
+		"KIND_CLUB_VERIFIED":      25,
 	}
 )
 
@@ -268,8 +278,8 @@ func (Change) EnumDescriptor() ([]byte, []int) {
 	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{2}
 }
 
-// Event: post_id is set for all but follows, invitations and appointments
-// (of a gift it is the sent gift, of votes the transfer),
+// Event: post_id is set for all but follows, invitations, appointments
+// and checkmarks (of a gift it is the sent gift, of votes the transfer),
 // comment_id for comments, replies, comment likes, messages of topics
 // and mentions in comments and topics.
 type Event struct {
@@ -1305,7 +1315,7 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\rrecipient_ids\x18\x03 \x03(\tR\frecipientIds\x12\x17\n" +
 	"\achat_id\x18\x04 \x01(\tR\x06chatId\x12\x1d\n" +
 	"\n" +
-	"chat_title\x18\x05 \x01(\tR\tchatTitle*\x8d\x04\n" +
+	"chat_title\x18\x05 \x01(\tR\tchatTitle*\xb8\x04\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tKIND_LIKE\x10\x01\x12\x10\n" +
@@ -1331,7 +1341,9 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\tKIND_GIFT\x10\x15\x12\x0e\n" +
 	"\n" +
 	"KIND_VOTES\x10\x16\x12\x0f\n" +
-	"\vKIND_INVITE\x10\x17\"\x04\b\x12\x10\x12*\x13KIND_EVENT_REMINDER*;\n" +
+	"\vKIND_INVITE\x10\x17\x12\x11\n" +
+	"\rKIND_VERIFIED\x10\x18\x12\x16\n" +
+	"\x12KIND_CLUB_VERIFIED\x10\x19\"\x04\b\x12\x10\x12*\x13KIND_EVENT_REMINDER*;\n" +
 	"\x03Box\x12\x13\n" +
 	"\x0fBOX_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +

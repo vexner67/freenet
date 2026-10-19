@@ -19,6 +19,7 @@ const notificationVerbs = {
   gift: ['отправил', 'отправила', 'отправил(а)', 'отправило'],
   votes: ['передал', 'передала', 'передал(а)', 'передало'],
   invite: ['присоединился', 'присоединилась', 'присоединился(-ась)', 'присоединилось'],
+  verified: ['подтвердил', 'подтвердила', 'подтвердил(а)', 'подтвердило'],
 };
 
 // Each kind of notification: the verb and what follows it. The payload
@@ -43,6 +44,7 @@ const pushTexts = {
   gift: ['gift', 'вам подарок'],
   votes: ['votes', 'вам голоса'],
   invite: ['invite', 'по вашему приглашению'],
+  verified: ['verified', 'вашу страницу'],
 };
 
 // Those said of the community itself, which is the title.
@@ -50,6 +52,7 @@ const clubTexts = {
   post_accepted: 'Опубликовало вашу предложенную запись.',
   suggested_post: 'Новые записи в предложке.',
   club_admin: 'Вас назначили руководителем сообщества.',
+  club_verified: 'Сообщество подтверждено: у его названия теперь галочка.',
 };
 
 function verbOf(type, actor) {
@@ -87,7 +90,7 @@ function notificationOf(p) {
   const tag = 'n:' + p.id;
 
   if (clubTexts[p.kind]) {
-    const url = { suggested_post: clubPath(actor) + '/suggested' }[p.kind] ?? '/notifications';
+    const url = { suggested_post: clubPath(actor) + '/suggested', club_verified: clubPath(actor) }[p.kind] ?? '/notifications';
     return { title: name, body: clubTexts[p.kind], url, tag };
   }
 

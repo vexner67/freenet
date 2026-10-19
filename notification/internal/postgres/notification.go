@@ -157,6 +157,18 @@ const (
 			AND recipient_id = $2
 			AND comment_id = $3
 	`
+	// The checkmark of a page, whichever administrator gave it.
+	deleteVerifiedNotificationQuery = `
+		DELETE FROM notifications
+		WHERE kind = 'verified'
+			AND recipient_id = $1
+	`
+	// The checkmark of a community, whoever owned it then.
+	deleteClubVerifiedNotificationQuery = `
+		DELETE FROM notifications
+		WHERE kind = 'club_verified'
+			AND actor_id = $1
+	`
 	deleteCommentReplyNotificationQuery = `
 		DELETE FROM notifications
 		WHERE kind = 'comment_reply'
@@ -195,6 +207,10 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 		_, err = r.pool.Exec(ctx, deleteSuggestedPostNotificationQuery, e.RecipientID, e.PostID)
 	case notification.KindClubAdmin, notification.KindInvite:
 		_, err = r.pool.Exec(ctx, deleteClubNotificationQuery, string(e.Kind), e.ActorID, e.RecipientID)
+	case notification.KindVerified:
+		_, err = r.pool.Exec(ctx, deleteVerifiedNotificationQuery, e.RecipientID)
+	case notification.KindClubVerified:
+		_, err = r.pool.Exec(ctx, deleteClubVerifiedNotificationQuery, e.ActorID)
 	case notification.KindTopicMessage:
 		_, err = r.pool.Exec(ctx, deleteTopicMessageNotificationQuery, e.CommentID)
 	case notification.KindPostMention:
