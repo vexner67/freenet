@@ -22,7 +22,7 @@ var (
 	reservedNicknames = map[string]struct{}{
 		"about": {}, "admin": {}, "album": {}, "albums": {}, "api": {}, "club": {}, "docs": {}, "edit": {}, "events": {}, "fave": {}, "feed": {},
 		"follows": {}, "freenet": {}, "gifts": {}, "groups": {}, "healthz": {}, "help": {}, "id": {}, "im": {}, "invite": {},
-		"login": {}, "logout": {}, "me": {}, "media": {}, "news": {}, "note": {}, "notes": {},
+		"language": {}, "login": {}, "logout": {}, "me": {}, "media": {}, "news": {}, "note": {}, "notes": {},
 		"notifications": {}, "people": {}, "photo": {}, "post": {}, "search": {},
 		"settings": {}, "shop": {}, "static": {}, "stickers": {}, "support": {}, "terms": {}, "topic": {}, "wall": {},
 	}
