@@ -340,6 +340,50 @@ func (r *StickerPackRepository) Authors(ctx context.Context, photoIDs []uuid.UUI
 	return authors, nil
 }
 
+// The author of a pack of a person has it from the start; they are not
+// counted, as in authoredStickerPacksQuery.
+const stickerHoldersQuery = `
+	SELECT
+		s.pack,
+		count(*)
+	FROM sticker_packs s
+	WHERE NOT EXISTS (
+		SELECT 1
+		FROM custom_sticker_packs p
+		WHERE p.author_id = s.user_id
+			AND replace(p.id::text, '-', '') = s.pack
+	)
+	GROUP BY s.pack
+`
+
+func (r *StickerPackRepository) Holders(ctx context.Context) (map[user.StickerPackID]int, error) {
+	rows, err := r.conn(ctx).Query(ctx, stickerHoldersQuery)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+	defer rows.Close()
+
+	holders := make(map[user.StickerPackID]int)
+
+	for rows.Next() {
+		var (
+			pack  string
+			count int
+		)
+		if err = rows.Scan(&pack, &count); err != nil {
+			return nil, errs.Wrap("rows.Scan", err)
+		}
+
+		holders[user.StickerPackID(pack)] = count
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, errs.Wrap("rows.Err", err)
+	}
+
+	return holders, nil
+}
+
 // scanStickerPack reads stickerPackColumns and then what more there is.
 func scanStickerPack(row pgx.Row, more ...any) (*user.CustomStickerPack, error) {
 	var (

@@ -159,6 +159,11 @@ func TestStickerPackRepository(t *testing.T) {
 		t.Fatalf("ByAuthor = %+v, %v", authored, err)
 	}
 
+	// The author is not among those counted.
+	if holders, err := packs.Holders(ctx); err != nil || holders[p.ID()] != 1 {
+		t.Fatalf("Holders = %d, %v", holders[p.ID()], err)
+	}
+
 	if taken, err := packs.TakenByOthers(ctx, p); err != nil || !taken {
 		t.Fatalf("TakenByOthers = %v, %v", taken, err)
 	}

@@ -182,6 +182,29 @@ func (r *StickerPackRepository) Authors(ctx context.Context, photoIDs []uuid.UUI
 	return authors, nil
 }
 
+func (r *StickerPackRepository) Holders(ctx context.Context) (map[user.StickerPackID]int, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	authors := make(map[user.StickerPackID]uuid.UUID)
+	for _, p := range r.all() {
+		authors[p.ID()] = p.AuthorID()
+	}
+
+	holders := make(map[user.StickerPackID]int)
+
+	for pack, ids := range r.stickers.taken() {
+		for _, id := range ids {
+			if author, ok := authors[pack]; !ok || author != id {
+				holders[pack]++
+			}
+		}
+	}
+
+	return holders, nil
+}
+
 // all are the packs, newest first.
 func (r *StickerPackRepository) all() []*user.CustomStickerPack {
 	r.mu.Lock()

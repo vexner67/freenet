@@ -36,7 +36,7 @@ func (h *UserHandler) GetStickerCatalog(ctx context.Context, _ *userv1.GetSticke
 	resp := &userv1.GetStickerCatalogResponse{Packs: make([]*userv1.StickerPack, 0, len(views))}
 	for _, v := range views {
 		p := toProtoStickerPack(v.Pack)
-		p.Bought, p.Added = v.Bought, v.Added
+		p.Bought, p.Added, p.Holders = v.Bought, v.Added, int32(v.Holders) //nolint:gosec // bounded by the users
 
 		resp.Packs = append(resp.Packs, p)
 	}

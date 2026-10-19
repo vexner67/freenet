@@ -6845,7 +6845,7 @@ type StickerPack struct {
 	About    string `protobuf:"bytes,8,opt,name=about,proto3" json:"about,omitempty"`
 	// The shop shows it; a pack of the site always.
 	Published bool `protobuf:"varint,9,opt,name=published,proto3" json:"published,omitempty"`
-	// How many others have taken it; only in ListMyStickerPacks.
+	// How many people have taken it, its author left out.
 	Holders       int32 `protobuf:"varint,10,opt,name=holders,proto3" json:"holders,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

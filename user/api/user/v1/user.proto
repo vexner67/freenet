@@ -1074,7 +1074,7 @@ message StickerPack {
   string about = 8;
   // The shop shows it; a pack of the site always.
   bool published = 9;
-  // How many others have taken it; only in ListMyStickerPacks.
+  // How many people have taken it, its author left out.
   int32 holders = 10;
 }
 

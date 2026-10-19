@@ -51,6 +51,9 @@ func TestStickerService(t *testing.T) {
 	if got := packs(ann)["smiles"]; !got.Bought || !got.Added {
 		t.Fatalf("a free pack taken = %+v", got)
 	}
+	if got := packs(uuid.Nil)["smiles"]; got.Holders != 1 {
+		t.Fatalf("a pack taken once has %d holders", got.Holders)
+	}
 
 	// A pack with a price takes votes once, and without them is not taken.
 	if err = svc.Add(ctx, ann, "bears"); !errors.Is(err, user.ErrNotEnoughVotes) {
@@ -180,6 +183,9 @@ func TestStickerService_Studio(t *testing.T) {
 	authored, err := svc.Authored(ctx, author)
 	if err != nil || len(authored) != 1 || authored[0].Holders != 1 {
 		t.Fatalf("Authored = %+v, %v", authored, err)
+	}
+	if got, _ := view(uuid.Nil, p.ID()); got.Holders != 1 {
+		t.Fatalf("the shop counts %d holders, want the buyer only", got.Holders)
 	}
 
 	// Taken by another, it keeps its stickers and stays; it still grows.

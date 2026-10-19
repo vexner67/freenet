@@ -49,6 +49,9 @@ type StickerPackRepository interface {
 	// Authors tells who made each of the stickers that is a photo of a
 	// pack; the others are left out.
 	Authors(ctx context.Context, photoIDs []uuid.UUID) (map[uuid.UUID]uuid.UUID, error)
+	// Holders tells how many people have taken each pack, the author of a
+	// pack of a person left out; a pack nobody took is not there.
+	Holders(ctx context.Context) (map[user.StickerPackID]int, error)
 }
 
 // AuthoredPack is a pack in the "Студия стикеров" of its author, with
@@ -59,11 +62,13 @@ type AuthoredPack struct {
 }
 
 // StickerPackView is a pack of the catalogue as a user sees it: whether
-// they have taken it and whether it is among their stickers.
+// they have taken it and whether it is among their stickers, and how many
+// others have taken it — the "Популярные" of the shop.
 type StickerPackView struct {
-	Pack   user.StickerPack
-	Bought bool
-	Added  bool
+	Pack    user.StickerPack
+	Bought  bool
+	Added   bool
+	Holders int
 }
 
 // StickerPackEdit is what the author changes in a pack: what it says and
@@ -111,6 +116,11 @@ func (s *StickerService) Catalog(ctx context.Context, userID uuid.UUID) ([]Stick
 		return nil, errs.Wrap("s.packs.Visible", err)
 	}
 
+	holders, err := s.packs.Holders(ctx)
+	if err != nil {
+		return nil, errs.Wrap("s.packs.Holders", err)
+	}
+
 	catalog := user.StickerCatalog()
 	for _, p := range custom {
 		catalog = append(catalog, p.Pack())
@@ -119,7 +129,7 @@ func (s *StickerService) Catalog(ctx context.Context, userID uuid.UUID) ([]Stick
 	views := make([]StickerPackView, len(catalog))
 
 	for i, p := range catalog {
-		views[i] = StickerPackView{Pack: p}
+		views[i] = StickerPackView{Pack: p, Holders: holders[p.ID]}
 
 		for _, o := range owned {
 			if o.Pack == p.ID {
