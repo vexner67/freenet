@@ -21,6 +21,7 @@ Disallow: /*/edit$
 Disallow: /*/create$
 Disallow: /settings$
 Disallow: /invite$
+Disallow: /language$
 Disallow: /settings/
 Disallow: /feed$
 Disallow: /feed/
