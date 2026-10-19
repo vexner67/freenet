@@ -54,6 +54,7 @@ func newGiftWorld() giftWorld {
 	follows := inmem.NewFollowRepository(users)
 	blocks := inmem.NewBlockRepository(follows)
 	notifier := &fakeGiftNotifier{}
+	gifts := inmem.NewGiftRepository(users)
 
 	return giftWorld{
 		users:    users,
@@ -65,7 +66,8 @@ func newGiftWorld() giftWorld {
 		}),
 		gifts: service.NewGiftService(service.GiftDeps{
 			Users:       users,
-			Gifts:       inmem.NewGiftRepository(users),
+			Gifts:       gifts,
+			Prices:      gifts,
 			Permissions: service.NewPermissionService(users, follows, blocks),
 			Tx:          inmem.TxManager{},
 			Wallets:     users,
@@ -277,5 +279,70 @@ func TestGiftService_Refusals(t *testing.T) {
 	w.notifier.err = errors.New("outbox is down")
 	if _, err = w.gifts.Send(ctx, bob, cat, draft); !errors.Is(err, w.notifier.err) {
 		t.Fatalf("with a broken outbox: %v", err)
+	}
+}
+
+func TestGiftService_SetPrice(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	users := inmem.NewUserRepository()
+	follows := inmem.NewFollowRepository(users)
+	blocks := inmem.NewBlockRepository(follows)
+	gifts := inmem.NewGiftRepository(users)
+	admins, _ := user.NewAdmins([]string{"admin@example.com"})
+	svc := service.NewGiftService(service.GiftDeps{
+		Users: users, Gifts: gifts, Prices: gifts, Permissions: service.NewPermissionService(users, follows, blocks),
+		Tx: inmem.TxManager{}, Wallets: users, Notifier: &fakeGiftNotifier{}, Admins: admins,
+	})
+
+	newUser := func(email string) *user.User {
+		t.Helper()
+		u, err := user.New(user.Email(email))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = users.Save(ctx, u); err != nil {
+			t.Fatal(err)
+		}
+		return u
+	}
+	admin, ann := newUser("admin@example.com"), newUser("ann@example.com")
+
+	if err := svc.SetPrice(ctx, ann.ID(), "rose", 3); !errors.Is(err, user.ErrNotAdmin) {
+		t.Fatalf("not an administrator prices a gift: %v", err)
+	}
+	if err := svc.SetPrice(ctx, admin.ID(), "rose", 3); err != nil {
+		t.Fatal(err)
+	}
+
+	catalog, err := svc.Catalog(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, shelf := range catalog {
+		for _, g := range shelf.Gifts {
+			want := g.Kind.DefaultPrice()
+			if g.Kind == "rose" {
+				want = 3
+			}
+			if g.Price != want {
+				t.Errorf("%s costs %d, want %d", g.Kind, g.Price, want)
+			}
+		}
+	}
+
+	// The rose is no longer free: one without votes cannot send it.
+	if _, err = svc.Send(ctx, ann.ID(), ann.ID(), service.GiftDraft{Kind: "rose"}); !errors.Is(err, user.ErrNotEnoughVotes) {
+		t.Fatalf("a priced rose is sent for nothing: %v", err)
+	}
+	if _, err = users.Credit(ctx, ann.ID(), 5, 0); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = svc.Send(ctx, ann.ID(), ann.ID(), service.GiftDraft{Kind: "rose"}); err != nil {
+		t.Fatal(err)
+	}
+	if left, err := users.Spend(ctx, ann.ID(), 0); err != nil || left != 2 {
+		t.Fatalf("after a rose of 3 out of 5: %d, %v", left, err)
 	}
 }

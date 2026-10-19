@@ -71,6 +71,7 @@ func newServer(t *testing.T) testServer {
 	if err != nil {
 		t.Fatalf("user.NewAdmins: %v", err)
 	}
+	gifts := inmem.NewGiftRepository(users)
 	userv1.RegisterUserServiceServer(srv, usergrpc.NewUserHandler(usergrpc.Services{
 		Users:    service.NewUserService(users),
 		Accounts: service.NewAccountService(users, inmem.TxManager{}, purgeclient.NoReactions{}, time.Hour),
@@ -80,8 +81,8 @@ func newServer(t *testing.T) testServer {
 		Blocks:  service.NewBlockService(users, blocks, inmem.TxManager{}, notifyclient.Nop{}),
 		Ignores: service.NewIgnoreService(inmem.NewIgnoreRepository(users)),
 		Gifts: service.NewGiftService(service.GiftDeps{
-			Users: users, Gifts: inmem.NewGiftRepository(users), Permissions: permissions, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{},
-			Wallets: users,
+			Users: users, Gifts: gifts, Prices: gifts, Permissions: permissions, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{},
+			Wallets: users, Admins: admins,
 		}),
 		Stickers: service.NewStickerService(stickers, inmem.NewStickerPackRepository(users, stickers), users, inmem.TxManager{}),
 		Wallets: service.NewWalletService(service.WalletDeps{

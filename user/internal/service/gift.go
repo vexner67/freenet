@@ -24,6 +24,12 @@ type GiftRepository interface {
 	Count(ctx context.Context, recipientID uuid.UUID) (int, error)
 }
 
+// GiftPriceRepository keeps the prices the administrators gave gifts.
+type GiftPriceRepository interface {
+	Prices(ctx context.Context) (user.GiftPrices, error)
+	SetPrice(ctx context.Context, kind user.GiftKind, price user.GiftPrice) error
+}
+
 // GiftNotifier records what the notification service has to hear about
 // gifts, in the transaction of the change, as Notifier does.
 type GiftNotifier interface {
@@ -52,6 +58,20 @@ type SentGift struct {
 	Sender    *user.PublicProfile
 }
 
+// PricedGift is a gift of the catalogue and what it costs now.
+type PricedGift struct {
+	Kind  user.GiftKind
+	Price user.GiftPrice
+}
+
+// GiftShelf is a collection of the catalogue with what each gift costs;
+// Price is what its gifts cost unless priced otherwise.
+type GiftShelf struct {
+	ID    string
+	Price user.GiftPrice
+	Gifts []PricedGift
+}
+
 // GiftPage is one screen of the gifts of a page, newest first; NextCursor
 // is uuid.Nil on the last.
 type GiftPage struct {
@@ -65,10 +85,12 @@ type GiftPage struct {
 type GiftService struct {
 	userRepo    UserRepository
 	giftRepo    GiftRepository
+	prices      GiftPriceRepository
 	wallets     WalletRepository
 	permissions *PermissionService
 	tx          TxManager
 	notifier    GiftNotifier
+	admins      user.Admins
 	now         func() time.Time
 }
 
@@ -76,27 +98,66 @@ type GiftService struct {
 type GiftDeps struct {
 	Users UserRepository
 	Gifts GiftRepository
+	// Prices are what the administrators make the gifts cost.
+	Prices GiftPriceRepository
 	// Wallets pay for the gifts that cost votes.
 	Wallets     WalletRepository
 	Permissions *PermissionService
 	Tx          TxManager
 	Notifier    GiftNotifier
+	// Admins are who may price the gifts.
+	Admins user.Admins
 }
 
 func NewGiftService(d GiftDeps) *GiftService {
 	return &GiftService{
 		userRepo:    d.Users,
 		giftRepo:    d.Gifts,
+		prices:      d.Prices,
 		wallets:     d.Wallets,
 		permissions: d.Permissions,
 		tx:          d.Tx,
 		notifier:    d.Notifier,
+		admins:      d.Admins,
 		now:         time.Now,
 	}
 }
 
+// Catalog is what there is to send, in the order it is shown, with what
+// each gift costs now.
+func (s *GiftService) Catalog(ctx context.Context) ([]GiftShelf, error) {
+	prices, err := s.prices.Prices(ctx)
+	if err != nil {
+		return nil, errs.Wrap("s.prices.Prices", err)
+	}
+
+	catalog := user.GiftCatalog()
+	shelves := make([]GiftShelf, 0, len(catalog))
+
+	for _, c := range catalog {
+		shelf := GiftShelf{ID: c.ID, Price: c.Price, Gifts: make([]PricedGift, 0, len(c.Gifts))}
+		for _, kind := range c.Gifts {
+			shelf.Gifts = append(shelf.Gifts, PricedGift{Kind: kind, Price: prices.Of(kind)})
+		}
+
+		shelves = append(shelves, shelf)
+	}
+
+	return shelves, nil
+}
+
+// SetPrice makes kind cost price from now on, gifts already sent are
+// not touched; user.ErrNotAdmin unless adminID runs the site.
+func (s *GiftService) SetPrice(ctx context.Context, adminID uuid.UUID, kind user.GiftKind, price user.GiftPrice) error {
+	if err := checkAdmin(ctx, s.userRepo, s.admins, adminID); err != nil {
+		return errs.Wrap("checkAdmin", err)
+	}
+
+	return errs.Wrap("s.prices.SetPrice", s.prices.SetPrice(ctx, kind, price))
+}
+
 // Send sends recipientID a gift from senderID; the recipient hears of it.
-// A gift with a price is paid for with the sender's votes, in the
+// A gift with a price (as it is when sent) is paid for with the sender's votes, in the
 // transaction of the gift: user.ErrNotEnoughVotes. user.ErrNotFound for
 // an unknown recipient, user.ErrDeactivated and user.ErrGiftRefused as
 // user.GiftFrom decides.
@@ -111,9 +172,14 @@ func (s *GiftService) Send(ctx context.Context, senderID, recipientID uuid.UUID,
 		return SentGift{}, errs.Wrap("recipient.GiftFrom", err)
 	}
 
+	prices, err := s.prices.Prices(ctx)
+	if err != nil {
+		return SentGift{}, errs.Wrap("s.prices.Prices", err)
+	}
+
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		if price := d.Kind.Price(); price > 0 {
-			if _, err := s.wallets.Spend(ctx, senderID, price); err != nil {
+		if price := prices.Of(d.Kind); price > 0 {
+			if _, err := s.wallets.Spend(ctx, senderID, price.Int64()); err != nil {
 				return errs.Wrap("s.wallets.Spend", err)
 			}
 		}

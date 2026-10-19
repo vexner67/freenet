@@ -140,3 +140,25 @@ func TestGiftRepository(t *testing.T) {
 		t.Fatalf("bob's gifts: %v, %v", ids(page), err)
 	}
 }
+
+func TestGiftRepository_Prices(t *testing.T) {
+	_, pool := newRepo(t)
+	gifts := postgres.NewGiftRepository(pool)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	for _, price := range []user.GiftPrice{9, 0} {
+		if err := gifts.SetPrice(ctx, "tulip", price); err != nil {
+			t.Fatal(err)
+		}
+
+		prices, err := gifts.Prices(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, ok := prices["tulip"]; !ok || got != price {
+			t.Fatalf("the price set to %d reads %d, %t", price, got, ok)
+		}
+	}
+}

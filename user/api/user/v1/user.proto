@@ -110,11 +110,13 @@ service UserService {
   // blacklisted either way. ListGifts is public: the gifts sent to a
   // user, newest first; PermissionDenied if the page or its gifts are
   // hidden from the caller. DeleteGift is for the one the gift was sent
-  // to.
+  // to. SetGiftPrice is for the administrators of the site
+  // (PermissionDenied for others): what a gift costs from now on.
   rpc GetGiftCatalog(GetGiftCatalogRequest) returns (GetGiftCatalogResponse);
   rpc SendGift(SendGiftRequest) returns (SendGiftResponse);
   rpc ListGifts(ListGiftsRequest) returns (ListGiftsResponse);
   rpc DeleteGift(DeleteGiftRequest) returns (google.protobuf.Empty);
+  rpc SetGiftPrice(SetGiftPriceRequest) returns (google.protobuf.Empty);
 
   // Stickers ("Стикеры" on openvk). GetStickerCatalog is public: the
   // packs there are, and with a token which of them the caller has taken
@@ -851,8 +853,12 @@ message GiftCollection {
   string id = 1;
   // The names of its gifts, in the order they are shown.
   repeated string gifts = 2;
-  // What each of them costs the sender, in votes; 0 for a free one.
+  // What each of them costs the sender, in votes, unless priced
+  // otherwise; 0 for a free one.
   int64 price = 3;
+  // What each of gifts costs now, in their order: the administrators
+  // price a gift apart from its collection.
+  repeated int64 prices = 4;
 }
 
 message SendGiftRequest {
@@ -903,6 +909,13 @@ message ListGiftsResponse {
 
 message DeleteGiftRequest {
   string gift_id = 1;
+}
+
+message SetGiftPriceRequest {
+  // A gift of the catalogue.
+  string gift = 1;
+  // In votes, 0-1000000; 0 makes it free.
+  int64 price = 2;
 }
 
 message TransferVotesRequest {

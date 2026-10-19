@@ -171,10 +171,12 @@ func (a *App) build(cfg config.Config) error {
 			Gifts: service.NewGiftService(service.GiftDeps{
 				Users:       store.users,
 				Gifts:       store.gifts,
+				Prices:      store.gifts,
 				Permissions: permissions,
 				Tx:          store.tx,
 				Wallets:     store.wallets,
 				Notifier:    deliver.gifts,
+				Admins:      admins,
 			}),
 			Stickers: service.NewStickerService(store.stickers, store.stickerPacks, store.wallets, store.tx),
 			Wallets: service.NewWalletService(service.WalletDeps{
@@ -265,7 +267,10 @@ type storage struct {
 	}
 	blocks  service.BlockRepository
 	ignores service.IgnoreRepository
-	gifts   service.GiftRepository
+	gifts   interface {
+		service.GiftRepository
+		service.GiftPriceRepository
+	}
 	// stickers are the packs of stickers users have taken.
 	stickers service.StickerRepository
 	// stickerPacks are the packs people make of their photos.

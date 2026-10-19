@@ -57,6 +57,8 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, user.ErrIgnoreSelf.Error()), true
 	case errors.Is(err, user.ErrTooManyIgnored):
 		return status.New(codes.FailedPrecondition, user.ErrTooManyIgnored.Error()), true
+	case errors.Is(err, user.ErrUnknownGift):
+		return status.New(codes.InvalidArgument, user.ErrUnknownGift.Error()), true
 	case errors.Is(err, user.ErrGiftNotFound):
 		return status.New(codes.NotFound, user.ErrGiftNotFound.Error()), true
 	case errors.Is(err, user.ErrGiftRefused):

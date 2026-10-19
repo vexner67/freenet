@@ -14,15 +14,17 @@ import (
 // GiftRepository keeps gifts in memory and behaves as the table does: a
 // gift goes with the page it was sent to and loses its sender with theirs.
 type GiftRepository struct {
-	mu    sync.RWMutex
-	gifts map[uuid.UUID]*user.Gift
-	users *UserRepository
+	mu     sync.RWMutex
+	gifts  map[uuid.UUID]*user.Gift
+	prices user.GiftPrices
+	users  *UserRepository
 }
 
 func NewGiftRepository(users *UserRepository) *GiftRepository {
 	r := &GiftRepository{
-		gifts: make(map[uuid.UUID]*user.Gift),
-		users: users,
+		gifts:  make(map[uuid.UUID]*user.Gift),
+		prices: make(user.GiftPrices),
+		users:  users,
 	}
 	users.onDelete(r.forget)
 
@@ -131,4 +133,34 @@ func (r *GiftRepository) Count(ctx context.Context, recipientID uuid.UUID) (int,
 	}
 
 	return count, nil
+}
+
+// Prices are a copy: the caller may keep it.
+func (r *GiftRepository) Prices(ctx context.Context) (user.GiftPrices, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	prices := make(user.GiftPrices, len(r.prices))
+	for kind, price := range r.prices {
+		prices[kind] = price
+	}
+
+	return prices, nil
+}
+
+func (r *GiftRepository) SetPrice(ctx context.Context, kind user.GiftKind, price user.GiftPrice) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.prices[kind] = price
+
+	return nil
 }
