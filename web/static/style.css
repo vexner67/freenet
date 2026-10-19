@@ -469,6 +469,19 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
 .wall-form textarea:focus, .modal-body textarea:focus { outline: 1px solid var(--line-8fa7c2); }
 .wall-form.expanded textarea { height: 52px; min-height: 52px; }
 .wall-form .row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+/* On a wall the form lies in a grey box, openvk's .content_subtitle under
+   the title "Стена" (over the feed — .postFeedWrapper): edge to edge of
+   its column and touching the title. Comments and edits have none. */
+.wall-form:not(.comment-form, .post-edit) {
+  margin: 0 -10px 12px;
+  padding: 5px 8px;
+  background: var(--back-f0f0f0);
+  border-top: 1px solid var(--line-ccc);
+  border-bottom: 1px solid var(--line-eee);
+}
+.profile-right .wall-form:not(.comment-form, .post-edit),
+.club-main .wall-form:not(.comment-form, .post-edit) { margin-left: 0; margin-right: 0; }
+.section-title:has(+ .wall-form:not([hidden], .comment-form)) { margin-bottom: 0; }
 
 .post { display: flex; gap: 8px; margin-bottom: 10px; }
 .post-avatar img { display: block; width: 50px; height: 50px; }
