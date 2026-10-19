@@ -77,6 +77,7 @@ const getQuery = `
 		id,
 		user_id,
 		refresh_token_hash,
+		previous_refresh_token_hash,
 		created_at,
 		last_used_at,
 		ip,
@@ -100,7 +101,7 @@ func (r *SessionRepository) Get(ctx context.Context, id uuid.UUID) (*session.Ses
 func scanSession(row pgx.Row) (*session.Session, error) {
 	var (
 		id, userID        uuid.UUID
-		refreshTokenHash  string
+		hashes            session.Hashes
 		createdAt, usedAt time.Time
 		ip, agent         string
 	)
@@ -108,7 +109,8 @@ func scanSession(row pgx.Row) (*session.Session, error) {
 	if err := row.Scan(
 		&id,
 		&userID,
-		&refreshTokenHash,
+		&hashes.Current,
+		&hashes.Previous,
 		&createdAt,
 		&usedAt,
 		&ip,
@@ -117,16 +119,17 @@ func scanSession(row pgx.Row) (*session.Session, error) {
 		return nil, errs.Wrap("row.Scan", err)
 	}
 
-	return session.Restore(id, userID, refreshTokenHash, createdAt, usedAt, session.NewDevice(ip, agent)), nil
+	return session.Restore(id, userID, hashes, createdAt, usedAt, session.NewDevice(ip, agent)), nil
 }
 
 // The hash in WHERE makes the rotation a compare-and-swap.
 const rotateQuery = `
 	UPDATE sessions
 	SET refresh_token_hash = $3,
-		last_used_at = $4,
-		ip = $5,
-		user_agent = $6
+		previous_refresh_token_hash = $4,
+		last_used_at = $5,
+		ip = $6,
+		user_agent = $7
 	WHERE id = $1
 		AND refresh_token_hash = $2
 `
@@ -138,6 +141,7 @@ func (r *SessionRepository) Rotate(ctx context.Context, rotated *session.Session
 		rotated.ID(),
 		oldHash,
 		rotated.RefreshTokenHash(),
+		rotated.PreviousTokenHash(),
 		rotated.UsedAt(),
 		rotated.Device().IP(),
 		rotated.Device().Agent(),
@@ -158,6 +162,7 @@ const listByUserQuery = `
 		id,
 		user_id,
 		refresh_token_hash,
+		previous_refresh_token_hash,
 		created_at,
 		last_used_at,
 		ip,

@@ -62,8 +62,21 @@ func TestSession_Rotated(t *testing.T) {
 	if r.RefreshTokenHash() != "hash-2" || r.Device() != laptop || !r.UsedAt().Equal(later) {
 		t.Fatalf("rotated = %q, %v, %v", r.RefreshTokenHash(), r.Device(), r.UsedAt())
 	}
+	if r.PreviousTokenHash() != "hash-1" || s.PreviousTokenHash() != "" {
+		t.Fatalf("previous = %q, of a new session %q", r.PreviousTokenHash(), s.PreviousTokenHash())
+	}
 	if s.RefreshTokenHash() != "hash-1" || s.Device() != phone {
 		t.Fatal("Rotated changed the session it was called on")
+	}
+
+	// The client never got hash-2 and refreshed with hash-1 again.
+	again := later.Add(time.Second)
+	re := r.Reissued("hash-3", phone, again)
+	if re.RefreshTokenHash() != "hash-3" || re.PreviousTokenHash() != "hash-1" || re.Device() != phone || !re.UsedAt().Equal(again) {
+		t.Fatalf("reissued = %q, %q, %v, %v", re.RefreshTokenHash(), re.PreviousTokenHash(), re.Device(), re.UsedAt())
+	}
+	if r.RefreshTokenHash() != "hash-2" {
+		t.Fatal("Reissued changed the session it was called on")
 	}
 
 	if since := session.LiveSince(later, 30*time.Minute); !since.After(signedIn) || !since.Before(later) {

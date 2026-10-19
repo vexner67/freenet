@@ -46,7 +46,7 @@ type SessionRepository interface {
 	Save(ctx context.Context, s *session.Session) error
 	// Get returns ErrSessionNotFound.
 	Get(ctx context.Context, id uuid.UUID) (*session.Session, error)
-	// Rotate saves the session as it is after a refresh (its token hash,
+	// Rotate saves the session as it is after a refresh (its token hashes,
 	// device and time of use) only if its hash still equals oldHash,
 	// otherwise returns ErrSessionNotFound. This makes two concurrent
 	// refreshes with the same token unable to both succeed.
@@ -213,7 +213,7 @@ func (s *AuthService) VerifyCode(ctx context.Context, email account.Email, code 
 // whether the page is deleted; the session of an erased user ends. The
 // session remembers when and where from it was refreshed.
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string, device session.Device) (TokenPair, error) {
-	sess, err := s.currentSession(ctx, refreshToken)
+	sess, previous, err := s.currentSession(ctx, refreshToken)
 	if err != nil {
 		return TokenPair{}, errs.Wrap("s.currentSession", err)
 	}
@@ -235,7 +235,11 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string, dev
 		return TokenPair{}, errs.Wrap("s.issueTokens", err)
 	}
 
-	rotated := sess.Rotated(s.hasher.Hash(pair.Refresh), device, s.now())
+	hash := s.hasher.Hash(pair.Refresh)
+	rotated := sess.Rotated(hash, device, s.now())
+	if previous {
+		rotated = sess.Reissued(hash, device, s.now())
+	}
 	if err = s.sessionRepo.Rotate(ctx, rotated, sess.RefreshTokenHash()); err != nil {
 		return TokenPair{}, errs.Wrap("s.sessionRepo.Rotate", err)
 	}
@@ -246,7 +250,7 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string, dev
 // Logout ends the session of the refresh token. Logging out of a session
 // that no longer exists succeeds, so clients can retry safely.
 func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
-	sess, err := s.currentSession(ctx, refreshToken)
+	sess, _, err := s.currentSession(ctx, refreshToken)
 	if errors.Is(err, ErrSessionNotFound) {
 		return nil
 	}
@@ -262,29 +266,37 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 }
 
 // currentSession returns the session the refresh token belongs to, if the
-// token is the latest one issued for it.
-func (s *AuthService) currentSession(ctx context.Context, refreshToken string) (*session.Session, error) {
+// token is the latest one issued for it, or the previous one while the
+// latest is unused (previous is then true): a client that left a page
+// while its refresh was on the way never got the latest one.
+func (s *AuthService) currentSession(ctx context.Context, refreshToken string) (sess *session.Session, previous bool, err error) {
 	claims, err := s.tokenProvider.ParseRefreshToken(refreshToken)
 	if err != nil {
-		return nil, errs.Wrap("s.tokenProvider.ParseRefreshToken", err)
+		return nil, false, errs.Wrap("s.tokenProvider.ParseRefreshToken", err)
 	}
 
-	sess, err := s.sessionRepo.Get(ctx, claims.SessionID)
+	sess, err = s.sessionRepo.Get(ctx, claims.SessionID)
 	if err != nil {
-		return nil, errs.Wrap("s.sessionRepo.Get", err)
+		return nil, false, errs.Wrap("s.sessionRepo.Get", err)
 	}
 
-	if sess.UserID() == claims.UserID && s.hasher.Compare(refreshToken, sess.RefreshTokenHash()) {
-		return sess, nil
+	if sess.UserID() == claims.UserID {
+		if s.hasher.Compare(refreshToken, sess.RefreshTokenHash()) {
+			return sess, false, nil
+		}
+		if sess.PreviousTokenHash() != "" && s.hasher.Compare(refreshToken, sess.PreviousTokenHash()) {
+			return sess, true, nil
+		}
 	}
 
-	// A correctly signed but already rotated token: someone kept a copy.
-	// We cannot tell the thief from the owner, so end the session for both.
+	// A correctly signed token older than that: someone kept a copy and
+	// the latest one has been used. We cannot tell the thief from the
+	// owner, so end the session for both.
 	if err = s.sessionRepo.Delete(ctx, sess.ID()); err != nil && !errors.Is(err, ErrSessionNotFound) {
-		return nil, errs.Wrap("s.sessionRepo.Delete", err)
+		return nil, false, errs.Wrap("s.sessionRepo.Delete", err)
 	}
 
-	return nil, ErrInvalidRefreshToken
+	return nil, false, ErrInvalidRefreshToken
 }
 
 // verifyCode accepts each code once: a successful check consumes it.

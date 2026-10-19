@@ -73,11 +73,19 @@ func TestSessionRepository(t *testing.T) {
 	}
 
 	got, err = repo.Get(ctx, sess.ID())
-	if err != nil || got.RefreshTokenHash() != "hash-2" {
+	if err != nil || got.RefreshTokenHash() != "hash-2" || got.PreviousTokenHash() != "hash-1" {
 		t.Fatalf("after rotate: %v, %v", got, err)
 	}
 	if got.Device() != laptop || !got.UsedAt().Equal(refreshed) || !got.CreatedAt().Equal(signedIn) {
 		t.Fatalf("a rotated session = %v, used %v, created %v", got.Device(), got.UsedAt(), got.CreatedAt())
+	}
+
+	// A refresh with the previous token replaces the current one only.
+	if err = repo.Rotate(ctx, got.Reissued("hash-3", phone, refreshed.Add(time.Minute)), "hash-2"); err != nil {
+		t.Fatalf("Rotate a reissued session: %v", err)
+	}
+	if got, err = repo.Get(ctx, sess.ID()); err != nil || got.RefreshTokenHash() != "hash-3" || got.PreviousTokenHash() != "hash-1" {
+		t.Fatalf("after reissue: %v, %v", got, err)
 	}
 
 	if err = repo.Delete(ctx, sess.ID()); err != nil {
