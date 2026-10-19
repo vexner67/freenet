@@ -358,6 +358,24 @@ func TestRepositories_AvatarSearchAndMenu(t *testing.T) {
 		t.Fatalf("%% matches itself only: %v, %v", found, err)
 	}
 
+	// The checkmark: only SetVerified gives it, Update keeps it.
+	verifiedQ, _ := club.NewVerifiedQuery(word)
+	if found, err := clubs.Search(ctx, verifiedQ, uuid.Nil, 10); err != nil || len(found) != 0 {
+		t.Fatalf("Search of the verified before = %v, %v", found, err)
+	}
+	if err = clubs.SetVerified(ctx, cats.ID(), true); err != nil {
+		t.Fatal(err)
+	}
+	if err = clubs.Update(ctx, cats); err != nil {
+		t.Fatal(err)
+	}
+	if found, err := clubs.Search(ctx, verifiedQ, uuid.Nil, 10); err != nil || len(found) != 1 || !found[0].IsVerified() {
+		t.Fatalf("Search of the verified = %v, %v", found, err)
+	}
+	if err = clubs.SetVerified(ctx, uuid.New(), true); !errors.Is(err, club.ErrNotFound) {
+		t.Fatalf("SetVerified of no club = %v", err)
+	}
+
 	if n, err := members.CountClubs(ctx, bob, service.ClubFilter{}); err != nil || n != 2 {
 		t.Fatalf("CountClubs = %d, %v", n, err)
 	}

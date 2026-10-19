@@ -7,7 +7,7 @@ import (
 )
 
 // Notifier records what the notification service has to hear about
-// appointments. It is called inside the transaction of the change
+// appointments and the checkmark. It is called inside the transaction of the change
 // (TxManager), so the notification is recorded if and only if the change
 // is; it is delivered afterwards, retried while the notification service
 // is down.
@@ -16,6 +16,10 @@ type Notifier interface {
 	Appointed(ctx context.Context, clubID, userID uuid.UUID) error
 	// Dismissed takes back the notification of the appointment.
 	Dismissed(ctx context.Context, clubID, userID uuid.UUID) error
+	// Verified: the club, owned by ownerID, got the checkmark of the
+	// administrators of the site; Unverified takes the notification back.
+	Verified(ctx context.Context, clubID, ownerID uuid.UUID) error
+	Unverified(ctx context.Context, clubID, ownerID uuid.UUID) error
 	// Deleted: the club is gone, and the notifications it caused or
 	// that are about it go too.
 	Deleted(ctx context.Context, clubID uuid.UUID) error

@@ -39,6 +39,7 @@ type ClubService interface {
 	CanModerateWall(ctx context.Context, wallID, userID uuid.UUID) (bool, error)
 	WallModerators(ctx context.Context, wallID uuid.UUID) ([]uuid.UUID, error)
 	PurgeUser(ctx context.Context, userID uuid.UUID) error
+	SetVerified(ctx context.Context, clubID uuid.UUID, verified bool) error
 	Requests(ctx context.Context, viewerID, clubID, cursor uuid.UUID, size int) (service.RequestPage, error)
 	Accept(ctx context.Context, requesterID, clubID, userID uuid.UUID) error
 	Reject(ctx context.Context, requesterID, clubID, userID uuid.UUID) error
@@ -449,7 +450,12 @@ func (h *ClubHandler) ListMyClubs(ctx context.Context, req *clubv1.ListMyClubsRe
 }
 
 func (h *ClubHandler) SearchClubs(ctx context.Context, req *clubv1.SearchClubsRequest) (*clubv1.SearchClubsResponse, error) {
-	query, err := club.NewSearchQuery(req.GetQuery())
+	newQuery := club.NewSearchQuery
+	if req.GetVerified() {
+		newQuery = club.NewVerifiedQuery
+	}
+
+	query, err := newQuery(req.GetQuery())
 	if err != nil {
 		return nil, err
 	}
@@ -695,6 +701,21 @@ func (h *ClubHandler) PurgeUser(ctx context.Context, req *clubv1.PurgeUserReques
 	}
 
 	if err = h.clubService.PurgeUser(ctx, userID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+// SetClubVerified is for the gateway only, which first asks the user
+// service whether its caller is an administrator of the site.
+func (h *ClubHandler) SetClubVerified(ctx context.Context, req *clubv1.SetClubVerifiedRequest) (*emptypb.Empty, error) {
+	clubID, err := parseID(req.GetClubId(), "invalid club id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.clubService.SetVerified(ctx, clubID, req.GetVerified()); err != nil {
 		return nil, err
 	}
 

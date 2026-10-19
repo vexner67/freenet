@@ -48,6 +48,7 @@ const (
 	ClubService_CanModerateWall_FullMethodName    = "/club.v1.ClubService/CanModerateWall"
 	ClubService_ListWallModerators_FullMethodName = "/club.v1.ClubService/ListWallModerators"
 	ClubService_PurgeUser_FullMethodName          = "/club.v1.ClubService/PurgeUser"
+	ClubService_SetClubVerified_FullMethodName    = "/club.v1.ClubService/SetClubVerified"
 )
 
 // ClubServiceClient is the client API for ClubService service.
@@ -142,6 +143,11 @@ type ClubServiceClient interface {
 	// Internal, for user: the user's page was deleted and not restored in
 	// time; they leave every club. Idempotent.
 	PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Internal, for gateway: gives the club the checkmark of the
+	// administrators of the site or takes it, and its owner hears of it.
+	// Whether the caller is one of them the gateway asks the user service
+	// first.
+	SetClubVerified(ctx context.Context, in *SetClubVerifiedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type clubServiceClient struct {
@@ -432,6 +438,16 @@ func (c *clubServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest,
 	return out, nil
 }
 
+func (c *clubServiceClient) SetClubVerified(ctx context.Context, in *SetClubVerifiedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ClubService_SetClubVerified_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ClubServiceServer is the server API for ClubService service.
 // All implementations must embed UnimplementedClubServiceServer
 // for forward compatibility.
@@ -524,6 +540,11 @@ type ClubServiceServer interface {
 	// Internal, for user: the user's page was deleted and not restored in
 	// time; they leave every club. Idempotent.
 	PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error)
+	// Internal, for gateway: gives the club the checkmark of the
+	// administrators of the site or takes it, and its owner hears of it.
+	// Whether the caller is one of them the gateway asks the user service
+	// first.
+	SetClubVerified(context.Context, *SetClubVerifiedRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedClubServiceServer()
 }
 
@@ -617,6 +638,9 @@ func (UnimplementedClubServiceServer) ListWallModerators(context.Context, *ListW
 }
 func (UnimplementedClubServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
+}
+func (UnimplementedClubServiceServer) SetClubVerified(context.Context, *SetClubVerifiedRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetClubVerified not implemented")
 }
 func (UnimplementedClubServiceServer) mustEmbedUnimplementedClubServiceServer() {}
 func (UnimplementedClubServiceServer) testEmbeddedByValue()                     {}
@@ -1143,6 +1167,24 @@ func _ClubService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClubService_SetClubVerified_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetClubVerifiedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).SetClubVerified(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_SetClubVerified_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).SetClubVerified(ctx, req.(*SetClubVerifiedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ClubService_ServiceDesc is the grpc.ServiceDesc for ClubService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1261,6 +1303,10 @@ var ClubService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PurgeUser",
 			Handler:    _ClubService_PurgeUser_Handler,
+		},
+		{
+			MethodName: "SetClubVerified",
+			Handler:    _ClubService_SetClubVerified_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -22,6 +22,21 @@ type notifier struct {
 	// deleted are the clubs post and notification were told are gone,
 	// once by each.
 	deleted []uuid.UUID
+	// verified are the owners told their club got the checkmark, by club.
+	verified map[uuid.UUID]uuid.UUID
+}
+
+func (n *notifier) Verified(_ context.Context, clubID, ownerID uuid.UUID) error {
+	if n.verified == nil {
+		n.verified = make(map[uuid.UUID]uuid.UUID)
+	}
+	n.verified[clubID] = ownerID
+	return nil
+}
+
+func (n *notifier) Unverified(_ context.Context, clubID, _ uuid.UUID) error {
+	delete(n.verified, clubID)
+	return nil
 }
 
 func (n *notifier) Deleted(_ context.Context, clubID uuid.UUID) error {
@@ -123,6 +138,61 @@ func TestClubService_Delete(t *testing.T) {
 	}
 	if err := svc.Delete(ctx, owner, c.ID()); !errors.Is(err, club.ErrNotFound) {
 		t.Fatalf("Delete again = %v", err)
+	}
+}
+
+func TestClubService_SetVerified(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc, n := newNotified()
+	owner, admin := uuid.New(), uuid.New()
+	c := create(t, svc, owner)
+
+	if err := svc.SetVerified(ctx, c.ID(), true); err != nil {
+		t.Fatalf("SetVerified: %v", err)
+	}
+	if v, _ := svc.Find(ctx, uuid.Nil, service.Ref{ID: c.ID()}); !v.Club.IsVerified() {
+		t.Fatal("the club is not verified")
+	}
+	if n.verified[c.ID()] != owner {
+		t.Fatalf("told %v, want the owner", n.verified)
+	}
+
+	// Its admins edit it and keep the checkmark, which they cannot change.
+	if _, err := svc.Join(ctx, admin, c.ID()); err != nil {
+		t.Fatalf("Join: %v", err)
+	}
+	if err := svc.Appoint(ctx, owner, c.ID(), admin, club.RoleAdmin); err != nil {
+		t.Fatalf("Appoint: %v", err)
+	}
+	if _, err := svc.Update(ctx, admin, c.ID(), club.Changes{Name: "Коты", Wall: club.WallOpen, AdminsDisplay: club.AdminsDisplayAll}); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if v, _ := svc.Find(ctx, uuid.Nil, service.Ref{ID: c.ID()}); !v.Club.IsVerified() || v.Club.Name() != "Коты" {
+		t.Fatalf("after Update: verified %v, name %q", v.Club.IsVerified(), v.Club.Name())
+	}
+
+	q, _ := club.NewVerifiedQuery("")
+	if page, err := svc.Search(ctx, q, uuid.Nil, 10); err != nil || len(page.Clubs) != 1 {
+		t.Fatalf("Search of the verified = %v, %v", page.Clubs, err)
+	}
+
+	if err := svc.SetVerified(ctx, c.ID(), false); err != nil {
+		t.Fatalf("SetVerified false: %v", err)
+	}
+	if v, _ := svc.Find(ctx, uuid.Nil, service.Ref{ID: c.ID()}); v.Club.IsVerified() {
+		t.Fatal("the club is still verified")
+	}
+	if len(n.verified) != 0 {
+		t.Fatalf("the notification was not taken back: %v", n.verified)
+	}
+	if page, _ := svc.Search(ctx, q, uuid.Nil, 10); len(page.Clubs) != 0 {
+		t.Fatalf("Search of the verified = %v", page.Clubs)
+	}
+
+	if err := svc.SetVerified(ctx, uuid.New(), true); !errors.Is(err, club.ErrNotFound) {
+		t.Fatalf("SetVerified of no club = %v", err)
 	}
 }
 

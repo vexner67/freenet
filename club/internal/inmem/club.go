@@ -151,7 +151,8 @@ func stored(c *club.Club) club.Stored {
 		TopicsAboveWall: c.TopicsAboveWall(),
 		Backdrop:        c.Backdrop(),
 
-		Closed: c.Closed(),
+		Closed:   c.Closed(),
+		Verified: c.IsVerified(),
 	}
 }
 
@@ -215,7 +216,7 @@ func (r *ClubRepository) Update(ctx context.Context, c *club.Club) error {
 	r.s.mu.Lock()
 	defer r.s.mu.Unlock()
 
-	_, ok := r.s.clubs[c.ID()]
+	old, ok := r.s.clubs[c.ID()]
 	if !ok {
 		return club.ErrNotFound
 	}
@@ -226,7 +227,29 @@ func (r *ClubRepository) Update(ctx context.Context, c *club.Club) error {
 		}
 	}
 
-	r.s.clubs[c.ID()] = stored(c)
+	// As in PostgreSQL, only SetVerified changes the checkmark.
+	edited := stored(c)
+	edited.Verified = old.Verified
+	r.s.clubs[c.ID()] = edited
+
+	return nil
+}
+
+func (r *ClubRepository) SetVerified(ctx context.Context, clubID uuid.UUID, verified bool) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	stored, ok := r.s.clubs[clubID]
+	if !ok {
+		return club.ErrNotFound
+	}
+
+	stored.Verified = verified
+	r.s.clubs[clubID] = stored
 
 	return nil
 }
