@@ -102,9 +102,9 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 	}
 
 	// As in PostgreSQL, Update stores neither visits, backdrops nor the
-	// wallet, which change on their own: a user read before keeps the
-	// newer ones.
-	stored := *u.WithWallet(old.Wallet())
+	// wallet nor the checkmark, which change on their own: a user read
+	// before keeps the newer ones.
+	stored := *u.WithWallet(old.Wallet()).WithVerified(old.IsVerified())
 	stored.MarkSeen(old.LastSeen())
 	stored.SetBackdrop(user.BackdropLeft, old.Backdrop().Left)
 	stored.SetBackdrop(user.BackdropRight, old.Backdrop().Right)
@@ -146,6 +146,9 @@ func (r *UserRepository) Count(ctx context.Context, since time.Time) (service.St
 		}
 
 		stats.Users++
+		if u.IsVerified() {
+			stats.Verified++
+		}
 		if u.LastSeen().After(since) {
 			stats.Online++
 		}

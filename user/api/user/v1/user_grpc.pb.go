@@ -74,6 +74,7 @@ const (
 	UserService_CreateVoucher_FullMethodName      = "/user.v1.UserService/CreateVoucher"
 	UserService_ListVouchers_FullMethodName       = "/user.v1.UserService/ListVouchers"
 	UserService_DeleteVoucher_FullMethodName      = "/user.v1.UserService/DeleteVoucher"
+	UserService_SetVerified_FullMethodName        = "/user.v1.UserService/SetVerified"
 	UserService_DeactivateAccount_FullMethodName  = "/user.v1.UserService/DeactivateAccount"
 	UserService_ReactivateAccount_FullMethodName  = "/user.v1.UserService/ReactivateAccount"
 	UserService_GetAccountState_FullMethodName    = "/user.v1.UserService/GetAccountState"
@@ -214,6 +215,10 @@ type UserServiceClient interface {
 	CreateVoucher(ctx context.Context, in *CreateVoucherRequest, opts ...grpc.CallOption) (*CreateVoucherResponse, error)
 	ListVouchers(ctx context.Context, in *ListVouchersRequest, opts ...grpc.CallOption) (*ListVouchersResponse, error)
 	DeleteVoucher(ctx context.Context, in *DeleteVoucherRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Requires an access token of an administrator of the site
+	// (PermissionDenied otherwise): gives a page the checkmark of a
+	// confirmed one ("Верификация" of openvk) or takes it.
+	SetVerified(ctx context.Context, in *SetVerifiedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Require an access token: deleting the caller's page ("Удаление
 	// страницы" on openvk) and restoring it. A deleted page is hidden: others
 	// see only its name and photo, nobody may follow it, write on its wall
@@ -775,6 +780,16 @@ func (c *userServiceClient) DeleteVoucher(ctx context.Context, in *DeleteVoucher
 	return out, nil
 }
 
+func (c *userServiceClient) SetVerified(ctx context.Context, in *SetVerifiedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetVerified_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) DeactivateAccount(ctx context.Context, in *DeactivateAccountRequest, opts ...grpc.CallOption) (*DeactivateAccountResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeactivateAccountResponse)
@@ -940,6 +955,10 @@ type UserServiceServer interface {
 	CreateVoucher(context.Context, *CreateVoucherRequest) (*CreateVoucherResponse, error)
 	ListVouchers(context.Context, *ListVouchersRequest) (*ListVouchersResponse, error)
 	DeleteVoucher(context.Context, *DeleteVoucherRequest) (*emptypb.Empty, error)
+	// Requires an access token of an administrator of the site
+	// (PermissionDenied otherwise): gives a page the checkmark of a
+	// confirmed one ("Верификация" of openvk) or takes it.
+	SetVerified(context.Context, *SetVerifiedRequest) (*emptypb.Empty, error)
 	// Require an access token: deleting the caller's page ("Удаление
 	// страницы" on openvk) and restoring it. A deleted page is hidden: others
 	// see only its name and photo, nobody may follow it, write on its wall
@@ -1122,6 +1141,9 @@ func (UnimplementedUserServiceServer) ListVouchers(context.Context, *ListVoucher
 }
 func (UnimplementedUserServiceServer) DeleteVoucher(context.Context, *DeleteVoucherRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteVoucher not implemented")
+}
+func (UnimplementedUserServiceServer) SetVerified(context.Context, *SetVerifiedRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetVerified not implemented")
 }
 func (UnimplementedUserServiceServer) DeactivateAccount(context.Context, *DeactivateAccountRequest) (*DeactivateAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeactivateAccount not implemented")
@@ -2125,6 +2147,24 @@ func _UserService_DeleteVoucher_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_SetVerified_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetVerifiedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetVerified(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetVerified_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetVerified(ctx, req.(*SetVerifiedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_DeactivateAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeactivateAccountRequest)
 	if err := dec(in); err != nil {
@@ -2401,6 +2441,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteVoucher",
 			Handler:    _UserService_DeleteVoucher_Handler,
+		},
+		{
+			MethodName: "SetVerified",
+			Handler:    _UserService_SetVerified_Handler,
 		},
 		{
 			MethodName: "DeactivateAccount",

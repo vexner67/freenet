@@ -69,6 +69,7 @@ func TestSearchFilters_Indexed(t *testing.T) {
 		{user.SearchFilters{Film: "Матрица"}, "users_fav_films_idx"},
 		{user.SearchFilters{Show: "Друзья"}, "users_fav_shows_idx"},
 		{user.SearchFilters{Book: "Идиот"}, "users_fav_books_idx"},
+		{user.SearchFilters{Verified: true}, "users_verified_idx"},
 	}
 
 	for _, tt := range tests {

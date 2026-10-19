@@ -290,7 +290,8 @@ const countUsersQuery = `
 			FROM presence p
 			WHERE p.user_id = users.id
 				AND p.last_seen_at > $1
-		))
+		)),
+		count(*) FILTER (WHERE verified)
 	FROM users
 	WHERE deactivated_at IS NULL
 `
@@ -298,7 +299,7 @@ const countUsersQuery = `
 func (r *UserRepository) Count(ctx context.Context, since time.Time) (service.Statistics, error) {
 	var stats service.Statistics
 
-	if err := r.pool.QueryRow(ctx, countUsersQuery, since).Scan(&stats.Users, &stats.Online); err != nil {
+	if err := r.pool.QueryRow(ctx, countUsersQuery, since).Scan(&stats.Users, &stats.Online, &stats.Verified); err != nil {
 		return service.Statistics{}, errs.Wrap("r.pool.QueryRow", err)
 	}
 
@@ -424,7 +425,8 @@ const userColumns = `
 		closed,
 		gifts_read,
 		votes,
-		rating`
+		rating,
+		verified`
 
 // qualifiedUserColumns are userColumns of the users table joined as u.
 const qualifiedUserColumns = `
@@ -488,7 +490,8 @@ const qualifiedUserColumns = `
 		u.closed,
 		u.gifts_read,
 		u.votes,
-		u.rating`
+		u.rating,
+		u.verified`
 
 const getUserByIDQuery = `
 	SELECT` + userColumns + `
@@ -628,6 +631,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		hideRating                                 bool
 		timezone                                   *int16
 		wallet                                     user.Wallet
+		verified                                   bool
 	)
 
 	err := row.Scan(
@@ -671,6 +675,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&giftsRead,
 		&wallet.Votes,
 		&wallet.Rating,
+		&verified,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound
@@ -749,7 +754,8 @@ func scanUser(row pgx.Row) (*user.User, error) {
 			Timezone:    timezoneFromDB(timezone),
 			HiddenMenu:  hiddenMenuFromDB(hiddenMenu),
 		},
-		Wallet: wallet,
+		Wallet:   wallet,
+		Verified: verified,
 	}), nil
 }
 
@@ -909,7 +915,7 @@ const searchHaystack = `lower(nickname || ' ' || name || ' ' || surname)`
 // for the placeholder of its parameter.
 type searchCondition struct {
 	sql   string
-	param string
+	param any
 }
 
 // searchConditions are the words of q, one "LIKE $n" each: unlike LIKE ALL
@@ -925,11 +931,16 @@ func searchConditions(q user.SearchQuery) []searchCondition {
 	// The filters look into the information, which only the pages open
 	// to everyone tell.
 	f := q.Filters()
-	if f != (user.SearchFilters{}) {
+	if f.LookIntoInfo() {
 		conds = append(conds, searchCondition{"NOT closed AND info_read = $%d", user.AudienceEveryone.String()})
 	}
 
-	for _, c := range []searchCondition{
+	// users_verified_idx serves "verified = true".
+	if f.Verified {
+		conds = append(conds, searchCondition{"verified = $%d", true})
+	}
+
+	for _, c := range []struct{ sql, param string }{
 		{"lower(hometown) = $%d", f.Hometown},
 		{"lower(city) = $%d", f.City},
 		{"lower(fav_films) LIKE $%d", f.Film},
@@ -942,7 +953,7 @@ func searchConditions(q user.SearchQuery) []searchCondition {
 		if strings.Contains(c.sql, "LIKE") {
 			c.param = "%" + escapeLike(c.param) + "%"
 		}
-		conds = append(conds, c)
+		conds = append(conds, searchCondition{c.sql, c.param})
 	}
 
 	return conds

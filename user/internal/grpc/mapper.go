@@ -44,6 +44,7 @@ func toProtoUser(u *user.User) *userv1.User {
 		Completeness:          int32(completeness), //nolint:gosec // a percent
 		Unfilled:              unfilled,
 		Votes:                 u.Wallet().Votes,
+		Verified:              u.IsVerified(),
 	}
 }
 
@@ -410,6 +411,7 @@ func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
 		PageHidden:            p.PageHidden,
 		Closed:                p.Closed,
 		InfoHidden:            p.InfoHidden,
+		Verified:              p.Verified,
 	}
 
 	// The date of registration is information too. A list tells who is

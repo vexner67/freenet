@@ -40,6 +40,7 @@ type UserHandler struct {
 	giftService       GiftService
 	stickerService    StickerService
 	walletService     WalletService
+	verification      VerificationService
 	permissionService PermissionService
 	presenceService   PresenceService
 	backdropService   BackdropService
@@ -48,17 +49,19 @@ type UserHandler struct {
 
 // Services are the use cases behind the handler.
 type Services struct {
-	Users       UserService
-	Accounts    AccountService
-	Follows     FollowService
-	Blocks      BlockService
-	Ignores     IgnoreService
-	Gifts       GiftService
-	Stickers    StickerService
-	Wallets     WalletService
-	Permissions PermissionService
-	Presence    PresenceService
-	Backdrops   BackdropService
+	Users    UserService
+	Accounts AccountService
+	Follows  FollowService
+	Blocks   BlockService
+	Ignores  IgnoreService
+	Gifts    GiftService
+	Stickers StickerService
+	Wallets  WalletService
+	// Verification gives and takes the checkmark.
+	Verification VerificationService
+	Permissions  PermissionService
+	Presence     PresenceService
+	Backdrops    BackdropService
 }
 
 func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
@@ -71,6 +74,7 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		giftService:       s.Gifts,
 		stickerService:    s.Stickers,
 		walletService:     s.Wallets,
+		verification:      s.Verification,
 		permissionService: s.Permissions,
 		presenceService:   s.Presence,
 		backdropService:   s.Backdrops,
@@ -340,6 +344,7 @@ func (h *UserHandler) SetAvatar(ctx context.Context, req *userv1.SetAvatarReques
 func (h *UserHandler) SearchUsers(ctx context.Context, req *userv1.SearchUsersRequest) (*userv1.SearchUsersResponse, error) {
 	q, err := user.NewSearchQuery(req.GetQuery(), user.SearchFilters{
 		Hometown: req.GetHometown(), City: req.GetCity(), Film: req.GetFilm(), Show: req.GetShow(), Book: req.GetBook(),
+		Verified: req.GetVerified(),
 	})
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())

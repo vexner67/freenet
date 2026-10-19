@@ -112,6 +112,10 @@ type PublicProfile struct {
 	// Closed: the page is a closed one ("Закрытая страница"), told on the
 	// hidden page too.
 	Closed bool
+	// Verified: the administrators confirmed the page ("Подтверждённая
+	// страница"), told on the hidden page too, as openvk does; a deleted
+	// page tells nothing.
+	Verified bool
 	// LastSeen is when the person last visited ("был в сети"), the zero
 	// time if never or hidden; Online: within OnlineFor ("Онлайн").
 	LastSeen time.Time
@@ -151,6 +155,9 @@ type User struct {
 	ui Interface
 	// wallet is changed by storage alone, never by saving the user.
 	wallet Wallet
+	// verified is the checkmark the administrators give ("Подтверждённая
+	// страница"); like wallet, storage alone changes it.
+	verified bool
 }
 
 // New creates a user with only an email set, as happens on the first
@@ -189,6 +196,7 @@ type Stored struct {
 	Backdrop     Backdrop
 	Interface    Interface
 	Wallet       Wallet
+	Verified     bool
 }
 
 // Restore rebuilds a user from storage without validation or new IDs.
@@ -207,6 +215,7 @@ func Restore(s Stored) *User {
 		backdrop:     s.Backdrop,
 		ui:           s.Interface,
 		wallet:       s.Wallet,
+		verified:     s.Verified,
 	}
 }
 
@@ -360,7 +369,7 @@ func (u *User) PublicProfileFor(viewerID uuid.UUID, t Ties, now time.Time) Publi
 		return PublicProfile{
 			ID: u.id, AvatarID: u.avatarID, Name: u.profile.Name, Surname: u.profile.Surname,
 			Nickname: u.profile.Nickname, Gender: u.profile.Gender, PageHidden: true, InfoHidden: true,
-			Closed: u.privacy.Closed,
+			Closed: u.privacy.Closed, Verified: u.verified && !u.IsDeactivated(),
 		}
 	}
 
@@ -400,6 +409,7 @@ func (u *User) publicProfile(showInfo bool) PublicProfile {
 		Gender:   u.profile.Gender,
 		Backdrop: u.backdrop,
 		Closed:   u.privacy.Closed,
+		Verified: u.verified,
 	}
 
 	if !showInfo {
