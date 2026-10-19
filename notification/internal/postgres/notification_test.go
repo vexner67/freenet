@@ -592,6 +592,57 @@ func TestRepositories(t *testing.T) {
 			t.Fatalf("DeleteByPost: %v, left %d", err, count())
 		}
 	})
+	t.Run("likes and comments of a story", func(t *testing.T) {
+		ann, bob, story, comment := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+		events := []notification.Event{
+			{Kind: notification.KindStoryLike, RecipientID: ann, ActorID: bob, PostID: story},
+			{Kind: notification.KindStoryComment, RecipientID: ann, ActorID: bob, PostID: story, CommentID: comment},
+		}
+
+		count := func() int {
+			t.Helper()
+
+			got, err := repo.List(ctx, service.Query{RecipientID: ann, Unread: true, Limit: 10})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			return len(got)
+		}
+		save := func() {
+			t.Helper()
+
+			for _, e := range events {
+				n, err := notification.New(e, time.Now())
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err = repo.Save(ctx, n); err != nil {
+					t.Fatalf("Save %s: %v", e.Kind, err)
+				}
+			}
+		}
+
+		save()
+		save() // one per like and per comment
+		if got := count(); got != 2 {
+			t.Fatalf("notifications = %d, want 2", got)
+		}
+		for _, e := range events {
+			if err := repo.Delete(ctx, e); err != nil {
+				t.Fatalf("Delete %s: %v", e.Kind, err)
+			}
+		}
+		if got := count(); got != 0 {
+			t.Fatalf("left %d after Delete", got)
+		}
+
+		// The deleted story takes both.
+		save()
+		if err := repo.DeleteByPost(ctx, story); err != nil || count() != 0 {
+			t.Fatalf("DeleteByPost: %v, left %d", err, count())
+		}
+	})
 	t.Run("photos and topic likes", func(t *testing.T) {
 		ann, bob, photo, comment, topic, message := uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New()
 		events := []notification.Event{
