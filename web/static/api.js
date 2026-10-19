@@ -638,8 +638,6 @@ export const api = {
   unlikeTopicMessage: (id) => authorized('DELETE', `/api/v1/topic-messages/${encodeURIComponent(id)}/like`),
   topicMessageLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/topic-messages/${encodeURIComponent(id)}/likes`, cursor, limit)),
 
-  // "Заметки" of a person, the comments under a note; the list carries
-  // the beginnings of the texts, note(id) the whole.
   // "Закладки": what you like — section is 'posts', 'comments' or
   // 'photos' — newest like first, and ownPosts: what you wrote.
   faves: (section, cursor = '') => authorized('GET', page(`/api/v1/me/faves/${section}`, cursor, 0)),
@@ -648,6 +646,8 @@ export const api = {
   // "Подарки": what there is to send, what a page was sent, sending and
   // removing from your own page; the administrators price the gifts.
   giftCatalog: () => request('GET', '/api/v1/gifts'),
+  voteRate: () => request('GET', '/api/v1/vote-rate'),
+  setVoteRate: (kopecks) => authorized('PUT', '/api/v1/vote-rate', { kopecks }),
   setGiftPrice: (gift, price) => authorized('PUT', `/api/v1/gifts/${encodeURIComponent(gift)}/price`, { price }),
   gifts: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/gifts`, cursor, limit)),
   sendGift: (nickname, gift, caption, anonymous) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/gifts`, { gift, caption, anonymous }),
@@ -681,16 +681,6 @@ export const api = {
   unban: (nickname) => authorized('DELETE', `/api/v1/users/${encodeURIComponent(nickname)}/ban`),
   setClubVerified: (ref, verified) =>
     authorized(verified ? 'PUT' : 'DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/verification`),
-
-  notes: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/notes`, cursor, limit)),
-  createNote: (title, text) => authorized('POST', '/api/v1/me/notes', { title, text }),
-  note: (id) => optional('GET', `/api/v1/notes/${encodeURIComponent(id)}`),
-  editNote: (id, title, text) => authorized('PATCH', `/api/v1/notes/${encodeURIComponent(id)}`, { title, text }),
-  deleteNote: (id) => authorized('DELETE', `/api/v1/notes/${encodeURIComponent(id)}`),
-  noteComments: (id, cursor = '') => optional('GET', page(`/api/v1/notes/${encodeURIComponent(id)}/comments`, cursor, 0)),
-  commentNote: (id, text) => authorized('POST', `/api/v1/notes/${encodeURIComponent(id)}/comments`, { text }),
-  deleteNoteComment: (id) => authorized('DELETE', `/api/v1/note-comments/${encodeURIComponent(id)}`),
-  noteCommentText: (id) => optional('GET', `/api/v1/note-comments/${encodeURIComponent(id)}/text`),
 
   // "Альбомы" of a person (nickname) or of a community (club: its ref).
   albums({ nickname = '', club = '', cursor = '', limit = 0 } = {}) {

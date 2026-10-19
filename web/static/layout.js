@@ -434,7 +434,6 @@ export function applyInterface(me) {
     el('a', { href: profilePath(me), textContent: 'Страница' }),
     menuLink(me, 'photos', '/albums', 'Фотографии'),
     menuLink(me, 'messages', '/im', 'Сообщения', 'messages-count'),
-    menuLink(me, 'notes', '/notes', 'Заметки'),
     menuLink(me, 'groups', '/groups', 'Группы'),
     menuLink(me, 'feed', '/feed', 'Новости'),
     menuLink(me, 'notifications', '/notifications', 'Уведомления', 'notifications-count'),

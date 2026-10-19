@@ -139,26 +139,23 @@ h1.page-title { font-size: inherit; }
   border-radius: 0 0 7px 7px;
 }
 
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--text-fff);
-  font: bold 21px tahoma, verdana, arial, sans-serif;
-  letter-spacing: -1px;
-}
+.logo { display: flex; align-items: center; color: var(--text-fff); }
 .logo:hover { text-decoration: none; }
 
-.logo-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 5px;
-  background: var(--back-fff);
-  color: var(--text-3e3e3e);
-  font-size: 18px;
+/* The mark is the "f" of the word: a tile, as the icon of the site, with
+   "reenet" drawn after it by the same pen. */
+.logo-mark { display: block; width: 26px; height: 26px; }
+.logo-mark rect { fill: var(--back-fff); }
+.logo-mark path { fill: none; stroke: var(--text-3e3e3e); }
+.logo-word {
+  display: block;
+  width: 95px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .header-links { display: flex; }
@@ -1399,21 +1396,6 @@ a.poll-result-name { cursor: pointer; }
 .poll-editor label input { margin: 0 3px 0 0; vertical-align: middle; }
 .poll-editor .poll-editor-expires select { display: inline-block; width: auto; margin: 0; }
 
-/* "Заметки": a note is laid out as a post — the photo of its author, the
-   title, who wrote it and when, the text and the links below. */
-.note-list { padding-top: 10px; }
-.note-item { margin-bottom: 14px; }
-.note-title { padding: 2px 4px 0; font-size: 12px; overflow-wrap: anywhere; }
-.note-byline { padding: 2px 4px 6px; }
-.note-item .post-text { padding-top: 0; }
-.note { padding-top: 10px; }
-.note-form .form th { width: 90px; }
-.note-form .form td.control { width: 480px; }
-.note-form input[type="text"], .note-form textarea { width: 100%; }
-.note-form textarea { height: 260px; }
-.note-form .button.secondary { margin-left: 6px; }
-.side-note { margin-bottom: 6px; overflow-wrap: anywhere; }
-.side-note .hint { margin: 0; }
 
 /* "Настройки ленты": the box with its two tabs and the ignored sources. */
 .feed-settings-box { width: 440px; }
@@ -1487,6 +1469,8 @@ a.poll-result-name { cursor: pointer; }
 .finance-transfer { text-align: center; }
 .finance-balance { width: 140px; font-weight: bold; text-align: center; }
 .finance-votes { height: 60px; overflow: hidden; font-size: 48px; font-weight: normal; line-height: 60px; white-space: nowrap; }
+.finance-rate { font-weight: bold; }
+.finance-rubles { color: var(--text-808080); font-weight: normal; }
 .voucher-keys { margin: 10px 0; }
 .voucher-keys input.voucher-key { width: 60px; text-align: center; text-transform: uppercase; }
 .voucher-code { font-family: "Courier New", monospace; white-space: nowrap; }
@@ -1574,33 +1558,44 @@ a.poll-result-name { cursor: pointer; }
 .story-zone { position: absolute; top: 0; bottom: 0; cursor: pointer; }
 .story-zone-prev { left: 0; width: 35%; }
 .story-zone-next { right: 0; width: 65%; }
-.story-foot { display: flex; justify-content: center; gap: 16px; padding: 8px; }
-.story-foot a { color: rgba(255, 255, 255, .9); cursor: pointer; }
-.story-like { font-size: 13px; }
-.story-foot .story-liked { color: var(--text-d94c4c); }
+.story-panel {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  max-height: 55%;
+  background: var(--back-fff);
+  color: var(--text-000);
+}
+.story-foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  border-top: 1px solid var(--line-dae1e8);
+}
+.story-foot a { cursor: pointer; }
+.story-foot .like svg { width: 13px; height: 12px; }
+.story-foot .like-count { font-size: 11px; }
 .story-comments {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 1;
   display: flex;
   flex-direction: column;
-  max-height: 60%;
-  padding: 8px;
-  background: rgba(0, 0, 0, .8);
+  min-height: 0;
+  padding: 0 10px 8px;
+  border-top: 1px solid var(--line-dae1e8);
+  overflow-y: auto;
 }
-.story-comment-list { flex: 1; min-height: 0; overflow-y: auto; }
-.story-comment { display: flex; gap: 6px; margin-bottom: 8px; }
-.story-comment img { display: block; width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
-.story-comment a { color: rgba(255, 255, 255, .95); cursor: pointer; }
+.story-comment-form { margin: 0; padding: 8px 0 4px; }
+.story-comment-form .row { justify-content: flex-start; margin-top: 6px; }
+.story-comment { display: flex; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line-e8ebee); }
+.story-comment-avatar img { display: block; width: 30px; height: 30px; object-fit: cover; }
+.story-comment-body { flex: 1; min-width: 0; }
 .story-comment-author { font-weight: bold; }
-.story-comment-text { word-wrap: break-word; white-space: pre-wrap; }
-.story-comment .story-comment-delete { color: rgba(255, 255, 255, .6); }
-.story-comments-more { display: block; margin-bottom: 6px; color: rgba(255, 255, 255, .9); text-align: center; cursor: pointer; }
-.story-comments-empty { color: rgba(255, 255, 255, .6); text-align: center; }
-.story-comment-form { display: flex; gap: 6px; align-items: flex-end; }
-.story-comment-form textarea { flex: 1; height: 32px; min-height: 32px; }
+.story-comment-text { margin: 2px 0; word-wrap: break-word; white-space: pre-wrap; }
+.story-comment-date { color: var(--text-808080); }
+.story-comment .story-comment-delete { margin-left: 6px; color: var(--text-808080); cursor: pointer; }
+.story-comments-more { display: block; padding: 6px 0 0; text-align: center; cursor: pointer; }
+.story-comments-empty { margin: 6px 0 0; color: var(--text-808080); text-align: center; }
 .story-form textarea { width: 100%; height: 50px; margin-top: 6px; }
 .story-preview { display: block; width: auto; max-width: 100%; height: auto; max-height: 240px; margin: 6px auto 0; }
 
@@ -1651,7 +1646,7 @@ a.poll-result-name { cursor: pointer; }
   /* Forms of two columns: the label over its field. */
   .form, .form tbody, .form tr, .form th, .form td { display: block; width: auto; }
   .form th { padding: 6px 0 2px; text-align: left; line-height: normal; }
-  .form td.control, .note-form .form td.control { width: auto; }
+  .form td.control { width: auto; }
   .form td.note { padding-left: 0; }
   .actions, .settings-delete { padding-left: 0; }
   .container-gray .form, .container-gray .extra-field, .container-gray .subhead, .container-gray .actions, .settings-block { width: auto; }
@@ -1727,8 +1722,7 @@ a.poll-result-name { cursor: pointer; }
 
 /* A phone too narrow for the word of the logo beside the links: its mark. */
 @media (max-width: 420px) {
-  .logo { font-size: 0; }
-  .logo-mark { font-size: 18px; }
+  .logo-word { display: none; }
 }
 
 /* Where nothing points, what shows on pointing is always there. */

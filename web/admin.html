@@ -153,6 +153,13 @@
 
     <section id="gifts" hidden>
       <h1 class="aui-page-heading">Подарки</h1>
+      <form class="aui admin-rate" id="rate-form">
+        <label for="rate-rubles">Курс голоса</label>
+        <input class="text" id="rate-rubles" type="number" min="0.01" max="1000000" step="0.01" required>
+        <span>₽ за голос</span>
+        <button class="aui-button" type="submit">Сохранить</button>
+        <div class="description">Сайт показывает его рядом с голосами: в «Голосах» настроек, в «Магазине» и при выборе подарка.</div>
+      </form>
       <p class="admin-lead">Цена — в голосах, 0 — бесплатно. Новая цена действует для подарков, которые отправят после неё.</p>
       <div class="aui-message aui-message-success" id="priced" hidden></div>
       <div class="aui-table-wrap">

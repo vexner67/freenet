@@ -8,7 +8,7 @@
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, adminOverview, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, adminOverview, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -403,7 +403,7 @@ function newVoucher() {
 
 // gifts is "Подарки": every gift of the catalogue with the field of its
 // price, saved row by row.
-async function gifts(catalog) {
+async function gifts({ catalog, rate }) {
   const { collections } = await catalog;
 
   function row(collection, { gift, price }) {
@@ -439,7 +439,33 @@ async function gifts(catalog) {
   }
 
   $('gift-rows').replaceChildren(...collections.flatMap((c) => giftCosts(c).map((g) => row(c, g))));
+  showRate(await rate);
   $('gifts').hidden = false;
+}
+
+// showRate is the form of what a vote is worth, in rubles with kopecks.
+function showRate({ kopecks }) {
+  const field = $('rate-rubles');
+  const save = $('rate-form').querySelector('button');
+
+  field.value = (kopecks / 100).toFixed(2);
+  $('rate-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    $('priced').hidden = true;
+    save.disabled = true;
+
+    try {
+      const set = Math.round(Number(field.value) * 100);
+      await api.setVoteRate(set);
+      $('priced').textContent = `Курс: ${voteRate(set)}.`;
+      $('priced').hidden = false;
+    } catch (e) {
+      showError(e);
+    } finally {
+      save.disabled = false;
+    }
+  });
 }
 
 // The reads of the page go with /me in one round trip; a guest or one who
@@ -454,7 +480,7 @@ const reads = {
   '/admin/bans': () => started(listPage.first()),
   '/admin/clubs': () => started(listPage.first()),
   '/admin/vouchers': () => started(api.vouchers()),
-  '/admin/gifts': () => started(api.giftCatalog()),
+  '/admin/gifts': () => ({ catalog: started(api.giftCatalog()), rate: started(api.voteRate()) }),
 }[path]?.();
 
 const me = await currentUser().catch(() => null);

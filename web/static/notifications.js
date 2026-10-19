@@ -8,7 +8,6 @@ import { api, currentUser, started } from './api.js';
 import { onEvent } from './events.js';
 import { formatPostDate, notificationVerb, plainMentions, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, pagePath, profilePath, renderChrome, setCounter, showError, hideError, verifiedMark } from './layout.js';
-import { notePath } from './notes.js';
 import { postPath } from './posts.js';
 import { topicPath } from './topics.js';
 
@@ -154,13 +153,6 @@ function notificationText(n) {
 
   if (n.type === 'photo_comment') {
     return [name, ` ${notificationVerb('comment', n.actor)} комментарий под вашей `, photoLink(n.photo, 'фотографией'), said(n)];
-  }
-
-  // A comment under your note: openvk's "оставил комментарий под вашей
-  // заметкой".
-  if (n.type === 'note_comment') {
-    return [name, ` ${notificationVerb('comment', n.actor)} комментарий под вашей заметкой `,
-      el('a', { href: notePath(n.note) }, el('b', { textContent: `«${n.note.title}»` })), said(n)];
   }
 
   // A like and a comment of your story, as VK tells them; the story lives

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -279,20 +279,6 @@ test('albums are counted as openvk counts them', () => {
   assert.equal(photosCount(25), '25 фотографий');
 });
 
-test('notes are counted and found as openvk says', () => {
-  assert.equal(notesCount(0), 'Ни одной заметки');
-  assert.equal(notesCount(1), '1 заметка');
-  assert.equal(notesCount(3), '3 заметки');
-  assert.equal(notesCount(12), '12 заметок');
-  assert.equal(foundNotes(0), 'Ни одной заметки');
-  assert.equal(foundNotes(1), 'Найдена 1 заметка');
-  assert.equal(foundNotes(21), 'Найдена 21 заметка');
-  assert.equal(foundNotes(4), 'Найдено 4 заметки');
-  assert.equal(foundNotes(7), 'Найдено 7 заметок');
-  assert.equal(errorText({ message: "this user's notes are hidden" }), 'Пользователь скрыл свои заметки.');
-  assert.ok(menuItems.some(([item, text]) => item === 'notes' && text === 'Заметки'));
-});
-
 test('faves are counted as openvk says', () => {
   assert.equal(favesCount(0), 'Ни одной закладки');
   assert.equal(favesCount(1), '1 закладка');
@@ -454,7 +440,7 @@ test('the admin panel counts the site as openvk\'s "Сводка"', () => {
 test('the choices of the interface are those the API knows', () => {
   assert.deepEqual(avatarStyles.map(([v]) => v), ['square', 'round']);
   assert.deepEqual(mainPages.map(([v]) => v), ['page', 'feed']);
-  assert.deepEqual(menuItems.map(([v]) => v), ['photos', 'messages', 'notes', 'groups', 'feed', 'notifications']);
+  assert.deepEqual(menuItems.map(([v]) => v), ['photos', 'messages', 'groups', 'feed', 'notifications']);
   assert.equal(errorText({ message: 'invalid menu item' }), 'Неизвестный пункт меню.');
 });
 
@@ -980,4 +966,13 @@ test('banUntil ends a block after a term, at a date or never', () => {
 test('banEnd says until when a page is blocked', () => {
   assert.equal(banEnd({ reason: 'спам', until: null }), 'навсегда');
   assert.match(banEnd({ reason: 'спам', until: '2026-11-19T12:00:00Z' }), /^до 19 ноября 2026 в \d+:00$/);
+});
+
+test('rubles and the rate of a vote', () => {
+  assert.equal(rubles(700), '7 ₽');
+  assert.equal(rubles(750), '7,50 ₽');
+  assert.equal(rubles(5), '0,05 ₽');
+  assert.equal(rubles(125000), '1 250 ₽');
+  assert.equal(rubles(100_000_000), '1 000 000 ₽');
+  assert.equal(voteRate(700), '1 голос = 7 ₽');
 });

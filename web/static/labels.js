@@ -411,7 +411,6 @@ export const mainPages = [
 export const menuItems = [
   ['photos', 'Фотографии'],
   ['messages', 'Сообщения'],
-  ['notes', 'Заметки'],
   ['groups', 'Группы'],
   ['feed', 'Новости'],
   ['notifications', 'Уведомления'],
@@ -880,6 +879,20 @@ export function giftCosts(collection) {
   return collection.gifts.map((gift, i) => ({ gift, price: collection.prices?.[i] ?? collection.price ?? 0 }));
 }
 
+// rubles is a sum in kopecks as it is written in Russian: "7 ₽",
+// "7,50 ₽", "1 250 ₽" (no-break spaces between the thousands).
+export function rubles(kopecks) {
+  const whole = String(Math.trunc(kopecks / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+  const rest = kopecks % 100;
+
+  return `${whole}${rest ? `,${String(rest).padStart(2, '0')}` : ''}\u00a0₽`;
+}
+
+// voteRate is what a vote is worth: "1 голос = 7 ₽".
+export function voteRate(kopecks) {
+  return `1 голос = ${rubles(kopecks)}`;
+}
+
 // unusedVotes is openvk's "У Вас N неиспользованных голосов.", in parts:
 // the number is bold.
 export function unusedVotes(n) {
@@ -961,19 +974,9 @@ export function fileSize(bytes) {
   return `${shown} ${units[unit]}`;
 }
 
-// notesCount is openvk's "notes" of the block on a page: "3 заметки";
-// foundNotes heads the list of notes, "Найдено 3 заметки".
-export function notesCount(n) {
-  return n === 0 ? 'Ни одной заметки' : `${n} ${plural(n, ['заметка', 'заметки', 'заметок'])}`;
-}
-
 // favesCount is openvk's "N закладок" above what you like.
 export function favesCount(n) {
   return n === 0 ? 'Ни одной закладки' : `${n} ${plural(n, ['закладка', 'закладки', 'закладок'])}`;
-}
-
-export function foundNotes(n) {
-  return n === 0 ? 'Ни одной заметки' : `${plural(n, ['Найдена', 'Найдено', 'Найдено'])} ${notesCount(n)}`;
 }
 
 // photosCount is under an album: openvk writes "N фотографий" whatever N
@@ -1274,7 +1277,6 @@ const errorTexts = {
   'the new owner must be an admin of the club': 'Владельцем можно назначить только администратора группы.',
   "this user's clubs are hidden": 'Пользователь скрыл список своих групп.',
   "this user's photos are hidden": 'Пользователь скрыл свои фотографии.',
-  "this user's notes are hidden": 'Пользователь скрыл свои заметки.',
   "this user's gifts are hidden": 'Пользователь скрыл свои подарки.',
   'you cannot send a gift to this user': 'Вы не можете отправить подарок этому пользователю.',
   'fill in your profile before sending gifts': 'Сначала заполните свою страницу.',
@@ -1320,13 +1322,6 @@ const errorTexts = {
   'voucher gives up to 1000000 votes and up to 1000 of rating': 'Ваучер даёт не больше 1 000 000 голосов и 1000 рейтинга.',
   'voucher usages must be -1 or between 1 and 1000000': 'Количество использований — от 1 до 1 000 000 или -1.',
   'voucher with this serial number already exists': 'Ваучер с таким серийным номером уже есть.',
-  'note not found': 'Заметка не найдена или удалена.',
-  'note title is empty': 'Введите название заметки.',
-  'note title is too long': 'Название заметки слишком длинное: не больше 256 символов.',
-  'note text is empty': 'Заметка не может быть пустой.',
-  'note text is too long': 'Заметка слишком длинная: не больше 60 000 символов.',
-  'fill in your profile before writing notes': 'Сначала заполните свою страницу.',
-  'you cannot comment on this note': 'Вы не можете комментировать эту заметку.',
   'only the sender can edit the message': 'Редактировать можно только свои сообщения.',
   'the message can no longer be edited': 'Сообщение можно редактировать только в течение суток после отправки.',
   'the title was changed': 'Комментарий уже изменил другой руководитель. Обновите страницу и попробуйте снова.',

@@ -4,7 +4,7 @@
 a { color: #2b587a; }
 
 .header { background: linear-gradient(#5d80a8, #45688e); border-color: #3a5a7d; }
-.logo-mark { color: #45688e; }
+.logo-mark path { stroke: #45688e; }
 .header-links a { border-left-color: #3a5a7d; box-shadow: inset 1px 0 #7393b8; }
 
 .page-title { background: #dae1e8; border-color: #c3cbd4; color: #45688e; }

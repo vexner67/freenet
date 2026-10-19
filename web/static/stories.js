@@ -1,14 +1,16 @@
 // Stories, VK's "истории" (openvk has none): a photo with a few words shown
 // for a day. Above the news is a row of circles, one per person with live
 // stories, a ring around those not viewed yet; a click opens them over
-// the whole screen, one after another, as VK plays them. Under each are
-// a heart and the comments, which open over the lower part of the photo.
+// the whole screen, one after another, as VK plays them. Under each, in a
+// white panel like that of the photo viewer, are the heart of a post and
+// the comments with the form of the site's comments.
 
 import { api } from './api.js';
 import { storyAge, storyComments, storyViewers, storyViews } from './labels.js';
-import { avatarURL, el, fullName, pagePath, showError, verifiedMark } from './layout.js';
+import { autosize, avatarURL, el, fullName, pagePath, showError, verifiedMark } from './layout.js';
 import { openLikers } from './likers.js';
 import { button, openModal } from './modal.js';
+import { likeButton, separated } from './posts.js';
 
 // How long a story is shown before the next one, as on VK.
 const STORY_SHOWN = 6000;
@@ -81,12 +83,11 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
   const text = el('div', { className: 'story-text' });
   const foot = el('div', { className: 'story-foot' });
   const comments = el('div', { className: 'story-comments', hidden: true });
-  // The comments lie over the zones that turn the stories.
   const stage = el('div', { className: 'story-stage' }, photo, text,
     el('a', { className: 'story-zone story-zone-prev', onclick: () => step(-1) }),
-    el('a', { className: 'story-zone story-zone-next', onclick: () => step(1) }),
-    comments);
-  const box = el('div', { className: 'story-box' }, progress, head, stage, foot);
+    el('a', { className: 'story-zone story-zone-next', onclick: () => step(1) }));
+  const panel = el('div', { className: 'story-panel' }, foot, comments);
+  const box = el('div', { className: 'story-box' }, progress, head, stage, panel);
   const overlay = el('div', { className: 'story-viewer' }, box,
     el('a', { className: 'viewer-nav viewer-prev', textContent: '‹', onclick: () => step(-1) }),
     el('a', { className: 'viewer-nav viewer-next', textContent: '›', onclick: () => step(1) }));
@@ -160,34 +161,22 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
   }
 
   function renderFoot(s) {
-    const heart = el('a', {
-      className: s.liked ? 'story-like story-liked' : 'story-like',
-      title: s.liked ? 'Вам нравится' : 'Нравится',
-      onclick: () => toggleLike(s),
-    }, '♥', s.likes > 0 ? ` ${s.likes}` : '');
+    // The heart of a post: the story has no list of who liked it.
+    const heart = likeButton(s, {
+      canLike: true,
+      like: async (id) => {
+        await api.likeStory(id);
+        return { likes: s.likes + 1, liked: true };
+      },
+      unlike: async (id) => {
+        await api.unlikeStory(id);
+        return { likes: Math.max(0, s.likes - 1), liked: false };
+      },
+      likers: null,
+    });
     const talk = el('a', { textContent: storyComments(s.comments), onclick: () => toggleComments(s) });
 
-    foot.replaceChildren(heart, talk, ...(s.mine ? ownLinks(s) : []));
-  }
-
-  let liking = false;
-
-  async function toggleLike(s) {
-    if (liking) return;
-    liking = true;
-
-    const liked = !s.liked;
-    try {
-      await (liked ? api.likeStory(s.id) : api.unlikeStory(s.id));
-      s.liked = liked;
-      s.likes += liked ? 1 : -1;
-    } catch {
-      // The heart stays as it was: nothing else to show for it.
-    } finally {
-      liking = false;
-    }
-
-    if (current() === s) renderFoot(s);
+    foot.replaceChildren(el('span', { className: 'story-links' }, ...separated([talk, ...(s.mine ? ownLinks(s) : [])])), heart);
   }
 
   function toggleComments(s) {
@@ -200,15 +189,15 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
     loadComments(s);
   }
 
-  // loadComments fills the comments over the photo: the oldest first,
-  // a form for a new one below them.
+  // loadComments fills the comments under the photo: the form of the
+  // site's comments first, as on a post, then the oldest first.
   async function loadComments(s) {
     const list = el('div', { className: 'story-comment-list' });
     const more = el('a', { className: 'story-comments-more', textContent: 'Показать ещё', hidden: true });
     const error = el('div', { className: 'error', hidden: true });
     const field = el('textarea', { maxLength: MAX_COMMENT, placeholder: 'Ваш комментарий...', ariaLabel: 'Ваш комментарий' });
-    const send = el('button', { type: 'submit', textContent: 'Отправить' });
-    const form = el('form', { className: 'story-comment-form' }, field, send);
+    const send = el('button', { className: 'button', type: 'submit', textContent: 'Отправить' });
+    const form = el('form', { className: 'wall-form comment-form story-comment-form' }, field, el('div', { className: 'row' }, send));
     let cursor = '';
 
     async function page() {
@@ -235,8 +224,9 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
         const c = await api.commentStory(s.id, field.value);
         list.querySelector('.story-comments-empty')?.remove();
         list.append(commentNode(s, c));
-        list.scrollTop = list.scrollHeight;
+        comments.scrollTop = comments.scrollHeight;
         field.value = '';
+        autosize(field);
         s.comments++;
         renderFoot(s);
       } catch (e) {
@@ -246,17 +236,17 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
       }
     });
 
-    comments.replaceChildren(list, more, error, form);
+    comments.replaceChildren(form, error, list, more);
     await page();
   }
 
   function commentNode(s, c) {
     const node = el('div', { className: 'story-comment' },
-      el('a', { href: pagePath(c.author) }, el('img', { src: avatarURL(c.author, 'small'), alt: '' })),
-      el('div', {},
+      el('a', { className: 'story-comment-avatar', href: pagePath(c.author) }, el('img', { src: avatarURL(c.author, 'small'), alt: '' })),
+      el('div', { className: 'story-comment-body' },
         el('a', { className: 'story-comment-author', href: pagePath(c.author) }, fullName(c.author), verifiedMark(c.author)),
         el('div', { className: 'story-comment-text', textContent: c.text }),
-        el('span', { className: 'story-age', textContent: storyAge(c.createdAt) })));
+        el('span', { className: 'story-comment-date', textContent: storyAge(c.createdAt) })));
 
     // Its author and the author of the story delete it.
     if (c.mine || s.mine) {
