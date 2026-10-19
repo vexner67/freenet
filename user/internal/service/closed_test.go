@@ -90,7 +90,7 @@ func TestClosedPage(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", tt.name, err)
 		}
-		if access.Page != tt.sees || access.Photos != tt.sees || access.Notes != tt.sees {
+		if access.Page != tt.sees || access.Photos != tt.sees || access.Gifts != tt.sees {
 			t.Errorf("%s: access = %+v, want %v", tt.name, access, tt.sees)
 		}
 

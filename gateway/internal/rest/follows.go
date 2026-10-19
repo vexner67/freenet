@@ -38,12 +38,11 @@ type profileWithStatsResponse struct {
 }
 
 // accessJSON is which blocks of a page the viewer may see: the albums, the
-// follows, the communities, the notes and the gifts.
+// follows, the communities and the gifts.
 type accessJSON struct {
 	Photos  bool `json:"photos"`
 	Friends bool `json:"friends"`
 	Clubs   bool `json:"clubs"`
-	Notes   bool `json:"notes"`
 	Gifts   bool `json:"gifts"`
 }
 

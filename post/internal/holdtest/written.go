@@ -63,14 +63,6 @@ type Written struct {
 		Save(ctx context.Context, c *post.PhotoComment) error
 		List(ctx context.Context, photoID, after uuid.UUID, limit int) ([]*post.PhotoComment, error)
 	}
-	Notes interface {
-		Save(ctx context.Context, n *post.Note) error
-		Get(ctx context.Context, id uuid.UUID) (*post.Note, error)
-	}
-	NoteComments interface {
-		Save(ctx context.Context, c *post.NoteComment) error
-		List(ctx context.Context, noteID, after uuid.UUID, limit int) ([]*post.NoteComment, error)
-	}
 	// Holders hide the pages between them.
 	Holders []service.ReactionHolder
 	// Pages tell which pages are deleted, each of them the same.
@@ -86,7 +78,6 @@ type writing struct {
 	topic    *post.Topic
 	album    *post.Album
 	photo    *post.AlbumPhoto
-	note     *post.Note
 }
 
 func (w *writing) say(ctx context.Context, t *testing.T, wallID, authorID uuid.UUID, c post.Content) *post.Post {
@@ -162,21 +153,10 @@ func write(ctx context.Context, t *testing.T, s Written, bob uuid.UUID) *writing
 		}
 	}
 
-	// A note of Ann's, both comment it.
-	title, err := post.NewNoteTitle("Заметка")
-	must(t, err)
-	w.note, err = post.NewNote(w.ann, title, "текст", now)
-	must(t, err)
-	must(t, s.Notes.Save(ctx, w.note))
-
 	for _, who := range []uuid.UUID{bob, w.cat} {
 		pc, err := post.NewPhotoComment(w.photo.ID(), who, "красиво", now)
 		must(t, err)
 		must(t, s.PhotoComments.Save(ctx, pc))
-
-		nc, err := post.NewNoteComment(w.note.ID(), who, "читал", now)
-		must(t, err)
-		must(t, s.NoteComments.Save(ctx, nc))
 	}
 
 	// Cat likes what Ann wrote and what Bob wrote.
@@ -236,11 +216,6 @@ func (w *writing) shown(ctx context.Context, t *testing.T) [][2]int {
 	photoComments, err := s.PhotoComments.List(ctx, w.photo.ID(), nothing, all)
 	must(t, err)
 
-	note, err := s.Notes.Get(ctx, w.note.ID())
-	must(t, err)
-	noteComments, err := s.NoteComments.List(ctx, w.note.ID(), nothing, all)
-	must(t, err)
-
 	faves := func(likes interface {
 		LikedBy(ctx context.Context, userID uuid.UUID, after *service.FaveCursor, limit int) ([]service.Fave, error)
 		CountLikedBy(ctx context.Context, userID uuid.UUID) (int, error)
@@ -262,7 +237,6 @@ func (w *writing) shown(ctx context.Context, t *testing.T) [][2]int {
 		{len(topics), topicCount},
 		{len(photos), album.Photos()},
 		{len(photoComments), photo.Comments()},
-		{len(noteComments), note.Comments()},
 		faves(s.Likes),
 		faves(s.CommentLikes),
 		faves(s.PhotoLikes),
@@ -299,8 +273,8 @@ func RunWritten(t *testing.T, s Written) {
 
 	// Comments, reposts (the archived one is never told), the wall of
 	// Ann, what Cat wrote, messages, topics, photos, comments of a photo
-	// and of a note, and the posts, comments and photos Cat likes.
-	everyone := []int{2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 1, 2}
+	// and the posts, comments and photos Cat likes.
+	everyone := []int{2, 2, 2, 2, 2, 2, 2, 2, 3, 1, 2}
 	w.want(ctx, t, "everyone is here", everyone...)
 
 	// Twice, as the outbox may deliver it.
@@ -319,7 +293,7 @@ func RunWritten(t *testing.T, s Written) {
 
 	each(func(h service.ReactionHolder) error { return h.Hold(ctx, bob) })
 	each(func(h service.ReactionHolder) error { return h.Hold(ctx, bob) })
-	w.want(ctx, t, "bob deleted the page", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1)
+	w.want(ctx, t, "bob deleted the page", 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1)
 	deleted("bob deleted the page", true)
 
 	each(func(h service.ReactionHolder) error { return h.Release(ctx, bob) })

@@ -21,7 +21,7 @@ func TestPurgeService_Sources(t *testing.T) {
 	sources := service.NewSourceService(store.Sources())
 	purge := service.NewPurgeService(service.PurgeDeps{
 		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Sources: store.Sources(), Comments: store.Comments(),
-		Suggestions: inmem.NewSuggestionRepository(), Topics: inmem.NewTopicRepository(), Albums: inmem.NewAlbumRepository(), Notes: inmem.NewNoteRepository(),
+		Suggestions: inmem.NewSuggestionRepository(), Topics: inmem.NewTopicRepository(), Albums: inmem.NewAlbumRepository(),
 		Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{},
 		Postponed: inmem.NewPostponedRepository(),
 	})

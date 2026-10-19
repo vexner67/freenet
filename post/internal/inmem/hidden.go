@@ -107,23 +107,6 @@ func (r *AlbumRepository) photoHidden(p *post.AlbumPhoto) bool {
 	return r.hidden[p.AuthorID()] || r.hidden[r.albums[p.AlbumID()].OwnerID]
 }
 
-// seenNote is the note without the comments of deleted pages in its
-// count. The caller holds the lock.
-func (r *NoteRepository) seenNote(n *post.Note) *post.Note {
-	hidden := 0
-	for _, c := range r.comments {
-		if c.NoteID() == n.ID() && r.hidden[c.AuthorID()] {
-			hidden++
-		}
-	}
-
-	if hidden == 0 {
-		return n
-	}
-
-	return n.WithComments(n.Comments() - hidden)
-}
-
 // among tells which of the users are hidden, under the lock of the store
 // that keeps them.
 func (h hiddenUsers) among(ctx context.Context, mu *sync.RWMutex, userIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
@@ -155,9 +138,5 @@ func (r *TopicRepository) Deleted(ctx context.Context, userIDs []uuid.UUID) (map
 }
 
 func (r *AlbumRepository) Deleted(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
-	return r.hidden.among(ctx, &r.mu, userIDs)
-}
-
-func (r *NoteRepository) Deleted(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
 	return r.hidden.among(ctx, &r.mu, userIDs)
 }

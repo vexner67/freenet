@@ -33,7 +33,6 @@ func TestHoldRepository_Written(t *testing.T) {
 	pool := newPool(t)
 	topics := postgres.NewTopicRepository(pool)
 	albums := postgres.NewAlbumRepository(pool)
-	notes := postgres.NewNoteRepository(pool)
 
 	held := postgres.NewHoldRepository(pool)
 
@@ -48,8 +47,6 @@ func TestHoldRepository_Written(t *testing.T) {
 		Photos:        albums.Photos(),
 		PhotoLikes:    albums.PhotoLikes(),
 		PhotoComments: albums.PhotoComments(),
-		Notes:         notes,
-		NoteComments:  notes.Comments(),
 		Holders:       []service.ReactionHolder{held},
 		Pages:         []service.Pages{held},
 	})

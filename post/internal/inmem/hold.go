@@ -249,35 +249,3 @@ func (r *AlbumRepository) Forget(ctx context.Context, userID uuid.UUID) error {
 
 	return nil
 }
-
-// Hold leaves the comments a deleted page wrote under notes out of the
-// lists and the counts; notes have no likes to keep aside.
-func (r *NoteRepository) Hold(ctx context.Context, userID uuid.UUID) error {
-	if err := ctx.Err(); err != nil {
-		return errs.Wrap("ctx.Err", err)
-	}
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	r.hidden[userID] = true
-
-	return nil
-}
-
-func (r *NoteRepository) Release(ctx context.Context, userID uuid.UUID) error {
-	return r.Forget(ctx, userID)
-}
-
-func (r *NoteRepository) Forget(ctx context.Context, userID uuid.UUID) error {
-	if err := ctx.Err(); err != nil {
-		return errs.Wrap("ctx.Err", err)
-	}
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	delete(r.hidden, userID)
-
-	return nil
-}

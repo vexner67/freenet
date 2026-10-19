@@ -65,9 +65,6 @@ const (
 	// KindPhotoMention: the actor named the recipient in the comment
 	// CommentID under the photo PostID.
 	KindPhotoMention Kind = "photo_mention"
-	// KindNoteComment: the actor wrote the comment CommentID under the
-	// recipient's note PostID.
-	KindNoteComment Kind = "note_comment"
 	// KindGift: the actor sent the recipient the gift PostID.
 	KindGift Kind = "gift"
 	// KindVotes: the actor transferred votes to the recipient; PostID
@@ -136,7 +133,7 @@ func (e Event) Validate() error {
 		KindVotes, KindStoryLike:
 		ok = hasPost && !hasComment
 	case KindComment, KindCommentReply, KindCommentLike, KindTopicMessage, KindCommentMention, KindTopicMention,
-		KindPhotoComment, KindTopicMessageLike, KindPhotoMention, KindNoteComment,
+		KindPhotoComment, KindTopicMessageLike, KindPhotoMention,
 		KindStoryComment:
 		ok = hasPost && hasComment
 	case KindFollow, KindClubAdmin, KindInvite, KindVerified, KindClubVerified:

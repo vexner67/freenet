@@ -547,51 +547,6 @@ func TestRepositories(t *testing.T) {
 			t.Fatalf("DeleteByPost: %v, left %d", err, count())
 		}
 	})
-	t.Run("comment under a note", func(t *testing.T) {
-		ann, bob, note, comment := uuid.New(), uuid.New(), uuid.New(), uuid.New()
-		e := notification.Event{Kind: notification.KindNoteComment, RecipientID: ann, ActorID: bob, PostID: note, CommentID: comment}
-
-		count := func() int {
-			t.Helper()
-
-			got, err := repo.List(ctx, service.Query{RecipientID: ann, Unread: true, Limit: 10})
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			return len(got)
-		}
-		save := func() {
-			t.Helper()
-
-			n, err := notification.New(e, time.Now())
-			if err != nil {
-				t.Fatal(err)
-			}
-			if _, err = repo.Save(ctx, n); err != nil {
-				t.Fatalf("Save: %v", err)
-			}
-		}
-
-		save()
-		save() // one per comment
-		if got := count(); got != 1 {
-			t.Fatalf("comments = %d, want 1", got)
-		}
-		if err := repo.Delete(ctx, e); err != nil || count() != 0 {
-			t.Fatalf("Delete: %v, left %d", err, count())
-		}
-
-		// The deleted comment takes it, and so does the deleted note.
-		save()
-		if err := repo.DeleteByComment(ctx, comment); err != nil || count() != 0 {
-			t.Fatalf("DeleteByComment: %v, left %d", err, count())
-		}
-		save()
-		if err := repo.DeleteByPost(ctx, note); err != nil || count() != 0 {
-			t.Fatalf("DeleteByPost: %v, left %d", err, count())
-		}
-	})
 	t.Run("likes and comments of a story", func(t *testing.T) {
 		ann, bob, story, comment := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 		events := []notification.Event{

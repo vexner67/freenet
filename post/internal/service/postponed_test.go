@@ -261,7 +261,7 @@ func TestPurgeService_Postponed(t *testing.T) {
 	purge := service.NewPurgeService(service.PurgeDeps{
 		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Sources: store.Sources(),
 		Comments: store.Comments(), Suggestions: inmem.NewSuggestionRepository(), Topics: inmem.NewTopicRepository(),
-		Albums: inmem.NewAlbumRepository(), Notes: inmem.NewNoteRepository(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{},
+		Albums: inmem.NewAlbumRepository(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{},
 		Postponed: repo,
 	})
 	club, ann, bob := uuid.New(), uuid.New(), uuid.New()

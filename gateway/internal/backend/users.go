@@ -147,10 +147,10 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 		return model.User{}, errs.Wrap("enumValue", err)
 	}
 
-	// An empty NotesRead or GiftsRead, from a client that does not know
-	// it, is everyone.
-	var reads [7]userv1.Audience
-	for i, a := range []string{p.PageRead, p.InfoRead, p.PhotosRead, p.FriendsRead, p.OnlineRead, p.NotesRead, p.GiftsRead} {
+	// An empty GiftsRead, from a client that does not know it, is
+	// everyone.
+	var reads [6]userv1.Audience
+	for i, a := range []string{p.PageRead, p.InfoRead, p.PhotosRead, p.FriendsRead, p.OnlineRead, p.GiftsRead} {
 		v, err := enumValue(a, audiencePrefix, "audience", userv1.Audience_value)
 		if err != nil {
 			return model.User{}, errs.Wrap("enumValue", err)
@@ -172,8 +172,7 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 			PhotosRead:         reads[2],
 			FriendsRead:        reads[3],
 			OnlineRead:         reads[4],
-			NotesRead:          reads[5],
-			GiftsRead:          reads[6],
+			GiftsRead:          reads[5],
 			ChatsInvite:        userv1.MessagesWrite(chatsInvite),
 			Closed:             p.Closed,
 		},
@@ -278,7 +277,7 @@ func (u *Users) Access(ctx context.Context, accessToken, userID string) (model.A
 
 	return model.Access{
 		Page: resp.GetPage(), Info: resp.GetInfo(), Photos: resp.GetPhotos(), Friends: resp.GetFriends(), Clubs: resp.GetClubs(),
-		Notes: resp.GetNotes(), Gifts: resp.GetGifts(),
+		Gifts: resp.GetGifts(),
 	}, nil
 }
 

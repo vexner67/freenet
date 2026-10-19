@@ -3,7 +3,7 @@
 # through the gateway and goes over the services, each behind mTLS and on
 # its database: auth (code from its log), user (profile), media (a photo,
 # written to its volume and served back), post (a post with it, a repost,
-# a poll, a note and the faves), notification (unread count), message (dialogs and chats), club
+# a poll and the faves), notification (unread count), message (dialogs and chats), club
 # (a club and a post for it), the feed with an ignored source, a second
 # person whose follow and whose appointment in the club travel through the
 # outboxes of user and club and who gets a sealed message, and the
@@ -170,12 +170,6 @@ call PUT "/api/v1/posts/$poll/poll/vote" '{"options":[1]}' | jq -e '.voted == [1
 call GET "/api/v1/posts/$poll" | jq -e '.poll.options[1].votes == 1 and .poll.voted == [1]' >/dev/null
 token='' call GET "/api/v1/posts/$poll/poll/voters?option=1" | jq -e '.total == 1' >/dev/null
 step "post: a poll, a vote in it and who voted"
-
-note=$(expect=201 call POST /api/v1/me/notes '{"title":"Smoke","text":"a note"}' | jq -r .id)
-expect=201 call POST "/api/v1/notes/$note/comments" '{"text":"a comment"}' >/dev/null
-token='' call GET "/api/v1/users/$nickname/notes" | jq -e '.total == 1 and .notes[0].comments == 1' >/dev/null
-token='' call GET "/api/v1/notes/$note/comments" | jq -e '.total == 1 and .comments[0].text == "a comment"' >/dev/null
-step "post: a note, a comment under it and the list of notes"
 
 call PUT "/api/v1/posts/$poll/like" >/dev/null
 call GET /api/v1/me/faves/posts | jq -e --arg id "$poll" '.total == 1 and .posts[0].id == $id and .posts[0].liked' >/dev/null

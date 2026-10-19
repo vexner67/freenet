@@ -73,7 +73,7 @@ func (h *UserHandler) GetAccess(ctx context.Context, req *userv1.GetAccessReques
 
 	return &userv1.GetAccessResponse{
 		Page: access.Page, Info: access.Info, Photos: access.Photos, Friends: access.Friends, Clubs: access.Clubs,
-		Notes: access.Notes, Gifts: access.Gifts,
+		Gifts: access.Gifts,
 	}, nil
 }
 

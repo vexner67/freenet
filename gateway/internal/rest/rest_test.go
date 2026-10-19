@@ -109,7 +109,7 @@ type fakeUsers struct {
 	// Privacy: the parts of every page hidden from the caller; accessAsked
 	// is whose page the gateway asked about, profileToken the token
 	// GetProfile got.
-	hiddenPage, hiddenInfo, hiddenPhotos, hiddenFriends, hiddenClubs, hiddenNotes, hiddenGifts bool
+	hiddenPage, hiddenInfo, hiddenPhotos, hiddenFriends, hiddenClubs, hiddenGifts bool
 	// closedPage: the hidden page is a closed one ("Закрытая страница").
 	closedPage                bool
 	accessAsked, profileToken string
@@ -270,7 +270,7 @@ func (f *fakeUsers) Access(_ context.Context, token, userID string) (model.Acces
 		return model.Access{}, f.err
 	}
 	return model.Access{
-		Page: !f.hiddenPage, Info: !f.hiddenInfo, Photos: !f.hiddenPhotos, Friends: !f.hiddenFriends, Clubs: !f.hiddenClubs, Notes: !f.hiddenNotes, Gifts: !f.hiddenGifts,
+		Page: !f.hiddenPage, Info: !f.hiddenInfo, Photos: !f.hiddenPhotos, Friends: !f.hiddenFriends, Clubs: !f.hiddenClubs, Gifts: !f.hiddenGifts,
 	}, f.err
 }
 
@@ -1236,9 +1236,6 @@ func (f *fakeNotifications) List(_ context.Context, token string, unread bool, c
 			{ID: "n-13", Kind: "photo_like", ActorID: "u2", PostID: "gone", CreatedAt: at},
 			{ID: "n-14", Kind: "club_admin", ActorID: "k1", CreatedAt: at},
 			{ID: "n-15", Kind: "photo_mention", ActorID: "u2", PostID: "ph6", CommentID: "pc1", CreatedAt: at},
-			{ID: "n-16", Kind: "note_comment", ActorID: "u2", PostID: "note1", CommentID: "nc1", CreatedAt: at},
-			{ID: "n-17", Kind: "note_comment", ActorID: "u2", PostID: "note-deleted", CommentID: "nc1", CreatedAt: at},
-			{ID: "n-18", Kind: "note_comment", ActorID: "u2", PostID: "note1", CommentID: "nc-deleted", CreatedAt: at},
 			{ID: "n-19", Kind: "gift", ActorID: "u2", PostID: "g1", CreatedAt: at},
 			{ID: "n-20", Kind: "story_like", ActorID: "u2", PostID: "s1", CreatedAt: at},
 			{ID: "n-21", Kind: "story_comment", ActorID: "u2", PostID: "s1", CommentID: "sc1", CreatedAt: at},
@@ -1483,7 +1480,6 @@ type harness struct {
 	clubs         *fakeClubs
 	topics        *fakeTopics
 	albums        *fakeAlbums
-	notes         *fakeNotes
 	faves         *fakeFaves
 	gifts         *fakeGifts
 	stickers      *fakeStickers
@@ -1509,7 +1505,6 @@ func newHarness(cfg rest.Config) harness {
 		clubs:         &fakeClubs{},
 		topics:        &fakeTopics{},
 		albums:        &fakeAlbums{},
-		notes:         &fakeNotes{},
 		gifts:         &fakeGifts{},
 		stickers:      &fakeStickers{},
 		votes:         &fakeVotes{},
@@ -1530,7 +1525,6 @@ func newHarness(cfg rest.Config) harness {
 		Clubs:         h.clubs,
 		Topics:        h.topics,
 		Albums:        h.albums,
-		Notes:         h.notes,
 		Gifts:         h.gifts,
 		Stickers:      h.stickers,
 		Votes:         h.votes,

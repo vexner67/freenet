@@ -67,14 +67,13 @@ func (a Audience) admits(viewerID uuid.UUID, t Ties) bool {
 // Access is what of a page a viewer may see: the page itself, its
 // information (everything but the names, the photo, the status and the
 // pronouns, which speak of the person), the albums, the follows, the
-// communities, the notes and the gifts.
+// communities and the gifts.
 type Access struct {
 	Page    bool
 	Info    bool
 	Photos  bool
 	Friends bool
 	Clubs   bool
-	Notes   bool
 	Gifts   bool
 }
 
@@ -90,7 +89,7 @@ func (u *User) AccessFor(viewerID uuid.UUID, t Ties, now time.Time) Access {
 // access is AccessFor of a page banned or not.
 func (u *User) access(viewerID uuid.UUID, t Ties, banned bool) Access {
 	if viewerID == u.id {
-		return Access{Page: true, Info: true, Photos: true, Friends: true, Clubs: true, Notes: true, Gifts: true}
+		return Access{Page: true, Info: true, Photos: true, Friends: true, Clubs: true, Gifts: true}
 	}
 
 	// Of a deleted or a blocked page only the page itself is shown: what
@@ -110,7 +109,6 @@ func (u *User) access(viewerID uuid.UUID, t Ties, banned bool) Access {
 		Photos:  u.privacy.PhotosRead.admits(viewerID, t),
 		Friends: u.privacy.FriendsRead.admits(viewerID, t),
 		Clubs:   Audience(u.privacy.ClubsRead).admits(viewerID, t),
-		Notes:   u.privacy.NotesRead.admits(viewerID, t),
 		Gifts:   u.privacy.GiftsRead.admits(viewerID, t),
 	}
 }

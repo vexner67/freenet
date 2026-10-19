@@ -37,7 +37,6 @@ func TestHolds_Written(t *testing.T) {
 	store := inmem.NewStore()
 	topics := inmem.NewTopicRepository()
 	albums := inmem.NewAlbumRepository()
-	notes := inmem.NewNoteRepository()
 
 	holdtest.RunWritten(t, holdtest.Written{
 		Posts:         store.Posts(),
@@ -50,9 +49,7 @@ func TestHolds_Written(t *testing.T) {
 		Photos:        albums.Photos(),
 		PhotoLikes:    albums.PhotoLikes(),
 		PhotoComments: albums.PhotoComments(),
-		Notes:         notes,
-		NoteComments:  notes.Comments(),
-		Holders:       []service.ReactionHolder{store.Holds(), topics, albums, notes},
-		Pages:         []service.Pages{store.Holds(), topics, albums, notes},
+		Holders:       []service.ReactionHolder{store.Holds(), topics, albums},
+		Pages:         []service.Pages{store.Holds(), topics, albums},
 	})
 }

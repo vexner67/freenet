@@ -243,8 +243,8 @@ message InterfaceSettings {
   string avatar_style = 1;
   // "page" (the default) or "feed": where the site opens.
   string main_page = 2;
-  // The links taken out of the left menu: "photos", "messages", "notes",
-  // "groups", "feed", "notifications".
+  // The links taken out of the left menu: "photos", "messages", "groups",
+  // "feed", "notifications".
   repeated string hidden_menu = 3;
   // "default", "blue" or "dark": the look of the whole site.
   string theme = 4;
@@ -328,9 +328,9 @@ message PrivacySettings {
   // owner was last online after a long absence ("Кто видит мою
   // неактивность"); anyone sees a short one, as on openvk.
   Audience online_read = 12;
-  // Who sees the notes ("Кому видно мои заметки"); unspecified, as from
-  // a client that does not know it, is everyone.
-  Audience notes_read = 13;
+  // Notes are gone from the site.
+  reserved 13;
+  reserved "notes_read";
   // Who may add the owner to group chats ("Кто может добавлять меня в
   // чаты"); unspecified, as from a client that does not know it, is the
   // people the owner follows.
@@ -729,8 +729,9 @@ message GetAccessResponse {
   bool friends = 4;
   // The communities the user is in.
   bool clubs = 5;
-  // The notes.
-  bool notes = 6;
+  // Notes are gone from the site.
+  reserved 6;
+  reserved "notes";
   // The gifts.
   bool gifts = 7;
 }

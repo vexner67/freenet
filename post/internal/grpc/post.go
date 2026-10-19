@@ -150,7 +150,6 @@ type Services struct {
 	Topics      TopicService
 	Albums      AlbumService
 	Polls       PollService
-	Notes       NoteService
 	Documents   DocumentService
 	Stories     StoryService
 	Faves       FaveService
@@ -169,7 +168,6 @@ type PostHandler struct {
 	topicService      TopicService
 	albumService      AlbumService
 	pollService       PollService
-	noteService       NoteService
 	documentService   DocumentService
 	storyService      StoryService
 	faveService       FaveService
@@ -189,7 +187,6 @@ func NewPostHandler(s Services, logger *slog.Logger) *PostHandler {
 		topicService:      s.Topics,
 		albumService:      s.Albums,
 		pollService:       s.Polls,
-		noteService:       s.Notes,
 		documentService:   s.Documents,
 		storyService:      s.Stories,
 		faveService:       s.Faves,
