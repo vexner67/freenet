@@ -88,10 +88,12 @@ func newServer(t *testing.T) testServer {
 			Users: users, Wallets: users, Vouchers: inmem.NewVoucherRepository(users), Permissions: permissions,
 			Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Admins: admins,
 		}),
-		Verification: service.NewVerificationService(users, users, admins),
-		Permissions:  permissions,
-		Presence:     presence,
-		Backdrops:    service.NewBackdropService(users, users),
+		Verification: service.NewVerificationService(service.VerificationDeps{
+			Users: users, Verifications: users, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Admins: admins,
+		}),
+		Permissions: permissions,
+		Presence:    presence,
+		Backdrops:   service.NewBackdropService(users, users),
 	}, log))
 
 	go func() { _ = srv.Serve(lis) }()

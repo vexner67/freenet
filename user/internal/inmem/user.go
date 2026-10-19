@@ -191,7 +191,7 @@ func (r *UserRepository) GetByNickname(ctx context.Context, nickname user.Nickna
 	return &u, nil
 }
 
-func (r *UserRepository) Nicknames(ctx context.Context, nicknames []user.Nickname) ([]user.Nickname, error) {
+func (r *UserRepository) Nicknames(ctx context.Context, nicknames []user.Nickname) ([]user.KnownNickname, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
 	}
@@ -199,7 +199,7 @@ func (r *UserRepository) Nicknames(ctx context.Context, nicknames []user.Nicknam
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	var known []user.Nickname
+	var known []user.KnownNickname
 	for _, nickname := range nicknames {
 		id, ok := r.byNickname[nicknameKey(nickname)]
 		if !ok {
@@ -207,8 +207,9 @@ func (r *UserRepository) Nicknames(ctx context.Context, nicknames []user.Nicknam
 		}
 
 		u := r.users[id]
-		if owned := u.Profile().Nickname; !slices.Contains(known, owned) {
-			known = append(known, owned)
+		found := user.KnownNickname{Nickname: u.Profile().Nickname, Verified: u.IsVerified() && !u.IsDeactivated()}
+		if !slices.Contains(known, found) {
+			known = append(known, found)
 		}
 	}
 

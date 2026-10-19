@@ -802,6 +802,8 @@ message FindNicknamesRequest {
 message FindNicknamesResponse {
   // As their owners write them, each once, in no particular order.
   repeated string nicknames = 1;
+  // Those of nicknames whose pages wear the checkmark.
+  repeated string verified = 2;
 }
 
 message GetRelationRequest {

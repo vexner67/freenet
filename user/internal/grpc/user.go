@@ -27,7 +27,7 @@ type UserService interface {
 	GetPublicProfiles(ctx context.Context, ids []uuid.UUID) ([]user.PublicProfile, error)
 	SetAvatar(ctx context.Context, id, avatarID uuid.UUID) (*user.User, error)
 	Search(ctx context.Context, q user.SearchQuery, cursor uuid.UUID, size int) (service.SearchPage, error)
-	KnownNicknames(ctx context.Context, nicknames []user.Nickname) ([]user.Nickname, error)
+	KnownNicknames(ctx context.Context, nicknames []user.Nickname) ([]user.KnownNickname, error)
 }
 
 type UserHandler struct {

@@ -10,6 +10,13 @@ const MaxMentions = 10
 // which of them are someone's.
 const MaxKnownNicknames = 100
 
+// KnownNickname is a nickname that is someone's, as its owner writes it,
+// and whether that page wears the checkmark: a mention shows it too.
+type KnownNickname struct {
+	Nickname Nickname
+	Verified bool
+}
+
 // CanBeMentionedBy tells whether u hears of being named by authorID in a
 // post or a comment ("Вас упомянул пользователь" of openvk): not of their
 // own words, not across a block either way, and not on a deleted page.
