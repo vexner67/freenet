@@ -51,6 +51,11 @@ type ExtraField struct {
 }
 
 func NewExtraField(name, text string, place FieldPlace) (ExtraField, error) {
+	name, err := visibleText(name)
+	if err != nil {
+		return ExtraField{}, err
+	}
+
 	name = strings.Join(strings.Fields(name), " ")
 	if name == "" {
 		return ExtraField{}, ErrExtraFieldNameEmpty

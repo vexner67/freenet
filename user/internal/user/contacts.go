@@ -32,8 +32,9 @@ type Contacts struct {
 // NewContactEmail is an email to show on the page, empty for none; it
 // need not be the one to sign in with.
 func NewContactEmail(s string) (Email, error) {
-	if strings.TrimSpace(s) == "" {
-		return "", nil
+	s, err := visibleText(s)
+	if err != nil || s == "" {
+		return "", err
 	}
 
 	return NewEmail(s)
@@ -72,7 +73,11 @@ func (t Telegram) String() string {
 type Website string
 
 func NewWebsite(s string) (Website, error) {
-	s = strings.TrimSpace(s)
+	s, err := visibleText(s)
+	if err != nil {
+		return "", err
+	}
+
 	if s == "" {
 		return "", nil
 	}
@@ -101,6 +106,11 @@ func (w Website) String() string {
 type Address string
 
 func NewAddress(s string) (Address, error) {
+	s, err := visibleText(s)
+	if err != nil {
+		return "", err
+	}
+
 	s = strings.Join(strings.Fields(s), " ")
 
 	if utf8.RuneCountInString(s) > maxAddressLen {

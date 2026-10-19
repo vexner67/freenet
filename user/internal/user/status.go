@@ -2,7 +2,6 @@ package user
 
 import (
 	"errors"
-	"strings"
 	"unicode/utf8"
 )
 
@@ -15,7 +14,10 @@ var (
 type Status string
 
 func NewStatus(s string) (Status, error) {
-	s = strings.TrimSpace(s)
+	s, err := visibleText(s)
+	if err != nil {
+		return "", err
+	}
 
 	if utf8.RuneCountInString(s) > maxStatusLength {
 		return "", ErrStatusTooLong

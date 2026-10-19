@@ -15,6 +15,11 @@ var ErrPlaceTooLong = errors.New("place is too long")
 type Place string
 
 func NewPlace(s string) (Place, error) {
+	s, err := visibleText(s)
+	if err != nil {
+		return "", err
+	}
+
 	s = strings.Join(strings.Fields(s), " ")
 
 	if utf8.RuneCountInString(s) > maxPlaceLen {
