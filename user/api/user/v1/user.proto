@@ -151,6 +151,11 @@ service UserService {
   rpc ListVouchers(ListVouchersRequest) returns (ListVouchersResponse);
   rpc DeleteVoucher(DeleteVoucherRequest) returns (google.protobuf.Empty);
 
+  // Requires an access token of an administrator of the site
+  // (PermissionDenied otherwise): gives a page the checkmark of a
+  // confirmed one ("Верификация" of openvk) or takes it.
+  rpc SetVerified(SetVerifiedRequest) returns (google.protobuf.Empty);
+
   // Require an access token: deleting the caller's page ("Удаление
   // страницы" on openvk) and restoring it. A deleted page is hidden: others
   // see only its name and photo, nobody may follow it, write on its wall
@@ -207,6 +212,8 @@ message User {
   int64 votes = 29;
   // The user makes the vouchers.
   bool admin = 30;
+  // The page is confirmed by the administrators: a checkmark by the name.
+  bool verified = 31;
 }
 
 // InterfaceSettings are how the site looks to its owner ("Интерфейс").
@@ -401,6 +408,10 @@ message PublicProfile {
   // The page is a closed one ("Закрытая страница"): those its owner
   // does not follow get it with page_hidden.
   bool closed = 27;
+  // The page is confirmed by the administrators ("Подтверждённая
+  // страница"): a checkmark by the name; told on a hidden page too, never
+  // on a deleted one.
+  bool verified = 28;
 }
 
 enum Gender {
@@ -588,6 +599,8 @@ message GetStatisticsResponse {
   int32 users = 1;
   // Those of them whose owners are on the site now.
   int32 online = 2;
+  // Those of them with the checkmark.
+  int32 verified = 3;
 }
 
 message ListFollowsResponse {
@@ -652,6 +665,8 @@ message SearchUsersRequest {
   string film = 6;
   string show = 7;
   string book = 8;
+  // Only the pages with the checkmark; may go without the words too.
+  bool verified = 9;
 }
 
 message SearchUsersResponse {
@@ -955,6 +970,11 @@ message ListVouchersResponse {
 
 message DeleteVoucherRequest {
   string voucher_id = 1;
+}
+
+message SetVerifiedRequest {
+  string user_id = 1;
+  bool verified = 2;
 }
 
 message GetStickerCatalogRequest {}

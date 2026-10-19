@@ -173,8 +173,8 @@ func (s *WalletService) Redeem(ctx context.Context, userID uuid.UUID, token user
 // CreateVoucher makes a voucher; user.ErrNotAdmin unless adminID runs the
 // site, user.ErrVoucherExists and what user.NewVoucher refuses.
 func (s *WalletService) CreateVoucher(ctx context.Context, adminID uuid.UUID, d VoucherDraft) (*user.Voucher, error) {
-	if err := s.checkAdmin(ctx, adminID); err != nil {
-		return nil, errs.Wrap("s.checkAdmin", err)
+	if err := checkAdmin(ctx, s.userRepo, s.admins, adminID); err != nil {
+		return nil, errs.Wrap("checkAdmin", err)
 	}
 
 	if d.Token == "" {
@@ -200,8 +200,8 @@ func (s *WalletService) CreateVoucher(ctx context.Context, adminID uuid.UUID, d 
 
 // ListVouchers pages every voucher, newest first; user.ErrNotAdmin.
 func (s *WalletService) ListVouchers(ctx context.Context, adminID, cursor uuid.UUID, size int) (VoucherPage, error) {
-	if err := s.checkAdmin(ctx, adminID); err != nil {
-		return VoucherPage{}, errs.Wrap("s.checkAdmin", err)
+	if err := checkAdmin(ctx, s.userRepo, s.admins, adminID); err != nil {
+		return VoucherPage{}, errs.Wrap("checkAdmin", err)
 	}
 
 	if size <= 0 || size > MaxPageSize {
@@ -227,20 +227,21 @@ func (s *WalletService) ListVouchers(ctx context.Context, adminID, cursor uuid.U
 // DeleteVoucher removes a voucher: nobody else can use it, what it gave
 // stays given. user.ErrNotAdmin.
 func (s *WalletService) DeleteVoucher(ctx context.Context, adminID, voucherID uuid.UUID) error {
-	if err := s.checkAdmin(ctx, adminID); err != nil {
-		return errs.Wrap("s.checkAdmin", err)
+	if err := checkAdmin(ctx, s.userRepo, s.admins, adminID); err != nil {
+		return errs.Wrap("checkAdmin", err)
 	}
 
 	return errs.Wrap("s.vouchers.Delete", s.vouchers.Delete(ctx, voucherID))
 }
 
-func (s *WalletService) checkAdmin(ctx context.Context, userID uuid.UUID) error {
-	u, err := s.userRepo.GetByID(ctx, userID)
+// checkAdmin is user.ErrNotAdmin unless userID runs the site.
+func checkAdmin(ctx context.Context, users UserRepository, admins user.Admins, userID uuid.UUID) error {
+	u, err := users.GetByID(ctx, userID)
 	if err != nil {
-		return errs.Wrap("s.userRepo.GetByID", err)
+		return errs.Wrap("users.GetByID", err)
 	}
 
-	if !s.admins.Has(u) {
+	if !admins.Has(u) {
 		return user.ErrNotAdmin
 	}
 

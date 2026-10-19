@@ -91,3 +91,34 @@ func TestSearchQuery_Filters(t *testing.T) {
 		t.Fatalf("long filter: %v", err)
 	}
 }
+
+func TestSearchQuery_Verified(t *testing.T) {
+	t.Parallel()
+
+	ann, _ := user.New("ann@example.com")
+	_ = ann.UpdateProfile(user.Profile{Name: "Анна", Nickname: "ann"})
+	privacy := ann.Privacy()
+	privacy.Closed = true
+	if err := ann.UpdatePrivacy(privacy); err != nil {
+		t.Fatal(err)
+	}
+
+	q, err := user.NewSearchQuery("", user.SearchFilters{Verified: true})
+	if err != nil {
+		t.Fatalf("the checkmark alone: %v", err)
+	}
+	if q.Filters().LookIntoInfo() {
+		t.Fatal("the checkmark looks into the information")
+	}
+	if q.Matches(ann) {
+		t.Fatal("a page without the checkmark is found")
+	}
+	// A closed page tells the checkmark, as it does on the page itself.
+	if !q.Matches(ann.WithVerified(true)) {
+		t.Fatal("a closed page with the checkmark is not found")
+	}
+
+	if q, _ = user.NewSearchQuery("боб", user.SearchFilters{Verified: true}); q.Matches(ann.WithVerified(true)) {
+		t.Fatal("the words are not looked at")
+	}
+}

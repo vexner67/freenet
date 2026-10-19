@@ -27,13 +27,24 @@ type SearchQuery struct {
 // SearchFilters narrow a search as the links of openvk's page do: people
 // of a hometown or a city (whatever the case), or who name a film, a show
 // or a book among their favourites. Values are lower-cased; "" filters
-// nothing.
+// nothing. Verified keeps the pages with the checkmark only, for the
+// administrators' list of people.
 type SearchFilters struct {
 	Hometown string
 	City     string
 	Film     string
 	Show     string
 	Book     string
+	Verified bool
+}
+
+// LookIntoInfo tells whether the filters read the information of a page,
+// which only the pages open to everyone tell; the checkmark is no
+// information.
+func (f SearchFilters) LookIntoInfo() bool {
+	f.Verified = false
+
+	return f != SearchFilters{}
 }
 
 // NewSearchQuery takes the words and the filters; without filters the
@@ -90,7 +101,11 @@ func (q SearchQuery) Matches(u *User) bool {
 	// The filters look into the information, which only the pages open to
 	// everyone tell.
 	f := q.filters
-	if f != (SearchFilters{}) && (u.privacy.InfoRead != AudienceEveryone || u.privacy.Closed) {
+	if f.LookIntoInfo() && (u.privacy.InfoRead != AudienceEveryone || u.privacy.Closed) {
+		return false
+	}
+
+	if f.Verified && !u.verified {
 		return false
 	}
 

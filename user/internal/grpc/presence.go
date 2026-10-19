@@ -21,8 +21,11 @@ func (h *UserHandler) GetStatistics(ctx context.Context, _ *userv1.GetStatistics
 		return nil, err
 	}
 
-	//nolint:gosec // counts of rows
-	return &userv1.GetStatisticsResponse{Users: int32(stats.Users), Online: int32(stats.Online)}, nil
+	return &userv1.GetStatisticsResponse{
+		Users:    int32(stats.Users),    //nolint:gosec // counts of people fit in int32
+		Online:   int32(stats.Online),   //nolint:gosec // counts of people fit in int32
+		Verified: int32(stats.Verified), //nolint:gosec // counts of people fit in int32
+	}, nil
 }
 
 // MarkOnline: the caller is on the site now ("Онлайн").

@@ -25,6 +25,9 @@ type PresenceRepository interface {
 type Statistics struct {
 	Users  int
 	Online int
+	// Verified counts the pages with the checkmark, for "Сводка" of the
+	// administrators.
+	Verified int
 }
 
 // flushTimeout bounds the last write of the visits, when the service stops.
