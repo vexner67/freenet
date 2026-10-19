@@ -45,7 +45,8 @@ func toProtoClub(c *club.Club) *clubv1.Club {
 		BackdropLeft:    optionalID(c.Backdrop().Left),
 		BackdropRight:   optionalID(c.Backdrop().Right),
 
-		Closed: c.Closed(),
+		Closed:   c.Closed(),
+		Verified: c.IsVerified(),
 	}
 }
 

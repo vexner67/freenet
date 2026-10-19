@@ -445,7 +445,8 @@ const listUserClubsQuery = `
 		c.topics_above_wall,
 		c.backdrop_left,
 		c.backdrop_right,
-		c.closed
+		c.closed,
+		c.verified
 	FROM club_members m
 	JOIN clubs c ON c.id = m.club_id
 	WHERE m.user_id = $1
@@ -572,7 +573,8 @@ const pinnedClubsQuery = `
 		c.topics_above_wall,
 		c.backdrop_left,
 		c.backdrop_right,
-		c.closed
+		c.closed,
+		c.verified
 	FROM club_members m
 	JOIN clubs c ON c.id = m.club_id
 	WHERE m.user_id = $1

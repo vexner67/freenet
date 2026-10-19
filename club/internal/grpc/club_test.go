@@ -380,6 +380,41 @@ func TestDeleteClub(t *testing.T) {
 	}
 }
 
+func TestSetClubVerified(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	created, err := s.client.CreateClub(s.as(t, uuid.New()), &clubv1.CreateClubRequest{Name: "Кошки"})
+	if err != nil {
+		t.Fatalf("CreateClub: %v", err)
+	}
+	id := created.GetClub().GetClub().GetId()
+
+	// Internal: the gateway calls it without a token of a user.
+	if _, err = s.client.SetClubVerified(context.Background(), &clubv1.SetClubVerifiedRequest{ClubId: id, Verified: true}); err != nil {
+		t.Fatalf("SetClubVerified: %v", err)
+	}
+	got, err := s.client.GetClubs(context.Background(), &clubv1.GetClubsRequest{Ids: []string{id}})
+	if err != nil || len(got.GetClubs()) != 1 || !got.GetClubs()[0].GetVerified() {
+		t.Fatalf("GetClubs = %v, %v", got, err)
+	}
+
+	found, err := s.client.SearchClubs(context.Background(), &clubv1.SearchClubsRequest{Verified: true})
+	if err != nil || len(found.GetClubs()) != 1 {
+		t.Fatalf("SearchClubs of the verified = %v, %v", found, err)
+	}
+	if _, err = s.client.SearchClubs(context.Background(), &clubv1.SearchClubsRequest{}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("SearchClubs without a query = %v", err)
+	}
+
+	for _, req := range []*clubv1.SetClubVerifiedRequest{{ClubId: "x"}, {ClubId: uuid.NewString()}} {
+		want := map[bool]codes.Code{true: codes.InvalidArgument, false: codes.NotFound}[req.GetClubId() == "x"]
+		if _, err = s.client.SetClubVerified(context.Background(), req); status.Code(err) != want {
+			t.Fatalf("SetClubVerified(%q) = %v, want %v", req.GetClubId(), err, want)
+		}
+	}
+}
+
 func TestSetClubBackdrop(t *testing.T) {
 	t.Parallel()
 

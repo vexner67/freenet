@@ -48,6 +48,9 @@ type ClubRepository interface {
 	// Delete deletes the club with its members and requests while ownerID
 	// owns it; club.ErrCannotDelete otherwise.
 	Delete(ctx context.Context, clubID, ownerID uuid.UUID) error
+	// SetVerified gives the club the checkmark or takes it, the only way
+	// it changes; club.ErrNotFound.
+	SetVerified(ctx context.Context, clubID uuid.UUID, verified bool) error
 }
 
 type MemberRepository interface {
@@ -524,6 +527,34 @@ func (s *ClubService) Transfer(ctx context.Context, requesterID, clubID, userID 
 
 	// Roles may have changed since: the repository checks them again.
 	return errs.Wrap("s.members.Transfer", s.members.Transfer(ctx, clubID, requesterID, userID))
+}
+
+// SetVerified gives the club the checkmark of the administrators of the
+// site or takes it, and its owner hears of it (if the club has one). The
+// caller is the gateway: whether its caller is an administrator only the
+// user service knows, and the gateway asks it first.
+func (s *ClubService) SetVerified(ctx context.Context, clubID uuid.UUID, verified bool) error {
+	ownerID, err := s.members.Owner(ctx, clubID)
+	if err != nil {
+		return errs.Wrap("s.members.Owner", err)
+	}
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.clubs.SetVerified(ctx, clubID, verified); err != nil {
+			return errs.Wrap("s.clubs.SetVerified", err)
+		}
+
+		switch {
+		case ownerID == uuid.Nil:
+			return nil
+		case verified:
+			return errs.Wrap("s.notifier.Verified", s.notifier.Verified(ctx, clubID, ownerID))
+		default:
+			return errs.Wrap("s.notifier.Unverified", s.notifier.Unverified(ctx, clubID, ownerID))
+		}
+	})
+
+	return errs.Wrap("s.tx.WithinTx", err)
 }
 
 // Delete deletes the club, its owner's call: its members and requests go

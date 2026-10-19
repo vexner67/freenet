@@ -325,6 +325,37 @@ func TestSearchQuery(t *testing.T) {
 	}
 }
 
+func TestVerifiedQuery(t *testing.T) {
+	t.Parallel()
+
+	if _, err := club.NewVerifiedQuery(strings.Repeat("я", 65)); !errors.Is(err, club.ErrSearchQueryTooLong) {
+		t.Fatalf("too long: %v", err)
+	}
+
+	plain := newClub(t)
+	verified := plain.WithVerified(true)
+	if plain.IsVerified() || !verified.IsVerified() {
+		t.Fatal("WithVerified changed the club it was called on, or did not change the copy")
+	}
+
+	all, err := club.NewVerifiedQuery("  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !all.Verified() || len(all.Words()) != 0 || all.Matches(plain) || !all.Matches(verified) {
+		t.Fatalf("query of all the verified = %+v", all)
+	}
+
+	named, _ := club.NewVerifiedQuery("собак")
+	if named.Matches(verified) {
+		t.Fatal("a verified club matches words it does not have")
+	}
+
+	if q, _ := club.NewSearchQuery("кот"); q.Verified() {
+		t.Fatal("a search finds only the verified clubs")
+	}
+}
+
 func TestNewWebsite(t *testing.T) {
 	t.Parallel()
 

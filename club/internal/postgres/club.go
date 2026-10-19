@@ -94,7 +94,8 @@ const (
 			topics_above_wall,
 			backdrop_left,
 			backdrop_right,
-			closed
+			closed,
+			verified
 		FROM clubs
 		WHERE id = $1
 	`
@@ -114,7 +115,8 @@ const (
 			topics_above_wall,
 			backdrop_left,
 			backdrop_right,
-			closed
+			closed,
+			verified
 		FROM clubs
 		WHERE lower(address) = lower($1)
 	`
@@ -134,7 +136,8 @@ const (
 			topics_above_wall,
 			backdrop_left,
 			backdrop_right,
-			closed
+			closed,
+			verified
 		FROM clubs
 		WHERE id = ANY($1)
 	`
@@ -203,7 +206,7 @@ func scanClub(row pgx.Row, before ...any) (*club.Club, error) {
 
 	dest := append(before, &s.ID, &name, &description, &address, &wall, &s.CreatedAt, &s.Members, &avatarID,
 		&website, &adminsDisplay, &s.OpenTopics, &s.TopicsAboveWall, &backdropLeft, &backdropRight,
-		&s.Closed)
+		&s.Closed, &s.Verified)
 	if err := row.Scan(dest...); err != nil {
 		return nil, err
 	}
@@ -250,6 +253,25 @@ func (r *ClubRepository) Update(ctx context.Context, c *club.Club) error {
 	if constraintOf(err) == "clubs_address_key" {
 		return club.ErrAddressTaken
 	}
+	if err != nil {
+		return errs.Wrap("r.pool.Exec", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return club.ErrNotFound
+	}
+
+	return nil
+}
+
+const setClubVerifiedQuery = `
+	UPDATE clubs
+	SET verified = $2
+	WHERE id = $1
+`
+
+func (r *ClubRepository) SetVerified(ctx context.Context, clubID uuid.UUID, verified bool) error {
+	tag, err := pgpool.Conn(ctx, r.pool).Exec(ctx, setClubVerifiedQuery, clubID, verified)
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", err)
 	}
@@ -340,9 +362,11 @@ const searchClubsSelect = `
 		topics_above_wall,
 		backdrop_left,
 		backdrop_right,
-		closed
+		closed,
+		verified
 	FROM clubs
-	WHERE id < $1`
+	WHERE id < $1
+		AND (verified OR NOT $3)`
 
 // searchHaystack must match the expression of clubs_search_idx exactly,
 // or the trigram index is not used.
@@ -356,7 +380,7 @@ func searchClubsQuery(words int) string {
 
 	b.WriteString(searchClubsSelect)
 	for i := range words {
-		fmt.Fprintf(&b, "\n\t\tAND %s LIKE $%d", searchHaystack, i+3)
+		fmt.Fprintf(&b, "\n\t\tAND %s LIKE $%d", searchHaystack, i+4)
 	}
 	b.WriteString("\n\tORDER BY id DESC\n\tLIMIT $2")
 
@@ -364,7 +388,7 @@ func searchClubsQuery(words int) string {
 }
 
 func (r *ClubRepository) Search(ctx context.Context, q club.SearchQuery, before uuid.UUID, limit int) ([]*club.Club, error) {
-	args := []any{cursor(before), limit}
+	args := []any{cursor(before), limit, q.Verified()}
 	for _, w := range q.Words() {
 		args = append(args, "%"+escapeLike(w)+"%")
 	}

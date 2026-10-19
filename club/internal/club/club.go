@@ -58,6 +58,9 @@ type Club struct {
 	// closed: one joins by a request the admins accept, and only the
 	// members see what is in the club ("Закрытая группа" of openvk).
 	closed bool
+	// verified: the administrators of the site confirmed the club, and it
+	// wears the checkmark. Only they change it, never its admins.
+	verified bool
 }
 
 // Backdrop is the two sides of a club's backdrop; either may be uuid.Nil.
@@ -111,7 +114,8 @@ type Stored struct {
 	TopicsAboveWall bool
 	Backdrop        Backdrop
 
-	Closed bool
+	Closed   bool
+	Verified bool
 }
 
 // Restore rebuilds a club from storage without validation or new IDs.
@@ -132,7 +136,8 @@ func Restore(s Stored) *Club {
 		topicsAboveWall: s.TopicsAboveWall,
 		backdrop:        s.Backdrop,
 
-		closed: s.Closed,
+		closed:   s.Closed,
+		verified: s.Verified,
 	}
 }
 

@@ -24,6 +24,7 @@ func PublicMethods() []string {
 		clubv1.ClubService_ListWallModerators_FullMethodName,
 		clubv1.ClubService_ListHiddenManagers_FullMethodName,
 		clubv1.ClubService_PurgeUser_FullMethodName,
+		clubv1.ClubService_SetClubVerified_FullMethodName,
 	}
 }
 
@@ -35,5 +36,6 @@ func InternalMethods() map[string][]string {
 		clubv1.ClubService_ListWallModerators_FullMethodName: {mtls.Post},
 		clubv1.ClubService_ListHiddenManagers_FullMethodName: {mtls.Gateway},
 		clubv1.ClubService_PurgeUser_FullMethodName:          {mtls.User},
+		clubv1.ClubService_SetClubVerified_FullMethodName:    {mtls.Gateway},
 	}
 }

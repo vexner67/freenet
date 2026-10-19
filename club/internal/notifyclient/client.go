@@ -58,6 +58,14 @@ func (o *Outbox) Dismissed(ctx context.Context, clubID, userID uuid.UUID) error 
 	return o.add(ctx, kindRetract, &notificationv1.RetractRequest{Event: adminEvent(clubID, userID)})
 }
 
+func (o *Outbox) Verified(ctx context.Context, clubID, ownerID uuid.UUID) error {
+	return o.add(ctx, kindNotify, &notificationv1.NotifyRequest{Event: verifiedEvent(clubID, ownerID)})
+}
+
+func (o *Outbox) Unverified(ctx context.Context, clubID, ownerID uuid.UUID) error {
+	return o.add(ctx, kindRetract, &notificationv1.RetractRequest{Event: verifiedEvent(clubID, ownerID)})
+}
+
 func (o *Outbox) Deleted(ctx context.Context, clubID uuid.UUID) error {
 	return errs.Wrap("o.recorder.Add", o.recorder.Add(ctx, kindPurgeClub, clubID[:]))
 }
@@ -145,9 +153,21 @@ func adminEvent(clubID, userID uuid.UUID) *notificationv1.Event {
 	}
 }
 
+// verifiedEvent is from the club, as the appointment is: who gave the
+// checkmark is not the owner's business.
+func verifiedEvent(clubID, ownerID uuid.UUID) *notificationv1.Event {
+	return &notificationv1.Event{
+		Kind:        notificationv1.Kind_KIND_CLUB_VERIFIED,
+		RecipientId: ownerID.String(),
+		ActorId:     clubID.String(),
+	}
+}
+
 // Nop is the Notifier when no notification service is configured.
 type Nop struct{}
 
-func (Nop) Appointed(context.Context, uuid.UUID, uuid.UUID) error { return nil }
-func (Nop) Dismissed(context.Context, uuid.UUID, uuid.UUID) error { return nil }
-func (Nop) Deleted(context.Context, uuid.UUID) error              { return nil }
+func (Nop) Appointed(context.Context, uuid.UUID, uuid.UUID) error  { return nil }
+func (Nop) Dismissed(context.Context, uuid.UUID, uuid.UUID) error  { return nil }
+func (Nop) Verified(context.Context, uuid.UUID, uuid.UUID) error   { return nil }
+func (Nop) Unverified(context.Context, uuid.UUID, uuid.UUID) error { return nil }
+func (Nop) Deleted(context.Context, uuid.UUID) error               { return nil }
