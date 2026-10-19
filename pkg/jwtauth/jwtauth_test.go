@@ -39,8 +39,10 @@ type tokenOpts struct {
 	subject   string
 	sessionID string
 	expiresAt time.Time
-	// deactivated signs the token of a deleted page.
+	// deactivated signs the token of a deleted page, banned of a blocked
+	// one.
 	deactivated bool
+	banned      bool
 }
 
 func sign(t *testing.T, o tokenOpts) string {
@@ -55,6 +57,7 @@ func sign(t *testing.T, o tokenOpts) string {
 		TokenType:   o.typ,
 		SessionID:   o.sessionID,
 		Deactivated: o.deactivated,
+		Banned:      o.banned,
 	}
 
 	var signKey any = o.key
@@ -151,9 +154,13 @@ func TestUnaryServerInterceptor(t *testing.T) {
 	deactivatedOpts.deactivated = true
 	deactivated := sign(t, deactivatedOpts)
 
+	bannedOpts := validOpts(key, userID, sessionID)
+	bannedOpts.banned = true
+	banned := sign(t, bannedOpts)
+
 	interceptor := jwtauth.UnaryServerInterceptor(
 		jwtauth.NewVerifier(&key.PublicKey, issuer),
-		jwtauth.Access{Public: []string{"/svc/Public"}, Deactivated: []string{"/svc/Restore"}},
+		jwtauth.Access{Public: []string{"/svc/Public"}, Deactivated: []string{"/svc/Restore"}, Banned: []string{"/svc/Me"}},
 	)
 
 	call := func(method string, md metadata.MD) (jwtauth.Identity, bool, error) {
@@ -246,6 +253,35 @@ func TestUnaryServerInterceptor(t *testing.T) {
 		_, _, err := call("/svc/Private", metadata.Pairs("authorization", "Bearer "+deactivated))
 		if status.Code(err) != codes.PermissionDenied || status.Convert(err).Message() != jwtauth.ErrPageDeleted.Error() {
 			t.Fatalf("err = %v, want PermissionDenied: your page is deleted", err)
+		}
+	})
+
+	t.Run("blocked page: allowed method knows its owner", func(t *testing.T) {
+		t.Parallel()
+
+		id, found, err := call("/svc/Me", metadata.Pairs("authorization", "Bearer "+banned))
+		if err != nil || !found || id.UserID != userID || !id.Banned {
+			t.Fatalf("err = %v, found = %v, id = %+v", err, found, id)
+		}
+	})
+
+	t.Run("blocked page: public method sees an anonymous viewer", func(t *testing.T) {
+		t.Parallel()
+
+		_, found, err := call("/svc/Public", metadata.Pairs("authorization", "Bearer "+banned))
+		if err != nil || found {
+			t.Fatalf("err = %v, found = %v; want an anonymous call", err, found)
+		}
+	})
+
+	t.Run("blocked page: other methods refuse it", func(t *testing.T) {
+		t.Parallel()
+
+		for _, method := range []string{"/svc/Private", "/svc/Restore"} {
+			_, _, err := call(method, metadata.Pairs("authorization", "Bearer "+banned))
+			if status.Code(err) != codes.PermissionDenied || status.Convert(err).Message() != jwtauth.ErrPageBanned.Error() {
+				t.Fatalf("%s: err = %v, want PermissionDenied: your page is banned", method, err)
+			}
 		}
 	})
 

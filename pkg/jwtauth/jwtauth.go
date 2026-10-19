@@ -29,6 +29,10 @@ type Claims struct {
 	// Deactivated marks the access token of a page its owner deleted: it
 	// is good only to see and restore the page (Access.Deactivated).
 	Deactivated bool `json:"deactivated,omitempty"`
+	// Banned marks the access token of a page the administrators of the
+	// site blocked: it is good only to see the page and why it is blocked
+	// (Access.Banned).
+	Banned bool `json:"banned,omitempty"`
 }
 
 var ErrInvalidToken = errors.New("invalid token")
@@ -41,6 +45,8 @@ type Identity struct {
 	ExpiresAt time.Time
 	// Deactivated: the owner deleted the page (Claims.Deactivated).
 	Deactivated bool
+	// Banned: the administrators blocked the page (Claims.Banned).
+	Banned bool
 }
 
 type Verifier struct {
@@ -93,6 +99,7 @@ func (v *Verifier) Verify(token string, want TokenType) (Identity, error) {
 		SessionID:   sessionID,
 		ExpiresAt:   claims.ExpiresAt.Time,
 		Deactivated: claims.Deactivated,
+		Banned:      claims.Banned,
 	}, nil
 }
 
