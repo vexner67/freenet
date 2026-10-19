@@ -13,9 +13,14 @@ import (
 // MaxGiftCaptionLength is how long the words with a gift may be.
 const MaxGiftCaptionLength = 250
 
+// MaxGiftPrice is the dearest an administrator may make a gift, in votes:
+// as much as a voucher carries.
+const MaxGiftPrice = MaxVotes
+
 var (
 	ErrUnknownGift        = errors.New("unknown gift")
 	ErrGiftCaptionTooLong = errors.New("gift caption is too long")
+	ErrGiftPriceInvalid   = errors.New("the price of a gift must be between 0 and 1000000")
 	ErrGiftNotFound       = errors.New("gift not found")
 	// ErrGiftRefused: the page is not shown to the sender or either of the
 	// two has blacklisted the other.
@@ -33,17 +38,19 @@ type GiftKind string
 // GiftCollection is a shelf of the catalogue, openvk's "Коллекции".
 type GiftCollection struct {
 	ID string
-	// Price is what each of its gifts costs the sender, in votes; 0 for
-	// a free one ("Бесплатно").
-	Price int64
+	// Price is what each of its gifts costs the sender, in votes, unless
+	// the administrators priced it otherwise (GiftPrices); 0 for a free
+	// one ("Бесплатно").
+	Price GiftPrice
 	Gifts []GiftKind
 }
 
 // giftCatalog is all there is to send. openvk's gifts are drawn and priced
-// by its administrators; here the catalogue and its prices are fixed: the
-// flowers are free, so that anyone can send a gift, and the rest costs
-// votes, which vouchers give. "freenet" are the site's own gifts, the
-// dearest, last. The pictures are the site's: it knows a gift by this name.
+// by its administrators; here the catalogue is fixed, and so are the
+// prices the gifts have until the administrators change them: the flowers
+// are free, so that anyone can send a gift, and the rest costs votes,
+// which vouchers give. "freenet" are the site's own gifts, the dearest,
+// last. The pictures are the site's: it knows a gift by this name.
 var giftCatalog = []GiftCollection{
 	{ID: "flowers", Gifts: []GiftKind{"rose", "tulip", "bouquet", "sunflower", "cactus"}},
 	{ID: "sweets", Price: 1, Gifts: []GiftKind{"cake", "candy", "chocolate", "icecream", "cupcake"}},
@@ -76,8 +83,9 @@ func (k GiftKind) String() string {
 	return string(k)
 }
 
-// Price is what sending the gift costs, in votes; 0 for a free one.
-func (k GiftKind) Price() int64 {
+// DefaultPrice is what sending the gift costs, in votes, until the
+// administrators price it otherwise: the price of its collection.
+func (k GiftKind) DefaultPrice() GiftPrice {
 	for _, c := range giftCatalog {
 		if slices.Contains(c.Gifts, k) {
 			return c.Price
@@ -85,6 +93,35 @@ func (k GiftKind) Price() int64 {
 	}
 
 	return 0
+}
+
+// GiftPrice is what a gift costs its sender, in votes: 0 (free) to
+// MaxGiftPrice.
+type GiftPrice int64
+
+func NewGiftPrice(n int64) (GiftPrice, error) {
+	if n < 0 || n > MaxGiftPrice {
+		return 0, ErrGiftPriceInvalid
+	}
+
+	return GiftPrice(n), nil
+}
+
+func (p GiftPrice) Int64() int64 {
+	return int64(p)
+}
+
+// GiftPrices are the prices the administrators of the site set, by gift;
+// the rest cost what their collections do.
+type GiftPrices map[GiftKind]GiftPrice
+
+// Of is what kind costs.
+func (p GiftPrices) Of(kind GiftKind) GiftPrice {
+	if price, ok := p[kind]; ok {
+		return price
+	}
+
+	return kind.DefaultPrice()
 }
 
 // GiftCaption is what the sender says with a gift ("Ваше сообщение"); it

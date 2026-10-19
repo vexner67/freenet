@@ -171,3 +171,57 @@ func scanGift(row pgx.Row) (*user.Gift, error) {
 
 	return user.RestoreGift(id, recipientID, sender, user.GiftKind(kind), user.GiftCaption(caption), anonymous), nil
 }
+
+const listGiftPricesQuery = `
+	SELECT
+		gift,
+		price
+	FROM gift_prices
+`
+
+func (r *GiftRepository) Prices(ctx context.Context) (user.GiftPrices, error) {
+	rows, err := r.conn(ctx).Query(ctx, listGiftPricesQuery)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+	defer rows.Close()
+
+	prices := make(user.GiftPrices)
+
+	for rows.Next() {
+		var (
+			kind  string
+			price int64
+		)
+
+		if err := rows.Scan(&kind, &price); err != nil {
+			return nil, errs.Wrap("rows.Scan", err)
+		}
+
+		prices[user.GiftKind(kind)] = user.GiftPrice(price)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, errs.Wrap("rows.Err", err)
+	}
+
+	return prices, nil
+}
+
+const setGiftPriceQuery = `
+	INSERT INTO gift_prices (
+		gift,
+		price
+	)
+	VALUES ($1, $2)
+	ON CONFLICT (gift) DO UPDATE
+	SET price = EXCLUDED.price
+`
+
+func (r *GiftRepository) SetPrice(ctx context.Context, kind user.GiftKind, price user.GiftPrice) error {
+	if _, err := r.conn(ctx).Exec(ctx, setGiftPriceQuery, kind.String(), price.Int64()); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	return nil
+}

@@ -17,22 +17,57 @@ type GiftService interface {
 	Send(ctx context.Context, senderID, recipientID uuid.UUID, d service.GiftDraft) (service.SentGift, error)
 	Delete(ctx context.Context, userID, giftID uuid.UUID) error
 	List(ctx context.Context, viewerID, ownerID, cursor uuid.UUID, size int) (service.GiftPage, error)
+	Catalog(ctx context.Context) ([]service.GiftShelf, error)
+	SetPrice(ctx context.Context, adminID uuid.UUID, kind user.GiftKind, price user.GiftPrice) error
 }
 
-func (h *UserHandler) GetGiftCatalog(context.Context, *userv1.GetGiftCatalogRequest) (*userv1.GetGiftCatalogResponse, error) {
-	catalog := user.GiftCatalog()
+func (h *UserHandler) GetGiftCatalog(ctx context.Context, _ *userv1.GetGiftCatalogRequest) (*userv1.GetGiftCatalogResponse, error) {
+	catalog, err := h.giftService.Catalog(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	resp := &userv1.GetGiftCatalogResponse{Collections: make([]*userv1.GiftCollection, 0, len(catalog))}
 	for _, c := range catalog {
-		gifts := make([]string, 0, len(c.Gifts))
-		for _, kind := range c.Gifts {
-			gifts = append(gifts, kind.String())
+		collection := &userv1.GiftCollection{
+			Id:     c.ID,
+			Gifts:  make([]string, 0, len(c.Gifts)),
+			Price:  c.Price.Int64(),
+			Prices: make([]int64, 0, len(c.Gifts)),
 		}
 
-		resp.Collections = append(resp.Collections, &userv1.GiftCollection{Id: c.ID, Gifts: gifts, Price: c.Price})
+		for _, g := range c.Gifts {
+			collection.Gifts = append(collection.Gifts, g.Kind.String())
+			collection.Prices = append(collection.Prices, g.Price.Int64())
+		}
+
+		resp.Collections = append(resp.Collections, collection)
 	}
 
 	return resp, nil
+}
+
+func (h *UserHandler) SetGiftPrice(ctx context.Context, req *userv1.SetGiftPriceRequest) (*emptypb.Empty, error) {
+	adminID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	kind, err := user.NewGiftKind(req.GetGift())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	price, err := user.NewGiftPrice(req.GetPrice())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err = h.giftService.SetPrice(ctx, adminID, kind, price); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func (h *UserHandler) SendGift(ctx context.Context, req *userv1.SendGiftRequest) (*userv1.SendGiftResponse, error) {

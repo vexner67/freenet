@@ -61,6 +61,7 @@ const (
 	UserService_SendGift_FullMethodName           = "/user.v1.UserService/SendGift"
 	UserService_ListGifts_FullMethodName          = "/user.v1.UserService/ListGifts"
 	UserService_DeleteGift_FullMethodName         = "/user.v1.UserService/DeleteGift"
+	UserService_SetGiftPrice_FullMethodName       = "/user.v1.UserService/SetGiftPrice"
 	UserService_GetStickerCatalog_FullMethodName  = "/user.v1.UserService/GetStickerCatalog"
 	UserService_AddStickerPack_FullMethodName     = "/user.v1.UserService/AddStickerPack"
 	UserService_RemoveStickerPack_FullMethodName  = "/user.v1.UserService/RemoveStickerPack"
@@ -178,11 +179,13 @@ type UserServiceClient interface {
 	// blacklisted either way. ListGifts is public: the gifts sent to a
 	// user, newest first; PermissionDenied if the page or its gifts are
 	// hidden from the caller. DeleteGift is for the one the gift was sent
-	// to.
+	// to. SetGiftPrice is for the administrators of the site
+	// (PermissionDenied for others): what a gift costs from now on.
 	GetGiftCatalog(ctx context.Context, in *GetGiftCatalogRequest, opts ...grpc.CallOption) (*GetGiftCatalogResponse, error)
 	SendGift(ctx context.Context, in *SendGiftRequest, opts ...grpc.CallOption) (*SendGiftResponse, error)
 	ListGifts(ctx context.Context, in *ListGiftsRequest, opts ...grpc.CallOption) (*ListGiftsResponse, error)
 	DeleteGift(ctx context.Context, in *DeleteGiftRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SetGiftPrice(ctx context.Context, in *SetGiftPriceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Stickers ("Стикеры" on openvk). GetStickerCatalog is public: the
 	// packs there are, and with a token which of them the caller has taken
 	// and keeps among their stickers. AddStickerPack takes a pack, paying
@@ -650,6 +653,16 @@ func (c *userServiceClient) DeleteGift(ctx context.Context, in *DeleteGiftReques
 	return out, nil
 }
 
+func (c *userServiceClient) SetGiftPrice(ctx context.Context, in *SetGiftPriceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetGiftPrice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) GetStickerCatalog(ctx context.Context, in *GetStickerCatalogRequest, opts ...grpc.CallOption) (*GetStickerCatalogResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetStickerCatalogResponse)
@@ -918,11 +931,13 @@ type UserServiceServer interface {
 	// blacklisted either way. ListGifts is public: the gifts sent to a
 	// user, newest first; PermissionDenied if the page or its gifts are
 	// hidden from the caller. DeleteGift is for the one the gift was sent
-	// to.
+	// to. SetGiftPrice is for the administrators of the site
+	// (PermissionDenied for others): what a gift costs from now on.
 	GetGiftCatalog(context.Context, *GetGiftCatalogRequest) (*GetGiftCatalogResponse, error)
 	SendGift(context.Context, *SendGiftRequest) (*SendGiftResponse, error)
 	ListGifts(context.Context, *ListGiftsRequest) (*ListGiftsResponse, error)
 	DeleteGift(context.Context, *DeleteGiftRequest) (*emptypb.Empty, error)
+	SetGiftPrice(context.Context, *SetGiftPriceRequest) (*emptypb.Empty, error)
 	// Stickers ("Стикеры" on openvk). GetStickerCatalog is public: the
 	// packs there are, and with a token which of them the caller has taken
 	// and keeps among their stickers. AddStickerPack takes a pack, paying
@@ -1102,6 +1117,9 @@ func (UnimplementedUserServiceServer) ListGifts(context.Context, *ListGiftsReque
 }
 func (UnimplementedUserServiceServer) DeleteGift(context.Context, *DeleteGiftRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteGift not implemented")
+}
+func (UnimplementedUserServiceServer) SetGiftPrice(context.Context, *SetGiftPriceRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetGiftPrice not implemented")
 }
 func (UnimplementedUserServiceServer) GetStickerCatalog(context.Context, *GetStickerCatalogRequest) (*GetStickerCatalogResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetStickerCatalog not implemented")
@@ -1913,6 +1931,24 @@ func _UserService_DeleteGift_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_SetGiftPrice_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetGiftPriceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetGiftPrice(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetGiftPrice_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetGiftPrice(ctx, req.(*SetGiftPriceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetStickerCatalog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetStickerCatalogRequest)
 	if err := dec(in); err != nil {
@@ -2389,6 +2425,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteGift",
 			Handler:    _UserService_DeleteGift_Handler,
+		},
+		{
+			MethodName: "SetGiftPrice",
+			Handler:    _UserService_SetGiftPrice_Handler,
 		},
 		{
 			MethodName: "GetStickerCatalog",

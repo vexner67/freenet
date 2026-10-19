@@ -202,3 +202,41 @@ func TestGiftPrices(t *testing.T) {
 		t.Fatalf("after the gift ann has %v, %v", me.GetUser().GetVotes(), err)
 	}
 }
+
+func TestSetGiftPrice(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	admin := s.signIn(t, adminEmail)
+	ann, _ := s.member(t, "ann")
+
+	if _, err := s.client.SetGiftPrice(ann, &userv1.SetGiftPriceRequest{Gift: "rose", Price: 2}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("not an administrator prices a gift: %v", err)
+	}
+	for _, req := range []*userv1.SetGiftPriceRequest{{Gift: "nothing", Price: 2}, {Gift: "rose", Price: -1}, {Gift: "rose", Price: 1_000_001}} {
+		if _, err := s.client.SetGiftPrice(admin, req); status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("SetGiftPrice(%v): %v", req, err)
+		}
+	}
+	if _, err := s.client.SetGiftPrice(admin, &userv1.SetGiftPriceRequest{Gift: "rose", Price: 2}); err != nil {
+		t.Fatalf("SetGiftPrice: %v", err)
+	}
+
+	catalog, err := s.client.GetGiftCatalog(context.Background(), &userv1.GetGiftCatalogRequest{})
+	if err != nil {
+		t.Fatalf("GetGiftCatalog: %v", err)
+	}
+	flowers := catalog.GetCollections()[0]
+	if flowers.GetPrice() != 0 || len(flowers.GetPrices()) != len(flowers.GetGifts()) {
+		t.Fatalf("the flowers: %v", flowers)
+	}
+	for i, gift := range flowers.GetGifts() {
+		want := int64(0)
+		if gift == "rose" {
+			want = 2
+		}
+		if flowers.GetPrices()[i] != want {
+			t.Errorf("%s costs %d, want %d", gift, flowers.GetPrices()[i], want)
+		}
+	}
+}

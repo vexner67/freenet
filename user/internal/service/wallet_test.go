@@ -53,14 +53,16 @@ func newWalletWorld(t *testing.T) walletWorld {
 		t.Fatal(err)
 	}
 
+	gifts := inmem.NewGiftRepository(users)
+
 	return walletWorld{
 		users:    users,
 		userSvc:  service.NewUserService(users),
 		accounts: service.NewAccountService(users, inmem.TxManager{}, purgeclient.NoReactions{}, time.Hour),
 		blocks:   service.NewBlockService(users, blocks, inmem.TxManager{}, &fakeNotifier{}),
 		gifts: service.NewGiftService(service.GiftDeps{
-			Users: users, Gifts: inmem.NewGiftRepository(users), Permissions: permissions,
-			Tx: inmem.TxManager{}, Wallets: users, Notifier: &fakeGiftNotifier{},
+			Users: users, Gifts: gifts, Prices: gifts, Permissions: permissions,
+			Tx: inmem.TxManager{}, Wallets: users, Notifier: &fakeGiftNotifier{}, Admins: admins,
 		}),
 		wallets: service.NewWalletService(service.WalletDeps{
 			Users: users, Wallets: users, Vouchers: inmem.NewVoucherRepository(users), Permissions: permissions,
@@ -282,11 +284,11 @@ func TestGiftService_Prices(t *testing.T) {
 	for _, c := range user.GiftCatalog() {
 		if c.Price == 0 {
 			free = c.Gifts[0]
-		} else if paid == "" || c.Price < paid.Price() {
+		} else if paid == "" || c.Price < paid.DefaultPrice() {
 			paid = c.Gifts[0]
 		}
 	}
-	price := paid.Price()
+	price := paid.DefaultPrice().Int64()
 
 	if _, err := w.gifts.Send(ctx, ann, bob, service.GiftDraft{Kind: free}); err != nil {
 		t.Fatalf("a free gift with no votes: %v", err)

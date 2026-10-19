@@ -189,15 +189,48 @@ func TestGiftPrices(t *testing.T) {
 			paid++
 		}
 		for _, g := range c.Gifts {
-			if g.Price() != c.Price {
-				t.Fatalf("%s costs %d in a collection of %d", g, g.Price(), c.Price)
+			if g.DefaultPrice() != c.Price {
+				t.Fatalf("%s costs %d in a collection of %d", g, g.DefaultPrice(), c.Price)
 			}
 		}
 	}
 	if free == 0 || paid == 0 {
 		t.Fatalf("%d free collections and %d paid", free, paid)
 	}
-	if user.GiftKind("nothing").Price() != 0 {
+	if user.GiftKind("nothing").DefaultPrice() != 0 {
 		t.Fatal("an unknown gift has a price")
+	}
+}
+
+func TestNewGiftPrice(t *testing.T) {
+	t.Parallel()
+
+	for _, n := range []int64{0, 1, user.MaxGiftPrice} {
+		if p, err := user.NewGiftPrice(n); err != nil || p.Int64() != n {
+			t.Errorf("NewGiftPrice(%d) = %d, %v", n, p, err)
+		}
+	}
+	for _, n := range []int64{-1, user.MaxGiftPrice + 1} {
+		if _, err := user.NewGiftPrice(n); !errors.Is(err, user.ErrGiftPriceInvalid) {
+			t.Errorf("NewGiftPrice(%d): %v", n, err)
+		}
+	}
+}
+
+func TestGiftPrices_Of(t *testing.T) {
+	t.Parallel()
+
+	prices := user.GiftPrices{"cake": 7, "rose": 2}
+	if got := prices.Of("cake"); got != 7 {
+		t.Errorf("a priced gift costs %d", got)
+	}
+	if got := prices.Of("rose"); got != 2 {
+		t.Errorf("a free gift priced by the administrators costs %d", got)
+	}
+	if got, want := prices.Of("present"), user.GiftKind("present").DefaultPrice(); got != want {
+		t.Errorf("an unpriced gift costs %d, its collection %d", got, want)
+	}
+	if got, want := user.GiftPrices(nil).Of("candy"), user.GiftKind("candy").DefaultPrice(); got != want {
+		t.Errorf("with no prices a gift costs %d, its collection %d", got, want)
 	}
 }
