@@ -775,11 +775,13 @@ test('gifts are counted, named and pictured as the catalogue of the user service
   const gifts = [...catalog.matchAll(/Gifts:[^{]*\{([^}]*)\}/g)].flatMap((m) => [...m[1].matchAll(/"(\w+)"/g)].map((g) => g[1]));
 
   assert.deepEqual(Object.keys(giftCollections), collections);
-  assert.equal(gifts.length, 15);
+  assert.equal(gifts.length, 21);
   assert.deepEqual(Object.keys(giftNames), gifts);
   for (const gift of gifts) {
-    assert.equal(giftImage(gift), `/static/gifts/${gift}.svg`);
-    assert.ok(existsSync(new URL(`../static/gifts/${gift}.svg`, import.meta.url)), gift);
+    // The site's own gifts are pictures rendered by scripts/giftgen.
+    const file = `${gift}.${gift.startsWith('freenet_') ? 'png' : 'svg'}`;
+    assert.equal(giftImage(gift), `/static/gifts/${file}`);
+    assert.ok(existsSync(new URL(`../static/gifts/${file}`, import.meta.url)), gift);
   }
   assert.equal(giftImage('unknown'), '/static/gifts/present.svg');
 });
