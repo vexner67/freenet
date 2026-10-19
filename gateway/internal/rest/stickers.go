@@ -22,7 +22,8 @@ var photoSticker = regexp.MustCompile(`^[0-9a-f]{32}$`)
 // pack of the site has no author: the site names and draws it. One a
 // person made of their photos has its author, name and description, and
 // is in the shop when published; its stickers are at /media/stickers/<name>.
-// Holders — how many others took it — is told to the author only.
+// Holders — how many people took it, its author left out — sorts the
+// "Популярные" of the shop.
 type stickerPackJSON struct {
 	ID        string      `json:"id"`
 	Price     int64       `json:"price"`

@@ -6069,7 +6069,7 @@ components:
         name: { type: string, description: "Of a pack a person made" }
         about: { type: string, description: "Of a pack a person made" }
         published: { type: boolean, description: "The shop shows it; a pack of the site always" }
-        holders: { type: integer, description: "How many others have taken it; in your own packs only" }
+        holders: { type: integer, description: "How many people have taken it, its author left out — the shop sorts its \"Популярные\" by it" }
 
     StickerPackRequest:
       type: object
