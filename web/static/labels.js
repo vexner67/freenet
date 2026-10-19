@@ -722,15 +722,22 @@ export function myAlbumsCount(n) {
 // what each gift is called and its picture. The gifts themselves are the
 // catalogue of the user service; a picture is a file of the site, named
 // by its whole path so that it is served with its version.
-export const giftCollections = { flowers: 'Цветы', sweets: 'Сладости', holidays: 'Праздники' };
+export const giftCollections = { flowers: 'Цветы', sweets: 'Сладости', holidays: 'Праздники', freenet: 'Freenet' };
 
 export const giftNames = {
   rose: 'Роза', tulip: 'Тюльпан', bouquet: 'Букет', sunflower: 'Подсолнух', cactus: 'Кактус',
   cake: 'Торт', candy: 'Конфета', chocolate: 'Шоколад', icecream: 'Мороженое', cupcake: 'Пирожное',
   present: 'Подарок', balloons: 'Шарики', heart: 'Сердце', bear: 'Мишка', star: 'Звезда',
+  freenet_crystal: 'Кристалл Freenet', freenet_coin: 'Золотая монета', freenet_ring: 'Перстень', freenet_crown: 'Корона', freenet_heart: 'Рубиновое сердце', freenet_cup: 'Кубок',
 };
 
 const giftImages = {
+  freenet_crystal: '/static/gifts/freenet_crystal.png',
+  freenet_coin: '/static/gifts/freenet_coin.png',
+  freenet_ring: '/static/gifts/freenet_ring.png',
+  freenet_crown: '/static/gifts/freenet_crown.png',
+  freenet_heart: '/static/gifts/freenet_heart.png',
+  freenet_cup: '/static/gifts/freenet_cup.png',
   rose: '/static/gifts/rose.svg',
   tulip: '/static/gifts/tulip.svg',
   bouquet: '/static/gifts/bouquet.svg',

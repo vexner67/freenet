@@ -42,12 +42,13 @@ type GiftCollection struct {
 // giftCatalog is all there is to send. openvk's gifts are drawn and priced
 // by its administrators; here the catalogue and its prices are fixed: the
 // flowers are free, so that anyone can send a gift, and the rest costs
-// votes, which vouchers give. The pictures are the site's: it knows a
-// gift by this name.
+// votes, which vouchers give. "freenet" are the site's own gifts, the
+// dearest, last. The pictures are the site's: it knows a gift by this name.
 var giftCatalog = []GiftCollection{
 	{ID: "flowers", Gifts: []GiftKind{"rose", "tulip", "bouquet", "sunflower", "cactus"}},
 	{ID: "sweets", Price: 1, Gifts: []GiftKind{"cake", "candy", "chocolate", "icecream", "cupcake"}},
 	{ID: "holidays", Price: 3, Gifts: []GiftKind{"present", "balloons", "heart", "bear", "star"}},
+	{ID: "freenet", Price: 5, Gifts: []GiftKind{"freenet_crystal", "freenet_coin", "freenet_ring", "freenet_crown", "freenet_heart", "freenet_cup"}},
 }
 
 // GiftCatalog are the collections of gifts, in the order they are shown.
