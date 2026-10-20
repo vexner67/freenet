@@ -65,7 +65,9 @@ done
 curl -sf "$base/healthz" >/dev/null || die "the gateway at $base is not up"
 step "gateway is up"
 
-curl -sf "$base/" | grep -q '<title>' || die "the website is not served"
+# Not grep -q: it would stop reading at the title, and curl, still
+# writing, would fail on the closed pipe under pipefail.
+curl -sf "$base/" | grep '<title>' >/dev/null || die "the website is not served"
 step "website is served"
 
 expect=404 call GET "/api/v1/users/$nickname" >/dev/null
