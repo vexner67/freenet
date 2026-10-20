@@ -321,6 +321,14 @@ export function banUntil(term, now = new Date(), value = '') {
   return at.toISOString();
 }
 
+// foreignAgentText is the orange plaque the administrators put on a page
+// (openvk's "user-alert"): the marking of a foreign agent's materials,
+// naming the person.
+export function foreignAgentText(person) {
+  return tr('Данное сообщение (материал) создано и (или) распространено иностранным агентом {0} либо касается деятельности иностранного агента {1}.',
+    declinedName(person, 'ins'), genitiveName(person));
+}
+
 // banEnd is until when a page is blocked, as openvk's "до: …" or
 // "навсегда".
 export function banEnd(ban) {

@@ -29,6 +29,7 @@
   --back-e6e6e6: #e6e6e6;
   --back-ffe58a: #ffe58a;
   --back-eee5b8: #eee5b8;
+  --back-f3ddbd: #f3ddbd;
   --back-dae1e8: #dae1e8;
   --back-d9e1ea: #d9e1ea;
   --back-ddd: #ddd;
@@ -43,6 +44,7 @@
   --back-3e3e3e: #3e3e3e;
   /* Text */
   --text-000: #000;
+  --text-58462a: #58462a;
   --text-686868: #686868;
   --text-e8e8e8: #e8e8e8;
   --text-c00: #c00;
@@ -71,6 +73,7 @@
   /* Borders, outlines and shadows */
   --line-fff: #fff;
   --line-eef1f4: #eef1f4;
+  --line-c3a476: #c3a476;
   --line-eee: #eee;
   --line-ececec: #ececec;
   --line-e8ebee: #e8ebee;
@@ -411,6 +414,16 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
 /* The name and the status over a line, as openvk's .accountInfo. */
 .account-info { margin-left: 8px; border-bottom: 1px solid var(--line-dae1e8); }
 .account-info .status { margin: 0; padding: 3px 1px; }
+/* openvk's .user-alert: the orange plaque the administrators put above
+   the name — here, the marking of a foreign agent. */
+.user-alert {
+  margin: 0 0 8px 8px;
+  padding: 4px;
+  border: 1px solid var(--line-c3a476);
+  background: var(--back-f3ddbd);
+  color: var(--text-58462a);
+  font-weight: 900;
+}
 
 .avatar {
   display: block;
