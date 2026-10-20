@@ -52,9 +52,13 @@ func (f *fakeCasino) Settings(_ context.Context, token string) (model.CasinoSett
 	f.token = token
 
 	return model.CasinoSettings{
-		Casino: model.Casino{Price: 10, Prizes: []model.CasinoPrize{{Votes: 0, Weight: 9}, {Votes: 50, Weight: 1}}},
-		Spins:  2, Spent: 20, Won: 50,
-		Bets: 3, BetSpent: 30, BetWon: 20,
+		Casino: model.Casino{
+			Price:  10,
+			Prizes: []model.CasinoPrize{{Votes: 0, Weight: 9}, {Votes: 50, Weight: 1}},
+			Bets:   model.CasinoBets{Least: 1, Most: 100, Return: 95, Multipliers: []int{150, 200}},
+		},
+		Spins: 2, Spent: 20, Won: 50,
+		Wagers: 3, WagerSpent: 30, WagerWon: 20,
 	}, nil
 }
 
@@ -90,7 +94,8 @@ func TestCasino(t *testing.T) {
 	w = h.do("GET", "/api/v1/casino/settings", "", "Authorization", "Bearer tok")
 	got := decode[map[string]any](t, w)
 	if prizes := got["prizes"].([]any); w.Code != http.StatusOK || prizes[0].(map[string]any)["weight"] != 9.0 || got["won"] != 50.0 || h.casino.token != "tok" ||
-		got["wagers"].(map[string]any)["count"] != 3.0 || got["wagers"].(map[string]any)["won"] != 20.0 {
+		got["wagers"].(map[string]any)["count"] != 3.0 || got["wagers"].(map[string]any)["won"] != 20.0 ||
+		len(got["bets"].(map[string]any)["multipliers"].([]any)) != 2 {
 		t.Fatalf("settings: %d %v", w.Code, got)
 	}
 

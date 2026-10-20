@@ -51,7 +51,7 @@ func (f *fakeCasinoAPI) GetCasinoSettings(ctx context.Context, _ *userv1.GetCasi
 		Price:  10,
 		Prizes: []*userv1.CasinoPrize{{Votes: 0, Weight: 9}, {Votes: 50, Weight: 1}},
 		Spins:  3, Spent: 30, Won: 50,
-		BetLeast: 1, BetMost: 100, BetReturn: 95,
+		BetLeast: 1, BetMost: 100, BetReturn: 95, Multipliers: []int32{150, 200, 300},
 		Bets: 4, BetSpent: 40, BetWon: 20,
 	}, nil
 }
@@ -86,7 +86,7 @@ func TestCasino(t *testing.T) {
 
 	settings, err := c.Settings(ctx, "tok")
 	if err != nil || settings.Casino.Prizes[0].Weight != 9 || settings.Spins != 3 || settings.Won != 50 || api.md.Get("authorization")[0] != "Bearer tok" ||
-		settings.Casino.Bets.Most != 100 || settings.Bets != 4 || settings.BetSpent != 40 || settings.BetWon != 20 {
+		settings.Casino.Bets.Most != 100 || len(settings.Casino.Bets.Multipliers) != 3 || settings.Wagers != 4 || settings.WagerSpent != 40 || settings.WagerWon != 20 {
 		t.Fatalf("Settings = %+v, %v, %v", settings, err, api.md)
 	}
 

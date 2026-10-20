@@ -29,13 +29,11 @@ func (c *Casino) Get(ctx context.Context) (model.Casino, error) {
 	}
 
 	casino := model.Casino{Price: resp.GetPrice(), Bets: model.CasinoBets{
-		Least:  resp.GetBetLeast(),
-		Most:   resp.GetBetMost(),
-		Return: int(resp.GetBetReturn()),
+		Least:       resp.GetBetLeast(),
+		Most:        resp.GetBetMost(),
+		Return:      int(resp.GetBetReturn()),
+		Multipliers: fromProtoMultipliers(resp.GetMultipliers()),
 	}}
-	for _, m := range resp.GetMultipliers() {
-		casino.Bets.Multipliers = append(casino.Bets.Multipliers, int(m))
-	}
 	for _, votes := range resp.GetPrizes() {
 		casino.Prizes = append(casino.Prizes, model.CasinoPrize{Votes: votes})
 	}
@@ -51,16 +49,17 @@ func (c *Casino) Settings(ctx context.Context, accessToken string) (model.Casino
 
 	settings := model.CasinoSettings{
 		Casino: model.Casino{Price: resp.GetPrice(), Bets: model.CasinoBets{
-			Least:  resp.GetBetLeast(),
-			Most:   resp.GetBetMost(),
-			Return: int(resp.GetBetReturn()),
+			Least:       resp.GetBetLeast(),
+			Most:        resp.GetBetMost(),
+			Return:      int(resp.GetBetReturn()),
+			Multipliers: fromProtoMultipliers(resp.GetMultipliers()),
 		}},
-		Spins:    resp.GetSpins(),
-		Spent:    resp.GetSpent(),
-		Won:      resp.GetWon(),
-		Bets:     resp.GetBets(),
-		BetSpent: resp.GetBetSpent(),
-		BetWon:   resp.GetBetWon(),
+		Spins:      resp.GetSpins(),
+		Spent:      resp.GetSpent(),
+		Won:        resp.GetWon(),
+		Wagers:     resp.GetBets(),
+		WagerSpent: resp.GetBetSpent(),
+		WagerWon:   resp.GetBetWon(),
 	}
 	for _, p := range resp.GetPrizes() {
 		settings.Casino.Prizes = append(settings.Casino.Prizes, model.CasinoPrize{Votes: p.GetVotes(), Weight: int(p.GetWeight())})
@@ -125,4 +124,14 @@ func (c *Casino) Bet(ctx context.Context, accessToken string, amount int64, mult
 		Votes:   resp.GetVotes(),
 		Balance: resp.GetBalance(),
 	}, nil
+}
+
+// fromProtoMultipliers are the multipliers of the bets, in hundredths.
+func fromProtoMultipliers(multipliers []int32) []int {
+	out := make([]int, 0, len(multipliers))
+	for _, m := range multipliers {
+		out = append(out, int(m))
+	}
+
+	return out
 }

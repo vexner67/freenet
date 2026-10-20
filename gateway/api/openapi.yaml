@@ -7695,7 +7695,7 @@ components:
         return: { type: integer, description: The percent of the votes bet that comes back on average }
         multipliers:
           type: array
-          description: 'What a bet may multiply into, in hundredths: 150 — ×1.5; not in the settings'
+          description: 'What a bet may multiply into, in hundredths: 150 — ×1.5'
           items: { type: integer }
 
     CasinoPrize:

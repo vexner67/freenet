@@ -98,7 +98,7 @@ func (a *api) casinoSettings(w http.ResponseWriter, r *http.Request) {
 		Spent:  s.Spent,
 		Won:    s.Won,
 		Bets:   toCasinoBetsJSON(s.Casino.Bets),
-		Wagers: casinoWagersJSON{Count: s.Bets, Spent: s.BetSpent, Won: s.BetWon},
+		Wagers: casinoWagersJSON{Count: s.Wagers, Spent: s.WagerSpent, Won: s.WagerWon},
 	}
 	for _, p := range s.Casino.Prizes {
 		out.Prizes = append(out.Prizes, casinoPrizeJSON(p))
