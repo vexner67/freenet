@@ -148,6 +148,7 @@ func (a *App) build(cfg config.Config) error {
 			Ads:           backend.NewAds(userv1.NewUserServiceClient(a.userConn)),
 			Decor:         backend.NewDecor(userv1.NewUserServiceClient(a.userConn)),
 			Casino:        backend.NewCasino(userv1.NewUserServiceClient(a.userConn)),
+			Bets:          backend.NewBets(userv1.NewUserServiceClient(a.userConn)),
 			Faves:         backend.NewFaves(postv1.NewPostServiceClient(a.postConn)),
 			Previews:      previews(cfg.LinkPreviewTimeout),
 		},

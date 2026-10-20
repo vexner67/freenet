@@ -501,6 +501,7 @@ type Backends struct {
 	Ads           Ads
 	Decor         Decor
 	Casino        Casino
+	Bets          Bets
 	Documents     Documents
 	Stories       Stories
 	// Previews reads the cards of the pages posts link to; nil makes
@@ -532,6 +533,7 @@ type api struct {
 	ads               Ads
 	decors            Decor
 	casinos           Casino
+	bets              Bets
 	documents         Documents
 	stories           Stories
 	previews          Previews
@@ -816,6 +818,13 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/casino/spins", a.spinCasino)
 	mux.HandleFunc("PUT /api/v1/casino/bets", a.setCasinoBets)
 	mux.HandleFunc("POST /api/v1/casino/wagers", a.betCasino)
+	mux.HandleFunc("GET /api/v1/bets", a.betEvents)
+	mux.HandleFunc("POST /api/v1/bets", a.createBetEvent)
+	mux.HandleFunc("POST /api/v1/bets/{id}/stakes", a.stakeBet)
+	mux.HandleFunc("POST /api/v1/bets/{id}/close", a.changeBetEvent(Bets.Close))
+	mux.HandleFunc("POST /api/v1/bets/{id}/resolve", a.resolveBetEvent)
+	mux.HandleFunc("POST /api/v1/bets/{id}/cancel", a.changeBetEvent(Bets.Cancel))
+	mux.HandleFunc("DELETE /api/v1/bets/{id}", a.changeBetEvent(Bets.Delete))
 	mux.HandleFunc("PUT /api/v1/users/{nickname}/verification", a.verify)
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/verification", a.verify)
 	mux.HandleFunc("PUT /api/v1/users/{nickname}/alert", a.setAlert)

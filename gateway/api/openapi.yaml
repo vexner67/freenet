@@ -4633,7 +4633,7 @@ paths:
                 required: [won, roll, chance, votes, balance]
                 properties:
                   won: { type: boolean }
-                  roll: { type: integer, description: 'The roll, 0–9999: the bet wins when it is below the chance' }
+                  roll: { type: integer, description: 'The roll, 0–9999: the bet wins when it falls in the middle, chance wide — from (10000 - chance) / 2' }
                   chance: { type: integer, description: The chance of the bet, of 10000 }
                   votes: { type: integer, format: int64, description: The votes it won; 0 when it lost }
                   balance: { type: integer, format: int64, description: Your votes after the bet }
@@ -4641,6 +4641,167 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/bets:
+    get:
+      summary: The events to stake on
+      description: 'Public: "Ставки" of the casino. The administrators ask a question with outcomes, people stake votes on them, and those who guessed share all the stakes by their stakes (rounded down) once it is resolved; a cancelled event, or one nobody guessed, gives everyone their stakes back. At most 100 events: those not over first, then the newest; `section=popular` — only those taking stakes, the most staked on first. With a token, each outcome tells your stake (`mine`) and an event over what it paid you (`payout`).'
+      security: [{}, { bearer: [] }]
+      parameters:
+        - name: section
+          in: query
+          schema: { type: string, enum: [popular] }
+      responses:
+        "200":
+          description: The events
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [events]
+                properties:
+                  events:
+                    type: array
+                    items: { $ref: "#/components/schemas/BetEvent" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      summary: Ask a new question
+      description: 'Only for the administrators: a question in one line up to 200 characters with 2–10 different outcomes up to 64 characters, and the time the stakes close by themselves — within a year, or none for when the administrators close them.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question, outcomes]
+              properties:
+                question: { type: string }
+                outcomes: { type: array, items: { type: string } }
+                closesAt: { type: string, format: date-time, description: RFC 3339; empty or left out for none }
+      responses:
+        "201":
+          description: The event
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BetEvent" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+
+  /api/v1/bets/{id}/stakes:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      summary: Stake votes on an outcome
+      description: 'Takes your votes (1–1000000) and puts them on the outcome, added to what you staked on it before; you may stake on several outcomes. 409 when the event takes no stakes or your votes are short. Rate limited, with the casino''s limit counted apart.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outcome, amount]
+              properties:
+                outcome: { type: integer, description: The index of the outcome }
+                amount: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: Staked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [balance]
+                properties:
+                  balance: { type: integer, format: int64, description: Your votes after the stake }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/bets/{id}/close:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      summary: Close the stakes of an event
+      description: Only for the administrators; 409 for an event that is over.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Closed }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/bets/{id}/resolve:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      summary: Name the winning outcome
+      description: Only for the administrators. Pays the stakes at once, in one transaction; 409 for an event that is over.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [winner]
+              properties:
+                winner: { type: integer, description: The index of the winning outcome }
+      responses:
+        "204": { description: Resolved and paid }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/bets/{id}/cancel:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      summary: Call an event off
+      description: Only for the administrators. Gives everyone their stakes back; 409 for an event that is over.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Cancelled }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/bets/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      summary: Delete an event
+      description: Only for the administrators, and only an event that is over (409 otherwise) — the stakes of the others are not paid yet.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
 
   /api/v1/users/{nickname}/verification:
     parameters:
@@ -6419,6 +6580,16 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
+    PermissionDenied:
+      description: Not allowed, as for anyone but the administrators
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: The state does not allow it; the message says why
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     TooManyRequests:
       description: Rate limited (sign-in codes, or spam protection of posts, comments, likes, messages, uploads, follows and communities); try again later
       content:
@@ -6426,6 +6597,31 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
 
   schemas:
+    BetEvent:
+      type: object
+      description: 'An event of "Ставки": a question the administrators ask, with the votes staked on each outcome'
+      required: [id, question, outcomes, state, open, closesAt, winner, createdAt, staked, people, payout]
+      properties:
+        id: { type: string }
+        question: { type: string }
+        outcomes:
+          type: array
+          items:
+            type: object
+            required: [name, staked, bettors, mine]
+            properties:
+              name: { type: string }
+              staked: { type: integer, format: int64, description: The votes on it }
+              bettors: { type: integer, description: How many people staked on it }
+              mine: { type: integer, format: int64, description: Your votes on it; 0 for a guest }
+        state: { type: string, enum: [open, closed, resolved, cancelled] }
+        open: { type: boolean, description: Whether it takes stakes now }
+        closesAt: { type: string, format: date-time, nullable: true, description: When the stakes close by themselves; null for when the administrators close them }
+        winner: { type: integer, description: The index of the winning outcome; -1 unless resolved }
+        createdAt: { type: string, format: date-time }
+        staked: { type: integer, format: int64, description: The votes on all the outcomes }
+        people: { type: integer, description: How many people staked }
+        payout: { type: integer, format: int64, description: What your stakes paid back once it was over }
     Ban:
       type: object
       description: 'A block of a page by the administrators of the site'
