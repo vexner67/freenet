@@ -42,7 +42,7 @@ type UserHandler struct {
 	walletService     WalletService
 	verification      VerificationService
 	bans              BanService
-	foreignAgents     ForeignAgentService
+	alerts            AlertService
 	ads               AdService
 	decors            DecorService
 	casinos           CasinoService
@@ -66,8 +66,8 @@ type Services struct {
 	Verification VerificationService
 	// Bans block pages and let them be.
 	Bans BanService
-	// ForeignAgents put and take the plaque of a foreign agent.
-	ForeignAgents ForeignAgentService
+	// Alerts put and take the labels of pages.
+	Alerts AlertService
 	// Ads are the advertising of the global feed.
 	Ads AdService
 	// Decors dress the site for the New Year.
@@ -91,7 +91,7 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		walletService:     s.Wallets,
 		verification:      s.Verification,
 		bans:              s.Bans,
-		foreignAgents:     s.ForeignAgents,
+		alerts:            s.Alerts,
 		ads:               s.Ads,
 		decors:            s.Decors,
 		casinos:           s.Casinos,

@@ -89,9 +89,9 @@ type Users interface {
 	// SetVerified gives userID the checkmark of a confirmed page or takes
 	// it; only an administrator of the site may.
 	SetVerified(ctx context.Context, accessToken, userID string, verified bool) error
-	// SetForeignAgent puts on userID the plaque of a foreign agent or
-	// takes it; only an administrator of the site may.
-	SetForeignAgent(ctx context.Context, accessToken, userID string, agent bool) error
+	// SetAlert puts on userID the label with the words of alert or, with
+	// "", takes it; only an administrator of the site may.
+	SetAlert(ctx context.Context, accessToken, userID, alert string) error
 	// Ban blocks userID until a time, the zero time for good; Unban lifts
 	// the block. Only an administrator of the site may.
 	Ban(ctx context.Context, accessToken, userID, reason string, until time.Time) error
@@ -818,8 +818,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/casino/wagers", a.betCasino)
 	mux.HandleFunc("PUT /api/v1/users/{nickname}/verification", a.verify)
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/verification", a.verify)
-	mux.HandleFunc("PUT /api/v1/users/{nickname}/foreign-agent", a.markForeignAgent)
-	mux.HandleFunc("DELETE /api/v1/users/{nickname}/foreign-agent", a.markForeignAgent)
+	mux.HandleFunc("PUT /api/v1/users/{nickname}/alert", a.setAlert)
+	mux.HandleFunc("DELETE /api/v1/users/{nickname}/alert", a.setAlert)
 	mux.HandleFunc("PUT /api/v1/users/{nickname}/ban", a.ban)
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/ban", a.unban)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/verification", a.verifyClub)

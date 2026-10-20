@@ -200,14 +200,14 @@ func (a *App) build(cfg config.Config) error {
 				Notifier:      deliver.verified,
 				Admins:        admins,
 			}),
-			Bans:          service.NewBanService(store.users, store.users, admins),
-			ForeignAgents: service.NewForeignAgentService(store.users, store.users, admins),
-			Ads:           service.NewAdService(store.users, store.ads, store.ads, store.tx, admins),
-			Decors:        service.NewDecorService(store.users, store.decor, admins),
-			Casinos:       service.NewCasinoService(store.users, store.casino, store.wallets, store.tx, admins),
-			Permissions:   permissions,
-			Presence:      a.presence,
-			Backdrops:     service.NewBackdropService(store.users, store.users),
+			Bans:        service.NewBanService(store.users, store.users, admins),
+			Alerts:      service.NewAlertService(store.users, store.users, admins),
+			Ads:         service.NewAdService(store.users, store.ads, store.ads, store.tx, admins),
+			Decors:      service.NewDecorService(store.users, store.decor, admins),
+			Casinos:     service.NewCasinoService(store.users, store.casino, store.wallets, store.tx, admins),
+			Permissions: permissions,
+			Presence:    a.presence,
+			Backdrops:   service.NewBackdropService(store.users, store.users),
 		}, a.logger),
 	)
 
@@ -277,7 +277,7 @@ type storage struct {
 		service.InviteRepository
 		service.VerificationRepository
 		service.BanRepository
-		service.ForeignAgentRepository
+		service.AlertRepository
 	}
 	follows interface {
 		service.FollowRepository

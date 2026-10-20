@@ -9,16 +9,16 @@ import (
 	"github.com/vexner67/freenet/user/internal/user"
 )
 
-const setForeignAgentQuery = `
+const setAlertQuery = `
 	UPDATE users
-	SET foreign_agent = $2
+	SET alert = NULLIF($2, '')
 	WHERE id = $1
 `
 
-// SetForeignAgent puts the plaque on the page or takes it; Update never
+// SetAlert puts the label on the page or, with "", takes it; Update never
 // writes the column.
-func (r *UserRepository) SetForeignAgent(ctx context.Context, userID uuid.UUID, agent bool) error {
-	tag, err := pgpool.Conn(ctx, r.pool).Exec(ctx, setForeignAgentQuery, userID, agent)
+func (r *UserRepository) SetAlert(ctx context.Context, userID uuid.UUID, alert user.Alert) error {
+	tag, err := pgpool.Conn(ctx, r.pool).Exec(ctx, setAlertQuery, userID, alert.String())
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", err)
 	}

@@ -86,7 +86,7 @@ const (
 	UserService_SetCasinoBets_FullMethodName      = "/user.v1.UserService/SetCasinoBets"
 	UserService_BetCasino_FullMethodName          = "/user.v1.UserService/BetCasino"
 	UserService_SetVerified_FullMethodName        = "/user.v1.UserService/SetVerified"
-	UserService_SetForeignAgent_FullMethodName    = "/user.v1.UserService/SetForeignAgent"
+	UserService_SetAlert_FullMethodName           = "/user.v1.UserService/SetAlert"
 	UserService_ListAds_FullMethodName            = "/user.v1.UserService/ListAds"
 	UserService_CreateAd_FullMethodName           = "/user.v1.UserService/CreateAd"
 	UserService_EditAd_FullMethodName             = "/user.v1.UserService/EditAd"
@@ -269,9 +269,9 @@ type UserServiceClient interface {
 	// confirmed one ("Верификация" of openvk) or takes it.
 	SetVerified(ctx context.Context, in *SetVerifiedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Requires an access token of an administrator of the site
-	// (PermissionDenied otherwise): puts on a page the orange plaque of a
-	// foreign agent (openvk's "user-alert") or takes it.
-	SetForeignAgent(ctx context.Context, in *SetForeignAgentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// (PermissionDenied otherwise): puts on a page the orange label of
+	// openvk ("user-alert") with the words given, or takes it with "".
+	SetAlert(ctx context.Context, in *SetAlertRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// The ads of the global feed: ListAds is public and gives the shown
 	// ones; ListAds with all, CreateAd, EditAd and DeleteAd require an
 	// access token of an administrator of the site (PermissionDenied
@@ -974,10 +974,10 @@ func (c *userServiceClient) SetVerified(ctx context.Context, in *SetVerifiedRequ
 	return out, nil
 }
 
-func (c *userServiceClient) SetForeignAgent(ctx context.Context, in *SetForeignAgentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *userServiceClient) SetAlert(ctx context.Context, in *SetAlertRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, UserService_SetForeignAgent_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, UserService_SetAlert_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1263,9 +1263,9 @@ type UserServiceServer interface {
 	// confirmed one ("Верификация" of openvk) or takes it.
 	SetVerified(context.Context, *SetVerifiedRequest) (*emptypb.Empty, error)
 	// Requires an access token of an administrator of the site
-	// (PermissionDenied otherwise): puts on a page the orange plaque of a
-	// foreign agent (openvk's "user-alert") or takes it.
-	SetForeignAgent(context.Context, *SetForeignAgentRequest) (*emptypb.Empty, error)
+	// (PermissionDenied otherwise): puts on a page the orange label of
+	// openvk ("user-alert") with the words given, or takes it with "".
+	SetAlert(context.Context, *SetAlertRequest) (*emptypb.Empty, error)
 	// The ads of the global feed: ListAds is public and gives the shown
 	// ones; ListAds with all, CreateAd, EditAd and DeleteAd require an
 	// access token of an administrator of the site (PermissionDenied
@@ -1506,8 +1506,8 @@ func (UnimplementedUserServiceServer) BetCasino(context.Context, *BetCasinoReque
 func (UnimplementedUserServiceServer) SetVerified(context.Context, *SetVerifiedRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetVerified not implemented")
 }
-func (UnimplementedUserServiceServer) SetForeignAgent(context.Context, *SetForeignAgentRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method SetForeignAgent not implemented")
+func (UnimplementedUserServiceServer) SetAlert(context.Context, *SetAlertRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetAlert not implemented")
 }
 func (UnimplementedUserServiceServer) ListAds(context.Context, *ListAdsRequest) (*ListAdsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListAds not implemented")
@@ -2751,20 +2751,20 @@ func _UserService_SetVerified_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UserService_SetForeignAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetForeignAgentRequest)
+func _UserService_SetAlert_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetAlertRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UserServiceServer).SetForeignAgent(ctx, in)
+		return srv.(UserServiceServer).SetAlert(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: UserService_SetForeignAgent_FullMethodName,
+		FullMethod: UserService_SetAlert_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).SetForeignAgent(ctx, req.(*SetForeignAgentRequest))
+		return srv.(UserServiceServer).SetAlert(ctx, req.(*SetAlertRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3239,8 +3239,8 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserService_SetVerified_Handler,
 		},
 		{
-			MethodName: "SetForeignAgent",
-			Handler:    _UserService_SetForeignAgent_Handler,
+			MethodName: "SetAlert",
+			Handler:    _UserService_SetAlert_Handler,
 		},
 		{
 			MethodName: "ListAds",

@@ -82,8 +82,8 @@ type fakeUsers struct {
 	// the blocks given and lifted: "token:id:reason:until" and
 	// "token:id:-"; ban blocks the caller's page.
 	verified []string
-	// agents are the plaques of foreign agents put and taken.
-	agents []string
+	// alerts are the labels put and taken.
+	alerts []string
 	bans   []string
 	ban    *model.Ban
 	// admin: the caller is an administrator of the site.
@@ -214,7 +214,7 @@ func (f *fakeUsers) profileOf(nickname string) (model.PublicProfile, error) {
 	case "cat":
 		return model.PublicProfile{ID: "u3", Profile: model.Profile{Name: "Cat", Nickname: "cat"}, Deactivated: true}, nil
 	case "vera":
-		return model.PublicProfile{ID: "u5", Profile: model.Profile{Name: "Vera", Nickname: "vera"}, Verified: true, ForeignAgent: true}, nil
+		return model.PublicProfile{ID: "u5", Profile: model.Profile{Name: "Vera", Nickname: "vera"}, Verified: true, Alert: "Метка"}, nil
 	case "boris":
 		return model.PublicProfile{
 			ID: "u6", Profile: model.Profile{Name: "Boris", Nickname: "boris"}, InfoHidden: true,
@@ -485,11 +485,11 @@ func (f *fakeUsers) SetVerified(_ context.Context, token, userID string, verifie
 	return nil
 }
 
-func (f *fakeUsers) SetForeignAgent(_ context.Context, token, userID string, agent bool) error {
+func (f *fakeUsers) SetAlert(_ context.Context, token, userID, alert string) error {
 	if f.err != nil {
 		return f.err
 	}
-	f.agents = append(f.agents, token+":"+userID+":"+strconv.FormatBool(agent))
+	f.alerts = append(f.alerts, token+":"+userID+":"+alert)
 	return nil
 }
 

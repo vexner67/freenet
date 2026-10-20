@@ -8,9 +8,9 @@ import (
 	"github.com/vexner67/freenet/user/internal/user"
 )
 
-// SetForeignAgent makes UserRepository the plaques as well: they are kept
-// with the users, as in the table.
-func (r *UserRepository) SetForeignAgent(ctx context.Context, userID uuid.UUID, agent bool) error {
+// SetAlert makes UserRepository the labels as well: they are kept with the
+// users, as in the table.
+func (r *UserRepository) SetAlert(ctx context.Context, userID uuid.UUID, alert user.Alert) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
 	}
@@ -23,7 +23,7 @@ func (r *UserRepository) SetForeignAgent(ctx context.Context, userID uuid.UUID, 
 		return user.ErrNotFound
 	}
 
-	r.users[userID] = *u.WithForeignAgent(agent)
+	r.users[userID] = *u.WithAlert(alert)
 
 	return nil
 }

@@ -4675,18 +4675,28 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/v1/users/{nickname}/foreign-agent:
+  /api/v1/users/{nickname}/alert:
     parameters:
       - name: nickname
         in: path
         required: true
         schema: { type: string }
     put:
-      summary: Mark a page as a foreign agent's
-      description: 'Only for the administrators: the page wears the orange plaque of openvk ("user-alert") above its status, saying that its materials are made by a foreign agent. Nobody is notified. Idempotent.'
+      summary: Put a label on a page
+      description: 'Only for the administrators: the page wears the orange label of openvk ("user-alert") above its name with these words (one line, up to 1000 characters; for example the marking of a foreign agent). It replaces the label the page had. Nobody is notified.'
       security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [alert]
+              properties:
+                alert: { type: string, maxLength: 1000, description: 'The words of the label; "" takes it' }
       responses:
         "204": { description: Put }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
           description: You are not an administrator
@@ -4695,7 +4705,7 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
     delete:
-      summary: Take the plaque of a foreign agent from a page
+      summary: Take the label from a page
       description: Only for the administrators. Idempotent.
       security: [{ bearer: [] }]
       responses:
@@ -6662,9 +6672,9 @@ components:
             verified:
               type: boolean
               description: The administrators confirmed your page (a checkmark by the name)
-            foreignAgent:
-              type: boolean
-              description: The administrators marked your page as a foreign agent's (an orange plaque above the status)
+            alert:
+              type: string
+              description: The label the administrators put on your page (an orange one above the name), "" for none
             ban:
               description: "The administrators blocked your page: then the token lets you only read your account (and sign out), everything else answers 403"
               oneOf:
@@ -7611,9 +7621,9 @@ components:
             verified:
               type: boolean
               description: "The administrators confirmed the page (\"Подтверждённая страница\"): a checkmark by the name, told on a hidden page too and never on a deleted one"
-            foreignAgent:
-              type: boolean
-              description: "The administrators marked the page as a foreign agent's: openvk's orange plaque (\"user-alert\") above the status; told as `verified` is, and in lists too"
+            alert:
+              type: string
+              description: "The label the administrators put on the page: openvk's orange \"user-alert\" above the name, \"\" for none; told on a hidden page too and never on a deleted one, and in lists too"
             ban:
               description: "The administrators blocked the page: only the names and the photo are left besides; null otherwise"
               oneOf:
