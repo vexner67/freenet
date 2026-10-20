@@ -4536,7 +4536,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [price, prizes, spins, spent, won]
+                required: [price, prizes, spins, spent, won, bets, wagers]
                 properties:
                   price: { type: integer, format: int64 }
                   prizes:
@@ -4545,6 +4545,15 @@ paths:
                   spins: { type: integer, format: int64 }
                   spent: { type: integer, format: int64 }
                   won: { type: integer, format: int64 }
+                  bets: { $ref: "#/components/schemas/CasinoBets" }
+                  wagers:
+                    type: object
+                    description: How the bets do
+                    required: [count, spent, won]
+                    properties:
+                      count: { type: integer, format: int64, description: Bets made }
+                      spent: { type: integer, format: int64, description: Votes bet }
+                      won: { type: integer, format: int64, description: Votes won }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
           description: You are not an administrator
@@ -4569,6 +4578,66 @@ paths:
                   prize: { type: integer, description: The index of the prize won }
                   votes: { type: integer, format: int64, description: The votes it won }
                   balance: { type: integer, format: int64, description: Your votes after the spin }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/casino/bets:
+    put:
+      summary: Change the bets of the casino
+      description: 'Only for the administrators of the site: the least and the most of a bet (1–1000000) and the percent of the votes bet that comes back on average (1–100) — a multiplier m wins with the chance return / m.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [least, most, return]
+              properties:
+                least: { type: integer, format: int64, minimum: 1 }
+                most: { type: integer, format: int64, maximum: 1000000 }
+                return: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        "204": { description: Set }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/casino/wagers:
+    post:
+      summary: Bet in the casino
+      description: 'Bets your votes on a multiplier: the bet comes back multiplied (rounded down) or not at all, at once. Rate limited, with the spins'' limit counted apart.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, multiplier]
+              properties:
+                amount: { type: integer, format: int64, description: The votes bet, within the limits of the casino }
+                multiplier: { type: integer, description: 'One of the multipliers of the casino, in hundredths: 200 — ×2' }
+      responses:
+        "200":
+          description: How the bet went
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [won, roll, chance, votes, balance]
+                properties:
+                  won: { type: boolean }
+                  roll: { type: integer, description: 'The roll, 0–9999: the bet wins when it is below the chance' }
+                  chance: { type: integer, description: The chance of the bet, of 10000 }
+                  votes: { type: integer, format: int64, description: The votes it won; 0 when it lost }
+                  balance: { type: integer, format: int64, description: Your votes after the bet }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
@@ -7607,13 +7676,27 @@ components:
 
     Casino:
       type: object
-      required: [price, prizes]
+      required: [price, prizes, bets]
       properties:
         price: { type: integer, format: int64, description: What a spin costs, in votes }
         prizes:
           type: array
           description: The votes of each prize, in order; 0 is nothing
           items: { type: integer, format: int64 }
+        bets: { $ref: "#/components/schemas/CasinoBets" }
+
+    CasinoBets:
+      type: object
+      description: 'The bets of the casino: from least to most votes on a multiplier, which wins with the chance return / multiplier'
+      required: [least, most, return]
+      properties:
+        least: { type: integer, format: int64 }
+        most: { type: integer, format: int64 }
+        return: { type: integer, description: The percent of the votes bet that comes back on average }
+        multipliers:
+          type: array
+          description: 'What a bet may multiply into, in hundredths: 150 — ×1.5; not in the settings'
+          items: { type: integer }
 
     CasinoPrize:
       type: object

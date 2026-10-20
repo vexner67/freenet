@@ -814,6 +814,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/casino", a.setCasino)
 	mux.HandleFunc("GET /api/v1/casino/settings", a.casinoSettings)
 	mux.HandleFunc("POST /api/v1/casino/spins", a.spinCasino)
+	mux.HandleFunc("PUT /api/v1/casino/bets", a.setCasinoBets)
+	mux.HandleFunc("POST /api/v1/casino/wagers", a.betCasino)
 	mux.HandleFunc("PUT /api/v1/users/{nickname}/verification", a.verify)
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/verification", a.verify)
 	mux.HandleFunc("PUT /api/v1/users/{nickname}/foreign-agent", a.markForeignAgent)
