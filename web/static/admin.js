@@ -201,10 +201,10 @@ function openAlert(user, done) {
     }
   };
 
-  // The label is one line: the line breaks of the field become spaces.
+  // The label may be a list: each line of the field is a line of it.
   form.onsubmit = (e) => {
     e.preventDefault();
-    save(text.value.replace(/\s*[\r\n]+\s*/g, ' ').trim(), form.querySelector('[type=submit]'));
+    save(text.value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).join('\n'), form.querySelector('[type=submit]'));
   };
   $('alert-remove').onclick = () => save('', $('alert-remove'));
 }

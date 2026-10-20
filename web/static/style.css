@@ -558,6 +558,7 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
   background: var(--back-f3ddbd);
   color: var(--text-58462a);
   font-weight: 900;
+  white-space: pre-line;
 }
 
 .avatar {
