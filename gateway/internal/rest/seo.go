@@ -32,6 +32,7 @@ Disallow: /fave$
 Disallow: /fave/
 Disallow: /docs$
 Disallow: /stickers$
+Disallow: /casino$
 Disallow: /admin$
 Disallow: /admin/
 Disallow: /search$
