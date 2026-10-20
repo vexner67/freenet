@@ -1723,6 +1723,8 @@ a.poll-result-name { cursor: pointer; }
 /* "Ставка": the amount with quick buttons, the multipliers as cells and
    a strip of 0 to 100 — green below the chance, where a roll wins. */
 .casino-tabs { margin-bottom: 10px; }
+/* While a spin or a bet is under way the game stays the same. */
+.casino-tabs a[aria-disabled="true"] { cursor: default; opacity: 0.5; }
 .casino-stake { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .casino-label { display: block; margin: 10px 0 4px; font-weight: bold; }
 .casino-stake .casino-label { margin: 0; }
