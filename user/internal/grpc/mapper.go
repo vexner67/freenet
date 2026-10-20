@@ -765,6 +765,10 @@ func toProtoAd(ad *user.Ad) *userv1.Ad {
 	}
 }
 
+func toProtoAdStats(s user.AdStats) *userv1.AdStats {
+	return &userv1.AdStats{Views: s.Views, Viewers: s.Viewers, Clicks: s.Clicks, Clickers: s.Clickers}
+}
+
 func toProtoAdPhoto(p user.AdPhoto) (owner, photo string) {
 	if p.IsZero() {
 		return "", ""

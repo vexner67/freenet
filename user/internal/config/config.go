@@ -63,6 +63,9 @@ type Config struct {
 	VoucherLimits  ratelimit.Rules `env:"RATE_LIMIT_VOUCHERS" envDefault:"5/1m,30/24h"`
 	// Packs of stickers made and changed in the "Студия стикеров".
 	StickerPackLimits ratelimit.Rules `env:"RATE_LIMIT_STICKER_PACKS" envDefault:"10/1m,100/24h"`
+	// Views of ads in the feed and clicks on them, each counted apart:
+	// one who scrolls a long feed sees an ad every eight posts.
+	AdEventLimits ratelimit.Rules `env:"RATE_LIMIT_AD_EVENTS" envDefault:"60/1m,3000/24h"`
 
 	// AdminEmails are the emails of the people who run the site: they make
 	// the vouchers. Nobody without it.

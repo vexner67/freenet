@@ -175,6 +175,11 @@ service UserService {
   rpc CreateAd(CreateAdRequest) returns (CreateAdResponse);
   rpc EditAd(EditAdRequest) returns (EditAdResponse);
   rpc DeleteAd(DeleteAdRequest) returns (DeleteAdResponse);
+  // Require an access token: count that the caller saw a shown ad in the
+  // feed or followed its link (NotFound when it is not shown). ListAds
+  // with all gives the counts to the administrators.
+  rpc ViewAd(ViewAdRequest) returns (ViewAdResponse);
+  rpc ClickAd(ClickAdRequest) returns (ClickAdResponse);
   // Require an access token of an administrator of the site
   // (PermissionDenied otherwise): blocks a page for a while or for good
   // and lifts the block ("Заблокировать пользователя" of openvk). A
@@ -1069,6 +1074,17 @@ message Ad {
   string photo_owner_id = 5;
   string photo_id = 6;
   bool active = 7;
+  // How the ad does; only ListAds with all tells it.
+  AdStats stats = 8;
+}
+
+message AdStats {
+  // How often the ad was seen in the feed, and by how many people.
+  int64 views = 1;
+  int64 viewers = 2;
+  // How often its link was followed, and by how many people.
+  int64 clicks = 3;
+  int64 clickers = 4;
 }
 
 message ListAdsRequest {
@@ -1122,6 +1138,18 @@ message DeleteAdResponse {
   string photo_owner_id = 1;
   string photo_id = 2;
 }
+
+message ViewAdRequest {
+  string id = 1;
+}
+
+message ViewAdResponse {}
+
+message ClickAdRequest {
+  string id = 1;
+}
+
+message ClickAdResponse {}
 
 message BanUserRequest {
   string user_id = 1;

@@ -11,15 +11,23 @@ import (
 	"github.com/vexner67/freenet/user/internal/user"
 )
 
-// AdRepository keeps the ads of the global feed in memory.
+// AdRepository keeps the ads of the global feed in memory, and counts
+// what the readers do with them.
 type AdRepository struct {
 	mu  sync.RWMutex
 	ads map[uuid.UUID]*user.Ad
+	// counts are the views and clicks of each reader of each ad.
+	counts map[uuid.UUID]map[uuid.UUID]*adCount
+}
+
+type adCount struct {
+	views, clicks int64
 }
 
 func NewAdRepository() *AdRepository {
 	return &AdRepository{
-		ads: make(map[uuid.UUID]*user.Ad),
+		ads:    make(map[uuid.UUID]*user.Ad),
+		counts: make(map[uuid.UUID]map[uuid.UUID]*adCount),
 	}
 }
 
@@ -88,6 +96,7 @@ func (r *AdRepository) Delete(ctx context.Context, id uuid.UUID) (*user.Ad, erro
 	}
 
 	delete(r.ads, id)
+	delete(r.counts, id)
 
 	return ad, nil
 }
@@ -115,4 +124,65 @@ func (r *AdRepository) List(ctx context.Context, all bool) ([]*user.Ad, error) {
 	})
 
 	return ads, nil
+}
+
+func (r *AdRepository) Record(ctx context.Context, adID, readerID uuid.UUID, event user.AdEvent) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if ad, ok := r.ads[adID]; !ok || !ad.IsActive() {
+		return user.ErrAdNotFound
+	}
+
+	readers := r.counts[adID]
+	if readers == nil {
+		readers = make(map[uuid.UUID]*adCount)
+		r.counts[adID] = readers
+	}
+
+	c := readers[readerID]
+	if c == nil {
+		c = &adCount{}
+		readers[readerID] = c
+	}
+
+	switch event {
+	case user.AdViewed:
+		c.views++
+	case user.AdClicked:
+		c.clicks++
+	}
+
+	return nil
+}
+
+func (r *AdRepository) Stats(ctx context.Context) (map[uuid.UUID]user.AdStats, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	stats := make(map[uuid.UUID]user.AdStats, len(r.counts))
+	for adID, readers := range r.counts {
+		var s user.AdStats
+		for _, c := range readers {
+			s.Views += c.views
+			s.Clicks += c.clicks
+			if c.views > 0 {
+				s.Viewers++
+			}
+			if c.clicks > 0 {
+				s.Clickers++
+			}
+		}
+		stats[adID] = s
+	}
+
+	return stats, nil
 }

@@ -202,7 +202,7 @@ func (a *App) build(cfg config.Config) error {
 			}),
 			Bans:          service.NewBanService(store.users, store.users, admins),
 			ForeignAgents: service.NewForeignAgentService(store.users, store.users, admins),
-			Ads:           service.NewAdService(store.users, store.ads, store.tx, admins),
+			Ads:           service.NewAdService(store.users, store.ads, store.ads, store.tx, admins),
 			Permissions:   permissions,
 			Presence:      a.presence,
 			Backdrops:     service.NewBackdropService(store.users, store.users),
@@ -221,8 +221,8 @@ func (a *App) build(cfg config.Config) error {
 	return nil
 }
 
-// rateLimits are how often each user may follow people, send gifts and
-// make packs of stickers.
+// rateLimits are how often each user may follow people, send gifts, make
+// packs of stickers and be counted as seeing and following ads.
 func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
 		userv1.UserService_Follow_FullMethodName:   cfg.FollowLimits,
@@ -235,6 +235,9 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 
 		userv1.UserService_CreateStickerPack_FullMethodName: cfg.StickerPackLimits,
 		userv1.UserService_EditStickerPack_FullMethodName:   cfg.StickerPackLimits,
+
+		userv1.UserService_ViewAd_FullMethodName:  cfg.AdEventLimits,
+		userv1.UserService_ClickAd_FullMethodName: cfg.AdEventLimits,
 	}
 }
 
@@ -290,9 +293,12 @@ type storage struct {
 	vouchers service.VoucherRepository
 	// rates is what a vote is worth in rubles.
 	rates service.VoteRateRepository
-	// ads are the advertising of the global feed.
-	ads service.AdRepository
-	tx  service.TxManager
+	// ads are the advertising of the global feed, and how it does.
+	ads interface {
+		service.AdRepository
+		service.AdStatsRepository
+	}
+	tx service.TxManager
 	// newQueue opens a stream of the outbox.
 	newQueue func(stream string) outboxQueue
 }

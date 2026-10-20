@@ -196,3 +196,77 @@ func photoColumns(p user.AdPhoto) (owner, photo *uuid.UUID) {
 
 	return &p.OwnerID, &p.PhotoID
 }
+
+// A reader's views and clicks of an ad are one row, so the stats know how
+// many people saw and followed it; an ad that is not shown counts nothing.
+const recordAdQuery = `
+	INSERT INTO ad_stats (
+		ad_id,
+		user_id,
+		views,
+		clicks
+	)
+	SELECT id, $2, $3, $4
+	FROM ads
+	WHERE id = $1
+		AND active
+	ON CONFLICT (ad_id, user_id) DO UPDATE
+	SET views = ad_stats.views + EXCLUDED.views,
+		clicks = ad_stats.clicks + EXCLUDED.clicks
+`
+
+func (r *AdRepository) Record(ctx context.Context, adID, readerID uuid.UUID, event user.AdEvent) error {
+	var views, clicks int
+	switch event {
+	case user.AdViewed:
+		views = 1
+	case user.AdClicked:
+		clicks = 1
+	}
+
+	tag, err := r.conn(ctx).Exec(ctx, recordAdQuery, adID, readerID, views, clicks)
+	if err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return user.ErrAdNotFound
+	}
+
+	return nil
+}
+
+const adStatsQuery = `
+	SELECT
+		ad_id,
+		sum(views)::bigint,
+		count(*) FILTER (WHERE views > 0),
+		sum(clicks)::bigint,
+		count(*) FILTER (WHERE clicks > 0)
+	FROM ad_stats
+	GROUP BY ad_id
+`
+
+func (r *AdRepository) Stats(ctx context.Context) (map[uuid.UUID]user.AdStats, error) {
+	rows, err := r.conn(ctx).Query(ctx, adStatsQuery)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+	defer rows.Close()
+
+	stats := make(map[uuid.UUID]user.AdStats)
+	for rows.Next() {
+		var (
+			id uuid.UUID
+			s  user.AdStats
+		)
+
+		if err = rows.Scan(&id, &s.Views, &s.Viewers, &s.Clicks, &s.Clickers); err != nil {
+			return nil, errs.Wrap("rows.Scan", err)
+		}
+
+		stats[id] = s
+	}
+
+	return stats, errs.Wrap("rows.Err", rows.Err())
+}
