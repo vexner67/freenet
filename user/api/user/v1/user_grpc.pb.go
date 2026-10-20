@@ -83,6 +83,8 @@ const (
 	UserService_CreateAd_FullMethodName           = "/user.v1.UserService/CreateAd"
 	UserService_EditAd_FullMethodName             = "/user.v1.UserService/EditAd"
 	UserService_DeleteAd_FullMethodName           = "/user.v1.UserService/DeleteAd"
+	UserService_ViewAd_FullMethodName             = "/user.v1.UserService/ViewAd"
+	UserService_ClickAd_FullMethodName            = "/user.v1.UserService/ClickAd"
 	UserService_BanUser_FullMethodName            = "/user.v1.UserService/BanUser"
 	UserService_UnbanUser_FullMethodName          = "/user.v1.UserService/UnbanUser"
 	UserService_DeactivateAccount_FullMethodName  = "/user.v1.UserService/DeactivateAccount"
@@ -248,6 +250,11 @@ type UserServiceClient interface {
 	CreateAd(ctx context.Context, in *CreateAdRequest, opts ...grpc.CallOption) (*CreateAdResponse, error)
 	EditAd(ctx context.Context, in *EditAdRequest, opts ...grpc.CallOption) (*EditAdResponse, error)
 	DeleteAd(ctx context.Context, in *DeleteAdRequest, opts ...grpc.CallOption) (*DeleteAdResponse, error)
+	// Require an access token: count that the caller saw a shown ad in the
+	// feed or followed its link (NotFound when it is not shown). ListAds
+	// with all gives the counts to the administrators.
+	ViewAd(ctx context.Context, in *ViewAdRequest, opts ...grpc.CallOption) (*ViewAdResponse, error)
+	ClickAd(ctx context.Context, in *ClickAdRequest, opts ...grpc.CallOption) (*ClickAdResponse, error)
 	// Require an access token of an administrator of the site
 	// (PermissionDenied otherwise): blocks a page for a while or for good
 	// and lifts the block ("Заблокировать пользователя" of openvk). A
@@ -907,6 +914,26 @@ func (c *userServiceClient) DeleteAd(ctx context.Context, in *DeleteAdRequest, o
 	return out, nil
 }
 
+func (c *userServiceClient) ViewAd(ctx context.Context, in *ViewAdRequest, opts ...grpc.CallOption) (*ViewAdResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ViewAdResponse)
+	err := c.cc.Invoke(ctx, UserService_ViewAd_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ClickAd(ctx context.Context, in *ClickAdRequest, opts ...grpc.CallOption) (*ClickAdResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClickAdResponse)
+	err := c.cc.Invoke(ctx, UserService_ClickAd_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -1115,6 +1142,11 @@ type UserServiceServer interface {
 	CreateAd(context.Context, *CreateAdRequest) (*CreateAdResponse, error)
 	EditAd(context.Context, *EditAdRequest) (*EditAdResponse, error)
 	DeleteAd(context.Context, *DeleteAdRequest) (*DeleteAdResponse, error)
+	// Require an access token: count that the caller saw a shown ad in the
+	// feed or followed its link (NotFound when it is not shown). ListAds
+	// with all gives the counts to the administrators.
+	ViewAd(context.Context, *ViewAdRequest) (*ViewAdResponse, error)
+	ClickAd(context.Context, *ClickAdRequest) (*ClickAdResponse, error)
 	// Require an access token of an administrator of the site
 	// (PermissionDenied otherwise): blocks a page for a while or for good
 	// and lifts the block ("Заблокировать пользователя" of openvk). A
@@ -1332,6 +1364,12 @@ func (UnimplementedUserServiceServer) EditAd(context.Context, *EditAdRequest) (*
 }
 func (UnimplementedUserServiceServer) DeleteAd(context.Context, *DeleteAdRequest) (*DeleteAdResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteAd not implemented")
+}
+func (UnimplementedUserServiceServer) ViewAd(context.Context, *ViewAdRequest) (*ViewAdResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ViewAd not implemented")
+}
+func (UnimplementedUserServiceServer) ClickAd(context.Context, *ClickAdRequest) (*ClickAdResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ClickAd not implemented")
 }
 func (UnimplementedUserServiceServer) BanUser(context.Context, *BanUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method BanUser not implemented")
@@ -2503,6 +2541,42 @@ func _UserService_DeleteAd_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ViewAd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ViewAdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ViewAd(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ViewAd_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ViewAd(ctx, req.(*ViewAdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ClickAd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClickAdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ClickAd(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ClickAd_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ClickAd(ctx, req.(*ClickAdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_BanUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BanUserRequest)
 	if err := dec(in); err != nil {
@@ -2851,6 +2925,14 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteAd",
 			Handler:    _UserService_DeleteAd_Handler,
+		},
+		{
+			MethodName: "ViewAd",
+			Handler:    _UserService_ViewAd_Handler,
+		},
+		{
+			MethodName: "ClickAd",
+			Handler:    _UserService_ClickAd_Handler,
 		},
 		{
 			MethodName: "BanUser",

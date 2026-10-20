@@ -17,7 +17,8 @@ func TestAdService(t *testing.T) {
 	ctx := context.Background()
 	w := newWalletWorld(t)
 	admins, _ := user.NewAdmins([]string{"admin@example.com"})
-	ads := service.NewAdService(w.users, inmem.NewAdRepository(), inmem.TxManager{}, admins)
+	repo := inmem.NewAdRepository()
+	ads := service.NewAdService(w.users, repo, repo, inmem.TxManager{}, admins)
 	admin, ann := w.person(t, "admin"), w.person(t, "ann")
 	cover := uuid.New()
 
@@ -41,11 +42,31 @@ func TestAdService(t *testing.T) {
 	if got, err := ads.Shown(ctx); err != nil || len(got) != 1 || got[0].ID() != shown.ID() {
 		t.Fatalf("Shown = %v, %v", got, err)
 	}
-	if _, err = ads.All(ctx, ann); !errors.Is(err, user.ErrNotAdmin) {
+	if _, _, err = ads.All(ctx, ann); !errors.Is(err, user.ErrNotAdmin) {
 		t.Fatalf("All by ann: %v", err)
 	}
-	if got, err := ads.All(ctx, admin); err != nil || len(got) != 2 || got[0].ID() != hidden.ID() {
+	if got, _, err := ads.All(ctx, admin); err != nil || len(got) != 2 || got[0].ID() != hidden.ID() {
 		t.Fatalf("All = %v, %v", got, err)
+	}
+
+	// The readers' views and clicks are counted, of the shown ads only.
+	for _, e := range []struct {
+		reader uuid.UUID
+		event  user.AdEvent
+	}{{ann, user.AdViewed}, {ann, user.AdViewed}, {admin, user.AdViewed}, {ann, user.AdClicked}} {
+		if err = ads.Record(ctx, e.reader, shown.ID(), e.event); err != nil {
+			t.Fatalf("Record %s: %v", e.event, err)
+		}
+	}
+	if err = ads.Record(ctx, ann, hidden.ID(), user.AdViewed); !errors.Is(err, user.ErrAdNotFound) {
+		t.Fatalf("a hidden ad counted: %v", err)
+	}
+	_, stats, err := ads.All(ctx, admin)
+	if want := (user.AdStats{Views: 3, Viewers: 2, Clicks: 1, Clickers: 1}); err != nil || stats[shown.ID()] != want {
+		t.Fatalf("stats = %+v, %v", stats[shown.ID()], err)
+	}
+	if _, ok := stats[hidden.ID()]; ok {
+		t.Fatal("the hidden ad has stats")
 	}
 
 	// Showing the hidden one and changing its cover.
@@ -83,7 +104,8 @@ func TestAdService_TooMany(t *testing.T) {
 	ctx := context.Background()
 	w := newWalletWorld(t)
 	admins, _ := user.NewAdmins([]string{"admin@example.com"})
-	ads := service.NewAdService(w.users, inmem.NewAdRepository(), inmem.TxManager{}, admins)
+	repo := inmem.NewAdRepository()
+	ads := service.NewAdService(w.users, repo, repo, inmem.TxManager{}, admins)
 	admin := w.person(t, "admin")
 
 	for range user.MaxAds {

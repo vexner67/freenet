@@ -53,6 +53,7 @@ func newServer(t *testing.T) testServer {
 
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	users := inmem.NewUserRepository()
+	adRepo := inmem.NewAdRepository()
 	stickers := inmem.NewStickerRepository(users)
 	follows := inmem.NewFollowRepository(users)
 
@@ -94,7 +95,7 @@ func newServer(t *testing.T) testServer {
 		}),
 		Bans:          service.NewBanService(users, users, admins),
 		ForeignAgents: service.NewForeignAgentService(users, users, admins),
-		Ads:           service.NewAdService(users, inmem.NewAdRepository(), inmem.TxManager{}, admins),
+		Ads:           service.NewAdService(users, adRepo, adRepo, inmem.TxManager{}, admins),
 		Permissions:   permissions,
 		Presence:      presence,
 		Backdrops:     service.NewBackdropService(users, users),

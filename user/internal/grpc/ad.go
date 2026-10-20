@@ -12,16 +12,18 @@ import (
 
 type AdService interface {
 	Shown(ctx context.Context) ([]*user.Ad, error)
-	All(ctx context.Context, adminID uuid.UUID) ([]*user.Ad, error)
+	All(ctx context.Context, adminID uuid.UUID) ([]*user.Ad, map[uuid.UUID]user.AdStats, error)
 	Create(ctx context.Context, adminID uuid.UUID, d user.AdDraft) (*user.Ad, error)
 	Edit(ctx context.Context, adminID, id uuid.UUID, c user.AdChange) (*user.Ad, user.AdPhoto, error)
 	Delete(ctx context.Context, adminID, id uuid.UUID) (user.AdPhoto, error)
+	Record(ctx context.Context, readerID, adID uuid.UUID, event user.AdEvent) error
 }
 
 func (h *UserHandler) ListAds(ctx context.Context, req *userv1.ListAdsRequest) (*userv1.ListAdsResponse, error) {
 	var (
-		ads []*user.Ad
-		err error
+		ads   []*user.Ad
+		stats map[uuid.UUID]user.AdStats
+		err   error
 	)
 
 	if req.GetAll() {
@@ -30,7 +32,7 @@ func (h *UserHandler) ListAds(ctx context.Context, req *userv1.ListAdsRequest) (
 			return nil, idErr
 		}
 
-		ads, err = h.ads.All(ctx, adminID)
+		ads, stats, err = h.ads.All(ctx, adminID)
 	} else {
 		ads, err = h.ads.Shown(ctx)
 	}
@@ -41,7 +43,11 @@ func (h *UserHandler) ListAds(ctx context.Context, req *userv1.ListAdsRequest) (
 
 	resp := &userv1.ListAdsResponse{Ads: make([]*userv1.Ad, 0, len(ads))}
 	for _, ad := range ads {
-		resp.Ads = append(resp.Ads, toProtoAd(ad))
+		a := toProtoAd(ad)
+		if req.GetAll() {
+			a.Stats = toProtoAdStats(stats[ad.ID()])
+		}
+		resp.Ads = append(resp.Ads, a)
 	}
 
 	return resp, nil
@@ -114,6 +120,31 @@ func (h *UserHandler) DeleteAd(ctx context.Context, req *userv1.DeleteAdRequest)
 	owner, photo := toProtoAdPhoto(dropped)
 
 	return &userv1.DeleteAdResponse{PhotoOwnerId: owner, PhotoId: photo}, nil
+}
+
+func (h *UserHandler) ViewAd(ctx context.Context, req *userv1.ViewAdRequest) (*userv1.ViewAdResponse, error) {
+	if err := h.recordAd(ctx, req.GetId(), user.AdViewed); err != nil {
+		return nil, err
+	}
+
+	return &userv1.ViewAdResponse{}, nil
+}
+
+func (h *UserHandler) ClickAd(ctx context.Context, req *userv1.ClickAdRequest) (*userv1.ClickAdResponse, error) {
+	if err := h.recordAd(ctx, req.GetId(), user.AdClicked); err != nil {
+		return nil, err
+	}
+
+	return &userv1.ClickAdResponse{}, nil
+}
+
+func (h *UserHandler) recordAd(ctx context.Context, adID string, event user.AdEvent) error {
+	readerID, id, err := callerAndAd(ctx, adID)
+	if err != nil {
+		return err
+	}
+
+	return h.ads.Record(ctx, readerID, id, event)
 }
 
 func callerAndAd(ctx context.Context, adID string) (uuid.UUID, uuid.UUID, error) {

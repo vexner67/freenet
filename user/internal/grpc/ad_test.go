@@ -53,6 +53,27 @@ func TestAds(t *testing.T) {
 		t.Fatalf("ListAds all = %v, %v", all, err)
 	}
 
+	// The views and clicks of readers; a guest is not counted.
+	if _, err = s.client.ViewAd(t.Context(), &userv1.ViewAdRequest{Id: id}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("ViewAd by a guest: %v", err)
+	}
+	if _, err = s.client.ViewAd(ann, &userv1.ViewAdRequest{Id: uuid.NewString()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("ViewAd of an unknown ad: %v", err)
+	}
+	if _, err = s.client.ViewAd(ann, &userv1.ViewAdRequest{Id: id}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.ClickAd(ann, &userv1.ClickAdRequest{Id: id}); err != nil {
+		t.Fatal(err)
+	}
+	all, err := s.client.ListAds(admin, &userv1.ListAdsRequest{All: true})
+	if stats := all.GetAds()[1].GetStats(); err != nil || stats.GetViews() != 1 || stats.GetClickers() != 1 {
+		t.Fatalf("stats = %v, %v", stats, err)
+	}
+	if shown, _ := s.client.ListAds(ann, &userv1.ListAdsRequest{}); shown.GetAds()[0].GetStats() != nil {
+		t.Fatal("the shown ads tell their stats")
+	}
+
 	// Hiding the ad and taking its cover.
 	edited, err := s.client.EditAd(admin, &userv1.EditAdRequest{Id: id, Active: proto.Bool(false), PhotoId: proto.String("")})
 	if err != nil || edited.GetAd().GetActive() || edited.GetAd().GetPhotoId() != "" || edited.GetDroppedPhotoId() != cover || edited.GetAd().GetTitle() != "A" {

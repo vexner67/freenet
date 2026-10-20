@@ -203,3 +203,21 @@ func (a *Ad) Title() AdTitle { return a.title }
 func (a *Ad) Text() AdText   { return a.text }
 func (a *Ad) Photo() AdPhoto { return a.photo }
 func (a *Ad) IsActive() bool { return a.active }
+
+// AdEvent is what a reader did with an ad: saw it in the feed or followed
+// its link.
+type AdEvent string
+
+const (
+	AdViewed  AdEvent = "view"
+	AdClicked AdEvent = "click"
+)
+
+// AdStats is how an ad does: how often it was seen and followed, and by
+// how many people.
+type AdStats struct {
+	Views    int64
+	Viewers  int64
+	Clicks   int64
+	Clickers int64
+}

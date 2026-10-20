@@ -13,7 +13,7 @@ import (
 )
 
 func TestAdRepository(t *testing.T) {
-	_, pool := newRepo(t)
+	repo, pool := newRepo(t)
 	ads := postgres.NewAdRepository(pool)
 	tx := pgpool.NewTxManager(pool)
 
@@ -71,6 +71,34 @@ func TestAdRepository(t *testing.T) {
 		t.Fatalf("showing the hidden ad: %v", err)
 	}
 
+	// Views and clicks: one row per reader, of the shown ads only.
+	readers := make([]uuid.UUID, 2)
+	for i := range readers {
+		u, err := user.New(user.Email(unique("adreader") + "@example.com"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = repo.Save(ctx, u); err != nil {
+			t.Fatal(err)
+		}
+		readers[i] = u.ID()
+	}
+	for _, e := range []struct {
+		reader uuid.UUID
+		event  user.AdEvent
+	}{{readers[0], user.AdViewed}, {readers[0], user.AdViewed}, {readers[1], user.AdViewed}, {readers[1], user.AdClicked}} {
+		if err = ads.Record(ctx, shown.ID(), e.reader, e.event); err != nil {
+			t.Fatalf("Record: %v", err)
+		}
+	}
+	if err = ads.Record(ctx, uuid.New(), readers[0], user.AdViewed); !errors.Is(err, user.ErrAdNotFound) {
+		t.Fatalf("Record of an unknown ad: %v", err)
+	}
+	stats, err := ads.Stats(ctx)
+	if want := (user.AdStats{Views: 3, Viewers: 2, Clicks: 1, Clickers: 1}); err != nil || stats[shown.ID()] != want {
+		t.Fatalf("Stats = %+v, %v", stats[shown.ID()], err)
+	}
+
 	if _, err = ads.Lock(ctx, uuid.New()); !errors.Is(err, user.ErrAdNotFound) {
 		t.Fatalf("Lock of an unknown ad: %v", err)
 	}
@@ -81,5 +109,8 @@ func TestAdRepository(t *testing.T) {
 	}
 	if _, err = ads.Delete(ctx, shown.ID()); !errors.Is(err, user.ErrAdNotFound) {
 		t.Fatalf("deleted twice: %v", err)
+	}
+	if stats, _ = ads.Stats(ctx); stats[shown.ID()] != (user.AdStats{}) {
+		t.Fatal("the stats outlive their ad")
 	}
 }
