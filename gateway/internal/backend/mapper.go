@@ -191,6 +191,7 @@ func toUser(u *userv1.User) model.User {
 		Admin:            u.GetAdmin(),
 		Verified:         u.GetVerified(),
 		Ban:              toBan(u.GetBan()),
+		ForeignAgent:     u.GetForeignAgent(),
 		Interface: model.Interface{
 			AvatarStyle: u.GetInterface().GetAvatarStyle(),
 			MainPage:    u.GetInterface().GetMainPage(),
