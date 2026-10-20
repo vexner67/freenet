@@ -800,6 +800,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/ads", a.createAd)
 	mux.HandleFunc("PATCH /api/v1/ads/{id}", a.editAd)
 	mux.HandleFunc("DELETE /api/v1/ads/{id}", a.deleteAd)
+	mux.HandleFunc("POST /api/v1/ads/{id}/views", a.viewAd)
+	mux.HandleFunc("POST /api/v1/ads/{id}/clicks", a.clickAd)
 	mux.HandleFunc("GET /api/v1/vote-rate", a.voteRate)
 	mux.HandleFunc("PUT /api/v1/vote-rate", a.setVoteRate)
 	mux.HandleFunc("PUT /api/v1/users/{nickname}/verification", a.verify)
