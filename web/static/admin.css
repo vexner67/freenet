@@ -487,6 +487,9 @@ form.aui .select {
   gap: 6px;
 }
 
+.admin-alert { display: flex; align-items: center; gap: 8px; }
+.admin-alert-text { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-alert-text.empty { color: var(--aui-subtle); }
 .admin-ban-until { color: var(--aui-subtle); font-size: 12px; }
 
 /* AUI's dialog over a blanket: "Заблокировать пользователя". */

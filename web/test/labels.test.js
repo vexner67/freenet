@@ -1013,7 +1013,7 @@ test('stickersCount and installsCount', async () => {
   assert.equal(installsCount(21), '21 установка');
 });
 
-test('the plaque of a foreign agent names the person', () => {
+test('the label of a foreign agent names the person', () => {
   assert.equal(foreignAgentText({ name: 'Анна', surname: 'Иванова', gender: 'female' }),
     'Данное сообщение (материал) создано и (или) распространено иностранным агентом Анной Ивановой либо касается деятельности иностранного агента Анны Ивановой.');
   assert.equal(foreignAgentText({ name: 'Пётр', surname: 'Петров', gender: 'male' }),

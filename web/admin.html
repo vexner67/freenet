@@ -96,7 +96,7 @@
               <th>Пользователь</th>
               <th>Адрес страницы</th>
               <th>Верификация</th>
-              <th>Иноагент</th>
+              <th>Метка</th>
               <th>Блокировка</th>
             </tr>
           </thead>
@@ -390,6 +390,26 @@
       <div class="buttons-container">
         <button class="aui-button aui-button-primary" type="submit">Заблокировать</button>
         <button class="aui-button aui-button-link" type="button" id="ban-cancel">Отмена</button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<div class="aui-blanket" id="alert-dialog" hidden>
+  <section class="aui-dialog" role="dialog" aria-modal="true" aria-labelledby="alert-title">
+    <header class="aui-dialog-header"><h2 id="alert-title">Метка страницы</h2></header>
+    <form class="aui aui-dialog-content" id="alert-form">
+      <p id="alert-about"></p>
+      <div class="field-group">
+        <label for="alert-text">Текст метки</label>
+        <textarea class="textarea" id="alert-text" rows="4" maxlength="1000" required></textarea>
+        <div class="description">Одной строкой, до 1000 знаков. <a href="#" id="alert-agent">Текст об иноагенте</a></div>
+      </div>
+      <p class="aui-message aui-message-error" id="alert-error" hidden></p>
+      <div class="buttons-container">
+        <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
+        <button class="aui-button" type="button" id="alert-remove">Снять метку</button>
+        <button class="aui-button aui-button-link" type="button" id="alert-cancel">Отмена</button>
       </div>
     </form>
   </section>
