@@ -223,9 +223,19 @@ async function withNewTokens(answer) {
 }
 
 // optional sends the token when signed in, so the answer can depend on who
-// asks, and works anonymously otherwise.
-function optional(method, path) {
-  return session.get() ? authorized(method, path) : request(method, path);
+// asks, and works anonymously otherwise. A session that ended (its tokens
+// were dropped when refreshing failed) reads as a guest: a link opened
+// long after one last came still shows the page.
+async function optional(method, path) {
+  if (!session.get()) return request(method, path);
+
+  try {
+    return await authorized(method, path);
+  } catch (e) {
+    if (e.status !== 401 || session.get()) throw e;
+  }
+
+  return request(method, path);
 }
 
 async function authorized(method, path, body) {

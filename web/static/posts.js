@@ -11,6 +11,7 @@ import { openShare } from './share.js';
 import { openViewer } from './viewer.js';
 import { lastComments } from './postcomments.js';
 import { pollNode } from './poll.js';
+import { button, openModal } from './modal.js';
 import { documentsNode } from './docs.js';
 import { tr } from './i18n.js';
 
@@ -118,6 +119,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
         closing,
         withCommentsLink ? el('a', { href: postPath(post) }, ...counted(tr('Комментарии'), post.comments)) : null,
         shareButton(post, canLike),
+        copyLink(post),
       ].filter(Boolean);
     }
 
@@ -125,6 +127,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     const links = [];
     if (comments && post.comments === 0 && comments.canOpen()) links.push(el('a', { textContent: tr('Комментировать'), onclick: openComments }));
     if (closing) links.push(closing);
+    links.push(copyLink(post));
     return links;
   }
 
@@ -339,6 +342,56 @@ export function sharedNode(shared, { canVote = false, onError } = {}) {
       shared.repostOf ? el('a', { className: 'post-shared-link', href: postPath({ id: shared.repostOf }), textContent: tr('Открыть запись') }) : null,
     ),
   );
+}
+
+// copyLink puts the address of the post in the clipboard, as openvk's
+// "Скопировать ссылку" of a sticker pack: anyone may open it, a guest
+// only reads the post and its comments.
+function copyLink(post) {
+  const link = el('a', { className: 'post-copy-link', textContent: tr('Скопировать ссылку') });
+
+  link.addEventListener('click', async () => {
+    const url = location.origin + postPath(post);
+    if (!await copied(url)) {
+      showLink(url);
+      return;
+    }
+
+    link.textContent = tr('Ссылка скопирована!');
+    setTimeout(() => { link.textContent = tr('Скопировать ссылку'); }, 2000);
+  });
+
+  return link;
+}
+
+// copied tells whether the text went to the clipboard: by the clipboard
+// API, or by copying a selection where the browser keeps that shut.
+async function copied(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const field = el('textarea', { className: 'copy-field', value: text, readOnly: true });
+    document.body.append(field);
+    field.select();
+    try {
+      return document.execCommand('copy');
+    } catch {
+      return false;
+    } finally {
+      field.remove();
+    }
+  }
+}
+
+// showLink gives the address to copy by hand where nothing copies.
+function showLink(url) {
+  const modal = openModal(tr('Ссылка на запись'));
+  const field = el('input', { type: 'text', value: url, readOnly: true });
+
+  modal.body.append(el('div', { className: 'invite-link' }, field));
+  modal.actions.append(button(tr('Закрыть'), modal.close));
+  field.select();
 }
 
 // shareButton is "Поделиться (N)"; it changes post.reposts, as likeButton
