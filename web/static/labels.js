@@ -1887,9 +1887,10 @@ export function messagesCount(n) {
 // there. They are kept by the browser, as openvk keeps them in a cookie.
 export const feedPageSizes = [1, 5, 10, 20, 30, 40, 50];
 
-// The posts on the walls of others are left out unless asked for, as on
-// openvk.
-export const defaultFeedSettings = Object.freeze({ posts: 10, alien: false });
+// Ten posts a page, and the posts on the walls of others are there unless
+// left out (openvk leaves them out by default; the owner of the site
+// wants them).
+export const defaultFeedSettings = Object.freeze({ posts: 10, alien: true });
 
 // feedSettings reads what the browser kept; anything else is the default.
 export function feedSettings(raw) {
