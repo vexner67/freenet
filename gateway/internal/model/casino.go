@@ -27,15 +27,16 @@ type CasinoPrize struct {
 }
 
 // CasinoSettings are the casino with its odds and how it does: spins
-// made, votes spent and won, and the same of the bets.
+// made, votes spent and won, and the same of the bets — wagers made,
+// votes bet and won.
 type CasinoSettings struct {
-	Casino   Casino
-	Spins    int64
-	Spent    int64
-	Won      int64
-	Bets     int64
-	BetSpent int64
-	BetWon   int64
+	Casino     Casino
+	Spins      int64
+	Spent      int64
+	Won        int64
+	Wagers     int64
+	WagerSpent int64
+	WagerWon   int64
 }
 
 // CasinoSpin is what one spin won: the index of the prize, its votes and
