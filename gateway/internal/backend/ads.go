@@ -74,8 +74,28 @@ func (a *Ads) Delete(ctx context.Context, accessToken, adID string) (model.AdPho
 	return model.AdPhoto{OwnerID: resp.GetPhotoOwnerId(), PhotoID: resp.GetPhotoId()}, nil
 }
 
+// Record counts that the caller saw an ad in the feed or followed it.
+func (a *Ads) Record(ctx context.Context, accessToken, adID string, event model.AdEvent) error {
+	ctx = withToken(ctx, accessToken)
+
+	if event == model.AdClicked {
+		_, err := a.api.ClickAd(ctx, &userv1.ClickAdRequest{Id: adID})
+		return errs.Wrap("a.api.ClickAd", fromStatus(err))
+	}
+
+	_, err := a.api.ViewAd(ctx, &userv1.ViewAdRequest{Id: adID})
+
+	return errs.Wrap("a.api.ViewAd", fromStatus(err))
+}
+
 func toAd(ad *userv1.Ad) model.Ad {
+	var stats *model.AdStats
+	if s := ad.GetStats(); s != nil {
+		stats = &model.AdStats{Views: s.GetViews(), Viewers: s.GetViewers(), Clicks: s.GetClicks(), Clickers: s.GetClickers()}
+	}
+
 	return model.Ad{
+		Stats:        stats,
 		ID:           ad.GetId(),
 		URL:          ad.GetUrl(),
 		Title:        ad.GetTitle(),

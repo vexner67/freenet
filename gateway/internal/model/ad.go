@@ -11,7 +11,26 @@ type Ad struct {
 	PhotoOwnerID string
 	PhotoID      string
 	Active       bool
+	// Stats is how the ad does; nil unless the administrators asked.
+	Stats *AdStats
 }
+
+// AdStats is how often an ad was seen in the feed and followed, and by
+// how many people.
+type AdStats struct {
+	Views    int64
+	Viewers  int64
+	Clicks   int64
+	Clickers int64
+}
+
+// AdEvent is what a reader did with an ad.
+type AdEvent string
+
+const (
+	AdViewed  AdEvent = "view"
+	AdClicked AdEvent = "click"
+)
 
 // AdDraft is a new ad; PhotoID is an upload of the administrator, empty
 // for no cover.

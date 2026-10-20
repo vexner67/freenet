@@ -22,6 +22,9 @@ type Ads interface {
 	Edit(ctx context.Context, accessToken, adID string, c model.AdChange) (model.Ad, model.AdPhoto, error)
 	// Delete returns the cover the ad had.
 	Delete(ctx context.Context, accessToken, adID string) (model.AdPhoto, error)
+	// Record counts that the caller saw a shown ad in the feed or followed
+	// its link.
+	Record(ctx context.Context, accessToken, adID string, event model.AdEvent) error
 }
 
 type createAdRequest struct {
@@ -52,6 +55,15 @@ type adJSON struct {
 	Site   string     `json:"site"`
 	Photo  *photoJSON `json:"photo"`
 	Active bool       `json:"active"`
+	// Stats is how the ad does, only in the list of all of them.
+	Stats *adStatsJSON `json:"stats,omitempty"`
+}
+
+type adStatsJSON struct {
+	Views    int64 `json:"views"`
+	Viewers  int64 `json:"viewers"`
+	Clicks   int64 `json:"clicks"`
+	Clickers int64 `json:"clickers"`
 }
 
 type adsResponse struct {
@@ -63,6 +75,10 @@ func toAdJSON(ad model.Ad) adJSON {
 	if ad.PhotoID != "" {
 		photo := toPhotoJSON(ad.PhotoOwnerID, ad.PhotoID)
 		j.Photo = &photo
+	}
+
+	if s := ad.Stats; s != nil {
+		j.Stats = &adStatsJSON{Views: s.Views, Viewers: s.Viewers, Clicks: s.Clicks, Clickers: s.Clickers}
 	}
 
 	return j
@@ -205,6 +221,31 @@ func (a *api) deleteAd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.dropAdPhoto(r, dropped)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// viewAd counts that the caller saw an ad in the feed.
+func (a *api) viewAd(w http.ResponseWriter, r *http.Request) {
+	a.recordAd(w, r, model.AdViewed)
+}
+
+// clickAd counts that the caller followed the link of an ad.
+func (a *api) clickAd(w http.ResponseWriter, r *http.Request) {
+	a.recordAd(w, r, model.AdClicked)
+}
+
+func (a *api) recordAd(w http.ResponseWriter, r *http.Request, event model.AdEvent) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.ads.Record(r.Context(), token, r.PathValue("id"), event); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 

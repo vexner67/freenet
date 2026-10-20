@@ -13,6 +13,7 @@ import (
 
 type fakeAds struct {
 	token, edited, deleted string
+	recorded               []string
 	all                    bool
 	draft                  model.AdDraft
 	change                 model.AdChange
@@ -22,7 +23,8 @@ type fakeAds struct {
 func (f *fakeAds) List(_ context.Context, token string, all bool) ([]model.Ad, error) {
 	f.token, f.all = token, all
 	return []model.Ad{
-		{ID: "ad2", URL: "https://www.shop.example/sale", Title: "Распродажа", Text: "Всё по 100", PhotoOwnerID: "u1", PhotoID: "ph5", Active: true},
+		{ID: "ad2", URL: "https://www.shop.example/sale", Title: "Распродажа", Text: "Всё по 100", PhotoOwnerID: "u1", PhotoID: "ph5", Active: true,
+			Stats: &model.AdStats{Views: 10, Viewers: 4, Clicks: 2, Clickers: 1}},
 		{ID: "ad1", URL: "https://b.example", Title: "Б"},
 	}, f.err
 }
@@ -42,6 +44,12 @@ func (f *fakeAds) Edit(_ context.Context, token, adID string, c model.AdChange) 
 	return ad, model.AdPhoto{OwnerID: "u7", PhotoID: "ph0"}, f.err
 }
 
+func (f *fakeAds) Record(_ context.Context, token, adID string, event model.AdEvent) error {
+	f.token = token
+	f.recorded = append(f.recorded, adID+"/"+string(event))
+	return f.err
+}
+
 func (f *fakeAds) Delete(_ context.Context, token, adID string) (model.AdPhoto, error) {
 	f.token, f.deleted = token, adID
 	return model.AdPhoto{OwnerID: "u7", PhotoID: "ph0"}, f.err
@@ -57,6 +65,10 @@ type adBody struct {
 		Large string `json:"large"`
 	} `json:"photo"`
 	Active bool `json:"active"`
+	Stats  *struct {
+		Views    int64 `json:"views"`
+		Clickers int64 `json:"clickers"`
+	} `json:"stats"`
 }
 
 func TestListAds(t *testing.T) {
@@ -73,6 +85,9 @@ func TestListAds(t *testing.T) {
 	}
 	if ad := got.Ads[0]; ad.Site != "shop.example" || ad.Photo == nil || ad.Photo.Large != "/media/photos/u1/ph5/large.jpg" || !ad.Active {
 		t.Fatalf("the first ad = %+v", ad)
+	}
+	if s := got.Ads[0].Stats; s == nil || s.Views != 10 || s.Clickers != 1 || got.Ads[1].Stats != nil {
+		t.Fatalf("stats: %+v, %+v", got.Ads[0].Stats, got.Ads[1].Stats)
 	}
 	if got.Ads[1].Photo != nil {
 		t.Fatalf("an ad without a cover: %+v", got.Ads[1])
@@ -160,5 +175,25 @@ func TestEditAndDeleteAd(t *testing.T) {
 	}
 	if w = newHarness(rest.Config{}).do("PATCH", "/api/v1/ads/ad1", `{"title":"Б"}`, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
 		t.Fatalf("edit by a stranger: %d", w.Code)
+	}
+}
+
+func TestRecordAd(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	for _, path := range []string{"/api/v1/ads/ad2/views", "/api/v1/ads/ad2/clicks"} {
+		if w := h.do("POST", path, "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.ads.token != "tok" {
+			t.Fatalf("%s: %d", path, w.Code)
+		}
+	}
+	if !slices.Equal(h.ads.recorded, []string{"ad2/view", "ad2/click"}) {
+		t.Fatalf("recorded %v", h.ads.recorded)
+	}
+
+	// A guest is not counted.
+	h = newHarness(rest.Config{})
+	if w := h.do("POST", "/api/v1/ads/ad2/views", ""); w.Code != http.StatusUnauthorized || len(h.ads.recorded) != 0 {
+		t.Fatalf("a guest: %d", w.Code)
 	}
 }

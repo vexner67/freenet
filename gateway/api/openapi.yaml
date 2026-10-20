@@ -4378,6 +4378,52 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /api/v1/ads/{id}/views:
+    post:
+      summary: Count that you saw the ad in the feed
+      description: >-
+        Counts that the caller saw the ad in the feed, for the stats of the administrators:
+        how often and by how many people. Only a shown ad is counted.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Counted }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404":
+          description: No such shown ad
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/ads/{id}/clicks:
+    post:
+      summary: Count that you followed the link of the ad
+      description: >-
+        Counts that the caller followed the link of the ad, for the stats of the administrators:
+        how often and by how many people. Only a shown ad is counted.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Counted }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404":
+          description: No such shown ad
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/vote-rate:
     get:
       summary: What a vote is worth
@@ -7456,6 +7502,15 @@ components:
         site: { type: string, description: 'The host of the link, without "www."' }
         photo: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }], description: The cover }
         active: { type: boolean, description: Shown in the feed }
+        stats:
+          type: object
+          description: How the ad does; only with ?all=true, for the administrators
+          required: [views, viewers, clicks, clickers]
+          properties:
+            views: { type: integer, description: How often it was seen in the feed }
+            viewers: { type: integer, description: By how many people }
+            clicks: { type: integer, description: How often its link was followed }
+            clickers: { type: integer, description: By how many people }
 
     Backdrop:
       description: '"Фон страницы": the photos on the left and on the right of a page, of a person or a community; null for none'
