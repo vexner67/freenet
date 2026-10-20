@@ -92,10 +92,11 @@ func newServer(t *testing.T) testServer {
 		Verification: service.NewVerificationService(service.VerificationDeps{
 			Users: users, Verifications: users, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Admins: admins,
 		}),
-		Bans:        service.NewBanService(users, users, admins),
-		Permissions: permissions,
-		Presence:    presence,
-		Backdrops:   service.NewBackdropService(users, users),
+		Bans:          service.NewBanService(users, users, admins),
+		ForeignAgents: service.NewForeignAgentService(users, users, admins),
+		Permissions:   permissions,
+		Presence:      presence,
+		Backdrops:     service.NewBackdropService(users, users),
 	}, log))
 
 	go func() { _ = srv.Serve(lis) }()

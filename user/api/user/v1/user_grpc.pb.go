@@ -78,6 +78,7 @@ const (
 	UserService_GetVoteRate_FullMethodName        = "/user.v1.UserService/GetVoteRate"
 	UserService_SetVoteRate_FullMethodName        = "/user.v1.UserService/SetVoteRate"
 	UserService_SetVerified_FullMethodName        = "/user.v1.UserService/SetVerified"
+	UserService_SetForeignAgent_FullMethodName    = "/user.v1.UserService/SetForeignAgent"
 	UserService_BanUser_FullMethodName            = "/user.v1.UserService/BanUser"
 	UserService_UnbanUser_FullMethodName          = "/user.v1.UserService/UnbanUser"
 	UserService_DeactivateAccount_FullMethodName  = "/user.v1.UserService/DeactivateAccount"
@@ -231,6 +232,10 @@ type UserServiceClient interface {
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
 	SetVerified(ctx context.Context, in *SetVerifiedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Requires an access token of an administrator of the site
+	// (PermissionDenied otherwise): puts on a page the orange plaque of a
+	// foreign agent (openvk's "user-alert") or takes it.
+	SetForeignAgent(ctx context.Context, in *SetForeignAgentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Require an access token of an administrator of the site
 	// (PermissionDenied otherwise): blocks a page for a while or for good
 	// and lifts the block ("Заблокировать пользователя" of openvk). A
@@ -840,6 +845,16 @@ func (c *userServiceClient) SetVerified(ctx context.Context, in *SetVerifiedRequ
 	return out, nil
 }
 
+func (c *userServiceClient) SetForeignAgent(ctx context.Context, in *SetForeignAgentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetForeignAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -1036,6 +1051,10 @@ type UserServiceServer interface {
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
 	SetVerified(context.Context, *SetVerifiedRequest) (*emptypb.Empty, error)
+	// Requires an access token of an administrator of the site
+	// (PermissionDenied otherwise): puts on a page the orange plaque of a
+	// foreign agent (openvk's "user-alert") or takes it.
+	SetForeignAgent(context.Context, *SetForeignAgentRequest) (*emptypb.Empty, error)
 	// Require an access token of an administrator of the site
 	// (PermissionDenied otherwise): blocks a page for a while or for good
 	// and lifts the block ("Заблокировать пользователя" of openvk). A
@@ -1238,6 +1257,9 @@ func (UnimplementedUserServiceServer) SetVoteRate(context.Context, *SetVoteRateR
 }
 func (UnimplementedUserServiceServer) SetVerified(context.Context, *SetVerifiedRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetVerified not implemented")
+}
+func (UnimplementedUserServiceServer) SetForeignAgent(context.Context, *SetForeignAgentRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetForeignAgent not implemented")
 }
 func (UnimplementedUserServiceServer) BanUser(context.Context, *BanUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method BanUser not implemented")
@@ -2319,6 +2341,24 @@ func _UserService_SetVerified_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_SetForeignAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetForeignAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetForeignAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetForeignAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetForeignAgent(ctx, req.(*SetForeignAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_BanUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BanUserRequest)
 	if err := dec(in); err != nil {
@@ -2647,6 +2687,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetVerified",
 			Handler:    _UserService_SetVerified_Handler,
+		},
+		{
+			MethodName: "SetForeignAgent",
+			Handler:    _UserService_SetForeignAgent_Handler,
 		},
 		{
 			MethodName: "BanUser",
