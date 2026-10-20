@@ -63,3 +63,58 @@ func TestCasino(t *testing.T) {
 		t.Fatalf("GetCasinoSettings = %v, %v", settings, err)
 	}
 }
+
+func TestCasinoBets(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	admin := s.signIn(t, adminEmail)
+	ann, _ := s.member(t, "ann")
+
+	got, err := s.client.GetCasino(context.Background(), &userv1.GetCasinoRequest{})
+	if err != nil || got.GetBetLeast() != 1 || got.GetBetMost() != 1000 || got.GetBetReturn() != 95 || len(got.GetMultipliers()) == 0 {
+		t.Fatalf("GetCasino = %v, %v", got, err)
+	}
+
+	if _, err := s.client.SetCasinoBets(admin, &userv1.SetCasinoBetsRequest{Least: 10, Most: 5, Return: 90}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("SetCasinoBets upside down: %v", err)
+	}
+	tuned := &userv1.SetCasinoBetsRequest{Least: 2, Most: 20, Return: 100}
+	if _, err := s.client.SetCasinoBets(ann, tuned); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("SetCasinoBets by ann: %v", err)
+	}
+	if _, err := s.client.SetCasinoBets(admin, tuned); err != nil {
+		t.Fatalf("SetCasinoBets: %v", err)
+	}
+
+	if _, err := s.client.BetCasino(ann, &userv1.BetCasinoRequest{Amount: 21, Multiplier: 200}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("BetCasino above the most: %v", err)
+	}
+	if _, err := s.client.BetCasino(ann, &userv1.BetCasinoRequest{Amount: 10, Multiplier: 7}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("BetCasino on ×0.07: %v", err)
+	}
+	if _, err := s.client.BetCasino(ann, &userv1.BetCasinoRequest{Amount: 10, Multiplier: 200}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("BetCasino without votes: %v", err)
+	}
+
+	created, err := s.client.CreateVoucher(admin, &userv1.CreateVoucherRequest{Votes: 10, Usages: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.RedeemVoucher(ann, &userv1.RedeemVoucherRequest{Token: created.GetVoucher().GetToken()}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Win or lose, the balance is the bet taken and the win paid.
+	bet, err := s.client.BetCasino(ann, &userv1.BetCasinoRequest{Amount: 10, Multiplier: 200})
+	if err != nil || bet.GetChance() != 5000 || bet.GetWon() != (bet.GetRoll() < 5000) ||
+		(bet.GetWon() && (bet.GetVotes() != 20 || bet.GetBalance() != 20)) ||
+		(!bet.GetWon() && (bet.GetVotes() != 0 || bet.GetBalance() != 0)) {
+		t.Fatalf("BetCasino = %v, %v", bet, err)
+	}
+
+	settings, err := s.client.GetCasinoSettings(admin, &userv1.GetCasinoSettingsRequest{})
+	if err != nil || settings.GetBetMost() != 20 || settings.GetBets() != 1 || settings.GetBetSpent() != 10 || settings.GetBetWon() != bet.GetVotes() {
+		t.Fatalf("GetCasinoSettings = %v, %v", settings, err)
+	}
+}

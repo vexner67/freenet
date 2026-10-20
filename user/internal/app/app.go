@@ -224,8 +224,8 @@ func (a *App) build(cfg config.Config) error {
 }
 
 // rateLimits are how often each user may follow people, send gifts, make
-// packs of stickers, be counted as seeing and following ads and spin the
-// casino.
+// packs of stickers, be counted as seeing and following ads and spin and
+// bet in the casino.
 func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
 		userv1.UserService_Follow_FullMethodName:   cfg.FollowLimits,
@@ -243,6 +243,7 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		userv1.UserService_ClickAd_FullMethodName: cfg.AdEventLimits,
 
 		userv1.UserService_SpinCasino_FullMethodName: cfg.CasinoLimits,
+		userv1.UserService_BetCasino_FullMethodName:  cfg.CasinoLimits,
 	}
 }
 

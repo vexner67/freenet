@@ -83,6 +83,8 @@ const (
 	UserService_GetCasinoSettings_FullMethodName  = "/user.v1.UserService/GetCasinoSettings"
 	UserService_SetCasino_FullMethodName          = "/user.v1.UserService/SetCasino"
 	UserService_SpinCasino_FullMethodName         = "/user.v1.UserService/SpinCasino"
+	UserService_SetCasinoBets_FullMethodName      = "/user.v1.UserService/SetCasinoBets"
+	UserService_BetCasino_FullMethodName          = "/user.v1.UserService/BetCasino"
 	UserService_SetVerified_FullMethodName        = "/user.v1.UserService/SetVerified"
 	UserService_SetForeignAgent_FullMethodName    = "/user.v1.UserService/SetForeignAgent"
 	UserService_ListAds_FullMethodName            = "/user.v1.UserService/ListAds"
@@ -254,6 +256,14 @@ type UserServiceClient interface {
 	GetCasinoSettings(ctx context.Context, in *GetCasinoSettingsRequest, opts ...grpc.CallOption) (*GetCasinoSettingsResponse, error)
 	SetCasino(ctx context.Context, in *SetCasinoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SpinCasino(ctx context.Context, in *SpinCasinoRequest, opts ...grpc.CallOption) (*SpinCasinoResponse, error)
+	// The bets of the casino: a player bets votes on a multiplier and either
+	// gets them multiplied or loses them. GetCasino tells their limits;
+	// SetCasinoBets is for the administrators; BetCasino takes the bet and
+	// pays the win in one transaction (InvalidArgument for a bet out of the
+	// limits or an unknown multiplier, FailedPrecondition "not enough
+	// votes").
+	SetCasinoBets(ctx context.Context, in *SetCasinoBetsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	BetCasino(ctx context.Context, in *BetCasinoRequest, opts ...grpc.CallOption) (*BetCasinoResponse, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
@@ -934,6 +944,26 @@ func (c *userServiceClient) SpinCasino(ctx context.Context, in *SpinCasinoReques
 	return out, nil
 }
 
+func (c *userServiceClient) SetCasinoBets(ctx context.Context, in *SetCasinoBetsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetCasinoBets_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) BetCasino(ctx context.Context, in *BetCasinoRequest, opts ...grpc.CallOption) (*BetCasinoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BetCasinoResponse)
+	err := c.cc.Invoke(ctx, UserService_BetCasino_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) SetVerified(ctx context.Context, in *SetVerifiedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -1220,6 +1250,14 @@ type UserServiceServer interface {
 	GetCasinoSettings(context.Context, *GetCasinoSettingsRequest) (*GetCasinoSettingsResponse, error)
 	SetCasino(context.Context, *SetCasinoRequest) (*emptypb.Empty, error)
 	SpinCasino(context.Context, *SpinCasinoRequest) (*SpinCasinoResponse, error)
+	// The bets of the casino: a player bets votes on a multiplier and either
+	// gets them multiplied or loses them. GetCasino tells their limits;
+	// SetCasinoBets is for the administrators; BetCasino takes the bet and
+	// pays the win in one transaction (InvalidArgument for a bet out of the
+	// limits or an unknown multiplier, FailedPrecondition "not enough
+	// votes").
+	SetCasinoBets(context.Context, *SetCasinoBetsRequest) (*emptypb.Empty, error)
+	BetCasino(context.Context, *BetCasinoRequest) (*BetCasinoResponse, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
@@ -1458,6 +1496,12 @@ func (UnimplementedUserServiceServer) SetCasino(context.Context, *SetCasinoReque
 }
 func (UnimplementedUserServiceServer) SpinCasino(context.Context, *SpinCasinoRequest) (*SpinCasinoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SpinCasino not implemented")
+}
+func (UnimplementedUserServiceServer) SetCasinoBets(context.Context, *SetCasinoBetsRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetCasinoBets not implemented")
+}
+func (UnimplementedUserServiceServer) BetCasino(context.Context, *BetCasinoRequest) (*BetCasinoResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BetCasino not implemented")
 }
 func (UnimplementedUserServiceServer) SetVerified(context.Context, *SetVerifiedRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetVerified not implemented")
@@ -2653,6 +2697,42 @@ func _UserService_SpinCasino_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_SetCasinoBets_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetCasinoBetsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetCasinoBets(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetCasinoBets_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetCasinoBets(ctx, req.(*SetCasinoBetsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_BetCasino_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BetCasinoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).BetCasino(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_BetCasino_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).BetCasino(ctx, req.(*BetCasinoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_SetVerified_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetVerifiedRequest)
 	if err := dec(in); err != nil {
@@ -3145,6 +3225,14 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SpinCasino",
 			Handler:    _UserService_SpinCasino_Handler,
+		},
+		{
+			MethodName: "SetCasinoBets",
+			Handler:    _UserService_SetCasinoBets_Handler,
+		},
+		{
+			MethodName: "BetCasino",
+			Handler:    _UserService_BetCasino_Handler,
 		},
 		{
 			MethodName: "SetVerified",

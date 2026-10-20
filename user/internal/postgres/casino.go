@@ -110,18 +110,86 @@ func (r *CasinoRepository) CountSpin(ctx context.Context, spent, won int64) erro
 	return nil
 }
 
+const getCasinoBetsQuery = `
+	SELECT
+		bet_least,
+		bet_most,
+		bet_return
+	FROM casino
+`
+
+func (r *CasinoRepository) Bets(ctx context.Context) (user.CasinoBets, error) {
+	var (
+		least, most int64
+		ret         int
+	)
+
+	err := r.conn(ctx).QueryRow(ctx, getCasinoBetsQuery).Scan(&least, &most, &ret)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return user.DefaultCasinoBets(), nil
+	}
+	if err != nil {
+		return user.CasinoBets{}, errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	bets, err := user.NewCasinoBets(least, most, ret)
+
+	return bets, errs.Wrap("user.NewCasinoBets", err)
+}
+
+// The migration keeps the one row of casino, so the bets only update it.
+const setCasinoBetsQuery = `
+	UPDATE casino
+	SET bet_least = $1,
+		bet_most = $2,
+		bet_return = $3
+`
+
+func (r *CasinoRepository) SetBets(ctx context.Context, bets user.CasinoBets) error {
+	if _, err := r.conn(ctx).Exec(ctx, setCasinoBetsQuery, bets.Least(), bets.Most(), bets.Return()); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	return nil
+}
+
+const countCasinoBetQuery = `
+	UPDATE casino
+	SET bets = bets + 1,
+		bet_spent = bet_spent + $1,
+		bet_won = bet_won + $2
+`
+
+func (r *CasinoRepository) CountBet(ctx context.Context, spent, won int64) error {
+	if _, err := r.conn(ctx).Exec(ctx, countCasinoBetQuery, spent, won); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	return nil
+}
+
 const getCasinoStatsQuery = `
 	SELECT
 		spins,
 		spent,
-		won
+		won,
+		bets,
+		bet_spent,
+		bet_won
 	FROM casino
 `
 
 func (r *CasinoRepository) Stats(ctx context.Context) (user.CasinoStats, error) {
 	var stats user.CasinoStats
 
-	err := r.conn(ctx).QueryRow(ctx, getCasinoStatsQuery).Scan(&stats.Spins, &stats.Spent, &stats.Won)
+	err := r.conn(ctx).QueryRow(ctx, getCasinoStatsQuery).Scan(
+		&stats.Spins,
+		&stats.Spent,
+		&stats.Won,
+		&stats.Bets,
+		&stats.BetSpent,
+		&stats.BetWon,
+	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return user.CasinoStats{}, nil
 	}

@@ -112,9 +112,12 @@ func (c Casino) Pick(roll int64) (int, error) {
 }
 
 // CasinoStats is how the casino does: spins made, votes spent on them and
-// won.
+// won, and the same of the bets.
 type CasinoStats struct {
-	Spins int64
-	Spent int64
-	Won   int64
+	Spins    int64
+	Spent    int64
+	Won      int64
+	Bets     int64
+	BetSpent int64
+	BetWon   int64
 }
