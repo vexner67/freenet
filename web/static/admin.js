@@ -544,7 +544,7 @@ async function decor(answered) {
 // weights, the chance of each and the share of the votes the casino gives
 // back by them as they are typed, and how it has done in fact.
 async function casino(answered) {
-  const [{ price, prizes, spins, spent, won, bets, wagers }, { bets: { multipliers } }] = await Promise.all([answered.settings, answered.casino]);
+  const { price, prizes, spins, spent, won, bets, wagers } = await answered;
   const rows = $('casino-rows');
   const priceField = $('casino-price');
   const save = $('casino-form').querySelector('button[type=submit]');
@@ -616,14 +616,14 @@ async function casino(answered) {
     }
   });
 
-  betSettings(bets, wagers, multipliers);
+  betSettings(bets, wagers);
   $('casino').hidden = false;
 }
 
 // betSettings is "Ставка" of "Казино": the limits of a bet and the return,
 // the chance of each multiplier by it as it is typed, and how the bets
 // have done in fact.
-function betSettings(bets, wagers, multipliers) {
+function betSettings(bets, wagers) {
   const least = $('bets-least');
   const most = $('bets-most');
   const ret = $('bets-return');
@@ -633,7 +633,7 @@ function betSettings(bets, wagers, multipliers) {
     const percent = Number(ret.value);
 
     $('bets-chances').textContent = percent >= 1 && percent <= 100
-      ? tr('Шансы: {0}.', multipliers.map((m) => `${betMultiplier(m)} — ${betChance(betOdds(percent, m))}`).join(', '))
+      ? tr('Шансы: {0}.', bets.multipliers.map((m) => `${betMultiplier(m)} — ${betChance(betOdds(percent, m))}`).join(', '))
       : '';
   }
 
@@ -850,7 +850,7 @@ const reads = {
   '/admin/gifts': () => ({ catalog: started(api.giftCatalog()), rate: started(api.voteRate()) }),
   '/admin/ads': () => started(api.ads(true)),
   '/admin/decor': () => started(api.decor()),
-  '/admin/casino': () => ({ settings: started(api.casinoSettings()), casino: started(api.casino()) }),
+  '/admin/casino': () => started(api.casinoSettings()),
 }[adID ? '/admin/ads' : path]?.();
 
 const me = await currentUser().catch(() => null);

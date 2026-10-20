@@ -22,6 +22,9 @@ let lit = 0;
 const session = { spins: 0, spent: 0, won: 0 };
 const wagers = { count: 0, spent: 0, won: 0 };
 let balance = 0;
+let playing = false;
+// refreshBet redraws the form of "Ставка" once it is made.
+let refreshBet = () => {};
 
 const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -38,6 +41,17 @@ function light(i) {
   cells[lit]?.classList.remove('lit');
   lit = i;
   cells[lit]?.classList.add('lit');
+}
+
+// setPlaying locks both games while a spin or a bet is under way: each
+// answer sets the balance, and one that came after the other would show an
+// old one; the tabs and the stake stay as they are too.
+function setPlaying(on) {
+  playing = on;
+  $('spin').disabled = on;
+  for (const control of $('bet-form').querySelectorAll('input, button')) control.disabled = on;
+  for (const tab of [$('tab-wheel'), $('tab-bet')]) tab.setAttribute('aria-disabled', String(on));
+  refreshBet();
 }
 
 function showBalance(votes) {
@@ -73,11 +87,11 @@ function showResult(votes) {
 }
 
 async function spin(price) {
-  const button = $('spin');
+  if (playing) return;
 
   hideError($('error'));
   $('result').hidden = true;
-  button.disabled = true;
+  setPlaying(true);
 
   try {
     const won = await api.spinCasino();
@@ -93,7 +107,7 @@ async function spin(price) {
   } catch (e) {
     showError($('error'), e);
   } finally {
-    button.disabled = false;
+    setPlaying(false);
   }
 }
 
@@ -116,6 +130,7 @@ function watchTabs() {
     tab.addEventListener('click', (event) => {
       if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
       event.preventDefault();
+      if (playing) return;
       history.pushState(null, '', tab.href);
       showGame(gameOf(tab.href));
     });
@@ -129,7 +144,6 @@ function watchTabs() {
 function betting(bets, signedIn) {
   const amount = $('bet-amount');
   let chosen = bets.multipliers.includes(200) ? 200 : bets.multipliers[0];
-  let busy = false;
 
   amount.min = String(bets.least);
   amount.max = String(bets.most);
@@ -143,7 +157,7 @@ function betting(bets, signedIn) {
     );
     button.setAttribute('role', 'radio');
     button.addEventListener('click', () => {
-      if (busy) return;
+      if (playing) return;
       chosen = m;
       update();
     });
@@ -169,7 +183,7 @@ function betting(bets, signedIn) {
       ? tr('Шанс выигрыша {0}, выигрыш — {1}.', betChance(odds), votesCount(betPrize(votes, chosen)))
       : tr('Ставка — от {0} до {1}.', bets.least, votesCount(bets.most));
     $('bet').textContent = fits ? tr('Поставить {0}', votesCount(votes)) : tr('Поставить');
-    $('bet').disabled = busy || !fits;
+    $('bet').disabled = playing || !fits;
   }
 
   for (const quick of $('bet-form').querySelectorAll('[data-quick]')) {
@@ -204,15 +218,14 @@ function betting(bets, signedIn) {
 
   $('bet-form').addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (!signedIn || busy) return;
+    if (!signedIn || playing) return;
 
     const votes = stake();
     const multiplier = chosen;
 
     hideError($('error'));
     $('bet-result').hidden = true;
-    busy = true;
-    update();
+    setPlaying(true);
 
     try {
       const wager = await api.betCasino(votes, multiplier);
@@ -229,11 +242,11 @@ function betting(bets, signedIn) {
     } catch (e) {
       showError($('error'), e);
     } finally {
-      busy = false;
-      update();
+      setPlaying(false);
     }
   });
 
+  refreshBet = update;
   if (signedIn) {
     $('bet').hidden = false;
   } else {
