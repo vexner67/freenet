@@ -11,7 +11,10 @@ import { avatarURL, el, fullName, pagePath, showError, hideError } from './layou
 import { button, openModal } from './modal.js';
 import { tr } from './i18n.js';
 
-const KEY = 'freenet.feed';
+// The key is new since ten posts with the posts on the walls of others
+// became the default: what browsers kept under the old one is let go.
+const KEY = 'freenet.newsfeed';
+const OLD_KEY = 'freenet.feed';
 
 // At most this many sources stop being ignored at once, as on openvk.
 const MAX_UNIGNORED = 10;
@@ -20,6 +23,7 @@ const MAX_UNIGNORED = 10;
 // the page, then the news are as by default.
 export function readFeedSettings() {
   try {
+    localStorage.removeItem(OLD_KEY);
     return feedSettings(localStorage.getItem(KEY));
   } catch {
     return { ...defaultFeedSettings };
