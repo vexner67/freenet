@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="80" viewBox="0 0 64 80">
+<defs>
+<linearGradient id="fir" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2f7a3a"/><stop offset=".55" stop-color="#226330"/><stop offset="1" stop-color="#184b24"/></linearGradient>
+<radialGradient id="shine" cx=".35" cy=".35" r=".7"><stop offset="0" stop-color="#fff" stop-opacity=".8"/><stop offset=".35" stop-color="#fff" stop-opacity="0"/></radialGradient>
+</defs>
+<style>
+.light{animation:twinkle 1.8s ease-in-out infinite alternate}
+.l2{animation-delay:-.9s}
+@keyframes twinkle{from{opacity:1}to{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.light{animation:none}}
+</style>
+<rect x="28" y="66" width="8" height="8" fill="#7a4b26"/>
+<path d="M32 8 14 34h8L8 52h9L4 68h56L47 52h9L42 34h8z" fill="url(#fir)" stroke="#123b1c" stroke-width="1" stroke-linejoin="round"/>
+<path d="M17 31.5c5 2.5 12 3 23-1M12 49.5c9 3.5 22 4 37-1.5M8 65.5c13 3.5 31 3.5 48-1" fill="none" stroke="#e6c34a" stroke-width="1.2" stroke-linecap="round" opacity=".9"/>
+<g><circle cx="26" cy="26" r="2.6" fill="#d93a32"/><circle cx="38" cy="42" r="3" fill="#2f78d0"/><circle cx="21" cy="45" r="2.6" fill="#e9b52a"/><circle cx="43" cy="60" r="3.2" fill="#d93a32"/><circle cx="18" cy="61" r="3" fill="#8e44ad"/><circle cx="31" cy="56" r="2.4" fill="#e9b52a"/></g>
+<g fill="url(#shine)"><circle cx="26" cy="26" r="2.6"/><circle cx="38" cy="42" r="3"/><circle cx="21" cy="45" r="2.6"/><circle cx="43" cy="60" r="3.2"/><circle cx="18" cy="61" r="3"/><circle cx="31" cy="56" r="2.4"/></g>
+<g fill="#fff6b0"><circle class="light" cx="33" cy="20" r="1.1"/><circle class="light l2" cx="29" cy="36" r="1.1"/><circle class="light" cx="44" cy="49" r="1.1"/><circle class="light l2" cx="13" cy="56" r="1.1"/><circle class="light" cx="51" cy="63" r="1.1"/><circle class="light l2" cx="26" cy="64" r="1.1"/></g>
+<path d="m32 1.5 1.9 3.9 4.3.6-3.1 3 .7 4.3-3.8-2-3.8 2 .7-4.3-3.1-3 4.3-.6z" fill="#ffd43b" stroke="#c99a0e" stroke-width=".7" stroke-linejoin="round"/>
+<path d="M4 74.5c8-2.2 48-2.2 56 0v1.5H4z" fill="#eef3f8"/>
+<rect x="44" y="66" width="11" height="9" rx="1" fill="#2f78d0"/><rect x="48.6" y="66" width="1.8" height="9" fill="#f2d14b"/><path d="M49.5 66c-2-2.4-4-2.2-3.4-.6.5 1 2.2.9 3.4.6.8-2.6 3.5-3 3.6-1.4 0 1-1.8 1.4-3.6 1.4z" fill="none" stroke="#f2d14b" stroke-width="1"/>
+</svg>

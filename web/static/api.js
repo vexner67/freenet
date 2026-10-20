@@ -648,6 +648,8 @@ export const api = {
   giftCatalog: () => request('GET', '/api/v1/gifts'),
   voteRate: () => request('GET', '/api/v1/vote-rate'),
   setVoteRate: (kopecks) => authorized('PUT', '/api/v1/vote-rate', { kopecks }),
+  decor: () => request('GET', '/api/v1/decor'),
+  setDecor: (mode) => authorized('PUT', '/api/v1/decor', { mode }),
   setGiftPrice: (gift, price) => authorized('PUT', `/api/v1/gifts/${encodeURIComponent(gift)}/price`, { price }),
   gifts: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/gifts`, cursor, limit)),
   sendGift: (nickname, gift, caption, anonymous) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/gifts`, { gift, caption, anonymous }),

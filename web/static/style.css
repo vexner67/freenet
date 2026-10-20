@@ -54,6 +54,7 @@
   --text-464646: #464646;
   --text-2b587a: #2b587a;
   --text-c33: #c33;
+  --text-b4c6da: #b4c6da;
   --text-555: #555;
   --text-5c5c5c: #5c5c5c;
   --text-626262: #626262;
@@ -173,6 +174,51 @@ h1.page-title { font-size: inherit; }
   box-shadow: inset 1px 0 var(--line-6f6f6f);
 }
 .header-links a:hover { background: rgba(255, 255, 255, 0.08); text-decoration: none; }
+
+/* The New Year decoration (newyear.js): a garland under the header, a
+   hat on the "f" of the logo, a fir tree with a greeting under the menu
+   and a few flakes of snow, the colour of which is the canvas's. */
+
+.festive .header { position: relative; }
+.festive .header::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 6px;
+  right: 6px;
+  height: 18px;
+  background: url("/static/newyear/garland.svg") repeat-x;
+  pointer-events: none;
+  z-index: 2;
+}
+.festive .columns { margin-top: 18px; }
+.festive .logo { position: relative; }
+.festive .logo::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -7px;
+  width: 25px;
+  height: 20px;
+  background: url("/static/newyear/hat.svg") center / contain no-repeat;
+  transform: rotate(-18deg);
+  pointer-events: none;
+}
+
+.newyear { margin-top: 16px; text-align: center; }
+.newyear-tree { display: block; width: 64px; height: 80px; margin: 0 auto 4px; }
+.newyear-greeting { color: var(--text-c33); font-weight: bold; }
+.newyear-snow { display: inline-block; margin-top: 3px; color: var(--text-808080); }
+
+.snow {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--text-b4c6da);
+  pointer-events: none;
+  z-index: 30;
+}
 
 /* Columns */
 
@@ -1718,6 +1764,9 @@ a.poll-result-name { cursor: pointer; }
   .sidebar { width: auto; }
   .sidebar:has(> .menu) { display: none; }
   .menu-open .sidebar:has(> .menu) { display: block; border-bottom: 1px solid var(--line-e0e0e0); }
+  /* Under the menu of a phone, the greeting without the tree. */
+  .newyear { margin: 6px 0 8px; }
+  .newyear-tree { display: none; }
   .menu a { margin: 0; padding: 9px 12px; border-top: 1px solid var(--line-ececec); }
   .menu .menu-edit, .menu .menu-edit:hover { border-top-color: var(--line-ececec); }
   .menu .menu-phone { display: block; }

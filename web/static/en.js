@@ -1630,4 +1630,19 @@ export default {
   'Заголовок объявления — не длиннее 100 символов.': 'The title of an ad is at most 100 characters.',
   'Текст объявления — не длиннее 500 символов.': 'The text of an ad is at most 500 characters.',
   'Объявлений слишком много: не больше 100. Удалите ненужные.': 'Too many ads: at most 100. Delete the ones you do not need.',
+
+  // The New Year decoration
+  'Оформление': 'Decoration',
+  'Новогоднее оформление сайта, как на сайтах 2000-х: падающий снег, гирлянда под шапкой, шапка Деда Мороза на логотипе и ёлочка с поздравлением под меню. Снег каждый может выключить у себя ссылкой под ёлочкой.': 'The New Year decoration of the site, as the sites of the 2000s wore it: falling snow, a garland under the header, a Santa hat on the logo and a fir tree with a greeting under the menu. Anyone can turn the snow off for themselves with the link under the tree.',
+  'Новогоднее оформление': 'New Year decoration',
+  'по календарю': 'by the calendar',
+  'включено': 'on',
+  'выключено': 'off',
+  'По календарю — с 15 декабря по 14 января, до старого Нового года, по московскому времени. Посетители увидят изменение в течение 10 минут.': 'By the calendar: from December 15 to January 14, the "old" New Year, Moscow time. Visitors see a change within 10 minutes.',
+  'Сейчас сайт украшен к Новому году.': 'The site is decorated for the New Year now.',
+  'Сейчас сайт не украшен.': 'The site is not decorated now.',
+  'С наступающим Новым годом!': 'Happy holidays!',
+  'С Новым годом!': 'Happy New Year!',
+  'Включить снег': 'Turn the snow on',
+  'Выключить снег': 'Turn the snow off',
 };
