@@ -45,19 +45,20 @@ func TestCasinoRepository(t *testing.T) {
 		t.Fatalf("Casino = %+v, %v; want the tuned one", got, err)
 	}
 
-	before, err := casinos.Stats(ctx)
+	before, err := casinos.Settings(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err = casinos.CountSpin(ctx, 3, 1000); err != nil {
 		t.Fatal(err)
 	}
-	after, err := casinos.Stats(ctx)
+	after, err := casinos.Settings(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if after.Spins-before.Spins != 1 || after.Spent-before.Spent != 3 || after.Won-before.Won != 1000 {
-		t.Fatalf("Stats went from %+v to %+v", before, after)
+	if after.Stats.Spins-before.Stats.Spins != 1 || after.Stats.Spent-before.Stats.Spent != 3 || after.Stats.Won-before.Stats.Won != 1000 ||
+		after.Casino.Price() != 3 || after.Bets != user.DefaultCasinoBets() {
+		t.Fatalf("Settings went from %+v to %+v", before, after)
 	}
 
 	if got, err := casinos.Bets(ctx); err != nil || got != user.DefaultCasinoBets() {
@@ -78,11 +79,24 @@ func TestCasinoRepository(t *testing.T) {
 	if err = casinos.CountBet(ctx, 50, 100); err != nil {
 		t.Fatal(err)
 	}
-	bet, err := casinos.Stats(ctx)
+	bet, err := casinos.Settings(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bet.Bets-after.Bets != 1 || bet.BetSpent-after.BetSpent != 50 || bet.BetWon-after.BetWon != 100 || bet.Spins != after.Spins {
-		t.Fatalf("Stats went from %+v to %+v", after, bet)
+	if bet.Stats.Wagers-after.Stats.Wagers != 1 || bet.Stats.WagerSpent-after.Stats.WagerSpent != 50 ||
+		bet.Stats.WagerWon-after.Stats.WagerWon != 100 || bet.Stats.Spins != after.Stats.Spins || bet.Bets != bets {
+		t.Fatalf("Settings went from %+v to %+v", after, bet)
+	}
+
+	// Without the row the bets are kept all the same, with the default
+	// casino; the cleanup puts the row back as the migration made it.
+	if _, err = pool.Exec(ctx, "DELETE FROM casino"); err != nil {
+		t.Fatal(err)
+	}
+	if err = casinos.SetBets(ctx, bets); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := casinos.Settings(ctx); err != nil || got.Bets != bets || got.Casino.Price() != user.DefaultCasino().Price() {
+		t.Fatalf("Settings after SetBets without the row = %+v, %v", got, err)
 	}
 }

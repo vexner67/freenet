@@ -7020,9 +7020,11 @@ type GetCasinoSettingsResponse struct {
 	BetMost   int64 `protobuf:"varint,7,opt,name=bet_most,json=betMost,proto3" json:"bet_most,omitempty"`
 	BetReturn int32 `protobuf:"varint,8,opt,name=bet_return,json=betReturn,proto3" json:"bet_return,omitempty"`
 	// How the bets do: bets made, votes bet and won.
-	Bets          int64 `protobuf:"varint,9,opt,name=bets,proto3" json:"bets,omitempty"`
-	BetSpent      int64 `protobuf:"varint,10,opt,name=bet_spent,json=betSpent,proto3" json:"bet_spent,omitempty"`
-	BetWon        int64 `protobuf:"varint,11,opt,name=bet_won,json=betWon,proto3" json:"bet_won,omitempty"`
+	Bets     int64 `protobuf:"varint,9,opt,name=bets,proto3" json:"bets,omitempty"`
+	BetSpent int64 `protobuf:"varint,10,opt,name=bet_spent,json=betSpent,proto3" json:"bet_spent,omitempty"`
+	BetWon   int64 `protobuf:"varint,11,opt,name=bet_won,json=betWon,proto3" json:"bet_won,omitempty"`
+	// The multipliers a bet may take, in hundredths, as GetCasino says.
+	Multipliers   []int32 `protobuf:"varint,12,rep,packed,name=multipliers,proto3" json:"multipliers,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7132,6 +7134,13 @@ func (x *GetCasinoSettingsResponse) GetBetWon() int64 {
 		return x.BetWon
 	}
 	return 0
+}
+
+func (x *GetCasinoSettingsResponse) GetMultipliers() []int32 {
+	if x != nil {
+		return x.Multipliers
+	}
+	return nil
 }
 
 type SetCasinoRequest struct {
@@ -9724,7 +9733,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"bet_return\x18\x05 \x01(\x05R\tbetReturn\x12 \n" +
 	"\vmultipliers\x18\x06 \x03(\x05R\vmultipliers\"\x1a\n" +
-	"\x18GetCasinoSettingsRequest\"\xbe\x02\n" +
+	"\x18GetCasinoSettingsRequest\"\xe0\x02\n" +
 	"\x19GetCasinoSettingsResponse\x12\x14\n" +
 	"\x05price\x18\x01 \x01(\x03R\x05price\x12,\n" +
 	"\x06prizes\x18\x02 \x03(\v2\x14.user.v1.CasinoPrizeR\x06prizes\x12\x14\n" +
@@ -9738,7 +9747,8 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x04bets\x18\t \x01(\x03R\x04bets\x12\x1b\n" +
 	"\tbet_spent\x18\n" +
 	" \x01(\x03R\bbetSpent\x12\x17\n" +
-	"\abet_won\x18\v \x01(\x03R\x06betWon\"V\n" +
+	"\abet_won\x18\v \x01(\x03R\x06betWon\x12 \n" +
+	"\vmultipliers\x18\f \x03(\x05R\vmultipliers\"V\n" +
 	"\x10SetCasinoRequest\x12\x14\n" +
 	"\x05price\x18\x01 \x01(\x03R\x05price\x12,\n" +
 	"\x06prizes\x18\x02 \x03(\v2\x14.user.v1.CasinoPrizeR\x06prizes\"\x13\n" +

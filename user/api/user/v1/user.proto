@@ -1138,6 +1138,8 @@ message GetCasinoSettingsResponse {
   int64 bets = 9;
   int64 bet_spent = 10;
   int64 bet_won = 11;
+  // The multipliers a bet may take, in hundredths, as GetCasino says.
+  repeated int32 multipliers = 12;
 }
 
 message SetCasinoRequest {

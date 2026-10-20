@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/pgpool"
+	"github.com/vexner67/freenet/user/internal/service"
 	"github.com/vexner67/freenet/user/internal/user"
 )
 
@@ -56,14 +57,9 @@ func (r *CasinoRepository) Casino(ctx context.Context) (user.Casino, error) {
 		return user.Casino{}, errs.Wrap("r.conn.QueryRow", err)
 	}
 
-	prizes := make([]user.CasinoPrize, len(stored))
-	for i, p := range stored {
-		prizes[i] = user.CasinoPrize{Votes: p.Votes, Weight: p.Weight}
-	}
+	casino, err := restoreCasino(price, stored)
 
-	casino, err := user.NewCasino(price, prizes)
-
-	return casino, errs.Wrap("user.NewCasino", err)
+	return casino, errs.Wrap("restoreCasino", err)
 }
 
 const setCasinoQuery = `
@@ -77,15 +73,34 @@ const setCasinoQuery = `
 		prizes = EXCLUDED.prizes
 `
 
-func (r *CasinoRepository) SetCasino(ctx context.Context, casino user.Casino) error {
+// storedPrizes are the prizes of casino as the column keeps them.
+func storedPrizes(casino user.Casino) ([]byte, error) {
 	prizes := make([]casinoPrize, 0, len(casino.Prizes()))
 	for _, p := range casino.Prizes() {
 		prizes = append(prizes, casinoPrize{Votes: p.Votes, Weight: p.Weight})
 	}
 
 	stored, err := json.Marshal(prizes)
+
+	return stored, errs.Wrap("json.Marshal", err)
+}
+
+// restoreCasino is the casino of a row: price and prizes.
+func restoreCasino(price int64, stored []casinoPrize) (user.Casino, error) {
+	prizes := make([]user.CasinoPrize, len(stored))
+	for i, p := range stored {
+		prizes[i] = user.CasinoPrize{Votes: p.Votes, Weight: p.Weight}
+	}
+
+	casino, err := user.NewCasino(price, prizes)
+
+	return casino, errs.Wrap("user.NewCasino", err)
+}
+
+func (r *CasinoRepository) SetCasino(ctx context.Context, casino user.Casino) error {
+	stored, err := storedPrizes(casino)
 	if err != nil {
-		return errs.Wrap("json.Marshal", err)
+		return errs.Wrap("storedPrizes", err)
 	}
 
 	if _, err = r.conn(ctx).Exec(ctx, setCasinoQuery, casino.Price(), stored); err != nil {
@@ -137,16 +152,33 @@ func (r *CasinoRepository) Bets(ctx context.Context) (user.CasinoBets, error) {
 	return bets, errs.Wrap("user.NewCasinoBets", err)
 }
 
-// The migration keeps the one row of casino, so the bets only update it.
+// Without the row the bets come with the default casino, as Casino reads
+// it then, so that they are kept all the same.
 const setCasinoBetsQuery = `
-	UPDATE casino
-	SET bet_least = $1,
-		bet_most = $2,
-		bet_return = $3
+	INSERT INTO casino (
+		price,
+		prizes,
+		bet_least,
+		bet_most,
+		bet_return
+	)
+	VALUES ($1, $2, $3, $4, $5)
+	ON CONFLICT (only_row) DO UPDATE
+	SET bet_least = EXCLUDED.bet_least,
+		bet_most = EXCLUDED.bet_most,
+		bet_return = EXCLUDED.bet_return
 `
 
 func (r *CasinoRepository) SetBets(ctx context.Context, bets user.CasinoBets) error {
-	if _, err := r.conn(ctx).Exec(ctx, setCasinoBetsQuery, bets.Least(), bets.Most(), bets.Return()); err != nil {
+	casino := user.DefaultCasino()
+
+	prizes, err := storedPrizes(casino)
+	if err != nil {
+		return errs.Wrap("storedPrizes", err)
+	}
+
+	_, err = r.conn(ctx).Exec(ctx, setCasinoBetsQuery, casino.Price(), prizes, bets.Least(), bets.Most(), bets.Return())
+	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
 
@@ -168,8 +200,13 @@ func (r *CasinoRepository) CountBet(ctx context.Context, spent, won int64) error
 	return nil
 }
 
-const getCasinoStatsQuery = `
+const getCasinoSettingsQuery = `
 	SELECT
+		price,
+		prizes,
+		bet_least,
+		bet_most,
+		bet_return,
 		spins,
 		spent,
 		won,
@@ -179,23 +216,44 @@ const getCasinoStatsQuery = `
 	FROM casino
 `
 
-func (r *CasinoRepository) Stats(ctx context.Context) (user.CasinoStats, error) {
-	var stats user.CasinoStats
+func (r *CasinoRepository) Settings(ctx context.Context) (service.CasinoSettings, error) {
+	var (
+		price       int64
+		stored      []casinoPrize
+		least, most int64
+		ret         int
+		stats       user.CasinoStats
+	)
 
-	err := r.conn(ctx).QueryRow(ctx, getCasinoStatsQuery).Scan(
+	err := r.conn(ctx).QueryRow(ctx, getCasinoSettingsQuery).Scan(
+		&price,
+		&stored,
+		&least,
+		&most,
+		&ret,
 		&stats.Spins,
 		&stats.Spent,
 		&stats.Won,
-		&stats.Bets,
-		&stats.BetSpent,
-		&stats.BetWon,
+		&stats.Wagers,
+		&stats.WagerSpent,
+		&stats.WagerWon,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return user.CasinoStats{}, nil
+		return service.CasinoSettings{Casino: user.DefaultCasino(), Bets: user.DefaultCasinoBets()}, nil
 	}
 	if err != nil {
-		return user.CasinoStats{}, errs.Wrap("r.conn.QueryRow", err)
+		return service.CasinoSettings{}, errs.Wrap("r.conn.QueryRow", err)
 	}
 
-	return stats, nil
+	casino, err := restoreCasino(price, stored)
+	if err != nil {
+		return service.CasinoSettings{}, errs.Wrap("restoreCasino", err)
+	}
+
+	bets, err := user.NewCasinoBets(least, most, ret)
+	if err != nil {
+		return service.CasinoSettings{}, errs.Wrap("user.NewCasinoBets", err)
+	}
+
+	return service.CasinoSettings{Casino: casino, Bets: bets, Stats: stats}, nil
 }
