@@ -838,3 +838,27 @@ func fromProtoAdChange(req *userv1.EditAdRequest) (user.AdChange, error) {
 
 	return c, nil
 }
+
+func toProtoDecor(d user.Decor) userv1.Decor {
+	switch d {
+	case user.DecorOn:
+		return userv1.Decor_DECOR_ON
+	case user.DecorOff:
+		return userv1.Decor_DECOR_OFF
+	default:
+		return userv1.Decor_DECOR_AUTO
+	}
+}
+
+func fromProtoDecor(d userv1.Decor) (user.Decor, error) {
+	switch d {
+	case userv1.Decor_DECOR_AUTO:
+		return user.DecorAuto, nil
+	case userv1.Decor_DECOR_ON:
+		return user.DecorOn, nil
+	case userv1.Decor_DECOR_OFF:
+		return user.DecorOff, nil
+	default:
+		return "", user.ErrDecorInvalid
+	}
+}
