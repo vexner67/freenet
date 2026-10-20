@@ -75,6 +75,10 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.FailedPrecondition, user.ErrStickerPackTaken.Error()), true
 	case errors.Is(err, user.ErrCannotChangeStickerPack):
 		return status.New(codes.PermissionDenied, user.ErrCannotChangeStickerPack.Error()), true
+	case errors.Is(err, user.ErrBetAmount):
+		return status.New(codes.InvalidArgument, user.ErrBetAmount.Error()), true
+	case errors.Is(err, user.ErrBetMultiplier):
+		return status.New(codes.InvalidArgument, user.ErrBetMultiplier.Error()), true
 	case errors.Is(err, user.ErrNotEnoughVotes):
 		return status.New(codes.FailedPrecondition, user.ErrNotEnoughVotes.Error()), true
 	case errors.Is(err, user.ErrTransferSelf):

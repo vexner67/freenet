@@ -17,6 +17,9 @@ type CasinoService interface {
 	Settings(ctx context.Context, adminID uuid.UUID) (service.CasinoSettings, error)
 	SetCasino(ctx context.Context, adminID uuid.UUID, casino user.Casino) error
 	Spin(ctx context.Context, userID uuid.UUID) (service.Spin, error)
+	Bets(ctx context.Context) (user.CasinoBets, error)
+	SetBets(ctx context.Context, adminID uuid.UUID, bets user.CasinoBets) error
+	Bet(ctx context.Context, userID uuid.UUID, amount int64, multiplier int) (service.Wager, error)
 }
 
 func (h *UserHandler) GetCasino(ctx context.Context, _ *userv1.GetCasinoRequest) (*userv1.GetCasinoResponse, error) {
@@ -25,9 +28,22 @@ func (h *UserHandler) GetCasino(ctx context.Context, _ *userv1.GetCasinoRequest)
 		return nil, err
 	}
 
-	resp := &userv1.GetCasinoResponse{Price: casino.Price()}
+	bets, err := h.casinos.Bets(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &userv1.GetCasinoResponse{
+		Price:     casino.Price(),
+		BetLeast:  bets.Least(),
+		BetMost:   bets.Most(),
+		BetReturn: int32(bets.Return()), //nolint:gosec // at most user.MaxBetReturn
+	}
 	for _, p := range casino.Prizes() {
 		resp.Prizes = append(resp.Prizes, p.Votes)
+	}
+	for _, m := range user.BetMultipliers {
+		resp.Multipliers = append(resp.Multipliers, int32(m)) //nolint:gosec // a few hundred
 	}
 
 	return resp, nil
@@ -45,11 +61,17 @@ func (h *UserHandler) GetCasinoSettings(ctx context.Context, _ *userv1.GetCasino
 	}
 
 	return &userv1.GetCasinoSettingsResponse{
-		Price:  settings.Casino.Price(),
-		Prizes: toProtoCasinoPrizes(settings.Casino.Prizes()),
-		Spins:  settings.Stats.Spins,
-		Spent:  settings.Stats.Spent,
-		Won:    settings.Stats.Won,
+		Price:     settings.Casino.Price(),
+		Prizes:    toProtoCasinoPrizes(settings.Casino.Prizes()),
+		Spins:     settings.Stats.Spins,
+		Spent:     settings.Stats.Spent,
+		Won:       settings.Stats.Won,
+		BetLeast:  settings.Bets.Least(),
+		BetMost:   settings.Bets.Most(),
+		BetReturn: int32(settings.Bets.Return()), //nolint:gosec // at most user.MaxBetReturn
+		Bets:      settings.Stats.Bets,
+		BetSpent:  settings.Stats.BetSpent,
+		BetWon:    settings.Stats.BetWon,
 	}, nil
 }
 
@@ -86,5 +108,43 @@ func (h *UserHandler) SpinCasino(ctx context.Context, _ *userv1.SpinCasinoReques
 		Prize:   int32(spin.Prize), //nolint:gosec // there are at most user.MaxCasinoPrizes
 		Votes:   spin.Votes,
 		Balance: spin.Balance,
+	}, nil
+}
+
+func (h *UserHandler) SetCasinoBets(ctx context.Context, req *userv1.SetCasinoBetsRequest) (*emptypb.Empty, error) {
+	adminID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	bets, err := user.NewCasinoBets(req.GetLeast(), req.GetMost(), int(req.GetReturn()))
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err = h.casinos.SetBets(ctx, adminID, bets); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *UserHandler) BetCasino(ctx context.Context, req *userv1.BetCasinoRequest) (*userv1.BetCasinoResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	wager, err := h.casinos.Bet(ctx, userID, req.GetAmount(), int(req.GetMultiplier()))
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.BetCasinoResponse{
+		Won:     wager.Won,
+		Roll:    int32(wager.Roll),   //nolint:gosec // below user.BetOdds
+		Chance:  int32(wager.Chance), //nolint:gosec // at most user.BetOdds
+		Votes:   wager.Votes,
+		Balance: wager.Balance,
 	}, nil
 }

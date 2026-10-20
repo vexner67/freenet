@@ -12,12 +12,14 @@ import (
 type CasinoRepository struct {
 	mu     sync.RWMutex
 	casino user.Casino
+	bets   user.CasinoBets
 	stats  user.CasinoStats
 }
 
 func NewCasinoRepository() *CasinoRepository {
 	return &CasinoRepository{
 		casino: user.DefaultCasino(),
+		bets:   user.DefaultCasinoBets(),
 	}
 }
 
@@ -56,6 +58,45 @@ func (r *CasinoRepository) CountSpin(ctx context.Context, spent, won int64) erro
 	r.stats.Spins++
 	r.stats.Spent += spent
 	r.stats.Won += won
+
+	return nil
+}
+
+func (r *CasinoRepository) Bets(ctx context.Context) (user.CasinoBets, error) {
+	if err := ctx.Err(); err != nil {
+		return user.CasinoBets{}, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	return r.bets, nil
+}
+
+func (r *CasinoRepository) SetBets(ctx context.Context, bets user.CasinoBets) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.bets = bets
+
+	return nil
+}
+
+func (r *CasinoRepository) CountBet(ctx context.Context, spent, won int64) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.stats.Bets++
+	r.stats.BetSpent += spent
+	r.stats.BetWon += won
 
 	return nil
 }

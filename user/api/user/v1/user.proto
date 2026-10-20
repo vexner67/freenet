@@ -174,6 +174,14 @@ service UserService {
   rpc GetCasinoSettings(GetCasinoSettingsRequest) returns (GetCasinoSettingsResponse);
   rpc SetCasino(SetCasinoRequest) returns (google.protobuf.Empty);
   rpc SpinCasino(SpinCasinoRequest) returns (SpinCasinoResponse);
+  // The bets of the casino: a player bets votes on a multiplier and either
+  // gets them multiplied or loses them. GetCasino tells their limits;
+  // SetCasinoBets is for the administrators; BetCasino takes the bet and
+  // pays the win in one transaction (InvalidArgument for a bet out of the
+  // limits or an unknown multiplier, FailedPrecondition "not enough
+  // votes").
+  rpc SetCasinoBets(SetCasinoBetsRequest) returns (google.protobuf.Empty);
+  rpc BetCasino(BetCasinoRequest) returns (BetCasinoResponse);
 
   // Requires an access token of an administrator of the site
   // (PermissionDenied otherwise): gives a page the checkmark of a
@@ -1106,6 +1114,12 @@ message GetCasinoResponse {
   int64 price = 1;
   // The votes of each prize, in the order of the prizes.
   repeated int64 prizes = 2;
+  // The bets: from bet_least to bet_most votes; a multiplier m (in
+  // hundredths: 200 — ×2) wins with the chance bet_return / m.
+  int64 bet_least = 3;
+  int64 bet_most = 4;
+  int32 bet_return = 5;
+  repeated int32 multipliers = 6;
 }
 
 message GetCasinoSettingsRequest {}
@@ -1117,6 +1131,13 @@ message GetCasinoSettingsResponse {
   int64 spins = 3;
   int64 spent = 4;
   int64 won = 5;
+  int64 bet_least = 6;
+  int64 bet_most = 7;
+  int32 bet_return = 8;
+  // How the bets do: bets made, votes bet and won.
+  int64 bets = 9;
+  int64 bet_spent = 10;
+  int64 bet_won = 11;
 }
 
 message SetCasinoRequest {
@@ -1133,6 +1154,31 @@ message SpinCasinoResponse {
   int64 votes = 2;
   // The balance after the spin.
   int64 balance = 3;
+}
+
+message SetCasinoBetsRequest {
+  int64 least = 1;
+  int64 most = 2;
+  // The percent of the votes bet the casino gives back, 1 to 100.
+  int32 return = 3;
+}
+
+message BetCasinoRequest {
+  int64 amount = 1;
+  // In hundredths: 200 — ×2.
+  int32 multiplier = 2;
+}
+
+message BetCasinoResponse {
+  bool won = 1;
+  // The roll and the chance, both of 10000: the bet wins when roll <
+  // chance.
+  int32 roll = 2;
+  int32 chance = 3;
+  // The votes it won: the bet multiplied, or 0.
+  int64 votes = 4;
+  // The balance after the bet.
+  int64 balance = 5;
 }
 
 message SetVerifiedRequest {

@@ -17,6 +17,11 @@ type CasinoRepository interface {
 	SetCasino(ctx context.Context, casino user.Casino) error
 	// CountSpin adds a spin that cost spent votes and won won.
 	CountSpin(ctx context.Context, spent, won int64) error
+	// Bets are user.DefaultCasinoBets until they are set.
+	Bets(ctx context.Context) (user.CasinoBets, error)
+	SetBets(ctx context.Context, bets user.CasinoBets) error
+	// CountBet adds a bet of spent votes that won won.
+	CountBet(ctx context.Context, spent, won int64) error
 	Stats(ctx context.Context) (user.CasinoStats, error)
 }
 
@@ -28,10 +33,21 @@ type Spin struct {
 	Balance int64
 }
 
-// CasinoSettings are the casino with its odds and how it does: for the
-// administrators.
+// Wager is how one bet went: whether it won, the roll and the chance in
+// user.BetOdds, the votes it won and the balance after it.
+type Wager struct {
+	Won     bool
+	Roll    int
+	Chance  int
+	Votes   int64
+	Balance int64
+}
+
+// CasinoSettings are the casino with its odds, its bets and how it does:
+// for the administrators.
 type CasinoSettings struct {
 	Casino user.Casino
+	Bets   user.CasinoBets
 	Stats  user.CasinoStats
 }
 
@@ -76,12 +92,17 @@ func (s *CasinoService) Settings(ctx context.Context, adminID uuid.UUID) (Casino
 		return CasinoSettings{}, errs.Wrap("s.casinos.Casino", err)
 	}
 
+	bets, err := s.casinos.Bets(ctx)
+	if err != nil {
+		return CasinoSettings{}, errs.Wrap("s.casinos.Bets", err)
+	}
+
 	stats, err := s.casinos.Stats(ctx)
 	if err != nil {
 		return CasinoSettings{}, errs.Wrap("s.casinos.Stats", err)
 	}
 
-	return CasinoSettings{Casino: casino, Stats: stats}, nil
+	return CasinoSettings{Casino: casino, Bets: bets, Stats: stats}, nil
 }
 
 // SetCasino changes the price, the prizes and the odds; user.ErrNotAdmin.
@@ -136,6 +157,73 @@ func (s *CasinoService) Spin(ctx context.Context, userID uuid.UUID) (Spin, error
 	}
 
 	return spin, nil
+}
+
+// Bets are how much may be bet and how much of it comes back; anyone may
+// ask.
+func (s *CasinoService) Bets(ctx context.Context) (user.CasinoBets, error) {
+	bets, err := s.casinos.Bets(ctx)
+
+	return bets, errs.Wrap("s.casinos.Bets", err)
+}
+
+// SetBets changes the limits and the return of the bets; user.ErrNotAdmin.
+func (s *CasinoService) SetBets(ctx context.Context, adminID uuid.UUID, bets user.CasinoBets) error {
+	if err := checkAdmin(ctx, s.userRepo, s.admins, adminID); err != nil {
+		return errs.Wrap("checkAdmin", err)
+	}
+
+	return errs.Wrap("s.casinos.SetBets", s.casinos.SetBets(ctx, bets))
+}
+
+// Bet takes amount votes from userID and, if the roll wins, pays them
+// multiplied, in one transaction; user.ErrBetAmount and
+// user.ErrBetMultiplier for a bet the casino does not take,
+// user.ErrNotEnoughVotes when the bet is more than the balance.
+func (s *CasinoService) Bet(ctx context.Context, userID uuid.UUID, amount int64, multiplier int) (Wager, error) {
+	var wager Wager
+
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		bets, err := s.casinos.Bets(ctx)
+		if err != nil {
+			return errs.Wrap("s.casinos.Bets", err)
+		}
+
+		bet, err := bets.Bet(amount, multiplier)
+		if err != nil {
+			return errs.Wrap("bets.Bet", err)
+		}
+
+		if wager.Balance, err = s.wallets.Spend(ctx, userID, bet.Amount()); err != nil {
+			return errs.Wrap("s.wallets.Spend", err)
+		}
+
+		roll, err := s.roll(user.BetOdds)
+		if err != nil {
+			return errs.Wrap("s.roll", err)
+		}
+
+		wager.Roll, wager.Chance = int(roll), bet.Chance()
+		wager.Won = bet.Wins(wager.Roll)
+
+		if wager.Won {
+			wager.Votes = bet.Prize()
+
+			wallet, err := s.wallets.Credit(ctx, userID, wager.Votes, 0)
+			if err != nil {
+				return errs.Wrap("s.wallets.Credit", err)
+			}
+
+			wager.Balance = wallet.Votes
+		}
+
+		return errs.Wrap("s.casinos.CountBet", s.casinos.CountBet(ctx, bet.Amount(), wager.Votes))
+	})
+	if err != nil {
+		return Wager{}, errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return wager, nil
 }
 
 func cryptoRoll(n int64) (int64, error) {

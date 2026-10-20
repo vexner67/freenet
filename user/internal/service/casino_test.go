@@ -88,3 +88,80 @@ func TestCasinoService(t *testing.T) {
 		t.Fatalf("Settings = %+v", settings)
 	}
 }
+
+func TestCasinoService_Bet(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	w := newWalletWorld(t)
+	admin, ann := w.person(t, "admin"), w.person(t, "ann")
+
+	admins, err := user.NewAdmins([]string{"admin@example.com"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The roll is the next of these.
+	rolls := []int64{4749, 4750}
+	casino := service.NewCasinoService(w.users, inmem.NewCasinoRepository(), w.users, inmem.TxManager{}, admins).
+		WithRoll(func(n int64) (int64, error) {
+			if n != user.BetOdds {
+				t.Fatalf("rolled below %d", n)
+			}
+			roll := rolls[0]
+			rolls = rolls[1:]
+
+			return roll, nil
+		})
+
+	if b, err := casino.Bets(ctx); err != nil || b != user.DefaultCasinoBets() {
+		t.Fatalf("Bets = %+v, %v", b, err)
+	}
+
+	// Only the administrators change the bets.
+	bets, err := user.NewCasinoBets(10, 100, 95)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := casino.SetBets(ctx, ann, bets); !errors.Is(err, user.ErrNotAdmin) {
+		t.Fatalf("SetBets by ann: %v", err)
+	}
+	if err := casino.SetBets(ctx, admin, bets); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := casino.Bet(ctx, ann, 5, 200); !errors.Is(err, user.ErrBetAmount) {
+		t.Fatalf("Bet below the least: %v", err)
+	}
+	if _, err := casino.Bet(ctx, ann, 50, 123); !errors.Is(err, user.ErrBetMultiplier) {
+		t.Fatalf("Bet on ×1.23: %v", err)
+	}
+	if _, err := casino.Bet(ctx, ann, 50, 200); !errors.Is(err, user.ErrNotEnoughVotes) {
+		t.Fatalf("Bet without votes: %v", err)
+	}
+
+	if _, err := w.users.Credit(ctx, ann, 100, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	want := service.Wager{Won: true, Roll: 4749, Chance: 4750, Votes: 100, Balance: 150}
+	if wager, err := casino.Bet(ctx, ann, 50, 200); err != nil || wager != want {
+		t.Fatalf("winning Bet = %+v, %v; want %+v", wager, err, want)
+	}
+
+	want = service.Wager{Roll: 4750, Chance: 4750, Balance: 50}
+	if wager, err := casino.Bet(ctx, ann, 100, 200); err != nil || wager != want {
+		t.Fatalf("losing Bet = %+v, %v; want %+v", wager, err, want)
+	}
+	if got := w.votes(t, ann); got != 50 {
+		t.Fatalf("votes = %d; want 50", got)
+	}
+
+	settings, err := casino.Settings(ctx, admin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.Bets != bets || settings.Stats != (user.CasinoStats{Bets: 2, BetSpent: 150, BetWon: 100}) {
+		t.Fatalf("Settings = %+v", settings)
+	}
+}
