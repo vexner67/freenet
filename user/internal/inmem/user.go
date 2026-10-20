@@ -102,9 +102,10 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 	}
 
 	// As in PostgreSQL, Update stores neither visits, backdrops nor the
-	// wallet nor the checkmark nor a block, which change on their own: a
-	// user read before keeps the newer ones.
-	stored := *u.WithWallet(old.Wallet()).WithVerified(old.IsVerified()).WithBan(old.Ban())
+	// wallet nor the checkmark nor a block nor the plaque, which change on
+	// their own: a user read before keeps the newer ones.
+	stored := *u.WithWallet(old.Wallet()).WithVerified(old.IsVerified()).WithBan(old.Ban()).
+		WithForeignAgent(old.IsForeignAgent())
 	stored.MarkSeen(old.LastSeen())
 	stored.SetBackdrop(user.BackdropLeft, old.Backdrop().Left)
 	stored.SetBackdrop(user.BackdropRight, old.Backdrop().Right)

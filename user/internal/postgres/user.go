@@ -426,7 +426,8 @@ const userColumns = `
 		verified,
 		banned_at,
 		banned_until,
-		ban_reason`
+		ban_reason,
+		foreign_agent`
 
 // qualifiedUserColumns are userColumns of the users table joined as u.
 const qualifiedUserColumns = `
@@ -493,7 +494,8 @@ const qualifiedUserColumns = `
 		u.verified,
 		u.banned_at,
 		u.banned_until,
-		u.ban_reason`
+		u.ban_reason,
+		u.foreign_agent`
 
 const getUserByIDQuery = `
 	SELECT` + userColumns + `
@@ -641,6 +643,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		verified                                   bool
 		bannedAt, bannedUntil                      *time.Time
 		banReason                                  string
+		foreignAgent                               bool
 	)
 
 	err := row.Scan(
@@ -687,6 +690,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&bannedAt,
 		&bannedUntil,
 		&banReason,
+		&foreignAgent,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound
@@ -771,6 +775,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 			Until:  timeFromDB(bannedUntil),
 			Reason: user.BanReason(banReason),
 		},
+		ForeignAgent: foreignAgent,
 	}), nil
 }
 

@@ -42,6 +42,7 @@ type UserHandler struct {
 	walletService     WalletService
 	verification      VerificationService
 	bans              BanService
+	foreignAgents     ForeignAgentService
 	permissionService PermissionService
 	presenceService   PresenceService
 	backdropService   BackdropService
@@ -61,10 +62,12 @@ type Services struct {
 	// Verification gives and takes the checkmark.
 	Verification VerificationService
 	// Bans block pages and let them be.
-	Bans        BanService
-	Permissions PermissionService
-	Presence    PresenceService
-	Backdrops   BackdropService
+	Bans BanService
+	// ForeignAgents put and take the plaque of a foreign agent.
+	ForeignAgents ForeignAgentService
+	Permissions   PermissionService
+	Presence      PresenceService
+	Backdrops     BackdropService
 }
 
 func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
@@ -79,6 +82,7 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		walletService:     s.Wallets,
 		verification:      s.Verification,
 		bans:              s.Bans,
+		foreignAgents:     s.ForeignAgents,
 		permissionService: s.Permissions,
 		presenceService:   s.Presence,
 		backdropService:   s.Backdrops,
