@@ -1972,3 +1972,15 @@ export function inviteURL(origin, nickname) {
 export function newYearGreeting(date) {
   return date.getMonth() >= 6 ? tr('С наступающим Новым годом!') : tr('С Новым годом!');
 }
+
+// activeSection is the section of the bar at the bottom of a phone a path
+// is in (layout.js): the page of whoever signed in, ownPath, the news, the
+// messages — dialogs and chats too — and the notifications; '' for others.
+export function activeSection(path, ownPath) {
+  if (path === '/feed' || path.startsWith('/feed/')) return 'feed';
+  if (path === '/im' || path.startsWith('/im/')) return 'messages';
+  if (path === '/notifications') return 'notifications';
+  if (ownPath && decodeURIComponent(path) === ownPath) return 'page';
+
+  return '';
+}
