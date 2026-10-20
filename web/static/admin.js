@@ -1,6 +1,6 @@
 // "Админ-панель", openvk's /admin: "Сводка" (/admin), "Пользователи"
 // (/admin/users: the verified pages, or those ?q= finds, with the switch
-// of "Верификация", the plaque of a foreign agent and "Заблокировать"
+// of "Верификация", the orange label and "Заблокировать"
 // each), "Блокировки" (/admin/bans: the pages blocked now), "Группы" (/admin/clubs: the same of groups),
 // "Ваучеры" (/admin/vouchers), the form of a new one
 // (/admin/vouchers/new), "Подарки" (/admin/gifts: what each gift costs)
@@ -13,7 +13,7 @@
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, adminOverview, adRate, betChance, betMultiplier, betOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, foreignAgentText, adminOverview, adRate, betChance, betMultiplier, betOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 import { remember } from './newyear.js';
 
@@ -108,7 +108,7 @@ const verifiable = {
     all: tr('Подтверждённые страницы'),
     none: tr('Никого не найдено.'),
     noneVerified: tr('Подтверждённых страниц пока нет. Найдите человека поиском.'),
-    agentCell,
+    alertCell,
     banCell,
   },
   clubs: {
@@ -126,32 +126,85 @@ const verifiable = {
   },
 };
 
-// agentCell is "Иноагент" of a person: the switch of the orange plaque
-// above the name (openvk's "user-alert"), put and taken at once.
-function agentCell(user) {
-  const toggle = el('button', {
-    className: 'aui-toggle', type: 'button', title: tr('Плашка иностранного агента'),
-  }, el('span', { className: 'aui-toggle-knob' }));
-  toggle.setAttribute('role', 'switch');
-  toggle.setAttribute('aria-label', tr('Иноагент: {0}', fullName(user)));
-  toggle.setAttribute('aria-checked', String(Boolean(user.foreignAgent)));
+// alertCell is "Метка" of a person: the words of the orange label above
+// the name (openvk's "user-alert") or "нет", and "Изменить", which opens
+// the dialog.
+function alertCell(user) {
+  const cell = el('div', { className: 'admin-alert' });
 
-  toggle.addEventListener('click', async () => {
-    const agent = toggle.getAttribute('aria-checked') !== 'true';
-    error.hidden = true;
-    toggle.disabled = true;
+  const draw = () => cell.replaceChildren(
+    el('span', {
+      className: 'admin-alert-text' + (user.alert ? '' : ' empty'),
+      textContent: user.alert || tr('нет'), title: user.alert || '',
+    }),
+    el('button', {
+      className: 'aui-button aui-button-compact', type: 'button', textContent: tr('Изменить'),
+      onclick: () => openAlert(user, draw),
+    }),
+  );
+
+  draw();
+
+  return cell;
+}
+
+// openAlert asks the words of the label of user, offers those of a foreign
+// agent, and draws the cell anew once saved or taken.
+function openAlert(user, done) {
+  const dialog = $('alert-dialog');
+  const form = $('alert-form');
+  const text = $('alert-text');
+  const alertError = $('alert-error');
+
+  $('alert-about').textContent = tr('Метка встанет оранжевой плашкой над именем на странице {0} (@{1}). Её увидят все, кто откроет страницу.', genitiveName(user), user.nickname);
+  form.reset();
+  text.value = user.alert || '';
+  $('alert-remove').hidden = !user.alert;
+  alertError.hidden = true;
+  dialog.hidden = false;
+  text.focus();
+
+  const close = () => {
+    dialog.hidden = true;
+    form.onsubmit = null;
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = (e) => {
+    if (e.key === 'Escape') close();
+  };
+  document.addEventListener('keydown', onKey);
+  $('alert-cancel').onclick = close;
+  dialog.onclick = (e) => {
+    if (e.target === dialog) close();
+  };
+  $('alert-agent').onclick = (e) => {
+    e.preventDefault();
+    text.value = foreignAgentText(user);
+    text.focus();
+  };
+
+  const save = async (alert, button) => {
+    alertError.hidden = true;
+    button.disabled = true;
     try {
-      await api.setForeignAgent(user.nickname, agent);
-      user.foreignAgent = agent;
-      toggle.setAttribute('aria-checked', String(agent));
-    } catch (e) {
-      showError(e);
+      await api.setAlert(user.nickname, alert);
+      user.alert = alert;
+      close();
+      done();
+    } catch (err) {
+      alertError.textContent = errorText(err);
+      alertError.hidden = false;
     } finally {
-      toggle.disabled = false;
+      button.disabled = false;
     }
-  });
+  };
 
-  return toggle;
+  // The label is one line: the line breaks of the field become spaces.
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    save(text.value.replace(/\s*[\r\n]+\s*/g, ' ').trim(), form.querySelector('[type=submit]'));
+  };
+  $('alert-remove').onclick = () => save('', $('alert-remove'));
 }
 
 // banCell is "Блокировка" of a person: "заблокирован", until when and
@@ -302,7 +355,7 @@ function verifications(kind, query, bans = false) {
       el('td', {}, person),
       el('td', {}, el('span', { className: 'admin-code', textContent: k.address(page) })),
       el('td', {}, toggle),
-      k.agentCell && el('td', {}, k.agentCell(page)),
+      k.alertCell && el('td', {}, k.alertCell(page)),
       k.banCell && el('td', {}, k.banCell(page)),
     ].filter(Boolean));
   }

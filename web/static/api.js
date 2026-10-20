@@ -704,10 +704,11 @@ export const api = {
   // only the administrators may.
   setVerified: (nickname, verified) =>
     authorized(verified ? 'PUT' : 'DELETE', `/api/v1/users/${encodeURIComponent(nickname)}/verification`),
-  // setForeignAgent puts on a page the orange plaque of a foreign agent or
-  // takes it; only the administrators may.
-  setForeignAgent: (nickname, agent) =>
-    authorized(agent ? 'PUT' : 'DELETE', `/api/v1/users/${encodeURIComponent(nickname)}/foreign-agent`),
+  // setAlert puts on a page the orange label with these words, '' takes
+  // it; only the administrators may.
+  setAlert: (nickname, alert) => alert
+    ? authorized('PUT', `/api/v1/users/${encodeURIComponent(nickname)}/alert`, { alert })
+    : authorized('DELETE', `/api/v1/users/${encodeURIComponent(nickname)}/alert`),
   // ban blocks a page until a time (ISO), '' for good; unban lifts it.
   // Only the administrators may.
   ban: (nickname, reason, until) =>

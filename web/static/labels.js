@@ -321,9 +321,9 @@ export function banUntil(term, now = new Date(), value = '') {
   return at.toISOString();
 }
 
-// foreignAgentText is the orange plaque the administrators put on a page
-// (openvk's "user-alert"): the marking of a foreign agent's materials,
-// naming the person.
+// foreignAgentText is the words of the label of a foreign agent, which the
+// administrators may put on a page (openvk's "user-alert"): the marking of
+// a foreign agent's materials, naming the person.
 export function foreignAgentText(person) {
   return tr('Данное сообщение (материал) создано и (или) распространено иностранным агентом {0} либо касается деятельности иностранного агента {1}.',
     declinedName(person, 'ins'), genitiveName(person));
@@ -1406,6 +1406,8 @@ const errorTexts = {
   'nickname is already taken': tr('Этот никнейм уже занят.'),
   'status is too long': tr('Статус длиннее 200 символов.'),
   'text contains invisible characters': tr('Невидимые символы использовать нельзя.'),
+  'the label is too long': tr('Метка не может быть длиннее 1000 знаков.'),
+  'the label must be one line': tr('Метка должна быть одной строкой.'),
   'birthday is in the future': tr('Дата рождения не может быть в будущем.'),
   'user not found': tr('Страница не найдена.'),
   'session not found': tr('Эта сессия уже завершена.'),

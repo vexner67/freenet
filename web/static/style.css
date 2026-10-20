@@ -550,7 +550,7 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
 .account-info { margin-left: 8px; border-bottom: 1px solid var(--line-dae1e8); }
 .account-info .status { margin: 0; padding: 3px 1px; }
 /* openvk's .user-alert: the orange plaque the administrators put above
-   the name — here, the marking of a foreign agent. */
+   the name, with the words they wrote. */
 .user-alert {
   margin: 0 0 8px 8px;
   padding: 4px;

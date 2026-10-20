@@ -1,5 +1,5 @@
 import { api, currentUser, started } from './api.js';
-import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, foreignAgentText } from './labels.js';
+import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName } from './labels.js';
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
@@ -492,10 +492,11 @@ try {
     }
   }
 
-  // openvk's orange plaque above the name, which the administrators put:
-  // on every page that shows the name, but not of a blocked one.
-  if (profile.foreignAgent && !profile.ban && (!profile.pageHidden || profile.closed)) {
-    $('user-alert').textContent = foreignAgentText(profile);
+  // openvk's orange label above the name with the words the
+  // administrators wrote: on every page that shows the name, but not of a
+  // blocked one.
+  if (profile.alert && !profile.ban && (!profile.pageHidden || profile.closed)) {
+    $('user-alert').textContent = profile.alert;
     $('user-alert').hidden = false;
   }
 
