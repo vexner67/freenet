@@ -79,6 +79,32 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, user.ErrBetAmount.Error()), true
 	case errors.Is(err, user.ErrBetMultiplier):
 		return status.New(codes.InvalidArgument, user.ErrBetMultiplier.Error()), true
+	case errors.Is(err, user.ErrBetQuestionEmpty):
+		return status.New(codes.InvalidArgument, user.ErrBetQuestionEmpty.Error()), true
+	case errors.Is(err, user.ErrBetQuestionTooLong):
+		return status.New(codes.InvalidArgument, user.ErrBetQuestionTooLong.Error()), true
+	case errors.Is(err, user.ErrBetOutcomeEmpty):
+		return status.New(codes.InvalidArgument, user.ErrBetOutcomeEmpty.Error()), true
+	case errors.Is(err, user.ErrBetOutcomeTooLong):
+		return status.New(codes.InvalidArgument, user.ErrBetOutcomeTooLong.Error()), true
+	case errors.Is(err, user.ErrBetOutcomes):
+		return status.New(codes.InvalidArgument, user.ErrBetOutcomes.Error()), true
+	case errors.Is(err, user.ErrBetOutcomeTwice):
+		return status.New(codes.InvalidArgument, user.ErrBetOutcomeTwice.Error()), true
+	case errors.Is(err, user.ErrBetCloseTime):
+		return status.New(codes.InvalidArgument, user.ErrBetCloseTime.Error()), true
+	case errors.Is(err, user.ErrBetOutcome):
+		return status.New(codes.InvalidArgument, user.ErrBetOutcome.Error()), true
+	case errors.Is(err, user.ErrStakeAmount):
+		return status.New(codes.InvalidArgument, user.ErrStakeAmount.Error()), true
+	case errors.Is(err, user.ErrBetEventNotFound):
+		return status.New(codes.NotFound, user.ErrBetEventNotFound.Error()), true
+	case errors.Is(err, user.ErrBetEventClosed):
+		return status.New(codes.FailedPrecondition, user.ErrBetEventClosed.Error()), true
+	case errors.Is(err, user.ErrBetEventFinished):
+		return status.New(codes.FailedPrecondition, user.ErrBetEventFinished.Error()), true
+	case errors.Is(err, user.ErrBetEventActive):
+		return status.New(codes.FailedPrecondition, user.ErrBetEventActive.Error()), true
 	case errors.Is(err, user.ErrNotEnoughVotes):
 		return status.New(codes.FailedPrecondition, user.ErrNotEnoughVotes.Error()), true
 	case errors.Is(err, user.ErrTransferSelf):

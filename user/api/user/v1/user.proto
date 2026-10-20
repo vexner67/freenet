@@ -182,6 +182,19 @@ service UserService {
   // votes").
   rpc SetCasinoBets(SetCasinoBetsRequest) returns (google.protobuf.Empty);
   rpc BetCasino(BetCasinoRequest) returns (BetCasinoResponse);
+  // The bets on events: the administrators ask a question with outcomes,
+  // people stake votes on them, and those who guessed share all the stakes
+  // once it is resolved; a cancelled event gives them back. ListBetEvents
+  // is public, with the stakes of the caller if a token came; StakeBet
+  // takes the votes (FailedPrecondition when the event takes no stakes or
+  // the balance is short); the rest are for the administrators.
+  rpc ListBetEvents(ListBetEventsRequest) returns (ListBetEventsResponse);
+  rpc CreateBetEvent(CreateBetEventRequest) returns (BetEvent);
+  rpc CloseBetEvent(BetEventRequest) returns (google.protobuf.Empty);
+  rpc ResolveBetEvent(ResolveBetEventRequest) returns (google.protobuf.Empty);
+  rpc CancelBetEvent(BetEventRequest) returns (google.protobuf.Empty);
+  rpc DeleteBetEvent(BetEventRequest) returns (google.protobuf.Empty);
+  rpc StakeBet(StakeBetRequest) returns (StakeBetResponse);
 
   // Requires an access token of an administrator of the site
   // (PermissionDenied otherwise): gives a page the checkmark of a
@@ -1177,14 +1190,79 @@ message BetCasinoRequest {
 
 message BetCasinoResponse {
   bool won = 1;
-  // The roll and the chance, both of 10000: the bet wins when roll <
-  // chance.
+  // The roll and the chance, both of 10000: the bet wins when the roll
+  // falls in the middle, chance wide — from (10000 - chance) / 2.
   int32 roll = 2;
   int32 chance = 3;
   // The votes it won: the bet multiplied, or 0.
   int64 votes = 4;
   // The balance after the bet.
   int64 balance = 5;
+}
+
+message BetOutcome {
+  string name = 1;
+  // The votes staked on it and how many people staked.
+  int64 staked = 2;
+  int32 bettors = 3;
+  // The votes the caller staked on it.
+  int64 mine = 4;
+}
+
+message BetEvent {
+  string id = 1;
+  string question = 2;
+  repeated BetOutcome outcomes = 3;
+  // "open", "closed", "resolved" or "cancelled".
+  string state = 4;
+  // When the stakes close by themselves; unset for never.
+  google.protobuf.Timestamp closes_at = 5;
+  // The index of the winning outcome of a resolved event, -1 otherwise.
+  int32 winner = 6;
+  google.protobuf.Timestamp created_at = 7;
+  // Whether the event takes stakes now.
+  bool open = 8;
+  // How many people staked on any outcome.
+  int32 people = 9;
+  // What the stakes of the caller paid back once the event was over.
+  int64 payout = 10;
+}
+
+message ListBetEventsRequest {
+  // The events taking stakes, the most staked on first; otherwise all of
+  // them, those not over first, then the newest.
+  bool popular = 1;
+}
+
+message ListBetEventsResponse {
+  repeated BetEvent events = 1;
+}
+
+message CreateBetEventRequest {
+  string question = 1;
+  repeated string outcomes = 2;
+  // Unset for stakes until the administrators close them.
+  google.protobuf.Timestamp closes_at = 3;
+}
+
+message BetEventRequest {
+  string event_id = 1;
+}
+
+message ResolveBetEventRequest {
+  string event_id = 1;
+  int32 winner = 2;
+}
+
+message StakeBetRequest {
+  string event_id = 1;
+  int32 outcome = 2;
+  int64 amount = 3;
+}
+
+message StakeBetResponse {
+  // The balance after the stake.
+  int64 balance = 1;
 }
 
 message SetVerifiedRequest {

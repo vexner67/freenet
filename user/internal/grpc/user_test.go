@@ -98,6 +98,7 @@ func newServer(t *testing.T) testServer {
 		Ads:         service.NewAdService(users, adRepo, adRepo, inmem.TxManager{}, admins),
 		Decors:      service.NewDecorService(users, inmem.NewDecorRepository(), admins),
 		Casinos:     service.NewCasinoService(users, inmem.NewCasinoRepository(), users, inmem.TxManager{}, admins),
+		BetEvents:   service.NewBetEventService(users, inmem.NewBetEventRepository(), users, inmem.TxManager{}, admins),
 		Permissions: permissions,
 		Presence:    presence,
 		Backdrops:   service.NewBackdropService(users, users),

@@ -7411,8 +7411,8 @@ func (x *BetCasinoRequest) GetMultiplier() int32 {
 type BetCasinoResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Won   bool                   `protobuf:"varint,1,opt,name=won,proto3" json:"won,omitempty"`
-	// The roll and the chance, both of 10000: the bet wins when roll <
-	// chance.
+	// The roll and the chance, both of 10000: the bet wins when the roll
+	// falls in the middle, chance wide — from (10000 - chance) / 2.
 	Roll   int32 `protobuf:"varint,2,opt,name=roll,proto3" json:"roll,omitempty"`
 	Chance int32 `protobuf:"varint,3,opt,name=chance,proto3" json:"chance,omitempty"`
 	// The votes it won: the bet multiplied, or 0.
@@ -7488,6 +7488,550 @@ func (x *BetCasinoResponse) GetBalance() int64 {
 	return 0
 }
 
+type BetOutcome struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Name  string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The votes staked on it and how many people staked.
+	Staked  int64 `protobuf:"varint,2,opt,name=staked,proto3" json:"staked,omitempty"`
+	Bettors int32 `protobuf:"varint,3,opt,name=bettors,proto3" json:"bettors,omitempty"`
+	// The votes the caller staked on it.
+	Mine          int64 `protobuf:"varint,4,opt,name=mine,proto3" json:"mine,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BetOutcome) Reset() {
+	*x = BetOutcome{}
+	mi := &file_api_user_v1_user_proto_msgTypes[116]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BetOutcome) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BetOutcome) ProtoMessage() {}
+
+func (x *BetOutcome) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[116]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BetOutcome.ProtoReflect.Descriptor instead.
+func (*BetOutcome) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{116}
+}
+
+func (x *BetOutcome) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *BetOutcome) GetStaked() int64 {
+	if x != nil {
+		return x.Staked
+	}
+	return 0
+}
+
+func (x *BetOutcome) GetBettors() int32 {
+	if x != nil {
+		return x.Bettors
+	}
+	return 0
+}
+
+func (x *BetOutcome) GetMine() int64 {
+	if x != nil {
+		return x.Mine
+	}
+	return 0
+}
+
+type BetEvent struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Question string                 `protobuf:"bytes,2,opt,name=question,proto3" json:"question,omitempty"`
+	Outcomes []*BetOutcome          `protobuf:"bytes,3,rep,name=outcomes,proto3" json:"outcomes,omitempty"`
+	// "open", "closed", "resolved" or "cancelled".
+	State string `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
+	// When the stakes close by themselves; unset for never.
+	ClosesAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=closes_at,json=closesAt,proto3" json:"closes_at,omitempty"`
+	// The index of the winning outcome of a resolved event, -1 otherwise.
+	Winner    int32                  `protobuf:"varint,6,opt,name=winner,proto3" json:"winner,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// Whether the event takes stakes now.
+	Open bool `protobuf:"varint,8,opt,name=open,proto3" json:"open,omitempty"`
+	// How many people staked on any outcome.
+	People int32 `protobuf:"varint,9,opt,name=people,proto3" json:"people,omitempty"`
+	// What the stakes of the caller paid back once the event was over.
+	Payout        int64 `protobuf:"varint,10,opt,name=payout,proto3" json:"payout,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BetEvent) Reset() {
+	*x = BetEvent{}
+	mi := &file_api_user_v1_user_proto_msgTypes[117]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BetEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BetEvent) ProtoMessage() {}
+
+func (x *BetEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[117]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BetEvent.ProtoReflect.Descriptor instead.
+func (*BetEvent) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{117}
+}
+
+func (x *BetEvent) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *BetEvent) GetQuestion() string {
+	if x != nil {
+		return x.Question
+	}
+	return ""
+}
+
+func (x *BetEvent) GetOutcomes() []*BetOutcome {
+	if x != nil {
+		return x.Outcomes
+	}
+	return nil
+}
+
+func (x *BetEvent) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *BetEvent) GetClosesAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ClosesAt
+	}
+	return nil
+}
+
+func (x *BetEvent) GetWinner() int32 {
+	if x != nil {
+		return x.Winner
+	}
+	return 0
+}
+
+func (x *BetEvent) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *BetEvent) GetOpen() bool {
+	if x != nil {
+		return x.Open
+	}
+	return false
+}
+
+func (x *BetEvent) GetPeople() int32 {
+	if x != nil {
+		return x.People
+	}
+	return 0
+}
+
+func (x *BetEvent) GetPayout() int64 {
+	if x != nil {
+		return x.Payout
+	}
+	return 0
+}
+
+type ListBetEventsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The events taking stakes, the most staked on first; otherwise all of
+	// them, those not over first, then the newest.
+	Popular       bool `protobuf:"varint,1,opt,name=popular,proto3" json:"popular,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListBetEventsRequest) Reset() {
+	*x = ListBetEventsRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[118]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBetEventsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBetEventsRequest) ProtoMessage() {}
+
+func (x *ListBetEventsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[118]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBetEventsRequest.ProtoReflect.Descriptor instead.
+func (*ListBetEventsRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{118}
+}
+
+func (x *ListBetEventsRequest) GetPopular() bool {
+	if x != nil {
+		return x.Popular
+	}
+	return false
+}
+
+type ListBetEventsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Events        []*BetEvent            `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListBetEventsResponse) Reset() {
+	*x = ListBetEventsResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[119]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBetEventsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBetEventsResponse) ProtoMessage() {}
+
+func (x *ListBetEventsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[119]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBetEventsResponse.ProtoReflect.Descriptor instead.
+func (*ListBetEventsResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{119}
+}
+
+func (x *ListBetEventsResponse) GetEvents() []*BetEvent {
+	if x != nil {
+		return x.Events
+	}
+	return nil
+}
+
+type CreateBetEventRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Question string                 `protobuf:"bytes,1,opt,name=question,proto3" json:"question,omitempty"`
+	Outcomes []string               `protobuf:"bytes,2,rep,name=outcomes,proto3" json:"outcomes,omitempty"`
+	// Unset for stakes until the administrators close them.
+	ClosesAt      *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=closes_at,json=closesAt,proto3" json:"closes_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateBetEventRequest) Reset() {
+	*x = CreateBetEventRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[120]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateBetEventRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateBetEventRequest) ProtoMessage() {}
+
+func (x *CreateBetEventRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[120]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateBetEventRequest.ProtoReflect.Descriptor instead.
+func (*CreateBetEventRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{120}
+}
+
+func (x *CreateBetEventRequest) GetQuestion() string {
+	if x != nil {
+		return x.Question
+	}
+	return ""
+}
+
+func (x *CreateBetEventRequest) GetOutcomes() []string {
+	if x != nil {
+		return x.Outcomes
+	}
+	return nil
+}
+
+func (x *CreateBetEventRequest) GetClosesAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ClosesAt
+	}
+	return nil
+}
+
+type BetEventRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BetEventRequest) Reset() {
+	*x = BetEventRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[121]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BetEventRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BetEventRequest) ProtoMessage() {}
+
+func (x *BetEventRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[121]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BetEventRequest.ProtoReflect.Descriptor instead.
+func (*BetEventRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{121}
+}
+
+func (x *BetEventRequest) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+type ResolveBetEventRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Winner        int32                  `protobuf:"varint,2,opt,name=winner,proto3" json:"winner,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveBetEventRequest) Reset() {
+	*x = ResolveBetEventRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[122]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveBetEventRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveBetEventRequest) ProtoMessage() {}
+
+func (x *ResolveBetEventRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[122]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveBetEventRequest.ProtoReflect.Descriptor instead.
+func (*ResolveBetEventRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{122}
+}
+
+func (x *ResolveBetEventRequest) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *ResolveBetEventRequest) GetWinner() int32 {
+	if x != nil {
+		return x.Winner
+	}
+	return 0
+}
+
+type StakeBetRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Outcome       int32                  `protobuf:"varint,2,opt,name=outcome,proto3" json:"outcome,omitempty"`
+	Amount        int64                  `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StakeBetRequest) Reset() {
+	*x = StakeBetRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[123]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StakeBetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StakeBetRequest) ProtoMessage() {}
+
+func (x *StakeBetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[123]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StakeBetRequest.ProtoReflect.Descriptor instead.
+func (*StakeBetRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{123}
+}
+
+func (x *StakeBetRequest) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *StakeBetRequest) GetOutcome() int32 {
+	if x != nil {
+		return x.Outcome
+	}
+	return 0
+}
+
+func (x *StakeBetRequest) GetAmount() int64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+type StakeBetResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The balance after the stake.
+	Balance       int64 `protobuf:"varint,1,opt,name=balance,proto3" json:"balance,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StakeBetResponse) Reset() {
+	*x = StakeBetResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[124]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StakeBetResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StakeBetResponse) ProtoMessage() {}
+
+func (x *StakeBetResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[124]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StakeBetResponse.ProtoReflect.Descriptor instead.
+func (*StakeBetResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{124}
+}
+
+func (x *StakeBetResponse) GetBalance() int64 {
+	if x != nil {
+		return x.Balance
+	}
+	return 0
+}
+
 type SetVerifiedRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -7498,7 +8042,7 @@ type SetVerifiedRequest struct {
 
 func (x *SetVerifiedRequest) Reset() {
 	*x = SetVerifiedRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[116]
+	mi := &file_api_user_v1_user_proto_msgTypes[125]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7510,7 +8054,7 @@ func (x *SetVerifiedRequest) String() string {
 func (*SetVerifiedRequest) ProtoMessage() {}
 
 func (x *SetVerifiedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[116]
+	mi := &file_api_user_v1_user_proto_msgTypes[125]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7523,7 +8067,7 @@ func (x *SetVerifiedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetVerifiedRequest.ProtoReflect.Descriptor instead.
 func (*SetVerifiedRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{116}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{125}
 }
 
 func (x *SetVerifiedRequest) GetUserId() string {
@@ -7551,7 +8095,7 @@ type SetAlertRequest struct {
 
 func (x *SetAlertRequest) Reset() {
 	*x = SetAlertRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[117]
+	mi := &file_api_user_v1_user_proto_msgTypes[126]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7563,7 +8107,7 @@ func (x *SetAlertRequest) String() string {
 func (*SetAlertRequest) ProtoMessage() {}
 
 func (x *SetAlertRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[117]
+	mi := &file_api_user_v1_user_proto_msgTypes[126]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7576,7 +8120,7 @@ func (x *SetAlertRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetAlertRequest.ProtoReflect.Descriptor instead.
 func (*SetAlertRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{117}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{126}
 }
 
 func (x *SetAlertRequest) GetUserId() string {
@@ -7611,7 +8155,7 @@ type Ad struct {
 
 func (x *Ad) Reset() {
 	*x = Ad{}
-	mi := &file_api_user_v1_user_proto_msgTypes[118]
+	mi := &file_api_user_v1_user_proto_msgTypes[127]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7623,7 +8167,7 @@ func (x *Ad) String() string {
 func (*Ad) ProtoMessage() {}
 
 func (x *Ad) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[118]
+	mi := &file_api_user_v1_user_proto_msgTypes[127]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7636,7 +8180,7 @@ func (x *Ad) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Ad.ProtoReflect.Descriptor instead.
 func (*Ad) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{118}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{127}
 }
 
 func (x *Ad) GetId() string {
@@ -7709,7 +8253,7 @@ type AdStats struct {
 
 func (x *AdStats) Reset() {
 	*x = AdStats{}
-	mi := &file_api_user_v1_user_proto_msgTypes[119]
+	mi := &file_api_user_v1_user_proto_msgTypes[128]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7721,7 +8265,7 @@ func (x *AdStats) String() string {
 func (*AdStats) ProtoMessage() {}
 
 func (x *AdStats) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[119]
+	mi := &file_api_user_v1_user_proto_msgTypes[128]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7734,7 +8278,7 @@ func (x *AdStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdStats.ProtoReflect.Descriptor instead.
 func (*AdStats) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{119}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{128}
 }
 
 func (x *AdStats) GetViews() int64 {
@@ -7775,7 +8319,7 @@ type ListAdsRequest struct {
 
 func (x *ListAdsRequest) Reset() {
 	*x = ListAdsRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[120]
+	mi := &file_api_user_v1_user_proto_msgTypes[129]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7787,7 +8331,7 @@ func (x *ListAdsRequest) String() string {
 func (*ListAdsRequest) ProtoMessage() {}
 
 func (x *ListAdsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[120]
+	mi := &file_api_user_v1_user_proto_msgTypes[129]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7800,7 +8344,7 @@ func (x *ListAdsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAdsRequest.ProtoReflect.Descriptor instead.
 func (*ListAdsRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{120}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{129}
 }
 
 func (x *ListAdsRequest) GetAll() bool {
@@ -7820,7 +8364,7 @@ type ListAdsResponse struct {
 
 func (x *ListAdsResponse) Reset() {
 	*x = ListAdsResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[121]
+	mi := &file_api_user_v1_user_proto_msgTypes[130]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7832,7 +8376,7 @@ func (x *ListAdsResponse) String() string {
 func (*ListAdsResponse) ProtoMessage() {}
 
 func (x *ListAdsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[121]
+	mi := &file_api_user_v1_user_proto_msgTypes[130]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7845,7 +8389,7 @@ func (x *ListAdsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAdsResponse.ProtoReflect.Descriptor instead.
 func (*ListAdsResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{121}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{130}
 }
 
 func (x *ListAdsResponse) GetAds() []*Ad {
@@ -7869,7 +8413,7 @@ type CreateAdRequest struct {
 
 func (x *CreateAdRequest) Reset() {
 	*x = CreateAdRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[122]
+	mi := &file_api_user_v1_user_proto_msgTypes[131]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7881,7 +8425,7 @@ func (x *CreateAdRequest) String() string {
 func (*CreateAdRequest) ProtoMessage() {}
 
 func (x *CreateAdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[122]
+	mi := &file_api_user_v1_user_proto_msgTypes[131]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7894,7 +8438,7 @@ func (x *CreateAdRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAdRequest.ProtoReflect.Descriptor instead.
 func (*CreateAdRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{122}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{131}
 }
 
 func (x *CreateAdRequest) GetUrl() string {
@@ -7941,7 +8485,7 @@ type CreateAdResponse struct {
 
 func (x *CreateAdResponse) Reset() {
 	*x = CreateAdResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[123]
+	mi := &file_api_user_v1_user_proto_msgTypes[132]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -7953,7 +8497,7 @@ func (x *CreateAdResponse) String() string {
 func (*CreateAdResponse) ProtoMessage() {}
 
 func (x *CreateAdResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[123]
+	mi := &file_api_user_v1_user_proto_msgTypes[132]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -7966,7 +8510,7 @@ func (x *CreateAdResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAdResponse.ProtoReflect.Descriptor instead.
 func (*CreateAdResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{123}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{132}
 }
 
 func (x *CreateAdResponse) GetAd() *Ad {
@@ -7992,7 +8536,7 @@ type EditAdRequest struct {
 
 func (x *EditAdRequest) Reset() {
 	*x = EditAdRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[124]
+	mi := &file_api_user_v1_user_proto_msgTypes[133]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8004,7 +8548,7 @@ func (x *EditAdRequest) String() string {
 func (*EditAdRequest) ProtoMessage() {}
 
 func (x *EditAdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[124]
+	mi := &file_api_user_v1_user_proto_msgTypes[133]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8017,7 +8561,7 @@ func (x *EditAdRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EditAdRequest.ProtoReflect.Descriptor instead.
 func (*EditAdRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{124}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{133}
 }
 
 func (x *EditAdRequest) GetId() string {
@@ -8075,7 +8619,7 @@ type EditAdResponse struct {
 
 func (x *EditAdResponse) Reset() {
 	*x = EditAdResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[125]
+	mi := &file_api_user_v1_user_proto_msgTypes[134]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8087,7 +8631,7 @@ func (x *EditAdResponse) String() string {
 func (*EditAdResponse) ProtoMessage() {}
 
 func (x *EditAdResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[125]
+	mi := &file_api_user_v1_user_proto_msgTypes[134]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8100,7 +8644,7 @@ func (x *EditAdResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EditAdResponse.ProtoReflect.Descriptor instead.
 func (*EditAdResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{125}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{134}
 }
 
 func (x *EditAdResponse) GetAd() *Ad {
@@ -8133,7 +8677,7 @@ type DeleteAdRequest struct {
 
 func (x *DeleteAdRequest) Reset() {
 	*x = DeleteAdRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[126]
+	mi := &file_api_user_v1_user_proto_msgTypes[135]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8145,7 +8689,7 @@ func (x *DeleteAdRequest) String() string {
 func (*DeleteAdRequest) ProtoMessage() {}
 
 func (x *DeleteAdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[126]
+	mi := &file_api_user_v1_user_proto_msgTypes[135]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8158,7 +8702,7 @@ func (x *DeleteAdRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAdRequest.ProtoReflect.Descriptor instead.
 func (*DeleteAdRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{126}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{135}
 }
 
 func (x *DeleteAdRequest) GetId() string {
@@ -8179,7 +8723,7 @@ type DeleteAdResponse struct {
 
 func (x *DeleteAdResponse) Reset() {
 	*x = DeleteAdResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[127]
+	mi := &file_api_user_v1_user_proto_msgTypes[136]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8191,7 +8735,7 @@ func (x *DeleteAdResponse) String() string {
 func (*DeleteAdResponse) ProtoMessage() {}
 
 func (x *DeleteAdResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[127]
+	mi := &file_api_user_v1_user_proto_msgTypes[136]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8204,7 +8748,7 @@ func (x *DeleteAdResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAdResponse.ProtoReflect.Descriptor instead.
 func (*DeleteAdResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{127}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{136}
 }
 
 func (x *DeleteAdResponse) GetPhotoOwnerId() string {
@@ -8230,7 +8774,7 @@ type ViewAdRequest struct {
 
 func (x *ViewAdRequest) Reset() {
 	*x = ViewAdRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[128]
+	mi := &file_api_user_v1_user_proto_msgTypes[137]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8242,7 +8786,7 @@ func (x *ViewAdRequest) String() string {
 func (*ViewAdRequest) ProtoMessage() {}
 
 func (x *ViewAdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[128]
+	mi := &file_api_user_v1_user_proto_msgTypes[137]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8255,7 +8799,7 @@ func (x *ViewAdRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ViewAdRequest.ProtoReflect.Descriptor instead.
 func (*ViewAdRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{128}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{137}
 }
 
 func (x *ViewAdRequest) GetId() string {
@@ -8273,7 +8817,7 @@ type ViewAdResponse struct {
 
 func (x *ViewAdResponse) Reset() {
 	*x = ViewAdResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[129]
+	mi := &file_api_user_v1_user_proto_msgTypes[138]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8285,7 +8829,7 @@ func (x *ViewAdResponse) String() string {
 func (*ViewAdResponse) ProtoMessage() {}
 
 func (x *ViewAdResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[129]
+	mi := &file_api_user_v1_user_proto_msgTypes[138]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8298,7 +8842,7 @@ func (x *ViewAdResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ViewAdResponse.ProtoReflect.Descriptor instead.
 func (*ViewAdResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{129}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{138}
 }
 
 type ClickAdRequest struct {
@@ -8310,7 +8854,7 @@ type ClickAdRequest struct {
 
 func (x *ClickAdRequest) Reset() {
 	*x = ClickAdRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[130]
+	mi := &file_api_user_v1_user_proto_msgTypes[139]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8322,7 +8866,7 @@ func (x *ClickAdRequest) String() string {
 func (*ClickAdRequest) ProtoMessage() {}
 
 func (x *ClickAdRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[130]
+	mi := &file_api_user_v1_user_proto_msgTypes[139]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8335,7 +8879,7 @@ func (x *ClickAdRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClickAdRequest.ProtoReflect.Descriptor instead.
 func (*ClickAdRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{130}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{139}
 }
 
 func (x *ClickAdRequest) GetId() string {
@@ -8353,7 +8897,7 @@ type ClickAdResponse struct {
 
 func (x *ClickAdResponse) Reset() {
 	*x = ClickAdResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[131]
+	mi := &file_api_user_v1_user_proto_msgTypes[140]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8365,7 +8909,7 @@ func (x *ClickAdResponse) String() string {
 func (*ClickAdResponse) ProtoMessage() {}
 
 func (x *ClickAdResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[131]
+	mi := &file_api_user_v1_user_proto_msgTypes[140]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8378,7 +8922,7 @@ func (x *ClickAdResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClickAdResponse.ProtoReflect.Descriptor instead.
 func (*ClickAdResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{131}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{140}
 }
 
 type BanUserRequest struct {
@@ -8394,7 +8938,7 @@ type BanUserRequest struct {
 
 func (x *BanUserRequest) Reset() {
 	*x = BanUserRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[132]
+	mi := &file_api_user_v1_user_proto_msgTypes[141]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8406,7 +8950,7 @@ func (x *BanUserRequest) String() string {
 func (*BanUserRequest) ProtoMessage() {}
 
 func (x *BanUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[132]
+	mi := &file_api_user_v1_user_proto_msgTypes[141]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8419,7 +8963,7 @@ func (x *BanUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BanUserRequest.ProtoReflect.Descriptor instead.
 func (*BanUserRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{132}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{141}
 }
 
 func (x *BanUserRequest) GetUserId() string {
@@ -8452,7 +8996,7 @@ type UnbanUserRequest struct {
 
 func (x *UnbanUserRequest) Reset() {
 	*x = UnbanUserRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[133]
+	mi := &file_api_user_v1_user_proto_msgTypes[142]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8464,7 +9008,7 @@ func (x *UnbanUserRequest) String() string {
 func (*UnbanUserRequest) ProtoMessage() {}
 
 func (x *UnbanUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[133]
+	mi := &file_api_user_v1_user_proto_msgTypes[142]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8477,7 +9021,7 @@ func (x *UnbanUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnbanUserRequest.ProtoReflect.Descriptor instead.
 func (*UnbanUserRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{133}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{142}
 }
 
 func (x *UnbanUserRequest) GetUserId() string {
@@ -8495,7 +9039,7 @@ type GetStickerCatalogRequest struct {
 
 func (x *GetStickerCatalogRequest) Reset() {
 	*x = GetStickerCatalogRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[134]
+	mi := &file_api_user_v1_user_proto_msgTypes[143]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8507,7 +9051,7 @@ func (x *GetStickerCatalogRequest) String() string {
 func (*GetStickerCatalogRequest) ProtoMessage() {}
 
 func (x *GetStickerCatalogRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[134]
+	mi := &file_api_user_v1_user_proto_msgTypes[143]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8520,7 +9064,7 @@ func (x *GetStickerCatalogRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStickerCatalogRequest.ProtoReflect.Descriptor instead.
 func (*GetStickerCatalogRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{134}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{143}
 }
 
 type GetStickerCatalogResponse struct {
@@ -8532,7 +9076,7 @@ type GetStickerCatalogResponse struct {
 
 func (x *GetStickerCatalogResponse) Reset() {
 	*x = GetStickerCatalogResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[135]
+	mi := &file_api_user_v1_user_proto_msgTypes[144]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8544,7 +9088,7 @@ func (x *GetStickerCatalogResponse) String() string {
 func (*GetStickerCatalogResponse) ProtoMessage() {}
 
 func (x *GetStickerCatalogResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[135]
+	mi := &file_api_user_v1_user_proto_msgTypes[144]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8557,7 +9101,7 @@ func (x *GetStickerCatalogResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStickerCatalogResponse.ProtoReflect.Descriptor instead.
 func (*GetStickerCatalogResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{135}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{144}
 }
 
 func (x *GetStickerCatalogResponse) GetPacks() []*StickerPack {
@@ -8594,7 +9138,7 @@ type StickerPack struct {
 
 func (x *StickerPack) Reset() {
 	*x = StickerPack{}
-	mi := &file_api_user_v1_user_proto_msgTypes[136]
+	mi := &file_api_user_v1_user_proto_msgTypes[145]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8606,7 +9150,7 @@ func (x *StickerPack) String() string {
 func (*StickerPack) ProtoMessage() {}
 
 func (x *StickerPack) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[136]
+	mi := &file_api_user_v1_user_proto_msgTypes[145]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8619,7 +9163,7 @@ func (x *StickerPack) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StickerPack.ProtoReflect.Descriptor instead.
 func (*StickerPack) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{136}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{145}
 }
 
 func (x *StickerPack) GetId() string {
@@ -8701,7 +9245,7 @@ type AddStickerPackRequest struct {
 
 func (x *AddStickerPackRequest) Reset() {
 	*x = AddStickerPackRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[137]
+	mi := &file_api_user_v1_user_proto_msgTypes[146]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8713,7 +9257,7 @@ func (x *AddStickerPackRequest) String() string {
 func (*AddStickerPackRequest) ProtoMessage() {}
 
 func (x *AddStickerPackRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[137]
+	mi := &file_api_user_v1_user_proto_msgTypes[146]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8726,7 +9270,7 @@ func (x *AddStickerPackRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddStickerPackRequest.ProtoReflect.Descriptor instead.
 func (*AddStickerPackRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{137}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{146}
 }
 
 func (x *AddStickerPackRequest) GetPackId() string {
@@ -8745,7 +9289,7 @@ type RemoveStickerPackRequest struct {
 
 func (x *RemoveStickerPackRequest) Reset() {
 	*x = RemoveStickerPackRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[138]
+	mi := &file_api_user_v1_user_proto_msgTypes[147]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8757,7 +9301,7 @@ func (x *RemoveStickerPackRequest) String() string {
 func (*RemoveStickerPackRequest) ProtoMessage() {}
 
 func (x *RemoveStickerPackRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[138]
+	mi := &file_api_user_v1_user_proto_msgTypes[147]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8770,7 +9314,7 @@ func (x *RemoveStickerPackRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveStickerPackRequest.ProtoReflect.Descriptor instead.
 func (*RemoveStickerPackRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{138}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{147}
 }
 
 func (x *RemoveStickerPackRequest) GetPackId() string {
@@ -8788,7 +9332,7 @@ type ListMyStickerPacksRequest struct {
 
 func (x *ListMyStickerPacksRequest) Reset() {
 	*x = ListMyStickerPacksRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[139]
+	mi := &file_api_user_v1_user_proto_msgTypes[148]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8800,7 +9344,7 @@ func (x *ListMyStickerPacksRequest) String() string {
 func (*ListMyStickerPacksRequest) ProtoMessage() {}
 
 func (x *ListMyStickerPacksRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[139]
+	mi := &file_api_user_v1_user_proto_msgTypes[148]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8813,7 +9357,7 @@ func (x *ListMyStickerPacksRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyStickerPacksRequest.ProtoReflect.Descriptor instead.
 func (*ListMyStickerPacksRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{139}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{148}
 }
 
 type ListMyStickerPacksResponse struct {
@@ -8826,7 +9370,7 @@ type ListMyStickerPacksResponse struct {
 
 func (x *ListMyStickerPacksResponse) Reset() {
 	*x = ListMyStickerPacksResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[140]
+	mi := &file_api_user_v1_user_proto_msgTypes[149]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8838,7 +9382,7 @@ func (x *ListMyStickerPacksResponse) String() string {
 func (*ListMyStickerPacksResponse) ProtoMessage() {}
 
 func (x *ListMyStickerPacksResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[140]
+	mi := &file_api_user_v1_user_proto_msgTypes[149]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8851,7 +9395,7 @@ func (x *ListMyStickerPacksResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyStickerPacksResponse.ProtoReflect.Descriptor instead.
 func (*ListMyStickerPacksResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{140}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{149}
 }
 
 func (x *ListMyStickerPacksResponse) GetPacks() []*StickerPack {
@@ -8876,7 +9420,7 @@ type CreateStickerPackRequest struct {
 
 func (x *CreateStickerPackRequest) Reset() {
 	*x = CreateStickerPackRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[141]
+	mi := &file_api_user_v1_user_proto_msgTypes[150]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8888,7 +9432,7 @@ func (x *CreateStickerPackRequest) String() string {
 func (*CreateStickerPackRequest) ProtoMessage() {}
 
 func (x *CreateStickerPackRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[141]
+	mi := &file_api_user_v1_user_proto_msgTypes[150]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8901,7 +9445,7 @@ func (x *CreateStickerPackRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateStickerPackRequest.ProtoReflect.Descriptor instead.
 func (*CreateStickerPackRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{141}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{150}
 }
 
 func (x *CreateStickerPackRequest) GetName() string {
@@ -8948,7 +9492,7 @@ type CreateStickerPackResponse struct {
 
 func (x *CreateStickerPackResponse) Reset() {
 	*x = CreateStickerPackResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[142]
+	mi := &file_api_user_v1_user_proto_msgTypes[151]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -8960,7 +9504,7 @@ func (x *CreateStickerPackResponse) String() string {
 func (*CreateStickerPackResponse) ProtoMessage() {}
 
 func (x *CreateStickerPackResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[142]
+	mi := &file_api_user_v1_user_proto_msgTypes[151]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -8973,7 +9517,7 @@ func (x *CreateStickerPackResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateStickerPackResponse.ProtoReflect.Descriptor instead.
 func (*CreateStickerPackResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{142}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{151}
 }
 
 func (x *CreateStickerPackResponse) GetPack() *StickerPack {
@@ -9000,7 +9544,7 @@ type EditStickerPackRequest struct {
 
 func (x *EditStickerPackRequest) Reset() {
 	*x = EditStickerPackRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[143]
+	mi := &file_api_user_v1_user_proto_msgTypes[152]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9012,7 +9556,7 @@ func (x *EditStickerPackRequest) String() string {
 func (*EditStickerPackRequest) ProtoMessage() {}
 
 func (x *EditStickerPackRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[143]
+	mi := &file_api_user_v1_user_proto_msgTypes[152]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9025,7 +9569,7 @@ func (x *EditStickerPackRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EditStickerPackRequest.ProtoReflect.Descriptor instead.
 func (*EditStickerPackRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{143}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{152}
 }
 
 func (x *EditStickerPackRequest) GetPackId() string {
@@ -9088,7 +9632,7 @@ type EditStickerPackResponse struct {
 
 func (x *EditStickerPackResponse) Reset() {
 	*x = EditStickerPackResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[144]
+	mi := &file_api_user_v1_user_proto_msgTypes[153]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9100,7 +9644,7 @@ func (x *EditStickerPackResponse) String() string {
 func (*EditStickerPackResponse) ProtoMessage() {}
 
 func (x *EditStickerPackResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[144]
+	mi := &file_api_user_v1_user_proto_msgTypes[153]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9113,7 +9657,7 @@ func (x *EditStickerPackResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EditStickerPackResponse.ProtoReflect.Descriptor instead.
 func (*EditStickerPackResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{144}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{153}
 }
 
 func (x *EditStickerPackResponse) GetPack() *StickerPack {
@@ -9139,7 +9683,7 @@ type DeleteStickerPackRequest struct {
 
 func (x *DeleteStickerPackRequest) Reset() {
 	*x = DeleteStickerPackRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[145]
+	mi := &file_api_user_v1_user_proto_msgTypes[154]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9151,7 +9695,7 @@ func (x *DeleteStickerPackRequest) String() string {
 func (*DeleteStickerPackRequest) ProtoMessage() {}
 
 func (x *DeleteStickerPackRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[145]
+	mi := &file_api_user_v1_user_proto_msgTypes[154]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9164,7 +9708,7 @@ func (x *DeleteStickerPackRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteStickerPackRequest.ProtoReflect.Descriptor instead.
 func (*DeleteStickerPackRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{145}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{154}
 }
 
 func (x *DeleteStickerPackRequest) GetPackId() string {
@@ -9184,7 +9728,7 @@ type DeleteStickerPackResponse struct {
 
 func (x *DeleteStickerPackResponse) Reset() {
 	*x = DeleteStickerPackResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[146]
+	mi := &file_api_user_v1_user_proto_msgTypes[155]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9196,7 +9740,7 @@ func (x *DeleteStickerPackResponse) String() string {
 func (*DeleteStickerPackResponse) ProtoMessage() {}
 
 func (x *DeleteStickerPackResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[146]
+	mi := &file_api_user_v1_user_proto_msgTypes[155]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9209,7 +9753,7 @@ func (x *DeleteStickerPackResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteStickerPackResponse.ProtoReflect.Descriptor instead.
 func (*DeleteStickerPackResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{146}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{155}
 }
 
 func (x *DeleteStickerPackResponse) GetRemovedPhotoIds() []string {
@@ -9229,7 +9773,7 @@ type GetStickerAuthorsRequest struct {
 
 func (x *GetStickerAuthorsRequest) Reset() {
 	*x = GetStickerAuthorsRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[147]
+	mi := &file_api_user_v1_user_proto_msgTypes[156]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9241,7 +9785,7 @@ func (x *GetStickerAuthorsRequest) String() string {
 func (*GetStickerAuthorsRequest) ProtoMessage() {}
 
 func (x *GetStickerAuthorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[147]
+	mi := &file_api_user_v1_user_proto_msgTypes[156]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9254,7 +9798,7 @@ func (x *GetStickerAuthorsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStickerAuthorsRequest.ProtoReflect.Descriptor instead.
 func (*GetStickerAuthorsRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{147}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{156}
 }
 
 func (x *GetStickerAuthorsRequest) GetStickers() []string {
@@ -9275,7 +9819,7 @@ type GetStickerAuthorsResponse struct {
 
 func (x *GetStickerAuthorsResponse) Reset() {
 	*x = GetStickerAuthorsResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[148]
+	mi := &file_api_user_v1_user_proto_msgTypes[157]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9287,7 +9831,7 @@ func (x *GetStickerAuthorsResponse) String() string {
 func (*GetStickerAuthorsResponse) ProtoMessage() {}
 
 func (x *GetStickerAuthorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[148]
+	mi := &file_api_user_v1_user_proto_msgTypes[157]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9300,7 +9844,7 @@ func (x *GetStickerAuthorsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStickerAuthorsResponse.ProtoReflect.Descriptor instead.
 func (*GetStickerAuthorsResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{148}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{157}
 }
 
 func (x *GetStickerAuthorsResponse) GetAuthors() map[string]string {
@@ -9772,7 +10316,45 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x04roll\x18\x02 \x01(\x05R\x04roll\x12\x16\n" +
 	"\x06chance\x18\x03 \x01(\x05R\x06chance\x12\x14\n" +
 	"\x05votes\x18\x04 \x01(\x03R\x05votes\x12\x18\n" +
-	"\abalance\x18\x05 \x01(\x03R\abalance\"I\n" +
+	"\abalance\x18\x05 \x01(\x03R\abalance\"f\n" +
+	"\n" +
+	"BetOutcome\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
+	"\x06staked\x18\x02 \x01(\x03R\x06staked\x12\x18\n" +
+	"\abettors\x18\x03 \x01(\x05R\abettors\x12\x12\n" +
+	"\x04mine\x18\x04 \x01(\x03R\x04mine\"\xcd\x02\n" +
+	"\bBetEvent\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
+	"\bquestion\x18\x02 \x01(\tR\bquestion\x12/\n" +
+	"\boutcomes\x18\x03 \x03(\v2\x13.user.v1.BetOutcomeR\boutcomes\x12\x14\n" +
+	"\x05state\x18\x04 \x01(\tR\x05state\x127\n" +
+	"\tcloses_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\bclosesAt\x12\x16\n" +
+	"\x06winner\x18\x06 \x01(\x05R\x06winner\x129\n" +
+	"\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x12\n" +
+	"\x04open\x18\b \x01(\bR\x04open\x12\x16\n" +
+	"\x06people\x18\t \x01(\x05R\x06people\x12\x16\n" +
+	"\x06payout\x18\n" +
+	" \x01(\x03R\x06payout\"0\n" +
+	"\x14ListBetEventsRequest\x12\x18\n" +
+	"\apopular\x18\x01 \x01(\bR\apopular\"B\n" +
+	"\x15ListBetEventsResponse\x12)\n" +
+	"\x06events\x18\x01 \x03(\v2\x11.user.v1.BetEventR\x06events\"\x88\x01\n" +
+	"\x15CreateBetEventRequest\x12\x1a\n" +
+	"\bquestion\x18\x01 \x01(\tR\bquestion\x12\x1a\n" +
+	"\boutcomes\x18\x02 \x03(\tR\boutcomes\x127\n" +
+	"\tcloses_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\bclosesAt\",\n" +
+	"\x0fBetEventRequest\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\"K\n" +
+	"\x16ResolveBetEventRequest\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x16\n" +
+	"\x06winner\x18\x02 \x01(\x05R\x06winner\"^\n" +
+	"\x0fStakeBetRequest\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x18\n" +
+	"\aoutcome\x18\x02 \x01(\x05R\aoutcome\x12\x16\n" +
+	"\x06amount\x18\x03 \x01(\x03R\x06amount\",\n" +
+	"\x10StakeBetResponse\x12\x18\n" +
+	"\abalance\x18\x01 \x01(\x03R\abalance\"I\n" +
 	"\x12SetVerifiedRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\bverified\x18\x02 \x01(\bR\bverified\"@\n" +
@@ -9964,7 +10546,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"DECOR_AUTO\x10\x01\x12\f\n" +
 	"\bDECOR_ON\x10\x02\x12\r\n" +
-	"\tDECOR_OFF\x10\x032\xe7-\n" +
+	"\tDECOR_OFF\x10\x032\xd41\n" +
 	"\vUserService\x12]\n" +
 	"\x12GetOrCreateByEmail\x12\".user.v1.GetOrCreateByEmailRequest\x1a#.user.v1.GetOrCreateByEmailResponse\x126\n" +
 	"\x05GetMe\x12\x15.user.v1.GetMeRequest\x1a\x16.user.v1.GetMeResponse\x12N\n" +
@@ -10035,7 +10617,14 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"SpinCasino\x12\x1a.user.v1.SpinCasinoRequest\x1a\x1b.user.v1.SpinCasinoResponse\x12F\n" +
 	"\rSetCasinoBets\x12\x1d.user.v1.SetCasinoBetsRequest\x1a\x16.google.protobuf.Empty\x12B\n" +
-	"\tBetCasino\x12\x19.user.v1.BetCasinoRequest\x1a\x1a.user.v1.BetCasinoResponse\x12B\n" +
+	"\tBetCasino\x12\x19.user.v1.BetCasinoRequest\x1a\x1a.user.v1.BetCasinoResponse\x12N\n" +
+	"\rListBetEvents\x12\x1d.user.v1.ListBetEventsRequest\x1a\x1e.user.v1.ListBetEventsResponse\x12C\n" +
+	"\x0eCreateBetEvent\x12\x1e.user.v1.CreateBetEventRequest\x1a\x11.user.v1.BetEvent\x12A\n" +
+	"\rCloseBetEvent\x12\x18.user.v1.BetEventRequest\x1a\x16.google.protobuf.Empty\x12J\n" +
+	"\x0fResolveBetEvent\x12\x1f.user.v1.ResolveBetEventRequest\x1a\x16.google.protobuf.Empty\x12B\n" +
+	"\x0eCancelBetEvent\x12\x18.user.v1.BetEventRequest\x1a\x16.google.protobuf.Empty\x12B\n" +
+	"\x0eDeleteBetEvent\x12\x18.user.v1.BetEventRequest\x1a\x16.google.protobuf.Empty\x12?\n" +
+	"\bStakeBet\x12\x18.user.v1.StakeBetRequest\x1a\x19.user.v1.StakeBetResponse\x12B\n" +
 	"\vSetVerified\x12\x1b.user.v1.SetVerifiedRequest\x1a\x16.google.protobuf.Empty\x12<\n" +
 	"\bSetAlert\x12\x18.user.v1.SetAlertRequest\x1a\x16.google.protobuf.Empty\x12<\n" +
 	"\aListAds\x12\x17.user.v1.ListAdsRequest\x1a\x18.user.v1.ListAdsResponse\x12?\n" +
@@ -10063,7 +10652,7 @@ func file_api_user_v1_user_proto_rawDescGZIP() []byte {
 }
 
 var file_api_user_v1_user_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
-var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 150)
+var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 159)
 var file_api_user_v1_user_proto_goTypes = []any{
 	(FieldPlace)(0),                    // 0: user.v1.FieldPlace
 	(Audience)(0),                      // 1: user.v1.Audience
@@ -10192,59 +10781,68 @@ var file_api_user_v1_user_proto_goTypes = []any{
 	(*SetCasinoBetsRequest)(nil),       // 124: user.v1.SetCasinoBetsRequest
 	(*BetCasinoRequest)(nil),           // 125: user.v1.BetCasinoRequest
 	(*BetCasinoResponse)(nil),          // 126: user.v1.BetCasinoResponse
-	(*SetVerifiedRequest)(nil),         // 127: user.v1.SetVerifiedRequest
-	(*SetAlertRequest)(nil),            // 128: user.v1.SetAlertRequest
-	(*Ad)(nil),                         // 129: user.v1.Ad
-	(*AdStats)(nil),                    // 130: user.v1.AdStats
-	(*ListAdsRequest)(nil),             // 131: user.v1.ListAdsRequest
-	(*ListAdsResponse)(nil),            // 132: user.v1.ListAdsResponse
-	(*CreateAdRequest)(nil),            // 133: user.v1.CreateAdRequest
-	(*CreateAdResponse)(nil),           // 134: user.v1.CreateAdResponse
-	(*EditAdRequest)(nil),              // 135: user.v1.EditAdRequest
-	(*EditAdResponse)(nil),             // 136: user.v1.EditAdResponse
-	(*DeleteAdRequest)(nil),            // 137: user.v1.DeleteAdRequest
-	(*DeleteAdResponse)(nil),           // 138: user.v1.DeleteAdResponse
-	(*ViewAdRequest)(nil),              // 139: user.v1.ViewAdRequest
-	(*ViewAdResponse)(nil),             // 140: user.v1.ViewAdResponse
-	(*ClickAdRequest)(nil),             // 141: user.v1.ClickAdRequest
-	(*ClickAdResponse)(nil),            // 142: user.v1.ClickAdResponse
-	(*BanUserRequest)(nil),             // 143: user.v1.BanUserRequest
-	(*UnbanUserRequest)(nil),           // 144: user.v1.UnbanUserRequest
-	(*GetStickerCatalogRequest)(nil),   // 145: user.v1.GetStickerCatalogRequest
-	(*GetStickerCatalogResponse)(nil),  // 146: user.v1.GetStickerCatalogResponse
-	(*StickerPack)(nil),                // 147: user.v1.StickerPack
-	(*AddStickerPackRequest)(nil),      // 148: user.v1.AddStickerPackRequest
-	(*RemoveStickerPackRequest)(nil),   // 149: user.v1.RemoveStickerPackRequest
-	(*ListMyStickerPacksRequest)(nil),  // 150: user.v1.ListMyStickerPacksRequest
-	(*ListMyStickerPacksResponse)(nil), // 151: user.v1.ListMyStickerPacksResponse
-	(*CreateStickerPackRequest)(nil),   // 152: user.v1.CreateStickerPackRequest
-	(*CreateStickerPackResponse)(nil),  // 153: user.v1.CreateStickerPackResponse
-	(*EditStickerPackRequest)(nil),     // 154: user.v1.EditStickerPackRequest
-	(*EditStickerPackResponse)(nil),    // 155: user.v1.EditStickerPackResponse
-	(*DeleteStickerPackRequest)(nil),   // 156: user.v1.DeleteStickerPackRequest
-	(*DeleteStickerPackResponse)(nil),  // 157: user.v1.DeleteStickerPackResponse
-	(*GetStickerAuthorsRequest)(nil),   // 158: user.v1.GetStickerAuthorsRequest
-	(*GetStickerAuthorsResponse)(nil),  // 159: user.v1.GetStickerAuthorsResponse
-	nil,                                // 160: user.v1.GetStickerAuthorsResponse.AuthorsEntry
-	(*timestamppb.Timestamp)(nil),      // 161: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),              // 162: google.protobuf.Empty
+	(*BetOutcome)(nil),                 // 127: user.v1.BetOutcome
+	(*BetEvent)(nil),                   // 128: user.v1.BetEvent
+	(*ListBetEventsRequest)(nil),       // 129: user.v1.ListBetEventsRequest
+	(*ListBetEventsResponse)(nil),      // 130: user.v1.ListBetEventsResponse
+	(*CreateBetEventRequest)(nil),      // 131: user.v1.CreateBetEventRequest
+	(*BetEventRequest)(nil),            // 132: user.v1.BetEventRequest
+	(*ResolveBetEventRequest)(nil),     // 133: user.v1.ResolveBetEventRequest
+	(*StakeBetRequest)(nil),            // 134: user.v1.StakeBetRequest
+	(*StakeBetResponse)(nil),           // 135: user.v1.StakeBetResponse
+	(*SetVerifiedRequest)(nil),         // 136: user.v1.SetVerifiedRequest
+	(*SetAlertRequest)(nil),            // 137: user.v1.SetAlertRequest
+	(*Ad)(nil),                         // 138: user.v1.Ad
+	(*AdStats)(nil),                    // 139: user.v1.AdStats
+	(*ListAdsRequest)(nil),             // 140: user.v1.ListAdsRequest
+	(*ListAdsResponse)(nil),            // 141: user.v1.ListAdsResponse
+	(*CreateAdRequest)(nil),            // 142: user.v1.CreateAdRequest
+	(*CreateAdResponse)(nil),           // 143: user.v1.CreateAdResponse
+	(*EditAdRequest)(nil),              // 144: user.v1.EditAdRequest
+	(*EditAdResponse)(nil),             // 145: user.v1.EditAdResponse
+	(*DeleteAdRequest)(nil),            // 146: user.v1.DeleteAdRequest
+	(*DeleteAdResponse)(nil),           // 147: user.v1.DeleteAdResponse
+	(*ViewAdRequest)(nil),              // 148: user.v1.ViewAdRequest
+	(*ViewAdResponse)(nil),             // 149: user.v1.ViewAdResponse
+	(*ClickAdRequest)(nil),             // 150: user.v1.ClickAdRequest
+	(*ClickAdResponse)(nil),            // 151: user.v1.ClickAdResponse
+	(*BanUserRequest)(nil),             // 152: user.v1.BanUserRequest
+	(*UnbanUserRequest)(nil),           // 153: user.v1.UnbanUserRequest
+	(*GetStickerCatalogRequest)(nil),   // 154: user.v1.GetStickerCatalogRequest
+	(*GetStickerCatalogResponse)(nil),  // 155: user.v1.GetStickerCatalogResponse
+	(*StickerPack)(nil),                // 156: user.v1.StickerPack
+	(*AddStickerPackRequest)(nil),      // 157: user.v1.AddStickerPackRequest
+	(*RemoveStickerPackRequest)(nil),   // 158: user.v1.RemoveStickerPackRequest
+	(*ListMyStickerPacksRequest)(nil),  // 159: user.v1.ListMyStickerPacksRequest
+	(*ListMyStickerPacksResponse)(nil), // 160: user.v1.ListMyStickerPacksResponse
+	(*CreateStickerPackRequest)(nil),   // 161: user.v1.CreateStickerPackRequest
+	(*CreateStickerPackResponse)(nil),  // 162: user.v1.CreateStickerPackResponse
+	(*EditStickerPackRequest)(nil),     // 163: user.v1.EditStickerPackRequest
+	(*EditStickerPackResponse)(nil),    // 164: user.v1.EditStickerPackResponse
+	(*DeleteStickerPackRequest)(nil),   // 165: user.v1.DeleteStickerPackRequest
+	(*DeleteStickerPackResponse)(nil),  // 166: user.v1.DeleteStickerPackResponse
+	(*GetStickerAuthorsRequest)(nil),   // 167: user.v1.GetStickerAuthorsRequest
+	(*GetStickerAuthorsResponse)(nil),  // 168: user.v1.GetStickerAuthorsResponse
+	nil,                                // 169: user.v1.GetStickerAuthorsResponse.AuthorsEntry
+	(*timestamppb.Timestamp)(nil),      // 170: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),              // 171: google.protobuf.Empty
 }
 var file_api_user_v1_user_proto_depIdxs = []int32{
 	5,   // 0: user.v1.User.gender:type_name -> user.v1.Gender
 	6,   // 1: user.v1.User.relationship:type_name -> user.v1.Relationship
 	7,   // 2: user.v1.User.worldview:type_name -> user.v1.Worldview
 	8,   // 3: user.v1.User.political_views:type_name -> user.v1.PoliticalViews
-	161, // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
+	170, // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
 	19,  // 5: user.v1.User.privacy:type_name -> user.v1.PrivacySettings
-	161, // 6: user.v1.User.purge_at:type_name -> google.protobuf.Timestamp
+	170, // 6: user.v1.User.purge_at:type_name -> google.protobuf.Timestamp
 	16,  // 7: user.v1.User.contacts:type_name -> user.v1.Contacts
 	17,  // 8: user.v1.User.interests:type_name -> user.v1.Interests
 	18,  // 9: user.v1.User.extra_fields:type_name -> user.v1.ExtraField
-	161, // 10: user.v1.User.registered_at:type_name -> google.protobuf.Timestamp
+	170, // 10: user.v1.User.registered_at:type_name -> google.protobuf.Timestamp
 	13,  // 11: user.v1.User.interface:type_name -> user.v1.InterfaceSettings
 	12,  // 12: user.v1.User.ban:type_name -> user.v1.Ban
-	161, // 13: user.v1.Ban.banned_at:type_name -> google.protobuf.Timestamp
-	161, // 14: user.v1.Ban.until:type_name -> google.protobuf.Timestamp
+	170, // 13: user.v1.Ban.banned_at:type_name -> google.protobuf.Timestamp
+	170, // 14: user.v1.Ban.until:type_name -> google.protobuf.Timestamp
 	13,  // 15: user.v1.UpdateInterfaceRequest.interface:type_name -> user.v1.InterfaceSettings
 	11,  // 16: user.v1.UpdateInterfaceResponse.user:type_name -> user.v1.User
 	0,   // 17: user.v1.ExtraField.place:type_name -> user.v1.FieldPlace
@@ -10262,19 +10860,19 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	6,   // 29: user.v1.PublicProfile.relationship:type_name -> user.v1.Relationship
 	7,   // 30: user.v1.PublicProfile.worldview:type_name -> user.v1.Worldview
 	8,   // 31: user.v1.PublicProfile.political_views:type_name -> user.v1.PoliticalViews
-	161, // 32: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
+	170, // 32: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
 	16,  // 33: user.v1.PublicProfile.contacts:type_name -> user.v1.Contacts
 	17,  // 34: user.v1.PublicProfile.interests:type_name -> user.v1.Interests
 	18,  // 35: user.v1.PublicProfile.extra_fields:type_name -> user.v1.ExtraField
-	161, // 36: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
-	161, // 37: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
+	170, // 36: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
+	170, // 37: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
 	12,  // 38: user.v1.PublicProfile.ban:type_name -> user.v1.Ban
 	11,  // 39: user.v1.GetMeResponse.user:type_name -> user.v1.User
 	5,   // 40: user.v1.UpdateProfileRequest.gender:type_name -> user.v1.Gender
 	6,   // 41: user.v1.UpdateProfileRequest.relationship:type_name -> user.v1.Relationship
 	7,   // 42: user.v1.UpdateProfileRequest.worldview:type_name -> user.v1.Worldview
 	8,   // 43: user.v1.UpdateProfileRequest.political_views:type_name -> user.v1.PoliticalViews
-	161, // 44: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
+	170, // 44: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
 	11,  // 45: user.v1.UpdateProfileResponse.user:type_name -> user.v1.User
 	16,  // 46: user.v1.UpdateContactsRequest.contacts:type_name -> user.v1.Contacts
 	11,  // 47: user.v1.UpdateContactsResponse.user:type_name -> user.v1.User
@@ -10299,7 +10897,7 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	11,  // 66: user.v1.ReactivateAccountResponse.user:type_name -> user.v1.User
 	92,  // 67: user.v1.GetGiftCatalogResponse.collections:type_name -> user.v1.GiftCollection
 	95,  // 68: user.v1.SendGiftResponse.gift:type_name -> user.v1.Gift
-	161, // 69: user.v1.Gift.sent_at:type_name -> google.protobuf.Timestamp
+	170, // 69: user.v1.Gift.sent_at:type_name -> google.protobuf.Timestamp
 	20,  // 70: user.v1.Gift.sender:type_name -> user.v1.PublicProfile
 	95,  // 71: user.v1.ListGiftsResponse.gifts:type_name -> user.v1.Gift
 	104, // 72: user.v1.CreateVoucherResponse.voucher:type_name -> user.v1.Voucher
@@ -10308,177 +10906,196 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	10,  // 75: user.v1.SetDecorRequest.decor:type_name -> user.v1.Decor
 	116, // 76: user.v1.GetCasinoSettingsResponse.prizes:type_name -> user.v1.CasinoPrize
 	116, // 77: user.v1.SetCasinoRequest.prizes:type_name -> user.v1.CasinoPrize
-	130, // 78: user.v1.Ad.stats:type_name -> user.v1.AdStats
-	129, // 79: user.v1.ListAdsResponse.ads:type_name -> user.v1.Ad
-	129, // 80: user.v1.CreateAdResponse.ad:type_name -> user.v1.Ad
-	129, // 81: user.v1.EditAdResponse.ad:type_name -> user.v1.Ad
-	161, // 82: user.v1.BanUserRequest.until:type_name -> google.protobuf.Timestamp
-	147, // 83: user.v1.GetStickerCatalogResponse.packs:type_name -> user.v1.StickerPack
-	147, // 84: user.v1.ListMyStickerPacksResponse.packs:type_name -> user.v1.StickerPack
-	147, // 85: user.v1.CreateStickerPackResponse.pack:type_name -> user.v1.StickerPack
-	147, // 86: user.v1.EditStickerPackResponse.pack:type_name -> user.v1.StickerPack
-	160, // 87: user.v1.GetStickerAuthorsResponse.authors:type_name -> user.v1.GetStickerAuthorsResponse.AuthorsEntry
-	21,  // 88: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
-	23,  // 89: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
-	25,  // 90: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
-	50,  // 91: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
-	52,  // 92: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
-	35,  // 93: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
-	14,  // 94: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
-	27,  // 95: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
-	29,  // 96: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
-	31,  // 97: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
-	49,  // 98: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
-	55,  // 99: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
-	33,  // 100: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
-	37,  // 101: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
-	57,  // 102: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
-	39,  // 103: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
-	41,  // 104: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
-	40,  // 105: user.v1.UserService.AcceptInvite:input_type -> user.v1.AcceptInviteRequest
-	42,  // 106: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
-	44,  // 107: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
-	44,  // 108: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
-	45,  // 109: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
-	46,  // 110: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
-	59,  // 111: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
-	63,  // 112: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
-	75,  // 113: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
-	77,  // 114: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
-	80,  // 115: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
-	61,  // 116: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
-	65,  // 117: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
-	66,  // 118: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
-	67,  // 119: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
-	69,  // 120: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
-	71,  // 121: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
-	72,  // 122: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
-	73,  // 123: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
-	82,  // 124: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
-	90,  // 125: user.v1.UserService.GetGiftCatalog:input_type -> user.v1.GetGiftCatalogRequest
-	93,  // 126: user.v1.UserService.SendGift:input_type -> user.v1.SendGiftRequest
-	96,  // 127: user.v1.UserService.ListGifts:input_type -> user.v1.ListGiftsRequest
-	98,  // 128: user.v1.UserService.DeleteGift:input_type -> user.v1.DeleteGiftRequest
-	99,  // 129: user.v1.UserService.SetGiftPrice:input_type -> user.v1.SetGiftPriceRequest
-	145, // 130: user.v1.UserService.GetStickerCatalog:input_type -> user.v1.GetStickerCatalogRequest
-	148, // 131: user.v1.UserService.AddStickerPack:input_type -> user.v1.AddStickerPackRequest
-	149, // 132: user.v1.UserService.RemoveStickerPack:input_type -> user.v1.RemoveStickerPackRequest
-	150, // 133: user.v1.UserService.ListMyStickerPacks:input_type -> user.v1.ListMyStickerPacksRequest
-	152, // 134: user.v1.UserService.CreateStickerPack:input_type -> user.v1.CreateStickerPackRequest
-	154, // 135: user.v1.UserService.EditStickerPack:input_type -> user.v1.EditStickerPackRequest
-	156, // 136: user.v1.UserService.DeleteStickerPack:input_type -> user.v1.DeleteStickerPackRequest
-	158, // 137: user.v1.UserService.GetStickerAuthors:input_type -> user.v1.GetStickerAuthorsRequest
-	100, // 138: user.v1.UserService.TransferVotes:input_type -> user.v1.TransferVotesRequest
-	102, // 139: user.v1.UserService.RedeemVoucher:input_type -> user.v1.RedeemVoucherRequest
-	105, // 140: user.v1.UserService.CreateVoucher:input_type -> user.v1.CreateVoucherRequest
-	107, // 141: user.v1.UserService.ListVouchers:input_type -> user.v1.ListVouchersRequest
-	109, // 142: user.v1.UserService.DeleteVoucher:input_type -> user.v1.DeleteVoucherRequest
-	110, // 143: user.v1.UserService.GetVoteRate:input_type -> user.v1.GetVoteRateRequest
-	112, // 144: user.v1.UserService.SetVoteRate:input_type -> user.v1.SetVoteRateRequest
-	113, // 145: user.v1.UserService.GetDecor:input_type -> user.v1.GetDecorRequest
-	115, // 146: user.v1.UserService.SetDecor:input_type -> user.v1.SetDecorRequest
-	117, // 147: user.v1.UserService.GetCasino:input_type -> user.v1.GetCasinoRequest
-	119, // 148: user.v1.UserService.GetCasinoSettings:input_type -> user.v1.GetCasinoSettingsRequest
-	121, // 149: user.v1.UserService.SetCasino:input_type -> user.v1.SetCasinoRequest
-	122, // 150: user.v1.UserService.SpinCasino:input_type -> user.v1.SpinCasinoRequest
-	124, // 151: user.v1.UserService.SetCasinoBets:input_type -> user.v1.SetCasinoBetsRequest
-	125, // 152: user.v1.UserService.BetCasino:input_type -> user.v1.BetCasinoRequest
-	127, // 153: user.v1.UserService.SetVerified:input_type -> user.v1.SetVerifiedRequest
-	128, // 154: user.v1.UserService.SetAlert:input_type -> user.v1.SetAlertRequest
-	131, // 155: user.v1.UserService.ListAds:input_type -> user.v1.ListAdsRequest
-	133, // 156: user.v1.UserService.CreateAd:input_type -> user.v1.CreateAdRequest
-	135, // 157: user.v1.UserService.EditAd:input_type -> user.v1.EditAdRequest
-	137, // 158: user.v1.UserService.DeleteAd:input_type -> user.v1.DeleteAdRequest
-	139, // 159: user.v1.UserService.ViewAd:input_type -> user.v1.ViewAdRequest
-	141, // 160: user.v1.UserService.ClickAd:input_type -> user.v1.ClickAdRequest
-	143, // 161: user.v1.UserService.BanUser:input_type -> user.v1.BanUserRequest
-	144, // 162: user.v1.UserService.UnbanUser:input_type -> user.v1.UnbanUserRequest
-	84,  // 163: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
-	86,  // 164: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
-	88,  // 165: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
-	22,  // 166: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
-	24,  // 167: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
-	26,  // 168: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
-	51,  // 169: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
-	53,  // 170: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
-	36,  // 171: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
-	15,  // 172: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
-	28,  // 173: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
-	30,  // 174: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
-	32,  // 175: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
-	54,  // 176: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
-	56,  // 177: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
-	34,  // 178: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
-	38,  // 179: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
-	58,  // 180: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
-	162, // 181: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
-	162, // 182: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
-	162, // 183: user.v1.UserService.AcceptInvite:output_type -> google.protobuf.Empty
-	43,  // 184: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
-	48,  // 185: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
-	48,  // 186: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
-	162, // 187: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
-	47,  // 188: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
-	60,  // 189: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
-	64,  // 190: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
-	76,  // 191: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
-	78,  // 192: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
-	81,  // 193: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
-	62,  // 194: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
-	162, // 195: user.v1.UserService.Block:output_type -> google.protobuf.Empty
-	162, // 196: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
-	68,  // 197: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
-	70,  // 198: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
-	162, // 199: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
-	162, // 200: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
-	74,  // 201: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
-	83,  // 202: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
-	91,  // 203: user.v1.UserService.GetGiftCatalog:output_type -> user.v1.GetGiftCatalogResponse
-	94,  // 204: user.v1.UserService.SendGift:output_type -> user.v1.SendGiftResponse
-	97,  // 205: user.v1.UserService.ListGifts:output_type -> user.v1.ListGiftsResponse
-	162, // 206: user.v1.UserService.DeleteGift:output_type -> google.protobuf.Empty
-	162, // 207: user.v1.UserService.SetGiftPrice:output_type -> google.protobuf.Empty
-	146, // 208: user.v1.UserService.GetStickerCatalog:output_type -> user.v1.GetStickerCatalogResponse
-	162, // 209: user.v1.UserService.AddStickerPack:output_type -> google.protobuf.Empty
-	162, // 210: user.v1.UserService.RemoveStickerPack:output_type -> google.protobuf.Empty
-	151, // 211: user.v1.UserService.ListMyStickerPacks:output_type -> user.v1.ListMyStickerPacksResponse
-	153, // 212: user.v1.UserService.CreateStickerPack:output_type -> user.v1.CreateStickerPackResponse
-	155, // 213: user.v1.UserService.EditStickerPack:output_type -> user.v1.EditStickerPackResponse
-	157, // 214: user.v1.UserService.DeleteStickerPack:output_type -> user.v1.DeleteStickerPackResponse
-	159, // 215: user.v1.UserService.GetStickerAuthors:output_type -> user.v1.GetStickerAuthorsResponse
-	101, // 216: user.v1.UserService.TransferVotes:output_type -> user.v1.TransferVotesResponse
-	103, // 217: user.v1.UserService.RedeemVoucher:output_type -> user.v1.RedeemVoucherResponse
-	106, // 218: user.v1.UserService.CreateVoucher:output_type -> user.v1.CreateVoucherResponse
-	108, // 219: user.v1.UserService.ListVouchers:output_type -> user.v1.ListVouchersResponse
-	162, // 220: user.v1.UserService.DeleteVoucher:output_type -> google.protobuf.Empty
-	111, // 221: user.v1.UserService.GetVoteRate:output_type -> user.v1.GetVoteRateResponse
-	162, // 222: user.v1.UserService.SetVoteRate:output_type -> google.protobuf.Empty
-	114, // 223: user.v1.UserService.GetDecor:output_type -> user.v1.GetDecorResponse
-	162, // 224: user.v1.UserService.SetDecor:output_type -> google.protobuf.Empty
-	118, // 225: user.v1.UserService.GetCasino:output_type -> user.v1.GetCasinoResponse
-	120, // 226: user.v1.UserService.GetCasinoSettings:output_type -> user.v1.GetCasinoSettingsResponse
-	162, // 227: user.v1.UserService.SetCasino:output_type -> google.protobuf.Empty
-	123, // 228: user.v1.UserService.SpinCasino:output_type -> user.v1.SpinCasinoResponse
-	162, // 229: user.v1.UserService.SetCasinoBets:output_type -> google.protobuf.Empty
-	126, // 230: user.v1.UserService.BetCasino:output_type -> user.v1.BetCasinoResponse
-	162, // 231: user.v1.UserService.SetVerified:output_type -> google.protobuf.Empty
-	162, // 232: user.v1.UserService.SetAlert:output_type -> google.protobuf.Empty
-	132, // 233: user.v1.UserService.ListAds:output_type -> user.v1.ListAdsResponse
-	134, // 234: user.v1.UserService.CreateAd:output_type -> user.v1.CreateAdResponse
-	136, // 235: user.v1.UserService.EditAd:output_type -> user.v1.EditAdResponse
-	138, // 236: user.v1.UserService.DeleteAd:output_type -> user.v1.DeleteAdResponse
-	140, // 237: user.v1.UserService.ViewAd:output_type -> user.v1.ViewAdResponse
-	142, // 238: user.v1.UserService.ClickAd:output_type -> user.v1.ClickAdResponse
-	162, // 239: user.v1.UserService.BanUser:output_type -> google.protobuf.Empty
-	162, // 240: user.v1.UserService.UnbanUser:output_type -> google.protobuf.Empty
-	85,  // 241: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
-	87,  // 242: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
-	89,  // 243: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
-	166, // [166:244] is the sub-list for method output_type
-	88,  // [88:166] is the sub-list for method input_type
-	88,  // [88:88] is the sub-list for extension type_name
-	88,  // [88:88] is the sub-list for extension extendee
-	0,   // [0:88] is the sub-list for field type_name
+	127, // 78: user.v1.BetEvent.outcomes:type_name -> user.v1.BetOutcome
+	170, // 79: user.v1.BetEvent.closes_at:type_name -> google.protobuf.Timestamp
+	170, // 80: user.v1.BetEvent.created_at:type_name -> google.protobuf.Timestamp
+	128, // 81: user.v1.ListBetEventsResponse.events:type_name -> user.v1.BetEvent
+	170, // 82: user.v1.CreateBetEventRequest.closes_at:type_name -> google.protobuf.Timestamp
+	139, // 83: user.v1.Ad.stats:type_name -> user.v1.AdStats
+	138, // 84: user.v1.ListAdsResponse.ads:type_name -> user.v1.Ad
+	138, // 85: user.v1.CreateAdResponse.ad:type_name -> user.v1.Ad
+	138, // 86: user.v1.EditAdResponse.ad:type_name -> user.v1.Ad
+	170, // 87: user.v1.BanUserRequest.until:type_name -> google.protobuf.Timestamp
+	156, // 88: user.v1.GetStickerCatalogResponse.packs:type_name -> user.v1.StickerPack
+	156, // 89: user.v1.ListMyStickerPacksResponse.packs:type_name -> user.v1.StickerPack
+	156, // 90: user.v1.CreateStickerPackResponse.pack:type_name -> user.v1.StickerPack
+	156, // 91: user.v1.EditStickerPackResponse.pack:type_name -> user.v1.StickerPack
+	169, // 92: user.v1.GetStickerAuthorsResponse.authors:type_name -> user.v1.GetStickerAuthorsResponse.AuthorsEntry
+	21,  // 93: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
+	23,  // 94: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
+	25,  // 95: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
+	50,  // 96: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
+	52,  // 97: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
+	35,  // 98: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
+	14,  // 99: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
+	27,  // 100: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
+	29,  // 101: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
+	31,  // 102: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
+	49,  // 103: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
+	55,  // 104: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
+	33,  // 105: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
+	37,  // 106: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
+	57,  // 107: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
+	39,  // 108: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
+	41,  // 109: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
+	40,  // 110: user.v1.UserService.AcceptInvite:input_type -> user.v1.AcceptInviteRequest
+	42,  // 111: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
+	44,  // 112: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
+	44,  // 113: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
+	45,  // 114: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
+	46,  // 115: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
+	59,  // 116: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
+	63,  // 117: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
+	75,  // 118: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
+	77,  // 119: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
+	80,  // 120: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
+	61,  // 121: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
+	65,  // 122: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
+	66,  // 123: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
+	67,  // 124: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
+	69,  // 125: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
+	71,  // 126: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
+	72,  // 127: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
+	73,  // 128: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
+	82,  // 129: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
+	90,  // 130: user.v1.UserService.GetGiftCatalog:input_type -> user.v1.GetGiftCatalogRequest
+	93,  // 131: user.v1.UserService.SendGift:input_type -> user.v1.SendGiftRequest
+	96,  // 132: user.v1.UserService.ListGifts:input_type -> user.v1.ListGiftsRequest
+	98,  // 133: user.v1.UserService.DeleteGift:input_type -> user.v1.DeleteGiftRequest
+	99,  // 134: user.v1.UserService.SetGiftPrice:input_type -> user.v1.SetGiftPriceRequest
+	154, // 135: user.v1.UserService.GetStickerCatalog:input_type -> user.v1.GetStickerCatalogRequest
+	157, // 136: user.v1.UserService.AddStickerPack:input_type -> user.v1.AddStickerPackRequest
+	158, // 137: user.v1.UserService.RemoveStickerPack:input_type -> user.v1.RemoveStickerPackRequest
+	159, // 138: user.v1.UserService.ListMyStickerPacks:input_type -> user.v1.ListMyStickerPacksRequest
+	161, // 139: user.v1.UserService.CreateStickerPack:input_type -> user.v1.CreateStickerPackRequest
+	163, // 140: user.v1.UserService.EditStickerPack:input_type -> user.v1.EditStickerPackRequest
+	165, // 141: user.v1.UserService.DeleteStickerPack:input_type -> user.v1.DeleteStickerPackRequest
+	167, // 142: user.v1.UserService.GetStickerAuthors:input_type -> user.v1.GetStickerAuthorsRequest
+	100, // 143: user.v1.UserService.TransferVotes:input_type -> user.v1.TransferVotesRequest
+	102, // 144: user.v1.UserService.RedeemVoucher:input_type -> user.v1.RedeemVoucherRequest
+	105, // 145: user.v1.UserService.CreateVoucher:input_type -> user.v1.CreateVoucherRequest
+	107, // 146: user.v1.UserService.ListVouchers:input_type -> user.v1.ListVouchersRequest
+	109, // 147: user.v1.UserService.DeleteVoucher:input_type -> user.v1.DeleteVoucherRequest
+	110, // 148: user.v1.UserService.GetVoteRate:input_type -> user.v1.GetVoteRateRequest
+	112, // 149: user.v1.UserService.SetVoteRate:input_type -> user.v1.SetVoteRateRequest
+	113, // 150: user.v1.UserService.GetDecor:input_type -> user.v1.GetDecorRequest
+	115, // 151: user.v1.UserService.SetDecor:input_type -> user.v1.SetDecorRequest
+	117, // 152: user.v1.UserService.GetCasino:input_type -> user.v1.GetCasinoRequest
+	119, // 153: user.v1.UserService.GetCasinoSettings:input_type -> user.v1.GetCasinoSettingsRequest
+	121, // 154: user.v1.UserService.SetCasino:input_type -> user.v1.SetCasinoRequest
+	122, // 155: user.v1.UserService.SpinCasino:input_type -> user.v1.SpinCasinoRequest
+	124, // 156: user.v1.UserService.SetCasinoBets:input_type -> user.v1.SetCasinoBetsRequest
+	125, // 157: user.v1.UserService.BetCasino:input_type -> user.v1.BetCasinoRequest
+	129, // 158: user.v1.UserService.ListBetEvents:input_type -> user.v1.ListBetEventsRequest
+	131, // 159: user.v1.UserService.CreateBetEvent:input_type -> user.v1.CreateBetEventRequest
+	132, // 160: user.v1.UserService.CloseBetEvent:input_type -> user.v1.BetEventRequest
+	133, // 161: user.v1.UserService.ResolveBetEvent:input_type -> user.v1.ResolveBetEventRequest
+	132, // 162: user.v1.UserService.CancelBetEvent:input_type -> user.v1.BetEventRequest
+	132, // 163: user.v1.UserService.DeleteBetEvent:input_type -> user.v1.BetEventRequest
+	134, // 164: user.v1.UserService.StakeBet:input_type -> user.v1.StakeBetRequest
+	136, // 165: user.v1.UserService.SetVerified:input_type -> user.v1.SetVerifiedRequest
+	137, // 166: user.v1.UserService.SetAlert:input_type -> user.v1.SetAlertRequest
+	140, // 167: user.v1.UserService.ListAds:input_type -> user.v1.ListAdsRequest
+	142, // 168: user.v1.UserService.CreateAd:input_type -> user.v1.CreateAdRequest
+	144, // 169: user.v1.UserService.EditAd:input_type -> user.v1.EditAdRequest
+	146, // 170: user.v1.UserService.DeleteAd:input_type -> user.v1.DeleteAdRequest
+	148, // 171: user.v1.UserService.ViewAd:input_type -> user.v1.ViewAdRequest
+	150, // 172: user.v1.UserService.ClickAd:input_type -> user.v1.ClickAdRequest
+	152, // 173: user.v1.UserService.BanUser:input_type -> user.v1.BanUserRequest
+	153, // 174: user.v1.UserService.UnbanUser:input_type -> user.v1.UnbanUserRequest
+	84,  // 175: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
+	86,  // 176: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
+	88,  // 177: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
+	22,  // 178: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
+	24,  // 179: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
+	26,  // 180: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
+	51,  // 181: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
+	53,  // 182: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
+	36,  // 183: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
+	15,  // 184: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
+	28,  // 185: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
+	30,  // 186: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
+	32,  // 187: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
+	54,  // 188: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
+	56,  // 189: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
+	34,  // 190: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
+	38,  // 191: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
+	58,  // 192: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
+	171, // 193: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
+	171, // 194: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
+	171, // 195: user.v1.UserService.AcceptInvite:output_type -> google.protobuf.Empty
+	43,  // 196: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
+	48,  // 197: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
+	48,  // 198: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
+	171, // 199: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
+	47,  // 200: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
+	60,  // 201: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
+	64,  // 202: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
+	76,  // 203: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
+	78,  // 204: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
+	81,  // 205: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
+	62,  // 206: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
+	171, // 207: user.v1.UserService.Block:output_type -> google.protobuf.Empty
+	171, // 208: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
+	68,  // 209: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
+	70,  // 210: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
+	171, // 211: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
+	171, // 212: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
+	74,  // 213: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
+	83,  // 214: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
+	91,  // 215: user.v1.UserService.GetGiftCatalog:output_type -> user.v1.GetGiftCatalogResponse
+	94,  // 216: user.v1.UserService.SendGift:output_type -> user.v1.SendGiftResponse
+	97,  // 217: user.v1.UserService.ListGifts:output_type -> user.v1.ListGiftsResponse
+	171, // 218: user.v1.UserService.DeleteGift:output_type -> google.protobuf.Empty
+	171, // 219: user.v1.UserService.SetGiftPrice:output_type -> google.protobuf.Empty
+	155, // 220: user.v1.UserService.GetStickerCatalog:output_type -> user.v1.GetStickerCatalogResponse
+	171, // 221: user.v1.UserService.AddStickerPack:output_type -> google.protobuf.Empty
+	171, // 222: user.v1.UserService.RemoveStickerPack:output_type -> google.protobuf.Empty
+	160, // 223: user.v1.UserService.ListMyStickerPacks:output_type -> user.v1.ListMyStickerPacksResponse
+	162, // 224: user.v1.UserService.CreateStickerPack:output_type -> user.v1.CreateStickerPackResponse
+	164, // 225: user.v1.UserService.EditStickerPack:output_type -> user.v1.EditStickerPackResponse
+	166, // 226: user.v1.UserService.DeleteStickerPack:output_type -> user.v1.DeleteStickerPackResponse
+	168, // 227: user.v1.UserService.GetStickerAuthors:output_type -> user.v1.GetStickerAuthorsResponse
+	101, // 228: user.v1.UserService.TransferVotes:output_type -> user.v1.TransferVotesResponse
+	103, // 229: user.v1.UserService.RedeemVoucher:output_type -> user.v1.RedeemVoucherResponse
+	106, // 230: user.v1.UserService.CreateVoucher:output_type -> user.v1.CreateVoucherResponse
+	108, // 231: user.v1.UserService.ListVouchers:output_type -> user.v1.ListVouchersResponse
+	171, // 232: user.v1.UserService.DeleteVoucher:output_type -> google.protobuf.Empty
+	111, // 233: user.v1.UserService.GetVoteRate:output_type -> user.v1.GetVoteRateResponse
+	171, // 234: user.v1.UserService.SetVoteRate:output_type -> google.protobuf.Empty
+	114, // 235: user.v1.UserService.GetDecor:output_type -> user.v1.GetDecorResponse
+	171, // 236: user.v1.UserService.SetDecor:output_type -> google.protobuf.Empty
+	118, // 237: user.v1.UserService.GetCasino:output_type -> user.v1.GetCasinoResponse
+	120, // 238: user.v1.UserService.GetCasinoSettings:output_type -> user.v1.GetCasinoSettingsResponse
+	171, // 239: user.v1.UserService.SetCasino:output_type -> google.protobuf.Empty
+	123, // 240: user.v1.UserService.SpinCasino:output_type -> user.v1.SpinCasinoResponse
+	171, // 241: user.v1.UserService.SetCasinoBets:output_type -> google.protobuf.Empty
+	126, // 242: user.v1.UserService.BetCasino:output_type -> user.v1.BetCasinoResponse
+	130, // 243: user.v1.UserService.ListBetEvents:output_type -> user.v1.ListBetEventsResponse
+	128, // 244: user.v1.UserService.CreateBetEvent:output_type -> user.v1.BetEvent
+	171, // 245: user.v1.UserService.CloseBetEvent:output_type -> google.protobuf.Empty
+	171, // 246: user.v1.UserService.ResolveBetEvent:output_type -> google.protobuf.Empty
+	171, // 247: user.v1.UserService.CancelBetEvent:output_type -> google.protobuf.Empty
+	171, // 248: user.v1.UserService.DeleteBetEvent:output_type -> google.protobuf.Empty
+	135, // 249: user.v1.UserService.StakeBet:output_type -> user.v1.StakeBetResponse
+	171, // 250: user.v1.UserService.SetVerified:output_type -> google.protobuf.Empty
+	171, // 251: user.v1.UserService.SetAlert:output_type -> google.protobuf.Empty
+	141, // 252: user.v1.UserService.ListAds:output_type -> user.v1.ListAdsResponse
+	143, // 253: user.v1.UserService.CreateAd:output_type -> user.v1.CreateAdResponse
+	145, // 254: user.v1.UserService.EditAd:output_type -> user.v1.EditAdResponse
+	147, // 255: user.v1.UserService.DeleteAd:output_type -> user.v1.DeleteAdResponse
+	149, // 256: user.v1.UserService.ViewAd:output_type -> user.v1.ViewAdResponse
+	151, // 257: user.v1.UserService.ClickAd:output_type -> user.v1.ClickAdResponse
+	171, // 258: user.v1.UserService.BanUser:output_type -> google.protobuf.Empty
+	171, // 259: user.v1.UserService.UnbanUser:output_type -> google.protobuf.Empty
+	85,  // 260: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
+	87,  // 261: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
+	89,  // 262: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
+	178, // [178:263] is the sub-list for method output_type
+	93,  // [93:178] is the sub-list for method input_type
+	93,  // [93:93] is the sub-list for extension type_name
+	93,  // [93:93] is the sub-list for extension extendee
+	0,   // [0:93] is the sub-list for field type_name
 }
 
 func init() { file_api_user_v1_user_proto_init() }
@@ -10487,14 +11104,14 @@ func file_api_user_v1_user_proto_init() {
 		return
 	}
 	file_api_user_v1_user_proto_msgTypes[2].OneofWrappers = []any{}
-	file_api_user_v1_user_proto_msgTypes[124].OneofWrappers = []any{}
+	file_api_user_v1_user_proto_msgTypes[133].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_user_v1_user_proto_rawDesc), len(file_api_user_v1_user_proto_rawDesc)),
 			NumEnums:      11,
-			NumMessages:   150,
+			NumMessages:   159,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

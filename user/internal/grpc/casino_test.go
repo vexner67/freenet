@@ -107,7 +107,7 @@ func TestCasinoBets(t *testing.T) {
 
 	// Win or lose, the balance is the bet taken and the win paid.
 	bet, err := s.client.BetCasino(ann, &userv1.BetCasinoRequest{Amount: 10, Multiplier: 200})
-	if err != nil || bet.GetChance() != 5000 || bet.GetWon() != (bet.GetRoll() < 5000) ||
+	if err != nil || bet.GetChance() != 5000 || bet.GetWon() != (bet.GetRoll() >= 2500 && bet.GetRoll() < 7500) ||
 		(bet.GetWon() && (bet.GetVotes() != 20 || bet.GetBalance() != 20)) ||
 		(!bet.GetWon() && (bet.GetVotes() != 0 || bet.GetBalance() != 0)) {
 		t.Fatalf("BetCasino = %v, %v", bet, err)
