@@ -1734,11 +1734,10 @@ a.poll-result-name { cursor: pointer; }
 .doc-attached { margin-top: 6px; }
 .doc-attached .doc-item { padding: 4px; }
 
-/* Phones and narrow windows: the page takes the width of the screen, the
-   columns go one under the other, and the left menu opens from the
-   button in the header (layout.js), as on m.vk.com. The type is larger to
-   be read on a phone, and fields are 16px, or iOS zooms in on them. */
-.menu-toggle { display: none; }
+/* Phones have an interface of their own, laid out by mobile.css, which
+   the pages load for a narrow screen: the bar of sections at the bottom
+   and the search in the header are only theirs. */
+.tabbar, .header-search { display: none; }
 
 /* Stories, VK's: circles above the news and the stories over the screen. */
 .story-bar { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line-e8ebee); }
@@ -1817,150 +1816,6 @@ a.poll-result-name { cursor: pointer; }
 .story-comments-empty { margin: 6px 0 0; color: var(--text-808080); text-align: center; }
 .story-form textarea { width: 100%; height: 50px; margin-top: 6px; }
 .story-preview { display: block; width: auto; max-width: 100%; height: auto; max-height: 240px; margin: 6px auto 0; }
-
-@media (max-width: 800px) {
-  .link-card-photo { width: 90px; height: 68px; }
-  .story-viewer { background: rgba(0, 0, 0, 1); }
-  .story-viewer .viewer-nav { display: none; }
-  body { font-size: 13px; -webkit-text-size-adjust: 100%; }
-  /* Whatever rule sets a field's type, smaller would zoom the page. */
-  input, select, textarea { font-size: 16px !important; }
-  .wall-form textarea { height: 32px; min-height: 32px; }
-  .wall-form.expanded textarea { height: 64px; min-height: 64px; }
-  .button { font-size: 13px; }
-
-  .layout { width: auto; }
-
-  .header { height: 44px; padding-left: 0; border-radius: 0; }
-  .logo { margin-right: auto; padding-left: 4px; }
-  .menu-toggle {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    flex: none;
-    gap: 4px;
-    width: 44px;
-    padding: 0 12px;
-    cursor: pointer;
-  }
-  /* The colour of the links beside it, which stays light in the dark theme. */
-  .menu-toggle span { display: block; height: 2px; background: var(--text-fff); border-radius: 1px; }
-  .menu-toggle:hover { background: rgba(255, 255, 255, 0.08); }
-  .header-links a { padding: 0 8px; white-space: nowrap; }
-
-  .columns { display: block; margin-top: 0; }
-  .sidebar { width: auto; }
-  .sidebar:has(> .menu) { display: none; }
-  .menu-open .sidebar:has(> .menu) { display: block; border-bottom: 1px solid var(--line-e0e0e0); }
-  /* Under the menu of a phone, the greeting without the tree. */
-  .festive .layout::before,
-  .festive .layout::after { left: 0; right: 0; box-shadow: none; }
-  .newyear { margin: 6px 0 8px; }
-  .newyear-tree { display: none; }
-  .menu a { margin: 0; padding: 9px 12px; border-top: 1px solid var(--line-ececec); }
-  .menu .menu-edit, .menu .menu-edit:hover { border-top-color: var(--line-ececec); }
-  .menu .menu-phone { display: block; }
-  .menu .menu-divider { margin: 0; }
-  .menu .counter { margin-top: 0; }
-  .sidebar-form { padding: 10px; }
-
-  .page { width: auto; min-width: 0; }
-  .page-title { flex-wrap: wrap; gap: 2px 10px; padding: 6px 10px; border-left: 0; border-right: 0; }
-  .page-body { border-left: 0; border-right: 0; }
-  .footer a { display: inline-block; padding: 4px 0; }
-  .languages { grid-template-columns: repeat(3, 1fr); }
-
-  /* Forms of two columns: the label over its field. */
-  .form, .form tbody, .form tr, .form th, .form td { display: block; width: auto; }
-  .form th { padding: 6px 0 2px; text-align: left; line-height: normal; }
-  .form td.control { width: auto; }
-  .form td.note { padding-left: 0; }
-  .actions, .settings-delete { padding-left: 0; }
-  .container-gray .form, .container-gray .extra-field, .container-gray .subhead, .container-gray .actions, .settings-block { width: auto; }
-  .container-gray .form { border-spacing: 0; }
-  .container-gray .form th { width: auto; }
-  .container-gray .actions { margin-top: 8px; padding-left: 0; }
-  .container-gray .subhead { margin-top: 12px; padding: 0; }
-  .container-gray .form tr:has(.check-cell) { display: flex; gap: 6px; padding: 3px 0; }
-  .container-gray .form .check-cell { padding: 0; }
-  .info th { width: 125px; padding-right: 6px; }
-
-  /* A person's page: the photo and buttons, then the name and the wall;
-     the blocks of the left column go last. */
-  .profile { flex-direction: column; }
-  .profile-left { display: contents; }
-  .profile-left > .side-block { order: 2; }
-  .profile-right { order: 1; }
-  .profile-left .avatar-box, .club-side .avatar-box { width: 200px; max-width: 100%; margin: 0 auto; }
-  .profile-left .avatar { width: 100%; height: auto; aspect-ratio: 1; }
-
-  /* A community's: its photo and links first. */
-  .club { flex-direction: column; }
-  .club-side { order: -1; width: auto; }
-  .club-side .avatar { width: 100%; height: auto; aspect-ratio: 1; }
-  .people-grid.wide { grid-template-columns: repeat(4, 1fr); }
-
-  .tabs { flex-wrap: wrap; }
-
-  /* The small print of posts and messages, large enough for a finger. */
-  .post-date, .like-count, .im-message-date, .im-forwarded-date, .chat-action-date { font-size: 11px; }
-  .post-menu, .posts-microblog .post-menu, .posts-microblog .post-menu .post-date,
-  .im-message-action, .chat-kick, .post-comments-more { font-size: 12px; }
-  .post-menu { padding: 6px 4px; line-height: 1.8; }
-  .like svg, .post-action svg { width: 16px; height: 15px; }
-
-  /* The list of dialogs: the name and the date over the last message. */
-  .dialog { display: grid; grid-template-columns: 50px 1fr; gap: 2px 10px; }
-  .dialog-avatar { grid-row: span 2; }
-  .dialog-info { display: flex; justify-content: space-between; gap: 8px; width: auto; margin-top: 0; overflow-wrap: anywhere; }
-  .dialog-date { flex-shrink: 0; margin-top: 0; }
-
-  /* A dialog takes the height of the screen; the date and the links of a
-     message go under its text, and the form loses its photos. */
-  .messenger-messages { height: calc(100dvh - 330px); min-height: 240px; padding: 8px; }
-  .messenger-typing { padding-left: 54px; }
-  .messenger-input { padding: 8px 10px; }
-  .messenger-input .messenger-avatar { display: none; }
-  .im-message { flex-wrap: wrap; gap: 4px 8px; padding: 6px; }
-  .im-message-date { order: 3; width: 100%; padding-left: 45px; text-align: left; }
-  .message-actions { display: inline-block; margin: 0 0 0 14px; }
-  .message-actions .attach-list { left: 0; right: auto; }
-  .im-selection, .chat-pinned { flex-wrap: wrap; gap: 4px; padding: 6px 10px; }
-
-  .list-row { flex-wrap: wrap; }
-  .list-actions { width: 100%; }
-  .album-cover img { width: 100px; height: 80px; }
-  .album-photo { width: 33.33%; }
-  .photo-page-columns { flex-direction: column; }
-  .photo-page-main, .photo-page-actions { width: auto; }
-  .photo-page-image img { max-width: 100%; }
-  .photo-page-description { padding: 5px 0; }
-  .uploaded-photo { flex-direction: column; }
-  .white-box h4 { margin: 20px 16px 0; }
-  .upload-limits { margin: 14px 16px 20px; }
-
-  /* The backdrop of a page has no room beside a page as wide as the screen. */
-  .backdrop { display: none; }
-  .backdrop-editor { width: auto; }
-
-  /* Windows: from the top, scrolled when taller than the screen. */
-  .modal { align-items: flex-start; padding: 8px; overflow-y: auto; }
-}
-
-/* A phone too narrow for the word of the logo beside the menu button and
-   the links: its mark. Narrower, the links take the type of the desktop's,
-   so that all four fit 375px, and narrower still "выход" goes: the menu of
-   a phone has it. */
-@media (max-width: 500px) {
-  .logo-word { display: none; }
-}
-@media (max-width: 420px) {
-  .menu-toggle { width: 40px; padding: 0 11px; }
-  .header-links a { padding: 0 7px; font-size: 11px; }
-}
-@media (max-width: 360px) {
-  .header-links .header-out { display: none; }
-}
 
 /* Where nothing points, what shows on pointing is always there. */
 @media (hover: none) {

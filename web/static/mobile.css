@@ -1,0 +1,307 @@
+/* The interface of a phone. Every page but the admin panel loads this
+   stylesheet after style.css for a screen up to 800px wide
+   (media="(max-width: 800px)"), so it touches nothing on a computer.
+
+   It is the site of the 2000s as a phone saw it — m.vk.com and the first
+   apps: the same dark header, yellow plate, grey blocks, Tahoma and
+   colours of style.css's palette, but laid out for a finger. The header
+   is a compact bar that stays at the top with the logo and the search;
+   the sections are a bar at the bottom (layout.js, addTabBar): "Страница",
+   "Новости", "Сообщения" and "Уведомления" with their counters, and
+   "Меню", which opens the whole left menu over the screen. Everything is
+   one column: lists are rows a finger can hit, posts take the whole
+   width, a person's page is a card, forms put the label over the field.
+   The type is larger to be read on a phone, and fields are 16px, or iOS
+   zooms in on them. */
+
+/* The page */
+
+body { font-size: 13px; -webkit-text-size-adjust: 100%; }
+/* The bar of sections covers the bottom of the page. */
+body:has(.tabbar) { padding-bottom: calc(52px + env(safe-area-inset-bottom)); }
+/* Whatever rule sets a field's type, smaller would zoom the page. */
+input, select, textarea { font-size: 16px !important; }
+.button { min-height: 32px; padding-left: 12px; padding-right: 12px; font-size: 13px; }
+
+.layout { width: auto; }
+.columns { display: block; margin-top: 0; }
+.page { width: auto; min-width: 0; }
+.page-title { flex-wrap: wrap; gap: 2px 10px; padding: 8px 10px; border-left: 0; border-right: 0; font-size: 14px; }
+.page-title .aside { font-size: 12px; }
+.page-body { padding: 10px; border-left: 0; border-right: 0; }
+.section-title { padding-top: 3px; padding-bottom: 3px; font-size: 12px; }
+.subtitle { font-size: 12px; }
+.footer { padding-bottom: 8px; }
+.footer a { display: inline-block; padding: 6px 0; }
+.languages { grid-template-columns: repeat(3, 1fr); }
+
+/* The header: a compact bar that stays at the top, with the logo on the
+   left and on the right the search — and, for a guest, "вход" and
+   "регистрация". The links of a signed-in user are the bar of sections. */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: 44px;
+  padding-left: 10px;
+  border-radius: 0;
+}
+.logo { margin-right: auto; }
+.header-links a { padding: 0 10px; white-space: nowrap; }
+.header-links.signed-in { display: none; }
+.header-search {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  border-left: 1px solid var(--line-2f2f2f);
+  box-shadow: inset 1px 0 var(--line-6f6f6f);
+}
+.header-search img { display: block; width: 22px; height: 22px; opacity: 0.85; }
+.header-search:hover { background: rgba(255, 255, 255, 0.08); }
+
+/* The bar of sections at the bottom, as the first apps had: an icon over
+   its word, the counter of the unread on the icon, the section the page
+   is in lit. It is the gradient of the header, upside down. */
+
+.tabbar {
+  display: flex;
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+  height: calc(52px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: linear-gradient(var(--back-3e3e3e), var(--back-636363));
+  border-top: 1px solid var(--line-333);
+}
+.tabbar-item {
+  display: flex;
+  position: relative;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  color: var(--text-fff);
+  font-size: 10px;
+  opacity: 0.7;
+}
+.tabbar-item:hover { text-decoration: none; }
+.tabbar-item img { display: block; width: 22px; height: 22px; }
+.tabbar-item span:not(.tabbar-count) { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tabbar-item.active { background: rgba(255, 255, 255, 0.1); opacity: 1; font-weight: bold; }
+/* While the menu is open, it is the section lit. */
+.menu-open .tabbar-item.active:not(.tabbar-menu) { background: none; opacity: 0.7; font-weight: normal; }
+.tabbar-count {
+  position: absolute;
+  top: 4px;
+  left: calc(50% + 6px);
+  min-width: 17px;
+  padding: 1px 4px;
+  background: var(--back-e6e6e6);
+  border-radius: 8px;
+  color: var(--text-2b587a);
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 13px;
+  text-align: center;
+}
+.festive .tabbar-count { background: var(--back-d23a32); color: var(--text-fff); }
+
+/* "Меню": the whole left menu over the screen, between the header and
+   the bar, in rows a finger can hit. */
+
+.sidebar { width: auto; }
+.sidebar:has(> .menu) { display: none; }
+.menu-open { overflow: hidden; }
+.menu-open .sidebar:has(> .menu) {
+  display: block;
+  position: fixed;
+  top: 44px;
+  right: 0;
+  bottom: calc(52px + env(safe-area-inset-bottom));
+  left: 0;
+  z-index: 30;
+  overflow-y: auto;
+  background: var(--back-fff);
+}
+.menu a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 14px;
+  border-top: 0;
+  border-bottom: 1px solid var(--line-ececec);
+  font-size: 14px;
+}
+.menu a:hover { border-top-color: transparent; }
+.menu .menu-edit, .menu .menu-edit:hover { top: 0; right: 0; min-height: 44px; border-bottom-color: var(--line-ececec); font-size: 12px; }
+.menu .menu-phone { display: flex; }
+.menu .menu-divider { height: 8px; margin: 0; background: var(--back-f0f0f0); border-bottom: 1px solid var(--line-ececec); }
+.menu .counter { margin: 0 0 0 auto; padding: 2px 8px; }
+.sidebar-form { padding: 10px; }
+
+/* Under the menu of a phone, the greeting without the tree. */
+.festive .layout::before,
+.festive .layout::after { left: 0; right: 0; box-shadow: none; }
+.festive .header::after { left: 0; right: 0; }
+.newyear { margin: 6px 0 8px; }
+.newyear-tree { display: none; }
+
+/* Forms of two columns: the label over its field. */
+
+.form, .form tbody, .form tr, .form th, .form td { display: block; width: auto; }
+.form th { padding: 8px 0 3px; text-align: left; line-height: normal; }
+.form td.control { width: auto; }
+.form td.note { padding-left: 0; }
+.form input[type="text"], .form input[type="email"], .form input[type="date"], .form input[type="number"],
+.form input:not([type]), .form select, .form textarea { width: 100%; min-height: 34px; }
+.actions, .settings-delete { padding-left: 0; }
+.container-gray .form, .container-gray .extra-field, .container-gray .subhead, .container-gray .actions, .settings-block { width: auto; }
+.container-gray .form { border-spacing: 0; }
+.container-gray .form th { width: auto; }
+.container-gray .actions { margin-top: 10px; padding-left: 0; }
+.container-gray .subhead { margin-top: 12px; padding: 0; }
+.container-gray .form tr:has(.check-cell) { display: flex; gap: 6px; padding: 5px 0; }
+.container-gray .form .check-cell { padding: 0; }
+.info th { width: 110px; padding-right: 6px; }
+
+.tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.tabs a { flex: none; padding-top: 8px; padding-bottom: 8px; }
+
+/* A person's page is a card: the photo with the name and the status
+   beside it, the links under them two in a row, then the information and
+   the wall; the blocks of the left column go last. */
+
+.profile { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 0 12px; }
+.profile-left, .profile-right { display: contents; }
+.profile-left > *, .profile-right > * { grid-column: 1 / -1; order: 5; min-width: 0; }
+.profile-right > .user-alert { order: 0; }
+.profile-left > .avatar-box { grid-column: 1; order: 1; width: 100px; margin: 0; }
+.profile-right > .account-info { grid-column: 2; order: 1; align-self: center; padding: 0; border-bottom: 0; }
+.profile-left > #avatar-status, .profile-left > .profile-links, .profile-left > #follow-error { order: 2; }
+.profile-left > .profile-hints, .profile-right > .notice { order: 3; }
+.profile-right > #profile-content { order: 4; }
+.profile-left > .side-block { order: 6; }
+.profile-left .avatar { width: 100%; height: auto; aspect-ratio: 1; }
+.profile .name { font-size: 15px; }
+.profile .status { margin-top: 4px; }
+.avatar-controls a { font-size: 10px; }
+.avatar-upload { padding: 4px; }
+
+.profile-links {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 10px;
+  margin: 10px 0;
+  border-top: 1px solid var(--line-ccc);
+}
+.profile-links .profile-link { display: flex; align-items: center; min-height: 40px; padding: 4px 2px; }
+
+/* A community's: its photo and links first, the photo smaller. */
+.club { flex-direction: column; }
+.club-side { order: -1; width: auto; }
+.club-side .avatar-box { width: 140px; max-width: 100%; margin: 0 auto; }
+.club-side .avatar { width: 100%; height: auto; aspect-ratio: 1; }
+.people-grid.wide { grid-template-columns: repeat(4, 1fr); }
+
+/* Posts: the photo of the author beside the name, everything else the
+   whole width of the screen under them. */
+
+.post:not(.comment, .gift) { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 0 8px; }
+.post:not(.comment, .gift) > .post-main { display: contents; }
+.post:not(.comment, .gift) > .post-main > * { grid-column: 1 / -1; }
+.post:not(.comment, .gift) > .post-main > .post-author { grid-column: 2; grid-row: 1; align-self: stretch; }
+.post:not(.comment, .gift) > .post-avatar { grid-column: 1; grid-row: 1; }
+.post:not(.comment, .gift) > .post-avatar img { width: 40px; height: 40px; }
+.post:not(.comment, .gift) .post-online { display: none; }
+.post { margin-bottom: 14px; }
+.post-photos { padding: 6px 0; }
+.post-photos.single img { width: 100%; max-height: 520px; }
+.post-text { padding: 6px 4px; font-size: 13px; }
+.post-author { padding: 5px 6px; }
+.link-card-photo { width: 90px; height: 68px; }
+
+/* The small print of posts and messages, large enough for a finger. */
+.post-date, .like-count, .im-message-date, .im-forwarded-date, .chat-action-date { font-size: 11px; }
+.post-menu, .posts-microblog .post-menu, .posts-microblog .post-menu .post-date,
+.im-message-action, .chat-kick, .post-comments-more { font-size: 12px; }
+.post-menu { padding: 8px 4px; line-height: 1.8; }
+.like svg, .post-action svg { width: 18px; height: 17px; }
+.wall-form textarea { height: 36px; min-height: 36px; }
+.wall-form.expanded textarea { height: 72px; min-height: 72px; }
+
+/* Lists — people, groups, dialogs, notifications — are rows from edge to
+   edge of the screen. */
+
+.person, .list-row, .notification { margin: 0 -10px; padding: 10px; }
+.person { align-items: center; }
+.list-row { flex-wrap: wrap; }
+.list-actions { width: 100%; }
+.list-actions .profile-link { display: flex; align-items: center; min-height: 36px; }
+.notification { padding-top: 8px; }
+.notification-text { font-size: 13px; }
+
+.dialog { display: grid; grid-template-columns: 50px 1fr; gap: 2px 10px; min-height: 66px; }
+.dialog-avatar { grid-row: span 2; }
+.dialog-info { display: flex; justify-content: space-between; gap: 8px; width: auto; margin-top: 0; overflow-wrap: anywhere; }
+.dialog-date { flex-shrink: 0; margin-top: 0; }
+
+/* A dialog takes the height of the screen, and its form stays over the
+   bar of sections; the date and the links of a message go under its
+   text, and the form loses its photos. */
+.messenger-messages { height: calc(100dvh - 300px); min-height: 200px; padding: 8px; }
+.messenger-typing { padding-left: 54px; }
+.messenger-input {
+  position: sticky;
+  bottom: calc(52px + env(safe-area-inset-bottom));
+  z-index: 5;
+  padding: 8px 10px;
+}
+.messenger-input .messenger-avatar { display: none; }
+.im-message { flex-wrap: wrap; gap: 4px 8px; padding: 6px; }
+.im-message-date { order: 3; width: 100%; padding-left: 45px; text-align: left; }
+.message-actions { display: inline-block; margin: 0 0 0 14px; }
+.message-actions .attach-list { left: 0; right: auto; }
+.im-selection, .chat-pinned { flex-wrap: wrap; gap: 4px; padding: 6px 10px; }
+
+/* Menus of "Прикрепить" and "Действия": rows a finger can hit. */
+.attach-list a { padding-top: 9px; padding-bottom: 9px; font-size: 13px; }
+
+/* Photos and albums */
+.album-cover img { width: 100px; height: 80px; }
+.album-photo { width: 33.33%; }
+.photo-page-columns { flex-direction: column; }
+.photo-page-main, .photo-page-actions { width: auto; }
+.photo-page-image img { max-width: 100%; }
+.photo-page-description { padding: 5px 0; }
+.uploaded-photo { flex-direction: column; }
+.white-box h4 { margin: 20px 16px 0; }
+.upload-limits { margin: 14px 16px 20px; }
+
+/* The backdrop of a page has no room beside a page as wide as the screen. */
+.backdrop { display: none; }
+.backdrop-editor { width: auto; }
+
+/* Stories over the whole screen. */
+.story-viewer { background: rgba(0, 0, 0, 1); }
+.story-viewer .viewer-nav { display: none; }
+
+/* Windows: from the top, scrolled when taller than the screen. */
+.modal { align-items: flex-start; padding: 8px; overflow-y: auto; }
+
+/* The narrowest phones: the word of the logo gives way to a guest's
+   links. */
+@media (max-width: 400px) {
+  .guest .logo-word { display: none; }
+}
+@media (max-width: 340px) {
+  .tabbar-item { font-size: 9px; }
+  .profile { grid-template-columns: 80px minmax(0, 1fr); }
+  .profile-left > .avatar-box { width: 80px; }
+}

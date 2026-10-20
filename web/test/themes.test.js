@@ -10,7 +10,8 @@ function palette(css) {
   return new Map([...root.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
 }
 
-const style = read('style.css');
+// The interface of a phone (mobile.css) writes in the same palette.
+const style = read('style.css') + read('mobile.css');
 const plain = palette(style);
 
 test('the stylesheet writes colours only as variables', () => {

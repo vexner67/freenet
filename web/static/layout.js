@@ -6,7 +6,7 @@ import { accountName, canPark, onAccountChange, park, parkedAccounts, signedInAs
 import { api, idle } from './api.js';
 import { ensureKey } from './e2ee.js';
 import { connectEvents, onEvent } from './events.js';
-import { errorText, foundParts, hashtagPath, isLongText, pushOfferText, pushStateTexts, setTimezone, textParts, unreadCountText } from './labels.js';
+import { activeSection, errorText, foundParts, hashtagPath, isLongText, pushOfferText, pushStateTexts, setTimezone, textParts, unreadCountText } from './labels.js';
 import { acceptInvite } from './invite.js';
 import { nicknameLookup } from './nicknames.js';
 import { closePushes, endPushOffer, enablePush, forgetPushAccount, pushOffer, showUnread, syncPush } from './push.js';
@@ -460,8 +460,9 @@ export function applyInterface(me) {
     // a line of its own.
     me.admin && el('div', { className: 'menu-divider' }),
     me.admin && el('a', { href: '/admin', textContent: tr('Админ-панель') }),
-    // The header says "выход"; the phone, whose header is narrow, has it
-    // here too, as openvk's.
+    // The header says "пригласить" and "выход"; the phone, whose header
+    // has no links, has them here, as openvk's.
+    el('a', { className: 'menu-phone', href: '/invite', textContent: tr('Пригласить') }),
     el('a', { className: 'menu-phone', href: '/', textContent: tr('Выйти'), onclick: logout }),
   ].filter(Boolean));
   showCounter('messages');
@@ -481,7 +482,10 @@ export function renderChrome(me) {
   const links = $('header-links');
   const menu = $('menu');
 
-  addMenuToggle(menu);
+  addHeaderSearch();
+  // A phone has the links of a signed-in user in the bar of sections and
+  // the menu, not in its header (mobile.css).
+  links.classList.toggle('signed-in', Boolean(me) && !me.deactivated && !me.ban);
   // A guest is not shown what is blurred as adult (posts.js).
   document.body.classList.toggle('guest', !me);
   if (me) signedInAs(me.id);
@@ -496,10 +500,10 @@ export function renderChrome(me) {
     links.replaceChildren(
       el('a', { href: profilePath(me), textContent: tr('моя страница') }),
       el('a', { href: '/feed', textContent: tr('новости') }),
-      el('a', { href: '/invite', textContent: tr('пригласить'), className: 'header-invite' }),
-      // On the narrowest phones it gives way: the menu there has "Выйти".
-      el('a', { href: '/', textContent: tr('выход'), onclick: logout, className: 'header-out' }),
+      el('a', { href: '/invite', textContent: tr('пригласить') }),
+      el('a', { href: '/', textContent: tr('выход'), onclick: logout }),
     );
+    addTabBar(me);
     applyInterface(me);
     // The page was made by an invitation link: the inviter is followed.
     acceptInvite(me).catch(() => {});
@@ -563,22 +567,54 @@ async function offerPush(me) {
   body.prepend(bar);
 }
 
-// addMenuToggle puts the button that opens the left menu into the header:
-// on a phone the menu is not beside the page but under the header, as on
-// m.vk.com (style.css hides the button on a wide screen).
-function addMenuToggle(menu) {
-  const header = document.querySelector('.header');
-  if (!menu || !header || header.querySelector('.menu-toggle')) return;
+// The sections of the bar at the bottom of a phone (mobile.css), as the
+// first apps had them: the page, the news, the messages and the
+// notifications with their counters, and the whole menu.
+function tabSections(me) {
+  return [
+    { name: 'page', href: profilePath(me), icon: '/static/icons/tab-page.svg', label: tr('Страница') },
+    { name: 'feed', href: '/feed', icon: '/static/icons/tab-feed.svg', label: tr('Новости') },
+    { name: 'messages', href: '/im', icon: '/static/icons/tab-messages.svg', label: tr('Сообщения'), counter: 'messages' },
+    { name: 'notifications', href: '/notifications', icon: '/static/icons/tab-notifications.svg', label: tr('Уведомления'), counter: 'notifications' },
+  ];
+}
 
-  const toggle = el('a', { className: 'menu-toggle', title: tr('Меню'), ariaLabel: tr('Меню'), ariaExpanded: 'false' },
-    el('span'), el('span'), el('span'));
+// addTabBar puts the bar of sections at the bottom of the page, which
+// only a phone shows (style.css hides it on a wide screen). The owner of
+// a deleted or blocked page gets only "Меню", when it has anything.
+function addTabBar(me, { menuOnly = false } = {}) {
+  document.querySelector('.tabbar')?.remove();
+
+  const active = activeSection(location.pathname, profilePath(me));
+  const items = menuOnly ? [] : tabSections(me).map((section) => el('a', {
+    className: 'tabbar-item' + (section.name === active ? ' active' : ''), href: section.href,
+  },
+  el('img', { src: section.icon, alt: '' }),
+  el('span', { textContent: section.label }),
+  section.counter ? el('span', { className: 'tabbar-count', id: counters[section.counter].id + '-tab', hidden: true }) : null,
+  ));
+
+  const toggle = el('a', { className: 'tabbar-item tabbar-menu', ariaExpanded: 'false' },
+    el('img', { src: '/static/icons/tab-menu.svg', alt: '' }),
+    el('span', { textContent: tr('Меню') }));
   toggle.setAttribute('role', 'button');
   toggle.addEventListener('click', () => {
     const open = document.body.classList.toggle('menu-open');
     toggle.ariaExpanded = String(open);
+    toggle.classList.toggle('active', open);
   });
 
-  header.prepend(toggle);
+  document.querySelector('.layout')?.append(el('nav', { className: 'tabbar', ariaLabel: tr('Меню') }, ...items, toggle));
+}
+
+// addHeaderSearch puts the search into the header of a phone, where the
+// left menu is not at hand (style.css hides it on a wide screen).
+function addHeaderSearch() {
+  const header = document.querySelector('.header');
+  if (!header || header.querySelector('.header-search')) return;
+
+  header.append(el('a', { className: 'header-search', href: '/search', title: tr('Поиск'), ariaLabel: tr('Поиск') },
+    el('img', { src: '/static/icons/search.svg', alt: '' })));
 }
 
 // renderDeactivatedChrome is openvk's for the owner of a deleted page: no
@@ -593,9 +629,8 @@ function renderDeactivatedChrome(me, links, menu) {
   const others = parkedAccounts().length > 0;
 
   if (sidebar) sidebar.hidden = !others;
-  const toggle = document.querySelector('.menu-toggle');
-  if (toggle) toggle.hidden = !others;
   if (others) {
+    addTabBar(me, { menuOnly: true });
     menu.replaceChildren(accountsLink(me));
     showAccounts(() => {});
   }
@@ -685,11 +720,13 @@ export function setCounter(name, n) {
   if (unread.messages !== undefined && unread.notifications !== undefined) showUnread(unread.messages + unread.notifications);
   if (n <= 0) closePushes(...pushTags[name]).catch(() => {});
 
-  const counter = $(counters[name].id);
-  if (!counter) return;
+  // The menu has the counter, and the bar of sections of a phone too.
+  for (const counter of [$(counters[name].id), $(counters[name].id + '-tab')]) {
+    if (!counter) continue;
 
-  counter.textContent = unreadCountText(n);
-  counter.hidden = n <= 0;
+    counter.textContent = unreadCountText(n);
+    counter.hidden = n <= 0;
+  }
 }
 
 // avatarURL is the photo of a user, author or profile, or the placeholder;
