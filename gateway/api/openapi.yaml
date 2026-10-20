@@ -4453,6 +4453,39 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /api/v1/decor:
+    get:
+      summary: The New Year decoration of the site
+      description: 'Public. Whether the site wears the New Year decoration now — snow, a garland under the header, a hat on the logo — and what the administrators set: `auto` (by the calendar of Moscow, from December 15 to January 14), `on` or `off`.'
+      responses:
+        "200":
+          description: The decoration
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Decor" }
+    put:
+      summary: Turn the New Year decoration on or off
+      description: Only for the administrators of the site.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode]
+              properties:
+                mode: { type: string, enum: [auto, "on", "off"] }
+      responses:
+        "204": { description: Set }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/users/{nickname}/verification:
     parameters:
       - name: nickname
@@ -7477,6 +7510,13 @@ components:
       required: [kopecks]
       properties:
         kopecks: { type: integer, format: int64, minimum: 1, maximum: 100000000, description: What one vote is worth, in kopecks }
+
+    Decor:
+      type: object
+      required: [mode, festive]
+      properties:
+        mode: { type: string, enum: [auto, "on", "off"], description: 'What the administrators set; `auto` follows the calendar' }
+        festive: { type: boolean, description: Whether the site wears the decoration now }
 
     Voucher:
       type: object

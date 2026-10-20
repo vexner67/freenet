@@ -499,6 +499,7 @@ type Backends struct {
 	Stickers      Stickers
 	Votes         Votes
 	Ads           Ads
+	Decor         Decor
 	Documents     Documents
 	Stories       Stories
 	// Previews reads the cards of the pages posts link to; nil makes
@@ -528,6 +529,7 @@ type api struct {
 	stickers          Stickers
 	votes             Votes
 	ads               Ads
+	decors            Decor
 	documents         Documents
 	stories           Stories
 	previews          Previews
@@ -804,6 +806,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/ads/{id}/clicks", a.clickAd)
 	mux.HandleFunc("GET /api/v1/vote-rate", a.voteRate)
 	mux.HandleFunc("PUT /api/v1/vote-rate", a.setVoteRate)
+	mux.HandleFunc("GET /api/v1/decor", a.decor)
+	mux.HandleFunc("PUT /api/v1/decor", a.setDecor)
 	mux.HandleFunc("PUT /api/v1/users/{nickname}/verification", a.verify)
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/verification", a.verify)
 	mux.HandleFunc("PUT /api/v1/users/{nickname}/foreign-agent", a.markForeignAgent)
