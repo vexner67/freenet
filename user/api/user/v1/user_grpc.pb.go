@@ -77,6 +77,8 @@ const (
 	UserService_DeleteVoucher_FullMethodName      = "/user.v1.UserService/DeleteVoucher"
 	UserService_GetVoteRate_FullMethodName        = "/user.v1.UserService/GetVoteRate"
 	UserService_SetVoteRate_FullMethodName        = "/user.v1.UserService/SetVoteRate"
+	UserService_GetDecor_FullMethodName           = "/user.v1.UserService/GetDecor"
+	UserService_SetDecor_FullMethodName           = "/user.v1.UserService/SetDecor"
 	UserService_SetVerified_FullMethodName        = "/user.v1.UserService/SetVerified"
 	UserService_SetForeignAgent_FullMethodName    = "/user.v1.UserService/SetForeignAgent"
 	UserService_ListAds_FullMethodName            = "/user.v1.UserService/ListAds"
@@ -234,6 +236,11 @@ type UserServiceClient interface {
 	// others).
 	GetVoteRate(ctx context.Context, in *GetVoteRateRequest, opts ...grpc.CallOption) (*GetVoteRateResponse, error)
 	SetVoteRate(ctx context.Context, in *SetVoteRateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The New Year decoration of the site. GetDecor is public and says
+	// whether to wear it now; SetDecor is for the administrators
+	// (PermissionDenied for others).
+	GetDecor(ctx context.Context, in *GetDecorRequest, opts ...grpc.CallOption) (*GetDecorResponse, error)
+	SetDecor(ctx context.Context, in *SetDecorRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
@@ -854,6 +861,26 @@ func (c *userServiceClient) SetVoteRate(ctx context.Context, in *SetVoteRateRequ
 	return out, nil
 }
 
+func (c *userServiceClient) GetDecor(ctx context.Context, in *GetDecorRequest, opts ...grpc.CallOption) (*GetDecorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDecorResponse)
+	err := c.cc.Invoke(ctx, UserService_GetDecor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SetDecor(ctx context.Context, in *SetDecorRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetDecor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) SetVerified(ctx context.Context, in *SetVerifiedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -1126,6 +1153,11 @@ type UserServiceServer interface {
 	// others).
 	GetVoteRate(context.Context, *GetVoteRateRequest) (*GetVoteRateResponse, error)
 	SetVoteRate(context.Context, *SetVoteRateRequest) (*emptypb.Empty, error)
+	// The New Year decoration of the site. GetDecor is public and says
+	// whether to wear it now; SetDecor is for the administrators
+	// (PermissionDenied for others).
+	GetDecor(context.Context, *GetDecorRequest) (*GetDecorResponse, error)
+	SetDecor(context.Context, *SetDecorRequest) (*emptypb.Empty, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
@@ -1346,6 +1378,12 @@ func (UnimplementedUserServiceServer) GetVoteRate(context.Context, *GetVoteRateR
 }
 func (UnimplementedUserServiceServer) SetVoteRate(context.Context, *SetVoteRateRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetVoteRate not implemented")
+}
+func (UnimplementedUserServiceServer) GetDecor(context.Context, *GetDecorRequest) (*GetDecorResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDecor not implemented")
+}
+func (UnimplementedUserServiceServer) SetDecor(context.Context, *SetDecorRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetDecor not implemented")
 }
 func (UnimplementedUserServiceServer) SetVerified(context.Context, *SetVerifiedRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetVerified not implemented")
@@ -2433,6 +2471,42 @@ func _UserService_SetVoteRate_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetDecor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDecorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetDecor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetDecor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetDecor(ctx, req.(*GetDecorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SetDecor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetDecorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetDecor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetDecor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetDecor(ctx, req.(*SetDecorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_SetVerified_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetVerifiedRequest)
 	if err := dec(in); err != nil {
@@ -2901,6 +2975,14 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetVoteRate",
 			Handler:    _UserService_SetVoteRate_Handler,
+		},
+		{
+			MethodName: "GetDecor",
+			Handler:    _UserService_GetDecor_Handler,
+		},
+		{
+			MethodName: "SetDecor",
+			Handler:    _UserService_SetDecor_Handler,
 		},
 		{
 			MethodName: "SetVerified",

@@ -159,6 +159,12 @@ service UserService {
   rpc GetVoteRate(GetVoteRateRequest) returns (GetVoteRateResponse);
   rpc SetVoteRate(SetVoteRateRequest) returns (google.protobuf.Empty);
 
+  // The New Year decoration of the site. GetDecor is public and says
+  // whether to wear it now; SetDecor is for the administrators
+  // (PermissionDenied for others).
+  rpc GetDecor(GetDecorRequest) returns (GetDecorResponse);
+  rpc SetDecor(SetDecorRequest) returns (google.protobuf.Empty);
+
   // Requires an access token of an administrator of the site
   // (PermissionDenied otherwise): gives a page the checkmark of a
   // confirmed one ("Верификация" of openvk) or takes it.
@@ -1053,6 +1059,27 @@ message GetVoteRateResponse {
 message SetVoteRateRequest {
   // In kopecks, 1-100000000.
   int64 kopecks = 1;
+}
+
+// How the site is dressed for the New Year.
+enum Decor {
+  DECOR_UNSPECIFIED = 0;
+  // By the calendar: from December 15 to January 14.
+  DECOR_AUTO = 1;
+  DECOR_ON = 2;
+  DECOR_OFF = 3;
+}
+
+message GetDecorRequest {}
+
+message GetDecorResponse {
+  Decor decor = 1;
+  // Whether the site wears the decoration now.
+  bool festive = 2;
+}
+
+message SetDecorRequest {
+  Decor decor = 1;
 }
 
 message SetVerifiedRequest {

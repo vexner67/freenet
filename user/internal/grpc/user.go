@@ -44,6 +44,7 @@ type UserHandler struct {
 	bans              BanService
 	foreignAgents     ForeignAgentService
 	ads               AdService
+	decors            DecorService
 	permissionService PermissionService
 	presenceService   PresenceService
 	backdropService   BackdropService
@@ -67,7 +68,9 @@ type Services struct {
 	// ForeignAgents put and take the plaque of a foreign agent.
 	ForeignAgents ForeignAgentService
 	// Ads are the advertising of the global feed.
-	Ads         AdService
+	Ads AdService
+	// Decors dress the site for the New Year.
+	Decors      DecorService
 	Permissions PermissionService
 	Presence    PresenceService
 	Backdrops   BackdropService
@@ -87,6 +90,7 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		bans:              s.Bans,
 		foreignAgents:     s.ForeignAgents,
 		ads:               s.Ads,
+		decors:            s.Decors,
 		permissionService: s.Permissions,
 		presenceService:   s.Presence,
 		backdropService:   s.Backdrops,
