@@ -145,6 +145,7 @@ func (a *App) build(cfg config.Config) error {
 			Documents:     backend.NewDocuments(postv1.NewPostServiceClient(a.postConn)),
 			Stories:       backend.NewStories(postv1.NewPostServiceClient(a.postConn)),
 			Votes:         backend.NewVotes(userv1.NewUserServiceClient(a.userConn)),
+			Ads:           backend.NewAds(userv1.NewUserServiceClient(a.userConn)),
 			Faves:         backend.NewFaves(postv1.NewPostServiceClient(a.postConn)),
 			Previews:      previews(cfg.LinkPreviewTimeout),
 		},
