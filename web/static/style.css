@@ -1751,12 +1751,14 @@ a.poll-result-name { cursor: pointer; }
     display: flex;
     flex-direction: column;
     justify-content: center;
+    flex: none;
     gap: 4px;
     width: 44px;
     padding: 0 12px;
     cursor: pointer;
   }
-  .menu-toggle span { display: block; height: 2px; background: var(--back-fff); border-radius: 1px; }
+  /* The colour of the links beside it, which stays light in the dark theme. */
+  .menu-toggle span { display: block; height: 2px; background: var(--text-fff); border-radius: 1px; }
   .menu-toggle:hover { background: rgba(255, 255, 255, 0.08); }
   .header-links a { padding: 0 8px; white-space: nowrap; }
 
@@ -1857,9 +1859,19 @@ a.poll-result-name { cursor: pointer; }
   .modal { align-items: flex-start; padding: 8px; overflow-y: auto; }
 }
 
-/* A phone too narrow for the word of the logo beside the links: its mark. */
-@media (max-width: 420px) {
+/* A phone too narrow for the word of the logo beside the menu button and
+   the links: its mark. Narrower, the links take the type of the desktop's,
+   so that all four fit 375px, and narrower still "выход" goes: the menu of
+   a phone has it. */
+@media (max-width: 500px) {
   .logo-word { display: none; }
+}
+@media (max-width: 420px) {
+  .menu-toggle { width: 40px; padding: 0 11px; }
+  .header-links a { padding: 0 7px; font-size: 11px; }
+}
+@media (max-width: 360px) {
+  .header-links .header-out { display: none; }
 }
 
 /* Where nothing points, what shows on pointing is always there. */
