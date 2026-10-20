@@ -497,7 +497,8 @@ export function renderChrome(me) {
       el('a', { href: profilePath(me), textContent: tr('моя страница') }),
       el('a', { href: '/feed', textContent: tr('новости') }),
       el('a', { href: '/invite', textContent: tr('пригласить'), className: 'header-invite' }),
-      el('a', { href: '/', textContent: tr('выход'), onclick: logout }),
+      // On the narrowest phones it gives way: the menu there has "Выйти".
+      el('a', { href: '/', textContent: tr('выход'), onclick: logout, className: 'header-out' }),
     );
     applyInterface(me);
     // The page was made by an invitation link: the inviter is followed.
