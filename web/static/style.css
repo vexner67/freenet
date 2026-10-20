@@ -1721,6 +1721,10 @@ a.poll-result-name { cursor: pointer; }
 .casino-result { padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); font-weight: bold; text-align: center; }
 .casino-win { background: var(--back-eee5b8); border-color: var(--line-d7cf9e); color: var(--text-58462a); }
 .casino-session { text-align: center; }
+/* "Автоигра": how many rounds to play by themselves, under the button. */
+.casino-auto { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; margin: 0 0 10px; }
+.casino-auto .casino-label { margin: 0; }
+.casino-auto select { width: auto; }
 /* "Ставка": the amount with quick buttons, the multipliers as cells and
    a strip of 0 to 100 — green below the chance, where a roll wins. */
 .casino-tabs { margin-bottom: 10px; }

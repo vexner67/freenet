@@ -10,10 +10,11 @@
 // outcomes; people stake votes on an outcome, and once it is resolved
 // those who guessed share all staked. "Популярное" are the events taking
 // stakes, the most staked on first. At the right is the balance, as in
-// "Голоса" of the settings.
+// "Голоса" of the settings. "Огонёк" and "Прицел" play by themselves too
+// ("Автоигра"): as many rounds as chosen or while the votes last.
 
 import { api, currentUser, started } from './api.js';
-import { aimZone, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betOdds, betPrize, betRoll, casinoChance, casinoPlan, plural, spinsCount, votesCount, wagersCount } from './labels.js';
+import { aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betOdds, betPrize, betRoll, casinoChance, casinoPlan, plural, spinsCount, votesCount, wagersCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
 
@@ -36,6 +37,12 @@ let section = '';
 let reading = 0;
 // refreshBet redraws the form of "Ставка" once it is made.
 let refreshBet = () => {};
+// auto is "Автоигра" under way: its button, which stops it, and whether
+// it is asked to.
+let auto = null;
+// A round of "Автоигра" lasts at least roundGap, so that the rounds keep
+// under the limit of the server, 30 a minute.
+const roundGap = 2100;
 
 const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
@@ -62,6 +69,11 @@ function setPlaying(on) {
   $('spin').disabled = on;
   for (const control of $('bet-form').querySelectorAll('input, button')) control.disabled = on;
   for (const control of $('events').querySelectorAll('input, button')) control.disabled = on;
+  for (const game of ['wheel', 'aim']) {
+    $(`${game}-auto-count`).disabled = on;
+    // The button of "Автоигра" under way stops it.
+    if (!auto || auto.button !== $(`${game}-auto-start`)) $(`${game}-auto-start`).disabled = on;
+  }
   for (const tab of tabs()) tab.setAttribute('aria-disabled', String(on));
   refreshBet();
 }
@@ -98,6 +110,19 @@ function showResult(votes) {
   $('session').hidden = false;
 }
 
+async function spinOnce(price) {
+  const won = await api.spinCasino();
+
+  // The price is gone at once, the prize comes when the light stops.
+  showBalance(won.balance - won.votes);
+  await run(won.prize);
+  session.spins++;
+  session.spent += price;
+  session.won += won.votes;
+  showBalance(won.balance);
+  showResult(won.votes);
+}
+
 async function spin(price) {
   if (playing) return;
 
@@ -106,21 +131,68 @@ async function spin(price) {
   setPlaying(true);
 
   try {
-    const won = await api.spinCasino();
-
-    // The price is gone at once, the prize comes when the light stops.
-    showBalance(won.balance - won.votes);
-    await run(won.prize);
-    session.spins++;
-    session.spent += price;
-    session.won += won.votes;
-    showBalance(won.balance);
-    showResult(won.votes);
+    await spinOnce(price);
   } catch (e) {
     showError($('error'), e);
   } finally {
     setPlaying(false);
   }
+}
+
+// autoplay plays game ("wheel" or "aim") round after round, each costing
+// cost votes: as many rounds as chosen, while the balance pays for the next
+// one, until the button stops it or a round fails.
+async function autoplay(game, cost, round, count) {
+  const start = $(`${game}-auto-start`);
+  const state = $(`${game}-auto-state`);
+  const times = Number($(`${game}-auto-count`).value);
+  let played = 0;
+  let next = 'go';
+  let begun = 0;
+
+  if (playing) return;
+  hideError($('error'));
+  auto = { button: start, stop: false };
+  start.textContent = tr('Остановить');
+  state.hidden = false;
+  setPlaying(true);
+
+  try {
+    while (!auto.stop && (next = autoplayNext({ played, times, balance, cost })) === 'go') {
+      await sleep(roundGap - (Date.now() - begun));
+      if (auto.stop) break;
+      state.textContent = times > 0 ? tr('Автоигра: {0} из {1}.', played + 1, times) : tr('Автоигра: {0}-я, пока есть голоса.', played + 1);
+      begun = Date.now();
+      await round();
+      played++;
+    }
+  } catch (e) {
+    showError($('error'), e);
+  } finally {
+    state.textContent = next === 'votes'
+      ? tr('Автоигра остановлена: не хватает голосов. Сыграно: {0}.', count(played))
+      : tr('Автоигра закончилась. Сыграно: {0}.', count(played));
+    auto = null;
+    start.textContent = tr('Запустить');
+    setPlaying(false);
+  }
+}
+
+// watchAuto starts "Автоигра" of game with its button and stops it with
+// the same button.
+function watchAuto(game, cost, round, count) {
+  $(`${game}-auto`).hidden = false;
+  $(`${game}-auto-start`).addEventListener('click', () => {
+    if (auto) {
+      auto.stop = true;
+      auto.button.disabled = true;
+
+      return;
+    }
+    const votes = cost();
+
+    if (votes > 0) autoplay(game, votes, round, count);
+  });
 }
 
 // tabs are the links that switch the game or the section of "Ставки".
@@ -250,29 +322,30 @@ function betting(bets, signedIn) {
     $('dice-roll').textContent = betRoll(to);
   }
 
+  async function betOnce(votes, multiplier) {
+    const wager = await api.betCasino(votes, multiplier);
+
+    // The bet is gone at once, the win comes when the marker stops.
+    showBalance(wager.balance - wager.votes);
+    await roll(wager.roll);
+    $('dice-mark').classList.add(wager.won ? 'won' : 'lost');
+    wagers.count++;
+    wagers.spent += votes;
+    wagers.won += wager.votes;
+    showBalance(wager.balance);
+    showWager(wager);
+  }
+
   $('bet-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!signedIn || playing) return;
-
-    const votes = stake();
-    const multiplier = chosen;
 
     hideError($('error'));
     $('bet-result').hidden = true;
     setPlaying(true);
 
     try {
-      const wager = await api.betCasino(votes, multiplier);
-
-      // The bet is gone at once, the win comes when the marker stops.
-      showBalance(wager.balance - wager.votes);
-      await roll(wager.roll);
-      $('dice-mark').classList.add(wager.won ? 'won' : 'lost');
-      wagers.count++;
-      wagers.spent += votes;
-      wagers.won += wager.votes;
-      showBalance(wager.balance);
-      showWager(wager);
+      await betOnce(stake(), chosen);
     } catch (e) {
       showError($('error'), e);
     } finally {
@@ -283,6 +356,14 @@ function betting(bets, signedIn) {
   refreshBet = update;
   if (signedIn) {
     $('bet').hidden = false;
+    // "Автоигра" bets the stake and the multiplier of the form, which stay
+    // as they are while it plays; a stake out of the limits does not
+    // start it.
+    watchAuto('aim', () => {
+      const votes = stake();
+
+      return votes >= bets.least && votes <= bets.most ? votes : 0;
+    }, () => betOnce(stake(), chosen), wagersCount);
   } else {
     $('bet-guest').hidden = false;
   }
@@ -415,6 +496,7 @@ try {
     $('spin').textContent = tr('Крутить за {0}', votesCount(price));
     $('spin').hidden = false;
     $('spin').addEventListener('click', () => spin(price));
+    watchAuto('wheel', () => price, () => spinOnce(price), spinsCount);
   } else {
     $('guest').hidden = false;
   }

@@ -43,6 +43,12 @@
               <button class="button" id="spin" type="button" hidden></button>
               <span class="hint" id="guest" hidden>Играть могут только вошедшие на сайт.</span>
             </div>
+            <div class="casino-auto" id="wheel-auto" hidden>
+              <label class="casino-label" for="wheel-auto-count">Автоигра:</label>
+              <select id="wheel-auto-count"><option value="10">10 раз</option><option value="25">25 раз</option><option value="50">50 раз</option><option value="100">100 раз</option><option value="0">пока есть голоса</option></select>
+              <button class="button" type="button" id="wheel-auto-start">Запустить</button>
+            </div>
+            <p class="hint casino-session" id="wheel-auto-state" hidden></p>
             <div class="casino-result" id="result" hidden></div>
             <p class="hint casino-session" id="session" hidden></p>
           </div>
@@ -73,6 +79,12 @@
                 <span class="hint" id="bet-guest" hidden>Играть могут только вошедшие на сайт.</span>
               </div>
             </form>
+            <div class="casino-auto" id="aim-auto" hidden>
+              <label class="casino-label" for="aim-auto-count">Автоигра:</label>
+              <select id="aim-auto-count"><option value="10">10 раз</option><option value="25">25 раз</option><option value="50">50 раз</option><option value="100">100 раз</option><option value="0">пока есть голоса</option></select>
+              <button class="button" type="button" id="aim-auto-start">Запустить</button>
+            </div>
+            <p class="hint casino-session" id="aim-auto-state" hidden></p>
             <div class="casino-result" id="bet-result" hidden></div>
             <p class="hint casino-session" id="bet-session" hidden></p>
           </div>
