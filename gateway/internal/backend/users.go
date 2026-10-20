@@ -451,12 +451,12 @@ func (u *Users) Statistics(ctx context.Context) (model.People, error) {
 	}, nil
 }
 
-// SetForeignAgent puts on userID the plaque of a foreign agent or takes
-// it.
-func (u *Users) SetForeignAgent(ctx context.Context, accessToken, userID string, agent bool) error {
-	_, err := u.api.SetForeignAgent(withToken(ctx, accessToken), &userv1.SetForeignAgentRequest{UserId: userID, ForeignAgent: agent})
+// SetAlert puts on userID the label with the words of alert or, with "",
+// takes it.
+func (u *Users) SetAlert(ctx context.Context, accessToken, userID, alert string) error {
+	_, err := u.api.SetAlert(withToken(ctx, accessToken), &userv1.SetAlertRequest{UserId: userID, Alert: alert})
 
-	return errs.Wrap("u.api.SetForeignAgent", fromStatus(err))
+	return errs.Wrap("u.api.SetAlert", fromStatus(err))
 }
 
 // SetVerified gives userID the checkmark of a confirmed page or takes it.
@@ -517,7 +517,7 @@ func toPublicProfile(p *userv1.PublicProfile) model.PublicProfile {
 		InfoHidden:      p.GetInfoHidden(),
 		Verified:        p.GetVerified(),
 		Ban:             toBan(p.GetBan()),
-		ForeignAgent:    p.GetForeignAgent(),
+		Alert:           p.GetAlert(),
 		LastSeen:        fromTimestamp(p.GetLastSeenAt()),
 		Online:          p.GetOnline(),
 		Backdrop:        model.Backdrop{Left: p.GetBackdropLeft(), Right: p.GetBackdropRight()},

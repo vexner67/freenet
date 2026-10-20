@@ -93,14 +93,14 @@ func newServer(t *testing.T) testServer {
 		Verification: service.NewVerificationService(service.VerificationDeps{
 			Users: users, Verifications: users, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Admins: admins,
 		}),
-		Bans:          service.NewBanService(users, users, admins),
-		ForeignAgents: service.NewForeignAgentService(users, users, admins),
-		Ads:           service.NewAdService(users, adRepo, adRepo, inmem.TxManager{}, admins),
-		Decors:        service.NewDecorService(users, inmem.NewDecorRepository(), admins),
-		Casinos:       service.NewCasinoService(users, inmem.NewCasinoRepository(), users, inmem.TxManager{}, admins),
-		Permissions:   permissions,
-		Presence:      presence,
-		Backdrops:     service.NewBackdropService(users, users),
+		Bans:        service.NewBanService(users, users, admins),
+		Alerts:      service.NewAlertService(users, users, admins),
+		Ads:         service.NewAdService(users, adRepo, adRepo, inmem.TxManager{}, admins),
+		Decors:      service.NewDecorService(users, inmem.NewDecorRepository(), admins),
+		Casinos:     service.NewCasinoService(users, inmem.NewCasinoRepository(), users, inmem.TxManager{}, admins),
+		Permissions: permissions,
+		Presence:    presence,
+		Backdrops:   service.NewBackdropService(users, users),
 	}, log))
 
 	go func() { _ = srv.Serve(lis) }()

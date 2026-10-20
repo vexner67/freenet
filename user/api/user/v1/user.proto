@@ -188,9 +188,9 @@ service UserService {
   // confirmed one ("Верификация" of openvk) or takes it.
   rpc SetVerified(SetVerifiedRequest) returns (google.protobuf.Empty);
   // Requires an access token of an administrator of the site
-  // (PermissionDenied otherwise): puts on a page the orange plaque of a
-  // foreign agent (openvk's "user-alert") or takes it.
-  rpc SetForeignAgent(SetForeignAgentRequest) returns (google.protobuf.Empty);
+  // (PermissionDenied otherwise): puts on a page the orange label of
+  // openvk ("user-alert") with the words given, or takes it with "".
+  rpc SetAlert(SetAlertRequest) returns (google.protobuf.Empty);
   // The ads of the global feed: ListAds is public and gives the shown
   // ones; ListAds with all, CreateAd, EditAd and DeleteAd require an
   // access token of an administrator of the site (PermissionDenied
@@ -274,8 +274,10 @@ message User {
   // The administrators blocked the page: why and until when; unset when
   // it is not blocked.
   Ban ban = 32;
-  // The administrators marked the page as a foreign agent's.
-  bool foreign_agent = 33;
+  reserved 33;
+  reserved "foreign_agent";
+  // The label the administrators put on the page; "" for none.
+  string alert = 34;
 }
 
 // Ban is a block of a page by the administrators of the site.
@@ -485,9 +487,11 @@ message PublicProfile {
   // The administrators blocked the page: only the names and the photo are
   // told with it. Unset when it is not blocked.
   Ban ban = 29;
-  // The administrators marked the page as a foreign agent's (an orange
-  // plaque above the status): told as verified is.
-  bool foreign_agent = 30;
+  reserved 30;
+  reserved "foreign_agent";
+  // The label the administrators put on the page (an orange one above
+  // the name), "" for none: told as verified is.
+  string alert = 31;
 }
 
 enum Gender {
@@ -1188,9 +1192,10 @@ message SetVerifiedRequest {
   bool verified = 2;
 }
 
-message SetForeignAgentRequest {
+message SetAlertRequest {
   string user_id = 1;
-  bool foreign_agent = 2;
+  // One line of up to 1000 characters; "" takes the label.
+  string alert = 2;
 }
 
 message Ad {

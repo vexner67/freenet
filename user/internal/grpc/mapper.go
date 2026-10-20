@@ -48,7 +48,7 @@ func toProtoUser(u *user.User) *userv1.User {
 		Votes:                 u.Wallet().Votes,
 		Verified:              u.IsVerified(),
 		Ban:                   toProtoBan(u.BanAt(time.Now())),
-		ForeignAgent:          u.IsForeignAgent(),
+		Alert:                 u.Alert().String(),
 	}
 }
 
@@ -416,7 +416,7 @@ func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
 		InfoHidden:            p.InfoHidden,
 		Verified:              p.Verified,
 		Ban:                   toProtoBan(p.Ban),
-		ForeignAgent:          p.ForeignAgent,
+		Alert:                 p.Alert.String(),
 	}
 
 	// The date of registration is information too. A list tells who is

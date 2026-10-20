@@ -113,9 +113,9 @@ type PublicProfile struct {
 	// страница"), told on the hidden page too, as openvk does; a deleted
 	// page tells nothing.
 	Verified bool
-	// ForeignAgent: the administrators marked the page as a foreign
-	// agent's (openvk's orange plaque), told as the checkmark is.
-	ForeignAgent bool
+	// Alert is the label the administrators put on the page (openvk's
+	// orange "user-alert"), "" for none; told as the checkmark is.
+	Alert Alert
 	// LastSeen is when the person last visited ("был в сети"), the zero
 	// time if never or hidden; Online: within OnlineFor ("Онлайн").
 	LastSeen time.Time
@@ -165,9 +165,9 @@ type User struct {
 	// ban is the block by the administrators, which may have ended; like
 	// verified, storage alone changes it.
 	ban Ban
-	// foreignAgent is the plaque the administrators put; like verified,
-	// storage alone changes it.
-	foreignAgent bool
+	// alert is the label the administrators put; like verified, storage
+	// alone changes it.
+	alert Alert
 }
 
 // New creates a user with only an email set, as happens on the first
@@ -208,7 +208,7 @@ type Stored struct {
 	Wallet       Wallet
 	Verified     bool
 	Ban          Ban
-	ForeignAgent bool
+	Alert        Alert
 }
 
 // Restore rebuilds a user from storage without validation or new IDs.
@@ -229,7 +229,7 @@ func Restore(s Stored) *User {
 		wallet:       s.Wallet,
 		verified:     s.Verified,
 		ban:          s.Ban,
-		foreignAgent: s.ForeignAgent,
+		alert:        s.Alert,
 	}
 }
 
@@ -384,7 +384,7 @@ func (u *User) PublicProfileFor(viewerID uuid.UUID, t Ties, now time.Time) Publi
 			ID: u.id, AvatarID: u.avatarID, Name: u.profile.Name, Surname: u.profile.Surname,
 			Nickname: u.profile.Nickname, Gender: u.profile.Gender, PageHidden: true, InfoHidden: true,
 			Closed: u.privacy.Closed, Verified: u.verified && !u.IsDeactivated(),
-			ForeignAgent: u.foreignAgent && !u.IsDeactivated(),
+			Alert: u.shownAlert(),
 		}
 	}
 
@@ -408,8 +408,17 @@ func (u *User) bannedProfile(now time.Time) PublicProfile {
 		ID: u.id, AvatarID: u.avatarID, Name: u.profile.Name, Surname: u.profile.Surname,
 		Nickname: u.profile.Nickname, Gender: u.profile.Gender, InfoHidden: true,
 		Verified: u.verified && !u.IsDeactivated(), Ban: u.BanAt(now),
-		ForeignAgent: u.foreignAgent && !u.IsDeactivated(),
+		Alert: u.shownAlert(),
 	}
+}
+
+// shownAlert is the label as others read it: a deleted page tells none.
+func (u *User) shownAlert() Alert {
+	if u.IsDeactivated() {
+		return ""
+	}
+
+	return u.alert
 }
 
 func (u *User) publicProfile(showInfo bool) PublicProfile {
@@ -437,9 +446,9 @@ func (u *User) publicProfile(showInfo bool) PublicProfile {
 		Backdrop: u.backdrop,
 		Closed:   u.privacy.Closed,
 		Verified: u.verified,
-		// The plaque is the administrators' word, not the owner's: no
+		// The label is the administrators' word, not the owner's: no
 		// setting hides it.
-		ForeignAgent: u.foreignAgent,
+		Alert: u.alert,
 	}
 
 	if !showInfo {

@@ -264,8 +264,9 @@ type userResponse struct {
 	Verified bool `json:"verified"`
 	// Ban: the administrators blocked the page, null if they did not.
 	Ban *banJSON `json:"ban"`
-	// ForeignAgent: the page wears the plaque of a foreign agent.
-	ForeignAgent bool `json:"foreignAgent"`
+	// Alert is the label the administrators put on the page, "" for
+	// none.
+	Alert string `json:"alert"`
 	// PinnedClubs are the clubs in the left menu ("Добавить в левое
 	// меню"); GET /me alone tells them.
 	PinnedClubs []clubJSON `json:"pinnedClubs,omitempty"`
@@ -327,7 +328,7 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 		Admin:        u.Admin,
 		Verified:     u.Verified,
 		Ban:          toBanJSON(u.Ban),
-		ForeignAgent: u.ForeignAgent,
+		Alert:        u.Alert,
 		Interface: interfaceJSON{
 			AvatarStyle: u.Interface.AvatarStyle,
 			MainPage:    u.Interface.MainPage,
@@ -386,10 +387,10 @@ type publicProfileResponse struct {
 	// Ban: the administrators blocked the page, which tells only the names
 	// and the photo besides; null if they did not.
 	Ban *banJSON `json:"ban"`
-	// ForeignAgent: the administrators marked the page as a foreign
-	// agent's: openvk's orange plaque above the status; never told of a
+	// Alert is the label the administrators put on the page: openvk's
+	// orange "user-alert" above the name, "" for none; never told of a
 	// deleted one.
-	ForeignAgent bool `json:"foreignAgent"`
+	Alert string `json:"alert"`
 	// LastSeenAt is when the user last visited ("был в сети"), null if
 	// never, hidden or in a list; Online: just now ("Онлайн"), which a
 	// list tells too if the page is open to everyone.
@@ -413,19 +414,19 @@ func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
 	profile.HideBirthYear = false
 
 	return publicProfileResponse{
-		ID:           p.ID,
-		Avatar:       toAvatarJSON(p.ID, p.AvatarID),
-		profileJSON:  profile,
-		Deactivated:  p.Deactivated,
-		PageHidden:   p.PageHidden,
-		Closed:       p.Closed,
-		Verified:     p.Verified,
-		Ban:          toBanJSON(p.Ban),
-		ForeignAgent: p.ForeignAgent,
-		InfoHidden:   p.InfoHidden,
-		LastSeenAt:   optionalTime(p.LastSeen),
-		Online:       p.Online,
-		Backdrop:     toBackdropJSON(p.ID, p.Backdrop),
+		ID:          p.ID,
+		Avatar:      toAvatarJSON(p.ID, p.AvatarID),
+		profileJSON: profile,
+		Deactivated: p.Deactivated,
+		PageHidden:  p.PageHidden,
+		Closed:      p.Closed,
+		Verified:    p.Verified,
+		Ban:         toBanJSON(p.Ban),
+		Alert:       p.Alert,
+		InfoHidden:  p.InfoHidden,
+		LastSeenAt:  optionalTime(p.LastSeen),
+		Online:      p.Online,
+		Backdrop:    toBackdropJSON(p.ID, p.Backdrop),
 
 		Completeness: p.Completeness,
 	}

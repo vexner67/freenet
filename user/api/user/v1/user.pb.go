@@ -710,8 +710,8 @@ type User struct {
 	// The administrators blocked the page: why and until when; unset when
 	// it is not blocked.
 	Ban *Ban `protobuf:"bytes,32,opt,name=ban,proto3" json:"ban,omitempty"`
-	// The administrators marked the page as a foreign agent's.
-	ForeignAgent  bool `protobuf:"varint,33,opt,name=foreign_agent,json=foreignAgent,proto3" json:"foreign_agent,omitempty"`
+	// The label the administrators put on the page; "" for none.
+	Alert         string `protobuf:"bytes,34,opt,name=alert,proto3" json:"alert,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -970,11 +970,11 @@ func (x *User) GetBan() *Ban {
 	return nil
 }
 
-func (x *User) GetForeignAgent() bool {
+func (x *User) GetAlert() string {
 	if x != nil {
-		return x.ForeignAgent
+		return x.Alert
 	}
-	return false
+	return ""
 }
 
 // Ban is a block of a page by the administrators of the site.
@@ -1706,9 +1706,9 @@ type PublicProfile struct {
 	// The administrators blocked the page: only the names and the photo are
 	// told with it. Unset when it is not blocked.
 	Ban *Ban `protobuf:"bytes,29,opt,name=ban,proto3" json:"ban,omitempty"`
-	// The administrators marked the page as a foreign agent's (an orange
-	// plaque above the status): told as verified is.
-	ForeignAgent  bool `protobuf:"varint,30,opt,name=foreign_agent,json=foreignAgent,proto3" json:"foreign_agent,omitempty"`
+	// The label the administrators put on the page (an orange one above
+	// the name), "" for none: told as verified is.
+	Alert         string `protobuf:"bytes,31,opt,name=alert,proto3" json:"alert,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1946,11 +1946,11 @@ func (x *PublicProfile) GetBan() *Ban {
 	return nil
 }
 
-func (x *PublicProfile) GetForeignAgent() bool {
+func (x *PublicProfile) GetAlert() string {
 	if x != nil {
-		return x.ForeignAgent
+		return x.Alert
 	}
-	return false
+	return ""
 }
 
 type GetOrCreateByEmailRequest struct {
@@ -7540,28 +7540,29 @@ func (x *SetVerifiedRequest) GetVerified() bool {
 	return false
 }
 
-type SetForeignAgentRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	ForeignAgent  bool                   `protobuf:"varint,2,opt,name=foreign_agent,json=foreignAgent,proto3" json:"foreign_agent,omitempty"`
+type SetAlertRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	UserId string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// One line of up to 1000 characters; "" takes the label.
+	Alert         string `protobuf:"bytes,2,opt,name=alert,proto3" json:"alert,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *SetForeignAgentRequest) Reset() {
-	*x = SetForeignAgentRequest{}
+func (x *SetAlertRequest) Reset() {
+	*x = SetAlertRequest{}
 	mi := &file_api_user_v1_user_proto_msgTypes[117]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *SetForeignAgentRequest) String() string {
+func (x *SetAlertRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*SetForeignAgentRequest) ProtoMessage() {}
+func (*SetAlertRequest) ProtoMessage() {}
 
-func (x *SetForeignAgentRequest) ProtoReflect() protoreflect.Message {
+func (x *SetAlertRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_user_v1_user_proto_msgTypes[117]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -7573,23 +7574,23 @@ func (x *SetForeignAgentRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use SetForeignAgentRequest.ProtoReflect.Descriptor instead.
-func (*SetForeignAgentRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use SetAlertRequest.ProtoReflect.Descriptor instead.
+func (*SetAlertRequest) Descriptor() ([]byte, []int) {
 	return file_api_user_v1_user_proto_rawDescGZIP(), []int{117}
 }
 
-func (x *SetForeignAgentRequest) GetUserId() string {
+func (x *SetAlertRequest) GetUserId() string {
 	if x != nil {
 		return x.UserId
 	}
 	return ""
 }
 
-func (x *SetForeignAgentRequest) GetForeignAgent() bool {
+func (x *SetAlertRequest) GetAlert() string {
 	if x != nil {
-		return x.ForeignAgent
+		return x.Alert
 	}
-	return false
+	return ""
 }
 
 type Ad struct {
@@ -9313,7 +9314,7 @@ var File_api_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_api_user_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/user/v1/user.proto\x12\auser.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9e\n" +
+	"\x16api/user/v1/user.proto\x12\auser.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa4\n" +
 	"\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -9348,8 +9349,8 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x05votes\x18\x1d \x01(\x03R\x05votes\x12\x14\n" +
 	"\x05admin\x18\x1e \x01(\bR\x05admin\x12\x1a\n" +
 	"\bverified\x18\x1f \x01(\bR\bverified\x12\x1e\n" +
-	"\x03ban\x18  \x01(\v2\f.user.v1.BanR\x03ban\x12#\n" +
-	"\rforeign_agent\x18! \x01(\bR\fforeignAgent\"\x88\x01\n" +
+	"\x03ban\x18  \x01(\v2\f.user.v1.BanR\x03ban\x12\x14\n" +
+	"\x05alert\x18\" \x01(\tR\x05alertJ\x04\b!\x10\"R\rforeign_agent\"\x88\x01\n" +
 	"\x03Ban\x12\x16\n" +
 	"\x06reason\x18\x01 \x01(\tR\x06reason\x127\n" +
 	"\tbanned_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bbannedAt\x120\n" +
@@ -9412,7 +9413,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x06closed\x18\x0f \x01(\bR\x06closed\x120\n" +
 	"\n" +
 	"gifts_read\x18\x10 \x01(\x0e2\x11.user.v1.AudienceR\tgiftsReadJ\x04\b\r\x10\x0eR\n" +
-	"notes_read\"\xab\t\n" +
+	"notes_read\"\xb1\t\n" +
 	"\rPublicProfile\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -9446,8 +9447,8 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\fcompleteness\x18\x1a \x01(\x05R\fcompleteness\x12\x16\n" +
 	"\x06closed\x18\x1b \x01(\bR\x06closed\x12\x1a\n" +
 	"\bverified\x18\x1c \x01(\bR\bverified\x12\x1e\n" +
-	"\x03ban\x18\x1d \x01(\v2\f.user.v1.BanR\x03ban\x12#\n" +
-	"\rforeign_agent\x18\x1e \x01(\bR\fforeignAgent\"1\n" +
+	"\x03ban\x18\x1d \x01(\v2\f.user.v1.BanR\x03ban\x12\x14\n" +
+	"\x05alert\x18\x1f \x01(\tR\x05alertJ\x04\b\x1e\x10\x1fR\rforeign_agent\"1\n" +
 	"\x19GetOrCreateByEmailRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\"o\n" +
 	"\x1aGetOrCreateByEmailResponse\x12\x17\n" +
@@ -9774,10 +9775,10 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\abalance\x18\x05 \x01(\x03R\abalance\"I\n" +
 	"\x12SetVerifiedRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
-	"\bverified\x18\x02 \x01(\bR\bverified\"V\n" +
-	"\x16SetForeignAgentRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12#\n" +
-	"\rforeign_agent\x18\x02 \x01(\bR\fforeignAgent\"\xd1\x01\n" +
+	"\bverified\x18\x02 \x01(\bR\bverified\"@\n" +
+	"\x0fSetAlertRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
+	"\x05alert\x18\x02 \x01(\tR\x05alert\"\xd1\x01\n" +
 	"\x02Ad\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x14\n" +
@@ -9963,7 +9964,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"DECOR_AUTO\x10\x01\x12\f\n" +
 	"\bDECOR_ON\x10\x02\x12\r\n" +
-	"\tDECOR_OFF\x10\x032\xf5-\n" +
+	"\tDECOR_OFF\x10\x032\xe7-\n" +
 	"\vUserService\x12]\n" +
 	"\x12GetOrCreateByEmail\x12\".user.v1.GetOrCreateByEmailRequest\x1a#.user.v1.GetOrCreateByEmailResponse\x126\n" +
 	"\x05GetMe\x12\x15.user.v1.GetMeRequest\x1a\x16.user.v1.GetMeResponse\x12N\n" +
@@ -10035,8 +10036,8 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"SpinCasino\x12\x1a.user.v1.SpinCasinoRequest\x1a\x1b.user.v1.SpinCasinoResponse\x12F\n" +
 	"\rSetCasinoBets\x12\x1d.user.v1.SetCasinoBetsRequest\x1a\x16.google.protobuf.Empty\x12B\n" +
 	"\tBetCasino\x12\x19.user.v1.BetCasinoRequest\x1a\x1a.user.v1.BetCasinoResponse\x12B\n" +
-	"\vSetVerified\x12\x1b.user.v1.SetVerifiedRequest\x1a\x16.google.protobuf.Empty\x12J\n" +
-	"\x0fSetForeignAgent\x12\x1f.user.v1.SetForeignAgentRequest\x1a\x16.google.protobuf.Empty\x12<\n" +
+	"\vSetVerified\x12\x1b.user.v1.SetVerifiedRequest\x1a\x16.google.protobuf.Empty\x12<\n" +
+	"\bSetAlert\x12\x18.user.v1.SetAlertRequest\x1a\x16.google.protobuf.Empty\x12<\n" +
 	"\aListAds\x12\x17.user.v1.ListAdsRequest\x1a\x18.user.v1.ListAdsResponse\x12?\n" +
 	"\bCreateAd\x12\x18.user.v1.CreateAdRequest\x1a\x19.user.v1.CreateAdResponse\x129\n" +
 	"\x06EditAd\x12\x16.user.v1.EditAdRequest\x1a\x17.user.v1.EditAdResponse\x12?\n" +
@@ -10192,7 +10193,7 @@ var file_api_user_v1_user_proto_goTypes = []any{
 	(*BetCasinoRequest)(nil),           // 125: user.v1.BetCasinoRequest
 	(*BetCasinoResponse)(nil),          // 126: user.v1.BetCasinoResponse
 	(*SetVerifiedRequest)(nil),         // 127: user.v1.SetVerifiedRequest
-	(*SetForeignAgentRequest)(nil),     // 128: user.v1.SetForeignAgentRequest
+	(*SetAlertRequest)(nil),            // 128: user.v1.SetAlertRequest
 	(*Ad)(nil),                         // 129: user.v1.Ad
 	(*AdStats)(nil),                    // 130: user.v1.AdStats
 	(*ListAdsRequest)(nil),             // 131: user.v1.ListAdsRequest
@@ -10383,7 +10384,7 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	124, // 151: user.v1.UserService.SetCasinoBets:input_type -> user.v1.SetCasinoBetsRequest
 	125, // 152: user.v1.UserService.BetCasino:input_type -> user.v1.BetCasinoRequest
 	127, // 153: user.v1.UserService.SetVerified:input_type -> user.v1.SetVerifiedRequest
-	128, // 154: user.v1.UserService.SetForeignAgent:input_type -> user.v1.SetForeignAgentRequest
+	128, // 154: user.v1.UserService.SetAlert:input_type -> user.v1.SetAlertRequest
 	131, // 155: user.v1.UserService.ListAds:input_type -> user.v1.ListAdsRequest
 	133, // 156: user.v1.UserService.CreateAd:input_type -> user.v1.CreateAdRequest
 	135, // 157: user.v1.UserService.EditAd:input_type -> user.v1.EditAdRequest
@@ -10461,7 +10462,7 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	162, // 229: user.v1.UserService.SetCasinoBets:output_type -> google.protobuf.Empty
 	126, // 230: user.v1.UserService.BetCasino:output_type -> user.v1.BetCasinoResponse
 	162, // 231: user.v1.UserService.SetVerified:output_type -> google.protobuf.Empty
-	162, // 232: user.v1.UserService.SetForeignAgent:output_type -> google.protobuf.Empty
+	162, // 232: user.v1.UserService.SetAlert:output_type -> google.protobuf.Empty
 	132, // 233: user.v1.UserService.ListAds:output_type -> user.v1.ListAdsResponse
 	134, // 234: user.v1.UserService.CreateAd:output_type -> user.v1.CreateAdResponse
 	136, // 235: user.v1.UserService.EditAd:output_type -> user.v1.EditAdResponse
