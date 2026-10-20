@@ -302,6 +302,8 @@ input, select, textarea { font-size: 16px !important; }
 .casino-quick { width: 100%; }
 .casino-quick .button { flex: 1; min-height: 32px; }
 .casino-multiplier { min-height: 58px; }
+.bet-outcome-head { flex-wrap: wrap; }
+.bet-outcome-head .button { min-height: 32px; }
 
 /* Windows: from the top, scrolled when taller than the screen. */
 .modal { align-items: flex-start; padding: 8px; overflow-y: auto; }

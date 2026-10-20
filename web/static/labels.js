@@ -1034,6 +1034,37 @@ export function betRoll(roll) {
   return lang === 'en' ? fixed : fixed.replace('.', ',');
 }
 
+// aimZone is the green part of the strip of "Прицел": chance wide, in the
+// middle — the rolls from low to high, high not included, of 10000, as the
+// user service counts them.
+export function aimZone(odds) {
+  const low = Math.floor((10000 - odds) / 2);
+
+  return { low, high: low + odds };
+}
+
+// betEventShare is the share of all the votes staked on an event that
+// stand on one outcome, in percents.
+export function betEventShare(staked, total) {
+  return total > 0 ? (staked * 100) / total : 0;
+}
+
+// betEventOdds is what a vote staked on an outcome would bring if it won
+// now — all staked shared by those on it: "×2,5"; '' with nothing on it.
+export function betEventOdds(staked, total) {
+  return staked > 0 ? betMultiplier(Math.floor((total * 100) / staked)) : '';
+}
+
+// betEventState says where an event of "Ставки" stands: whether it takes
+// stakes and till when, or how it ended.
+export function betEventState(e) {
+  if (e.state === 'resolved') return tr('Итог: {0}.', e.outcomes[e.winner]?.name ?? '');
+  if (e.state === 'cancelled') return tr('Событие отменено, ставки вернулись.');
+  if (!e.open) return tr('Ставки больше не принимаются — ждём итога.');
+
+  return e.closesAt ? tr('Ставки принимаются до {0}.', formatDateTime(e.closesAt)) : tr('Ставки принимаются, пока событие не закроют.');
+}
+
 // betPrize is what a bet wins: the votes multiplied, rounded down.
 export function betPrize(amount, hundredths) {
   return Math.floor((amount * hundredths) / 100);
@@ -1516,6 +1547,19 @@ const errorTexts = {
   'unknown multiplier': tr('Такого множителя нет.'),
   'bets must be from 1 to 1000000 votes, the least not above the most': tr('Ставки — от 1 до 1 000 000 голосов, наименьшая не больше наибольшей.'),
   'the return of bets must be from 1 to 100 percent': tr('Отдача ставок — от 1 до 100 %.'),
+  'the question of the event is empty': tr('Напишите вопрос события.'),
+  'the question of the event is too long': tr('Вопрос слишком длинный: не больше 200 символов.'),
+  'an outcome of the event is empty': tr('Исход не может быть пустым.'),
+  'an outcome of the event is too long': tr('Исход слишком длинный: не больше 64 символов.'),
+  'an event has from 2 to 10 outcomes': tr('У события должно быть от 2 до 10 исходов.'),
+  'the outcomes of the event repeat': tr('Исходы не должны повторяться.'),
+  'the stakes must close in the future and within a year': tr('Приём ставок должен закончиться в будущем, но не позже чем через год.'),
+  'event not found': tr('Событие не найдено.'),
+  'the event takes no more stakes': tr('Ставки на это событие больше не принимаются.'),
+  'the event is over already': tr('Событие уже завершено.'),
+  'the event is not over yet': tr('Сначала подведите итог события или отмените его.'),
+  'unknown outcome': tr('Такого исхода нет.'),
+  'a stake must be from 1 to 1000000 votes': tr('Ставка — от 1 до 1 000 000 голосов.'),
   'invalid sticker': tr('Такого стикера нет.'),
   'you do not have this sticker': tr('Набор с этим стикером не добавлен.'),
   'a sticker goes alone': tr('Стикер отправляется отдельным сообщением.'),

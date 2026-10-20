@@ -6,14 +6,16 @@
 // (/admin/vouchers/new), "Подарки" (/admin/gifts: what each gift costs)
 // "Оформление" (/admin/decor: the New Year decoration of the site),
 // "Казино" (/admin/casino: the price of a spin, the prizes and their odds,
-// and the limits and the return of the bets)
+// and the limits and the return of "Прицел"), "Ставки" (/admin/bets: the
+// events people stake on, a new one, and closing, resolving, cancelling
+// and deleting them)
 // and "Реклама" (/admin/ads: the ads of the global feed, the form of a new
 // one at /admin/ads/new and of one at /admin/ads/<id>). The page is its own, AUI as openvk's:
 // none of the site's chrome. Only the administrators of the site
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, foreignAgentText, adminOverview, adRate, betChance, betMultiplier, betOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, betEventState, foreignAgentText, adminOverview, adRate, betChance, betMultiplier, betOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 import { remember } from './newyear.js';
 
@@ -673,7 +675,7 @@ async function casino(answered) {
   $('casino').hidden = false;
 }
 
-// betSettings is "Ставка" of "Казино": the limits of a bet and the return,
+// betSettings is "Прицел" of "Казино": the limits of a bet and the return,
 // the chance of each multiplier by it as it is typed, and how the bets
 // have done in fact.
 function betSettings(bets, wagers) {
@@ -720,6 +722,134 @@ function betSettings(bets, wagers) {
 // ads is "Реклама": every ad, shown or not, with how it does (views and
 // clicks, by how many people, and the share of views followed), the
 // switch of "Показывать" and "Изменить" and "Удалить" each.
+// bets is "Ставки": the form of a new event and the events with what was
+// staked on each, the outcome to resolve one with and the buttons that
+// change it.
+async function bets(answered) {
+  const outcomes = $('bet-outcomes');
+
+  function outcomeField(value = '') {
+    const field = el('input', { className: 'text', maxLength: 64, value, required: true });
+    const remove = el('button', { className: 'aui-button aui-button-compact', type: 'button', textContent: '×', title: tr('Убрать исход') });
+    const line = el('div', { className: 'admin-bet-outcome' }, field, remove);
+
+    field.setAttribute('aria-label', tr('Исход'));
+    remove.addEventListener('click', () => {
+      line.remove();
+      recount();
+    });
+
+    return line;
+  }
+
+  // recount keeps 2 to 10 outcomes.
+  function recount() {
+    const lines = [...outcomes.children];
+
+    for (const line of lines) line.lastChild.disabled = lines.length <= 2;
+    $('bet-outcome-add').disabled = lines.length >= 10;
+  }
+
+  function reset() {
+    $('bet-question').value = '';
+    $('bet-closes').value = '';
+    outcomes.replaceChildren(outcomeField(tr('Да')), outcomeField(tr('Нет')));
+    recount();
+  }
+
+  // act runs a change of an event, asking first, and reads them anew.
+  async function act(button, question, change) {
+    if (question && !confirm(question)) return;
+
+    error.hidden = true;
+    button.disabled = true;
+    try {
+      await change();
+      await show(api.betEvents());
+    } catch (e) {
+      button.disabled = false;
+      showError(e);
+    }
+  }
+
+  function row(e) {
+    const actions = el('div', { className: 'admin-actions' });
+    const finished = e.state === 'resolved' || e.state === 'cancelled';
+    const button = (text) => el('button', { className: 'aui-button aui-button-compact', type: 'button', textContent: text });
+
+    if (!finished) {
+      const winner = el('select', { className: 'select' }, ...e.outcomes.map((o, i) => el('option', { value: String(i), textContent: o.name })));
+      const resolve = button(tr('Подвести итог'));
+      const cancel = button(tr('Отменить'));
+
+      winner.setAttribute('aria-label', tr('Исход'));
+      resolve.addEventListener('click', () => {
+        const i = Number(winner.value);
+        act(resolve, tr('Подвести итог «{0}»: {1}? Голоса получат угадавшие.', e.question, e.outcomes[i].name), () => api.resolveBetEvent(e.id, i));
+      });
+      cancel.addEventListener('click', () => act(cancel, tr('Отменить событие «{0}»? Все ставки вернутся.', e.question), () => api.cancelBetEvent(e.id)));
+      if (e.state === 'open') {
+        const close = button(tr('Закрыть приём'));
+        close.addEventListener('click', () => act(close, '', () => api.closeBetEvent(e.id)));
+        actions.append(close);
+      }
+      actions.append(winner, resolve, cancel);
+    } else {
+      const remove = button(tr('Удалить'));
+      remove.addEventListener('click', () => act(remove, tr('Удалить событие «{0}»?', e.question), () => api.deleteBetEvent(e.id)));
+      actions.append(remove);
+    }
+
+    return el('tr', {},
+      el('td', {}, el('b', { textContent: e.question }),
+        el('div', { className: 'admin-ad-site', textContent: e.outcomes.map((o) => `${o.name}: ${o.staked}`).join(' · ') })),
+      el('td', { className: 'admin-stat' }, votesCount(e.staked), el('div', { className: 'admin-ad-site', textContent: peopleCount(e.people) })),
+      el('td', { textContent: betEventState(e) }),
+      el('td', {}, actions),
+    );
+  }
+
+  async function show(answer) {
+    const { events } = await answer;
+
+    $('bet-rows').replaceChildren(...events.map(row));
+    $('bet-table').hidden = events.length === 0;
+    $('bets-empty').hidden = events.length > 0;
+  }
+
+  reset();
+  $('bet-outcome-add').addEventListener('click', () => {
+    outcomes.append(outcomeField());
+    recount();
+    outcomes.lastChild.firstChild.focus();
+  });
+
+  $('bet-event-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const save = event.target.querySelector('button[type=submit]');
+
+    error.hidden = true;
+    $('bet-created').hidden = true;
+    save.disabled = true;
+    try {
+      const closes = $('bet-closes').value ? banUntil('date', new Date(), $('bet-closes').value) : '';
+      const made = await api.createBetEvent($('bet-question').value, [...outcomes.children].map((line) => line.firstChild.value), closes);
+
+      $('bet-created').textContent = tr('Событие «{0}» создано.', made.question);
+      $('bet-created').hidden = false;
+      reset();
+      await show(api.betEvents());
+    } catch (e) {
+      showError(e);
+    } finally {
+      save.disabled = false;
+    }
+  });
+
+  await show(answered);
+  $('bets').hidden = false;
+}
+
 async function ads(answered) {
   // statCell is a count with how many people it was, under it.
   const statCell = (count, people) => el('td', { className: 'admin-stat' },
@@ -904,6 +1034,7 @@ const reads = {
   '/admin/ads': () => started(api.ads(true)),
   '/admin/decor': () => started(api.decor()),
   '/admin/casino': () => started(api.casinoSettings()),
+  '/admin/bets': () => started(api.betEvents()),
 }[adID ? '/admin/ads' : path]?.();
 
 const me = await currentUser().catch(() => null);
@@ -932,6 +1063,8 @@ if (!me) {
     await decor(reads).catch(showError);
   } else if (path === '/admin/casino') {
     await casino(reads).catch(showError);
+  } else if (path === '/admin/bets') {
+    await bets(reads).catch(showError);
   } else if (path === '/admin/ads') {
     await ads(reads).catch(showError);
   } else if (path === '/admin/ads/new' || adID) {

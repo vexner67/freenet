@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, betOdds, betChance, betRoll, betPrize, betAmount } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, betOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -1103,4 +1103,29 @@ test('casino: the highlight runs whole rounds and stops on the prize', () => {
   assert.equal(casinoPlan(6, 3, 3, 1).length, 12);
   assert.equal(casinoPlan(6, 3, 3, 1).at(-1).cell, 3);
   assert.deepEqual(casinoPlan(0, 0, 0), []);
+});
+
+test('aimZone is the green part of the strip in its middle, as the user service counts it', () => {
+  assert.deepEqual(aimZone(4750), { low: 2625, high: 7375 });
+  assert.deepEqual(aimZone(10000), { low: 0, high: 10000 });
+  assert.deepEqual(aimZone(951), { low: 4524, high: 5475 });
+});
+
+test('betEventShare and betEventOdds say what an outcome of an event holds and would bring', () => {
+  assert.equal(betEventShare(30, 120), 25);
+  assert.equal(betEventShare(0, 0), 0);
+  assert.equal(betEventOdds(40, 100), '×2,5');
+  assert.equal(betEventOdds(30, 100), '×3,33');
+  assert.equal(betEventOdds(0, 100), '');
+});
+
+test('betEventState says where an event stands', () => {
+  const outcomes = [{ name: 'Да' }, { name: 'Нет' }];
+
+  assert.equal(betEventState({ state: 'resolved', winner: 1, outcomes }), 'Итог: Нет.');
+  assert.equal(betEventState({ state: 'cancelled', outcomes }), 'Событие отменено, ставки вернулись.');
+  assert.equal(betEventState({ state: 'open', open: false, outcomes }), 'Ставки больше не принимаются — ждём итога.');
+  assert.equal(betEventState({ state: 'closed', open: false, outcomes }), 'Ставки больше не принимаются — ждём итога.');
+  assert.equal(betEventState({ state: 'open', open: true, closesAt: null, outcomes }), 'Ставки принимаются, пока событие не закроют.');
+  assert.match(betEventState({ state: 'open', open: true, closesAt: '2026-11-04T09:00:00Z', outcomes }), /^Ставки принимаются до 4 ноября 2026 в \d+:00\.$/);
 });
