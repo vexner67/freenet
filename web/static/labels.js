@@ -1438,7 +1438,7 @@ const errorTexts = {
   'status is too long': tr('Статус длиннее 200 символов.'),
   'text contains invisible characters': tr('Невидимые символы использовать нельзя.'),
   'the label is too long': tr('Метка не может быть длиннее 1000 знаков.'),
-  'the label must be one line': tr('Метка должна быть одной строкой.'),
+  'the label has too many lines': tr('В метке не может быть больше 20 строк.'),
   'birthday is in the future': tr('Дата рождения не может быть в будущем.'),
   'user not found': tr('Страница не найдена.'),
   'session not found': tr('Эта сессия уже завершена.'),
