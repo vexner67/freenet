@@ -4486,6 +4486,93 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /api/v1/casino:
+    get:
+      summary: The casino of the site
+      description: 'Public. What a spin costs and the votes each prize gives (0 — nothing). The odds are not told: the administrators tune them.'
+      responses:
+        "200":
+          description: The casino
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Casino" }
+    put:
+      summary: Change the casino
+      description: 'Only for the administrators of the site: the price of a spin and 2–12 prizes with their weights — a prize is as likely as its weight among all weights.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [price, prizes]
+              properties:
+                price: { type: integer, format: int64, minimum: 1, maximum: 10000 }
+                prizes:
+                  type: array
+                  minItems: 2
+                  maxItems: 12
+                  items: { $ref: "#/components/schemas/CasinoPrize" }
+      responses:
+        "204": { description: Set }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/casino/settings:
+    get:
+      summary: The casino with its odds
+      description: 'Only for the administrators: the prizes with their weights and how the casino does — spins made, votes spent on them and won.'
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The settings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [price, prizes, spins, spent, won]
+                properties:
+                  price: { type: integer, format: int64 }
+                  prizes:
+                    type: array
+                    items: { $ref: "#/components/schemas/CasinoPrize" }
+                  spins: { type: integer, format: int64 }
+                  spent: { type: integer, format: int64 }
+                  won: { type: integer, format: int64 }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/casino/spins:
+    post:
+      summary: Spin the casino
+      description: 'Takes the price of a spin from your votes and pays the prize, at once. Rate limited.'
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: What the spin won
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [prize, votes, balance]
+                properties:
+                  prize: { type: integer, description: The index of the prize won }
+                  votes: { type: integer, format: int64, description: The votes it won }
+                  balance: { type: integer, format: int64, description: Your votes after the spin }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/users/{nickname}/verification:
     parameters:
       - name: nickname
@@ -7517,6 +7604,23 @@ components:
       properties:
         mode: { type: string, enum: [auto, "on", "off"], description: 'What the administrators set; `auto` follows the calendar' }
         festive: { type: boolean, description: Whether the site wears the decoration now }
+
+    Casino:
+      type: object
+      required: [price, prizes]
+      properties:
+        price: { type: integer, format: int64, description: What a spin costs, in votes }
+        prizes:
+          type: array
+          description: The votes of each prize, in order; 0 is nothing
+          items: { type: integer, format: int64 }
+
+    CasinoPrize:
+      type: object
+      required: [votes, weight]
+      properties:
+        votes: { type: integer, format: int64, minimum: 0, maximum: 1000000 }
+        weight: { type: integer, minimum: 0, maximum: 1000000, description: How likely the prize is among the weights of all prizes }
 
     Voucher:
       type: object
