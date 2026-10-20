@@ -1698,6 +1698,28 @@ a.poll-result-name { cursor: pointer; }
 .finance-votes { height: 60px; overflow: hidden; font-size: 48px; font-weight: normal; line-height: 60px; white-space: nowrap; }
 .finance-rate { font-weight: bold; }
 .finance-rubles { color: var(--text-808080); font-weight: normal; }
+
+/* "Казино": the prizes in cells and a light running over them; the
+   balance at the right, as in "Голоса". */
+.casino { display: flex; gap: 20px; align-items: flex-start; }
+.casino-game { flex: 1; min-width: 0; }
+.casino-lead { margin: 0 0 10px; }
+.casino-board { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.casino-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 58px; background: var(--back-fff); border: 1px solid var(--line-ccc); }
+.casino-votes { color: var(--text-45688e); font-size: 20px; font-weight: bold; line-height: 24px; }
+.casino-unit { color: var(--text-808080); }
+.casino-empty .casino-votes { color: var(--text-aaa); }
+.casino-cell.lit { background: var(--back-eee5b8); border-color: var(--line-c3a476); }
+.casino-cell.won { animation: casino-won 0.5s steps(2) 4; }
+@keyframes casino-won { 50% { background: var(--back-fff); } }
+.casino-controls { margin: 10px 0; text-align: center; }
+.casino-controls .button { padding: 6px 20px; }
+.casino-result { padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); font-weight: bold; text-align: center; }
+.casino-win { background: var(--back-eee5b8); border-color: var(--line-d7cf9e); color: var(--text-58462a); }
+.casino-session { text-align: center; }
+@media (prefers-reduced-motion: reduce) {
+  .casino-cell.won { animation: none; }
+}
 .voucher-keys { margin: 10px 0; }
 .voucher-keys input.voucher-key { width: 60px; text-align: center; text-transform: uppercase; }
 .voucher-code { font-family: "Courier New", monospace; white-space: nowrap; }

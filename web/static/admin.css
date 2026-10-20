@@ -201,6 +201,7 @@ a:hover { text-decoration: underline; }
 .aui-icon-gift { --icon: url("/static/icons/admin-gift.svg"); }
 .aui-icon-ad { --icon: url("/static/icons/admin-ad.svg"); }
 .aui-icon-snow { --icon: url("/static/icons/admin-snow.svg"); }
+.aui-icon-casino { --icon: url("/static/icons/admin-casino.svg"); }
 .aui-icon-users { --icon: url("/static/icons/admin-users.svg"); }
 .aui-icon-clubs { --icon: url("/static/icons/admin-clubs.svg"); }
 .aui-icon-ban { --icon: url("/static/icons/admin-ban.svg"); }
@@ -346,6 +347,9 @@ table.aui tbody tr:hover { background: var(--aui-hover); }
 form.aui.admin-price { display: flex; gap: 8px; align-items: center; }
 form.aui.admin-price .text { width: 110px; }
 .admin-decor-now { color: var(--aui-subtle); }
+form.aui .admin-casino-field { width: 120px; }
+.admin-casino-stats { font-weight: bold; }
+.admin-casino-add { display: flex; gap: 12px; align-items: center; margin: 12px 0; }
 
 form.aui.admin-rate { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
 form.aui.admin-rate label { font-weight: bold; }

@@ -4,14 +4,15 @@
 // each), "Блокировки" (/admin/bans: the pages blocked now), "Группы" (/admin/clubs: the same of groups),
 // "Ваучеры" (/admin/vouchers), the form of a new one
 // (/admin/vouchers/new), "Подарки" (/admin/gifts: what each gift costs)
-// "Оформление" (/admin/decor: the New Year decoration of the site)
+// "Оформление" (/admin/decor: the New Year decoration of the site),
+// "Казино" (/admin/casino: the price of a spin, the prizes and their odds)
 // and "Реклама" (/admin/ads: the ads of the global feed, the form of a new
 // one at /admin/ads/new and of one at /admin/ads/<id>). The page is its own, AUI as openvk's:
 // none of the site's chrome. Only the administrators of the site
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, adminOverview, adRate, peopleCount, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, adminOverview, adRate, casinoChance, casinoChances, casinoPayout, casinoReturn, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 import { remember } from './newyear.js';
 
@@ -538,6 +539,85 @@ async function decor(answered) {
   $('decor').hidden = false;
 }
 
+// casino is "Казино": the price of a spin and the prizes with their
+// weights, the chance of each and the share of the votes the casino gives
+// back by them as they are typed, and how it has done in fact.
+async function casino(answered) {
+  const { price, prizes, spins, spent, won } = await answered;
+  const rows = $('casino-rows');
+  const priceField = $('casino-price');
+  const save = $('casino-form').querySelector('button[type=submit]');
+
+  const typed = () => [...rows.children].map((row) => ({
+    votes: Number(row.parts.votes.value),
+    weight: Number(row.parts.weight.value),
+  }));
+
+  // recount shows the chances and the return of what is typed; the
+  // casino has 2 to 12 prizes.
+  function recount() {
+    const prizes = typed();
+    const chances = casinoChances(prizes);
+
+    [...rows.children].forEach((row, i) => {
+      row.parts.chance.textContent = casinoChance(chances[i]);
+      row.parts.remove.disabled = rows.children.length <= 2;
+    });
+    $('casino-add').disabled = rows.children.length >= 12;
+    $('casino-return').textContent = tr('Казино возвращает в среднем {0} потраченных голосов.', casinoReturn(Number(priceField.value), prizes));
+  }
+
+  function row(prize) {
+    const votes = el('input', { className: 'text admin-casino-field', type: 'number', min: 0, max: 1000000, value: String(prize.votes), required: true });
+    const weight = el('input', { className: 'text admin-casino-field', type: 'number', min: 0, max: 1000000, value: String(prize.weight), required: true });
+    votes.setAttribute('aria-label', tr('Приз, голосов'));
+    weight.setAttribute('aria-label', tr('Вес'));
+    const chance = el('td');
+    const remove = el('button', { className: 'aui-button aui-button-compact', type: 'button', textContent: tr('Удалить') });
+    const line = el('tr', {}, el('td', {}, votes), el('td', {}, weight), chance, el('td', {}, remove));
+
+    line.parts = { votes, weight, chance, remove };
+    remove.addEventListener('click', () => {
+      line.remove();
+      recount();
+    });
+
+    return line;
+  }
+
+  $('casino-stats').textContent = spins > 0
+    ? tr('Сыграно {0}: потрачено {1}, выиграно {2} — {3} потраченного.', spinsCount(spins), votesCount(spent), votesCount(won), casinoPayout({ spent, won }))
+    : tr('Ещё никто не играл.');
+  priceField.value = String(price);
+  rows.replaceChildren(...prizes.map(row));
+  recount();
+
+  $('casino-form').addEventListener('input', recount);
+  $('casino-add').addEventListener('click', () => {
+    rows.append(row({ votes: 0, weight: 1 }));
+    recount();
+  });
+
+  $('casino-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    $('casino-saved').hidden = true;
+    save.disabled = true;
+
+    try {
+      await api.setCasino(Number(priceField.value), typed());
+      $('casino-saved').textContent = tr('Изменения сохранены');
+      $('casino-saved').hidden = false;
+    } catch (e) {
+      showError(e);
+    } finally {
+      save.disabled = false;
+    }
+  });
+
+  $('casino').hidden = false;
+}
+
 // ads is "Реклама": every ad, shown or not, with how it does (views and
 // clicks, by how many people, and the share of views followed), the
 // switch of "Показывать" and "Изменить" and "Удалить" each.
@@ -724,6 +804,7 @@ const reads = {
   '/admin/gifts': () => ({ catalog: started(api.giftCatalog()), rate: started(api.voteRate()) }),
   '/admin/ads': () => started(api.ads(true)),
   '/admin/decor': () => started(api.decor()),
+  '/admin/casino': () => started(api.casinoSettings()),
 }[adID ? '/admin/ads' : path]?.();
 
 const me = await currentUser().catch(() => null);
@@ -750,6 +831,8 @@ if (!me) {
     await gifts(reads).catch(showError);
   } else if (path === '/admin/decor') {
     await decor(reads).catch(showError);
+  } else if (path === '/admin/casino') {
+    await casino(reads).catch(showError);
   } else if (path === '/admin/ads') {
     await ads(reads).catch(showError);
   } else if (path === '/admin/ads/new' || adID) {
