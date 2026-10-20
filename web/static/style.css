@@ -113,6 +113,17 @@
   --line-555: #555;
   --line-333: #333;
   --line-2f2f2f: #2f2f2f;
+  --back-7a0f1d: #7a0f1d;
+  --back-a01e28: #a01e28;
+  --back-ffd54a: #ffd54a;
+  --back-fff3c4: #fff3c4;
+  --line-e2b24a: #e2b24a;
+  --text-ffd54a: #ffd54a;
+  --text-7a0f1d: #7a0f1d;
+  --back-43a047: #43a047;
+  --back-2e7dd7: #2e7dd7;
+  --text-fff3c4: #fff3c4;
+  --text-6b0d19: #6b0d19;
 }
 
 * { box-sizing: border-box; }
@@ -878,7 +889,10 @@ a.like:hover svg { opacity: .7; }
 .im-quote:hover { background: var(--back-f7f7f7); text-decoration: none; }
 .im-quote-name { display: block; font-weight: bold; }
 .im-quote-text { display: block; overflow: hidden; color: var(--text-777); white-space: nowrap; text-overflow: ellipsis; }
-.messenger-box #replying { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* The answered message stands in one line over the form: its words are
+   cut, the name and "×" stay. */
+.messenger-box #replying { display: flex; gap: 4px; white-space: nowrap; }
+.messenger-box #replying-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* Reactions under a message: one a person, as on VK. */
 .im-reactions, .im-reaction-picker { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .im-reaction { padding: 1px 6px; border: 1px solid var(--line-d6d6d6); border-radius: 10px; background: var(--back-f7f7f7); color: inherit; font: inherit; line-height: 16px; cursor: pointer; }
@@ -898,7 +912,7 @@ a.like:hover svg { opacity: .7; }
   border-top: 1px solid var(--line-d6d6d6);
 }
 .messenger-avatar { width: 52px; height: 52px; object-fit: cover; border-radius: 3px; }
-.messenger-box { flex: 1; }
+.messenger-box { flex: 1; min-width: 0; }
 .messenger-box textarea {
   display: block;
   width: 100%;
@@ -1769,9 +1783,180 @@ a.poll-result-name { cursor: pointer; }
 .bet-outcome.won .bet-outcome-bar { background: var(--text-43a047); }
 .bet-outcome-mine { margin: 2px 0 0; color: var(--text-58462a); }
 .bet-event-mine { margin: 6px 0 0; padding: 4px 6px; background: var(--back-eee5b8); color: var(--text-58462a); font-weight: bold; }
+/* The New Year casino (html.festive): a hall of a slot machine of the
+   2000s on a holiday night — a gold banner, a board of red velvet with a
+   frame of running lights, gold cells, a light that glows, a button that
+   shines, confetti and a jumping balance on a win (casino.js). */
+.casino-festive, .casino-confetti { display: none; }
+.festive .casino-festive {
+  display: block;
+  margin: 0 0 10px;
+  padding: 10px 8px;
+  border: 2px solid var(--line-e2b24a);
+  border-radius: 6px;
+  background: url("/static/newyear/flakes.svg"), linear-gradient(135deg, var(--back-7a0f1d), var(--back-d23a32) 50%, var(--back-7a0f1d));
+  box-shadow: 0 0 14px rgba(255, 196, 0, 0.45);
+  text-align: center;
+}
+.festive .casino-festive-text {
+  background: linear-gradient(90deg, var(--text-ffd54a), var(--text-fff3c4), var(--text-ffd54a), var(--text-fff3c4), var(--text-ffd54a));
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 16px;
+  font-weight: bold;
+  animation: casino-shimmer 2.5s linear infinite;
+}
+.festive .casino-festive-text::before, .festive .casino-festive-text::after { display: inline-block; color: var(--text-fff); animation: casino-wiggle 1.2s ease-in-out infinite; }
+.festive .casino-festive-text::before { content: "🎄"; margin-right: 8px; }
+.festive .casino-festive-text::after { content: "🎁"; margin-left: 8px; animation-delay: 0.6s; }
+@keyframes casino-shimmer { to { background-position: -200% 0; } }
+@keyframes casino-wiggle { 50% { transform: rotate(-12deg) scale(1.2); } }
+
+.festive .casino-lead { padding: 6px 8px 6px 30px; border-left: 3px solid var(--back-d23a32); background: var(--back-fff3c4) url("/static/newyear/snowflake.svg") no-repeat 8px 50%; }
+
+.festive .casino-board, .festive .casino-multipliers {
+  position: relative;
+  padding: 16px;
+  border: 3px solid var(--line-e2b24a);
+  border-radius: 8px;
+  background: radial-gradient(circle at 50% 30%, var(--back-d23a32), var(--back-7a0f1d) 75%);
+  box-shadow: 0 0 18px rgba(255, 196, 0, 0.5), inset 0 0 20px rgba(0, 0, 0, 0.45);
+}
+/* The frame of running lights: gold and red bulbs that blink in turn. */
+.festive .casino-board::before, .festive .casino-board::after,
+.festive .casino-multipliers::before, .festive .casino-multipliers::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, var(--back-ffd54a) 2px, transparent 3px) 0 0 / 14px 10px repeat-x,
+    radial-gradient(circle, var(--back-ffd54a) 2px, transparent 3px) 0 100% / 14px 10px repeat-x,
+    radial-gradient(circle, var(--back-ffd54a) 2px, transparent 3px) 0 0 / 10px 14px repeat-y,
+    radial-gradient(circle, var(--back-ffd54a) 2px, transparent 3px) 100% 0 / 10px 14px repeat-y;
+  filter: drop-shadow(0 0 3px var(--back-ffd54a));
+  animation: casino-bulbs 0.9s steps(1) infinite;
+}
+.festive .casino-board::after, .festive .casino-multipliers::after {
+  background:
+    radial-gradient(circle, var(--text-fff3c4) 2px, transparent 3px) 7px 0 / 14px 10px repeat-x,
+    radial-gradient(circle, var(--text-fff3c4) 2px, transparent 3px) 7px 100% / 14px 10px repeat-x,
+    radial-gradient(circle, var(--text-fff3c4) 2px, transparent 3px) 0 7px / 10px 14px repeat-y,
+    radial-gradient(circle, var(--text-fff3c4) 2px, transparent 3px) 100% 7px / 10px 14px repeat-y;
+  filter: drop-shadow(0 0 3px var(--back-d23a32));
+  animation-delay: 0.45s;
+}
+@keyframes casino-bulbs { 50% { opacity: 0.15; } }
+
+.festive .casino-cell {
+  position: relative;
+  border: 1px solid var(--line-e2b24a);
+  border-radius: 6px;
+  background: linear-gradient(var(--back-fff), var(--back-fff3c4));
+  box-shadow: inset 0 -3px 0 rgba(122, 15, 29, 0.15);
+  transition: transform 0.08s;
+}
+.festive .casino-votes { color: var(--text-7a0f1d); text-shadow: 0 1px 0 var(--back-ffd54a); }
+.festive .casino-empty .casino-votes { color: var(--text-aaa); text-shadow: none; }
+.festive .casino-cell.lit {
+  z-index: 1;
+  border-color: var(--line-fff);
+  background: radial-gradient(circle, var(--text-fff3c4), var(--back-ffd54a));
+  box-shadow: 0 0 14px 4px var(--back-ffd54a), 0 0 30px 6px rgba(255, 120, 0, 0.6);
+  transform: scale(1.12);
+}
+.festive .casino-cell.won { animation: casino-jackpot 0.35s ease-in-out 8 alternate; }
+@keyframes casino-jackpot {
+  from { box-shadow: 0 0 10px 3px var(--back-ffd54a); transform: scale(1.1) rotate(-2deg); }
+  to { box-shadow: 0 0 34px 12px var(--back-d23a32); transform: scale(1.22) rotate(2deg); }
+}
+.festive .casino-multiplier:hover { box-shadow: 0 0 10px var(--back-ffd54a); }
+
+/* The buttons of the games: red and gold, with a gleam running over. */
+.festive .casino-controls .button, .festive .casino-auto .button {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line-e2b24a);
+  border-radius: 4px;
+  background: linear-gradient(var(--back-d23a32), var(--back-a01e28));
+  color: var(--text-fff3c4);
+  font-weight: bold;
+  text-shadow: 0 1px 1px var(--back-7a0f1d);
+}
+.festive .casino-controls .button { padding: 8px 26px; font-size: 13px; animation: casino-glow 1.6s ease-in-out infinite; }
+.festive .casino-controls .button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  animation: casino-gleam 2.4s ease-in-out infinite;
+}
+.festive .casino-controls .button:disabled { animation: none; opacity: 0.7; }
+.festive .casino-controls .button:disabled::after { animation: none; }
+@keyframes casino-glow { 50% { box-shadow: 0 0 16px 3px var(--back-ffd54a); } }
+@keyframes casino-gleam { 60%, 100% { left: 130%; } }
+
+/* A win: a gold plaque that bounces in, with a tree and a gift. */
+.festive .casino-result { border-radius: 6px; }
+.festive .casino-win {
+  border: 2px solid var(--line-e2b24a);
+  background: linear-gradient(135deg, var(--back-ffd54a), var(--text-fff3c4) 50%, var(--back-ffd54a));
+  color: var(--text-6b0d19);
+  font-size: 15px;
+  box-shadow: 0 0 20px rgba(255, 196, 0, 0.7);
+  animation: casino-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+.festive .casino-win::before { content: "🎉 "; }
+.festive .casino-win::after { content: " 🎉"; }
+.festive .casino-win.casino-big { font-size: 20px; text-transform: uppercase; animation: casino-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1), casino-glow 0.8s ease-in-out 0.5s infinite; }
+@keyframes casino-pop { from { transform: scale(0.4); opacity: 0; } }
+
+/* The balance is gold and jumps when it grows. */
+.festive .casino-balance .finance-votes {
+  background: linear-gradient(var(--back-ffd54a), var(--back-d23a32));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: bold;
+}
+.casino-balance .finance-votes.bump { animation: casino-bump 0.6s cubic-bezier(0.2, 1.8, 0.4, 1); }
+@keyframes casino-bump { 40% { transform: scale(1.3); } }
+
+/* The aim: a strip of candy cane, a zone of gold tinsel, a star marker. */
+.festive .casino-dice { height: 22px; border: 2px solid var(--line-e2b24a); border-radius: 11px; background: repeating-linear-gradient(-45deg, var(--back-d23a32) 0 8px, var(--back-fff) 8px 16px); }
+.festive .casino-dice-win { background: repeating-linear-gradient(90deg, var(--back-43a047) 0 6px, var(--back-ffd54a) 6px 8px); box-shadow: 0 0 10px var(--back-ffd54a); }
+.festive .casino-dice-mark { background: var(--back-ffd54a); box-shadow: 0 0 8px 2px var(--back-ffd54a); }
+.festive .casino-dice-mark::before { content: "★"; position: absolute; top: 100%; left: 50%; color: var(--text-ffd54a); font-size: 16px; line-height: 16px; text-shadow: 0 0 4px var(--back-d23a32); transform: translateX(-50%); }
+
+/* Confetti of a win: pieces cast from the top of the screen. */
+.festive .casino-confetti { display: block; position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 100; }
+.casino-piece {
+  position: absolute;
+  top: -20px;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  animation: casino-fall var(--fall, 2.4s) cubic-bezier(0.3, 0.6, 0.6, 1) forwards;
+}
+.casino-piece:nth-child(5n) { background: var(--back-ffd54a); }
+.casino-piece:nth-child(5n + 1) { background: var(--back-d23a32); }
+.casino-piece:nth-child(5n + 2) { background: var(--back-43a047); }
+.casino-piece:nth-child(5n + 3) { background: var(--back-2e7dd7); border-radius: 50%; width: 9px; height: 9px; }
+.casino-piece:nth-child(5n + 4) { background: var(--text-fff3c4); }
+@keyframes casino-fall {
+  to { transform: translate(var(--dx, 0), 110vh) rotate(var(--turn, 720deg)); }
+}
 @media (prefers-reduced-motion: reduce) {
-  .casino-cell.won { animation: none; }
+  .casino-cell.won, .festive .casino-cell.won, .festive .casino-festive-text, .festive .casino-festive-text::before, .festive .casino-festive-text::after,
+  .festive .casino-board::before, .festive .casino-board::after, .festive .casino-multipliers::before, .festive .casino-multipliers::after,
+  .festive .casino-controls .button, .festive .casino-controls .button::after, .festive .casino-win, .casino-balance .finance-votes.bump { animation: none; }
   .casino-dice-mark { transition: none; }
+  .festive .casino-confetti { display: none; }
 }
 .voucher-keys { margin: 10px 0; }
 .voucher-keys input.voucher-key { width: 60px; text-align: center; text-transform: uppercase; }

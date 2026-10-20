@@ -9,7 +9,7 @@
 // "Админ-панель" (admin.js); ?act=vouchers, where they were, leads there.
 
 import { api, currentUser } from './api.js';
-import { deviceName, formatDateTime, keyStateText, sessionsCount, plural, rubles, voteRate, votesCount, voucherGave, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes, pushStateTexts } from './labels.js';
+import { deviceName, formatDateTime, keyStateText, sessionsCount, plural, rubles, voteRate, votesCount, votesFontSize, voucherGave, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes, pushStateTexts } from './labels.js';
 import { $, applyInterface, deviceTheme, el, fullName, pagePath, setDeviceTheme, profilePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { openDeactivate } from './deactivate.js';
@@ -334,6 +334,7 @@ function say(title, ...rest) {
 
 function showVotes(me) {
   $('votes').textContent = me.votes ?? 0;
+  $('votes').style.fontSize = `${votesFontSize(me.votes ?? 0)}px`;
   $('votes-word').textContent = plural(me.votes ?? 0, ['голос', 'голоса', 'голосов']);
   $('votes-rubles').textContent = kopecksPerVote ? `≈ ${rubles((me.votes ?? 0) * kopecksPerVote)}` : '';
 }

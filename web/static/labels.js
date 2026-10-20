@@ -1013,6 +1013,16 @@ export function autoplayNext({ played, times, balance, cost }) {
   return balance >= cost ? 'go' : 'votes';
 }
 
+// votesFontSize is the size, in pixels, of the balance in the box of
+// "Голоса" 140 px wide: 48 px, as openvk, while the digits fit, and smaller
+// as they grow (a digit of Tahoma, bold too, is under 0,65 of the size), as openvk's
+// textFit does.
+export function votesFontSize(votes, width = 140) {
+  const digits = String(Math.max(0, Math.trunc(votes))).length;
+
+  return Math.max(12, Math.min(48, Math.floor(width / (digits * 0.65))));
+}
+
 // wagersCount is "1 ставка", "5 ставок".
 export function wagersCount(n) {
   return `${n} ${plural(n, ['ставка', 'ставки', 'ставок'])}`;

@@ -110,6 +110,17 @@
   --line-333: #111111;
   --line-2f2f2f: #111111;
   color-scheme: dark;
+  --back-7a0f1d: #5c0b16;
+  --back-a01e28: #8a1922;
+  --back-ffd54a: #f2c53d;
+  --back-fff3c4: #3a3420;
+  --line-e2b24a: #c99a33;
+  --text-ffd54a: #f2c53d;
+  --text-7a0f1d: #ffd9a0;
+  --back-43a047: #3b8f3f;
+  --back-2e7dd7: #3a7fd0;
+  --text-fff3c4: #fff3c4;
+  --text-6b0d19: #3a0810;
 }
 
 /* The pictures shown for a missing photo are drawn light: in the dark they
