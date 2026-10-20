@@ -1004,6 +1004,57 @@ export function spinsCount(n) {
   return `${n} ${plural(n, ['прокрутка', 'прокрутки', 'прокруток'])}`;
 }
 
+// wagersCount is "1 ставка", "5 ставок".
+export function wagersCount(n) {
+  return `${n} ${plural(n, ['ставка', 'ставки', 'ставок'])}`;
+}
+
+// betMultiplier is a multiplier of a bet, given in hundredths: "×1,5".
+export function betMultiplier(hundredths) {
+  const times = String(hundredths / 100);
+
+  return `×${lang === 'en' ? times : times.replace('.', ',')}`;
+}
+
+// betOdds is the chance of a multiplier when the casino gives back ret
+// percent, of 10000 — as the user service counts it.
+export function betOdds(ret, hundredths) {
+  return hundredths > 0 ? Math.floor((ret * 10000) / hundredths) : 0;
+}
+
+// betChance is a chance of 10000 as the casino says it: "47,5 %".
+export function betChance(odds) {
+  return share(odds / 100);
+}
+
+// betRoll is a roll of 10000 as a number of 100: "37,21".
+export function betRoll(roll) {
+  const fixed = (roll / 100).toFixed(2);
+
+  return lang === 'en' ? fixed : fixed.replace('.', ',');
+}
+
+// betPrize is what a bet wins: the votes multiplied, rounded down.
+export function betPrize(amount, hundredths) {
+  return Math.floor((amount * hundredths) / 100);
+}
+
+// betAmount is the bet a quick button makes of amount: the least, half,
+// double or the most the casino and the balance allow — always within
+// the limits.
+export function betAmount(amount, quick, { least, most, balance }) {
+  const top = Math.max(least, Math.min(most, balance ?? most));
+  const clamp = (n) => Math.min(most, Math.max(least, Math.floor(n) || least));
+
+  switch (quick) {
+    case 'least': return least;
+    case 'half': return clamp(amount / 2);
+    case 'double': return clamp(Math.min(amount * 2, top));
+    case 'most': return top;
+    default: return clamp(amount);
+  }
+}
+
 // casinoPlan is the path of the highlight over the cells of the casino
 // before it stops on the prize won: from the cell after start, round
 // after round, each step a little slower — the delays, in milliseconds,
@@ -1459,6 +1510,10 @@ const errorTexts = {
   'a prize must be from 0 to 1000000 votes': tr('Приз — от 0 до 1 000 000 голосов.'),
   'the weight of a prize must be from 0 to 1000000': tr('Вес приза — от 0 до 1 000 000.'),
   'at least one prize must have a weight': tr('Хотя бы у одного приза вес должен быть больше нуля.'),
+  'the bet is out of the limits of the casino': tr('Такую ставку казино не принимает.'),
+  'unknown multiplier': tr('Такого множителя нет.'),
+  'bets must be from 1 to 1000000 votes, the least not above the most': tr('Ставки — от 1 до 1 000 000 голосов, наименьшая не больше наибольшей.'),
+  'the return of bets must be from 1 to 100 percent': tr('Отдача ставок — от 1 до 100 %.'),
   'invalid sticker': tr('Такого стикера нет.'),
   'you do not have this sticker': tr('Набор с этим стикером не добавлен.'),
   'a sticker goes alone': tr('Стикер отправляется отдельным сообщением.'),

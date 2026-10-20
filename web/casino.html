@@ -30,8 +30,12 @@
       <div class="page-title"><span>Казино</span></div>
       <div class="page-body">
         <div class="error" id="error" hidden></div>
+        <div class="tabs casino-tabs" id="casino-tabs" hidden>
+          <a id="tab-wheel" href="/casino">Огонёк</a>
+          <a id="tab-bet" href="/casino?game=bet">Ставка</a>
+        </div>
         <div class="casino" id="casino" hidden>
-          <div class="casino-game">
+          <div class="casino-game" id="wheel-game" hidden>
             <p class="casino-lead">Огонёк обежит призы и остановится на одном из них — он ваш. Прокрутка стоит <b id="price"></b>.</p>
             <div class="casino-board" id="board"></div>
             <div class="casino-controls">
@@ -40,6 +44,36 @@
             </div>
             <div class="casino-result" id="result" hidden></div>
             <p class="hint casino-session" id="session" hidden></p>
+          </div>
+          <div class="casino-game" id="bet-game" hidden>
+            <p class="casino-lead">Поставьте голоса на множитель. Повезёт — ставка вернётся умноженной на него, не повезёт — пропадёт. Чем больше множитель, тем меньше шанс.</p>
+            <form class="casino-bet" id="bet-form">
+              <div class="casino-stake">
+                <label class="casino-label" for="bet-amount">Ставка:</label>
+                <input class="casino-amount" id="bet-amount" type="number" inputmode="numeric" required>
+                <span class="casino-quick">
+                  <button class="button" type="button" data-quick="least">мин.</button>
+                  <button class="button" type="button" data-quick="half">½</button>
+                  <button class="button" type="button" data-quick="double">×2</button>
+                  <button class="button" type="button" data-quick="most">макс.</button>
+                </span>
+              </div>
+              <p class="hint casino-limits" id="bet-limits"></p>
+              <div class="casino-label">Множитель:</div>
+              <div class="casino-multipliers" id="multipliers" role="radiogroup" aria-label="Множитель"></div>
+              <div class="casino-dice" id="dice" aria-hidden="true">
+                <div class="casino-dice-win" id="dice-win"></div>
+                <div class="casino-dice-mark" id="dice-mark" hidden><span id="dice-roll"></span></div>
+              </div>
+              <div class="casino-dice-scale" aria-hidden="true"><span>0</span><span>100</span></div>
+              <p class="casino-sum" id="bet-sum"></p>
+              <div class="casino-controls">
+                <button class="button" id="bet" type="submit" hidden></button>
+                <span class="hint" id="bet-guest" hidden>Играть могут только вошедшие на сайт.</span>
+              </div>
+            </form>
+            <div class="casino-result" id="bet-result" hidden></div>
+            <p class="hint casino-session" id="bet-session" hidden></p>
           </div>
           <div class="finance-balance casino-balance" id="balance" hidden>
             на вашем счету

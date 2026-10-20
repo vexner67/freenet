@@ -205,6 +205,7 @@
 
     <section id="casino" hidden>
       <h1 class="aui-page-heading">Казино</h1>
+      <h2>Огонёк</h2>
       <p class="admin-lead">Прокрутка стоит голосов и выигрывает один из призов. Шанс приза — его вес среди весов всех призов: чем больше вес, тем чаще приз выпадает, вес 0 — не выпадает никогда. Люди видят призы, но не шансы.</p>
       <p class="admin-casino-stats" id="casino-stats"></p>
       <div class="aui-message aui-message-success" id="casino-saved" hidden></div>
@@ -231,6 +232,30 @@
           <button class="aui-button" id="casino-add" type="button">Добавить приз</button>
           <span class="admin-decor-now" id="casino-return"></span>
         </div>
+        <div class="buttons-container">
+          <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
+        </div>
+      </form>
+      <h2>Ставка</h2>
+      <p class="admin-lead">Игрок сам выбирает, сколько голосов поставить и на какой множитель. Шанс выигрыша — отдача, делённая на множитель: при отдаче 95 % ставка на ×2 выигрывает в 47,5 % случаев. Выигрыш — ставка, умноженная на множитель; проигранная ставка пропадает.</p>
+      <p class="admin-casino-stats" id="bets-stats"></p>
+      <div class="aui-message aui-message-success" id="bets-saved" hidden></div>
+      <form class="aui" id="bets-form">
+        <div class="field-group">
+          <label for="bets-least">Наименьшая ставка</label>
+          <input class="text admin-casino-field" id="bets-least" type="number" min="1" max="1000000" required>
+        </div>
+        <div class="field-group">
+          <label for="bets-most">Наибольшая ставка</label>
+          <input class="text admin-casino-field" id="bets-most" type="number" min="1" max="1000000" required>
+          <div class="description">В голосах, от 1 до 1 000 000.</div>
+        </div>
+        <div class="field-group">
+          <label for="bets-return">Отдача, %</label>
+          <input class="text admin-casino-field" id="bets-return" type="number" min="1" max="100" required>
+          <div class="description">Сколько процентов поставленных голосов казино возвращает в среднем, от 1 до 100.</div>
+        </div>
+        <p class="admin-decor-now" id="bets-chances"></p>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
         </div>

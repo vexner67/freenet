@@ -292,11 +292,16 @@ input, select, textarea { font-size: 16px !important; }
 .story-viewer { background: rgba(0, 0, 0, 1); }
 .story-viewer .viewer-nav { display: none; }
 
-/* The casino: the balance over the prizes, three cells in a row. */
+/* The casino: the balance over the games, three cells in a row, the
+   amount of a bet over its quick buttons, both the whole width. */
 .casino { flex-direction: column-reverse; align-items: stretch; }
 .casino-balance { width: auto; }
-.casino-board { grid-template-columns: repeat(3, 1fr); }
+.casino-board, .casino-multipliers { grid-template-columns: repeat(3, 1fr); }
 .casino-controls .button { width: 100%; }
+.casino-amount { flex: 1; min-width: 0; }
+.casino-quick { width: 100%; }
+.casino-quick .button { flex: 1; min-height: 32px; }
+.casino-multiplier { min-height: 58px; }
 
 /* Windows: from the top, scrolled when taller than the screen. */
 .modal { align-items: flex-start; padding: 8px; overflow-y: auto; }

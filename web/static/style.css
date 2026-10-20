@@ -17,6 +17,7 @@
   --back-f2f5f8: #f2f5f8;
   --back-f2f2f2: #f2f2f2;
   --back-ffefe8: #ffefe8;
+  --back-dcefd9: #dcefd9;
   --back-fbf3c3: #fbf3c3;
   --back-f7f1d6: #f7f1d6;
   --back-f0f0f0: #f0f0f0;
@@ -1719,8 +1720,34 @@ a.poll-result-name { cursor: pointer; }
 .casino-result { padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); font-weight: bold; text-align: center; }
 .casino-win { background: var(--back-eee5b8); border-color: var(--line-d7cf9e); color: var(--text-58462a); }
 .casino-session { text-align: center; }
+/* "Ставка": the amount with quick buttons, the multipliers as cells and
+   a strip of 0 to 100 — green below the chance, where a roll wins. */
+.casino-tabs { margin-bottom: 10px; }
+.casino-stake { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.casino-label { display: block; margin: 10px 0 4px; font-weight: bold; }
+.casino-stake .casino-label { margin: 0; }
+.casino-amount { width: 90px; }
+.casino-quick { display: flex; gap: 3px; }
+.casino-quick .button { padding: 2px 7px; }
+.casino-limits { margin: 4px 0 0; }
+.casino-multipliers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.casino-multiplier { padding: 0; color: inherit; font: inherit; cursor: pointer; }
+.casino-multiplier:hover { border-color: var(--line-c3a476); }
+.casino-multiplier:disabled { cursor: default; }
+.casino-dice { position: relative; height: 20px; margin: 24px 0 2px; background: var(--back-ffefe8); border: 1px solid var(--line-ccc); }
+.casino-dice-win { width: 0; height: 100%; background: var(--back-dcefd9); }
+.casino-dice-mark { position: absolute; top: -5px; bottom: -5px; left: 0; width: 3px; margin-left: -1px; background: var(--text-333); transition: left 1.1s cubic-bezier(0.2, 0.8, 0.3, 1); }
+.casino-dice-mark.rolling { transition: none; }
+.casino-dice-mark span { position: absolute; bottom: 100%; left: 50%; font-weight: bold; white-space: nowrap; transform: translateX(-50%); }
+.casino-dice-mark.near-start span { transform: none; }
+.casino-dice-mark.near-end span { transform: translateX(-100%); }
+.casino-dice-mark.won span { color: var(--text-43a047); }
+.casino-dice-mark.lost span { color: var(--text-c33); }
+.casino-dice-scale { display: flex; justify-content: space-between; color: var(--text-808080); }
+.casino-sum { margin: 8px 0 0; text-align: center; }
 @media (prefers-reduced-motion: reduce) {
   .casino-cell.won { animation: none; }
+  .casino-dice-mark { transition: none; }
 }
 .voucher-keys { margin: 10px 0; }
 .voucher-keys input.voucher-key { width: 60px; text-align: center; text-transform: uppercase; }

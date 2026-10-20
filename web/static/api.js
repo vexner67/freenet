@@ -664,6 +664,8 @@ export const api = {
   casinoSettings: () => authorized('GET', '/api/v1/casino/settings'),
   setCasino: (price, prizes) => authorized('PUT', '/api/v1/casino', { price, prizes }),
   spinCasino: () => authorized('POST', '/api/v1/casino/spins'),
+  setCasinoBets: (least, most, ret) => authorized('PUT', '/api/v1/casino/bets', { least, most, return: ret }),
+  betCasino: (amount, multiplier) => authorized('POST', '/api/v1/casino/wagers', { amount, multiplier }),
   setGiftPrice: (gift, price) => authorized('PUT', `/api/v1/gifts/${encodeURIComponent(gift)}/price`, { price }),
   gifts: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/gifts`, cursor, limit)),
   sendGift: (nickname, gift, caption, anonymous) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/gifts`, { gift, caption, anonymous }),
