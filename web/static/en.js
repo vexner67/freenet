@@ -1774,4 +1774,12 @@ export default {
   'Автоигра остановлена: не хватает голосов. Сыграно: {0}.': 'Autoplay stopped: not enough votes. Played: {0}.',
   'Автоигра закончилась. Сыграно: {0}.': 'Autoplay is over. Played: {0}.',
   'Новогоднее казино — удача в подарок!': 'The New Year casino: luck is the gift!',
+  'Забрать подарок!': 'Take the gift!',
+  'Забрать!': 'Take it!',
+  'Новогодний джекпот': 'New Year jackpot',
+  'Джекпот': 'Jackpot',
+  'Новогодний миллион!': 'A New Year million!',
+  'Миллион!': 'A million!',
+  'С Новым годом и новым миллионом! Вы выиграли {0}.': 'Happy New Year and a new million! You won {0}.',
+  'Невероятно! Вы выиграли {0}.': 'Incredible! You won {0}.',
 };

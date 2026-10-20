@@ -11,12 +11,14 @@
 // those who guessed share all staked. "Популярное" are the events taking
 // stakes, the most staked on first. At the right is the balance, as in
 // "Голоса" of the settings. "Огонёк" and "Прицел" play by themselves too
-// ("Автоигра"): as many rounds as chosen or while the votes last.
+// ("Автоигра"): as many rounds as chosen or while the votes last. A win of
+// a million takes the whole screen (jackpot.js).
 
 import { api, currentUser, started } from './api.js';
 import { aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betOdds, betPrize, betRoll, casinoChance, casinoPlan, plural, spinsCount, votesCount, votesFontSize, wagersCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
+import { MILLION, jackpot } from './jackpot.js';
 
 const answered = started(api.casino());
 
@@ -157,6 +159,7 @@ async function spinOnce(price) {
   session.won += won.votes;
   showBalance(won.balance);
   showResult(won.votes, price);
+  if (won.votes >= MILLION) jackpot(won.votes);
 }
 
 async function spin(price) {
@@ -370,6 +373,7 @@ function betting(bets, signedIn) {
     wagers.won += wager.votes;
     showBalance(wager.balance);
     showWager(wager, votes);
+    if (wager.won && wager.votes >= MILLION) jackpot(wager.votes);
   }
 
   $('bet-form').addEventListener('submit', async (event) => {
