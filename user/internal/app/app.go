@@ -204,6 +204,7 @@ func (a *App) build(cfg config.Config) error {
 			ForeignAgents: service.NewForeignAgentService(store.users, store.users, admins),
 			Ads:           service.NewAdService(store.users, store.ads, store.ads, store.tx, admins),
 			Decors:        service.NewDecorService(store.users, store.decor, admins),
+			Casinos:       service.NewCasinoService(store.users, store.casino, store.wallets, store.tx, admins),
 			Permissions:   permissions,
 			Presence:      a.presence,
 			Backdrops:     service.NewBackdropService(store.users, store.users),
@@ -223,7 +224,8 @@ func (a *App) build(cfg config.Config) error {
 }
 
 // rateLimits are how often each user may follow people, send gifts, make
-// packs of stickers and be counted as seeing and following ads.
+// packs of stickers, be counted as seeing and following ads and spin the
+// casino.
 func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
 		userv1.UserService_Follow_FullMethodName:   cfg.FollowLimits,
@@ -239,6 +241,8 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 
 		userv1.UserService_ViewAd_FullMethodName:  cfg.AdEventLimits,
 		userv1.UserService_ClickAd_FullMethodName: cfg.AdEventLimits,
+
+		userv1.UserService_SpinCasino_FullMethodName: cfg.CasinoLimits,
 	}
 }
 
@@ -296,6 +300,8 @@ type storage struct {
 	rates service.VoteRateRepository
 	// decor is how the site is dressed for the New Year.
 	decor service.DecorRepository
+	// casino is the casino of the site.
+	casino service.CasinoRepository
 	// ads are the advertising of the global feed, and how it does.
 	ads interface {
 		service.AdRepository
@@ -323,6 +329,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			vouchers:     inmem.NewVoucherRepository(users),
 			rates:        inmem.NewVoteRateRepository(),
 			decor:        inmem.NewDecorRepository(),
+			casino:       inmem.NewCasinoRepository(),
 			ads:          inmem.NewAdRepository(),
 			tx:           inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
@@ -365,6 +372,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		vouchers:     postgres.NewVoucherRepository(a.pool),
 		rates:        postgres.NewVoteRateRepository(a.pool),
 		decor:        postgres.NewDecorRepository(a.pool),
+		casino:       postgres.NewCasinoRepository(a.pool),
 		ads:          postgres.NewAdRepository(a.pool),
 		tx:           pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {

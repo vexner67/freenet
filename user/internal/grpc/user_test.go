@@ -97,6 +97,7 @@ func newServer(t *testing.T) testServer {
 		ForeignAgents: service.NewForeignAgentService(users, users, admins),
 		Ads:           service.NewAdService(users, adRepo, adRepo, inmem.TxManager{}, admins),
 		Decors:        service.NewDecorService(users, inmem.NewDecorRepository(), admins),
+		Casinos:       service.NewCasinoService(users, inmem.NewCasinoRepository(), users, inmem.TxManager{}, admins),
 		Permissions:   permissions,
 		Presence:      presence,
 		Backdrops:     service.NewBackdropService(users, users),
