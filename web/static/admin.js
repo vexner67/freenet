@@ -1,7 +1,7 @@
 // "Админ-панель", openvk's /admin: "Сводка" (/admin), "Пользователи"
 // (/admin/users: the verified pages, or those ?q= finds, with the switch
-// of "Верификация" and "Заблокировать" each), "Блокировки" (/admin/bans:
-// the pages blocked now), "Группы" (/admin/clubs: the same of groups),
+// of "Верификация", the plaque of a foreign agent and "Заблокировать"
+// each), "Блокировки" (/admin/bans: the pages blocked now), "Группы" (/admin/clubs: the same of groups),
 // "Ваучеры" (/admin/vouchers), the form of a new one
 // (/admin/vouchers/new) and "Подарки" (/admin/gifts: what each gift costs). The page is its own, AUI as openvk's:
 // none of the site's chrome. Only the administrators of the site
@@ -102,6 +102,7 @@ const verifiable = {
     all: tr('Подтверждённые страницы'),
     none: tr('Никого не найдено.'),
     noneVerified: tr('Подтверждённых страниц пока нет. Найдите человека поиском.'),
+    agentCell,
     banCell,
   },
   clubs: {
@@ -118,6 +119,34 @@ const verifiable = {
     noneVerified: tr('Подтверждённых групп пока нет. Найдите группу поиском.'),
   },
 };
+
+// agentCell is "Иноагент" of a person: the switch of the orange plaque
+// above the name (openvk's "user-alert"), put and taken at once.
+function agentCell(user) {
+  const toggle = el('button', {
+    className: 'aui-toggle', type: 'button', title: tr('Плашка иностранного агента'),
+  }, el('span', { className: 'aui-toggle-knob' }));
+  toggle.setAttribute('role', 'switch');
+  toggle.setAttribute('aria-label', tr('Иноагент: {0}', fullName(user)));
+  toggle.setAttribute('aria-checked', String(Boolean(user.foreignAgent)));
+
+  toggle.addEventListener('click', async () => {
+    const agent = toggle.getAttribute('aria-checked') !== 'true';
+    error.hidden = true;
+    toggle.disabled = true;
+    try {
+      await api.setForeignAgent(user.nickname, agent);
+      user.foreignAgent = agent;
+      toggle.setAttribute('aria-checked', String(agent));
+    } catch (e) {
+      showError(e);
+    } finally {
+      toggle.disabled = false;
+    }
+  });
+
+  return toggle;
+}
 
 // banCell is "Блокировка" of a person: "заблокирован", until when and
 // "Разблокировать", or "Заблокировать", which opens the dialog.
@@ -267,6 +296,7 @@ function verifications(kind, query, bans = false) {
       el('td', {}, person),
       el('td', {}, el('span', { className: 'admin-code', textContent: k.address(page) })),
       el('td', {}, toggle),
+      k.agentCell && el('td', {}, k.agentCell(page)),
       k.banCell && el('td', {}, k.banCell(page)),
     ].filter(Boolean));
   }

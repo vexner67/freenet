@@ -25,6 +25,7 @@
   --back-e6e6e6: #2a2a2a;
   --back-ffe58a: #6b5a14;
   --back-eee5b8: #2e2c22;
+  --back-f3ddbd: #3d2f1c;
   --back-dae1e8: #2c3642;
   --back-d9e1ea: #3a4a5c;
   --back-ddd: #333333;
@@ -38,6 +39,7 @@
   --back-444: #3a3a3a;
   --back-3e3e3e: #222222;
   /* Text */
+  --text-58462a: #e8c99a;
   --text-000: #d4d4d4;
   --text-686868: #2a2a2a;
   --text-e8e8e8: #d8d8d8;
@@ -66,6 +68,7 @@
   --text-fff: #ffffff;
   /* Borders, outlines and shadows */
   --line-fff: #1a1a1a;
+  --line-c3a476: #7a6240;
   --line-eef1f4: #2a2a2a;
   --line-eee: #2e2e2e;
   --line-ececec: #2e2e2e;
