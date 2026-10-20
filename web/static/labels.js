@@ -1964,3 +1964,11 @@ export function inviteNickname(search) {
 export function inviteURL(origin, nickname) {
   return `${origin}/?invite=${encodeURIComponent(nickname)}`;
 }
+
+// newYearGreeting is the greeting under the fir tree of the New Year
+// decoration: the coming year until it comes — and in the months before,
+// when the administrators turn the decoration on early — then the year
+// that came.
+export function newYearGreeting(date) {
+  return date.getMonth() >= 6 ? tr('С наступающим Новым годом!') : tr('С Новым годом!');
+}

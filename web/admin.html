@@ -26,6 +26,7 @@
       <div class="aui-sidebar-group">
         <div class="aui-nav-heading">Обзор</div>
         <a class="aui-nav-item" href="/admin" title="Сводка"><span class="aui-icon aui-icon-dashboard"></span><span class="aui-nav-item-label">Сводка</span></a>
+        <a class="aui-nav-item" href="/admin/decor" title="Оформление"><span class="aui-icon aui-icon-snow"></span><span class="aui-nav-item-label">Оформление</span></a>
       </div>
       <div class="aui-sidebar-group">
         <div class="aui-nav-heading">Пользовательский контент</div>
@@ -176,6 +177,29 @@
           <tbody id="gift-rows"></tbody>
         </table>
       </div>
+    </section>
+
+    <section id="decor" hidden>
+      <h1 class="aui-page-heading">Оформление</h1>
+      <p class="admin-lead">Новогоднее оформление сайта, как на сайтах 2000-х: падающий снег, гирлянда под шапкой, шапка Деда Мороза на логотипе и ёлочка с поздравлением под меню. Снег каждый может выключить у себя ссылкой под ёлочкой.</p>
+      <div class="aui-message aui-message-success" id="decor-saved" hidden></div>
+      <form class="aui" id="decor-form">
+        <div class="field-group">
+          <label for="decor-mode">Новогоднее оформление</label>
+          <select class="select" id="decor-mode">
+            <option value="auto">по календарю</option>
+            <option value="on">включено</option>
+            <option value="off">выключено</option>
+          </select>
+          <div class="description">По календарю — с 15 декабря по 14 января, до старого Нового года, по московскому времени. Посетители увидят изменение в течение 10 минут.</div>
+        </div>
+        <div class="field-group">
+          <span class="admin-decor-now" id="decor-now"></span>
+        </div>
+        <div class="buttons-container">
+          <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
+        </div>
+      </form>
     </section>
 
     <section id="ads" hidden>

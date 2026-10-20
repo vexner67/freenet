@@ -17,6 +17,19 @@
   setTimeout(() => root.classList.remove('pending'), 1200);
 })();
 
+// The New Year decoration (newyear.js): the garland and the hat on the
+// logo are style.css's, put on here before the page is painted when the
+// browser remembers the site wears them.
+(() => {
+  const root = document.documentElement;
+  if (root.classList.contains('aui')) return;
+  try {
+    if (JSON.parse(localStorage.getItem('freenet.decor'))?.festive === true) root.classList.add('festive');
+  } catch {
+    // newyear.js asks the server.
+  }
+})();
+
 (() => {
   const root = document.documentElement;
   // "Админ-панель" (admin.html) wears none of the themes: it has AUI's

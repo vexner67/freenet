@@ -200,6 +200,7 @@ a:hover { text-decoration: underline; }
 .aui-icon-card { --icon: url("/static/icons/admin-card.svg"); }
 .aui-icon-gift { --icon: url("/static/icons/admin-gift.svg"); }
 .aui-icon-ad { --icon: url("/static/icons/admin-ad.svg"); }
+.aui-icon-snow { --icon: url("/static/icons/admin-snow.svg"); }
 .aui-icon-users { --icon: url("/static/icons/admin-users.svg"); }
 .aui-icon-clubs { --icon: url("/static/icons/admin-clubs.svg"); }
 .aui-icon-ban { --icon: url("/static/icons/admin-ban.svg"); }
@@ -344,6 +345,8 @@ table.aui tbody tr:hover { background: var(--aui-hover); }
 .admin-gift img { width: 40px; height: 40px; }
 form.aui.admin-price { display: flex; gap: 8px; align-items: center; }
 form.aui.admin-price .text { width: 110px; }
+.admin-decor-now { color: var(--aui-subtle); }
+
 form.aui.admin-rate { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
 form.aui.admin-rate label { font-weight: bold; }
 form.aui.admin-rate .text { width: 110px; }

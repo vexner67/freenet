@@ -4,6 +4,7 @@
 // each), "Блокировки" (/admin/bans: the pages blocked now), "Группы" (/admin/clubs: the same of groups),
 // "Ваучеры" (/admin/vouchers), the form of a new one
 // (/admin/vouchers/new), "Подарки" (/admin/gifts: what each gift costs)
+// "Оформление" (/admin/decor: the New Year decoration of the site)
 // and "Реклама" (/admin/ads: the ads of the global feed, the form of a new
 // one at /admin/ads/new and of one at /admin/ads/<id>). The page is its own, AUI as openvk's:
 // none of the site's chrome. Only the administrators of the site
@@ -12,6 +13,7 @@
 import { api, currentUser, idle, started } from './api.js';
 import { accusativeName, adminOverview, adRate, peopleCount, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
+import { remember } from './newyear.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -501,6 +503,41 @@ function showRate({ kopecks }) {
   });
 }
 
+// decor is "Оформление": whether the site wears the New Year decoration
+// — by the calendar, always or never — and whether it does now.
+async function decor(answered) {
+  const field = $('decor-mode');
+  const save = $('decor-form').querySelector('button');
+
+  const show = ({ mode, festive }) => {
+    field.value = mode;
+    $('decor-now').textContent = festive ? tr('Сейчас сайт украшен к Новому году.') : tr('Сейчас сайт не украшен.');
+    // This browser sees the change at once, the others within minutes.
+    remember(festive);
+  };
+  show(await answered);
+
+  $('decor-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    $('decor-saved').hidden = true;
+    save.disabled = true;
+
+    try {
+      await api.setDecor(field.value);
+      show(await api.decor());
+      $('decor-saved').textContent = tr('Изменения сохранены');
+      $('decor-saved').hidden = false;
+    } catch (e) {
+      showError(e);
+    } finally {
+      save.disabled = false;
+    }
+  });
+
+  $('decor').hidden = false;
+}
+
 // ads is "Реклама": every ad, shown or not, with how it does (views and
 // clicks, by how many people, and the share of views followed), the
 // switch of "Показывать" and "Изменить" and "Удалить" each.
@@ -686,6 +723,7 @@ const reads = {
   '/admin/vouchers': () => started(api.vouchers()),
   '/admin/gifts': () => ({ catalog: started(api.giftCatalog()), rate: started(api.voteRate()) }),
   '/admin/ads': () => started(api.ads(true)),
+  '/admin/decor': () => started(api.decor()),
 }[adID ? '/admin/ads' : path]?.();
 
 const me = await currentUser().catch(() => null);
@@ -710,6 +748,8 @@ if (!me) {
     newVoucher();
   } else if (path === '/admin/gifts') {
     await gifts(reads).catch(showError);
+  } else if (path === '/admin/decor') {
+    await decor(reads).catch(showError);
   } else if (path === '/admin/ads') {
     await ads(reads).catch(showError);
   } else if (path === '/admin/ads/new' || adID) {

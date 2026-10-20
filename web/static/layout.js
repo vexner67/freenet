@@ -11,6 +11,8 @@ import { acceptInvite } from './invite.js';
 import { nicknameLookup } from './nicknames.js';
 import { closePushes, endPushOffer, enablePush, forgetPushAccount, pushOffer, showUnread, syncPush } from './push.js';
 import { setLanguage, tr } from './i18n.js';
+// The New Year decoration, when the site wears it.
+import './newyear.js';
 
 export const $ = (id) => document.getElementById(id);
 
