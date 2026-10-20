@@ -298,6 +298,7 @@ input, select, textarea { font-size: 16px !important; }
 .casino-balance { width: auto; }
 .casino-board, .casino-multipliers { grid-template-columns: repeat(3, 1fr); }
 .casino-controls .button { width: 100%; }
+.casino-auto select { flex: 1; min-width: 0; }
 .casino-amount { flex: 1; min-width: 0; }
 .casino-quick { width: 100%; }
 .casino-quick .button { flex: 1; min-height: 32px; }

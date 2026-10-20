@@ -1004,6 +1004,15 @@ export function spinsCount(n) {
   return `${n} ${plural(n, ['прокрутка', 'прокрутки', 'прокруток'])}`;
 }
 
+// autoplayNext says whether "Автоигра" plays another round: "go", "done"
+// once it played the rounds chosen (0 is "пока есть голоса": no end of its
+// own), or "votes" when the balance does not pay for the next one.
+export function autoplayNext({ played, times, balance, cost }) {
+  if (times > 0 && played >= times) return 'done';
+
+  return balance >= cost ? 'go' : 'votes';
+}
+
 // wagersCount is "1 ставка", "5 ставок".
 export function wagersCount(n) {
   return `${n} ${plural(n, ['ставка', 'ставки', 'ставок'])}`;
