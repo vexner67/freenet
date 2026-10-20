@@ -7,6 +7,8 @@ import (
 	"github.com/google/uuid"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"github.com/vexner67/freenet/user/internal/user"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -747,4 +749,88 @@ func fromProtoInterface(in *userv1.InterfaceSettings) user.InterfaceForm {
 	}
 
 	return form
+}
+
+func toProtoAd(ad *user.Ad) *userv1.Ad {
+	owner, photo := toProtoAdPhoto(ad.Photo())
+
+	return &userv1.Ad{
+		Id:           ad.ID().String(),
+		Url:          ad.URL().String(),
+		Title:        ad.Title().String(),
+		Text:         ad.Text().String(),
+		PhotoOwnerId: owner,
+		PhotoId:      photo,
+		Active:       ad.IsActive(),
+	}
+}
+
+func toProtoAdPhoto(p user.AdPhoto) (owner, photo string) {
+	if p.IsZero() {
+		return "", ""
+	}
+
+	return p.OwnerID.String(), p.PhotoID.String()
+}
+
+// fromProtoAdPhoto is a cover the caller uploaded; the service names its
+// owner. Empty is no cover.
+func fromProtoAdPhoto(photoID string) (user.AdPhoto, error) {
+	if photoID == "" {
+		return user.AdPhoto{}, nil
+	}
+
+	id, err := parseID(photoID, "photo id")
+	if err != nil {
+		return user.AdPhoto{}, err
+	}
+
+	return user.AdPhoto{PhotoID: id}, nil
+}
+
+func fromProtoAdChange(req *userv1.EditAdRequest) (user.AdChange, error) {
+	var c user.AdChange
+
+	if req.Url != nil {
+		u, err := user.NewAdURL(req.GetUrl())
+		if err != nil {
+			return c, status.Error(codes.InvalidArgument, err.Error())
+		}
+
+		c.URL = &u
+	}
+
+	if req.Title != nil {
+		t, err := user.NewAdTitle(req.GetTitle())
+		if err != nil {
+			return c, status.Error(codes.InvalidArgument, err.Error())
+		}
+
+		c.Title = &t
+	}
+
+	if req.Text != nil {
+		t, err := user.NewAdText(req.GetText())
+		if err != nil {
+			return c, status.Error(codes.InvalidArgument, err.Error())
+		}
+
+		c.Text = &t
+	}
+
+	if req.PhotoId != nil {
+		p, err := fromProtoAdPhoto(req.GetPhotoId())
+		if err != nil {
+			return c, err
+		}
+
+		c.Photo = &p
+	}
+
+	if req.Active != nil {
+		active := req.GetActive()
+		c.Active = &active
+	}
+
+	return c, nil
 }
