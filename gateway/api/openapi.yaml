@@ -4310,6 +4310,39 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/users/{nickname}/foreign-agent:
+    parameters:
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      summary: Mark a page as a foreign agent's
+      description: 'Only for the administrators: the page wears the orange plaque of openvk ("user-alert") above its status, saying that its materials are made by a foreign agent. Nobody is notified. Idempotent.'
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Put }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Take the plaque of a foreign agent from a page
+      description: Only for the administrators. Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Taken }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/users/{nickname}/ban:
     parameters:
       - name: nickname
@@ -6264,6 +6297,9 @@ components:
             verified:
               type: boolean
               description: The administrators confirmed your page (a checkmark by the name)
+            foreignAgent:
+              type: boolean
+              description: The administrators marked your page as a foreign agent's (an orange plaque above the status)
             ban:
               description: "The administrators blocked your page: then the token lets you only read your account (and sign out), everything else answers 403"
               oneOf:
@@ -7210,6 +7246,9 @@ components:
             verified:
               type: boolean
               description: "The administrators confirmed the page (\"Подтверждённая страница\"): a checkmark by the name, told on a hidden page too and never on a deleted one"
+            foreignAgent:
+              type: boolean
+              description: "The administrators marked the page as a foreign agent's: openvk's orange plaque (\"user-alert\") above the status; told as `verified` is, and in lists too"
             ban:
               description: "The administrators blocked the page: only the names and the photo are left besides; null otherwise"
               oneOf:

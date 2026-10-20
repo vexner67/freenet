@@ -451,6 +451,14 @@ func (u *Users) Statistics(ctx context.Context) (model.People, error) {
 	}, nil
 }
 
+// SetForeignAgent puts on userID the plaque of a foreign agent or takes
+// it.
+func (u *Users) SetForeignAgent(ctx context.Context, accessToken, userID string, agent bool) error {
+	_, err := u.api.SetForeignAgent(withToken(ctx, accessToken), &userv1.SetForeignAgentRequest{UserId: userID, ForeignAgent: agent})
+
+	return errs.Wrap("u.api.SetForeignAgent", fromStatus(err))
+}
+
 // SetVerified gives userID the checkmark of a confirmed page or takes it.
 func (u *Users) SetVerified(ctx context.Context, accessToken, userID string, verified bool) error {
 	_, err := u.api.SetVerified(withToken(ctx, accessToken), &userv1.SetVerifiedRequest{UserId: userID, Verified: verified})
@@ -509,6 +517,7 @@ func toPublicProfile(p *userv1.PublicProfile) model.PublicProfile {
 		InfoHidden:      p.GetInfoHidden(),
 		Verified:        p.GetVerified(),
 		Ban:             toBan(p.GetBan()),
+		ForeignAgent:    p.GetForeignAgent(),
 		LastSeen:        fromTimestamp(p.GetLastSeenAt()),
 		Online:          p.GetOnline(),
 		Backdrop:        model.Backdrop{Left: p.GetBackdropLeft(), Right: p.GetBackdropRight()},

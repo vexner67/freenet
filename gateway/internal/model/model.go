@@ -198,6 +198,9 @@ type User struct {
 	Verified bool
 	// Ban: the administrators blocked the page, nil if they did not.
 	Ban *Ban
+	// ForeignAgent: the administrators marked the page as a foreign
+	// agent's (an orange plaque).
+	ForeignAgent bool
 }
 
 // Interface is how the site looks to its owner ("Интерфейс" of the
@@ -246,6 +249,9 @@ type PublicProfile struct {
 	// Ban: the administrators blocked the page, which then tells only the
 	// names, the photo and the ban; nil if they did not.
 	Ban *Ban
+	// ForeignAgent: the administrators marked the page as a foreign
+	// agent's: openvk's orange plaque above the status.
+	ForeignAgent bool
 	// LastSeen is when the user last visited ("был в сети"), zero if never
 	// or hidden; Online: just now ("Онлайн").
 	LastSeen time.Time
