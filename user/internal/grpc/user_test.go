@@ -94,6 +94,7 @@ func newServer(t *testing.T) testServer {
 		}),
 		Bans:          service.NewBanService(users, users, admins),
 		ForeignAgents: service.NewForeignAgentService(users, users, admins),
+		Ads:           service.NewAdService(users, inmem.NewAdRepository(), inmem.TxManager{}, admins),
 		Permissions:   permissions,
 		Presence:      presence,
 		Backdrops:     service.NewBackdropService(users, users),

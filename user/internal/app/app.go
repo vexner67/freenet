@@ -202,6 +202,7 @@ func (a *App) build(cfg config.Config) error {
 			}),
 			Bans:          service.NewBanService(store.users, store.users, admins),
 			ForeignAgents: service.NewForeignAgentService(store.users, store.users, admins),
+			Ads:           service.NewAdService(store.users, store.ads, store.tx, admins),
 			Permissions:   permissions,
 			Presence:      a.presence,
 			Backdrops:     service.NewBackdropService(store.users, store.users),
@@ -289,7 +290,9 @@ type storage struct {
 	vouchers service.VoucherRepository
 	// rates is what a vote is worth in rubles.
 	rates service.VoteRateRepository
-	tx    service.TxManager
+	// ads are the advertising of the global feed.
+	ads service.AdRepository
+	tx  service.TxManager
 	// newQueue opens a stream of the outbox.
 	newQueue func(stream string) outboxQueue
 }
@@ -310,6 +313,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			wallets:      users,
 			vouchers:     inmem.NewVoucherRepository(users),
 			rates:        inmem.NewVoteRateRepository(),
+			ads:          inmem.NewAdRepository(),
 			tx:           inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
@@ -350,6 +354,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		wallets:      postgres.NewWalletRepository(a.pool),
 		vouchers:     postgres.NewVoucherRepository(a.pool),
 		rates:        postgres.NewVoteRateRepository(a.pool),
+		ads:          postgres.NewAdRepository(a.pool),
 		tx:           pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)

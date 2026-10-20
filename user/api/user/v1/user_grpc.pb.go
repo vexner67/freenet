@@ -79,6 +79,10 @@ const (
 	UserService_SetVoteRate_FullMethodName        = "/user.v1.UserService/SetVoteRate"
 	UserService_SetVerified_FullMethodName        = "/user.v1.UserService/SetVerified"
 	UserService_SetForeignAgent_FullMethodName    = "/user.v1.UserService/SetForeignAgent"
+	UserService_ListAds_FullMethodName            = "/user.v1.UserService/ListAds"
+	UserService_CreateAd_FullMethodName           = "/user.v1.UserService/CreateAd"
+	UserService_EditAd_FullMethodName             = "/user.v1.UserService/EditAd"
+	UserService_DeleteAd_FullMethodName           = "/user.v1.UserService/DeleteAd"
 	UserService_BanUser_FullMethodName            = "/user.v1.UserService/BanUser"
 	UserService_UnbanUser_FullMethodName          = "/user.v1.UserService/UnbanUser"
 	UserService_DeactivateAccount_FullMethodName  = "/user.v1.UserService/DeactivateAccount"
@@ -236,6 +240,14 @@ type UserServiceClient interface {
 	// (PermissionDenied otherwise): puts on a page the orange plaque of a
 	// foreign agent (openvk's "user-alert") or takes it.
 	SetForeignAgent(ctx context.Context, in *SetForeignAgentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The ads of the global feed: ListAds is public and gives the shown
+	// ones; ListAds with all, CreateAd, EditAd and DeleteAd require an
+	// access token of an administrator of the site (PermissionDenied
+	// otherwise). A cover is a photo in media the administrator uploaded.
+	ListAds(ctx context.Context, in *ListAdsRequest, opts ...grpc.CallOption) (*ListAdsResponse, error)
+	CreateAd(ctx context.Context, in *CreateAdRequest, opts ...grpc.CallOption) (*CreateAdResponse, error)
+	EditAd(ctx context.Context, in *EditAdRequest, opts ...grpc.CallOption) (*EditAdResponse, error)
+	DeleteAd(ctx context.Context, in *DeleteAdRequest, opts ...grpc.CallOption) (*DeleteAdResponse, error)
 	// Require an access token of an administrator of the site
 	// (PermissionDenied otherwise): blocks a page for a while or for good
 	// and lifts the block ("Заблокировать пользователя" of openvk). A
@@ -855,6 +867,46 @@ func (c *userServiceClient) SetForeignAgent(ctx context.Context, in *SetForeignA
 	return out, nil
 }
 
+func (c *userServiceClient) ListAds(ctx context.Context, in *ListAdsRequest, opts ...grpc.CallOption) (*ListAdsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAdsResponse)
+	err := c.cc.Invoke(ctx, UserService_ListAds_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CreateAd(ctx context.Context, in *CreateAdRequest, opts ...grpc.CallOption) (*CreateAdResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateAdResponse)
+	err := c.cc.Invoke(ctx, UserService_CreateAd_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) EditAd(ctx context.Context, in *EditAdRequest, opts ...grpc.CallOption) (*EditAdResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EditAdResponse)
+	err := c.cc.Invoke(ctx, UserService_EditAd_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) DeleteAd(ctx context.Context, in *DeleteAdRequest, opts ...grpc.CallOption) (*DeleteAdResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteAdResponse)
+	err := c.cc.Invoke(ctx, UserService_DeleteAd_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -1055,6 +1107,14 @@ type UserServiceServer interface {
 	// (PermissionDenied otherwise): puts on a page the orange plaque of a
 	// foreign agent (openvk's "user-alert") or takes it.
 	SetForeignAgent(context.Context, *SetForeignAgentRequest) (*emptypb.Empty, error)
+	// The ads of the global feed: ListAds is public and gives the shown
+	// ones; ListAds with all, CreateAd, EditAd and DeleteAd require an
+	// access token of an administrator of the site (PermissionDenied
+	// otherwise). A cover is a photo in media the administrator uploaded.
+	ListAds(context.Context, *ListAdsRequest) (*ListAdsResponse, error)
+	CreateAd(context.Context, *CreateAdRequest) (*CreateAdResponse, error)
+	EditAd(context.Context, *EditAdRequest) (*EditAdResponse, error)
+	DeleteAd(context.Context, *DeleteAdRequest) (*DeleteAdResponse, error)
 	// Require an access token of an administrator of the site
 	// (PermissionDenied otherwise): blocks a page for a while or for good
 	// and lifts the block ("Заблокировать пользователя" of openvk). A
@@ -1260,6 +1320,18 @@ func (UnimplementedUserServiceServer) SetVerified(context.Context, *SetVerifiedR
 }
 func (UnimplementedUserServiceServer) SetForeignAgent(context.Context, *SetForeignAgentRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetForeignAgent not implemented")
+}
+func (UnimplementedUserServiceServer) ListAds(context.Context, *ListAdsRequest) (*ListAdsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAds not implemented")
+}
+func (UnimplementedUserServiceServer) CreateAd(context.Context, *CreateAdRequest) (*CreateAdResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateAd not implemented")
+}
+func (UnimplementedUserServiceServer) EditAd(context.Context, *EditAdRequest) (*EditAdResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EditAd not implemented")
+}
+func (UnimplementedUserServiceServer) DeleteAd(context.Context, *DeleteAdRequest) (*DeleteAdResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteAd not implemented")
 }
 func (UnimplementedUserServiceServer) BanUser(context.Context, *BanUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method BanUser not implemented")
@@ -2359,6 +2431,78 @@ func _UserService_SetForeignAgent_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ListAds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAdsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListAds(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListAds_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListAds(ctx, req.(*ListAdsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CreateAd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateAdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CreateAd(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CreateAd_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CreateAd(ctx, req.(*CreateAdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_EditAd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EditAdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).EditAd(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_EditAd_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).EditAd(ctx, req.(*EditAdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_DeleteAd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteAdRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DeleteAd(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DeleteAd_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DeleteAd(ctx, req.(*DeleteAdRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_BanUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BanUserRequest)
 	if err := dec(in); err != nil {
@@ -2691,6 +2835,22 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetForeignAgent",
 			Handler:    _UserService_SetForeignAgent_Handler,
+		},
+		{
+			MethodName: "ListAds",
+			Handler:    _UserService_ListAds_Handler,
+		},
+		{
+			MethodName: "CreateAd",
+			Handler:    _UserService_CreateAd_Handler,
+		},
+		{
+			MethodName: "EditAd",
+			Handler:    _UserService_EditAd_Handler,
+		},
+		{
+			MethodName: "DeleteAd",
+			Handler:    _UserService_DeleteAd_Handler,
 		},
 		{
 			MethodName: "BanUser",

@@ -167,6 +167,14 @@ service UserService {
   // (PermissionDenied otherwise): puts on a page the orange plaque of a
   // foreign agent (openvk's "user-alert") or takes it.
   rpc SetForeignAgent(SetForeignAgentRequest) returns (google.protobuf.Empty);
+  // The ads of the global feed: ListAds is public and gives the shown
+  // ones; ListAds with all, CreateAd, EditAd and DeleteAd require an
+  // access token of an administrator of the site (PermissionDenied
+  // otherwise). A cover is a photo in media the administrator uploaded.
+  rpc ListAds(ListAdsRequest) returns (ListAdsResponse);
+  rpc CreateAd(CreateAdRequest) returns (CreateAdResponse);
+  rpc EditAd(EditAdRequest) returns (EditAdResponse);
+  rpc DeleteAd(DeleteAdRequest) returns (DeleteAdResponse);
   // Require an access token of an administrator of the site
   // (PermissionDenied otherwise): blocks a page for a while or for good
   // and lifts the block ("Заблокировать пользователя" of openvk). A
@@ -1050,6 +1058,69 @@ message SetVerifiedRequest {
 message SetForeignAgentRequest {
   string user_id = 1;
   bool foreign_agent = 2;
+}
+
+message Ad {
+  string id = 1;
+  string url = 2;
+  string title = 3;
+  string text = 4;
+  // Empty for no cover; the photo is kept under photo_owner_id.
+  string photo_owner_id = 5;
+  string photo_id = 6;
+  bool active = 7;
+}
+
+message ListAdsRequest {
+  // Hidden ads too; for the administrators only.
+  bool all = 1;
+}
+
+message ListAdsResponse {
+  // Newest first.
+  repeated Ad ads = 1;
+}
+
+message CreateAdRequest {
+  string url = 1;
+  string title = 2;
+  string text = 3;
+  // An uploaded photo of the caller; empty for no cover.
+  string photo_id = 4;
+  bool active = 5;
+}
+
+message CreateAdResponse {
+  Ad ad = 1;
+}
+
+// EditAdRequest changes what it names; photo_id empty takes the cover
+// away.
+message EditAdRequest {
+  string id = 1;
+  optional string url = 2;
+  optional string title = 3;
+  optional string text = 4;
+  optional string photo_id = 5;
+  optional bool active = 6;
+}
+
+message EditAdResponse {
+  Ad ad = 1;
+  // The cover the ad no longer shows: its file is to go. Empty when it
+  // keeps it.
+  string dropped_photo_owner_id = 2;
+  string dropped_photo_id = 3;
+}
+
+message DeleteAdRequest {
+  string id = 1;
+}
+
+message DeleteAdResponse {
+  // The cover of the deleted ad, empty for none: its file is to go.
+  string photo_owner_id = 1;
+  string photo_id = 2;
 }
 
 message BanUserRequest {

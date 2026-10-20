@@ -43,6 +43,7 @@ type UserHandler struct {
 	verification      VerificationService
 	bans              BanService
 	foreignAgents     ForeignAgentService
+	ads               AdService
 	permissionService PermissionService
 	presenceService   PresenceService
 	backdropService   BackdropService
@@ -65,9 +66,11 @@ type Services struct {
 	Bans BanService
 	// ForeignAgents put and take the plaque of a foreign agent.
 	ForeignAgents ForeignAgentService
-	Permissions   PermissionService
-	Presence      PresenceService
-	Backdrops     BackdropService
+	// Ads are the advertising of the global feed.
+	Ads         AdService
+	Permissions PermissionService
+	Presence    PresenceService
+	Backdrops   BackdropService
 }
 
 func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
@@ -83,6 +86,7 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		verification:      s.Verification,
 		bans:              s.Bans,
 		foreignAgents:     s.ForeignAgents,
+		ads:               s.Ads,
 		permissionService: s.Permissions,
 		presenceService:   s.Presence,
 		backdropService:   s.Backdrops,

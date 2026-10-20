@@ -97,6 +97,10 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.FailedPrecondition, user.ErrBanSelf.Error()), true
 	case errors.Is(err, user.ErrBanAdmin):
 		return status.New(codes.FailedPrecondition, user.ErrBanAdmin.Error()), true
+	case errors.Is(err, user.ErrAdNotFound):
+		return status.New(codes.NotFound, user.ErrAdNotFound.Error()), true
+	case errors.Is(err, user.ErrTooManyAds):
+		return status.New(codes.FailedPrecondition, user.ErrTooManyAds.Error()), true
 	case errors.Is(err, user.ErrNotAdmin):
 		return status.New(codes.PermissionDenied, user.ErrNotAdmin.Error()), true
 	case errors.Is(err, user.ErrDeactivated):
