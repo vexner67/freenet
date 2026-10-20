@@ -1,14 +1,19 @@
-// "Казино" (/casino): two games for votes, chosen by the tabs over them.
+// "Казино" (/casino): three games for votes, chosen by the tabs over them.
 // "Огонёк": a spin costs votes and wins one of the prizes, votes again —
 // the administrators tune how likely each is in the admin panel. A light
 // runs over the prizes, slowing down, and stops on the one won.
-// "Ставка" (?game=bet): the player bets as many votes as they like on a
-// multiplier and gets the bet multiplied or loses it; a marker runs over
-// a strip of 0 to 100 and stops on the roll, a win below the chance. At
-// the right is the balance, as in "Голоса" of the settings.
+// "Прицел" (?game=aim, once ?game=bet): the player bets as many votes as
+// they like on a multiplier and gets the bet multiplied or loses it; a
+// marker runs over a strip of 0 to 100 and stops on the roll, a win in the
+// green zone in the middle, as wide as the chance.
+// "Ставки" (?game=events): events the administrators make, each with its
+// outcomes; people stake votes on an outcome, and once it is resolved
+// those who guessed share all staked. "Популярное" are the events taking
+// stakes, the most staked on first. At the right is the balance, as in
+// "Голоса" of the settings.
 
 import { api, currentUser, started } from './api.js';
-import { betAmount, betChance, betMultiplier, betOdds, betPrize, betRoll, casinoPlan, plural, spinsCount, votesCount, wagersCount } from './labels.js';
+import { aimZone, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betOdds, betPrize, betRoll, casinoChance, casinoPlan, plural, spinsCount, votesCount, wagersCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
 
@@ -23,6 +28,12 @@ const session = { spins: 0, spent: 0, won: 0 };
 const wagers = { count: 0, spent: 0, won: 0 };
 let balance = 0;
 let playing = false;
+let aimShown = false;
+let signedIn = false;
+// The section of "Ставки" shown and the one being read, so that a late
+// answer does not draw over a newer one.
+let section = '';
+let reading = 0;
 // refreshBet redraws the form of "Ставка" once it is made.
 let refreshBet = () => {};
 
@@ -50,7 +61,8 @@ function setPlaying(on) {
   playing = on;
   $('spin').disabled = on;
   for (const control of $('bet-form').querySelectorAll('input, button')) control.disabled = on;
-  for (const tab of [$('tab-wheel'), $('tab-bet')]) tab.setAttribute('aria-disabled', String(on));
+  for (const control of $('events').querySelectorAll('input, button')) control.disabled = on;
+  for (const tab of tabs()) tab.setAttribute('aria-disabled', String(on));
   refreshBet();
 }
 
@@ -111,31 +123,50 @@ async function spin(price) {
   }
 }
 
-// The game shown: "wheel" or "bet", by the address.
-function gameOf(url) {
-  return new URL(url, location.href).searchParams.get('game') === 'bet' ? 'bet' : 'wheel';
+// tabs are the links that switch the game or the section of "Ставки".
+function tabs() {
+  return [$('tab-wheel'), $('tab-aim'), $('tab-events'), $('section-all'), $('section-popular')];
 }
 
-function showGame(game) {
+// The game shown: "wheel", "aim" or "events", by the address; "bet" is
+// the name "Прицел" had.
+function gameOf(url) {
+  const game = new URL(url, location.href).searchParams.get('game');
+
+  if (game === 'aim' || game === 'bet') return aimShown ? 'aim' : 'wheel';
+
+  return game === 'events' ? 'events' : 'wheel';
+}
+
+function sectionOf(url) {
+  return new URL(url, location.href).searchParams.get('section') === 'popular' ? 'popular' : 'all';
+}
+
+function showGame(url) {
+  const game = gameOf(url);
+
   $('tab-wheel').classList.toggle('active', game === 'wheel');
-  $('tab-bet').classList.toggle('active', game === 'bet');
+  $('tab-aim').classList.toggle('active', game === 'aim');
+  $('tab-events').classList.toggle('active', game === 'events');
   $('wheel-game').hidden = game !== 'wheel';
-  $('bet-game').hidden = game !== 'bet';
+  $('aim-game').hidden = game !== 'aim';
+  $('events-game').hidden = game !== 'events';
+  if (game === 'events') showEvents(sectionOf(url));
 }
 
 // The tabs switch the game without a reload: the balance and the tally of
 // the visit stay.
 function watchTabs() {
-  for (const tab of [$('tab-wheel'), $('tab-bet')]) {
+  for (const tab of tabs()) {
     tab.addEventListener('click', (event) => {
       if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
       event.preventDefault();
       if (playing) return;
       history.pushState(null, '', tab.href);
-      showGame(gameOf(tab.href));
+      showGame(tab.href);
     });
   }
-  addEventListener('popstate', () => showGame(gameOf(location.href)));
+  addEventListener('popstate', () => showGame(location.href));
   $('casino-tabs').hidden = false;
 }
 
@@ -178,6 +209,9 @@ function betting(bets, signedIn) {
       b.classList.toggle('lit', b.multiplier === chosen);
       b.setAttribute('aria-checked', String(b.multiplier === chosen));
     }
+    const zone = aimZone(odds);
+
+    $('dice-win').style.left = `${zone.low / 100}%`;
     $('dice-win').style.width = `${odds / 100}%`;
     $('bet-sum').textContent = fits
       ? tr('Шанс выигрыша {0}, выигрыш — {1}.', betChance(odds), votesCount(betPrize(votes, chosen)))
@@ -259,14 +293,100 @@ function showWager(wager) {
   const result = $('bet-result');
 
   result.className = wager.won ? 'casino-result casino-win' : 'casino-result';
+  const zone = aimZone(wager.chance);
+
   result.textContent = wager.won
-    ? tr('Выпало {0} — меньше {1}. Вы выиграли {2}!', betRoll(wager.roll), betRoll(wager.chance), votesCount(wager.votes))
-    : tr('Выпало {0}, а нужно было меньше {1}. Ставка проиграна.', betRoll(wager.roll), betRoll(wager.chance));
+    ? tr('Выпало {0} — в зелёном поле. Вы выиграли {1}!', betRoll(wager.roll), votesCount(wager.votes))
+    : tr('Выпало {0}, а зелёное поле — от {1} до {2}. Ставка проиграна.', betRoll(wager.roll), betRoll(zone.low), betRoll(zone.high));
   result.hidden = false;
 
   $('bet-session').textContent = tr('За этот заход: {0}, поставлено {1}, выиграно {2}.',
     wagersCount(wagers.count), votesCount(wagers.spent), votesCount(wagers.won));
   $('bet-session').hidden = false;
+}
+
+// eventMine is what the viewer staked and got back.
+function eventMine(e) {
+  const mine = e.outcomes.reduce((sum, o) => sum + o.mine, 0);
+  if (mine === 0) return null;
+  if (e.state === 'cancelled') return tr('Вам вернулось {0}.', votesCount(e.payout));
+  if (e.state !== 'resolved') return tr('Вы поставили {0}.', votesCount(mine));
+
+  return e.payout > 0 ? tr('Вы поставили {0} и получили {1}.', votesCount(mine), votesCount(e.payout)) : tr('Вы поставили {0}, но не угадали.', votesCount(mine));
+}
+
+function eventNode(e) {
+  const taking = e.open && signedIn;
+  const amount = el('input', { className: 'casino-amount', type: 'number', inputMode: 'numeric', min: '1', max: '1000000', value: '10', required: true });
+  const mine = eventMine(e);
+
+  const outcomes = e.outcomes.map((o, i) => {
+    const percent = betEventShare(o.staked, e.staked);
+    const bar = el('div', { className: 'bet-outcome-bar' });
+    const odds = e.open ? betEventOdds(o.staked, e.staked) : '';
+    const stake = taking ? el('button', { className: 'button', type: 'button', textContent: tr('Поставить') }) : null;
+
+    bar.style.width = `${percent}%`;
+    stake?.addEventListener('click', () => stakeOn(e, i, Math.floor(Number(amount.value))));
+
+    return el('div', { className: e.winner === i ? 'bet-outcome won' : 'bet-outcome' },
+      el('div', { className: 'bet-outcome-head' },
+        el('b', { className: 'bet-outcome-name', textContent: o.name }),
+        el('span', { className: 'bet-outcome-sum', textContent: [votesCount(o.staked), o.staked > 0 ? casinoChance(percent) : '', odds].filter(Boolean).join(' · ') }),
+        stake,
+      ),
+      el('div', { className: 'bet-outcome-track' }, bar),
+      o.mine > 0 ? el('div', { className: 'bet-outcome-mine', textContent: tr('Ваша ставка: {0}', votesCount(o.mine)) }) : null,
+    );
+  });
+
+  return el('div', { className: 'bet-event' },
+    el('div', { className: 'bet-event-question', textContent: e.question }),
+    el('div', { className: 'bet-event-meta', textContent: tr('Поставлено: {0}. Участников: {1}. {2}', votesCount(e.staked), e.people, betEventState(e)) }),
+    taking ? el('div', { className: 'casino-stake bet-event-stake' }, el('span', { className: 'casino-label', textContent: tr('Ставка:') }), amount, el('span', { textContent: tr('голосов на исход') })) : null,
+    ...outcomes,
+    mine ? el('div', { className: 'bet-event-mine', textContent: mine }) : null,
+  );
+}
+
+// showEvents reads and draws the events of a section of "Ставки".
+async function showEvents(shown) {
+  $('section-all').classList.toggle('active', shown === 'all');
+  $('section-popular').classList.toggle('active', shown === 'popular');
+  section = shown;
+
+  const read = ++reading;
+
+  try {
+    const { events } = await api.betEvents(shown === 'popular');
+    if (read !== reading) return;
+
+    $('events').replaceChildren(...events.map(eventNode));
+    $('events-empty').textContent = shown === 'popular' ? tr('Сейчас ни одно событие не принимает ставок.') : tr('Здесь пока нет событий.');
+    $('events-empty').hidden = events.length > 0;
+    $('events-guest').hidden = signedIn || events.length === 0;
+    setPlaying(playing);
+  } catch (e) {
+    if (read === reading) showError($('error'), e);
+  }
+}
+
+async function stakeOn(e, outcome, amount) {
+  if (!signedIn || playing) return;
+
+  hideError($('error'));
+  setPlaying(true);
+
+  try {
+    const { balance: left } = await api.stakeBet(e.id, outcome, amount);
+
+    showBalance(left);
+  } catch (err) {
+    showError($('error'), err);
+  } finally {
+    setPlaying(false);
+  }
+  await showEvents(section);
 }
 
 const me = await currentUser().catch(() => null);
@@ -276,13 +396,20 @@ try {
   const { price, prizes, bets } = await answered;
 
   $('price').textContent = votesCount(price);
+  signedIn = Boolean(me);
   if (me) showBalance(me.votes ?? 0);
   if (bets?.multipliers?.length) {
-    betting(bets, Boolean(me));
-    watchTabs();
+    aimShown = true;
+    $('tab-aim').hidden = false;
+    betting(bets, signedIn);
   }
-  showGame(bets?.multipliers?.length ? gameOf(location.href) : 'wheel');
+  // An address of the time the game was "Ставка" becomes its new one.
+  if (new URL(location.href).searchParams.get('game') === 'bet') {
+    history.replaceState(null, '', aimShown ? '/casino?game=aim' : '/casino');
+  }
+  watchTabs();
   showBoard(prizes);
+  showGame(location.href);
 
   if (me) {
     $('spin').textContent = tr('Крутить за {0}', votesCount(price));

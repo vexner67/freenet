@@ -39,6 +39,7 @@
         <a class="aui-nav-item" href="/admin/vouchers" title="Ваучеры"><span class="aui-icon aui-icon-card"></span><span class="aui-nav-item-label">Ваучеры</span></a>
         <a class="aui-nav-item" href="/admin/gifts" title="Подарки"><span class="aui-icon aui-icon-gift"></span><span class="aui-nav-item-label">Подарки</span></a>
         <a class="aui-nav-item" href="/admin/casino" title="Казино"><span class="aui-icon aui-icon-casino"></span><span class="aui-nav-item-label">Казино</span></a>
+        <a class="aui-nav-item" href="/admin/bets" title="Ставки"><span class="aui-icon aui-icon-bets"></span><span class="aui-nav-item-label">Ставки</span></a>
         <a class="aui-nav-item" href="/admin/ads" title="Реклама"><span class="aui-icon aui-icon-ad"></span><span class="aui-nav-item-label">Реклама</span></a>
       </div>
       <div class="aui-sidebar-group">
@@ -236,8 +237,8 @@
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
         </div>
       </form>
-      <h2>Ставка</h2>
-      <p class="admin-lead">Игрок сам выбирает, сколько голосов поставить и на какой множитель. Шанс выигрыша — отдача, делённая на множитель: при отдаче 95 % ставка на ×2 выигрывает в 47,5 % случаев. Выигрыш — ставка, умноженная на множитель; проигранная ставка пропадает.</p>
+      <h2>Прицел</h2>
+      <p class="admin-lead">Игрок сам выбирает, сколько голосов поставить и на какой множитель. Шанс выигрыша — отдача, делённая на множитель: при отдаче 95 % ставка на ×2 выигрывает в 47,5 % случаев — столько места занимает зелёное поле посередине полосы. Выигрыш — ставка, умноженная на множитель; проигранная ставка пропадает.</p>
       <p class="admin-casino-stats" id="bets-stats"></p>
       <div class="aui-message aui-message-success" id="bets-saved" hidden></div>
       <form class="aui" id="bets-form">
@@ -260,6 +261,49 @@
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
         </div>
       </form>
+    </section>
+
+    <section id="bets" hidden>
+      <h1 class="aui-page-heading">Ставки</h1>
+      <p class="admin-lead">Событие — вопрос с исходами, на которые люди ставят голоса, сколько хотят. Когда итог известен, выберите исход — все поставленные голоса поделят угадавшие, каждый по своей ставке. Если на этот исход никто не ставил или событие отменено, ставки вернутся.</p>
+      <h2>Новое событие</h2>
+      <div class="aui-message aui-message-success" id="bet-created" hidden></div>
+      <form class="aui" id="bet-event-form">
+        <div class="field-group">
+          <label for="bet-question">Вопрос</label>
+          <input class="text long-field" id="bet-question" maxlength="200" required>
+          <div class="description">Например: «Проиграют ли республиканцы выборы в ноябре?» До 200 символов.</div>
+        </div>
+        <div class="field-group">
+          <label>Исходы</label>
+          <div id="bet-outcomes"></div>
+          <button class="aui-button aui-button-compact" id="bet-outcome-add" type="button">Добавить исход</button>
+          <div class="description">От 2 до 10, каждый до 64 символов.</div>
+        </div>
+        <div class="field-group">
+          <label for="bet-closes">Приём ставок до</label>
+          <input class="text" type="datetime-local" id="bet-closes">
+          <div class="description">Необязательно: без срока ставки принимаются, пока вы не закроете событие.</div>
+        </div>
+        <div class="buttons-container">
+          <button class="aui-button aui-button-primary" type="submit">Создать</button>
+        </div>
+      </form>
+      <h2>События</h2>
+      <div class="aui-table-wrap" id="bet-table" hidden>
+        <table class="aui">
+          <thead>
+            <tr>
+              <th>Событие</th>
+              <th>Поставлено</th>
+              <th>Состояние</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody id="bet-rows"></tbody>
+        </table>
+      </div>
+      <p class="aui-empty" id="bets-empty" hidden>Событий пока нет.</p>
     </section>
 
     <section id="ads" hidden>

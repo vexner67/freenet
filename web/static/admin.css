@@ -202,6 +202,7 @@ a:hover { text-decoration: underline; }
 .aui-icon-ad { --icon: url("/static/icons/admin-ad.svg"); }
 .aui-icon-snow { --icon: url("/static/icons/admin-snow.svg"); }
 .aui-icon-casino { --icon: url("/static/icons/admin-casino.svg"); }
+.aui-icon-bets { --icon: url("/static/icons/admin-bets.svg"); }
 .aui-icon-users { --icon: url("/static/icons/admin-users.svg"); }
 .aui-icon-clubs { --icon: url("/static/icons/admin-clubs.svg"); }
 .aui-icon-ban { --icon: url("/static/icons/admin-ban.svg"); }
@@ -362,7 +363,9 @@ form.aui.admin-rate .description { flex-basis: 100%; max-width: none; margin-top
 .admin-ad-cover { width: 64px; height: 40px; border-radius: 3px; object-fit: cover; }
 .admin-ad-site { color: var(--aui-subtle); font-size: 12px; }
 .admin-ad-text { min-width: 140px; max-width: 320px; color: var(--aui-subtle); white-space: pre-wrap; overflow-wrap: break-word; }
-.admin-actions { display: flex; gap: 6px; }
+.admin-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.admin-bet-outcome { display: flex; gap: 6px; margin: 0 0 6px; }
+.admin-bet-outcome .text { flex: 1; max-width: 250px; }
 .admin-stat { white-space: nowrap; }
 .admin-cover { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 8px; }
 .admin-cover img { max-width: 240px; max-height: 120px; border-radius: 3px; object-fit: cover; }
