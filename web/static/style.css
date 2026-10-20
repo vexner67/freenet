@@ -941,6 +941,12 @@ label.chat-person { cursor: pointer; }
 .link-card-title { color: var(--text-2b587a); overflow-wrap: anywhere; }
 .link-card-site { color: var(--text-808080); }
 .link-card-description { color: var(--text-333); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* An ad of the global feed: a post with "Рекламная запись" for its author
+   (gray, as a date) and the cover across it under the text (ads.js). */
+.post-ad .post-author .post-date { color: var(--text-808080); }
+.post-ad-cover { display: block; padding: 6px 4px; border-bottom: 1px solid var(--line-ececec); }
+.post-ad-cover img { display: block; width: 100%; max-height: 320px; object-fit: cover; }
+.post-ad-site { color: var(--text-808080); }
 .post-shared { display: flex; gap: 6px; margin: 6px 4px; padding-left: 6px; border-left: 2px solid var(--line-dae1e8); }
 .post-shared .post-avatar img { width: 30px; height: 30px; }
 .post-shared .post-author { padding: 2px 5px; }

@@ -930,6 +930,16 @@ export function shopPacks(packs, section, query = '') {
     .sort((a, b) => (b.holders ?? 0) - (a.holders ?? 0) || older(b, a));
 }
 
+// The global feed shows an ad after its third post and then after every
+// eighth, as Twitter slips one promoted tweet among about ten.
+const AD_FIRST = 3;
+const AD_EVERY = 8;
+
+// adDue tells whether an ad follows the shown-th post of the feed, from 1.
+export function adDue(shown) {
+  return shown >= AD_FIRST && (shown - AD_FIRST) % AD_EVERY === 0;
+}
+
 // stickersCount is openvk's "stickers_count": "1 стикер", "5 стикеров";
 // installsCount is "stickers_installs_count": "2 установки".
 export function stickersCount(n) {
@@ -1436,6 +1446,13 @@ const errorTexts = {
   'a postponed post says words and shows photos only': tr('К отложенной записи можно прикрепить только фотографии.'),
   'too many postponed posts': tr('Отложено слишком много записей: не больше 100 на стену.'),
   'too many stories': tr('Сразу можно показывать не больше 30 историй.'),
+  'ad link must be an http or https link': tr('Ссылка объявления должна вести на сайт: http:// или https://.'),
+  'ad link is too long': tr('Ссылка объявления слишком длинная.'),
+  'ad title is empty': tr('Укажите заголовок объявления.'),
+  'ad title is too long': tr('Заголовок объявления — не длиннее 100 символов.'),
+  'ad text is too long': tr('Текст объявления — не длиннее 500 символов.'),
+  'ad not found': tr('Такого объявления нет.'),
+  'too many ads': tr('Объявлений слишком много: не больше 100. Удалите ненужные.'),
   'story not found': tr('Этой истории уже нет.'),
   'story comment not found': tr('Этого комментария уже нет.'),
   'story comment is too long': tr('Комментарий к истории — не больше 1000 символов.'),

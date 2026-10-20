@@ -670,6 +670,14 @@ export const api = {
   vouchers: (cursor = '') => authorized('GET', page('/api/v1/vouchers', cursor, 0)),
   createVoucher: (voucher) => authorized('POST', '/api/v1/vouchers', voucher),
   deleteVoucher: (id) => authorized('DELETE', `/api/v1/vouchers/${encodeURIComponent(id)}`),
+  // The advertising of the global feed: ads() are the shown ones, which
+  // "Все новости" slips between its posts; all of them, making and
+  // changing them are the administrators'. A cover is an upload
+  // (uploadPhoto); photo "" in a change takes it away.
+  ads: (all = false) => authorized('GET', all ? '/api/v1/ads?all=true' : '/api/v1/ads'),
+  createAd: (ad) => authorized('POST', '/api/v1/ads', ad),
+  editAd: (id, change) => authorized('PATCH', `/api/v1/ads/${encodeURIComponent(id)}`, change),
+  deleteAd: (id) => authorized('DELETE', `/api/v1/ads/${encodeURIComponent(id)}`),
   // setVerified gives a page the checkmark ("Верификация") or takes it;
   // only the administrators may.
   setVerified: (nickname, verified) =>
