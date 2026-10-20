@@ -77,8 +77,13 @@ func TestCasinoBets_Bet(t *testing.T) {
 		if bet.Chance() != tt.chance || bet.Prize() != tt.prize {
 			t.Fatalf("Bet(%d, %d): chance %d, prize %d; want %d, %d", tt.amount, tt.multiplier, bet.Chance(), bet.Prize(), tt.chance, tt.prize)
 		}
-		if !bet.Wins(tt.chance-1) || bet.Wins(tt.chance) {
-			t.Fatalf("Bet(%d, %d) wins below %d only", tt.amount, tt.multiplier, tt.chance)
+		// The bet wins in the middle of the rolls, chance wide.
+		low, high := bet.Zone()
+		if high-low != tt.chance || low+high < user.BetOdds-1 || low+high > user.BetOdds {
+			t.Fatalf("Bet(%d, %d).Zone() = %d, %d", tt.amount, tt.multiplier, low, high)
+		}
+		if bet.Wins(low-1) || !bet.Wins(low) || !bet.Wins(high-1) || bet.Wins(high) {
+			t.Fatalf("Bet(%d, %d) wins in [%d, %d) only", tt.amount, tt.multiplier, low, high)
 		}
 	}
 

@@ -102,7 +102,7 @@ func TestCasinoService_Bet(t *testing.T) {
 	}
 
 	// The roll is the next of these.
-	rolls := []int64{4749, 4750}
+	rolls := []int64{2625, 7375}
 	casino := service.NewCasinoService(w.users, inmem.NewCasinoRepository(), w.users, inmem.TxManager{}, admins).
 		WithRoll(func(n int64) (int64, error) {
 			if n != user.BetOdds {
@@ -144,12 +144,12 @@ func TestCasinoService_Bet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := service.Wager{Won: true, Roll: 4749, Chance: 4750, Votes: 100, Balance: 150}
+	want := service.Wager{Won: true, Roll: 2625, Chance: 4750, Votes: 100, Balance: 150}
 	if wager, err := casino.Bet(ctx, ann, 50, 200); err != nil || wager != want {
 		t.Fatalf("winning Bet = %+v, %v; want %+v", wager, err, want)
 	}
 
-	want = service.Wager{Roll: 4750, Chance: 4750, Balance: 50}
+	want = service.Wager{Roll: 7375, Chance: 4750, Balance: 50}
 	if wager, err := casino.Bet(ctx, ann, 100, 200); err != nil || wager != want {
 		t.Fatalf("losing Bet = %+v, %v; want %+v", wager, err, want)
 	}

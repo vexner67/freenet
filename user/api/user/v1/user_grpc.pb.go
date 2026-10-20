@@ -85,6 +85,13 @@ const (
 	UserService_SpinCasino_FullMethodName         = "/user.v1.UserService/SpinCasino"
 	UserService_SetCasinoBets_FullMethodName      = "/user.v1.UserService/SetCasinoBets"
 	UserService_BetCasino_FullMethodName          = "/user.v1.UserService/BetCasino"
+	UserService_ListBetEvents_FullMethodName      = "/user.v1.UserService/ListBetEvents"
+	UserService_CreateBetEvent_FullMethodName     = "/user.v1.UserService/CreateBetEvent"
+	UserService_CloseBetEvent_FullMethodName      = "/user.v1.UserService/CloseBetEvent"
+	UserService_ResolveBetEvent_FullMethodName    = "/user.v1.UserService/ResolveBetEvent"
+	UserService_CancelBetEvent_FullMethodName     = "/user.v1.UserService/CancelBetEvent"
+	UserService_DeleteBetEvent_FullMethodName     = "/user.v1.UserService/DeleteBetEvent"
+	UserService_StakeBet_FullMethodName           = "/user.v1.UserService/StakeBet"
 	UserService_SetVerified_FullMethodName        = "/user.v1.UserService/SetVerified"
 	UserService_SetAlert_FullMethodName           = "/user.v1.UserService/SetAlert"
 	UserService_ListAds_FullMethodName            = "/user.v1.UserService/ListAds"
@@ -264,6 +271,19 @@ type UserServiceClient interface {
 	// votes").
 	SetCasinoBets(ctx context.Context, in *SetCasinoBetsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	BetCasino(ctx context.Context, in *BetCasinoRequest, opts ...grpc.CallOption) (*BetCasinoResponse, error)
+	// The bets on events: the administrators ask a question with outcomes,
+	// people stake votes on them, and those who guessed share all the stakes
+	// once it is resolved; a cancelled event gives them back. ListBetEvents
+	// is public, with the stakes of the caller if a token came; StakeBet
+	// takes the votes (FailedPrecondition when the event takes no stakes or
+	// the balance is short); the rest are for the administrators.
+	ListBetEvents(ctx context.Context, in *ListBetEventsRequest, opts ...grpc.CallOption) (*ListBetEventsResponse, error)
+	CreateBetEvent(ctx context.Context, in *CreateBetEventRequest, opts ...grpc.CallOption) (*BetEvent, error)
+	CloseBetEvent(ctx context.Context, in *BetEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ResolveBetEvent(ctx context.Context, in *ResolveBetEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	CancelBetEvent(ctx context.Context, in *BetEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DeleteBetEvent(ctx context.Context, in *BetEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	StakeBet(ctx context.Context, in *StakeBetRequest, opts ...grpc.CallOption) (*StakeBetResponse, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
@@ -964,6 +984,76 @@ func (c *userServiceClient) BetCasino(ctx context.Context, in *BetCasinoRequest,
 	return out, nil
 }
 
+func (c *userServiceClient) ListBetEvents(ctx context.Context, in *ListBetEventsRequest, opts ...grpc.CallOption) (*ListBetEventsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListBetEventsResponse)
+	err := c.cc.Invoke(ctx, UserService_ListBetEvents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CreateBetEvent(ctx context.Context, in *CreateBetEventRequest, opts ...grpc.CallOption) (*BetEvent, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BetEvent)
+	err := c.cc.Invoke(ctx, UserService_CreateBetEvent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CloseBetEvent(ctx context.Context, in *BetEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_CloseBetEvent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ResolveBetEvent(ctx context.Context, in *ResolveBetEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_ResolveBetEvent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CancelBetEvent(ctx context.Context, in *BetEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_CancelBetEvent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) DeleteBetEvent(ctx context.Context, in *BetEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_DeleteBetEvent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) StakeBet(ctx context.Context, in *StakeBetRequest, opts ...grpc.CallOption) (*StakeBetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StakeBetResponse)
+	err := c.cc.Invoke(ctx, UserService_StakeBet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) SetVerified(ctx context.Context, in *SetVerifiedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -1258,6 +1348,19 @@ type UserServiceServer interface {
 	// votes").
 	SetCasinoBets(context.Context, *SetCasinoBetsRequest) (*emptypb.Empty, error)
 	BetCasino(context.Context, *BetCasinoRequest) (*BetCasinoResponse, error)
+	// The bets on events: the administrators ask a question with outcomes,
+	// people stake votes on them, and those who guessed share all the stakes
+	// once it is resolved; a cancelled event gives them back. ListBetEvents
+	// is public, with the stakes of the caller if a token came; StakeBet
+	// takes the votes (FailedPrecondition when the event takes no stakes or
+	// the balance is short); the rest are for the administrators.
+	ListBetEvents(context.Context, *ListBetEventsRequest) (*ListBetEventsResponse, error)
+	CreateBetEvent(context.Context, *CreateBetEventRequest) (*BetEvent, error)
+	CloseBetEvent(context.Context, *BetEventRequest) (*emptypb.Empty, error)
+	ResolveBetEvent(context.Context, *ResolveBetEventRequest) (*emptypb.Empty, error)
+	CancelBetEvent(context.Context, *BetEventRequest) (*emptypb.Empty, error)
+	DeleteBetEvent(context.Context, *BetEventRequest) (*emptypb.Empty, error)
+	StakeBet(context.Context, *StakeBetRequest) (*StakeBetResponse, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
@@ -1502,6 +1605,27 @@ func (UnimplementedUserServiceServer) SetCasinoBets(context.Context, *SetCasinoB
 }
 func (UnimplementedUserServiceServer) BetCasino(context.Context, *BetCasinoRequest) (*BetCasinoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BetCasino not implemented")
+}
+func (UnimplementedUserServiceServer) ListBetEvents(context.Context, *ListBetEventsRequest) (*ListBetEventsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListBetEvents not implemented")
+}
+func (UnimplementedUserServiceServer) CreateBetEvent(context.Context, *CreateBetEventRequest) (*BetEvent, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateBetEvent not implemented")
+}
+func (UnimplementedUserServiceServer) CloseBetEvent(context.Context, *BetEventRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method CloseBetEvent not implemented")
+}
+func (UnimplementedUserServiceServer) ResolveBetEvent(context.Context, *ResolveBetEventRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveBetEvent not implemented")
+}
+func (UnimplementedUserServiceServer) CancelBetEvent(context.Context, *BetEventRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method CancelBetEvent not implemented")
+}
+func (UnimplementedUserServiceServer) DeleteBetEvent(context.Context, *BetEventRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteBetEvent not implemented")
+}
+func (UnimplementedUserServiceServer) StakeBet(context.Context, *StakeBetRequest) (*StakeBetResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method StakeBet not implemented")
 }
 func (UnimplementedUserServiceServer) SetVerified(context.Context, *SetVerifiedRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetVerified not implemented")
@@ -2733,6 +2857,132 @@ func _UserService_BetCasino_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ListBetEvents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListBetEventsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListBetEvents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListBetEvents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListBetEvents(ctx, req.(*ListBetEventsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CreateBetEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateBetEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CreateBetEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CreateBetEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CreateBetEvent(ctx, req.(*CreateBetEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CloseBetEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BetEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CloseBetEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CloseBetEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CloseBetEvent(ctx, req.(*BetEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ResolveBetEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveBetEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ResolveBetEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ResolveBetEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ResolveBetEvent(ctx, req.(*ResolveBetEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CancelBetEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BetEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CancelBetEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CancelBetEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CancelBetEvent(ctx, req.(*BetEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_DeleteBetEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BetEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DeleteBetEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DeleteBetEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DeleteBetEvent(ctx, req.(*BetEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_StakeBet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StakeBetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).StakeBet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_StakeBet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).StakeBet(ctx, req.(*StakeBetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_SetVerified_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetVerifiedRequest)
 	if err := dec(in); err != nil {
@@ -3233,6 +3483,34 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BetCasino",
 			Handler:    _UserService_BetCasino_Handler,
+		},
+		{
+			MethodName: "ListBetEvents",
+			Handler:    _UserService_ListBetEvents_Handler,
+		},
+		{
+			MethodName: "CreateBetEvent",
+			Handler:    _UserService_CreateBetEvent_Handler,
+		},
+		{
+			MethodName: "CloseBetEvent",
+			Handler:    _UserService_CloseBetEvent_Handler,
+		},
+		{
+			MethodName: "ResolveBetEvent",
+			Handler:    _UserService_ResolveBetEvent_Handler,
+		},
+		{
+			MethodName: "CancelBetEvent",
+			Handler:    _UserService_CancelBetEvent_Handler,
+		},
+		{
+			MethodName: "DeleteBetEvent",
+			Handler:    _UserService_DeleteBetEvent_Handler,
+		},
+		{
+			MethodName: "StakeBet",
+			Handler:    _UserService_StakeBet_Handler,
 		},
 		{
 			MethodName: "SetVerified",

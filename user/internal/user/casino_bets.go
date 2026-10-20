@@ -3,7 +3,8 @@ package user
 import "errors"
 
 // BetOdds are the units of a bet's chance and roll: a bet wins when a roll
-// in [0, BetOdds) is below its chance, so 4750 is a 47.5% chance.
+// in [0, BetOdds) falls in the middle of the range, chance wide, so 4750 is
+// a 47.5% chance.
 const BetOdds = 10_000
 
 // The bounds of the bets: how big a bet may be and how much of the votes
@@ -109,9 +110,21 @@ func (b Bet) Chance() int {
 	return b.chance
 }
 
-// Wins tells whether a roll in [0, BetOdds) wins the bet.
+// Zone is where a roll wins the bet: [low, high), chance wide in the
+// middle of [0, BetOdds), so that the green zone of the bar shrinks to its
+// centre as the chance falls.
+func (b Bet) Zone() (low, high int) {
+	low = (BetOdds - b.chance) / 2
+
+	return low, low + b.chance
+}
+
+// Wins tells whether a roll in [0, BetOdds) wins the bet: it falls in
+// Zone.
 func (b Bet) Wins(roll int) bool {
-	return roll < b.chance
+	low, high := b.Zone()
+
+	return roll >= low && roll < high
 }
 
 // Prize is what the bet pays when it wins: the votes multiplied, rounded
