@@ -676,6 +676,10 @@ export const api = {
   // (uploadPhoto); photo "" in a change takes it away.
   ads: (all = false) => authorized('GET', all ? '/api/v1/ads?all=true' : '/api/v1/ads'),
   createAd: (ad) => authorized('POST', '/api/v1/ads', ad),
+  // viewAd and clickAd count that the reader saw an ad in the feed and
+  // followed it, for the stats of the administrators.
+  viewAd: (id) => authorized('POST', `/api/v1/ads/${encodeURIComponent(id)}/views`),
+  clickAd: (id) => authorized('POST', `/api/v1/ads/${encodeURIComponent(id)}/clicks`),
   editAd: (id, change) => authorized('PATCH', `/api/v1/ads/${encodeURIComponent(id)}`, change),
   deleteAd: (id) => authorized('DELETE', `/api/v1/ads/${encodeURIComponent(id)}`),
   // setVerified gives a page the checkmark ("Верификация") or takes it;

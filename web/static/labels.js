@@ -940,6 +940,21 @@ export function adDue(shown) {
   return shown >= AD_FIRST && (shown - AD_FIRST) % AD_EVERY === 0;
 }
 
+// peopleCount is "1 человек", "3 человека", "5 человек".
+export function peopleCount(n) {
+  return `${n} ${plural(n, ['человек', 'человека', 'человек'])}`;
+}
+
+// adRate is the share of the views of an ad that were followed, as the
+// stats of the admin panel say it: "4,2 %"; "—" before any view.
+export function adRate({ views, clicks }) {
+  if (!views) return '—';
+
+  const percent = String(Math.round((clicks / views) * 1000) / 10);
+
+  return `${lang === 'en' ? percent : percent.replace('.', ',')} %`;
+}
+
 // stickersCount is openvk's "stickers_count": "1 стикер", "5 стикеров";
 // installsCount is "stickers_installs_count": "2 установки".
 export function stickersCount(n) {
