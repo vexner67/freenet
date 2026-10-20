@@ -1773,4 +1773,5 @@ export default {
   'Автоигра: {0}-я, пока есть голоса.': 'Autoplay: round {0}, while the votes last.',
   'Автоигра остановлена: не хватает голосов. Сыграно: {0}.': 'Autoplay stopped: not enough votes. Played: {0}.',
   'Автоигра закончилась. Сыграно: {0}.': 'Autoplay is over. Played: {0}.',
+  'Новогоднее казино — удача в подарок!': 'The New Year casino: luck is the gift!',
 };

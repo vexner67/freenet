@@ -14,7 +14,7 @@
 // ("Автоигра"): as many rounds as chosen or while the votes last.
 
 import { api, currentUser, started } from './api.js';
-import { aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betOdds, betPrize, betRoll, casinoChance, casinoPlan, plural, spinsCount, votesCount, wagersCount } from './labels.js';
+import { aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betOdds, betPrize, betRoll, casinoChance, casinoPlan, plural, spinsCount, votesCount, votesFontSize, wagersCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
 
@@ -79,8 +79,15 @@ function setPlaying(on) {
 }
 
 function showBalance(votes) {
+  // The balance jumps when it grows.
+  if (votes > balance && !$('balance').hidden && !still) {
+    $('votes').classList.remove('bump');
+    void $('votes').offsetWidth;
+    $('votes').classList.add('bump');
+  }
   balance = votes;
   $('votes').textContent = votes;
+  $('votes').style.fontSize = `${votesFontSize(votes)}px`;
   $('votes-word').textContent = plural(votes, ['голос', 'голоса', 'голосов']);
   $('balance').hidden = false;
 }
@@ -98,10 +105,39 @@ async function run(prize) {
   cells[prize].classList.add('won');
 }
 
-function showResult(votes) {
+// cheer celebrates a win in the New Year casino with confetti, the more
+// the bigger the win against what it cost; a big win (five times the cost
+// and more) gets a big plaque.
+let confetti = null;
+
+function cheer(result, won, cost) {
+  result.classList.toggle('casino-big', won >= cost * 5);
+  if (still || !document.documentElement.classList.contains('festive')) return;
+  if (!confetti) {
+    confetti = el('div', { className: 'casino-confetti' });
+    document.body.append(confetti);
+  }
+
+  const count = Math.min(140, 24 + Math.round((won / Math.max(cost, 1)) * 12));
+
+  for (let i = 0; i < count; i++) {
+    const piece = el('span', { className: 'casino-piece' });
+
+    piece.style.left = `${Math.random() * 100}%`;
+    piece.style.animationDelay = `${Math.random() * 0.5}s`;
+    piece.style.setProperty('--dx', `${Math.round((Math.random() - 0.5) * 240)}px`);
+    piece.style.setProperty('--turn', `${Math.round((Math.random() - 0.5) * 1440)}deg`);
+    piece.style.setProperty('--fall', `${(1.8 + Math.random() * 1.6).toFixed(2)}s`);
+    piece.addEventListener('animationend', () => piece.remove());
+    confetti.append(piece);
+  }
+}
+
+function showResult(votes, price) {
   const result = $('result');
 
   result.className = votes > 0 ? 'casino-result casino-win' : 'casino-result';
+  if (votes > 0) cheer(result, votes, price);
   result.textContent = votes > 0 ? tr('Вы выиграли {0}!', votesCount(votes)) : tr('В этот раз ничего. Попробуйте ещё!');
   result.hidden = false;
 
@@ -120,7 +156,7 @@ async function spinOnce(price) {
   session.spent += price;
   session.won += won.votes;
   showBalance(won.balance);
-  showResult(won.votes);
+  showResult(won.votes, price);
 }
 
 async function spin(price) {
@@ -333,7 +369,7 @@ function betting(bets, signedIn) {
     wagers.spent += votes;
     wagers.won += wager.votes;
     showBalance(wager.balance);
-    showWager(wager);
+    showWager(wager, votes);
   }
 
   $('bet-form').addEventListener('submit', async (event) => {
@@ -370,10 +406,11 @@ function betting(bets, signedIn) {
   update();
 }
 
-function showWager(wager) {
+function showWager(wager, stake) {
   const result = $('bet-result');
 
   result.className = wager.won ? 'casino-result casino-win' : 'casino-result';
+  if (wager.won) cheer(result, wager.votes, stake);
   const zone = aimZone(wager.chance);
 
   result.textContent = wager.won
