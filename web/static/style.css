@@ -397,6 +397,8 @@ h1.page-title { font-size: inherit; }
 .invited-photo { width: 30px; height: 30px; object-fit: cover; }
 .invite-link { display: flex; justify-content: center; gap: 6px; margin: 12px 0; }
 .invite-link input { flex: 0 1 360px; min-width: 0; }
+/* What is copied by selecting it, out of sight. */
+.copy-field { position: fixed; top: 0; left: -9999px; opacity: 0; }
 
 /* The offer of pushes over the page of a phone (layout.js offerPush). */
 .push-offer p { margin: 0 0 8px; }

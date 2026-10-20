@@ -1196,6 +1196,7 @@ export default {
   'в магазине': 'in the shop',
   'не опубликован': 'not published',
   'Скопировать ссылку': 'Copy the link',
+  'Ссылка на запись': 'Link to the post',
   'Ссылка скопирована!': 'Link copied!',
   'Предупреждение': 'Warning',
   'Вы уверены, что хотите удалить этот набор из своих стикеров?': 'Are you sure you want to remove this pack from your stickers?',
