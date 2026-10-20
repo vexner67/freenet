@@ -10,7 +10,7 @@
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, adminOverview, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, adminOverview, adRate, peopleCount, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
@@ -501,10 +501,16 @@ function showRate({ kopecks }) {
   });
 }
 
-// ads is "Реклама": every ad, shown or not, with the switch of
-// "Показывать" and "Изменить" and "Удалить" each.
+// ads is "Реклама": every ad, shown or not, with how it does (views and
+// clicks, by how many people, and the share of views followed), the
+// switch of "Показывать" and "Изменить" and "Удалить" each.
 async function ads(answered) {
+  // statCell is a count with how many people it was, under it.
+  const statCell = (count, people) => el('td', { className: 'admin-stat' },
+    number(count), el('div', { className: 'admin-ad-site', textContent: peopleCount(people) }));
+
   function row(ad) {
+    const stats = ad.stats ?? { views: 0, viewers: 0, clicks: 0, clickers: 0 };
     const toggle = el('button', {
       className: 'aui-toggle', type: 'button', title: tr('Показывать в ленте'),
     }, el('span', { className: 'aui-toggle-knob' }));
@@ -536,6 +542,9 @@ async function ads(answered) {
         ),
       )),
       el('td', { className: 'admin-ad-text', textContent: ad.text }),
+      statCell(stats.views, stats.viewers),
+      statCell(stats.clicks, stats.clickers),
+      el('td', { className: 'admin-stat', textContent: adRate(stats) }),
       el('td', {}, toggle),
       el('td', {}, el('div', { className: 'admin-actions' },
         el('a', { className: 'aui-button aui-button-compact', href: '/admin/ads/' + encodeURIComponent(ad.id), textContent: tr('Изменить') }),
