@@ -28,7 +28,14 @@ func (c *Casino) Get(ctx context.Context) (model.Casino, error) {
 		return model.Casino{}, errs.Wrap("c.api.GetCasino", fromStatus(err))
 	}
 
-	casino := model.Casino{Price: resp.GetPrice()}
+	casino := model.Casino{Price: resp.GetPrice(), Bets: model.CasinoBets{
+		Least:  resp.GetBetLeast(),
+		Most:   resp.GetBetMost(),
+		Return: int(resp.GetBetReturn()),
+	}}
+	for _, m := range resp.GetMultipliers() {
+		casino.Bets.Multipliers = append(casino.Bets.Multipliers, int(m))
+	}
 	for _, votes := range resp.GetPrizes() {
 		casino.Prizes = append(casino.Prizes, model.CasinoPrize{Votes: votes})
 	}
@@ -43,10 +50,17 @@ func (c *Casino) Settings(ctx context.Context, accessToken string) (model.Casino
 	}
 
 	settings := model.CasinoSettings{
-		Casino: model.Casino{Price: resp.GetPrice()},
-		Spins:  resp.GetSpins(),
-		Spent:  resp.GetSpent(),
-		Won:    resp.GetWon(),
+		Casino: model.Casino{Price: resp.GetPrice(), Bets: model.CasinoBets{
+			Least:  resp.GetBetLeast(),
+			Most:   resp.GetBetMost(),
+			Return: int(resp.GetBetReturn()),
+		}},
+		Spins:    resp.GetSpins(),
+		Spent:    resp.GetSpent(),
+		Won:      resp.GetWon(),
+		Bets:     resp.GetBets(),
+		BetSpent: resp.GetBetSpent(),
+		BetWon:   resp.GetBetWon(),
 	}
 	for _, p := range resp.GetPrizes() {
 		settings.Casino.Prizes = append(settings.Casino.Prizes, model.CasinoPrize{Votes: p.GetVotes(), Weight: int(p.GetWeight())})
@@ -79,4 +93,36 @@ func (c *Casino) Spin(ctx context.Context, accessToken string) (model.CasinoSpin
 	}
 
 	return model.CasinoSpin{Prize: int(resp.GetPrize()), Votes: resp.GetVotes(), Balance: resp.GetBalance()}, nil
+}
+
+func (c *Casino) SetBets(ctx context.Context, accessToken string, bets model.CasinoBets) error {
+	if bets.Return < 0 || bets.Return > math.MaxInt32 {
+		return failure.New(failure.InvalidArgument, "the return of bets must be from 1 to 100 percent")
+	}
+
+	req := &userv1.SetCasinoBetsRequest{Least: bets.Least, Most: bets.Most, Return: int32(bets.Return)}
+	if _, err := c.api.SetCasinoBets(withToken(ctx, accessToken), req); err != nil {
+		return errs.Wrap("c.api.SetCasinoBets", fromStatus(err))
+	}
+
+	return nil
+}
+
+func (c *Casino) Bet(ctx context.Context, accessToken string, amount int64, multiplier int) (model.CasinoWager, error) {
+	if multiplier < 0 || multiplier > math.MaxInt32 {
+		return model.CasinoWager{}, failure.New(failure.InvalidArgument, "unknown multiplier")
+	}
+
+	resp, err := c.api.BetCasino(withToken(ctx, accessToken), &userv1.BetCasinoRequest{Amount: amount, Multiplier: int32(multiplier)})
+	if err != nil {
+		return model.CasinoWager{}, errs.Wrap("c.api.BetCasino", fromStatus(err))
+	}
+
+	return model.CasinoWager{
+		Won:     resp.GetWon(),
+		Roll:    int(resp.GetRoll()),
+		Chance:  int(resp.GetChance()),
+		Votes:   resp.GetVotes(),
+		Balance: resp.GetBalance(),
+	}, nil
 }

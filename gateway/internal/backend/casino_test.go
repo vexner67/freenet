@@ -16,13 +16,32 @@ import (
 
 type fakeCasinoAPI struct {
 	userv1.UserServiceClient
-	md  metadata.MD
-	set *userv1.SetCasinoRequest
-	err error
+	md   metadata.MD
+	set  *userv1.SetCasinoRequest
+	bets *userv1.SetCasinoBetsRequest
+	bet  *userv1.BetCasinoRequest
+	err  error
+}
+
+func (f *fakeCasinoAPI) SetCasinoBets(ctx context.Context, req *userv1.SetCasinoBetsRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	f.bets = req
+
+	return &emptypb.Empty{}, nil
+}
+
+func (f *fakeCasinoAPI) BetCasino(ctx context.Context, req *userv1.BetCasinoRequest, _ ...grpc.CallOption) (*userv1.BetCasinoResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	f.bet = req
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	return &userv1.BetCasinoResponse{Won: true, Roll: 12, Chance: 4750, Votes: 20, Balance: 30}, nil
 }
 
 func (f *fakeCasinoAPI) GetCasino(context.Context, *userv1.GetCasinoRequest, ...grpc.CallOption) (*userv1.GetCasinoResponse, error) {
-	return &userv1.GetCasinoResponse{Price: 10, Prizes: []int64{0, 50}}, nil
+	return &userv1.GetCasinoResponse{Price: 10, Prizes: []int64{0, 50}, BetLeast: 1, BetMost: 100, BetReturn: 95, Multipliers: []int32{150, 200}}, nil
 }
 
 func (f *fakeCasinoAPI) GetCasinoSettings(ctx context.Context, _ *userv1.GetCasinoSettingsRequest, _ ...grpc.CallOption) (*userv1.GetCasinoSettingsResponse, error) {
@@ -32,6 +51,8 @@ func (f *fakeCasinoAPI) GetCasinoSettings(ctx context.Context, _ *userv1.GetCasi
 		Price:  10,
 		Prizes: []*userv1.CasinoPrize{{Votes: 0, Weight: 9}, {Votes: 50, Weight: 1}},
 		Spins:  3, Spent: 30, Won: 50,
+		BetLeast: 1, BetMost: 100, BetReturn: 95,
+		Bets: 4, BetSpent: 40, BetWon: 20,
 	}, nil
 }
 
@@ -58,12 +79,14 @@ func TestCasino(t *testing.T) {
 	api := &fakeCasinoAPI{}
 	c := NewCasino(api)
 
-	if got, err := c.Get(ctx); err != nil || got.Price != 10 || len(got.Prizes) != 2 || got.Prizes[1].Votes != 50 {
+	if got, err := c.Get(ctx); err != nil || got.Price != 10 || len(got.Prizes) != 2 || got.Prizes[1].Votes != 50 ||
+		got.Bets.Most != 100 || got.Bets.Return != 95 || len(got.Bets.Multipliers) != 2 || got.Bets.Multipliers[1] != 200 {
 		t.Fatalf("Get = %+v, %v", got, err)
 	}
 
 	settings, err := c.Settings(ctx, "tok")
-	if err != nil || settings.Casino.Prizes[0].Weight != 9 || settings.Spins != 3 || settings.Won != 50 || api.md.Get("authorization")[0] != "Bearer tok" {
+	if err != nil || settings.Casino.Prizes[0].Weight != 9 || settings.Spins != 3 || settings.Won != 50 || api.md.Get("authorization")[0] != "Bearer tok" ||
+		settings.Casino.Bets.Most != 100 || settings.Bets != 4 || settings.BetSpent != 40 || settings.BetWon != 20 {
 		t.Fatalf("Settings = %+v, %v, %v", settings, err, api.md)
 	}
 
@@ -79,5 +102,19 @@ func TestCasino(t *testing.T) {
 	api.err = status.Error(codes.FailedPrecondition, "not enough votes")
 	if _, err = c.Spin(ctx, "tok"); failure.From(err).Kind != failure.Conflict {
 		t.Fatalf("Spin without votes: %v", err)
+	}
+
+	if err = c.SetBets(ctx, "tok", model.CasinoBets{Least: 2, Most: 20, Return: 90}); err != nil ||
+		api.bets.GetLeast() != 2 || api.bets.GetMost() != 20 || api.bets.GetReturn() != 90 {
+		t.Fatalf("SetBets: %v, %v", err, api.bets)
+	}
+
+	if _, err = c.Bet(ctx, "tok", 10, 200); failure.From(err).Kind != failure.Conflict || api.bet.GetAmount() != 10 || api.bet.GetMultiplier() != 200 {
+		t.Fatalf("Bet without votes: %v, %v", err, api.bet)
+	}
+
+	api.err = nil
+	if wager, err := c.Bet(ctx, "tok", 10, 200); err != nil || wager != (model.CasinoWager{Won: true, Roll: 12, Chance: 4750, Votes: 20, Balance: 30}) {
+		t.Fatalf("Bet = %+v, %v", wager, err)
 	}
 }
