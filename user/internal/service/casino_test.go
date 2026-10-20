@@ -35,7 +35,7 @@ func TestCasinoService(t *testing.T) {
 			return roll, nil
 		})
 
-	if c, err := casino.Casino(ctx); err != nil || c.Price() != user.DefaultCasino().Price() {
+	if c, b, err := casino.Casino(ctx); err != nil || c.Price() != user.DefaultCasino().Price() || b != user.DefaultCasinoBets() {
 		t.Fatalf("Casino = %+v, %v", c, err)
 	}
 
@@ -114,7 +114,7 @@ func TestCasinoService_Bet(t *testing.T) {
 			return roll, nil
 		})
 
-	if b, err := casino.Bets(ctx); err != nil || b != user.DefaultCasinoBets() {
+	if _, b, err := casino.Casino(ctx); err != nil || b != user.DefaultCasinoBets() {
 		t.Fatalf("Bets = %+v, %v", b, err)
 	}
 
@@ -161,7 +161,7 @@ func TestCasinoService_Bet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if settings.Bets != bets || settings.Stats != (user.CasinoStats{Bets: 2, BetSpent: 150, BetWon: 100}) {
+	if settings.Bets != bets || settings.Stats != (user.CasinoStats{Wagers: 2, WagerSpent: 150, WagerWon: 100}) {
 		t.Fatalf("Settings = %+v", settings)
 	}
 }

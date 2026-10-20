@@ -114,7 +114,8 @@ func TestCasinoBets(t *testing.T) {
 	}
 
 	settings, err := s.client.GetCasinoSettings(admin, &userv1.GetCasinoSettingsRequest{})
-	if err != nil || settings.GetBetMost() != 20 || settings.GetBets() != 1 || settings.GetBetSpent() != 10 || settings.GetBetWon() != bet.GetVotes() {
+	if err != nil || settings.GetBetMost() != 20 || settings.GetBets() != 1 || settings.GetBetSpent() != 10 || settings.GetBetWon() != bet.GetVotes() ||
+		len(settings.GetMultipliers()) != len(got.GetMultipliers()) {
 		t.Fatalf("GetCasinoSettings = %v, %v", settings, err)
 	}
 }

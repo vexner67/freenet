@@ -13,22 +13,16 @@ import (
 )
 
 type CasinoService interface {
-	Casino(ctx context.Context) (user.Casino, error)
+	Casino(ctx context.Context) (user.Casino, user.CasinoBets, error)
 	Settings(ctx context.Context, adminID uuid.UUID) (service.CasinoSettings, error)
 	SetCasino(ctx context.Context, adminID uuid.UUID, casino user.Casino) error
 	Spin(ctx context.Context, userID uuid.UUID) (service.Spin, error)
-	Bets(ctx context.Context) (user.CasinoBets, error)
 	SetBets(ctx context.Context, adminID uuid.UUID, bets user.CasinoBets) error
 	Bet(ctx context.Context, userID uuid.UUID, amount int64, multiplier int) (service.Wager, error)
 }
 
 func (h *UserHandler) GetCasino(ctx context.Context, _ *userv1.GetCasinoRequest) (*userv1.GetCasinoResponse, error) {
-	casino, err := h.casinos.Casino(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	bets, err := h.casinos.Bets(ctx)
+	casino, bets, err := h.casinos.Casino(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -42,9 +36,7 @@ func (h *UserHandler) GetCasino(ctx context.Context, _ *userv1.GetCasinoRequest)
 	for _, p := range casino.Prizes() {
 		resp.Prizes = append(resp.Prizes, p.Votes)
 	}
-	for _, m := range user.BetMultipliers {
-		resp.Multipliers = append(resp.Multipliers, int32(m)) //nolint:gosec // a few hundred
-	}
+	resp.Multipliers = toProtoMultipliers()
 
 	return resp, nil
 }
@@ -61,18 +53,30 @@ func (h *UserHandler) GetCasinoSettings(ctx context.Context, _ *userv1.GetCasino
 	}
 
 	return &userv1.GetCasinoSettingsResponse{
-		Price:     settings.Casino.Price(),
-		Prizes:    toProtoCasinoPrizes(settings.Casino.Prizes()),
-		Spins:     settings.Stats.Spins,
-		Spent:     settings.Stats.Spent,
-		Won:       settings.Stats.Won,
-		BetLeast:  settings.Bets.Least(),
-		BetMost:   settings.Bets.Most(),
-		BetReturn: int32(settings.Bets.Return()), //nolint:gosec // at most user.MaxBetReturn
-		Bets:      settings.Stats.Bets,
-		BetSpent:  settings.Stats.BetSpent,
-		BetWon:    settings.Stats.BetWon,
+		Price:       settings.Casino.Price(),
+		Prizes:      toProtoCasinoPrizes(settings.Casino.Prizes()),
+		Spins:       settings.Stats.Spins,
+		Spent:       settings.Stats.Spent,
+		Won:         settings.Stats.Won,
+		BetLeast:    settings.Bets.Least(),
+		BetMost:     settings.Bets.Most(),
+		BetReturn:   int32(settings.Bets.Return()), //nolint:gosec // at most user.MaxBetReturn
+		Bets:        settings.Stats.Wagers,
+		BetSpent:    settings.Stats.WagerSpent,
+		BetWon:      settings.Stats.WagerWon,
+		Multipliers: toProtoMultipliers(),
 	}, nil
+}
+
+// toProtoMultipliers are user.BetMultipliers, which the casino does not
+// keep: they are the same for every casino.
+func toProtoMultipliers() []int32 {
+	multipliers := make([]int32, 0, len(user.BetMultipliers))
+	for _, m := range user.BetMultipliers {
+		multipliers = append(multipliers, int32(m)) //nolint:gosec // a few hundred
+	}
+
+	return multipliers
 }
 
 func (h *UserHandler) SetCasino(ctx context.Context, req *userv1.SetCasinoRequest) (*emptypb.Empty, error) {

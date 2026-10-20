@@ -22,7 +22,9 @@ type CasinoRepository interface {
 	SetBets(ctx context.Context, bets user.CasinoBets) error
 	// CountBet adds a bet of spent votes that won won.
 	CountBet(ctx context.Context, spent, won int64) error
-	Stats(ctx context.Context) (user.CasinoStats, error)
+	// Settings are the casino, its bets and its stats at once: one read
+	// of the row.
+	Settings(ctx context.Context) (CasinoSettings, error)
 }
 
 // Spin is what one spin of the casino won: the index of the prize, its
@@ -74,11 +76,15 @@ func (s *CasinoService) WithRoll(roll func(n int64) (int64, error)) *CasinoServi
 	return s
 }
 
-// Casino is what a spin costs and may win; anyone may ask.
-func (s *CasinoService) Casino(ctx context.Context) (user.Casino, error) {
-	casino, err := s.casinos.Casino(ctx)
+// Casino is what a spin costs and may win and what may be bet; anyone may
+// ask, the odds and the stats are for the handler not to tell.
+func (s *CasinoService) Casino(ctx context.Context) (user.Casino, user.CasinoBets, error) {
+	settings, err := s.casinos.Settings(ctx)
+	if err != nil {
+		return user.Casino{}, user.CasinoBets{}, errs.Wrap("s.casinos.Settings", err)
+	}
 
-	return casino, errs.Wrap("s.casinos.Casino", err)
+	return settings.Casino, settings.Bets, nil
 }
 
 // Settings are the casino with the odds and its stats; user.ErrNotAdmin.
@@ -87,22 +93,9 @@ func (s *CasinoService) Settings(ctx context.Context, adminID uuid.UUID) (Casino
 		return CasinoSettings{}, errs.Wrap("checkAdmin", err)
 	}
 
-	casino, err := s.casinos.Casino(ctx)
-	if err != nil {
-		return CasinoSettings{}, errs.Wrap("s.casinos.Casino", err)
-	}
+	settings, err := s.casinos.Settings(ctx)
 
-	bets, err := s.casinos.Bets(ctx)
-	if err != nil {
-		return CasinoSettings{}, errs.Wrap("s.casinos.Bets", err)
-	}
-
-	stats, err := s.casinos.Stats(ctx)
-	if err != nil {
-		return CasinoSettings{}, errs.Wrap("s.casinos.Stats", err)
-	}
-
-	return CasinoSettings{Casino: casino, Bets: bets, Stats: stats}, nil
+	return settings, errs.Wrap("s.casinos.Settings", err)
 }
 
 // SetCasino changes the price, the prizes and the odds; user.ErrNotAdmin.
@@ -157,14 +150,6 @@ func (s *CasinoService) Spin(ctx context.Context, userID uuid.UUID) (Spin, error
 	}
 
 	return spin, nil
-}
-
-// Bets are how much may be bet and how much of it comes back; anyone may
-// ask.
-func (s *CasinoService) Bets(ctx context.Context) (user.CasinoBets, error) {
-	bets, err := s.casinos.Bets(ctx)
-
-	return bets, errs.Wrap("s.casinos.Bets", err)
 }
 
 // SetBets changes the limits and the return of the bets; user.ErrNotAdmin.

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/user/internal/service"
 	"github.com/vexner67/freenet/user/internal/user"
 )
 
@@ -94,20 +95,20 @@ func (r *CasinoRepository) CountBet(ctx context.Context, spent, won int64) error
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.stats.Bets++
-	r.stats.BetSpent += spent
-	r.stats.BetWon += won
+	r.stats.Wagers++
+	r.stats.WagerSpent += spent
+	r.stats.WagerWon += won
 
 	return nil
 }
 
-func (r *CasinoRepository) Stats(ctx context.Context) (user.CasinoStats, error) {
+func (r *CasinoRepository) Settings(ctx context.Context) (service.CasinoSettings, error) {
 	if err := ctx.Err(); err != nil {
-		return user.CasinoStats{}, errs.Wrap("ctx.Err", err)
+		return service.CasinoSettings{}, errs.Wrap("ctx.Err", err)
 	}
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	return r.stats, nil
+	return service.CasinoSettings{Casino: r.casino, Bets: r.bets, Stats: r.stats}, nil
 }
