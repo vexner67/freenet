@@ -1497,6 +1497,7 @@ type harness struct {
 	ads           *fakeAds
 	decor         *fakeDecor
 	casino        *fakeCasino
+	bets          *fakeBets
 	documents     *fakeDocuments
 	stories       *fakeStories
 	previews      *fakePreviews
@@ -1524,6 +1525,7 @@ func newHarness(cfg rest.Config) harness {
 		ads:           &fakeAds{},
 		decor:         &fakeDecor{mode: "auto"},
 		casino:        &fakeCasino{},
+		bets:          &fakeBets{},
 		faves:         &fakeFaves{},
 		documents:     &fakeDocuments{},
 		stories:       &fakeStories{},
@@ -1547,6 +1549,7 @@ func newHarness(cfg rest.Config) harness {
 		Ads:           h.ads,
 		Decor:         h.decor,
 		Casino:        h.casino,
+		Bets:          h.bets,
 		Faves:         h.faves,
 		Documents:     h.documents,
 		Stories:       h.stories,

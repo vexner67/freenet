@@ -122,6 +122,7 @@ func TestPages(t *testing.T) {
 		{"/admin/gifts", 200, "ADMIN", true},
 		{"/admin/decor", 200, "ADMIN", true},
 		{"/admin/casino", 200, "ADMIN", true},
+		{"/admin/bets", 200, "ADMIN", true},
 		{"/admin/ads", 200, "ADMIN", true},
 		{"/admin/ads/new", 200, "ADMIN", true},
 		{"/admin/ads/0193", 200, "ADMIN", true},
