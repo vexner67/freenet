@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -1042,4 +1042,36 @@ test('the greeting under the fir tree is of the year to come, then of the year c
   assert.equal(newYearGreeting(new Date(2026, 9, 20)), 'С наступающим Новым годом!');
   assert.equal(newYearGreeting(new Date(2027, 0, 1)), 'С Новым годом!');
   assert.equal(newYearGreeting(new Date(2027, 0, 14)), 'С Новым годом!');
+});
+
+test('casino: chances, return and payout', () => {
+  const prizes = [{ votes: 0, weight: 50 }, { votes: 5, weight: 25 }, { votes: 10, weight: 12 }, { votes: 20, weight: 8 }, { votes: 50, weight: 4 }, { votes: 100, weight: 1 }];
+
+  assert.deepEqual(casinoChances(prizes), [50, 25, 12, 8, 4, 1]);
+  assert.deepEqual(casinoChances([{ votes: 5, weight: 0 }, { votes: 9, weight: '' }]), [0, 0]);
+  assert.equal(casinoChance(12.345), '12,3 %');
+  assert.equal(casinoReturn(10, prizes), '70,5 %');
+  assert.equal(casinoReturn(0, prizes), '—');
+  assert.equal(casinoReturn(10, [{ votes: 5, weight: 0 }]), '—');
+  assert.equal(casinoPayout({ spent: 40, won: 30 }), '75 %');
+  assert.equal(casinoPayout({ spent: 0, won: 0 }), '—');
+  assert.equal(casinoPrize(0), 'Пусто');
+  assert.equal(casinoPrize(50), '50 голосов');
+  assert.equal(spinsCount(1), '1 прокрутка');
+  assert.equal(spinsCount(3), '3 прокрутки');
+  assert.equal(spinsCount(11), '11 прокруток');
+});
+
+test('casino: the highlight runs whole rounds and stops on the prize', () => {
+  const plan = casinoPlan(6, 0, 4, 2);
+
+  assert.equal(plan.length, 2 * 6 + 4);
+  assert.equal(plan[0].cell, 1);
+  assert.equal(plan.at(-1).cell, 4);
+  assert.ok(plan.every((step, i) => i === 0 || step.delay >= plan[i - 1].delay), 'it only slows down');
+
+  // Stopping where it stands takes a whole round more.
+  assert.equal(casinoPlan(6, 3, 3, 1).length, 12);
+  assert.equal(casinoPlan(6, 3, 3, 1).at(-1).cell, 3);
+  assert.deepEqual(casinoPlan(0, 0, 0), []);
 });

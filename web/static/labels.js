@@ -955,6 +955,71 @@ export function adRate({ views, clicks }) {
   return `${lang === 'en' ? percent : percent.replace('.', ',')} %`;
 }
 
+// share is a share in percents with one decimal, as the admin panel says
+// it: "4,2 %".
+function share(value) {
+  const percent = String(Math.round(value * 10) / 10);
+
+  return `${lang === 'en' ? percent : percent.replace('.', ',')} %`;
+}
+
+// casinoChances are the chances of the prizes of the casino, in percents:
+// each weight among all weights; none when no prize has a weight.
+export function casinoChances(prizes) {
+  const weights = prizes.map((p) => Math.max(0, Number(p.weight) || 0));
+  const total = weights.reduce((sum, w) => sum + w, 0);
+
+  return weights.map((w) => (total > 0 ? (w * 100) / total : 0));
+}
+
+// casinoChance is a chance as the admin panel says it: "12,5 %".
+export function casinoChance(percent) {
+  return share(percent);
+}
+
+// casinoReturn is the share of the votes spent on spins the casino gives
+// back, on average by its odds or in fact by its stats: "70,5 %"; "—"
+// with nothing to say it from.
+export function casinoReturn(price, prizes) {
+  const chances = casinoChances(prizes);
+  if (!(price > 0) || !chances.some((c) => c > 0)) return '—';
+
+  const won = prizes.reduce((sum, p, i) => sum + (Math.max(0, Number(p.votes) || 0) * chances[i]) / 100, 0);
+
+  return share((won * 100) / price);
+}
+
+export function casinoPayout({ spent, won }) {
+  return spent > 0 ? share((won * 100) / spent) : '—';
+}
+
+// casinoPrize is a prize as the casino shows it: "50 голосов", and
+// "Пусто" for nothing.
+export function casinoPrize(votes) {
+  return votes > 0 ? votesCount(votes) : tr('Пусто');
+}
+
+// spinsCount is "1 прокрутка", "5 прокруток".
+export function spinsCount(n) {
+  return `${n} ${plural(n, ['прокрутка', 'прокрутки', 'прокруток'])}`;
+}
+
+// casinoPlan is the path of the highlight over the cells of the casino
+// before it stops on the prize won: from the cell after start, round
+// after round, each step a little slower — the delays, in milliseconds,
+// with the cell each lights.
+export function casinoPlan(cells, start, prize, rounds = 3) {
+  if (cells < 1) return [];
+
+  const steps = rounds * cells + ((prize - start + cells) % cells || cells);
+
+  return Array.from({ length: steps }, (_, i) => ({
+    cell: (start + i + 1) % cells,
+    // Fast at first, slowing down to the last steps, as a wheel does.
+    delay: Math.round(40 + 360 * (i / steps) ** 3),
+  }));
+}
+
 // stickersCount is openvk's "stickers_count": "1 стикер", "5 стикеров";
 // installsCount is "stickers_installs_count": "2 установки".
 export function stickersCount(n) {
@@ -1389,6 +1454,11 @@ const errorTexts = {
   'gift caption is too long': tr('Сообщение слишком длинное: не больше 250 символов.'),
   'gift not found': tr('Подарок не найден.'),
   'not enough votes': tr('У вас недостаточно голосов.'),
+  'a spin must cost from 1 to 10000 votes': tr('Прокрутка должна стоить от 1 до 10 000 голосов.'),
+  'the casino must have from 2 to 12 prizes': tr('В казино должно быть от 2 до 12 призов.'),
+  'a prize must be from 0 to 1000000 votes': tr('Приз — от 0 до 1 000 000 голосов.'),
+  'the weight of a prize must be from 0 to 1000000': tr('Вес приза — от 0 до 1 000 000.'),
+  'at least one prize must have a weight': tr('Хотя бы у одного приза вес должен быть больше нуля.'),
   'invalid sticker': tr('Такого стикера нет.'),
   'you do not have this sticker': tr('Набор с этим стикером не добавлен.'),
   'a sticker goes alone': tr('Стикер отправляется отдельным сообщением.'),

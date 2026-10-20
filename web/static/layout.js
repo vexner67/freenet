@@ -454,6 +454,7 @@ export function applyInterface(me) {
     el('div', { className: 'menu-divider' }),
     el('a', { href: '/stickers', textContent: tr('Стикеры') }),
     el('a', { href: '/docs', textContent: tr('Документы') }),
+    el('a', { href: '/casino', textContent: tr('Казино') }),
     accountsLink(me),
     el('a', { href: '/search', textContent: tr('Поиск') }),
     // The administrators of the site have openvk's "Админ-панель" under

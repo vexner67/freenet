@@ -292,6 +292,12 @@ input, select, textarea { font-size: 16px !important; }
 .story-viewer { background: rgba(0, 0, 0, 1); }
 .story-viewer .viewer-nav { display: none; }
 
+/* The casino: the balance over the prizes, three cells in a row. */
+.casino { flex-direction: column-reverse; align-items: stretch; }
+.casino-balance { width: auto; }
+.casino-board { grid-template-columns: repeat(3, 1fr); }
+.casino-controls .button { width: 100%; }
+
 /* Windows: from the top, scrolled when taller than the screen. */
 .modal { align-items: flex-start; padding: 8px; overflow-y: auto; }
 
