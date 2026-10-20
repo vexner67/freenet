@@ -1272,7 +1272,7 @@ message SetVerifiedRequest {
 
 message SetAlertRequest {
   string user_id = 1;
-  // One line of up to 1000 characters; "" takes the label.
+  // Up to 20 lines and 1000 characters; "" takes the label.
   string alert = 2;
 }
 

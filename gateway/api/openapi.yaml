@@ -4844,7 +4844,7 @@ paths:
         schema: { type: string }
     put:
       summary: Put a label on a page
-      description: 'Only for the administrators: the page wears the orange label of openvk ("user-alert") above its name with these words (one line, up to 1000 characters; for example the marking of a foreign agent). It replaces the label the page had. Nobody is notified.'
+      description: 'Only for the administrators: the page wears the orange label of openvk ("user-alert") above its name with these words (up to 20 lines and 1000 characters; for example the marking of a foreign agent). It replaces the label the page had. Nobody is notified.'
       security: [{ bearer: [] }]
       requestBody:
         required: true

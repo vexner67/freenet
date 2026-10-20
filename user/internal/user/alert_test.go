@@ -24,7 +24,9 @@ func TestNewAlert(t *testing.T) {
 		{name: "at the limit", in: strings.Repeat("я", 1000), want: user.Alert(strings.Repeat("я", 1000))},
 		{name: "too long", in: strings.Repeat("я", 1001), err: user.ErrAlertTooLong},
 		{name: "invisible", in: "текст\u200b", err: user.ErrInvisibleText},
-		{name: "two lines", in: "один\nдва", err: user.ErrAlertLines},
+		{name: "lines", in: " первый миллионер \r\n\n  олд\n", want: "первый миллионер\nолд"},
+		{name: "at the line limit", in: strings.Repeat("я\n", 20), want: user.Alert(strings.TrimSuffix(strings.Repeat("я\n", 20), "\n"))},
+		{name: "too many lines", in: strings.Repeat("я\n", 21), err: user.ErrAlertLines},
 	}
 
 	for _, tt := range tests {

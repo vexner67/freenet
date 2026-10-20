@@ -8087,7 +8087,7 @@ func (x *SetVerifiedRequest) GetVerified() bool {
 type SetAlertRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	UserId string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	// One line of up to 1000 characters; "" takes the label.
+	// Up to 20 lines and 1000 characters; "" takes the label.
 	Alert         string `protobuf:"bytes,2,opt,name=alert,proto3" json:"alert,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
