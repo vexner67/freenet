@@ -862,3 +862,24 @@ func fromProtoDecor(d userv1.Decor) (user.Decor, error) {
 		return "", user.ErrDecorInvalid
 	}
 }
+
+func toProtoCasinoPrizes(prizes []user.CasinoPrize) []*userv1.CasinoPrize {
+	out := make([]*userv1.CasinoPrize, 0, len(prizes))
+	for _, p := range prizes {
+		out = append(out, &userv1.CasinoPrize{
+			Votes:  p.Votes,
+			Weight: int32(p.Weight), //nolint:gosec // at most user.MaxCasinoWeight
+		})
+	}
+
+	return out
+}
+
+func fromProtoCasinoPrizes(prizes []*userv1.CasinoPrize) []user.CasinoPrize {
+	out := make([]user.CasinoPrize, 0, len(prizes))
+	for _, p := range prizes {
+		out = append(out, user.CasinoPrize{Votes: p.GetVotes(), Weight: int(p.GetWeight())})
+	}
+
+	return out
+}

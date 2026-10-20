@@ -66,6 +66,8 @@ type Config struct {
 	// Views of ads in the feed and clicks on them, each counted apart:
 	// one who scrolls a long feed sees an ad every eight posts.
 	AdEventLimits ratelimit.Rules `env:"RATE_LIMIT_AD_EVENTS" envDefault:"60/1m,3000/24h"`
+	// Spins of the casino.
+	CasinoLimits ratelimit.Rules `env:"RATE_LIMIT_CASINO" envDefault:"30/1m,1000/24h"`
 
 	// AdminEmails are the emails of the people who run the site: they make
 	// the vouchers. Nobody without it.

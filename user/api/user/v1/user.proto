@@ -165,6 +165,16 @@ service UserService {
   rpc GetDecor(GetDecorRequest) returns (GetDecorResponse);
   rpc SetDecor(SetDecorRequest) returns (google.protobuf.Empty);
 
+  // The casino of the site: a spin costs votes and wins votes back.
+  // GetCasino is public and does not tell the odds; GetCasinoSettings and
+  // SetCasino are for the administrators (PermissionDenied for others);
+  // SpinCasino spends the price and pays the prize in one transaction
+  // (FailedPrecondition "not enough votes").
+  rpc GetCasino(GetCasinoRequest) returns (GetCasinoResponse);
+  rpc GetCasinoSettings(GetCasinoSettingsRequest) returns (GetCasinoSettingsResponse);
+  rpc SetCasino(SetCasinoRequest) returns (google.protobuf.Empty);
+  rpc SpinCasino(SpinCasinoRequest) returns (SpinCasinoResponse);
+
   // Requires an access token of an administrator of the site
   // (PermissionDenied otherwise): gives a page the checkmark of a
   // confirmed one ("Верификация" of openvk) or takes it.
@@ -1080,6 +1090,49 @@ message GetDecorResponse {
 
 message SetDecorRequest {
   Decor decor = 1;
+}
+
+// A prize of the casino, in votes (0 — nothing), and its weight among the
+// weights of all prizes: how likely it is.
+message CasinoPrize {
+  int64 votes = 1;
+  int32 weight = 2;
+}
+
+message GetCasinoRequest {}
+
+message GetCasinoResponse {
+  // What a spin costs, in votes.
+  int64 price = 1;
+  // The votes of each prize, in the order of the prizes.
+  repeated int64 prizes = 2;
+}
+
+message GetCasinoSettingsRequest {}
+
+message GetCasinoSettingsResponse {
+  int64 price = 1;
+  repeated CasinoPrize prizes = 2;
+  // How the casino does: spins made, votes spent on them and won.
+  int64 spins = 3;
+  int64 spent = 4;
+  int64 won = 5;
+}
+
+message SetCasinoRequest {
+  int64 price = 1;
+  repeated CasinoPrize prizes = 2;
+}
+
+message SpinCasinoRequest {}
+
+message SpinCasinoResponse {
+  // The index of the prize won.
+  int32 prize = 1;
+  // The votes it won.
+  int64 votes = 2;
+  // The balance after the spin.
+  int64 balance = 3;
 }
 
 message SetVerifiedRequest {
