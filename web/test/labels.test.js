@@ -1019,3 +1019,10 @@ test('the plaque of a foreign agent names the person', () => {
   assert.equal(foreignAgentText({ name: 'Пётр', surname: 'Петров', gender: 'male' }),
     'Данное сообщение (материал) создано и (или) распространено иностранным агентом Петром Петровым либо касается деятельности иностранного агента Петра Петрова.');
 });
+
+test('adDue: an ad after the third post, then after every eighth', async () => {
+  const { adDue } = await import('../static/labels.js');
+  const due = Array.from({ length: 30 }, (_, i) => i + 1).filter(adDue);
+  assert.deepEqual(due, [3, 11, 19, 27]);
+  assert.equal(adDue(0), false);
+});

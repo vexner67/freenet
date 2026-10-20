@@ -8,6 +8,7 @@ import { initPollDraft } from './poll.js';
 import { initTimer, postponedNotice } from './postponed.js';
 import { openFeedSettings, readFeedSettings } from './feedsettings.js';
 import { initStoryBar } from './stories.js';
+import { adStream } from './ads.js';
 import { tr } from './i18n.js';
 
 // openvk's limit of a post; the counter shows near the end.
@@ -28,6 +29,11 @@ const showIgnored = new URLSearchParams(location.search).get(SHOW_IGNORED) === '
 
 let cursor = '';
 
+// The ads of the global feed, slipped between its posts; the news of
+// those I follow have none.
+let ads = [];
+let withAds = (nodes) => nodes;
+
 function feedPage() {
   return api.feed(cursor, isMicroblog(), all, { limit: settings.posts, alien: settings.alien, ignored: showIgnored });
 }
@@ -39,7 +45,7 @@ async function loadMore(me) {
     const page = await (cursor ? feedPage() : first ?? feedPage());
     first = null;
 
-    $('posts').append(...page.posts.map((post) => feedNode(post, me)));
+    $('posts').append(...withAds(page.posts.map((post) => feedNode(post, me))));
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
     showEmpty();
@@ -79,6 +85,7 @@ function applySettings(me, chosen, withIgnored) {
 
 function reload(me) {
   cursor = '';
+  if (all) withAds = adStream(ads);
   $('posts').replaceChildren();
   $('more').hidden = true;
   loadMore(me);
@@ -234,6 +241,8 @@ function gone(node, text) {
 // The page is asked for with who is signed in, in one round trip.
 let first = started(feedPage());
 const stories = started(api.stories());
+// An ad that does not come leaves the feed as it is.
+const shownAds = all ? started(api.ads()).catch(() => ({ ads: [] })) : null;
 const me = await currentUser().catch(() => null);
 if (!me) {
   location.replace('/');
@@ -250,5 +259,9 @@ if (!me) {
     onApply: (chosen, withIgnored) => applySettings(me, chosen, withIgnored),
     onUnignored: () => reload(me),
   }));
+  if (all) {
+    ads = (await shownAds).ads;
+    withAds = adStream(ads);
+  }
   await loadMore(me);
 }

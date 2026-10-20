@@ -199,6 +199,7 @@ a:hover { text-decoration: underline; }
 .aui-icon-dashboard { --icon: url("/static/icons/admin-dashboard.svg"); }
 .aui-icon-card { --icon: url("/static/icons/admin-card.svg"); }
 .aui-icon-gift { --icon: url("/static/icons/admin-gift.svg"); }
+.aui-icon-ad { --icon: url("/static/icons/admin-ad.svg"); }
 .aui-icon-users { --icon: url("/static/icons/admin-users.svg"); }
 .aui-icon-clubs { --icon: url("/static/icons/admin-clubs.svg"); }
 .aui-icon-ban { --icon: url("/static/icons/admin-ban.svg"); }
@@ -349,6 +350,15 @@ form.aui.admin-rate .text { width: 110px; }
 form.aui.admin-rate .description { flex-basis: 100%; max-width: none; margin-top: 0; }
 .aui-pager { margin-top: 15px; text-align: right; }
 
+/* "Реклама": each ad with its cover and site, the form's cover. */
+.admin-ad { display: flex; align-items: center; gap: 10px; }
+.admin-ad-cover { width: 64px; height: 40px; border-radius: 3px; object-fit: cover; }
+.admin-ad-site { color: var(--aui-subtle); font-size: 12px; }
+.admin-ad-text { max-width: 320px; color: var(--aui-subtle); white-space: pre-wrap; overflow-wrap: anywhere; }
+.admin-actions { display: flex; gap: 6px; }
+.admin-cover { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 8px; }
+.admin-cover img { max-width: 240px; max-height: 120px; border-radius: 3px; object-fit: cover; }
+
 /* Lozenges: the state of a voucher. */
 .aui-lozenge {
   display: inline-block;
@@ -430,7 +440,25 @@ form.aui .text {
   font: inherit;
 }
 
+form.aui .textarea {
+  display: block;
+  width: 100%;
+  max-width: 500px;
+  padding: 6px 8px;
+  border: 2px solid var(--aui-line);
+  border-radius: 3px;
+  background: var(--aui-input);
+  color: var(--aui-text);
+  font: inherit;
+  resize: vertical;
+}
+
+form.aui .file { padding: 6px 0; color: var(--aui-text); font: inherit; }
+form.aui div.checkbox { display: flex; align-items: center; gap: 6px; padding: 6px 0; }
+form.aui div.checkbox label { color: var(--aui-text); }
+
 form.aui .text:focus,
+form.aui .textarea:focus,
 form.aui .select:focus { outline: 0; border-color: var(--aui-input-focus); background: var(--aui-panel); }
 
 form.aui .select {
@@ -525,6 +553,7 @@ form.aui .description {
   }
 
   form.aui .text,
+  form.aui .textarea,
   form.aui .select { font-size: 16px; }
   .buttons-container,
   .aui-dialog .buttons-container,

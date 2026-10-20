@@ -3,7 +3,9 @@
 // of "Верификация", the plaque of a foreign agent and "Заблокировать"
 // each), "Блокировки" (/admin/bans: the pages blocked now), "Группы" (/admin/clubs: the same of groups),
 // "Ваучеры" (/admin/vouchers), the form of a new one
-// (/admin/vouchers/new) and "Подарки" (/admin/gifts: what each gift costs). The page is its own, AUI as openvk's:
+// (/admin/vouchers/new), "Подарки" (/admin/gifts: what each gift costs)
+// and "Реклама" (/admin/ads: the ads of the global feed, the form of a new
+// one at /admin/ads/new and of one at /admin/ads/<id>). The page is its own, AUI as openvk's:
 // none of the site's chrome. Only the administrators of the site
 // (ADMIN_EMAILS of the user service) get in.
 
@@ -499,11 +501,173 @@ function showRate({ kopecks }) {
   });
 }
 
+// ads is "Реклама": every ad, shown or not, with the switch of
+// "Показывать" and "Изменить" and "Удалить" each.
+async function ads(answered) {
+  function row(ad) {
+    const toggle = el('button', {
+      className: 'aui-toggle', type: 'button', title: tr('Показывать в ленте'),
+    }, el('span', { className: 'aui-toggle-knob' }));
+    toggle.setAttribute('role', 'switch');
+    toggle.setAttribute('aria-label', tr('Показывать: {0}', ad.title));
+    toggle.setAttribute('aria-checked', String(ad.active));
+
+    toggle.addEventListener('click', async () => {
+      const active = toggle.getAttribute('aria-checked') !== 'true';
+      error.hidden = true;
+      toggle.disabled = true;
+      try {
+        await api.editAd(ad.id, { active });
+        toggle.setAttribute('aria-checked', String(active));
+      } catch (e) {
+        showError(e);
+      } finally {
+        toggle.disabled = false;
+      }
+    });
+
+    const remove = el('button', { className: 'aui-button aui-button-compact', type: 'button', textContent: tr('Удалить') });
+    const line = el('tr', {},
+      el('td', {}, el('div', { className: 'admin-ad' },
+        ad.photo ? el('img', { className: 'admin-ad-cover', src: ad.photo.small, alt: '' }) : '',
+        el('div', {},
+          el('a', { href: ad.url, target: '_blank', rel: 'noopener noreferrer', textContent: ad.title }),
+          el('div', { className: 'admin-ad-site', textContent: ad.site }),
+        ),
+      )),
+      el('td', { className: 'admin-ad-text', textContent: ad.text }),
+      el('td', {}, toggle),
+      el('td', {}, el('div', { className: 'admin-actions' },
+        el('a', { className: 'aui-button aui-button-compact', href: '/admin/ads/' + encodeURIComponent(ad.id), textContent: tr('Изменить') }),
+        remove,
+      )),
+    );
+
+    remove.addEventListener('click', async () => {
+      if (!confirm(tr('Удалить объявление «{0}»?', ad.title))) return;
+
+      error.hidden = true;
+      remove.disabled = true;
+      try {
+        await api.deleteAd(ad.id);
+        line.remove();
+        showEmpty();
+      } catch (e) {
+        remove.disabled = false;
+        showError(e);
+      }
+    });
+
+    return line;
+  }
+
+  function showEmpty() {
+    const none = !$('ad-rows').children.length;
+    $('ad-table').hidden = none;
+    $('no-ads').hidden = !none;
+  }
+
+  $('ads').hidden = false;
+  const answer = await answered;
+  $('ad-rows').replaceChildren(...answer.ads.map(row));
+  showEmpty();
+}
+
+// adForm is the form of an ad: a new one without id, else the one of id
+// among answered. The cover is uploaded as soon as it is chosen.
+async function adForm(id, answered) {
+  const form = $('ad-form');
+  const submit = form.querySelector('button[type="submit"]');
+  let ad = null;
+  // cover is the cover the form shows: { id, small } or null; photo is
+  // what to send of it, undefined when it is the ad's own.
+  let cover = null;
+  let photo;
+
+  const showCover = () => {
+    $('ad-cover').hidden = !cover;
+    $('ad-cover-image').src = cover?.small ?? '';
+  };
+
+  if (id) {
+    ad = (await answered).ads.find((a) => a.id === id);
+    if (!ad) {
+      showError(tr('Такого объявления нет.'));
+      return;
+    }
+
+    $('ad-heading').textContent = tr('Объявление «{0}»', ad.title);
+    $('ad-url').value = ad.url;
+    $('ad-title').value = ad.title;
+    $('ad-text').value = ad.text;
+    $('ad-active').checked = ad.active;
+    cover = ad.photo;
+  } else {
+    photo = '';
+  }
+  showCover();
+
+  $('ad-file').addEventListener('change', async () => {
+    const file = $('ad-file').files[0];
+    if (!file) return;
+
+    error.hidden = true;
+    submit.disabled = true;
+    try {
+      cover = await api.uploadPhoto(file);
+      photo = cover.id;
+      showCover();
+    } catch (e) {
+      showError(e);
+    } finally {
+      $('ad-file').value = '';
+      submit.disabled = false;
+    }
+  });
+
+  $('ad-cover-remove').addEventListener('click', () => {
+    cover = null;
+    photo = '';
+    showCover();
+  });
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    $('ad-saved').hidden = true;
+    submit.disabled = true;
+
+    const fields = {
+      url: $('ad-url').value.trim(),
+      title: $('ad-title').value.trim(),
+      text: $('ad-text').value.trim(),
+      active: $('ad-active').checked,
+    };
+
+    try {
+      if (ad) {
+        await api.editAd(ad.id, photo === undefined ? fields : { ...fields, photo });
+      } else {
+        await api.createAd({ ...fields, photo });
+      }
+      location.assign('/admin/ads');
+    } catch (e) {
+      showError(e);
+      submit.disabled = false;
+    }
+  });
+
+  $('ad-edit').hidden = false;
+  $('ad-url').focus();
+}
+
 // The reads of the page go with /me in one round trip; a guest or one who
 // is not an administrator gets nothing from them.
 const query = new URLSearchParams(location.search).get('q')?.trim() ?? '';
 const listed = { '/admin/users': 'users', '/admin/bans': 'users', '/admin/clubs': 'clubs' }[path];
 const listPage = listed ? verifications(listed, query, path === '/admin/bans') : null;
+
+const adID = path.match(/^\/admin\/ads\/([0-9a-f-]{36})$/)?.[1] ?? '';
 
 const reads = {
   '/admin': () => started(api.about()),
@@ -512,7 +676,8 @@ const reads = {
   '/admin/clubs': () => started(listPage.first()),
   '/admin/vouchers': () => started(api.vouchers()),
   '/admin/gifts': () => ({ catalog: started(api.giftCatalog()), rate: started(api.voteRate()) }),
-}[path]?.();
+  '/admin/ads': () => started(api.ads(true)),
+}[adID ? '/admin/ads' : path]?.();
 
 const me = await currentUser().catch(() => null);
 
@@ -536,6 +701,10 @@ if (!me) {
     newVoucher();
   } else if (path === '/admin/gifts') {
     await gifts(reads).catch(showError);
+  } else if (path === '/admin/ads') {
+    await ads(reads).catch(showError);
+  } else if (path === '/admin/ads/new' || adID) {
+    await adForm(adID, reads).catch(showError);
   } else {
     showError(tr('Такой страницы нет.'));
   }
