@@ -4248,6 +4248,136 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /api/v1/ads:
+    get:
+      summary: The ads of the global feed
+      description: >-
+        Public. The shown ads, newest first, which "Все новости" slips between
+        its posts. With all=true every ad, hidden too — only for the
+        administrators of the site.
+      parameters:
+        - name: all
+          in: query
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: The ads
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ads]
+                properties:
+                  ads:
+                    type: array
+                    items: { $ref: "#/components/schemas/Ad" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: All the ads asked for by someone who is not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    post:
+      summary: Make an ad
+      description: >-
+        Only for the administrators. The link gets https:// when the scheme is
+        left out. The cover is an upload of the caller (POST /me/photos), kept
+        for good; it goes if the ad is refused. 409 when the site has 100 ads.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, title]
+              properties:
+                url: { type: string, maxLength: 2048 }
+                title: { type: string, maxLength: 100 }
+                text: { type: string, maxLength: 500 }
+                photo: { type: string, format: uuid, description: The cover; empty for none }
+                active: { type: boolean, description: Shown in the feed }
+      responses:
+        "201":
+          description: The ad
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ad" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The site has as many ads as it keeps
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/ads/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Change an ad
+      description: >-
+        Only for the administrators. Changes what the body names. photo is a new
+        upload of the caller, whose file replaces the old cover (which goes), or
+        "" to take the cover away; the cover the ad has is not named again.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url: { type: string, maxLength: 2048 }
+                title: { type: string, maxLength: 100 }
+                text: { type: string, maxLength: 500 }
+                photo: { type: string }
+                active: { type: boolean }
+      responses:
+        "200":
+          description: The ad as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Ad" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: No such ad
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      summary: Delete an ad
+      description: Only for the administrators. The cover goes with it.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: No such ad
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/vote-rate:
     get:
       summary: What a vote is worth
@@ -7313,6 +7443,19 @@ components:
         rating: { type: integer, description: The percent of rating it gives }
         usagesLeft: { type: integer, description: "How many more accounts may use it; -1 for any number, 0 when it has run out" }
         activations: { type: integer, description: How many accounts have used it }
+
+    Ad:
+      type: object
+      description: An ad of the global feed, a promoted post
+      required: [id, url, title, text, site, photo, active]
+      properties:
+        id: { type: string, format: uuid }
+        url: { type: string, description: Where it leads, http or https }
+        title: { type: string }
+        text: { type: string }
+        site: { type: string, description: 'The host of the link, without "www."' }
+        photo: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }], description: The cover }
+        active: { type: boolean, description: Shown in the feed }
 
     Backdrop:
       description: '"Фон страницы": the photos on the left and on the right of a page, of a person or a community; null for none'
