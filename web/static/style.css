@@ -124,6 +124,9 @@
   --back-2e7dd7: #2e7dd7;
   --text-fff3c4: #fff3c4;
   --text-6b0d19: #6b0d19;
+  --back-2b1055: #2b1055;
+  --back-6a3fd8: #6a3fd8;
+  --back-0b3d2e: #0b3d2e;
 }
 
 * { box-sizing: border-box; }
@@ -1860,17 +1863,20 @@ a.poll-result-name { cursor: pointer; }
 }
 .festive .casino-votes { color: var(--text-7a0f1d); text-shadow: 0 1px 0 var(--back-ffd54a); }
 .festive .casino-empty .casino-votes { color: var(--text-aaa); text-shadow: none; }
+/* The lit cell glows softly around, not over its number: the number
+   stays easy to read. */
 .festive .casino-cell.lit {
   z-index: 1;
-  border-color: var(--line-fff);
-  background: radial-gradient(circle, var(--text-fff3c4), var(--back-ffd54a));
-  box-shadow: 0 0 14px 4px var(--back-ffd54a), 0 0 30px 6px rgba(255, 120, 0, 0.6);
-  transform: scale(1.12);
+  border-color: var(--line-e2b24a);
+  background: var(--back-fff);
+  box-shadow: 0 0 0 2px var(--back-ffd54a), 0 0 10px 2px var(--back-ffd54a);
+  transform: scale(1.06);
 }
+.festive .casino-cell.lit .casino-votes { text-shadow: none; }
 .festive .casino-cell.won { animation: casino-jackpot 0.35s ease-in-out 8 alternate; }
 @keyframes casino-jackpot {
-  from { box-shadow: 0 0 10px 3px var(--back-ffd54a); transform: scale(1.1) rotate(-2deg); }
-  to { box-shadow: 0 0 34px 12px var(--back-d23a32); transform: scale(1.22) rotate(2deg); }
+  from { box-shadow: 0 0 0 2px var(--back-ffd54a), 0 0 6px 2px var(--back-ffd54a); transform: scale(1.04); }
+  to { box-shadow: 0 0 0 2px var(--back-d23a32), 0 0 16px 5px var(--back-ffd54a); transform: scale(1.1); }
 }
 .festive .casino-multiplier:hover { box-shadow: 0 0 10px var(--back-ffd54a); }
 
@@ -1951,7 +1957,119 @@ a.poll-result-name { cursor: pointer; }
 @keyframes casino-fall {
   to { transform: translate(var(--dx, 0), 110vh) rotate(var(--turn, 720deg)); }
 }
+/* The jackpot (jackpot.js): a win of a million over the whole screen —
+   a flash, turning rays, fireworks, a rain of coins and a gold card with
+   the number counting up. The New Year (html.festive) is red and green,
+   with gifts and snow in the rain. */
+.jackpot {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: radial-gradient(circle, var(--back-6a3fd8), var(--back-2b1055) 70%);
+  animation: jackpot-in 0.4s ease-out;
+}
+.jackpot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--back-fff);
+  opacity: 0;
+  animation: jackpot-flash 0.9s ease-out;
+  pointer-events: none;
+}
+.jackpot-rays {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 260vmax;
+  height: 260vmax;
+  margin: -130vmax 0 0 -130vmax;
+  background: repeating-conic-gradient(var(--back-ffd54a) 0 9deg, transparent 9deg 18deg);
+  opacity: 0.22;
+  animation: jackpot-spin 14s linear infinite;
+}
+.jackpot-card {
+  position: relative;
+  z-index: 4;
+  width: min(380px, calc(100vw - 32px));
+  padding: 22px 18px 18px;
+  border: 4px solid var(--line-e2b24a);
+  border-radius: 14px;
+  background: linear-gradient(160deg, var(--back-fff3c4), var(--back-ffd54a));
+  box-shadow: 0 0 40px 10px rgba(255, 213, 74, 0.7), 0 10px 30px rgba(0, 0, 0, 0.4);
+  color: var(--text-6b0d19);
+  text-align: center;
+  animation: jackpot-pop 0.8s cubic-bezier(0.2, 1.7, 0.4, 1) both, jackpot-float 2.4s ease-in-out 0.8s infinite;
+}
+.jackpot-kicker { font-size: 13px; font-weight: bold; letter-spacing: 4px; text-transform: uppercase; }
+.jackpot-title {
+  margin: 4px 0 8px;
+  background: linear-gradient(90deg, var(--back-d23a32), var(--back-6a3fd8), var(--back-d23a32), var(--back-6a3fd8));
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 40px;
+  font-weight: bold;
+  line-height: 46px;
+  text-transform: uppercase;
+  animation: casino-shimmer 1.6s linear infinite, jackpot-shake 0.5s ease-in-out 0.8s 3;
+}
+.jackpot-sum { font-size: 44px; font-weight: bold; line-height: 50px; font-variant-numeric: tabular-nums; }
+.jackpot-sum.jackpot-done { animation: jackpot-bump 0.7s cubic-bezier(0.2, 1.8, 0.4, 1); }
+.jackpot-unit { font-size: 15px; font-weight: bold; }
+.jackpot-note { margin: 10px 0 14px; font-size: 13px; }
+.jackpot .jackpot-take { padding: 9px 30px; border: 1px solid var(--line-e2b24a); border-radius: 4px; background: linear-gradient(var(--back-d23a32), var(--back-a01e28)); color: var(--text-fff3c4); font-size: 14px; font-weight: bold; animation: casino-glow 1.2s ease-in-out infinite; }
+.jackpot-rain, .jackpot-fireworks { position: absolute; inset: 0; pointer-events: none; }
+.jackpot-rain { z-index: 3; }
+.jackpot-piece { position: absolute; top: -60px; animation: jackpot-fall var(--fall, 3s) linear infinite; }
+@keyframes jackpot-fall { to { transform: translate(var(--dx, 0), 115vh) rotate(var(--turn, 360deg)); } }
+.jackpot-burst { position: absolute; width: 0; height: 0; }
+.jackpot-spark {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: -3px;
+  border-radius: 50%;
+  background: var(--back-ffd54a);
+  box-shadow: 0 0 6px 2px var(--back-ffd54a);
+  opacity: 0;
+  animation: jackpot-spark 1.4s ease-out infinite;
+}
+.jackpot-spark:nth-child(3n) { background: var(--back-d23a32); box-shadow: 0 0 6px 2px var(--back-d23a32); }
+.jackpot-spark:nth-child(3n + 1) { background: var(--back-2e7dd7); box-shadow: 0 0 6px 2px var(--back-2e7dd7); }
+@keyframes jackpot-spark {
+  0% { opacity: 1; transform: translate(0, 0) scale(1.4); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--x, 0px), calc(var(--y, 0px) + 30px)) scale(0.4); }
+}
+@keyframes jackpot-in { from { opacity: 0; } }
+@keyframes jackpot-flash { 0% { opacity: 0.95; } 100% { opacity: 0; } }
+@keyframes jackpot-spin { to { transform: rotate(360deg); } }
+@keyframes jackpot-pop { 0% { transform: scale(0.1) rotate(-20deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes jackpot-float { 50% { transform: translateY(-8px) scale(1.02); } }
+@keyframes jackpot-shake { 25% { transform: rotate(-4deg) scale(1.08); } 75% { transform: rotate(4deg) scale(1.08); } }
+@keyframes jackpot-bump { 40% { transform: scale(1.35); } }
+
+/* The New Year jackpot: a night of red and green with gold rays, the
+   card a gift with a ribbon, a rain of gifts, trees and snowflakes. */
+.jackpot-festive { background: url("/static/newyear/flakes.svg"), radial-gradient(circle, var(--back-d23a32), var(--back-7a0f1d) 55%, var(--back-0b3d2e)); }
+.jackpot-festive .jackpot-rays { background: repeating-conic-gradient(var(--back-ffd54a) 0 7deg, transparent 7deg 15deg, var(--back-43a047) 15deg 22deg, transparent 22deg 30deg); opacity: 0.25; }
+.jackpot-festive .jackpot-card {
+  padding-top: 30px;
+  border: 6px solid transparent;
+  background:
+    linear-gradient(160deg, var(--back-fff), var(--text-fff3c4)) padding-box,
+    repeating-linear-gradient(-45deg, var(--back-d23a32) 0 10px, var(--back-fff) 10px 20px, var(--back-43a047) 20px 30px, var(--back-fff) 30px 40px) border-box;
+}
+.jackpot-festive .jackpot-card::before { content: "🎄 🎅 🎄"; position: absolute; top: -30px; left: 0; right: 0; font-size: 30px; animation: casino-wiggle 1s ease-in-out infinite; }
+.jackpot-festive .jackpot-title { background-image: linear-gradient(90deg, var(--back-d23a32), var(--back-43a047), var(--back-d23a32), var(--back-43a047)); font-size: 30px; line-height: 36px; }
 @media (prefers-reduced-motion: reduce) {
+  .jackpot, .jackpot::before, .jackpot-rays, .jackpot-card, .jackpot-title, .jackpot-sum.jackpot-done, .jackpot .jackpot-take, .jackpot-festive .jackpot-card::before { animation: none; }
   .casino-cell.won, .festive .casino-cell.won, .festive .casino-festive-text, .festive .casino-festive-text::before, .festive .casino-festive-text::after,
   .festive .casino-board::before, .festive .casino-board::after, .festive .casino-multipliers::before, .festive .casino-multipliers::after,
   .festive .casino-controls .button, .festive .casino-controls .button::after, .festive .casino-win, .casino-balance .finance-votes.bump { animation: none; }
