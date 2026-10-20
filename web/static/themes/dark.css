@@ -38,6 +38,7 @@
   --back-595959: #4a4a4a;
   --back-444: #3a3a3a;
   --back-3e3e3e: #222222;
+  --back-d23a32: #b03029;
   /* Text */
   --text-58462a: #e8c99a;
   --text-000: #d4d4d4;
@@ -167,3 +168,7 @@ input:focus, select:focus, textarea:focus,
 .poll-meta { color: #b0b0b0; }
 .poll-remove:hover { color: #ccc; }
 .ignored-row { border-bottom-color: #333; }
+
+/* The New Year decoration: the drifts and the snow on photos dimmed. */
+.festive .layout::after, .festive .post > .post-avatar::before { opacity: 0.55; }
+.festive .layout::before { box-shadow: 0 0 12px rgba(0, 0, 0, 0.5); }

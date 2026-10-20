@@ -42,6 +42,7 @@
   --back-595959: #595959;
   --back-444: #444;
   --back-3e3e3e: #3e3e3e;
+  --back-d23a32: #d23a32;
   /* Text */
   --text-000: #000;
   --text-58462a: #58462a;
@@ -202,6 +203,91 @@ h1.page-title { font-size: inherit; }
   height: 20px;
   background: url("/static/newyear/hat.svg") center / contain no-repeat;
   transform: rotate(-18deg);
+  pointer-events: none;
+}
+
+/* The page stands as a white column on a pale winter sky with flakes,
+   as the holiday skins of the late 2000s did. */
+.festive body { background: var(--back-f2f5f8) url("/static/newyear/flakes.svg"); }
+.festive .layout { position: relative; min-height: 100vh; }
+.festive .layout::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -10px;
+  right: -10px;
+  background: var(--back-fff);
+  box-shadow: 0 0 12px rgba(80, 110, 140, 0.18);
+  z-index: -1;
+}
+
+/* A snowflake before the title of the page. */
+.festive .page-title {
+  padding-left: 26px;
+  background: var(--back-eee5b8) url("/static/newyear/snowflake.svg") no-repeat 8px 50%;
+}
+
+/* The bar over a block gets a candy-cane edge and, where nothing stands
+   at its right, a sprig of holly. */
+.festive .section-title::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: repeating-linear-gradient(-45deg, var(--back-d23a32) 0 4px, var(--back-fff) 4px 8px);
+}
+.festive .section-title:not(:has(.title-link))::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  width: 22px;
+  height: 14px;
+  background: url("/static/newyear/holly.svg") no-repeat;
+}
+
+/* Snow lies on the photos of the authors and on the buttons. */
+.festive .post > .post-avatar { position: relative; }
+.festive .post > .post-avatar::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: -3px;
+  width: 56px;
+  height: 14px;
+  background: url("/static/newyear/cap.svg") no-repeat;
+  pointer-events: none;
+}
+/* A bauble hangs at the right of the bar over a post. */
+.festive .post-author { position: relative; }
+.festive body:not(.posts-microblog) .post > .post-main > .post-author::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: 10px;
+  width: 12px;
+  height: 20px;
+  background: url("/static/newyear/bauble.svg") no-repeat;
+  pointer-events: none;
+}
+.festive .button { background-image: url("/static/newyear/snowcap.svg"); background-repeat: repeat-x; background-position: 0 0; }
+
+/* The unread counter is a red bauble. */
+.festive .menu .counter { background: var(--back-d23a32); border-radius: 8px; color: var(--text-fff); }
+
+/* Snowdrifts at the bottom of the column. */
+.festive .layout { padding-bottom: 26px; }
+.festive .layout::after {
+  content: "";
+  position: absolute;
+  left: -10px;
+  right: -10px;
+  bottom: 0;
+  height: 26px;
+  background: url("/static/newyear/drift.svg") repeat-x 0 100%;
   pointer-events: none;
 }
 
@@ -1767,6 +1853,8 @@ a.poll-result-name { cursor: pointer; }
   .sidebar:has(> .menu) { display: none; }
   .menu-open .sidebar:has(> .menu) { display: block; border-bottom: 1px solid var(--line-e0e0e0); }
   /* Under the menu of a phone, the greeting without the tree. */
+  .festive .layout::before,
+  .festive .layout::after { left: 0; right: 0; box-shadow: none; }
   .newyear { margin: 6px 0 8px; }
   .newyear-tree { display: none; }
   .menu a { margin: 0; padding: 9px 12px; border-top: 1px solid var(--line-ececec); }
