@@ -6,13 +6,16 @@ import (
 	"unicode/utf8"
 )
 
-// maxAlertLength bounds the label: a longer one would push the page down.
-const maxAlertLength = 1000
+const (
+	// maxAlertLength bounds the label: a longer one would push the page down.
+	maxAlertLength = 1000
+	// maxAlertLines bounds its lines: a list of achievements, not a wall.
+	maxAlertLines = 20
+)
 
 var (
 	ErrAlertTooLong = errors.New("the label is too long")
-	// ErrAlertLines: the label is one line, as openvk shows it.
-	ErrAlertLines = errors.New("the label must be one line")
+	ErrAlertLines   = errors.New("the label has too many lines")
 )
 
 // Alert is the orange label of openvk ("user-alert") the administrators of
@@ -21,16 +24,27 @@ var (
 // label.
 type Alert string
 
-// NewAlert is the label of s, one line; "" takes the label away.
+// NewAlert is the label of s, which may be a list of lines (achievements,
+// one under another); "" takes the label away. Spaces at the ends of the
+// lines and empty lines go: they would only make the plaque taller.
 func NewAlert(s string) (Alert, error) {
-	s, err := visibleText(s)
+	s, err := visibleText(strings.ReplaceAll(s, "\r\n", "\n"))
 	if err != nil {
 		return "", err
 	}
 
-	if strings.ContainsAny(s, "\r\n") {
+	var lines []string
+	for _, line := range strings.Split(s, "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			lines = append(lines, line)
+		}
+	}
+
+	if len(lines) > maxAlertLines {
 		return "", ErrAlertLines
 	}
+
+	s = strings.Join(lines, "\n")
 
 	if utf8.RuneCountInString(s) > maxAlertLength {
 		return "", ErrAlertTooLong
