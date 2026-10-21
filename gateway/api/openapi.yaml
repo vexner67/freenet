@@ -4619,7 +4619,7 @@ paths:
   /api/v1/casino/bets:
     put:
       summary: Change the bets of the casino
-      description: 'Only for the administrators of the site: the least and the most of a bet (1–1000000) and 1–10 different multipliers, each with the chance it wins with.'
+      description: 'Only for the administrators of the site: the least and the most of a bet (1–100000000) and 1–10 different multipliers, each with the chance it wins with.'
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -4630,7 +4630,7 @@ paths:
               required: [least, most, multipliers]
               properties:
                 least: { type: integer, format: int64, minimum: 1 }
-                most: { type: integer, format: int64, maximum: 1000000 }
+                most: { type: integer, format: int64, maximum: 100000000 }
                 multipliers:
                   type: array
                   minItems: 1
@@ -4739,7 +4739,7 @@ paths:
         schema: { type: string }
     post:
       summary: Stake votes on an outcome
-      description: 'Takes your votes (1–1000000) and puts them on the outcome, added to what you staked on it before; you may stake on several outcomes. 409 when the event takes no stakes or your votes are short. Rate limited, with the casino''s limit counted apart.'
+      description: 'Takes your votes (1–100000000) and puts them on the outcome, added to what you staked on it before; you may stake on several outcomes. 409 when the event takes no stakes or your votes are short. Rate limited, with the casino''s limit counted apart.'
       security: [{ bearer: [] }]
       requestBody:
         required: true
