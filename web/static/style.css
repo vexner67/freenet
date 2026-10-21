@@ -2129,6 +2129,8 @@ a.poll-result-name { cursor: pointer; }
 .bank-totals > div { flex: 1; padding: 8px 10px; border: 1px solid var(--line-dedede); background: var(--back-fff); }
 .bank-totals span { display: block; color: var(--text-808080); }
 .bank-totals b { font-size: 16px; }
+.treasury-figures { flex-wrap: wrap; }
+.treasury-figures > div { flex: 1 1 30%; }
 .bank-in { color: var(--text-43a047); }
 .bank-out { color: var(--text-d94c4c); }
 .bank-flows { margin: 0 0 8px; padding: 6px; }

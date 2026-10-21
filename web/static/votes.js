@@ -4,7 +4,8 @@
 // recipient; the fee is shown as the votes are typed), "Пополнить"
 // (?act=top-up: a voucher), "Получить" (?act=receive: the link that opens a
 // transfer to you) and "Рейтинг" (?act=rating: openvk's "Повысить
-// рейтинг", for votes into the treasury).
+// рейтинг", for votes into the treasury) and "Казна" (?act=treasury: what
+// the treasury of the site holds and what the pages hold).
 
 import { api, currentUser, started } from './api.js';
 import { MAX_RATING, RATING_PRICE, formatDateTime, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, votesFontSize, voucherGave } from './labels.js';
@@ -12,7 +13,7 @@ import { $, el, fullName, pagePath, renderChrome, showError, hideError, verified
 import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
-const tabs = { transfer: initTransfer, 'top-up': initTopUp, receive: initReceive, rating: initRating };
+const tabs = { transfer: initTransfer, 'top-up': initTopUp, receive: initReceive, rating: initRating, treasury: initTreasury };
 const act = Object.hasOwn(tabs, params.get('act')) ? params.get('act') : 'account';
 const flow = ['in', 'out'].includes(params.get('flow')) ? params.get('flow') : '';
 const error = $('error');
@@ -22,6 +23,7 @@ const error = $('error');
 const statement = act === 'account' ? started(api.voteStatement('', flow)) : null;
 const rate = act === 'account' ? api.voteRate().then((r) => r.kopecks, () => 0) : Promise.resolve(0);
 const bonus = act === 'account' ? started(api.bonus()) : null;
+const treasury = act === 'treasury' ? started(api.treasury()) : null;
 
 // say shows the notice above the tab: a bold line and what follows it.
 function say(title, ...rest) {
@@ -248,6 +250,27 @@ function initRating(me) {
       submit.disabled = false;
     }
   });
+}
+
+// initTreasury is the treasury of the site in figures, each a box of
+// "Поступило за 30 дней".
+async function initTreasury() {
+  try {
+    const t = await treasury;
+    const figure = (title, votes) => el('div', {}, el('span', { textContent: title }), el('b', { textContent: votesAmount(votes) }));
+
+    $('treasury-figures').replaceChildren(
+      figure(tr('В Казне'), t.votes),
+      figure(tr('На счетах людей'), t.held ?? 0),
+      figure(tr('Принесли участники'), t.minted),
+      figure(tr('Резерв'), t.reserve),
+      figure(tr('Обещают ваучеры'), t.outstanding),
+      figure(tr('Свободно для ваучеров'), t.free),
+      figure(tr('Ежедневный бонус'), t.bonus),
+      figure(tr('Наибольший выигрыш за раунд'), t.maxWin));
+  } catch (e) {
+    showError(error, e);
+  }
 }
 
 // initTopUp is "Есть ваучер?": the serial number in four fields of six,

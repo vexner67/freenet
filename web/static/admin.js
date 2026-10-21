@@ -16,7 +16,7 @@
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, betEventState, foreignAgentText, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 import { remember } from './newyear.js';
 
@@ -78,8 +78,8 @@ const fullName = (user) => [user.name, user.surname].filter(Boolean).join(' ');
 const number = (n) => n.toLocaleString('ru-RU');
 
 // summary is "Сводка": what the site has, as the cards of openvk's.
-async function summary(counts) {
-  const answer = await counts;
+async function summary({ about, treasury }) {
+  const answer = await about;
   const words = adminOverview(answer);
 
   for (const key of ['users', 'online', 'verified', 'clubs', 'posts']) {
@@ -87,6 +87,17 @@ async function summary(counts) {
     $(key + '-words').textContent = words[key];
   }
   $('summary').hidden = false;
+
+  // The economy is the treasury and what the pages hold; without it the
+  // rest of the summary stands.
+  const economy = await treasury.catch(() => null);
+  if (!economy) return;
+  const said = adminEconomy(economy);
+  for (const key of Object.keys(said)) {
+    $('count-' + key).textContent = number(key === 'treasury' ? economy.votes : economy[key] ?? 0);
+    $(key + '-words').textContent = said[key];
+  }
+  $('economy').hidden = false;
 }
 
 // checkmark is the site's mark of a confirmed page, as by its names.
@@ -1171,7 +1182,7 @@ const listPage = listed ? verifications(listed, query, path === '/admin/bans') :
 const adID = path.match(/^\/admin\/ads\/([0-9a-f-]{36})$/)?.[1] ?? '';
 
 const reads = {
-  '/admin': () => started(api.about()),
+  '/admin': () => ({ about: started(api.about()), treasury: started(api.treasury()) }),
   '/admin/users': () => started(listPage.first()),
   '/admin/bans': () => started(listPage.first()),
   '/admin/clubs': () => started(listPage.first()),

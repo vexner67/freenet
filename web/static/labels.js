@@ -720,6 +720,24 @@ export function adminOverview({ users, verified = 0, clubs, posts }) {
   };
 }
 
+// adminEconomy are the words under the numbers of "Экономика" of the
+// summary: the treasury with its reserve, the votes free for vouchers and
+// those they promise; the votes of the pages with what the members
+// brought in, the bonus and the largest win of a round.
+export function adminEconomy({ votes, held = 0, minted, bonus, maxWin }) {
+  const of = (n) => plural(n, ['голос', 'голоса', 'голосов']);
+  return {
+    treasury: tr('{0} в Казне, из них:', of(votes)),
+    reserve: tr('в резерве'),
+    free: tr('свободно для ваучеров'),
+    outstanding: tr('обещают ваучеры'),
+    held: tr('{0} на счетах людей', of(held)),
+    minted: tr('{0} принесли участники', of(minted)),
+    bonus: tr('{0} — ежедневный бонус', of(bonus)),
+    maxWin: tr('{0} — наибольший выигрыш за раунд', of(maxWin)),
+  };
+}
+
 // clubsCount is openvk's "groups": "1 группа", "5 групп".
 export function clubsCount(n) {
   return n === 0 ? tr('Ни одной группы') : `${n} ${plural(n, ['группа', 'группы', 'групп'])}`;
