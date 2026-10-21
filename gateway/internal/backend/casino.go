@@ -32,7 +32,7 @@ func (c *Casino) Get(ctx context.Context) (model.Casino, error) {
 		Least:       resp.GetBetLeast(),
 		Most:        resp.GetBetMost(),
 		Multipliers: fromProtoAim(resp.GetAim()),
-	}}
+	}, Rocket: fromProtoRocket(resp.GetRocket())}
 	for _, votes := range resp.GetPrizes() {
 		casino.Prizes = append(casino.Prizes, model.CasinoPrize{Votes: votes})
 	}
@@ -51,13 +51,16 @@ func (c *Casino) Settings(ctx context.Context, accessToken string) (model.Casino
 			Least:       resp.GetBetLeast(),
 			Most:        resp.GetBetMost(),
 			Multipliers: fromProtoAim(resp.GetAim()),
-		}},
-		Spins:      resp.GetSpins(),
-		Spent:      resp.GetSpent(),
-		Won:        resp.GetWon(),
-		Wagers:     resp.GetBets(),
-		WagerSpent: resp.GetBetSpent(),
-		WagerWon:   resp.GetBetWon(),
+		}, Rocket: fromProtoRocket(resp.GetRocket())},
+		Spins:       resp.GetSpins(),
+		Spent:       resp.GetSpent(),
+		Won:         resp.GetWon(),
+		Wagers:      resp.GetBets(),
+		WagerSpent:  resp.GetBetSpent(),
+		WagerWon:    resp.GetBetWon(),
+		Rockets:     resp.GetRockets(),
+		RocketSpent: resp.GetRocketSpent(),
+		RocketWon:   resp.GetRocketWon(),
 	}
 	for _, p := range resp.GetPrizes() {
 		settings.Casino.Prizes = append(settings.Casino.Prizes, model.CasinoPrize{Votes: p.GetVotes(), Weight: int(p.GetWeight())})
@@ -129,6 +132,84 @@ func (c *Casino) Bet(ctx context.Context, accessToken string, amount int64, mult
 		Votes:   resp.GetVotes(),
 		Balance: resp.GetBalance(),
 	}, nil
+}
+
+func (c *Casino) SetRocket(ctx context.Context, accessToken string, rocket model.CasinoRocket) error {
+	if rocket.Return < 0 || rocket.Return > math.MaxInt32 {
+		return failure.New(failure.InvalidArgument, "the return of the rocket must be from 0.01 to 100 percent")
+	}
+	if rocket.Top < 0 || rocket.Top > math.MaxInt32 {
+		return failure.New(failure.InvalidArgument, "the top of the rocket must be from 2 to 10000")
+	}
+
+	req := &userv1.SetCasinoRocketRequest{Rocket: &userv1.CasinoRocket{
+		Least:  rocket.Least,
+		Most:   rocket.Most,
+		Return: int32(rocket.Return),
+		Top:    int32(rocket.Top),
+	}}
+	if _, err := c.api.SetCasinoRocket(withToken(ctx, accessToken), req); err != nil {
+		return errs.Wrap("c.api.SetCasinoRocket", fromStatus(err))
+	}
+
+	return nil
+}
+
+// LaunchRocket bets amount votes on a rocket cashing by itself at auto
+// (0 — by hand).
+func (c *Casino) LaunchRocket(ctx context.Context, accessToken string, amount int64, auto int) (model.RocketRound, error) {
+	if auto < 0 || auto > math.MaxInt32 {
+		return model.RocketRound{}, failure.New(failure.InvalidArgument, "the rocket cashes by itself from 1.01 to its top")
+	}
+
+	resp, err := c.api.LaunchRocket(withToken(ctx, accessToken), &userv1.LaunchRocketRequest{Amount: amount, Auto: int32(auto)})
+	if err != nil {
+		return model.RocketRound{}, errs.Wrap("c.api.LaunchRocket", fromStatus(err))
+	}
+
+	return fromProtoRocketRound(resp), nil
+}
+
+func (c *Casino) Rocket(ctx context.Context, accessToken, id string) (model.RocketRound, error) {
+	resp, err := c.api.GetRocket(withToken(ctx, accessToken), &userv1.RocketRequest{RocketId: id})
+	if err != nil {
+		return model.RocketRound{}, errs.Wrap("c.api.GetRocket", fromStatus(err))
+	}
+
+	return fromProtoRocketRound(resp), nil
+}
+
+func (c *Casino) CashRocket(ctx context.Context, accessToken, id string) (model.RocketRound, error) {
+	resp, err := c.api.CashRocket(withToken(ctx, accessToken), &userv1.RocketRequest{RocketId: id})
+	if err != nil {
+		return model.RocketRound{}, errs.Wrap("c.api.CashRocket", fromStatus(err))
+	}
+
+	return fromProtoRocketRound(resp), nil
+}
+
+func fromProtoRocket(r *userv1.CasinoRocket) model.CasinoRocket {
+	return model.CasinoRocket{Least: r.GetLeast(), Most: r.GetMost(), Return: int(r.GetReturn()), Top: int(r.GetTop())}
+}
+
+var rocketStates = map[userv1.RocketState]model.RocketState{
+	userv1.RocketState_ROCKET_STATE_FLYING:  model.RocketFlying,
+	userv1.RocketState_ROCKET_STATE_CASHED:  model.RocketCashed,
+	userv1.RocketState_ROCKET_STATE_CRASHED: model.RocketCrashed,
+}
+
+func fromProtoRocketRound(r *userv1.RocketRound) model.RocketRound {
+	return model.RocketRound{
+		ID:        r.GetId(),
+		Amount:    r.GetAmount(),
+		Auto:      int(r.GetAuto()),
+		State:     rocketStates[r.GetState()],
+		Cashed:    int(r.GetCashed()),
+		Payout:    r.GetPayout(),
+		Crash:     int(r.GetCrash()),
+		ElapsedMS: r.GetElapsedMs(),
+		Balance:   r.GetBalance(),
+	}
 }
 
 // fromProtoAim are the multipliers of the bets with their chances.

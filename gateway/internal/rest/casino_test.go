@@ -16,7 +16,45 @@ type fakeCasino struct {
 	bets   model.CasinoBets
 	amount int64
 	times  int
+	rocket model.CasinoRocket
+	id     string
 	err    error
+}
+
+func (f *fakeCasino) SetRocket(_ context.Context, token string, rocket model.CasinoRocket) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.token, f.rocket = token, rocket
+
+	return nil
+}
+
+func (f *fakeCasino) LaunchRocket(_ context.Context, token string, amount int64, auto int) (model.RocketRound, error) {
+	if f.err != nil {
+		return model.RocketRound{}, f.err
+	}
+	f.token, f.amount, f.times = token, amount, auto
+
+	return model.RocketRound{ID: "r1", Amount: amount, Auto: auto, State: model.RocketFlying, ElapsedMS: 2, Balance: 90}, nil
+}
+
+func (f *fakeCasino) Rocket(_ context.Context, token, id string) (model.RocketRound, error) {
+	if f.err != nil {
+		return model.RocketRound{}, f.err
+	}
+	f.token, f.id = token, id
+
+	return model.RocketRound{ID: id, Amount: 10, State: model.RocketCrashed, Crash: 237, ElapsedMS: 9000}, nil
+}
+
+func (f *fakeCasino) CashRocket(_ context.Context, token, id string) (model.RocketRound, error) {
+	if f.err != nil {
+		return model.RocketRound{}, f.err
+	}
+	f.token, f.id = token, id
+
+	return model.RocketRound{ID: id, Amount: 10, State: model.RocketCashed, Cashed: 200, Payout: 20, Crash: 237, Balance: 110}, nil
 }
 
 func (f *fakeCasino) Get(context.Context) (model.Casino, error) {
@@ -24,6 +62,7 @@ func (f *fakeCasino) Get(context.Context) (model.Casino, error) {
 		Price:  10,
 		Prizes: []model.CasinoPrize{{Votes: 0}, {Votes: 50}},
 		Bets:   model.CasinoBets{Least: 1, Most: 100, Multipliers: []model.AimMultiplier{{Multiplier: 150, Chance: 6333}, {Multiplier: 200, Chance: 4750}}},
+		Rocket: model.CasinoRocket{Least: 1, Most: 1000, Return: 9500, Top: 100000},
 	}, nil
 }
 
@@ -56,9 +95,11 @@ func (f *fakeCasino) Settings(_ context.Context, token string) (model.CasinoSett
 			Price:  10,
 			Prizes: []model.CasinoPrize{{Votes: 0, Weight: 9}, {Votes: 50, Weight: 1}},
 			Bets:   model.CasinoBets{Least: 1, Most: 100, Multipliers: []model.AimMultiplier{{Multiplier: 150, Chance: 6333}, {Multiplier: 200, Chance: 4750}}},
+			Rocket: model.CasinoRocket{Least: 1, Most: 1000, Return: 9500, Top: 100000},
 		},
 		Spins: 2, Spent: 20, Won: 50,
 		Wagers: 3, WagerSpent: 30, WagerWon: 20,
+		Rockets: 4, RocketSpent: 40, RocketWon: 38,
 	}, nil
 }
 
@@ -135,5 +176,56 @@ func TestCasino(t *testing.T) {
 	h.casino.err = failure.New(failure.PermissionDenied, "permission denied")
 	if w = h.do("PUT", "/api/v1/casino", `{"price":5,"prizes":[]}`, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
 		t.Fatalf("not an administrator: %d", w.Code)
+	}
+}
+
+func TestCasino_Rocket(t *testing.T) {
+	t.Parallel()
+
+	// A guest sees the limits and the top, never the return.
+	h := newHarness(rest.Config{})
+	w := h.do("GET", "/api/v1/casino", "")
+	rocket := decode[map[string]any](t, w)["rocket"].(map[string]any)
+	if w.Code != http.StatusOK || rocket["most"] != 1000.0 || rocket["top"] != 100000.0 || rocket["return"] != nil {
+		t.Fatalf("%d %v", w.Code, rocket)
+	}
+
+	w = h.do("GET", "/api/v1/casino/settings", "", "Authorization", "Bearer tok")
+	got := decode[map[string]any](t, w)
+	if w.Code != http.StatusOK || got["rocket"].(map[string]any)["return"] != 9500.0 || got["rockets"].(map[string]any)["won"] != 38.0 {
+		t.Fatalf("settings: %d %v", w.Code, got)
+	}
+
+	w = h.do("PUT", "/api/v1/casino/rocket", `{"least":2,"most":20,"return":9000,"top":5000}`, "Authorization", "Bearer tok")
+	if w.Code != http.StatusNoContent || h.casino.rocket != (model.CasinoRocket{Least: 2, Most: 20, Return: 9000, Top: 5000}) {
+		t.Fatalf("set rocket: %d %+v", w.Code, h.casino.rocket)
+	}
+
+	w = h.do("POST", "/api/v1/casino/rockets", `{"amount":10,"auto":250}`, "Authorization", "Bearer tok")
+	if got := decode[map[string]any](t, w); w.Code != http.StatusOK || got["id"] != "r1" || got["state"] != "flying" || got["auto"] != 250.0 ||
+		got["crash"] != 0.0 || got["elapsedMs"] != 2.0 || got["balance"] != 90.0 || h.casino.amount != 10 || h.casino.times != 250 {
+		t.Fatalf("launch: %d %v", w.Code, got)
+	}
+
+	w = h.do("GET", "/api/v1/casino/rockets/r1", "", "Authorization", "Bearer tok")
+	if got := decode[map[string]any](t, w); w.Code != http.StatusOK || got["state"] != "crashed" || got["crash"] != 237.0 || h.casino.id != "r1" {
+		t.Fatalf("rocket: %d %v", w.Code, got)
+	}
+
+	w = h.do("POST", "/api/v1/casino/rockets/r2/cash", "", "Authorization", "Bearer tok")
+	if got := decode[map[string]any](t, w); w.Code != http.StatusOK || got["state"] != "cashed" || got["cashed"] != 200.0 || got["payout"] != 20.0 ||
+		got["balance"] != 110.0 || h.casino.id != "r2" {
+		t.Fatalf("cash: %d %v", w.Code, got)
+	}
+
+	for _, path := range []string{"/api/v1/casino/rockets", "/api/v1/casino/rockets/r1/cash"} {
+		if w = newHarness(rest.Config{}).do("POST", path, ""); w.Code != http.StatusUnauthorized {
+			t.Fatalf("%s without token: %d", path, w.Code)
+		}
+	}
+
+	h.casino.err = failure.New(failure.NotFound, "rocket not found")
+	if w = h.do("GET", "/api/v1/casino/rockets/r9", "", "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
+		t.Fatalf("someone else's rocket: %d", w.Code)
 	}
 }

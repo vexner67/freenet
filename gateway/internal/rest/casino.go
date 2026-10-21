@@ -16,13 +16,42 @@ type Casino interface {
 	Spin(ctx context.Context, accessToken string) (model.CasinoSpin, error)
 	SetBets(ctx context.Context, accessToken string, bets model.CasinoBets) error
 	Bet(ctx context.Context, accessToken string, amount int64, multiplier int) (model.CasinoWager, error)
+	SetRocket(ctx context.Context, accessToken string, rocket model.CasinoRocket) error
+	LaunchRocket(ctx context.Context, accessToken string, amount int64, auto int) (model.RocketRound, error)
+	Rocket(ctx context.Context, accessToken, id string) (model.RocketRound, error)
+	CashRocket(ctx context.Context, accessToken, id string) (model.RocketRound, error)
 }
 
 type casinoJSON struct {
 	Price int64 `json:"price"`
 	// Prizes are the votes of each prize: players do not see the odds.
-	Prizes []int64        `json:"prizes"`
-	Bets   casinoBetsJSON `json:"bets"`
+	Prizes []int64          `json:"prizes"`
+	Bets   casinoBetsJSON   `json:"bets"`
+	Rocket casinoRocketJSON `json:"rocket"`
+}
+
+// casinoRocketJSON is "Ракетка": the limits of the bets, the top
+// multiplier in hundredths and, for the administrators, the return in
+// hundredths of a percent.
+type casinoRocketJSON struct {
+	Least  int64 `json:"least"`
+	Most   int64 `json:"most"`
+	Return int   `json:"return,omitempty"`
+	Top    int   `json:"top"`
+}
+
+// rocketRoundJSON is a round of "Ракетка": the crash point only once it
+// is over.
+type rocketRoundJSON struct {
+	ID        string `json:"id"`
+	Amount    int64  `json:"amount"`
+	Auto      int    `json:"auto"`
+	State     string `json:"state"`
+	Cashed    int    `json:"cashed"`
+	Payout    int64  `json:"payout"`
+	Crash     int    `json:"crash"`
+	ElapsedMS int64  `json:"elapsedMs"`
+	Balance   int64  `json:"balance"`
 }
 
 // casinoBetsJSON are the limits of the bets and the multipliers with
@@ -60,6 +89,9 @@ type casinoSettingsJSON struct {
 	Won    int64             `json:"won"`
 	Bets   casinoBetsJSON    `json:"bets"`
 	Wagers casinoWagersJSON  `json:"wagers"`
+	Rocket casinoRocketJSON  `json:"rocket"`
+	// Rockets is how "Ракетка" does, as Wagers.
+	Rockets casinoWagersJSON `json:"rockets"`
 }
 
 func toCasinoBetsJSON(b model.CasinoBets) casinoBetsJSON {
@@ -79,7 +111,12 @@ func (a *api) casino(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out := casinoJSON{Price: c.Price, Prizes: make([]int64, 0, len(c.Prizes)), Bets: toCasinoBetsJSON(c.Bets)}
+	out := casinoJSON{
+		Price:  c.Price,
+		Prizes: make([]int64, 0, len(c.Prizes)),
+		Bets:   toCasinoBetsJSON(c.Bets),
+		Rocket: casinoRocketJSON{Least: c.Rocket.Least, Most: c.Rocket.Most, Top: c.Rocket.Top},
+	}
 	for _, p := range c.Prizes {
 		out.Prizes = append(out.Prizes, p.Votes)
 	}
@@ -103,13 +140,15 @@ func (a *api) casinoSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	out := casinoSettingsJSON{
-		Price:  s.Casino.Price,
-		Prizes: make([]casinoPrizeJSON, 0, len(s.Casino.Prizes)),
-		Spins:  s.Spins,
-		Spent:  s.Spent,
-		Won:    s.Won,
-		Bets:   toCasinoBetsJSON(s.Casino.Bets),
-		Wagers: casinoWagersJSON{Count: s.Wagers, Spent: s.WagerSpent, Won: s.WagerWon},
+		Price:   s.Casino.Price,
+		Prizes:  make([]casinoPrizeJSON, 0, len(s.Casino.Prizes)),
+		Spins:   s.Spins,
+		Spent:   s.Spent,
+		Won:     s.Won,
+		Bets:    toCasinoBetsJSON(s.Casino.Bets),
+		Wagers:  casinoWagersJSON{Count: s.Wagers, Spent: s.WagerSpent, Won: s.WagerWon},
+		Rocket:  casinoRocketJSON(s.Casino.Rocket),
+		Rockets: casinoWagersJSON{Count: s.Rockets, Spent: s.RocketSpent, Won: s.RocketWon},
 	}
 	for _, p := range s.Casino.Prizes {
 		out.Prizes = append(out.Prizes, casinoPrizeJSON(p))
@@ -226,4 +265,92 @@ func (a *api) betCasino(w http.ResponseWriter, r *http.Request) {
 		Votes   int64 `json:"votes"`
 		Balance int64 `json:"balance"`
 	}{wager.Won, wager.Roll, wager.Chance, wager.Votes, wager.Balance})
+}
+
+// setCasinoRocket is for the administrators: the limits, the return and the
+// top of "Ракетка".
+func (a *api) setCasinoRocket(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req casinoRocketJSON
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.casinos.SetRocket(r.Context(), token, model.CasinoRocket(req)); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// launchRocket bets votes on a rocket: the player cashes it before it
+// explodes, or it cashes by itself at auto.
+func (a *api) launchRocket(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req struct {
+		Amount int64 `json:"amount"`
+		Auto   int   `json:"auto"`
+	}
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	round, err := a.casinos.LaunchRocket(r.Context(), token, req.Amount, req.Auto)
+	a.writeRocket(w, r, round, err)
+}
+
+// rocket is a round of the caller as it is now: the page asks while the
+// rocket flies to learn it exploded.
+func (a *api) rocket(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	round, err := a.casinos.Rocket(r.Context(), token, r.PathValue("id"))
+	a.writeRocket(w, r, round, err)
+}
+
+func (a *api) cashRocket(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	round, err := a.casinos.CashRocket(r.Context(), token, r.PathValue("id"))
+	a.writeRocket(w, r, round, err)
+}
+
+func (a *api) writeRocket(w http.ResponseWriter, r *http.Request, round model.RocketRound, err error) {
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, rocketRoundJSON{
+		ID:        round.ID,
+		Amount:    round.Amount,
+		Auto:      round.Auto,
+		State:     string(round.State),
+		Cashed:    round.Cashed,
+		Payout:    round.Payout,
+		Crash:     round.Crash,
+		ElapsedMS: round.ElapsedMS,
+		Balance:   round.Balance,
+	})
 }
