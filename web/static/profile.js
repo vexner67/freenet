@@ -189,7 +189,8 @@ function editStatus(text) {
 }
 
 // showCompleteness is openvk's gauge of how full the page is, to whoever
-// is signed in, and to the owner the hints of what to fill in.
+// is signed in, and to the owner the hints of what to fill in and, as
+// openvk, "Повысить рейтинг".
 function showCompleteness(user, isOwner) {
   const percent = user.completeness ?? 0;
   if (!me || !percent) return;
@@ -208,6 +209,7 @@ function showCompleteness(user, isOwner) {
     el('div', { className: 'completeness-gauge' + (percent >= 100 ? ' completeness-gauge-gold' : '') },
       bar, el('span', { textContent: percent + '%' })),
     ...(hints.length ? [el('div', { className: 'completeness-hints' }, ...hints)] : []),
+    ...(isOwner ? [el('a', { className: 'completeness-raise', href: '/votes?act=rating', textContent: tr('Повысить рейтинг') })] : []),
   );
   $('completeness').hidden = false;
 }

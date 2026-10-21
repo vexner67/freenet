@@ -600,7 +600,7 @@ async function decor(answered) {
 // weights, the chance of each and the share of the votes the casino gives
 // back by them as they are typed, and how it has done in fact.
 async function casino(answered) {
-  const { price, prizes, spins, spent, won, bets, wagers, rocket, rockets } = await answered;
+  const { price, prizes, spins, spent, won, bets, wagers, rocket, rockets, jackpot } = await answered;
   const rows = $('casino-rows');
   const priceField = $('casino-price');
   const save = $('casino-form').querySelector('button[type=submit]');
@@ -674,6 +674,7 @@ async function casino(answered) {
 
   betSettings(bets, wagers);
   rocketSettings(rocket, rockets);
+  jackpotSettings(jackpot);
   $('casino').hidden = false;
 }
 
@@ -790,6 +791,30 @@ function rocketSettings(rocket, rockets) {
       });
       $('rocket-saved').textContent = tr('Изменения сохранены');
       $('rocket-saved').hidden = false;
+    } catch (e) {
+      showError(e);
+    } finally {
+      save.disabled = false;
+    }
+  });
+}
+
+// jackpotSettings is "Джекпот" of "Казино": the win the site celebrates
+// over the whole screen.
+function jackpotSettings(jackpot) {
+  const save = $('jackpot-form').querySelector('button[type=submit]');
+  $('jackpot-votes').value = String(jackpot);
+
+  $('jackpot-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    $('jackpot-saved').hidden = true;
+    save.disabled = true;
+
+    try {
+      await api.setCasinoJackpot(Number($('jackpot-votes').value));
+      $('jackpot-saved').textContent = tr('Изменения сохранены');
+      $('jackpot-saved').hidden = false;
     } catch (e) {
       showError(e);
     } finally {

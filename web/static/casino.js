@@ -20,15 +20,18 @@
 // first. At the right is the balance, as in
 // "Голоса" of the settings. "Огонёк", "Прицел" and "Ракетка" play by themselves too
 // ("Автоигра"): as many rounds as chosen or while the votes last. A win of
-// a million takes the whole screen (jackpot.js).
+// the jackpot of the casino takes the whole screen (jackpot.js).
 
 import { api, currentUser, started } from './api.js';
 import { aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betPrize, betRoll, casinoChance, casinoPlan, plural, rocketMultiplier, rocketScale, rocketShown, rocketTime, rocketsCount, spinsCount, typedOdds, votesCount, votesFontSize, wagersCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
-import { MILLION, jackpot } from './jackpot.js';
+import { jackpot } from './jackpot.js';
 
 const answered = started(api.casino());
+
+// jackpotFrom is the win that takes the whole screen; the casino says it.
+let jackpotFrom = Infinity;
 
 // Without motion the light lands at once.
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -174,7 +177,7 @@ async function spinOnce(price) {
   session.won += won.votes;
   showBalance(won.balance);
   showResult(won.votes, price);
-  if (won.votes >= MILLION) jackpot(won.votes);
+  if (won.votes >= jackpotFrom) jackpot(won.votes);
 }
 
 async function spin(price) {
@@ -395,7 +398,7 @@ function betting(bets, signedIn) {
     wagers.won += wager.votes;
     showBalance(wager.balance);
     showWager(wager, votes);
-    if (wager.won && wager.votes >= MILLION) jackpot(wager.votes);
+    if (wager.won && wager.votes >= jackpotFrom) jackpot(wager.votes);
   }
 
   $('bet-form').addEventListener('submit', async (event) => {
@@ -636,7 +639,7 @@ async function flyOnce(votes, auto) {
   flights.won += over.payout;
   showBalance(round.state === 'flying' ? (over.balance || balance) : round.balance);
   showFlight(over, votes);
-  if (over.payout >= MILLION) jackpot(over.payout);
+  if (over.payout >= jackpotFrom) jackpot(over.payout);
 }
 
 function showFlight(round, stake) {
@@ -840,7 +843,8 @@ const me = await currentUser().catch(() => null);
 renderChrome(me);
 
 try {
-  const { price, prizes, bets, rocket } = await answered;
+  const { price, prizes, bets, rocket, jackpot: from } = await answered;
+  jackpotFrom = from || Infinity;
 
   $('price').textContent = votesCount(price);
   signedIn = Boolean(me);

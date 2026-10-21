@@ -660,6 +660,8 @@ export const api = {
   treasury: () => request('GET', '/api/v1/treasury'),
   bonus: () => authorized('GET', '/api/v1/me/bonus'),
   claimBonus: () => authorized('POST', '/api/v1/me/bonus'),
+  // raiseRating is "Повысить рейтинг": percent of rating for votes.
+  raiseRating: (percent) => authorized('POST', '/api/v1/me/rating', { percent }),
   setVoteRate: (kopecks) => authorized('PUT', '/api/v1/vote-rate', { kopecks }),
   decor: () => request('GET', '/api/v1/decor'),
   setDecor: (mode) => authorized('PUT', '/api/v1/decor', { mode }),
@@ -670,6 +672,7 @@ export const api = {
   setCasinoBets: (least, most, multipliers) => authorized('PUT', '/api/v1/casino/bets', { least, most, multipliers }),
   betCasino: (amount, multiplier) => authorized('POST', '/api/v1/casino/wagers', { amount, multiplier }),
   setCasinoRocket: (rocket) => authorized('PUT', '/api/v1/casino/rocket', rocket),
+  setCasinoJackpot: (jackpot) => authorized('PUT', '/api/v1/casino/jackpot', { jackpot }),
   launchRocket: (amount, auto) => authorized('POST', '/api/v1/casino/rockets', { amount, auto }),
   rocket: (id) => authorized('GET', `/api/v1/casino/rockets/${encodeURIComponent(id)}`),
   cashRocket: (id) => authorized('POST', `/api/v1/casino/rockets/${encodeURIComponent(id)}/cash`),

@@ -1389,6 +1389,7 @@ label.chat-person { cursor: pointer; }
 .completeness-hints { margin-top: 12px; }
 .completeness-hints a { display: flex; align-items: center; gap: 3px; margin-bottom: 2px; }
 .completeness-hint::before { content: ''; flex-shrink: 0; width: 16px; height: 16px; background-repeat: no-repeat; background-position: center; }
+.completeness-raise { display: block; margin-top: 8px; }
 .hint-interests::before { background-image: url("/static/icons/info.svg"); }
 .hint-email::before, .hint-telegram::before { background-image: url("/static/icons/document.svg"); }
 .hint-status::before { background-image: url("/static/icons/status.svg"); }

@@ -1,16 +1,18 @@
 // "Мои Голоса" at /votes, a small bank of votes: "Счёт" (the balance,
 // what came in and went out in 30 days and the statement, all of it or
 // ?flow=in|out), "Перевести" (?act=transfer, ?to=<nickname> names the
-// recipient), "Пополнить" (?act=top-up: a voucher) and "Получить"
-// (?act=receive: the link that opens a transfer to you).
+// recipient; the fee is shown as the votes are typed), "Пополнить"
+// (?act=top-up: a voucher), "Получить" (?act=receive: the link that opens a
+// transfer to you) and "Рейтинг" (?act=rating: openvk's "Повысить
+// рейтинг", for votes into the treasury).
 
 import { api, currentUser, started } from './api.js';
-import { formatDateTime, plural, rubles, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, votesFontSize, voucherGave } from './labels.js';
+import { MAX_RATING, RATING_PRICE, formatDateTime, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, votesFontSize, voucherGave } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError, verifiedMark } from './layout.js';
 import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
-const tabs = { transfer: initTransfer, 'top-up': initTopUp, receive: initReceive };
+const tabs = { transfer: initTransfer, 'top-up': initTopUp, receive: initReceive, rating: initRating };
 const act = Object.hasOwn(tabs, params.get('act')) ? params.get('act') : 'account';
 const flow = ['in', 'out'].includes(params.get('flow')) ? params.get('flow') : '';
 const error = $('error');
@@ -158,6 +160,14 @@ function initTransfer(me) {
     return found;
   }
 
+  // The fee comes on top of the votes, so the form says it beforehand.
+  $('transfer-votes').addEventListener('input', () => {
+    const votes = Number($('transfer-votes').value);
+    const fee = Number.isSafeInteger(votes) ? transferFee(votes) : 0;
+    $('transfer-fee').textContent = fee ? tr('Комиссия {0}, всего спишется {1}.', votesAmount(fee), votesAmount(votes + fee)) : '';
+    $('transfer-fee').hidden = !fee;
+  });
+
   to.value = params.get('to') ?? '';
   to.addEventListener('change', lookUp);
   if (to.value) {
@@ -189,11 +199,51 @@ function initTransfer(me) {
       $('transfer-balance').textContent = votesAmount(left.votes);
       $('transfer-votes').value = '';
       $('transfer-note').value = '';
+      $('transfer-fee').hidden = true;
       say(tr('Голоса переданы'), tr('Вы успешно передали '), el('b', { textContent: votesAmount(sent) }), ' — ',
         el('a', { href: pagePath(recipient), textContent: fullName(recipient) }), '. ',
+        tr('Комиссия: {0}.', votesAmount(left.fee)), ' ',
         el('a', { href: '/votes', textContent: tr('На вашем счету {0}.', votesAmount(left.votes)) }));
     } catch (e) {
       showError(error, e.status === 404 ? tr('Получатель не найден.') : e);
+    } finally {
+      submit.disabled = false;
+    }
+  });
+}
+
+// initRating is openvk's "Повысить рейтинг": percents of rating for
+// votes, the price shown as they are typed.
+function initRating(me) {
+  const percent = $('rating-percent');
+  $('rating-balance').textContent = votesAmount(me.votes ?? 0);
+  percent.focus();
+
+  percent.addEventListener('input', () => {
+    const n = Number(percent.value);
+    const fits = Number.isSafeInteger(n) && n > 0 && n <= MAX_RATING;
+    $('rating-cost').textContent = fits ? tr('Стоимость: {0}.', votesAmount(n * RATING_PRICE)) : '';
+    $('rating-cost').hidden = !fits;
+  });
+
+  $('rating').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    hideError(error);
+    $('notice').hidden = true;
+
+    const submit = $('rating').querySelector('button[type="submit"]');
+    submit.disabled = true;
+
+    try {
+      const raised = await api.raiseRating(Number(percent.value));
+      me.votes = raised.balance;
+      $('rating-balance').textContent = votesAmount(raised.balance);
+      percent.value = '';
+      $('rating-cost').hidden = true;
+      say(tr('Рейтинг повышен'), tr('Теперь ваш рейтинг — {0} %.', raised.rating), ' ',
+        el('a', { href: '/votes', textContent: tr('На вашем счету {0}.', votesAmount(raised.balance)) }));
+    } catch (e) {
+      showError(error, e);
     } finally {
       submit.disabled = false;
     }
