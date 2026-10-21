@@ -15,7 +15,7 @@
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, betEventState, foreignAgentText, adminOverview, adRate, betChance, betMultiplier, betOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, betEventState, foreignAgentText, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 import { remember } from './newyear.js';
 
@@ -675,21 +675,56 @@ async function casino(answered) {
   $('casino').hidden = false;
 }
 
-// betSettings is "Прицел" of "Казино": the limits of a bet and the return,
-// the chance of each multiplier by it as it is typed, and how the bets
-// have done in fact.
+// betSettings is "Прицел" of "Казино": the limits of a bet and the
+// multipliers with their chances, what each gives back on average as it is
+// typed, and how the bets have done in fact.
 function betSettings(bets, wagers) {
   const least = $('bets-least');
   const most = $('bets-most');
-  const ret = $('bets-return');
+  const rows = $('aim-rows');
   const save = $('bets-form').querySelector('button[type=submit]');
 
-  function recount() {
-    const percent = Number(ret.value);
+  // chanceOf is a chance of 10000 as typed in percents, "47,5".
+  const chanceOf = (value) => Math.round(Number(String(value).trim().replace(',', '.')) * 100) || 0;
 
-    $('bets-chances').textContent = percent >= 1 && percent <= 100
-      ? tr('Шансы: {0}.', bets.multipliers.map((m) => `${betMultiplier(m)} — ${betChance(betOdds(percent, m))}`).join(', '))
-      : '';
+  const typed = () => [...rows.children].map((row) => ({
+    multiplier: typedOdds(row.parts.multiplier.value),
+    chance: chanceOf(row.parts.chance.value),
+  }));
+
+  // recount shows the return of each multiplier; there are 1 to 10.
+  function recount() {
+    const aim = typed();
+
+    [...rows.children].forEach((row, i) => {
+      const { multiplier, chance } = aim[i];
+      row.parts.back.textContent = multiplier > 0 && chance > 0 ? casinoChance(aimReturn(multiplier, chance)) : '—';
+      row.parts.remove.disabled = rows.children.length <= 1;
+    });
+    $('aim-add').disabled = rows.children.length >= 10;
+  }
+
+  function row(m) {
+    const multiplier = el('input', { className: 'text admin-casino-field', inputMode: 'decimal', value: betOddsField(m.multiplier), required: true });
+    const chance = el('input', { className: 'text admin-casino-field', inputMode: 'decimal', value: betOddsField(m.chance), required: true });
+    multiplier.setAttribute('aria-label', tr('Множитель'));
+    chance.setAttribute('aria-label', tr('Шанс, %'));
+    const back = el('td', { className: 'admin-stat' });
+    const remove = el('button', { className: 'aui-button aui-button-compact', type: 'button', textContent: tr('Удалить') });
+    const line = el('tr', {},
+      el('td', {}, el('span', { className: 'admin-times' }, '×', multiplier)),
+      el('td', {}, chance),
+      back,
+      el('td', {}, remove),
+    );
+
+    line.parts = { multiplier, chance, back, remove };
+    remove.addEventListener('click', () => {
+      line.remove();
+      recount();
+    });
+
+    return line;
   }
 
   $('bets-stats').textContent = wagers.count > 0
@@ -697,10 +732,15 @@ function betSettings(bets, wagers) {
     : tr('Ещё никто не ставил.');
   least.value = String(bets.least);
   most.value = String(bets.most);
-  ret.value = String(bets.return);
+  rows.replaceChildren(...bets.multipliers.map(row));
   recount();
 
-  ret.addEventListener('input', recount);
+  rows.addEventListener('input', recount);
+  $('aim-add').addEventListener('click', () => {
+    rows.append(row({ multiplier: 200, chance: 4750 }));
+    recount();
+    rows.lastChild.parts.multiplier.focus();
+  });
   $('bets-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     error.hidden = true;
@@ -708,7 +748,7 @@ function betSettings(bets, wagers) {
     save.disabled = true;
 
     try {
-      await api.setCasinoBets(Number(least.value), Number(most.value), Number(ret.value));
+      await api.setCasinoBets(Number(least.value), Number(most.value), typed());
       $('bets-saved').textContent = tr('Изменения сохранены');
       $('bets-saved').hidden = false;
     } catch (e) {
@@ -722,18 +762,21 @@ function betSettings(bets, wagers) {
 // ads is "Реклама": every ad, shown or not, with how it does (views and
 // clicks, by how many people, and the share of views followed), the
 // switch of "Показывать" and "Изменить" and "Удалить" each.
-// bets is "Ставки": the form of a new event and the events with what was
-// staked on each, the outcome to resolve one with and the buttons that
-// change it.
+// bets is "Ставки": the form of a new event, its outcomes with their odds,
+// and the events with what was staked on each, the outcome to resolve one
+// with, the buttons that change it and the form of its odds.
 async function bets(answered) {
   const outcomes = $('bet-outcomes');
 
-  function outcomeField(value = '') {
+  function outcomeField(value = '', odds = 200) {
     const field = el('input', { className: 'text', maxLength: 64, value, required: true });
+    const times = el('input', { className: 'text admin-bet-odds', inputMode: 'decimal', value: betOddsField(odds), required: true });
     const remove = el('button', { className: 'aui-button aui-button-compact', type: 'button', textContent: '×', title: tr('Убрать исход') });
-    const line = el('div', { className: 'admin-bet-outcome' }, field, remove);
+    const line = el('div', { className: 'admin-bet-outcome' }, field, el('span', { className: 'admin-times' }, '×', times), remove);
 
     field.setAttribute('aria-label', tr('Исход'));
+    times.setAttribute('aria-label', tr('Коэффициент'));
+    line.parts = { field, times, remove };
     remove.addEventListener('click', () => {
       line.remove();
       recount();
@@ -746,7 +789,7 @@ async function bets(answered) {
   function recount() {
     const lines = [...outcomes.children];
 
-    for (const line of lines) line.lastChild.disabled = lines.length <= 2;
+    for (const line of lines) line.parts.remove.disabled = lines.length <= 2;
     $('bet-outcome-add').disabled = lines.length >= 10;
   }
 
@@ -772,9 +815,37 @@ async function bets(answered) {
     }
   }
 
+  // oddsForm changes the odds of the outcomes of an event, for the stakes
+  // made from now on.
+  function oddsForm(e) {
+    const fields = e.outcomes.map((o) => {
+      const field = el('input', { className: 'text admin-bet-odds', inputMode: 'decimal', value: betOddsField(o.odds), required: true });
+      field.setAttribute('aria-label', tr('Коэффициент: {0}', o.name));
+
+      return field;
+    });
+    const save = el('button', { className: 'aui-button aui-button-compact aui-button-primary', type: 'submit', textContent: tr('Сохранить') });
+    const form = el('form', { className: 'aui admin-bet-odds-form', hidden: true },
+      ...e.outcomes.map((o, i) => el('label', { className: 'admin-times' }, `${o.name} ×`, fields[i])),
+      save);
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      act(save, '', () => api.setBetEventOdds(e.id, fields.map((f) => typedOdds(f.value))));
+    });
+
+    return form;
+  }
+
+  // outcomesText says what is staked on each outcome, and its odds.
+  const outcomesText = (e) => e.outcomes
+    .map((o) => `${o.name}${o.odds > 0 ? ' ' + betMultiplier(o.odds) : ''}: ${o.staked}`).join(' · ');
+
   function row(e) {
     const actions = el('div', { className: 'admin-actions' });
     const finished = e.state === 'resolved' || e.state === 'cancelled';
+    const fixed = !finished && e.outcomes.some((o) => o.odds > 0);
+    const odds = fixed ? oddsForm(e) : null;
     const button = (text) => el('button', { className: 'aui-button aui-button-compact', type: 'button', textContent: text });
 
     if (!finished) {
@@ -793,6 +864,15 @@ async function bets(answered) {
         close.addEventListener('click', () => act(close, '', () => api.closeBetEvent(e.id)));
         actions.append(close);
       }
+      if (fixed) {
+        const change = button(tr('Изменить коэффициенты'));
+        change.addEventListener('click', () => {
+          change.hidden = true;
+          odds.hidden = false;
+          odds.querySelector('input')?.focus();
+        });
+        actions.append(change);
+      }
       actions.append(winner, resolve, cancel);
     } else {
       const remove = button(tr('Удалить'));
@@ -802,7 +882,7 @@ async function bets(answered) {
 
     return el('tr', {},
       el('td', {}, el('b', { textContent: e.question }),
-        el('div', { className: 'admin-ad-site', textContent: e.outcomes.map((o) => `${o.name}: ${o.staked}`).join(' · ') })),
+        el('div', { className: 'admin-ad-site', textContent: outcomesText(e) }), odds ?? ''),
       el('td', { className: 'admin-stat' }, votesCount(e.staked), el('div', { className: 'admin-ad-site', textContent: peopleCount(e.people) })),
       el('td', { textContent: betEventState(e) }),
       el('td', {}, actions),
@@ -821,7 +901,7 @@ async function bets(answered) {
   $('bet-outcome-add').addEventListener('click', () => {
     outcomes.append(outcomeField());
     recount();
-    outcomes.lastChild.firstChild.focus();
+    outcomes.lastChild.parts.field.focus();
   });
 
   $('bet-event-form').addEventListener('submit', async (event) => {
@@ -833,7 +913,9 @@ async function bets(answered) {
     save.disabled = true;
     try {
       const closes = $('bet-closes').value ? banUntil('date', new Date(), $('bet-closes').value) : '';
-      const made = await api.createBetEvent($('bet-question').value, [...outcomes.children].map((line) => line.firstChild.value), closes);
+      const lines = [...outcomes.children];
+      const made = await api.createBetEvent($('bet-question').value, lines.map((line) => line.parts.field.value),
+        lines.map((line) => typedOdds(line.parts.times.value)), closes);
 
       $('bet-created').textContent = tr('Событие «{0}» создано.', made.question);
       $('bet-created').hidden = false;

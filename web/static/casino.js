@@ -1,4 +1,4 @@
-// "Казино" (/casino): three games for votes, chosen by the tabs over them.
+// "Азартные игры" (/casino): three games for votes, chosen by the tabs over them.
 // "Огонёк": a spin costs votes and wins one of the prizes, votes again —
 // the administrators tune how likely each is in the admin panel. A light
 // runs over the prizes, slowing down, and stops on the one won.
@@ -7,15 +7,17 @@
 // marker runs over a strip of 0 to 100 and stops on the roll, a win in the
 // green zone in the middle, as wide as the chance.
 // "Ставки" (?game=events): events the administrators make, each with its
-// outcomes; people stake votes on an outcome, and once it is resolved
-// those who guessed share all staked. "Популярное" are the events taking
-// stakes, the most staked on first. At the right is the balance, as in
+// outcomes and their odds; people stake votes on an outcome, and once it is
+// resolved a stake on the outcome won brings the stake by the odds it was
+// made at (older events without odds share all staked among those who
+// guessed). "Популярное" are the events taking stakes, the most staked on
+// first. At the right is the balance, as in
 // "Голоса" of the settings. "Огонёк" and "Прицел" play by themselves too
 // ("Автоигра"): as many rounds as chosen or while the votes last. A win of
 // a million takes the whole screen (jackpot.js).
 
 import { api, currentUser, started } from './api.js';
-import { aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betOdds, betPrize, betRoll, casinoChance, casinoPlan, plural, spinsCount, votesCount, votesFontSize, wagersCount } from './labels.js';
+import { aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betPrize, betRoll, casinoChance, casinoPlan, plural, spinsCount, votesCount, votesFontSize, wagersCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
 import { MILLION, jackpot } from './jackpot.js';
@@ -285,7 +287,7 @@ function watchTabs() {
 // with the winning part and the button.
 function betting(bets, signedIn) {
   const amount = $('bet-amount');
-  let chosen = bets.multipliers.includes(200) ? 200 : bets.multipliers[0];
+  let chosen = bets.multipliers.find((m) => m.multiplier === 200) ?? bets.multipliers[0];
 
   amount.min = String(bets.least);
   amount.max = String(bets.most);
@@ -294,8 +296,8 @@ function betting(bets, signedIn) {
 
   const buttons = bets.multipliers.map((m) => {
     const button = el('button', { className: 'casino-cell casino-multiplier', type: 'button' },
-      el('span', { className: 'casino-votes', textContent: betMultiplier(m) }),
-      el('span', { className: 'casino-unit', textContent: tr('шанс {0}', betChance(betOdds(bets.return, m))) }),
+      el('span', { className: 'casino-votes', textContent: betMultiplier(m.multiplier) }),
+      el('span', { className: 'casino-unit', textContent: tr('шанс {0}', betChance(m.chance)) }),
     );
     button.setAttribute('role', 'radio');
     button.addEventListener('click', () => {
@@ -312,7 +314,7 @@ function betting(bets, signedIn) {
   const stake = () => Math.floor(Number(amount.value));
 
   function update() {
-    const odds = betOdds(bets.return, chosen);
+    const odds = chosen.chance;
     const votes = stake();
     const fits = votes >= bets.least && votes <= bets.most;
 
@@ -325,7 +327,7 @@ function betting(bets, signedIn) {
     $('dice-win').style.left = `${zone.low / 100}%`;
     $('dice-win').style.width = `${odds / 100}%`;
     $('bet-sum').textContent = fits
-      ? tr('Шанс выигрыша {0}, выигрыш — {1}.', betChance(odds), votesCount(betPrize(votes, chosen)))
+      ? tr('Шанс выигрыша {0}, выигрыш — {1}.', betChance(odds), votesCount(betPrize(votes, chosen.multiplier)))
       : tr('Ставка — от {0} до {1}.', bets.least, votesCount(bets.most));
     $('bet').textContent = fits ? tr('Поставить {0}', votesCount(votes)) : tr('Поставить');
     $('bet').disabled = playing || !fits;
@@ -385,7 +387,7 @@ function betting(bets, signedIn) {
     setPlaying(true);
 
     try {
-      await betOnce(stake(), chosen);
+      await betOnce(stake(), chosen.multiplier);
     } catch (e) {
       showError($('error'), e);
     } finally {
@@ -403,7 +405,7 @@ function betting(bets, signedIn) {
       const votes = stake();
 
       return votes >= bets.least && votes <= bets.most ? votes : 0;
-    }, () => betOnce(stake(), chosen), wagersCount);
+    }, () => betOnce(stake(), chosen.multiplier), wagersCount);
   } else {
     $('bet-guest').hidden = false;
   }
@@ -442,23 +444,33 @@ function eventNode(e) {
   const amount = el('input', { className: 'casino-amount', type: 'number', inputMode: 'numeric', min: '1', max: '1000000', value: '10', required: true });
   const mine = eventMine(e);
 
+  // An event has odds or, made before them, shares all staked.
+  const fixed = e.outcomes.some((o) => o.odds > 0);
+
   const outcomes = e.outcomes.map((o, i) => {
     const percent = betEventShare(o.staked, e.staked);
     const bar = el('div', { className: 'bet-outcome-bar' });
-    const odds = e.open ? betEventOdds(o.staked, e.staked) : '';
+    const odds = fixed || e.open ? betEventOdds(o, e.staked) : '';
     const stake = taking ? el('button', { className: 'button', type: 'button', textContent: tr('Поставить') }) : null;
+    let mine = null;
 
+    if (o.mine > 0) {
+      mine = fixed
+        ? tr('Ваша ставка: {0}, выигрыш — {1}', votesCount(o.mine), votesCount(o.potential))
+        : tr('Ваша ставка: {0}', votesCount(o.mine));
+    }
     bar.style.width = `${percent}%`;
     stake?.addEventListener('click', () => stakeOn(e, i, Math.floor(Number(amount.value))));
 
     return el('div', { className: e.winner === i ? 'bet-outcome won' : 'bet-outcome' },
       el('div', { className: 'bet-outcome-head' },
         el('b', { className: 'bet-outcome-name', textContent: o.name }),
-        el('span', { className: 'bet-outcome-sum', textContent: [votesCount(o.staked), o.staked > 0 ? casinoChance(percent) : '', odds].filter(Boolean).join(' · ') }),
+        fixed ? el('span', { className: 'bet-outcome-odds', textContent: odds, title: tr('Коэффициент: ставка, умноженная на него, — выигрыш') }) : null,
+        el('span', { className: 'bet-outcome-sum', textContent: [votesCount(o.staked), o.staked > 0 ? casinoChance(percent) : '', fixed ? '' : odds].filter(Boolean).join(' · ') }),
         stake,
       ),
       el('div', { className: 'bet-outcome-track' }, bar),
-      o.mine > 0 ? el('div', { className: 'bet-outcome-mine', textContent: tr('Ваша ставка: {0}', votesCount(o.mine)) }) : null,
+      mine ? el('div', { className: 'bet-outcome-mine', textContent: mine }) : null,
     );
   });
 

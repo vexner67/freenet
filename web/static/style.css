@@ -1779,6 +1779,8 @@ a.poll-result-name { cursor: pointer; }
 .bet-outcome-head { display: flex; gap: 8px; align-items: center; }
 .bet-outcome-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .bet-outcome-sum { color: var(--text-808080); white-space: nowrap; }
+.bet-outcome-odds { padding: 1px 6px; background: var(--back-dae1e8); color: var(--text-2b587a); font-weight: bold; white-space: nowrap; }
+.bet-outcome.won .bet-outcome-odds { background: var(--text-43a047); color: var(--back-fff); }
 .bet-outcome-head .button { padding: 2px 8px; }
 .bet-outcome-track { height: 6px; margin: 4px 0 0; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
 .bet-outcome-bar { height: 100%; background: var(--back-dcefd9); }
