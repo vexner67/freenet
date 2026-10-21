@@ -308,7 +308,7 @@ func (r *WalletRepository) RaiseRating(ctx context.Context, userID uuid.UUID, pe
 }
 
 // The vouchers promise what each still gives times how many may still use
-// it.
+// it; the pages hold what is on their accounts.
 const treasuryQuery = `
 	SELECT
 		t.votes,
@@ -317,6 +317,10 @@ const treasuryQuery = `
 			SELECT sum(v.votes * v.usages_left)
 			FROM vouchers v
 			WHERE v.usages_left > 0
+		), 0)::bigint,
+		coalesce((
+			SELECT sum(u.votes)
+			FROM users u
 		), 0)::bigint
 	FROM treasury t
 `
@@ -328,7 +332,7 @@ func (r *WalletRepository) Treasury(ctx context.Context) (user.Treasury, error) 
 	}
 
 	var t user.Treasury
-	if err := r.conn(ctx).QueryRow(ctx, treasuryQuery).Scan(&t.Votes, &t.Minted, &t.Outstanding); err != nil {
+	if err := r.conn(ctx).QueryRow(ctx, treasuryQuery).Scan(&t.Votes, &t.Minted, &t.Outstanding, &t.Held); err != nil {
 		return user.Treasury{}, errs.Wrap("r.conn.QueryRow", err)
 	}
 

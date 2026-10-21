@@ -261,6 +261,7 @@ func (h *UserHandler) GetTreasury(ctx context.Context, _ *userv1.GetTreasuryRequ
 		Outstanding: treasury.Outstanding,
 		Bonus:       treasury.Bonus(),
 		MaxWin:      treasury.MaxWin(),
+		Held:        treasury.Held,
 	}, nil
 }
 

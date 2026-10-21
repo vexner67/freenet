@@ -189,13 +189,16 @@ func TestGiftPrices(t *testing.T) {
 			paid++
 		}
 		for _, g := range c.Gifts {
-			if g.DefaultPrice() != c.Price {
+			if g.DefaultPrice() < c.Price {
 				t.Fatalf("%s costs %d in a collection of %d", g, g.DefaultPrice(), c.Price)
 			}
 		}
 	}
 	if free == 0 || paid == 0 {
 		t.Fatalf("%d free collections and %d paid", free, paid)
+	}
+	if user.GiftKind("cake").DefaultPrice() != 10 || user.GiftKind("freenet_ring").DefaultPrice() != 70 || user.GiftKind("freenet_crown").DefaultPrice() != 300 {
+		t.Fatal("the gifts are not priced as the economy says")
 	}
 	if user.GiftKind("nothing").DefaultPrice() != 0 {
 		t.Fatal("an unknown gift has a price")

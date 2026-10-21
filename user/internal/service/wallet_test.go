@@ -415,6 +415,13 @@ func TestWalletService_Statement(t *testing.T) {
 	}
 
 	// A gift is written down with its recipient and kind.
+	cake, err := w.wallets.CreateVoucher(ctx, admin, service.VoucherDraft{Votes: user.GiftKind("cake").DefaultPrice().Int64(), Usages: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = w.wallets.Redeem(ctx, ann, cake.Token()); err != nil {
+		t.Fatal(err)
+	}
 	if _, err = w.gifts.Send(ctx, ann, bob, service.GiftDraft{Kind: "cake"}); err != nil {
 		t.Fatal(err)
 	}

@@ -40,11 +40,13 @@ var (
 )
 
 // Treasury is the votes of the site that are no one's: Votes held, Minted
-// by new members, Outstanding — promised by the vouchers not used yet.
+// by new members, Outstanding — promised by the vouchers not used yet; and
+// Held — the votes on the accounts of the pages, the rest of the economy.
 type Treasury struct {
 	Votes       int64
 	Minted      int64
 	Outstanding int64
+	Held        int64
 }
 
 // Free is what vouchers may still promise: the votes above the reserve and

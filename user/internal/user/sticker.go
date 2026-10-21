@@ -40,8 +40,8 @@ var stickerCatalog = []StickerPack{
 	{ID: "smiles", Stickers: []Sticker{
 		"smile_happy", "smile_laugh", "smile_wink", "smile_love", "smile_cool", "smile_wow", "smile_sad", "smile_angry",
 	}},
-	{ID: "cats", Price: 2, Stickers: []Sticker{"cat_hi", "cat_love", "cat_lol", "cat_wow", "cat_sleep", "cat_angry"}},
-	{ID: "bears", Price: 4, Stickers: []Sticker{"bear_hi", "bear_hug", "bear_love", "bear_ok", "bear_party", "bear_sad"}},
+	{ID: "cats", Price: 50, Stickers: []Sticker{"cat_hi", "cat_love", "cat_lol", "cat_wow", "cat_sleep", "cat_angry"}},
+	{ID: "bears", Price: 100, Stickers: []Sticker{"bear_hi", "bear_hug", "bear_love", "bear_ok", "bear_party", "bear_sad"}},
 }
 
 // StickerCatalog are the packs of stickers, in the order they are shown.
