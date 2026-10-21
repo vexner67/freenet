@@ -467,9 +467,11 @@ type Stickers interface {
 // them, gifts cost them and people hand them to each other.
 type Votes interface {
 	// Transfer hands votes of the caller to userID and returns what the
-	// caller has left.
+	// caller has left and the fee paid on top.
 	// The note goes with the transfer to both statements.
-	Transfer(ctx context.Context, accessToken, userID string, votes int64, note string) (int64, error)
+	Transfer(ctx context.Context, accessToken, userID string, votes int64, note string) (model.Transferred, error)
+	// RaiseRating is "Повысить рейтинг": percent of rating for votes.
+	RaiseRating(ctx context.Context, accessToken string, percent int) (model.RatingRaised, error)
 	// Statement is the caller's statement of votes: flow "in", "out" or
 	// empty for both.
 	Statement(ctx context.Context, accessToken, cursor, flow string, limit int) (model.Statement, error)
@@ -809,6 +811,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/me/votes", a.voteStatement)
 	mux.HandleFunc("GET /api/v1/me/bonus", a.bonus)
 	mux.HandleFunc("POST /api/v1/me/bonus", a.claimBonus)
+	mux.HandleFunc("POST /api/v1/me/rating", a.raiseRating)
 	mux.HandleFunc("GET /api/v1/treasury", a.treasury)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/votes", a.transferVotes)
 	mux.HandleFunc("GET /api/v1/vouchers", a.listVouchers)
@@ -832,6 +835,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/casino/bets", a.setCasinoBets)
 	mux.HandleFunc("POST /api/v1/casino/wagers", a.betCasino)
 	mux.HandleFunc("PUT /api/v1/casino/rocket", a.setCasinoRocket)
+	mux.HandleFunc("PUT /api/v1/casino/jackpot", a.setCasinoJackpot)
 	mux.HandleFunc("POST /api/v1/casino/rockets", a.launchRocket)
 	mux.HandleFunc("GET /api/v1/casino/rockets/{id}", a.rocket)
 	mux.HandleFunc("POST /api/v1/casino/rockets/{id}/cash", a.cashRocket)

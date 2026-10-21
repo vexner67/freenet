@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 
+	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
 	"github.com/vexner67/freenet/pkg/errs"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
@@ -21,15 +22,28 @@ func NewVotes(api userv1.UserServiceClient) *Votes {
 	}
 }
 
-func (v *Votes) Transfer(ctx context.Context, accessToken, userID string, votes int64, note string) (int64, error) {
+func (v *Votes) Transfer(ctx context.Context, accessToken, userID string, votes int64, note string) (model.Transferred, error) {
 	resp, err := v.api.TransferVotes(withToken(ctx, accessToken), &userv1.TransferVotesRequest{UserId: userID, Votes: votes, Note: note})
 	if err != nil {
 		// Why the user service refuses a transfer is its to say, as with
 		// gifts.
-		return 0, errs.Wrap("v.api.TransferVotes", giftRefusal(err))
+		return model.Transferred{}, errs.Wrap("v.api.TransferVotes", giftRefusal(err))
 	}
 
-	return resp.GetVotes(), nil
+	return model.Transferred{Votes: resp.GetVotes(), Fee: resp.GetFee()}, nil
+}
+
+func (v *Votes) RaiseRating(ctx context.Context, accessToken string, percent int) (model.RatingRaised, error) {
+	if percent < 0 || percent > math.MaxInt32 {
+		return model.RatingRaised{}, failure.New(failure.InvalidArgument, "the rating is raised by 1 to 1000 percent")
+	}
+
+	resp, err := v.api.RaiseRating(withToken(ctx, accessToken), &userv1.RaiseRatingRequest{Percent: int32(percent)})
+	if err != nil {
+		return model.RatingRaised{}, errs.Wrap("v.api.RaiseRating", fromStatus(err))
+	}
+
+	return model.RatingRaised{Balance: resp.GetBalance(), Rating: int(resp.GetRating())}, nil
 }
 
 func (v *Votes) Statement(ctx context.Context, accessToken, cursor, flow string, limit int) (model.Statement, error) {

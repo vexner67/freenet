@@ -8,6 +8,9 @@ type Casino struct {
 	Prizes []CasinoPrize
 	Bets   CasinoBets
 	Rocket CasinoRocket
+	// Jackpot is the win, in votes, that the site celebrates over the
+	// whole screen.
+	Jackpot int64
 }
 
 // CasinoRocket is "Ракетка": bets from Least to Most votes, a rocket that
