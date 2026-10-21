@@ -1050,6 +1050,10 @@ test('casino: chances, return and payout', () => {
   assert.deepEqual(casinoChances(prizes), [50, 25, 12, 8, 4, 1]);
   assert.deepEqual(casinoChances([{ votes: 5, weight: 0 }, { votes: 9, weight: '' }]), [0, 0]);
   assert.equal(casinoChance(12.345), '12,3 %');
+  assert.equal(casinoChance(0.0005), '0,0005 %');
+  assert.equal(casinoChance(0.0000083), '0,0000083 %');
+  assert.equal(casinoChance(0.04), '0,04 %');
+  assert.equal(casinoChance(0), '0 %');
   assert.equal(casinoReturn(10, prizes), '70,5 %');
   assert.equal(casinoReturn(0, prizes), '—');
   assert.equal(casinoReturn(10, [{ votes: 5, weight: 0 }]), '—');

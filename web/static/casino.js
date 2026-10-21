@@ -341,8 +341,11 @@ function betting(bets, signedIn) {
     }
     const zone = aimZone(odds);
 
-    $('dice-win').style.left = `${zone.low / 100}%`;
+    // The field stands by its middle, so that a field narrower than its
+    // least width grows to both sides and stays seen.
+    $('dice-win').style.left = `${(zone.low + odds / 2) / 100}%`;
     $('dice-win').style.width = `${odds / 100}%`;
+    $('dice-win').classList.toggle('narrow', odds < 200);
     $('bet-sum').textContent = fits
       ? tr('Шанс выигрыша {0}, выигрыш — {1}.', betChance(odds), votesCount(betPrize(votes, chosen.multiplier)))
       : tr('Ставка — от {0} до {1}.', bets.least, votesCount(bets.most));
