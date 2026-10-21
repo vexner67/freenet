@@ -1241,6 +1241,29 @@ type GiftPage struct {
 	Total      int
 }
 
+// VoteOperation is a line of the statement of votes: Amount is what came
+// in (above zero) or went out (below), Balance — the votes after it,
+// PeerID the other person of a transfer, a gift or a sticker pack.
+type VoteOperation struct {
+	ID        string
+	Kind      string
+	Amount    int64
+	Balance   int64
+	PeerID    string
+	Note      string
+	CreatedAt time.Time
+}
+
+// Statement is one screen of the statement of votes, newest first, with
+// what came in and went out over the last 30 days; NextCursor is empty on
+// the last.
+type Statement struct {
+	Operations []VoteOperation
+	NextCursor string
+	Income     int64
+	Expense    int64
+}
+
 // Redeemed is what a voucher gave the caller and the votes they have now.
 type Redeemed struct {
 	Votes   int64

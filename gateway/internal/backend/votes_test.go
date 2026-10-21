@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"testing"
+	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
@@ -13,6 +14,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type fakeVotesAPI struct {
@@ -22,6 +24,7 @@ type fakeVotesAPI struct {
 	redeemed    string
 	created     *userv1.CreateVoucherRequest
 	listed      *userv1.ListVouchersRequest
+	statement   *userv1.ListVoteOperationsRequest
 	deleted     string
 	rate        int64
 	err         error
@@ -74,6 +77,20 @@ func (f *fakeVotesAPI) ListVouchers(ctx context.Context, req *userv1.ListVoucher
 	}, f.err
 }
 
+func (f *fakeVotesAPI) ListVoteOperations(_ context.Context, req *userv1.ListVoteOperationsRequest, _ ...grpc.CallOption) (*userv1.ListVoteOperationsResponse, error) {
+	f.statement = req
+
+	return &userv1.ListVoteOperationsResponse{
+		Operations: []*userv1.VoteOperation{
+			{Id: "o2", Kind: "transfer", Amount: -4, Balance: 6, PeerId: "u2", Note: "пицца", CreatedAt: timestamppb.New(time.Unix(100, 0))},
+			{Id: "o1", Kind: "voucher", Amount: 10, Balance: 10},
+		},
+		NextCursor: "o1",
+		Income:     10,
+		Expense:    4,
+	}, f.err
+}
+
 func (f *fakeVotesAPI) DeleteVoucher(_ context.Context, req *userv1.DeleteVoucherRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
 	f.deleted = req.GetVoucherId()
 	return &emptypb.Empty{}, f.err
@@ -86,9 +103,22 @@ func TestVotes(t *testing.T) {
 	api := &fakeVotesAPI{}
 	votes := NewVotes(api)
 
-	left, err := votes.Transfer(ctx, "tok", "u2", 4)
-	if err != nil || left != 6 || api.transferred.GetUserId() != "u2" || api.transferred.GetVotes() != 4 || api.md.Get("authorization")[0] != "Bearer tok" {
+	left, err := votes.Transfer(ctx, "tok", "u2", 4, "пицца")
+	if err != nil || left != 6 || api.transferred.GetUserId() != "u2" || api.transferred.GetVotes() != 4 ||
+		api.transferred.GetNote() != "пицца" || api.md.Get("authorization")[0] != "Bearer tok" {
 		t.Fatalf("Transfer = %d, %v; asked %v", left, err, api.transferred)
+	}
+
+	statement, err := votes.Statement(ctx, "tok", "o5", "in", 2)
+	if err != nil || api.statement.GetCursor() != "o5" || api.statement.GetFlow() != "in" || api.statement.GetLimit() != 2 {
+		t.Fatalf("Statement asked %v, %v", api.statement, err)
+	}
+	if statement.NextCursor != "o1" || statement.Income != 10 || statement.Expense != 4 || len(statement.Operations) != 2 {
+		t.Fatalf("Statement = %+v", statement)
+	}
+	if op := statement.Operations[0]; op.Kind != "transfer" || op.Amount != -4 || op.Balance != 6 || op.PeerID != "u2" ||
+		op.Note != "пицца" || !op.CreatedAt.Equal(time.Unix(100, 0)) {
+		t.Fatalf("the transfer = %+v", op)
 	}
 
 	redeemed, err := votes.Redeem(ctx, "tok", "abcd-efgh")
@@ -126,7 +156,7 @@ func TestVotes(t *testing.T) {
 	// A refused transfer comes with the words of the user service, a
 	// refusal to a stranger to the vouchers does not.
 	api.err = status.Error(codes.PermissionDenied, "you cannot transfer votes to this user")
-	_, err = votes.Transfer(ctx, "tok", "u2", 1)
+	_, err = votes.Transfer(ctx, "tok", "u2", 1, "")
 	if f := failure.From(err); f.Kind != failure.PermissionDenied || f.Message != "you cannot transfer votes to this user" {
 		t.Fatalf("a refused transfer: %v", err)
 	}
@@ -144,7 +174,7 @@ func TestVotes(t *testing.T) {
 	}
 
 	api.err = status.Error(codes.FailedPrecondition, "not enough votes")
-	_, err = votes.Transfer(ctx, "tok", "u2", 1)
+	_, err = votes.Transfer(ctx, "tok", "u2", 1, "")
 	if f := failure.From(err); f.Kind != failure.Conflict || f.Message != "not enough votes" {
 		t.Fatalf("a transfer of too much: %v", err)
 	}
