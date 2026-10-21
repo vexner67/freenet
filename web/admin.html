@@ -272,6 +272,34 @@
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
         </div>
       </form>
+      <h2>Ракетка</h2>
+      <p class="admin-lead">Ставка запускает ракету, и множитель растёт от ×1. Игрок забирает ставку, пока ракета летит, — она возвращается умноженной на то, что ракета показывала, — или задаёт множитель, на котором ракета заберёт её сама. Где ракета взорвётся, решается при взлёте: отдача — сколько поставленных голосов ракета возвращает в среднем, как бы ни играли (95 % — ракета долетает до ×2 почти в половине полётов, до ×10 — примерно в каждом десятом). Дальше наибольшего множителя ракета не улетает.</p>
+      <p class="admin-casino-stats" id="rocket-stats"></p>
+      <div class="aui-message aui-message-success" id="rocket-saved" hidden></div>
+      <form class="aui" id="rocket-form">
+        <div class="field-group">
+          <label for="rocket-least">Наименьшая ставка</label>
+          <input class="text admin-casino-field" id="rocket-least" type="number" min="1" max="100000000" required>
+        </div>
+        <div class="field-group">
+          <label for="rocket-most">Наибольшая ставка</label>
+          <input class="text admin-casino-field" id="rocket-most" type="number" min="1" max="100000000" required>
+          <div class="description">В голосах, от 1 до 100 000 000.</div>
+        </div>
+        <div class="field-group">
+          <label for="rocket-return">Отдача, %</label>
+          <input class="text admin-casino-field" id="rocket-return" inputmode="decimal" required>
+          <div class="description">От 0,01 до 100 %.</div>
+        </div>
+        <div class="field-group">
+          <label for="rocket-top">Наибольший множитель</label>
+          <span class="admin-times">×<input class="text admin-casino-field" id="rocket-top" inputmode="decimal" required></span>
+          <div class="description">От ×2 до ×10 000.</div>
+        </div>
+        <div class="buttons-container">
+          <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
+        </div>
+      </form>
     </section>
 
     <section id="bets" hidden>

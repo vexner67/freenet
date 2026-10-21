@@ -1122,6 +1122,47 @@ export function betAmount(amount, quick, { least, most, balance }) {
   }
 }
 
+// The multiplier of "Ракетка" grows as e to the power of rocketGrowth
+// times the milliseconds of the flight, as the user service counts it
+// (user.RocketGrowth): ×2 in about 5.8 s, ×10 in 19 s.
+const rocketGrowth = 0.00012;
+
+// rocketMultiplier is the multiplier of a rocket flying ms milliseconds, in
+// hundredths, rounded down — at most ×10000.
+export function rocketMultiplier(ms) {
+  if (!(ms > 0)) return 100;
+
+  return Math.min(1_000_000, Math.floor(100 * Math.exp(rocketGrowth * Math.floor(ms))));
+}
+
+// rocketTime is how many milliseconds a rocket flies to reach a multiplier
+// in hundredths.
+export function rocketTime(hundredths) {
+  return hundredths > 100 ? Math.log(hundredths / 100) / rocketGrowth : 0;
+}
+
+// rocketShown is the multiplier a rocket shows, always with two digits:
+// "×1,05".
+export function rocketShown(hundredths) {
+  const fixed = (hundredths / 100).toFixed(2);
+
+  return `×${lang === 'en' ? fixed : fixed.replace('.', ',')}`;
+}
+
+// rocketsCount is "1 полёт", "5 полётов".
+export function rocketsCount(n) {
+  return `${n} ${plural(n, ['полёт', 'полёта', 'полётов'])}`;
+}
+
+// rocketScale is the view of the sky of "Ракетка" over a flight of ms:
+// at least 8 s and ×2, and a little more than the flight, so that the
+// rocket stays in sight as it climbs.
+export function rocketScale(ms) {
+  const time = Math.max(8000, ms * 1.15);
+
+  return { time, top: Math.max(200, rocketMultiplier(ms) * 1.15) };
+}
+
 // casinoPlan is the path of the highlight over the cells of the casino
 // before it stops on the prize won: from the cell after start, round
 // after round, each step a little slower — the delays, in milliseconds,
@@ -1255,6 +1296,8 @@ export function voteOperation(op, myId) {
       return { title: out ? tr('Казино: прокрутка «Огонька»') : tr('Казино: выигрыш в «Огоньке»'), role: '' };
     case 'aim':
       return { title: out ? tr('Казино: ставка в «Прицеле»') : tr('Казино: выигрыш в «Прицеле»'), role: '' };
+    case 'rocket':
+      return { title: out ? tr('Казино: ставка в «Ракетке»') : tr('Казино: выигрыш в «Ракетке»'), role: '' };
     case 'stake':
       return { title: out ? tr('Ставка на событие «{0}»', note) : tr('Выплата по событию «{0}»', note), role: '' };
     default:
@@ -1661,6 +1704,13 @@ const errorTexts = {
   'event not found': tr('Событие не найдено.'),
   'the event takes no more stakes': tr('Ставки на это событие больше не принимаются.'),
   'the event is over already': tr('Событие уже завершено.'),
+  'the bet is out of the limits of the rocket': tr('Такую ставку ракета не принимает.'),
+  'the rocket cashes by itself from 1.01 to its top': tr('Забрать само можно на множителе от ×1,01 до наибольшего у ракеты.'),
+  'rocket not found': tr('Полёт не найден.'),
+  'the rocket is over': tr('Этот полёт уже закончился.'),
+  'rocket bets must be from 1 to 100000000 votes, the least not above the most': tr('Ставки — от 1 до 100 000 000 голосов, наименьшая не больше наибольшей.'),
+  'the return of the rocket must be from 0.01 to 100 percent': tr('Отдача ракеты — от 0,01 до 100 %.'),
+  'the top of the rocket must be from 2 to 10000': tr('Наибольший множитель — от ×2 до ×10 000.'),
   'the event is not over yet': tr('Сначала подведите итог события или отмените его.'),
   'unknown outcome': tr('Такого исхода нет.'),
   'a stake must be from 1 to 100000000 votes': tr('Ставка — от 1 до 100 000 000 голосов.'),

@@ -6,18 +6,24 @@
 // they like on a multiplier and gets the bet multiplied or loses it; a
 // marker runs over a strip of 0 to 100 and stops on the roll, a win in the
 // green zone in the middle, as wide as the chance.
+// "Ракетка" (?game=rocket): a bet launches a rocket whose multiplier grows
+// from ×1; the player cashes it before it explodes and gets the bet
+// multiplied by what it showed, or sets the multiplier to cash at by
+// itself. The server draws where it explodes at the launch and says it once
+// the round is over; the page draws the flight by its own clock, asks how
+// the round is twice a second and lets the server judge the cash.
 // "Ставки" (?game=events): events the administrators make, each with its
 // outcomes and their odds; people stake votes on an outcome, and once it is
 // resolved a stake on the outcome won brings the stake by the odds it was
 // made at (older events without odds share all staked among those who
 // guessed). "Популярное" are the events taking stakes, the most staked on
 // first. At the right is the balance, as in
-// "Голоса" of the settings. "Огонёк" and "Прицел" play by themselves too
+// "Голоса" of the settings. "Огонёк", "Прицел" and "Ракетка" play by themselves too
 // ("Автоигра"): as many rounds as chosen or while the votes last. A win of
 // a million takes the whole screen (jackpot.js).
 
 import { api, currentUser, started } from './api.js';
-import { aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betPrize, betRoll, casinoChance, casinoPlan, plural, spinsCount, votesCount, votesFontSize, wagersCount } from './labels.js';
+import { aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betPrize, betRoll, casinoChance, casinoPlan, plural, rocketMultiplier, rocketScale, rocketShown, rocketTime, rocketsCount, spinsCount, typedOdds, votesCount, votesFontSize, wagersCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
 import { MILLION, jackpot } from './jackpot.js';
@@ -31,16 +37,20 @@ let cells = [];
 let lit = 0;
 const session = { spins: 0, spent: 0, won: 0 };
 const wagers = { count: 0, spent: 0, won: 0 };
+const flights = { count: 0, spent: 0, won: 0 };
 let balance = 0;
 let playing = false;
 let aimShown = false;
+let rocketShownTab = false;
 let signedIn = false;
 // The section of "Ставки" shown and the one being read, so that a late
 // answer does not draw over a newer one.
 let section = '';
 let reading = 0;
-// refreshBet redraws the form of "Ставка" once it is made.
+// refreshBet and refreshRocket redraw the forms of "Прицел" and "Ракетка"
+// once they are made.
 let refreshBet = () => {};
+let refreshRocket = () => {};
 // auto is "Автоигра" under way: its button, which stops it, and whether
 // it is asked to.
 let auto = null;
@@ -72,14 +82,17 @@ function setPlaying(on) {
   playing = on;
   $('spin').disabled = on;
   for (const control of $('bet-form').querySelectorAll('input, button')) control.disabled = on;
+  // The button that cashes the rocket is live while it flies.
+  for (const control of $('rocket-form').querySelectorAll('input, button:not(#rocket-cash)')) control.disabled = on;
   for (const control of $('events').querySelectorAll('input, button')) control.disabled = on;
-  for (const game of ['wheel', 'aim']) {
+  for (const game of ['wheel', 'aim', 'rocket']) {
     $(`${game}-auto-count`).disabled = on;
     // The button of "Автоигра" under way stops it.
     if (!auto || auto.button !== $(`${game}-auto-start`)) $(`${game}-auto-start`).disabled = on;
   }
   for (const tab of tabs()) tab.setAttribute('aria-disabled', String(on));
   refreshBet();
+  refreshRocket();
 }
 
 function showBalance(votes) {
@@ -180,7 +193,7 @@ async function spin(price) {
   }
 }
 
-// autoplay plays game ("wheel" or "aim") round after round, each costing
+// autoplay plays game ("wheel", "aim" or "rocket") round after round, each costing
 // cost votes: as many rounds as chosen, while the balance pays for the next
 // one, until the button stops it or a round fails.
 async function autoplay(game, cost, round, count) {
@@ -238,15 +251,16 @@ function watchAuto(game, cost, round, count) {
 
 // tabs are the links that switch the game or the section of "Ставки".
 function tabs() {
-  return [$('tab-wheel'), $('tab-aim'), $('tab-events'), $('section-all'), $('section-popular')];
+  return [$('tab-wheel'), $('tab-aim'), $('tab-rocket'), $('tab-events'), $('section-all'), $('section-popular')];
 }
 
-// The game shown: "wheel", "aim" or "events", by the address; "bet" is
-// the name "Прицел" had.
+// The game shown: "wheel", "aim", "rocket" or "events", by the address;
+// "bet" is the name "Прицел" had.
 function gameOf(url) {
   const game = new URL(url, location.href).searchParams.get('game');
 
   if (game === 'aim' || game === 'bet') return aimShown ? 'aim' : 'wheel';
+  if (game === 'rocket') return rocketShownTab ? 'rocket' : 'wheel';
 
   return game === 'events' ? 'events' : 'wheel';
 }
@@ -260,9 +274,12 @@ function showGame(url) {
 
   $('tab-wheel').classList.toggle('active', game === 'wheel');
   $('tab-aim').classList.toggle('active', game === 'aim');
+  $('tab-rocket').classList.toggle('active', game === 'rocket');
   $('tab-events').classList.toggle('active', game === 'events');
   $('wheel-game').hidden = game !== 'wheel';
   $('aim-game').hidden = game !== 'aim';
+  $('rocket-game').hidden = game !== 'rocket';
+  if (game === 'rocket') drawSky(sky.ms, sky.cashedAt);
   $('events-game').hidden = game !== 'events';
   if (game === 'events') showEvents(sectionOf(url));
 }
@@ -429,6 +446,299 @@ function showWager(wager, stake) {
   $('bet-session').hidden = false;
 }
 
+// sky is what the sky of "Ракетка" shows: the milliseconds of the flight
+// drawn and where the round was cashed, -1 — it was not.
+const sky = { ms: 0, cashedAt: -1 };
+
+// drawSky draws the flight of ms milliseconds: the trail from the start,
+// the rocket at its end turned along it and the multiplier over it; a cash
+// at cashedAt ms is a dot on the trail.
+function drawSky(ms, cashedAt = -1) {
+  const canvas = $('rocket-trail');
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  if (!width) return;
+
+  sky.ms = ms;
+  sky.cashedAt = cashedAt;
+  const ratio = devicePixelRatio || 1;
+  if (canvas.width !== Math.round(width * ratio)) canvas.width = Math.round(width * ratio);
+  if (canvas.height !== Math.round(height * ratio)) canvas.height = Math.round(height * ratio);
+
+  const pad = 24;
+  const scale = rocketScale(ms);
+  const at = (t) => ({
+    x: pad + (t / scale.time) * (width - 2 * pad),
+    y: height - pad - ((rocketMultiplier(t) - 100) / (scale.top - 100)) * (height - 2 * pad),
+  });
+  const points = [];
+  for (let i = 0; i <= 60; i++) points.push(at((ms * i) / 60));
+  const end = points[points.length - 1];
+  const before = at(Math.max(0, ms - scale.time / 40));
+
+  const ctx = canvas.getContext('2d');
+  const colour = getComputedStyle(canvas).color;
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  ctx.strokeStyle = colour;
+  ctx.fillStyle = colour;
+  ctx.lineWidth = 3;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  points.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+  ctx.stroke();
+  ctx.globalAlpha = 0.15;
+  ctx.lineTo(end.x, height - pad);
+  ctx.lineTo(pad, height - pad);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  // The New Year rocket leaves sparks.
+  if (document.documentElement.classList.contains('festive')) {
+    points.forEach((p, i) => { if (i % 4 === 2) ctx.fillRect(p.x - 1.5, p.y - 6 - (i % 8), 3, 3); });
+  }
+  if (cashedAt >= 0) {
+    const cash = at(cashedAt);
+    ctx.beginPath();
+    ctx.arc(cash.x, cash.y, 6, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+
+  const ship = $('rocket-ship');
+  const turn = Math.atan2(end.y - before.y, end.x - before.x || 1);
+  ship.style.transform = `translate(${end.x}px, ${end.y}px) translate(-50%, -50%) rotate(${ms > 0 ? turn : -Math.PI / 4}rad)`;
+  $('rocket-boom').style.left = `${end.x}px`;
+  $('rocket-boom').style.top = `${end.y}px`;
+  $('rocket-multiplier').textContent = rocketShown(rocketMultiplier(ms));
+}
+
+// showSky marks how the flight stands: flying, cashed or crashed.
+function showSky(state) {
+  $('rocket-sky').classList.toggle('cashed', state === 'cashed');
+  $('rocket-sky').classList.toggle('crashed', state === 'crashed');
+  $('rocket-boom').hidden = state !== 'crashed';
+}
+
+// glide moves the flight from one moment to another, in milliseconds of
+// the flight, drawn in duration milliseconds of the page.
+async function glide(from, to, duration, cashedAt) {
+  if (still || duration <= 0) {
+    drawSky(to, cashedAt);
+    return;
+  }
+
+  const begun = performance.now();
+  await new Promise((resolve) => {
+    const frame = () => {
+      const part = Math.min(1, (performance.now() - begun) / duration);
+      drawSky(from + (to - from) * part, cashedAt);
+      if (part < 1) requestAnimationFrame(frame); else resolve();
+    };
+    requestAnimationFrame(frame);
+  });
+}
+
+// land ends a round over: a cashed rocket flies on to where it explodes,
+// quickly, and every rocket explodes there.
+async function land(round, ms) {
+  const crash = rocketTime(round.crash);
+  const cashedAt = round.state === 'cashed' ? rocketTime(round.cashed) : -1;
+
+  if (cashedAt >= 0) {
+    showSky('cashed');
+    await glide(ms, crash, Math.min(1500, crash - ms), cashedAt);
+  } else {
+    drawSky(crash);
+  }
+  showSky('crashed');
+  $('rocket-multiplier').textContent = rocketShown(round.crash);
+}
+
+// flyLive draws a rocket cashed by hand while it flies, by the clock of the
+// page set to the server's at the launch, until it is over: cashed with
+// the button, or exploded — which the page learns by asking.
+function flyLive(round, votes) {
+  const start = performance.now() - round.elapsedMs;
+  const cash = $('rocket-cash');
+
+  return new Promise((resolve) => {
+    let over = null;
+    let shown = '';
+    const asking = setInterval(async () => {
+      try {
+        const now = await api.rocket(round.id);
+
+        if (now.state !== 'flying') over ??= now;
+      } catch {
+        // The next question may get through.
+      }
+    }, 500);
+
+    const frame = () => {
+      const ms = performance.now() - start;
+
+      if (over) {
+        clearInterval(asking);
+        cash.hidden = true;
+        cash.onclick = null;
+        resolve({ round: over, ms });
+
+        return;
+      }
+      drawSky(ms);
+      const text = tr('Забрать {0}', votesCount(betPrize(votes, rocketMultiplier(ms))));
+      if (text !== shown) cash.textContent = shown = text;
+      requestAnimationFrame(frame);
+    };
+
+    cash.onclick = async () => {
+      cash.disabled = true;
+      try {
+        over ??= await api.cashRocket(round.id);
+      } catch (e) {
+        showError($('error'), e);
+        cash.disabled = false;
+      }
+    };
+    cash.disabled = false;
+    cash.hidden = false;
+    $('rocket-launch').hidden = true;
+    requestAnimationFrame(frame);
+  });
+}
+
+// flyOnce launches a rocket of votes cashing by itself at auto (0 — by
+// hand) and shows its flight to the end.
+async function flyOnce(votes, auto) {
+  const round = await api.launchRocket(votes, auto);
+  let over = round;
+  let ms = 0;
+
+  // The bet is gone at once, the win comes with the cash.
+  showBalance(round.balance - round.payout);
+  showSky('flying');
+  $('rocket-result').hidden = true;
+  if (round.state === 'flying') {
+    ({ round: over, ms } = await flyLive(round, votes));
+  } else {
+    // A rocket cashing by itself is over at the launch: its flight is
+    // shown up to the cash or the explosion, at most 10 s.
+    ms = rocketTime(Math.min(round.crash, round.cashed || round.crash));
+    await glide(0, ms, Math.min(ms, 10000));
+  }
+  await land(over, ms);
+  $('rocket-launch').hidden = false;
+
+  flights.count++;
+  flights.spent += votes;
+  flights.won += over.payout;
+  showBalance(round.state === 'flying' ? (over.balance || balance) : round.balance);
+  showFlight(over, votes);
+  if (over.payout >= MILLION) jackpot(over.payout);
+}
+
+function showFlight(round, stake) {
+  const result = $('rocket-result');
+  const won = round.state === 'cashed';
+
+  result.className = won ? 'casino-result casino-win' : 'casino-result';
+  if (won) cheer(result, round.payout, stake);
+  if (won) {
+    result.textContent = tr('Вы забрали ставку на {0} и выиграли {1}! Ракета взорвалась на {2}.', rocketShown(round.cashed), votesCount(round.payout), rocketShown(round.crash));
+  } else if (round.auto > 0) {
+    result.textContent = tr('Ракета взорвалась на {0}, не долетев до {1}. Ставка проиграна.', rocketShown(round.crash), rocketShown(round.auto));
+  } else {
+    result.textContent = tr('Ракета взорвалась на {0}. Ставка проиграна.', rocketShown(round.crash));
+  }
+  result.hidden = false;
+
+  $('rocket-session').textContent = tr('За этот заход: {0}, поставлено {1}, выиграно {2}.',
+    rocketsCount(flights.count), votesCount(flights.spent), votesCount(flights.won));
+  $('rocket-session').hidden = false;
+}
+
+// rocketing is the form of "Ракетка": the bet, the multiplier to cash at
+// by itself, the sky and the button.
+function rocketing(rocket, signedIn) {
+  const amount = $('rocket-amount');
+  const target = $('rocket-target');
+
+  amount.min = String(rocket.least);
+  amount.max = String(rocket.most);
+  amount.value = String(Math.min(rocket.most, Math.max(rocket.least, 10)));
+  $('rocket-limits').textContent = tr('От {0} до {1} за ставку. Наибольший множитель — {2}.', rocket.least, votesCount(rocket.most), betMultiplier(rocket.top));
+
+  const stake = () => Math.floor(Number(amount.value));
+  // auto is the multiplier to cash at by itself, 0 — by hand, -1 — not
+  // one the rocket takes.
+  const auto = () => {
+    if (!target.value.trim()) return 0;
+    const times = typedOdds(target.value);
+
+    return times >= 101 && times <= rocket.top ? times : -1;
+  };
+
+  function update() {
+    const votes = stake();
+    const at = auto();
+    const fits = votes >= rocket.least && votes <= rocket.most;
+
+    if (!fits) $('rocket-sum').textContent = tr('Ставка — от {0} до {1}.', rocket.least, votesCount(rocket.most));
+    else if (at < 0) $('rocket-sum').textContent = tr('Забрать само можно на множителе от ×1,01 до {0}.', betMultiplier(rocket.top));
+    else if (at > 0) $('rocket-sum').textContent = tr('Ракета сама заберёт ставку на {0}: выигрыш — {1}.', rocketShown(at), votesCount(betPrize(votes, at)));
+    else $('rocket-sum').textContent = tr('Нажмите «Забрать», пока ракета летит.');
+    $('rocket-launch').textContent = fits ? tr('Поставить {0}', votesCount(votes)) : tr('Поставить');
+    $('rocket-launch').disabled = playing || !fits || at < 0;
+  }
+
+  for (const quick of $('rocket-form').querySelectorAll('[data-quick]')) {
+    quick.addEventListener('click', () => {
+      amount.value = String(betAmount(stake(), quick.dataset.quick, { ...rocket, balance: signedIn ? balance : undefined }));
+      update();
+    });
+  }
+  amount.addEventListener('input', update);
+  target.addEventListener('input', update);
+
+  $('rocket-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!signedIn || playing || auto() < 0) return;
+
+    hideError($('error'));
+    setPlaying(true);
+
+    try {
+      await flyOnce(stake(), auto());
+    } catch (e) {
+      showError($('error'), e);
+      $('rocket-launch').hidden = false;
+    } finally {
+      setPlaying(false);
+    }
+  });
+
+  refreshRocket = update;
+  addEventListener('resize', () => drawSky(sky.ms, sky.cashedAt));
+  if (signedIn) {
+    $('rocket-launch').hidden = false;
+    // "Автоигра" cashes by itself: without the multiplier to cash at it
+    // does not start.
+    watchAuto('rocket', () => {
+      const votes = stake();
+      const fits = votes >= rocket.least && votes <= rocket.most;
+
+      if (fits && auto() === 0) {
+        $('rocket-auto-state').textContent = tr('Для автоигры укажите, на каком множителе ракета заберёт ставку сама.');
+        $('rocket-auto-state').hidden = false;
+      }
+
+      return fits && auto() > 0 ? votes : 0;
+    }, () => flyOnce(stake(), auto()), rocketsCount);
+  } else {
+    $('rocket-guest').hidden = false;
+  }
+  update();
+}
+
 // eventMine is what the viewer staked and got back.
 function eventMine(e) {
   const mine = e.outcomes.reduce((sum, o) => sum + o.mine, 0);
@@ -527,7 +837,7 @@ const me = await currentUser().catch(() => null);
 renderChrome(me);
 
 try {
-  const { price, prizes, bets } = await answered;
+  const { price, prizes, bets, rocket } = await answered;
 
   $('price').textContent = votesCount(price);
   signedIn = Boolean(me);
@@ -536,6 +846,11 @@ try {
     aimShown = true;
     $('tab-aim').hidden = false;
     betting(bets, signedIn);
+  }
+  if (rocket?.top) {
+    rocketShownTab = true;
+    $('tab-rocket').hidden = false;
+    rocketing(rocket, signedIn);
   }
   // An address of the time the game was "Ставка" becomes its new one.
   if (new URL(location.href).searchParams.get('game') === 'bet') {
@@ -555,6 +870,8 @@ try {
   }
 
   $('casino').hidden = false;
+  // The sky is drawn once it has its size.
+  if (!$('rocket-game').hidden) drawSky(0);
 } catch (e) {
   showError($('error'), e);
 }
