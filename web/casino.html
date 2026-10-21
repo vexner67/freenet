@@ -34,6 +34,7 @@
         <div class="tabs casino-tabs" id="casino-tabs" hidden>
           <a id="tab-wheel" href="/casino">Огонёк</a>
           <a id="tab-aim" href="/casino?game=aim" hidden>Прицел</a>
+          <a id="tab-rocket" href="/casino?game=rocket" hidden>Ракетка</a>
           <a id="tab-events" href="/casino?game=events">Ставки</a>
         </div>
         <div class="casino" id="casino" hidden>
@@ -88,6 +89,46 @@
             <p class="hint casino-session" id="aim-auto-state" hidden></p>
             <div class="casino-result" id="bet-result" hidden></div>
             <p class="hint casino-session" id="bet-session" hidden></p>
+          </div>
+          <div class="casino-game" id="rocket-game" hidden>
+            <p class="casino-lead">Ракета взлетает, и множитель растёт от ×1. Заберите ставку, пока она не взорвалась, — ставка вернётся умноженной на то, что показывает ракета. Не успели — ставка пропала. Где ракета взорвётся, решается при взлёте.</p>
+            <form class="casino-bet" id="rocket-form">
+              <div class="casino-stake">
+                <label class="casino-label" for="rocket-amount">Ставка:</label>
+                <input class="casino-amount" id="rocket-amount" type="number" inputmode="numeric" required>
+                <span class="casino-quick">
+                  <button class="button" type="button" data-quick="least">мин.</button>
+                  <button class="button" type="button" data-quick="half">½</button>
+                  <button class="button" type="button" data-quick="double">×2</button>
+                  <button class="button" type="button" data-quick="most">макс.</button>
+                </span>
+              </div>
+              <p class="hint casino-limits" id="rocket-limits"></p>
+              <div class="casino-stake rocket-target">
+                <label class="casino-label" for="rocket-target">Забрать само на ×</label>
+                <input class="casino-amount" id="rocket-target" type="text" inputmode="decimal" placeholder="вручную">
+              </div>
+              <div class="rocket-sky" id="rocket-sky" aria-hidden="true">
+                <canvas class="rocket-trail" id="rocket-trail"></canvas>
+                <div class="rocket-ship" id="rocket-ship"></div>
+                <div class="rocket-boom" id="rocket-boom" hidden></div>
+                <div class="rocket-multiplier" id="rocket-multiplier">×1,00</div>
+              </div>
+              <p class="casino-sum" id="rocket-sum"></p>
+              <div class="casino-controls">
+                <button class="button" id="rocket-launch" type="submit" hidden></button>
+                <button class="button rocket-cash" id="rocket-cash" type="button" hidden></button>
+                <span class="hint" id="rocket-guest" hidden>Играть могут только вошедшие на сайт.</span>
+              </div>
+            </form>
+            <div class="casino-auto" id="rocket-auto" hidden>
+              <label class="casino-label" for="rocket-auto-count">Автоигра:</label>
+              <select id="rocket-auto-count"><option value="10">10 раз</option><option value="25">25 раз</option><option value="50">50 раз</option><option value="100">100 раз</option><option value="0">пока есть голоса</option></select>
+              <button class="button" type="button" id="rocket-auto-start">Запустить</button>
+            </div>
+            <p class="hint casino-session" id="rocket-auto-state" hidden></p>
+            <div class="casino-result" id="rocket-result" hidden></div>
+            <p class="hint casino-session" id="rocket-session" hidden></p>
           </div>
           <div class="casino-game" id="events-game" hidden>
             <p class="casino-lead">Угадайте, чем кончится событие, и поставьте на исход сколько хотите голосов. У каждого исхода свой коэффициент: если исход сбудется, ставка вернётся умноженной на коэффициент, с которым её сделали.</p>

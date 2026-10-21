@@ -1771,6 +1771,31 @@ a.poll-result-name { cursor: pointer; }
 .casino-sum { margin: 8px 0 0; text-align: center; }
 .casino-sections { margin: 0 0 10px; border: 1px solid var(--line-dedede); }
 .casino-sections .mb-tab-row { margin: 0; }
+/* "Ракетка": a sky in a grid, the trail of the flight drawn on a canvas in
+   its colour, the rocket at its end and the multiplier big over it; green
+   once cashed, red with a burst once it explodes. */
+.rocket-target { margin-top: 8px; }
+.rocket-target .casino-label { margin: 0; }
+.rocket-target .casino-amount { width: 90px; }
+.rocket-sky {
+  position: relative;
+  height: 220px;
+  margin: 12px 0 2px;
+  overflow: hidden;
+  border: 1px solid var(--line-c5d0db);
+  background:
+    repeating-linear-gradient(0deg, var(--line-e0e6ec) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(90deg, var(--line-e0e6ec) 0 1px, transparent 1px 40px),
+    linear-gradient(var(--back-e9edf1), var(--back-fff));
+}
+.rocket-trail { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--back-2e7dd7); }
+.rocket-ship { position: absolute; top: 0; left: 0; width: 48px; height: 24px; background: url("/static/rocket.svg") center / contain no-repeat; }
+.rocket-sky.crashed .rocket-ship { visibility: hidden; }
+.rocket-boom { position: absolute; width: 80px; height: 80px; margin: -40px 0 0 -40px; background: url("/static/rocket-boom.svg") center / contain no-repeat; animation: rocket-boom 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
+@keyframes rocket-boom { from { transform: scale(0.2); opacity: 0; } }
+.rocket-multiplier { position: absolute; top: 14px; left: 0; right: 0; color: var(--text-45688e); font-size: 34px; font-weight: bold; line-height: 40px; text-align: center; text-shadow: 0 1px 0 var(--back-fff); pointer-events: none; }
+.rocket-sky.cashed .rocket-multiplier { color: var(--text-43a047); }
+.rocket-sky.crashed .rocket-multiplier { color: var(--text-c33); }
 .bet-event { margin: 0 0 10px; padding: 8px 10px; border: 1px solid var(--line-dae1e8); background: var(--back-fff); }
 .bet-event-question { color: var(--text-45688e); font-size: 13px; font-weight: bold; }
 .bet-event-meta { margin: 2px 0 6px; color: var(--text-808080); }
@@ -1821,7 +1846,7 @@ a.poll-result-name { cursor: pointer; }
 
 .festive .casino-lead { padding: 6px 8px 6px 30px; border-left: 3px solid var(--back-d23a32); background: var(--back-fff3c4) url("/static/newyear/snowflake.svg") no-repeat 8px 50%; }
 
-.festive .casino-board, .festive .casino-multipliers {
+.festive .casino-board, .festive .casino-multipliers, .festive .rocket-sky {
   position: relative;
   padding: 16px;
   border: 3px solid var(--line-e2b24a);
@@ -1831,7 +1856,8 @@ a.poll-result-name { cursor: pointer; }
 }
 /* The frame of running lights: gold and red bulbs that blink in turn. */
 .festive .casino-board::before, .festive .casino-board::after,
-.festive .casino-multipliers::before, .festive .casino-multipliers::after {
+.festive .casino-multipliers::before, .festive .casino-multipliers::after,
+.festive .rocket-sky::before, .festive .rocket-sky::after {
   content: "";
   position: absolute;
   inset: 2px;
@@ -1844,7 +1870,7 @@ a.poll-result-name { cursor: pointer; }
   filter: drop-shadow(0 0 3px var(--back-ffd54a));
   animation: casino-bulbs 0.9s steps(1) infinite;
 }
-.festive .casino-board::after, .festive .casino-multipliers::after {
+.festive .casino-board::after, .festive .casino-multipliers::after, .festive .rocket-sky::after {
   background:
     radial-gradient(circle, var(--text-fff3c4) 2px, transparent 3px) 7px 0 / 14px 10px repeat-x,
     radial-gradient(circle, var(--text-fff3c4) 2px, transparent 3px) 7px 100% / 14px 10px repeat-x,
@@ -1939,6 +1965,15 @@ a.poll-result-name { cursor: pointer; }
 .festive .casino-dice { height: 22px; border: 2px solid var(--line-e2b24a); border-radius: 11px; background: repeating-linear-gradient(-45deg, var(--back-d23a32) 0 8px, var(--back-fff) 8px 16px); }
 .festive .casino-dice-win { background: repeating-linear-gradient(90deg, var(--back-43a047) 0 6px, var(--back-ffd54a) 6px 8px); box-shadow: 0 0 10px var(--back-ffd54a); }
 .festive .casino-dice-mark { background: var(--back-ffd54a); box-shadow: 0 0 8px 2px var(--back-ffd54a); }
+/* The New Year rocket: a night sky with snow in the frame of lights, a
+   candy-striped rocket with a golden trail of sparks and a firework. */
+.festive .rocket-sky { padding: 0; background: url("/static/newyear/flakes.svg"), radial-gradient(circle at 50% 130%, var(--back-0b3d2e), var(--back-2b1055) 80%); }
+.festive .rocket-trail { color: var(--back-ffd54a); }
+.festive .rocket-ship { background-image: url("/static/newyear/rocket.svg"); filter: drop-shadow(0 0 4px var(--back-ffd54a)); }
+.festive .rocket-boom { width: 110px; height: 110px; margin: -55px 0 0 -55px; background-image: url("/static/newyear/firework.svg"); }
+.festive .rocket-multiplier { color: var(--text-ffd54a); text-shadow: 0 0 8px var(--back-d23a32), 0 2px 0 var(--back-7a0f1d); }
+.festive .rocket-sky.cashed .rocket-multiplier { color: var(--text-fff3c4); text-shadow: 0 0 10px var(--back-43a047), 0 2px 0 var(--back-0b3d2e); }
+.festive .rocket-sky.crashed .rocket-multiplier { color: var(--text-fff); text-shadow: 0 0 10px var(--back-d23a32), 0 2px 0 var(--back-7a0f1d); }
 .festive .casino-dice-mark::before { content: "★"; position: absolute; top: 100%; left: 50%; color: var(--text-ffd54a); font-size: 16px; line-height: 16px; text-shadow: 0 0 4px var(--back-d23a32); transform: translateX(-50%); }
 
 /* Confetti of a win: pieces cast from the top of the screen. */
@@ -2074,6 +2109,7 @@ a.poll-result-name { cursor: pointer; }
   .jackpot, .jackpot::before, .jackpot-rays, .jackpot-card, .jackpot-title, .jackpot-sum.jackpot-done, .jackpot .jackpot-take, .jackpot-festive .jackpot-card::before { animation: none; }
   .casino-cell.won, .festive .casino-cell.won, .festive .casino-festive-text, .festive .casino-festive-text::before, .festive .casino-festive-text::after,
   .festive .casino-board::before, .festive .casino-board::after, .festive .casino-multipliers::before, .festive .casino-multipliers::after,
+  .festive .rocket-sky::before, .festive .rocket-sky::after, .rocket-boom,
   .festive .casino-controls .button, .festive .casino-controls .button::after, .festive .casino-win, .casino-balance .finance-votes.bump { animation: none; }
   .casino-dice-mark { transition: none; }
   .festive .casino-confetti { display: none; }

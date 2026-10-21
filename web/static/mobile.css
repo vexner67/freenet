@@ -303,6 +303,8 @@ input, select, textarea { font-size: 16px !important; }
 .casino-quick { width: 100%; }
 .casino-quick .button { flex: 1; min-height: 32px; }
 .casino-multiplier { min-height: 58px; }
+.rocket-sky { height: 180px; }
+.rocket-multiplier { font-size: 28px; }
 .bet-outcome-head { flex-wrap: wrap; }
 .bet-outcome-head .button { min-height: 32px; }
 

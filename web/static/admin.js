@@ -6,7 +6,8 @@
 // (/admin/vouchers/new), "Подарки" (/admin/gifts: what each gift costs)
 // "Оформление" (/admin/decor: the New Year decoration of the site),
 // "Казино" (/admin/casino: the price of a spin, the prizes and their odds,
-// and the limits and the return of "Прицел"), "Ставки" (/admin/bets: the
+// and the limits and the return of "Прицел", and the limits, the return and
+// the top of "Ракетка"), "Ставки" (/admin/bets: the
 // events people stake on, a new one, and closing, resolving, cancelling
 // and deleting them)
 // and "Реклама" (/admin/ads: the ads of the global feed, the form of a new
@@ -15,7 +16,7 @@
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, betEventState, foreignAgentText, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, betEventState, foreignAgentText, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 import { remember } from './newyear.js';
 
@@ -599,7 +600,7 @@ async function decor(answered) {
 // weights, the chance of each and the share of the votes the casino gives
 // back by them as they are typed, and how it has done in fact.
 async function casino(answered) {
-  const { price, prizes, spins, spent, won, bets, wagers } = await answered;
+  const { price, prizes, spins, spent, won, bets, wagers, rocket, rockets } = await answered;
   const rows = $('casino-rows');
   const priceField = $('casino-price');
   const save = $('casino-form').querySelector('button[type=submit]');
@@ -672,6 +673,7 @@ async function casino(answered) {
   });
 
   betSettings(bets, wagers);
+  rocketSettings(rocket, rockets);
   $('casino').hidden = false;
 }
 
@@ -751,6 +753,43 @@ function betSettings(bets, wagers) {
       await api.setCasinoBets(Number(least.value), Number(most.value), typed());
       $('bets-saved').textContent = tr('Изменения сохранены');
       $('bets-saved').hidden = false;
+    } catch (e) {
+      showError(e);
+    } finally {
+      save.disabled = false;
+    }
+  });
+}
+
+// rocketSettings is "Ракетка" of "Казино": the limits of a bet, the
+// return in percents, the top multiplier and how the flights have done.
+function rocketSettings(rocket, rockets) {
+  const save = $('rocket-form').querySelector('button[type=submit]');
+
+  $('rocket-stats').textContent = rockets.count > 0
+    ? tr('Сделано {0}: поставлено {1}, выиграно {2} — {3} поставленного.', rocketsCount(rockets.count), votesCount(rockets.spent), votesCount(rockets.won), casinoPayout(rockets))
+    : tr('Ещё никто не ставил.');
+  $('rocket-least').value = String(rocket.least);
+  $('rocket-most').value = String(rocket.most);
+  // The return and the top are in hundredths, typed as "95" and "1000".
+  $('rocket-return').value = betOddsField(rocket.return);
+  $('rocket-top').value = betOddsField(rocket.top);
+
+  $('rocket-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    $('rocket-saved').hidden = true;
+    save.disabled = true;
+
+    try {
+      await api.setCasinoRocket({
+        least: Number($('rocket-least').value),
+        most: Number($('rocket-most').value),
+        return: typedOdds($('rocket-return').value),
+        top: typedOdds($('rocket-top').value),
+      });
+      $('rocket-saved').textContent = tr('Изменения сохранены');
+      $('rocket-saved').hidden = false;
     } catch (e) {
       showError(e);
     } finally {
