@@ -4570,7 +4570,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [price, prizes, spins, spent, won, bets, wagers]
+                required: [price, prizes, spins, spent, won, bets, wagers, rocket, rockets]
                 properties:
                   price: { type: integer, format: int64 }
                   prizes:
@@ -4588,6 +4588,15 @@ paths:
                       count: { type: integer, format: int64, description: Bets made }
                       spent: { type: integer, format: int64, description: Votes bet }
                       won: { type: integer, format: int64, description: Votes won }
+                  rocket: { $ref: "#/components/schemas/CasinoRocket" }
+                  rockets:
+                    type: object
+                    description: How "Ракетка" does
+                    required: [count, spent, won]
+                    properties:
+                      count: { type: integer, format: int64, description: Rounds launched }
+                      spent: { type: integer, format: int64, description: Votes bet }
+                      won: { type: integer, format: int64, description: Votes paid }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
           description: You are not an administrator
@@ -4677,6 +4686,88 @@ paths:
                   balance: { type: integer, format: int64, description: Your votes after the bet }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/casino/rocket:
+    put:
+      summary: Change "Ракетка"
+      description: 'Only for the administrators of the site: the least and the most of a bet (1–100000000), the return — what the rocket gives back of the bets on average, in hundredths of a percent (1–10000) — and its top multiplier in hundredths (200–1000000), where it explodes whatever was drawn.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CasinoRocket" }
+      responses:
+        "204": { description: Set }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/casino/rockets:
+    post:
+      summary: Launch a rocket
+      description: 'Takes your votes and launches a rocket whose multiplier grows from ×1 as 100·e^(0.00012·ms) (×2 in about 5.8 s). The server draws where it explodes at the launch and tells it only once the round is over. Cash it (`POST …/cash`) before it explodes and the bet comes back multiplied by what it shows then; with `auto` it cashes by itself at that multiplier, and the round is over at once. Rate limited, with the casino''s limit counted apart.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount: { type: integer, format: int64, description: The votes bet, within the limits of the rocket }
+                auto: { type: integer, description: 'The multiplier to cash at by itself, in hundredths, from 101 to the top; 0 or none — by hand' }
+      responses:
+        "200":
+          description: The round
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RocketRound" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/casino/rockets/{id}:
+    get:
+      summary: A round of yours as it is now
+      description: The page asks while the rocket flies, to learn it exploded. `balance` is 0 here.
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The round
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RocketRound" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/casino/rockets/{id}/cash:
+    post:
+      summary: Cash a rocket
+      description: 'Takes the bet back at the multiplier the rocket shows now, by the clock of the server. Too late — the round comes back `crashed`, without a win. 409 for a round cashed already or cashing by itself. Rate limited.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The round
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RocketRound" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
@@ -7953,7 +8044,7 @@ components:
 
     Casino:
       type: object
-      required: [price, prizes, bets]
+      required: [price, prizes, bets, rocket]
       properties:
         price: { type: integer, format: int64, description: What a spin costs, in votes }
         prizes:
@@ -7961,6 +8052,31 @@ components:
           description: The votes of each prize, in order; 0 is nothing
           items: { type: integer, format: int64 }
         bets: { $ref: "#/components/schemas/CasinoBets" }
+        rocket: { $ref: "#/components/schemas/CasinoRocket" }
+
+    CasinoRocket:
+      type: object
+      description: '"Ракетка": the limits of a bet, the top multiplier and, for the administrators, the return'
+      required: [least, most, top]
+      properties:
+        least: { type: integer, format: int64, minimum: 1 }
+        most: { type: integer, format: int64, maximum: 100000000 }
+        return: { type: integer, minimum: 1, maximum: 10000, description: 'What the rocket gives back on average, in hundredths of a percent: 9500 — 95%. Only for the administrators' }
+        top: { type: integer, minimum: 200, maximum: 1000000, description: 'The top multiplier, in hundredths: 100000 — ×1000' }
+
+    RocketRound:
+      type: object
+      required: [id, amount, auto, state, cashed, payout, crash, elapsedMs, balance]
+      properties:
+        id: { type: string }
+        amount: { type: integer, format: int64 }
+        auto: { type: integer, description: 'The multiplier it cashes at by itself, in hundredths; 0 — by hand' }
+        state: { type: string, enum: [flying, cashed, crashed] }
+        cashed: { type: integer, description: 'The multiplier it was cashed at, in hundredths; 0 — it was not' }
+        payout: { type: integer, format: int64, description: The votes it paid }
+        crash: { type: integer, description: 'Where it explodes, in hundredths, once it is over; 0 while it flies' }
+        elapsedMs: { type: integer, format: int64, description: How long it has flown, by the clock of the server }
+        balance: { type: integer, format: int64, description: Your votes after the launch or the cash; 0 when only read }
 
     CasinoBets:
       type: object
@@ -7994,7 +8110,7 @@ components:
       required: [id, kind, amount, balance, peer, note, createdAt]
       properties:
         id: { type: string }
-        kind: { type: string, enum: [transfer, voucher, gift, stickers, casino, aim, stake] }
+        kind: { type: string, enum: [transfer, voucher, gift, stickers, casino, aim, stake, rocket] }
         amount: { type: integer, format: int64, description: What came in (above zero) or went out (below) }
         balance: { type: integer, format: int64, description: The votes after it }
         peer:

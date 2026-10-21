@@ -7,6 +7,18 @@ type Casino struct {
 	Price  int64
 	Prizes []CasinoPrize
 	Bets   CasinoBets
+	Rocket CasinoRocket
+}
+
+// CasinoRocket is "Ракетка": bets from Least to Most votes, a rocket that
+// explodes at Top (in hundredths, 100000 — ×1000) at the latest and, for
+// the administrators, gives back Return of the bets on average, in
+// hundredths of a percent (9500 — 95%).
+type CasinoRocket struct {
+	Least  int64
+	Most   int64
+	Return int
+	Top    int
 }
 
 // CasinoBets are the bets of the casino: a player bets from Least to Most
@@ -42,6 +54,11 @@ type CasinoSettings struct {
 	Wagers     int64
 	WagerSpent int64
 	WagerWon   int64
+	// Rockets are the rounds of "Ракетка" launched, RocketSpent and
+	// RocketWon — the votes they took and paid.
+	Rockets     int64
+	RocketSpent int64
+	RocketWon   int64
 }
 
 // CasinoSpin is what one spin won: the index of the prize, its votes and
@@ -60,4 +77,30 @@ type CasinoWager struct {
 	Chance  int
 	Votes   int64
 	Balance int64
+}
+
+// RocketState is where a round of "Ракетка" is.
+type RocketState string
+
+const (
+	RocketFlying  RocketState = "flying"
+	RocketCashed  RocketState = "cashed"
+	RocketCrashed RocketState = "crashed"
+)
+
+// RocketRound is a round of "Ракетка" as its player sees it: the bet, the
+// multiplier it cashes at by itself (0 — by hand), the multiplier it was
+// cashed at and what it paid, the crash point once it is over (0 while it
+// flies), how long it has flown and the balance after the launch or the
+// cash (0 when it was only read).
+type RocketRound struct {
+	ID        string
+	Amount    int64
+	Auto      int
+	State     RocketState
+	Cashed    int
+	Payout    int64
+	Crash     int
+	ElapsedMS int64
+	Balance   int64
 }
