@@ -2,6 +2,7 @@ package rest
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/model"
 )
@@ -22,6 +23,28 @@ type redeemedResponse struct {
 
 type transferVotesRequest struct {
 	Votes int64 `json:"votes"`
+	// Note is the message with the transfer, may be empty.
+	Note string `json:"note"`
+}
+
+// voteOperationJSON is a line of the statement of votes. Peer is the
+// other person of a transfer, a gift or a sticker pack; null for none or
+// a page that is gone.
+type voteOperationJSON struct {
+	ID        string      `json:"id"`
+	Kind      string      `json:"kind"`
+	Amount    int64       `json:"amount"`
+	Balance   int64       `json:"balance"`
+	Peer      *authorJSON `json:"peer"`
+	Note      string      `json:"note"`
+	CreatedAt string      `json:"createdAt"`
+}
+
+type statementResponse struct {
+	Operations []voteOperationJSON `json:"operations"`
+	NextCursor string              `json:"nextCursor"`
+	Income     int64               `json:"income"`
+	Expense    int64               `json:"expense"`
 }
 
 // balanceResponse is the votes the caller has left.
@@ -110,13 +133,77 @@ func (a *api) transferVotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	left, err := a.votes.Transfer(r.Context(), token, recipient.ID, req.Votes)
+	left, err := a.votes.Transfer(r.Context(), token, recipient.ID, req.Votes, req.Note)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
 	writeJSON(w, http.StatusOK, balanceResponse{Votes: left})
+}
+
+// voteStatement is the statement of the caller's votes ("Голоса"): every
+// change of them, newest first, with the people they were with.
+func (a *api) voteStatement(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	limit, err := pageLimit(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	q := r.URL.Query()
+
+	statement, err := a.votes.Statement(r.Context(), token, q.Get("cursor"), q.Get("flow"), limit)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	peerIDs := make([]string, 0, len(statement.Operations))
+	for _, op := range statement.Operations {
+		if op.PeerID != "" {
+			peerIDs = append(peerIDs, op.PeerID)
+		}
+	}
+
+	peers, err := a.people(r, peerIDs)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	resp := statementResponse{
+		Operations: make([]voteOperationJSON, 0, len(statement.Operations)),
+		NextCursor: statement.NextCursor,
+		Income:     statement.Income,
+		Expense:    statement.Expense,
+	}
+
+	for _, op := range statement.Operations {
+		line := voteOperationJSON{
+			ID:        op.ID,
+			Kind:      op.Kind,
+			Amount:    op.Amount,
+			Balance:   op.Balance,
+			Note:      op.Note,
+			CreatedAt: op.CreatedAt.UTC().Format(time.RFC3339),
+		}
+
+		if peer, ok := peers[op.PeerID]; ok {
+			author := toAuthorJSON(peer)
+			line.Peer = &author
+		}
+
+		resp.Operations = append(resp.Operations, line)
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // listVouchers is "Ваучеры" of the administrators: every voucher, newest

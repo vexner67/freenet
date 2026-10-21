@@ -468,7 +468,11 @@ type Stickers interface {
 type Votes interface {
 	// Transfer hands votes of the caller to userID and returns what the
 	// caller has left.
-	Transfer(ctx context.Context, accessToken, userID string, votes int64) (int64, error)
+	// The note goes with the transfer to both statements.
+	Transfer(ctx context.Context, accessToken, userID string, votes int64, note string) (int64, error)
+	// Statement is the caller's statement of votes: flow "in", "out" or
+	// empty for both.
+	Statement(ctx context.Context, accessToken, cursor, flow string, limit int) (model.Statement, error)
 	// Redeem gives the caller what the voucher carries.
 	Redeem(ctx context.Context, accessToken, token string) (model.Redeemed, error)
 	// CreateVoucher, ListVouchers and DeleteVoucher are the
@@ -797,6 +801,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PATCH /api/v1/sticker-packs/{pack}", a.editStickerPack)
 	mux.HandleFunc("DELETE /api/v1/sticker-packs/{pack}", a.deleteStickerPack)
 	mux.HandleFunc("POST /api/v1/me/vouchers", a.redeemVoucher)
+	mux.HandleFunc("GET /api/v1/me/votes", a.voteStatement)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/votes", a.transferVotes)
 	mux.HandleFunc("GET /api/v1/vouchers", a.listVouchers)
 	mux.HandleFunc("POST /api/v1/vouchers", a.createVoucher)

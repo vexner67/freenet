@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
@@ -11,16 +12,31 @@ import (
 )
 
 type fakeVotes struct {
-	token, userID, code, cursor, deleted string
-	votes                                int64
-	limit                                int
-	draft                                model.VoucherDraft
-	err                                  error
+	token, userID, code, cursor, deleted, note, flow string
+	votes                                            int64
+	limit                                            int
+	draft                                            model.VoucherDraft
+	err                                              error
 }
 
-func (f *fakeVotes) Transfer(_ context.Context, token, userID string, votes int64) (int64, error) {
-	f.token, f.userID, f.votes = token, userID, votes
+func (f *fakeVotes) Transfer(_ context.Context, token, userID string, votes int64, note string) (int64, error) {
+	f.token, f.userID, f.votes, f.note = token, userID, votes, note
 	return 6, f.err
+}
+
+func (f *fakeVotes) Statement(_ context.Context, token, cursor, flow string, limit int) (model.Statement, error) {
+	f.token, f.cursor, f.flow, f.limit = token, cursor, flow, limit
+	at := time.Date(2026, 10, 21, 12, 0, 0, 0, time.UTC)
+	return model.Statement{
+		Operations: []model.VoteOperation{
+			{ID: "o3", Kind: "transfer", Amount: -4, Balance: 6, PeerID: "u2", Note: "За пиццу", CreatedAt: at},
+			{ID: "o2", Kind: "gift", Amount: -1, Balance: 10, PeerID: "gone", Note: "cake", CreatedAt: at},
+			{ID: "o1", Kind: "voucher", Amount: 11, Balance: 11, CreatedAt: at},
+		},
+		NextCursor: "o1",
+		Income:     11,
+		Expense:    5,
+	}, f.err
 }
 
 func (f *fakeVotes) Redeem(_ context.Context, token, code string) (model.Redeemed, error) {
@@ -100,11 +116,11 @@ func TestTransferVotes(t *testing.T) {
 	t.Parallel()
 
 	h := newHarness(rest.Config{})
-	w := h.do("POST", "/api/v1/users/bob/votes", `{"votes":4}`, "Authorization", "Bearer tok")
+	w := h.do("POST", "/api/v1/users/bob/votes", `{"votes":4,"note":"За пиццу"}`, "Authorization", "Bearer tok")
 	got := decode[struct {
 		Votes int64 `json:"votes"`
 	}](t, w)
-	if w.Code != http.StatusOK || got.Votes != 6 || h.votes.userID != "u2" || h.votes.votes != 4 || h.votes.token != "tok" {
+	if w.Code != http.StatusOK || got.Votes != 6 || h.votes.userID != "u2" || h.votes.votes != 4 || h.votes.token != "tok" || h.votes.note != "За пиццу" {
 		t.Fatalf("%d %+v, asked %+v", w.Code, got, h.votes)
 	}
 
@@ -131,6 +147,51 @@ func TestTransferVotes(t *testing.T) {
 	}
 	if w = newHarness(rest.Config{}).do("POST", "/api/v1/users/bob/votes", `{"votes":4}`); w.Code != http.StatusUnauthorized {
 		t.Fatalf("without token: %d", w.Code)
+	}
+}
+
+func TestVoteStatement(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	w := h.do("GET", "/api/v1/me/votes?cursor=o9&flow=out&limit=3", "", "Authorization", "Bearer tok")
+	got := decode[struct {
+		Operations []struct {
+			ID      string `json:"id"`
+			Kind    string `json:"kind"`
+			Amount  int64  `json:"amount"`
+			Balance int64  `json:"balance"`
+			Peer    *struct {
+				Nickname string `json:"nickname"`
+			} `json:"peer"`
+			Note      string `json:"note"`
+			CreatedAt string `json:"createdAt"`
+		} `json:"operations"`
+		NextCursor string `json:"nextCursor"`
+		Income     int64  `json:"income"`
+		Expense    int64  `json:"expense"`
+	}](t, w)
+	if w.Code != http.StatusOK || h.votes.token != "tok" || h.votes.cursor != "o9" || h.votes.flow != "out" || h.votes.limit != 3 {
+		t.Fatalf("%d, asked %+v", w.Code, h.votes)
+	}
+	if got.NextCursor != "o1" || got.Income != 11 || got.Expense != 5 || len(got.Operations) != 3 {
+		t.Fatalf("statement = %+v", got)
+	}
+	first := got.Operations[0]
+	if first.Kind != "transfer" || first.Amount != -4 || first.Balance != 6 || first.Peer == nil || first.Peer.Nickname != "bob" ||
+		first.Note != "За пиццу" || first.CreatedAt != "2026-10-21T12:00:00Z" {
+		t.Fatalf("the transfer = %+v", first)
+	}
+	// A peer who is gone and no peer at all are both null.
+	if got.Operations[1].Peer != nil || got.Operations[2].Peer != nil {
+		t.Fatalf("peers = %+v", got.Operations)
+	}
+
+	if w = newHarness(rest.Config{}).do("GET", "/api/v1/me/votes", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without token: %d", w.Code)
+	}
+	if w = newHarness(rest.Config{}).do("GET", "/api/v1/me/votes?limit=x", "", "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
+		t.Fatalf("a wrong limit: %d", w.Code)
 	}
 }
 

@@ -4069,6 +4069,39 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/me/votes:
+    get:
+      summary: The statement of your votes ("Голоса")
+      description: |
+        Every change of your votes, newest first: transfers both ways,
+        vouchers, gifts, sticker packs bought and sold, the casino and the
+        stakes on events. `income` and `expense` are what came in and went
+        out over the last 30 days.
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: cursor, in: query, schema: { type: string }, description: "`nextCursor` of the previous page" }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+        - name: flow
+          in: query
+          schema: { type: string, enum: ["", in, out] }
+          description: "`in` for what came in, `out` for what went out"
+      responses:
+        "200":
+          description: A page of the statement
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [operations, nextCursor, income, expense]
+                properties:
+                  operations:
+                    type: array
+                    items: { $ref: "#/components/schemas/VoteOperation" }
+                  nextCursor: { type: string, description: Empty on the last page }
+                  income: { type: integer, format: int64 }
+                  expense: { type: integer, format: int64 }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
   /api/v1/me/vouchers:
     post:
       summary: Use a voucher ("Активировать ваучер")
@@ -4132,7 +4165,8 @@ paths:
               additionalProperties: false
               required: [votes]
               properties:
-                votes: { type: integer, minimum: 1, maximum: 1000000 }
+                votes: { type: integer, minimum: 1, maximum: 100000000 }
+                note: { type: string, maxLength: 140, description: "The message with the transfer, one line; both statements show it" }
       responses:
         "200":
           description: Handed over
@@ -4206,7 +4240,7 @@ paths:
               required: [usages]
               properties:
                 code: { type: string, description: "The serial number, 24 letters and digits; left out or empty for a generated one" }
-                votes: { type: integer, minimum: 0, maximum: 1000000 }
+                votes: { type: integer, minimum: 0, maximum: 100000000 }
                 rating: { type: integer, minimum: 0, maximum: 1000, description: Percent added to the page of whoever uses it }
                 usages: { type: integer, description: "How many accounts may use it: 1-1000000, or -1 for any number" }
       responses:
@@ -7911,6 +7945,26 @@ components:
         votes: { type: integer, format: int64, minimum: 0, maximum: 1000000 }
         weight: { type: integer, minimum: 0, maximum: 1000000, description: How likely the prize is among the weights of all prizes }
 
+    VoteOperation:
+      type: object
+      description: A line of the statement of votes
+      required: [id, kind, amount, balance, peer, note, createdAt]
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [transfer, voucher, gift, stickers, casino, aim, stake] }
+        amount: { type: integer, format: int64, description: What came in (above zero) or went out (below) }
+        balance: { type: integer, format: int64, description: The votes after it }
+        peer:
+          description: The other person of a transfer, a gift or a sticker pack; null for none or a page that is gone
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/Author" }]
+        note:
+          type: string
+          description: |
+            The message of a transfer, the gift (`rose`), the sticker pack (its
+            ID for a pack of the site, its name for one of a person) or the
+            question of an event.
+        createdAt: { type: string, format: date-time }
     Voucher:
       type: object
       description: 'A voucher ("Ваучер"), as the administrators see it'

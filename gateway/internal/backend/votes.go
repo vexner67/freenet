@@ -21,8 +21,8 @@ func NewVotes(api userv1.UserServiceClient) *Votes {
 	}
 }
 
-func (v *Votes) Transfer(ctx context.Context, accessToken, userID string, votes int64) (int64, error) {
-	resp, err := v.api.TransferVotes(withToken(ctx, accessToken), &userv1.TransferVotesRequest{UserId: userID, Votes: votes})
+func (v *Votes) Transfer(ctx context.Context, accessToken, userID string, votes int64, note string) (int64, error) {
+	resp, err := v.api.TransferVotes(withToken(ctx, accessToken), &userv1.TransferVotesRequest{UserId: userID, Votes: votes, Note: note})
 	if err != nil {
 		// Why the user service refuses a transfer is its to say, as with
 		// gifts.
@@ -30,6 +30,38 @@ func (v *Votes) Transfer(ctx context.Context, accessToken, userID string, votes 
 	}
 
 	return resp.GetVotes(), nil
+}
+
+func (v *Votes) Statement(ctx context.Context, accessToken, cursor, flow string, limit int) (model.Statement, error) {
+	resp, err := v.api.ListVoteOperations(withToken(ctx, accessToken), &userv1.ListVoteOperationsRequest{
+		Cursor: cursor,
+		Limit:  toLimit(limit),
+		Flow:   flow,
+	})
+	if err != nil {
+		return model.Statement{}, errs.Wrap("v.api.ListVoteOperations", fromStatus(err))
+	}
+
+	s := model.Statement{
+		Operations: make([]model.VoteOperation, 0, len(resp.GetOperations())),
+		NextCursor: resp.GetNextCursor(),
+		Income:     resp.GetIncome(),
+		Expense:    resp.GetExpense(),
+	}
+
+	for _, op := range resp.GetOperations() {
+		s.Operations = append(s.Operations, model.VoteOperation{
+			ID:        op.GetId(),
+			Kind:      op.GetKind(),
+			Amount:    op.GetAmount(),
+			Balance:   op.GetBalance(),
+			PeerID:    op.GetPeerId(),
+			Note:      op.GetNote(),
+			CreatedAt: op.GetCreatedAt().AsTime(),
+		})
+	}
+
+	return s, nil
 }
 
 func (v *Votes) Redeem(ctx context.Context, accessToken, token string) (model.Redeemed, error) {
