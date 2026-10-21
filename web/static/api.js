@@ -691,7 +691,14 @@ export const api = {
   // Votes ("голоса"): a voucher gives them, a transfer hands them over;
   // the vouchers themselves are the administrators'.
   redeemVoucher: (code) => authorized('POST', '/api/v1/me/vouchers', { code }),
-  transferVotes: (nickname, votes) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/votes`, { votes }),
+  transferVotes: (nickname, votes, note = '') => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/votes`, { votes, note }),
+  // voteStatement is a page of the statement of votes: all, 'in' or 'out'.
+  voteStatement(cursor = '', flow = '') {
+    const query = new URLSearchParams();
+    if (cursor) query.set('cursor', cursor);
+    if (flow) query.set('flow', flow);
+    return authorized('GET', query.size ? `/api/v1/me/votes?${query}` : '/api/v1/me/votes');
+  },
   vouchers: (cursor = '') => authorized('GET', page('/api/v1/vouchers', cursor, 0)),
   createVoucher: (voucher) => authorized('POST', '/api/v1/vouchers', voucher),
   deleteVoucher: (id) => authorized('DELETE', `/api/v1/vouchers/${encodeURIComponent(id)}`),

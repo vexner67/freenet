@@ -319,3 +319,11 @@ input, select, textarea { font-size: 16px !important; }
   .profile { grid-template-columns: 80px minmax(0, 1fr); }
   .profile-left > .avatar-box { width: 80px; }
 }
+
+/* "Мои Голоса": the balance over what it says, the buttons and the totals
+   in a column of their own. */
+.finance { flex-direction: column-reverse; align-items: stretch; }
+.finance-balance { width: auto; }
+.bank-actions { flex-wrap: wrap; }
+.bank-actions .button { flex: 1; text-align: center; }
+.bank-totals { flex-direction: column; }

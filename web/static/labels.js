@@ -1195,6 +1195,71 @@ export function voucherGave({ votes, rating }) {
   return [votes > 0 && votesCount(votes), rating > 0 && tr('{0}% рейтинга', rating)].filter(Boolean).join(tr(' и '));
 }
 
+// groupedVotes is a number of votes with its thousands apart:
+// "1 250 000".
+export function groupedVotes(n) {
+  return String(Math.trunc(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+}
+
+// votesAmount is "1 250 000 голосов".
+export function votesAmount(n) {
+  return `${groupedVotes(n)} ${plural(Math.abs(n), ['голос', 'голоса', 'голосов'])}`;
+}
+
+// signedVotes is a line of the statement: "+1 250" or "−300".
+export function signedVotes(amount) {
+  return `${amount < 0 ? '−' : '+'}${groupedVotes(amount)}`;
+}
+
+// voteOperation is what a line of the statement of votes says: its title
+// and what the person by it is to the owner — "Получатель", "Отправитель"
+// and so on; role is empty when no one is named.
+export function voteOperation(op, myId) {
+  const out = op.amount < 0;
+  const note = op.note ?? '';
+
+  switch (op.kind) {
+    case 'transfer':
+      return { title: out ? tr('Перевод голосов') : tr('Поступление голосов'), role: out ? tr('Получатель:') : tr('Отправитель:') };
+    case 'voucher':
+      return { title: tr('Активация ваучера'), role: '' };
+    case 'gift': {
+      const gift = giftNames[note] ?? tr('Подарок');
+      const toSelf = !op.peer || op.peer.id === myId;
+      return { title: toSelf ? tr('Покупка подарка «{0}»', gift) : tr('Подарок «{0}»', gift), role: toSelf ? '' : tr('Получатель:') };
+    }
+    case 'stickers': {
+      const pack = stickerPacks[note] ?? note;
+      return out
+        ? { title: tr('Набор стикеров «{0}»', pack), role: tr('Автор:') }
+        : { title: tr('Продажа набора стикеров «{0}»', pack), role: tr('Покупатель:') };
+    }
+    case 'casino':
+      return { title: out ? tr('Казино: прокрутка «Огонька»') : tr('Казино: выигрыш в «Огоньке»'), role: '' };
+    case 'aim':
+      return { title: out ? tr('Казино: ставка в «Прицеле»') : tr('Казино: выигрыш в «Прицеле»'), role: '' };
+    case 'stake':
+      return { title: out ? tr('Ставка на событие «{0}»', note) : tr('Выплата по событию «{0}»', note), role: '' };
+    default:
+      return { title: out ? tr('Списание голосов') : tr('Зачисление голосов'), role: '' };
+  }
+}
+
+// transferNickname is the nickname in the address of a recipient as people
+// paste it: "ann", "@ann" or the whole link of the page or of the bank.
+export function transferNickname(address) {
+  const text = address.trim();
+  const to = text.match(/[?&]to=([^&#]+)/);
+  if (to) return decodeURIComponent(to[1]);
+
+  return text.replace(/[?#].*$/, '').replace(/\/+$/, '').replace(/^.*\//, '').replace(/^@/, '');
+}
+
+// transferURL is the link that opens a transfer to nickname.
+export function transferURL(origin, nickname) {
+  return `${origin}/votes?act=transfer&to=${encodeURIComponent(nickname)}`;
+}
+
 // giftsCount is openvk's "gifts": "3 подарка", "Нет подарков".
 export function giftsCount(n) {
   return n === 0 ? tr('Нет подарков') : `${n} ${plural(n, ['подарок', 'подарка', 'подарков'])}`;
