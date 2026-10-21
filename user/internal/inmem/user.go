@@ -26,6 +26,13 @@ type UserRepository struct {
 	invitedBy map[uuid.UUID]uuid.UUID
 	// operations are the statement of each page, oldest first.
 	operations map[uuid.UUID][]user.VoteOperation
+	// treasury is the votes of the site (Казна), members those who have
+	// minted into it and bonuses the day of the last bonus of each page.
+	treasury user.Treasury
+	members  map[uuid.UUID]struct{}
+	bonuses  map[uuid.UUID]time.Time
+	// promised is what the vouchers promise: VoucherRepository tells.
+	promised func() int64
 	// cascade drops what other repositories keep of a deleted user, as
 	// the foreign keys do in PostgreSQL.
 	cascade []func(uuid.UUID)
@@ -38,6 +45,10 @@ func NewUserRepository() *UserRepository {
 		byNickname: make(map[string]uuid.UUID),
 		invitedBy:  make(map[uuid.UUID]uuid.UUID),
 		operations: make(map[uuid.UUID][]user.VoteOperation),
+		treasury:   user.Treasury{Votes: user.TreasuryStart},
+		members:    make(map[uuid.UUID]struct{}),
+		bonuses:    make(map[uuid.UUID]time.Time),
+		promised:   func() int64 { return 0 },
 	}
 }
 
@@ -361,6 +372,8 @@ func (r *UserRepository) DeleteDue(ctx context.Context, now time.Time, limit int
 		}
 		delete(r.invitedBy, id)
 		delete(r.operations, id)
+		delete(r.members, id)
+		delete(r.bonuses, id)
 	}
 
 	for id, ops := range r.operations {

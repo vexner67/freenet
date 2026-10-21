@@ -187,6 +187,7 @@ func (a *App) build(cfg config.Config) error {
 				Users:       store.users,
 				Wallets:     store.wallets,
 				Statements:  store.statements,
+				Bonuses:     store.bonuses,
 				Vouchers:    store.vouchers,
 				Rates:       store.rates,
 				Permissions: permissions,
@@ -238,6 +239,7 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 
 		userv1.UserService_TransferVotes_FullMethodName: cfg.TransferLimits,
 		userv1.UserService_RedeemVoucher_FullMethodName: cfg.VoucherLimits,
+		userv1.UserService_ClaimBonus_FullMethodName:    cfg.VoucherLimits,
 
 		userv1.UserService_CreateStickerPack_FullMethodName: cfg.StickerPackLimits,
 		userv1.UserService_EditStickerPack_FullMethodName:   cfg.StickerPackLimits,
@@ -305,7 +307,9 @@ type storage struct {
 	wallets service.WalletRepository
 	// statements are the changes of their votes.
 	statements service.StatementRepository
-	vouchers   service.VoucherRepository
+	// bonuses are the daily bonuses and the members of the treasury.
+	bonuses  service.BonusRepository
+	vouchers service.VoucherRepository
 	// rates is what a vote is worth in rubles.
 	rates service.VoteRateRepository
 	// decor is how the site is dressed for the New Year.
@@ -341,6 +345,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			stickerPacks: inmem.NewStickerPackRepository(users, stickers),
 			wallets:      users,
 			statements:   users,
+			bonuses:      users,
 			vouchers:     inmem.NewVoucherRepository(users),
 			rates:        inmem.NewVoteRateRepository(),
 			decor:        inmem.NewDecorRepository(),
@@ -387,6 +392,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		stickerPacks: postgres.NewStickerPackRepository(a.pool),
 		wallets:      postgres.NewWalletRepository(a.pool),
 		statements:   postgres.NewWalletRepository(a.pool),
+		bonuses:      postgres.NewWalletRepository(a.pool),
 		vouchers:     postgres.NewVoucherRepository(a.pool),
 		rates:        postgres.NewVoteRateRepository(a.pool),
 		decor:        postgres.NewDecorRepository(a.pool),

@@ -21,12 +21,10 @@ type BetEventRepository interface {
 	Create(ctx context.Context, e *user.BetEvent) error
 	// Update writes the state, the winner and the odds of the event.
 	Update(ctx context.Context, e *user.BetEvent) error
-	// Lock reads the event for a change of its state, waiting for the
-	// stakes being made; user.ErrBetEventNotFound.
+	// Lock reads the event FOR UPDATE: its stakes and the changes of its
+	// state go one by one, so the limits of the stakes hold;
+	// user.ErrBetEventNotFound.
 	Lock(ctx context.Context, id uuid.UUID) (*user.BetEvent, error)
-	// LockForStake reads the event for a stake: stakes go side by side,
-	// a change of the state waits for them; user.ErrBetEventNotFound.
-	LockForStake(ctx context.Context, id uuid.UUID) (*user.BetEvent, error)
 	// List is the events with their stakes and the stakes of viewerID
 	// (uuid.Nil for nobody), at most MaxListedBetEvents.
 	List(ctx context.Context, list BetEventList, viewerID uuid.UUID) ([]BetEventView, error)
@@ -198,19 +196,28 @@ func (s *BetEventService) Delete(ctx context.Context, adminID, id uuid.UUID) err
 // Stake takes amount votes of userID and puts them on the outcome, in one
 // transaction, and returns what is left; user.ErrBetEventNotFound,
 // user.ErrBetEventClosed, user.ErrBetOutcome, user.ErrStakeAmount,
-// user.ErrNotEnoughVotes.
+// user.ErrEventStakeLimit, user.ErrEventFull, user.ErrNotEnoughVotes.
 func (s *BetEventService) Stake(ctx context.Context, userID, id uuid.UUID, outcome int, amount int64) (int64, error) {
 	var balance int64
 
 	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		e, err := s.events.LockForStake(ctx, id)
+		e, err := s.events.Lock(ctx, id)
 		if err != nil {
-			return errs.Wrap("s.events.LockForStake", err)
+			return errs.Wrap("s.events.Lock", err)
 		}
 
 		potential, err := e.Stake(outcome, amount, s.now())
 		if err != nil {
 			return errs.Wrap("e.Stake", err)
+		}
+
+		stakes, err := s.events.Stakes(ctx, id)
+		if err != nil {
+			return errs.Wrap("s.events.Stakes", err)
+		}
+
+		if err = user.CheckStake(stakes, userID, outcome, amount, potential); err != nil {
+			return errs.Wrap("user.CheckStake", err)
 		}
 
 		if balance, err = s.wallets.Spend(ctx, userID, amount, user.Entry(user.VoteStake, uuid.Nil, e.Question().String())); err != nil {

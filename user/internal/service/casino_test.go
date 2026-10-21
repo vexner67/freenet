@@ -104,7 +104,7 @@ func TestCasinoService_Bet(t *testing.T) {
 	}
 
 	// The roll is the next of these.
-	rolls := []int64{2625, 7375}
+	rolls := []int64{2900, 7200}
 	casino := service.NewCasinoService(w.users, inmem.NewCasinoRepository(), w.users, inmem.TxManager{}, admins).
 		WithRoll(func(n int64) (int64, error) {
 			if n != user.BetOdds {
@@ -121,7 +121,7 @@ func TestCasinoService_Bet(t *testing.T) {
 	}
 
 	// Only the administrators change the bets.
-	bets, err := user.NewCasinoBets(10, 100, []user.AimMultiplier{{Multiplier: 200, Chance: 4750}, {Multiplier: 300, Chance: 2000}})
+	bets, err := user.NewCasinoBets(10, 100, []user.AimMultiplier{{Multiplier: 200, Chance: 4250}, {Multiplier: 300, Chance: 2000}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,9 +138,9 @@ func TestCasinoService_Bet(t *testing.T) {
 	if _, err := casino.Bet(ctx, ann, 50, 123); !errors.Is(err, user.ErrBetMultiplier) {
 		t.Fatalf("Bet on ×1.23: %v", err)
 	}
-	// ×1.5 is a default multiplier the administrators did not keep.
-	if _, err := casino.Bet(ctx, ann, 50, 150); !errors.Is(err, user.ErrBetMultiplier) {
-		t.Fatalf("Bet on ×1.5: %v", err)
+	// ×10 is a default multiplier the administrators did not keep.
+	if _, err := casino.Bet(ctx, ann, 50, 1000); !errors.Is(err, user.ErrBetMultiplier) {
+		t.Fatalf("Bet on ×10: %v", err)
 	}
 	if _, err := casino.Bet(ctx, ann, 50, 200); !errors.Is(err, user.ErrNotEnoughVotes) {
 		t.Fatalf("Bet without votes: %v", err)
@@ -150,12 +150,12 @@ func TestCasinoService_Bet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := service.Wager{Won: true, Roll: 2625, Chance: 4750, Votes: 100, Balance: 150}
+	want := service.Wager{Won: true, Roll: 2900, Chance: 4250, Votes: 100, Balance: 150}
 	if wager, err := casino.Bet(ctx, ann, 50, 200); err != nil || wager != want {
 		t.Fatalf("winning Bet = %+v, %v; want %+v", wager, err, want)
 	}
 
-	want = service.Wager{Roll: 7375, Chance: 4750, Balance: 50}
+	want = service.Wager{Roll: 7200, Chance: 4250, Balance: 50}
 	if wager, err := casino.Bet(ctx, ann, 100, 200); err != nil || wager != want {
 		t.Fatalf("losing Bet = %+v, %v; want %+v", wager, err, want)
 	}

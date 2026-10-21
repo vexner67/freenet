@@ -28,7 +28,9 @@ var (
 	ErrVoucherEmpty         = errors.New("voucher must give votes or rating")
 	ErrVoucherAmountInvalid = errors.New("voucher gives up to 100000000 votes and up to 1000 of rating")
 	ErrVoucherUsagesInvalid = errors.New("voucher usages must be -1 or between 1 and 1000000")
-	ErrVoucherExists        = errors.New("voucher with this serial number already exists")
+	// ErrVoucherUnlimitedVotes: votes are for a number of usages only.
+	ErrVoucherUnlimitedVotes = errors.New("a voucher with votes has a limited number of usages")
+	ErrVoucherExists         = errors.New("voucher with this serial number already exists")
 	// ErrVoucherInvalid is all a user is told of a voucher that did not
 	// work: there is none, it has run out or they have used it already
 	// ("Ваучер недействительный" of openvk).
@@ -108,6 +110,11 @@ func NewVoucher(token VoucherToken, votes int64, rating, usages int) (*Voucher, 
 
 	if usages != UnlimitedUsages && (usages < 1 || usages > MaxVoucherUsages) {
 		return nil, ErrVoucherUsagesInvalid
+	}
+
+	// The treasury has to cover every usage of the votes in advance.
+	if votes > 0 && usages == UnlimitedUsages {
+		return nil, ErrVoucherUnlimitedVotes
 	}
 
 	id, err := uuid.NewV7()

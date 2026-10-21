@@ -24,6 +24,9 @@ type WalletService interface {
 	DeleteVoucher(ctx context.Context, adminID, voucherID uuid.UUID) error
 	Rate(ctx context.Context) (user.VoteRate, error)
 	SetRate(ctx context.Context, adminID uuid.UUID, rate user.VoteRate) error
+	Treasury(ctx context.Context) (user.Treasury, error)
+	Bonus(ctx context.Context, userID uuid.UUID, now time.Time) (service.Bonus, error)
+	ClaimBonus(ctx context.Context, userID uuid.UUID, now time.Time) (service.Redeemed, error)
 }
 
 func (h *UserHandler) TransferVotes(ctx context.Context, req *userv1.TransferVotesRequest) (*userv1.TransferVotesResponse, error) {
@@ -241,4 +244,49 @@ func (h *UserHandler) SetVoteRate(ctx context.Context, req *userv1.SetVoteRateRe
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func (h *UserHandler) GetTreasury(ctx context.Context, _ *userv1.GetTreasuryRequest) (*userv1.GetTreasuryResponse, error) {
+	treasury, err := h.walletService.Treasury(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.GetTreasuryResponse{
+		Votes:       treasury.Votes,
+		Reserve:     user.TreasuryReserve,
+		Free:        treasury.Free(),
+		Minted:      treasury.Minted,
+		Outstanding: treasury.Outstanding,
+		Bonus:       treasury.Bonus(),
+		MaxWin:      treasury.MaxWin(),
+	}, nil
+}
+
+func (h *UserHandler) GetBonus(ctx context.Context, _ *userv1.GetBonusRequest) (*userv1.GetBonusResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	bonus, err := h.walletService.Bonus(ctx, userID, time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.GetBonusResponse{Votes: bonus.Votes, Taken: bonus.Taken, Eligible: bonus.Eligible}, nil
+}
+
+func (h *UserHandler) ClaimBonus(ctx context.Context, _ *userv1.ClaimBonusRequest) (*userv1.ClaimBonusResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	claimed, err := h.walletService.ClaimBonus(ctx, userID, time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.ClaimBonusResponse{Votes: claimed.Votes, Balance: claimed.Wallet.Votes}, nil
 }

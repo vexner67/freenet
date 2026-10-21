@@ -103,28 +103,6 @@ func (r *BetEventRepository) Lock(ctx context.Context, id uuid.UUID) (*user.BetE
 	return e, errs.Wrap("scanBetEvent", err)
 }
 
-// The stakes share the row, so they go side by side, and a change of the
-// state, FOR UPDATE, waits for them to commit.
-const shareBetEventQuery = `
-	SELECT
-		id,
-		question,
-		outcomes,
-		odds,
-		state,
-		closes_at,
-		winner
-	FROM bet_events
-	WHERE id = $1
-	FOR SHARE
-`
-
-func (r *BetEventRepository) LockForStake(ctx context.Context, id uuid.UUID) (*user.BetEvent, error) {
-	e, err := scanBetEvent(r.conn(ctx).QueryRow(ctx, shareBetEventQuery, id))
-
-	return e, errs.Wrap("scanBetEvent", err)
-}
-
 // Those taking stakes or waiting to be resolved come first, then the
 // newest; popular are only those taking stakes now, the most staked on
 // first. The stakes are summed per outcome, those of the viewer apart.

@@ -1863,4 +1863,5 @@ export default {
   'Ракета взлетает, и множитель растёт от ×1. Заберите ставку, пока она не взорвалась, — ставка вернётся умноженной на то, что показывает ракета. Не успели — ставка пропала. Где ракета взорвётся, решается при взлёте.': 'The rocket takes off, and the multiplier grows from ×1. Cash out before it explodes — the bet comes back multiplied by what the rocket shows. Too late — the bet is lost. Where the rocket explodes is decided at the launch.',
   'Забрать само на ×': 'Cash out by itself at ×',
   'вручную': 'by hand',
+  'Ваучер с голосами действует ограниченное число раз.': 'A voucher with votes works a limited number of times.',
 };

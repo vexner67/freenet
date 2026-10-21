@@ -23,7 +23,12 @@ func (r *UserRepository) Spend(ctx context.Context, userID uuid.UUID, votes int6
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	return r.spend(userID, votes, e)
+	left, err := r.spend(userID, votes, e)
+	if err == nil {
+		r.treasury.Votes += votes
+	}
+
+	return left, err
 }
 
 func (r *UserRepository) Move(ctx context.Context, fromID, toID uuid.UUID, votes int64, e user.VoteEntry) (int64, error) {
@@ -58,7 +63,101 @@ func (r *UserRepository) Credit(ctx context.Context, userID uuid.UUID, votes int
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	return r.credit(userID, votes, rating, e)
+	if _, ok := r.users[userID]; !ok {
+		return user.Wallet{}, user.ErrNotFound
+	}
+	if r.treasury.Votes < votes {
+		return user.Wallet{}, user.ErrTreasuryEmpty
+	}
+
+	wallet, err := r.credit(userID, votes, rating, e)
+	if err == nil {
+		r.treasury.Votes -= votes
+	}
+
+	return wallet, err
+}
+
+// Treasury is the treasury with what the vouchers promise.
+func (r *UserRepository) Treasury(ctx context.Context) (user.Treasury, error) {
+	if err := ctx.Err(); err != nil {
+		return user.Treasury{}, errs.Wrap("ctx.Err", err)
+	}
+
+	promised := r.promised()
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	t := r.treasury
+	t.Outstanding = promised
+
+	return t, nil
+}
+
+// Mint adds user.MemberMint to the treasury for userID, the first time.
+func (r *UserRepository) Mint(ctx context.Context, userID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.users[userID]; !ok {
+		return user.ErrNotFound
+	}
+	if _, ok := r.members[userID]; ok {
+		return nil
+	}
+
+	r.members[userID] = struct{}{}
+	r.treasury.Votes += user.MemberMint
+	r.treasury.Minted += user.MemberMint
+
+	return nil
+}
+
+// TakeBonus marks the bonus of day taken by userID; user.ErrBonusTaken.
+func (r *UserRepository) TakeBonus(ctx context.Context, userID uuid.UUID, day time.Time) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.users[userID]; !ok {
+		return user.ErrNotFound
+	}
+	if last, ok := r.bonuses[userID]; ok && !last.Before(day) {
+		return user.ErrBonusTaken
+	}
+
+	r.bonuses[userID] = day
+
+	return nil
+}
+
+// LastBonus is the day userID took the last bonus on, zero for never.
+func (r *UserRepository) LastBonus(ctx context.Context, userID uuid.UUID) (time.Time, error) {
+	if err := ctx.Err(); err != nil {
+		return time.Time{}, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	return r.bonuses[userID], nil
+}
+
+// Fund adds votes to the treasury, as if they had been spent: for tests
+// that pay more than the treasury starts with.
+func (r *UserRepository) Fund(votes int64) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.treasury.Votes += votes
 }
 
 // Operations are the statement of userID, newest first.
@@ -94,7 +193,7 @@ func (r *UserRepository) Totals(ctx context.Context, userID uuid.UUID, since tim
 
 	for _, op := range r.operations[userID] {
 		switch {
-		case op.At.Before(since):
+		case op.At.Before(since), op.Kind == user.VoteDenomination:
 		case op.Amount > 0:
 			income += op.Amount
 		default:
@@ -179,8 +278,26 @@ func NewVoucherRepository(users *UserRepository) *VoucherRepository {
 		users:    users,
 	}
 	users.onDelete(r.forget)
+	users.mu.Lock()
+	users.promised = r.promised
+	users.mu.Unlock()
 
 	return r
+}
+
+// promised is what the vouchers still promise: votes times usages left.
+func (r *VoucherRepository) promised() int64 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var total int64
+	for _, s := range r.vouchers {
+		if s.UsagesLeft > 0 {
+			total += s.Votes * int64(s.UsagesLeft)
+		}
+	}
+
+	return total
 }
 
 // forget drops the usages of a deleted user.

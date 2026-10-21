@@ -29,8 +29,10 @@ func TestNewCasinoBets(t *testing.T) {
 		aim         []user.AimMultiplier
 		want        error
 	}{
-		{name: "fine", least: 1, most: 1000, aim: aim(200, 4750, 150, 6333)},
-		{name: "one amount", least: 7, most: 7, aim: aim(101, 9999)},
+		{name: "fine", least: 1, most: 100, aim: aim(200, 4250, 150, 5666)},
+		{name: "one amount", least: 7, most: 7, aim: aim(101, 8415)},
+		{name: "returns too much", least: 1, most: 10, aim: aim(200, 4251), want: user.ErrAimReturn},
+		{name: "wins too much", least: 1, most: 101, aim: aim(200, 4250, 1000, 850), want: user.ErrAimWin},
 		{name: "free", least: 0, most: 10, aim: aim(200, 4750), want: user.ErrBetLimits},
 		{name: "too big", least: 1, most: user.MaxBet + 1, aim: aim(200, 4750), want: user.ErrBetLimits},
 		{name: "upside down", least: 10, most: 5, aim: aim(200, 4750), want: user.ErrBetLimits},
@@ -88,10 +90,10 @@ func TestCasinoBets_Bet(t *testing.T) {
 		chance     int
 		prize      int64
 	}{
-		{amount: 10, multiplier: 150, chance: 6333, prize: 15},
-		{amount: 11, multiplier: 150, chance: 6333, prize: 16},
-		{amount: 50, multiplier: 200, chance: 4750, prize: 100},
-		{amount: 100, multiplier: 1000, chance: 950, prize: 1000},
+		{amount: 10, multiplier: 200, chance: 4250, prize: 20},
+		{amount: 11, multiplier: 300, chance: 2833, prize: 33},
+		{amount: 50, multiplier: 200, chance: 4250, prize: 100},
+		{amount: 100, multiplier: 1000, chance: 850, prize: 1000},
 	}
 	for _, tt := range tests {
 		bet, err := bets.Bet(tt.amount, tt.multiplier)

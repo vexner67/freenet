@@ -35,11 +35,12 @@ func newBetEventsRepo(t *testing.T, w walletWorld, now func() time.Time) (*servi
 	return service.NewBetEventService(w.users, repo, w.users, inmem.TxManager{}, admins).WithNow(now), repo
 }
 
-// evens are the odds ×2 of each of the outcomes.
+// evens are the odds ×1.9 of each of the outcomes: ×2 would pay out all
+// that is staked.
 func evens(outcomes []user.BetOutcome) []int {
 	odds := make([]int, len(outcomes))
 	for i := range odds {
-		odds[i] = 200
+		odds[i] = 190
 	}
 
 	return odds
@@ -69,13 +70,16 @@ func TestBetEventService_Resolve(t *testing.T) {
 	events := newBetEvents(t, w, func() time.Time { return now })
 
 	q, outcomes := betQuestion(t)
-	if _, err := events.Create(ctx, ann, q, outcomes, []int{150, 300}, time.Time{}); !errors.Is(err, user.ErrNotAdmin) {
+	if _, err := events.Create(ctx, ann, q, outcomes, []int{150, 250}, time.Time{}); !errors.Is(err, user.ErrNotAdmin) {
 		t.Fatalf("Create by ann: %v", err)
 	}
 	if _, err := events.Create(ctx, admin, q, outcomes, []int{150}, time.Time{}); !errors.Is(err, user.ErrEventOddsCount) {
 		t.Fatalf("Create without all the odds: %v", err)
 	}
-	e, err := events.Create(ctx, admin, q, outcomes, []int{150, 300}, now.Add(24*time.Hour))
+	if _, err := events.Create(ctx, admin, q, outcomes, []int{150, 300}, time.Time{}); !errors.Is(err, user.ErrEventMargin) {
+		t.Fatalf("Create paying out all: %v", err)
+	}
+	e, err := events.Create(ctx, admin, q, outcomes, []int{150, 250}, now.Add(24*time.Hour))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,6 +112,16 @@ func TestBetEventService_Resolve(t *testing.T) {
 	}
 	if got := w.votes(t, ann); got != 70 {
 		t.Fatalf("ann has %d; want 70", got)
+	}
+	w.users.Fund(1000)
+	if _, err := w.users.Credit(ctx, ann, 300, 0, user.VoteEntry{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := events.Stake(ctx, ann, e.ID(), 1, 271); !errors.Is(err, user.ErrEventStakeLimit) {
+		t.Fatalf("Stake past 300 of a person: %v", err)
+	}
+	if _, err := w.users.Spend(ctx, ann, 300, user.VoteEntry{}); err != nil {
+		t.Fatal(err)
 	}
 
 	views, err := events.Events(ctx, ann, service.BetEventsAll)
@@ -253,7 +267,7 @@ func TestBetEventService_SetOdds(t *testing.T) {
 	events := newBetEvents(t, w, func() time.Time { return now })
 
 	q, outcomes := betQuestion(t)
-	e, err := events.Create(ctx, admin, q, outcomes, []int{200, 200}, time.Time{})
+	e, err := events.Create(ctx, admin, q, outcomes, evens(outcomes), time.Time{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -270,26 +284,29 @@ func TestBetEventService_SetOdds(t *testing.T) {
 	if err := events.SetOdds(ctx, admin, e.ID(), []int{300}); !errors.Is(err, user.ErrEventOddsCount) {
 		t.Fatalf("SetOdds short: %v", err)
 	}
-	if err := events.SetOdds(ctx, admin, e.ID(), []int{300, 150}); err != nil {
+	if err := events.SetOdds(ctx, admin, e.ID(), []int{300, 150}); !errors.Is(err, user.ErrEventMargin) {
+		t.Fatalf("SetOdds paying out all: %v", err)
+	}
+	if err := events.SetOdds(ctx, admin, e.ID(), []int{300, 130}); err != nil {
 		t.Fatal(err)
 	}
-	// The stake made before keeps its ×2, the new one takes ×3.
+	// The stake made before keeps its ×1.9, the new one takes ×3.
 	if _, err := events.Stake(ctx, ann, e.ID(), 0, 10); err != nil {
 		t.Fatal(err)
 	}
 
 	views, err := events.Events(ctx, ann, service.BetEventsAll)
-	if err != nil || views[0].Potential[0] != 50 || views[0].Event.Odds()[0] != 300 {
+	if err != nil || views[0].Potential[0] != 49 || views[0].Event.Odds()[0] != 300 {
 		t.Fatalf("Events after SetOdds = %+v, %v", views, err)
 	}
 
 	if err := events.Resolve(ctx, admin, e.ID(), 0); err != nil {
 		t.Fatal(err)
 	}
-	if got := w.votes(t, ann); got != 130 {
-		t.Fatalf("votes = %d; want 130", got)
+	if got := w.votes(t, ann); got != 129 {
+		t.Fatalf("votes = %d; want 129", got)
 	}
-	if err := events.SetOdds(ctx, admin, e.ID(), []int{300, 150}); !errors.Is(err, user.ErrBetEventFinished) {
+	if err := events.SetOdds(ctx, admin, e.ID(), []int{300, 130}); !errors.Is(err, user.ErrBetEventFinished) {
 		t.Fatalf("SetOdds after Resolve: %v", err)
 	}
 }

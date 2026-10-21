@@ -115,6 +115,10 @@ func (s *RocketService) Launch(ctx context.Context, userID uuid.UUID, amount int
 			return errs.Wrap("rocket.Launch", err)
 		}
 
+		if err = checkWin(ctx, s.wallets, rocket.MostWin(amount, auto)); err != nil {
+			return errs.Wrap("checkWin", err)
+		}
+
 		if view.Balance, err = s.wallets.Spend(ctx, userID, amount, user.Entry(user.VoteRocket, uuid.Nil, "")); err != nil {
 			return errs.Wrap("s.wallets.Spend", err)
 		}

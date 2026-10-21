@@ -32,7 +32,7 @@ func TestRocketRepository(t *testing.T) {
 		t.Fatalf("Rocket = %+v, %v; want the default", got, err)
 	}
 
-	tuned, err := user.NewCasinoRocket(5, user.MaxBet, 9000, 2000)
+	tuned, err := user.NewCasinoRocket(5, 50, 8000, 2000)
 	if err != nil {
 		t.Fatal(err)
 	}

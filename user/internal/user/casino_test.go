@@ -26,6 +26,8 @@ func TestNewCasino(t *testing.T) {
 		{name: "a huge prize", price: 10, prizes: []user.CasinoPrize{{Votes: user.MaxCasinoPrize + 1, Weight: 1}, {Weight: 1}}, want: user.ErrCasinoPrize},
 		{name: "a negative weight", price: 10, prizes: []user.CasinoPrize{{Weight: -1}, {Weight: 1}}, want: user.ErrCasinoWeight},
 		{name: "no odds", price: 10, prizes: []user.CasinoPrize{{Votes: 5}, {Votes: 10}}, want: user.ErrCasinoNoOdds},
+		{name: "85%", price: 10, prizes: []user.CasinoPrize{{Votes: 0, Weight: 3}, {Votes: 17, Weight: 2}}},
+		{name: "more than 85%", price: 10, prizes: []user.CasinoPrize{{Votes: 0, Weight: 1}, {Votes: 18, Weight: 1}}, want: user.ErrCasinoReturn},
 	}
 
 	for _, tt := range tests {
@@ -46,7 +48,7 @@ func TestNewCasino(t *testing.T) {
 func TestCasino_Pick(t *testing.T) {
 	t.Parallel()
 
-	c, err := user.NewCasino(10, []user.CasinoPrize{{Votes: 0, Weight: 2}, {Votes: 5, Weight: 0}, {Votes: 50, Weight: 1}})
+	c, err := user.NewCasino(10, []user.CasinoPrize{{Votes: 0, Weight: 2}, {Votes: 5, Weight: 0}, {Votes: 20, Weight: 1}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,5 +76,14 @@ func TestDefaultCasino(t *testing.T) {
 	d := user.DefaultCasino()
 	if _, err := user.NewCasino(d.Price(), d.Prizes()); err != nil {
 		t.Fatalf("the default casino is not valid: %v", err)
+	}
+	if d.MaxPrize() != user.MaxWin {
+		t.Fatalf("MaxPrize = %d", d.MaxPrize())
+	}
+
+	// A prize nobody wins is not the biggest.
+	c, err := user.NewCasino(10, []user.CasinoPrize{{Votes: 1000, Weight: 0}, {Votes: 5, Weight: 1}})
+	if err != nil || c.MaxPrize() != 5 {
+		t.Fatalf("MaxPrize = %d, %v", c.MaxPrize(), err)
 	}
 }

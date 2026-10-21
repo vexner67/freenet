@@ -62,7 +62,7 @@ func TestBetEventRepository(t *testing.T) {
 	no, _ := user.NewBetOutcome("Нет")
 	maybe, _ := user.NewBetOutcome("Ничья")
 
-	quiet, err := events.Create(ctx, admin.ID(), q, []user.BetOutcome{yes, no}, []int{200, 200}, time.Time{})
+	quiet, err := events.Create(ctx, admin.ID(), q, []user.BetOutcome{yes, no}, []int{190, 190}, time.Time{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestBetEventRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if v, _ := find(views, quiet.ID()); v.Event.Odds()[1] != 400 || v.Potential[1] != 10 {
+	if v, _ := find(views, quiet.ID()); v.Event.Odds()[1] != 400 || v.Potential[1] != 9 {
 		t.Fatalf("view after SetOdds = %+v", v)
 	}
 

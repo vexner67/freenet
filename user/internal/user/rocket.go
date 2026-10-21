@@ -18,10 +18,10 @@ const RocketGrowth = 0.00012
 const RocketRolls = 1 << 52
 
 // The bounds of "Ракетка": the return of the casino in hundredths of a
-// percent (9500 — 95%), the highest multiplier a rocket reaches in
+// percent (8500 — 85%, the most it may), the highest multiplier a rocket reaches in
 // hundredths (100000 — ×1000) and the multiplier to cash at by itself.
 const (
-	MaxRocketReturn = 10_000
+	MaxRocketReturn = MaxCasinoReturn * 100
 	MinRocketTop    = 200
 	MaxRocketTop    = 1_000_000
 	MinRocketAuto   = 101
@@ -29,7 +29,8 @@ const (
 
 var (
 	ErrRocketLimits   = errors.New("rocket bets must be from 1 to 100000000 votes, the least not above the most")
-	ErrRocketReturn   = errors.New("the return of the rocket must be from 0.01 to 100 percent")
+	ErrRocketReturn   = errors.New("the return of the rocket must be from 0.01 to 85 percent")
+	ErrRocketWin      = errors.New("the biggest bet at the top of the rocket wins at most 1000 votes")
 	ErrRocketTop      = errors.New("the top of the rocket must be from 2 to 10000")
 	ErrRocketAmount   = errors.New("the bet is out of the limits of the rocket")
 	ErrRocketAuto     = errors.New("the rocket cashes by itself from 1.01 to its top")
@@ -57,15 +58,17 @@ func NewCasinoRocket(least, most int64, ret, top int) (CasinoRocket, error) {
 		return CasinoRocket{}, ErrRocketReturn
 	case top < MinRocketTop || top > MaxRocketTop:
 		return CasinoRocket{}, ErrRocketTop
+	case most*int64(top)/100 > MaxWin:
+		return CasinoRocket{}, ErrRocketWin
 	}
 
 	return CasinoRocket{least: least, most: most, ret: ret, top: top}, nil
 }
 
 // DefaultCasinoRocket is the rocket until the administrators change it:
-// bets of 1 to 1000 votes, 95% back on average, up to ×1000.
+// bets of 1 to 100 votes, 85% back on average, up to ×10.
 func DefaultCasinoRocket() CasinoRocket {
-	return CasinoRocket{least: 1, most: 1000, ret: 9500, top: 100_000}
+	return CasinoRocket{least: 1, most: 100, ret: 8500, top: 1000}
 }
 
 func (r CasinoRocket) Least() int64 {
@@ -160,6 +163,16 @@ func (r CasinoRocket) Launch(id, userID uuid.UUID, amount int64, auto, crash int
 	}
 
 	return round, nil
+}
+
+// MostWin is the most a bet of amount may win: at auto, or by hand at the
+// top.
+func (r CasinoRocket) MostWin(amount int64, auto int) int64 {
+	if auto != 0 {
+		return prize(amount, auto)
+	}
+
+	return prize(amount, r.top)
 }
 
 // RestoreRocketRound is a round as the storage keeps it.

@@ -82,16 +82,18 @@ func TestNewBetEvent(t *testing.T) {
 		err      error
 	}{
 		{name: "no deadline", outcomes: []string{"Да", "Нет"}, odds: []int{150, 250}},
-		{name: "deadline", outcomes: []string{"Да", "Нет"}, odds: []int{user.MinEventOdds, user.MaxEventOdds}, closesAt: now.Add(time.Hour)},
+		{name: "deadline", outcomes: []string{"Да", "Нет"}, odds: []int{user.MinEventOdds, 1000}, closesAt: now.Add(time.Hour)},
 		{name: "one outcome", outcomes: []string{"Да"}, odds: []int{200}, err: user.ErrBetOutcomes},
 		{name: "too many", outcomes: strings.Split("1 2 3 4 5 6 7 8 9 10 11", " "), odds: make([]int, 11), err: user.ErrBetOutcomes},
 		{name: "no odds", outcomes: []string{"Да", "Нет"}, err: user.ErrEventOddsCount},
 		{name: "odds short", outcomes: []string{"Да", "Нет"}, odds: []int{200}, err: user.ErrEventOddsCount},
 		{name: "odds ×1", outcomes: []string{"Да", "Нет"}, odds: []int{100, 200}, err: user.ErrEventOdds},
 		{name: "odds too big", outcomes: []string{"Да", "Нет"}, odds: []int{200, user.MaxEventOdds + 1}, err: user.ErrEventOdds},
-		{name: "twice", outcomes: []string{"Да", "да"}, odds: []int{200, 200}, err: user.ErrBetOutcomeTwice},
-		{name: "past", outcomes: []string{"Да", "Нет"}, odds: []int{200, 200}, closesAt: now, err: user.ErrBetCloseTime},
-		{name: "too far", outcomes: []string{"Да", "Нет"}, odds: []int{200, 200}, closesAt: now.Add(user.MaxBetEventAhead + time.Second), err: user.ErrBetCloseTime},
+		{name: "twice", outcomes: []string{"Да", "да"}, odds: []int{190, 190}, err: user.ErrBetOutcomeTwice},
+		{name: "no margin", outcomes: []string{"Да", "Нет"}, odds: []int{200, 200}, err: user.ErrEventMargin},
+		{name: "a margin of 5%", outcomes: []string{"1", "2", "3", "4"}, odds: []int{380, 380, 380, 380}},
+		{name: "past", outcomes: []string{"Да", "Нет"}, odds: []int{190, 190}, closesAt: now, err: user.ErrBetCloseTime},
+		{name: "too far", outcomes: []string{"Да", "Нет"}, odds: []int{190, 190}, closesAt: now.Add(user.MaxBetEventAhead + time.Second), err: user.ErrBetCloseTime},
 	}
 
 	for _, tt := range tests {
@@ -117,7 +119,7 @@ func TestBetEvent_Lifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	e, err := user.NewBetEvent(q, outcomes(t, "Да", "Нет"), []int{150, 275}, now.Add(time.Hour), now)
+	e, err := user.NewBetEvent(q, outcomes(t, "Да", "Нет"), []int{150, 250}, now.Add(time.Hour), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,8 +128,8 @@ func TestBetEvent_Lifecycle(t *testing.T) {
 	if potential, err := e.Stake(0, 10, now); err != nil || potential != 15 {
 		t.Fatalf("Stake on ×1.5 = %d, %v", potential, err)
 	}
-	if potential, err := e.Stake(1, 3, now); err != nil || potential != 8 {
-		t.Fatalf("Stake on ×2.75 = %d, %v", potential, err)
+	if potential, err := e.Stake(1, 3, now); err != nil || potential != 7 {
+		t.Fatalf("Stake on ×2.5 = %d, %v", potential, err)
 	}
 	if _, err := e.Stake(2, 10, now); !errors.Is(err, user.ErrBetOutcome) {
 		t.Fatalf("Stake on outcome 2: %v", err)
@@ -161,7 +163,7 @@ func TestBetEvent_Lifecycle(t *testing.T) {
 	if err != nil || closed.State() != user.BetEventClosed || e.State() != user.BetEventOpen {
 		t.Fatalf("Closed = %+v, %v", closed, err)
 	}
-	if _, err := closed.Reodded([]int{200, 200}); err != nil {
+	if _, err := closed.Reodded([]int{190, 190}); err != nil {
 		t.Fatalf("Reodded of a closed event: %v", err)
 	}
 	if _, err := closed.Stake(0, 10, now); !errors.Is(err, user.ErrBetEventClosed) {
@@ -178,7 +180,7 @@ func TestBetEvent_Lifecycle(t *testing.T) {
 	if _, err := resolved.Cancelled(); !errors.Is(err, user.ErrBetEventFinished) {
 		t.Fatalf("Cancelled after resolved: %v", err)
 	}
-	if _, err := resolved.Reodded([]int{200, 200}); !errors.Is(err, user.ErrBetEventFinished) {
+	if _, err := resolved.Reodded([]int{190, 190}); !errors.Is(err, user.ErrBetEventFinished) {
 		t.Fatalf("Reodded after resolved: %v", err)
 	}
 	if _, err := resolved.Closed(); !errors.Is(err, user.ErrBetEventFinished) {
@@ -242,7 +244,7 @@ func TestBetEvent_Payouts(t *testing.T) {
 	if potential, err := pooled.Stake(0, 10, now); err != nil || potential != 0 {
 		t.Fatalf("pooled Stake = %d, %v", potential, err)
 	}
-	if _, err := pooled.Reodded([]int{200, 200}); !errors.Is(err, user.ErrEventPooled) {
+	if _, err := pooled.Reodded([]int{190, 190}); !errors.Is(err, user.ErrEventPooled) {
 		t.Fatalf("pooled Reodded: %v", err)
 	}
 }
@@ -280,5 +282,36 @@ func TestPayouts(t *testing.T) {
 	big := []user.Stake{{Outcome: 0, Amount: 3_000_000_000}, {Outcome: 1, Amount: 9_000_000_000_000}}
 	if got := user.Payouts(big, 0); got[0].Payout != 9_003_000_000_000 {
 		t.Fatalf("big Payouts = %d", got[0].Payout)
+	}
+}
+
+func TestCheckStake(t *testing.T) {
+	t.Parallel()
+
+	ann, bob := uuid.New(), uuid.New()
+	stakes := []user.Stake{
+		{UserID: ann, Outcome: 0, Amount: 200, Potential: 1000},
+		{UserID: bob, Outcome: 0, Amount: 100, Potential: 1900},
+		{UserID: bob, Outcome: 1, Amount: 50, Potential: 75},
+	}
+
+	tests := []struct {
+		name      string
+		userID    uuid.UUID
+		outcome   int
+		amount    int64
+		potential int64
+		want      error
+	}{
+		{name: "fine", userID: ann, outcome: 1, amount: 100, potential: 150},
+		{name: "the most of a person", userID: ann, outcome: 1, amount: 101, potential: 150, want: user.ErrEventStakeLimit},
+		{name: "the most of an outcome", userID: uuid.New(), outcome: 0, amount: 50, potential: 100},
+		{name: "the outcome is full", userID: uuid.New(), outcome: 0, amount: 50, potential: 101, want: user.ErrEventFull},
+	}
+
+	for _, tt := range tests {
+		if err := user.CheckStake(stakes, tt.userID, tt.outcome, tt.amount, tt.potential); !errors.Is(err, tt.want) {
+			t.Errorf("%s: CheckStake = %v, want %v", tt.name, err, tt.want)
+		}
 	}
 }

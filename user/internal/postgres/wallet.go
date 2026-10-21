@@ -32,10 +32,20 @@ func (r *WalletRepository) conn(ctx context.Context) pgpool.Querier {
 	return pgpool.Conn(ctx, r.pool)
 }
 
+// lockTreasuryQuery locks the treasury before any row of users: every
+// change of votes takes the locks in that order, so two never wait for each
+// other in a circle. Every payment of the site goes through it in turn.
+const lockTreasuryQuery = `
+	SELECT votes
+	FROM treasury
+	FOR UPDATE
+`
+
 // The balance is checked by the statement that changes it, so two spends
 // at once cannot both take the last votes; the same statement writes the
-// line of the statement of the page. The first column tells a user who is
-// gone from one who has too few.
+// line of the statement of the page and, with $7, puts the votes into the
+// treasury. The first column tells a user who is gone from one who has too
+// few.
 const spendVotesQuery = `
 	WITH spent AS (
 		UPDATE users
@@ -62,13 +72,39 @@ const spendVotesQuery = `
 			$5,
 			$6
 		FROM spent
+	), kept AS (
+		UPDATE treasury
+		SET votes = votes + $2
+		WHERE $7
+			AND EXISTS (SELECT 1 FROM spent)
 	)
 	SELECT
 		EXISTS (SELECT 1 FROM users WHERE id = $1),
 		(SELECT votes FROM spent)
 `
 
+// Spend puts the votes spent into the treasury.
 func (r *WalletRepository) Spend(ctx context.Context, userID uuid.UUID, votes int64, e user.VoteEntry) (int64, error) {
+	if err := r.lockTreasury(ctx); err != nil {
+		return 0, errs.Wrap("r.lockTreasury", err)
+	}
+
+	left, err := r.spend(ctx, userID, votes, e, true)
+
+	return left, errs.Wrap("r.spend", err)
+}
+
+func (r *WalletRepository) lockTreasury(ctx context.Context) error {
+	var votes int64
+	if err := r.conn(ctx).QueryRow(ctx, lockTreasuryQuery).Scan(&votes); err != nil {
+		return errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	return nil
+}
+
+// spend takes votes from userID, into the treasury if treasured.
+func (r *WalletRepository) spend(ctx context.Context, userID uuid.UUID, votes int64, e user.VoteEntry, treasured bool) (int64, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return 0, errs.Wrap("uuid.NewV7", err)
@@ -79,7 +115,7 @@ func (r *WalletRepository) Spend(ctx context.Context, userID uuid.UUID, votes in
 		left   *int64
 	)
 
-	err = r.conn(ctx).QueryRow(ctx, spendVotesQuery, userID, votes, id, string(e.Kind), peerToDB(e.PeerID), e.Note).
+	err = r.conn(ctx).QueryRow(ctx, spendVotesQuery, userID, votes, id, string(e.Kind), peerToDB(e.PeerID), e.Note, treasured).
 		Scan(&exists, &left)
 	if err != nil {
 		return 0, errs.Wrap("r.conn.QueryRow", err)
@@ -121,20 +157,23 @@ func (r *WalletRepository) Move(ctx context.Context, fromID, toID uuid.UUID, vot
 		return 0, user.ErrNotFound
 	}
 
-	left, err := r.Spend(ctx, fromID, votes, user.Entry(e.Kind, toID, e.Note))
+	// The votes go from page to page: the treasury has no part in it.
+	left, err := r.spend(ctx, fromID, votes, user.Entry(e.Kind, toID, e.Note), false)
 	if err != nil {
-		return 0, errs.Wrap("r.Spend", err)
+		return 0, errs.Wrap("r.spend", err)
 	}
 
-	if _, err = r.Credit(ctx, toID, votes, 0, user.Entry(e.Kind, fromID, e.Note)); err != nil {
-		return 0, errs.Wrap("r.Credit", err)
+	if _, err = r.credit(ctx, toID, votes, 0, user.Entry(e.Kind, fromID, e.Note), false); err != nil {
+		return 0, errs.Wrap("r.credit", err)
 	}
 
 	return left, nil
 }
 
 // Votes that change are written down; rating alone is not a change of
-// votes.
+// votes. With $8 the votes come out of the treasury, and only while it
+// holds them: the last column tells a user who is gone from a treasury
+// too poor.
 const creditWalletQuery = `
 	WITH credited AS (
 		UPDATE users
@@ -142,6 +181,7 @@ const creditWalletQuery = `
 			votes = votes + $2,
 			rating = rating + $3
 		WHERE id = $1
+			AND (NOT $8 OR $2 = 0 OR (SELECT votes FROM treasury) >= $2)
 		RETURNING
 			votes,
 			rating
@@ -165,31 +205,177 @@ const creditWalletQuery = `
 			$7
 		FROM credited
 		WHERE $2 <> 0
+	), paid AS (
+		UPDATE treasury
+		SET votes = votes - $2
+		WHERE $8
+			AND $2 <> 0
+			AND EXISTS (SELECT 1 FROM credited)
 	)
 	SELECT
-		votes,
-		rating
-	FROM credited
+		EXISTS (SELECT 1 FROM users WHERE id = $1),
+		(SELECT votes FROM credited),
+		(SELECT rating FROM credited)
 `
 
+// Credit pays the votes out of the treasury; user.ErrTreasuryEmpty when it
+// holds fewer.
 func (r *WalletRepository) Credit(ctx context.Context, userID uuid.UUID, votes int64, rating int, e user.VoteEntry) (user.Wallet, error) {
+	if votes != 0 {
+		if err := r.lockTreasury(ctx); err != nil {
+			return user.Wallet{}, errs.Wrap("r.lockTreasury", err)
+		}
+	}
+
+	w, err := r.credit(ctx, userID, votes, rating, e, true)
+
+	return w, errs.Wrap("r.credit", err)
+}
+
+// credit adds to the wallet of userID, out of the treasury if treasured.
+func (r *WalletRepository) credit(ctx context.Context, userID uuid.UUID, votes int64, rating int, e user.VoteEntry, treasured bool) (user.Wallet, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return user.Wallet{}, errs.Wrap("uuid.NewV7", err)
 	}
 
-	var w user.Wallet
+	var (
+		exists     bool
+		left       *int64
+		leftRating *int
+	)
 
 	err = r.conn(ctx).QueryRow(ctx, creditWalletQuery,
-		userID, votes, rating, id, string(e.Kind), peerToDB(e.PeerID), e.Note).Scan(&w.Votes, &w.Rating)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return user.Wallet{}, user.ErrNotFound
-	}
+		userID, votes, rating, id, string(e.Kind), peerToDB(e.PeerID), e.Note, treasured).Scan(&exists, &left, &leftRating)
 	if err != nil {
 		return user.Wallet{}, errs.Wrap("r.conn.QueryRow", err)
 	}
 
-	return w, nil
+	switch {
+	case !exists:
+		return user.Wallet{}, user.ErrNotFound
+	case left == nil:
+		return user.Wallet{}, user.ErrTreasuryEmpty
+	default:
+		return user.Wallet{Votes: *left, Rating: *leftRating}, nil
+	}
+}
+
+// The vouchers promise what each still gives times how many may still use
+// it.
+const treasuryQuery = `
+	SELECT
+		t.votes,
+		t.minted,
+		coalesce((
+			SELECT sum(v.votes * v.usages_left)
+			FROM vouchers v
+			WHERE v.usages_left > 0
+		), 0)::bigint
+	FROM treasury t
+`
+
+// Treasury locks the treasury, as a change of votes does, and reads it.
+func (r *WalletRepository) Treasury(ctx context.Context) (user.Treasury, error) {
+	if err := r.lockTreasury(ctx); err != nil {
+		return user.Treasury{}, errs.Wrap("r.lockTreasury", err)
+	}
+
+	var t user.Treasury
+	if err := r.conn(ctx).QueryRow(ctx, treasuryQuery).Scan(&t.Votes, &t.Minted, &t.Outstanding); err != nil {
+		return user.Treasury{}, errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	return t, nil
+}
+
+// A member mints once: the row of the member and the votes in one
+// statement.
+const mintMemberQuery = `
+	WITH joined AS (
+		INSERT INTO treasury_members (user_id)
+		VALUES ($1)
+		ON CONFLICT DO NOTHING
+		RETURNING user_id
+	)
+	UPDATE treasury
+	SET
+		votes = votes + $2,
+		minted = minted + $2
+	WHERE EXISTS (SELECT 1 FROM joined)
+`
+
+// Mint adds user.MemberMint to the treasury for userID, the first time.
+func (r *WalletRepository) Mint(ctx context.Context, userID uuid.UUID) error {
+	if err := r.lockTreasury(ctx); err != nil {
+		return errs.Wrap("r.lockTreasury", err)
+	}
+
+	_, err := r.conn(ctx).Exec(ctx, mintMemberQuery, userID, user.MemberMint)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode {
+		return user.ErrNotFound
+	}
+	if err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	return nil
+}
+
+// The bonus of a day is taken once: a later day replaces the one kept.
+const takeBonusQuery = `
+	INSERT INTO vote_bonuses (
+		user_id,
+		day
+	)
+	VALUES ($1, $2)
+	ON CONFLICT (user_id) DO UPDATE
+	SET day = EXCLUDED.day
+	WHERE vote_bonuses.day < EXCLUDED.day
+	RETURNING user_id
+`
+
+// TakeBonus marks the bonus of day taken by userID; user.ErrBonusTaken.
+func (r *WalletRepository) TakeBonus(ctx context.Context, userID uuid.UUID, day time.Time) error {
+	var taker uuid.UUID
+
+	err := r.conn(ctx).QueryRow(ctx, takeBonusQuery, userID, day).Scan(&taker)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return user.ErrBonusTaken
+	}
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode {
+		return user.ErrNotFound
+	}
+	if err != nil {
+		return errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	return nil
+}
+
+const lastBonusQuery = `
+	SELECT day
+	FROM vote_bonuses
+	WHERE user_id = $1
+`
+
+// LastBonus is the day userID took the last bonus on, zero for never.
+func (r *WalletRepository) LastBonus(ctx context.Context, userID uuid.UUID) (time.Time, error) {
+	var day time.Time
+
+	err := r.conn(ctx).QueryRow(ctx, lastBonusQuery, userID).Scan(&day)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return time.Time{}, nil
+	}
+	if err != nil {
+		return time.Time{}, errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	return time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC), nil
 }
 
 const listVoteOperationsQuery = `
@@ -252,6 +438,7 @@ const voteTotalsQuery = `
 	FROM vote_operations
 	WHERE user_id = $1
 		AND id >= $2
+		AND kind <> 'denomination'
 `
 
 func (r *WalletRepository) Totals(ctx context.Context, userID uuid.UUID, since time.Time) (income, expense int64, err error) {

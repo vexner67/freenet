@@ -78,6 +78,9 @@ const (
 	UserService_DeleteVoucher_FullMethodName      = "/user.v1.UserService/DeleteVoucher"
 	UserService_GetVoteRate_FullMethodName        = "/user.v1.UserService/GetVoteRate"
 	UserService_SetVoteRate_FullMethodName        = "/user.v1.UserService/SetVoteRate"
+	UserService_GetTreasury_FullMethodName        = "/user.v1.UserService/GetTreasury"
+	UserService_GetBonus_FullMethodName           = "/user.v1.UserService/GetBonus"
+	UserService_ClaimBonus_FullMethodName         = "/user.v1.UserService/ClaimBonus"
 	UserService_GetDecor_FullMethodName           = "/user.v1.UserService/GetDecor"
 	UserService_SetDecor_FullMethodName           = "/user.v1.UserService/SetDecor"
 	UserService_GetCasino_FullMethodName          = "/user.v1.UserService/GetCasino"
@@ -258,6 +261,13 @@ type UserServiceClient interface {
 	// others).
 	GetVoteRate(ctx context.Context, in *GetVoteRateRequest, opts ...grpc.CallOption) (*GetVoteRateResponse, error)
 	SetVoteRate(ctx context.Context, in *SetVoteRateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The treasury pays every vote given and takes every vote spent;
+	// GetTreasury is public. The daily bonus comes out of it: GetBonus says
+	// it to the caller, ClaimBonus gives it once a Moscow day to a page a
+	// week old with a filled profile (FailedPrecondition otherwise).
+	GetTreasury(ctx context.Context, in *GetTreasuryRequest, opts ...grpc.CallOption) (*GetTreasuryResponse, error)
+	GetBonus(ctx context.Context, in *GetBonusRequest, opts ...grpc.CallOption) (*GetBonusResponse, error)
+	ClaimBonus(ctx context.Context, in *ClaimBonusRequest, opts ...grpc.CallOption) (*ClaimBonusResponse, error)
 	// The New Year decoration of the site. GetDecor is public and says
 	// whether to wear it now; SetDecor is for the administrators
 	// (PermissionDenied for others).
@@ -943,6 +953,36 @@ func (c *userServiceClient) SetVoteRate(ctx context.Context, in *SetVoteRateRequ
 	return out, nil
 }
 
+func (c *userServiceClient) GetTreasury(ctx context.Context, in *GetTreasuryRequest, opts ...grpc.CallOption) (*GetTreasuryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTreasuryResponse)
+	err := c.cc.Invoke(ctx, UserService_GetTreasury_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetBonus(ctx context.Context, in *GetBonusRequest, opts ...grpc.CallOption) (*GetBonusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetBonusResponse)
+	err := c.cc.Invoke(ctx, UserService_GetBonus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ClaimBonus(ctx context.Context, in *ClaimBonusRequest, opts ...grpc.CallOption) (*ClaimBonusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClaimBonusResponse)
+	err := c.cc.Invoke(ctx, UserService_ClaimBonus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) GetDecor(ctx context.Context, in *GetDecorRequest, opts ...grpc.CallOption) (*GetDecorResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetDecorResponse)
@@ -1418,6 +1458,13 @@ type UserServiceServer interface {
 	// others).
 	GetVoteRate(context.Context, *GetVoteRateRequest) (*GetVoteRateResponse, error)
 	SetVoteRate(context.Context, *SetVoteRateRequest) (*emptypb.Empty, error)
+	// The treasury pays every vote given and takes every vote spent;
+	// GetTreasury is public. The daily bonus comes out of it: GetBonus says
+	// it to the caller, ClaimBonus gives it once a Moscow day to a page a
+	// week old with a filled profile (FailedPrecondition otherwise).
+	GetTreasury(context.Context, *GetTreasuryRequest) (*GetTreasuryResponse, error)
+	GetBonus(context.Context, *GetBonusRequest) (*GetBonusResponse, error)
+	ClaimBonus(context.Context, *ClaimBonusRequest) (*ClaimBonusResponse, error)
 	// The New Year decoration of the site. GetDecor is public and says
 	// whether to wear it now; SetDecor is for the administrators
 	// (PermissionDenied for others).
@@ -1696,6 +1743,15 @@ func (UnimplementedUserServiceServer) GetVoteRate(context.Context, *GetVoteRateR
 }
 func (UnimplementedUserServiceServer) SetVoteRate(context.Context, *SetVoteRateRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetVoteRate not implemented")
+}
+func (UnimplementedUserServiceServer) GetTreasury(context.Context, *GetTreasuryRequest) (*GetTreasuryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTreasury not implemented")
+}
+func (UnimplementedUserServiceServer) GetBonus(context.Context, *GetBonusRequest) (*GetBonusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetBonus not implemented")
+}
+func (UnimplementedUserServiceServer) ClaimBonus(context.Context, *ClaimBonusRequest) (*ClaimBonusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ClaimBonus not implemented")
 }
 func (UnimplementedUserServiceServer) GetDecor(context.Context, *GetDecorRequest) (*GetDecorResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDecor not implemented")
@@ -2861,6 +2917,60 @@ func _UserService_SetVoteRate_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetTreasury_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTreasuryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetTreasury(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetTreasury_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetTreasury(ctx, req.(*GetTreasuryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetBonus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBonusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetBonus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetBonus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetBonus(ctx, req.(*GetBonusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ClaimBonus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClaimBonusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ClaimBonus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ClaimBonus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ClaimBonus(ctx, req.(*ClaimBonusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetDecor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetDecorRequest)
 	if err := dec(in); err != nil {
@@ -3693,6 +3803,18 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetVoteRate",
 			Handler:    _UserService_SetVoteRate_Handler,
+		},
+		{
+			MethodName: "GetTreasury",
+			Handler:    _UserService_GetTreasury_Handler,
+		},
+		{
+			MethodName: "GetBonus",
+			Handler:    _UserService_GetBonus_Handler,
+		},
+		{
+			MethodName: "ClaimBonus",
+			Handler:    _UserService_ClaimBonus_Handler,
 		},
 		{
 			MethodName: "GetDecor",
