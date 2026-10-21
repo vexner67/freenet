@@ -130,6 +130,41 @@ func (v *Votes) SetRate(ctx context.Context, accessToken string, kopecks int64) 
 	return nil
 }
 
+func (v *Votes) Treasury(ctx context.Context) (model.Treasury, error) {
+	resp, err := v.api.GetTreasury(ctx, &userv1.GetTreasuryRequest{})
+	if err != nil {
+		return model.Treasury{}, errs.Wrap("v.api.GetTreasury", fromStatus(err))
+	}
+
+	return model.Treasury{
+		Votes:       resp.GetVotes(),
+		Reserve:     resp.GetReserve(),
+		Free:        resp.GetFree(),
+		Minted:      resp.GetMinted(),
+		Outstanding: resp.GetOutstanding(),
+		Bonus:       resp.GetBonus(),
+		MaxWin:      resp.GetMaxWin(),
+	}, nil
+}
+
+func (v *Votes) Bonus(ctx context.Context, accessToken string) (model.Bonus, error) {
+	resp, err := v.api.GetBonus(withToken(ctx, accessToken), &userv1.GetBonusRequest{})
+	if err != nil {
+		return model.Bonus{}, errs.Wrap("v.api.GetBonus", fromStatus(err))
+	}
+
+	return model.Bonus{Votes: resp.GetVotes(), Taken: resp.GetTaken(), Eligible: resp.GetEligible()}, nil
+}
+
+func (v *Votes) ClaimBonus(ctx context.Context, accessToken string) (model.Redeemed, error) {
+	resp, err := v.api.ClaimBonus(withToken(ctx, accessToken), &userv1.ClaimBonusRequest{})
+	if err != nil {
+		return model.Redeemed{}, errs.Wrap("v.api.ClaimBonus", fromStatus(err))
+	}
+
+	return model.Redeemed{Votes: resp.GetVotes(), Balance: resp.GetBalance()}, nil
+}
+
 func toVoucher(pv *userv1.Voucher) model.Voucher {
 	return model.Voucher{
 		ID:          pv.GetId(),

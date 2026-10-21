@@ -4487,6 +4487,48 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /api/v1/treasury:
+    get:
+      summary: The treasury of the site
+      description: 'Public. Every vote given — the daily bonus, vouchers, wins of the casino, payouts of events — comes out of the treasury, and every vote spent goes into it; transfers between people go past it. It starts with 25000 votes and gets 1000 for each member (a page a week old with a filled profile) at their first bonus. `free` is what vouchers may still promise: the votes less the reserve and what vouchers promise already.'
+      responses:
+        "200":
+          description: The treasury
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Treasury" }
+
+  /api/v1/me/bonus:
+    get:
+      summary: The caller's daily bonus
+      description: What the bonus gives now (up to 10 votes, less while the treasury is below its reserve), whether the caller took it today (a Moscow day) and whether they may take it at all.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The bonus
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Bonus" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      summary: Take the daily bonus
+      description: 'Once a Moscow day, for a page a week old with a filled profile, not deleted and not banned: `the bonus is for pages a week old with a filled profile`, `the bonus is taken today`, `the treasury is empty` (409).'
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: What the bonus gave
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [votes, balance]
+                properties:
+                  votes: { type: integer, format: int64 }
+                  balance: { type: integer, format: int64, description: What the caller has now }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/decor:
     get:
       summary: The New Year decoration of the site
@@ -8034,6 +8076,26 @@ components:
       required: [kopecks]
       properties:
         kopecks: { type: integer, format: int64, minimum: 1, maximum: 100000000, description: What one vote is worth, in kopecks }
+
+    Treasury:
+      type: object
+      required: [votes, reserve, free, minted, outstanding, bonus, maxWin]
+      properties:
+        votes: { type: integer, format: int64, description: The votes in the treasury }
+        reserve: { type: integer, format: int64, description: What it keeps back; below it the bonus shrinks }
+        free: { type: integer, format: int64, description: What vouchers may still promise }
+        minted: { type: integer, format: int64, description: What the members have brought in }
+        outstanding: { type: integer, format: int64, description: What the vouchers promise }
+        bonus: { type: integer, format: int64, description: The daily bonus now }
+        maxWin: { type: integer, format: int64, description: 'The largest win of one round of the casino now: 1000, or a twentieth of the treasury when that is less' }
+
+    Bonus:
+      type: object
+      required: [votes, taken, eligible]
+      properties:
+        votes: { type: integer, format: int64, description: What the bonus gives now }
+        taken: { type: boolean, description: The caller took it today }
+        eligible: { type: boolean, description: The caller may take it }
 
     Decor:
       type: object
