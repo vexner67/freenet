@@ -146,7 +146,7 @@ function notificationOf(p, lang = 'ru') {
   const text = pushTexts[p.kind];
   if (!text) return null;
 
-  const url = { gift: '/gifts', votes: '/settings?act=finance' }[p.kind] ?? '/notifications';
+  const url = { gift: '/gifts', votes: '/votes' }[p.kind] ?? '/notifications';
   const said = en ? english.texts[p.kind] : text[1];
 
   return { title: name, body: capitalized(verbOf(text[0], actor, lang) + ' ' + said + '.'), url, tag };

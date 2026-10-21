@@ -34,7 +34,6 @@
           <a id="tab-security" href="/settings?act=security">Безопасность</a>
           <a id="tab-privacy" href="/settings?act=privacy">Приватность</a>
           <a href="/settings/blacklist">Чёрный список</a>
-          <a id="tab-finance" href="/settings?act=finance">Голоса</a>
           <a id="tab-interface" href="/settings?act=interface">Внешний вид</a>
             </div>
         <div class="container-gray">
@@ -101,38 +100,6 @@
             <div class="key-actions" id="key-actions"></div>
             <p class="hint">Чтобы читать сообщения на другом устройстве, сохраните ключ в файл и загрузите его там с кодом, который покажет сайт. Без ключа прочитать сообщения нельзя: если он потерян, создайте новый — сообщения, зашифрованные старым, останутся непрочитанными.</p>
           </div>
-        </div>
-
-        <div id="finance" hidden>
-          <div class="finance">
-            <div class="finance-about">
-              <p>Голоса — валюта Freenet: ими оплачиваются платные подарки. Получить их можно, активировав ваучер, или от другого человека.</p>
-              <p>Ваучер может повысить и рейтинг: он прибавляется к заполненности страницы.</p>
-              <p class="finance-rate" id="vote-rate" hidden></p>
-              <p>Испытать удачу и выиграть голоса можно в <a href="/casino">Казино</a>.</p>
-              <p class="finance-transfer">Также вы можете <a id="transfer-link">передать голоса</a> другому человеку.</p>
-            </div>
-            <div class="finance-balance">
-              на вашем счету
-              <div class="finance-votes" id="votes"></div>
-              <span id="votes-word"></span><br>
-              <span class="finance-rubles" id="votes-rubles"></span><br>
-              <small><a href="/settings?act=finance.top-up">[Есть ваучер?]</a></small>
-            </div>
-          </div>
-        </div>
-
-        <div id="finance-top-up" hidden>
-          <p>Введите серийный номер ваучера. Обычно он указан в чеке или в сообщении. Обратите внимание, что ваучеры могут истекать и воспользоваться ими можно только один раз.</p>
-          <form id="voucher-form">
-            <div class="voucher-keys">
-              <input type="text" class="voucher-key" maxlength="6" size="6" placeholder="123456" autocomplete="off" spellcheck="false" required aria-label="Код ваучера, часть 1"> -
-              <input type="text" class="voucher-key" maxlength="6" size="6" placeholder="789012" autocomplete="off" spellcheck="false" required aria-label="Код ваучера, часть 2"> -
-              <input type="text" class="voucher-key" maxlength="6" size="6" placeholder="345678" autocomplete="off" spellcheck="false" required aria-label="Код ваучера, часть 3"> -
-              <input type="text" class="voucher-key" maxlength="6" size="6" placeholder="90ABCD" autocomplete="off" spellcheck="false" required aria-label="Код ваучера, часть 4">
-            </div>
-            <div class="actions"><button class="button" type="submit">Активировать ваучер</button></div>
-          </form>
         </div>
 
         <form id="privacy" hidden>

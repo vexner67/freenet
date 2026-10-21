@@ -180,7 +180,7 @@ function notificationText(n) {
 
   // openvk's "передал вам голоса"; the balance is in the settings.
   if (n.type === 'votes') {
-    return [name, tr(' {0} вам ', notificationVerb('votes', n.actor)), el('a', { href: '/settings?act=finance' }, el('b', { textContent: tr('голоса') })), '.'];
+    return [name, tr(' {0} вам ', notificationVerb('votes', n.actor)), el('a', { href: '/votes' }, el('b', { textContent: tr('голоса') })), '.'];
   }
 
   const verb = notificationVerb(n.type, n.actor);
