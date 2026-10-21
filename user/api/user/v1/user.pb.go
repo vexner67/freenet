@@ -7018,7 +7018,9 @@ type GetTreasuryResponse struct {
 	// The daily bonus now.
 	Bonus int64 `protobuf:"varint,6,opt,name=bonus,proto3" json:"bonus,omitempty"`
 	// The largest win of one round of the casino now.
-	MaxWin        int64 `protobuf:"varint,7,opt,name=max_win,json=maxWin,proto3" json:"max_win,omitempty"`
+	MaxWin int64 `protobuf:"varint,7,opt,name=max_win,json=maxWin,proto3" json:"max_win,omitempty"`
+	// The votes on the accounts of the pages.
+	Held          int64 `protobuf:"varint,8,opt,name=held,proto3" json:"held,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7098,6 +7100,13 @@ func (x *GetTreasuryResponse) GetBonus() int64 {
 func (x *GetTreasuryResponse) GetMaxWin() int64 {
 	if x != nil {
 		return x.MaxWin
+	}
+	return 0
+}
+
+func (x *GetTreasuryResponse) GetHeld() int64 {
+	if x != nil {
+		return x.Held
 	}
 	return 0
 }
@@ -11561,7 +11570,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\akopecks\x18\x01 \x01(\x03R\akopecks\".\n" +
 	"\x12SetVoteRateRequest\x12\x18\n" +
 	"\akopecks\x18\x01 \x01(\x03R\akopecks\"\x14\n" +
-	"\x12GetTreasuryRequest\"\xc2\x01\n" +
+	"\x12GetTreasuryRequest\"\xd6\x01\n" +
 	"\x13GetTreasuryResponse\x12\x14\n" +
 	"\x05votes\x18\x01 \x01(\x03R\x05votes\x12\x18\n" +
 	"\areserve\x18\x02 \x01(\x03R\areserve\x12\x12\n" +
@@ -11569,7 +11578,8 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x06minted\x18\x04 \x01(\x03R\x06minted\x12 \n" +
 	"\voutstanding\x18\x05 \x01(\x03R\voutstanding\x12\x14\n" +
 	"\x05bonus\x18\x06 \x01(\x03R\x05bonus\x12\x17\n" +
-	"\amax_win\x18\a \x01(\x03R\x06maxWin\"\x11\n" +
+	"\amax_win\x18\a \x01(\x03R\x06maxWin\x12\x12\n" +
+	"\x04held\x18\b \x01(\x03R\x04held\"\x11\n" +
 	"\x0fGetBonusRequest\"Z\n" +
 	"\x10GetBonusResponse\x12\x14\n" +
 	"\x05votes\x18\x01 \x01(\x03R\x05votes\x12\x14\n" +

@@ -78,8 +78,8 @@ func TestTreasury(t *testing.T) {
 	if _, err = wallets.Move(ctx, ann.ID(), bob.ID(), 2, user.Entry(user.VoteTransfer, uuid.Nil, "")); err != nil {
 		t.Fatal(err)
 	}
-	if got := treasury(); got.Votes != minted.Votes-10+3 {
-		t.Fatalf("Treasury = %+v; want %d votes", got, minted.Votes-7)
+	if got := treasury(); got.Votes != minted.Votes-10+3 || got.Held != minted.Held+10-3 {
+		t.Fatalf("Treasury = %+v; want %d votes, %d held", got, minted.Votes-7, minted.Held+7)
 	}
 	if _, err = wallets.Credit(ctx, ann.ID(), treasury().Votes+1, 0, user.Entry(user.VoteBonus, uuid.Nil, "")); !errors.Is(err, user.ErrTreasuryEmpty) {
 		t.Fatalf("Credit past the treasury: %v", err)

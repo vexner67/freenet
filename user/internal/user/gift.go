@@ -48,13 +48,21 @@ type GiftCollection struct {
 // by its administrators; here the catalogue is fixed, and so are the
 // prices the gifts have until the administrators change them: the flowers
 // are free, so that anyone can send a gift, and the rest costs votes,
-// which vouchers give. "freenet" are the site's own gifts, the dearest,
-// last. The pictures are the site's: it knows a gift by this name.
+// which the daily bonus and vouchers give — a gift of a collection is a
+// day or a week of bonuses. "freenet" are the site's own gifts, the
+// dearest, last. The pictures are the site's: it knows a gift by this name.
 var giftCatalog = []GiftCollection{
 	{ID: "flowers", Gifts: []GiftKind{"rose", "tulip", "bouquet", "sunflower", "cactus"}},
-	{ID: "sweets", Price: 1, Gifts: []GiftKind{"cake", "candy", "chocolate", "icecream", "cupcake"}},
-	{ID: "holidays", Price: 3, Gifts: []GiftKind{"present", "balloons", "heart", "bear", "star"}},
-	{ID: "freenet", Price: 5, Gifts: []GiftKind{"freenet_crystal", "freenet_coin", "freenet_ring", "freenet_crown", "freenet_heart", "freenet_cup"}},
+	{ID: "sweets", Price: 10, Gifts: []GiftKind{"cake", "candy", "chocolate", "icecream", "cupcake"}},
+	{ID: "holidays", Price: 30, Gifts: []GiftKind{"present", "balloons", "heart", "bear", "star"}},
+	{ID: "freenet", Price: 70, Gifts: []GiftKind{"freenet_crystal", "freenet_coin", "freenet_ring", "freenet_crown", "freenet_heart", "freenet_cup"}},
+}
+
+// dearGifts cost more than their collection: the crown and the cup are a
+// month of bonuses.
+var dearGifts = map[GiftKind]GiftPrice{
+	"freenet_crown": 300,
+	"freenet_cup":   300,
 }
 
 // GiftCatalog are the collections of gifts, in the order they are shown.
@@ -83,8 +91,13 @@ func (k GiftKind) String() string {
 }
 
 // DefaultPrice is what sending the gift costs, in votes, until the
-// administrators price it otherwise: the price of its collection.
+// administrators price it otherwise: its own price or that of its
+// collection.
 func (k GiftKind) DefaultPrice() GiftPrice {
+	if price, ok := dearGifts[k]; ok {
+		return price
+	}
+
 	for _, c := range giftCatalog {
 		if slices.Contains(c.Gifts, k) {
 			return c.Price

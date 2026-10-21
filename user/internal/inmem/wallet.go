@@ -102,7 +102,8 @@ func (r *UserRepository) RaiseRating(ctx context.Context, userID uuid.UUID, perc
 	return wallet, nil
 }
 
-// Treasury is the treasury with what the vouchers promise.
+// Treasury is the treasury with what the vouchers promise and what the
+// pages hold.
 func (r *UserRepository) Treasury(ctx context.Context) (user.Treasury, error) {
 	if err := ctx.Err(); err != nil {
 		return user.Treasury{}, errs.Wrap("ctx.Err", err)
@@ -115,6 +116,9 @@ func (r *UserRepository) Treasury(ctx context.Context) (user.Treasury, error) {
 
 	t := r.treasury
 	t.Outstanding = promised
+	for _, u := range r.users {
+		t.Held += u.Wallet().Votes
+	}
 
 	return t, nil
 }

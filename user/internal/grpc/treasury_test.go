@@ -34,8 +34,21 @@ func TestTreasury(t *testing.T) {
 	if _, err := s.client.CreateVoucher(admin, &userv1.CreateVoucherRequest{Votes: 100, Usages: 2}); err != nil {
 		t.Fatal(err)
 	}
-	if got, err = s.client.GetTreasury(context.Background(), &userv1.GetTreasuryRequest{}); err != nil || got.GetOutstanding() != 200 {
+	if got, err = s.client.GetTreasury(context.Background(), &userv1.GetTreasuryRequest{}); err != nil || got.GetOutstanding() != 200 || got.GetHeld() != 0 {
 		t.Fatalf("GetTreasury after a voucher = %v, %v", got, err)
+	}
+
+	// What a page takes out of it, the pages hold.
+	made, err := s.client.CreateVoucher(admin, &userv1.CreateVoucherRequest{Votes: 7, Usages: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.RedeemVoucher(ann, &userv1.RedeemVoucherRequest{Token: made.GetVoucher().GetToken()}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = s.client.GetTreasury(context.Background(), &userv1.GetTreasuryRequest{}); err != nil || got.GetHeld() != 7 ||
+		got.GetVotes() != user.TreasuryStart-7 {
+		t.Fatalf("GetTreasury after a redeemed voucher = %v, %v", got, err)
 	}
 
 	// A page made today takes no bonus yet.

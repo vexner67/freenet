@@ -1194,6 +1194,8 @@ message GetTreasuryResponse {
   int64 bonus = 6;
   // The largest win of one round of the casino now.
   int64 max_win = 7;
+  // The votes on the accounts of the pages.
+  int64 held = 8;
 }
 
 message GetBonusRequest {}
