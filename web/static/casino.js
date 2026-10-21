@@ -441,7 +441,7 @@ function eventMine(e) {
 
 function eventNode(e) {
   const taking = e.open && signedIn;
-  const amount = el('input', { className: 'casino-amount', type: 'number', inputMode: 'numeric', min: '1', max: '1000000', value: '10', required: true });
+  const amount = el('input', { className: 'casino-amount', type: 'number', inputMode: 'numeric', min: '1', max: '100000000', value: '10', required: true });
   const mine = eventMine(e);
 
   // An event has odds or, made before them, shares all staked.
