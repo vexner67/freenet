@@ -1271,6 +1271,26 @@ type Redeemed struct {
 	Balance int64
 }
 
+// Treasury is the treasury of the site: every vote given comes out of it,
+// every vote spent goes in.
+type Treasury struct {
+	Votes       int64
+	Reserve     int64
+	Free        int64
+	Minted      int64
+	Outstanding int64
+	Bonus       int64
+	MaxWin      int64
+}
+
+// Bonus is the daily bonus of the caller: what it gives, whether it is
+// taken today and whether the caller may take it.
+type Bonus struct {
+	Votes    int64
+	Taken    bool
+	Eligible bool
+}
+
 // VoucherDraft is a voucher to make: Token empty for a generated serial
 // number, Usages -1 for any number of accounts.
 type VoucherDraft struct {

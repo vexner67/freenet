@@ -315,3 +315,72 @@ func (a *api) setVoteRate(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// treasuryJSON is the treasury of the site.
+type treasuryJSON struct {
+	Votes       int64 `json:"votes"`
+	Reserve     int64 `json:"reserve"`
+	Free        int64 `json:"free"`
+	Minted      int64 `json:"minted"`
+	Outstanding int64 `json:"outstanding"`
+	Bonus       int64 `json:"bonus"`
+	MaxWin      int64 `json:"maxWin"`
+}
+
+// treasury is public: everyone may see how many votes the site holds.
+func (a *api) treasury(w http.ResponseWriter, r *http.Request) {
+	t, err := a.votes.Treasury(r.Context())
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, treasuryJSON(t))
+}
+
+// bonusJSON is the daily bonus of the caller.
+type bonusJSON struct {
+	Votes    int64 `json:"votes"`
+	Taken    bool  `json:"taken"`
+	Eligible bool  `json:"eligible"`
+}
+
+func (a *api) bonus(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	b, err := a.votes.Bonus(r.Context(), token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, bonusJSON(b))
+}
+
+// claimedBonusJSON is what the bonus gave and the votes the caller has
+// now.
+type claimedBonusJSON struct {
+	Votes   int64 `json:"votes"`
+	Balance int64 `json:"balance"`
+}
+
+// claimBonus is "Получить бонус": the votes of the day, once.
+func (a *api) claimBonus(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	claimed, err := a.votes.ClaimBonus(r.Context(), token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, claimedBonusJSON{Votes: claimed.Votes, Balance: claimed.Balance})
+}

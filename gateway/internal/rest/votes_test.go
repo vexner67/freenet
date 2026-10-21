@@ -74,6 +74,20 @@ func (f *fakeVotes) SetRate(_ context.Context, token string, kopecks int64) erro
 	return f.err
 }
 
+func (f *fakeVotes) Treasury(context.Context) (model.Treasury, error) {
+	return model.Treasury{Votes: 26000, Reserve: 20000, Free: 5800, Minted: 1000, Outstanding: 200, Bonus: 10, MaxWin: 1000}, f.err
+}
+
+func (f *fakeVotes) Bonus(_ context.Context, token string) (model.Bonus, error) {
+	f.token = token
+	return model.Bonus{Votes: 10, Eligible: true}, f.err
+}
+
+func (f *fakeVotes) ClaimBonus(_ context.Context, token string) (model.Redeemed, error) {
+	f.token = token
+	return model.Redeemed{Votes: 10, Balance: 15}, f.err
+}
+
 type voucherBody struct {
 	ID          string `json:"id"`
 	Code        string `json:"code"`
@@ -268,5 +282,53 @@ func TestVoteRate(t *testing.T) {
 	h.votes.err = failure.New(failure.PermissionDenied, "permission denied")
 	if w = h.do("PUT", "/api/v1/vote-rate", `{"kopecks":1250}`, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
 		t.Fatalf("not an administrator: %d", w.Code)
+	}
+}
+
+func TestTreasury(t *testing.T) {
+	t.Parallel()
+
+	w := newHarness(rest.Config{}).do("GET", "/api/v1/treasury", "")
+	got := decode[struct {
+		Votes  int64 `json:"votes"`
+		Free   int64 `json:"free"`
+		Bonus  int64 `json:"bonus"`
+		MaxWin int64 `json:"maxWin"`
+	}](t, w)
+	if w.Code != http.StatusOK || got.Votes != 26000 || got.Free != 5800 || got.Bonus != 10 || got.MaxWin != 1000 {
+		t.Fatalf("%d %+v", w.Code, got)
+	}
+}
+
+func TestBonus(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	w := h.do("GET", "/api/v1/me/bonus", "", "Authorization", "Bearer tok")
+	got := decode[struct {
+		Votes    int64 `json:"votes"`
+		Taken    bool  `json:"taken"`
+		Eligible bool  `json:"eligible"`
+	}](t, w)
+	if w.Code != http.StatusOK || got.Votes != 10 || got.Taken || !got.Eligible || h.votes.token != "tok" {
+		t.Fatalf("%d %+v", w.Code, got)
+	}
+
+	w = h.do("POST", "/api/v1/me/bonus", "", "Authorization", "Bearer tok")
+	claimed := decode[struct {
+		Votes   int64 `json:"votes"`
+		Balance int64 `json:"balance"`
+	}](t, w)
+	if w.Code != http.StatusOK || claimed.Votes != 10 || claimed.Balance != 15 {
+		t.Fatalf("%d %+v", w.Code, claimed)
+	}
+
+	h = newHarness(rest.Config{})
+	h.votes.err = failure.New(failure.Conflict, "the bonus is taken today")
+	if w = h.do("POST", "/api/v1/me/bonus", "", "Authorization", "Bearer tok"); w.Code != http.StatusConflict {
+		t.Fatalf("a bonus taken: %d %s", w.Code, w.Body)
+	}
+	if w = newHarness(rest.Config{}).do("GET", "/api/v1/me/bonus", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without token: %d", w.Code)
 	}
 }

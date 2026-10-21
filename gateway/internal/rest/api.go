@@ -484,6 +484,11 @@ type Votes interface {
 	// administrators'.
 	Rate(ctx context.Context) (int64, error)
 	SetRate(ctx context.Context, accessToken string, kopecks int64) error
+	// Treasury is public; Bonus and ClaimBonus are the caller's daily
+	// bonus out of it.
+	Treasury(ctx context.Context) (model.Treasury, error)
+	Bonus(ctx context.Context, accessToken string) (model.Bonus, error)
+	ClaimBonus(ctx context.Context, accessToken string) (model.Redeemed, error)
 }
 
 // Backends are the services the API is made of.
@@ -802,6 +807,9 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /api/v1/sticker-packs/{pack}", a.deleteStickerPack)
 	mux.HandleFunc("POST /api/v1/me/vouchers", a.redeemVoucher)
 	mux.HandleFunc("GET /api/v1/me/votes", a.voteStatement)
+	mux.HandleFunc("GET /api/v1/me/bonus", a.bonus)
+	mux.HandleFunc("POST /api/v1/me/bonus", a.claimBonus)
+	mux.HandleFunc("GET /api/v1/treasury", a.treasury)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/votes", a.transferVotes)
 	mux.HandleFunc("GET /api/v1/vouchers", a.listVouchers)
 	mux.HandleFunc("POST /api/v1/vouchers", a.createVoucher)
