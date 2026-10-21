@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"context"
+	"reflect"
 	"testing"
 	"time"
 
@@ -57,22 +58,22 @@ func TestCasinoRepository(t *testing.T) {
 		t.Fatal(err)
 	}
 	if after.Stats.Spins-before.Stats.Spins != 1 || after.Stats.Spent-before.Stats.Spent != 3 || after.Stats.Won-before.Stats.Won != 1000 ||
-		after.Casino.Price() != 3 || after.Bets != user.DefaultCasinoBets() {
+		after.Casino.Price() != 3 || !reflect.DeepEqual(after.Bets, user.DefaultCasinoBets()) {
 		t.Fatalf("Settings went from %+v to %+v", before, after)
 	}
 
-	if got, err := casinos.Bets(ctx); err != nil || got != user.DefaultCasinoBets() {
+	if got, err := casinos.Bets(ctx); err != nil || !reflect.DeepEqual(got, user.DefaultCasinoBets()) {
 		t.Fatalf("Bets = %+v, %v; want the default", got, err)
 	}
 
-	bets, err := user.NewCasinoBets(5, 500, 90)
+	bets, err := user.NewCasinoBets(5, 500, []user.AimMultiplier{{Multiplier: 200, Chance: 4500}, {Multiplier: 1500, Chance: 300}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err = casinos.SetBets(ctx, bets); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := casinos.Bets(ctx); err != nil || got != bets {
+	if got, err := casinos.Bets(ctx); err != nil || !reflect.DeepEqual(got, bets) {
 		t.Fatalf("Bets = %+v, %v; want %+v", got, err, bets)
 	}
 
@@ -84,7 +85,7 @@ func TestCasinoRepository(t *testing.T) {
 		t.Fatal(err)
 	}
 	if bet.Stats.Wagers-after.Stats.Wagers != 1 || bet.Stats.WagerSpent-after.Stats.WagerSpent != 50 ||
-		bet.Stats.WagerWon-after.Stats.WagerWon != 100 || bet.Stats.Spins != after.Stats.Spins || bet.Bets != bets {
+		bet.Stats.WagerWon-after.Stats.WagerWon != 100 || bet.Stats.Spins != after.Stats.Spins || !reflect.DeepEqual(bet.Bets, bets) {
 		t.Fatalf("Settings went from %+v to %+v", after, bet)
 	}
 
@@ -96,7 +97,7 @@ func TestCasinoRepository(t *testing.T) {
 	if err = casinos.SetBets(ctx, bets); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := casinos.Settings(ctx); err != nil || got.Bets != bets || got.Casino.Price() != user.DefaultCasino().Price() {
+	if got, err := casinos.Settings(ctx); err != nil || !reflect.DeepEqual(got.Bets, bets) || got.Casino.Price() != user.DefaultCasino().Price() {
 		t.Fatalf("Settings after SetBets without the row = %+v, %v", got, err)
 	}
 }

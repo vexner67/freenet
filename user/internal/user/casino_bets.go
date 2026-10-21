@@ -1,53 +1,95 @@
 package user
 
-import "errors"
+import (
+	"errors"
+	"slices"
+)
 
 // BetOdds are the units of a bet's chance and roll: a bet wins when a roll
 // in [0, BetOdds) falls in the middle of the range, chance wide, so 4750 is
 // a 47.5% chance.
 const BetOdds = 10_000
 
-// The bounds of the bets: how big a bet may be and how much of the votes
-// bet the casino gives back, in percent.
+// The bounds of the bets: how big a bet may be, how many multipliers it
+// chooses from and how big they are, in hundredths: 101 is ×1.01.
 const (
-	MaxBet       = 1_000_000
-	MaxBetReturn = 100
+	MaxBet            = 1_000_000
+	MaxAimMultipliers = 10
+	MinAimMultiplier  = 101
+	MaxAimMultiplier  = 100_000
 )
 
-// BetMultipliers are what a bet may multiply into, in hundredths: 150 is
-// ×1.5. The bigger the multiplier, the smaller the chance.
-var BetMultipliers = []int{150, 200, 300, 500, 1000}
+// defaultAim are the multipliers until the administrators change them,
+// each winning with the chance 95% divided by it: the casino gives back
+// 95% of what is bet on average.
+var defaultAim = []int{150, 200, 300, 500, 1000}
 
 var (
-	ErrBetLimits     = errors.New("bets must be from 1 to 1000000 votes, the least not above the most")
-	ErrBetReturn     = errors.New("the return of bets must be from 1 to 100 percent")
-	ErrBetAmount     = errors.New("the bet is out of the limits of the casino")
-	ErrBetMultiplier = errors.New("unknown multiplier")
+	ErrBetLimits          = errors.New("bets must be from 1 to 1000000 votes, the least not above the most")
+	ErrAimMultipliers     = errors.New("bets have from 1 to 10 multipliers")
+	ErrAimMultiplier      = errors.New("a multiplier must be from 1.01 to 1000")
+	ErrAimChance          = errors.New("the chance of a multiplier must be from 0.01 to 99.99 percent")
+	ErrAimMultiplierTwice = errors.New("the multipliers repeat")
+	ErrBetAmount          = errors.New("the bet is out of the limits of the casino")
+	ErrBetMultiplier      = errors.New("unknown multiplier")
 )
 
-// CasinoBets are the bets of the casino: a player bets from Least to Most
-// votes on a multiplier and either gets the bet multiplied or loses it.
-// The chance of a multiplier is Return percent divided by it, so on
-// average the casino gives back Return percent of what is bet.
-type CasinoBets struct {
-	least, most int64
-	ret         int
+// AimMultiplier is what a bet may multiply into, in hundredths — 150 is
+// ×1.5 — and the chance it does, in BetOdds: 4750 is 47.5%. On average a
+// bet on it gives back Multiplier × Chance / 100 / BetOdds of itself.
+type AimMultiplier struct {
+	Multiplier int
+	Chance     int
 }
 
-func NewCasinoBets(least, most int64, ret int) (CasinoBets, error) {
+// CasinoBets are the bets of the casino: a player bets from Least to Most
+// votes on one of the multipliers and either gets the bet multiplied or
+// loses it; the administrators set each multiplier and its chance.
+type CasinoBets struct {
+	least, most int64
+	aim         []AimMultiplier
+}
+
+// NewCasinoBets checks the bets; the multipliers come smallest first.
+// ErrBetLimits, ErrAimMultipliers, ErrAimMultiplier, ErrAimChance,
+// ErrAimMultiplierTwice.
+func NewCasinoBets(least, most int64, aim []AimMultiplier) (CasinoBets, error) {
 	if least < 1 || most > MaxBet || least > most {
 		return CasinoBets{}, ErrBetLimits
 	}
-	if ret < 1 || ret > MaxBetReturn {
-		return CasinoBets{}, ErrBetReturn
+	if len(aim) < 1 || len(aim) > MaxAimMultipliers {
+		return CasinoBets{}, ErrAimMultipliers
 	}
 
-	return CasinoBets{least: least, most: most, ret: ret}, nil
+	sorted := slices.Clone(aim)
+	slices.SortFunc(sorted, func(a, b AimMultiplier) int { return a.Multiplier - b.Multiplier })
+	for i, m := range sorted {
+		switch {
+		case m.Multiplier < MinAimMultiplier || m.Multiplier > MaxAimMultiplier:
+			return CasinoBets{}, ErrAimMultiplier
+		case m.Chance < 1 || m.Chance >= BetOdds:
+			return CasinoBets{}, ErrAimChance
+		case i > 0 && sorted[i-1].Multiplier == m.Multiplier:
+			return CasinoBets{}, ErrAimMultiplierTwice
+		}
+	}
+
+	return CasinoBets{least: least, most: most, aim: sorted}, nil
 }
 
 // DefaultCasinoBets are the bets until the administrators change them.
 func DefaultCasinoBets() CasinoBets {
-	return CasinoBets{least: 1, most: 1000, ret: 95}
+	return CasinoBets{least: 1, most: 1000, aim: DefaultAim()}
+}
+
+// DefaultAim are the multipliers of DefaultCasinoBets.
+func DefaultAim() []AimMultiplier {
+	aim := make([]AimMultiplier, len(defaultAim))
+	for i, m := range defaultAim {
+		aim[i] = AimMultiplier{Multiplier: m, Chance: 95 * BetOdds / m}
+	}
+
+	return aim
 }
 
 func (b CasinoBets) Least() int64 {
@@ -58,9 +100,10 @@ func (b CasinoBets) Most() int64 {
 	return b.most
 }
 
-// Return is the percent of the votes bet the casino gives back on average.
-func (b CasinoBets) Return() int {
-	return b.ret
+// Aim are the multipliers a bet may take with their chances, smallest
+// first.
+func (b CasinoBets) Aim() []AimMultiplier {
+	return slices.Clone(b.aim)
 }
 
 // Bet is a bet a player makes: the votes and the multiplier, checked
@@ -88,9 +131,9 @@ func (b CasinoBets) Bet(amount int64, multiplier int) (Bet, error) {
 
 // Chance is the chance of multiplier, in BetOdds; ErrBetMultiplier.
 func (b CasinoBets) Chance(multiplier int) (int, error) {
-	for _, m := range BetMultipliers {
-		if m == multiplier {
-			return b.ret * BetOdds / multiplier, nil
+	for _, m := range b.aim {
+		if m.Multiplier == multiplier {
+			return m.Chance, nil
 		}
 	}
 

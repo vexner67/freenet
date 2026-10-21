@@ -28,16 +28,14 @@ func (h *UserHandler) GetCasino(ctx context.Context, _ *userv1.GetCasinoRequest)
 	}
 
 	resp := &userv1.GetCasinoResponse{
-		Price:     casino.Price(),
-		BetLeast:  bets.Least(),
-		BetMost:   bets.Most(),
-		BetReturn: int32(bets.Return()), //nolint:gosec // at most user.MaxBetReturn
+		Price:    casino.Price(),
+		BetLeast: bets.Least(),
+		BetMost:  bets.Most(),
+		Aim:      toProtoAim(bets.Aim()),
 	}
 	for _, p := range casino.Prizes() {
 		resp.Prizes = append(resp.Prizes, p.Votes)
 	}
-	resp.Multipliers = toProtoMultipliers()
-
 	return resp, nil
 }
 
@@ -53,27 +51,36 @@ func (h *UserHandler) GetCasinoSettings(ctx context.Context, _ *userv1.GetCasino
 	}
 
 	return &userv1.GetCasinoSettingsResponse{
-		Price:       settings.Casino.Price(),
-		Prizes:      toProtoCasinoPrizes(settings.Casino.Prizes()),
-		Spins:       settings.Stats.Spins,
-		Spent:       settings.Stats.Spent,
-		Won:         settings.Stats.Won,
-		BetLeast:    settings.Bets.Least(),
-		BetMost:     settings.Bets.Most(),
-		BetReturn:   int32(settings.Bets.Return()), //nolint:gosec // at most user.MaxBetReturn
-		Bets:        settings.Stats.Wagers,
-		BetSpent:    settings.Stats.WagerSpent,
-		BetWon:      settings.Stats.WagerWon,
-		Multipliers: toProtoMultipliers(),
+		Price:    settings.Casino.Price(),
+		Prizes:   toProtoCasinoPrizes(settings.Casino.Prizes()),
+		Spins:    settings.Stats.Spins,
+		Spent:    settings.Stats.Spent,
+		Won:      settings.Stats.Won,
+		BetLeast: settings.Bets.Least(),
+		BetMost:  settings.Bets.Most(),
+		Bets:     settings.Stats.Wagers,
+		BetSpent: settings.Stats.WagerSpent,
+		BetWon:   settings.Stats.WagerWon,
+		Aim:      toProtoAim(settings.Bets.Aim()),
 	}, nil
 }
 
-// toProtoMultipliers are user.BetMultipliers, which the casino does not
-// keep: they are the same for every casino.
-func toProtoMultipliers() []int32 {
-	multipliers := make([]int32, 0, len(user.BetMultipliers))
-	for _, m := range user.BetMultipliers {
-		multipliers = append(multipliers, int32(m)) //nolint:gosec // a few hundred
+func toProtoAim(aim []user.AimMultiplier) []*userv1.AimMultiplier {
+	multipliers := make([]*userv1.AimMultiplier, 0, len(aim))
+	for _, m := range aim {
+		multipliers = append(multipliers, &userv1.AimMultiplier{
+			Multiplier: int32(m.Multiplier), //nolint:gosec // at most user.MaxAimMultiplier
+			Chance:     int32(m.Chance),     //nolint:gosec // at most user.BetOdds
+		})
+	}
+
+	return multipliers
+}
+
+func fromProtoAim(aim []*userv1.AimMultiplier) []user.AimMultiplier {
+	multipliers := make([]user.AimMultiplier, 0, len(aim))
+	for _, m := range aim {
+		multipliers = append(multipliers, user.AimMultiplier{Multiplier: int(m.GetMultiplier()), Chance: int(m.GetChance())})
 	}
 
 	return multipliers
@@ -121,7 +128,7 @@ func (h *UserHandler) SetCasinoBets(ctx context.Context, req *userv1.SetCasinoBe
 		return nil, err
 	}
 
-	bets, err := user.NewCasinoBets(req.GetLeast(), req.GetMost(), int(req.GetReturn()))
+	bets, err := user.NewCasinoBets(req.GetLeast(), req.GetMost(), fromProtoAim(req.GetAim()))
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

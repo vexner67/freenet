@@ -35,10 +35,11 @@ const createBetEventQuery = `
 		id,
 		question,
 		outcomes,
+		odds,
 		state,
 		closes_at
 	)
-	VALUES ($1, $2, $3, $4, $5)
+	VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 func (r *BetEventRepository) Create(ctx context.Context, e *user.BetEvent) error {
@@ -46,6 +47,7 @@ func (r *BetEventRepository) Create(ctx context.Context, e *user.BetEvent) error
 		e.ID(),
 		e.Question().String(),
 		outcomeNames(e.Outcomes()),
+		oddsOf(e),
 		string(e.State()),
 		nullTime(e.ClosesAt()),
 	)
@@ -59,7 +61,8 @@ func (r *BetEventRepository) Create(ctx context.Context, e *user.BetEvent) error
 const updateBetEventQuery = `
 	UPDATE bet_events
 	SET state = $2,
-		winner = $3
+		winner = $3,
+		odds = $4
 	WHERE id = $1
 `
 
@@ -69,7 +72,7 @@ func (r *BetEventRepository) Update(ctx context.Context, e *user.BetEvent) error
 		winner = &w
 	}
 
-	tag, err := r.conn(ctx).Exec(ctx, updateBetEventQuery, e.ID(), string(e.State()), winner)
+	tag, err := r.conn(ctx).Exec(ctx, updateBetEventQuery, e.ID(), string(e.State()), winner, oddsOf(e))
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -85,6 +88,7 @@ const lockBetEventQuery = `
 		id,
 		question,
 		outcomes,
+		odds,
 		state,
 		closes_at,
 		winner
@@ -106,6 +110,7 @@ const shareBetEventQuery = `
 		id,
 		question,
 		outcomes,
+		odds,
 		state,
 		closes_at,
 		winner
@@ -128,6 +133,7 @@ const listBetEventsQuery = `
 		e.id,
 		e.question,
 		e.outcomes,
+		e.odds,
 		e.state,
 		e.closes_at,
 		e.winner,
@@ -135,6 +141,7 @@ const listBetEventsQuery = `
 		coalesce(s.bettors, '{}'),
 		coalesce(s.outcomes, '{}'),
 		coalesce(s.mine, '{}'),
+		coalesce(s.potential, '{}'),
 		coalesce(s.payout, 0),
 		coalesce(p.people, 0)
 	FROM bet_events e
@@ -144,6 +151,7 @@ const listBetEventsQuery = `
 			array_agg(o.bettors) AS bettors,
 			array_agg(o.outcome) AS outcomes,
 			array_agg(o.mine) AS mine,
+			array_agg(o.potential) AS potential,
 			sum(o.payout)::bigint AS payout,
 			sum(o.staked) AS total
 		FROM (
@@ -152,6 +160,7 @@ const listBetEventsQuery = `
 				sum(amount)::bigint AS staked,
 				count(*)::integer AS bettors,
 				coalesce(sum(amount) FILTER (WHERE user_id = $2), 0)::bigint AS mine,
+				coalesce(sum(potential) FILTER (WHERE user_id = $2), 0)::bigint AS potential,
 				coalesce(sum(payout) FILTER (WHERE user_id = $2), 0)::bigint AS payout
 			FROM bet_stakes
 			WHERE event_id = e.id
@@ -188,13 +197,14 @@ func (r *BetEventRepository) List(ctx context.Context, list service.BetEventList
 		var (
 			e                   betEventRow
 			staked, mine        []int64
+			potential           []int64
 			bettors, outcomesOf []int32
 			v                   service.BetEventView
 		)
 
 		if err = rows.Scan(
-			&e.id, &e.question, &e.outcomes, &e.state, &e.closesAt, &e.winner,
-			&staked, &bettors, &outcomesOf, &mine, &v.Payout, &v.People,
+			&e.id, &e.question, &e.outcomes, &e.odds, &e.state, &e.closesAt, &e.winner,
+			&staked, &bettors, &outcomesOf, &mine, &potential, &v.Payout, &v.People,
 		); err != nil {
 			return nil, errs.Wrap("rows.Scan", err)
 		}
@@ -204,12 +214,12 @@ func (r *BetEventRepository) List(ctx context.Context, list service.BetEventList
 		}
 
 		n := len(e.outcomes)
-		v.Staked, v.Bettors, v.Mine = make([]int64, n), make([]int, n), make([]int64, n)
+		v.Staked, v.Bettors, v.Mine, v.Potential = make([]int64, n), make([]int, n), make([]int64, n), make([]int64, n)
 		for i, o := range outcomesOf {
 			if int(o) >= n {
 				continue
 			}
-			v.Staked[o], v.Bettors[o], v.Mine[o] = staked[i], int(bettors[i]), mine[i]
+			v.Staked[o], v.Bettors[o], v.Mine[o], v.Potential[o] = staked[i], int(bettors[i]), mine[i], potential[i]
 		}
 
 		views = append(views, v)
@@ -223,15 +233,17 @@ const addBetStakeQuery = `
 		event_id,
 		user_id,
 		outcome,
-		amount
+		amount,
+		potential
 	)
-	VALUES ($1, $2, $3, $4)
+	VALUES ($1, $2, $3, $4, $5)
 	ON CONFLICT (event_id, user_id, outcome) DO UPDATE
-	SET amount = bet_stakes.amount + EXCLUDED.amount
+	SET amount = bet_stakes.amount + EXCLUDED.amount,
+		potential = bet_stakes.potential + EXCLUDED.potential
 `
 
-func (r *BetEventRepository) AddStake(ctx context.Context, eventID, userID uuid.UUID, outcome int, amount int64) error {
-	if _, err := r.conn(ctx).Exec(ctx, addBetStakeQuery, eventID, userID, outcome, amount); err != nil {
+func (r *BetEventRepository) AddStake(ctx context.Context, eventID, userID uuid.UUID, outcome int, amount, potential int64) error {
+	if _, err := r.conn(ctx).Exec(ctx, addBetStakeQuery, eventID, userID, outcome, amount, potential); err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
 
@@ -243,6 +255,7 @@ const listBetStakesQuery = `
 		user_id,
 		outcome,
 		amount,
+		potential,
 		payout
 	FROM bet_stakes
 	WHERE event_id = $1
@@ -259,7 +272,7 @@ func (r *BetEventRepository) Stakes(ctx context.Context, eventID uuid.UUID) ([]u
 	var stakes []user.Stake
 	for rows.Next() {
 		var s user.Stake
-		if err = rows.Scan(&s.UserID, &s.Outcome, &s.Amount, &s.Payout); err != nil {
+		if err = rows.Scan(&s.UserID, &s.Outcome, &s.Amount, &s.Potential, &s.Payout); err != nil {
 			return nil, errs.Wrap("rows.Scan", err)
 		}
 		stakes = append(stakes, s)
@@ -316,6 +329,8 @@ type betEventRow struct {
 	id       uuid.UUID
 	question string
 	outcomes []string
+	// odds are NULL for an event sharing its stakes.
+	odds     []int32
 	state    string
 	closesAt *time.Time
 	winner   *int
@@ -324,7 +339,7 @@ type betEventRow struct {
 func scanBetEvent(row pgx.Row) (*user.BetEvent, error) {
 	var e betEventRow
 
-	err := row.Scan(&e.id, &e.question, &e.outcomes, &e.state, &e.closesAt, &e.winner)
+	err := row.Scan(&e.id, &e.question, &e.outcomes, &e.odds, &e.state, &e.closesAt, &e.winner)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrBetEventNotFound
 	}
@@ -367,7 +382,30 @@ func (e betEventRow) restore() (*user.BetEvent, error) {
 		winner = *e.winner
 	}
 
-	return user.RestoreBetEvent(e.id, question, outcomes, state, closesAt, winner), nil
+	var odds []int
+	if e.odds != nil {
+		odds = make([]int, len(e.odds))
+		for i, o := range e.odds {
+			odds[i] = int(o)
+		}
+	}
+
+	return user.RestoreBetEvent(e.id, question, outcomes, odds, state, closesAt, winner), nil
+}
+
+// oddsOf are the odds of the event as the column keeps them: NULL for one
+// sharing its stakes.
+func oddsOf(e *user.BetEvent) []int32 {
+	if e.Pooled() {
+		return nil
+	}
+
+	odds := make([]int32, len(e.Odds()))
+	for i, o := range e.Odds() {
+		odds[i] = int32(o) //nolint:gosec // below user.MaxEventOdds
+	}
+
+	return odds
 }
 
 func outcomeNames(outcomes []user.BetOutcome) []string {

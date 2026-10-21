@@ -40,7 +40,12 @@ func (b *Bets) List(ctx context.Context, accessToken string, popular bool) ([]mo
 }
 
 func (b *Bets) Create(ctx context.Context, accessToken string, draft model.BetEventDraft) (model.BetEvent, error) {
-	req := &userv1.CreateBetEventRequest{Question: draft.Question, Outcomes: draft.Outcomes}
+	odds, err := toProtoOdds(draft.Odds)
+	if err != nil {
+		return model.BetEvent{}, err
+	}
+
+	req := &userv1.CreateBetEventRequest{Question: draft.Question, Outcomes: draft.Outcomes, Odds: odds}
 	if !draft.ClosesAt.IsZero() {
 		req.ClosesAt = timestamppb.New(draft.ClosesAt)
 	}
@@ -51,6 +56,32 @@ func (b *Bets) Create(ctx context.Context, accessToken string, draft model.BetEv
 	}
 
 	return fromProtoBetEvent(resp), nil
+}
+
+// SetOdds changes the odds of the outcomes for the stakes from now on.
+func (b *Bets) SetOdds(ctx context.Context, accessToken, id string, odds []int) error {
+	req, err := toProtoOdds(odds)
+	if err != nil {
+		return err
+	}
+
+	_, err = b.api.SetBetEventOdds(withToken(ctx, accessToken), &userv1.SetBetEventOddsRequest{EventId: id, Odds: req})
+
+	return errs.Wrap("b.api.SetBetEventOdds", fromStatus(err))
+}
+
+// toProtoOdds are odds the user service can take; more of them than an
+// event has outcomes it refuses itself.
+func toProtoOdds(odds []int) ([]int32, error) {
+	out := make([]int32, 0, len(odds))
+	for _, o := range odds {
+		if o < 0 || o > math.MaxInt32 {
+			return nil, failure.New(failure.InvalidArgument, "the odds of an outcome must be from 1.01 to 1000")
+		}
+		out = append(out, int32(o))
+	}
+
+	return out, nil
 }
 
 func (b *Bets) Close(ctx context.Context, accessToken, id string) error {
@@ -112,10 +143,12 @@ func fromProtoBetEvent(e *userv1.BetEvent) model.BetEvent {
 
 	for _, o := range e.GetOutcomes() {
 		out.Outcomes = append(out.Outcomes, model.BetOutcome{
-			Name:    o.GetName(),
-			Staked:  o.GetStaked(),
-			Bettors: int(o.GetBettors()),
-			Mine:    o.GetMine(),
+			Name:      o.GetName(),
+			Odds:      int(o.GetOdds()),
+			Staked:    o.GetStaked(),
+			Bettors:   int(o.GetBettors()),
+			Mine:      o.GetMine(),
+			Potential: o.GetPotential(),
 		})
 	}
 

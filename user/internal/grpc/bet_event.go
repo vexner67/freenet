@@ -16,7 +16,8 @@ import (
 
 type BetEventService interface {
 	Events(ctx context.Context, viewerID uuid.UUID, list service.BetEventList) ([]service.BetEventView, error)
-	Create(ctx context.Context, adminID uuid.UUID, question user.BetQuestion, outcomes []user.BetOutcome, closesAt time.Time) (*user.BetEvent, error)
+	Create(ctx context.Context, adminID uuid.UUID, question user.BetQuestion, outcomes []user.BetOutcome, odds []int, closesAt time.Time) (*user.BetEvent, error)
+	SetOdds(ctx context.Context, adminID, id uuid.UUID, odds []int) error
 	Close(ctx context.Context, adminID, id uuid.UUID) error
 	Resolve(ctx context.Context, adminID, id uuid.UUID, winner int) error
 	Cancel(ctx context.Context, adminID, id uuid.UUID) error
@@ -71,7 +72,7 @@ func (h *UserHandler) CreateBetEvent(ctx context.Context, req *userv1.CreateBetE
 		closesAt = req.GetClosesAt().AsTime()
 	}
 
-	e, err := h.betEvents.Create(ctx, adminID, question, outcomes, closesAt)
+	e, err := h.betEvents.Create(ctx, adminID, question, outcomes, fromProtoOdds(req.GetOdds()), closesAt)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +80,7 @@ func (h *UserHandler) CreateBetEvent(ctx context.Context, req *userv1.CreateBetE
 	n := len(e.Outcomes())
 
 	return toProtoBetEvent(service.BetEventView{
-		Event: e, Staked: make([]int64, n), Bettors: make([]int, n), Mine: make([]int64, n), Open: true,
+		Event: e, Staked: make([]int64, n), Bettors: make([]int, n), Mine: make([]int64, n), Potential: make([]int64, n), Open: true,
 	}), nil
 }
 
@@ -93,6 +94,23 @@ func (h *UserHandler) CancelBetEvent(ctx context.Context, req *userv1.BetEventRe
 
 func (h *UserHandler) DeleteBetEvent(ctx context.Context, req *userv1.BetEventRequest) (*emptypb.Empty, error) {
 	return h.changeBetEvent(ctx, req.GetEventId(), h.betEvents.Delete)
+}
+
+func (h *UserHandler) SetBetEventOdds(ctx context.Context, req *userv1.SetBetEventOddsRequest) (*emptypb.Empty, error) {
+	return h.changeBetEvent(ctx, req.GetEventId(), func(ctx context.Context, adminID, id uuid.UUID) error {
+		return h.betEvents.SetOdds(ctx, adminID, id, fromProtoOdds(req.GetOdds()))
+	})
+}
+
+// fromProtoOdds are the odds of a request; more of them than outcomes can
+// be is refused by the domain all the same.
+func fromProtoOdds(odds []int32) []int {
+	out := make([]int, 0, len(odds))
+	for _, o := range odds {
+		out = append(out, int(o))
+	}
+
+	return out
 }
 
 func (h *UserHandler) ResolveBetEvent(ctx context.Context, req *userv1.ResolveBetEventRequest) (*emptypb.Empty, error) {
@@ -154,13 +172,21 @@ func toProtoBetEvent(v service.BetEventView) *userv1.BetEvent {
 		out.ClosesAt = timestamppb.New(e.ClosesAt())
 	}
 
+	odds := e.Odds()
 	for i, o := range e.Outcomes() {
-		out.Outcomes = append(out.Outcomes, &userv1.BetOutcome{
+		outcome := &userv1.BetOutcome{
 			Name:    o.String(),
 			Staked:  v.Staked[i],
 			Bettors: int32(v.Bettors[i]), //nolint:gosec // a count of people
 			Mine:    v.Mine[i],
-		})
+		}
+		if i < len(odds) {
+			outcome.Odds = int32(odds[i]) //nolint:gosec // at most user.MaxEventOdds
+		}
+		if i < len(v.Potential) {
+			outcome.Potential = v.Potential[i]
+		}
+		out.Outcomes = append(out.Outcomes, outcome)
 	}
 
 	return out

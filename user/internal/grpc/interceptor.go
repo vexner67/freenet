@@ -79,6 +79,20 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, user.ErrBetAmount.Error()), true
 	case errors.Is(err, user.ErrBetMultiplier):
 		return status.New(codes.InvalidArgument, user.ErrBetMultiplier.Error()), true
+	case errors.Is(err, user.ErrEventOdds):
+		return status.New(codes.InvalidArgument, user.ErrEventOdds.Error()), true
+	case errors.Is(err, user.ErrEventOddsCount):
+		return status.New(codes.InvalidArgument, user.ErrEventOddsCount.Error()), true
+	case errors.Is(err, user.ErrAimMultipliers):
+		return status.New(codes.InvalidArgument, user.ErrAimMultipliers.Error()), true
+	case errors.Is(err, user.ErrAimMultiplier):
+		return status.New(codes.InvalidArgument, user.ErrAimMultiplier.Error()), true
+	case errors.Is(err, user.ErrAimChance):
+		return status.New(codes.InvalidArgument, user.ErrAimChance.Error()), true
+	case errors.Is(err, user.ErrAimMultiplierTwice):
+		return status.New(codes.InvalidArgument, user.ErrAimMultiplierTwice.Error()), true
+	case errors.Is(err, user.ErrEventPooled):
+		return status.New(codes.FailedPrecondition, user.ErrEventPooled.Error()), true
 	case errors.Is(err, user.ErrBetQuestionEmpty):
 		return status.New(codes.InvalidArgument, user.ErrBetQuestionEmpty.Error()), true
 	case errors.Is(err, user.ErrBetQuestionTooLong):

@@ -4619,7 +4619,7 @@ paths:
   /api/v1/casino/bets:
     put:
       summary: Change the bets of the casino
-      description: 'Only for the administrators of the site: the least and the most of a bet (1–1000000) and the percent of the votes bet that comes back on average (1–100) — a multiplier m wins with the chance return / m.'
+      description: 'Only for the administrators of the site: the least and the most of a bet (1–1000000) and 1–10 different multipliers, each with the chance it wins with.'
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -4627,11 +4627,15 @@ paths:
           application/json:
             schema:
               type: object
-              required: [least, most, return]
+              required: [least, most, multipliers]
               properties:
                 least: { type: integer, format: int64, minimum: 1 }
                 most: { type: integer, format: int64, maximum: 1000000 }
-                return: { type: integer, minimum: 1, maximum: 100 }
+                multipliers:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items: { $ref: "#/components/schemas/AimMultiplier" }
       responses:
         "204": { description: Set }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -4679,7 +4683,7 @@ paths:
   /api/v1/bets:
     get:
       summary: The events to stake on
-      description: 'Public: "Ставки" of the casino. The administrators ask a question with outcomes, people stake votes on them, and those who guessed share all the stakes by their stakes (rounded down) once it is resolved; a cancelled event, or one nobody guessed, gives everyone their stakes back. At most 100 events: those not over first, then the newest; `section=popular` — only those taking stakes, the most staked on first. With a token, each outcome tells your stake (`mine`) and an event over what it paid you (`payout`).'
+      description: 'Public: "Ставки" of the casino. The administrators ask a question with outcomes and the odds of each, people stake votes on them, and once it is resolved a stake on the winner pays its votes times the odds it was made at (rounded down), the rest nothing; a cancelled event gives everyone their stakes back. Events made before the odds (`odds` 0) share all the stakes among those who guessed by their stakes, and give them back when nobody guessed. At most 100 events: those not over first, then the newest; `section=popular` — only those taking stakes, the most staked on first. With a token, each outcome tells your stake (`mine`) and what it pays if the outcome wins (`potential`), and an event over what it paid you (`payout`).'
       security: [{}, { bearer: [] }]
       parameters:
         - name: section
@@ -4700,7 +4704,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
     post:
       summary: Ask a new question
-      description: 'Only for the administrators: a question in one line up to 200 characters with 2–10 different outcomes up to 64 characters, and the time the stakes close by themselves — within a year, or none for when the administrators close them.'
+      description: 'Only for the administrators: a question in one line up to 200 characters with 2–10 different outcomes up to 64 characters, the odds of each, and the time the stakes close by themselves — within a year, or none for when the administrators close them.'
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -4708,10 +4712,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [question, outcomes]
+              required: [question, outcomes, odds]
               properties:
                 question: { type: string }
                 outcomes: { type: array, items: { type: string } }
+                odds:
+                  type: array
+                  description: 'The odds of each outcome, in hundredths: 250 — ×2.5'
+                  items: { type: integer, minimum: 101, maximum: 100000 }
                 closesAt: { type: string, format: date-time, description: RFC 3339; empty or left out for none }
       responses:
         "201":
@@ -4797,6 +4805,33 @@ paths:
                 winner: { type: integer, description: The index of the winning outcome }
       responses:
         "204": { description: Resolved and paid }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/bets/{id}/odds:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      summary: Change the odds of an event
+      description: Only for the administrators. The new odds of each outcome are for the stakes made from now on — those made keep theirs; 409 for an event that is over or has no odds.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [odds]
+              properties:
+                odds: { type: array, items: { type: integer, minimum: 101, maximum: 100000 } }
+      responses:
+        "204": { description: Changed }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/PermissionDenied" }
@@ -6642,12 +6677,14 @@ components:
           type: array
           items:
             type: object
-            required: [name, staked, bettors, mine]
+            required: [name, odds, staked, bettors, mine, potential]
             properties:
               name: { type: string }
+              odds: { type: integer, description: 'Its odds now, in hundredths: 250 — ×2.5; 0 for an event that shares the stakes' }
               staked: { type: integer, format: int64, description: The votes on it }
               bettors: { type: integer, description: How many people staked on it }
               mine: { type: integer, format: int64, description: Your votes on it; 0 for a guest }
+              potential: { type: integer, format: int64, description: What your stakes on it pay if it wins, each at the odds it was made at }
         state: { type: string, enum: [open, closed, resolved, cancelled] }
         open: { type: boolean, description: Whether it takes stakes now }
         closesAt: { type: string, format: date-time, nullable: true, description: When the stakes close by themselves; null for when the administrators close them }
@@ -7927,16 +7964,22 @@ components:
 
     CasinoBets:
       type: object
-      description: 'The bets of the casino: from least to most votes on a multiplier, which wins with the chance return / multiplier'
-      required: [least, most, return]
+      description: 'The bets of the casino: from least to most votes on one of the multipliers, each winning with its chance'
+      required: [least, most, multipliers]
       properties:
         least: { type: integer, format: int64 }
         most: { type: integer, format: int64 }
-        return: { type: integer, description: The percent of the votes bet that comes back on average }
         multipliers:
           type: array
-          description: 'What a bet may multiply into, in hundredths: 150 — ×1.5'
-          items: { type: integer }
+          description: Smallest first
+          items: { $ref: "#/components/schemas/AimMultiplier" }
+
+    AimMultiplier:
+      type: object
+      required: [multiplier, chance]
+      properties:
+        multiplier: { type: integer, minimum: 101, maximum: 100000, description: 'What a bet multiplies into, in hundredths: 150 — ×1.5' }
+        chance: { type: integer, minimum: 1, maximum: 9999, description: 'The chance it wins, of 10000: 4750 — 47.5%' }
 
     CasinoPrize:
       type: object

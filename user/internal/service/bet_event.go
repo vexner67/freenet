@@ -19,7 +19,7 @@ const MaxListedBetEvents = 100
 // stakes.
 type BetEventRepository interface {
 	Create(ctx context.Context, e *user.BetEvent) error
-	// Update writes the state and the winner of the event.
+	// Update writes the state, the winner and the odds of the event.
 	Update(ctx context.Context, e *user.BetEvent) error
 	// Lock reads the event for a change of its state, waiting for the
 	// stakes being made; user.ErrBetEventNotFound.
@@ -30,9 +30,9 @@ type BetEventRepository interface {
 	// List is the events with their stakes and the stakes of viewerID
 	// (uuid.Nil for nobody), at most MaxListedBetEvents.
 	List(ctx context.Context, list BetEventList, viewerID uuid.UUID) ([]BetEventView, error)
-	// AddStake adds amount votes of userID on the outcome to what they
-	// staked on it before.
-	AddStake(ctx context.Context, eventID, userID uuid.UUID, outcome int, amount int64) error
+	// AddStake adds amount votes of userID on the outcome, paying potential
+	// if it wins, to what they staked on it before.
+	AddStake(ctx context.Context, eventID, userID uuid.UUID, outcome int, amount, potential int64) error
 	// Stakes are all the stakes of the event, one per person and outcome.
 	Stakes(ctx context.Context, eventID uuid.UUID) ([]user.Stake, error)
 	// SetPayouts writes what the stakes paid back.
@@ -61,16 +61,18 @@ type BetEventView struct {
 	Bettors []int
 	// People are those who staked on any outcome.
 	People int
-	// Mine are the votes of the viewer on each outcome, Payout what they
-	// paid back once the event is over.
-	Mine   []int64
-	Payout int64
+	// Mine are the votes of the viewer on each outcome, Potential what they
+	// pay if it wins, Payout what they paid back once the event is over.
+	Mine      []int64
+	Potential []int64
+	Payout    int64
 	// Open tells that the event takes stakes now.
 	Open bool
 }
 
-// BetEventService is the bets on events: the administrators ask, people
-// stake votes on the outcomes, the winners share the stakes.
+// BetEventService is the bets on events: the administrators ask and set
+// the odds, people stake votes on the outcomes, a stake on the winner pays
+// its votes times its odds.
 type BetEventService struct {
 	userRepo UserRepository
 	events   BetEventRepository
@@ -107,13 +109,13 @@ func (s *BetEventService) Events(ctx context.Context, viewerID uuid.UUID, list B
 	return views, nil
 }
 
-// Create asks a new question; user.ErrNotAdmin.
-func (s *BetEventService) Create(ctx context.Context, adminID uuid.UUID, question user.BetQuestion, outcomes []user.BetOutcome, closesAt time.Time) (*user.BetEvent, error) {
+// Create asks a new question with the odds of each outcome; user.ErrNotAdmin.
+func (s *BetEventService) Create(ctx context.Context, adminID uuid.UUID, question user.BetQuestion, outcomes []user.BetOutcome, odds []int, closesAt time.Time) (*user.BetEvent, error) {
 	if err := checkAdmin(ctx, s.userRepo, s.admins, adminID); err != nil {
 		return nil, errs.Wrap("checkAdmin", err)
 	}
 
-	e, err := user.NewBetEvent(question, outcomes, closesAt, s.now())
+	e, err := user.NewBetEvent(question, outcomes, odds, closesAt, s.now())
 	if err != nil {
 		return nil, errs.Wrap("user.NewBetEvent", err)
 	}
@@ -132,6 +134,17 @@ func (s *BetEventService) Close(ctx context.Context, adminID, id uuid.UUID) erro
 		closed, err := e.Closed()
 
 		return closed, errs.Wrap("e.Closed", err)
+	})
+}
+
+// SetOdds changes the odds of the outcomes for the stakes made from now
+// on; user.ErrBetEventFinished, user.ErrEventPooled, user.ErrEventOdds,
+// user.ErrEventOddsCount as well.
+func (s *BetEventService) SetOdds(ctx context.Context, adminID, id uuid.UUID, odds []int) error {
+	return s.change(ctx, adminID, id, func(e *user.BetEvent) (*user.BetEvent, error) {
+		changed, err := e.Reodded(odds)
+
+		return changed, errs.Wrap("e.Reodded", err)
 	})
 }
 
@@ -195,7 +208,8 @@ func (s *BetEventService) Stake(ctx context.Context, userID, id uuid.UUID, outco
 			return errs.Wrap("s.events.LockForStake", err)
 		}
 
-		if err = e.Stake(outcome, amount, s.now()); err != nil {
+		potential, err := e.Stake(outcome, amount, s.now())
+		if err != nil {
 			return errs.Wrap("e.Stake", err)
 		}
 
@@ -203,7 +217,7 @@ func (s *BetEventService) Stake(ctx context.Context, userID, id uuid.UUID, outco
 			return errs.Wrap("s.wallets.Spend", err)
 		}
 
-		return errs.Wrap("s.events.AddStake", s.events.AddStake(ctx, id, userID, outcome, amount))
+		return errs.Wrap("s.events.AddStake", s.events.AddStake(ctx, id, userID, outcome, amount, potential))
 	})
 	if err != nil {
 		return 0, errs.Wrap("s.tx.WithinTx", err)
@@ -246,7 +260,7 @@ func (s *BetEventService) pay(ctx context.Context, e *user.BetEvent, winner int)
 		return errs.Wrap("s.events.Stakes", err)
 	}
 
-	paid := user.Payouts(stakes, winner)
+	paid := e.Payouts(stakes, winner)
 
 	owed := make(map[uuid.UUID]int64)
 	var order []uuid.UUID

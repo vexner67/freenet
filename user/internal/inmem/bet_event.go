@@ -134,7 +134,7 @@ func (r *BetEventRepository) List(ctx context.Context, list service.BetEventList
 
 func (r *BetEventRepository) view(e *user.BetEvent, viewerID uuid.UUID) service.BetEventView {
 	n := len(e.Outcomes())
-	v := service.BetEventView{Event: e, Staked: make([]int64, n), Bettors: make([]int, n), Mine: make([]int64, n)}
+	v := service.BetEventView{Event: e, Staked: make([]int64, n), Bettors: make([]int, n), Mine: make([]int64, n), Potential: make([]int64, n)}
 
 	people := make(map[uuid.UUID]bool)
 	for _, s := range r.stakes[e.ID()] {
@@ -143,6 +143,7 @@ func (r *BetEventRepository) view(e *user.BetEvent, viewerID uuid.UUID) service.
 		people[s.UserID] = true
 		if s.UserID == viewerID && viewerID != uuid.Nil {
 			v.Mine[s.Outcome] += s.Amount
+			v.Potential[s.Outcome] += s.Potential
 			v.Payout += s.Payout
 		}
 	}
@@ -171,7 +172,7 @@ func compareInt64(a, b int64) int {
 	return 0
 }
 
-func (r *BetEventRepository) AddStake(ctx context.Context, eventID, userID uuid.UUID, outcome int, amount int64) error {
+func (r *BetEventRepository) AddStake(ctx context.Context, eventID, userID uuid.UUID, outcome int, amount, potential int64) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
 	}
@@ -183,11 +184,12 @@ func (r *BetEventRepository) AddStake(ctx context.Context, eventID, userID uuid.
 	for i, s := range stakes {
 		if s.UserID == userID && s.Outcome == outcome {
 			stakes[i].Amount += amount
+			stakes[i].Potential += potential
 
 			return nil
 		}
 	}
-	r.stakes[eventID] = append(stakes, user.Stake{UserID: userID, Outcome: outcome, Amount: amount})
+	r.stakes[eventID] = append(stakes, user.Stake{UserID: userID, Outcome: outcome, Amount: amount, Potential: potential})
 
 	return nil
 }

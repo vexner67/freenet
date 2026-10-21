@@ -72,14 +72,17 @@ func TestCasinoBets(t *testing.T) {
 	ann, _ := s.member(t, "ann")
 
 	got, err := s.client.GetCasino(context.Background(), &userv1.GetCasinoRequest{})
-	if err != nil || got.GetBetLeast() != 1 || got.GetBetMost() != 1000 || got.GetBetReturn() != 95 || len(got.GetMultipliers()) == 0 {
+	if err != nil || got.GetBetLeast() != 1 || got.GetBetMost() != 1000 || len(got.GetAim()) != 5 || got.GetAim()[1].GetMultiplier() != 200 || got.GetAim()[1].GetChance() != 4750 {
 		t.Fatalf("GetCasino = %v, %v", got, err)
 	}
 
-	if _, err := s.client.SetCasinoBets(admin, &userv1.SetCasinoBetsRequest{Least: 10, Most: 5, Return: 90}); status.Code(err) != codes.InvalidArgument {
+	if _, err := s.client.SetCasinoBets(admin, &userv1.SetCasinoBetsRequest{Least: 10, Most: 5, Aim: []*userv1.AimMultiplier{{Multiplier: 200, Chance: 4000}}}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("SetCasinoBets upside down: %v", err)
 	}
-	tuned := &userv1.SetCasinoBetsRequest{Least: 2, Most: 20, Return: 100}
+	if _, err := s.client.SetCasinoBets(admin, &userv1.SetCasinoBetsRequest{Least: 2, Most: 20}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("SetCasinoBets without multipliers: %v", err)
+	}
+	tuned := &userv1.SetCasinoBetsRequest{Least: 2, Most: 20, Aim: []*userv1.AimMultiplier{{Multiplier: 200, Chance: 5000}, {Multiplier: 700, Chance: 1000}}}
 	if _, err := s.client.SetCasinoBets(ann, tuned); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("SetCasinoBets by ann: %v", err)
 	}
@@ -115,7 +118,7 @@ func TestCasinoBets(t *testing.T) {
 
 	settings, err := s.client.GetCasinoSettings(admin, &userv1.GetCasinoSettingsRequest{})
 	if err != nil || settings.GetBetMost() != 20 || settings.GetBets() != 1 || settings.GetBetSpent() != 10 || settings.GetBetWon() != bet.GetVotes() ||
-		len(settings.GetMultipliers()) != len(got.GetMultipliers()) {
+		len(settings.GetAim()) != 2 || settings.GetAim()[1].GetMultiplier() != 700 || settings.GetAim()[1].GetChance() != 1000 {
 		t.Fatalf("GetCasinoSettings = %v, %v", settings, err)
 	}
 }

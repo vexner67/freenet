@@ -10,13 +10,18 @@ type Casino struct {
 }
 
 // CasinoBets are the bets of the casino: a player bets from Least to Most
-// votes on one of the Multipliers (in hundredths: 200 — ×2), which wins
-// with the chance Return percent divided by it.
+// votes on one of the Multipliers, each winning with its chance.
 type CasinoBets struct {
 	Least       int64
 	Most        int64
-	Return      int
-	Multipliers []int
+	Multipliers []AimMultiplier
+}
+
+// AimMultiplier is a multiplier of the bets in hundredths (200 — ×2) and
+// the chance it wins with, of 10000.
+type AimMultiplier struct {
+	Multiplier int
+	Chance     int
 }
 
 // CasinoPrize is a prize in votes (0 — nothing) and, for the

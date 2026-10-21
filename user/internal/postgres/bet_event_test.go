@@ -62,16 +62,21 @@ func TestBetEventRepository(t *testing.T) {
 	no, _ := user.NewBetOutcome("Нет")
 	maybe, _ := user.NewBetOutcome("Ничья")
 
-	quiet, err := events.Create(ctx, admin.ID(), q, []user.BetOutcome{yes, no}, time.Time{})
+	quiet, err := events.Create(ctx, admin.ID(), q, []user.BetOutcome{yes, no}, []int{200, 200}, time.Time{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	e, err := events.Create(ctx, admin.ID(), q, []user.BetOutcome{yes, no, maybe}, time.Now().Add(time.Hour))
+	e, err := events.Create(ctx, admin.ID(), q, []user.BetOutcome{yes, no, maybe}, []int{150, 300, 500}, time.Now().Add(time.Hour))
 	if err != nil {
+		t.Fatal(err)
+	}
+	// An event made before the odds keeps none.
+	pooled := user.RestoreBetEvent(uuid.Must(uuid.NewV7()), q, []user.BetOutcome{yes, no}, nil, user.BetEventOpen, time.Time{}, -1)
+	if err := repoEvents.Create(ctx, pooled); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		for _, id := range []uuid.UUID{quiet.ID(), e.ID()} {
+		for _, id := range []uuid.UUID{quiet.ID(), e.ID(), pooled.ID()} {
 			if err := repoEvents.Delete(context.Background(), id); err != nil && !errors.Is(err, user.ErrBetEventNotFound) {
 				t.Error(err)
 			}
@@ -121,8 +126,28 @@ func TestBetEventRepository(t *testing.T) {
 	}
 	v, _ := find(views, e.ID())
 	if v.Staked[0] != 100 || v.Staked[1] != 100 || v.Staked[2] != 0 || v.Bettors[0] != 2 || v.People != 3 ||
-		v.Mine[0] != 30 || v.Mine[1] != 0 || !v.Event.ClosesAt().After(time.Now()) || v.Event.Outcomes()[2] != maybe {
+		v.Mine[0] != 30 || v.Mine[1] != 0 || !v.Event.ClosesAt().After(time.Now()) || v.Event.Outcomes()[2] != maybe ||
+		v.Potential[0] != 40 || v.Potential[1] != 0 || v.Event.Odds()[2] != 500 {
 		t.Fatalf("view = %+v", v)
+	}
+	if v, _ := find(views, pooled.ID()); !v.Event.Pooled() {
+		t.Fatalf("pooled view = %+v", v)
+	}
+
+	// New odds are kept; the stakes made keep theirs.
+	if err := events.SetOdds(ctx, admin.ID(), quiet.ID(), []int{120, 400}); err != nil {
+		t.Fatal(err)
+	}
+	if err := events.SetOdds(ctx, admin.ID(), pooled.ID(), []int{120, 400}); !errors.Is(err, user.ErrEventPooled) {
+		t.Fatalf("SetOdds of a pooled event: %v", err)
+	}
+
+	views, err = events.Events(ctx, ann, service.BetEventsAll)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v, _ := find(views, quiet.ID()); v.Event.Odds()[1] != 400 || v.Potential[1] != 10 {
+		t.Fatalf("view after SetOdds = %+v", v)
 	}
 
 	popular, err := events.Events(ctx, uuid.Nil, service.BetEventsPopular)
@@ -137,7 +162,8 @@ func TestBetEventRepository(t *testing.T) {
 	if err := events.Resolve(ctx, admin.ID(), e.ID(), 0); err != nil {
 		t.Fatal(err)
 	}
-	for id, want := range map[uuid.UUID]int64{ann: 65 + 60, bob: 30 + 140, eve: 0} {
+	// Each stake of 3 on ×1.5 pays 4, rounded down.
+	for id, want := range map[uuid.UUID]int64{ann: 65 + 40, bob: 30 + 105, eve: 0} {
 		u, err := repo.GetByID(ctx, id)
 		if err != nil {
 			t.Fatal(err)
@@ -151,7 +177,7 @@ func TestBetEventRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if v, _ := find(views, e.ID()); v.Payout != 60 || v.Event.State() != user.BetEventResolved || v.Event.Winner() != 0 {
+	if v, _ := find(views, e.ID()); v.Payout != 40 || v.Event.State() != user.BetEventResolved || v.Event.Winner() != 0 {
 		t.Fatalf("resolved view = %+v", v)
 	}
 
@@ -165,7 +191,7 @@ func TestBetEventRepository(t *testing.T) {
 		t.Fatalf("second Delete: %v", err)
 	}
 	u, err := repo.GetByID(ctx, ann)
-	if err != nil || u.Wallet().Votes != 130 {
+	if err != nil || u.Wallet().Votes != 110 {
 		t.Fatalf("ann after Cancel = %+v, %v", u.Wallet(), err)
 	}
 }

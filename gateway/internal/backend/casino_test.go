@@ -41,7 +41,7 @@ func (f *fakeCasinoAPI) BetCasino(ctx context.Context, req *userv1.BetCasinoRequ
 }
 
 func (f *fakeCasinoAPI) GetCasino(context.Context, *userv1.GetCasinoRequest, ...grpc.CallOption) (*userv1.GetCasinoResponse, error) {
-	return &userv1.GetCasinoResponse{Price: 10, Prizes: []int64{0, 50}, BetLeast: 1, BetMost: 100, BetReturn: 95, Multipliers: []int32{150, 200}}, nil
+	return &userv1.GetCasinoResponse{Price: 10, Prizes: []int64{0, 50}, BetLeast: 1, BetMost: 100, Aim: []*userv1.AimMultiplier{{Multiplier: 150, Chance: 6333}, {Multiplier: 200, Chance: 4750}}}, nil
 }
 
 func (f *fakeCasinoAPI) GetCasinoSettings(ctx context.Context, _ *userv1.GetCasinoSettingsRequest, _ ...grpc.CallOption) (*userv1.GetCasinoSettingsResponse, error) {
@@ -51,7 +51,7 @@ func (f *fakeCasinoAPI) GetCasinoSettings(ctx context.Context, _ *userv1.GetCasi
 		Price:  10,
 		Prizes: []*userv1.CasinoPrize{{Votes: 0, Weight: 9}, {Votes: 50, Weight: 1}},
 		Spins:  3, Spent: 30, Won: 50,
-		BetLeast: 1, BetMost: 100, BetReturn: 95, Multipliers: []int32{150, 200, 300},
+		BetLeast: 1, BetMost: 100, Aim: []*userv1.AimMultiplier{{Multiplier: 150, Chance: 6333}, {Multiplier: 200, Chance: 4750}, {Multiplier: 300, Chance: 3166}},
 		Bets: 4, BetSpent: 40, BetWon: 20,
 	}, nil
 }
@@ -80,7 +80,7 @@ func TestCasino(t *testing.T) {
 	c := NewCasino(api)
 
 	if got, err := c.Get(ctx); err != nil || got.Price != 10 || len(got.Prizes) != 2 || got.Prizes[1].Votes != 50 ||
-		got.Bets.Most != 100 || got.Bets.Return != 95 || len(got.Bets.Multipliers) != 2 || got.Bets.Multipliers[1] != 200 {
+		got.Bets.Most != 100 || len(got.Bets.Multipliers) != 2 || got.Bets.Multipliers[1] != (model.AimMultiplier{Multiplier: 200, Chance: 4750}) {
 		t.Fatalf("Get = %+v, %v", got, err)
 	}
 
@@ -104,9 +104,13 @@ func TestCasino(t *testing.T) {
 		t.Fatalf("Spin without votes: %v", err)
 	}
 
-	if err = c.SetBets(ctx, "tok", model.CasinoBets{Least: 2, Most: 20, Return: 90}); err != nil ||
-		api.bets.GetLeast() != 2 || api.bets.GetMost() != 20 || api.bets.GetReturn() != 90 {
+	aim := []model.AimMultiplier{{Multiplier: 200, Chance: 4500}, {Multiplier: 900, Chance: 1000}}
+	if err = c.SetBets(ctx, "tok", model.CasinoBets{Least: 2, Most: 20, Multipliers: aim}); err != nil ||
+		api.bets.GetLeast() != 2 || api.bets.GetMost() != 20 || len(api.bets.GetAim()) != 2 || api.bets.GetAim()[1].GetChance() != 1000 {
 		t.Fatalf("SetBets: %v, %v", err, api.bets)
+	}
+	if err = c.SetBets(ctx, "tok", model.CasinoBets{Least: 2, Most: 20, Multipliers: []model.AimMultiplier{{Multiplier: 200, Chance: -1}}}); failure.From(err).Kind != failure.InvalidArgument {
+		t.Fatalf("SetBets with a chance of -1: %v", err)
 	}
 
 	if _, err = c.Bet(ctx, "tok", 10, 200); failure.From(err).Kind != failure.Conflict || api.bet.GetAmount() != 10 || api.bet.GetMultiplier() != 200 {

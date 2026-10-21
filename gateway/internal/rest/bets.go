@@ -18,14 +18,19 @@ type Bets interface {
 	Resolve(ctx context.Context, accessToken, id string, winner int) error
 	Cancel(ctx context.Context, accessToken, id string) error
 	Delete(ctx context.Context, accessToken, id string) error
+	SetOdds(ctx context.Context, accessToken, id string, odds []int) error
 	Stake(ctx context.Context, accessToken, id string, outcome int, amount int64) (int64, error)
 }
 
 type betOutcomeJSON struct {
-	Name    string `json:"name"`
-	Staked  int64  `json:"staked"`
-	Bettors int    `json:"bettors"`
-	Mine    int64  `json:"mine"`
+	Name string `json:"name"`
+	// Odds are in hundredths (250 — ×2.5), 0 for an event without odds.
+	Odds    int   `json:"odds"`
+	Staked  int64 `json:"staked"`
+	Bettors int   `json:"bettors"`
+	Mine    int64 `json:"mine"`
+	// Potential is what the stakes of the viewer pay if it wins.
+	Potential int64 `json:"potential"`
 }
 
 type betEventJSON struct {
@@ -105,6 +110,7 @@ func (a *api) createBetEvent(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Question string   `json:"question"`
 		Outcomes []string `json:"outcomes"`
+		Odds     []int    `json:"odds"`
 		ClosesAt string   `json:"closesAt"`
 	}
 	if err = decode(w, r, &req); err != nil {
@@ -112,7 +118,7 @@ func (a *api) createBetEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	draft := model.BetEventDraft{Question: req.Question, Outcomes: req.Outcomes}
+	draft := model.BetEventDraft{Question: req.Question, Outcomes: req.Outcomes, Odds: req.Odds}
 	if req.ClosesAt != "" {
 		if draft.ClosesAt, err = time.Parse(time.RFC3339, req.ClosesAt); err != nil {
 			a.writeError(w, r, failure.New(failure.InvalidArgument, "invalid closing time"))
@@ -164,6 +170,31 @@ func (a *api) resolveBetEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = a.bets.Resolve(r.Context(), token, r.PathValue("id"), req.Winner); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// setBetEventOdds is for the administrators: the new odds of each
+// outcome, for the stakes from now on.
+func (a *api) setBetEventOdds(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req struct {
+		Odds []int `json:"odds"`
+	}
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.bets.SetOdds(r.Context(), token, r.PathValue("id"), req.Odds); err != nil {
 		a.writeError(w, r, err)
 		return
 	}

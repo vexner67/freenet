@@ -23,7 +23,14 @@ type fakeBetsAPI struct {
 	create  *userv1.CreateBetEventRequest
 	resolve *userv1.ResolveBetEventRequest
 	stake   *userv1.StakeBetRequest
+	odds    *userv1.SetBetEventOddsRequest
 	err     error
+}
+
+func (f *fakeBetsAPI) SetBetEventOdds(_ context.Context, req *userv1.SetBetEventOddsRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.odds = req
+
+	return &emptypb.Empty{}, f.err
 }
 
 var closesAt = time.Date(2026, 11, 3, 18, 0, 0, 0, time.UTC)
@@ -34,7 +41,7 @@ func (f *fakeBetsAPI) ListBetEvents(ctx context.Context, req *userv1.ListBetEven
 
 	return &userv1.ListBetEventsResponse{Events: []*userv1.BetEvent{{
 		Id: "e1", Question: "Q?", State: "open", Open: true, Winner: -1, People: 2, ClosesAt: timestamppb.New(closesAt),
-		Outcomes: []*userv1.BetOutcome{{Name: "Да", Staked: 5, Bettors: 1, Mine: 5}, {Name: "Нет"}},
+		Outcomes: []*userv1.BetOutcome{{Name: "Да", Odds: 250, Staked: 5, Bettors: 1, Mine: 5, Potential: 12}, {Name: "Нет", Odds: 150}},
 	}}}, nil
 }
 
@@ -70,8 +77,19 @@ func TestBets(t *testing.T) {
 	if err != nil || len(events) != 1 || !api.list.GetPopular() || len(api.md.Get("authorization")) != 0 {
 		t.Fatalf("List = %+v, %v", events, err)
 	}
-	if e := events[0]; e.People != 2 || !e.ClosesAt.Equal(closesAt) || e.Outcomes[0] != (model.BetOutcome{Name: "Да", Staked: 5, Bettors: 1, Mine: 5}) {
+	if e := events[0]; e.People != 2 || !e.ClosesAt.Equal(closesAt) || e.Outcomes[0] != (model.BetOutcome{Name: "Да", Odds: 250, Staked: 5, Bettors: 1, Mine: 5, Potential: 12}) {
 		t.Fatalf("event = %+v", e)
+	}
+
+	if _, err = b.Create(ctx, "tok", model.BetEventDraft{Question: "Q?", Outcomes: []string{"a", "b"}, Odds: []int{150, 300}}); err != nil ||
+		len(api.create.GetOdds()) != 2 || api.create.GetOdds()[1] != 300 {
+		t.Fatalf("Create with odds: %v, %v", err, api.create)
+	}
+	if err = b.SetOdds(ctx, "tok", "e1", []int{120, 400}); err != nil || api.odds.GetEventId() != "e1" || api.odds.GetOdds()[1] != 400 {
+		t.Fatalf("SetOdds: %v, %v", err, api.odds)
+	}
+	if err = b.SetOdds(ctx, "tok", "e1", []int{-1}); failure.From(err).Kind != failure.InvalidArgument {
+		t.Fatalf("SetOdds of -1: %v", err)
 	}
 
 	if _, err = b.Create(ctx, "tok", model.BetEventDraft{Question: "Q?", Outcomes: []string{"a", "b"}}); err != nil || api.create.GetClosesAt() != nil {

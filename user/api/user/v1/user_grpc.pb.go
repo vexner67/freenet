@@ -92,6 +92,7 @@ const (
 	UserService_ResolveBetEvent_FullMethodName    = "/user.v1.UserService/ResolveBetEvent"
 	UserService_CancelBetEvent_FullMethodName     = "/user.v1.UserService/CancelBetEvent"
 	UserService_DeleteBetEvent_FullMethodName     = "/user.v1.UserService/DeleteBetEvent"
+	UserService_SetBetEventOdds_FullMethodName    = "/user.v1.UserService/SetBetEventOdds"
 	UserService_StakeBet_FullMethodName           = "/user.v1.UserService/StakeBet"
 	UserService_SetVerified_FullMethodName        = "/user.v1.UserService/SetVerified"
 	UserService_SetAlert_FullMethodName           = "/user.v1.UserService/SetAlert"
@@ -268,16 +269,20 @@ type UserServiceClient interface {
 	SetCasino(ctx context.Context, in *SetCasinoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SpinCasino(ctx context.Context, in *SpinCasinoRequest, opts ...grpc.CallOption) (*SpinCasinoResponse, error)
 	// The bets of the casino: a player bets votes on a multiplier and either
-	// gets them multiplied or loses them. GetCasino tells their limits;
-	// SetCasinoBets is for the administrators; BetCasino takes the bet and
+	// gets them multiplied or loses them. GetCasino tells their limits and
+	// the multipliers with their chances; SetCasinoBets is for the
+	// administrators; BetCasino takes the bet and
 	// pays the win in one transaction (InvalidArgument for a bet out of the
 	// limits or an unknown multiplier, FailedPrecondition "not enough
 	// votes").
 	SetCasinoBets(ctx context.Context, in *SetCasinoBetsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	BetCasino(ctx context.Context, in *BetCasinoRequest, opts ...grpc.CallOption) (*BetCasinoResponse, error)
-	// The bets on events: the administrators ask a question with outcomes,
-	// people stake votes on them, and those who guessed share all the stakes
-	// once it is resolved; a cancelled event gives them back. ListBetEvents
+	// The bets on events: the administrators ask a question with outcomes
+	// and their odds, people stake votes on them, and a stake on the winner
+	// pays its votes times the odds it was made at (events made before the
+	// odds share the stakes among those who guessed); a cancelled event
+	// gives them back. SetBetEventOdds changes the odds of an event not over
+	// (FailedPrecondition for an event without odds). ListBetEvents
 	// is public, with the stakes of the caller if a token came; StakeBet
 	// takes the votes (FailedPrecondition when the event takes no stakes or
 	// the balance is short); the rest are for the administrators.
@@ -287,6 +292,7 @@ type UserServiceClient interface {
 	ResolveBetEvent(ctx context.Context, in *ResolveBetEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	CancelBetEvent(ctx context.Context, in *BetEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeleteBetEvent(ctx context.Context, in *BetEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SetBetEventOdds(ctx context.Context, in *SetBetEventOddsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	StakeBet(ctx context.Context, in *StakeBetRequest, opts ...grpc.CallOption) (*StakeBetResponse, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
@@ -1058,6 +1064,16 @@ func (c *userServiceClient) DeleteBetEvent(ctx context.Context, in *BetEventRequ
 	return out, nil
 }
 
+func (c *userServiceClient) SetBetEventOdds(ctx context.Context, in *SetBetEventOddsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetBetEventOdds_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) StakeBet(ctx context.Context, in *StakeBetRequest, opts ...grpc.CallOption) (*StakeBetResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(StakeBetResponse)
@@ -1358,16 +1374,20 @@ type UserServiceServer interface {
 	SetCasino(context.Context, *SetCasinoRequest) (*emptypb.Empty, error)
 	SpinCasino(context.Context, *SpinCasinoRequest) (*SpinCasinoResponse, error)
 	// The bets of the casino: a player bets votes on a multiplier and either
-	// gets them multiplied or loses them. GetCasino tells their limits;
-	// SetCasinoBets is for the administrators; BetCasino takes the bet and
+	// gets them multiplied or loses them. GetCasino tells their limits and
+	// the multipliers with their chances; SetCasinoBets is for the
+	// administrators; BetCasino takes the bet and
 	// pays the win in one transaction (InvalidArgument for a bet out of the
 	// limits or an unknown multiplier, FailedPrecondition "not enough
 	// votes").
 	SetCasinoBets(context.Context, *SetCasinoBetsRequest) (*emptypb.Empty, error)
 	BetCasino(context.Context, *BetCasinoRequest) (*BetCasinoResponse, error)
-	// The bets on events: the administrators ask a question with outcomes,
-	// people stake votes on them, and those who guessed share all the stakes
-	// once it is resolved; a cancelled event gives them back. ListBetEvents
+	// The bets on events: the administrators ask a question with outcomes
+	// and their odds, people stake votes on them, and a stake on the winner
+	// pays its votes times the odds it was made at (events made before the
+	// odds share the stakes among those who guessed); a cancelled event
+	// gives them back. SetBetEventOdds changes the odds of an event not over
+	// (FailedPrecondition for an event without odds). ListBetEvents
 	// is public, with the stakes of the caller if a token came; StakeBet
 	// takes the votes (FailedPrecondition when the event takes no stakes or
 	// the balance is short); the rest are for the administrators.
@@ -1377,6 +1397,7 @@ type UserServiceServer interface {
 	ResolveBetEvent(context.Context, *ResolveBetEventRequest) (*emptypb.Empty, error)
 	CancelBetEvent(context.Context, *BetEventRequest) (*emptypb.Empty, error)
 	DeleteBetEvent(context.Context, *BetEventRequest) (*emptypb.Empty, error)
+	SetBetEventOdds(context.Context, *SetBetEventOddsRequest) (*emptypb.Empty, error)
 	StakeBet(context.Context, *StakeBetRequest) (*StakeBetResponse, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
@@ -1643,6 +1664,9 @@ func (UnimplementedUserServiceServer) CancelBetEvent(context.Context, *BetEventR
 }
 func (UnimplementedUserServiceServer) DeleteBetEvent(context.Context, *BetEventRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteBetEvent not implemented")
+}
+func (UnimplementedUserServiceServer) SetBetEventOdds(context.Context, *SetBetEventOddsRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetBetEventOdds not implemented")
 }
 func (UnimplementedUserServiceServer) StakeBet(context.Context, *StakeBetRequest) (*StakeBetResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method StakeBet not implemented")
@@ -3003,6 +3027,24 @@ func _UserService_DeleteBetEvent_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_SetBetEventOdds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetBetEventOddsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetBetEventOdds(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetBetEventOdds_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetBetEventOdds(ctx, req.(*SetBetEventOddsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_StakeBet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StakeBetRequest)
 	if err := dec(in); err != nil {
@@ -3549,6 +3591,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteBetEvent",
 			Handler:    _UserService_DeleteBetEvent_Handler,
+		},
+		{
+			MethodName: "SetBetEventOdds",
+			Handler:    _UserService_SetBetEventOdds_Handler,
 		},
 		{
 			MethodName: "StakeBet",

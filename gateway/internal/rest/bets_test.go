@@ -18,6 +18,7 @@ type fakeBets struct {
 	// done are the changes made: "close <id>", "resolve <id>"…
 	done    []string
 	winner  int
+	odds    []int
 	outcome int
 	amount  int64
 	err     error
@@ -29,7 +30,7 @@ func (f *fakeBets) List(_ context.Context, token string, popular bool) ([]model.
 	return []model.BetEvent{{
 		ID:        "e1",
 		Question:  "Проиграют ли?",
-		Outcomes:  []model.BetOutcome{{Name: "Да", Staked: 30, Bettors: 2, Mine: 10}, {Name: "Нет", Staked: 70, Bettors: 1}},
+		Outcomes:  []model.BetOutcome{{Name: "Да", Odds: 250, Staked: 30, Bettors: 2, Mine: 10, Potential: 25}, {Name: "Нет", Odds: 150, Staked: 70, Bettors: 1}},
 		State:     "open",
 		Open:      true,
 		Winner:    -1,
@@ -74,6 +75,12 @@ func (f *fakeBets) Resolve(_ context.Context, token, id string, winner int) erro
 	return f.change(token, "resolve", id)
 }
 
+func (f *fakeBets) SetOdds(_ context.Context, token, id string, odds []int) error {
+	f.odds = odds
+
+	return f.change(token, "odds", id)
+}
+
 func (f *fakeBets) Stake(_ context.Context, token, _ string, outcome int, amount int64) (int64, error) {
 	if f.err != nil {
 		return 0, f.err
@@ -93,7 +100,8 @@ func TestBets(t *testing.T) {
 	events := got["events"].([]any)
 	e := events[0].(map[string]any)
 	if w.Code != http.StatusOK || !h.bets.popular || h.bets.token != "" || e["staked"] != 100.0 || e["closesAt"] != nil ||
-		e["outcomes"].([]any)[0].(map[string]any)["mine"] != 10.0 || e["people"] != 3.0 || e["createdAt"] != "2026-10-20T00:00:00Z" {
+		e["outcomes"].([]any)[0].(map[string]any)["mine"] != 10.0 || e["outcomes"].([]any)[0].(map[string]any)["odds"] != 250.0 ||
+		e["outcomes"].([]any)[0].(map[string]any)["potential"] != 25.0 || e["people"] != 3.0 || e["createdAt"] != "2026-10-20T00:00:00Z" {
 		t.Fatalf("list: %d %v", w.Code, got)
 	}
 
@@ -102,9 +110,9 @@ func TestBets(t *testing.T) {
 		t.Fatalf("list with a token: %d", w.Code)
 	}
 
-	w = h.do("POST", "/api/v1/bets", `{"question":"Q?","outcomes":["Да","Нет"],"closesAt":"2026-11-03T18:00:00Z"}`, "Authorization", "Bearer tok")
+	w = h.do("POST", "/api/v1/bets", `{"question":"Q?","outcomes":["Да","Нет"],"odds":[150,300],"closesAt":"2026-11-03T18:00:00Z"}`, "Authorization", "Bearer tok")
 	if got := decode[map[string]any](t, w); w.Code != http.StatusCreated || got["closesAt"] != "2026-11-03T18:00:00Z" ||
-		len(h.bets.draft.Outcomes) != 2 || !h.bets.draft.ClosesAt.Equal(time.Date(2026, 11, 3, 18, 0, 0, 0, time.UTC)) {
+		len(h.bets.draft.Outcomes) != 2 || h.bets.draft.Odds[1] != 300 || !h.bets.draft.ClosesAt.Equal(time.Date(2026, 11, 3, 18, 0, 0, 0, time.UTC)) {
 		t.Fatalf("create: %d %v", w.Code, got)
 	}
 	if w = h.do("POST", "/api/v1/bets", `{"question":"Q?","outcomes":["Да","Нет"],"closesAt":"tomorrow"}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
@@ -120,13 +128,15 @@ func TestBets(t *testing.T) {
 		{"POST", "/api/v1/bets/e1/close", ""},
 		{"POST", "/api/v1/bets/e1/resolve", `{"winner":1}`},
 		{"POST", "/api/v1/bets/e1/cancel", ""},
+		{"PUT", "/api/v1/bets/e1/odds", `{"odds":[120,400]}`},
 		{"DELETE", "/api/v1/bets/e1", ""},
 	} {
 		if w = h.do(c.method, c.path, c.body, "Authorization", "Bearer tok"); w.Code != http.StatusNoContent {
 			t.Fatalf("%s %s: %d", c.method, c.path, w.Code)
 		}
 	}
-	if want := []string{"close e1", "resolve e1", "cancel e1", "delete e1"}; len(h.bets.done) != 4 || h.bets.done[1] != want[1] || h.bets.done[3] != want[3] || h.bets.winner != 1 {
+	if want := []string{"close e1", "resolve e1", "cancel e1", "odds e1", "delete e1"}; len(h.bets.done) != 5 || h.bets.done[1] != want[1] ||
+		h.bets.done[3] != want[3] || h.bets.done[4] != want[4] || h.bets.winner != 1 || h.bets.odds[1] != 400 {
 		t.Fatalf("done = %v, winner %d", h.bets.done, h.bets.winner)
 	}
 
