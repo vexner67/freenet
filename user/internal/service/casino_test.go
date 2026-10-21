@@ -36,7 +36,8 @@ func TestCasinoService(t *testing.T) {
 			return roll, nil
 		})
 
-	if c, b, err := casino.Casino(ctx); err != nil || c.Price() != user.DefaultCasino().Price() || !reflect.DeepEqual(b, user.DefaultCasinoBets()) {
+	if c, err := casino.Casino(ctx); err != nil || c.Casino.Price() != user.DefaultCasino().Price() ||
+		!reflect.DeepEqual(c.Bets, user.DefaultCasinoBets()) || c.Rocket != user.DefaultCasinoRocket() {
 		t.Fatalf("Casino = %+v, %v", c, err)
 	}
 
@@ -115,8 +116,8 @@ func TestCasinoService_Bet(t *testing.T) {
 			return roll, nil
 		})
 
-	if _, b, err := casino.Casino(ctx); err != nil || !reflect.DeepEqual(b, user.DefaultCasinoBets()) {
-		t.Fatalf("Bets = %+v, %v", b, err)
+	if c, err := casino.Casino(ctx); err != nil || !reflect.DeepEqual(c.Bets, user.DefaultCasinoBets()) {
+		t.Fatalf("Bets = %+v, %v", c.Bets, err)
 	}
 
 	// Only the administrators change the bets.

@@ -54,6 +54,7 @@ func newServer(t *testing.T) testServer {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	users := inmem.NewUserRepository()
 	adRepo := inmem.NewAdRepository()
+	casinos := inmem.NewCasinoRepository()
 	stickers := inmem.NewStickerRepository(users)
 	follows := inmem.NewFollowRepository(users)
 
@@ -97,7 +98,8 @@ func newServer(t *testing.T) testServer {
 		Alerts:      service.NewAlertService(users, users, admins),
 		Ads:         service.NewAdService(users, adRepo, adRepo, inmem.TxManager{}, admins),
 		Decors:      service.NewDecorService(users, inmem.NewDecorRepository(), admins),
-		Casinos:     service.NewCasinoService(users, inmem.NewCasinoRepository(), users, inmem.TxManager{}, admins),
+		Casinos:     service.NewCasinoService(users, casinos, users, inmem.TxManager{}, admins),
+		Rockets:     service.NewRocketService(users, casinos, inmem.NewRocketRepository(), users, inmem.TxManager{}, admins),
 		BetEvents:   service.NewBetEventService(users, inmem.NewBetEventRepository(), users, inmem.TxManager{}, admins),
 		Permissions: permissions,
 		Presence:    presence,

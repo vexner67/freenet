@@ -119,6 +119,14 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.FailedPrecondition, user.ErrBetEventFinished.Error()), true
 	case errors.Is(err, user.ErrBetEventActive):
 		return status.New(codes.FailedPrecondition, user.ErrBetEventActive.Error()), true
+	case errors.Is(err, user.ErrRocketAmount):
+		return status.New(codes.InvalidArgument, user.ErrRocketAmount.Error()), true
+	case errors.Is(err, user.ErrRocketAuto):
+		return status.New(codes.InvalidArgument, user.ErrRocketAuto.Error()), true
+	case errors.Is(err, user.ErrRocketNotFound):
+		return status.New(codes.NotFound, user.ErrRocketNotFound.Error()), true
+	case errors.Is(err, user.ErrRocketOver):
+		return status.New(codes.FailedPrecondition, user.ErrRocketOver.Error()), true
 	case errors.Is(err, user.ErrNotEnoughVotes):
 		return status.New(codes.FailedPrecondition, user.ErrNotEnoughVotes.Error()), true
 	case errors.Is(err, user.ErrTransferSelf):

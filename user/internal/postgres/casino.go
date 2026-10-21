@@ -246,12 +246,19 @@ const getCasinoSettingsQuery = `
 		bet_least,
 		bet_most,
 		bet_aim,
+		rocket_least,
+		rocket_most,
+		rocket_return,
+		rocket_top,
 		spins,
 		spent,
 		won,
 		bets,
 		bet_spent,
-		bet_won
+		bet_won,
+		rockets,
+		rocket_spent,
+		rocket_won
 	FROM casino
 `
 
@@ -261,6 +268,7 @@ func (r *CasinoRepository) Settings(ctx context.Context) (service.CasinoSettings
 		stored      []casinoPrize
 		least, most int64
 		aim         []aimMultiplier
+		rocket      rocketRow
 		stats       user.CasinoStats
 	)
 
@@ -270,15 +278,22 @@ func (r *CasinoRepository) Settings(ctx context.Context) (service.CasinoSettings
 		&least,
 		&most,
 		&aim,
+		&rocket.least,
+		&rocket.most,
+		&rocket.ret,
+		&rocket.top,
 		&stats.Spins,
 		&stats.Spent,
 		&stats.Won,
 		&stats.Wagers,
 		&stats.WagerSpent,
 		&stats.WagerWon,
+		&stats.Rockets,
+		&stats.RocketSpent,
+		&stats.RocketWon,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return service.CasinoSettings{Casino: user.DefaultCasino(), Bets: user.DefaultCasinoBets()}, nil
+		return service.CasinoSettings{Casino: user.DefaultCasino(), Bets: user.DefaultCasinoBets(), Rocket: user.DefaultCasinoRocket()}, nil
 	}
 	if err != nil {
 		return service.CasinoSettings{}, errs.Wrap("r.conn.QueryRow", err)
@@ -294,5 +309,98 @@ func (r *CasinoRepository) Settings(ctx context.Context) (service.CasinoSettings
 		return service.CasinoSettings{}, errs.Wrap("restoreBets", err)
 	}
 
-	return service.CasinoSettings{Casino: casino, Bets: bets, Stats: stats}, nil
+	restored, err := rocket.restore()
+	if err != nil {
+		return service.CasinoSettings{}, errs.Wrap("rocket.restore", err)
+	}
+
+	return service.CasinoSettings{Casino: casino, Bets: bets, Rocket: restored, Stats: stats}, nil
+}
+
+// rocketRow is the rocket as the row keeps it.
+type rocketRow struct {
+	least, most int64
+	ret, top    int
+}
+
+func (r rocketRow) restore() (user.CasinoRocket, error) {
+	rocket, err := user.NewCasinoRocket(r.least, r.most, r.ret, r.top)
+
+	return rocket, errs.Wrap("user.NewCasinoRocket", err)
+}
+
+const getCasinoRocketQuery = `
+	SELECT
+		rocket_least,
+		rocket_most,
+		rocket_return,
+		rocket_top
+	FROM casino
+`
+
+func (r *CasinoRepository) Rocket(ctx context.Context) (user.CasinoRocket, error) {
+	var row rocketRow
+
+	err := r.conn(ctx).QueryRow(ctx, getCasinoRocketQuery).Scan(&row.least, &row.most, &row.ret, &row.top)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return user.DefaultCasinoRocket(), nil
+	}
+	if err != nil {
+		return user.CasinoRocket{}, errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	rocket, err := row.restore()
+
+	return rocket, errs.Wrap("row.restore", err)
+}
+
+// Without the row the rocket comes with the default casino, as SetBets
+// does.
+const setCasinoRocketQuery = `
+	INSERT INTO casino (
+		price,
+		prizes,
+		rocket_least,
+		rocket_most,
+		rocket_return,
+		rocket_top
+	)
+	VALUES ($1, $2, $3, $4, $5, $6)
+	ON CONFLICT (only_row) DO UPDATE
+	SET rocket_least = EXCLUDED.rocket_least,
+		rocket_most = EXCLUDED.rocket_most,
+		rocket_return = EXCLUDED.rocket_return,
+		rocket_top = EXCLUDED.rocket_top
+`
+
+func (r *CasinoRepository) SetRocket(ctx context.Context, rocket user.CasinoRocket) error {
+	casino := user.DefaultCasino()
+
+	prizes, err := storedPrizes(casino)
+	if err != nil {
+		return errs.Wrap("storedPrizes", err)
+	}
+
+	_, err = r.conn(ctx).Exec(ctx, setCasinoRocketQuery, casino.Price(), prizes,
+		rocket.Least(), rocket.Most(), rocket.Return(), rocket.Top())
+	if err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	return nil
+}
+
+const countCasinoRocketQuery = `
+	UPDATE casino
+	SET rockets = rockets + $1,
+		rocket_spent = rocket_spent + $2,
+		rocket_won = rocket_won + $3
+`
+
+func (r *CasinoRepository) CountRocket(ctx context.Context, rounds, spent, won int64) error {
+	if _, err := r.conn(ctx).Exec(ctx, countCasinoRocketQuery, rounds, spent, won); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	return nil
 }

@@ -13,7 +13,7 @@ import (
 )
 
 type CasinoService interface {
-	Casino(ctx context.Context) (user.Casino, user.CasinoBets, error)
+	Casino(ctx context.Context) (service.CasinoSettings, error)
 	Settings(ctx context.Context, adminID uuid.UUID) (service.CasinoSettings, error)
 	SetCasino(ctx context.Context, adminID uuid.UUID, casino user.Casino) error
 	Spin(ctx context.Context, userID uuid.UUID) (service.Spin, error)
@@ -22,18 +22,23 @@ type CasinoService interface {
 }
 
 func (h *UserHandler) GetCasino(ctx context.Context, _ *userv1.GetCasinoRequest) (*userv1.GetCasinoResponse, error) {
-	casino, bets, err := h.casinos.Casino(ctx)
+	settings, err := h.casinos.Casino(ctx)
 	if err != nil {
 		return nil, err
 	}
 
+	rocket := toProtoRocket(settings.Rocket)
+	// Players are not told the return.
+	rocket.Return = 0
+
 	resp := &userv1.GetCasinoResponse{
-		Price:    casino.Price(),
-		BetLeast: bets.Least(),
-		BetMost:  bets.Most(),
-		Aim:      toProtoAim(bets.Aim()),
+		Price:    settings.Casino.Price(),
+		BetLeast: settings.Bets.Least(),
+		BetMost:  settings.Bets.Most(),
+		Aim:      toProtoAim(settings.Bets.Aim()),
+		Rocket:   rocket,
 	}
-	for _, p := range casino.Prizes() {
+	for _, p := range settings.Casino.Prizes() {
 		resp.Prizes = append(resp.Prizes, p.Votes)
 	}
 	return resp, nil
@@ -51,17 +56,21 @@ func (h *UserHandler) GetCasinoSettings(ctx context.Context, _ *userv1.GetCasino
 	}
 
 	return &userv1.GetCasinoSettingsResponse{
-		Price:    settings.Casino.Price(),
-		Prizes:   toProtoCasinoPrizes(settings.Casino.Prizes()),
-		Spins:    settings.Stats.Spins,
-		Spent:    settings.Stats.Spent,
-		Won:      settings.Stats.Won,
-		BetLeast: settings.Bets.Least(),
-		BetMost:  settings.Bets.Most(),
-		Bets:     settings.Stats.Wagers,
-		BetSpent: settings.Stats.WagerSpent,
-		BetWon:   settings.Stats.WagerWon,
-		Aim:      toProtoAim(settings.Bets.Aim()),
+		Price:       settings.Casino.Price(),
+		Prizes:      toProtoCasinoPrizes(settings.Casino.Prizes()),
+		Spins:       settings.Stats.Spins,
+		Spent:       settings.Stats.Spent,
+		Won:         settings.Stats.Won,
+		BetLeast:    settings.Bets.Least(),
+		BetMost:     settings.Bets.Most(),
+		Bets:        settings.Stats.Wagers,
+		BetSpent:    settings.Stats.WagerSpent,
+		BetWon:      settings.Stats.WagerWon,
+		Aim:         toProtoAim(settings.Bets.Aim()),
+		Rocket:      toProtoRocket(settings.Rocket),
+		Rockets:     settings.Stats.Rockets,
+		RocketSpent: settings.Stats.RocketSpent,
+		RocketWon:   settings.Stats.RocketWon,
 	}, nil
 }
 
