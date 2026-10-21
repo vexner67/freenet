@@ -1273,6 +1273,24 @@ export function signedVotes(amount) {
   return `${amount < 0 ? '−' : '+'}${groupedVotes(amount)}`;
 }
 
+// The fees of the economy, as the user service takes them: 3% of a
+// transfer on top (rounded up, at least 1), 10% of the price of a sticker
+// pack sold, and 3 votes a percent of rating, up to 1000%.
+export const TRANSFER_FEE_PERCENT = 3;
+export const STICKER_TAX_PERCENT = 10;
+export const RATING_PRICE = 3;
+export const MAX_RATING = 1000;
+
+// transferFee is what a transfer of votes costs on top of them.
+export function transferFee(votes) {
+  return votes > 0 ? Math.ceil(votes * TRANSFER_FEE_PERCENT / 100) : 0;
+}
+
+// stickerIncome is what the author gets of a sale at price.
+export function stickerIncome(price) {
+  return Math.floor(price * (100 - STICKER_TAX_PERCENT) / 100);
+}
+
 // voteOperation is what a line of the statement of votes says: its title
 // and what the person by it is to the owner — "Получатель", "Отправитель"
 // and so on; role is empty when no one is named.
@@ -1304,6 +1322,12 @@ export function voteOperation(op, myId) {
       return { title: out ? tr('Казино: ставка в «Ракетке»') : tr('Казино: выигрыш в «Ракетке»'), role: '' };
     case 'bonus':
       return { title: tr('Ежедневный бонус'), role: '' };
+    case 'fee':
+      return { title: tr('Комиссия за перевод'), role: tr('Получатель:') };
+    case 'tax':
+      return { title: tr('Налог с продажи набора «{0}»', stickerPacks[note] ?? note), role: tr('Покупатель:') };
+    case 'rating':
+      return { title: tr('Повышение рейтинга на {0} %', note), role: '' };
     case 'denomination':
       return { title: tr('Деноминация 1 : 1 000 000'), role: '' };
     case 'stake':
@@ -1703,6 +1727,9 @@ const errorTexts = {
   'the bonus is taken today': tr('Сегодня вы уже получили бонус.'),
   'the bonus is for pages a week old with a filled profile': tr('Бонус получают страницы старше недели с заполненной анкетой.'),
   'a voucher with votes has a limited number of usages': tr('Ваучер с голосами действует ограниченное число раз.'),
+  'the rating is raised by 1 to 1000 percent': tr('Рейтинг повышается на 1–1000 %.'),
+  'the rating cannot go above 1000 percent': tr('Рейтинг не может быть больше 1000 %.'),
+  'the jackpot must be from 1 to 1000 votes': tr('Джекпот — от 1 до 1000 голосов.'),
   'the odds pay too much: the sum of 1/odds must be at least 1.05': tr('Коэффициенты слишком велики: сумма 1/коэффициент должна быть не меньше 1,05.'),
   'one person stakes at most 300 votes on an event': tr('На одно событие можно поставить не больше 300 голосов.'),
   'the outcome takes no more stakes: its payouts reached 3000 votes': tr('На этот исход больше не принимают ставок.'),

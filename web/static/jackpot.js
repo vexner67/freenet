@@ -1,5 +1,6 @@
-// The jackpot of the casino: a win of a million votes and more in "Огонёк"
-// or "Прицел" takes the whole screen — a flash, turning rays, fireworks, a
+// The jackpot of the casino: a win of the jackpot of the casino (set by the
+// administrators, 1000 votes by default) and more in "Огонёк", "Прицел" or
+// "Ракетка" takes the whole screen — a flash, turning rays, fireworks, a
 // rain of coins (in the New Year: of gifts, trees and snowflakes), the
 // number counting up to the win and a button to take it. The New Year
 // look (html.festive) has its own colours, words and rain. A click on the
@@ -9,9 +10,6 @@
 import { el } from './layout.js';
 import { plural } from './labels.js';
 import { tr } from './i18n.js';
-
-// MILLION is the win that gets the jackpot.
-export const MILLION = 1000000;
 
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const grouped = new Intl.NumberFormat('ru-RU');
@@ -96,10 +94,10 @@ export function jackpot(votes) {
 
   const card = el('div', { className: 'jackpot-card' },
     el('div', { className: 'jackpot-kicker', textContent: festive ? tr('Новогодний джекпот') : tr('Джекпот') }),
-    el('div', { className: 'jackpot-title', textContent: festive ? tr('Новогодний миллион!') : tr('Миллион!') }),
+    el('div', { className: 'jackpot-title', textContent: festive ? tr('Новогодний куш!') : tr('Большой куш!') }),
     sum,
     el('div', { className: 'jackpot-unit', textContent: plural(votes, ['голос', 'голоса', 'голосов']) }),
-    el('div', { className: 'jackpot-note', textContent: festive ? tr('С Новым годом и новым миллионом! Вы выиграли {0}.', won) : tr('Невероятно! Вы выиграли {0}.', won) }),
+    el('div', { className: 'jackpot-note', textContent: festive ? tr('С Новым годом и большим кушем! Вы выиграли {0}.', won) : tr('Невероятно! Вы выиграли {0}.', won) }),
     take,
   );
 

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, votesAmount, signedVotes, voteOperation, transferNickname, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -1170,6 +1170,9 @@ test('the statement of votes speaks of each line', () => {
   assert.deepEqual(voteOperation({ kind: 'transfer', amount: -4, peer: bob }, 'a'), { title: 'Перевод голосов', role: 'Получатель:' });
   assert.deepEqual(voteOperation({ kind: 'transfer', amount: 4, peer: bob }, 'a'), { title: 'Поступление голосов', role: 'Отправитель:' });
   assert.deepEqual(voteOperation({ kind: 'voucher', amount: 10 }, 'a'), { title: 'Активация ваучера', role: '' });
+  assert.deepEqual(voteOperation({ kind: 'fee', amount: -1, peer: bob }, 'a'), { title: 'Комиссия за перевод', role: 'Получатель:' });
+  assert.deepEqual(voteOperation({ kind: 'tax', amount: -1, note: 'cats', peer: bob }, 'a'), { title: 'Налог с продажи набора «Котики»', role: 'Покупатель:' });
+  assert.deepEqual(voteOperation({ kind: 'rating', amount: -15, note: '5' }, 'a'), { title: 'Повышение рейтинга на 5 %', role: '' });
   assert.deepEqual(voteOperation({ kind: 'gift', amount: -1, peer: bob, note: 'cake' }, 'a'), { title: 'Подарок «Торт»', role: 'Получатель:' });
   assert.deepEqual(voteOperation({ kind: 'gift', amount: -1, peer: ann, note: 'rose' }, 'a'), { title: 'Покупка подарка «Роза»', role: '' });
   assert.equal(voteOperation({ kind: 'stickers', amount: -2, note: 'cats' }, 'a').title, 'Набор стикеров «Котики»');
@@ -1214,4 +1217,20 @@ test('the rocket grows as the user service counts it', () => {
 test('a rocket line of the statement', () => {
   assert.equal(voteOperation({ kind: 'rocket', amount: -10 }).title, 'Казино: ставка в «Ракетке»');
   assert.equal(voteOperation({ kind: 'rocket', amount: 20 }).title, 'Казино: выигрыш в «Ракетке»');
+});
+
+test('the fees of the economy', () => {
+  // 3% on top of a transfer, rounded up, at least 1 — as the user service.
+  assert.equal(transferFee(0), 0);
+  assert.equal(transferFee(1), 1);
+  assert.equal(transferFee(33), 1);
+  assert.equal(transferFee(34), 2);
+  assert.equal(transferFee(100), 3);
+  assert.equal(transferFee(101), 4);
+
+  // The author gets 90% of a sale, rounded down.
+  assert.equal(stickerIncome(1), 0);
+  assert.equal(stickerIncome(3), 2);
+  assert.equal(stickerIncome(10), 9);
+  assert.equal(stickerIncome(55), 49);
 });

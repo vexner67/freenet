@@ -301,6 +301,19 @@
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
         </div>
       </form>
+      <h2>Джекпот</h2>
+      <p class="admin-lead">Выигрыш за один раунд «Огонька», «Прицела» или «Ракетки» от этого числа голосов сайт празднует на весь экран — вспышкой, фейерверками и дождём монет.</p>
+      <div class="aui-message aui-message-success" id="jackpot-saved" hidden></div>
+      <form class="aui" id="jackpot-form">
+        <div class="field-group">
+          <label for="jackpot-votes">Порог джекпота</label>
+          <input class="text admin-casino-field" id="jackpot-votes" type="number" min="1" max="1000" required>
+          <div class="description">В голосах, от 1 до 1000.</div>
+        </div>
+        <div class="buttons-container">
+          <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
+        </div>
+      </form>
     </section>
 
     <section id="bets" hidden>
