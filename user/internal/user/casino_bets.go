@@ -13,7 +13,7 @@ const BetOdds = 10_000
 // The bounds of the bets: how big a bet may be, how many multipliers it
 // chooses from and how big they are, in hundredths: 101 is ×1.01.
 const (
-	MaxBet            = 1_000_000
+	MaxBet            = 100_000_000
 	MaxAimMultipliers = 10
 	MinAimMultiplier  = 101
 	MaxAimMultiplier  = 100_000
@@ -25,7 +25,7 @@ const (
 var defaultAim = []int{150, 200, 300, 500, 1000}
 
 var (
-	ErrBetLimits          = errors.New("bets must be from 1 to 1000000 votes, the least not above the most")
+	ErrBetLimits          = errors.New("bets must be from 1 to 100000000 votes, the least not above the most")
 	ErrAimMultipliers     = errors.New("bets have from 1 to 10 multipliers")
 	ErrAimMultiplier      = errors.New("a multiplier must be from 1.01 to 1000")
 	ErrAimChance          = errors.New("the chance of a multiplier must be from 0.01 to 99.99 percent")

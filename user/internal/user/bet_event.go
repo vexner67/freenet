@@ -21,7 +21,7 @@ const (
 	// MaxBetEventAhead is how far ahead the stakes of an event may close.
 	MaxBetEventAhead = 366 * 24 * time.Hour
 	// MaxStake is the most votes one stake puts on an outcome.
-	MaxStake = 1_000_000
+	MaxStake = 100_000_000
 	// MinEventOdds and MaxEventOdds bound the odds of an outcome, in
 	// hundredths: 101 is ×1.01, 100000 ×1000.
 	MinEventOdds = 101
@@ -41,7 +41,7 @@ var (
 	ErrBetEventFinished   = errors.New("the event is over already")
 	ErrBetEventActive     = errors.New("the event is not over yet")
 	ErrBetOutcome         = errors.New("unknown outcome")
-	ErrStakeAmount        = errors.New("a stake must be from 1 to 1000000 votes")
+	ErrStakeAmount        = errors.New("a stake must be from 1 to 100000000 votes")
 	ErrEventOdds          = errors.New("the odds of an outcome must be from 1.01 to 1000")
 	ErrEventOddsCount     = errors.New("every outcome needs its odds")
 	ErrEventPooled        = errors.New("the event shares its stakes and has no odds")
