@@ -25,13 +25,19 @@ type casinoJSON struct {
 	Bets   casinoBetsJSON `json:"bets"`
 }
 
-// casinoBetsJSON are the limits of the bets, the percent they give back
-// and the multipliers, in hundredths.
+// casinoBetsJSON are the limits of the bets and the multipliers with
+// their chances.
 type casinoBetsJSON struct {
-	Least       int64 `json:"least"`
-	Most        int64 `json:"most"`
-	Return      int   `json:"return"`
-	Multipliers []int `json:"multipliers,omitempty"`
+	Least       int64               `json:"least"`
+	Most        int64               `json:"most"`
+	Multipliers []aimMultiplierJSON `json:"multipliers"`
+}
+
+// aimMultiplierJSON is a multiplier in hundredths (200 — ×2) and its
+// chance of 10000.
+type aimMultiplierJSON struct {
+	Multiplier int `json:"multiplier"`
+	Chance     int `json:"chance"`
 }
 
 // casinoWagersJSON is how the bets do.
@@ -57,7 +63,12 @@ type casinoSettingsJSON struct {
 }
 
 func toCasinoBetsJSON(b model.CasinoBets) casinoBetsJSON {
-	return casinoBetsJSON{Least: b.Least, Most: b.Most, Return: b.Return, Multipliers: b.Multipliers}
+	out := casinoBetsJSON{Least: b.Least, Most: b.Most, Multipliers: make([]aimMultiplierJSON, 0, len(b.Multipliers))}
+	for _, m := range b.Multipliers {
+		out.Multipliers = append(out.Multipliers, aimMultiplierJSON(m))
+	}
+
+	return out
 }
 
 // casino is public: a guest sees what a spin costs and may win.
@@ -156,8 +167,8 @@ func (a *api) spinCasino(w http.ResponseWriter, r *http.Request) {
 	}{spin.Prize, spin.Votes, spin.Balance})
 }
 
-// setCasinoBets is for the administrators: the limits and the return of
-// the bets.
+// setCasinoBets is for the administrators: the limits of the bets and the
+// multipliers with their chances.
 func (a *api) setCasinoBets(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -171,7 +182,12 @@ func (a *api) setCasinoBets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.casinos.SetBets(r.Context(), token, model.CasinoBets{Least: req.Least, Most: req.Most, Return: req.Return}); err != nil {
+	bets := model.CasinoBets{Least: req.Least, Most: req.Most}
+	for _, m := range req.Multipliers {
+		bets.Multipliers = append(bets.Multipliers, model.AimMultiplier(m))
+	}
+
+	if err = a.casinos.SetBets(r.Context(), token, bets); err != nil {
 		a.writeError(w, r, err)
 		return
 	}

@@ -23,7 +23,7 @@ func (f *fakeCasino) Get(context.Context) (model.Casino, error) {
 	return model.Casino{
 		Price:  10,
 		Prizes: []model.CasinoPrize{{Votes: 0}, {Votes: 50}},
-		Bets:   model.CasinoBets{Least: 1, Most: 100, Return: 95, Multipliers: []int{150, 200}},
+		Bets:   model.CasinoBets{Least: 1, Most: 100, Multipliers: []model.AimMultiplier{{Multiplier: 150, Chance: 6333}, {Multiplier: 200, Chance: 4750}}},
 	}, nil
 }
 
@@ -55,7 +55,7 @@ func (f *fakeCasino) Settings(_ context.Context, token string) (model.CasinoSett
 		Casino: model.Casino{
 			Price:  10,
 			Prizes: []model.CasinoPrize{{Votes: 0, Weight: 9}, {Votes: 50, Weight: 1}},
-			Bets:   model.CasinoBets{Least: 1, Most: 100, Return: 95, Multipliers: []int{150, 200}},
+			Bets:   model.CasinoBets{Least: 1, Most: 100, Multipliers: []model.AimMultiplier{{Multiplier: 150, Chance: 6333}, {Multiplier: 200, Chance: 4750}}},
 		},
 		Spins: 2, Spent: 20, Won: 50,
 		Wagers: 3, WagerSpent: 30, WagerWon: 20,
@@ -109,8 +109,8 @@ func TestCasino(t *testing.T) {
 		t.Fatalf("spin: %d %v", w.Code, got)
 	}
 
-	w = h.do("PUT", "/api/v1/casino/bets", `{"least":2,"most":20,"return":90}`, "Authorization", "Bearer tok")
-	if w.Code != http.StatusNoContent || h.casino.bets.Least != 2 || h.casino.bets.Most != 20 || h.casino.bets.Return != 90 {
+	w = h.do("PUT", "/api/v1/casino/bets", `{"least":2,"most":20,"multipliers":[{"multiplier":250,"chance":3800}]}`, "Authorization", "Bearer tok")
+	if w.Code != http.StatusNoContent || h.casino.bets.Least != 2 || h.casino.bets.Most != 20 || h.casino.bets.Multipliers[0] != (model.AimMultiplier{Multiplier: 250, Chance: 3800}) {
 		t.Fatalf("set bets: %d %+v", w.Code, h.casino.bets)
 	}
 

@@ -125,21 +125,55 @@ func (r *CasinoRepository) CountSpin(ctx context.Context, spent, won int64) erro
 	return nil
 }
 
+// aimMultiplier is a multiplier of the bets as the column keeps it.
+type aimMultiplier struct {
+	Multiplier int `json:"multiplier"`
+	Chance     int `json:"chance"`
+}
+
+// restoreBets are the bets of a row; stored nil for a row without the
+// multipliers, which takes the default ones.
+func restoreBets(least, most int64, stored []aimMultiplier) (user.CasinoBets, error) {
+	aim := user.DefaultAim()
+	if stored != nil {
+		aim = make([]user.AimMultiplier, len(stored))
+		for i, m := range stored {
+			aim[i] = user.AimMultiplier{Multiplier: m.Multiplier, Chance: m.Chance}
+		}
+	}
+
+	bets, err := user.NewCasinoBets(least, most, aim)
+
+	return bets, errs.Wrap("user.NewCasinoBets", err)
+}
+
+// storedAim are the multipliers of bets as the column keeps them.
+func storedAim(bets user.CasinoBets) ([]byte, error) {
+	aim := make([]aimMultiplier, 0, len(bets.Aim()))
+	for _, m := range bets.Aim() {
+		aim = append(aim, aimMultiplier{Multiplier: m.Multiplier, Chance: m.Chance})
+	}
+
+	stored, err := json.Marshal(aim)
+
+	return stored, errs.Wrap("json.Marshal", err)
+}
+
 const getCasinoBetsQuery = `
 	SELECT
 		bet_least,
 		bet_most,
-		bet_return
+		bet_aim
 	FROM casino
 `
 
 func (r *CasinoRepository) Bets(ctx context.Context) (user.CasinoBets, error) {
 	var (
 		least, most int64
-		ret         int
+		aim         []aimMultiplier
 	)
 
-	err := r.conn(ctx).QueryRow(ctx, getCasinoBetsQuery).Scan(&least, &most, &ret)
+	err := r.conn(ctx).QueryRow(ctx, getCasinoBetsQuery).Scan(&least, &most, &aim)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return user.DefaultCasinoBets(), nil
 	}
@@ -147,9 +181,9 @@ func (r *CasinoRepository) Bets(ctx context.Context) (user.CasinoBets, error) {
 		return user.CasinoBets{}, errs.Wrap("r.conn.QueryRow", err)
 	}
 
-	bets, err := user.NewCasinoBets(least, most, ret)
+	bets, err := restoreBets(least, most, aim)
 
-	return bets, errs.Wrap("user.NewCasinoBets", err)
+	return bets, errs.Wrap("restoreBets", err)
 }
 
 // Without the row the bets come with the default casino, as Casino reads
@@ -160,13 +194,13 @@ const setCasinoBetsQuery = `
 		prizes,
 		bet_least,
 		bet_most,
-		bet_return
+		bet_aim
 	)
 	VALUES ($1, $2, $3, $4, $5)
 	ON CONFLICT (only_row) DO UPDATE
 	SET bet_least = EXCLUDED.bet_least,
 		bet_most = EXCLUDED.bet_most,
-		bet_return = EXCLUDED.bet_return
+		bet_aim = EXCLUDED.bet_aim
 `
 
 func (r *CasinoRepository) SetBets(ctx context.Context, bets user.CasinoBets) error {
@@ -177,7 +211,12 @@ func (r *CasinoRepository) SetBets(ctx context.Context, bets user.CasinoBets) er
 		return errs.Wrap("storedPrizes", err)
 	}
 
-	_, err = r.conn(ctx).Exec(ctx, setCasinoBetsQuery, casino.Price(), prizes, bets.Least(), bets.Most(), bets.Return())
+	aim, err := storedAim(bets)
+	if err != nil {
+		return errs.Wrap("storedAim", err)
+	}
+
+	_, err = r.conn(ctx).Exec(ctx, setCasinoBetsQuery, casino.Price(), prizes, bets.Least(), bets.Most(), aim)
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -206,7 +245,7 @@ const getCasinoSettingsQuery = `
 		prizes,
 		bet_least,
 		bet_most,
-		bet_return,
+		bet_aim,
 		spins,
 		spent,
 		won,
@@ -221,7 +260,7 @@ func (r *CasinoRepository) Settings(ctx context.Context) (service.CasinoSettings
 		price       int64
 		stored      []casinoPrize
 		least, most int64
-		ret         int
+		aim         []aimMultiplier
 		stats       user.CasinoStats
 	)
 
@@ -230,7 +269,7 @@ func (r *CasinoRepository) Settings(ctx context.Context) (service.CasinoSettings
 		&stored,
 		&least,
 		&most,
-		&ret,
+		&aim,
 		&stats.Spins,
 		&stats.Spent,
 		&stats.Won,
@@ -250,9 +289,9 @@ func (r *CasinoRepository) Settings(ctx context.Context) (service.CasinoSettings
 		return service.CasinoSettings{}, errs.Wrap("restoreCasino", err)
 	}
 
-	bets, err := user.NewCasinoBets(least, most, ret)
+	bets, err := restoreBets(least, most, aim)
 	if err != nil {
-		return service.CasinoSettings{}, errs.Wrap("user.NewCasinoBets", err)
+		return service.CasinoSettings{}, errs.Wrap("restoreBets", err)
 	}
 
 	return service.CasinoSettings{Casino: casino, Bets: bets, Stats: stats}, nil

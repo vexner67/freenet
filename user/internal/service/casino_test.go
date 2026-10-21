@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/vexner67/freenet/user/internal/inmem"
@@ -35,7 +36,7 @@ func TestCasinoService(t *testing.T) {
 			return roll, nil
 		})
 
-	if c, b, err := casino.Casino(ctx); err != nil || c.Price() != user.DefaultCasino().Price() || b != user.DefaultCasinoBets() {
+	if c, b, err := casino.Casino(ctx); err != nil || c.Price() != user.DefaultCasino().Price() || !reflect.DeepEqual(b, user.DefaultCasinoBets()) {
 		t.Fatalf("Casino = %+v, %v", c, err)
 	}
 
@@ -114,12 +115,12 @@ func TestCasinoService_Bet(t *testing.T) {
 			return roll, nil
 		})
 
-	if _, b, err := casino.Casino(ctx); err != nil || b != user.DefaultCasinoBets() {
+	if _, b, err := casino.Casino(ctx); err != nil || !reflect.DeepEqual(b, user.DefaultCasinoBets()) {
 		t.Fatalf("Bets = %+v, %v", b, err)
 	}
 
 	// Only the administrators change the bets.
-	bets, err := user.NewCasinoBets(10, 100, 95)
+	bets, err := user.NewCasinoBets(10, 100, []user.AimMultiplier{{Multiplier: 200, Chance: 4750}, {Multiplier: 300, Chance: 2000}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,6 +136,10 @@ func TestCasinoService_Bet(t *testing.T) {
 	}
 	if _, err := casino.Bet(ctx, ann, 50, 123); !errors.Is(err, user.ErrBetMultiplier) {
 		t.Fatalf("Bet on ×1.23: %v", err)
+	}
+	// ×1.5 is a default multiplier the administrators did not keep.
+	if _, err := casino.Bet(ctx, ann, 50, 150); !errors.Is(err, user.ErrBetMultiplier) {
+		t.Fatalf("Bet on ×1.5: %v", err)
 	}
 	if _, err := casino.Bet(ctx, ann, 50, 200); !errors.Is(err, user.ErrNotEnoughVotes) {
 		t.Fatalf("Bet without votes: %v", err)
@@ -161,7 +166,7 @@ func TestCasinoService_Bet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if settings.Bets != bets || settings.Stats != (user.CasinoStats{Wagers: 2, WagerSpent: 150, WagerWon: 100}) {
+	if !reflect.DeepEqual(settings.Bets, bets) || settings.Stats != (user.CasinoStats{Wagers: 2, WagerSpent: 150, WagerWon: 100}) {
 		t.Fatalf("Settings = %+v", settings)
 	}
 }

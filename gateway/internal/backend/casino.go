@@ -31,8 +31,7 @@ func (c *Casino) Get(ctx context.Context) (model.Casino, error) {
 	casino := model.Casino{Price: resp.GetPrice(), Bets: model.CasinoBets{
 		Least:       resp.GetBetLeast(),
 		Most:        resp.GetBetMost(),
-		Return:      int(resp.GetBetReturn()),
-		Multipliers: fromProtoMultipliers(resp.GetMultipliers()),
+		Multipliers: fromProtoAim(resp.GetAim()),
 	}}
 	for _, votes := range resp.GetPrizes() {
 		casino.Prizes = append(casino.Prizes, model.CasinoPrize{Votes: votes})
@@ -51,8 +50,7 @@ func (c *Casino) Settings(ctx context.Context, accessToken string) (model.Casino
 		Casino: model.Casino{Price: resp.GetPrice(), Bets: model.CasinoBets{
 			Least:       resp.GetBetLeast(),
 			Most:        resp.GetBetMost(),
-			Return:      int(resp.GetBetReturn()),
-			Multipliers: fromProtoMultipliers(resp.GetMultipliers()),
+			Multipliers: fromProtoAim(resp.GetAim()),
 		}},
 		Spins:      resp.GetSpins(),
 		Spent:      resp.GetSpent(),
@@ -95,11 +93,18 @@ func (c *Casino) Spin(ctx context.Context, accessToken string) (model.CasinoSpin
 }
 
 func (c *Casino) SetBets(ctx context.Context, accessToken string, bets model.CasinoBets) error {
-	if bets.Return < 0 || bets.Return > math.MaxInt32 {
-		return failure.New(failure.InvalidArgument, "the return of bets must be from 1 to 100 percent")
+	req := &userv1.SetCasinoBetsRequest{Least: bets.Least, Most: bets.Most}
+	for _, m := range bets.Multipliers {
+		if m.Multiplier < 0 || m.Multiplier > math.MaxInt32 {
+			return failure.New(failure.InvalidArgument, "a multiplier must be from 1.01 to 1000")
+		}
+		if m.Chance < 0 || m.Chance > math.MaxInt32 {
+			return failure.New(failure.InvalidArgument, "the chance of a multiplier must be from 0.01 to 99.99 percent")
+		}
+
+		req.Aim = append(req.Aim, &userv1.AimMultiplier{Multiplier: int32(m.Multiplier), Chance: int32(m.Chance)})
 	}
 
-	req := &userv1.SetCasinoBetsRequest{Least: bets.Least, Most: bets.Most, Return: int32(bets.Return)}
 	if _, err := c.api.SetCasinoBets(withToken(ctx, accessToken), req); err != nil {
 		return errs.Wrap("c.api.SetCasinoBets", fromStatus(err))
 	}
@@ -126,11 +131,11 @@ func (c *Casino) Bet(ctx context.Context, accessToken string, amount int64, mult
 	}, nil
 }
 
-// fromProtoMultipliers are the multipliers of the bets, in hundredths.
-func fromProtoMultipliers(multipliers []int32) []int {
-	out := make([]int, 0, len(multipliers))
-	for _, m := range multipliers {
-		out = append(out, int(m))
+// fromProtoAim are the multipliers of the bets with their chances.
+func fromProtoAim(aim []*userv1.AimMultiplier) []model.AimMultiplier {
+	out := make([]model.AimMultiplier, 0, len(aim))
+	for _, m := range aim {
+		out = append(out, model.AimMultiplier{Multiplier: int(m.GetMultiplier()), Chance: int(m.GetChance())})
 	}
 
 	return out

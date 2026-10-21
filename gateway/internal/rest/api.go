@@ -829,6 +829,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/bets/{id}/close", a.changeBetEvent(Bets.Close))
 	mux.HandleFunc("POST /api/v1/bets/{id}/resolve", a.resolveBetEvent)
 	mux.HandleFunc("POST /api/v1/bets/{id}/cancel", a.changeBetEvent(Bets.Cancel))
+	mux.HandleFunc("PUT /api/v1/bets/{id}/odds", a.setBetEventOdds)
 	mux.HandleFunc("DELETE /api/v1/bets/{id}", a.changeBetEvent(Bets.Delete))
 	mux.HandleFunc("PUT /api/v1/users/{nickname}/verification", a.verify)
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/verification", a.verify)

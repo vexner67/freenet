@@ -178,16 +178,20 @@ service UserService {
   rpc SetCasino(SetCasinoRequest) returns (google.protobuf.Empty);
   rpc SpinCasino(SpinCasinoRequest) returns (SpinCasinoResponse);
   // The bets of the casino: a player bets votes on a multiplier and either
-  // gets them multiplied or loses them. GetCasino tells their limits;
-  // SetCasinoBets is for the administrators; BetCasino takes the bet and
+  // gets them multiplied or loses them. GetCasino tells their limits and
+  // the multipliers with their chances; SetCasinoBets is for the
+  // administrators; BetCasino takes the bet and
   // pays the win in one transaction (InvalidArgument for a bet out of the
   // limits or an unknown multiplier, FailedPrecondition "not enough
   // votes").
   rpc SetCasinoBets(SetCasinoBetsRequest) returns (google.protobuf.Empty);
   rpc BetCasino(BetCasinoRequest) returns (BetCasinoResponse);
-  // The bets on events: the administrators ask a question with outcomes,
-  // people stake votes on them, and those who guessed share all the stakes
-  // once it is resolved; a cancelled event gives them back. ListBetEvents
+  // The bets on events: the administrators ask a question with outcomes
+  // and their odds, people stake votes on them, and a stake on the winner
+  // pays its votes times the odds it was made at (events made before the
+  // odds share the stakes among those who guessed); a cancelled event
+  // gives them back. SetBetEventOdds changes the odds of an event not over
+  // (FailedPrecondition for an event without odds). ListBetEvents
   // is public, with the stakes of the caller if a token came; StakeBet
   // takes the votes (FailedPrecondition when the event takes no stakes or
   // the balance is short); the rest are for the administrators.
@@ -197,6 +201,7 @@ service UserService {
   rpc ResolveBetEvent(ResolveBetEventRequest) returns (google.protobuf.Empty);
   rpc CancelBetEvent(BetEventRequest) returns (google.protobuf.Empty);
   rpc DeleteBetEvent(BetEventRequest) returns (google.protobuf.Empty);
+  rpc SetBetEventOdds(SetBetEventOddsRequest) returns (google.protobuf.Empty);
   rpc StakeBet(StakeBetRequest) returns (StakeBetResponse);
 
   // Requires an access token of an administrator of the site
@@ -1174,12 +1179,20 @@ message GetCasinoResponse {
   int64 price = 1;
   // The votes of each prize, in the order of the prizes.
   repeated int64 prizes = 2;
-  // The bets: from bet_least to bet_most votes; a multiplier m (in
-  // hundredths: 200 — ×2) wins with the chance bet_return / m.
+  // The bets: from bet_least to bet_most votes on one of the multipliers,
+  // each with its chance of 10000.
   int64 bet_least = 3;
   int64 bet_most = 4;
-  int32 bet_return = 5;
-  repeated int32 multipliers = 6;
+  reserved 5, 6;
+  reserved "bet_return", "multipliers";
+  repeated AimMultiplier aim = 7;
+}
+
+// AimMultiplier is a multiplier of the bets, in hundredths (200 — ×2), and
+// the chance of 10000 it wins with.
+message AimMultiplier {
+  int32 multiplier = 1;
+  int32 chance = 2;
 }
 
 message GetCasinoSettingsRequest {}
@@ -1193,13 +1206,14 @@ message GetCasinoSettingsResponse {
   int64 won = 5;
   int64 bet_least = 6;
   int64 bet_most = 7;
-  int32 bet_return = 8;
+  reserved 8, 12;
+  reserved "bet_return", "multipliers";
   // How the bets do: bets made, votes bet and won.
   int64 bets = 9;
   int64 bet_spent = 10;
   int64 bet_won = 11;
-  // The multipliers a bet may take, in hundredths, as GetCasino says.
-  repeated int32 multipliers = 12;
+  // The multipliers a bet may take, with their chances.
+  repeated AimMultiplier aim = 13;
 }
 
 message SetCasinoRequest {
@@ -1221,8 +1235,10 @@ message SpinCasinoResponse {
 message SetCasinoBetsRequest {
   int64 least = 1;
   int64 most = 2;
-  // The percent of the votes bet the casino gives back, 1 to 100.
-  int32 return = 3;
+  reserved 3;
+  reserved "return";
+  // 1 to 10 multipliers, each once.
+  repeated AimMultiplier aim = 4;
 }
 
 message BetCasinoRequest {
@@ -1250,6 +1266,11 @@ message BetOutcome {
   int32 bettors = 3;
   // The votes the caller staked on it.
   int64 mine = 4;
+  // The odds of the outcome, in hundredths (250 — ×2.5); 0 for an event
+  // without odds, where those who guessed share the stakes.
+  int32 odds = 5;
+  // What the stakes of the caller on it pay if it wins.
+  int64 potential = 6;
 }
 
 message BetEvent {
@@ -1286,6 +1307,14 @@ message CreateBetEventRequest {
   repeated string outcomes = 2;
   // Unset for stakes until the administrators close them.
   google.protobuf.Timestamp closes_at = 3;
+  // The odds of each outcome, in hundredths, 101 to 100000.
+  repeated int32 odds = 4;
+}
+
+message SetBetEventOddsRequest {
+  string event_id = 1;
+  // The new odds of each outcome; the stakes made keep theirs.
+  repeated int32 odds = 2;
 }
 
 message BetEventRequest {

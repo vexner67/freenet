@@ -16,15 +16,19 @@ func TestBetEvents(t *testing.T) {
 	admin := s.signIn(t, adminEmail)
 	ann, _ := s.member(t, "ann")
 
-	question := &userv1.CreateBetEventRequest{Question: "Проиграют ли республиканцы?", Outcomes: []string{"Да", "Нет"}}
+	question := &userv1.CreateBetEventRequest{Question: "Проиграют ли республиканцы?", Outcomes: []string{"Да", "Нет"}, Odds: []int32{150, 250}}
 	if _, err := s.client.CreateBetEvent(ann, question); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("CreateBetEvent by ann: %v", err)
 	}
 	if _, err := s.client.CreateBetEvent(admin, &userv1.CreateBetEventRequest{Question: "?", Outcomes: []string{"Да"}}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("CreateBetEvent with one outcome: %v", err)
 	}
+	if _, err := s.client.CreateBetEvent(admin, &userv1.CreateBetEventRequest{Question: "?", Outcomes: []string{"Да", "Нет"}, Odds: []int32{100, 200}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("CreateBetEvent with odds ×1: %v", err)
+	}
 	e, err := s.client.CreateBetEvent(admin, question)
-	if err != nil || !e.GetOpen() || e.GetState() != "open" || e.GetWinner() != -1 || len(e.GetOutcomes()) != 2 || e.GetClosesAt() != nil {
+	if err != nil || !e.GetOpen() || e.GetState() != "open" || e.GetWinner() != -1 || len(e.GetOutcomes()) != 2 || e.GetClosesAt() != nil ||
+		e.GetOutcomes()[1].GetOdds() != 250 {
 		t.Fatalf("CreateBetEvent = %v, %v", e, err)
 	}
 
@@ -59,6 +63,18 @@ func TestBetEvents(t *testing.T) {
 	if _, err := s.client.DeleteBetEvent(admin, &userv1.BetEventRequest{EventId: e.GetId()}); status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("DeleteBetEvent of an open event: %v", err)
 	}
+
+	// New odds are for the stakes from now on: the 4 staked on ×2.5 pay 10.
+	reodd := &userv1.SetBetEventOddsRequest{EventId: e.GetId(), Odds: []int32{120, 400}}
+	if _, err := s.client.SetBetEventOdds(ann, reodd); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("SetBetEventOdds by ann: %v", err)
+	}
+	if _, err := s.client.SetBetEventOdds(admin, &userv1.SetBetEventOddsRequest{EventId: e.GetId(), Odds: []int32{120}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("SetBetEventOdds short: %v", err)
+	}
+	if _, err := s.client.SetBetEventOdds(admin, reodd); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := s.client.ResolveBetEvent(admin, &userv1.ResolveBetEventRequest{EventId: e.GetId(), Winner: 1}); err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +87,8 @@ func TestBetEvents(t *testing.T) {
 		t.Fatalf("ListBetEvents = %v, %v", list, err)
 	}
 	got := list.GetEvents()[0]
-	if got.GetState() != "resolved" || got.GetWinner() != 1 || got.GetOpen() || got.GetPayout() != 4 || got.GetOutcomes()[1].GetMine() != 4 || got.GetPeople() != 1 {
+	if got.GetState() != "resolved" || got.GetWinner() != 1 || got.GetOpen() || got.GetPayout() != 10 || got.GetOutcomes()[1].GetMine() != 4 || got.GetPeople() != 1 ||
+		got.GetOutcomes()[1].GetPotential() != 10 || got.GetOutcomes()[1].GetOdds() != 400 {
 		t.Fatalf("resolved event = %v", got)
 	}
 

@@ -10,31 +10,55 @@ import (
 func TestNewCasinoBets(t *testing.T) {
 	t.Parallel()
 
+	aim := func(pairs ...int) []user.AimMultiplier {
+		out := make([]user.AimMultiplier, 0, len(pairs)/2)
+		for i := 0; i < len(pairs); i += 2 {
+			out = append(out, user.AimMultiplier{Multiplier: pairs[i], Chance: pairs[i+1]})
+		}
+
+		return out
+	}
+	eleven := make([]user.AimMultiplier, 0, user.MaxAimMultipliers+1)
+	for m := range user.MaxAimMultipliers + 1 {
+		eleven = append(eleven, user.AimMultiplier{Multiplier: 200 + m, Chance: 100})
+	}
+
 	tests := []struct {
 		name        string
 		least, most int64
-		ret         int
+		aim         []user.AimMultiplier
 		want        error
 	}{
-		{name: "fine", least: 1, most: 1000, ret: 95},
-		{name: "one amount", least: 7, most: 7, ret: 100},
-		{name: "free", least: 0, most: 10, ret: 95, want: user.ErrBetLimits},
-		{name: "too big", least: 1, most: user.MaxBet + 1, ret: 95, want: user.ErrBetLimits},
-		{name: "upside down", least: 10, most: 5, ret: 95, want: user.ErrBetLimits},
-		{name: "no return", least: 1, most: 10, ret: 0, want: user.ErrBetReturn},
-		{name: "too much return", least: 1, most: 10, ret: user.MaxBetReturn + 1, want: user.ErrBetReturn},
+		{name: "fine", least: 1, most: 1000, aim: aim(200, 4750, 150, 6333)},
+		{name: "one amount", least: 7, most: 7, aim: aim(101, 9999)},
+		{name: "free", least: 0, most: 10, aim: aim(200, 4750), want: user.ErrBetLimits},
+		{name: "too big", least: 1, most: user.MaxBet + 1, aim: aim(200, 4750), want: user.ErrBetLimits},
+		{name: "upside down", least: 10, most: 5, aim: aim(200, 4750), want: user.ErrBetLimits},
+		{name: "no multipliers", least: 1, most: 10, want: user.ErrAimMultipliers},
+		{name: "too many multipliers", least: 1, most: 10, aim: eleven, want: user.ErrAimMultipliers},
+		{name: "×1", least: 1, most: 10, aim: aim(100, 5000), want: user.ErrAimMultiplier},
+		{name: "too big a multiplier", least: 1, most: 10, aim: aim(user.MaxAimMultiplier+1, 1), want: user.ErrAimMultiplier},
+		{name: "no chance", least: 1, most: 10, aim: aim(200, 0), want: user.ErrAimChance},
+		{name: "certain", least: 1, most: 10, aim: aim(200, user.BetOdds), want: user.ErrAimChance},
+		{name: "twice", least: 1, most: 10, aim: aim(200, 4000, 200, 4750), want: user.ErrAimMultiplierTwice},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			b, err := user.NewCasinoBets(tt.least, tt.most, tt.ret)
+			b, err := user.NewCasinoBets(tt.least, tt.most, tt.aim)
 			if !errors.Is(err, tt.want) {
 				t.Fatalf("NewCasinoBets: %v; want %v", err, tt.want)
 			}
-			if err == nil && (b.Least() != tt.least || b.Most() != tt.most || b.Return() != tt.ret) {
+			if err == nil && (b.Least() != tt.least || b.Most() != tt.most || len(b.Aim()) != len(tt.aim)) {
 				t.Fatalf("NewCasinoBets = %+v", b)
+			}
+			// The multipliers come smallest first.
+			for i := 1; err == nil && i < len(b.Aim()); i++ {
+				if b.Aim()[i-1].Multiplier >= b.Aim()[i].Multiplier {
+					t.Fatalf("Aim() = %+v", b.Aim())
+				}
 			}
 		})
 	}
@@ -43,7 +67,7 @@ func TestNewCasinoBets(t *testing.T) {
 func TestCasinoBets_Bet(t *testing.T) {
 	t.Parallel()
 
-	bets, err := user.NewCasinoBets(10, 100, 95)
+	bets, err := user.NewCasinoBets(10, 100, user.DefaultAim())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,15 +111,15 @@ func TestCasinoBets_Bet(t *testing.T) {
 		}
 	}
 
-	// Even a casino that gives everything back never makes a bet surer
-	// than certain.
-	fair, err := user.NewCasinoBets(1, 10, user.MaxBetReturn)
+	// The administrators set the chance of each multiplier as they like.
+	custom, err := user.NewCasinoBets(1, 10, []user.AimMultiplier{{Multiplier: 250, Chance: 3000}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, m := range user.BetMultipliers {
-		if c, err := fair.Chance(m); err != nil || c > user.BetOdds {
-			t.Fatalf("Chance(%d) = %d, %v", m, c, err)
-		}
+	if bet, err := custom.Bet(10, 250); err != nil || bet.Chance() != 3000 || bet.Prize() != 25 {
+		t.Fatalf("custom Bet = %+v, %v", bet, err)
+	}
+	if _, err := custom.Bet(10, 200); !errors.Is(err, user.ErrBetMultiplier) {
+		t.Fatalf("Bet on a multiplier gone: %v", err)
 	}
 }

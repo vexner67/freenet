@@ -22,6 +22,10 @@ const (
 	MaxBetEventAhead = 366 * 24 * time.Hour
 	// MaxStake is the most votes one stake puts on an outcome.
 	MaxStake = 1_000_000
+	// MinEventOdds and MaxEventOdds bound the odds of an outcome, in
+	// hundredths: 101 is ×1.01, 100000 ×1000.
+	MinEventOdds = 101
+	MaxEventOdds = 100_000
 )
 
 var (
@@ -38,6 +42,9 @@ var (
 	ErrBetEventActive     = errors.New("the event is not over yet")
 	ErrBetOutcome         = errors.New("unknown outcome")
 	ErrStakeAmount        = errors.New("a stake must be from 1 to 1000000 votes")
+	ErrEventOdds          = errors.New("the odds of an outcome must be from 1.01 to 1000")
+	ErrEventOddsCount     = errors.New("every outcome needs its odds")
+	ErrEventPooled        = errors.New("the event shares its stakes and has no odds")
 )
 
 // BetQuestion is what an event asks: "Will the Republicans lose the
@@ -113,14 +120,21 @@ func (s BetEventState) Over() bool {
 	return s == BetEventResolved || s == BetEventCancelled
 }
 
-// BetEvent is an event the administrators ask about, as the betting sites
-// do: people stake votes on its outcomes, and when it is resolved, those
-// who guessed share all the votes staked, each by what they staked
-// (parimutuel). A cancelled event gives everyone their stakes back.
+// BetEvent is an event the administrators ask about, as the bookmakers
+// do: each outcome has its odds, people stake votes on the outcomes, and
+// when the event is resolved, a stake on the winner pays its votes times
+// the odds it was made at, however many staked on the same outcome. The
+// administrators may change the odds while the event takes stakes; the
+// stakes made keep theirs. Events made before the odds have none: those who
+// guessed share all the votes staked (parimutuel). A cancelled event gives
+// everyone their stakes back.
 type BetEvent struct {
 	id       uuid.UUID
 	question BetQuestion
 	outcomes []BetOutcome
+	// odds are those of each outcome, in hundredths; nil for an event
+	// sharing its stakes.
+	odds     []int
 	state    BetEventState
 	closesAt time.Time
 	// winner is the index of the winning outcome of a resolved event, -1
@@ -128,11 +142,15 @@ type BetEvent struct {
 	winner int
 }
 
-// NewBetEvent is an open event; closesAt is zero for stakes until the
-// administrators close them, or within MaxBetEventAhead of now.
-func NewBetEvent(question BetQuestion, outcomes []BetOutcome, closesAt, now time.Time) (*BetEvent, error) {
+// NewBetEvent is an open event with the odds of each outcome; closesAt is
+// zero for stakes until the administrators close them, or within
+// MaxBetEventAhead of now.
+func NewBetEvent(question BetQuestion, outcomes []BetOutcome, odds []int, closesAt, now time.Time) (*BetEvent, error) {
 	if len(outcomes) < MinBetOutcomes || len(outcomes) > MaxBetOutcomes {
 		return nil, ErrBetOutcomes
+	}
+	if err := checkOdds(odds, len(outcomes)); err != nil {
+		return nil, err
 	}
 
 	seen := make(map[string]bool, len(outcomes))
@@ -157,15 +175,31 @@ func NewBetEvent(question BetQuestion, outcomes []BetOutcome, closesAt, now time
 		id:       id,
 		question: question,
 		outcomes: append([]BetOutcome(nil), outcomes...),
+		odds:     append([]int(nil), odds...),
 		state:    BetEventOpen,
 		closesAt: closesAt.UTC(),
 		winner:   -1,
 	}, nil
 }
 
-// RestoreBetEvent is an event read from the store.
-func RestoreBetEvent(id uuid.UUID, question BetQuestion, outcomes []BetOutcome, state BetEventState, closesAt time.Time, winner int) *BetEvent {
-	return &BetEvent{id: id, question: question, outcomes: outcomes, state: state, closesAt: closesAt, winner: winner}
+// checkOdds checks the odds of n outcomes; ErrEventOddsCount, ErrEventOdds.
+func checkOdds(odds []int, n int) error {
+	if len(odds) != n {
+		return ErrEventOddsCount
+	}
+	for _, o := range odds {
+		if o < MinEventOdds || o > MaxEventOdds {
+			return ErrEventOdds
+		}
+	}
+
+	return nil
+}
+
+// RestoreBetEvent is an event read from the store; odds nil for one
+// sharing its stakes.
+func RestoreBetEvent(id uuid.UUID, question BetQuestion, outcomes []BetOutcome, odds []int, state BetEventState, closesAt time.Time, winner int) *BetEvent {
+	return &BetEvent{id: id, question: question, outcomes: outcomes, odds: odds, state: state, closesAt: closesAt, winner: winner}
 }
 
 func (e *BetEvent) ID() uuid.UUID {
@@ -178,6 +212,18 @@ func (e *BetEvent) Question() BetQuestion {
 
 func (e *BetEvent) Outcomes() []BetOutcome {
 	return e.outcomes
+}
+
+// Odds are those of each outcome, in hundredths; nil for an event sharing
+// its stakes.
+func (e *BetEvent) Odds() []int {
+	return e.odds
+}
+
+// Pooled tells that those who guessed share the stakes: the event has no
+// odds.
+func (e *BetEvent) Pooled() bool {
+	return e.odds == nil
 }
 
 func (e *BetEvent) State() BetEventState {
@@ -206,19 +252,44 @@ func (e *BetEvent) OpenAt(now time.Time) bool {
 	return e.state == BetEventOpen && (e.closesAt.IsZero() || now.Before(e.closesAt))
 }
 
-// Stake checks a stake of amount votes on the outcome at now;
-// ErrBetEventClosed, ErrBetOutcome, ErrStakeAmount.
-func (e *BetEvent) Stake(outcome int, amount int64, now time.Time) error {
+// Stake checks a stake of amount votes on the outcome at now and tells what
+// it pays if the outcome wins: the votes times its odds now, rounded down;
+// 0 for an event sharing its stakes. ErrBetEventClosed, ErrBetOutcome,
+// ErrStakeAmount.
+func (e *BetEvent) Stake(outcome int, amount int64, now time.Time) (int64, error) {
 	switch {
 	case !e.OpenAt(now):
-		return ErrBetEventClosed
+		return 0, ErrBetEventClosed
 	case outcome < 0 || outcome >= len(e.outcomes):
-		return ErrBetOutcome
+		return 0, ErrBetOutcome
 	case amount < 1 || amount > MaxStake:
-		return ErrStakeAmount
+		return 0, ErrStakeAmount
 	}
 
-	return nil
+	if e.Pooled() {
+		return 0, nil
+	}
+
+	return amount * int64(e.odds[outcome]) / 100, nil
+}
+
+// Reodded is the event with new odds, for the stakes made from now on;
+// ErrBetEventFinished, ErrEventPooled, ErrEventOddsCount, ErrEventOdds.
+func (e *BetEvent) Reodded(odds []int) (*BetEvent, error) {
+	switch {
+	case e.state.Over():
+		return nil, ErrBetEventFinished
+	case e.Pooled():
+		return nil, ErrEventPooled
+	}
+	if err := checkOdds(odds, len(e.outcomes)); err != nil {
+		return nil, err
+	}
+
+	changed := *e
+	changed.odds = append([]int(nil), odds...)
+
+	return &changed, nil
 }
 
 // Closed is the event closed to stakes; ErrBetEventFinished for one
@@ -272,19 +343,42 @@ func (e *BetEvent) CheckDelete() error {
 	return nil
 }
 
-// Stake is the votes one person put on one outcome of an event, and what
-// they paid back once the event was over.
+// Stake is the votes one person put on one outcome of an event, what they
+// pay if it wins — the votes times the odds of each stake, summed — and
+// what they paid back once the event was over.
 type Stake struct {
-	UserID  uuid.UUID
-	Outcome int
-	Amount  int64
-	Payout  int64
+	UserID    uuid.UUID
+	Outcome   int
+	Amount    int64
+	Potential int64
+	Payout    int64
 }
 
-// Payouts are what the stakes of an event pay when it is resolved with
-// winner: those on it share all the votes staked, each by their stake,
-// rounded down; when nobody guessed, everyone gets their stakes back, as when
-// the event is cancelled (winner -1).
+// Payouts are what the stakes of the event pay when it is resolved with
+// winner, or cancelled with -1: everyone gets their stakes back. With odds
+// a stake on the winner pays its Potential and the rest nothing; without
+// them those who guessed share the stakes (Payouts).
+func (e *BetEvent) Payouts(stakes []Stake, winner int) []Stake {
+	if e.Pooled() || winner < 0 {
+		return Payouts(stakes, winner)
+	}
+
+	paid := make([]Stake, len(stakes))
+	for i, s := range stakes {
+		s.Payout = 0
+		if s.Outcome == winner {
+			s.Payout = s.Potential
+		}
+		paid[i] = s
+	}
+
+	return paid
+}
+
+// Payouts are what the stakes of an event sharing them pay when it is
+// resolved with winner: those on it share all the votes staked, each by
+// their stake, rounded down; when nobody guessed, everyone gets their
+// stakes back, as when the event is cancelled (winner -1).
 func Payouts(stakes []Stake, winner int) []Stake {
 	var pool, won int64
 	for _, s := range stakes {
