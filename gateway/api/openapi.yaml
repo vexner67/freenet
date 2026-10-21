@@ -8139,7 +8139,7 @@ components:
 
     Treasury:
       type: object
-      required: [votes, reserve, free, minted, outstanding, bonus, maxWin]
+      required: [votes, reserve, free, minted, outstanding, bonus, maxWin, held]
       properties:
         votes: { type: integer, format: int64, description: The votes in the treasury }
         reserve: { type: integer, format: int64, description: What it keeps back; below it the bonus shrinks }
@@ -8148,6 +8148,7 @@ components:
         outstanding: { type: integer, format: int64, description: What the vouchers promise }
         bonus: { type: integer, format: int64, description: The daily bonus now }
         maxWin: { type: integer, format: int64, description: 'The largest win of one round of the casino now: 1000, or a twentieth of the treasury when that is less' }
+        held: { type: integer, format: int64, description: The votes on the accounts of the pages }
 
     Bonus:
       type: object

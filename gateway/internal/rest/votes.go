@@ -327,6 +327,7 @@ type treasuryJSON struct {
 	Outstanding int64 `json:"outstanding"`
 	Bonus       int64 `json:"bonus"`
 	MaxWin      int64 `json:"maxWin"`
+	Held        int64 `json:"held"`
 }
 
 // treasury is public: everyone may see how many votes the site holds.
