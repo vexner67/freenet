@@ -956,9 +956,13 @@ export function adRate({ views, clicks }) {
 }
 
 // share is a share in percents with one decimal, as the admin panel says
-// it: "4,2 %".
+// it: "4,2 %"; a share too small for it, with its first two digits:
+// "0,0005 %", not "0 %".
 function share(value) {
-  const percent = String(Math.round(value * 10) / 10);
+  const rounded = Math.round(value * 10) / 10;
+  const percent = rounded === 0 && value > 0
+    ? String(Number(value.toFixed(Math.ceil(-Math.log10(value)) + 1)))
+    : String(rounded);
 
   return `${lang === 'en' ? percent : percent.replace('.', ',')} %`;
 }
