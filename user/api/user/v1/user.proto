@@ -169,6 +169,10 @@ service UserService {
   rpc GetTreasury(GetTreasuryRequest) returns (GetTreasuryResponse);
   rpc GetBonus(GetBonusRequest) returns (GetBonusResponse);
   rpc ClaimBonus(ClaimBonusRequest) returns (ClaimBonusResponse);
+  // RaiseRating sells the caller rating ("Повысить рейтинг" of openvk) for
+  // 3 votes a percent, into the treasury: FailedPrecondition "not enough
+  // votes" and "the rating cannot go above 1000 percent".
+  rpc RaiseRating(RaiseRatingRequest) returns (RaiseRatingResponse);
 
   // The New Year decoration of the site. GetDecor is public and says
   // whether to wear it now; SetDecor is for the administrators
@@ -223,6 +227,9 @@ service UserService {
   // caller, FailedPrecondition "the rocket is over" for one cashed or
   // cashing by itself). The crash point is told once a round is over.
   rpc SetCasinoRocket(SetCasinoRocketRequest) returns (google.protobuf.Empty);
+  // SetCasinoJackpot changes the least win the site shows as a jackpot;
+  // for the administrators (PermissionDenied for others).
+  rpc SetCasinoJackpot(SetCasinoJackpotRequest) returns (google.protobuf.Empty);
   rpc LaunchRocket(LaunchRocketRequest) returns (RocketRound);
   rpc GetRocket(RocketRequest) returns (RocketRound);
   rpc CashRocket(RocketRequest) returns (RocketRound);
@@ -1059,6 +1066,8 @@ message TransferVotesRequest {
 message TransferVotesResponse {
   // What the caller has left.
   int64 votes = 1;
+  // The fee the caller paid on top, into the treasury.
+  int64 fee = 2;
 }
 
 message RedeemVoucherRequest {
@@ -1206,6 +1215,17 @@ message ClaimBonusResponse {
   int64 balance = 2;
 }
 
+message RaiseRatingRequest {
+  // How many percent to buy, 1-1000.
+  int32 percent = 1;
+}
+
+message RaiseRatingResponse {
+  // The votes the caller has left and the rating now.
+  int64 balance = 1;
+  int32 rating = 2;
+}
+
 // How the site is dressed for the New Year.
 enum Decor {
   DECOR_UNSPECIFIED = 0;
@@ -1250,6 +1270,8 @@ message GetCasinoResponse {
   repeated AimMultiplier aim = 7;
   // "Ракетка": its limits and its top, without the return.
   CasinoRocket rocket = 8;
+  // The least win shown as a jackpot.
+  int64 jackpot = 9;
 }
 
 // AimMultiplier is a multiplier of the bets, in hundredths (200 — ×2), and
@@ -1284,6 +1306,7 @@ message GetCasinoSettingsResponse {
   int64 rockets = 15;
   int64 rocket_spent = 16;
   int64 rocket_won = 17;
+  int64 jackpot = 18;
 }
 
 // CasinoRocket is "Ракетка": bets from least to most votes, the return in
@@ -1298,6 +1321,11 @@ message CasinoRocket {
 
 message SetCasinoRocketRequest {
   CasinoRocket rocket = 1;
+}
+
+message SetCasinoJackpotRequest {
+  // 1-1000 votes.
+  int64 jackpot = 1;
 }
 
 message LaunchRocketRequest {

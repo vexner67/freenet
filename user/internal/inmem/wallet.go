@@ -78,6 +78,30 @@ func (r *UserRepository) Credit(ctx context.Context, userID uuid.UUID, votes int
 	return wallet, err
 }
 
+func (r *UserRepository) RaiseRating(ctx context.Context, userID uuid.UUID, percent int) (user.Wallet, error) {
+	if err := ctx.Err(); err != nil {
+		return user.Wallet{}, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	u, ok := r.users[userID]
+	if !ok {
+		return user.Wallet{}, user.ErrNotFound
+	}
+
+	wallet := u.Wallet()
+	if wallet.Rating+percent > user.MaxRating {
+		return user.Wallet{}, user.ErrRatingLimit
+	}
+
+	wallet.Rating += percent
+	r.users[userID] = *u.WithWallet(wallet)
+
+	return wallet, nil
+}
+
 // Treasury is the treasury with what the vouchers promise.
 func (r *UserRepository) Treasury(ctx context.Context) (user.Treasury, error) {
 	if err := ctx.Err(); err != nil {

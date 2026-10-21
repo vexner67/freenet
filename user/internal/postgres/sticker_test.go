@@ -143,14 +143,15 @@ func TestStickerPackRepository(t *testing.T) {
 		t.Fatalf("the author's stickers = %+v", owned)
 	}
 
-	// Bought, the votes go to the author.
+	// Bought, the votes go to the author, less the tax of the site: of 2,
+	// 1 (90% rounded down).
 	if _, err = wallets.Credit(ctx, buyer, 2, 0, user.Entry(user.VoteVoucher, uuid.Nil, "")); err != nil {
 		t.Fatal(err)
 	}
 	if err = svc.Add(ctx, buyer, p.ID()); err != nil {
 		t.Fatalf("Add: %v", err)
 	}
-	if u, _ := repo.GetByID(ctx, author); u.Wallet().Votes != 2 {
+	if u, _ := repo.GetByID(ctx, author); u.Wallet().Votes != 1 {
 		t.Fatalf("the author has %d votes", u.Wallet().Votes)
 	}
 

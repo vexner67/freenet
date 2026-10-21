@@ -142,7 +142,13 @@ const lockWalletsQuery = `
 	FOR UPDATE
 `
 
+// Move locks the treasury first as well, as Spend and Credit do: a fee or
+// a tax spent in the same transaction then keeps the order of the locks.
 func (r *WalletRepository) Move(ctx context.Context, fromID, toID uuid.UUID, votes int64, e user.VoteEntry) (int64, error) {
+	if err := r.lockTreasury(ctx); err != nil {
+		return 0, errs.Wrap("r.lockTreasury", err)
+	}
+
 	rows, err := r.conn(ctx).Query(ctx, lockWalletsQuery, fromID, toID)
 	if err != nil {
 		return 0, errs.Wrap("r.conn.Query", err)
@@ -258,6 +264,46 @@ func (r *WalletRepository) credit(ctx context.Context, userID uuid.UUID, votes i
 		return user.Wallet{}, user.ErrTreasuryEmpty
 	default:
 		return user.Wallet{Votes: *left, Rating: *leftRating}, nil
+	}
+}
+
+// The limit is checked by the statement that raises the rating; the
+// first column tells a user who is gone from one at the limit.
+const raiseRatingQuery = `
+	WITH raised AS (
+		UPDATE users
+		SET rating = rating + $2
+		WHERE id = $1
+			AND rating + $2 <= $3
+		RETURNING
+			votes,
+			rating
+	)
+	SELECT
+		EXISTS (SELECT 1 FROM users WHERE id = $1),
+		(SELECT votes FROM raised),
+		(SELECT rating FROM raised)
+`
+
+func (r *WalletRepository) RaiseRating(ctx context.Context, userID uuid.UUID, percent int) (user.Wallet, error) {
+	var (
+		exists bool
+		votes  *int64
+		rating *int
+	)
+
+	err := r.conn(ctx).QueryRow(ctx, raiseRatingQuery, userID, percent, user.MaxRating).Scan(&exists, &votes, &rating)
+	if err != nil {
+		return user.Wallet{}, errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	switch {
+	case !exists:
+		return user.Wallet{}, user.ErrNotFound
+	case votes == nil:
+		return user.Wallet{}, user.ErrRatingLimit
+	default:
+		return user.Wallet{Votes: *votes, Rating: *rating}, nil
 	}
 }
 

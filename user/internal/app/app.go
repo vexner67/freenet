@@ -240,6 +240,7 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		userv1.UserService_TransferVotes_FullMethodName: cfg.TransferLimits,
 		userv1.UserService_RedeemVoucher_FullMethodName: cfg.VoucherLimits,
 		userv1.UserService_ClaimBonus_FullMethodName:    cfg.VoucherLimits,
+		userv1.UserService_RaiseRating_FullMethodName:   cfg.TransferLimits,
 
 		userv1.UserService_CreateStickerPack_FullMethodName: cfg.StickerPackLimits,
 		userv1.UserService_EditStickerPack_FullMethodName:   cfg.StickerPackLimits,

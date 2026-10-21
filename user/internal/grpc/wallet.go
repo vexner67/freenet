@@ -27,6 +27,7 @@ type WalletService interface {
 	Treasury(ctx context.Context) (user.Treasury, error)
 	Bonus(ctx context.Context, userID uuid.UUID, now time.Time) (service.Bonus, error)
 	ClaimBonus(ctx context.Context, userID uuid.UUID, now time.Time) (service.Redeemed, error)
+	RaiseRating(ctx context.Context, userID uuid.UUID, raise user.RatingRaise) (user.Wallet, error)
 }
 
 func (h *UserHandler) TransferVotes(ctx context.Context, req *userv1.TransferVotesRequest) (*userv1.TransferVotesResponse, error) {
@@ -50,7 +51,7 @@ func (h *UserHandler) TransferVotes(ctx context.Context, req *userv1.TransferVot
 		return nil, err
 	}
 
-	return &userv1.TransferVotesResponse{Votes: left}, nil
+	return &userv1.TransferVotesResponse{Votes: left, Fee: user.TransferFee(votes.Int64())}, nil
 }
 
 func (h *UserHandler) ListVoteOperations(ctx context.Context, req *userv1.ListVoteOperationsRequest) (*userv1.ListVoteOperationsResponse, error) {
@@ -289,4 +290,23 @@ func (h *UserHandler) ClaimBonus(ctx context.Context, _ *userv1.ClaimBonusReques
 	}
 
 	return &userv1.ClaimBonusResponse{Votes: claimed.Votes, Balance: claimed.Wallet.Votes}, nil
+}
+
+func (h *UserHandler) RaiseRating(ctx context.Context, req *userv1.RaiseRatingRequest) (*userv1.RaiseRatingResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	raise, err := user.NewRatingRaise(int(req.GetPercent()))
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	wallet, err := h.walletService.RaiseRating(ctx, userID, raise)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.RaiseRatingResponse{Balance: wallet.Votes, Rating: int32(wallet.Rating)}, nil //nolint:gosec // at most user.MaxRating and what vouchers gave
 }

@@ -50,3 +50,50 @@ func TestTreasury(t *testing.T) {
 		t.Fatalf("ClaimBonus of a new page: %v", err)
 	}
 }
+
+func TestRaiseRatingAndJackpot(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	admin := s.signIn(t, adminEmail)
+	ann, _ := s.member(t, "ann")
+
+	made, err := s.client.CreateVoucher(admin, &userv1.CreateVoucherRequest{Votes: 10, Usages: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.RedeemVoucher(ann, &userv1.RedeemVoucherRequest{Token: made.GetVoucher().GetToken()}); err != nil {
+		t.Fatal(err)
+	}
+
+	raised, err := s.client.RaiseRating(ann, &userv1.RaiseRatingRequest{Percent: 2})
+	if err != nil || raised.GetBalance() != 10-2*user.RatingPrice || raised.GetRating() != 2 {
+		t.Fatalf("RaiseRating = %v, %v", raised, err)
+	}
+	if _, err = s.client.RaiseRating(ann, &userv1.RaiseRatingRequest{}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("RaiseRating by nothing: %v", err)
+	}
+	if _, err = s.client.RaiseRating(ann, &userv1.RaiseRatingRequest{Percent: 100}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("RaiseRating past the votes: %v", err)
+	}
+	if _, err = s.client.RaiseRating(context.Background(), &userv1.RaiseRatingRequest{Percent: 1}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("RaiseRating by nobody: %v", err)
+	}
+
+	// The jackpot is the administrators' to set.
+	if casino, err := s.client.GetCasino(context.Background(), &userv1.GetCasinoRequest{}); err != nil || casino.GetJackpot() != user.DefaultJackpot {
+		t.Fatalf("GetCasino = %v, %v", casino, err)
+	}
+	if _, err = s.client.SetCasinoJackpot(ann, &userv1.SetCasinoJackpotRequest{Jackpot: 500}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("SetCasinoJackpot by ann: %v", err)
+	}
+	if _, err = s.client.SetCasinoJackpot(admin, &userv1.SetCasinoJackpotRequest{Jackpot: user.MaxWin + 1}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("SetCasinoJackpot past the most win: %v", err)
+	}
+	if _, err = s.client.SetCasinoJackpot(admin, &userv1.SetCasinoJackpotRequest{Jackpot: 500}); err != nil {
+		t.Fatal(err)
+	}
+	if settings, err := s.client.GetCasinoSettings(admin, &userv1.GetCasinoSettingsRequest{}); err != nil || settings.GetJackpot() != 500 {
+		t.Fatalf("GetCasinoSettings = %v, %v", settings, err)
+	}
+}

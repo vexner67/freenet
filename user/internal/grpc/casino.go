@@ -19,6 +19,7 @@ type CasinoService interface {
 	Spin(ctx context.Context, userID uuid.UUID) (service.Spin, error)
 	SetBets(ctx context.Context, adminID uuid.UUID, bets user.CasinoBets) error
 	Bet(ctx context.Context, userID uuid.UUID, amount int64, multiplier int) (service.Wager, error)
+	SetJackpot(ctx context.Context, adminID uuid.UUID, jackpot user.Jackpot) error
 }
 
 func (h *UserHandler) GetCasino(ctx context.Context, _ *userv1.GetCasinoRequest) (*userv1.GetCasinoResponse, error) {
@@ -37,6 +38,7 @@ func (h *UserHandler) GetCasino(ctx context.Context, _ *userv1.GetCasinoRequest)
 		BetMost:  settings.Bets.Most(),
 		Aim:      toProtoAim(settings.Bets.Aim()),
 		Rocket:   rocket,
+		Jackpot:  settings.Jackpot.Int64(),
 	}
 	for _, p := range settings.Casino.Prizes() {
 		resp.Prizes = append(resp.Prizes, p.Votes)
@@ -71,7 +73,26 @@ func (h *UserHandler) GetCasinoSettings(ctx context.Context, _ *userv1.GetCasino
 		Rockets:     settings.Stats.Rockets,
 		RocketSpent: settings.Stats.RocketSpent,
 		RocketWon:   settings.Stats.RocketWon,
+		Jackpot:     settings.Jackpot.Int64(),
 	}, nil
+}
+
+func (h *UserHandler) SetCasinoJackpot(ctx context.Context, req *userv1.SetCasinoJackpotRequest) (*emptypb.Empty, error) {
+	adminID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	jackpot, err := user.NewJackpot(req.GetJackpot())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err = h.casinos.SetJackpot(ctx, adminID, jackpot); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func toProtoAim(aim []user.AimMultiplier) []*userv1.AimMultiplier {

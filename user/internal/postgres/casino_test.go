@@ -25,6 +25,9 @@ func TestCasinoRepository(t *testing.T) {
 		if err := casinos.SetBets(context.Background(), user.DefaultCasinoBets()); err != nil {
 			t.Error(err)
 		}
+		if err := casinos.SetJackpot(context.Background(), user.DefaultJackpot); err != nil {
+			t.Error(err)
+		}
 	})
 
 	got, err := casinos.Casino(ctx)
@@ -47,8 +50,14 @@ func TestCasinoRepository(t *testing.T) {
 	}
 
 	before, err := casinos.Settings(ctx)
-	if err != nil {
+	if err != nil || before.Jackpot != user.DefaultJackpot {
+		t.Fatalf("Settings = %+v, %v; want the default jackpot", before, err)
+	}
+	if err = casinos.SetJackpot(ctx, 300); err != nil {
 		t.Fatal(err)
+	}
+	if got, err := casinos.Settings(ctx); err != nil || got.Jackpot != 300 {
+		t.Fatalf("Settings = %+v, %v; want the jackpot of 300", got, err)
 	}
 	if err = casinos.CountSpin(ctx, 3, 1000); err != nil {
 		t.Fatal(err)

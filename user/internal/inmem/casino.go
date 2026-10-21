@@ -11,18 +11,20 @@ import (
 
 // CasinoRepository keeps the casino of the site in memory.
 type CasinoRepository struct {
-	mu     sync.RWMutex
-	casino user.Casino
-	bets   user.CasinoBets
-	rocket user.CasinoRocket
-	stats  user.CasinoStats
+	mu      sync.RWMutex
+	casino  user.Casino
+	bets    user.CasinoBets
+	rocket  user.CasinoRocket
+	jackpot user.Jackpot
+	stats   user.CasinoStats
 }
 
 func NewCasinoRepository() *CasinoRepository {
 	return &CasinoRepository{
-		casino: user.DefaultCasino(),
-		bets:   user.DefaultCasinoBets(),
-		rocket: user.DefaultCasinoRocket(),
+		casino:  user.DefaultCasino(),
+		bets:    user.DefaultCasinoBets(),
+		rocket:  user.DefaultCasinoRocket(),
+		jackpot: user.DefaultJackpot,
 	}
 }
 
@@ -112,7 +114,7 @@ func (r *CasinoRepository) Settings(ctx context.Context) (service.CasinoSettings
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	return service.CasinoSettings{Casino: r.casino, Bets: r.bets, Rocket: r.rocket, Stats: r.stats}, nil
+	return service.CasinoSettings{Casino: r.casino, Bets: r.bets, Rocket: r.rocket, Jackpot: r.jackpot, Stats: r.stats}, nil
 }
 
 func (r *CasinoRepository) Rocket(ctx context.Context) (user.CasinoRocket, error) {
@@ -135,6 +137,19 @@ func (r *CasinoRepository) SetRocket(ctx context.Context, rocket user.CasinoRock
 	defer r.mu.Unlock()
 
 	r.rocket = rocket
+
+	return nil
+}
+
+func (r *CasinoRepository) SetJackpot(ctx context.Context, jackpot user.Jackpot) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.jackpot = jackpot
 
 	return nil
 }

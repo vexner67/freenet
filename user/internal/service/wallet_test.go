@@ -215,8 +215,9 @@ func TestWalletService_Transfer(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// The sender pays the fee on top: 4 and 1.
 	left, err := w.wallets.Transfer(ctx, ann, bob, 4, "")
-	if err != nil || left != 6 || w.votes(t, ann) != 6 || w.votes(t, bob) != 4 {
+	if err != nil || left != 5 || w.votes(t, ann) != 5 || w.votes(t, bob) != 4 {
 		t.Fatalf("Transfer = %d, %v; ann %d, bob %d", left, err, w.votes(t, ann), w.votes(t, bob))
 	}
 	if len(w.notifier.sent) != 1 || w.notifier.sent[0].sender != ann || w.notifier.sent[0].recipient != bob || w.notifier.sent[0].gift == uuid.Nil {
@@ -229,7 +230,8 @@ func TestWalletService_Transfer(t *testing.T) {
 		votes    user.Votes
 		want     error
 	}{
-		{"more than there is", ann, bob, 7, user.ErrNotEnoughVotes},
+		{"more than there is", ann, bob, 6, user.ErrNotEnoughVotes},
+		{"not the fee", ann, bob, 5, user.ErrNotEnoughVotes},
 		{"with nothing", cat, bob, 1, user.ErrNotEnoughVotes},
 		{"to oneself", ann, ann, 1, user.ErrTransferSelf},
 		{"to nobody", ann, uuid.New(), 1, user.ErrNotFound},
@@ -368,14 +370,17 @@ func TestWalletService_Statement(t *testing.T) {
 	}
 
 	ops := page.Operations
-	if len(ops) != 2 || page.NextCursor != uuid.Nil || page.Income != 10 || page.Expense != 4 {
+	if len(ops) != 3 || page.NextCursor != uuid.Nil || page.Income != 10 || page.Expense != 5 {
 		t.Fatalf("Statement = %+v", page)
 	}
-	if ops[0].Kind != user.VoteTransfer || ops[0].Amount != -4 || ops[0].Balance != 6 || ops[0].PeerID != bob || ops[0].Note != "За пиццу" {
+	if ops[0].Kind != user.VoteTransfer || ops[0].Amount != -4 || ops[0].Balance != 5 || ops[0].PeerID != bob || ops[0].Note != "За пиццу" {
 		t.Fatalf("the transfer = %+v", ops[0])
 	}
-	if ops[1].Kind != user.VoteVoucher || ops[1].Amount != 10 || ops[1].Balance != 10 || ops[1].PeerID != uuid.Nil {
-		t.Fatalf("the voucher = %+v", ops[1])
+	if ops[1].Kind != user.VoteFee || ops[1].Amount != -1 || ops[1].Balance != 9 || ops[1].PeerID != bob {
+		t.Fatalf("the fee = %+v", ops[1])
+	}
+	if ops[2].Kind != user.VoteVoucher || ops[2].Amount != 10 || ops[2].Balance != 10 || ops[2].PeerID != uuid.Nil {
+		t.Fatalf("the voucher = %+v", ops[2])
 	}
 
 	// The recipient sees the transfer the other way.
@@ -393,12 +398,12 @@ func TestWalletService_Statement(t *testing.T) {
 		t.Fatalf("first page = %+v, %v", page, err)
 	}
 	page, err = w.wallets.Statement(ctx, ann, page.NextCursor, user.VoteFlowAll, 1, time.Now())
-	if err != nil || len(page.Operations) != 1 || page.Operations[0].Kind != user.VoteVoucher || page.NextCursor != uuid.Nil {
+	if err != nil || len(page.Operations) != 1 || page.Operations[0].Kind != user.VoteFee || page.NextCursor == uuid.Nil {
 		t.Fatalf("second page = %+v, %v", page, err)
 	}
-	for flow, want := range map[user.VoteFlow]user.VoteKind{user.VoteFlowIn: user.VoteVoucher, user.VoteFlowOut: user.VoteTransfer} {
+	for flow, want := range map[user.VoteFlow][]user.VoteKind{user.VoteFlowIn: {user.VoteVoucher}, user.VoteFlowOut: {user.VoteTransfer, user.VoteFee}} {
 		page, err = w.wallets.Statement(ctx, ann, uuid.Nil, flow, 0, time.Now())
-		if err != nil || len(page.Operations) != 1 || page.Operations[0].Kind != want {
+		if err != nil || len(page.Operations) != len(want) || page.Operations[0].Kind != want[0] {
 			t.Fatalf("flow %q = %+v, %v", flow, page, err)
 		}
 	}

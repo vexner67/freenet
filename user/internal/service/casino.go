@@ -28,8 +28,9 @@ type CasinoRepository interface {
 	// CountRocket adds rounds launched of "Ракетка", spent votes on them
 	// and won votes.
 	CountRocket(ctx context.Context, rounds, spent, won int64) error
-	// Settings are the casino, its bets and its stats at once: one read
-	// of the row.
+	SetJackpot(ctx context.Context, jackpot user.Jackpot) error
+	// Settings are the casino, its bets, its jackpot (user.DefaultJackpot
+	// until it is set) and its stats at once: one read of the row.
 	Settings(ctx context.Context) (CasinoSettings, error)
 }
 
@@ -54,10 +55,11 @@ type Wager struct {
 // CasinoSettings are the casino with its odds, its bets, its rocket and
 // how it does: for the administrators.
 type CasinoSettings struct {
-	Casino user.Casino
-	Bets   user.CasinoBets
-	Rocket user.CasinoRocket
-	Stats  user.CasinoStats
+	Casino  user.Casino
+	Bets    user.CasinoBets
+	Rocket  user.CasinoRocket
+	Jackpot user.Jackpot
+	Stats   user.CasinoStats
 }
 
 // CasinoService is the casino: people spend votes on a spin and win votes
@@ -115,6 +117,16 @@ func (s *CasinoService) SetCasino(ctx context.Context, adminID uuid.UUID, casino
 	}
 
 	return errs.Wrap("s.casinos.SetCasino", s.casinos.SetCasino(ctx, casino))
+}
+
+// SetJackpot changes the least win the casino shows as a jackpot;
+// user.ErrNotAdmin.
+func (s *CasinoService) SetJackpot(ctx context.Context, adminID uuid.UUID, jackpot user.Jackpot) error {
+	if err := checkAdmin(ctx, s.userRepo, s.admins, adminID); err != nil {
+		return errs.Wrap("checkAdmin", err)
+	}
+
+	return errs.Wrap("s.casinos.SetJackpot", s.casinos.SetJackpot(ctx, jackpot))
 }
 
 // Spin takes the price from userID and pays the prize, in one
