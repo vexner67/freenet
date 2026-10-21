@@ -80,7 +80,7 @@ func (f *fakeVotes) SetRate(_ context.Context, token string, kopecks int64) erro
 }
 
 func (f *fakeVotes) Treasury(context.Context) (model.Treasury, error) {
-	return model.Treasury{Votes: 26000, Reserve: 20000, Free: 5800, Minted: 1000, Outstanding: 200, Bonus: 10, MaxWin: 1000}, f.err
+	return model.Treasury{Votes: 26000, Reserve: 20000, Free: 5800, Minted: 1000, Outstanding: 200, Bonus: 10, MaxWin: 1000, Held: 7}, f.err
 }
 
 func (f *fakeVotes) Bonus(_ context.Context, token string) (model.Bonus, error) {
@@ -300,8 +300,9 @@ func TestTreasury(t *testing.T) {
 		Free   int64 `json:"free"`
 		Bonus  int64 `json:"bonus"`
 		MaxWin int64 `json:"maxWin"`
+		Held   int64 `json:"held"`
 	}](t, w)
-	if w.Code != http.StatusOK || got.Votes != 26000 || got.Free != 5800 || got.Bonus != 10 || got.MaxWin != 1000 {
+	if w.Code != http.StatusOK || got.Votes != 26000 || got.Free != 5800 || got.Bonus != 10 || got.MaxWin != 1000 || got.Held != 7 {
 		t.Fatalf("%d %+v", w.Code, got)
 	}
 }

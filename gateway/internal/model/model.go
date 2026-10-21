@@ -1281,10 +1281,10 @@ type Treasury struct {
 	Outstanding int64
 	Bonus       int64
 	MaxWin      int64
+	// Held is the votes on the accounts of the pages.
+	Held int64
 }
 
-// Bonus is the daily bonus of the caller: what it gives, whether it is
-// taken today and whether the caller may take it.
 // Transferred is what a transfer left the sender and the fee it took on
 // top of the votes.
 type Transferred struct {
@@ -1299,6 +1299,8 @@ type RatingRaised struct {
 	Rating  int
 }
 
+// Bonus is the daily bonus of the caller: what it gives, whether it is
+// taken today and whether the caller may take it.
 type Bonus struct {
 	Votes    int64
 	Taken    bool
