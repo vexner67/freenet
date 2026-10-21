@@ -250,6 +250,7 @@ const getCasinoSettingsQuery = `
 		rocket_most,
 		rocket_return,
 		rocket_top,
+		jackpot,
 		spins,
 		spent,
 		won,
@@ -269,6 +270,7 @@ func (r *CasinoRepository) Settings(ctx context.Context) (service.CasinoSettings
 		least, most int64
 		aim         []aimMultiplier
 		rocket      rocketRow
+		jackpot     int64
 		stats       user.CasinoStats
 	)
 
@@ -282,6 +284,7 @@ func (r *CasinoRepository) Settings(ctx context.Context) (service.CasinoSettings
 		&rocket.most,
 		&rocket.ret,
 		&rocket.top,
+		&jackpot,
 		&stats.Spins,
 		&stats.Spent,
 		&stats.Won,
@@ -293,7 +296,7 @@ func (r *CasinoRepository) Settings(ctx context.Context) (service.CasinoSettings
 		&stats.RocketWon,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return service.CasinoSettings{Casino: user.DefaultCasino(), Bets: user.DefaultCasinoBets(), Rocket: user.DefaultCasinoRocket()}, nil
+		return service.CasinoSettings{Casino: user.DefaultCasino(), Bets: user.DefaultCasinoBets(), Rocket: user.DefaultCasinoRocket(), Jackpot: user.DefaultJackpot}, nil
 	}
 	if err != nil {
 		return service.CasinoSettings{}, errs.Wrap("r.conn.QueryRow", err)
@@ -314,7 +317,7 @@ func (r *CasinoRepository) Settings(ctx context.Context) (service.CasinoSettings
 		return service.CasinoSettings{}, errs.Wrap("rocket.restore", err)
 	}
 
-	return service.CasinoSettings{Casino: casino, Bets: bets, Rocket: restored, Stats: stats}, nil
+	return service.CasinoSettings{Casino: casino, Bets: bets, Rocket: restored, Jackpot: user.Jackpot(jackpot), Stats: stats}, nil
 }
 
 // rocketRow is the rocket as the row keeps it.
@@ -384,6 +387,34 @@ func (r *CasinoRepository) SetRocket(ctx context.Context, rocket user.CasinoRock
 	_, err = r.conn(ctx).Exec(ctx, setCasinoRocketQuery, casino.Price(), prizes,
 		rocket.Least(), rocket.Most(), rocket.Return(), rocket.Top())
 	if err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	return nil
+}
+
+// Without the row the jackpot comes with the default casino, as SetBets
+// does.
+const setCasinoJackpotQuery = `
+	INSERT INTO casino (
+		price,
+		prizes,
+		jackpot
+	)
+	VALUES ($1, $2, $3)
+	ON CONFLICT (only_row) DO UPDATE
+	SET jackpot = EXCLUDED.jackpot
+`
+
+func (r *CasinoRepository) SetJackpot(ctx context.Context, jackpot user.Jackpot) error {
+	casino := user.DefaultCasino()
+
+	prizes, err := storedPrizes(casino)
+	if err != nil {
+		return errs.Wrap("storedPrizes", err)
+	}
+
+	if _, err = r.conn(ctx).Exec(ctx, setCasinoJackpotQuery, casino.Price(), prizes, jackpot.Int64()); err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
 

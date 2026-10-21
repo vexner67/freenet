@@ -85,6 +85,32 @@ func TestTreasury(t *testing.T) {
 		t.Fatalf("Credit past the treasury: %v", err)
 	}
 
+	// The fee and rating bought go into it, each a line of the statement.
+	before := treasury().Votes
+	if _, err = wallets.Spend(ctx, ann.ID(), 1, user.Entry(user.VoteFee, bob.ID(), "")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = wallets.Spend(ctx, ann.ID(), 3, user.Entry(user.VoteRating, uuid.Nil, "1")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = wallets.Spend(ctx, bob.ID(), 1, user.Entry(user.VoteTax, ann.ID(), "Котики")); err != nil {
+		t.Fatal(err)
+	}
+	if got := treasury().Votes; got != before+5 {
+		t.Fatalf("Treasury = %d; want %d", got, before+5)
+	}
+
+	// Rating is raised up to the limit.
+	if w, err := wallets.RaiseRating(ctx, ann.ID(), user.MaxRating-1); err != nil || w.Rating != user.MaxRating-1 {
+		t.Fatalf("RaiseRating = %+v, %v", w, err)
+	}
+	if _, err = wallets.RaiseRating(ctx, ann.ID(), 2); !errors.Is(err, user.ErrRatingLimit) {
+		t.Fatalf("RaiseRating past the limit: %v", err)
+	}
+	if _, err = wallets.RaiseRating(ctx, uuid.New(), 1); !errors.Is(err, user.ErrNotFound) {
+		t.Fatalf("RaiseRating of nobody: %v", err)
+	}
+
 	// A bonus once a day.
 	day := user.BonusDay(time.Now())
 	if last, err := wallets.LastBonus(ctx, ann.ID()); err != nil || !last.IsZero() {

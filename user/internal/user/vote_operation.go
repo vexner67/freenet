@@ -47,6 +47,14 @@ const (
 	// VoteDenomination: the balance after the denomination of 1 to
 	// 1 000 000, the first line of every statement kept.
 	VoteDenomination VoteKind = "denomination"
+	// VoteFee: the fee of a transfer, into the treasury; the peer is
+	// the recipient.
+	VoteFee VoteKind = "fee"
+	// VoteTax: the tax on a sale of a sticker pack, paid by its author
+	// into the treasury.
+	VoteTax VoteKind = "tax"
+	// VoteRating: rating bought; the note is how many percent.
+	VoteRating VoteKind = "rating"
 )
 
 // VoteEntry is what a change of votes is written down as: why, with whom

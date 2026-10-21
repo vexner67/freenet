@@ -125,7 +125,7 @@ func TestVouchersAndVotes(t *testing.T) {
 
 	// Transfers.
 	sent, err := s.client.TransferVotes(ann, &userv1.TransferVotesRequest{UserId: bobID, Votes: 4, Note: "За пиццу"})
-	if err != nil || sent.GetVotes() != 6 {
+	if err != nil || sent.GetVotes() != 5 || sent.GetFee() != 1 {
 		t.Fatalf("TransferVotes = %v, %v", sent, err)
 	}
 
@@ -161,7 +161,7 @@ func TestVouchersAndVotes(t *testing.T) {
 	}{
 		{"nothing", &userv1.TransferVotesRequest{UserId: bobID}, codes.InvalidArgument},
 		{"too much at once", &userv1.TransferVotesRequest{UserId: bobID, Votes: 100_000_001}, codes.InvalidArgument},
-		{"more than there is", &userv1.TransferVotesRequest{UserId: bobID, Votes: 7}, codes.FailedPrecondition},
+		{"more than there is", &userv1.TransferVotesRequest{UserId: bobID, Votes: 5}, codes.FailedPrecondition},
 		{"to oneself", &userv1.TransferVotesRequest{UserId: annID, Votes: 1}, codes.InvalidArgument},
 		{"to nobody", &userv1.TransferVotesRequest{UserId: uuid.NewString(), Votes: 1}, codes.NotFound},
 		{"to a wrong id", &userv1.TransferVotesRequest{UserId: "nope", Votes: 1}, codes.InvalidArgument},

@@ -171,8 +171,9 @@ func TestStickerService_Studio(t *testing.T) {
 	if err = svc.Add(ctx, buyer, p.ID()); err != nil {
 		t.Fatalf("Add bought: %v", err)
 	}
-	if u, _ := users.GetByID(ctx, author); u.Wallet().Votes != 3 {
-		t.Fatalf("the author has %d votes, want 3", u.Wallet().Votes)
+	// Of the 3 votes the treasury takes its tax of 1.
+	if u, _ := users.GetByID(ctx, author); u.Wallet().Votes != 2 {
+		t.Fatalf("the author has %d votes, want 2", u.Wallet().Votes)
 	}
 
 	authors, err := svc.Authors(ctx, []user.Sticker{user.StickerOf(a), "cat_hi", user.StickerOf(uuid.New())})

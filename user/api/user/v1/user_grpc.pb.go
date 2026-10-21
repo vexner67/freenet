@@ -81,6 +81,7 @@ const (
 	UserService_GetTreasury_FullMethodName        = "/user.v1.UserService/GetTreasury"
 	UserService_GetBonus_FullMethodName           = "/user.v1.UserService/GetBonus"
 	UserService_ClaimBonus_FullMethodName         = "/user.v1.UserService/ClaimBonus"
+	UserService_RaiseRating_FullMethodName        = "/user.v1.UserService/RaiseRating"
 	UserService_GetDecor_FullMethodName           = "/user.v1.UserService/GetDecor"
 	UserService_SetDecor_FullMethodName           = "/user.v1.UserService/SetDecor"
 	UserService_GetCasino_FullMethodName          = "/user.v1.UserService/GetCasino"
@@ -98,6 +99,7 @@ const (
 	UserService_SetBetEventOdds_FullMethodName    = "/user.v1.UserService/SetBetEventOdds"
 	UserService_StakeBet_FullMethodName           = "/user.v1.UserService/StakeBet"
 	UserService_SetCasinoRocket_FullMethodName    = "/user.v1.UserService/SetCasinoRocket"
+	UserService_SetCasinoJackpot_FullMethodName   = "/user.v1.UserService/SetCasinoJackpot"
 	UserService_LaunchRocket_FullMethodName       = "/user.v1.UserService/LaunchRocket"
 	UserService_GetRocket_FullMethodName          = "/user.v1.UserService/GetRocket"
 	UserService_CashRocket_FullMethodName         = "/user.v1.UserService/CashRocket"
@@ -268,6 +270,10 @@ type UserServiceClient interface {
 	GetTreasury(ctx context.Context, in *GetTreasuryRequest, opts ...grpc.CallOption) (*GetTreasuryResponse, error)
 	GetBonus(ctx context.Context, in *GetBonusRequest, opts ...grpc.CallOption) (*GetBonusResponse, error)
 	ClaimBonus(ctx context.Context, in *ClaimBonusRequest, opts ...grpc.CallOption) (*ClaimBonusResponse, error)
+	// RaiseRating sells the caller rating ("Повысить рейтинг" of openvk) for
+	// 3 votes a percent, into the treasury: FailedPrecondition "not enough
+	// votes" and "the rating cannot go above 1000 percent".
+	RaiseRating(ctx context.Context, in *RaiseRatingRequest, opts ...grpc.CallOption) (*RaiseRatingResponse, error)
 	// The New Year decoration of the site. GetDecor is public and says
 	// whether to wear it now; SetDecor is for the administrators
 	// (PermissionDenied for others).
@@ -320,6 +326,9 @@ type UserServiceClient interface {
 	// caller, FailedPrecondition "the rocket is over" for one cashed or
 	// cashing by itself). The crash point is told once a round is over.
 	SetCasinoRocket(ctx context.Context, in *SetCasinoRocketRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// SetCasinoJackpot changes the least win the site shows as a jackpot;
+	// for the administrators (PermissionDenied for others).
+	SetCasinoJackpot(ctx context.Context, in *SetCasinoJackpotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	LaunchRocket(ctx context.Context, in *LaunchRocketRequest, opts ...grpc.CallOption) (*RocketRound, error)
 	GetRocket(ctx context.Context, in *RocketRequest, opts ...grpc.CallOption) (*RocketRound, error)
 	CashRocket(ctx context.Context, in *RocketRequest, opts ...grpc.CallOption) (*RocketRound, error)
@@ -983,6 +992,16 @@ func (c *userServiceClient) ClaimBonus(ctx context.Context, in *ClaimBonusReques
 	return out, nil
 }
 
+func (c *userServiceClient) RaiseRating(ctx context.Context, in *RaiseRatingRequest, opts ...grpc.CallOption) (*RaiseRatingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RaiseRatingResponse)
+	err := c.cc.Invoke(ctx, UserService_RaiseRating_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) GetDecor(ctx context.Context, in *GetDecorRequest, opts ...grpc.CallOption) (*GetDecorResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetDecorResponse)
@@ -1147,6 +1166,16 @@ func (c *userServiceClient) SetCasinoRocket(ctx context.Context, in *SetCasinoRo
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, UserService_SetCasinoRocket_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SetCasinoJackpot(ctx context.Context, in *SetCasinoJackpotRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetCasinoJackpot_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1465,6 +1494,10 @@ type UserServiceServer interface {
 	GetTreasury(context.Context, *GetTreasuryRequest) (*GetTreasuryResponse, error)
 	GetBonus(context.Context, *GetBonusRequest) (*GetBonusResponse, error)
 	ClaimBonus(context.Context, *ClaimBonusRequest) (*ClaimBonusResponse, error)
+	// RaiseRating sells the caller rating ("Повысить рейтинг" of openvk) for
+	// 3 votes a percent, into the treasury: FailedPrecondition "not enough
+	// votes" and "the rating cannot go above 1000 percent".
+	RaiseRating(context.Context, *RaiseRatingRequest) (*RaiseRatingResponse, error)
 	// The New Year decoration of the site. GetDecor is public and says
 	// whether to wear it now; SetDecor is for the administrators
 	// (PermissionDenied for others).
@@ -1517,6 +1550,9 @@ type UserServiceServer interface {
 	// caller, FailedPrecondition "the rocket is over" for one cashed or
 	// cashing by itself). The crash point is told once a round is over.
 	SetCasinoRocket(context.Context, *SetCasinoRocketRequest) (*emptypb.Empty, error)
+	// SetCasinoJackpot changes the least win the site shows as a jackpot;
+	// for the administrators (PermissionDenied for others).
+	SetCasinoJackpot(context.Context, *SetCasinoJackpotRequest) (*emptypb.Empty, error)
 	LaunchRocket(context.Context, *LaunchRocketRequest) (*RocketRound, error)
 	GetRocket(context.Context, *RocketRequest) (*RocketRound, error)
 	CashRocket(context.Context, *RocketRequest) (*RocketRound, error)
@@ -1753,6 +1789,9 @@ func (UnimplementedUserServiceServer) GetBonus(context.Context, *GetBonusRequest
 func (UnimplementedUserServiceServer) ClaimBonus(context.Context, *ClaimBonusRequest) (*ClaimBonusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ClaimBonus not implemented")
 }
+func (UnimplementedUserServiceServer) RaiseRating(context.Context, *RaiseRatingRequest) (*RaiseRatingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RaiseRating not implemented")
+}
 func (UnimplementedUserServiceServer) GetDecor(context.Context, *GetDecorRequest) (*GetDecorResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDecor not implemented")
 }
@@ -1803,6 +1842,9 @@ func (UnimplementedUserServiceServer) StakeBet(context.Context, *StakeBetRequest
 }
 func (UnimplementedUserServiceServer) SetCasinoRocket(context.Context, *SetCasinoRocketRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetCasinoRocket not implemented")
+}
+func (UnimplementedUserServiceServer) SetCasinoJackpot(context.Context, *SetCasinoJackpotRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetCasinoJackpot not implemented")
 }
 func (UnimplementedUserServiceServer) LaunchRocket(context.Context, *LaunchRocketRequest) (*RocketRound, error) {
 	return nil, status.Error(codes.Unimplemented, "method LaunchRocket not implemented")
@@ -2971,6 +3013,24 @@ func _UserService_ClaimBonus_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_RaiseRating_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RaiseRatingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).RaiseRating(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_RaiseRating_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).RaiseRating(ctx, req.(*RaiseRatingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetDecor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetDecorRequest)
 	if err := dec(in); err != nil {
@@ -3273,6 +3333,24 @@ func _UserService_SetCasinoRocket_Handler(srv interface{}, ctx context.Context, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).SetCasinoRocket(ctx, req.(*SetCasinoRocketRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SetCasinoJackpot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetCasinoJackpotRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetCasinoJackpot(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetCasinoJackpot_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetCasinoJackpot(ctx, req.(*SetCasinoJackpotRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3817,6 +3895,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserService_ClaimBonus_Handler,
 		},
 		{
+			MethodName: "RaiseRating",
+			Handler:    _UserService_RaiseRating_Handler,
+		},
+		{
 			MethodName: "GetDecor",
 			Handler:    _UserService_GetDecor_Handler,
 		},
@@ -3883,6 +3965,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetCasinoRocket",
 			Handler:    _UserService_SetCasinoRocket_Handler,
+		},
+		{
+			MethodName: "SetCasinoJackpot",
+			Handler:    _UserService_SetCasinoJackpot_Handler,
 		},
 		{
 			MethodName: "LaunchRocket",

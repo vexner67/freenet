@@ -94,3 +94,53 @@ func TestWalletService_VoucherCover(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+// Rating is bought for votes, into the treasury, up to user.MaxRating.
+func TestWalletService_RaiseRating(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	w := newWalletWorld(t)
+	ann := w.person(t, "ann")
+
+	five, err := user.NewRatingRaise(5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = w.wallets.RaiseRating(ctx, ann, five); !errors.Is(err, user.ErrNotEnoughVotes) {
+		t.Fatalf("RaiseRating without votes: %v", err)
+	}
+	if _, err = w.users.Credit(ctx, ann, 40, user.MaxRating-10, user.VoteEntry{}); err != nil {
+		t.Fatal(err)
+	}
+
+	before, err := w.wallets.Treasury(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wallet, err := w.wallets.RaiseRating(ctx, ann, five)
+	if err != nil || wallet.Votes != 40-five.Cost() || wallet.Rating != user.MaxRating-5 {
+		t.Fatalf("RaiseRating = %+v, %v", wallet, err)
+	}
+	if after, err := w.wallets.Treasury(ctx); err != nil || after.Votes != before.Votes+five.Cost() {
+		t.Fatalf("Treasury = %+v, %v; before %+v", after, err, before)
+	}
+
+	ops, err := w.wallets.Statement(ctx, ann, uuid.Nil, user.VoteFlowAll, 1, time.Now())
+	if err != nil || len(ops.Operations) != 1 || ops.Operations[0].Kind != user.VoteRating || ops.Operations[0].Note != "5" {
+		t.Fatalf("Statement = %+v, %v", ops, err)
+	}
+
+	// Past the limit nothing is bought.
+	six, err := user.NewRatingRaise(6)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = w.wallets.RaiseRating(ctx, ann, six); !errors.Is(err, user.ErrRatingLimit) {
+		t.Fatalf("RaiseRating past the limit: %v", err)
+	}
+	if got := w.votes(t, ann); got != 40-five.Cost() {
+		t.Fatalf("after the refused raise ann has %d votes", got)
+	}
+}

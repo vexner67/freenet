@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,6 +30,9 @@ type WalletRepository interface {
 	// Treasury is the treasury now; in a transaction it stays so until
 	// the end, as every change of votes waits for it.
 	Treasury(ctx context.Context) (user.Treasury, error)
+	// RaiseRating adds percent to the rating of userID and returns the
+	// wallet; user.ErrRatingLimit above user.MaxRating, user.ErrNotFound.
+	RaiseRating(ctx context.Context, userID uuid.UUID, percent int) (user.Wallet, error)
 }
 
 // BonusRepository keeps the daily bonuses and who has minted into the
@@ -175,9 +179,10 @@ func (s *WalletService) IsAdmin(u *user.User) bool {
 }
 
 // Transfer hands votes of senderID to recipientID, who hears of it, and
-// returns what the sender has left. user.ErrNotFound for an unknown
-// recipient, user.ErrTransferSelf, user.ErrDeactivated,
-// user.ErrTransferRefused and user.ErrNotEnoughVotes.
+// returns what the sender has left: the sender pays user.TransferFee on
+// top, into the treasury. user.ErrNotFound for an unknown recipient,
+// user.ErrTransferSelf, user.ErrDeactivated, user.ErrTransferRefused and
+// user.ErrNotEnoughVotes for votes that do not cover the fee as well.
 // The note goes with it to the statements of both.
 func (s *WalletService) Transfer(ctx context.Context, senderID, recipientID uuid.UUID, votes user.Votes, note user.TransferNote) (int64, error) {
 	recipient, ties, err := s.permissions.ties(ctx, senderID, recipientID)
@@ -198,6 +203,11 @@ func (s *WalletService) Transfer(ctx context.Context, senderID, recipientID uuid
 	var left int64
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if _, err = s.wallets.Spend(ctx, senderID, user.TransferFee(votes.Int64()),
+			user.Entry(user.VoteFee, recipientID, "")); err != nil {
+			return errs.Wrap("s.wallets.Spend", err)
+		}
+
 		if left, err = s.wallets.Move(ctx, senderID, recipientID, votes.Int64(),
 			user.Entry(user.VoteTransfer, uuid.Nil, note.String())); err != nil {
 			return errs.Wrap("s.wallets.Move", err)
@@ -379,6 +389,42 @@ func (s *WalletService) ClaimBonus(ctx context.Context, userID uuid.UUID, now ti
 	}
 
 	return claimed, nil
+}
+
+// RaiseRating sells userID the percent of rating ("Повысить рейтинг" of
+// openvk) for user.RatingPrice a percent, into the treasury, and returns
+// the wallet after it; user.ErrNotEnoughVotes, user.ErrRatingLimit.
+func (s *WalletService) RaiseRating(ctx context.Context, userID uuid.UUID, raise user.RatingRaise) (user.Wallet, error) {
+	u, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return user.Wallet{}, errs.Wrap("s.userRepo.GetByID", err)
+	}
+
+	// Refused before the votes go; the statement that raises the rating
+	// checks it again.
+	if u.Wallet().Rating+raise.Int() > user.MaxRating {
+		return user.Wallet{}, user.ErrRatingLimit
+	}
+
+	var wallet user.Wallet
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		// The rating goes after the votes: refused, it leaves nothing
+		// raised even where no transaction rolls back (inmem).
+		if _, err := s.wallets.Spend(ctx, userID, raise.Cost(),
+			user.Entry(user.VoteRating, uuid.Nil, strconv.Itoa(raise.Int()))); err != nil {
+			return errs.Wrap("s.wallets.Spend", err)
+		}
+
+		wallet, err = s.wallets.RaiseRating(ctx, userID, raise.Int())
+
+		return errs.Wrap("s.wallets.RaiseRating", err)
+	})
+	if err != nil {
+		return user.Wallet{}, errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return wallet, nil
 }
 
 // ListVouchers pages every voucher, newest first; user.ErrNotAdmin.
