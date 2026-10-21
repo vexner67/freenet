@@ -43,7 +43,7 @@
         <div id="account" hidden>
           <div class="finance">
             <div class="finance-about">
-              <p>Голоса — валюта Freenet: ими оплачиваются платные подарки и наборы стикеров. Получить их можно, активировав ваучер, или от другого человека.</p>
+              <p>Голоса — валюта Freenet: ими оплачиваются платные подарки и наборы стикеров. Получить их можно ежедневным бонусом, активировав ваучер, или от другого человека.</p>
               <p>Ваучер может повысить и рейтинг: он прибавляется к заполненности страницы.</p>
               <p class="finance-rate" id="vote-rate" hidden></p>
               <p>Испытать удачу и выиграть голоса можно в <a href="/casino">Азартных играх</a>.</p>
@@ -59,6 +59,10 @@
             <a class="button" href="/votes?act=transfer">Перевести</a>
             <a class="button" href="/votes?act=top-up">Пополнить</a>
             <a class="button" href="/votes?act=receive">Получить</a>
+          </div>
+          <div class="bank-bonus" id="bonus" hidden>
+            <div><b>Ежедневный бонус</b><br><span id="bonus-text"></span></div>
+            <button class="button" type="button" id="bonus-claim" hidden></button>
           </div>
           <div class="bank-totals">
             <div><span>Поступило за 30 дней</span><b class="bank-in" id="income"></b></div>

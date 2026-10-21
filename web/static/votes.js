@@ -19,6 +19,7 @@ const error = $('error');
 // signed in is known.
 const statement = act === 'account' ? started(api.voteStatement('', flow)) : null;
 const rate = act === 'account' ? api.voteRate().then((r) => r.kopecks, () => 0) : Promise.resolve(0);
+const bonus = act === 'account' ? started(api.bonus()) : null;
 
 // say shows the notice above the tab: a bold line and what follows it.
 function say(title, ...rest) {
@@ -56,12 +57,46 @@ function operationRow(op, me) {
       el('div', { className: 'bank-op-balance', textContent: tr('остаток {0}', votesAmount(op.balance)) })));
 }
 
+// showBonus is the daily bonus: a button while it waits for the caller
+// today, else when the next one comes or why there is none.
+function showBonus(state, me, kopecks) {
+  const claim = $('bonus-claim');
+
+  $('bonus-text').textContent = !state.eligible
+    ? tr('Бонус получают страницы старше недели с заполненной анкетой.')
+    : state.taken
+      ? tr('Сегодня вы его уже получили. Следующий — завтра.')
+      : tr('Каждый день — {0} из Казны Freenet.', votesAmount(state.votes));
+  claim.textContent = tr('Получить {0}', votesAmount(state.votes));
+  claim.hidden = !state.eligible || state.taken;
+  $('bonus').hidden = false;
+
+  claim.onclick = async () => {
+    hideError(error);
+    claim.disabled = true;
+    try {
+      const got = await api.claimBonus();
+      me.votes = got.balance;
+      showBalance(got.balance, kopecks());
+      showBonus({ ...state, taken: true }, me, kopecks);
+      say(tr('Бонус получен'), tr('Вам начислено: {0}.', votesAmount(got.votes)));
+    } catch (e) {
+      showError(error, e);
+    } finally {
+      claim.disabled = false;
+    }
+  };
+}
+
 async function initAccount(me) {
   showBalance(me.votes ?? 0, 0);
+  let rated = 0;
+  bonus.then((state) => showBonus(state, me, () => rated), () => {});
   $('flow-' + (flow || 'all')).classList.add('active');
 
   rate.then((kopecks) => {
     if (!kopecks) return;
+    rated = kopecks;
     $('vote-rate').textContent = tr('Курс: {0}.', voteRate(kopecks));
     $('vote-rate').hidden = false;
     showBalance(me.votes ?? 0, kopecks);

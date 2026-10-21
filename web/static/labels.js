@@ -1302,6 +1302,10 @@ export function voteOperation(op, myId) {
       return { title: out ? tr('Казино: ставка в «Прицеле»') : tr('Казино: выигрыш в «Прицеле»'), role: '' };
     case 'rocket':
       return { title: out ? tr('Казино: ставка в «Ракетке»') : tr('Казино: выигрыш в «Ракетке»'), role: '' };
+    case 'bonus':
+      return { title: tr('Ежедневный бонус'), role: '' };
+    case 'denomination':
+      return { title: tr('Деноминация 1 : 1 000 000'), role: '' };
     case 'stake':
       return { title: out ? tr('Ставка на событие «{0}»', note) : tr('Выплата по событию «{0}»', note), role: '' };
     default:
@@ -1686,10 +1690,22 @@ const errorTexts = {
   'gift caption is too long': tr('Сообщение слишком длинное: не больше 250 символов.'),
   'gift not found': tr('Подарок не найден.'),
   'not enough votes': tr('У вас недостаточно голосов.'),
-  'a voucher with votes has a limited number of usages': tr('Ваучер с голосами действует ограниченное число раз.'),
   'a spin must cost from 1 to 10000 votes': tr('Прокрутка должна стоить от 1 до 10 000 голосов.'),
   'the casino must have from 2 to 12 prizes': tr('В казино должно быть от 2 до 12 призов.'),
-  'a prize must be from 0 to 1000000 votes': tr('Приз — от 0 до 1 000 000 голосов.'),
+  'a prize must be from 0 to 1000 votes': tr('Приз — от 0 до 1000 голосов.'),
+  'the casino gives back at most 85 percent of what is spent': tr('Казино возвращает не больше 85 % потраченного.'),
+  'a multiplier gives back at most 85 percent: the multiplier times its chance': tr('Множитель возвращает не больше 85 %: множитель, умноженный на шанс.'),
+  'the biggest bet on the biggest multiplier wins at most 1000 votes': tr('Наибольшая ставка на наибольший множитель выигрывает не больше 1000 голосов.'),
+  'the biggest bet at the top of the rocket wins at most 1000 votes': tr('Наибольшая ставка на наибольшем множителе ракеты выигрывает не больше 1000 голосов.'),
+  'the treasury is empty': tr('В Казне не осталось голосов.'),
+  'the treasury cannot pay such a win now': tr('Казна сейчас не может выплатить такой выигрыш. Поставьте меньше.'),
+  'the treasury cannot cover this voucher': tr('В Казне не хватает свободных голосов на этот ваучер.'),
+  'the bonus is taken today': tr('Сегодня вы уже получили бонус.'),
+  'the bonus is for pages a week old with a filled profile': tr('Бонус получают страницы старше недели с заполненной анкетой.'),
+  'a voucher with votes has a limited number of usages': tr('Ваучер с голосами действует ограниченное число раз.'),
+  'the odds pay too much: the sum of 1/odds must be at least 1.05': tr('Коэффициенты слишком велики: сумма 1/коэффициент должна быть не меньше 1,05.'),
+  'one person stakes at most 300 votes on an event': tr('На одно событие можно поставить не больше 300 голосов.'),
+  'the outcome takes no more stakes: its payouts reached 3000 votes': tr('На этот исход больше не принимают ставок.'),
   'the weight of a prize must be from 0 to 1000000': tr('Вес приза — от 0 до 1 000 000.'),
   'at least one prize must have a weight': tr('Хотя бы у одного приза вес должен быть больше нуля.'),
   'the bet is out of the limits of the casino': tr('Такую ставку казино не принимает.'),
@@ -1714,7 +1730,7 @@ const errorTexts = {
   'rocket not found': tr('Полёт не найден.'),
   'the rocket is over': tr('Этот полёт уже закончился.'),
   'rocket bets must be from 1 to 100000000 votes, the least not above the most': tr('Ставки — от 1 до 100 000 000 голосов, наименьшая не больше наибольшей.'),
-  'the return of the rocket must be from 0.01 to 100 percent': tr('Отдача ракеты — от 0,01 до 100 %.'),
+  'the return of the rocket must be from 0.01 to 85 percent': tr('Отдача ракеты — от 0,01 до 85 %.'),
   'the top of the rocket must be from 2 to 10000': tr('Наибольший множитель — от ×2 до ×10 000.'),
   'the event is not over yet': tr('Сначала подведите итог события или отмените его.'),
   'unknown outcome': tr('Такого исхода нет.'),
