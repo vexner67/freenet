@@ -206,6 +206,7 @@ func (a *App) build(cfg config.Config) error {
 			Ads:         service.NewAdService(store.users, store.ads, store.ads, store.tx, admins),
 			Decors:      service.NewDecorService(store.users, store.decor, admins),
 			Casinos:     service.NewCasinoService(store.users, store.casino, store.wallets, store.tx, admins),
+			Rockets:     service.NewRocketService(store.users, store.casino, store.rockets, store.wallets, store.tx, admins),
 			BetEvents:   service.NewBetEventService(store.users, store.betEvents, store.wallets, store.tx, admins),
 			Permissions: permissions,
 			Presence:    a.presence,
@@ -247,6 +248,9 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		userv1.UserService_SpinCasino_FullMethodName: cfg.CasinoLimits,
 		userv1.UserService_BetCasino_FullMethodName:  cfg.CasinoLimits,
 		userv1.UserService_StakeBet_FullMethodName:   cfg.CasinoLimits,
+		// A round is launched and cashed once: both counted apart.
+		userv1.UserService_LaunchRocket_FullMethodName: cfg.CasinoLimits,
+		userv1.UserService_CashRocket_FullMethodName:   cfg.CasinoLimits,
 	}
 }
 
@@ -308,6 +312,8 @@ type storage struct {
 	decor service.DecorRepository
 	// casino is the casino of the site.
 	casino service.CasinoRepository
+	// rockets are the rounds of "Ракетка".
+	rockets service.RocketRepository
 	// betEvents are the events people stake on.
 	betEvents service.BetEventRepository
 	// ads are the advertising of the global feed, and how it does.
@@ -339,6 +345,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			rates:        inmem.NewVoteRateRepository(),
 			decor:        inmem.NewDecorRepository(),
 			casino:       inmem.NewCasinoRepository(),
+			rockets:      inmem.NewRocketRepository(),
 			betEvents:    inmem.NewBetEventRepository(),
 			ads:          inmem.NewAdRepository(),
 			tx:           inmem.TxManager{},
@@ -384,6 +391,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		rates:        postgres.NewVoteRateRepository(a.pool),
 		decor:        postgres.NewDecorRepository(a.pool),
 		casino:       postgres.NewCasinoRepository(a.pool),
+		rockets:      postgres.NewRocketRepository(a.pool),
 		betEvents:    postgres.NewBetEventRepository(a.pool),
 		ads:          postgres.NewAdRepository(a.pool),
 		tx:           pgpool.NewTxManager(a.pool),

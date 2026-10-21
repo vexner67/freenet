@@ -94,6 +94,10 @@ const (
 	UserService_DeleteBetEvent_FullMethodName     = "/user.v1.UserService/DeleteBetEvent"
 	UserService_SetBetEventOdds_FullMethodName    = "/user.v1.UserService/SetBetEventOdds"
 	UserService_StakeBet_FullMethodName           = "/user.v1.UserService/StakeBet"
+	UserService_SetCasinoRocket_FullMethodName    = "/user.v1.UserService/SetCasinoRocket"
+	UserService_LaunchRocket_FullMethodName       = "/user.v1.UserService/LaunchRocket"
+	UserService_GetRocket_FullMethodName          = "/user.v1.UserService/GetRocket"
+	UserService_CashRocket_FullMethodName         = "/user.v1.UserService/CashRocket"
 	UserService_SetVerified_FullMethodName        = "/user.v1.UserService/SetVerified"
 	UserService_SetAlert_FullMethodName           = "/user.v1.UserService/SetAlert"
 	UserService_ListAds_FullMethodName            = "/user.v1.UserService/ListAds"
@@ -294,6 +298,21 @@ type UserServiceClient interface {
 	DeleteBetEvent(ctx context.Context, in *BetEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SetBetEventOdds(ctx context.Context, in *SetBetEventOddsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	StakeBet(ctx context.Context, in *StakeBetRequest, opts ...grpc.CallOption) (*StakeBetResponse, error)
+	// "Ракетка" of the casino: a bet launches a rocket with a multiplier
+	// growing from ×1, and the bet cashed before the rocket explodes comes
+	// back multiplied. GetCasino tells the limits and the top, not the
+	// return; SetCasinoRocket is for the administrators. LaunchRocket takes
+	// the bet and, cashing by itself (auto), pays it at once (InvalidArgument
+	// for a bet out of the limits or an auto out of 1.01 to the top,
+	// FailedPrecondition "not enough votes"); GetRocket tells where a round
+	// of the caller is, CashRocket takes it back at the multiplier of now —
+	// nothing when the rocket has exploded (NotFound for a round not of the
+	// caller, FailedPrecondition "the rocket is over" for one cashed or
+	// cashing by itself). The crash point is told once a round is over.
+	SetCasinoRocket(ctx context.Context, in *SetCasinoRocketRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	LaunchRocket(ctx context.Context, in *LaunchRocketRequest, opts ...grpc.CallOption) (*RocketRound, error)
+	GetRocket(ctx context.Context, in *RocketRequest, opts ...grpc.CallOption) (*RocketRound, error)
+	CashRocket(ctx context.Context, in *RocketRequest, opts ...grpc.CallOption) (*RocketRound, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
@@ -1084,6 +1103,46 @@ func (c *userServiceClient) StakeBet(ctx context.Context, in *StakeBetRequest, o
 	return out, nil
 }
 
+func (c *userServiceClient) SetCasinoRocket(ctx context.Context, in *SetCasinoRocketRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetCasinoRocket_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) LaunchRocket(ctx context.Context, in *LaunchRocketRequest, opts ...grpc.CallOption) (*RocketRound, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RocketRound)
+	err := c.cc.Invoke(ctx, UserService_LaunchRocket_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetRocket(ctx context.Context, in *RocketRequest, opts ...grpc.CallOption) (*RocketRound, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RocketRound)
+	err := c.cc.Invoke(ctx, UserService_GetRocket_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CashRocket(ctx context.Context, in *RocketRequest, opts ...grpc.CallOption) (*RocketRound, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RocketRound)
+	err := c.cc.Invoke(ctx, UserService_CashRocket_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) SetVerified(ctx context.Context, in *SetVerifiedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -1399,6 +1458,21 @@ type UserServiceServer interface {
 	DeleteBetEvent(context.Context, *BetEventRequest) (*emptypb.Empty, error)
 	SetBetEventOdds(context.Context, *SetBetEventOddsRequest) (*emptypb.Empty, error)
 	StakeBet(context.Context, *StakeBetRequest) (*StakeBetResponse, error)
+	// "Ракетка" of the casino: a bet launches a rocket with a multiplier
+	// growing from ×1, and the bet cashed before the rocket explodes comes
+	// back multiplied. GetCasino tells the limits and the top, not the
+	// return; SetCasinoRocket is for the administrators. LaunchRocket takes
+	// the bet and, cashing by itself (auto), pays it at once (InvalidArgument
+	// for a bet out of the limits or an auto out of 1.01 to the top,
+	// FailedPrecondition "not enough votes"); GetRocket tells where a round
+	// of the caller is, CashRocket takes it back at the multiplier of now —
+	// nothing when the rocket has exploded (NotFound for a round not of the
+	// caller, FailedPrecondition "the rocket is over" for one cashed or
+	// cashing by itself). The crash point is told once a round is over.
+	SetCasinoRocket(context.Context, *SetCasinoRocketRequest) (*emptypb.Empty, error)
+	LaunchRocket(context.Context, *LaunchRocketRequest) (*RocketRound, error)
+	GetRocket(context.Context, *RocketRequest) (*RocketRound, error)
+	CashRocket(context.Context, *RocketRequest) (*RocketRound, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
@@ -1670,6 +1744,18 @@ func (UnimplementedUserServiceServer) SetBetEventOdds(context.Context, *SetBetEv
 }
 func (UnimplementedUserServiceServer) StakeBet(context.Context, *StakeBetRequest) (*StakeBetResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method StakeBet not implemented")
+}
+func (UnimplementedUserServiceServer) SetCasinoRocket(context.Context, *SetCasinoRocketRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetCasinoRocket not implemented")
+}
+func (UnimplementedUserServiceServer) LaunchRocket(context.Context, *LaunchRocketRequest) (*RocketRound, error) {
+	return nil, status.Error(codes.Unimplemented, "method LaunchRocket not implemented")
+}
+func (UnimplementedUserServiceServer) GetRocket(context.Context, *RocketRequest) (*RocketRound, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRocket not implemented")
+}
+func (UnimplementedUserServiceServer) CashRocket(context.Context, *RocketRequest) (*RocketRound, error) {
+	return nil, status.Error(codes.Unimplemented, "method CashRocket not implemented")
 }
 func (UnimplementedUserServiceServer) SetVerified(context.Context, *SetVerifiedRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetVerified not implemented")
@@ -3063,6 +3149,78 @@ func _UserService_StakeBet_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_SetCasinoRocket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetCasinoRocketRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetCasinoRocket(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetCasinoRocket_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetCasinoRocket(ctx, req.(*SetCasinoRocketRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_LaunchRocket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LaunchRocketRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).LaunchRocket(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_LaunchRocket_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).LaunchRocket(ctx, req.(*LaunchRocketRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetRocket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RocketRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetRocket(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetRocket_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetRocket(ctx, req.(*RocketRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CashRocket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RocketRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CashRocket(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CashRocket_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CashRocket(ctx, req.(*RocketRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_SetVerified_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetVerifiedRequest)
 	if err := dec(in); err != nil {
@@ -3599,6 +3757,22 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StakeBet",
 			Handler:    _UserService_StakeBet_Handler,
+		},
+		{
+			MethodName: "SetCasinoRocket",
+			Handler:    _UserService_SetCasinoRocket_Handler,
+		},
+		{
+			MethodName: "LaunchRocket",
+			Handler:    _UserService_LaunchRocket_Handler,
+		},
+		{
+			MethodName: "GetRocket",
+			Handler:    _UserService_GetRocket_Handler,
+		},
+		{
+			MethodName: "CashRocket",
+			Handler:    _UserService_CashRocket_Handler,
 		},
 		{
 			MethodName: "SetVerified",

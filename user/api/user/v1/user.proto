@@ -203,6 +203,21 @@ service UserService {
   rpc DeleteBetEvent(BetEventRequest) returns (google.protobuf.Empty);
   rpc SetBetEventOdds(SetBetEventOddsRequest) returns (google.protobuf.Empty);
   rpc StakeBet(StakeBetRequest) returns (StakeBetResponse);
+  // "Ракетка" of the casino: a bet launches a rocket with a multiplier
+  // growing from ×1, and the bet cashed before the rocket explodes comes
+  // back multiplied. GetCasino tells the limits and the top, not the
+  // return; SetCasinoRocket is for the administrators. LaunchRocket takes
+  // the bet and, cashing by itself (auto), pays it at once (InvalidArgument
+  // for a bet out of the limits or an auto out of 1.01 to the top,
+  // FailedPrecondition "not enough votes"); GetRocket tells where a round
+  // of the caller is, CashRocket takes it back at the multiplier of now —
+  // nothing when the rocket has exploded (NotFound for a round not of the
+  // caller, FailedPrecondition "the rocket is over" for one cashed or
+  // cashing by itself). The crash point is told once a round is over.
+  rpc SetCasinoRocket(SetCasinoRocketRequest) returns (google.protobuf.Empty);
+  rpc LaunchRocket(LaunchRocketRequest) returns (RocketRound);
+  rpc GetRocket(RocketRequest) returns (RocketRound);
+  rpc CashRocket(RocketRequest) returns (RocketRound);
 
   // Requires an access token of an administrator of the site
   // (PermissionDenied otherwise): gives a page the checkmark of a
@@ -1186,6 +1201,8 @@ message GetCasinoResponse {
   reserved 5, 6;
   reserved "bet_return", "multipliers";
   repeated AimMultiplier aim = 7;
+  // "Ракетка": its limits and its top, without the return.
+  CasinoRocket rocket = 8;
 }
 
 // AimMultiplier is a multiplier of the bets, in hundredths (200 — ×2), and
@@ -1214,6 +1231,62 @@ message GetCasinoSettingsResponse {
   int64 bet_won = 11;
   // The multipliers a bet may take, with their chances.
   repeated AimMultiplier aim = 13;
+  // "Ракетка" with its return, and how its rounds do: rounds launched,
+  // votes bet and won.
+  CasinoRocket rocket = 14;
+  int64 rockets = 15;
+  int64 rocket_spent = 16;
+  int64 rocket_won = 17;
+}
+
+// CasinoRocket is "Ракетка": bets from least to most votes, the return in
+// hundredths of a percent (9500 — 95%; 0 in GetCasino, which does not tell
+// it) and the top multiplier in hundredths (100000 — ×1000).
+message CasinoRocket {
+  int64 least = 1;
+  int64 most = 2;
+  int32 return = 3;
+  int32 top = 4;
+}
+
+message SetCasinoRocketRequest {
+  CasinoRocket rocket = 1;
+}
+
+message LaunchRocketRequest {
+  int64 amount = 1;
+  // The multiplier to cash at by itself, in hundredths; 0 — by hand.
+  int32 auto = 2;
+}
+
+message RocketRequest {
+  string rocket_id = 1;
+}
+
+enum RocketState {
+  ROCKET_STATE_UNSPECIFIED = 0;
+  ROCKET_STATE_FLYING = 1;
+  ROCKET_STATE_CASHED = 2;
+  ROCKET_STATE_CRASHED = 3;
+}
+
+// RocketRound is a round of "Ракетка" as its player sees it.
+message RocketRound {
+  string id = 1;
+  int64 amount = 2;
+  // The multiplier the round cashes at by itself, 0 — by hand.
+  int32 auto = 3;
+  RocketState state = 4;
+  // The multiplier the round was cashed at and what it paid; 0 — nothing.
+  int32 cashed = 5;
+  int64 payout = 6;
+  // The crash point, in hundredths, once the round is over; 0 while it
+  // flies.
+  int32 crash = 7;
+  // How long the rocket has flown, by the clock of the server.
+  int64 elapsed_ms = 8;
+  // The balance after the launch or the cash; 0 from GetRocket.
+  int64 balance = 9;
 }
 
 message SetCasinoRequest {

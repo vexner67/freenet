@@ -40,6 +40,8 @@ const (
 	VoteAim VoteKind = "aim"
 	// VoteStake: a stake on an event and what the event paid back.
 	VoteStake VoteKind = "stake"
+	// VoteRocket: a bet of "Ракетка" and its win.
+	VoteRocket VoteKind = "rocket"
 )
 
 // VoteEntry is what a change of votes is written down as: why, with whom

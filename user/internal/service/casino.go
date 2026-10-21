@@ -22,6 +22,12 @@ type CasinoRepository interface {
 	SetBets(ctx context.Context, bets user.CasinoBets) error
 	// CountBet adds a bet of spent votes that won won.
 	CountBet(ctx context.Context, spent, won int64) error
+	// Rocket is user.DefaultCasinoRocket until it is set.
+	Rocket(ctx context.Context) (user.CasinoRocket, error)
+	SetRocket(ctx context.Context, rocket user.CasinoRocket) error
+	// CountRocket adds rounds launched of "Ракетка", spent votes on them
+	// and won votes.
+	CountRocket(ctx context.Context, rounds, spent, won int64) error
 	// Settings are the casino, its bets and its stats at once: one read
 	// of the row.
 	Settings(ctx context.Context) (CasinoSettings, error)
@@ -45,11 +51,12 @@ type Wager struct {
 	Balance int64
 }
 
-// CasinoSettings are the casino with its odds, its bets and how it does:
-// for the administrators.
+// CasinoSettings are the casino with its odds, its bets, its rocket and
+// how it does: for the administrators.
 type CasinoSettings struct {
 	Casino user.Casino
 	Bets   user.CasinoBets
+	Rocket user.CasinoRocket
 	Stats  user.CasinoStats
 }
 
@@ -76,15 +83,18 @@ func (s *CasinoService) WithRoll(roll func(n int64) (int64, error)) *CasinoServi
 	return s
 }
 
-// Casino is what a spin costs and may win and what may be bet; anyone may
-// ask, the odds and the stats are for the handler not to tell.
-func (s *CasinoService) Casino(ctx context.Context) (user.Casino, user.CasinoBets, error) {
+// Casino is what a spin costs and may win, what may be bet and how the
+// rocket flies; anyone may ask, the odds, the return of the rocket and the
+// stats are for the handler not to tell.
+func (s *CasinoService) Casino(ctx context.Context) (CasinoSettings, error) {
 	settings, err := s.casinos.Settings(ctx)
 	if err != nil {
-		return user.Casino{}, user.CasinoBets{}, errs.Wrap("s.casinos.Settings", err)
+		return CasinoSettings{}, errs.Wrap("s.casinos.Settings", err)
 	}
 
-	return settings.Casino, settings.Bets, nil
+	settings.Stats = user.CasinoStats{}
+
+	return settings, nil
 }
 
 // Settings are the casino with the odds and its stats; user.ErrNotAdmin.
