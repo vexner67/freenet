@@ -42,6 +42,11 @@ const (
 	VoteStake VoteKind = "stake"
 	// VoteRocket: a bet of "Ракетка" and its win.
 	VoteRocket VoteKind = "rocket"
+	// VoteBonus: the daily bonus out of the treasury.
+	VoteBonus VoteKind = "bonus"
+	// VoteDenomination: the balance after the denomination of 1 to
+	// 1 000 000, the first line of every statement kept.
+	VoteDenomination VoteKind = "denomination"
 )
 
 // VoteEntry is what a change of votes is written down as: why, with whom

@@ -83,10 +83,6 @@ func (r *BetEventRepository) Lock(ctx context.Context, id uuid.UUID) (*user.BetE
 	return e, nil
 }
 
-func (r *BetEventRepository) LockForStake(ctx context.Context, id uuid.UUID) (*user.BetEvent, error) {
-	return r.Lock(ctx, id)
-}
-
 func (r *BetEventRepository) List(ctx context.Context, list service.BetEventList, viewerID uuid.UUID) ([]service.BetEventView, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)

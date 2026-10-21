@@ -129,6 +129,32 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.FailedPrecondition, user.ErrRocketOver.Error()), true
 	case errors.Is(err, user.ErrNotEnoughVotes):
 		return status.New(codes.FailedPrecondition, user.ErrNotEnoughVotes.Error()), true
+	case errors.Is(err, user.ErrTreasuryEmpty):
+		return status.New(codes.FailedPrecondition, user.ErrTreasuryEmpty.Error()), true
+	case errors.Is(err, user.ErrTreasuryLow):
+		return status.New(codes.FailedPrecondition, user.ErrTreasuryLow.Error()), true
+	case errors.Is(err, user.ErrVoucherCover):
+		return status.New(codes.FailedPrecondition, user.ErrVoucherCover.Error()), true
+	case errors.Is(err, user.ErrBonusTaken):
+		return status.New(codes.FailedPrecondition, user.ErrBonusTaken.Error()), true
+	case errors.Is(err, user.ErrBonusNotYet):
+		return status.New(codes.FailedPrecondition, user.ErrBonusNotYet.Error()), true
+	case errors.Is(err, user.ErrEventStakeLimit):
+		return status.New(codes.FailedPrecondition, user.ErrEventStakeLimit.Error()), true
+	case errors.Is(err, user.ErrEventFull):
+		return status.New(codes.FailedPrecondition, user.ErrEventFull.Error()), true
+	case errors.Is(err, user.ErrEventMargin):
+		return status.New(codes.InvalidArgument, user.ErrEventMargin.Error()), true
+	case errors.Is(err, user.ErrCasinoReturn):
+		return status.New(codes.InvalidArgument, user.ErrCasinoReturn.Error()), true
+	case errors.Is(err, user.ErrAimReturn):
+		return status.New(codes.InvalidArgument, user.ErrAimReturn.Error()), true
+	case errors.Is(err, user.ErrAimWin):
+		return status.New(codes.InvalidArgument, user.ErrAimWin.Error()), true
+	case errors.Is(err, user.ErrRocketWin):
+		return status.New(codes.InvalidArgument, user.ErrRocketWin.Error()), true
+	case errors.Is(err, user.ErrVoucherUnlimitedVotes):
+		return status.New(codes.InvalidArgument, user.ErrVoucherUnlimitedVotes.Error()), true
 	case errors.Is(err, user.ErrTransferSelf):
 		return status.New(codes.InvalidArgument, user.ErrTransferSelf.Error()), true
 	case errors.Is(err, user.ErrTransferRefused):

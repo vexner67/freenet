@@ -18,7 +18,7 @@ func TestCasino(t *testing.T) {
 
 	// Anyone, even without a token, sees the price and the prizes, not the
 	// odds.
-	if got, err := s.client.GetCasino(context.Background(), &userv1.GetCasinoRequest{}); err != nil || got.GetPrice() != 10 || len(got.GetPrizes()) != 6 {
+	if got, err := s.client.GetCasino(context.Background(), &userv1.GetCasinoRequest{}); err != nil || got.GetPrice() != 10 || len(got.GetPrizes()) != 12 {
 		t.Fatalf("GetCasino = %v, %v", got, err)
 	}
 
@@ -29,8 +29,12 @@ func TestCasino(t *testing.T) {
 		t.Fatalf("SetCasino without odds: %v", err)
 	}
 
-	// A casino that always pays 9.
-	tuned := &userv1.SetCasinoRequest{Price: 4, Prizes: []*userv1.CasinoPrize{{Votes: 0, Weight: 0}, {Votes: 9, Weight: 5}}}
+	if _, err := s.client.SetCasino(admin, &userv1.SetCasinoRequest{Price: 4, Prizes: []*userv1.CasinoPrize{{Votes: 0, Weight: 1}, {Votes: 9, Weight: 5}}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("SetCasino giving back more than 85%%: %v", err)
+	}
+
+	// A casino that always pays 8.
+	tuned := &userv1.SetCasinoRequest{Price: 10, Prizes: []*userv1.CasinoPrize{{Votes: 0, Weight: 0}, {Votes: 8, Weight: 5}}}
 	if _, err := s.client.SetCasino(ann, tuned); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("SetCasino by ann: %v", err)
 	}
@@ -45,7 +49,7 @@ func TestCasino(t *testing.T) {
 		t.Fatalf("SpinCasino by nobody: %v", err)
 	}
 
-	created, err := s.client.CreateVoucher(admin, &userv1.CreateVoucherRequest{Votes: 4, Usages: 1})
+	created, err := s.client.CreateVoucher(admin, &userv1.CreateVoucherRequest{Votes: 10, Usages: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,12 +58,12 @@ func TestCasino(t *testing.T) {
 	}
 
 	spin, err := s.client.SpinCasino(ann, &userv1.SpinCasinoRequest{})
-	if err != nil || spin.GetPrize() != 1 || spin.GetVotes() != 9 || spin.GetBalance() != 9 {
+	if err != nil || spin.GetPrize() != 1 || spin.GetVotes() != 8 || spin.GetBalance() != 8 {
 		t.Fatalf("SpinCasino = %v, %v", spin, err)
 	}
 
 	settings, err := s.client.GetCasinoSettings(admin, &userv1.GetCasinoSettingsRequest{})
-	if err != nil || settings.GetPrice() != 4 || settings.GetPrizes()[1].GetWeight() != 5 || settings.GetSpins() != 1 || settings.GetSpent() != 4 || settings.GetWon() != 9 {
+	if err != nil || settings.GetPrice() != 10 || settings.GetPrizes()[1].GetWeight() != 5 || settings.GetSpins() != 1 || settings.GetSpent() != 10 || settings.GetWon() != 8 {
 		t.Fatalf("GetCasinoSettings = %v, %v", settings, err)
 	}
 }
@@ -72,7 +76,7 @@ func TestCasinoBets(t *testing.T) {
 	ann, _ := s.member(t, "ann")
 
 	got, err := s.client.GetCasino(context.Background(), &userv1.GetCasinoRequest{})
-	if err != nil || got.GetBetLeast() != 1 || got.GetBetMost() != 1000 || len(got.GetAim()) != 5 || got.GetAim()[1].GetMultiplier() != 200 || got.GetAim()[1].GetChance() != 4750 {
+	if err != nil || got.GetBetLeast() != 1 || got.GetBetMost() != 100 || len(got.GetAim()) != 6 || got.GetAim()[0].GetMultiplier() != 200 || got.GetAim()[0].GetChance() != 4250 {
 		t.Fatalf("GetCasino = %v, %v", got, err)
 	}
 
@@ -82,7 +86,10 @@ func TestCasinoBets(t *testing.T) {
 	if _, err := s.client.SetCasinoBets(admin, &userv1.SetCasinoBetsRequest{Least: 2, Most: 20}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("SetCasinoBets without multipliers: %v", err)
 	}
-	tuned := &userv1.SetCasinoBetsRequest{Least: 2, Most: 20, Aim: []*userv1.AimMultiplier{{Multiplier: 200, Chance: 5000}, {Multiplier: 700, Chance: 1000}}}
+	if _, err := s.client.SetCasinoBets(admin, &userv1.SetCasinoBetsRequest{Least: 2, Most: 20, Aim: []*userv1.AimMultiplier{{Multiplier: 200, Chance: 5000}}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("SetCasinoBets giving back 100%%: %v", err)
+	}
+	tuned := &userv1.SetCasinoBetsRequest{Least: 2, Most: 20, Aim: []*userv1.AimMultiplier{{Multiplier: 200, Chance: 4250}, {Multiplier: 700, Chance: 1000}}}
 	if _, err := s.client.SetCasinoBets(ann, tuned); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("SetCasinoBets by ann: %v", err)
 	}
@@ -110,7 +117,7 @@ func TestCasinoBets(t *testing.T) {
 
 	// Win or lose, the balance is the bet taken and the win paid.
 	bet, err := s.client.BetCasino(ann, &userv1.BetCasinoRequest{Amount: 10, Multiplier: 200})
-	if err != nil || bet.GetChance() != 5000 || bet.GetWon() != (bet.GetRoll() >= 2500 && bet.GetRoll() < 7500) ||
+	if err != nil || bet.GetChance() != 4250 || bet.GetWon() != (bet.GetRoll() >= 2875 && bet.GetRoll() < 7125) ||
 		(bet.GetWon() && (bet.GetVotes() != 20 || bet.GetBalance() != 20)) ||
 		(!bet.GetWon() && (bet.GetVotes() != 0 || bet.GetBalance() != 0)) {
 		t.Fatalf("BetCasino = %v, %v", bet, err)

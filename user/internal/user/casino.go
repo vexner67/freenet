@@ -7,17 +7,18 @@ import "errors"
 const (
 	MaxCasinoPrice  = 10_000
 	MaxCasinoPrizes = 12
-	MaxCasinoPrize  = 1_000_000
+	MaxCasinoPrize  = MaxWin
 	MaxCasinoWeight = 1_000_000
 )
 
 var (
 	ErrCasinoPrice   = errors.New("a spin must cost from 1 to 10000 votes")
 	ErrCasinoPrizes  = errors.New("the casino must have from 2 to 12 prizes")
-	ErrCasinoPrize   = errors.New("a prize must be from 0 to 1000000 votes")
+	ErrCasinoPrize   = errors.New("a prize must be from 0 to 1000 votes")
 	ErrCasinoWeight  = errors.New("the weight of a prize must be from 0 to 1000000")
 	ErrCasinoNoOdds  = errors.New("at least one prize must have a weight")
 	ErrCasinoRollOut = errors.New("the roll is out of the weights")
+	ErrCasinoReturn  = errors.New("the casino gives back at most 85 percent of what is spent")
 )
 
 // CasinoPrize is what a spin may win, in votes (0 — nothing), and how
@@ -43,7 +44,7 @@ func NewCasino(price int64, prizes []CasinoPrize) (Casino, error) {
 		return Casino{}, ErrCasinoPrizes
 	}
 
-	total := 0
+	var total, paid int64
 
 	for _, p := range prizes {
 		if p.Votes < 0 || p.Votes > MaxCasinoPrize {
@@ -53,27 +54,51 @@ func NewCasino(price int64, prizes []CasinoPrize) (Casino, error) {
 			return Casino{}, ErrCasinoWeight
 		}
 
-		total += p.Weight
+		total += int64(p.Weight)
+		paid += p.Votes * int64(p.Weight)
 	}
 
 	if total == 0 {
 		return Casino{}, ErrCasinoNoOdds
 	}
 
+	// On average a spin wins paid / total of price.
+	if paid*100 > MaxCasinoReturn*price*total {
+		return Casino{}, ErrCasinoReturn
+	}
+
 	return Casino{price: price, prizes: append([]CasinoPrize(nil), prizes...)}, nil
 }
 
 // DefaultCasino is the casino until the administrators change it: a spin
-// for 10 votes gives back about 70% of them.
+// for 10 votes gives back 85% of them, a thousand once in 1000 spins.
 func DefaultCasino() Casino {
 	return Casino{price: 10, prizes: []CasinoPrize{
-		{Votes: 0, Weight: 50},
-		{Votes: 5, Weight: 25},
-		{Votes: 10, Weight: 12},
-		{Votes: 20, Weight: 8},
-		{Votes: 50, Weight: 4},
-		{Votes: 100, Weight: 1},
+		{Votes: 5, Weight: 200_000},
+		{Votes: 0, Weight: 89_500},
+		{Votes: 1000, Weight: 1_000},
+		{Votes: 0, Weight: 89_500},
+		{Votes: 20, Weight: 80_000},
+		{Votes: 2, Weight: 200_000},
+		{Votes: 0, Weight: 89_500},
+		{Votes: 300, Weight: 3_000},
+		{Votes: 10, Weight: 120_000},
+		{Votes: 0, Weight: 89_500},
+		{Votes: 100, Weight: 10_000},
+		{Votes: 50, Weight: 28_000},
 	}}
+}
+
+// MaxPrize is the biggest prize of a spin.
+func (c Casino) MaxPrize() int64 {
+	var most int64
+	for _, p := range c.prizes {
+		if p.Weight > 0 {
+			most = max(most, p.Votes)
+		}
+	}
+
+	return most
 }
 
 func (c Casino) Price() int64 {

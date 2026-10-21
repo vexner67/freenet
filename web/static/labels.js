@@ -1686,6 +1686,7 @@ const errorTexts = {
   'gift caption is too long': tr('Сообщение слишком длинное: не больше 250 символов.'),
   'gift not found': tr('Подарок не найден.'),
   'not enough votes': tr('У вас недостаточно голосов.'),
+  'a voucher with votes has a limited number of usages': tr('Ваучер с голосами действует ограниченное число раз.'),
   'a spin must cost from 1 to 10000 votes': tr('Прокрутка должна стоить от 1 до 10 000 голосов.'),
   'the casino must have from 2 to 12 prizes': tr('В казино должно быть от 2 до 12 призов.'),
   'a prize must be from 0 to 1000000 votes': tr('Приз — от 0 до 1 000 000 голосов.'),

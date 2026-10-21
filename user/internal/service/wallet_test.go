@@ -65,7 +65,7 @@ func newWalletWorld(t *testing.T) walletWorld {
 			Tx: inmem.TxManager{}, Wallets: users, Notifier: &fakeGiftNotifier{}, Admins: admins,
 		}),
 		wallets: service.NewWalletService(service.WalletDeps{
-			Users: users, Wallets: users, Statements: users, Vouchers: inmem.NewVoucherRepository(users), Rates: inmem.NewVoteRateRepository(), Permissions: permissions,
+			Users: users, Wallets: users, Statements: users, Bonuses: users, Vouchers: inmem.NewVoucherRepository(users), Rates: inmem.NewVoteRateRepository(), Permissions: permissions,
 			Tx: inmem.TxManager{}, Notifier: notifier, Admins: admins,
 		}),
 		notifier: notifier,

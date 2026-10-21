@@ -18,15 +18,16 @@ func TestNewCasinoRocket(t *testing.T) {
 		ret, top    int
 		want        error
 	}{
-		{name: "fine", least: 1, most: 1000, ret: 9500, top: 100_000},
-		{name: "the most", least: 1, most: user.MaxBet, ret: user.MaxRocketReturn, top: user.MaxRocketTop},
-		{name: "free", least: 0, most: 10, ret: 9500, top: 1000, want: user.ErrRocketLimits},
-		{name: "too big", least: 1, most: user.MaxBet + 1, ret: 9500, top: 1000, want: user.ErrRocketLimits},
-		{name: "upside down", least: 10, most: 5, ret: 9500, top: 1000, want: user.ErrRocketLimits},
+		{name: "fine", least: 1, most: 100, ret: 8500, top: 1000},
+		{name: "the most", least: 1, most: 1, ret: user.MaxRocketReturn, top: user.MaxWin * 100},
+		{name: "wins too much", least: 1, most: 101, ret: 8500, top: 1000, want: user.ErrRocketWin},
+		{name: "free", least: 0, most: 10, ret: 8500, top: 1000, want: user.ErrRocketLimits},
+		{name: "too big", least: 1, most: user.MaxBet + 1, ret: 8500, top: 1000, want: user.ErrRocketLimits},
+		{name: "upside down", least: 10, most: 5, ret: 8500, top: 1000, want: user.ErrRocketLimits},
 		{name: "no return", least: 1, most: 10, ret: 0, top: 1000, want: user.ErrRocketReturn},
 		{name: "above all", least: 1, most: 10, ret: user.MaxRocketReturn + 1, top: 1000, want: user.ErrRocketReturn},
-		{name: "low top", least: 1, most: 10, ret: 9500, top: user.MinRocketTop - 1, want: user.ErrRocketTop},
-		{name: "high top", least: 1, most: 10, ret: 9500, top: user.MaxRocketTop + 1, want: user.ErrRocketTop},
+		{name: "low top", least: 1, most: 10, ret: 8500, top: user.MinRocketTop - 1, want: user.ErrRocketTop},
+		{name: "high top", least: 1, most: 10, ret: 8500, top: user.MaxRocketTop + 1, want: user.ErrRocketTop},
 	}
 
 	for _, tt := range tests {
@@ -47,7 +48,7 @@ func TestNewCasinoRocket(t *testing.T) {
 func TestCasinoRocket_Crash(t *testing.T) {
 	t.Parallel()
 
-	r, err := user.NewCasinoRocket(1, 100, 9500, 100_000)
+	r, err := user.NewCasinoRocket(1, 1, 8500, 100_000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,8 +60,8 @@ func TestCasinoRocket_Crash(t *testing.T) {
 	}{
 		// Return / 1 is below ×1: the rocket explodes at the start.
 		{name: "the start", roll: 0, want: 100},
-		{name: "×1.9", roll: user.RocketRolls / 2, want: 190},
-		{name: "×9.49", roll: user.RocketRolls / 10 * 9, want: 949},
+		{name: "×1.7", roll: user.RocketRolls / 2, want: 170},
+		{name: "×8.49", roll: user.RocketRolls / 10 * 9, want: 849},
 		{name: "the top", roll: user.RocketRolls - 1, want: 100_000},
 	}
 
@@ -96,7 +97,7 @@ func TestRocketMultiplier(t *testing.T) {
 func TestRocketRound(t *testing.T) {
 	t.Parallel()
 
-	r, err := user.NewCasinoRocket(10, 1000, 9500, 100_000)
+	r, err := user.NewCasinoRocket(10, 100, 8500, 1000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,13 +108,13 @@ func TestRocketRound(t *testing.T) {
 	if _, err := r.Launch(id, ann, 9, 0, 300, now); !errors.Is(err, user.ErrRocketAmount) {
 		t.Fatalf("Launch below the least: %v", err)
 	}
-	if _, err := r.Launch(id, ann, 1001, 0, 300, now); !errors.Is(err, user.ErrRocketAmount) {
+	if _, err := r.Launch(id, ann, 101, 0, 300, now); !errors.Is(err, user.ErrRocketAmount) {
 		t.Fatalf("Launch above the most: %v", err)
 	}
 	if _, err := r.Launch(id, ann, 100, 100, 300, now); !errors.Is(err, user.ErrRocketAuto) {
 		t.Fatalf("Launch cashing at ×1: %v", err)
 	}
-	if _, err := r.Launch(id, ann, 100, 100_001, 300, now); !errors.Is(err, user.ErrRocketAuto) {
+	if _, err := r.Launch(id, ann, 100, 1001, 300, now); !errors.Is(err, user.ErrRocketAuto) {
 		t.Fatalf("Launch cashing past the top: %v", err)
 	}
 
@@ -160,5 +161,13 @@ func TestRocketRound(t *testing.T) {
 	}
 	if _, err := won.Cash(now); !errors.Is(err, user.ErrRocketOver) {
 		t.Fatalf("Cash of auto: %v", err)
+	}
+
+	// The most a bet wins: at auto, or by hand at the top.
+	if got := r.MostWin(15, 200); got != 30 {
+		t.Fatalf("MostWin(15, ×2) = %d", got)
+	}
+	if got := r.MostWin(15, 0); got != 150 {
+		t.Fatalf("MostWin(15, by hand) = %d", got)
 	}
 }

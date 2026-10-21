@@ -20,9 +20,9 @@ const (
 )
 
 // defaultAim are the multipliers until the administrators change them,
-// each winning with the chance 95% divided by it: the casino gives back
-// 95% of what is bet on average.
-var defaultAim = []int{150, 200, 300, 500, 1000}
+// each winning with the chance 85% divided by it: the casino gives back
+// 85% of what is bet on average, the most it may.
+var defaultAim = []int{200, 300, 400, 500, 700, 1000}
 
 var (
 	ErrBetLimits          = errors.New("bets must be from 1 to 100000000 votes, the least not above the most")
@@ -30,6 +30,8 @@ var (
 	ErrAimMultiplier      = errors.New("a multiplier must be from 1.01 to 1000")
 	ErrAimChance          = errors.New("the chance of a multiplier must be from 0.01 to 99.99 percent")
 	ErrAimMultiplierTwice = errors.New("the multipliers repeat")
+	ErrAimReturn          = errors.New("a multiplier gives back at most 85 percent: the multiplier times its chance")
+	ErrAimWin             = errors.New("the biggest bet on the biggest multiplier wins at most 1000 votes")
 	ErrBetAmount          = errors.New("the bet is out of the limits of the casino")
 	ErrBetMultiplier      = errors.New("unknown multiplier")
 )
@@ -71,7 +73,13 @@ func NewCasinoBets(least, most int64, aim []AimMultiplier) (CasinoBets, error) {
 			return CasinoBets{}, ErrAimChance
 		case i > 0 && sorted[i-1].Multiplier == m.Multiplier:
 			return CasinoBets{}, ErrAimMultiplierTwice
+		case m.Multiplier*m.Chance > MaxCasinoReturn*BetOdds:
+			return CasinoBets{}, ErrAimReturn
 		}
+	}
+
+	if most*int64(sorted[len(sorted)-1].Multiplier)/100 > MaxWin {
+		return CasinoBets{}, ErrAimWin
 	}
 
 	return CasinoBets{least: least, most: most, aim: sorted}, nil
@@ -79,14 +87,14 @@ func NewCasinoBets(least, most int64, aim []AimMultiplier) (CasinoBets, error) {
 
 // DefaultCasinoBets are the bets until the administrators change them.
 func DefaultCasinoBets() CasinoBets {
-	return CasinoBets{least: 1, most: 1000, aim: DefaultAim()}
+	return CasinoBets{least: 1, most: 100, aim: DefaultAim()}
 }
 
 // DefaultAim are the multipliers of DefaultCasinoBets.
 func DefaultAim() []AimMultiplier {
 	aim := make([]AimMultiplier, len(defaultAim))
 	for i, m := range defaultAim {
-		aim[i] = AimMultiplier{Multiplier: m, Chance: 95 * BetOdds / m}
+		aim[i] = AimMultiplier{Multiplier: m, Chance: MaxCasinoReturn * BetOdds / m}
 	}
 
 	return aim

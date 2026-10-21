@@ -162,6 +162,14 @@ service UserService {
   rpc GetVoteRate(GetVoteRateRequest) returns (GetVoteRateResponse);
   rpc SetVoteRate(SetVoteRateRequest) returns (google.protobuf.Empty);
 
+  // The treasury pays every vote given and takes every vote spent;
+  // GetTreasury is public. The daily bonus comes out of it: GetBonus says
+  // it to the caller, ClaimBonus gives it once a Moscow day to a page a
+  // week old with a filled profile (FailedPrecondition otherwise).
+  rpc GetTreasury(GetTreasuryRequest) returns (GetTreasuryResponse);
+  rpc GetBonus(GetBonusRequest) returns (GetBonusResponse);
+  rpc ClaimBonus(ClaimBonusRequest) returns (ClaimBonusResponse);
+
   // The New Year decoration of the site. GetDecor is public and says
   // whether to wear it now; SetDecor is for the administrators
   // (PermissionDenied for others).
@@ -1157,6 +1165,45 @@ message GetVoteRateResponse {
 message SetVoteRateRequest {
   // In kopecks, 1-100000000.
   int64 kopecks = 1;
+}
+
+message GetTreasuryRequest {}
+
+message GetTreasuryResponse {
+  // The votes in the treasury.
+  int64 votes = 1;
+  // What it keeps back: below it the bonus shrinks.
+  int64 reserve = 2;
+  // What vouchers may still promise: votes less the reserve and the
+  // votes vouchers promise already.
+  int64 free = 3;
+  // What the members have brought into it.
+  int64 minted = 4;
+  // What the vouchers promise.
+  int64 outstanding = 5;
+  // The daily bonus now.
+  int64 bonus = 6;
+  // The largest win of one round of the casino now.
+  int64 max_win = 7;
+}
+
+message GetBonusRequest {}
+
+message GetBonusResponse {
+  // What the bonus gives now.
+  int64 votes = 1;
+  // The caller has taken it today.
+  bool taken = 2;
+  // The caller may take it: a page a week old with a filled profile.
+  bool eligible = 3;
+}
+
+message ClaimBonusRequest {}
+
+message ClaimBonusResponse {
+  int64 votes = 1;
+  // What the caller has now.
+  int64 balance = 2;
 }
 
 // How the site is dressed for the New Year.

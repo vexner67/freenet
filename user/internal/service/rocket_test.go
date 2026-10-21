@@ -27,7 +27,7 @@ func TestRocketService(t *testing.T) {
 	now := time.Date(2026, 10, 21, 12, 0, 0, 0, time.UTC)
 	casinos := inmem.NewCasinoRepository()
 	casino := service.NewCasinoService(w.users, casinos, w.users, inmem.TxManager{}, admins)
-	// Every rocket explodes at ×2.37: a roll of 60% at a return of 95%.
+	// Every rocket explodes at ×2.12: a roll of 60% at a return of 85%.
 	rockets := service.NewRocketService(w.users, casinos, inmem.NewRocketRepository(), w.users, inmem.TxManager{}, admins).
 		WithRoll(func(n int64) (int64, error) {
 			if n != user.RocketRolls {
@@ -39,7 +39,7 @@ func TestRocketService(t *testing.T) {
 		WithNow(func() time.Time { return now })
 
 	// Only the administrators change the rocket.
-	tuned, err := user.NewCasinoRocket(10, 500, 9500, 1000)
+	tuned, err := user.NewCasinoRocket(10, 100, 8500, 1000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestRocketService(t *testing.T) {
 	now = now.Add(5777 * time.Millisecond)
 
 	cashed, err := rockets.Cash(ctx, ann, id)
-	if err != nil || cashed.State != user.RocketCashed || cashed.Round.Payout() != 200 || cashed.Balance != 1100 || cashed.Crash() != 237 {
+	if err != nil || cashed.State != user.RocketCashed || cashed.Round.Payout() != 200 || cashed.Balance != 1100 || cashed.Crash() != 212 {
 		t.Fatalf("Cash = %+v, %v", cashed, err)
 	}
 	if _, err := rockets.Cash(ctx, ann, id); !errors.Is(err, user.ErrRocketOver) {
@@ -101,7 +101,7 @@ func TestRocketService(t *testing.T) {
 	}
 	now = now.Add(10 * time.Second)
 
-	if read, err := rockets.Round(ctx, ann, late.Round.ID()); err != nil || read.State != user.RocketCrashed || read.Crash() != 237 {
+	if read, err := rockets.Round(ctx, ann, late.Round.ID()); err != nil || read.State != user.RocketCrashed || read.Crash() != 212 {
 		t.Fatalf("crashed Round = %+v, %v", read, err)
 	}
 	if lost, err := rockets.Cash(ctx, ann, late.Round.ID()); err != nil || lost.State != user.RocketCrashed || lost.Balance != 1000 {
@@ -109,7 +109,7 @@ func TestRocketService(t *testing.T) {
 	}
 
 	// By itself: paid at the launch at ×2, lost at ×3.
-	if won, err := rockets.Launch(ctx, ann, 50, 200); err != nil || won.State != user.RocketCashed || won.Balance != 1050 || won.Crash() != 237 {
+	if won, err := rockets.Launch(ctx, ann, 50, 200); err != nil || won.State != user.RocketCashed || won.Balance != 1050 || won.Crash() != 212 {
 		t.Fatalf("auto ×2 = %+v, %v", won, err)
 	}
 	if lost, err := rockets.Launch(ctx, ann, 50, 300); err != nil || lost.State != user.RocketCrashed || lost.Balance != 1000 {

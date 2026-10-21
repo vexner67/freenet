@@ -23,7 +23,24 @@ type WalletRepository interface {
 	// with the other as the peer.
 	Move(ctx context.Context, fromID, toID uuid.UUID, votes int64, e user.VoteEntry) (int64, error)
 	// Credit adds votes and rating to userID; user.ErrNotFound.
+	// The votes come out of the treasury, as Spend puts them in;
+	// user.ErrTreasuryEmpty when it holds fewer. Move goes past it.
 	Credit(ctx context.Context, userID uuid.UUID, votes int64, rating int, e user.VoteEntry) (user.Wallet, error)
+	// Treasury is the treasury now; in a transaction it stays so until
+	// the end, as every change of votes waits for it.
+	Treasury(ctx context.Context) (user.Treasury, error)
+}
+
+// BonusRepository keeps the daily bonuses and who has minted into the
+// treasury.
+type BonusRepository interface {
+	// Mint adds user.MemberMint to the treasury for userID, once.
+	Mint(ctx context.Context, userID uuid.UUID) error
+	// TakeBonus marks the bonus of day taken by userID;
+	// user.ErrBonusTaken for a day taken already.
+	TakeBonus(ctx context.Context, userID uuid.UUID, day time.Time) error
+	// LastBonus is the day of the last bonus of userID, zero for never.
+	LastBonus(ctx context.Context, userID uuid.UUID) (time.Time, error)
 }
 
 // StatementRepository reads the statements of pages: every change of
@@ -90,6 +107,14 @@ type StatementPage struct {
 	Expense    int64
 }
 
+// Bonus is the daily bonus of a page: what it gives now, whether it is
+// taken today and whether the page may take it at all.
+type Bonus struct {
+	Votes    int64
+	Taken    bool
+	Eligible bool
+}
+
 // StatementPeriod is how far back the totals of a statement go.
 const StatementPeriod = 30 * 24 * time.Hour
 
@@ -106,6 +131,7 @@ type WalletService struct {
 	userRepo    UserRepository
 	wallets     WalletRepository
 	statements  StatementRepository
+	bonuses     BonusRepository
 	vouchers    VoucherRepository
 	rates       VoteRateRepository
 	permissions *PermissionService
@@ -119,6 +145,7 @@ type WalletDeps struct {
 	Users       UserRepository
 	Wallets     WalletRepository
 	Statements  StatementRepository
+	Bonuses     BonusRepository
 	Vouchers    VoucherRepository
 	Rates       VoteRateRepository
 	Permissions *PermissionService
@@ -132,6 +159,7 @@ func NewWalletService(d WalletDeps) *WalletService {
 		userRepo:    d.Users,
 		wallets:     d.Wallets,
 		statements:  d.Statements,
+		bonuses:     d.Bonuses,
 		vouchers:    d.Vouchers,
 		rates:       d.Rates,
 		permissions: d.Permissions,
@@ -258,11 +286,99 @@ func (s *WalletService) CreateVoucher(ctx context.Context, adminID uuid.UUID, d 
 		return nil, errs.Wrap("user.NewVoucher", err)
 	}
 
-	if err = s.vouchers.Save(ctx, voucher); err != nil {
-		return nil, errs.Wrap("s.vouchers.Save", err)
+	// The treasury stays locked until the voucher is saved: two vouchers
+	// at once cannot take the same free votes.
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		treasury, err := s.wallets.Treasury(ctx)
+		if err != nil {
+			return errs.Wrap("s.wallets.Treasury", err)
+		}
+
+		if err = treasury.CheckVoucher(voucher); err != nil {
+			return errs.Wrap("treasury.CheckVoucher", err)
+		}
+
+		return errs.Wrap("s.vouchers.Save", s.vouchers.Save(ctx, voucher))
+	})
+	if err != nil {
+		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return voucher, nil
+}
+
+// Treasury is the treasury of the site now; anyone may ask.
+func (s *WalletService) Treasury(ctx context.Context) (user.Treasury, error) {
+	treasury, err := s.wallets.Treasury(ctx)
+
+	return treasury, errs.Wrap("s.wallets.Treasury", err)
+}
+
+// Bonus is the daily bonus of userID at now.
+func (s *WalletService) Bonus(ctx context.Context, userID uuid.UUID, now time.Time) (Bonus, error) {
+	u, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return Bonus{}, errs.Wrap("s.userRepo.GetByID", err)
+	}
+
+	last, err := s.bonuses.LastBonus(ctx, userID)
+	if err != nil {
+		return Bonus{}, errs.Wrap("s.bonuses.LastBonus", err)
+	}
+
+	treasury, err := s.wallets.Treasury(ctx)
+	if err != nil {
+		return Bonus{}, errs.Wrap("s.wallets.Treasury", err)
+	}
+
+	return Bonus{
+		Votes:    treasury.Bonus(),
+		Taken:    !last.Before(user.BonusDay(now)),
+		Eligible: u.CheckBonusAt(now) == nil,
+	}, nil
+}
+
+// ClaimBonus gives userID the bonus of the day of now out of the treasury,
+// in one transaction; a member takes it first time brings user.MemberMint
+// into the treasury. user.ErrBonusNotYet, user.ErrBonusTaken,
+// user.ErrTreasuryEmpty.
+func (s *WalletService) ClaimBonus(ctx context.Context, userID uuid.UUID, now time.Time) (Redeemed, error) {
+	u, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return Redeemed{}, errs.Wrap("s.userRepo.GetByID", err)
+	}
+
+	if err = u.CheckBonusAt(now); err != nil {
+		return Redeemed{}, errs.Wrap("u.CheckBonusAt", err)
+	}
+
+	var claimed Redeemed
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.bonuses.TakeBonus(ctx, userID, user.BonusDay(now)); err != nil {
+			return errs.Wrap("s.bonuses.TakeBonus", err)
+		}
+
+		if err := s.bonuses.Mint(ctx, userID); err != nil {
+			return errs.Wrap("s.bonuses.Mint", err)
+		}
+
+		treasury, err := s.wallets.Treasury(ctx)
+		if err != nil {
+			return errs.Wrap("s.wallets.Treasury", err)
+		}
+
+		claimed.Votes = treasury.Bonus()
+
+		claimed.Wallet, err = s.wallets.Credit(ctx, userID, claimed.Votes, 0, user.Entry(user.VoteBonus, uuid.Nil, ""))
+
+		return errs.Wrap("s.wallets.Credit", err)
+	})
+	if err != nil {
+		return Redeemed{}, errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return claimed, nil
 }
 
 // ListVouchers pages every voucher, newest first; user.ErrNotAdmin.

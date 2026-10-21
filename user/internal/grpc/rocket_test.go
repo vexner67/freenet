@@ -20,7 +20,7 @@ func TestRocket(t *testing.T) {
 
 	// Anyone sees the limits and the top, not the return.
 	got, err := s.client.GetCasino(context.Background(), &userv1.GetCasinoRequest{})
-	if err != nil || got.GetRocket().GetMost() != 1000 || got.GetRocket().GetTop() != 100_000 || got.GetRocket().GetReturn() != 0 {
+	if err != nil || got.GetRocket().GetMost() != 100 || got.GetRocket().GetTop() != 1000 || got.GetRocket().GetReturn() != 0 {
 		t.Fatalf("GetCasino = %v, %v", got, err)
 	}
 

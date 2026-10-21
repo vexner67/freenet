@@ -35,14 +35,14 @@ func TestCasinoRepository(t *testing.T) {
 		t.Fatalf("Casino = %+v; want the default %+v", got, want)
 	}
 
-	tuned, err := user.NewCasino(3, []user.CasinoPrize{{Votes: 0, Weight: 9}, {Votes: 1000, Weight: 1}})
+	tuned, err := user.NewCasino(300, []user.CasinoPrize{{Votes: 0, Weight: 9}, {Votes: 1000, Weight: 1}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err = casinos.SetCasino(ctx, tuned); err != nil {
 		t.Fatal(err)
 	}
-	if got, err = casinos.Casino(ctx); err != nil || got.Price() != 3 || got.Prizes()[1] != (user.CasinoPrize{Votes: 1000, Weight: 1}) {
+	if got, err = casinos.Casino(ctx); err != nil || got.Price() != 300 || got.Prizes()[1] != (user.CasinoPrize{Votes: 1000, Weight: 1}) {
 		t.Fatalf("Casino = %+v, %v; want the tuned one", got, err)
 	}
 
@@ -58,7 +58,7 @@ func TestCasinoRepository(t *testing.T) {
 		t.Fatal(err)
 	}
 	if after.Stats.Spins-before.Stats.Spins != 1 || after.Stats.Spent-before.Stats.Spent != 3 || after.Stats.Won-before.Stats.Won != 1000 ||
-		after.Casino.Price() != 3 || !reflect.DeepEqual(after.Bets, user.DefaultCasinoBets()) {
+		after.Casino.Price() != 300 || !reflect.DeepEqual(after.Bets, user.DefaultCasinoBets()) {
 		t.Fatalf("Settings went from %+v to %+v", before, after)
 	}
 
@@ -66,7 +66,7 @@ func TestCasinoRepository(t *testing.T) {
 		t.Fatalf("Bets = %+v, %v; want the default", got, err)
 	}
 
-	bets, err := user.NewCasinoBets(5, 500, []user.AimMultiplier{{Multiplier: 200, Chance: 4500}, {Multiplier: 1500, Chance: 300}})
+	bets, err := user.NewCasinoBets(5, 50, []user.AimMultiplier{{Multiplier: 200, Chance: 4000}, {Multiplier: 1500, Chance: 500}})
 	if err != nil {
 		t.Fatal(err)
 	}
