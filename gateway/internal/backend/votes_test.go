@@ -45,7 +45,7 @@ func (f *fakeVotesAPI) TransferVotes(ctx context.Context, req *userv1.TransferVo
 	f.md, _ = metadata.FromOutgoingContext(ctx)
 	f.transferred = req
 
-	return &userv1.TransferVotesResponse{Votes: 6}, f.err
+	return &userv1.TransferVotesResponse{Votes: 6, Fee: 1}, f.err
 }
 
 func (f *fakeVotesAPI) RedeemVoucher(ctx context.Context, req *userv1.RedeemVoucherRequest, _ ...grpc.CallOption) (*userv1.RedeemVoucherResponse, error) {
@@ -103,10 +103,10 @@ func TestVotes(t *testing.T) {
 	api := &fakeVotesAPI{}
 	votes := NewVotes(api)
 
-	left, err := votes.Transfer(ctx, "tok", "u2", 4, "пицца")
-	if err != nil || left != 6 || api.transferred.GetUserId() != "u2" || api.transferred.GetVotes() != 4 ||
+	sent, err := votes.Transfer(ctx, "tok", "u2", 4, "пицца")
+	if err != nil || sent != (model.Transferred{Votes: 6, Fee: 1}) || api.transferred.GetUserId() != "u2" || api.transferred.GetVotes() != 4 ||
 		api.transferred.GetNote() != "пицца" || api.md.Get("authorization")[0] != "Bearer tok" {
-		t.Fatalf("Transfer = %d, %v; asked %v", left, err, api.transferred)
+		t.Fatalf("Transfer = %+v, %v; asked %v", sent, err, api.transferred)
 	}
 
 	statement, err := votes.Statement(ctx, "tok", "o5", "in", 2)

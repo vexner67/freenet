@@ -11,14 +11,15 @@ import (
 )
 
 type fakeCasino struct {
-	token  string
-	set    model.Casino
-	bets   model.CasinoBets
-	amount int64
-	times  int
-	rocket model.CasinoRocket
-	id     string
-	err    error
+	token   string
+	set     model.Casino
+	bets    model.CasinoBets
+	amount  int64
+	times   int
+	rocket  model.CasinoRocket
+	id      string
+	jackpot int64
+	err     error
 }
 
 func (f *fakeCasino) SetRocket(_ context.Context, token string, rocket model.CasinoRocket) error {
@@ -26,6 +27,15 @@ func (f *fakeCasino) SetRocket(_ context.Context, token string, rocket model.Cas
 		return f.err
 	}
 	f.token, f.rocket = token, rocket
+
+	return nil
+}
+
+func (f *fakeCasino) SetJackpot(_ context.Context, token string, jackpot int64) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.token, f.jackpot = token, jackpot
 
 	return nil
 }
@@ -59,10 +69,11 @@ func (f *fakeCasino) CashRocket(_ context.Context, token, id string) (model.Rock
 
 func (f *fakeCasino) Get(context.Context) (model.Casino, error) {
 	return model.Casino{
-		Price:  10,
-		Prizes: []model.CasinoPrize{{Votes: 0}, {Votes: 50}},
-		Bets:   model.CasinoBets{Least: 1, Most: 100, Multipliers: []model.AimMultiplier{{Multiplier: 150, Chance: 6333}, {Multiplier: 200, Chance: 4750}}},
-		Rocket: model.CasinoRocket{Least: 1, Most: 1000, Return: 9500, Top: 100000},
+		Price:   10,
+		Prizes:  []model.CasinoPrize{{Votes: 0}, {Votes: 50}},
+		Bets:    model.CasinoBets{Least: 1, Most: 100, Multipliers: []model.AimMultiplier{{Multiplier: 150, Chance: 6333}, {Multiplier: 200, Chance: 4750}}},
+		Rocket:  model.CasinoRocket{Least: 1, Most: 1000, Return: 9500, Top: 100000},
+		Jackpot: 1000,
 	}, nil
 }
 
@@ -92,10 +103,11 @@ func (f *fakeCasino) Settings(_ context.Context, token string) (model.CasinoSett
 
 	return model.CasinoSettings{
 		Casino: model.Casino{
-			Price:  10,
-			Prizes: []model.CasinoPrize{{Votes: 0, Weight: 9}, {Votes: 50, Weight: 1}},
-			Bets:   model.CasinoBets{Least: 1, Most: 100, Multipliers: []model.AimMultiplier{{Multiplier: 150, Chance: 6333}, {Multiplier: 200, Chance: 4750}}},
-			Rocket: model.CasinoRocket{Least: 1, Most: 1000, Return: 9500, Top: 100000},
+			Price:   10,
+			Prizes:  []model.CasinoPrize{{Votes: 0, Weight: 9}, {Votes: 50, Weight: 1}},
+			Bets:    model.CasinoBets{Least: 1, Most: 100, Multipliers: []model.AimMultiplier{{Multiplier: 150, Chance: 6333}, {Multiplier: 200, Chance: 4750}}},
+			Rocket:  model.CasinoRocket{Least: 1, Most: 1000, Return: 9500, Top: 100000},
+			Jackpot: 700,
 		},
 		Spins: 2, Spent: 20, Won: 50,
 		Wagers: 3, WagerSpent: 30, WagerWon: 20,
@@ -185,20 +197,26 @@ func TestCasino_Rocket(t *testing.T) {
 	// A guest sees the limits and the top, never the return.
 	h := newHarness(rest.Config{})
 	w := h.do("GET", "/api/v1/casino", "")
-	rocket := decode[map[string]any](t, w)["rocket"].(map[string]any)
-	if w.Code != http.StatusOK || rocket["most"] != 1000.0 || rocket["top"] != 100000.0 || rocket["return"] != nil {
+	casino := decode[map[string]any](t, w)
+	rocket := casino["rocket"].(map[string]any)
+	if w.Code != http.StatusOK || casino["jackpot"] != 1000.0 || rocket["most"] != 1000.0 || rocket["top"] != 100000.0 || rocket["return"] != nil {
 		t.Fatalf("%d %v", w.Code, rocket)
 	}
 
 	w = h.do("GET", "/api/v1/casino/settings", "", "Authorization", "Bearer tok")
 	got := decode[map[string]any](t, w)
-	if w.Code != http.StatusOK || got["rocket"].(map[string]any)["return"] != 9500.0 || got["rockets"].(map[string]any)["won"] != 38.0 {
+	if w.Code != http.StatusOK || got["jackpot"] != 700.0 || got["rocket"].(map[string]any)["return"] != 9500.0 || got["rockets"].(map[string]any)["won"] != 38.0 {
 		t.Fatalf("settings: %d %v", w.Code, got)
 	}
 
 	w = h.do("PUT", "/api/v1/casino/rocket", `{"least":2,"most":20,"return":9000,"top":5000}`, "Authorization", "Bearer tok")
 	if w.Code != http.StatusNoContent || h.casino.rocket != (model.CasinoRocket{Least: 2, Most: 20, Return: 9000, Top: 5000}) {
 		t.Fatalf("set rocket: %d %+v", w.Code, h.casino.rocket)
+	}
+
+	w = h.do("PUT", "/api/v1/casino/jackpot", `{"jackpot":500}`, "Authorization", "Bearer tok")
+	if w.Code != http.StatusNoContent || h.casino.jackpot != 500 {
+		t.Fatalf("set jackpot: %d %d", w.Code, h.casino.jackpot)
 	}
 
 	w = h.do("POST", "/api/v1/casino/rockets", `{"amount":10,"auto":250}`, "Authorization", "Bearer tok")

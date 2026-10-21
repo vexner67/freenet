@@ -32,7 +32,7 @@ func (c *Casino) Get(ctx context.Context) (model.Casino, error) {
 		Least:       resp.GetBetLeast(),
 		Most:        resp.GetBetMost(),
 		Multipliers: fromProtoAim(resp.GetAim()),
-	}, Rocket: fromProtoRocket(resp.GetRocket())}
+	}, Rocket: fromProtoRocket(resp.GetRocket()), Jackpot: resp.GetJackpot()}
 	for _, votes := range resp.GetPrizes() {
 		casino.Prizes = append(casino.Prizes, model.CasinoPrize{Votes: votes})
 	}
@@ -51,7 +51,7 @@ func (c *Casino) Settings(ctx context.Context, accessToken string) (model.Casino
 			Least:       resp.GetBetLeast(),
 			Most:        resp.GetBetMost(),
 			Multipliers: fromProtoAim(resp.GetAim()),
-		}, Rocket: fromProtoRocket(resp.GetRocket())},
+		}, Rocket: fromProtoRocket(resp.GetRocket()), Jackpot: resp.GetJackpot()},
 		Spins:       resp.GetSpins(),
 		Spent:       resp.GetSpent(),
 		Won:         resp.GetWon(),
@@ -220,4 +220,12 @@ func fromProtoAim(aim []*userv1.AimMultiplier) []model.AimMultiplier {
 	}
 
 	return out
+}
+
+func (c *Casino) SetJackpot(ctx context.Context, accessToken string, jackpot int64) error {
+	if _, err := c.api.SetCasinoJackpot(withToken(ctx, accessToken), &userv1.SetCasinoJackpotRequest{Jackpot: jackpot}); err != nil {
+		return errs.Wrap("c.api.SetCasinoJackpot", fromStatus(err))
+	}
+
+	return nil
 }

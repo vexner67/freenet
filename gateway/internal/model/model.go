@@ -1285,6 +1285,20 @@ type Treasury struct {
 
 // Bonus is the daily bonus of the caller: what it gives, whether it is
 // taken today and whether the caller may take it.
+// Transferred is what a transfer left the sender and the fee it took on
+// top of the votes.
+type Transferred struct {
+	Votes int64
+	Fee   int64
+}
+
+// RatingRaised is the votes and the rating the caller has after
+// "Повысить рейтинг".
+type RatingRaised struct {
+	Balance int64
+	Rating  int
+}
+
 type Bonus struct {
 	Votes    int64
 	Taken    bool

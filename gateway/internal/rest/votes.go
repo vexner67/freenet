@@ -47,9 +47,11 @@ type statementResponse struct {
 	Expense    int64               `json:"expense"`
 }
 
-// balanceResponse is the votes the caller has left.
-type balanceResponse struct {
+// transferredResponse is the votes the caller has left and the fee the
+// transfer took on top.
+type transferredResponse struct {
 	Votes int64 `json:"votes"`
+	Fee   int64 `json:"fee"`
 }
 
 type createVoucherRequest struct {
@@ -133,13 +135,13 @@ func (a *api) transferVotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	left, err := a.votes.Transfer(r.Context(), token, recipient.ID, req.Votes, req.Note)
+	sent, err := a.votes.Transfer(r.Context(), token, recipient.ID, req.Votes, req.Note)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, balanceResponse{Votes: left})
+	writeJSON(w, http.StatusOK, transferredResponse(sent))
 }
 
 // voteStatement is the statement of the caller's votes ("Голоса"): every
@@ -383,4 +385,33 @@ func (a *api) claimBonus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, claimedBonusJSON{Votes: claimed.Votes, Balance: claimed.Balance})
+}
+
+// raiseRating is "Повысить рейтинг": votes of the caller into the
+// treasury, percent of rating in return.
+func (a *api) raiseRating(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req struct {
+		Percent int `json:"percent"`
+	}
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	raised, err := a.votes.RaiseRating(r.Context(), token, req.Percent)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, struct {
+		Balance int64 `json:"balance"`
+		Rating  int   `json:"rating"`
+	}{raised.Balance, raised.Rating})
 }

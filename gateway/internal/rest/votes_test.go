@@ -19,9 +19,14 @@ type fakeVotes struct {
 	err                                              error
 }
 
-func (f *fakeVotes) Transfer(_ context.Context, token, userID string, votes int64, note string) (int64, error) {
+func (f *fakeVotes) Transfer(_ context.Context, token, userID string, votes int64, note string) (model.Transferred, error) {
 	f.token, f.userID, f.votes, f.note = token, userID, votes, note
-	return 6, f.err
+	return model.Transferred{Votes: 6, Fee: 1}, f.err
+}
+
+func (f *fakeVotes) RaiseRating(_ context.Context, token string, percent int) (model.RatingRaised, error) {
+	f.token, f.limit = token, percent
+	return model.RatingRaised{Balance: 85, Rating: percent}, f.err
 }
 
 func (f *fakeVotes) Statement(_ context.Context, token, cursor, flow string, limit int) (model.Statement, error) {
@@ -133,8 +138,9 @@ func TestTransferVotes(t *testing.T) {
 	w := h.do("POST", "/api/v1/users/bob/votes", `{"votes":4,"note":"За пиццу"}`, "Authorization", "Bearer tok")
 	got := decode[struct {
 		Votes int64 `json:"votes"`
+		Fee   int64 `json:"fee"`
 	}](t, w)
-	if w.Code != http.StatusOK || got.Votes != 6 || h.votes.userID != "u2" || h.votes.votes != 4 || h.votes.token != "tok" || h.votes.note != "За пиццу" {
+	if w.Code != http.StatusOK || got.Votes != 6 || got.Fee != 1 || h.votes.userID != "u2" || h.votes.votes != 4 || h.votes.token != "tok" || h.votes.note != "За пиццу" {
 		t.Fatalf("%d %+v, asked %+v", w.Code, got, h.votes)
 	}
 
@@ -329,6 +335,29 @@ func TestBonus(t *testing.T) {
 		t.Fatalf("a bonus taken: %d %s", w.Code, w.Body)
 	}
 	if w = newHarness(rest.Config{}).do("GET", "/api/v1/me/bonus", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without token: %d", w.Code)
+	}
+}
+
+func TestRaiseRating(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	w := h.do("POST", "/api/v1/me/rating", `{"percent":5}`, "Authorization", "Bearer tok")
+	got := decode[struct {
+		Balance int64 `json:"balance"`
+		Rating  int   `json:"rating"`
+	}](t, w)
+	if w.Code != http.StatusOK || got.Balance != 85 || got.Rating != 5 || h.votes.limit != 5 || h.votes.token != "tok" {
+		t.Fatalf("%d %+v", w.Code, got)
+	}
+
+	h = newHarness(rest.Config{})
+	h.votes.err = failure.New(failure.Conflict, "the rating cannot go above 1000 percent")
+	if w = h.do("POST", "/api/v1/me/rating", `{"percent":5}`, "Authorization", "Bearer tok"); w.Code != http.StatusConflict {
+		t.Fatalf("past the limit: %d %s", w.Code, w.Body)
+	}
+	if w = newHarness(rest.Config{}).do("POST", "/api/v1/me/rating", `{"percent":5}`); w.Code != http.StatusUnauthorized {
 		t.Fatalf("without token: %d", w.Code)
 	}
 }

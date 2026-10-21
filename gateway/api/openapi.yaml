@@ -4155,6 +4155,8 @@ paths:
       description: |
         The user hears about it (`votes`). Not to yourself, not to a deleted
         page and not across a blacklist, either way. Limited per user.
+        A fee of 3% of the votes, rounded up and at least 1, goes to the
+        treasury on top: handing 100 costs 103.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -4174,9 +4176,10 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [votes]
+                required: [votes, fee]
                 properties:
                   votes: { type: integer, description: The votes you have left }
+                  fee: { type: integer, description: The fee paid on top of the votes }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
@@ -4529,6 +4532,37 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/me/rating:
+    post:
+      summary: Raise your rating ("Повысить рейтинг")
+      description: '3 votes a percent, into the treasury; the rating goes up to 1000% at most: `the rating cannot go above 1000 percent` (409). Limited per user.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [percent]
+              properties:
+                percent: { type: integer, minimum: 1, maximum: 1000 }
+      responses:
+        "200":
+          description: Raised
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [balance, rating]
+                properties:
+                  balance: { type: integer, format: int64, description: The votes you have now }
+                  rating: { type: integer, description: Your rating now, in percent }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/decor:
     get:
       summary: The New Year decoration of the site
@@ -4612,7 +4646,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [price, prizes, spins, spent, won, bets, wagers, rocket, rockets]
+                required: [price, prizes, spins, spent, won, bets, wagers, rocket, rockets, jackpot]
                 properties:
                   price: { type: integer, format: int64 }
                   prizes:
@@ -4639,6 +4673,7 @@ paths:
                       count: { type: integer, format: int64, description: Rounds launched }
                       spent: { type: integer, format: int64, description: Votes bet }
                       won: { type: integer, format: int64, description: Votes paid }
+                  jackpot: { type: integer, format: int64, description: The win the site celebrates over the whole screen }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
           description: You are not an administrator
@@ -4741,6 +4776,31 @@ paths:
         content:
           application/json:
             schema: { $ref: "#/components/schemas/CasinoRocket" }
+      responses:
+        "204": { description: Set }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/casino/jackpot:
+    put:
+      summary: Change the jackpot
+      description: 'Only for the administrators of the site: the win, in votes (1–1000), from which the site celebrates over the whole screen.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [jackpot]
+              properties:
+                jackpot: { type: integer, format: int64, minimum: 1, maximum: 1000 }
       responses:
         "204": { description: Set }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -8106,9 +8166,10 @@ components:
 
     Casino:
       type: object
-      required: [price, prizes, bets, rocket]
+      required: [price, prizes, bets, rocket, jackpot]
       properties:
         price: { type: integer, format: int64, description: What a spin costs, in votes }
+        jackpot: { type: integer, format: int64, description: The win the site celebrates over the whole screen }
         prizes:
           type: array
           description: The votes of each prize, in order; 0 is nothing
