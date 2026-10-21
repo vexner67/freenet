@@ -2121,6 +2121,9 @@ a.poll-result-name { cursor: pointer; }
    buttons of what can be done, the totals of 30 days and the statement —
    a line per operation, what it brought green, what it took red. */
 .bank-actions { display: flex; gap: 8px; margin: 12px 0; }
+.bank-bonus { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 8px 10px; border: 1px solid var(--line-dedede); background: var(--back-fff); }
+.bank-bonus > div { flex: 1; }
+.bank-bonus span { color: var(--text-808080); }
 .bank-totals { display: flex; gap: 10px; margin: 0 0 12px; }
 .bank-totals > div { flex: 1; padding: 8px 10px; border: 1px solid var(--line-dedede); background: var(--back-fff); }
 .bank-totals span { display: block; color: var(--text-808080); }

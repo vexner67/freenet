@@ -657,6 +657,9 @@ export const api = {
   // removing from your own page; the administrators price the gifts.
   giftCatalog: () => request('GET', '/api/v1/gifts'),
   voteRate: () => request('GET', '/api/v1/vote-rate'),
+  treasury: () => request('GET', '/api/v1/treasury'),
+  bonus: () => authorized('GET', '/api/v1/me/bonus'),
+  claimBonus: () => authorized('POST', '/api/v1/me/bonus'),
   setVoteRate: (kopecks) => authorized('PUT', '/api/v1/vote-rate', { kopecks }),
   decor: () => request('GET', '/api/v1/decor'),
   setDecor: (mode) => authorized('PUT', '/api/v1/decor', { mode }),

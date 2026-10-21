@@ -1150,7 +1150,7 @@ const reads = {
   '/admin/users': () => started(listPage.first()),
   '/admin/bans': () => started(listPage.first()),
   '/admin/clubs': () => started(listPage.first()),
-  '/admin/vouchers': () => started(api.vouchers()),
+  '/admin/vouchers': () => ({ page: started(api.vouchers()), treasury: started(api.treasury()) }),
   '/admin/gifts': () => ({ catalog: started(api.giftCatalog()), rate: started(api.voteRate()) }),
   '/admin/ads': () => started(api.ads(true)),
   '/admin/decor': () => started(api.decor()),
@@ -1175,7 +1175,12 @@ if (!me) {
     $(listed).hidden = false;
     await listPage.more(reads);
   } else if (path === '/admin/vouchers') {
-    await vouchers()(reads);
+    reads.treasury.then((treasury) => {
+      $('treasury-free').textContent = tr('В Казне {0}; ваучеры обещают {1}, свободно для новых — {2}. Ваучер не может обещать больше свободного.',
+        votesCount(treasury.votes), votesCount(treasury.outstanding), votesCount(treasury.free));
+      $('treasury-free').hidden = false;
+    }, showError);
+    await vouchers()(reads.page);
   } else if (path === '/admin/vouchers/new') {
     newVoucher();
   } else if (path === '/admin/gifts') {
