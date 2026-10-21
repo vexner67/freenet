@@ -32,7 +32,7 @@ func TestBetEventRepository(t *testing.T) {
 		if err = repo.Save(ctx, u); err != nil {
 			t.Fatal(err)
 		}
-		if _, err = wallets.Credit(ctx, u.ID(), votes, 0); err != nil {
+		if _, err = wallets.Credit(ctx, u.ID(), votes, 0, user.Entry(user.VoteVoucher, uuid.Nil, "")); err != nil {
 			t.Fatal(err)
 		}
 

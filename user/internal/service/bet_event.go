@@ -144,7 +144,7 @@ func (s *BetEventService) Resolve(ctx context.Context, adminID, id uuid.UUID, wi
 			return nil, errs.Wrap("e.Resolved", err)
 		}
 
-		return resolved, errs.Wrap("s.pay", s.pay(ctx, id, winner))
+		return resolved, errs.Wrap("s.pay", s.pay(ctx, e, winner))
 	})
 }
 
@@ -156,7 +156,7 @@ func (s *BetEventService) Cancel(ctx context.Context, adminID, id uuid.UUID) err
 			return nil, errs.Wrap("e.Cancelled", err)
 		}
 
-		return cancelled, errs.Wrap("s.pay", s.pay(ctx, id, -1))
+		return cancelled, errs.Wrap("s.pay", s.pay(ctx, e, -1))
 	})
 }
 
@@ -199,7 +199,7 @@ func (s *BetEventService) Stake(ctx context.Context, userID, id uuid.UUID, outco
 			return errs.Wrap("e.Stake", err)
 		}
 
-		if balance, err = s.wallets.Spend(ctx, userID, amount); err != nil {
+		if balance, err = s.wallets.Spend(ctx, userID, amount, user.Entry(user.VoteStake, uuid.Nil, e.Question().String())); err != nil {
 			return errs.Wrap("s.wallets.Spend", err)
 		}
 
@@ -238,7 +238,9 @@ func (s *BetEventService) change(ctx context.Context, adminID, id uuid.UUID, cha
 
 // pay pays the stakes of the event resolved with winner (-1 for
 // cancelled) back to the people.
-func (s *BetEventService) pay(ctx context.Context, id uuid.UUID, winner int) error {
+func (s *BetEventService) pay(ctx context.Context, e *user.BetEvent, winner int) error {
+	id := e.ID()
+
 	stakes, err := s.events.Stakes(ctx, id)
 	if err != nil {
 		return errs.Wrap("s.events.Stakes", err)
@@ -264,7 +266,7 @@ func (s *BetEventService) pay(ctx context.Context, id uuid.UUID, winner int) err
 
 	for _, userID := range order {
 		// A page erased meanwhile takes its stake with it.
-		if _, err := s.wallets.Credit(ctx, userID, owed[userID], 0); err != nil && !errors.Is(err, user.ErrNotFound) {
+		if _, err := s.wallets.Credit(ctx, userID, owed[userID], 0, user.Entry(user.VoteStake, uuid.Nil, e.Question().String())); err != nil && !errors.Is(err, user.ErrNotFound) {
 			return errs.Wrap("s.wallets.Credit", err)
 		}
 	}

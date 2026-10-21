@@ -5,6 +5,7 @@ import (
 	"context"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -12,8 +13,9 @@ import (
 )
 
 // Spend, Move and Credit make UserRepository the wallets as well: the
-// votes and the rating are kept with the users, as in the table.
-func (r *UserRepository) Spend(ctx context.Context, userID uuid.UUID, votes int64) (int64, error) {
+// votes and the rating are kept with the users, as in the table, and so
+// is the statement of each page.
+func (r *UserRepository) Spend(ctx context.Context, userID uuid.UUID, votes int64, e user.VoteEntry) (int64, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, errs.Wrap("ctx.Err", err)
 	}
@@ -21,10 +23,10 @@ func (r *UserRepository) Spend(ctx context.Context, userID uuid.UUID, votes int6
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	return r.spend(userID, votes)
+	return r.spend(userID, votes, e)
 }
 
-func (r *UserRepository) Move(ctx context.Context, fromID, toID uuid.UUID, votes int64) (int64, error) {
+func (r *UserRepository) Move(ctx context.Context, fromID, toID uuid.UUID, votes int64, e user.VoteEntry) (int64, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, errs.Wrap("ctx.Err", err)
 	}
@@ -32,24 +34,23 @@ func (r *UserRepository) Move(ctx context.Context, fromID, toID uuid.UUID, votes
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	to, ok := r.users[toID]
-	if !ok {
+	if _, ok := r.users[toID]; !ok {
 		return 0, user.ErrNotFound
 	}
 
-	left, err := r.spend(fromID, votes)
+	left, err := r.spend(fromID, votes, user.Entry(e.Kind, toID, e.Note))
 	if err != nil {
 		return 0, err
 	}
 
-	wallet := to.Wallet()
-	wallet.Votes += votes
-	r.users[toID] = *to.WithWallet(wallet)
+	if _, err = r.credit(toID, votes, 0, user.Entry(e.Kind, fromID, e.Note)); err != nil {
+		return 0, err
+	}
 
 	return left, nil
 }
 
-func (r *UserRepository) Credit(ctx context.Context, userID uuid.UUID, votes int64, rating int) (user.Wallet, error) {
+func (r *UserRepository) Credit(ctx context.Context, userID uuid.UUID, votes int64, rating int, e user.VoteEntry) (user.Wallet, error) {
 	if err := ctx.Err(); err != nil {
 		return user.Wallet{}, errs.Wrap("ctx.Err", err)
 	}
@@ -57,21 +58,55 @@ func (r *UserRepository) Credit(ctx context.Context, userID uuid.UUID, votes int
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	u, ok := r.users[userID]
-	if !ok {
-		return user.Wallet{}, user.ErrNotFound
+	return r.credit(userID, votes, rating, e)
+}
+
+// Operations are the statement of userID, newest first.
+func (r *UserRepository) Operations(ctx context.Context, userID, before uuid.UUID, flow user.VoteFlow, limit int) ([]user.VoteOperation, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
 	}
 
-	wallet := u.Wallet()
-	wallet.Votes += votes
-	wallet.Rating += rating
-	r.users[userID] = *u.WithWallet(wallet)
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
-	return wallet, nil
+	ops := r.operations[userID]
+
+	var found []user.VoteOperation
+
+	for i := len(ops) - 1; i >= 0 && len(found) < limit; i-- {
+		op := ops[i]
+		if (before == uuid.Nil || bytes.Compare(op.ID[:], before[:]) < 0) && flow.Matches(op.Amount) {
+			found = append(found, op)
+		}
+	}
+
+	return found, nil
+}
+
+func (r *UserRepository) Totals(ctx context.Context, userID uuid.UUID, since time.Time) (income, expense int64, err error) {
+	if err = ctx.Err(); err != nil {
+		return 0, 0, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, op := range r.operations[userID] {
+		switch {
+		case op.At.Before(since):
+		case op.Amount > 0:
+			income += op.Amount
+		default:
+			expense -= op.Amount
+		}
+	}
+
+	return income, expense, nil
 }
 
 // spend takes votes from userID; the caller holds the write lock.
-func (r *UserRepository) spend(userID uuid.UUID, votes int64) (int64, error) {
+func (r *UserRepository) spend(userID uuid.UUID, votes int64, e user.VoteEntry) (int64, error) {
 	u, ok := r.users[userID]
 	if !ok {
 		return 0, user.ErrNotFound
@@ -85,7 +120,47 @@ func (r *UserRepository) spend(userID uuid.UUID, votes int64) (int64, error) {
 	wallet.Votes -= votes
 	r.users[userID] = *u.WithWallet(wallet)
 
-	return wallet.Votes, nil
+	return wallet.Votes, r.write(userID, -votes, wallet.Votes, e)
+}
+
+// credit adds to the wallet of userID; the caller holds the write lock.
+func (r *UserRepository) credit(userID uuid.UUID, votes int64, rating int, e user.VoteEntry) (user.Wallet, error) {
+	u, ok := r.users[userID]
+	if !ok {
+		return user.Wallet{}, user.ErrNotFound
+	}
+
+	wallet := u.Wallet()
+	wallet.Votes += votes
+	wallet.Rating += rating
+	r.users[userID] = *u.WithWallet(wallet)
+
+	return wallet, r.write(userID, votes, wallet.Votes, e)
+}
+
+// write adds a line to the statement of userID unless no votes changed;
+// the caller holds the write lock.
+func (r *UserRepository) write(userID uuid.UUID, amount, balance int64, e user.VoteEntry) error {
+	if amount == 0 {
+		return nil
+	}
+
+	id, err := uuid.NewV7()
+	if err != nil {
+		return errs.Wrap("uuid.NewV7", err)
+	}
+
+	r.operations[userID] = append(r.operations[userID], user.VoteOperation{
+		ID:      id,
+		Kind:    e.Kind,
+		Amount:  amount,
+		Balance: balance,
+		PeerID:  e.PeerID,
+		Note:    e.Note,
+		At:      time.Now().UTC(),
+	})
+
+	return nil
 }
 
 // VoucherRepository keeps vouchers in memory and behaves as the tables

@@ -13,9 +13,8 @@ import (
 // MaxGiftCaptionLength is how long the words with a gift may be.
 const MaxGiftCaptionLength = 250
 
-// MaxGiftPrice is the dearest an administrator may make a gift, in votes:
-// as much as a voucher carries.
-const MaxGiftPrice = MaxVotes
+// MaxGiftPrice is the dearest an administrator may make a gift, in votes.
+const MaxGiftPrice = 1_000_000
 
 var (
 	ErrUnknownGift        = errors.New("unknown gift")

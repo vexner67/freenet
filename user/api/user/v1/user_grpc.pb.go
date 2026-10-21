@@ -72,6 +72,7 @@ const (
 	UserService_GetStickerAuthors_FullMethodName  = "/user.v1.UserService/GetStickerAuthors"
 	UserService_TransferVotes_FullMethodName      = "/user.v1.UserService/TransferVotes"
 	UserService_RedeemVoucher_FullMethodName      = "/user.v1.UserService/RedeemVoucher"
+	UserService_ListVoteOperations_FullMethodName = "/user.v1.UserService/ListVoteOperations"
 	UserService_CreateVoucher_FullMethodName      = "/user.v1.UserService/CreateVoucher"
 	UserService_ListVouchers_FullMethodName       = "/user.v1.UserService/ListVouchers"
 	UserService_DeleteVoucher_FullMethodName      = "/user.v1.UserService/DeleteVoucher"
@@ -239,6 +240,9 @@ type UserServiceClient interface {
 	// wrong with the voucher.
 	TransferVotes(ctx context.Context, in *TransferVotesRequest, opts ...grpc.CallOption) (*TransferVotesResponse, error)
 	RedeemVoucher(ctx context.Context, in *RedeemVoucherRequest, opts ...grpc.CallOption) (*RedeemVoucherResponse, error)
+	// ListVoteOperations is the statement of the caller's votes ("Голоса"):
+	// every change of them, newest first, and the totals of 30 days.
+	ListVoteOperations(ctx context.Context, in *ListVoteOperationsRequest, opts ...grpc.CallOption) (*ListVoteOperationsResponse, error)
 	// Vouchers are made by the administrators of the site (ADMIN_EMAILS):
 	// PermissionDenied to anyone else.
 	CreateVoucher(ctx context.Context, in *CreateVoucherRequest, opts ...grpc.CallOption) (*CreateVoucherResponse, error)
@@ -854,6 +858,16 @@ func (c *userServiceClient) RedeemVoucher(ctx context.Context, in *RedeemVoucher
 	return out, nil
 }
 
+func (c *userServiceClient) ListVoteOperations(ctx context.Context, in *ListVoteOperationsRequest, opts ...grpc.CallOption) (*ListVoteOperationsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListVoteOperationsResponse)
+	err := c.cc.Invoke(ctx, UserService_ListVoteOperations_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) CreateVoucher(ctx context.Context, in *CreateVoucherRequest, opts ...grpc.CallOption) (*CreateVoucherResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateVoucherResponse)
@@ -1316,6 +1330,9 @@ type UserServiceServer interface {
 	// wrong with the voucher.
 	TransferVotes(context.Context, *TransferVotesRequest) (*TransferVotesResponse, error)
 	RedeemVoucher(context.Context, *RedeemVoucherRequest) (*RedeemVoucherResponse, error)
+	// ListVoteOperations is the statement of the caller's votes ("Голоса"):
+	// every change of them, newest first, and the totals of 30 days.
+	ListVoteOperations(context.Context, *ListVoteOperationsRequest) (*ListVoteOperationsResponse, error)
 	// Vouchers are made by the administrators of the site (ADMIN_EMAILS):
 	// PermissionDenied to anyone else.
 	CreateVoucher(context.Context, *CreateVoucherRequest) (*CreateVoucherResponse, error)
@@ -1566,6 +1583,9 @@ func (UnimplementedUserServiceServer) TransferVotes(context.Context, *TransferVo
 }
 func (UnimplementedUserServiceServer) RedeemVoucher(context.Context, *RedeemVoucherRequest) (*RedeemVoucherResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RedeemVoucher not implemented")
+}
+func (UnimplementedUserServiceServer) ListVoteOperations(context.Context, *ListVoteOperationsRequest) (*ListVoteOperationsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListVoteOperations not implemented")
 }
 func (UnimplementedUserServiceServer) CreateVoucher(context.Context, *CreateVoucherRequest) (*CreateVoucherResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateVoucher not implemented")
@@ -2623,6 +2643,24 @@ func _UserService_RedeemVoucher_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ListVoteOperations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListVoteOperationsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListVoteOperations(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListVoteOperations_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListVoteOperations(ctx, req.(*ListVoteOperationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_CreateVoucher_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateVoucherRequest)
 	if err := dec(in); err != nil {
@@ -3431,6 +3469,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RedeemVoucher",
 			Handler:    _UserService_RedeemVoucher_Handler,
+		},
+		{
+			MethodName: "ListVoteOperations",
+			Handler:    _UserService_ListVoteOperations_Handler,
 		},
 		{
 			MethodName: "CreateVoucher",

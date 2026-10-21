@@ -65,11 +65,11 @@ func TestWalletRepository(t *testing.T) {
 		t.Fatalf("a new page has %+v", wallet(ann.ID()))
 	}
 
-	got, err := wallets.Credit(ctx, ann.ID(), 10, 30)
+	got, err := wallets.Credit(ctx, ann.ID(), 10, 30, user.Entry(user.VoteVoucher, uuid.Nil, ""))
 	if err != nil || got != (user.Wallet{Votes: 10, Rating: 30}) || wallet(ann.ID()) != got {
 		t.Fatalf("Credit = %+v, %v; stored %+v", got, err, wallet(ann.ID()))
 	}
-	if _, err = wallets.Credit(ctx, uuid.New(), 1, 0); !errors.Is(err, user.ErrNotFound) {
+	if _, err = wallets.Credit(ctx, uuid.New(), 1, 0, user.Entry(user.VoteVoucher, uuid.Nil, "")); !errors.Is(err, user.ErrNotFound) {
 		t.Fatalf("Credit of nobody: %v", err)
 	}
 
@@ -78,7 +78,7 @@ func TestWalletRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = wallets.Credit(ctx, bob.ID(), 2, 0); err != nil {
+	if _, err = wallets.Credit(ctx, bob.ID(), 2, 0, user.Entry(user.VoteVoucher, uuid.Nil, "")); err != nil {
 		t.Fatal(err)
 	}
 	stale.UpdateStatus("Привет")
@@ -89,14 +89,14 @@ func TestWalletRepository(t *testing.T) {
 		t.Fatalf("after Update bob has %+v", wallet(bob.ID()))
 	}
 
-	left, err := wallets.Spend(ctx, ann.ID(), 3)
+	left, err := wallets.Spend(ctx, ann.ID(), 3, user.Entry(user.VoteVoucher, uuid.Nil, ""))
 	if err != nil || left != 7 {
 		t.Fatalf("Spend = %d, %v", left, err)
 	}
-	if _, err = wallets.Spend(ctx, ann.ID(), 8); !errors.Is(err, user.ErrNotEnoughVotes) {
+	if _, err = wallets.Spend(ctx, ann.ID(), 8, user.Entry(user.VoteVoucher, uuid.Nil, "")); !errors.Is(err, user.ErrNotEnoughVotes) {
 		t.Fatalf("Spend of more than there is: %v", err)
 	}
-	if _, err = wallets.Spend(ctx, uuid.New(), 1); !errors.Is(err, user.ErrNotFound) {
+	if _, err = wallets.Spend(ctx, uuid.New(), 1, user.Entry(user.VoteVoucher, uuid.Nil, "")); !errors.Is(err, user.ErrNotFound) {
 		t.Fatalf("Spend of nobody: %v", err)
 	}
 	if wallet(ann.ID()).Votes != 7 {
@@ -108,7 +108,7 @@ func TestWalletRepository(t *testing.T) {
 
 		err := tx.WithinTx(ctx, func(ctx context.Context) error {
 			var err error
-			left, err = wallets.Move(ctx, from, to, votes)
+			left, err = wallets.Move(ctx, from, to, votes, user.Entry(user.VoteVoucher, uuid.Nil, ""))
 
 			return err
 		})
@@ -269,5 +269,96 @@ func TestVoucherRepository(t *testing.T) {
 	}
 	if _, err = vouchers.Redeem(ctx, twice.Token(), uuid.New()); !errors.Is(err, user.ErrVoucherInvalid) {
 		t.Fatalf("a voucher that ran out, by nobody: %v", err)
+	}
+}
+
+func TestWalletRepository_Statement(t *testing.T) {
+	repo, pool := newRepo(t)
+	wallets := postgres.NewWalletRepository(pool)
+	tx := pgpool.NewTxManager(pool)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	newUser := func() *user.User {
+		t.Helper()
+
+		u, err := user.New(user.Email(unique("statement") + "@example.com"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = repo.Save(ctx, u); err != nil {
+			t.Fatal(err)
+		}
+
+		return u
+	}
+
+	ann, bob := newUser(), newUser()
+
+	// Rating alone changes no votes and is not written down.
+	if _, err := wallets.Credit(ctx, ann.ID(), 0, 5, user.Entry(user.VoteVoucher, uuid.Nil, "")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wallets.Credit(ctx, ann.ID(), 20, 0, user.Entry(user.VoteVoucher, uuid.Nil, "")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wallets.Spend(ctx, ann.ID(), 3, user.Entry(user.VoteGift, bob.ID(), "rose")); err != nil {
+		t.Fatal(err)
+	}
+	// A refused spend writes nothing.
+	if _, err := wallets.Spend(ctx, ann.ID(), 100, user.Entry(user.VoteCasino, uuid.Nil, "")); !errors.Is(err, user.ErrNotEnoughVotes) {
+		t.Fatal(err)
+	}
+	err := tx.WithinTx(ctx, func(ctx context.Context) error {
+		_, err := wallets.Move(ctx, ann.ID(), bob.ID(), 7, user.Entry(user.VoteTransfer, uuid.Nil, "за пиццу"))
+		return err
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ops, err := wallets.Operations(ctx, ann.ID(), uuid.Nil, user.VoteFlowAll, 10)
+	if err != nil || len(ops) != 3 {
+		t.Fatalf("Operations = %+v, %v", ops, err)
+	}
+
+	want := []struct {
+		kind            user.VoteKind
+		amount, balance int64
+		peer            uuid.UUID
+		note            string
+	}{
+		{user.VoteTransfer, -7, 10, bob.ID(), "за пиццу"},
+		{user.VoteGift, -3, 17, bob.ID(), "rose"},
+		{user.VoteVoucher, 20, 20, uuid.Nil, ""},
+	}
+	for i, w := range want {
+		op := ops[i]
+		if op.Kind != w.kind || op.Amount != w.amount || op.Balance != w.balance || op.PeerID != w.peer || op.Note != w.note || op.At.IsZero() {
+			t.Fatalf("operation %d = %+v, want %+v", i, op, w)
+		}
+	}
+
+	bobs, err := wallets.Operations(ctx, bob.ID(), uuid.Nil, user.VoteFlowAll, 10)
+	if err != nil || len(bobs) != 1 || bobs[0].Amount != 7 || bobs[0].Balance != 7 || bobs[0].PeerID != ann.ID() {
+		t.Fatalf("bob's operations = %+v, %v", bobs, err)
+	}
+
+	in, err := wallets.Operations(ctx, ann.ID(), uuid.Nil, user.VoteFlowIn, 10)
+	if err != nil || len(in) != 1 || in[0].Kind != user.VoteVoucher {
+		t.Fatalf("what came in = %+v, %v", in, err)
+	}
+	older, err := wallets.Operations(ctx, ann.ID(), ops[0].ID, user.VoteFlowOut, 10)
+	if err != nil || len(older) != 1 || older[0].Kind != user.VoteGift {
+		t.Fatalf("what went out before the transfer = %+v, %v", older, err)
+	}
+
+	income, expense, err := wallets.Totals(ctx, ann.ID(), time.Now().Add(-time.Hour))
+	if err != nil || income != 20 || expense != 10 {
+		t.Fatalf("Totals = %d, %d, %v", income, expense, err)
+	}
+	if income, expense, err = wallets.Totals(ctx, ann.ID(), time.Now().Add(time.Hour)); err != nil || income != 0 || expense != 0 {
+		t.Fatalf("Totals from the future = %d, %d, %v", income, expense, err)
 	}
 }

@@ -119,7 +119,7 @@ func (s *CasinoService) Spin(ctx context.Context, userID uuid.UUID) (Spin, error
 			return errs.Wrap("s.casinos.Casino", err)
 		}
 
-		if spin.Balance, err = s.wallets.Spend(ctx, userID, casino.Price()); err != nil {
+		if spin.Balance, err = s.wallets.Spend(ctx, userID, casino.Price(), user.Entry(user.VoteCasino, uuid.Nil, "")); err != nil {
 			return errs.Wrap("s.wallets.Spend", err)
 		}
 
@@ -135,7 +135,7 @@ func (s *CasinoService) Spin(ctx context.Context, userID uuid.UUID) (Spin, error
 		spin.Votes = casino.Prizes()[spin.Prize].Votes
 
 		if spin.Votes > 0 {
-			wallet, err := s.wallets.Credit(ctx, userID, spin.Votes, 0)
+			wallet, err := s.wallets.Credit(ctx, userID, spin.Votes, 0, user.Entry(user.VoteCasino, uuid.Nil, ""))
 			if err != nil {
 				return errs.Wrap("s.wallets.Credit", err)
 			}
@@ -179,7 +179,7 @@ func (s *CasinoService) Bet(ctx context.Context, userID uuid.UUID, amount int64,
 			return errs.Wrap("bets.Bet", err)
 		}
 
-		if wager.Balance, err = s.wallets.Spend(ctx, userID, bet.Amount()); err != nil {
+		if wager.Balance, err = s.wallets.Spend(ctx, userID, bet.Amount(), user.Entry(user.VoteAim, uuid.Nil, "")); err != nil {
 			return errs.Wrap("s.wallets.Spend", err)
 		}
 
@@ -194,7 +194,7 @@ func (s *CasinoService) Bet(ctx context.Context, userID uuid.UUID, amount int64,
 		if wager.Won {
 			wager.Votes = bet.Prize()
 
-			wallet, err := s.wallets.Credit(ctx, userID, wager.Votes, 0)
+			wallet, err := s.wallets.Credit(ctx, userID, wager.Votes, 0, user.Entry(user.VoteAim, uuid.Nil, ""))
 			if err != nil {
 				return errs.Wrap("s.wallets.Credit", err)
 			}

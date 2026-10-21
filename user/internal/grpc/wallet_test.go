@@ -124,9 +124,31 @@ func TestVouchersAndVotes(t *testing.T) {
 	}
 
 	// Transfers.
-	sent, err := s.client.TransferVotes(ann, &userv1.TransferVotesRequest{UserId: bobID, Votes: 4})
+	sent, err := s.client.TransferVotes(ann, &userv1.TransferVotesRequest{UserId: bobID, Votes: 4, Note: "За пиццу"})
 	if err != nil || sent.GetVotes() != 6 {
 		t.Fatalf("TransferVotes = %v, %v", sent, err)
+	}
+
+	statement, err := s.client.ListVoteOperations(bob, &userv1.ListVoteOperationsRequest{})
+	if err != nil || len(statement.GetOperations()) != 1 || statement.GetIncome() != 4 || statement.GetExpense() != 0 || statement.GetNextCursor() != "" {
+		t.Fatalf("bob's ListVoteOperations = %v, %v", statement, err)
+	}
+	if op := statement.GetOperations()[0]; op.GetKind() != "transfer" || op.GetAmount() != 4 || op.GetBalance() != 4 ||
+		op.GetPeerId() != annID || op.GetNote() != "За пиццу" || op.GetCreatedAt() == nil {
+		t.Fatalf("bob's transfer = %v", op)
+	}
+	statement, err = s.client.ListVoteOperations(ann, &userv1.ListVoteOperationsRequest{Flow: "in", Limit: 1})
+	if err != nil || len(statement.GetOperations()) != 1 || statement.GetOperations()[0].GetKind() != "voucher" || statement.GetOperations()[0].GetPeerId() != "" {
+		t.Fatalf("what came to ann = %v, %v", statement, err)
+	}
+	if _, err = s.client.ListVoteOperations(ann, &userv1.ListVoteOperationsRequest{Flow: "up"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a wrong flow: %v", err)
+	}
+	if _, err = s.client.ListVoteOperations(ann, &userv1.ListVoteOperationsRequest{Cursor: "nope"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a wrong cursor: %v", err)
+	}
+	if _, err = s.client.ListVoteOperations(context.Background(), &userv1.ListVoteOperationsRequest{}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("a guest's statement: %v", err)
 	}
 	if me, err = s.client.GetMe(bob, &userv1.GetMeRequest{}); err != nil || me.GetUser().GetVotes() != 4 {
 		t.Fatalf("bob's GetMe = %v, %v", me, err)
@@ -138,11 +160,12 @@ func TestVouchersAndVotes(t *testing.T) {
 		want codes.Code
 	}{
 		{"nothing", &userv1.TransferVotesRequest{UserId: bobID}, codes.InvalidArgument},
-		{"too much at once", &userv1.TransferVotesRequest{UserId: bobID, Votes: 1_000_001}, codes.InvalidArgument},
+		{"too much at once", &userv1.TransferVotesRequest{UserId: bobID, Votes: 100_000_001}, codes.InvalidArgument},
 		{"more than there is", &userv1.TransferVotesRequest{UserId: bobID, Votes: 7}, codes.FailedPrecondition},
 		{"to oneself", &userv1.TransferVotesRequest{UserId: annID, Votes: 1}, codes.InvalidArgument},
 		{"to nobody", &userv1.TransferVotesRequest{UserId: uuid.NewString(), Votes: 1}, codes.NotFound},
 		{"to a wrong id", &userv1.TransferVotesRequest{UserId: "nope", Votes: 1}, codes.InvalidArgument},
+		{"a note of two lines", &userv1.TransferVotesRequest{UserId: bobID, Votes: 1, Note: "раз\nдва"}, codes.InvalidArgument},
 	}
 	for _, tt := range refusals {
 		if _, err = s.client.TransferVotes(ann, tt.req); status.Code(err) != tt.want {

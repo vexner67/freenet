@@ -24,6 +24,8 @@ type UserRepository struct {
 	byNickname map[string]uuid.UUID
 	// invitedBy is who invited each page that names someone.
 	invitedBy map[uuid.UUID]uuid.UUID
+	// operations are the statement of each page, oldest first.
+	operations map[uuid.UUID][]user.VoteOperation
 	// cascade drops what other repositories keep of a deleted user, as
 	// the foreign keys do in PostgreSQL.
 	cascade []func(uuid.UUID)
@@ -35,6 +37,7 @@ func NewUserRepository() *UserRepository {
 		byEmail:    make(map[string]uuid.UUID),
 		byNickname: make(map[string]uuid.UUID),
 		invitedBy:  make(map[uuid.UUID]uuid.UUID),
+		operations: make(map[uuid.UUID][]user.VoteOperation),
 	}
 }
 
@@ -357,6 +360,16 @@ func (r *UserRepository) DeleteDue(ctx context.Context, now time.Time, limit int
 			delete(r.byNickname, nicknameKey(nickname))
 		}
 		delete(r.invitedBy, id)
+		delete(r.operations, id)
+	}
+
+	for id, ops := range r.operations {
+		for i := range ops {
+			if slices.Contains(due, ops[i].PeerID) {
+				ops[i].PeerID = uuid.Nil
+			}
+		}
+		r.operations[id] = ops
 	}
 
 	for invitee, inviter := range r.invitedBy {

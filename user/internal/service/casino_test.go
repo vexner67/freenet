@@ -59,7 +59,7 @@ func TestCasinoService(t *testing.T) {
 		t.Fatalf("Spin without votes: %v", err)
 	}
 
-	if _, err := w.users.Credit(ctx, ann, 15, 0); err != nil {
+	if _, err := w.users.Credit(ctx, ann, 15, 0, user.VoteEntry{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -70,7 +70,7 @@ func TestCasinoService(t *testing.T) {
 		t.Fatalf("Spin with 5 votes: %v", err)
 	}
 
-	if _, err := w.users.Credit(ctx, ann, 5, 0); err != nil {
+	if _, err := w.users.Credit(ctx, ann, 5, 0, user.VoteEntry{}); err != nil {
 		t.Fatal(err)
 	}
 	if spin, err := casino.Spin(ctx, ann); err != nil || spin != (service.Spin{Prize: 1, Votes: 25, Balance: 25}) {
@@ -140,7 +140,7 @@ func TestCasinoService_Bet(t *testing.T) {
 		t.Fatalf("Bet without votes: %v", err)
 	}
 
-	if _, err := w.users.Credit(ctx, ann, 100, 0); err != nil {
+	if _, err := w.users.Credit(ctx, ann, 100, 0, user.VoteEntry{}); err != nil {
 		t.Fatal(err)
 	}
 
