@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, betOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, votesAmount, signedVotes, voteOperation, transferNickname, transferURL } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, votesAmount, signedVotes, voteOperation, transferNickname, transferURL } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -1068,10 +1068,14 @@ test('casino: bets', () => {
   assert.equal(wagersCount(5), '5 ставок');
   assert.equal(betMultiplier(150), '×1,5');
   assert.equal(betMultiplier(1000), '×10');
-  // The same chances as the user service counts.
-  assert.equal(betOdds(95, 150), 6333);
-  assert.equal(betOdds(95, 200), 4750);
-  assert.equal(betOdds(95, 0), 0);
+  // What a multiplier gives back on average with its chance.
+  assert.equal(aimReturn(200, 4750), 95);
+  assert.equal(aimReturn(1000, 900), 90);
+  assert.equal(betOddsField(250), '2,5');
+  assert.equal(betOddsField(1000), '10');
+  assert.equal(typedOdds('2,5'), 250);
+  assert.equal(typedOdds(' 1.01 '), 101);
+  assert.equal(typedOdds('abc'), 0);
   assert.equal(betChance(4750), '47,5 %');
   assert.equal(betChance(6333), '63,3 %');
   assert.equal(betRoll(3721), '37,21');
@@ -1114,9 +1118,13 @@ test('aimZone is the green part of the strip in its middle, as the user service 
 test('betEventShare and betEventOdds say what an outcome of an event holds and would bring', () => {
   assert.equal(betEventShare(30, 120), 25);
   assert.equal(betEventShare(0, 0), 0);
-  assert.equal(betEventOdds(40, 100), '×2,5');
-  assert.equal(betEventOdds(30, 100), '×3,33');
-  assert.equal(betEventOdds(0, 100), '');
+  // Without odds, all staked shared by those on the outcome.
+  assert.equal(betEventOdds({ staked: 40 }, 100), '×2,5');
+  assert.equal(betEventOdds({ staked: 30, odds: 0 }, 100), '×3,33');
+  assert.equal(betEventOdds({ staked: 0 }, 100), '');
+  // With odds, the odds, whatever is staked.
+  assert.equal(betEventOdds({ staked: 0, odds: 250 }, 100), '×2,5');
+  assert.equal(betEventOdds({ staked: 90, odds: 120 }, 100), '×1,2');
 });
 
 test('betEventState says where an event stands', () => {

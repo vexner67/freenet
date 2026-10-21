@@ -366,6 +366,9 @@ form.aui.admin-rate .description { flex-basis: 100%; max-width: none; margin-top
 .admin-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .admin-bet-outcome { display: flex; gap: 6px; margin: 0 0 6px; }
 .admin-bet-outcome .text { flex: 1; max-width: 250px; }
+.admin-times { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+form.aui .admin-bet-odds, .admin-bet-outcome .admin-bet-odds { flex: none; width: 70px; }
+form.aui.admin-bet-odds-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
 .admin-stat { white-space: nowrap; }
 .admin-cover { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 8px; }
 .admin-cover img { max-width: 240px; max-height: 120px; border-radius: 3px; object-fit: cover; }

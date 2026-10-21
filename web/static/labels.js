@@ -1035,10 +1035,10 @@ export function betMultiplier(hundredths) {
   return `×${lang === 'en' ? times : times.replace('.', ',')}`;
 }
 
-// betOdds is the chance of a multiplier when the casino gives back ret
-// percent, of 10000 — as the user service counts it.
-export function betOdds(ret, hundredths) {
-  return hundredths > 0 ? Math.floor((ret * 10000) / hundredths) : 0;
+// aimReturn is the share of the votes bet on a multiplier, in hundredths,
+// that it gives back on average with its chance of 10000, in percents.
+export function aimReturn(hundredths, chance) {
+  return (hundredths * chance) / 10000;
 }
 
 // betChance is a chance of 10000 as the casino says it: "47,5 %".
@@ -1068,10 +1068,27 @@ export function betEventShare(staked, total) {
   return total > 0 ? (staked * 100) / total : 0;
 }
 
-// betEventOdds is what a vote staked on an outcome would bring if it won
-// now — all staked shared by those on it: "×2,5"; '' with nothing on it.
-export function betEventOdds(staked, total) {
-  return staked > 0 ? betMultiplier(Math.floor((total * 100) / staked)) : '';
+// betEventOdds is what a vote staked on an outcome brings if it wins: its
+// odds, "×2,5", or for an event without them, all staked shared by those
+// on it now; '' with nothing on it.
+export function betEventOdds(outcome, total) {
+  if (outcome.odds > 0) return betMultiplier(outcome.odds);
+
+  return outcome.staked > 0 ? betMultiplier(Math.floor((total * 100) / outcome.staked)) : '';
+}
+
+// betOddsField is odds in hundredths as the administrators type them:
+// "2,5"; and odds of such a field, 0 for what is not a number.
+export function betOddsField(hundredths) {
+  const times = String(hundredths / 100);
+
+  return lang === 'en' ? times : times.replace('.', ',');
+}
+
+export function typedOdds(value) {
+  const times = Number(String(value).trim().replace(',', '.'));
+
+  return Number.isFinite(times) ? Math.round(times * 100) : 0;
 }
 
 // betEventState says where an event of "Ставки" stands: whether it takes
@@ -1630,7 +1647,10 @@ const errorTexts = {
   'the bet is out of the limits of the casino': tr('Такую ставку казино не принимает.'),
   'unknown multiplier': tr('Такого множителя нет.'),
   'bets must be from 1 to 1000000 votes, the least not above the most': tr('Ставки — от 1 до 1 000 000 голосов, наименьшая не больше наибольшей.'),
-  'the return of bets must be from 1 to 100 percent': tr('Отдача ставок — от 1 до 100 %.'),
+  'bets have from 1 to 10 multipliers': tr('В «Прицеле» должно быть от 1 до 10 множителей.'),
+  'a multiplier must be from 1.01 to 1000': tr('Множитель — от ×1,01 до ×1000.'),
+  'the chance of a multiplier must be from 0.01 to 99.99 percent': tr('Шанс множителя — от 0,01 до 99,99 %.'),
+  'the multipliers repeat': tr('Множители не должны повторяться.'),
   'the question of the event is empty': tr('Напишите вопрос события.'),
   'the question of the event is too long': tr('Вопрос слишком длинный: не больше 200 символов.'),
   'an outcome of the event is empty': tr('Исход не может быть пустым.'),
@@ -1644,6 +1664,9 @@ const errorTexts = {
   'the event is not over yet': tr('Сначала подведите итог события или отмените его.'),
   'unknown outcome': tr('Такого исхода нет.'),
   'a stake must be from 1 to 1000000 votes': tr('Ставка — от 1 до 1 000 000 голосов.'),
+  'the odds of an outcome must be from 1.01 to 1000': tr('Коэффициент исхода — от 1,01 до 1000.'),
+  'every outcome needs its odds': tr('У каждого исхода должен быть коэффициент.'),
+  'the event shares its stakes and has no odds': tr('У этого события нет коэффициентов: ставки на нём делят угадавшие.'),
   'invalid sticker': tr('Такого стикера нет.'),
   'you do not have this sticker': tr('Набор с этим стикером не добавлен.'),
   'a sticker goes alone': tr('Стикер отправляется отдельным сообщением.'),

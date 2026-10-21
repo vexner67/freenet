@@ -238,7 +238,7 @@
         </div>
       </form>
       <h2>Прицел</h2>
-      <p class="admin-lead">Игрок сам выбирает, сколько голосов поставить и на какой множитель. Шанс выигрыша — отдача, делённая на множитель: при отдаче 95 % ставка на ×2 выигрывает в 47,5 % случаев — столько места занимает зелёное поле посередине полосы. Выигрыш — ставка, умноженная на множитель; проигранная ставка пропадает.</p>
+      <p class="admin-lead">Игрок сам выбирает, сколько голосов поставить и на какой множитель. У каждого множителя свой шанс выигрыша — столько места занимает зелёное поле посередине полосы. Выигрыш — ставка, умноженная на множитель; проигранная ставка пропадает. Отдача множителя — сколько поставленных на него голосов казино возвращает в среднем: множитель, умноженный на шанс (×2 с шансом 47,5 % — 95 %).</p>
       <p class="admin-casino-stats" id="bets-stats"></p>
       <div class="aui-message aui-message-success" id="bets-saved" hidden></div>
       <form class="aui" id="bets-form">
@@ -251,12 +251,23 @@
           <input class="text admin-casino-field" id="bets-most" type="number" min="1" max="1000000" required>
           <div class="description">В голосах, от 1 до 1 000 000.</div>
         </div>
-        <div class="field-group">
-          <label for="bets-return">Отдача, %</label>
-          <input class="text admin-casino-field" id="bets-return" type="number" min="1" max="100" required>
-          <div class="description">Сколько процентов поставленных голосов казино возвращает в среднем, от 1 до 100.</div>
+        <div class="aui-table-wrap">
+          <table class="aui">
+            <thead>
+              <tr>
+                <th>Множитель</th>
+                <th>Шанс, %</th>
+                <th>Отдача</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="aim-rows"></tbody>
+          </table>
         </div>
-        <p class="admin-decor-now" id="bets-chances"></p>
+        <div class="admin-casino-add">
+          <button class="aui-button" id="aim-add" type="button">Добавить множитель</button>
+          <span class="admin-decor-now">От 1 до 10 множителей, каждый — от ×1,01 до ×1000, шанс — от 0,01 до 99,99 %.</span>
+        </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
         </div>
@@ -265,7 +276,7 @@
 
     <section id="bets" hidden>
       <h1 class="aui-page-heading">Ставки</h1>
-      <p class="admin-lead">Событие — вопрос с исходами, на которые люди ставят голоса, сколько хотят. Когда итог известен, выберите исход — все поставленные голоса поделят угадавшие, каждый по своей ставке. Если на этот исход никто не ставил или событие отменено, ставки вернутся.</p>
+      <p class="admin-lead">Событие — вопрос с исходами, на которые люди ставят голоса, сколько хотят. У каждого исхода свой коэффициент: ставка на исход, который сбудется, приносит ставку, умноженную на коэффициент, с которым её сделали. Коэффициенты можно менять, пока идёт приём ставок, — сделанные ставки остаются при своих. Если событие отменено, ставки вернутся.</p>
       <h2>Новое событие</h2>
       <div class="aui-message aui-message-success" id="bet-created" hidden></div>
       <form class="aui" id="bet-event-form">
@@ -278,7 +289,7 @@
           <label>Исходы</label>
           <div id="bet-outcomes"></div>
           <button class="aui-button aui-button-compact" id="bet-outcome-add" type="button">Добавить исход</button>
-          <div class="description">От 2 до 10, каждый до 64 символов.</div>
+          <div class="description">От 2 до 10, каждый до 64 символов. Справа — коэффициент исхода, от 1,01 до 1000.</div>
         </div>
         <div class="field-group">
           <label for="bet-closes">Приём ставок до</label>
