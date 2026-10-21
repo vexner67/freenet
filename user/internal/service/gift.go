@@ -179,7 +179,7 @@ func (s *GiftService) Send(ctx context.Context, senderID, recipientID uuid.UUID,
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if price := prices.Of(d.Kind); price > 0 {
-			if _, err := s.wallets.Spend(ctx, senderID, price.Int64()); err != nil {
+			if _, err := s.wallets.Spend(ctx, senderID, price.Int64(), user.Entry(user.VoteGift, recipientID, string(d.Kind))); err != nil {
 				return errs.Wrap("s.wallets.Spend", err)
 			}
 		}

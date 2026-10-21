@@ -149,7 +149,7 @@ func (s *StickerService) Catalog(ctx context.Context, userID uuid.UUID) ([]Stick
 // who have taken it.
 func (s *StickerService) Add(ctx context.Context, userID uuid.UUID, pack user.StickerPackID) error {
 	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		price, authorID, err := s.priceOf(ctx, userID, pack)
+		price, authorID, note, err := s.priceOf(ctx, userID, pack)
 		if err != nil {
 			return errs.Wrap("s.priceOf", err)
 		}
@@ -162,7 +162,7 @@ func (s *StickerService) Add(ctx context.Context, userID uuid.UUID, pack user.St
 		// The votes go before the pack is taken: refused, they leave
 		// nothing taken even where no transaction rolls back (inmem).
 		if !bought && price > 0 && authorID != userID {
-			if err = s.pay(ctx, userID, authorID, price); err != nil {
+			if err = s.pay(ctx, userID, authorID, price, note); err != nil {
 				return errs.Wrap("s.pay", err)
 			}
 		}
@@ -203,44 +203,49 @@ func (s *StickerService) bought(ctx context.Context, userID uuid.UUID, pack user
 }
 
 // pay takes the price of a pack from userID: the votes for a pack of the
-// site go nowhere, those for a pack of a person go to its author.
-func (s *StickerService) pay(ctx context.Context, userID, authorID uuid.UUID, price int64) error {
+// site go nowhere, those for a pack of a person go to its author. The
+// statements name the pack by note.
+func (s *StickerService) pay(ctx context.Context, userID, authorID uuid.UUID, price int64, note string) error {
+	e := user.Entry(user.VoteStickers, uuid.Nil, note)
+
 	if authorID == uuid.Nil {
-		_, err := s.wallets.Spend(ctx, userID, price)
+		_, err := s.wallets.Spend(ctx, userID, price, e)
 		return errs.Wrap("s.wallets.Spend", err)
 	}
 
-	_, err := s.wallets.Move(ctx, userID, authorID, price)
+	_, err := s.wallets.Move(ctx, userID, authorID, price, e)
 
 	return errs.Wrap("s.wallets.Move", err)
 }
 
 // priceOf is what the pack costs userID and who is paid for it, uuid.Nil
 // for the catalogue. A pack of a person is held until the transaction
-// ends, so that it is not deleted under the purchase.
-func (s *StickerService) priceOf(ctx context.Context, userID uuid.UUID, pack user.StickerPackID) (int64, uuid.UUID, error) {
+// ends, so that it is not deleted under the purchase. The note names the
+// pack in statements: the ID of a pack of the site, the name of a pack of
+// a person.
+func (s *StickerService) priceOf(ctx context.Context, userID uuid.UUID, pack user.StickerPackID) (price int64, authorID uuid.UUID, note string, err error) {
 	id, custom := pack.Custom()
 	if !custom {
-		return pack.Price(), uuid.Nil, nil
+		return pack.Price(), uuid.Nil, pack.String(), nil
 	}
 
 	p, err := s.packs.Get(ctx, id)
 	if err != nil {
-		return 0, uuid.Nil, errs.Wrap("s.packs.Get", err)
+		return 0, uuid.Nil, "", errs.Wrap("s.packs.Get", err)
 	}
 
 	if !p.Draft().Published && p.AuthorID() != userID {
 		bought, err := s.bought(ctx, userID, pack)
 		if err != nil {
-			return 0, uuid.Nil, errs.Wrap("s.bought", err)
+			return 0, uuid.Nil, "", errs.Wrap("s.bought", err)
 		}
 
 		if !bought {
-			return 0, uuid.Nil, user.ErrUnknownStickerPack
+			return 0, uuid.Nil, "", user.ErrUnknownStickerPack
 		}
 	}
 
-	return p.Draft().Price, p.AuthorID(), nil
+	return p.Draft().Price, p.AuthorID(), p.Draft().Name.String(), nil
 }
 
 // Authored are the packs authorID made, for their "Студия стикеров".

@@ -146,6 +146,9 @@ service UserService {
   // wrong with the voucher.
   rpc TransferVotes(TransferVotesRequest) returns (TransferVotesResponse);
   rpc RedeemVoucher(RedeemVoucherRequest) returns (RedeemVoucherResponse);
+  // ListVoteOperations is the statement of the caller's votes ("Голоса"):
+  // every change of them, newest first, and the totals of 30 days.
+  rpc ListVoteOperations(ListVoteOperationsRequest) returns (ListVoteOperationsResponse);
 
   // Vouchers are made by the administrators of the site (ADMIN_EMAILS):
   // PermissionDenied to anyone else.
@@ -1018,8 +1021,11 @@ message SetGiftPriceRequest {
 message TransferVotesRequest {
   // The recipient.
   string user_id = 1;
-  // 1-1000000.
+  // 1-100000000.
   int64 votes = 2;
+  // The message with the transfer: one line of up to 140 characters,
+  // may be empty.
+  string note = 3;
 }
 
 message TransferVotesResponse {
@@ -1040,6 +1046,43 @@ message RedeemVoucherResponse {
   int64 balance = 3;
 }
 
+message ListVoteOperationsRequest {
+  // Empty for the newest operations, else next_cursor of the previous page.
+  string cursor = 1;
+  // 1-50; anything else means 20.
+  int32 limit = 2;
+  // "in" for what came in, "out" for what went out, empty for both.
+  string flow = 3;
+}
+
+// A line of the statement of votes.
+message VoteOperation {
+  string id = 1;
+  // transfer, voucher, gift, stickers, casino, aim or stake.
+  string kind = 2;
+  // What came in (above zero) or went out (below).
+  int64 amount = 3;
+  // The votes after it.
+  int64 balance = 4;
+  // The other person of a transfer, a gift or a sticker pack; empty for
+  // none or an erased page.
+  string peer_id = 5;
+  // The message of a transfer, the gift, the sticker pack (its ID for a
+  // pack of the site, its name for one of a person) or the question of an
+  // event.
+  string note = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message ListVoteOperationsResponse {
+  repeated VoteOperation operations = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  // What came in and went out over the last 30 days.
+  int64 income = 3;
+  int64 expense = 4;
+}
+
 // A voucher, as its makers see it.
 message Voucher {
   string id = 1;
@@ -1056,7 +1099,7 @@ message Voucher {
 message CreateVoucherRequest {
   // Empty for a generated serial number.
   string token = 1;
-  // 0-1000000 votes and 0-1000 of rating, not both zero.
+  // 0-100000000 votes and 0-1000 of rating, not both zero.
   int64 votes = 2;
   int32 rating = 3;
   // How many accounts may use it: 1-1000000, or -1 for any number.

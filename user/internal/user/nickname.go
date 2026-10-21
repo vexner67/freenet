@@ -24,7 +24,7 @@ var (
 		"follows": {}, "freenet": {}, "gifts": {}, "groups": {}, "healthz": {}, "help": {}, "id": {}, "im": {}, "invite": {},
 		"language": {}, "login": {}, "logout": {}, "me": {}, "media": {}, "news": {}, "note": {}, "notes": {},
 		"notifications": {}, "people": {}, "photo": {}, "post": {}, "search": {},
-		"settings": {}, "shop": {}, "static": {}, "stickers": {}, "support": {}, "terms": {}, "topic": {}, "wall": {},
+		"settings": {}, "shop": {}, "static": {}, "stickers": {}, "support": {}, "terms": {}, "topic": {}, "votes": {}, "wall": {},
 	}
 )
 

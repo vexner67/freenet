@@ -7,10 +7,10 @@ import (
 )
 
 // MaxVotes is the most votes one transfer or one voucher carries.
-const MaxVotes = 1_000_000
+const MaxVotes = 100_000_000
 
 var (
-	ErrVotesInvalid = errors.New("the number of votes must be between 1 and 1000000")
+	ErrVotesInvalid = errors.New("the number of votes must be between 1 and 100000000")
 	// ErrNotEnoughVotes: the balance does not cover the gift or the
 	// transfer.
 	ErrNotEnoughVotes = errors.New("not enough votes")

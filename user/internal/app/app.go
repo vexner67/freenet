@@ -186,6 +186,7 @@ func (a *App) build(cfg config.Config) error {
 			Wallets: service.NewWalletService(service.WalletDeps{
 				Users:       store.users,
 				Wallets:     store.wallets,
+				Statements:  store.statements,
 				Vouchers:    store.vouchers,
 				Rates:       store.rates,
 				Permissions: permissions,
@@ -297,8 +298,10 @@ type storage struct {
 	// stickerPacks are the packs people make of their photos.
 	stickerPacks service.StickerPackRepository
 	// wallets are the votes and the rating of users.
-	wallets  service.WalletRepository
-	vouchers service.VoucherRepository
+	wallets service.WalletRepository
+	// statements are the changes of their votes.
+	statements service.StatementRepository
+	vouchers   service.VoucherRepository
 	// rates is what a vote is worth in rubles.
 	rates service.VoteRateRepository
 	// decor is how the site is dressed for the New Year.
@@ -331,6 +334,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			stickers:     stickers,
 			stickerPacks: inmem.NewStickerPackRepository(users, stickers),
 			wallets:      users,
+			statements:   users,
 			vouchers:     inmem.NewVoucherRepository(users),
 			rates:        inmem.NewVoteRateRepository(),
 			decor:        inmem.NewDecorRepository(),
@@ -375,6 +379,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		stickers:     postgres.NewStickerRepository(a.pool),
 		stickerPacks: postgres.NewStickerPackRepository(a.pool),
 		wallets:      postgres.NewWalletRepository(a.pool),
+		statements:   postgres.NewWalletRepository(a.pool),
 		vouchers:     postgres.NewVoucherRepository(a.pool),
 		rates:        postgres.NewVoteRateRepository(a.pool),
 		decor:        postgres.NewDecorRepository(a.pool),

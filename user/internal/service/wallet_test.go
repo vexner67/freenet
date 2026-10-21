@@ -65,7 +65,7 @@ func newWalletWorld(t *testing.T) walletWorld {
 			Tx: inmem.TxManager{}, Wallets: users, Notifier: &fakeGiftNotifier{}, Admins: admins,
 		}),
 		wallets: service.NewWalletService(service.WalletDeps{
-			Users: users, Wallets: users, Vouchers: inmem.NewVoucherRepository(users), Rates: inmem.NewVoteRateRepository(), Permissions: permissions,
+			Users: users, Wallets: users, Statements: users, Vouchers: inmem.NewVoucherRepository(users), Rates: inmem.NewVoteRateRepository(), Permissions: permissions,
 			Tx: inmem.TxManager{}, Notifier: notifier, Admins: admins,
 		}),
 		notifier: notifier,
@@ -215,7 +215,7 @@ func TestWalletService_Transfer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	left, err := w.wallets.Transfer(ctx, ann, bob, 4)
+	left, err := w.wallets.Transfer(ctx, ann, bob, 4, "")
 	if err != nil || left != 6 || w.votes(t, ann) != 6 || w.votes(t, bob) != 4 {
 		t.Fatalf("Transfer = %d, %v; ann %d, bob %d", left, err, w.votes(t, ann), w.votes(t, bob))
 	}
@@ -235,7 +235,7 @@ func TestWalletService_Transfer(t *testing.T) {
 		{"to nobody", ann, uuid.New(), 1, user.ErrNotFound},
 	}
 	for _, tt := range tests {
-		if _, err = w.wallets.Transfer(ctx, tt.from, tt.to, tt.votes); !errors.Is(err, tt.want) {
+		if _, err = w.wallets.Transfer(ctx, tt.from, tt.to, tt.votes, ""); !errors.Is(err, tt.want) {
 			t.Errorf("%s: %v, want %v", tt.name, err, tt.want)
 		}
 	}
@@ -244,13 +244,13 @@ func TestWalletService_Transfer(t *testing.T) {
 	if err = w.blocks.Block(ctx, cat, ann); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = w.wallets.Transfer(ctx, ann, cat, 1); !errors.Is(err, user.ErrTransferRefused) {
+	if _, err = w.wallets.Transfer(ctx, ann, cat, 1, ""); !errors.Is(err, user.ErrTransferRefused) {
 		t.Fatalf("to the one who blocked: %v", err)
 	}
-	if _, err = w.wallets.Transfer(ctx, bob, cat, 1); err != nil {
+	if _, err = w.wallets.Transfer(ctx, bob, cat, 1, ""); err != nil {
 		t.Fatalf("bob to cat: %v", err)
 	}
-	if _, err = w.wallets.Transfer(ctx, cat, ann, 1); !errors.Is(err, user.ErrTransferRefused) {
+	if _, err = w.wallets.Transfer(ctx, cat, ann, 1, ""); !errors.Is(err, user.ErrTransferRefused) {
 		t.Fatalf("to the blocked one: %v", err)
 	}
 
@@ -258,14 +258,14 @@ func TestWalletService_Transfer(t *testing.T) {
 	if _, err = w.accounts.Deactivate(ctx, bob, ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = w.wallets.Transfer(ctx, ann, bob, 1); !errors.Is(err, user.ErrDeactivated) {
+	if _, err = w.wallets.Transfer(ctx, ann, bob, 1, ""); !errors.Is(err, user.ErrDeactivated) {
 		t.Fatalf("to a deleted page: %v", err)
 	}
 
 	// A transfer that was not recorded for the notification service did
 	// not tell it either; in memory the votes are not undone.
 	w.notifier.err = errors.New("outbox is down")
-	if _, err = w.wallets.Transfer(ctx, cat, admin, 1); err == nil {
+	if _, err = w.wallets.Transfer(ctx, cat, admin, 1, ""); err == nil {
 		t.Fatal("a transfer nobody was told of succeeded")
 	}
 	if len(w.notifier.sent) != 2 {
@@ -341,5 +341,83 @@ func TestWalletService_Rate(t *testing.T) {
 	}
 	if rate, err := w.wallets.Rate(ctx); err != nil || rate.Kopecks() != 1250 {
 		t.Fatalf("Rate = %d, %v; want 1250", rate, err)
+	}
+}
+
+func TestWalletService_Statement(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	w := newWalletWorld(t)
+	admin, ann, bob := w.person(t, "admin"), w.person(t, "ann"), w.person(t, "bob")
+
+	voucher, err := w.wallets.CreateVoucher(ctx, admin, service.VoucherDraft{Votes: 10, Rating: 5, Usages: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = w.wallets.Redeem(ctx, ann, voucher.Token()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = w.wallets.Transfer(ctx, ann, bob, 4, "За пиццу"); err != nil {
+		t.Fatal(err)
+	}
+
+	page, err := w.wallets.Statement(ctx, ann, uuid.Nil, user.VoteFlowAll, 0, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ops := page.Operations
+	if len(ops) != 2 || page.NextCursor != uuid.Nil || page.Income != 10 || page.Expense != 4 {
+		t.Fatalf("Statement = %+v", page)
+	}
+	if ops[0].Kind != user.VoteTransfer || ops[0].Amount != -4 || ops[0].Balance != 6 || ops[0].PeerID != bob || ops[0].Note != "За пиццу" {
+		t.Fatalf("the transfer = %+v", ops[0])
+	}
+	if ops[1].Kind != user.VoteVoucher || ops[1].Amount != 10 || ops[1].Balance != 10 || ops[1].PeerID != uuid.Nil {
+		t.Fatalf("the voucher = %+v", ops[1])
+	}
+
+	// The recipient sees the transfer the other way.
+	page, err = w.wallets.Statement(ctx, bob, uuid.Nil, user.VoteFlowAll, 0, time.Now())
+	if err != nil || len(page.Operations) != 1 {
+		t.Fatalf("bob's statement = %+v, %v", page, err)
+	}
+	if op := page.Operations[0]; op.Amount != 4 || op.Balance != 4 || op.PeerID != ann || op.Note != "За пиццу" {
+		t.Fatalf("bob's transfer = %+v", op)
+	}
+
+	// Pages and flows.
+	page, err = w.wallets.Statement(ctx, ann, uuid.Nil, user.VoteFlowAll, 1, time.Now())
+	if err != nil || len(page.Operations) != 1 || page.NextCursor != page.Operations[0].ID {
+		t.Fatalf("first page = %+v, %v", page, err)
+	}
+	page, err = w.wallets.Statement(ctx, ann, page.NextCursor, user.VoteFlowAll, 1, time.Now())
+	if err != nil || len(page.Operations) != 1 || page.Operations[0].Kind != user.VoteVoucher || page.NextCursor != uuid.Nil {
+		t.Fatalf("second page = %+v, %v", page, err)
+	}
+	for flow, want := range map[user.VoteFlow]user.VoteKind{user.VoteFlowIn: user.VoteVoucher, user.VoteFlowOut: user.VoteTransfer} {
+		page, err = w.wallets.Statement(ctx, ann, uuid.Nil, flow, 0, time.Now())
+		if err != nil || len(page.Operations) != 1 || page.Operations[0].Kind != want {
+			t.Fatalf("flow %q = %+v, %v", flow, page, err)
+		}
+	}
+
+	// The totals are of the last 30 days.
+	page, err = w.wallets.Statement(ctx, ann, uuid.Nil, user.VoteFlowAll, 0, time.Now().Add(31*24*time.Hour))
+	if err != nil || page.Income != 0 || page.Expense != 0 {
+		t.Fatalf("a month later = %+v, %v", page, err)
+	}
+
+	// A gift is written down with its recipient and kind.
+	if _, err = w.gifts.Send(ctx, ann, bob, service.GiftDraft{Kind: "cake"}); err != nil {
+		t.Fatal(err)
+	}
+	page, err = w.wallets.Statement(ctx, ann, uuid.Nil, user.VoteFlowAll, 1, time.Now())
+	if err != nil || len(page.Operations) != 1 {
+		t.Fatal(page, err)
+	}
+	if op := page.Operations[0]; op.Kind != user.VoteGift || op.PeerID != bob || op.Note != "cake" || op.Amount >= 0 {
+		t.Fatalf("the gift = %+v", op)
 	}
 }

@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
@@ -10,11 +11,13 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type WalletService interface {
 	IsAdmin(u *user.User) bool
-	Transfer(ctx context.Context, senderID, recipientID uuid.UUID, votes user.Votes) (int64, error)
+	Transfer(ctx context.Context, senderID, recipientID uuid.UUID, votes user.Votes, note user.TransferNote) (int64, error)
+	Statement(ctx context.Context, userID, cursor uuid.UUID, flow user.VoteFlow, size int, now time.Time) (service.StatementPage, error)
 	Redeem(ctx context.Context, userID uuid.UUID, token user.VoucherToken) (service.Redeemed, error)
 	CreateVoucher(ctx context.Context, adminID uuid.UUID, d service.VoucherDraft) (*user.Voucher, error)
 	ListVouchers(ctx context.Context, adminID, cursor uuid.UUID, size int) (service.VoucherPage, error)
@@ -34,12 +37,57 @@ func (h *UserHandler) TransferVotes(ctx context.Context, req *userv1.TransferVot
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	left, err := h.walletService.Transfer(ctx, senderID, recipientID, votes)
+	note, err := user.NewTransferNote(req.GetNote())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	left, err := h.walletService.Transfer(ctx, senderID, recipientID, votes, note)
 	if err != nil {
 		return nil, err
 	}
 
 	return &userv1.TransferVotesResponse{Votes: left}, nil
+}
+
+func (h *UserHandler) ListVoteOperations(ctx context.Context, req *userv1.ListVoteOperationsRequest) (*userv1.ListVoteOperationsResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var cursor uuid.UUID
+	if req.GetCursor() != "" {
+		if cursor, err = parseID(req.GetCursor(), "cursor"); err != nil {
+			return nil, err
+		}
+	}
+
+	flow, err := user.NewVoteFlow(req.GetFlow())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	page, err := h.walletService.Statement(ctx, userID, cursor, flow, int(req.GetLimit()), time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &userv1.ListVoteOperationsResponse{
+		Operations: make([]*userv1.VoteOperation, 0, len(page.Operations)),
+		Income:     page.Income,
+		Expense:    page.Expense,
+	}
+
+	for _, op := range page.Operations {
+		resp.Operations = append(resp.Operations, toProtoVoteOperation(op))
+	}
+
+	if page.NextCursor != uuid.Nil {
+		resp.NextCursor = page.NextCursor.String()
+	}
+
+	return resp, nil
 }
 
 func (h *UserHandler) RedeemVoucher(ctx context.Context, req *userv1.RedeemVoucherRequest) (*userv1.RedeemVoucherResponse, error) {
@@ -138,6 +186,23 @@ func (h *UserHandler) DeleteVoucher(ctx context.Context, req *userv1.DeleteVouch
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func toProtoVoteOperation(op user.VoteOperation) *userv1.VoteOperation {
+	resp := &userv1.VoteOperation{
+		Id:        op.ID.String(),
+		Kind:      string(op.Kind),
+		Amount:    op.Amount,
+		Balance:   op.Balance,
+		Note:      op.Note,
+		CreatedAt: timestamppb.New(op.At),
+	}
+
+	if op.PeerID != uuid.Nil {
+		resp.PeerId = op.PeerID.String()
+	}
+
+	return resp
 }
 
 func toProtoVoucher(v *user.Voucher) *userv1.Voucher {

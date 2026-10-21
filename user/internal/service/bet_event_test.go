@@ -58,7 +58,7 @@ func TestBetEventService_Resolve(t *testing.T) {
 	}
 
 	for _, id := range []uuid.UUID{ann, bob, eve} {
-		if _, err := w.users.Credit(ctx, id, 100, 0); err != nil {
+		if _, err := w.users.Credit(ctx, id, 100, 0, user.VoteEntry{}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -145,7 +145,7 @@ func TestBetEventService_Cancel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := w.users.Credit(ctx, ann, 50, 0); err != nil {
+	if _, err := w.users.Credit(ctx, ann, 50, 0, user.VoteEntry{}); err != nil {
 		t.Fatal(err)
 	}
 	if left, err := events.Stake(ctx, ann, e.ID(), 1, 40); err != nil || left != 10 {
@@ -196,7 +196,7 @@ func TestBetEventService_Popular(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := w.users.Credit(ctx, ann, 100, 0); err != nil {
+	if _, err := w.users.Credit(ctx, ann, 100, 0, user.VoteEntry{}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := events.Stake(ctx, ann, quiet.ID(), 0, 10); err != nil {

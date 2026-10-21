@@ -55,7 +55,7 @@ func TestStickerRepository(t *testing.T) {
 		t.Fatalf("a pack not paid for is taken: %+v", owned)
 	}
 
-	if _, err = wallets.Credit(ctx, u.ID(), user.StickerPackID("bears").Price(), 0); err != nil {
+	if _, err = wallets.Credit(ctx, u.ID(), user.StickerPackID("bears").Price(), 0, user.Entry(user.VoteVoucher, uuid.Nil, "")); err != nil {
 		t.Fatal(err)
 	}
 	if err = svc.Add(ctx, u.ID(), "bears"); err != nil {
@@ -68,7 +68,7 @@ func TestStickerRepository(t *testing.T) {
 	// Purchases of one pack at once are paid for once: the others wait for
 	// the votes, find the pack taken and are undone.
 	price := user.StickerPackID("cats").Price()
-	if _, err = wallets.Credit(ctx, u.ID(), 5*price, 0); err != nil {
+	if _, err = wallets.Credit(ctx, u.ID(), 5*price, 0, user.Entry(user.VoteVoucher, uuid.Nil, "")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -144,7 +144,7 @@ func TestStickerPackRepository(t *testing.T) {
 	}
 
 	// Bought, the votes go to the author.
-	if _, err = wallets.Credit(ctx, buyer, 2, 0); err != nil {
+	if _, err = wallets.Credit(ctx, buyer, 2, 0, user.Entry(user.VoteVoucher, uuid.Nil, "")); err != nil {
 		t.Fatal(err)
 	}
 	if err = svc.Add(ctx, buyer, p.ID()); err != nil {

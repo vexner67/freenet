@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -32,8 +33,9 @@ func (r *WalletRepository) conn(ctx context.Context) pgpool.Querier {
 }
 
 // The balance is checked by the statement that changes it, so two spends
-// at once cannot both take the last votes. The first column tells a user
-// who is gone from one who has too few.
+// at once cannot both take the last votes; the same statement writes the
+// line of the statement of the page. The first column tells a user who is
+// gone from one who has too few.
 const spendVotesQuery = `
 	WITH spent AS (
 		UPDATE users
@@ -41,19 +43,45 @@ const spendVotesQuery = `
 		WHERE id = $1
 			AND votes >= $2
 		RETURNING votes
+	), logged AS (
+		INSERT INTO vote_operations (
+			id,
+			user_id,
+			kind,
+			amount,
+			balance,
+			peer_id,
+			note
+		)
+		SELECT
+			$3,
+			$1,
+			$4,
+			-$2::bigint,
+			votes,
+			$5,
+			$6
+		FROM spent
 	)
 	SELECT
 		EXISTS (SELECT 1 FROM users WHERE id = $1),
 		(SELECT votes FROM spent)
 `
 
-func (r *WalletRepository) Spend(ctx context.Context, userID uuid.UUID, votes int64) (int64, error) {
+func (r *WalletRepository) Spend(ctx context.Context, userID uuid.UUID, votes int64, e user.VoteEntry) (int64, error) {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return 0, errs.Wrap("uuid.NewV7", err)
+	}
+
 	var (
 		exists bool
 		left   *int64
 	)
 
-	if err := r.conn(ctx).QueryRow(ctx, spendVotesQuery, userID, votes).Scan(&exists, &left); err != nil {
+	err = r.conn(ctx).QueryRow(ctx, spendVotesQuery, userID, votes, id, string(e.Kind), peerToDB(e.PeerID), e.Note).
+		Scan(&exists, &left)
+	if err != nil {
 		return 0, errs.Wrap("r.conn.QueryRow", err)
 	}
 
@@ -78,18 +106,10 @@ const lockWalletsQuery = `
 	FOR UPDATE
 `
 
-const receiveVotesQuery = `
-	UPDATE users
-	SET votes = votes + $2
-	WHERE id = $1
-`
-
-func (r *WalletRepository) Move(ctx context.Context, fromID, toID uuid.UUID, votes int64) (int64, error) {
-	conn := r.conn(ctx)
-
-	rows, err := conn.Query(ctx, lockWalletsQuery, fromID, toID)
+func (r *WalletRepository) Move(ctx context.Context, fromID, toID uuid.UUID, votes int64, e user.VoteEntry) (int64, error) {
+	rows, err := r.conn(ctx).Query(ctx, lockWalletsQuery, fromID, toID)
 	if err != nil {
-		return 0, errs.Wrap("conn.Query", err)
+		return 0, errs.Wrap("r.conn.Query", err)
 	}
 
 	locked, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
@@ -101,33 +121,67 @@ func (r *WalletRepository) Move(ctx context.Context, fromID, toID uuid.UUID, vot
 		return 0, user.ErrNotFound
 	}
 
-	left, err := r.Spend(ctx, fromID, votes)
+	left, err := r.Spend(ctx, fromID, votes, user.Entry(e.Kind, toID, e.Note))
 	if err != nil {
 		return 0, errs.Wrap("r.Spend", err)
 	}
 
-	if _, err = conn.Exec(ctx, receiveVotesQuery, toID, votes); err != nil {
-		return 0, errs.Wrap("conn.Exec", err)
+	if _, err = r.Credit(ctx, toID, votes, 0, user.Entry(e.Kind, fromID, e.Note)); err != nil {
+		return 0, errs.Wrap("r.Credit", err)
 	}
 
 	return left, nil
 }
 
+// Votes that change are written down; rating alone is not a change of
+// votes.
 const creditWalletQuery = `
-	UPDATE users
-	SET
-		votes = votes + $2,
-		rating = rating + $3
-	WHERE id = $1
-	RETURNING
+	WITH credited AS (
+		UPDATE users
+		SET
+			votes = votes + $2,
+			rating = rating + $3
+		WHERE id = $1
+		RETURNING
+			votes,
+			rating
+	), logged AS (
+		INSERT INTO vote_operations (
+			id,
+			user_id,
+			kind,
+			amount,
+			balance,
+			peer_id,
+			note
+		)
+		SELECT
+			$4,
+			$1,
+			$5,
+			$2,
+			votes,
+			$6,
+			$7
+		FROM credited
+		WHERE $2 <> 0
+	)
+	SELECT
 		votes,
 		rating
+	FROM credited
 `
 
-func (r *WalletRepository) Credit(ctx context.Context, userID uuid.UUID, votes int64, rating int) (user.Wallet, error) {
+func (r *WalletRepository) Credit(ctx context.Context, userID uuid.UUID, votes int64, rating int, e user.VoteEntry) (user.Wallet, error) {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return user.Wallet{}, errs.Wrap("uuid.NewV7", err)
+	}
+
 	var w user.Wallet
 
-	err := r.conn(ctx).QueryRow(ctx, creditWalletQuery, userID, votes, rating).Scan(&w.Votes, &w.Rating)
+	err = r.conn(ctx).QueryRow(ctx, creditWalletQuery,
+		userID, votes, rating, id, string(e.Kind), peerToDB(e.PeerID), e.Note).Scan(&w.Votes, &w.Rating)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return user.Wallet{}, user.ErrNotFound
 	}
@@ -136,6 +190,85 @@ func (r *WalletRepository) Credit(ctx context.Context, userID uuid.UUID, votes i
 	}
 
 	return w, nil
+}
+
+const listVoteOperationsQuery = `
+	SELECT
+		id,
+		kind,
+		amount,
+		balance,
+		peer_id,
+		note,
+		created_at
+	FROM vote_operations
+	WHERE user_id = $1
+		AND id < $2
+		AND ($3 = '' OR ($3 = 'in' AND amount > 0) OR ($3 = 'out' AND amount < 0))
+	ORDER BY id DESC
+	LIMIT $4
+`
+
+func (r *WalletRepository) Operations(ctx context.Context, userID, before uuid.UUID, flow user.VoteFlow, limit int) ([]user.VoteOperation, error) {
+	if before == uuid.Nil {
+		// Above every UUID: start from the newest operation.
+		before = uuid.Max
+	}
+
+	rows, err := r.conn(ctx).Query(ctx, listVoteOperationsQuery, userID, before, string(flow), limit)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	ops, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (user.VoteOperation, error) {
+		var (
+			op     user.VoteOperation
+			kind   string
+			peerID *uuid.UUID
+		)
+
+		if err := row.Scan(&op.ID, &kind, &op.Amount, &op.Balance, &peerID, &op.Note, &op.At); err != nil {
+			return user.VoteOperation{}, err
+		}
+
+		op.Kind, op.At = user.VoteKind(kind), op.At.UTC()
+		if peerID != nil {
+			op.PeerID = *peerID
+		}
+
+		return op, nil
+	})
+	if err != nil {
+		return nil, errs.Wrap("pgx.CollectRows", err)
+	}
+
+	return ops, nil
+}
+
+const voteTotalsQuery = `
+	SELECT
+		coalesce(sum(amount) FILTER (WHERE amount > 0), 0),
+		coalesce(-sum(amount) FILTER (WHERE amount < 0), 0)
+	FROM vote_operations
+	WHERE user_id = $1
+		AND id >= $2
+`
+
+func (r *WalletRepository) Totals(ctx context.Context, userID uuid.UUID, since time.Time) (income, expense int64, err error) {
+	if err = r.conn(ctx).QueryRow(ctx, voteTotalsQuery, userID, user.OperationsSince(since)).Scan(&income, &expense); err != nil {
+		return 0, 0, errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	return income, expense, nil
+}
+
+// peerToDB is NULL for no peer.
+func peerToDB(id uuid.UUID) *uuid.UUID {
+	if id == uuid.Nil {
+		return nil
+	}
+
+	return &id
 }
 
 type VoucherRepository struct {

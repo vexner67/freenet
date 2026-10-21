@@ -64,7 +64,7 @@ func TestStickerService(t *testing.T) {
 	}
 
 	price := user.StickerPackID("cats").Price()
-	if _, err = users.Credit(ctx, ann, price, 0); err != nil {
+	if _, err = users.Credit(ctx, ann, price, 0, user.VoteEntry{}); err != nil {
 		t.Fatal(err)
 	}
 	if err = svc.Add(ctx, ann, "cats"); err != nil {
@@ -165,7 +165,7 @@ func TestStickerService_Studio(t *testing.T) {
 	if authored, _ := svc.Authored(ctx, author); authored[0].Holders != 0 {
 		t.Fatalf("a pack not paid for has %d holders", authored[0].Holders)
 	}
-	if _, err = users.Credit(ctx, buyer, 3, 0); err != nil {
+	if _, err = users.Credit(ctx, buyer, 3, 0, user.VoteEntry{}); err != nil {
 		t.Fatal(err)
 	}
 	if err = svc.Add(ctx, buyer, p.ID()); err != nil {

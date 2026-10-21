@@ -26,7 +26,7 @@ var (
 	ErrVoucherTokenInvalid = errors.New("voucher serial number must be 24 letters and digits")
 	// ErrVoucherEmpty: a voucher gives votes, rating or both.
 	ErrVoucherEmpty         = errors.New("voucher must give votes or rating")
-	ErrVoucherAmountInvalid = errors.New("voucher gives up to 1000000 votes and up to 1000 of rating")
+	ErrVoucherAmountInvalid = errors.New("voucher gives up to 100000000 votes and up to 1000 of rating")
 	ErrVoucherUsagesInvalid = errors.New("voucher usages must be -1 or between 1 and 1000000")
 	ErrVoucherExists        = errors.New("voucher with this serial number already exists")
 	// ErrVoucherInvalid is all a user is told of a voucher that did not

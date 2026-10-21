@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -14,13 +15,25 @@ import (
 type WalletRepository interface {
 	// Spend takes votes from userID and returns what is left;
 	// user.ErrNotEnoughVotes when there are fewer, user.ErrNotFound.
-	Spend(ctx context.Context, userID uuid.UUID, votes int64) (int64, error)
+	// The change is written to the statement of the page as e.
+	Spend(ctx context.Context, userID uuid.UUID, votes int64, e user.VoteEntry) (int64, error)
 	// Move hands votes of fromID to toID and returns what fromID has
 	// left; user.ErrNotEnoughVotes, user.ErrNotFound if either is gone.
-	// It has to run in a transaction (TxManager).
-	Move(ctx context.Context, fromID, toID uuid.UUID, votes int64) (int64, error)
+	// It has to run in a transaction (TxManager). Each is written down
+	// with the other as the peer.
+	Move(ctx context.Context, fromID, toID uuid.UUID, votes int64, e user.VoteEntry) (int64, error)
 	// Credit adds votes and rating to userID; user.ErrNotFound.
-	Credit(ctx context.Context, userID uuid.UUID, votes int64, rating int) (user.Wallet, error)
+	Credit(ctx context.Context, userID uuid.UUID, votes int64, rating int, e user.VoteEntry) (user.Wallet, error)
+}
+
+// StatementRepository reads the statements of pages: every change of
+// their votes.
+type StatementRepository interface {
+	// Operations returns up to limit operations of userID of the flow,
+	// newest first, with IDs below before (uuid.Nil: from the newest).
+	Operations(ctx context.Context, userID, before uuid.UUID, flow user.VoteFlow, limit int) ([]user.VoteOperation, error)
+	// Totals is what came in and went out since.
+	Totals(ctx context.Context, userID uuid.UUID, since time.Time) (income, expense int64, err error)
 }
 
 // VoucherRepository keeps the vouchers and who has used them.
@@ -67,6 +80,19 @@ type Redeemed struct {
 	Wallet user.Wallet
 }
 
+// StatementPage is one screen of the statement of a page, newest first;
+// NextCursor is uuid.Nil on the last. Income and Expense are what came in
+// and went out over StatementPeriod.
+type StatementPage struct {
+	Operations []user.VoteOperation
+	NextCursor uuid.UUID
+	Income     int64
+	Expense    int64
+}
+
+// StatementPeriod is how far back the totals of a statement go.
+const StatementPeriod = 30 * 24 * time.Hour
+
 // VoucherPage is one screen of the vouchers, newest first; NextCursor is
 // uuid.Nil on the last.
 type VoucherPage struct {
@@ -79,6 +105,7 @@ type VoucherPage struct {
 type WalletService struct {
 	userRepo    UserRepository
 	wallets     WalletRepository
+	statements  StatementRepository
 	vouchers    VoucherRepository
 	rates       VoteRateRepository
 	permissions *PermissionService
@@ -91,6 +118,7 @@ type WalletService struct {
 type WalletDeps struct {
 	Users       UserRepository
 	Wallets     WalletRepository
+	Statements  StatementRepository
 	Vouchers    VoucherRepository
 	Rates       VoteRateRepository
 	Permissions *PermissionService
@@ -103,6 +131,7 @@ func NewWalletService(d WalletDeps) *WalletService {
 	return &WalletService{
 		userRepo:    d.Users,
 		wallets:     d.Wallets,
+		statements:  d.Statements,
 		vouchers:    d.Vouchers,
 		rates:       d.Rates,
 		permissions: d.Permissions,
@@ -121,7 +150,8 @@ func (s *WalletService) IsAdmin(u *user.User) bool {
 // returns what the sender has left. user.ErrNotFound for an unknown
 // recipient, user.ErrTransferSelf, user.ErrDeactivated,
 // user.ErrTransferRefused and user.ErrNotEnoughVotes.
-func (s *WalletService) Transfer(ctx context.Context, senderID, recipientID uuid.UUID, votes user.Votes) (int64, error) {
+// The note goes with it to the statements of both.
+func (s *WalletService) Transfer(ctx context.Context, senderID, recipientID uuid.UUID, votes user.Votes, note user.TransferNote) (int64, error) {
 	recipient, ties, err := s.permissions.ties(ctx, senderID, recipientID)
 	if err != nil {
 		return 0, errs.Wrap("s.permissions.ties", err)
@@ -140,7 +170,8 @@ func (s *WalletService) Transfer(ctx context.Context, senderID, recipientID uuid
 	var left int64
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		if left, err = s.wallets.Move(ctx, senderID, recipientID, votes.Int64()); err != nil {
+		if left, err = s.wallets.Move(ctx, senderID, recipientID, votes.Int64(),
+			user.Entry(user.VoteTransfer, uuid.Nil, note.String())); err != nil {
 			return errs.Wrap("s.wallets.Move", err)
 		}
 
@@ -151,6 +182,31 @@ func (s *WalletService) Transfer(ctx context.Context, senderID, recipientID uuid
 	}
 
 	return left, nil
+}
+
+// Statement is one screen of the statement of userID: the operations of
+// the flow, newest first, and the totals of StatementPeriod.
+func (s *WalletService) Statement(ctx context.Context, userID, cursor uuid.UUID, flow user.VoteFlow, size int, now time.Time) (StatementPage, error) {
+	if size <= 0 || size > MaxPageSize {
+		size = DefaultPageSize
+	}
+
+	ops, err := s.statements.Operations(ctx, userID, cursor, flow, size+1)
+	if err != nil {
+		return StatementPage{}, errs.Wrap("s.statements.Operations", err)
+	}
+
+	page := StatementPage{Operations: ops}
+	if len(ops) > size {
+		page.Operations = ops[:size]
+		page.NextCursor = ops[size-1].ID
+	}
+
+	if page.Income, page.Expense, err = s.statements.Totals(ctx, userID, now.Add(-StatementPeriod)); err != nil {
+		return StatementPage{}, errs.Wrap("s.statements.Totals", err)
+	}
+
+	return page, nil
 }
 
 // Redeem gives userID what the voucher carries, once.
@@ -164,7 +220,8 @@ func (s *WalletService) Redeem(ctx context.Context, userID uuid.UUID, token user
 			return errs.Wrap("s.vouchers.Redeem", err)
 		}
 
-		wallet, err := s.wallets.Credit(ctx, userID, voucher.Votes(), voucher.Rating())
+		wallet, err := s.wallets.Credit(ctx, userID, voucher.Votes(), voucher.Rating(),
+			user.Entry(user.VoteVoucher, uuid.Nil, ""))
 		if err != nil {
 			return errs.Wrap("s.wallets.Credit", err)
 		}

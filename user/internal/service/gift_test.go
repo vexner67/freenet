@@ -87,7 +87,7 @@ func (w giftWorld) person(t *testing.T, name string) uuid.UUID {
 
 	// Enough votes for any gift: what gifts cost is tested with the
 	// wallets.
-	if _, err = w.users.Credit(context.Background(), id, 100, 0); err != nil {
+	if _, err = w.users.Credit(context.Background(), id, 100, 0, user.VoteEntry{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -336,13 +336,13 @@ func TestGiftService_SetPrice(t *testing.T) {
 	if _, err = svc.Send(ctx, ann.ID(), ann.ID(), service.GiftDraft{Kind: "rose"}); !errors.Is(err, user.ErrNotEnoughVotes) {
 		t.Fatalf("a priced rose is sent for nothing: %v", err)
 	}
-	if _, err = users.Credit(ctx, ann.ID(), 5, 0); err != nil {
+	if _, err = users.Credit(ctx, ann.ID(), 5, 0, user.VoteEntry{}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = svc.Send(ctx, ann.ID(), ann.ID(), service.GiftDraft{Kind: "rose"}); err != nil {
 		t.Fatal(err)
 	}
-	if left, err := users.Spend(ctx, ann.ID(), 0); err != nil || left != 2 {
+	if left, err := users.Spend(ctx, ann.ID(), 0, user.VoteEntry{}); err != nil || left != 2 {
 		t.Fatalf("after a rose of 3 out of 5: %d, %v", left, err)
 	}
 }
