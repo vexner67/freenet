@@ -8,42 +8,7 @@ import (
 	"github.com/vexner67/freenet/user/internal/user"
 )
 
-func TestTreasury(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		treasury user.Treasury
-		free     int64
-		bonus    int64
-		maxWin   int64
-	}{
-		{name: "the start", treasury: user.Treasury{Votes: user.TreasuryStart}, free: 5000, bonus: 10, maxWin: 1000},
-		{name: "promised", treasury: user.Treasury{Votes: user.TreasuryStart, Outstanding: 4000}, free: 1000, bonus: 10, maxWin: 1000},
-		{name: "at the reserve", treasury: user.Treasury{Votes: user.TreasuryReserve}, free: 0, bonus: 10, maxWin: 1000},
-		{name: "half the reserve", treasury: user.Treasury{Votes: 10_000}, free: 0, bonus: 5, maxWin: 500},
-		{name: "empty", treasury: user.Treasury{}, free: 0, bonus: 1, maxWin: 0},
-	}
-
-	for _, tt := range tests {
-		if got := tt.treasury.Free(); got != tt.free {
-			t.Errorf("%s: Free = %d, want %d", tt.name, got, tt.free)
-		}
-		if got := tt.treasury.Bonus(); got != tt.bonus {
-			t.Errorf("%s: Bonus = %d, want %d", tt.name, got, tt.bonus)
-		}
-		if got := tt.treasury.MaxWin(); got != tt.maxWin {
-			t.Errorf("%s: MaxWin = %d, want %d", tt.name, got, tt.maxWin)
-		}
-	}
-
-	half := user.Treasury{Votes: 10_000}
-	if half.CheckWin(500) != nil || !errors.Is(half.CheckWin(501), user.ErrTreasuryLow) {
-		t.Fatal("CheckWin does not stop at 1/20 of the treasury")
-	}
-}
-
-func TestTreasury_CheckVoucher(t *testing.T) {
+func TestNewVoucher_UnlimitedVotes(t *testing.T) {
 	t.Parallel()
 
 	token, err := user.GenerateVoucherToken()
@@ -51,33 +16,9 @@ func TestTreasury_CheckVoucher(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	treasury := user.Treasury{Votes: user.TreasuryStart, Outstanding: 1000}
-
-	fits, err := user.NewVoucher(token, 100, 0, 40)
-	if err != nil {
-		t.Fatal(err)
+	if _, err := user.NewVoucher(token, 0, 10, user.UnlimitedUsages); err != nil {
+		t.Fatalf("unlimited rating: %v", err)
 	}
-	if err := treasury.CheckVoucher(fits); err != nil {
-		t.Fatalf("CheckVoucher of 4000: %v", err)
-	}
-
-	big, err := user.NewVoucher(token, 100, 0, 41)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := treasury.CheckVoucher(big); !errors.Is(err, user.ErrVoucherCover) {
-		t.Fatalf("CheckVoucher of 4100: %v", err)
-	}
-
-	// Rating costs the treasury nothing.
-	rating, err := user.NewVoucher(token, 0, 10, user.UnlimitedUsages)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := (user.Treasury{}).CheckVoucher(rating); err != nil {
-		t.Fatalf("CheckVoucher of rating: %v", err)
-	}
-
 	if _, err := user.NewVoucher(token, 1, 0, user.UnlimitedUsages); !errors.Is(err, user.ErrVoucherUnlimitedVotes) {
 		t.Fatalf("unlimited votes: %v", err)
 	}

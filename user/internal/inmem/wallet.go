@@ -66,9 +66,6 @@ func (r *UserRepository) Credit(ctx context.Context, userID uuid.UUID, votes int
 	if _, ok := r.users[userID]; !ok {
 		return user.Wallet{}, user.ErrNotFound
 	}
-	if r.treasury.Votes < votes {
-		return user.Wallet{}, user.ErrTreasuryEmpty
-	}
 
 	wallet, err := r.credit(userID, votes, rating, e)
 	if err == nil {
@@ -165,29 +162,6 @@ func (r *UserRepository) Treasury(ctx context.Context) (user.Treasury, error) {
 	}
 
 	return t, nil
-}
-
-// Mint adds user.MemberMint to the treasury for userID, the first time.
-func (r *UserRepository) Mint(ctx context.Context, userID uuid.UUID) error {
-	if err := ctx.Err(); err != nil {
-		return errs.Wrap("ctx.Err", err)
-	}
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, ok := r.users[userID]; !ok {
-		return user.ErrNotFound
-	}
-	if _, ok := r.members[userID]; ok {
-		return nil
-	}
-
-	r.members[userID] = struct{}{}
-	r.treasury.Votes += user.MemberMint
-	r.treasury.Minted += user.MemberMint
-
-	return nil
 }
 
 // TakeBonus marks the bonus of day taken by userID; user.ErrBonusTaken.

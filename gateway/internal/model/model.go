@@ -1383,12 +1383,10 @@ type Redeemed struct {
 }
 
 // Treasury is the treasury of the site: every vote given comes out of it,
-// every vote spent goes in.
+// every vote spent goes in. It has no bottom: Votes is what it has taken
+// more than paid, below zero when it paid more.
 type Treasury struct {
 	Votes       int64
-	Reserve     int64
-	Free        int64
-	Minted      int64
 	Outstanding int64
 	Bonus       int64
 	MaxWin      int64

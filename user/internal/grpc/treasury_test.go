@@ -19,22 +19,18 @@ func TestTreasury(t *testing.T) {
 
 	// Anyone sees the treasury.
 	got, err := s.client.GetTreasury(context.Background(), &userv1.GetTreasuryRequest{})
-	if err != nil || got.GetVotes() != user.TreasuryStart || got.GetReserve() != user.TreasuryReserve ||
-		got.GetFree() != user.TreasuryStart-user.TreasuryReserve || got.GetBonus() != user.MaxBonus || got.GetMaxWin() != user.MaxWin {
+	if err != nil || got.GetVotes() != user.TreasuryStart || got.GetBonus() != user.MaxBonus || got.GetMaxWin() != user.MaxWin {
 		t.Fatalf("GetTreasury = %v, %v", got, err)
 	}
 
-	// A voucher takes the free votes.
-	if _, err := s.client.CreateVoucher(admin, &userv1.CreateVoucherRequest{Votes: got.GetFree() + 1, Usages: 1}); status.Code(err) != codes.FailedPrecondition {
-		t.Fatalf("CreateVoucher past the free votes: %v", err)
-	}
+	// A voucher may promise more than the treasury holds.
 	if _, err := s.client.CreateVoucher(admin, &userv1.CreateVoucherRequest{Votes: 100, Usages: -1}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("CreateVoucher of votes without end: %v", err)
 	}
-	if _, err := s.client.CreateVoucher(admin, &userv1.CreateVoucherRequest{Votes: 100, Usages: 2}); err != nil {
+	if _, err := s.client.CreateVoucher(admin, &userv1.CreateVoucherRequest{Votes: user.TreasuryStart, Usages: 2}); err != nil {
 		t.Fatal(err)
 	}
-	if got, err = s.client.GetTreasury(context.Background(), &userv1.GetTreasuryRequest{}); err != nil || got.GetOutstanding() != 200 || got.GetHeld() != 0 {
+	if got, err = s.client.GetTreasury(context.Background(), &userv1.GetTreasuryRequest{}); err != nil || got.GetOutstanding() != 2*user.TreasuryStart || got.GetHeld() != 0 {
 		t.Fatalf("GetTreasury after a voucher = %v, %v", got, err)
 	}
 

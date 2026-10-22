@@ -52,21 +52,7 @@ func TestTreasury(t *testing.T) {
 		}
 	}
 
-	// Mint brings the votes of a member in once.
 	start := treasury()
-	if err = wallets.Mint(ctx, ann.ID()); err != nil {
-		t.Fatal(err)
-	}
-	if err = wallets.Mint(ctx, ann.ID()); err != nil {
-		t.Fatal(err)
-	}
-	if err = wallets.Mint(ctx, uuid.New()); !errors.Is(err, user.ErrNotFound) {
-		t.Fatalf("Mint of nobody: %v", err)
-	}
-	minted := treasury()
-	if minted.Votes != start.Votes+user.MemberMint || minted.Minted != start.Minted+user.MemberMint {
-		t.Fatalf("Treasury after Mint = %+v; was %+v", minted, start)
-	}
 
 	// Credit takes out of it, Spend puts in, Move goes past it.
 	if _, err = wallets.Credit(ctx, ann.ID(), 10, 0, user.Entry(user.VoteBonus, uuid.Nil, "")); err != nil {
@@ -78,11 +64,19 @@ func TestTreasury(t *testing.T) {
 	if _, err = wallets.Move(ctx, ann.ID(), bob.ID(), 2, user.Entry(user.VoteTransfer, uuid.Nil, "")); err != nil {
 		t.Fatal(err)
 	}
-	if got := treasury(); got.Votes != minted.Votes-10+3 || got.Held != minted.Held+10-3 {
-		t.Fatalf("Treasury = %+v; want %d votes, %d held", got, minted.Votes-7, minted.Held+7)
+	if got := treasury(); got.Votes != start.Votes-10+3 || got.Held != start.Held+10-3 {
+		t.Fatalf("Treasury = %+v; want %d votes, %d held", got, start.Votes-7, start.Held+7)
 	}
-	if _, err = wallets.Credit(ctx, ann.ID(), treasury().Votes+1, 0, user.Entry(user.VoteBonus, uuid.Nil, "")); !errors.Is(err, user.ErrTreasuryEmpty) {
+	// It has no bottom: it pays more than it holds and goes below zero.
+	big := treasury().Votes + 5
+	if _, err = wallets.Credit(ctx, ann.ID(), big, 0, user.Entry(user.VoteBonus, uuid.Nil, "")); err != nil {
 		t.Fatalf("Credit past the treasury: %v", err)
+	}
+	if got := treasury().Votes; got != -5 {
+		t.Fatalf("Treasury after paying past it = %d; want -5", got)
+	}
+	if _, err = wallets.Credit(ctx, uuid.New(), 1, 0, user.Entry(user.VoteBonus, uuid.Nil, "")); !errors.Is(err, user.ErrNotFound) {
+		t.Fatalf("Credit of nobody: %v", err)
 	}
 
 	// The fee and rating bought go into it, each a line of the statement.

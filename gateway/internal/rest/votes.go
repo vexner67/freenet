@@ -321,9 +321,6 @@ func (a *api) setVoteRate(w http.ResponseWriter, r *http.Request) {
 // treasuryJSON is the treasury of the site.
 type treasuryJSON struct {
 	Votes       int64 `json:"votes"`
-	Reserve     int64 `json:"reserve"`
-	Free        int64 `json:"free"`
-	Minted      int64 `json:"minted"`
 	Outstanding int64 `json:"outstanding"`
 	Bonus       int64 `json:"bonus"`
 	MaxWin      int64 `json:"maxWin"`

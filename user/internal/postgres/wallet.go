@@ -177,9 +177,7 @@ func (r *WalletRepository) Move(ctx context.Context, fromID, toID uuid.UUID, vot
 }
 
 // Votes that change are written down; rating alone is not a change of
-// votes. With $8 the votes come out of the treasury, and only while it
-// holds them: the last column tells a user who is gone from a treasury
-// too poor.
+// votes. With $8 the votes come out of the treasury, which has no bottom.
 const creditWalletQuery = `
 	WITH credited AS (
 		UPDATE users
@@ -187,7 +185,6 @@ const creditWalletQuery = `
 			votes = votes + $2,
 			rating = rating + $3
 		WHERE id = $1
-			AND (NOT $8 OR $2 = 0 OR (SELECT votes FROM treasury) >= $2)
 		RETURNING
 			votes,
 			rating
@@ -219,13 +216,12 @@ const creditWalletQuery = `
 			AND EXISTS (SELECT 1 FROM credited)
 	)
 	SELECT
-		EXISTS (SELECT 1 FROM users WHERE id = $1),
-		(SELECT votes FROM credited),
-		(SELECT rating FROM credited)
+		votes,
+		rating
+	FROM credited
 `
 
-// Credit pays the votes out of the treasury; user.ErrTreasuryEmpty when it
-// holds fewer.
+// Credit pays the votes out of the treasury.
 func (r *WalletRepository) Credit(ctx context.Context, userID uuid.UUID, votes int64, rating int, e user.VoteEntry) (user.Wallet, error) {
 	if votes != 0 {
 		if err := r.lockTreasury(ctx); err != nil {
@@ -284,26 +280,18 @@ func (r *WalletRepository) credit(ctx context.Context, userID uuid.UUID, votes i
 		return user.Wallet{}, errs.Wrap("uuid.NewV7", err)
 	}
 
-	var (
-		exists     bool
-		left       *int64
-		leftRating *int
-	)
+	var w user.Wallet
 
 	err = r.conn(ctx).QueryRow(ctx, creditWalletQuery,
-		userID, votes, rating, id, string(e.Kind), peerToDB(e.PeerID), e.Note, treasured).Scan(&exists, &left, &leftRating)
+		userID, votes, rating, id, string(e.Kind), peerToDB(e.PeerID), e.Note, treasured).Scan(&w.Votes, &w.Rating)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return user.Wallet{}, user.ErrNotFound
+	}
 	if err != nil {
 		return user.Wallet{}, errs.Wrap("r.conn.QueryRow", err)
 	}
 
-	switch {
-	case !exists:
-		return user.Wallet{}, user.ErrNotFound
-	case left == nil:
-		return user.Wallet{}, user.ErrTreasuryEmpty
-	default:
-		return user.Wallet{Votes: *left, Rating: *leftRating}, nil
-	}
+	return w, nil
 }
 
 // The limit is checked by the statement that raises the rating; the
@@ -351,7 +339,6 @@ func (r *WalletRepository) RaiseRating(ctx context.Context, userID uuid.UUID, pe
 const treasuryQuery = `
 	SELECT
 		t.votes,
-		t.minted,
 		coalesce((
 			SELECT sum(v.votes * v.usages_left)
 			FROM vouchers v
@@ -371,46 +358,11 @@ func (r *WalletRepository) Treasury(ctx context.Context) (user.Treasury, error) 
 	}
 
 	var t user.Treasury
-	if err := r.conn(ctx).QueryRow(ctx, treasuryQuery).Scan(&t.Votes, &t.Minted, &t.Outstanding, &t.Held); err != nil {
+	if err := r.conn(ctx).QueryRow(ctx, treasuryQuery).Scan(&t.Votes, &t.Outstanding, &t.Held); err != nil {
 		return user.Treasury{}, errs.Wrap("r.conn.QueryRow", err)
 	}
 
 	return t, nil
-}
-
-// A member mints once: the row of the member and the votes in one
-// statement.
-const mintMemberQuery = `
-	WITH joined AS (
-		INSERT INTO treasury_members (user_id)
-		VALUES ($1)
-		ON CONFLICT DO NOTHING
-		RETURNING user_id
-	)
-	UPDATE treasury
-	SET
-		votes = votes + $2,
-		minted = minted + $2
-	WHERE EXISTS (SELECT 1 FROM joined)
-`
-
-// Mint adds user.MemberMint to the treasury for userID, the first time.
-func (r *WalletRepository) Mint(ctx context.Context, userID uuid.UUID) error {
-	if err := r.lockTreasury(ctx); err != nil {
-		return errs.Wrap("r.lockTreasury", err)
-	}
-
-	_, err := r.conn(ctx).Exec(ctx, mintMemberQuery, userID, user.MemberMint)
-
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode {
-		return user.ErrNotFound
-	}
-	if err != nil {
-		return errs.Wrap("r.conn.Exec", err)
-	}
-
-	return nil
 }
 
 // The bonus of a day is taken once: a later day replaces the one kept.

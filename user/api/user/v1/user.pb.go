@@ -8551,20 +8551,14 @@ func (*GetTreasuryRequest) Descriptor() ([]byte, []int) {
 
 type GetTreasuryResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The votes in the treasury.
+	// What the treasury has taken more than paid since it was made: it has
+	// no bottom, so this is below zero when it has paid more.
 	Votes int64 `protobuf:"varint,1,opt,name=votes,proto3" json:"votes,omitempty"`
-	// What it keeps back: below it the bonus shrinks.
-	Reserve int64 `protobuf:"varint,2,opt,name=reserve,proto3" json:"reserve,omitempty"`
-	// What vouchers may still promise: votes less the reserve and the
-	// votes vouchers promise already.
-	Free int64 `protobuf:"varint,3,opt,name=free,proto3" json:"free,omitempty"`
-	// What the members have brought into it.
-	Minted int64 `protobuf:"varint,4,opt,name=minted,proto3" json:"minted,omitempty"`
 	// What the vouchers promise.
 	Outstanding int64 `protobuf:"varint,5,opt,name=outstanding,proto3" json:"outstanding,omitempty"`
-	// The daily bonus now.
+	// The daily bonus.
 	Bonus int64 `protobuf:"varint,6,opt,name=bonus,proto3" json:"bonus,omitempty"`
-	// The largest win of one round of the casino now.
+	// The largest win of one round of the casino.
 	MaxWin int64 `protobuf:"varint,7,opt,name=max_win,json=maxWin,proto3" json:"max_win,omitempty"`
 	// The votes on the accounts of the pages.
 	Held          int64 `protobuf:"varint,8,opt,name=held,proto3" json:"held,omitempty"`
@@ -8605,27 +8599,6 @@ func (*GetTreasuryResponse) Descriptor() ([]byte, []int) {
 func (x *GetTreasuryResponse) GetVotes() int64 {
 	if x != nil {
 		return x.Votes
-	}
-	return 0
-}
-
-func (x *GetTreasuryResponse) GetReserve() int64 {
-	if x != nil {
-		return x.Reserve
-	}
-	return 0
-}
-
-func (x *GetTreasuryResponse) GetFree() int64 {
-	if x != nil {
-		return x.Free
-	}
-	return 0
-}
-
-func (x *GetTreasuryResponse) GetMinted() int64 {
-	if x != nil {
-		return x.Minted
 	}
 	return 0
 }
@@ -13563,16 +13536,13 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\akopecks\x18\x01 \x01(\x03R\akopecks\".\n" +
 	"\x12SetVoteRateRequest\x12\x18\n" +
 	"\akopecks\x18\x01 \x01(\x03R\akopecks\"\x14\n" +
-	"\x12GetTreasuryRequest\"\xd6\x01\n" +
+	"\x12GetTreasuryRequest\"\xb9\x01\n" +
 	"\x13GetTreasuryResponse\x12\x14\n" +
-	"\x05votes\x18\x01 \x01(\x03R\x05votes\x12\x18\n" +
-	"\areserve\x18\x02 \x01(\x03R\areserve\x12\x12\n" +
-	"\x04free\x18\x03 \x01(\x03R\x04free\x12\x16\n" +
-	"\x06minted\x18\x04 \x01(\x03R\x06minted\x12 \n" +
+	"\x05votes\x18\x01 \x01(\x03R\x05votes\x12 \n" +
 	"\voutstanding\x18\x05 \x01(\x03R\voutstanding\x12\x14\n" +
 	"\x05bonus\x18\x06 \x01(\x03R\x05bonus\x12\x17\n" +
 	"\amax_win\x18\a \x01(\x03R\x06maxWin\x12\x12\n" +
-	"\x04held\x18\b \x01(\x03R\x04held\"\x11\n" +
+	"\x04held\x18\b \x01(\x03R\x04heldJ\x04\b\x02\x10\x03J\x04\b\x03\x10\x04J\x04\b\x04\x10\x05R\areserveR\x04freeR\x06minted\"\x11\n" +
 	"\x0fGetBonusRequest\"Z\n" +
 	"\x10GetBonusResponse\x12\x14\n" +
 	"\x05votes\x18\x01 \x01(\x03R\x05votes\x12\x14\n" +

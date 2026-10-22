@@ -255,12 +255,9 @@ func (h *UserHandler) GetTreasury(ctx context.Context, _ *userv1.GetTreasuryRequ
 
 	return &userv1.GetTreasuryResponse{
 		Votes:       treasury.Votes,
-		Reserve:     user.TreasuryReserve,
-		Free:        treasury.Free(),
-		Minted:      treasury.Minted,
 		Outstanding: treasury.Outstanding,
-		Bonus:       treasury.Bonus(),
-		MaxWin:      treasury.MaxWin(),
+		Bonus:       user.MaxBonus,
+		MaxWin:      user.MaxWin,
 		Held:        treasury.Held,
 	}, nil
 }

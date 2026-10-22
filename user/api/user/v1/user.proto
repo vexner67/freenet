@@ -1411,20 +1411,17 @@ message SetVoteRateRequest {
 message GetTreasuryRequest {}
 
 message GetTreasuryResponse {
-  // The votes in the treasury.
+  reserved 2, 3, 4;
+  reserved "reserve", "free", "minted";
+
+  // What the treasury has taken more than paid since it was made: it has
+  // no bottom, so this is below zero when it has paid more.
   int64 votes = 1;
-  // What it keeps back: below it the bonus shrinks.
-  int64 reserve = 2;
-  // What vouchers may still promise: votes less the reserve and the
-  // votes vouchers promise already.
-  int64 free = 3;
-  // What the members have brought into it.
-  int64 minted = 4;
   // What the vouchers promise.
   int64 outstanding = 5;
-  // The daily bonus now.
+  // The daily bonus.
   int64 bonus = 6;
-  // The largest win of one round of the casino now.
+  // The largest win of one round of the casino.
   int64 max_win = 7;
   // The votes on the accounts of the pages.
   int64 held = 8;

@@ -24,8 +24,8 @@ type WalletRepository interface {
 	// with the other as the peer.
 	Move(ctx context.Context, fromID, toID uuid.UUID, votes int64, e user.VoteEntry) (int64, error)
 	// Credit adds votes and rating to userID; user.ErrNotFound.
-	// The votes come out of the treasury, as Spend puts them in;
-	// user.ErrTreasuryEmpty when it holds fewer. Move goes past it.
+	// The votes come out of the treasury, as Spend puts them in; it has
+	// no bottom. Move goes past it.
 	Credit(ctx context.Context, userID uuid.UUID, votes int64, rating int, e user.VoteEntry) (user.Wallet, error)
 	// Hold takes votes from userID and keeps them out of the treasury:
 	// the bid of an auction, until Release gives them back or Deposit
@@ -44,11 +44,8 @@ type WalletRepository interface {
 	RaiseRating(ctx context.Context, userID uuid.UUID, percent int) (user.Wallet, error)
 }
 
-// BonusRepository keeps the daily bonuses and who has minted into the
-// treasury.
+// BonusRepository keeps the daily bonuses.
 type BonusRepository interface {
-	// Mint adds user.MemberMint to the treasury for userID, once.
-	Mint(ctx context.Context, userID uuid.UUID) error
 	// TakeBonus marks the bonus of day taken by userID;
 	// user.ErrBonusTaken for a day taken already.
 	TakeBonus(ctx context.Context, userID uuid.UUID, day time.Time) error
@@ -315,22 +312,8 @@ func (s *WalletService) CreateVoucher(ctx context.Context, adminID uuid.UUID, d 
 		return nil, errs.Wrap("user.NewVoucher", err)
 	}
 
-	// The treasury stays locked until the voucher is saved: two vouchers
-	// at once cannot take the same free votes.
-	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		treasury, err := s.wallets.Treasury(ctx)
-		if err != nil {
-			return errs.Wrap("s.wallets.Treasury", err)
-		}
-
-		if err = treasury.CheckVoucher(voucher); err != nil {
-			return errs.Wrap("treasury.CheckVoucher", err)
-		}
-
-		return errs.Wrap("s.vouchers.Save", s.vouchers.Save(ctx, voucher))
-	})
-	if err != nil {
-		return nil, errs.Wrap("s.tx.WithinTx", err)
+	if err := s.vouchers.Save(ctx, voucher); err != nil {
+		return nil, errs.Wrap("s.vouchers.Save", err)
 	}
 
 	return voucher, nil
@@ -355,22 +338,15 @@ func (s *WalletService) Bonus(ctx context.Context, userID uuid.UUID, now time.Ti
 		return Bonus{}, errs.Wrap("s.bonuses.LastBonus", err)
 	}
 
-	treasury, err := s.wallets.Treasury(ctx)
-	if err != nil {
-		return Bonus{}, errs.Wrap("s.wallets.Treasury", err)
-	}
-
 	return Bonus{
-		Votes:    treasury.Bonus(),
+		Votes:    user.MaxBonus,
 		Taken:    !last.Before(user.BonusDay(now)),
 		Eligible: u.CheckBonusAt(now) == nil,
 	}, nil
 }
 
 // ClaimBonus gives userID the bonus of the day of now out of the treasury,
-// in one transaction; a member takes it first time brings user.MemberMint
-// into the treasury. user.ErrBonusNotYet, user.ErrBonusTaken,
-// user.ErrTreasuryEmpty.
+// in one transaction; user.ErrBonusNotYet, user.ErrBonusTaken.
 func (s *WalletService) ClaimBonus(ctx context.Context, userID uuid.UUID, now time.Time) (Redeemed, error) {
 	u, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -388,17 +364,9 @@ func (s *WalletService) ClaimBonus(ctx context.Context, userID uuid.UUID, now ti
 			return errs.Wrap("s.bonuses.TakeBonus", err)
 		}
 
-		if err := s.bonuses.Mint(ctx, userID); err != nil {
-			return errs.Wrap("s.bonuses.Mint", err)
-		}
+		claimed.Votes = user.MaxBonus
 
-		treasury, err := s.wallets.Treasury(ctx)
-		if err != nil {
-			return errs.Wrap("s.wallets.Treasury", err)
-		}
-
-		claimed.Votes = treasury.Bonus()
-
+		var err error
 		claimed.Wallet, err = s.wallets.Credit(ctx, userID, claimed.Votes, 0, user.Entry(user.VoteBonus, uuid.Nil, ""))
 
 		return errs.Wrap("s.wallets.Credit", err)

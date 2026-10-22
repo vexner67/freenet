@@ -34,7 +34,7 @@ func TestWalletService_Bonus(t *testing.T) {
 		t.Fatalf("ClaimBonus of a new page: %v", err)
 	}
 
-	// A week later: the first bonus mints into the treasury too.
+	// A week later.
 	now = now.Add(user.BonusAge + time.Hour)
 
 	claimed, err := w.wallets.ClaimBonus(ctx, ann, now)
@@ -49,16 +49,13 @@ func TestWalletService_Bonus(t *testing.T) {
 	}
 
 	treasury, err := w.wallets.Treasury(ctx)
-	if err != nil || treasury.Votes != user.TreasuryStart+user.MemberMint-user.MaxBonus || treasury.Minted != user.MemberMint {
+	if err != nil || treasury.Votes != user.TreasuryStart-user.MaxBonus {
 		t.Fatalf("Treasury = %+v, %v", treasury, err)
 	}
 
-	// The next day there is another, and no mint.
+	// The next day there is another.
 	if claimed, err = w.wallets.ClaimBonus(ctx, ann, now.Add(24*time.Hour)); err != nil || claimed.Wallet.Votes != 2*user.MaxBonus {
 		t.Fatalf("next ClaimBonus = %+v, %v", claimed, err)
-	}
-	if treasury, err = w.wallets.Treasury(ctx); err != nil || treasury.Minted != user.MemberMint {
-		t.Fatalf("Treasury after the next = %+v, %v", treasury, err)
 	}
 
 	ops, err := w.wallets.Statement(ctx, ann, uuid.Nil, user.VoteFlowAll, 10, now)
@@ -67,31 +64,19 @@ func TestWalletService_Bonus(t *testing.T) {
 	}
 }
 
-// A voucher promises votes the treasury must have free.
-func TestWalletService_VoucherCover(t *testing.T) {
+// A voucher promises any votes: the treasury has no bottom.
+func TestWalletService_VoucherOutstanding(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 	w := newWalletWorld(t)
 	admin := w.person(t, "admin")
-	free := int64(user.TreasuryStart - user.TreasuryReserve)
 
-	if _, err := w.wallets.CreateVoucher(ctx, admin, service.VoucherDraft{Votes: free/2 + 1, Usages: 2}); !errors.Is(err, user.ErrVoucherCover) {
-		t.Fatalf("CreateVoucher past the free votes: %v", err)
+	if _, err := w.wallets.CreateVoucher(ctx, admin, service.VoucherDraft{Votes: user.TreasuryStart, Usages: 2}); err != nil {
+		t.Fatalf("CreateVoucher past the treasury: %v", err)
 	}
-	if _, err := w.wallets.CreateVoucher(ctx, admin, service.VoucherDraft{Votes: free / 2, Usages: 2}); err != nil {
-		t.Fatal(err)
-	}
-	// What it promises is not free any more.
-	if _, err := w.wallets.CreateVoucher(ctx, admin, service.VoucherDraft{Votes: 1, Usages: 1}); !errors.Is(err, user.ErrVoucherCover) {
-		t.Fatalf("CreateVoucher past the promised: %v", err)
-	}
-	if treasury, err := w.wallets.Treasury(ctx); err != nil || treasury.Free() != 0 || treasury.Outstanding != free {
+	if treasury, err := w.wallets.Treasury(ctx); err != nil || treasury.Outstanding != 2*user.TreasuryStart {
 		t.Fatalf("Treasury = %+v, %v", treasury, err)
-	}
-	// Rating costs the treasury nothing.
-	if _, err := w.wallets.CreateVoucher(ctx, admin, service.VoucherDraft{Rating: 5, Usages: user.UnlimitedUsages}); err != nil {
-		t.Fatal(err)
 	}
 }
 
