@@ -252,8 +252,8 @@ function showClubs(user) {
 async function showClubBlock(id, all, count, list) {
   try {
     const page = await list();
-    const links = page.clubs.map((club) => el('span', {},
-      el('a', { href: pagePath({ ...club, club: true }), textContent: club.name }), verifiedMark(club)));
+    // Only the names: the checkmarks are for the club's own page.
+    const links = page.clubs.map((club) => el('a', { href: pagePath({ ...club, club: true }), textContent: club.name }));
 
     $(id + '-count').textContent = count(page.total);
     $(id + '-all').href = all;
