@@ -42,6 +42,8 @@ type GiftCollection struct {
 	// one ("Бесплатно").
 	Price GiftPrice
 	Gifts []GiftKind
+	// Prime: only those with Freenet Prime send its gifts.
+	Prime bool
 }
 
 // giftCatalog is all there is to send. openvk's gifts are drawn and priced
@@ -50,12 +52,14 @@ type GiftCollection struct {
 // are free, so that anyone can send a gift, and the rest costs votes,
 // which the daily bonus and vouchers give — a gift of a collection is a
 // day or a week of bonuses. "freenet" are the site's own gifts, the
-// dearest, last. The pictures are the site's: it knows a gift by this name.
+// dearest, and "prime" are sent only by those with Freenet Prime, last.
+// The pictures are the site's: it knows a gift by this name.
 var giftCatalog = []GiftCollection{
 	{ID: "flowers", Gifts: []GiftKind{"rose", "tulip", "bouquet", "sunflower", "cactus"}},
 	{ID: "sweets", Price: 10, Gifts: []GiftKind{"cake", "candy", "chocolate", "icecream", "cupcake"}},
 	{ID: "holidays", Price: 30, Gifts: []GiftKind{"present", "balloons", "heart", "bear", "star"}},
 	{ID: "freenet", Price: 70, Gifts: []GiftKind{"freenet_crystal", "freenet_coin", "freenet_ring", "freenet_crown", "freenet_heart", "freenet_cup"}},
+	{ID: "prime", Price: 50, Prime: true, Gifts: []GiftKind{"prime_star", "prime_diamond", "prime_crown", "prime_rocket", "prime_trophy"}},
 }
 
 // dearGifts cost more than their collection: the crown and the cup are a
@@ -69,7 +73,7 @@ var dearGifts = map[GiftKind]GiftPrice{
 func GiftCatalog() []GiftCollection {
 	catalog := make([]GiftCollection, len(giftCatalog))
 	for i, c := range giftCatalog {
-		catalog[i] = GiftCollection{ID: c.ID, Price: c.Price, Gifts: slices.Clone(c.Gifts)}
+		catalog[i] = GiftCollection{ID: c.ID, Price: c.Price, Gifts: slices.Clone(c.Gifts), Prime: c.Prime}
 	}
 
 	return catalog
@@ -105,6 +109,17 @@ func (k GiftKind) DefaultPrice() GiftPrice {
 	}
 
 	return 0
+}
+
+// IsPrime tells whether only those with Freenet Prime send the gift.
+func (k GiftKind) IsPrime() bool {
+	for _, c := range giftCatalog {
+		if slices.Contains(c.Gifts, k) {
+			return c.Prime
+		}
+	}
+
+	return false
 }
 
 // GiftPrice is what a gift costs its sender, in votes: 0 (free) to
@@ -170,12 +185,8 @@ type Gift struct {
 // not show itself to the sender (hidden or closed) takes none from them,
 // as on openvk. One may send a gift to oneself, as there.
 func (u *User) GiftFrom(senderID uuid.UUID, t Ties, kind GiftKind, caption GiftCaption, anonymous bool) (*Gift, error) {
-	if u.IsDeactivated() {
-		return nil, ErrDeactivated
-	}
-
-	if senderID != u.id && (t.Blocked || !u.access(senderID, t, false).Page) {
-		return nil, ErrGiftRefused
+	if err := u.CheckGiftFrom(senderID, t); err != nil {
+		return nil, err
 	}
 
 	id, err := uuid.NewV7()
@@ -191,6 +202,20 @@ func (u *User) GiftFrom(senderID uuid.UUID, t Ties, kind GiftKind, caption GiftC
 		caption:     caption,
 		anonymous:   anonymous,
 	}, nil
+}
+
+// CheckGiftFrom tells whether u takes a present from senderID, tied to u
+// by t: a gift or Freenet Prime.
+func (u *User) CheckGiftFrom(senderID uuid.UUID, t Ties) error {
+	if u.IsDeactivated() {
+		return ErrDeactivated
+	}
+
+	if senderID != u.id && (t.Blocked || !u.access(senderID, t, false).Page) {
+		return ErrGiftRefused
+	}
+
+	return nil
 }
 
 // RestoreGift rebuilds a gift from storage.

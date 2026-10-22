@@ -129,6 +129,9 @@ type PublicProfile struct {
 	// the names, the photo and the checkmark are told, as of a deleted
 	// page.
 	Ban Ban
+	// Prime: the page has Freenet Prime, a mark by the name; told as the
+	// checkmark is, by those that know the time.
+	Prime bool
 }
 
 // birthYearMask is the year of a birthday told without one: a leap year,
@@ -168,6 +171,9 @@ type User struct {
 	// alert is the label the administrators put; like verified, storage
 	// alone changes it.
 	alert Alert
+	// prime is the subscription Freenet Prime; like wallet, storage alone
+	// changes it.
+	prime Prime
 }
 
 // New creates a user with only an email set, as happens on the first
@@ -209,6 +215,7 @@ type Stored struct {
 	Verified     bool
 	Ban          Ban
 	Alert        Alert
+	Prime        Prime
 }
 
 // Restore rebuilds a user from storage without validation or new IDs.
@@ -230,6 +237,7 @@ func Restore(s Stored) *User {
 		verified:     s.Verified,
 		ban:          s.Ban,
 		alert:        s.Alert,
+		prime:        s.Prime,
 	}
 }
 
@@ -384,11 +392,12 @@ func (u *User) PublicProfileFor(viewerID uuid.UUID, t Ties, now time.Time) Publi
 			ID: u.id, AvatarID: u.avatarID, Name: u.profile.Name, Surname: u.profile.Surname,
 			Nickname: u.profile.Nickname, Gender: u.profile.Gender, PageHidden: true, InfoHidden: true,
 			Closed: u.privacy.Closed, Verified: u.verified && !u.IsDeactivated(),
-			Alert: u.shownAlert(),
+			Alert: u.shownAlert(), Prime: u.IsPrimeAt(now),
 		}
 	}
 
 	p := u.publicProfile(access.Info)
+	p.Prime = u.IsPrimeAt(now)
 	if p.LastSeen = u.lastSeenFor(viewerID, t, now); !p.LastSeen.IsZero() {
 		p.Online = u.IsOnline(now)
 	}
@@ -408,7 +417,7 @@ func (u *User) bannedProfile(now time.Time) PublicProfile {
 		ID: u.id, AvatarID: u.avatarID, Name: u.profile.Name, Surname: u.profile.Surname,
 		Nickname: u.profile.Nickname, Gender: u.profile.Gender, InfoHidden: true,
 		Verified: u.verified && !u.IsDeactivated(), Ban: u.BanAt(now),
-		Alert: u.shownAlert(),
+		Alert: u.shownAlert(), Prime: u.IsPrimeAt(now),
 	}
 }
 

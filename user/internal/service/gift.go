@@ -70,6 +70,8 @@ type GiftShelf struct {
 	ID    string
 	Price user.GiftPrice
 	Gifts []PricedGift
+	// Prime: only those with Freenet Prime send its gifts.
+	Prime bool
 }
 
 // GiftPage is one screen of the gifts of a page, newest first; NextCursor
@@ -135,7 +137,7 @@ func (s *GiftService) Catalog(ctx context.Context) ([]GiftShelf, error) {
 	shelves := make([]GiftShelf, 0, len(catalog))
 
 	for _, c := range catalog {
-		shelf := GiftShelf{ID: c.ID, Price: c.Price, Gifts: make([]PricedGift, 0, len(c.Gifts))}
+		shelf := GiftShelf{ID: c.ID, Price: c.Price, Gifts: make([]PricedGift, 0, len(c.Gifts)), Prime: c.Prime}
 		for _, kind := range c.Gifts {
 			shelf.Gifts = append(shelf.Gifts, PricedGift{Kind: kind, Price: prices.Of(kind)})
 		}
@@ -172,6 +174,12 @@ func (s *GiftService) Send(ctx context.Context, senderID, recipientID uuid.UUID,
 		return SentGift{}, errs.Wrap("recipient.GiftFrom", err)
 	}
 
+	if d.Kind.IsPrime() {
+		if err = s.checkPrime(ctx, senderID); err != nil {
+			return SentGift{}, errs.Wrap("s.checkPrime", err)
+		}
+	}
+
 	prices, err := s.prices.Prices(ctx)
 	if err != nil {
 		return SentGift{}, errs.Wrap("s.prices.Prices", err)
@@ -204,6 +212,20 @@ func (s *GiftService) Send(ctx context.Context, senderID, recipientID uuid.UUID,
 	}
 
 	return shown[0], nil
+}
+
+// checkPrime is user.ErrPrimeOnly unless senderID has Freenet Prime.
+func (s *GiftService) checkPrime(ctx context.Context, senderID uuid.UUID) error {
+	sender, err := s.userRepo.GetByID(ctx, senderID)
+	if err != nil {
+		return errs.Wrap("s.userRepo.GetByID", err)
+	}
+
+	if !sender.IsPrimeAt(s.now()) {
+		return user.ErrPrimeOnly
+	}
+
+	return nil
 }
 
 // Delete removes a gift from the page of userID, its recipient; the

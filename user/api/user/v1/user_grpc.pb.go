@@ -82,6 +82,10 @@ const (
 	UserService_GetBonus_FullMethodName           = "/user.v1.UserService/GetBonus"
 	UserService_ClaimBonus_FullMethodName         = "/user.v1.UserService/ClaimBonus"
 	UserService_RaiseRating_FullMethodName        = "/user.v1.UserService/RaiseRating"
+	UserService_GetPrime_FullMethodName           = "/user.v1.UserService/GetPrime"
+	UserService_BuyPrime_FullMethodName           = "/user.v1.UserService/BuyPrime"
+	UserService_SetPrimePrices_FullMethodName     = "/user.v1.UserService/SetPrimePrices"
+	UserService_SetPrimeInvisible_FullMethodName  = "/user.v1.UserService/SetPrimeInvisible"
 	UserService_GetDecor_FullMethodName           = "/user.v1.UserService/GetDecor"
 	UserService_SetDecor_FullMethodName           = "/user.v1.UserService/SetDecor"
 	UserService_GetCasino_FullMethodName          = "/user.v1.UserService/GetCasino"
@@ -274,6 +278,17 @@ type UserServiceClient interface {
 	// 3 votes a percent, into the treasury: FailedPrecondition "not enough
 	// votes" and "the rating cannot go above 1000 percent".
 	RaiseRating(ctx context.Context, in *RaiseRatingRequest, opts ...grpc.CallOption) (*RaiseRatingResponse, error)
+	// Freenet Prime, the subscription of the site. GetPrime is public: what
+	// its periods cost. BuyPrime sells the caller a period, for themself or
+	// for user_id as a present, into the treasury: FailedPrecondition "not
+	// enough votes", PermissionDenied as SendGift for a refused recipient.
+	// SetPrimePrices is for the administrators (PermissionDenied for
+	// others). SetPrimeInvisible hides when the caller is online, with
+	// Prime only (FailedPrecondition "this is for freenet prime only").
+	GetPrime(ctx context.Context, in *GetPrimeRequest, opts ...grpc.CallOption) (*GetPrimeResponse, error)
+	BuyPrime(ctx context.Context, in *BuyPrimeRequest, opts ...grpc.CallOption) (*BuyPrimeResponse, error)
+	SetPrimePrices(ctx context.Context, in *SetPrimePricesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SetPrimeInvisible(ctx context.Context, in *SetPrimeInvisibleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// The New Year decoration of the site. GetDecor is public and says
 	// whether to wear it now; SetDecor is for the administrators
 	// (PermissionDenied for others).
@@ -1002,6 +1017,46 @@ func (c *userServiceClient) RaiseRating(ctx context.Context, in *RaiseRatingRequ
 	return out, nil
 }
 
+func (c *userServiceClient) GetPrime(ctx context.Context, in *GetPrimeRequest, opts ...grpc.CallOption) (*GetPrimeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPrimeResponse)
+	err := c.cc.Invoke(ctx, UserService_GetPrime_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) BuyPrime(ctx context.Context, in *BuyPrimeRequest, opts ...grpc.CallOption) (*BuyPrimeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BuyPrimeResponse)
+	err := c.cc.Invoke(ctx, UserService_BuyPrime_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SetPrimePrices(ctx context.Context, in *SetPrimePricesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetPrimePrices_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SetPrimeInvisible(ctx context.Context, in *SetPrimeInvisibleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetPrimeInvisible_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) GetDecor(ctx context.Context, in *GetDecorRequest, opts ...grpc.CallOption) (*GetDecorResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetDecorResponse)
@@ -1498,6 +1553,17 @@ type UserServiceServer interface {
 	// 3 votes a percent, into the treasury: FailedPrecondition "not enough
 	// votes" and "the rating cannot go above 1000 percent".
 	RaiseRating(context.Context, *RaiseRatingRequest) (*RaiseRatingResponse, error)
+	// Freenet Prime, the subscription of the site. GetPrime is public: what
+	// its periods cost. BuyPrime sells the caller a period, for themself or
+	// for user_id as a present, into the treasury: FailedPrecondition "not
+	// enough votes", PermissionDenied as SendGift for a refused recipient.
+	// SetPrimePrices is for the administrators (PermissionDenied for
+	// others). SetPrimeInvisible hides when the caller is online, with
+	// Prime only (FailedPrecondition "this is for freenet prime only").
+	GetPrime(context.Context, *GetPrimeRequest) (*GetPrimeResponse, error)
+	BuyPrime(context.Context, *BuyPrimeRequest) (*BuyPrimeResponse, error)
+	SetPrimePrices(context.Context, *SetPrimePricesRequest) (*emptypb.Empty, error)
+	SetPrimeInvisible(context.Context, *SetPrimeInvisibleRequest) (*emptypb.Empty, error)
 	// The New Year decoration of the site. GetDecor is public and says
 	// whether to wear it now; SetDecor is for the administrators
 	// (PermissionDenied for others).
@@ -1791,6 +1857,18 @@ func (UnimplementedUserServiceServer) ClaimBonus(context.Context, *ClaimBonusReq
 }
 func (UnimplementedUserServiceServer) RaiseRating(context.Context, *RaiseRatingRequest) (*RaiseRatingResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RaiseRating not implemented")
+}
+func (UnimplementedUserServiceServer) GetPrime(context.Context, *GetPrimeRequest) (*GetPrimeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPrime not implemented")
+}
+func (UnimplementedUserServiceServer) BuyPrime(context.Context, *BuyPrimeRequest) (*BuyPrimeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BuyPrime not implemented")
+}
+func (UnimplementedUserServiceServer) SetPrimePrices(context.Context, *SetPrimePricesRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetPrimePrices not implemented")
+}
+func (UnimplementedUserServiceServer) SetPrimeInvisible(context.Context, *SetPrimeInvisibleRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetPrimeInvisible not implemented")
 }
 func (UnimplementedUserServiceServer) GetDecor(context.Context, *GetDecorRequest) (*GetDecorResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDecor not implemented")
@@ -3031,6 +3109,78 @@ func _UserService_RaiseRating_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetPrime_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPrimeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetPrime(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetPrime_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetPrime(ctx, req.(*GetPrimeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_BuyPrime_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BuyPrimeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).BuyPrime(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_BuyPrime_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).BuyPrime(ctx, req.(*BuyPrimeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SetPrimePrices_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetPrimePricesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetPrimePrices(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetPrimePrices_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetPrimePrices(ctx, req.(*SetPrimePricesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SetPrimeInvisible_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetPrimeInvisibleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetPrimeInvisible(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetPrimeInvisible_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetPrimeInvisible(ctx, req.(*SetPrimeInvisibleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetDecor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetDecorRequest)
 	if err := dec(in); err != nil {
@@ -3897,6 +4047,22 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RaiseRating",
 			Handler:    _UserService_RaiseRating_Handler,
+		},
+		{
+			MethodName: "GetPrime",
+			Handler:    _UserService_GetPrime_Handler,
+		},
+		{
+			MethodName: "BuyPrime",
+			Handler:    _UserService_BuyPrime_Handler,
+		},
+		{
+			MethodName: "SetPrimePrices",
+			Handler:    _UserService_SetPrimePrices_Handler,
+		},
+		{
+			MethodName: "SetPrimeInvisible",
+			Handler:    _UserService_SetPrimeInvisible_Handler,
 		},
 		{
 			MethodName: "GetDecor",

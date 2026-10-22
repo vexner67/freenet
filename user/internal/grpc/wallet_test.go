@@ -197,7 +197,7 @@ func TestGiftPrices(t *testing.T) {
 
 	var paid *userv1.GiftCollection
 	for _, c := range catalog.GetCollections() {
-		if c.GetPrice() > 0 {
+		if c.GetPrice() > 0 && !c.GetPrime() {
 			paid = c
 		}
 	}

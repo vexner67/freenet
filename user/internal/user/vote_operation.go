@@ -55,6 +55,9 @@ const (
 	VoteTax VoteKind = "tax"
 	// VoteRating: rating bought; the note is how many percent.
 	VoteRating VoteKind = "rating"
+	// VotePrime: Freenet Prime bought; the note is its period, the peer
+	// whom it is a present for.
+	VotePrime VoteKind = "prime"
 )
 
 // VoteEntry is what a change of votes is written down as: why, with whom

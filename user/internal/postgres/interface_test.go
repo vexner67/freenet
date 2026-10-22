@@ -37,7 +37,9 @@ func TestInterface(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got.UpdateInterface(ui)
+	if err = got.UpdateInterface(ui, time.Now()); err != nil {
+		t.Fatal(err)
+	}
 	if err = repo.Update(ctx, got); err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +50,9 @@ func TestInterface(t *testing.T) {
 	}
 
 	// A whole menu again is an empty list and the browser's clock a NULL.
-	got.UpdateInterface(user.DefaultInterface())
+	if err = got.UpdateInterface(user.DefaultInterface(), time.Now()); err != nil {
+		t.Fatal(err)
+	}
 	if err = repo.Update(ctx, got); err != nil {
 		t.Fatal(err)
 	}

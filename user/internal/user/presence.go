@@ -46,7 +46,9 @@ func (u *User) ListedProfile(now time.Time) PublicProfile {
 	}
 
 	p := u.PublicProfile()
-	p.Online = !u.IsDeactivated() && u.privacy.PageRead == AudienceEveryone && !u.privacy.Closed && u.IsOnline(now)
+	p.Prime = u.IsPrimeAt(now)
+	p.Online = !u.IsDeactivated() && u.privacy.PageRead == AudienceEveryone && !u.privacy.Closed && u.IsOnline(now) &&
+		!u.invisibleAt(now)
 
 	return p
 }
@@ -54,9 +56,10 @@ func (u *User) ListedProfile(now time.Time) PublicProfile {
 // lastSeenFor is when viewerID (uuid.Nil: anonymous), tied to u by t,
 // may see u last visited, the zero time if not: the owner and the
 // audience of "Кто видит мою неактивность" always, the others while the
-// absence is short, as on openvk. A deleted page tells nothing.
+// absence is short, as on openvk. A deleted page tells nothing, nor an
+// invisible one ("Невидимка" of Prime) to others.
 func (u *User) lastSeenFor(viewerID uuid.UUID, t Ties, now time.Time) time.Time {
-	if u.IsDeactivated() {
+	if u.IsDeactivated() || viewerID != u.id && u.invisibleAt(now) {
 		return time.Time{}
 	}
 

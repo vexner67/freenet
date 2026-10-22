@@ -182,7 +182,7 @@ func (a *App) build(cfg config.Config) error {
 				Notifier:    deliver.gifts,
 				Admins:      admins,
 			}),
-			Stickers: service.NewStickerService(store.stickers, store.stickerPacks, store.wallets, store.tx),
+			Stickers: service.NewStickerService(store.stickers, store.stickerPacks, store.wallets, store.users, store.tx),
 			Wallets: service.NewWalletService(service.WalletDeps{
 				Users:       store.users,
 				Wallets:     store.wallets,
@@ -202,10 +202,19 @@ func (a *App) build(cfg config.Config) error {
 				Notifier:      deliver.verified,
 				Admins:        admins,
 			}),
-			Bans:        service.NewBanService(store.users, store.users, admins),
-			Alerts:      service.NewAlertService(store.users, store.users, admins),
-			Ads:         service.NewAdService(store.users, store.ads, store.ads, store.tx, admins),
-			Decors:      service.NewDecorService(store.users, store.decor, admins),
+			Bans:   service.NewBanService(store.users, store.users, admins),
+			Alerts: service.NewAlertService(store.users, store.users, admins),
+			Ads:    service.NewAdService(store.users, store.ads, store.ads, store.tx, admins),
+			Decors: service.NewDecorService(store.users, store.decor, admins),
+			Primes: service.NewPrimeService(service.PrimeDeps{
+				Users:       store.users,
+				Primes:      store.primes,
+				Wallets:     store.wallets,
+				Permissions: permissions,
+				Tx:          store.tx,
+				Notifier:    deliver.prime,
+				Admins:      admins,
+			}),
 			Casinos:     service.NewCasinoService(store.users, store.casino, store.wallets, store.tx, admins),
 			Rockets:     service.NewRocketService(store.users, store.casino, store.rockets, store.wallets, store.tx, admins),
 			BetEvents:   service.NewBetEventService(store.users, store.betEvents, store.wallets, store.tx, admins),
@@ -241,6 +250,7 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		userv1.UserService_RedeemVoucher_FullMethodName: cfg.VoucherLimits,
 		userv1.UserService_ClaimBonus_FullMethodName:    cfg.VoucherLimits,
 		userv1.UserService_RaiseRating_FullMethodName:   cfg.TransferLimits,
+		userv1.UserService_BuyPrime_FullMethodName:      cfg.TransferLimits,
 
 		userv1.UserService_CreateStickerPack_FullMethodName: cfg.StickerPackLimits,
 		userv1.UserService_EditStickerPack_FullMethodName:   cfg.StickerPackLimits,
@@ -315,6 +325,8 @@ type storage struct {
 	rates service.VoteRateRepository
 	// decor is how the site is dressed for the New Year.
 	decor service.DecorRepository
+	// primes are the subscriptions of Freenet Prime and their prices.
+	primes service.PrimeRepository
 	// casino is the casino of the site.
 	casino service.CasinoRepository
 	// rockets are the rounds of "Ракетка".
@@ -350,6 +362,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			vouchers:     inmem.NewVoucherRepository(users),
 			rates:        inmem.NewVoteRateRepository(),
 			decor:        inmem.NewDecorRepository(),
+			primes:       inmem.NewPrimeRepository(users),
 			casino:       inmem.NewCasinoRepository(),
 			rockets:      inmem.NewRocketRepository(),
 			betEvents:    inmem.NewBetEventRepository(),
@@ -397,6 +410,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		vouchers:     postgres.NewVoucherRepository(a.pool),
 		rates:        postgres.NewVoteRateRepository(a.pool),
 		decor:        postgres.NewDecorRepository(a.pool),
+		primes:       postgres.NewPrimeRepository(a.pool),
 		casino:       postgres.NewCasinoRepository(a.pool),
 		rockets:      postgres.NewRocketRepository(a.pool),
 		betEvents:    postgres.NewBetEventRepository(a.pool),

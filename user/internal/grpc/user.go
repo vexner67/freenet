@@ -45,6 +45,7 @@ type UserHandler struct {
 	alerts            AlertService
 	ads               AdService
 	decors            DecorService
+	primes            PrimeService
 	casinos           CasinoService
 	rockets           RocketService
 	betEvents         BetEventService
@@ -74,6 +75,8 @@ type Services struct {
 	Ads AdService
 	// Decors dress the site for the New Year.
 	Decors DecorService
+	// Primes sell Freenet Prime.
+	Primes PrimeService
 	// Casinos are the casino of the site.
 	Casinos CasinoService
 	// Rockets are "Ракетка" of the casino.
@@ -100,6 +103,7 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		alerts:            s.Alerts,
 		ads:               s.Ads,
 		decors:            s.Decors,
+		primes:            s.Primes,
 		casinos:           s.Casinos,
 		rockets:           s.Rockets,
 		betEvents:         s.BetEvents,

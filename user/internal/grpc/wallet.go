@@ -16,7 +16,7 @@ import (
 
 type WalletService interface {
 	IsAdmin(u *user.User) bool
-	Transfer(ctx context.Context, senderID, recipientID uuid.UUID, votes user.Votes, note user.TransferNote) (int64, error)
+	Transfer(ctx context.Context, senderID, recipientID uuid.UUID, votes user.Votes, note user.TransferNote) (left, fee int64, err error)
 	Statement(ctx context.Context, userID, cursor uuid.UUID, flow user.VoteFlow, size int, now time.Time) (service.StatementPage, error)
 	Redeem(ctx context.Context, userID uuid.UUID, token user.VoucherToken) (service.Redeemed, error)
 	CreateVoucher(ctx context.Context, adminID uuid.UUID, d service.VoucherDraft) (*user.Voucher, error)
@@ -46,12 +46,12 @@ func (h *UserHandler) TransferVotes(ctx context.Context, req *userv1.TransferVot
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	left, err := h.walletService.Transfer(ctx, senderID, recipientID, votes, note)
+	left, fee, err := h.walletService.Transfer(ctx, senderID, recipientID, votes, note)
 	if err != nil {
 		return nil, err
 	}
 
-	return &userv1.TransferVotesResponse{Votes: left, Fee: user.TransferFee(votes.Int64())}, nil
+	return &userv1.TransferVotesResponse{Votes: left, Fee: fee}, nil
 }
 
 func (h *UserHandler) ListVoteOperations(ctx context.Context, req *userv1.ListVoteOperationsRequest) (*userv1.ListVoteOperationsResponse, error) {

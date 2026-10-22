@@ -135,6 +135,12 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.FailedPrecondition, user.ErrTreasuryLow.Error()), true
 	case errors.Is(err, user.ErrVoucherCover):
 		return status.New(codes.FailedPrecondition, user.ErrVoucherCover.Error()), true
+	case errors.Is(err, user.ErrPrimeOnly):
+		return status.New(codes.FailedPrecondition, user.ErrPrimeOnly.Error()), true
+	case errors.Is(err, user.ErrPrimePeriodInvalid):
+		return status.New(codes.InvalidArgument, user.ErrPrimePeriodInvalid.Error()), true
+	case errors.Is(err, user.ErrPrimePriceInvalid):
+		return status.New(codes.InvalidArgument, user.ErrPrimePriceInvalid.Error()), true
 	case errors.Is(err, user.ErrRatingLimit):
 		return status.New(codes.FailedPrecondition, user.ErrRatingLimit.Error()), true
 	case errors.Is(err, user.ErrBonusTaken):

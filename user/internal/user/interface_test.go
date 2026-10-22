@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/vexner67/freenet/user/internal/user"
 )
@@ -110,7 +111,9 @@ func TestUser_Interface(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	u.UpdateInterface(ui)
+	if err = u.UpdateInterface(ui, time.Now()); err != nil {
+		t.Fatal(err)
+	}
 	if got := u.Interface(); !reflect.DeepEqual(got, ui) || got.Theme != user.ThemeBlue {
 		t.Fatalf("after the change = %+v", got)
 	}
@@ -118,4 +121,29 @@ func TestUser_Interface(t *testing.T) {
 
 func ptr(n int) *int {
 	return &n
+}
+
+func TestUser_GoldTheme(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)
+	gold, err := user.NewInterface(user.InterfaceForm{AvatarStyle: "square", Theme: "gold", NSFW: "blur", PostView: "old", MainPage: "page"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	plain, _ := user.New("ann@example.com")
+	if err = plain.UpdateInterface(gold, now); !errors.Is(err, user.ErrPrimeOnly) {
+		t.Fatalf("gold without Prime: %v", err)
+	}
+
+	prime := plain.WithPrime(user.Prime{Until: now.Add(time.Hour)})
+	if err = prime.UpdateInterface(gold, now); err != nil || prime.Interface().Theme != user.ThemeGold {
+		t.Fatalf("gold with Prime: %v", err)
+	}
+
+	// Prime over, the theme chosen before stays through other changes.
+	if err = prime.UpdateInterface(gold, now.Add(2*time.Hour)); err != nil {
+		t.Fatalf("gold kept: %v", err)
+	}
 }
