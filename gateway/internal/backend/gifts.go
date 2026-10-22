@@ -23,18 +23,52 @@ func NewGifts(api userv1.UserServiceClient) *Gifts {
 	}
 }
 
-func (g *Gifts) Catalog(ctx context.Context) ([]model.GiftCollection, error) {
+func (g *Gifts) Catalog(ctx context.Context) (model.GiftCatalog, error) {
 	resp, err := g.api.GetGiftCatalog(ctx, &userv1.GetGiftCatalogRequest{})
 	if err != nil {
-		return nil, errs.Wrap("g.api.GetGiftCatalog", fromStatus(err))
+		return model.GiftCatalog{}, errs.Wrap("g.api.GetGiftCatalog", fromStatus(err))
 	}
 
-	catalog := make([]model.GiftCollection, 0, len(resp.GetCollections()))
+	catalog := model.GiftCatalog{
+		Collections:   make([]model.GiftCollection, 0, len(resp.GetCollections())),
+		Models:        toGiftTraits(resp.GetModels()),
+		Backdrops:     toGiftTraits(resp.GetBackdrops()),
+		Symbols:       toGiftTraits(resp.GetSymbols()),
+		UpgradePrice:  resp.GetUpgradePrice(),
+		TransferPrice: resp.GetTransferPrice(),
+	}
+
 	for _, c := range resp.GetCollections() {
-		catalog = append(catalog, model.GiftCollection{ID: c.GetId(), Gifts: c.GetGifts(), Price: c.GetPrice(), Prices: c.GetPrices(), Prime: c.GetPrime()})
+		catalog.Collections = append(catalog.Collections, model.GiftCollection{
+			ID:       c.GetId(),
+			Gifts:    c.GetGifts(),
+			Price:    c.GetPrice(),
+			Prices:   c.GetPrices(),
+			Prime:    c.GetPrime(),
+			Supplies: toInts(c.GetSupplies()),
+			Sold:     toInts(c.GetSold()),
+		})
 	}
 
 	return catalog, nil
+}
+
+func toGiftTraits(traits []*userv1.GiftTrait) []model.GiftTrait {
+	out := make([]model.GiftTrait, 0, len(traits))
+	for _, t := range traits {
+		out = append(out, model.GiftTrait{Name: t.GetName(), Weight: int(t.GetWeight())})
+	}
+
+	return out
+}
+
+func toInts(ns []int32) []int {
+	out := make([]int, 0, len(ns))
+	for _, n := range ns {
+		out = append(out, int(n))
+	}
+
+	return out
 }
 
 func (g *Gifts) Send(ctx context.Context, accessToken, userID string, d model.GiftDraft) (model.Gift, error) {
@@ -115,6 +149,15 @@ func toGift(pg *userv1.Gift) model.Gift {
 	if pg.GetSender() != nil {
 		sender := toPublicProfile(pg.GetSender())
 		gift.Sender = &sender
+	}
+
+	if pg.GetNumber() > 0 {
+		gift.Number = int(pg.GetNumber())
+		gift.Model = pg.GetModel()
+		gift.Backdrop = pg.GetBackdrop()
+		gift.Symbol = pg.GetSymbol()
+		gift.SalePrice = pg.GetSalePrice()
+		gift.Auctioned = pg.GetAuctioned()
 	}
 
 	return gift

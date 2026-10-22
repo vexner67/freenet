@@ -1226,6 +1226,29 @@ type GiftCollection struct {
 	Prices []int64
 	// Prime: only those with Freenet Prime send its gifts.
 	Prime bool
+	// Supplies are how many of each of Gifts may ever be sent, 0 for no
+	// end, and Sold how many have been, in their order.
+	Supplies []int
+	Sold     []int
+}
+
+// GiftCatalog is what there is to send, and what collectibles may be:
+// their traits, commonest first, and what upgrading a gift and giving a
+// collectible away cost.
+type GiftCatalog struct {
+	Collections   []GiftCollection
+	Models        []GiftTrait
+	Backdrops     []GiftTrait
+	Symbols       []GiftTrait
+	UpgradePrice  int64
+	TransferPrice int64
+}
+
+// GiftTrait is a model, a backdrop or a symbol of collectibles; Weight is
+// its chance in tenths of a percent.
+type GiftTrait struct {
+	Name   string
+	Weight int
 }
 
 // GiftDraft is a gift to send: its name in the catalogue, the words with
@@ -1246,6 +1269,79 @@ type Gift struct {
 	Anonymous bool
 	SentAt    time.Time
 	Sender    *PublicProfile
+	// Number is above zero for a collectible, with its traits; SalePrice
+	// is above zero while it is on sale, Auctioned while it is at an
+	// auction.
+	Number    int
+	Model     string
+	Backdrop  string
+	Symbol    string
+	SalePrice int64
+	Auctioned bool
+}
+
+// Collectible is a collectible gift as the caller sees it: Owner is nil
+// when the site holds it (Site) or the page of the owner is gone; History
+// comes only with one gift, newest first.
+type Collectible struct {
+	Gift    Gift
+	Owner   *PublicProfile
+	Site    bool
+	Mine    bool
+	Auction *GiftAuction
+	History []GiftHistoryLine
+}
+
+// GiftAuction is a collectible up for the highest bid: Bidder is nil
+// while nobody has bid, Seller when the site sells.
+type GiftAuction struct {
+	Start  int64
+	TopBid int64
+	MinBid int64
+	Bids   int
+	EndsAt time.Time
+	Site   bool
+	Seller *PublicProfile
+	Bidder *PublicProfile
+	Mine   bool
+}
+
+// GiftHistoryLine is where a collectible has been: From and To are nil for
+// the site and for erased pages.
+type GiftHistoryLine struct {
+	Kind  string
+	At    time.Time
+	Price int64
+	From  *PublicProfile
+	To    *PublicProfile
+}
+
+// CollectiblePage is one screen of the market or the auctions; NextCursor
+// is empty on the last.
+type CollectiblePage struct {
+	Collectibles []Collectible
+	NextCursor   string
+}
+
+// MarketFilter is what the market shows: a gift and traits, empty for
+// any, in an order ("price", "price_desc", "number").
+type MarketFilter struct {
+	Gift     string
+	Model    string
+	Backdrop string
+	Symbol   string
+	Sort     string
+}
+
+// GiftEdition is a collectible the site mints to auction: a gift of the
+// catalogue with the traits the administrators chose.
+type GiftEdition struct {
+	Gift     string
+	Model    string
+	Backdrop string
+	Symbol   string
+	Start    int64
+	Hours    int
 }
 
 // GiftPage is one screen of the gifts of a page, newest first; NextCursor

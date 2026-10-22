@@ -430,8 +430,8 @@ type Clubs interface {
 // Gifts are the gifts people send each other ("Подарки"), which the user
 // service keeps.
 type Gifts interface {
-	// Catalog is what there is to send.
-	Catalog(ctx context.Context) ([]model.GiftCollection, error)
+	// Catalog is what there is to send, and what collectibles may be.
+	Catalog(ctx context.Context) (model.GiftCatalog, error)
 	Send(ctx context.Context, accessToken, userID string, d model.GiftDraft) (model.Gift, error)
 	// List pages the gifts sent to userID as the caller, anonymous without
 	// accessToken, sees them, newest first.
@@ -440,6 +440,26 @@ type Gifts interface {
 	// SetPrice is for the administrators of the site: what a gift costs
 	// from now on.
 	SetPrice(ctx context.Context, accessToken, gift string, price int64) error
+	GiftMarket
+}
+
+// GiftMarket is the collectible gifts, as Telegram's: upgraded, given away,
+// sold and auctioned. Upgrade, Transfer, SetSale, StartAuction and
+// CancelAuction are for the owner; Buy and Bid say the buyer's votes
+// after; MintAuction and SetSupply are for the administrators of the site.
+type GiftMarket interface {
+	Upgrade(ctx context.Context, accessToken, giftID string) (model.Gift, error)
+	Transfer(ctx context.Context, accessToken, giftID, userID string) error
+	SetSale(ctx context.Context, accessToken, giftID string, price int64) (model.Gift, error)
+	Buy(ctx context.Context, accessToken, giftID string, price int64) (int64, error)
+	Collectible(ctx context.Context, accessToken, giftID string) (model.Collectible, error)
+	Market(ctx context.Context, accessToken string, f model.MarketFilter, cursor string, limit int) (model.CollectiblePage, error)
+	StartAuction(ctx context.Context, accessToken, giftID string, start int64, hours int) error
+	MintAuction(ctx context.Context, accessToken string, e model.GiftEdition) (string, error)
+	CancelAuction(ctx context.Context, accessToken, giftID string) error
+	Bid(ctx context.Context, accessToken, giftID string, amount int64) (int64, error)
+	Auctions(ctx context.Context, accessToken, cursor string, limit int) (model.CollectiblePage, error)
+	SetSupply(ctx context.Context, accessToken, gift string, supply int64) error
 }
 
 // Stickers are openvk's "Стикеры", which the user service keeps: packs
@@ -786,6 +806,19 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/users/{nickname}/gifts", a.sendGift)
 	mux.HandleFunc("DELETE /api/v1/gifts/{id}", a.deleteGift)
 	mux.HandleFunc("PUT /api/v1/gifts/{gift}/price", a.setGiftPrice)
+	mux.HandleFunc("PUT /api/v1/gifts/{gift}/supply", a.setGiftSupply)
+	mux.HandleFunc("GET /api/v1/gifts/{id}", a.getCollectible)
+	mux.HandleFunc("POST /api/v1/gifts/{id}/upgrade", a.upgradeGift)
+	mux.HandleFunc("POST /api/v1/gifts/{id}/transfer", a.transferGift)
+	mux.HandleFunc("PUT /api/v1/gifts/{id}/sale", a.putGiftOnSale)
+	mux.HandleFunc("DELETE /api/v1/gifts/{id}/sale", a.takeGiftOffSale)
+	mux.HandleFunc("POST /api/v1/gifts/{id}/purchase", a.buyGift)
+	mux.HandleFunc("POST /api/v1/gifts/{id}/auction", a.startGiftAuction)
+	mux.HandleFunc("DELETE /api/v1/gifts/{id}/auction", a.cancelGiftAuction)
+	mux.HandleFunc("POST /api/v1/gifts/{id}/bids", a.bidGift)
+	mux.HandleFunc("GET /api/v1/market", a.giftMarket)
+	mux.HandleFunc("GET /api/v1/auctions", a.giftAuctions)
+	mux.HandleFunc("POST /api/v1/auctions", a.mintGiftAuction)
 	mux.HandleFunc("GET /api/v1/me/documents", a.listDocuments)
 	mux.HandleFunc("POST /api/v1/me/documents", a.uploadDocument)
 	mux.HandleFunc("PATCH /api/v1/documents/{id}", a.renameDocument)

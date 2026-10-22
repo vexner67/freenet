@@ -19,14 +19,19 @@ type fakeGifts struct {
 	limit                          int
 	sent                           model.GiftDraft
 	err                            error
+	fakeMarket
 }
 
 var giftTime = time.Date(2026, 10, 12, 9, 30, 0, 0, time.UTC)
 
-func (f *fakeGifts) Catalog(context.Context) ([]model.GiftCollection, error) {
-	return []model.GiftCollection{
-		{ID: "flowers", Gifts: []string{"rose", "tulip"}, Prices: []int64{4, 0}},
-		{ID: "sweets", Gifts: []string{"cake"}, Price: 2},
+func (f *fakeGifts) Catalog(context.Context) (model.GiftCatalog, error) {
+	return model.GiftCatalog{
+		Collections: []model.GiftCollection{
+			{ID: "flowers", Gifts: []string{"rose", "tulip"}, Prices: []int64{4, 0}, Supplies: []int{0, 10}, Sold: []int{3, 10}},
+			{ID: "sweets", Gifts: []string{"cake"}, Price: 2},
+		},
+		Models:       []model.GiftTrait{{Name: "classic", Weight: 1000}},
+		UpgradePrice: 50,
 	}, f.err
 }
 
