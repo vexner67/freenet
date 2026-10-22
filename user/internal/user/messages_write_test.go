@@ -60,8 +60,8 @@ func TestUser_CanBeMessagedBy(t *testing.T) {
 			if got := u.CanBeMessagedBy(sender, tt.ties); got != tt.want {
 				t.Fatalf("CanBeMessagedBy = %v, want %v", got, tt.want)
 			}
-			if u.CanBeMessagedBy(u.ID(), user.Ties{}) {
-				t.Fatal("nobody writes to themselves")
+			if !u.CanBeMessagedBy(u.ID(), user.Ties{}) {
+				t.Fatal("one cannot write to «Избранное»")
 			}
 		})
 	}
