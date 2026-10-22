@@ -48,9 +48,14 @@ type Ties struct {
 // CanBeMessagedBy tells whether senderID may write to u. Nobody writes to
 // a deleted page, and a block shuts messages both ways; otherwise u's
 // setting decides, but whoever u wrote to may answer, as openvk promises:
-// "Вам смогут ответить, если вы напишете первыми".
+// "Вам смогут ответить, если вы напишете первыми". Everyone writes to
+// themselves: that dialog is «Избранное».
 func (u *User) CanBeMessagedBy(senderID uuid.UUID, t Ties) bool {
-	if senderID == u.id || t.Blocked || u.IsDeactivated() {
+	if senderID == u.id {
+		return !u.IsDeactivated()
+	}
+
+	if t.Blocked || u.IsDeactivated() {
 		return false
 	}
 
