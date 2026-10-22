@@ -112,7 +112,7 @@ func TestStoryService_Feed(t *testing.T) {
 
 	// cat's story is viewed: bob, with the latest of the rest, goes first
 	// after ann's own; dan is blacklisted.
-	if err := f.svc.View(ctx, ann, cat1.ID()); err != nil {
+	if err := f.svc.View(ctx, ann, cat1.ID(), false); err != nil {
 		t.Fatal(err)
 	}
 	f.now = f.now.Add(time.Minute)
@@ -159,7 +159,7 @@ func TestStoryService_Hidden(t *testing.T) {
 	if page, _ := f.svc.User(ctx, service.StoryAudience{Viewer: ann}, bob); len(page.Stories) != 0 {
 		t.Fatal("a closed page shows its stories")
 	}
-	if err := f.svc.View(ctx, ann, story.ID()); !errors.Is(err, post.ErrStoryNotFound) {
+	if err := f.svc.View(ctx, ann, story.ID(), false); !errors.Is(err, post.ErrStoryNotFound) {
 		t.Fatalf("a story of a closed page viewed: %v", err)
 	}
 	f.follow(t, bob, ann)
@@ -185,7 +185,7 @@ func TestStoryService_Views(t *testing.T) {
 	story := f.tell(t, ann, "")
 
 	for _, viewer := range []uuid.UUID{ann, bob, bob, cat} {
-		if err := f.svc.View(ctx, viewer, story.ID()); err != nil {
+		if err := f.svc.View(ctx, viewer, story.ID(), false); err != nil {
 			t.Fatal(err)
 		}
 		f.now = f.now.Add(time.Second)
@@ -208,6 +208,21 @@ func TestStoryService_Views(t *testing.T) {
 
 	if _, err = f.svc.Viewers(ctx, bob, story.ID(), nil, 10); !errors.Is(err, post.ErrNotStoryAuthor) {
 		t.Fatalf("bob sees the viewers: %v", err)
+	}
+
+	// Unseen (Freenet Prime): viewed for dan, untold to ann.
+	dan := uuid.New()
+	if err = f.svc.View(ctx, dan, story.ID(), true); err != nil {
+		t.Fatal(err)
+	}
+	if page, err = f.svc.Feed(ctx, service.StoryAudience{Viewer: ann}); err != nil || page.Views[story.ID()] != 2 {
+		t.Fatalf("views with an unseen one = %v, %v", page.Views, err)
+	}
+	if viewers, err = f.svc.Viewers(ctx, ann, story.ID(), nil, 10); err != nil || viewers.Total != 2 || len(viewers.Views) != 2 {
+		t.Fatalf("viewers with an unseen one = %+v, %v", viewers, err)
+	}
+	if page, err = f.svc.Feed(ctx, service.StoryAudience{Viewer: dan}); err == nil && len(page.Stories) > 0 && !page.Viewed[story.ID()] {
+		t.Fatal("an unseen view is not viewed for the viewer")
 	}
 }
 

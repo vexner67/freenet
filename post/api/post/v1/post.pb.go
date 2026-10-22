@@ -11769,8 +11769,11 @@ func (x *GetStoryResponse) GetStory() *Story {
 }
 
 type ViewStoryRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The viewer has Freenet Prime and watches unseen: the story is viewed
+	// for them, but its author is not told.
+	Hidden        bool `protobuf:"varint,2,opt,name=hidden,proto3" json:"hidden,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11810,6 +11813,13 @@ func (x *ViewStoryRequest) GetId() string {
 		return x.Id
 	}
 	return ""
+}
+
+func (x *ViewStoryRequest) GetHidden() bool {
+	if x != nil {
+		return x.Hidden
+	}
+	return false
 }
 
 type ListStoryViewersRequest struct {
@@ -13304,9 +13314,10 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x0fGetStoryRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"8\n" +
 	"\x10GetStoryResponse\x12$\n" +
-	"\x05story\x18\x01 \x01(\v2\x0e.post.v1.StoryR\x05story\"\"\n" +
+	"\x05story\x18\x01 \x01(\v2\x0e.post.v1.StoryR\x05story\":\n" +
 	"\x10ViewStoryRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"W\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06hidden\x18\x02 \x01(\bR\x06hidden\"W\n" +
 	"\x17ListStoryViewersRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +

@@ -89,12 +89,20 @@ func TestStoryRepository(t *testing.T) {
 
 	// Views: once each, the author's not counted, deleted pages not counted.
 	for i, v := range []uuid.UUID{bob, viewer, viewer, cat, ann} {
-		if err = views.View(ctx, own.ID(), v, now.Add(time.Duration(i)*time.Second)); err != nil {
+		if err = views.View(ctx, own.ID(), v, now.Add(time.Duration(i)*time.Second), false); err != nil {
 			t.Fatalf("View: %v", err)
 		}
 	}
-	if err = views.View(ctx, uuid.New(), bob, now); !errors.Is(err, post.ErrStoryNotFound) {
+	if err = views.View(ctx, uuid.New(), bob, now, false); !errors.Is(err, post.ErrStoryNotFound) {
 		t.Fatalf("View of no story: %v", err)
+	}
+	// An unseen view (Freenet Prime) is viewed but not counted.
+	unseen := uuid.New()
+	if err = views.View(ctx, own.ID(), unseen, now.Add(time.Minute), true); err != nil {
+		t.Fatalf("View unseen: %v", err)
+	}
+	if viewed, err := views.Viewed(ctx, unseen, []uuid.UUID{own.ID()}); err != nil || !viewed[own.ID()] {
+		t.Fatalf("Viewed unseen = %v, %v", viewed, err)
 	}
 	if err = postgres.NewHoldRepository(pool).Hold(ctx, cat); err != nil {
 		t.Fatal(err)
@@ -131,7 +139,7 @@ func TestStoryRepository(t *testing.T) {
 	}
 
 	// The purge takes the stories and the views.
-	if err = views.View(ctx, first.ID(), viewer, now); err != nil {
+	if err = views.View(ctx, first.ID(), viewer, now, false); err != nil {
 		t.Fatal(err)
 	}
 	if err = repo.DeleteByUser(ctx, viewer); err != nil {
