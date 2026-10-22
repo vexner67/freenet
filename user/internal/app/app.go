@@ -227,6 +227,7 @@ func (a *App) build(cfg config.Config) error {
 			}),
 			Casinos:     service.NewCasinoService(store.users, store.casino, store.wallets, store.tx, admins),
 			Rockets:     service.NewRocketService(store.users, store.casino, store.rockets, store.wallets, store.tx, admins),
+			Mines:       service.NewMineService(store.users, store.mine, store.wallets, store.tx, admins),
 			BetEvents:   service.NewBetEventService(store.users, store.betEvents, store.wallets, store.tx, admins),
 			Permissions: permissions,
 			Presence:    a.presence,
@@ -247,8 +248,8 @@ func (a *App) build(cfg config.Config) error {
 }
 
 // rateLimits are how often each user may follow people, send gifts, make
-// packs of stickers, be counted as seeing and following ads and spin and
-// bet in the casino and stake on events.
+// packs of stickers, be counted as seeing and following ads, spin and
+// bet in the casino, stake on events and dig and sell ore.
 func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
 		userv1.UserService_Follow_FullMethodName:   cfg.FollowLimits,
@@ -283,6 +284,10 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		// A round is launched and cashed once: both counted apart.
 		userv1.UserService_LaunchRocket_FullMethodName: cfg.CasinoLimits,
 		userv1.UserService_CashRocket_FullMethodName:   cfg.CasinoLimits,
+
+		// Energy holds the digs back; the limit is against scripts.
+		userv1.UserService_DigOre_FullMethodName:  cfg.MineLimits,
+		userv1.UserService_SellOre_FullMethodName: cfg.MineLimits,
 	}
 }
 
@@ -351,6 +356,8 @@ type storage struct {
 	primes service.PrimeRepository
 	// casino is the casino of the site.
 	casino service.CasinoRepository
+	// mine is the mine of the site and its miners.
+	mine service.MineRepository
 	// rockets are the rounds of "Ракетка".
 	rockets service.RocketRepository
 	// betEvents are the events people stake on.
@@ -386,6 +393,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			decor:        inmem.NewDecorRepository(),
 			primes:       inmem.NewPrimeRepository(users),
 			casino:       inmem.NewCasinoRepository(),
+			mine:         inmem.NewMineRepository(),
 			rockets:      inmem.NewRocketRepository(),
 			betEvents:    inmem.NewBetEventRepository(),
 			ads:          inmem.NewAdRepository(),
@@ -434,6 +442,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		decor:        postgres.NewDecorRepository(a.pool),
 		primes:       postgres.NewPrimeRepository(a.pool),
 		casino:       postgres.NewCasinoRepository(a.pool),
+		mine:         postgres.NewMineRepository(a.pool),
 		rockets:      postgres.NewRocketRepository(a.pool),
 		betEvents:    postgres.NewBetEventRepository(a.pool),
 		ads:          postgres.NewAdRepository(a.pool),
