@@ -23,6 +23,11 @@ const (
 	MaxCasinoReturn = 85
 )
 
+// SettledBefore is when the pages registered before it count as old enough
+// for the bonus and the mine whatever their age: the first pages of the
+// site, a day short of a week when the mine opened, need not wait.
+var SettledBefore = time.Date(2026, time.October, 21, 21, 0, 0, 0, time.UTC)
+
 var (
 	ErrBonusTaken  = errors.New("the bonus is taken today")
 	ErrBonusNotYet = errors.New("the bonus is for pages a week old with a filled profile")
@@ -47,10 +52,12 @@ func BonusDay(now time.Time) time.Time {
 }
 
 // CheckBonusAt is ErrBonusNotYet unless u may take a bonus at now: a page
-// BonusAge old with a filled profile, neither deleted nor banned.
+// BonusAge old (or registered before SettledBefore) with a filled profile,
+// neither deleted nor banned.
 func (u *User) CheckBonusAt(now time.Time) error {
+	registered := RegisteredAt(u.id)
 	if !u.IsProfileCompleted() || u.IsDeactivated() || u.IsBannedAt(now) ||
-		now.Sub(RegisteredAt(u.id)) < BonusAge {
+		(now.Sub(registered) < BonusAge && !registered.Before(SettledBefore)) {
 		return ErrBonusNotYet
 	}
 
