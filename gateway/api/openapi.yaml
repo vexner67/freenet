@@ -5013,6 +5013,125 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/me/mine:
+    get:
+      summary: Your mine
+      description: '"Шахта": the ores of the mine with what each needs, yields and pays, and your miner — energy (it comes back by itself, a point each `regenSeconds`; `nextEnergySeconds` till the next, 0 when full), experience, the ore in the backpack, digs and the votes the ore earned. A page that never dug starts with full energy.'
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The mine
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MineState" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/mine/digs:
+    post:
+      summary: Dig ore
+      description: 'Spends the energy of a dig of the ore and gives from `least` to `most` units of it into the backpack and `gain` experience. An ore opens with its experience (409 before). A dig may meet an event: `nugget` — the ore times `nuggetTimes`, `chest` — votes from the treasury at once, `collapse` — nothing found, `drink` — energy back. 409 without energy. Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ore]
+              properties:
+                ore: { type: string, enum: [stone, coal, iron, gold, diamond, crystal] }
+      responses:
+        "200":
+          description: What the dig gave
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  units: { type: integer, format: int64 }
+                  event: { type: string, enum: ["", nugget, chest, collapse, drink] }
+                  votes: { type: integer, format: int64, description: The votes of a chest, 0 without one }
+                  balance: { type: integer, format: int64, description: Your votes after a chest, 0 without one }
+                  experience: { type: integer, format: int64, description: The experience the dig gave }
+                  mine: { $ref: "#/components/schemas/MineState" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/mine/sales:
+    post:
+      summary: Sell ore
+      description: 'Sells all of an ore from the backpack, or of every ore with `ore` empty, for `price` hundredths of a vote a unit out of the treasury (rounded down; what does not make a whole vote stays). Only for pages a week old with a filled profile, and 409 with nothing to sell. Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ore: { type: string, description: The ore; empty — all }
+      responses:
+        "200":
+          description: What the sale gave
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  units: { type: integer, format: int64 }
+                  votes: { type: integer, format: int64 }
+                  balance: { type: integer, format: int64 }
+                  mine: { $ref: "#/components/schemas/MineState" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/mine/settings:
+    get:
+      summary: The mine for the administrators
+      description: 'Only for the administrators of the site: the settings of the mine and how it does — digs, votes paid for ore and in chests, people who dug.'
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The settings and the stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings: { $ref: "#/components/schemas/MineSettings" }
+                  digs: { type: integer, format: int64 }
+                  sold: { type: integer, format: int64 }
+                  chests: { type: integer, format: int64 }
+                  miners: { type: integer, format: int64 }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    put:
+      summary: Change the mine
+      description: 'Only for the administrators of the site: all six ores in order (the first open from 0 experience, each needing no less than the one before; a dig takes no more than the most energy), the energy, its regeneration (1 s to 24 h) and the chances of the events in hundredths of a percent (together at most 10000).'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MineSettings" }
+      responses:
+        "204": { description: Set }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/bets:
     get:
       summary: The events to stake on
@@ -8678,6 +8797,47 @@ components:
         return: { type: integer, minimum: 1, maximum: 10000, description: 'What the rocket gives back on average, in hundredths of a percent: 9500 — 95%. Only for the administrators' }
         top: { type: integer, minimum: 200, maximum: 1000000, description: 'The top multiplier, in hundredths: 100000 — ×1000' }
 
+    OreVein:
+      type: object
+      properties:
+        ore: { type: string, enum: [stone, coal, iron, gold, diamond, crystal] }
+        experience: { type: integer, format: int64, description: The experience the ore opens with }
+        least: { type: integer, format: int64, description: The fewest units a dig gives }
+        most: { type: integer, format: int64, description: The most units a dig gives }
+        price: { type: integer, format: int64, description: Hundredths of a vote a unit sells for }
+        gain: { type: integer, format: int64, description: The experience a dig gives }
+        energy: { type: integer, description: The energy a dig takes }
+    MineSettings:
+      type: object
+      properties:
+        veins: { type: array, items: { $ref: "#/components/schemas/OreVein" } }
+        energy: { type: integer, description: The most energy a miner holds }
+        regenSeconds: { type: integer, description: The seconds a point of energy takes to come back }
+        events:
+          type: object
+          description: The chances of the events of a dig, in hundredths of a percent
+          properties:
+            nugget: { type: integer }
+            nuggetTimes: { type: integer, description: How many times the ore a nugget gives }
+            chest: { type: integer }
+            chestLeast: { type: integer, format: int64 }
+            chestMost: { type: integer, format: int64 }
+            collapse: { type: integer }
+            drink: { type: integer }
+            drinkEnergy: { type: integer, description: The energy a drink gives back }
+    MineState:
+      type: object
+      properties:
+        settings: { $ref: "#/components/schemas/MineSettings" }
+        miner:
+          type: object
+          properties:
+            energy: { type: integer }
+            nextEnergySeconds: { type: integer }
+            experience: { type: integer, format: int64 }
+            backpack: { type: object, additionalProperties: { type: integer, format: int64 }, description: The units of each ore }
+            digs: { type: integer, format: int64 }
+            earned: { type: integer, format: int64, description: The votes the ore sold for }
     RocketRound:
       type: object
       required: [id, amount, auto, state, cashed, payout, crash, elapsedMs, balance]
