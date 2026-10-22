@@ -145,8 +145,18 @@ func TestNew(t *testing.T) {
 		t.Fatal("IDs must grow, dialogs are ordered by them")
 	}
 
-	if _, err = message.New(ann, ann, said("сам себе", nil, uuid.Nil, nil), now); !errors.Is(err, message.ErrToYourself) {
+	saved, err := message.New(ann, ann, said("сам себе", nil, uuid.Nil, nil), now)
+	if err != nil {
 		t.Fatalf("to yourself: %v", err)
+	}
+	if !saved.Saved() || len(saved.Sides()) != 1 || m.Saved() || len(m.Sides()) != 2 {
+		t.Fatalf("saved: %v %v, a dialog: %v %v", saved.Saved(), saved.Sides(), m.Saved(), m.Sides())
+	}
+	if !(message.ReadMarks{}).IsRead(saved, ann) {
+		t.Fatal("what one writes to oneself is not read")
+	}
+	if hidden, err := saved.HiddenFrom(ann); err != nil || !hidden.Gone() {
+		t.Fatalf("deleted for oneself in «Избранное»: %v, gone %v", err, hidden != nil && hidden.Gone())
 	}
 }
 

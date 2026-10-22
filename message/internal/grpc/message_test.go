@@ -295,10 +295,6 @@ func TestErrors(t *testing.T) {
 			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: bob, Sealed: sealedBy(keyOf("ann"), keyOf("bob"), "x")})
 			return err
 		}, codes.FailedPrecondition},
-		{"to yourself", func() error {
-			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: ann.String(), PostId: uuid.NewString()})
-			return err
-		}, codes.InvalidArgument},
 		{"bad recipient", func() error {
 			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: "bob", PostId: uuid.NewString()})
 			return err
