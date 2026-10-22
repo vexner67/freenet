@@ -695,6 +695,27 @@ export const api = {
   gifts: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/gifts`, cursor, limit)),
   sendGift: (nickname, gift, caption, anonymous) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/gifts`, { gift, caption, anonymous }),
   deleteGift: (id) => authorized('DELETE', `/api/v1/gifts/${encodeURIComponent(id)}`),
+  // Collectible gifts: one's own made collectible, given away, sold or
+  // auctioned; the market and the auctions; the administrators limit the
+  // edition of a gift and auction rare editions of the site.
+  collectible: (id) => optional('GET', `/api/v1/gifts/${encodeURIComponent(id)}`),
+  upgradeGift: (id) => authorized('POST', `/api/v1/gifts/${encodeURIComponent(id)}/upgrade`),
+  transferGift: (id, nickname) => authorized('POST', `/api/v1/gifts/${encodeURIComponent(id)}/transfer`, { nickname }),
+  sellGift: (id, price) => authorized('PUT', `/api/v1/gifts/${encodeURIComponent(id)}/sale`, { price }),
+  unsellGift: (id) => authorized('DELETE', `/api/v1/gifts/${encodeURIComponent(id)}/sale`),
+  buyGift: (id, price) => authorized('POST', `/api/v1/gifts/${encodeURIComponent(id)}/purchase`, { price }),
+  auctionGift: (id, start, hours) => authorized('POST', `/api/v1/gifts/${encodeURIComponent(id)}/auction`, { start, hours }),
+  cancelGiftAuction: (id) => authorized('DELETE', `/api/v1/gifts/${encodeURIComponent(id)}/auction`),
+  bidGift: (id, amount) => authorized('POST', `/api/v1/gifts/${encodeURIComponent(id)}/bids`, { amount }),
+  giftMarket(filter = {}, cursor = '') {
+    const query = new URLSearchParams(Object.entries(filter).filter(([, v]) => v));
+    if (cursor) query.set('cursor', cursor);
+
+    return optional('GET', `/api/v1/market${query.size ? '?' + query : ''}`);
+  },
+  giftAuctions: (cursor = '') => optional('GET', page('/api/v1/auctions', cursor, 0)),
+  mintGiftAuction: (edition) => authorized('POST', '/api/v1/auctions', edition),
+  setGiftSupply: (gift, supply) => authorized('PUT', `/api/v1/gifts/${encodeURIComponent(gift)}/supply`, { supply }),
   // Stickers: the "Магазин стикеров", whose packs one adds, free or for
   // votes, and puts away.
   stickers: () => optional('GET', '/api/v1/stickers'),

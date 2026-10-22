@@ -6,8 +6,8 @@
 // collection. On one's own page it is "Купить подарок": one for oneself.
 
 import { api, currentUser } from './api.js';
-import { formatPostDate, genitiveName, giftCollections, giftPrice, voteRate, votesCount } from './labels.js';
-import { giftPicture, giftRow, giftsPath, menuPath, pickPath } from './gifts.js';
+import { collectibleName, formatPostDate, genitiveName, giftCollections, giftNames, giftPrice, voteRate, votesCount } from './labels.js';
+import { collectibleCard, giftPath, giftPicture, giftRow, giftsPath, menuPath, pickPath } from './gifts.js';
 import { $, avatarURL, el, fullName, hideError, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { separated } from './posts.js';
@@ -54,6 +54,8 @@ function giftNode(gift, mine) {
   const { sender } = gift;
   const menu = [el('span', { className: 'post-date', textContent: formatPostDate(gift.sentAt) })];
 
+  if (gift.number) menu.push(el('a', { href: giftPath(gift.id), textContent: mine ? tr('Продать или передать') : tr('Подробнее') }));
+  else if (mine) menu.push(el('a', { textContent: tr('Улучшить'), onclick: () => upgrade(gift, node) }));
   if (mine && sender) menu.push(el('a', { href: pickPath(sender), textContent: tr('Отправить подарок в ответ') }));
   if (mine) menu.push(el('a', { textContent: tr('Удалить'), onclick: () => remove(gift, node) }));
 
@@ -69,13 +71,72 @@ function giftNode(gift, mine) {
           gift.anonymous ? el('span', { className: 'hint', textContent: tr(' (анонимно)') }) : null]
         : el('b', { className: 'post-name', textContent: tr('Подарок') })].flat()),
       el('div', { className: 'user-gift' },
-        giftPicture(gift.gift),
+        gift.number ? el('a', { href: giftPath(gift.id) }, collectibleCard(gift)) : giftPicture(gift.gift),
+        gift.number ? el('div', { className: 'collectible-caption' }, el('b', { textContent: collectibleName(gift) }), saleNote(gift)) : null,
         gift.caption ? el('div', { className: 'gift-comment', textContent: gift.caption }) : null),
       el('div', { className: 'post-menu' }, el('span', {}, ...separated(menu))),
     ),
   );
 
   return node;
+}
+
+// saleNote says that a collectible is on the market or at an auction.
+function saleNote(gift) {
+  if (gift.salePrice) return el('span', { className: 'hint', textContent: tr(' — продаётся за {0}', votesCount(gift.salePrice)) });
+  if (gift.auctioned) return el('span', { className: 'hint', textContent: tr(' — на аукционе') });
+
+  return null;
+}
+
+// catalog is asked once, when a gift is upgraded: what it costs.
+let catalog = null;
+
+// upgrade is "Улучшить", as Telegram's: for votes the gift gets a number
+// and three traits rolled by rarity, shown when it is done.
+async function upgrade(gift, node) {
+  hideError($('error'));
+  catalog ??= api.giftCatalog();
+
+  let price;
+  try {
+    price = (await catalog).upgradePrice;
+  } catch (e) {
+    showError($('error'), e);
+    return;
+  }
+
+  const modal = openModal(tr('Улучшить подарок'));
+  const error = el('div', { className: 'error', hidden: true });
+  const go = button(tr('Улучшить за {0}', votesCount(price)), async () => {
+    hideError(error);
+    go.disabled = true;
+
+    try {
+      const upgraded = await api.upgradeGift(gift.id);
+      modal.close();
+      node.replaceWith(giftNode({ ...gift, ...upgraded }, true));
+      upgradedBox(upgraded);
+    } catch (e) {
+      showError(error, e.message === 'not enough votes' ? tr('Недостаточно голосов для улучшения.') : e);
+      go.disabled = false;
+    }
+  });
+
+  modal.body.append(
+    el('div', { className: 'gift-send-top' }, giftPicture(gift.gift)),
+    el('p', { textContent: tr('Подарок «{0}» станет коллекционным: получит свой номер и три особенности — модель, фон и узор, — которые выпадают случайно, редкие реже. Коллекционный подарок можно продать, выставить на аукцион или передать.', giftNames[gift.gift] ?? tr('Подарок')) }),
+    error);
+  modal.actions.append(go, button(tr('Отмена'), modal.close, { secondary: true }));
+}
+
+// upgradedBox shows what the upgrade rolled.
+function upgradedBox(gift) {
+  const modal = openModal(collectibleName(gift));
+
+  modal.body.append(el('div', { className: 'collectible-done' }, collectibleCard(gift, 'large')),
+    el('p', { className: 'collectible-done' }, el('a', { href: giftPath(gift.id), textContent: tr('Открыть страницу подарка') })));
+  modal.actions.append(button('OK', modal.close));
 }
 
 async function remove(gift, node) {

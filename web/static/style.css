@@ -1652,6 +1652,41 @@ a.poll-result-name { cursor: pointer; }
 /* The block of a page: five of the newest, as wide as the column. */
 .gift-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 8px 5px; }
 .gift-row .gift-pic { width: 100%; height: auto; aspect-ratio: 1; }
+/* Collectible gifts: a card of the gift's own colours (painted by the
+   script), its symbol scattered over the backdrop and the model on top. */
+.collectible { position: relative; overflow: hidden; width: 120px; height: 120px; border-radius: 10px; margin: 0 auto; }
+.collectible.large { width: 240px; height: 240px; border-radius: 16px; }
+.collectible-pattern { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; justify-items: center; font-size: 16px; line-height: 1; transform: rotate(-12deg) scale(1.2); user-select: none; }
+.collectible.large .collectible-pattern { font-size: 30px; }
+.collectible-pattern span:nth-child(odd) { transform: translateY(40%); }
+.collectible-model { position: absolute; left: 12%; top: 10%; width: 76%; height: 76%; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .35)); }
+.collectible-number { position: absolute; right: 6px; bottom: 5px; padding: 1px 5px; border-radius: 8px; background: rgba(0, 0, 0, .35); color: var(--back-fff); font-size: 9px; font-weight: bold; }
+.collectible.large .collectible-number { right: 10px; bottom: 9px; font-size: 12px; padding: 2px 8px; }
+.collectible-caption { margin-top: 8px; }
+.collectible-done { text-align: center; }
+.collectible-lead { margin: 8px 0; color: var(--text-808080); }
+.collectible-page { display: flex; gap: 20px; padding: 10px 0; }
+.collectible-side { flex: none; }
+.collectible-info { flex: 1; min-width: 0; }
+.collectible-title { margin: 0 0 8px; font-size: 14px; color: var(--text-45688e); }
+.collectible-traits { border-collapse: collapse; margin: 0 0 8px; }
+.collectible-traits th { width: 120px; padding: 3px 8px 3px 0; color: var(--text-808080); font-weight: normal; text-align: left; vertical-align: top; }
+.collectible-traits td { padding: 3px 0; }
+.collectible-info .section-title { margin: 12px 0 8px; }
+.collectible-sale { margin: 8px 0; font-size: 13px; }
+.collectible-form { margin: 8px 0; }
+.collectible-form h4 { margin: 0 0 6px; }
+.collectible-form label { display: inline-block; margin: 0 6px 6px 0; }
+.collectible-form input[type=number] { width: 90px; }
+.collectible-form .hint { margin-top: 4px; }
+.collectible-actions .collectible-form:not(:last-child) { padding-bottom: 10px; border-bottom: 1px solid var(--line-ddd); }
+.collectible-history { padding: 6px 0; border-bottom: 1px solid var(--line-ddd); }
+.collectible-history .post-date { margin-right: 8px; }
+.collectible-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 10px 0; }
+.collectible-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border-radius: 4px; text-align: center; }
+.collectible-tile:hover { background: var(--back-f7f7f7); text-decoration: none; }
+.collectible-name { color: var(--text-45688e); font-weight: bold; }
+.market-filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
 
 /* Stickers: one in a message, the panel under the form and the shop. */
 /* A sticker keeps its shape: one of the studio, a photo of any shape,

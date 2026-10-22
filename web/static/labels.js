@@ -850,6 +850,125 @@ export function giftImage(gift) {
   return giftImages[gift] ?? '/static/gifts/unknown.svg';
 }
 
+// Collectible gifts, as Telegram's: a gift upgraded gets a number of its
+// kind and three traits — a model (its metal and stones, a picture of
+// scripts/giftgen), a backdrop and a symbol of the pattern. The traits are
+// the user service's (user/internal/user/collectible.go); what each is
+// called is here, as a select offers it, in lower case.
+export const giftModels = [
+  ['classic', tr('классика')], ['silver', tr('серебро')], ['rose', tr('розовое золото')],
+  ['onyx', tr('оникс')], ['emerald', tr('изумруд')], ['amethyst', tr('аметист')],
+];
+
+export const giftBackdrops = [
+  ['sky', tr('небо')], ['mint', tr('мята')], ['coral', tr('коралл')], ['sand', tr('песок')],
+  ['lavender', tr('лаванда')], ['steel', tr('сталь')], ['cherry', tr('вишня')], ['ocean', tr('океан')],
+  ['forest', tr('лес')], ['night', tr('ночь')], ['gold', tr('золото')], ['black', tr('чёрный')],
+];
+
+export const giftSymbols = [
+  ['f', tr('буква f')], ['star', tr('звезда')], ['heart', tr('сердце')], ['flower', tr('цветок')],
+  ['note', tr('нота')], ['moon', tr('месяц')], ['bolt', tr('молния')], ['clover', tr('клевер')],
+  ['snowflake', tr('снежинка')], ['crown', tr('корона')], ['diamond', tr('бриллиант')], ['rocket', tr('ракета')],
+];
+
+export const marketSorts = [['price', tr('сначала дешёвые')], ['price_desc', tr('сначала дорогие')], ['number', tr('по номеру')]];
+
+// backdropColors are the middle and the edge of a backdrop; the card is
+// painted with them through the CSSOM, the same in every theme — the
+// colours are the gift's, not the page's.
+const backdropColors = {
+  sky: ['#c4e5ff', '#4f9ddd'], mint: ['#cdf3e1', '#3fae84'], coral: ['#ffd3c6', '#e8694a'], sand: ['#f7e9c8', '#c99e57'],
+  lavender: ['#e8dfff', '#8f78d6'], steel: ['#e1e7ee', '#6f7d8e'], cherry: ['#ffc6d2', '#bb2c48'], ocean: ['#9fd6ea', '#1b6390'],
+  forest: ['#bfe6b5', '#2a6e35'], night: ['#4d5880', '#11162a'], gold: ['#fff3b8', '#cf9116'], black: ['#5c5c5c', '#0a0a0a'],
+};
+
+// symbolGlyphs are the symbols of the pattern, as letters of the font.
+const symbolGlyphs = {
+  f: 'f', star: '★', heart: '♥', flower: '✿', note: '♪', moon: '☾',
+  bolt: 'ϟ', clover: '♣', snowflake: '❄', crown: '♛', diamond: '♦', rocket: '➶',
+};
+
+// backdropGradient is the background of a collectible: its backdrop,
+// light in the middle; '' for one the site does not know.
+export function backdropGradient(backdrop) {
+  const colors = backdropColors[backdrop];
+  return colors ? `radial-gradient(circle at 50% 45%, ${colors[0]} 0%, ${colors[1]} 100%)` : '';
+}
+
+export function symbolGlyph(symbol) {
+  return symbolGlyphs[symbol] ?? '★';
+}
+
+// collectibleImage is the picture of a collectible: its kind in its
+// model, as scripts/giftgen drew them (web/static/gifts/models); a kind or
+// model the site does not know is the plain gift.
+export function collectibleImage(gift, model) {
+  if (!giftImages[gift] || !giftModels.some(([m]) => m === model)) return giftImage(gift);
+
+  return `/static/gifts/models/${gift}_${model}.png`;
+}
+
+// collectibleName is "Золотая монета #7".
+export function collectibleName(gift) {
+  return `${giftNames[gift.gift] ?? tr('Подарок')} #${gift.number}`;
+}
+
+// traitChance is the chance of a trait as the catalogue weighs it, in
+// tenths of a percent: "4 %", "0,5 %".
+export function traitChance(traits, name) {
+  const weight = traits?.find((t) => t.name === name)?.weight;
+  if (!weight) return '';
+
+  return `${String(weight / 10).replace('.', ',')} %`;
+}
+
+// GIFT_FEE_PERCENT is what the treasury takes of a sale; a seller with
+// Freenet Prime pays half. The auction steps by 5%.
+export const GIFT_FEE_PERCENT = 5;
+export const PRIME_GIFT_FEE_PERCENT = 2.5;
+
+// giftIncome is what the seller gets of a sale at price: less the fee,
+// rounded up.
+export function giftIncome(price, prime = false) {
+  const permille = (prime ? PRIME_GIFT_FEE_PERCENT : GIFT_FEE_PERCENT) * 10;
+  return price - Math.ceil(price * permille / 1000);
+}
+
+// giftHistoryLine is what a line of the history of a collectible says.
+export function giftHistoryLine(kind) {
+  return {
+    upgrade: tr('Улучшен до коллекционного'),
+    mint: tr('Выпущен сайтом'),
+    transfer: tr('Передан'),
+    sale: tr('Продан'),
+    auction: tr('Продан на аукционе'),
+  }[kind] ?? tr('Сменил владельца');
+}
+
+// auctionLeft is how long an auction still runs: "2 ч 15 мин", "3 мин",
+// "заканчивается" in its last minute.
+export function auctionLeft(endsAt, now = Date.now()) {
+  const minutes = Math.floor((Date.parse(endsAt) - now) / 60000);
+  if (minutes < 1) return tr('заканчивается');
+
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor(minutes % 1440 / 60);
+  const rest = minutes % 60;
+  if (days) return tr('{0} д {1} ч', days, hours);
+  if (hours) return tr('{0} ч {1} мин', hours, rest);
+
+  return tr('{0} мин', rest);
+}
+
+// editionLeft is what the edition of a gift leaves: "осталось 120 из
+// 500", '' for no end.
+export function editionLeft(supply, sold) {
+  if (!supply) return '';
+
+  return sold >= supply ? tr('распродан') : tr('осталось {0} из {1}', supply - sold, supply);
+}
+
 // Stickers ("Стикеры" of openvk): what each pack is called and the
 // picture of each sticker. The packs are the catalogue of the user
 // service; a picture is a file of the site, named by its whole path.
@@ -1360,9 +1479,32 @@ export function voteOperation(op, myId) {
     }
     case 'stake':
       return { title: out ? tr('Ставка на событие «{0}»', note) : tr('Выплата по событию «{0}»', note), role: '' };
+    case 'gift_upgrade':
+      return { title: tr('Улучшение подарка «{0}»', giftNames[note] ?? tr('Подарок')), role: '' };
+    case 'gift_transfer':
+      return { title: tr('Передача подарка {0}', collectibleNote(note)), role: tr('Получатель:') };
+    case 'gift_sale':
+      return out
+        ? { title: tr('Покупка подарка {0}', collectibleNote(note)), role: tr('Продавец:') }
+        : { title: tr('Продажа подарка {0}', collectibleNote(note)), role: tr('Покупатель:') };
+    case 'gift_fee':
+      return { title: tr('Комиссия за продажу подарка {0}', collectibleNote(note)), role: tr('Покупатель:') };
+    case 'gift_bid':
+      return { title: tr('Ставка на аукционе: {0}', collectibleNote(note)), role: '' };
+    case 'gift_refund':
+      return { title: tr('Возврат ставки: {0}', collectibleNote(note)), role: tr('Перебил:') };
     default:
       return { title: out ? tr('Списание голосов') : tr('Зачисление голосов'), role: '' };
   }
+}
+
+// collectibleNote is the note of a statement about a collectible,
+// "freenet_coin#7", as people read it: "«Золотая монета» #7".
+function collectibleNote(note) {
+  const [gift, number] = note.split('#');
+  const name = `«${giftNames[gift] ?? tr('Подарок')}»`;
+
+  return number ? `${name} #${number}` : name;
 }
 
 // transferNickname is the nickname in the address of a recipient as people
@@ -1742,6 +1884,22 @@ const errorTexts = {
   'unknown gift': tr('Такого подарка нет.'),
   'gift caption is too long': tr('Сообщение слишком длинное: не больше 250 символов.'),
   'gift not found': tr('Подарок не найден.'),
+  'the gift is collectible already': tr('Подарок уже коллекционный.'),
+  'the gift is not collectible': tr('Сначала улучшите подарок.'),
+  'only the owner of a gift can do this': tr('Это может только владелец подарка.'),
+  'the gift is on sale': tr('Подарок выставлен на продажу или аукцион — сначала снимите его.'),
+  'the gift is not on sale': tr('Подарок уже не продаётся.'),
+  'the price of the gift changed': tr('Цена подарка изменилась — посмотрите её ещё раз.'),
+  'the price of a gift must be from 1 to 1000000 votes': tr('Цена — от 1 до 1 000 000 голосов.'),
+  'this gift is yours': tr('Это ваш подарок.'),
+  'this gift is sold out': tr('Тираж этого подарка распродан.'),
+  'the edition of a gift must be from 0 to 1000000': tr('Тираж — от 0 до 1 000 000.'),
+  'unknown trait of a gift': tr('Такой особенности у подарков нет.'),
+  'an auction runs from 1 to 168 hours': tr('Аукцион идёт от 1 до 168 часов.'),
+  'auction not found': tr('Аукцион не найден.'),
+  'the auction is over': tr('Аукцион уже закончился.'),
+  'the bid is too low': tr('Ставка слишком мала.'),
+  'an auction with bids cannot be cancelled': tr('Аукцион, на котором уже есть ставки, отменить нельзя.'),
   'not enough votes': tr('У вас недостаточно голосов.'),
   'this is for freenet prime only': tr('Это доступно только с Freenet Prime.'),
   'unknown period of prime': tr('Неизвестный срок подписки.'),
