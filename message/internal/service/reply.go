@@ -163,7 +163,7 @@ func (s *MessageService) React(ctx context.Context, userID, id uuid.UUID, r mess
 		return nil, errs.Wrap("s.dressedOne", err)
 	}
 
-	for _, side := range []uuid.UUID{m.SenderID(), m.RecipientID()} {
+	for _, side := range m.Sides() {
 		if m.VisibleTo(side) {
 			s.events.Publish(ctx, side, Event{Edited: m})
 		}

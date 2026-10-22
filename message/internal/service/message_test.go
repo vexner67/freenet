@@ -234,12 +234,40 @@ func TestReading(t *testing.T) {
 	}
 }
 
-func TestSend_ToYourself(t *testing.T) {
+func TestSend_Saved(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+	svc := newService()
 	ann := uuid.New()
-	if _, err := newService().Send(context.Background(), ann, ann, service.Draft{Sealed: seal("сам себе")}); !errors.Is(err, message.ErrToYourself) {
-		t.Fatalf("to yourself: %v", err)
+
+	events, cancel := svc.Subscribe(ann)
+	defer cancel()
+
+	m := send(t, svc, ann, ann, "на память")[0]
+
+	if e := <-events; e.Message == nil || e.Message.ID() != m.ID() {
+		t.Fatalf("the event: %+v", e)
+	}
+	select {
+	case e := <-events:
+		t.Fatalf("a second event: %+v", e)
+	default:
+	}
+
+	page, err := svc.Dialogs(ctx, ann, uuid.Nil, 0)
+	if err != nil || len(page.Dialogs) != 1 || page.Dialogs[0].PeerID != ann || page.Dialogs[0].HasUnread() {
+		t.Fatalf("dialogs: %+v, %v", page, err)
+	}
+	if n, err := svc.CountUnread(ctx, ann); err != nil || n != 0 {
+		t.Fatalf("unread: %d, %v", n, err)
+	}
+
+	if err = svc.Hide(ctx, ann, m.ID()); err != nil {
+		t.Fatalf("Hide: %v", err)
+	}
+	if page, err = svc.Dialogs(ctx, ann, uuid.Nil, 0); err != nil || len(page.Dialogs) != 0 {
+		t.Fatalf("dialogs after deleting: %+v, %v", page, err)
 	}
 }
 

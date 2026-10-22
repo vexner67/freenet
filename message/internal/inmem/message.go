@@ -158,9 +158,11 @@ func (r *MessageRepository) Save(ctx context.Context, m *message.Message) error 
 	sent := r.s.dialog(m.SenderID(), m.RecipientID())
 	sent.lastMessageID = later(sent.lastMessageID, m.ID())
 
-	received := r.s.dialog(m.RecipientID(), m.SenderID())
-	received.lastMessageID = later(received.lastMessageID, m.ID())
-	received.lastIncomingID = later(received.lastIncomingID, m.ID())
+	if !m.Saved() {
+		received := r.s.dialog(m.RecipientID(), m.SenderID())
+		received.lastMessageID = later(received.lastMessageID, m.ID())
+		received.lastIncomingID = later(received.lastIncomingID, m.ID())
+	}
 
 	return nil
 }

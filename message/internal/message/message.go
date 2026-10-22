@@ -646,12 +646,9 @@ type Message struct {
 
 // New creates a message. Its UUIDv7 ID grows with time, so a dialog is
 // ordered and paged by ID, and "read up to" is one ID. It says nothing in
-// plain text: see NewSealedContent.
+// plain text: see NewSealedContent. A message to oneself goes to
+// «Избранное», the dialog where a user keeps what they want to keep.
 func New(senderID, recipientID uuid.UUID, content Content, now time.Time) (*Message, error) {
-	if senderID == recipientID {
-		return nil, ErrToYourself
-	}
-
 	if content.plain() {
 		return nil, ErrPlainText
 	}
@@ -706,6 +703,21 @@ func (m *Message) Between(userID uuid.UUID) bool {
 	return userID == m.senderID || userID == m.recipientID
 }
 
+// Saved tells whether m is in «Избранное»: written by the user to
+// themselves.
+func (m *Message) Saved() bool {
+	return m.senderID == m.recipientID
+}
+
+// Sides are the users whose dialog holds m: one in «Избранное».
+func (m *Message) Sides() []uuid.UUID {
+	if m.Saved() {
+		return []uuid.UUID{m.senderID}
+	}
+
+	return []uuid.UUID{m.senderID, m.recipientID}
+}
+
 // VisibleTo tells whether userID still has the message in their dialog:
 // one of its sides who has not deleted it for themselves.
 func (m *Message) VisibleTo(userID uuid.UUID) bool {
@@ -727,7 +739,10 @@ func (m *Message) HiddenFrom(userID uuid.UUID) (*Message, error) {
 	}
 
 	hidden := *m
-	if userID == m.senderID {
+	if m.Saved() {
+		// Nobody else has it: deleted for oneself, it is gone.
+		hidden.hiddenFromSender, hidden.hiddenFromRecipient = true, true
+	} else if userID == m.senderID {
 		hidden.hiddenFromSender = true
 	} else {
 		hidden.hiddenFromRecipient = true
@@ -969,8 +984,12 @@ type ReadMarks struct {
 }
 
 // IsRead tells whether m has been read by its recipient; me is the user
-// whose dialog this is.
+// whose dialog this is. What a user wrote to themselves is read.
 func (r ReadMarks) IsRead(m *Message, me uuid.UUID) bool {
+	if m.Saved() {
+		return true
+	}
+
 	mark := r.Mine
 	if m.SenderID() == me {
 		mark = r.Theirs

@@ -394,9 +394,12 @@ func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UU
 		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
-	s.events.Publish(ctx, senderID, Event{Message: m})
-	s.events.Publish(ctx, recipientID, Event{Message: m})
-	s.pusher.Push(ctx, Pushed{ID: m.ID(), SenderID: senderID, RecipientIDs: []uuid.UUID{recipientID}})
+	for _, side := range m.Sides() {
+		s.events.Publish(ctx, side, Event{Message: m})
+	}
+	if !m.Saved() {
+		s.pusher.Push(ctx, Pushed{ID: m.ID(), SenderID: senderID, RecipientIDs: []uuid.UUID{recipientID}})
+	}
 
 	return m, nil
 }
@@ -516,7 +519,7 @@ func (s *MessageService) announce(ctx context.Context, userID uuid.UUID, r remov
 		return
 	}
 
-	for _, side := range []uuid.UUID{r.now.SenderID(), r.now.RecipientID()} {
+	for _, side := range r.now.Sides() {
 		if r.now.VisibleTo(side) {
 			s.events.Publish(ctx, side, Event{Edited: r.now})
 		}
@@ -564,7 +567,7 @@ func (s *MessageService) Edit(ctx context.Context, userID, id uuid.UUID, rev mes
 		return nil, errs.Wrap("s.dressedOne", err)
 	}
 
-	for _, side := range []uuid.UUID{edited.SenderID(), edited.RecipientID()} {
+	for _, side := range edited.Sides() {
 		if edited.VisibleTo(side) {
 			s.events.Publish(ctx, side, Event{Edited: edited})
 		}
@@ -782,7 +785,9 @@ func (s *MessageService) MarkRead(ctx context.Context, userID, peerID, upTo uuid
 
 	read := Event{Read: &ReadMark{ReaderID: userID, PeerID: peerID, UpTo: upTo}}
 	s.events.Publish(ctx, userID, read)
-	s.events.Publish(ctx, peerID, read)
+	if peerID != userID {
+		s.events.Publish(ctx, peerID, read)
+	}
 
 	return nil
 }

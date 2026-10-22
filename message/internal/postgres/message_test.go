@@ -317,6 +317,51 @@ func TestMessageRepository_SharedPost(t *testing.T) {
 	}
 }
 
+func TestMessageRepository_Saved(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	messages := postgres.NewMessageRepository(pool)
+	dialogs := postgres.NewDialogRepository(pool)
+	ann := uuid.New()
+
+	var last *message.Message
+	for range 2 {
+		if last, err = message.New(ann, ann, said("на память", nil, uuid.Nil, nil), time.Now()); err != nil {
+			t.Fatal(err)
+		}
+		if err = messages.Save(ctx, last); err != nil {
+			t.Fatalf("Save to oneself: %v", err)
+		}
+	}
+
+	list, err := dialogs.List(ctx, ann, uuid.Nil, 10)
+	if err != nil || len(list) != 1 || list[0].PeerID != ann || list[0].LastMessage.ID() != last.ID() || list[0].HasUnread() {
+		t.Fatalf("«Избранное»: %+v, %v", list, err)
+	}
+	if n, err := dialogs.CountUnread(ctx, ann, 10); err != nil || n != 0 {
+		t.Fatalf("unread: %d, %v", n, err)
+	}
+
+	if err = messages.Delete(ctx, last); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if list, err = dialogs.List(ctx, ann, uuid.Nil, 10); err != nil || len(list) != 1 || list[0].LastMessage.ID() == last.ID() {
+		t.Fatalf("after deleting the last: %+v, %v", list, err)
+	}
+}
+
 func TestMessageRepository_Delete(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {

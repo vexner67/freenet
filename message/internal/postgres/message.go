@@ -37,7 +37,8 @@ func (r *MessageRepository) conn(ctx context.Context) pgpool.Querier {
 
 // saveMessageQuery stores the message and brings both sides' dialogs up to
 // it in one statement, so the list of dialogs never lags behind. GREATEST
-// keeps a dialog right when two messages race. The sides are written in
+// keeps a dialog right when two messages race. A message to oneself
+// («Избранное») has one side, which never receives anything. The sides are written in
 // user_id order whoever writes: two people writing to each other at once
 // would otherwise lock the two rows in opposite orders and deadlock.
 const saveMessageQuery = `
@@ -74,6 +75,7 @@ const saveMessageQuery = `
 		UNION ALL
 		SELECT recipient_id, sender_id, id, id
 		FROM saved
+		WHERE recipient_id <> sender_id
 	) AS sides
 	ORDER BY user_id
 	ON CONFLICT (user_id, peer_id) DO UPDATE
