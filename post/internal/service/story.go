@@ -36,8 +36,10 @@ type StoryRepository interface {
 
 // StoryViewRepository keeps who viewed which story.
 type StoryViewRepository interface {
-	// View tells that viewerID viewed the story at; once is enough.
-	View(ctx context.Context, storyID, viewerID uuid.UUID, at time.Time) error
+	// View tells that viewerID viewed the story at; once is enough. A
+	// hidden view marks it viewed for the viewer, but its author is not
+	// told of it.
+	View(ctx context.Context, storyID, viewerID uuid.UUID, at time.Time, hidden bool) error
 	// Viewed tells which of the stories viewerID viewed.
 	Viewed(ctx context.Context, viewerID uuid.UUID, ids []uuid.UUID) (map[uuid.UUID]bool, error)
 	// Viewers returns up to limit views of a story, the latest first,
@@ -323,8 +325,9 @@ func (s *StoryService) page(ctx context.Context, viewerID uuid.UUID, stories []*
 }
 
 // View tells that viewerID viewed a story they see; their own is not
-// counted, but it is viewed too.
-func (s *StoryService) View(ctx context.Context, viewerID, id uuid.UUID) error {
+// counted, but it is viewed too, and neither is a hidden one — of someone
+// with Freenet Prime, which gateway knows.
+func (s *StoryService) View(ctx context.Context, viewerID, id uuid.UUID, hidden bool) error {
 	now := s.now()
 
 	story, err := s.stories.Seen(ctx, id, viewerID, now)
@@ -332,7 +335,7 @@ func (s *StoryService) View(ctx context.Context, viewerID, id uuid.UUID) error {
 		return errs.Wrap("s.stories.Seen", err)
 	}
 
-	return errs.Wrap("s.views.View", s.views.View(ctx, story.ID(), viewerID, now))
+	return errs.Wrap("s.views.View", s.views.View(ctx, story.ID(), viewerID, now, hidden))
 }
 
 // Viewers pages who viewed a story, the latest first, for its author

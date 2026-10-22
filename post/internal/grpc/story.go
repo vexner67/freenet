@@ -19,7 +19,7 @@ type StoryService interface {
 	Feed(ctx context.Context, audience service.StoryAudience) (service.StoryPage, error)
 	User(ctx context.Context, audience service.StoryAudience, authorID uuid.UUID) (service.StoryPage, error)
 	Get(ctx context.Context, viewerID, id uuid.UUID) (service.StoryPage, error)
-	View(ctx context.Context, viewerID, id uuid.UUID) error
+	View(ctx context.Context, viewerID, id uuid.UUID, hidden bool) error
 	Viewers(ctx context.Context, requesterID, id uuid.UUID, after *service.ViewCursor, size int) (service.ViewerPage, error)
 	Delete(ctx context.Context, requesterID, id uuid.UUID) error
 	Like(ctx context.Context, userID, id uuid.UUID) error
@@ -129,7 +129,7 @@ func (h *PostHandler) ViewStory(ctx context.Context, req *postv1.ViewStoryReques
 		return nil, err
 	}
 
-	if err = h.storyService.View(ctx, viewer, id); err != nil {
+	if err = h.storyService.View(ctx, viewer, id, req.GetHidden()); err != nil {
 		return nil, err
 	}
 

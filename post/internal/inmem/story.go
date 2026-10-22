@@ -16,6 +16,7 @@ import (
 type storyView struct {
 	viewerID uuid.UUID
 	at       time.Time
+	hidden   bool
 }
 
 // StoryRepository keeps the stories in the Store, where it learns whom
@@ -213,7 +214,7 @@ func (r *StoryRepository) matching(pick func(*post.Story) bool) []*post.Story {
 	return found
 }
 
-func (r *StoryViewRepository) View(ctx context.Context, storyID, viewerID uuid.UUID, at time.Time) error {
+func (r *StoryViewRepository) View(ctx context.Context, storyID, viewerID uuid.UUID, at time.Time, hidden bool) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
 	}
@@ -234,7 +235,7 @@ func (r *StoryViewRepository) View(ctx context.Context, storyID, viewerID uuid.U
 		r.s.storyViews = make(map[uuid.UUID][]storyView)
 	}
 
-	r.s.storyViews[storyID] = append(views, storyView{viewerID: viewerID, at: at.UTC().Truncate(time.Microsecond)})
+	r.s.storyViews[storyID] = append(views, storyView{viewerID: viewerID, at: at.UTC().Truncate(time.Microsecond), hidden: hidden})
 
 	return nil
 }
@@ -313,7 +314,7 @@ func (r *StoryViewRepository) counted(storyID uuid.UUID) []service.StoryView {
 
 	var views []service.StoryView
 	for _, v := range r.s.storyViews[storyID] {
-		if story.CountsView(v.viewerID) && !r.s.hidden[v.viewerID] {
+		if story.CountsView(v.viewerID) && !v.hidden && !r.s.hidden[v.viewerID] {
 			views = append(views, service.StoryView{ViewerID: v.viewerID, ViewedAt: v.at})
 		}
 	}

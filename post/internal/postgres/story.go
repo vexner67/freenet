@@ -286,14 +286,15 @@ const viewStoryQuery = `
 	INSERT INTO story_views (
 		story_id,
 		viewer_id,
-		viewed_at
+		viewed_at,
+		hidden
 	)
-	VALUES ($1, $2, $3)
+	VALUES ($1, $2, $3, $4)
 	ON CONFLICT (story_id, viewer_id) DO NOTHING
 `
 
-func (r *StoryViewRepository) View(ctx context.Context, storyID, viewerID uuid.UUID, at time.Time) error {
-	_, err := r.pool.Exec(ctx, viewStoryQuery, storyID, viewerID, at)
+func (r *StoryViewRepository) View(ctx context.Context, storyID, viewerID uuid.UUID, at time.Time, hidden bool) error {
+	_, err := r.pool.Exec(ctx, viewStoryQuery, storyID, viewerID, at, hidden)
 	if isForeignKeyViolation(err) {
 		return post.ErrStoryNotFound
 	}
@@ -331,9 +332,10 @@ func (r *StoryViewRepository) Viewed(ctx context.Context, viewerID uuid.UUID, st
 }
 
 // countedViewsWhere: the views of others than the author, whose page is
-// not deleted.
+// not deleted, and not made unseen (Freenet Prime).
 const countedViewsWhere = `
 	WHERE v.viewer_id <> s.author_id
+		AND NOT v.hidden
 		AND NOT user_hidden(v.viewer_id)
 `
 

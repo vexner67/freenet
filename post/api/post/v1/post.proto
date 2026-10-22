@@ -1810,6 +1810,9 @@ message GetStoryResponse {
 
 message ViewStoryRequest {
   string id = 1;
+  // The viewer has Freenet Prime and watches unseen: the story is viewed
+  // for them, but its author is not told.
+  bool hidden = 2;
 }
 
 message ListStoryViewersRequest {
