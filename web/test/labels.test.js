@@ -1308,3 +1308,42 @@ test('collectible gifts: the traits of the domain, their pictures, fees and stat
   assert.equal(voteOperation({ kind: 'gift_refund', amount: 20, note: 'prime_star#1' }).title, 'Возврат ставки: «Звезда Prime» #1');
   assert.equal(errorText({ message: 'the bid is too low' }), 'Ставка слишком мала.');
 });
+
+test('the mine counts the energy on, sells ore and logs digs', async () => {
+  const { mineEnergy, energyWait, oreValue, oreName, mineDug, mineSold, mineChance, typedMineChance, ores } = await import('../static/labels.js');
+  const settings = { energy: 10, regenSeconds: 900, events: { nuggetTimes: 3, drinkEnergy: 3 } };
+
+  assert.deepEqual(mineEnergy({ energy: 10, nextEnergySeconds: 0 }, settings, 5000), { energy: 10, next: 0 });
+  assert.deepEqual(mineEnergy({ energy: 8, nextEnergySeconds: 600 }, settings, 100), { energy: 8, next: 500 });
+  assert.deepEqual(mineEnergy({ energy: 8, nextEnergySeconds: 600 }, settings, 700), { energy: 9, next: 800 });
+  assert.deepEqual(mineEnergy({ energy: 8, nextEnergySeconds: 600 }, settings, 1500), { energy: 10, next: 0 });
+
+  assert.equal(energyWait(245), '4:05');
+  assert.equal(energyWait(3750), '1:02:30');
+  assert.equal(energyWait(0), '0:00');
+
+  assert.equal(oreValue(150, 2), 3);
+  assert.equal(oreValue(49, 2), 0);
+  assert.deepEqual(ores, ['stone', 'coal', 'iron', 'gold', 'diamond', 'crystal']);
+  assert.equal(oreName('gold'), 'Золото');
+
+  const dug = (event, units, votes = 0) => ({ event, units, votes, mine: { miner: { energy: 8, experience: 1250 } } });
+  assert.equal(mineDug('stone', dug('', 147), settings), 'Камень: +147 шт. Энергия: 8, опыт: 1 250.');
+  assert.match(mineDug('gold', dug('nugget', 150), settings), /^Самородок! Руды в 3 раза больше\. Золото: \+150 шт\./);
+  assert.match(mineDug('stone', dug('chest', 150, 25), settings), /^Вы нашли сундук: \+25 голосов!/);
+  assert.match(mineDug('stone', dug('collapse', 0), settings), /^Обвал!/);
+  assert.match(mineDug('stone', dug('drink', 120), settings), /^Вы нашли энергетик: \+3 энергии\./);
+  assert.equal(mineSold({ units: 1200, votes: 24 }), 'Продано 1 200 шт. руды за 24 голоса.');
+
+  assert.equal(mineChance(300), '3');
+  assert.equal(mineChance(50), '0,5');
+  assert.equal(typedMineChance('0,5'), 50);
+  assert.equal(typedMineChance(' 3 '), 300);
+});
+
+test('the ores of the site are those of the user service', () => {
+  const source = readFileSync(new URL('../../user/internal/user/mine.go', import.meta.url), 'utf8');
+  const order = source.match(/var Ores = \[\]Ore\{([^}]*)\}/)[1].split(',').map((name) => name.trim());
+  const values = Object.fromEntries([...source.matchAll(/(Ore\w+)\s+Ore = "(\w+)"/g)].map(([, name, value]) => [name, value]));
+  return import('../static/labels.js').then(({ ores }) => assert.deepEqual(order.map((name) => values[name]), ores));
+});

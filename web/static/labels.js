@@ -1390,6 +1390,103 @@ export function votesAmount(n) {
   return `${groupedVotes(n)} ${plural(Math.abs(n), ['голос', 'голоса', 'голосов'])}`;
 }
 
+// ores are the ores of "Шахта" in the order they open, as the user
+// service has them (user/internal/user/mine.go).
+export const ores = ['stone', 'coal', 'iron', 'gold', 'diamond', 'crystal'];
+
+// oreName is the name of an ore: "Камень", "Алмазы".
+export function oreName(ore) {
+  return {
+    stone: tr('Камень'),
+    coal: tr('Уголь'),
+    iron: tr('Железо'),
+    gold: tr('Золото'),
+    diamond: tr('Алмазы'),
+    crystal: tr('Кристаллы'),
+  }[ore] ?? ore;
+}
+
+// unitsCount is ore by the piece: "147 шт."; experienceCount is
+// "500 опыта".
+export function unitsCount(n) {
+  return tr('{0} шт.', groupedVotes(n));
+}
+
+export function experienceCount(n) {
+  return tr('{0} опыта', groupedVotes(n));
+}
+
+// oreValue is what units of ore sell for at price hundredths of a vote a
+// unit, rounded down as the user service does.
+export function oreValue(units, price) {
+  return Math.floor((units * price) / 100);
+}
+
+// orePrice says what an ore sells for: "100 шт. — 5 голосов".
+export function orePrice(price) {
+  return tr('100 шт. — {0}', votesAmount(price));
+}
+
+// energyWait is the time till the next point of energy: "4:05",
+// "1:02:30".
+export function energyWait(seconds) {
+  const s = Math.max(0, Math.ceil(seconds));
+  const pad = (n) => String(n).padStart(2, '0');
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+
+  return h > 0 ? `${h}:${pad(m)}:${pad(s % 60)}` : `${m}:${pad(s % 60)}`;
+}
+
+// mineEnergy is the energy of the miner as it comes back between the
+// answers of the server: from what the server said at, a point every
+// regen seconds till the most.
+export function mineEnergy({ energy, nextEnergySeconds }, { energy: most, regenSeconds }, passed) {
+  if (energy >= most || nextEnergySeconds <= 0) return { energy: Math.min(energy, most), next: 0 };
+  if (passed < nextEnergySeconds) return { energy, next: nextEnergySeconds - passed };
+
+  const more = 1 + Math.floor((passed - nextEnergySeconds) / regenSeconds);
+  if (energy + more >= most) return { energy: most, next: 0 };
+
+  return { energy: energy + more, next: regenSeconds - ((passed - nextEnergySeconds) % regenSeconds) };
+}
+
+// mineDug is a line of the log of digs, as the BFG bot says it:
+// "Камень: +147 шт. Энергия: 8, опыт: 64." with the event first.
+export function mineDug(ore, dug, settings) {
+  const { energy, experience } = dug.mine.miner;
+  const state = tr('Энергия: {0}, опыт: {1}.', energy, groupedVotes(experience));
+  const units = tr('{0}: +{1}', oreName(ore), unitsCount(dug.units));
+
+  switch (dug.event) {
+    case 'nugget':
+      return tr('Самородок! Руды в {0} раза больше. {1} {2}', settings.events.nuggetTimes, units, state);
+    case 'chest':
+      return tr('Вы нашли сундук: +{0}! {1} {2}', votesAmount(dug.votes), units, state);
+    case 'collapse':
+      return tr('Обвал! Руду засыпало, в этот раз ничего. {0}', state);
+    case 'drink':
+      return tr('Вы нашли энергетик: +{0} энергии. {1} {2}', settings.events.drinkEnergy, units, state);
+    default:
+      return `${units} ${state}`;
+  }
+}
+
+// mineSold says what a sale gave: "Продано 1 200 шт. руды за 24 голоса.".
+export function mineSold(sold) {
+  return tr('Продано {0} руды за {1}.', unitsCount(sold.units), votesAmount(sold.votes));
+}
+
+// mineChance is a chance of 10000 as the admin panel types it: "3",
+// "0,5"; typedMineChance reads it back.
+export function mineChance(chance) {
+  return String(chance / 100).replace('.', ',');
+}
+
+export function typedMineChance(value) {
+  return Math.round(Number(String(value).trim().replace(',', '.')) * 100) || 0;
+}
+
 // primePeriods are the periods of Freenet Prime with their names and
 // how many months each is.
 export const primePeriods = [
@@ -1460,6 +1557,10 @@ export function voteOperation(op, myId) {
       return { title: out ? tr('Казино: ставка в «Ракетке»') : tr('Казино: выигрыш в «Ракетке»'), role: '' };
     case 'bonus':
       return { title: tr('Ежедневный бонус'), role: '' };
+    case 'mine':
+      return { title: tr('Шахта: продажа руды «{0}»', oreName(note)), role: '' };
+    case 'mine_chest':
+      return { title: tr('Шахта: сундук'), role: '' };
     case 'fee':
       return { title: tr('Комиссия за перевод'), role: tr('Получатель:') };
     case 'tax':
@@ -1907,6 +2008,23 @@ const errorTexts = {
   'a multiplier gives back at most 85 percent: the multiplier times its chance': tr('Множитель возвращает не больше 85 %: множитель, умноженный на шанс.'),
   'the biggest bet on the biggest multiplier wins at most 1000 votes': tr('Наибольшая ставка на наибольший множитель выигрывает не больше 1000 голосов.'),
   'the biggest bet at the top of the rocket wins at most 1000 votes': tr('Наибольшая ставка на наибольшем множителе ракеты выигрывает не больше 1000 голосов.'),
+  'unknown ore': tr('Такой руды нет.'),
+  'this ore needs more experience': tr('Эту руду можно копать, набравшись опыта.'),
+  'not enough energy': tr('Не хватает энергии. Она восстанавливается сама.'),
+  'not enough ore to sell': tr('Продавать нечего: руды не хватает и на голос.'),
+  'ore is sold by pages a week old with a filled profile': tr('Руду продают страницы старше недели с заполненной анкетой.'),
+  'the mine must set every ore once, in order': tr('В шахте должны быть все руды, по порядку.'),
+  'the experience of an ore must be from 0 to 1000000000, the stone from 0, each not below the one before': tr('Опыт руды — от 0 до 1 000 000 000: камень — с 0, каждая руда — не меньше предыдущей.'),
+  'the yield of an ore must be from 1 to 1000000, the least not above the most': tr('Добыча — от 1 до 1 000 000 шт., наименьшая не больше наибольшей.'),
+  'the price of an ore must be from 0 to 1000000 hundredths of a vote': tr('Цена руды — от 0 до 1 000 000 голосов за 100 шт.'),
+  'the experience of a dig must be from 0 to 1000000': tr('Опыт за копку — от 0 до 1 000 000.'),
+  'a dig must take from 1 to 100 energy': tr('Копка тратит от 1 до 100 энергии.'),
+  'the energy of a miner must be from 1 to 1000, not below a dig': tr('Энергия — от 1 до 1000 и не меньше, чем тратит копка.'),
+  'a point of energy must come back in 1 second to 24 hours': tr('Единица энергии восстанавливается от 1 секунды до 24 часов.'),
+  'the chances of the events must be from 0 and together at most 10000': tr('Шансы событий вместе — не больше 100 %.'),
+  'a nugget must multiply the ore from 2 to 100 times': tr('Самородок умножает руду в 2–100 раз.'),
+  'a chest must hold from 1 to 1000 votes, the least not above the most': tr('В сундуке — от 1 до 1000 голосов, наименьшее не больше наибольшего.'),
+  'a drink must give from 1 to 1000 energy': tr('Энергетик даёт от 1 до 1000 энергии.'),
   'the bonus is taken today': tr('Сегодня вы уже получили бонус.'),
   'the bonus is for pages a week old with a filled profile': tr('Бонус получают страницы старше недели с заполненной анкетой.'),
   'a voucher with votes has a limited number of usages': tr('Ваучер с голосами действует ограниченное число раз.'),

@@ -10,14 +10,15 @@
 // and the limits and the return of "Прицел", and the limits, the return and
 // the top of "Ракетка"), "Ставки" (/admin/bets: the
 // events people stake on, a new one, and closing, resolving, cancelling
-// and deleting them)
+// and deleting them), "Шахта" (/admin/mine: the ores, the energy and the
+// events of a dig)
 // and "Реклама" (/admin/ads: the ads of the global feed, the form of a new
 // one at /admin/ads/new and of one at /admin/ads/<id>). The page is its own, AUI as openvk's:
 // none of the site's chrome. Only the administrators of the site
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 import { remember } from './newyear.js';
 
@@ -711,6 +712,109 @@ async function prime(answered) {
   $('prime').hidden = false;
 }
 
+// mineSettings is "Шахта": the six ores with what each needs, yields,
+// sells for, gives and takes, the energy and how fast it comes back, the
+// events of a dig, and how the mine has done.
+async function mineSettings(answered) {
+  const { settings, digs, sold, chests, miners } = await answered;
+  const rows = $('mine-rows');
+  const save = $('mine-form').querySelector('button[type=submit]');
+  const number = (min, max, value, label) => {
+    const field = el('input', { className: 'text admin-casino-field', type: 'number', min, max, value: String(value), required: true });
+    field.setAttribute('aria-label', label);
+    return field;
+  };
+
+  const lines = settings.veins.map((vein) => {
+    const parts = {
+      experience: number(0, 1000000000, vein.experience, tr('Нужно опыта')),
+      least: number(1, 1000000, vein.least, tr('Наименьшая добыча')),
+      most: number(1, 1000000, vein.most, tr('Наибольшая добыча')),
+      price: number(0, 1000000, vein.price, tr('Цена 100 шт., голосов')),
+      gain: number(0, 1000000, vein.gain, tr('Опыт за копку')),
+      energy: number(1, 100, vein.energy, tr('Энергия за копку')),
+    };
+    if (vein.ore === 'stone') parts.experience.disabled = true;
+
+    rows.append(el('tr', {},
+      el('td', {}, el('b', { textContent: oreName(vein.ore) })),
+      el('td', {}, parts.experience),
+      el('td', {}, el('span', { className: 'admin-times' }, parts.least, '–', parts.most)),
+      el('td', {}, parts.price),
+      el('td', {}, parts.gain),
+      el('td', {}, parts.energy),
+    ));
+
+    return { ore: vein.ore, parts };
+  });
+
+  const fields = {
+    energy: $('mine-energy'),
+    regen: $('mine-regen'),
+    nugget: $('mine-nugget'),
+    nuggetTimes: $('mine-nugget-times'),
+    chest: $('mine-chest'),
+    chestLeast: $('mine-chest-least'),
+    chestMost: $('mine-chest-most'),
+    collapse: $('mine-collapse'),
+    drink: $('mine-drink'),
+    drinkEnergy: $('mine-drink-energy'),
+  };
+  const { events } = settings;
+  fields.energy.value = String(settings.energy);
+  fields.regen.value = String(Math.round((settings.regenSeconds / 60) * 1000) / 1000).replace('.', ',');
+  for (const name of ['nugget', 'chest', 'collapse', 'drink']) fields[name].value = mineChance(events[name]);
+  for (const name of ['nuggetTimes', 'chestLeast', 'chestMost', 'drinkEnergy']) fields[name].value = String(events[name]);
+
+  $('mine-stats').textContent = digs > 0
+    ? tr('Копок: {0}, шахтёров: {1}. За руду выплачено {2}, в сундуках найдено {3}. Энергия восстанавливается за {4}.',
+      groupedVotes(digs), groupedVotes(miners), votesCount(sold), votesCount(chests), energyWait(settings.regenSeconds))
+    : tr('Ещё никто не копал.');
+
+  const typed = () => ({
+    veins: lines.map(({ ore, parts }) => ({
+      ore,
+      experience: Number(parts.experience.value),
+      least: Number(parts.least.value),
+      most: Number(parts.most.value),
+      price: Number(parts.price.value),
+      gain: Number(parts.gain.value),
+      energy: Number(parts.energy.value),
+    })),
+    energy: Number(fields.energy.value),
+    regenSeconds: Math.round(Number(fields.regen.value.trim().replace(',', '.')) * 60) || 0,
+    events: {
+      nugget: typedMineChance(fields.nugget.value),
+      nuggetTimes: Number(fields.nuggetTimes.value),
+      chest: typedMineChance(fields.chest.value),
+      chestLeast: Number(fields.chestLeast.value),
+      chestMost: Number(fields.chestMost.value),
+      collapse: typedMineChance(fields.collapse.value),
+      drink: typedMineChance(fields.drink.value),
+      drinkEnergy: Number(fields.drinkEnergy.value),
+    },
+  });
+
+  $('mine-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    $('mine-saved').hidden = true;
+    save.disabled = true;
+
+    try {
+      await api.setMine(typed());
+      $('mine-saved').textContent = tr('Изменения сохранены');
+      $('mine-saved').hidden = false;
+    } catch (e) {
+      showError(e);
+    } finally {
+      save.disabled = false;
+    }
+  });
+
+  $('mine').hidden = false;
+}
+
 // casino is "Казино": the price of a spin and the prizes with their
 // weights, the chance of each and the share of the votes the casino gives
 // back by them as they are typed, and how it has done in fact.
@@ -1297,6 +1401,7 @@ const reads = {
   '/admin/prime': () => started(api.primePrices()),
   '/admin/casino': () => started(api.casinoSettings()),
   '/admin/bets': () => started(api.betEvents()),
+  '/admin/mine': () => started(api.mineSettings()),
 }[adID ? '/admin/ads' : path]?.();
 
 const me = await currentUser().catch(() => null);
@@ -1333,6 +1438,8 @@ if (!me) {
     await casino(reads).catch(showError);
   } else if (path === '/admin/bets') {
     await bets(reads).catch(showError);
+  } else if (path === '/admin/mine') {
+    await mineSettings(reads).catch(showError);
   } else if (path === '/admin/ads') {
     await ads(reads).catch(showError);
   } else if (path === '/admin/ads/new' || adID) {

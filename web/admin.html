@@ -41,6 +41,7 @@
         <a class="aui-nav-item" href="/admin/prime" title="Freenet Prime"><span class="aui-icon aui-icon-prime"></span><span class="aui-nav-item-label">Freenet Prime</span></a>
         <a class="aui-nav-item" href="/admin/casino" title="Казино"><span class="aui-icon aui-icon-casino"></span><span class="aui-nav-item-label">Казино</span></a>
         <a class="aui-nav-item" href="/admin/bets" title="Ставки"><span class="aui-icon aui-icon-bets"></span><span class="aui-nav-item-label">Ставки</span></a>
+        <a class="aui-nav-item" href="/admin/mine" title="Шахта"><span class="aui-icon aui-icon-mine"></span><span class="aui-nav-item-label">Шахта</span></a>
         <a class="aui-nav-item" href="/admin/ads" title="Реклама"><span class="aui-icon aui-icon-ad"></span><span class="aui-nav-item-label">Реклама</span></a>
       </div>
       <div class="aui-sidebar-group">
@@ -390,6 +391,69 @@
           <label for="jackpot-votes">Порог джекпота</label>
           <input class="text admin-casino-field" id="jackpot-votes" type="number" min="1" max="1000" required>
           <div class="description">В голосах, от 1 до 1000.</div>
+        </div>
+        <div class="buttons-container">
+          <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="mine" hidden>
+      <h1 class="aui-page-heading">Шахта</h1>
+      <p class="admin-lead">Люди выбирают руду и копают: копка тратит энергию и даёт руду и опыт, а руда открывается, когда опыта хватает. Руда копится в рюкзаке и продаётся за голоса из Казны. Энергия восстанавливается сама, по единице. Новые настройки действуют со следующей копки.</p>
+      <p class="admin-casino-stats" id="mine-stats"></p>
+      <div class="aui-message aui-message-success" id="mine-saved" hidden></div>
+      <form class="aui" id="mine-form">
+        <h2>Руды</h2>
+        <div class="aui-table-wrap">
+          <table class="aui">
+            <thead>
+              <tr>
+                <th>Руда</th>
+                <th>Нужно опыта</th>
+                <th>Добыча, шт.</th>
+                <th>Цена 100 шт., голосов</th>
+                <th>Опыт за копку</th>
+                <th>Энергия за копку</th>
+              </tr>
+            </thead>
+            <tbody id="mine-rows"></tbody>
+          </table>
+        </div>
+        <p class="admin-decor-now">Камень открыт сразу, каждая следующая руда — не раньше предыдущей. Цена — в голосах за 100 шт.: 5 — пять голосов за сотню камня; продажа округляется вниз.</p>
+        <h2>Энергия</h2>
+        <div class="field-group">
+          <label for="mine-energy">Запас энергии</label>
+          <input class="text admin-casino-field" id="mine-energy" type="number" min="1" max="1000" required>
+          <div class="description">От 1 до 1000 и не меньше, чем тратит копка любой руды. Новый шахтёр начинает с полным запасом.</div>
+        </div>
+        <div class="field-group">
+          <label for="mine-regen">Восстановление, минут</label>
+          <input class="text admin-casino-field" id="mine-regen" inputmode="decimal" required>
+          <div class="description">Сколько восстанавливается единица энергии: от 1 секунды до 24 часов (1440 минут), можно дробно — 0,5.</div>
+        </div>
+        <h2>События</h2>
+        <p class="admin-decor-now">Шансы — на одну копку, вместе не больше 100 %.</p>
+        <div class="field-group">
+          <label for="mine-nugget">Самородок, %</label>
+          <input class="text admin-casino-field" id="mine-nugget" inputmode="decimal" required>
+          <span class="admin-times">руды ×<input class="text admin-casino-field" id="mine-nugget-times" type="number" min="2" max="100" required aria-label="Во сколько раз больше руды"></span>
+        </div>
+        <div class="field-group">
+          <label for="mine-chest">Сундук, %</label>
+          <input class="text admin-casino-field" id="mine-chest" inputmode="decimal" required>
+          <span class="admin-times">от <input class="text admin-casino-field" id="mine-chest-least" type="number" min="1" max="1000" required aria-label="Наименьший сундук"> до <input class="text admin-casino-field" id="mine-chest-most" type="number" min="1" max="1000" required aria-label="Наибольший сундук"> голосов</span>
+          <div class="description">Голоса из Казны сразу на счёт, от 1 до 1000.</div>
+        </div>
+        <div class="field-group">
+          <label for="mine-collapse">Обвал, %</label>
+          <input class="text admin-casino-field" id="mine-collapse" inputmode="decimal" required>
+          <div class="description">Копка ничего не даёт, энергия потрачена.</div>
+        </div>
+        <div class="field-group">
+          <label for="mine-drink">Энергетик, %</label>
+          <input class="text admin-casino-field" id="mine-drink" inputmode="decimal" required>
+          <span class="admin-times">+<input class="text admin-casino-field" id="mine-drink-energy" type="number" min="1" max="1000" required aria-label="Сколько энергии даёт энергетик"> энергии</span>
         </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>

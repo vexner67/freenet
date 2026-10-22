@@ -295,6 +295,12 @@ input, select, textarea { font-size: 16px !important; }
 /* The casino: the balance over the games, three cells in a row, the
    amount of a bet over its quick buttons, both the whole width. */
 .casino { flex-direction: column-reverse; align-items: stretch; }
+/* The mine: the balance over it, the bar as wide as it can be. */
+.mine { flex-direction: column-reverse; align-items: stretch; }
+.mine-bar { flex: 1; min-width: 80px; }
+.mine-item { flex-wrap: wrap; }
+.mine-item-worth { min-width: 0; }
+.mine-ore .button, .mine-item .button { min-height: 32px; }
 .casino-balance { width: auto; }
 .casino-board, .casino-multipliers { grid-template-columns: repeat(3, 1fr); }
 .casino-controls .button { width: 100%; }
