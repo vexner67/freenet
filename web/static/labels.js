@@ -824,12 +824,9 @@ export function myAlbumsCount(n) {
 // what each gift is called and its picture. The gifts themselves are the
 // catalogue of the user service; a picture is a file of the site, named
 // by its whole path so that it is served with its version.
-export const giftCollections = { flowers: tr('Цветы'), sweets: tr('Сладости'), holidays: tr('Праздники'), freenet: 'Freenet', prime: 'Freenet Prime' };
+export const giftCollections = { freenet: 'Freenet', prime: 'Freenet Prime' };
 
 export const giftNames = {
-  rose: tr('Роза'), tulip: tr('Тюльпан'), bouquet: tr('Букет'), sunflower: tr('Подсолнух'), cactus: tr('Кактус'),
-  cake: tr('Торт'), candy: tr('Конфета'), chocolate: tr('Шоколад'), icecream: tr('Мороженое'), cupcake: tr('Пирожное'),
-  present: tr('Подарок'), balloons: tr('Шарики'), heart: tr('Сердце'), bear: tr('Мишка'), star: tr('Звезда'),
   freenet_crystal: tr('Кристалл Freenet'), freenet_coin: tr('Золотая монета'), freenet_ring: tr('Перстень'), freenet_crown: tr('Корона'), freenet_heart: tr('Рубиновое сердце'), freenet_cup: tr('Кубок'),
   prime_star: tr('Звезда Prime'), prime_diamond: tr('Бриллиант'), prime_crown: tr('Корона Prime'), prime_rocket: tr('Ракета'), prime_trophy: tr('Кубок Prime'),
 };
@@ -841,32 +838,17 @@ const giftImages = {
   freenet_crown: '/static/gifts/freenet_crown.png',
   freenet_heart: '/static/gifts/freenet_heart.png',
   freenet_cup: '/static/gifts/freenet_cup.png',
-  rose: '/static/gifts/rose.svg',
-  tulip: '/static/gifts/tulip.svg',
-  bouquet: '/static/gifts/bouquet.svg',
-  sunflower: '/static/gifts/sunflower.svg',
-  cactus: '/static/gifts/cactus.svg',
-  cake: '/static/gifts/cake.svg',
-  candy: '/static/gifts/candy.svg',
-  chocolate: '/static/gifts/chocolate.svg',
-  icecream: '/static/gifts/icecream.svg',
-  cupcake: '/static/gifts/cupcake.svg',
-  present: '/static/gifts/present.svg',
-  balloons: '/static/gifts/balloons.svg',
-  heart: '/static/gifts/heart.svg',
-  bear: '/static/gifts/bear.svg',
-  star: '/static/gifts/star.svg',
-  prime_star: '/static/gifts/prime_star.svg',
-  prime_diamond: '/static/gifts/prime_diamond.svg',
-  prime_crown: '/static/gifts/prime_crown.svg',
-  prime_rocket: '/static/gifts/prime_rocket.svg',
-  prime_trophy: '/static/gifts/prime_trophy.svg',
+  prime_star: '/static/gifts/prime_star.png',
+  prime_diamond: '/static/gifts/prime_diamond.png',
+  prime_crown: '/static/gifts/prime_crown.png',
+  prime_rocket: '/static/gifts/prime_rocket.png',
+  prime_trophy: '/static/gifts/prime_trophy.png',
 };
 
-// giftImage is the picture of a gift; a gift this site does not know yet
+// giftImage is the picture of a gift; a gift this site does not know
 // (a newer catalogue) is shown as a present.
 export function giftImage(gift) {
-  return giftImages[gift] ?? giftImages.present;
+  return giftImages[gift] ?? '/static/gifts/unknown.svg';
 }
 
 // Stickers ("Стикеры" of openvk): what each pack is called and the

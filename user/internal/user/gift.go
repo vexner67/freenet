@@ -38,8 +38,7 @@ type GiftKind string
 type GiftCollection struct {
 	ID string
 	// Price is what each of its gifts costs the sender, in votes, unless
-	// the administrators priced it otherwise (GiftPrices); 0 for a free
-	// one ("Бесплатно").
+	// the administrators priced it otherwise (GiftPrices).
 	Price GiftPrice
 	Gifts []GiftKind
 	// Prime: only those with Freenet Prime send its gifts.
@@ -48,16 +47,12 @@ type GiftCollection struct {
 
 // giftCatalog is all there is to send. openvk's gifts are drawn and priced
 // by its administrators; here the catalogue is fixed, and so are the
-// prices the gifts have until the administrators change them: the flowers
-// are free, so that anyone can send a gift, and the rest costs votes,
-// which the daily bonus and vouchers give — a gift of a collection is a
-// day or a week of bonuses. "freenet" are the site's own gifts, the
-// dearest, and "prime" are sent only by those with Freenet Prime, last.
-// The pictures are the site's: it knows a gift by this name.
+// prices the gifts have until the administrators change them. Every gift
+// costs votes, which the daily bonus and vouchers give — a gift is a week
+// of bonuses or more: "freenet" are the site's own gifts, and "prime" are
+// sent only by those with Freenet Prime. The pictures are the site's: it
+// knows a gift by this name.
 var giftCatalog = []GiftCollection{
-	{ID: "flowers", Gifts: []GiftKind{"rose", "tulip", "bouquet", "sunflower", "cactus"}},
-	{ID: "sweets", Price: 10, Gifts: []GiftKind{"cake", "candy", "chocolate", "icecream", "cupcake"}},
-	{ID: "holidays", Price: 30, Gifts: []GiftKind{"present", "balloons", "heart", "bear", "star"}},
 	{ID: "freenet", Price: 70, Gifts: []GiftKind{"freenet_crystal", "freenet_coin", "freenet_ring", "freenet_crown", "freenet_heart", "freenet_cup"}},
 	{ID: "prime", Price: 50, Prime: true, Gifts: []GiftKind{"prime_star", "prime_diamond", "prime_crown", "prime_rocket", "prime_trophy"}},
 }

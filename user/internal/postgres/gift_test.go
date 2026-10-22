@@ -48,16 +48,16 @@ func TestGiftRepository(t *testing.T) {
 
 	ann, bob, cat := newUser(), newUser(), newUser()
 
-	first := send(ann, bob.ID(), "rose", "Привет", false)
-	second := send(ann, cat.ID(), "cake", "", true)
-	third := send(ann, bob.ID(), "star", "Ещё", false)
-	send(bob, ann.ID(), "bear", "", false)
+	first := send(ann, bob.ID(), "freenet_coin", "Привет", false)
+	second := send(ann, cat.ID(), "freenet_ring", "", true)
+	third := send(ann, bob.ID(), "freenet_crystal", "Ещё", false)
+	send(bob, ann.ID(), "freenet_heart", "", false)
 
 	got, err := gifts.Get(ctx, second.ID())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.RecipientID() != ann.ID() || got.SenderID() != cat.ID() || got.Kind() != "cake" || got.Caption() != "" || !got.Anonymous() {
+	if got.RecipientID() != ann.ID() || got.SenderID() != cat.ID() || got.Kind() != "freenet_ring" || got.Caption() != "" || !got.Anonymous() {
 		t.Fatalf("Get = %+v", got)
 	}
 
@@ -103,14 +103,14 @@ func TestGiftRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	orphan, err := ghost.GiftFrom(bob.ID(), user.Ties{}, "rose", "", false)
+	orphan, err := ghost.GiftFrom(bob.ID(), user.Ties{}, "freenet_coin", "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err = gifts.Save(ctx, orphan); !errors.Is(err, user.ErrNotFound) {
 		t.Fatalf("Save to nobody: %v", err)
 	}
-	if orphan, err = ann.GiftFrom(ghost.ID(), user.Ties{}, "rose", "", false); err != nil {
+	if orphan, err = ann.GiftFrom(ghost.ID(), user.Ties{}, "freenet_coin", "", false); err != nil {
 		t.Fatal(err)
 	}
 	if err = gifts.Save(ctx, orphan); !errors.Is(err, user.ErrNotFound) {
@@ -149,7 +149,7 @@ func TestGiftRepository_Prices(t *testing.T) {
 	defer cancel()
 
 	for _, price := range []user.GiftPrice{9, 0} {
-		if err := gifts.SetPrice(ctx, "tulip", price); err != nil {
+		if err := gifts.SetPrice(ctx, "freenet_cup", price); err != nil {
 			t.Fatal(err)
 		}
 
@@ -157,7 +157,7 @@ func TestGiftRepository_Prices(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got, ok := prices["tulip"]; !ok || got != price {
+		if got, ok := prices["freenet_cup"]; !ok || got != price {
 			t.Fatalf("the price set to %d reads %d, %t", price, got, ok)
 		}
 	}

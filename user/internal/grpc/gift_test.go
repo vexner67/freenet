@@ -27,6 +27,11 @@ func TestGifts(t *testing.T) {
 	}
 	kind := catalog.GetCollections()[0].GetGifts()[0]
 
+	// Every gift costs votes; the administrators make this one free.
+	if _, err = s.client.SetGiftPrice(s.signIn(t, adminEmail), &userv1.SetGiftPriceRequest{Gift: kind, Price: 0}); err != nil {
+		t.Fatalf("SetGiftPrice: %v", err)
+	}
+
 	sent, err := s.client.SendGift(bob, &userv1.SendGiftRequest{UserId: annID, Gift: kind, Caption: "  С праздником!  "})
 	if err != nil {
 		t.Fatalf("SendGift: %v", err)
@@ -131,23 +136,23 @@ func TestGifts_Errors(t *testing.T) {
 			return err
 		}, codes.InvalidArgument},
 		"a long caption": {func() error {
-			_, err := s.client.SendGift(ann, &userv1.SendGiftRequest{UserId: annID, Gift: "rose", Caption: strings.Repeat("я", 251)})
+			_, err := s.client.SendGift(ann, &userv1.SendGiftRequest{UserId: annID, Gift: "freenet_coin", Caption: strings.Repeat("я", 251)})
 			return err
 		}, codes.InvalidArgument},
 		"not an id": {func() error {
-			_, err := s.client.SendGift(ann, &userv1.SendGiftRequest{UserId: "ann", Gift: "rose"})
+			_, err := s.client.SendGift(ann, &userv1.SendGiftRequest{UserId: "ann", Gift: "freenet_coin"})
 			return err
 		}, codes.InvalidArgument},
 		"to nobody": {func() error {
-			_, err := s.client.SendGift(ann, &userv1.SendGiftRequest{UserId: uuid.NewString(), Gift: "rose"})
+			_, err := s.client.SendGift(ann, &userv1.SendGiftRequest{UserId: uuid.NewString(), Gift: "freenet_coin"})
 			return err
 		}, codes.NotFound},
 		"across a blacklist": {func() error {
-			_, err := s.client.SendGift(bob, &userv1.SendGiftRequest{UserId: annID, Gift: "rose"})
+			_, err := s.client.SendGift(bob, &userv1.SendGiftRequest{UserId: annID, Gift: "freenet_coin"})
 			return err
 		}, codes.PermissionDenied},
 		"without a token": {func() error {
-			_, err := s.client.SendGift(context.Background(), &userv1.SendGiftRequest{UserId: annID, Gift: "rose"})
+			_, err := s.client.SendGift(context.Background(), &userv1.SendGiftRequest{UserId: annID, Gift: "freenet_coin"})
 			return err
 		}, codes.Unauthenticated},
 		"deleting without a token": {func() error {

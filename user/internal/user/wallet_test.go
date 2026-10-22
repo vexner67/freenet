@@ -178,15 +178,9 @@ func TestAdmins(t *testing.T) {
 func TestGiftPrices(t *testing.T) {
 	t.Parallel()
 
-	free, paid := 0, 0
 	for _, c := range user.GiftCatalog() {
-		if c.Price < 0 {
+		if c.Price <= 0 {
 			t.Fatalf("%s costs %d", c.ID, c.Price)
-		}
-		if c.Price == 0 {
-			free++
-		} else {
-			paid++
 		}
 		for _, g := range c.Gifts {
 			if g.DefaultPrice() < c.Price {
@@ -194,10 +188,7 @@ func TestGiftPrices(t *testing.T) {
 			}
 		}
 	}
-	if free == 0 || paid == 0 {
-		t.Fatalf("%d free collections and %d paid", free, paid)
-	}
-	if user.GiftKind("cake").DefaultPrice() != 10 || user.GiftKind("freenet_ring").DefaultPrice() != 70 || user.GiftKind("freenet_crown").DefaultPrice() != 300 {
+	if user.GiftKind("prime_star").DefaultPrice() != 50 || user.GiftKind("freenet_ring").DefaultPrice() != 70 || user.GiftKind("freenet_crown").DefaultPrice() != 300 {
 		t.Fatal("the gifts are not priced as the economy says")
 	}
 	if user.GiftKind("nothing").DefaultPrice() != 0 {
@@ -223,17 +214,17 @@ func TestNewGiftPrice(t *testing.T) {
 func TestGiftPrices_Of(t *testing.T) {
 	t.Parallel()
 
-	prices := user.GiftPrices{"cake": 7, "rose": 2}
-	if got := prices.Of("cake"); got != 7 {
+	prices := user.GiftPrices{"freenet_coin": 7, "freenet_crown": 0}
+	if got := prices.Of("freenet_coin"); got != 7 {
 		t.Errorf("a priced gift costs %d", got)
 	}
-	if got := prices.Of("rose"); got != 2 {
-		t.Errorf("a free gift priced by the administrators costs %d", got)
+	if got := prices.Of("freenet_crown"); got != 0 {
+		t.Errorf("a gift made free by the administrators costs %d", got)
 	}
-	if got, want := prices.Of("present"), user.GiftKind("present").DefaultPrice(); got != want {
+	if got, want := prices.Of("freenet_ring"), user.GiftKind("freenet_ring").DefaultPrice(); got != want {
 		t.Errorf("an unpriced gift costs %d, its collection %d", got, want)
 	}
-	if got, want := user.GiftPrices(nil).Of("candy"), user.GiftKind("candy").DefaultPrice(); got != want {
+	if got, want := user.GiftPrices(nil).Of("prime_star"), user.GiftKind("prime_star").DefaultPrice(); got != want {
 		t.Errorf("with no prices a gift costs %d, its collection %d", got, want)
 	}
 }

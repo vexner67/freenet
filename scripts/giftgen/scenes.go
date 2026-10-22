@@ -1,8 +1,8 @@
-// Command giftgen renders the site's own gifts, the "Freenet" collection
-// of the catalogue (user/internal/user/gift.go): each gift is a scene of
-// signed distance functions — gold, gems and enamel lit by a photo studio
-// — on a rounded backdrop with a pattern of the logo, as collectible
-// gifts are shown. It needs nothing but the standard library:
+// Command giftgen renders the site's own gifts, the "Freenet" and "Freenet
+// Prime" collections of the catalogue (user/internal/user/gift.go): each
+// gift is a scene of signed distance functions — gold, gems and enamel lit
+// by a photo studio — on a rounded backdrop with a pattern of the logo, as
+// collectible gifts are shown. It needs nothing but the standard library:
 //
 //	cd scripts/giftgen && GOWORK=off go run . -out ../../web/static/gifts
 package main
@@ -272,6 +272,12 @@ var scenes = map[string]func() *Scene{
 	"crown":   crown,
 	"heart":   heart,
 	"cup":     cup,
+
+	"prime_star":    primeStar,
+	"prime_diamond": primeDiamond,
+	"prime_crown":   primeCrown,
+	"prime_rocket":  primeRocket,
+	"prime_trophy":  primeTrophy,
 }
 
 func main() {

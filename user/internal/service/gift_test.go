@@ -87,7 +87,7 @@ func (w giftWorld) person(t *testing.T, name string) uuid.UUID {
 
 	// Enough votes for any gift: what gifts cost is tested with the
 	// wallets.
-	if _, err = w.users.Credit(context.Background(), id, 100, 0, user.VoteEntry{}); err != nil {
+	if _, err = w.users.Credit(context.Background(), id, 1000, 0, user.VoteEntry{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -101,15 +101,15 @@ func TestGiftService(t *testing.T) {
 	w := newGiftWorld()
 	ann, bob, cat := w.person(t, "ann"), w.person(t, "bob"), w.person(t, "cat")
 
-	signed, err := w.gifts.Send(ctx, bob, ann, service.GiftDraft{Kind: "rose", Caption: "Привет"})
+	signed, err := w.gifts.Send(ctx, bob, ann, service.GiftDraft{Kind: "freenet_coin", Caption: "Привет"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if signed.Sender == nil || signed.Sender.ID != bob || signed.Caption != "Привет" || signed.Kind != "rose" {
+	if signed.Sender == nil || signed.Sender.ID != bob || signed.Caption != "Привет" || signed.Kind != "freenet_coin" {
 		t.Fatalf("sent = %+v", signed)
 	}
 
-	secret, err := w.gifts.Send(ctx, cat, ann, service.GiftDraft{Kind: "cake", Caption: "Тайно", Anonymous: true})
+	secret, err := w.gifts.Send(ctx, cat, ann, service.GiftDraft{Kind: "freenet_ring", Caption: "Тайно", Anonymous: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestGiftService(t *testing.T) {
 	}
 
 	// To oneself: nobody hears.
-	own, err := w.gifts.Send(ctx, ann, ann, service.GiftDraft{Kind: "star"})
+	own, err := w.gifts.Send(ctx, ann, ann, service.GiftDraft{Kind: "freenet_crystal"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestGiftService(t *testing.T) {
 		if seen := got.Sender != nil && got.Caption == "Тайно" && got.Anonymous; seen != tt.secretSeen {
 			t.Fatalf("%s: the anonymous gift = %+v", name, got)
 		}
-		if !tt.secretSeen && (got.Sender != nil || got.Caption != "" || got.Kind != "cake") {
+		if !tt.secretSeen && (got.Sender != nil || got.Caption != "" || got.Kind != "freenet_ring") {
 			t.Fatalf("%s: the anonymous gift tells %+v", name, got)
 		}
 		if page.Gifts[2].Sender == nil || page.Gifts[2].Sender.ID != bob {
@@ -197,7 +197,7 @@ func TestGiftService(t *testing.T) {
 	}
 
 	// Erased: the same, and the gifts sent to an erased page go with it.
-	if _, err = w.gifts.Send(ctx, ann, bob, service.GiftDraft{Kind: "bear"}); err != nil {
+	if _, err = w.gifts.Send(ctx, ann, bob, service.GiftDraft{Kind: "freenet_heart"}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = w.users.DeleteDue(ctx, time.Now().Add(2*time.Hour), 10); err != nil {
@@ -217,7 +217,7 @@ func TestGiftService_Refusals(t *testing.T) {
 	ctx := context.Background()
 	w := newGiftWorld()
 	ann, bob, cat := w.person(t, "ann"), w.person(t, "bob"), w.person(t, "cat")
-	draft := service.GiftDraft{Kind: "rose"}
+	draft := service.GiftDraft{Kind: "freenet_coin"}
 
 	if _, err := w.gifts.Send(ctx, bob, uuid.New(), draft); !errors.Is(err, user.ErrNotFound) {
 		t.Fatalf("to nobody: %v", err)
@@ -309,10 +309,10 @@ func TestGiftService_SetPrice(t *testing.T) {
 	}
 	admin, ann := newUser("admin@example.com"), newUser("ann@example.com")
 
-	if err := svc.SetPrice(ctx, ann.ID(), "rose", 3); !errors.Is(err, user.ErrNotAdmin) {
+	if err := svc.SetPrice(ctx, ann.ID(), "freenet_coin", 3); !errors.Is(err, user.ErrNotAdmin) {
 		t.Fatalf("not an administrator prices a gift: %v", err)
 	}
-	if err := svc.SetPrice(ctx, admin.ID(), "rose", 3); err != nil {
+	if err := svc.SetPrice(ctx, admin.ID(), "freenet_coin", 3); err != nil {
 		t.Fatal(err)
 	}
 
@@ -323,7 +323,7 @@ func TestGiftService_SetPrice(t *testing.T) {
 	for _, shelf := range catalog {
 		for _, g := range shelf.Gifts {
 			want := g.Kind.DefaultPrice()
-			if g.Kind == "rose" {
+			if g.Kind == "freenet_coin" {
 				want = 3
 			}
 			if g.Price != want {
@@ -332,17 +332,17 @@ func TestGiftService_SetPrice(t *testing.T) {
 		}
 	}
 
-	// The rose is no longer free: one without votes cannot send it.
-	if _, err = svc.Send(ctx, ann.ID(), ann.ID(), service.GiftDraft{Kind: "rose"}); !errors.Is(err, user.ErrNotEnoughVotes) {
-		t.Fatalf("a priced rose is sent for nothing: %v", err)
+	// One without votes cannot send the coin at its new price.
+	if _, err = svc.Send(ctx, ann.ID(), ann.ID(), service.GiftDraft{Kind: "freenet_coin"}); !errors.Is(err, user.ErrNotEnoughVotes) {
+		t.Fatalf("a priced coin is sent for nothing: %v", err)
 	}
 	if _, err = users.Credit(ctx, ann.ID(), 5, 0, user.VoteEntry{}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = svc.Send(ctx, ann.ID(), ann.ID(), service.GiftDraft{Kind: "rose"}); err != nil {
+	if _, err = svc.Send(ctx, ann.ID(), ann.ID(), service.GiftDraft{Kind: "freenet_coin"}); err != nil {
 		t.Fatal(err)
 	}
 	if left, err := users.Spend(ctx, ann.ID(), 0, user.VoteEntry{}); err != nil || left != 2 {
-		t.Fatalf("after a rose of 3 out of 5: %d, %v", left, err)
+		t.Fatalf("after a coin of 3 out of 5: %d, %v", left, err)
 	}
 }

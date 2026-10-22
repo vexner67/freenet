@@ -303,7 +303,7 @@ func TestWalletRepository_Statement(t *testing.T) {
 	if _, err := wallets.Credit(ctx, ann.ID(), 20, 0, user.Entry(user.VoteVoucher, uuid.Nil, "")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := wallets.Spend(ctx, ann.ID(), 3, user.Entry(user.VoteGift, bob.ID(), "rose")); err != nil {
+	if _, err := wallets.Spend(ctx, ann.ID(), 3, user.Entry(user.VoteGift, bob.ID(), "freenet_coin")); err != nil {
 		t.Fatal(err)
 	}
 	// A refused spend writes nothing.
@@ -330,7 +330,7 @@ func TestWalletRepository_Statement(t *testing.T) {
 		note            string
 	}{
 		{user.VoteTransfer, -7, 10, bob.ID(), "за пиццу"},
-		{user.VoteGift, -3, 17, bob.ID(), "rose"},
+		{user.VoteGift, -3, 17, bob.ID(), "freenet_coin"},
 		{user.VoteVoucher, 20, 20, uuid.Nil, ""},
 	}
 	for i, w := range want {

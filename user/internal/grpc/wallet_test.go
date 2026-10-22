@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
+	"github.com/vexner67/freenet/user/internal/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -201,8 +202,8 @@ func TestGiftPrices(t *testing.T) {
 			paid = c
 		}
 	}
-	if paid == nil || catalog.GetCollections()[0].GetPrice() != 0 {
-		t.Fatalf("the catalogue has a free collection first and a paid one: %v", catalog)
+	if paid == nil {
+		t.Fatalf("the catalogue has no paid collection: %v", catalog)
 	}
 
 	_, err = s.client.SendGift(ann, &userv1.SendGiftRequest{UserId: bobID, Gift: paid.GetGifts()[0]})
@@ -233,15 +234,15 @@ func TestSetGiftPrice(t *testing.T) {
 	admin := s.signIn(t, adminEmail)
 	ann, _ := s.member(t, "ann")
 
-	if _, err := s.client.SetGiftPrice(ann, &userv1.SetGiftPriceRequest{Gift: "rose", Price: 2}); status.Code(err) != codes.PermissionDenied {
+	if _, err := s.client.SetGiftPrice(ann, &userv1.SetGiftPriceRequest{Gift: "freenet_coin", Price: 2}); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("not an administrator prices a gift: %v", err)
 	}
-	for _, req := range []*userv1.SetGiftPriceRequest{{Gift: "nothing", Price: 2}, {Gift: "rose", Price: -1}, {Gift: "rose", Price: 1_000_001}} {
+	for _, req := range []*userv1.SetGiftPriceRequest{{Gift: "nothing", Price: 2}, {Gift: "freenet_coin", Price: -1}, {Gift: "freenet_coin", Price: 1_000_001}} {
 		if _, err := s.client.SetGiftPrice(admin, req); status.Code(err) != codes.InvalidArgument {
 			t.Fatalf("SetGiftPrice(%v): %v", req, err)
 		}
 	}
-	if _, err := s.client.SetGiftPrice(admin, &userv1.SetGiftPriceRequest{Gift: "rose", Price: 2}); err != nil {
+	if _, err := s.client.SetGiftPrice(admin, &userv1.SetGiftPriceRequest{Gift: "freenet_coin", Price: 2}); err != nil {
 		t.Fatalf("SetGiftPrice: %v", err)
 	}
 
@@ -249,17 +250,17 @@ func TestSetGiftPrice(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetGiftCatalog: %v", err)
 	}
-	flowers := catalog.GetCollections()[0]
-	if flowers.GetPrice() != 0 || len(flowers.GetPrices()) != len(flowers.GetGifts()) {
-		t.Fatalf("the flowers: %v", flowers)
+	freenet := catalog.GetCollections()[0]
+	if freenet.GetPrice() != 70 || len(freenet.GetPrices()) != len(freenet.GetGifts()) {
+		t.Fatalf("the freenet gifts: %v", freenet)
 	}
-	for i, gift := range flowers.GetGifts() {
-		want := int64(0)
-		if gift == "rose" {
+	for i, gift := range freenet.GetGifts() {
+		want := user.GiftKind(gift).DefaultPrice().Int64()
+		if gift == "freenet_coin" {
 			want = 2
 		}
-		if flowers.GetPrices()[i] != want {
-			t.Errorf("%s costs %d, want %d", gift, flowers.GetPrices()[i], want)
+		if freenet.GetPrices()[i] != want {
+			t.Errorf("%s costs %d, want %d", gift, freenet.GetPrices()[i], want)
 		}
 	}
 }
