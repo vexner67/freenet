@@ -212,6 +212,11 @@ export function pagePath(author) {
   return author.club ? '/club/' + encodeURIComponent(clubRef(author)) : '/' + author.nickname;
 }
 
+// savedPath is the page of «Избранное»: the dialog with oneself.
+export function savedPath(me) {
+  return `/im/${encodeURIComponent(me.nickname)}`;
+}
+
 // homePath is where the site opens for me: my page, or the news if
 // "Главная страница" of the settings says so.
 export function homePath(me) {
@@ -446,15 +451,16 @@ export function applyInterface(me) {
   menu?.replaceChildren(...[
     el('a', { className: 'menu-edit', href: '/edit', textContent: tr('ред.'), title: tr('Редактировать страницу') }),
     el('a', { href: profilePath(me), textContent: tr('Страница') }),
-    menuLink(me, 'photos', '/albums', tr('Фотографии')),
     menuLink(me, 'messages', '/im', tr('Сообщения'), 'messages-count'),
+    // «Избранное» is the dialog with oneself, sealed as any: what the
+    // user keeps — photos, documents, posts, words — is kept there.
+    me.nickname && el('a', { href: savedPath(me), textContent: tr('Избранное') }),
     menuLink(me, 'groups', '/groups', tr('Группы')),
     menuLink(me, 'feed', '/feed', tr('Новости')),
     menuLink(me, 'notifications', '/notifications', tr('Уведомления'), 'notifications-count'),
     el('a', { href: '/settings', textContent: tr('Настройки') }),
     el('div', { className: 'menu-divider' }),
     el('a', { href: '/stickers', textContent: tr('Стикеры') }),
-    el('a', { href: '/docs', textContent: tr('Документы') }),
     el('a', { href: '/votes', textContent: tr('Голоса') }),
     el('a', { href: '/prime', textContent: 'Freenet Prime' }),
     el('a', { href: '/casino', textContent: tr('Азартные игры') }),

@@ -9,7 +9,7 @@
 :root {
   /* Backgrounds */
   --back-fff: #fff;
-  --back-f6d365: #f6d365;
+  --back-c7b2ee: #c7b2ee;
   --back-fafafa: #fafafa;
   --back-f9f9f9: #f9f9f9;
   --back-f7f7f7: #f7f7f7;
@@ -46,7 +46,7 @@
   --back-3e3e3e: #3e3e3e;
   --back-d23a32: #d23a32;
   /* Text */
-  --text-a87a12: #a87a12;
+  --text-6b3fb8: #6b3fb8;
   --text-000: #000;
   --text-58462a: #58462a;
   --text-686868: #686868;
@@ -804,13 +804,13 @@ a.like:hover svg { opacity: .7; }
 /* Photo */
 
 .avatar { object-fit: cover; }
-/* Freenet Prime: a golden frame of the photo and a golden name on the
+/* Freenet Prime: an amethyst frame of the photo and an amethyst name on the
    page of the person. */
 .prime-page .avatar {
-  border: 3px solid var(--back-f6d365);
-  outline: 1px solid var(--text-a87a12);
+  border: 3px solid var(--back-c7b2ee);
+  outline: 1px solid var(--text-6b3fb8);
 }
-.prime-name { color: var(--text-a87a12); font-weight: bold; }
+.prime-name { color: var(--text-6b3fb8); font-weight: bold; }
 
 /* The controls on the photo for whom it is theirs to change, as openvk's
    .avatar_controls: they show when the photo is pointed at — "Загрузить
@@ -956,11 +956,11 @@ a.like:hover svg { opacity: .7; }
 .modal-body input[type="text"], .modal-body input[type="search"] { padding: 3px 4px; border: 1px solid var(--line-c0cad5); font: 11px tahoma, verdana, arial, sans-serif; }
 .chat-people { max-height: 200px; overflow-y: auto; border: 1px solid var(--line-dae1e8); }
 .chat-people.tall { max-height: 300px; }
-.chat-people .hint { margin: 10px; text-align: center; }
+.chat-people > .hint { margin: 10px; text-align: center; }
 .chat-person { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-bottom: 1px solid var(--line-eef1f4); cursor: default; }
 label.chat-person { cursor: pointer; }
 .chat-person:last-child { border-bottom: 0; }
-.chat-person img { width: 30px; height: 30px; object-fit: cover; border-radius: 3px; }
+.chat-person > img { width: 30px; height: 30px; object-fit: cover; border-radius: 3px; }
 .chat-kick { display: block; font-size: 10px; cursor: pointer; }
 .messenger-blocked { padding: 20px; background: var(--back-f9f9f9); border-top: 1px solid var(--line-d6d6d6); font-weight: bold; text-align: center; }
 
@@ -1630,7 +1630,7 @@ a.poll-result-name { cursor: pointer; }
 .gift-cat-row:not(:last-child) { border-bottom: 1px solid var(--line-ddd); }
 .gift-cat-info { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; min-height: 23px; margin: 0 0 4px; }
 .gift-cat-header { margin: 0; padding: 4px 0 3px; color: var(--text-45688e); font-size: 11px; }
-.gift-cat-prime { margin-right: auto; padding: 4px 0 3px; color: var(--text-a87a12); font-weight: bold; }
+.gift-cat-prime { margin-right: auto; padding: 4px 0 3px; color: var(--text-6b3fb8); font-weight: bold; }
 .gift-grid { display: flex; flex-wrap: wrap; width: calc(100% + 16px); margin: 0 -8px; }
 .gift-sel { position: relative; box-sizing: border-box; width: 122px; padding: 8px 10px; border-radius: 3px; text-align: center; cursor: pointer; }
 .gift-sel:hover { text-decoration: none; }
@@ -1726,7 +1726,7 @@ a.poll-result-name { cursor: pointer; }
 /* "Freenet Prime" (/prime): the badge with the term, the perks and the
    three periods side by side. */
 .prime-hero { display: flex; gap: 12px; align-items: center; margin: 0 0 8px; }
-.prime-hero-title { color: var(--text-a87a12); font-size: 16px; }
+.prime-hero-title { color: var(--text-6b3fb8); font-size: 16px; }
 .prime-state { margin: 4px 0 0; }
 .prime-perks { margin: 0 0 8px; padding-left: 20px; }
 .prime-perks li { margin: 0 0 4px; }
@@ -1734,11 +1734,11 @@ a.poll-result-name { cursor: pointer; }
 .prime-plan {
   flex: 1;
   padding: 10px;
-  border: 1px solid var(--back-f6d365);
+  border: 1px solid var(--back-c7b2ee);
   background: var(--back-fff);
   text-align: center;
 }
-.prime-plan-name { display: block; margin-bottom: 6px; color: var(--text-a87a12); font-size: 13px; }
+.prime-plan-name { display: block; margin-bottom: 6px; color: var(--text-6b3fb8); font-size: 13px; }
 .prime-plan-price { font-size: 16px; }
 .prime-plan-saving { margin: 2px 0 8px; color: var(--text-808080); }
 
