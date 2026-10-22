@@ -518,6 +518,7 @@ func toPublicProfile(p *userv1.PublicProfile) model.PublicProfile {
 		Verified:        p.GetVerified(),
 		Ban:             toBan(p.GetBan()),
 		Alert:           p.GetAlert(),
+		Prime:           p.GetPrime(),
 		LastSeen:        fromTimestamp(p.GetLastSeenAt()),
 		Online:          p.GetOnline(),
 		Backdrop:        model.Backdrop{Left: p.GetBackdropLeft(), Right: p.GetBackdropRight()},

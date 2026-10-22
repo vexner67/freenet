@@ -201,7 +201,16 @@ func (a *api) viewStory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.stories.View(r.Context(), token, r.PathValue("id")); err != nil {
+	// "Невидимка" of Freenet Prime watches unseen: the author is not told.
+	me, err := a.users.GetMe(r.Context(), token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	hidden := me.PrimeInvisible && me.HasPrime(time.Now())
+
+	if err = a.stories.View(r.Context(), token, r.PathValue("id"), hidden); err != nil {
 		a.writeError(w, r, err)
 		return
 	}

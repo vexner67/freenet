@@ -15,6 +15,8 @@ type giftCollectionJSON struct {
 	Price int64 `json:"price"`
 	// Prices are what each of gifts costs now, in their order.
 	Prices []int64 `json:"prices"`
+	// Prime: only those with Freenet Prime send its gifts.
+	Prime bool `json:"prime"`
 }
 
 type giftPriceRequest struct {

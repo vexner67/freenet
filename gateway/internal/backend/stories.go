@@ -126,8 +126,8 @@ func toStoryComment(p *postv1.StoryComment) model.StoryComment {
 	}
 }
 
-func (s *Stories) View(ctx context.Context, accessToken, id string) error {
-	if _, err := s.api.ViewStory(withToken(ctx, accessToken), &postv1.ViewStoryRequest{Id: id}); err != nil {
+func (s *Stories) View(ctx context.Context, accessToken, id string, hidden bool) error {
+	if _, err := s.api.ViewStory(withToken(ctx, accessToken), &postv1.ViewStoryRequest{Id: id, Hidden: hidden}); err != nil {
 		return errs.Wrap("s.api.ViewStory", fromStatus(err))
 	}
 

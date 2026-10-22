@@ -192,6 +192,8 @@ func toUser(u *userv1.User) model.User {
 		Verified:         u.GetVerified(),
 		Ban:              toBan(u.GetBan()),
 		Alert:            u.GetAlert(),
+		PrimeUntil:       fromTimestamp(u.GetPrimeUntil()),
+		PrimeInvisible:   u.GetPrimeInvisible(),
 		Interface: model.Interface{
 			AvatarStyle: u.GetInterface().GetAvatarStyle(),
 			MainPage:    u.GetInterface().GetMainPage(),

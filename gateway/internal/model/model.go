@@ -201,6 +201,15 @@ type User struct {
 	// Alert is the label the administrators put on the page (an orange
 	// one), "" for none.
 	Alert string
+	// PrimeUntil is when Freenet Prime of the user ends, zero without it;
+	// PrimeInvisible: they hide when they are online.
+	PrimeUntil     time.Time
+	PrimeInvisible bool
+}
+
+// HasPrime tells whether u has Freenet Prime at now.
+func (u User) HasPrime(now time.Time) bool {
+	return now.Before(u.PrimeUntil)
 }
 
 // Interface is how the site looks to its owner ("Интерфейс" of the
@@ -252,6 +261,8 @@ type PublicProfile struct {
 	// Alert is the label the administrators put on the page: openvk's
 	// orange "user-alert" above the name, "" for none.
 	Alert string
+	// Prime: the page has Freenet Prime (a badge by the name).
+	Prime bool
 	// LastSeen is when the user last visited ("был в сети"), zero if never
 	// or hidden; Online: just now ("Онлайн").
 	LastSeen time.Time
@@ -282,6 +293,8 @@ type Author struct {
 	Online bool
 	// Verified: the page is confirmed by the administrators (a checkmark).
 	Verified bool
+	// Prime: the person has Freenet Prime (a badge by the name).
+	Prime bool
 }
 
 type Post struct {
@@ -1211,6 +1224,8 @@ type GiftCollection struct {
 	// administrators price a gift apart from its collection. Empty from a
 	// user service that does not know them.
 	Prices []int64
+	// Prime: only those with Freenet Prime send its gifts.
+	Prime bool
 }
 
 // GiftDraft is a gift to send: its name in the catalogue, the words with
@@ -1419,4 +1434,18 @@ type StoryCommentPage struct {
 	Comments   []StoryComment
 	NextCursor string
 	Total      int
+}
+
+// PrimePrices are what each period of Freenet Prime costs, in votes.
+type PrimePrices struct {
+	Month   int64
+	Quarter int64
+	Year    int64
+}
+
+// PrimePurchase is what a purchase of Freenet Prime did: until when the
+// recipient has it and the votes the buyer has left.
+type PrimePurchase struct {
+	Until   time.Time
+	Balance int64
 }

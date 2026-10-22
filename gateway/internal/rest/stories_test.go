@@ -20,6 +20,7 @@ type fakeStories struct {
 	token, told, text, viewed, deleted, of, cursor string
 	liked, unliked, commented, uncommented         string
 	hidden, ignored                                []string
+	unseen                                         bool
 	err                                            error
 }
 
@@ -49,8 +50,8 @@ func (f *fakeStories) User(_ context.Context, token, userID string, hidden []str
 	return slices.DeleteFunc(f.stories(), func(s model.Story) bool { return s.AuthorID != userID }), f.err
 }
 
-func (f *fakeStories) View(_ context.Context, token, id string) error {
-	f.token, f.viewed = token, id
+func (f *fakeStories) View(_ context.Context, token, id string, hidden bool) error {
+	f.token, f.viewed, f.unseen = token, id, hidden
 	if id != "s2" {
 		return failure.New(failure.NotFound, "story not found")
 	}
@@ -200,9 +201,15 @@ func TestStoryViews(t *testing.T) {
 
 	h := newHarness(rest.Config{})
 
-	if w := h.do("PUT", "/api/v1/stories/s2/view", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.stories.viewed != "s2" {
+	if w := h.do("PUT", "/api/v1/stories/s2/view", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.stories.viewed != "s2" || h.stories.unseen {
 		t.Fatalf("view: %d", w.Code)
 	}
+	// "Невидимка" of Freenet Prime watches unseen.
+	h.users.prime = model.User{PrimeUntil: time.Now().Add(time.Hour), PrimeInvisible: true}
+	if w := h.do("PUT", "/api/v1/stories/s2/view", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || !h.stories.unseen {
+		t.Fatalf("an unseen view: %d, %v", w.Code, h.stories.unseen)
+	}
+	h.users.prime = model.User{}
 	if w := h.do("PUT", "/api/v1/stories/s0/view", "", "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
 		t.Fatalf("view of none: %d", w.Code)
 	}

@@ -1109,6 +1109,7 @@ func (a *api) getMessageKey(w http.ResponseWriter, r *http.Request) {
 func peerAuthor(p model.PublicProfile) model.Author {
 	a := authorOf(p.ID, p.AvatarID, p.Profile)
 	a.Verified = p.Verified
+	a.Prime = p.Prime
 
 	return a
 }

@@ -31,7 +31,7 @@ func (g *Gifts) Catalog(ctx context.Context) ([]model.GiftCollection, error) {
 
 	catalog := make([]model.GiftCollection, 0, len(resp.GetCollections()))
 	for _, c := range resp.GetCollections() {
-		catalog = append(catalog, model.GiftCollection{ID: c.GetId(), Gifts: c.GetGifts(), Price: c.GetPrice(), Prices: c.GetPrices()})
+		catalog = append(catalog, model.GiftCollection{ID: c.GetId(), Gifts: c.GetGifts(), Price: c.GetPrice(), Prices: c.GetPrices(), Prime: c.GetPrime()})
 	}
 
 	return catalog, nil

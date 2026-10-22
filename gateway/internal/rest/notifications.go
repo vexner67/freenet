@@ -106,6 +106,10 @@ const kindGift = "gift"
 // the notification says only who sent them.
 const kindVotes = "votes"
 
+// kindPrime names a purchase of Freenet Prime given as a present by
+// PostID, known to nobody else: the notification says only who gave it.
+const kindPrime = "prime"
+
 // kindStoryLike and kindStoryComment name a story by PostID (and a comment
 // under it by CommentID): the notification says only who liked or
 // commented, the story is gone in a day and takes them along.
@@ -122,7 +126,7 @@ func namesStory(kind string) bool {
 // namesPost tells whether PostID of a notification of kind is a post, and
 // namesComment whether its CommentID is a comment.
 func namesPost(kind string) bool {
-	return kind != kindSuggestedPost && kind != kindGift && kind != kindVotes &&
+	return kind != kindSuggestedPost && kind != kindGift && kind != kindVotes && kind != kindPrime &&
 		!namesTopic(kind) && !namesPhoto(kind) && !namesStory(kind)
 }
 

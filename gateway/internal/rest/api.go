@@ -157,7 +157,7 @@ type Stories interface {
 	Feed(ctx context.Context, accessToken string, hidden, ignored []string) ([]model.Story, error)
 	User(ctx context.Context, accessToken, userID string, hidden []string) ([]model.Story, error)
 	Get(ctx context.Context, accessToken, id string) (model.Story, error)
-	View(ctx context.Context, accessToken, id string) error
+	View(ctx context.Context, accessToken, id string, hidden bool) error
 	Like(ctx context.Context, accessToken, id string) error
 	Unlike(ctx context.Context, accessToken, id string) error
 	Comment(ctx context.Context, accessToken, id, text string) (model.StoryComment, error)
@@ -511,6 +511,7 @@ type Backends struct {
 	Votes         Votes
 	Ads           Ads
 	Decor         Decor
+	Prime         Prime
 	Casino        Casino
 	Bets          Bets
 	Documents     Documents
@@ -543,6 +544,7 @@ type api struct {
 	votes             Votes
 	ads               Ads
 	decors            Decor
+	primes            Prime
 	casinos           Casino
 	bets              Bets
 	documents         Documents
@@ -828,6 +830,11 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/vote-rate", a.setVoteRate)
 	mux.HandleFunc("GET /api/v1/decor", a.decor)
 	mux.HandleFunc("PUT /api/v1/decor", a.setDecor)
+	mux.HandleFunc("GET /api/v1/prime", a.primePrices)
+	mux.HandleFunc("PUT /api/v1/prime/prices", a.setPrimePrices)
+	mux.HandleFunc("POST /api/v1/me/prime", a.buyPrime)
+	mux.HandleFunc("PUT /api/v1/me/prime/invisible", a.setPrimeInvisible)
+	mux.HandleFunc("POST /api/v1/users/{nickname}/prime", a.givePrime)
 	mux.HandleFunc("GET /api/v1/casino", a.casino)
 	mux.HandleFunc("PUT /api/v1/casino", a.setCasino)
 	mux.HandleFunc("GET /api/v1/casino/settings", a.casinoSettings)
