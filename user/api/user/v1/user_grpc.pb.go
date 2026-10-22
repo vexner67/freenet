@@ -132,6 +132,11 @@ const (
 	UserService_DeactivateAccount_FullMethodName  = "/user.v1.UserService/DeactivateAccount"
 	UserService_ReactivateAccount_FullMethodName  = "/user.v1.UserService/ReactivateAccount"
 	UserService_GetAccountState_FullMethodName    = "/user.v1.UserService/GetAccountState"
+	UserService_GetMine_FullMethodName            = "/user.v1.UserService/GetMine"
+	UserService_DigOre_FullMethodName             = "/user.v1.UserService/DigOre"
+	UserService_SellOre_FullMethodName            = "/user.v1.UserService/SellOre"
+	UserService_GetMineSettings_FullMethodName    = "/user.v1.UserService/GetMineSettings"
+	UserService_SetMine_FullMethodName            = "/user.v1.UserService/SetMine"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -423,6 +428,22 @@ type UserServiceClient interface {
 	// Internal (auth): whether the page is deleted, for the access tokens
 	// it issues; NotFound once its data is erased.
 	GetAccountState(ctx context.Context, in *GetAccountStateRequest, opts ...grpc.CallOption) (*GetAccountStateResponse, error)
+	// Require an access token: the mine of the site. A dig of an ore takes
+	// energy, which comes back with time, and gives ore and experience;
+	// higher ores open with experience (FailedPrecondition "this ore needs
+	// more experience", "not enough energy"; InvalidArgument "unknown ore").
+	// A dig may meet an event: a nugget, a chest of votes paid at once, a
+	// collapse or a drink of energy. SellOre sells all of an ore, or of every
+	// ore without one, for votes out of the treasury — for pages a week old
+	// with a filled profile (FailedPrecondition "ore is sold by pages a week
+	// old with a filled profile", "not enough ore to sell").
+	GetMine(ctx context.Context, in *GetMineRequest, opts ...grpc.CallOption) (*MineState, error)
+	DigOre(ctx context.Context, in *DigOreRequest, opts ...grpc.CallOption) (*DigOreResponse, error)
+	SellOre(ctx context.Context, in *SellOreRequest, opts ...grpc.CallOption) (*SellOreResponse, error)
+	// For the administrators (PermissionDenied for others): the ores, the
+	// energy and the events of the mine, and how it does.
+	GetMineSettings(ctx context.Context, in *GetMineSettingsRequest, opts ...grpc.CallOption) (*GetMineSettingsResponse, error)
+	SetMine(ctx context.Context, in *SetMineRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type userServiceClient struct {
@@ -1553,6 +1574,56 @@ func (c *userServiceClient) GetAccountState(ctx context.Context, in *GetAccountS
 	return out, nil
 }
 
+func (c *userServiceClient) GetMine(ctx context.Context, in *GetMineRequest, opts ...grpc.CallOption) (*MineState, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MineState)
+	err := c.cc.Invoke(ctx, UserService_GetMine_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) DigOre(ctx context.Context, in *DigOreRequest, opts ...grpc.CallOption) (*DigOreResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DigOreResponse)
+	err := c.cc.Invoke(ctx, UserService_DigOre_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SellOre(ctx context.Context, in *SellOreRequest, opts ...grpc.CallOption) (*SellOreResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SellOreResponse)
+	err := c.cc.Invoke(ctx, UserService_SellOre_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetMineSettings(ctx context.Context, in *GetMineSettingsRequest, opts ...grpc.CallOption) (*GetMineSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMineSettingsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetMineSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SetMine(ctx context.Context, in *SetMineRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetMine_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -1842,6 +1913,22 @@ type UserServiceServer interface {
 	// Internal (auth): whether the page is deleted, for the access tokens
 	// it issues; NotFound once its data is erased.
 	GetAccountState(context.Context, *GetAccountStateRequest) (*GetAccountStateResponse, error)
+	// Require an access token: the mine of the site. A dig of an ore takes
+	// energy, which comes back with time, and gives ore and experience;
+	// higher ores open with experience (FailedPrecondition "this ore needs
+	// more experience", "not enough energy"; InvalidArgument "unknown ore").
+	// A dig may meet an event: a nugget, a chest of votes paid at once, a
+	// collapse or a drink of energy. SellOre sells all of an ore, or of every
+	// ore without one, for votes out of the treasury — for pages a week old
+	// with a filled profile (FailedPrecondition "ore is sold by pages a week
+	// old with a filled profile", "not enough ore to sell").
+	GetMine(context.Context, *GetMineRequest) (*MineState, error)
+	DigOre(context.Context, *DigOreRequest) (*DigOreResponse, error)
+	SellOre(context.Context, *SellOreRequest) (*SellOreResponse, error)
+	// For the administrators (PermissionDenied for others): the ores, the
+	// energy and the events of the mine, and how it does.
+	GetMineSettings(context.Context, *GetMineSettingsRequest) (*GetMineSettingsResponse, error)
+	SetMine(context.Context, *SetMineRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -2187,6 +2274,21 @@ func (UnimplementedUserServiceServer) ReactivateAccount(context.Context, *Reacti
 }
 func (UnimplementedUserServiceServer) GetAccountState(context.Context, *GetAccountStateRequest) (*GetAccountStateResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAccountState not implemented")
+}
+func (UnimplementedUserServiceServer) GetMine(context.Context, *GetMineRequest) (*MineState, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMine not implemented")
+}
+func (UnimplementedUserServiceServer) DigOre(context.Context, *DigOreRequest) (*DigOreResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DigOre not implemented")
+}
+func (UnimplementedUserServiceServer) SellOre(context.Context, *SellOreRequest) (*SellOreResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SellOre not implemented")
+}
+func (UnimplementedUserServiceServer) GetMineSettings(context.Context, *GetMineSettingsRequest) (*GetMineSettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMineSettings not implemented")
+}
+func (UnimplementedUserServiceServer) SetMine(context.Context, *SetMineRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetMine not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -4225,6 +4327,96 @@ func _UserService_GetAccountState_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetMine_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMineRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetMine(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetMine_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetMine(ctx, req.(*GetMineRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_DigOre_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DigOreRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DigOre(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DigOre_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DigOre(ctx, req.(*DigOreRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SellOre_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SellOreRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SellOre(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SellOre_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SellOre(ctx, req.(*SellOreRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetMineSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMineSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetMineSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetMineSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetMineSettings(ctx, req.(*GetMineSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SetMine_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetMineRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetMine(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetMine_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetMine(ctx, req.(*SetMineRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -4679,6 +4871,26 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAccountState",
 			Handler:    _UserService_GetAccountState_Handler,
+		},
+		{
+			MethodName: "GetMine",
+			Handler:    _UserService_GetMine_Handler,
+		},
+		{
+			MethodName: "DigOre",
+			Handler:    _UserService_DigOre_Handler,
+		},
+		{
+			MethodName: "SellOre",
+			Handler:    _UserService_SellOre_Handler,
+		},
+		{
+			MethodName: "GetMineSettings",
+			Handler:    _UserService_GetMineSettings_Handler,
+		},
+		{
+			MethodName: "SetMine",
+			Handler:    _UserService_SetMine_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

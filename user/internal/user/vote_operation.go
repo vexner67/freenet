@@ -73,6 +73,10 @@ const (
 	// VoteGiftRefund: the votes of a bid given back, when someone bid
 	// more or the auction was called off.
 	VoteGiftRefund VoteKind = "gift_refund"
+	// VoteMine: ore sold in the mine; the note is the ore.
+	VoteMine VoteKind = "mine"
+	// VoteMineChest: a chest found in the mine; the note is the ore.
+	VoteMineChest VoteKind = "mine_chest"
 )
 
 // VoteEntry is what a change of votes is written down as: why, with whom

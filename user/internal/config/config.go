@@ -68,6 +68,8 @@ type Config struct {
 	AdEventLimits ratelimit.Rules `env:"RATE_LIMIT_AD_EVENTS" envDefault:"60/1m,3000/24h"`
 	// Spins of the casino.
 	CasinoLimits ratelimit.Rules `env:"RATE_LIMIT_CASINO" envDefault:"30/1m,1000/24h"`
+	// Digs and sales in the mine, each counted apart.
+	MineLimits ratelimit.Rules `env:"RATE_LIMIT_MINE" envDefault:"60/1m,3000/24h"`
 	// Collectible gifts upgraded, given away, put on sale, bought,
 	// auctioned and bid on, each counted apart.
 	GiftMarketLimits ratelimit.Rules `env:"RATE_LIMIT_GIFT_MARKET" envDefault:"30/1m,500/24h"`

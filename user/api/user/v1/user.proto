@@ -312,6 +312,23 @@ service UserService {
   // Internal (auth): whether the page is deleted, for the access tokens
   // it issues; NotFound once its data is erased.
   rpc GetAccountState(GetAccountStateRequest) returns (GetAccountStateResponse);
+
+  // Require an access token: the mine of the site. A dig of an ore takes
+  // energy, which comes back with time, and gives ore and experience;
+  // higher ores open with experience (FailedPrecondition "this ore needs
+  // more experience", "not enough energy"; InvalidArgument "unknown ore").
+  // A dig may meet an event: a nugget, a chest of votes paid at once, a
+  // collapse or a drink of energy. SellOre sells all of an ore, or of every
+  // ore without one, for votes out of the treasury — for pages a week old
+  // with a filled profile (FailedPrecondition "ore is sold by pages a week
+  // old with a filled profile", "not enough ore to sell").
+  rpc GetMine(GetMineRequest) returns (MineState);
+  rpc DigOre(DigOreRequest) returns (DigOreResponse);
+  rpc SellOre(SellOreRequest) returns (SellOreResponse);
+  // For the administrators (PermissionDenied for others): the ores, the
+  // energy and the events of the mine, and how it does.
+  rpc GetMineSettings(GetMineSettingsRequest) returns (GetMineSettingsResponse);
+  rpc SetMine(SetMineRequest) returns (google.protobuf.Empty);
 }
 
 message User {
@@ -1954,4 +1971,108 @@ message GetStickerAuthorsResponse {
   // Sticker → the author whose photo it is; stickers of the site and
   // unknown ones are left out.
   map<string, string> authors = 1;
+}
+
+// OreVein is how an ore is mined: it opens at experience; a dig takes
+// energy, gives from least to most of it and gain experience; a unit
+// sells for price hundredths of a vote.
+message OreVein {
+  string ore = 1;
+  int64 experience = 2;
+  int64 least = 3;
+  int64 most = 4;
+  int64 price = 5;
+  int64 gain = 6;
+  int32 energy = 7;
+}
+
+// MineEvents are the chances of the events of a dig, each in 10000, and
+// what they do.
+message MineEvents {
+  int32 nugget = 1;
+  // How many times a nugget multiplies the ore.
+  int32 nugget_times = 2;
+  int32 chest = 3;
+  // The votes of a chest.
+  int64 chest_least = 4;
+  int64 chest_most = 5;
+  int32 collapse = 6;
+  int32 drink = 7;
+  // The energy a drink gives back.
+  int32 drink_energy = 8;
+}
+
+message MineSettings {
+  // All ores in order: stone, coal, iron, gold, diamond, crystal.
+  repeated OreVein veins = 1;
+  // The most energy a miner has.
+  int32 energy = 2;
+  // How long a point of energy takes to come back.
+  int32 regen_seconds = 3;
+  MineEvents events = 4;
+}
+
+// Miner is the caller in the mine now.
+message Miner {
+  int32 energy = 1;
+  // How long the next point of energy takes, 0 when the energy is full.
+  int32 next_energy_seconds = 2;
+  int64 experience = 3;
+  // Ore → the units mined and not sold yet.
+  map<string, int64> backpack = 4;
+  int64 digs = 5;
+  // The votes taken out of the mine: sales and chests.
+  int64 earned = 6;
+}
+
+message GetMineRequest {}
+
+message MineState {
+  MineSettings settings = 1;
+  Miner miner = 2;
+}
+
+message DigOreRequest {
+  string ore = 1;
+}
+
+message DigOreResponse {
+  // The units of ore dug.
+  int64 units = 1;
+  // "", "nugget", "chest", "collapse" or "drink".
+  string event = 2;
+  // The votes of a chest and the balance after them; 0 without one.
+  int64 votes = 3;
+  int64 balance = 4;
+  // The experience the dig gave.
+  int64 experience = 5;
+  MineState mine = 6;
+}
+
+message SellOreRequest {
+  // Empty: every ore.
+  string ore = 1;
+}
+
+message SellOreResponse {
+  int64 units = 1;
+  int64 votes = 2;
+  int64 balance = 3;
+  MineState mine = 4;
+}
+
+message GetMineSettingsRequest {}
+
+message GetMineSettingsResponse {
+  MineSettings settings = 1;
+  // How the mine does: digs made, votes paid for ore and found in chests,
+  // pages that dug.
+  int64 digs = 2;
+  int64 sold = 3;
+  int64 chests = 4;
+  int64 miners = 5;
+}
+
+message SetMineRequest {
+  MineSettings settings = 1;
 }
