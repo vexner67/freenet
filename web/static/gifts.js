@@ -48,6 +48,7 @@ export function giftRow(collection, { more = '', limit = Infinity } = {}, pick) 
   return el('div', { className: 'gift-cat-row' },
     el('div', { className: 'gift-cat-info' },
       el('h4', { className: 'gift-cat-header', textContent: giftCollections[collection.id] ?? tr('Подарки') }),
+      collection.prime ? el('a', { className: 'gift-cat-prime', href: '/prime', textContent: tr('Только для Freenet Prime') }) : null,
       more ? el('a', { className: 'button', href: more, textContent: tr('Показать больше') }) : null),
     el('div', { className: 'gift-grid' }, ...giftCosts(collection).slice(0, limit).map(({ gift, price }) => el('a', {
       className: 'gift-sel',

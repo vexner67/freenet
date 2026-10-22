@@ -5,6 +5,7 @@
 // "Ваучеры" (/admin/vouchers), the form of a new one
 // (/admin/vouchers/new), "Подарки" (/admin/gifts: what each gift costs)
 // "Оформление" (/admin/decor: the New Year decoration of the site),
+// "Freenet Prime" (/admin/prime: the prices of its periods),
 // "Казино" (/admin/casino: the price of a spin, the prizes and their odds,
 // and the limits and the return of "Прицел", and the limits, the return and
 // the top of "Ракетка"), "Ставки" (/admin/bets: the
@@ -607,6 +608,37 @@ async function decor(answered) {
   $('decor').hidden = false;
 }
 
+// prime is "Freenet Prime": what a month, three months and a year cost.
+async function prime(answered) {
+  const fields = { month: $('prime-month'), quarter: $('prime-quarter'), year: $('prime-year') };
+  const save = $('prime-form').querySelector('button[type=submit]');
+
+  const show = (prices) => {
+    for (const [period, field] of Object.entries(fields)) field.value = String(prices[period]);
+  };
+  show(await answered);
+
+  $('prime-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    $('prime-saved').hidden = true;
+    save.disabled = true;
+
+    try {
+      await api.setPrimePrices(Object.fromEntries(Object.entries(fields).map(([period, field]) => [period, Number(field.value)])));
+      show(await api.primePrices());
+      $('prime-saved').textContent = tr('Изменения сохранены');
+      $('prime-saved').hidden = false;
+    } catch (e) {
+      showError(e);
+    } finally {
+      save.disabled = false;
+    }
+  });
+
+  $('prime').hidden = false;
+}
+
 // casino is "Казино": the price of a spin and the prizes with their
 // weights, the chance of each and the share of the votes the casino gives
 // back by them as they are typed, and how it has done in fact.
@@ -1190,6 +1222,7 @@ const reads = {
   '/admin/gifts': () => ({ catalog: started(api.giftCatalog()), rate: started(api.voteRate()) }),
   '/admin/ads': () => started(api.ads(true)),
   '/admin/decor': () => started(api.decor()),
+  '/admin/prime': () => started(api.primePrices()),
   '/admin/casino': () => started(api.casinoSettings()),
   '/admin/bets': () => started(api.betEvents()),
 }[adID ? '/admin/ads' : path]?.();
@@ -1223,6 +1256,8 @@ if (!me) {
     await gifts(reads).catch(showError);
   } else if (path === '/admin/decor') {
     await decor(reads).catch(showError);
+  } else if (path === '/admin/prime') {
+    await prime(reads).catch(showError);
   } else if (path === '/admin/casino') {
     await casino(reads).catch(showError);
   } else if (path === '/admin/bets') {

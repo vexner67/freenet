@@ -326,6 +326,7 @@ input, select, textarea { font-size: 16px !important; }
    in a column of their own. */
 .finance { flex-direction: column-reverse; align-items: stretch; }
 .finance-balance { width: auto; }
+.prime-plans { flex-direction: column; }
 .bank-actions { flex-wrap: wrap; }
 .bank-actions .button { flex: 1; text-align: center; }
 .bank-totals { flex-direction: column; }

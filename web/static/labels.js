@@ -376,6 +376,8 @@ export const themes = [
   ['default', tr('обычный (по умолчанию)')],
   ['blue', tr('синий')],
   ['dark', tr('тёмный')],
+  // Only Freenet Prime chooses it; it stays after Prime ends.
+  ['gold', tr('золотой (Freenet Prime)')],
 ];
 
 export const ratings = [
@@ -822,13 +824,14 @@ export function myAlbumsCount(n) {
 // what each gift is called and its picture. The gifts themselves are the
 // catalogue of the user service; a picture is a file of the site, named
 // by its whole path so that it is served with its version.
-export const giftCollections = { flowers: tr('Цветы'), sweets: tr('Сладости'), holidays: tr('Праздники'), freenet: 'Freenet' };
+export const giftCollections = { flowers: tr('Цветы'), sweets: tr('Сладости'), holidays: tr('Праздники'), freenet: 'Freenet', prime: 'Freenet Prime' };
 
 export const giftNames = {
   rose: tr('Роза'), tulip: tr('Тюльпан'), bouquet: tr('Букет'), sunflower: tr('Подсолнух'), cactus: tr('Кактус'),
   cake: tr('Торт'), candy: tr('Конфета'), chocolate: tr('Шоколад'), icecream: tr('Мороженое'), cupcake: tr('Пирожное'),
   present: tr('Подарок'), balloons: tr('Шарики'), heart: tr('Сердце'), bear: tr('Мишка'), star: tr('Звезда'),
   freenet_crystal: tr('Кристалл Freenet'), freenet_coin: tr('Золотая монета'), freenet_ring: tr('Перстень'), freenet_crown: tr('Корона'), freenet_heart: tr('Рубиновое сердце'), freenet_cup: tr('Кубок'),
+  prime_star: tr('Звезда Prime'), prime_diamond: tr('Бриллиант'), prime_crown: tr('Корона Prime'), prime_rocket: tr('Ракета'), prime_trophy: tr('Кубок Prime'),
 };
 
 const giftImages = {
@@ -853,6 +856,11 @@ const giftImages = {
   heart: '/static/gifts/heart.svg',
   bear: '/static/gifts/bear.svg',
   star: '/static/gifts/star.svg',
+  prime_star: '/static/gifts/prime_star.svg',
+  prime_diamond: '/static/gifts/prime_diamond.svg',
+  prime_crown: '/static/gifts/prime_crown.svg',
+  prime_rocket: '/static/gifts/prime_rocket.svg',
+  prime_trophy: '/static/gifts/prime_trophy.svg',
 };
 
 // giftImage is the picture of a gift; a gift this site does not know yet
@@ -1286,6 +1294,22 @@ export function votesAmount(n) {
   return `${groupedVotes(n)} ${plural(Math.abs(n), ['голос', 'голоса', 'голосов'])}`;
 }
 
+// primePeriods are the periods of Freenet Prime with their names and
+// how many months each is.
+export const primePeriods = [
+  ['month', tr('Месяц'), 1],
+  ['quarter', tr('3 месяца'), 3],
+  ['year', tr('Год'), 12],
+];
+
+// primeSaving is how much cheaper a month of a longer period is than a
+// month bought alone, in whole percent; 0 when it is not.
+export function primeSaving(prices, months, price) {
+  if (months <= 1 || !prices.month) return 0;
+
+  return Math.max(Math.floor((1 - price / (prices.month * months)) * 100), 0);
+}
+
 // signedVotes is a line of the statement: "+1 250" or "−300".
 export function signedVotes(amount) {
   return `${amount < 0 ? '−' : '+'}${groupedVotes(amount)}`;
@@ -1348,6 +1372,11 @@ export function voteOperation(op, myId) {
       return { title: tr('Повышение рейтинга на {0} %', note), role: '' };
     case 'denomination':
       return { title: tr('Деноминация 1 : 1 000 000'), role: '' };
+    case 'prime': {
+      const period = { month: tr('месяц'), quarter: tr('3 месяца'), year: tr('год') }[note] ?? note;
+      const toSelf = !op.peer || op.peer.id === myId;
+      return { title: tr('Freenet Prime на {0}', period), role: toSelf ? '' : tr('Получатель:') };
+    }
     case 'stake':
       return { title: out ? tr('Ставка на событие «{0}»', note) : tr('Выплата по событию «{0}»', note), role: '' };
     default:
@@ -1526,6 +1555,7 @@ const notificationVerbs = {
   mention: [tr('упомянул'), tr('упомянула'), tr('упомянул(а)'), tr('упомянуло')],
   gift: [tr('отправил'), tr('отправила'), tr('отправил(а)'), tr('отправило')],
   votes: [tr('передал'), tr('передала'), tr('передал(а)'), tr('передало')],
+  prime: [tr('подарил'), tr('подарила'), tr('подарил(а)'), tr('подарило')],
   invite: [tr('присоединился'), tr('присоединилась'), tr('присоединился(-ась)'), tr('присоединилось')],
   verified: [tr('подтвердил'), tr('подтвердила'), tr('подтвердил(а)'), tr('подтвердило')],
 };
@@ -1732,6 +1762,9 @@ const errorTexts = {
   'gift caption is too long': tr('Сообщение слишком длинное: не больше 250 символов.'),
   'gift not found': tr('Подарок не найден.'),
   'not enough votes': tr('У вас недостаточно голосов.'),
+  'this is for freenet prime only': tr('Это доступно только с Freenet Prime.'),
+  'unknown period of prime': tr('Неизвестный срок подписки.'),
+  'the price of prime must be between 1 and 1000000': tr('Цена подписки — от 1 до 1 000 000 голосов.'),
   'a spin must cost from 1 to 10000 votes': tr('Прокрутка должна стоить от 1 до 10 000 голосов.'),
   'the casino must have from 2 to 12 prizes': tr('В казино должно быть от 2 до 12 призов.'),
   'a prize must be from 0 to 1000 votes': tr('Приз — от 0 до 1000 голосов.'),

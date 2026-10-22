@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale, primePeriods, primeSaving } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -445,7 +445,7 @@ test('the choices of the interface are those the API knows', () => {
 });
 
 test('the rest of "Интерфейс" names what the server knows', () => {
-  assert.deepEqual(themes.map(([v]) => v), ['default', 'blue', 'dark']);
+  assert.deepEqual(themes.map(([v]) => v), ['default', 'blue', 'dark', 'gold']);
   assert.deepEqual(ratings.map(([v]) => v), ['show', 'hide']);
   assert.deepEqual(nsfwContents.map(([v]) => v), ['hide', 'blur', 'show']);
   assert.deepEqual(postViews.map(([v]) => v), ['old', 'microblog']);
@@ -774,7 +774,7 @@ test('gifts are counted, named and pictured as the catalogue of the user service
   const gifts = [...catalog.matchAll(/Gifts:[^{]*\{([^}]*)\}/g)].flatMap((m) => [...m[1].matchAll(/"(\w+)"/g)].map((g) => g[1]));
 
   assert.deepEqual(Object.keys(giftCollections), collections);
-  assert.equal(gifts.length, 21);
+  assert.equal(gifts.length, 26);
   assert.deepEqual(Object.keys(giftNames), gifts);
   for (const gift of gifts) {
     // The site's own gifts are pictures rendered by scripts/giftgen.
@@ -1243,4 +1243,17 @@ test('adminEconomy: the words under the treasury and the votes of the pages', ()
   assert.equal(said.maxWin, 'голос — наибольший выигрыш за раунд');
   assert.equal(said.minted, 'голосов принесли участники');
   assert.equal(adminEconomy({ votes: 5, bonus: 2, maxWin: 3 }).held, 'голосов на счетах людей');
+});
+
+test('Freenet Prime is sold by the month, the quarter and the year', () => {
+  assert.deepEqual(primePeriods.map(([v, , months]) => [v, months]), [['month', 1], ['quarter', 3], ['year', 12]]);
+  const prices = { month: 150, quarter: 400, year: 1500 };
+  assert.equal(primeSaving(prices, 1, 150), 0);
+  assert.equal(primeSaving(prices, 3, 400), 11);
+  assert.equal(primeSaving(prices, 12, 1500), 16);
+  assert.equal(primeSaving(prices, 3, 900), 0);
+  assert.deepEqual(voteOperation({ kind: 'prime', amount: -150, note: 'month' }, 'a'), { title: 'Freenet Prime на месяц', role: '' });
+  assert.deepEqual(voteOperation({ kind: 'prime', amount: -400, note: 'quarter', peer: { id: 'b' } }, 'a'), { title: 'Freenet Prime на 3 месяца', role: 'Получатель:' });
+  assert.equal(notificationVerb('prime', { gender: 'female' }), 'подарила');
+  assert.equal(errorText({ message: 'this is for freenet prime only' }), 'Это доступно только с Freenet Prime.');
 });

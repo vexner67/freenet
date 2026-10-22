@@ -1,0 +1,30 @@
+/* "Золотой" of "Стиль", Freenet Prime's: warm gold over the page as it
+   is. Loaded after style.css by layout.js, as the blue one. */
+
+a { color: #8a6116; }
+
+.header { background: linear-gradient(#c9a43e, #9c7419); border-color: #7f5d12; }
+.logo-mark path { stroke: #9c7419; }
+.header-links a { border-left-color: #7f5d12; box-shadow: inset 1px 0 #d9b95c; }
+
+.page-title { background: #f4e7bf; border-color: #e0cc8e; color: #7a5a14; }
+.page-title .aside { color: #a8883c; }
+
+.section-title { background: #f5ecd0; border-top-color: #d8bf75; color: #7a5a14; }
+.section-title::before { border-top-color: #a8883c; }
+.section-title .count { color: #a8883c; }
+
+.menu a:hover { background: #f4e7bf; }
+.menu .counter { background: #f4e7bf; }
+
+.button { background: #a8801f; border-color: #7f5d12; }
+.button:active { background: #7f5d12; }
+
+.post-author { background: #faf5e6; border-top-color: #d8bf75; border-bottom-color: #efe4c4; }
+.modal-header { background: linear-gradient(#c9a43e, #9c7419); }
+.viewer-header { background: #f4e7bf; }
+.sugglist { background: #f5ecd0; border-top-color: #d8bf75; }
+.sugglist a { color: #7a5a14; }
+.faq-head { background: #f4e7bf; border-color: #e0cc8e; }
+.completeness-gauge { background: #f5ecd0; border-top-color: #d8bf75; }
+.completeness-gauge > div { background: #e3cd85; }

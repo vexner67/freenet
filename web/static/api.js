@@ -663,6 +663,13 @@ export const api = {
   // raiseRating is "Повысить рейтинг": percent of rating for votes.
   raiseRating: (percent) => authorized('POST', '/api/v1/me/rating', { percent }),
   setVoteRate: (kopecks) => authorized('PUT', '/api/v1/vote-rate', { kopecks }),
+  // "Freenet Prime": its prices, buying it for oneself or as a present,
+  // «Невидимка»; the administrators price it.
+  primePrices: () => request('GET', '/api/v1/prime'),
+  setPrimePrices: (prices) => authorized('PUT', '/api/v1/prime/prices', prices),
+  buyPrime: (period) => authorized('POST', '/api/v1/me/prime', { period }),
+  givePrime: (nickname, period) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/prime`, { period }),
+  setPrimeInvisible: (invisible) => authorized('PUT', '/api/v1/me/prime/invisible', { invisible }),
   decor: () => request('GET', '/api/v1/decor'),
   setDecor: (mode) => authorized('PUT', '/api/v1/decor', { mode }),
   casino: () => request('GET', '/api/v1/casino'),

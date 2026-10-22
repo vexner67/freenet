@@ -202,6 +202,7 @@ a:hover { text-decoration: underline; }
 .aui-icon-ad { --icon: url("/static/icons/admin-ad.svg"); }
 .aui-icon-snow { --icon: url("/static/icons/admin-snow.svg"); }
 .aui-icon-casino { --icon: url("/static/icons/admin-casino.svg"); }
+.aui-icon-prime { --icon: url("/static/icons/admin-prime.svg"); }
 .aui-icon-bets { --icon: url("/static/icons/admin-bets.svg"); }
 .aui-icon-users { --icon: url("/static/icons/admin-users.svg"); }
 .aui-icon-clubs { --icon: url("/static/icons/admin-clubs.svg"); }

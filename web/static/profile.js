@@ -115,7 +115,10 @@ function renderHeader(profile, isOwner) {
   const seen = isOwner ? tr('Онлайн') : presence(profile);
 
   document.title = `${name} | Freenet`;
-  $('title').replaceChildren(name, verifiedMark(profile), ...(isOwner ? [' ', el('b', { textContent: tr('(это вы)') })] : []));
+  // Freenet Prime: the name is golden, and so is the frame of the photo.
+  document.body.classList.toggle('prime-page', Boolean(profile.prime));
+  $('title').replaceChildren(profile.prime ? el('span', { className: 'prime-name', textContent: name }) : name,
+    verifiedMark(profile), ...(isOwner ? [' ', el('b', { textContent: tr('(это вы)') })] : []));
   $('title-aside').replaceChildren(isOwner || profile.online ? el('b', { textContent: seen }) : seen || '@' + profile.nickname);
 }
 

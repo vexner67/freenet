@@ -30,7 +30,7 @@ const showIgnored = new URLSearchParams(location.search).get(SHOW_IGNORED) === '
 let cursor = '';
 
 // The ads, slipped between the posts of both tabs whatever the settings
-// say: everyone gets them.
+// say: everyone gets them but those with Freenet Prime.
 let ads = [];
 let withAds = (nodes) => nodes;
 
@@ -259,7 +259,7 @@ if (!me) {
     onApply: (chosen, withIgnored) => applySettings(me, chosen, withIgnored),
     onUnignored: () => reload(me),
   }));
-  ads = (await shownAds).ads;
+  ads = me.prime ? [] : (await shownAds).ads;
   withAds = adStream(ads);
   await loadMore(me);
 }
