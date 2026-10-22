@@ -116,6 +116,9 @@ enum Kind {
   KIND_STORY_LIKE = 26;
   // The actor wrote comment_id under the recipient's story post_id.
   KIND_STORY_COMMENT = 27;
+  // The actor gave the recipient Freenet Prime; post_id is the purchase,
+  // which the user service names.
+  KIND_PRIME = 28;
 }
 
 // Event: post_id is set for all but follows, invitations, appointments

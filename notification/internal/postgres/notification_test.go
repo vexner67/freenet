@@ -244,47 +244,50 @@ func TestRepositories(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-	t.Run("votes", func(t *testing.T) {
-		first, second := uuid.New(), uuid.New()
+	// A transfer of votes and Prime given as a present: one per purchase.
+	for _, kind := range []notification.Kind{notification.KindVotes, notification.KindPrime} {
+		t.Run(string(kind), func(t *testing.T) {
+			first, second := uuid.New(), uuid.New()
 
-		count := func() int {
-			t.Helper()
+			count := func() int {
+				t.Helper()
 
-			got, err := repo.List(ctx, service.Query{RecipientID: bob, Unread: true, Limit: 10})
-			if err != nil {
-				t.Fatal(err)
+				got, err := repo.List(ctx, service.Query{RecipientID: bob, Unread: true, Limit: 10})
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				return len(got)
 			}
 
-			return len(got)
-		}
+			before := count()
 
-		before := count()
-
-		// One notification per transfer, told twice or not.
-		for _, transfer := range []uuid.UUID{first, first, second} {
-			n, err := notification.New(notification.Event{Kind: notification.KindVotes, RecipientID: bob, ActorID: ann, PostID: transfer}, time.Now())
-			if err != nil {
-				t.Fatal(err)
+			// One notification per transfer, told twice or not.
+			for _, transfer := range []uuid.UUID{first, first, second} {
+				n, err := notification.New(notification.Event{Kind: kind, RecipientID: bob, ActorID: ann, PostID: transfer}, time.Now())
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err = repo.Save(ctx, n); err != nil {
+					t.Fatalf("Save: %v", err)
+				}
 			}
-			if _, err = repo.Save(ctx, n); err != nil {
-				t.Fatalf("Save: %v", err)
+
+			if got := count() - before; got != 2 {
+				t.Fatalf("notifications about two transfers = %d, want 2", got)
 			}
-		}
 
-		if got := count() - before; got != 2 {
-			t.Fatalf("notifications about two transfers = %d, want 2", got)
-		}
-
-		for _, transfer := range []uuid.UUID{first, second} {
-			if err := repo.Delete(ctx, notification.Event{Kind: notification.KindVotes, RecipientID: bob, ActorID: ann, PostID: transfer}); err != nil {
-				t.Fatal(err)
+			for _, transfer := range []uuid.UUID{first, second} {
+				if err := repo.Delete(ctx, notification.Event{Kind: kind, RecipientID: bob, ActorID: ann, PostID: transfer}); err != nil {
+					t.Fatal(err)
+				}
 			}
-		}
 
-		if got := count() - before; got != 0 {
-			t.Fatalf("notifications after both are taken back = %d, want 0", got)
-		}
-	})
+			if got := count() - before; got != 0 {
+				t.Fatalf("notifications after both are taken back = %d, want 0", got)
+			}
+		})
+	}
 	t.Run("invite", func(t *testing.T) {
 		newcomer := uuid.New()
 		e := notification.Event{Kind: notification.KindInvite, RecipientID: bob, ActorID: newcomer}

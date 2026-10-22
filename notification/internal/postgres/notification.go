@@ -126,6 +126,11 @@ const (
 		WHERE kind = 'votes'
 			AND post_id = $1
 	`
+	deletePrimeNotificationQuery = `
+		DELETE FROM notifications
+		WHERE kind = 'prime'
+			AND post_id = $1
+	`
 	deleteSuggestedPostNotificationQuery = `
 		DELETE FROM notifications
 		WHERE kind = 'suggested_post'
@@ -203,6 +208,8 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 		_, err = r.pool.Exec(ctx, deleteGiftNotificationQuery, e.PostID)
 	case notification.KindVotes:
 		_, err = r.pool.Exec(ctx, deleteVotesNotificationQuery, e.PostID)
+	case notification.KindPrime:
+		_, err = r.pool.Exec(ctx, deletePrimeNotificationQuery, e.PostID)
 	case notification.KindSuggestedPost:
 		_, err = r.pool.Exec(ctx, deleteSuggestedPostNotificationQuery, e.RecipientID, e.PostID)
 	case notification.KindClubAdmin, notification.KindInvite:

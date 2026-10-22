@@ -32,6 +32,8 @@ func TestEvent_Validate(t *testing.T) {
 		{"gift", notification.Event{Kind: notification.KindGift, RecipientID: ann, ActorID: bob, PostID: post}, nil},
 		{"votes", notification.Event{Kind: notification.KindVotes, RecipientID: ann, ActorID: bob, PostID: post}, nil},
 		{"votes without the transfer", notification.Event{Kind: notification.KindVotes, RecipientID: ann, ActorID: bob}, notification.ErrTargetMismatch},
+		{"prime", notification.Event{Kind: notification.KindPrime, RecipientID: ann, ActorID: bob, PostID: post}, nil},
+		{"prime without the purchase", notification.Event{Kind: notification.KindPrime, RecipientID: ann, ActorID: bob}, notification.ErrTargetMismatch},
 		{"invite", notification.Event{Kind: notification.KindInvite, RecipientID: ann, ActorID: bob}, nil},
 		{"invite with a post", notification.Event{Kind: notification.KindInvite, RecipientID: ann, ActorID: bob, PostID: post}, notification.ErrTargetMismatch},
 		{"gift without the gift", notification.Event{Kind: notification.KindGift, RecipientID: ann, ActorID: bob}, notification.ErrTargetMismatch},
