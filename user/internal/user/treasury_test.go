@@ -58,4 +58,16 @@ func TestUser_CheckBonusAt(t *testing.T) {
 	if err := u.CheckBonusAt(week); err != nil {
 		t.Fatalf("CheckBonusAt after a week: %v", err)
 	}
+
+	// A page of the first days of the site needs no week.
+	id := u.ID()
+	ms := user.SettledBefore.Add(-time.Hour).UnixMilli()
+	for i := 5; i >= 0; i-- {
+		id[i] = byte(ms)
+		ms >>= 8
+	}
+	settled := user.Restore(user.Stored{ID: id, Profile: u.Profile()})
+	if err := settled.CheckBonusAt(user.SettledBefore); err != nil {
+		t.Fatalf("CheckBonusAt of a settled page: %v", err)
+	}
 }
