@@ -88,6 +88,8 @@ type fakeUsers struct {
 	ban    *model.Ban
 	// admin: the caller is an administrator of the site.
 	admin bool
+	// prime: the caller has Freenet Prime, and is invisible with it.
+	prime model.User
 	// named are the nicknames the gateway asked ResolveMentions about.
 	named []string
 	// uninvitable is the nickname of who lets nobody add them to chats.
@@ -141,6 +143,7 @@ func (f *fakeUsers) user() model.User {
 	if f.deactivated {
 		u.Deactivated, u.PurgeAt = true, time.Date(2027, 5, 7, 12, 0, 0, 0, time.UTC)
 	}
+	u.PrimeUntil, u.PrimeInvisible = f.prime.PrimeUntil, f.prime.PrimeInvisible
 	return u
 }
 
@@ -1496,6 +1499,7 @@ type harness struct {
 	votes         *fakeVotes
 	ads           *fakeAds
 	decor         *fakeDecor
+	prime         *fakePrime
 	casino        *fakeCasino
 	bets          *fakeBets
 	documents     *fakeDocuments
@@ -1524,6 +1528,7 @@ func newHarness(cfg rest.Config) harness {
 		votes:         &fakeVotes{},
 		ads:           &fakeAds{},
 		decor:         &fakeDecor{mode: "auto"},
+		prime:         &fakePrime{},
 		casino:        &fakeCasino{},
 		bets:          &fakeBets{},
 		faves:         &fakeFaves{},
@@ -1548,6 +1553,7 @@ func newHarness(cfg rest.Config) harness {
 		Votes:         h.votes,
 		Ads:           h.ads,
 		Decor:         h.decor,
+		Prime:         h.prime,
 		Casino:        h.casino,
 		Bets:          h.bets,
 		Faves:         h.faves,

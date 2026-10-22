@@ -3942,6 +3942,7 @@ paths:
                       properties:
                         id: { type: string, description: "The name of the collection, as `flowers`" }
                         price: { type: integer, minimum: 0, description: "What its gifts cost the sender unless priced otherwise, in votes; 0 is free" }
+                        prime: { type: boolean, description: "Only those with Freenet Prime send its gifts: `this is for freenet prime only` (409) otherwise" }
                         gifts:
                           type: array
                           items: { type: string, description: "The name of a gift, as `rose`" }
@@ -4560,6 +4561,99 @@ paths:
                   rating: { type: integer, description: Your rating now, in percent }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/prime:
+    get:
+      summary: What Freenet Prime costs
+      description: Public. The prices of a month, a quarter and a year of Freenet Prime, in votes; the administrators set them.
+      responses:
+        "200":
+          description: The prices
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrimePrices" }
+
+  /api/v1/prime/prices:
+    put:
+      summary: Price Freenet Prime
+      description: Only for the administrators of the site (403 otherwise); each price is 1 to 1000000 votes.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PrimePrices" }
+      responses:
+        "204": { description: Priced }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+
+  /api/v1/me/prime:
+    post:
+      summary: Buy Freenet Prime for yourself
+      description: 'The votes go to the treasury, and the period adds to what is left of your subscription. Not enough votes — `not enough votes` (409). Limited per user.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PrimeOrder" }
+      responses:
+        "200":
+          description: Bought
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrimePurchase" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/prime/invisible:
+    put:
+      summary: Turn «Невидимка» of Freenet Prime on or off
+      description: 'While it is on, others are not told when you are online or were last seen, and the stories you watch do not count you. Turning it on takes Prime: `this is for freenet prime only` (409).'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [invisible]
+              properties:
+                invisible: { type: boolean }
+      responses:
+        "204": { description: Set }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/users/{nickname}/prime:
+    post:
+      summary: Give Freenet Prime as a present
+      description: 'Refused where a gift would be: `you cannot send a gift to this user` (403), `this page is deleted` (409). The recipient hears of it (`prime`).'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: nickname, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PrimeOrder" }
+      responses:
+        "200":
+          description: Given; `until` is the recipient's
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PrimePurchase" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
@@ -7132,6 +7226,16 @@ components:
             verified:
               type: boolean
               description: The administrators confirmed your page (a checkmark by the name)
+            prime:
+              type: boolean
+              description: You have Freenet Prime now
+            primeUntil:
+              type: string
+              format: date-time
+              description: Until when you have Freenet Prime; absent without it
+            primeInvisible:
+              type: boolean
+              description: «Невидимка» of Freenet Prime is on
             alert:
               type: string
               description: The label the administrators put on your page (an orange one above the name), "" for none
@@ -7184,6 +7288,7 @@ components:
         address: { type: string, description: "A community's address; empty for none" }
         online: { type: boolean, description: "The person is on the site now (\"Онлайн\"); told only of a page open to everyone, absent otherwise" }
         verified: { type: boolean, description: "The page or the community is confirmed by the administrators (\"Подтверждённая страница\"): a checkmark by the name; absent otherwise" }
+        prime: { type: boolean, description: "The person has Freenet Prime: its badge by the name; absent otherwise" }
 
     Interface:
       type: object
@@ -7196,7 +7301,7 @@ components:
           type: array
           description: The links taken out of the left menu; none by default
           items: { type: string, enum: [photos, messages, groups, feed, notifications] }
-        theme: { type: string, enum: [default, blue, dark], description: "The look of the whole site (\"Стиль\"); default when left out" }
+        theme: { type: string, enum: [default, blue, dark, gold], description: "The look of the whole site (\"Стиль\"); default when left out; `gold` is chosen only with Freenet Prime (`this is for freenet prime only`, 409) and stays after it ends" }
         hideRating: { type: boolean, description: "Takes \"Заполненность страницы\" off the pages its owner reads (\"Рейтинг\")" }
         nsfw: { type: string, enum: [blur, hide, show], description: "Posts marked as adult: blurred until clicked (the default), blurred and left out of the news, or shown as any other" }
         postView: { type: string, enum: [old, microblog], description: "How posts are laid out (\"Вид постов\"); old by default" }
@@ -7643,8 +7748,8 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, gift, votes, invite, verified, club_verified, story_like, story_comment]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; invite: the actor signed up by your invitation link and follows you; verified: the actor, an administrator, gave your page the checkmark (until it is taken); club_verified: the actor, a community you own, got the checkmark (until it is taken); story_like, story_comment: the actor liked or commented your story (until the like is taken back, the comment deleted or the story gone)"
+          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, gift, votes, prime, invite, verified, club_verified, story_like, story_comment]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; prime: the actor gave you Freenet Prime; invite: the actor signed up by your invitation link and follows you; verified: the actor, an administrator, gave your page the checkmark (until it is taken); club_verified: the actor, a community you own, got the checkmark (until it is taken); story_like, story_comment: the actor liked or commented your story (until the like is taken back, the comment deleted or the story gone)"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:
@@ -8061,6 +8166,29 @@ components:
           items: { $ref: "#/components/schemas/Photo" }
         createdAt: { type: string, format: date-time }
 
+    PrimePrices:
+      type: object
+      additionalProperties: false
+      required: [month, quarter, year]
+      properties:
+        month: { type: integer, format: int64, minimum: 1, maximum: 1000000 }
+        quarter: { type: integer, format: int64, minimum: 1, maximum: 1000000 }
+        year: { type: integer, format: int64, minimum: 1, maximum: 1000000 }
+
+    PrimeOrder:
+      type: object
+      additionalProperties: false
+      required: [period]
+      properties:
+        period: { type: string, enum: [month, quarter, year] }
+
+    PrimePurchase:
+      type: object
+      required: [until, balance]
+      properties:
+        until: { type: string, format: date-time, description: Until when the recipient has Freenet Prime now }
+        balance: { type: integer, format: int64, description: The votes you have left }
+
     PublicProfile:
       allOf:
         - $ref: "#/components/schemas/Profile"
@@ -8081,6 +8209,9 @@ components:
             verified:
               type: boolean
               description: "The administrators confirmed the page (\"Подтверждённая страница\"): a checkmark by the name, told on a hidden page too and never on a deleted one"
+            prime:
+              type: boolean
+              description: "The person has Freenet Prime: its badge by the name, a golden frame of the photo and a golden name"
             alert:
               type: string
               description: "The label the administrators put on the page: openvk's orange \"user-alert\" above the name, \"\" for none; told on a hidden page too and never on a deleted one, and in lists too"

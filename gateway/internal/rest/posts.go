@@ -49,6 +49,8 @@ type authorJSON struct {
 	Online bool `json:"online,omitempty"`
 	// Verified: the page is confirmed by the administrators (a checkmark).
 	Verified bool `json:"verified,omitempty"`
+	// Prime: the person has Freenet Prime (a badge by the name).
+	Prime bool `json:"prime,omitempty"`
 }
 
 type postResponse struct {
@@ -198,6 +200,7 @@ func authorOfProfile(p model.PublicProfile) model.Author {
 	a.Deactivated = p.Deactivated
 	a.Online = p.Online
 	a.Verified = p.Verified
+	a.Prime = p.Prime
 
 	return a
 }
@@ -206,6 +209,7 @@ func authorOfProfile(p model.PublicProfile) model.Author {
 func meAuthor(me model.User) model.Author {
 	a := authorOf(me.ID, me.AvatarID, me.Profile)
 	a.Verified = me.Verified
+	a.Prime = me.HasPrime(time.Now())
 
 	return a
 }
@@ -228,6 +232,7 @@ func toAuthorJSON(a model.Author) authorJSON {
 		Address:     a.Address,
 		Online:      a.Online,
 		Verified:    a.Verified,
+		Prime:       a.Prime,
 	}
 }
 

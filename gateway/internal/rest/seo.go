@@ -34,6 +34,7 @@ Disallow: /docs$
 Disallow: /stickers$
 Disallow: /casino$
 Disallow: /votes$
+Disallow: /prime$
 Disallow: /admin$
 Disallow: /admin/
 Disallow: /search$

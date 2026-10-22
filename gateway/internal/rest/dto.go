@@ -267,6 +267,11 @@ type userResponse struct {
 	// Alert is the label the administrators put on the page, "" for
 	// none.
 	Alert string `json:"alert"`
+	// Prime: the user has Freenet Prime until primeUntil (null without
+	// it); primeInvisible: they hide when they are online.
+	Prime          bool    `json:"prime"`
+	PrimeUntil     *string `json:"primeUntil"`
+	PrimeInvisible bool    `json:"primeInvisible"`
 	// PinnedClubs are the clubs in the left menu ("Добавить в левое
 	// меню"); GET /me alone tells them.
 	PinnedClubs []clubJSON `json:"pinnedClubs,omitempty"`
@@ -278,7 +283,7 @@ const nsfwHide = "hide"
 
 // interfaceJSON: avatarStyle is "square" or "round", mainPage "page" or
 // "feed", hiddenMenu the links taken out of the left menu, theme
-// "default", "blue" or "dark", nsfw "blur", "hide" or "show", postView
+// "default", "blue", "dark" or "gold" (Freenet Prime), nsfw "blur", "hide" or "show", postView
 // "old" or "microblog", timezone minutes east of UTC or null for the
 // browser's clock.
 type interfaceJSON struct {
@@ -322,13 +327,16 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 		aboutJSON:   toAboutJSON(u.About, partner),
 		Backdrop:    toBackdropJSON(u.ID, u.Backdrop),
 
-		Completeness: u.Completeness,
-		Unfilled:     append([]string{}, u.Unfilled...),
-		Votes:        u.Votes,
-		Admin:        u.Admin,
-		Verified:     u.Verified,
-		Ban:          toBanJSON(u.Ban),
-		Alert:        u.Alert,
+		Completeness:   u.Completeness,
+		Unfilled:       append([]string{}, u.Unfilled...),
+		Votes:          u.Votes,
+		Admin:          u.Admin,
+		Verified:       u.Verified,
+		Ban:            toBanJSON(u.Ban),
+		Alert:          u.Alert,
+		Prime:          u.HasPrime(time.Now()),
+		PrimeUntil:     optionalTime(u.PrimeUntil),
+		PrimeInvisible: u.PrimeInvisible,
 		Interface: interfaceJSON{
 			AvatarStyle: u.Interface.AvatarStyle,
 			MainPage:    u.Interface.MainPage,
@@ -391,6 +399,8 @@ type publicProfileResponse struct {
 	// orange "user-alert" above the name, "" for none; never told of a
 	// deleted one.
 	Alert string `json:"alert"`
+	// Prime: the page has Freenet Prime, a badge by the name.
+	Prime bool `json:"prime"`
 	// LastSeenAt is when the user last visited ("был в сети"), null if
 	// never, hidden or in a list; Online: just now ("Онлайн"), which a
 	// list tells too if the page is open to everyone.
@@ -423,6 +433,7 @@ func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
 		Verified:    p.Verified,
 		Ban:         toBanJSON(p.Ban),
 		Alert:       p.Alert,
+		Prime:       p.Prime,
 		InfoHidden:  p.InfoHidden,
 		LastSeenAt:  optionalTime(p.LastSeen),
 		Online:      p.Online,
