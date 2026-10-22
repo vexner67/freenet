@@ -5,6 +5,11 @@
 // collectible gifts are shown. It needs nothing but the standard library:
 //
 //	cd scripts/giftgen && GOWORK=off go run . -out ../../web/static/gifts
+//
+// With -models it draws the models of collectible gifts instead, each gift
+// in six metals and stones on nothing, into <out>/models:
+//
+//	cd scripts/giftgen && GOWORK=off go run . -models -size 256 -out ../../web/static/gifts
 package main
 
 import (
@@ -285,18 +290,35 @@ func main() {
 	ss := flag.Int("ss", 4, "samples per side of a pixel")
 	only := flag.String("only", "", "comma separated scenes")
 	out := flag.String("out", "out", "directory")
+	withModels := flag.Bool("models", false, "draw the models of collectible gifts into <out>/models")
 	flag.Parse()
+
+	if *withModels {
+		if err := os.MkdirAll(filepath.Join(*out, "models"), 0o755); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	}
 
 	for name, build := range scenes {
 		if *only != "" && !strings.Contains(","+*only+",", ","+name+",") {
 			continue
 		}
-		s := build()
-		path := filepath.Join(*out, s.Name+".png")
-		if err := Render(s, *size, *ss, path); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+		if !*withModels {
+			draw(build(), *size, *ss, filepath.Join(*out, build().Name+".png"))
+			continue
 		}
-		fmt.Println(path)
+		for _, m := range models {
+			s := m.recast(build())
+			draw(s, *size, *ss, filepath.Join(*out, "models", s.Name+".png"))
+		}
 	}
+}
+
+func draw(s *Scene, size, ss int, path string) {
+	if err := Render(s, size, ss, path); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	fmt.Println(path)
 }

@@ -168,6 +168,9 @@ type Scene struct {
 	Pattern uint32
 	Light   float64 // exposure
 	Bounds  float64 // radius of a sphere holding the object
+	// Bare draws the object alone, with its shadow, on nothing: a model
+	// of a collectible gift, which the site lays on its backdrop.
+	Bare bool
 }
 
 // ---- lighting ----
@@ -419,6 +422,17 @@ func Render(s *Scene, size, ss int, path string) error {
 	inner, outer, pat := srgb(s.Inner), srgb(s.Outer), srgb(s.Pattern)
 	for y := 0; y < size; y++ {
 		for x := 0; x < size; x++ {
+			if s.Bare {
+				o := obj[y*size+x]
+				// the shadow is black under the object, half as dark as
+				// on the backdrop
+				a := o.a + 0.45*shadow[y*size+x]*(1-o.a)
+				if a > 0 {
+					c := V{o.r, o.g, o.b}.Mul(o.a / a)
+					img.SetNRGBA(x, y, color.NRGBA{to8(c.X), to8(c.Y), to8(c.Z), to8(a)})
+				}
+				continue
+			}
 			bg, a := backdrop(x, y, size, inner, outer, pat)
 			sh := shadow[y*size+x]
 			bg = bg.Mul(1 - 0.55*sh)
