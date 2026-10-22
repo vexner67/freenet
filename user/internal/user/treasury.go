@@ -12,15 +12,17 @@ import (
 const (
 	// TreasuryStart is what the treasury held when it was made.
 	TreasuryStart = 25_000
-	// MaxBonus is the daily bonus.
-	MaxBonus = 10
 	// BonusAge is how old a page must be to take a bonus.
 	BonusAge = 7 * 24 * time.Hour
-	// MaxWin is the most one round of the casino wins.
-	MaxWin = 1_000
-	// MaxCasinoReturn is the most the casino gives back on average, in
-	// percent.
-	MaxCasinoReturn = 85
+	// MaxAmount is the most votes any one number the administrators set
+	// may be — a price, a prize, a bet, a bonus. It is not a rule of the
+	// economy, which has none (the treasury has no bottom), but a bound of
+	// arithmetic: an amount times a multiplier of up to MaxMultiplier still
+	// fits in int64.
+	MaxAmount = 1_000_000_000_000
+	// MaxMultiplier is the biggest multiplier the administrators set, in
+	// hundredths: ×10000.
+	MaxMultiplier = 1_000_000
 )
 
 // SettledBefore is when the pages registered before it count as old enough

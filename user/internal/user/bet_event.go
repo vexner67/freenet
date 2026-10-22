@@ -21,18 +21,11 @@ const (
 	// MaxBetEventAhead is how far ahead the stakes of an event may close.
 	MaxBetEventAhead = 366 * 24 * time.Hour
 	// MaxStake is the most votes one stake puts on an outcome.
-	MaxStake = 100_000_000
+	MaxStake = MaxAmount
 	// MinEventOdds and MaxEventOdds bound the odds of an outcome, in
-	// hundredths: 101 is ×1.01, 100000 ×1000.
+	// hundredths: 101 is ×1.01, MaxMultiplier ×10000.
 	MinEventOdds = 101
-	MaxEventOdds = 100_000
-	// MinEventMargin is the least sum of 1/odds of the outcomes of an
-	// event, in percent: the treasury keeps 5% of what a fair book pays.
-	MinEventMargin = 105
-	// MaxPersonStakes is the most one person stakes on one event in all.
-	MaxPersonStakes = 300
-	// MaxOutcomePayout is the most the stakes on one outcome pay together.
-	MaxOutcomePayout = 3_000
+	MaxEventOdds = MaxMultiplier
 )
 
 var (
@@ -48,13 +41,10 @@ var (
 	ErrBetEventFinished   = errors.New("the event is over already")
 	ErrBetEventActive     = errors.New("the event is not over yet")
 	ErrBetOutcome         = errors.New("unknown outcome")
-	ErrStakeAmount        = errors.New("a stake must be from 1 to 100000000 votes")
-	ErrEventOdds          = errors.New("the odds of an outcome must be from 1.01 to 1000")
+	ErrStakeAmount        = errors.New("a stake must be at least 1 vote")
+	ErrEventOdds          = errors.New("the odds of an outcome must be from 1.01 to 10000")
 	ErrEventOddsCount     = errors.New("every outcome needs its odds")
 	ErrEventPooled        = errors.New("the event shares its stakes and has no odds")
-	ErrEventMargin        = errors.New("the odds pay too much: the sum of 1/odds must be at least 1.05")
-	ErrEventStakeLimit    = errors.New("one person stakes at most 300 votes on an event")
-	ErrEventFull          = errors.New("the outcome takes no more stakes: its payouts reached 3000 votes")
 )
 
 // BetQuestion is what an event asks: "Will the Republicans lose the
@@ -197,44 +187,10 @@ func checkOdds(odds []int, n int) error {
 	if len(odds) != n {
 		return ErrEventOddsCount
 	}
-	// The sum of 1/odds, as chances in percent.
-	var sum float64
 	for _, o := range odds {
 		if o < MinEventOdds || o > MaxEventOdds {
 			return ErrEventOdds
 		}
-
-		sum += 100 / float64(o)
-	}
-
-	// The tolerance forgives the floating point of a sum right at 1.05.
-	if sum*100 < MinEventMargin-1e-9 {
-		return ErrEventMargin
-	}
-
-	return nil
-}
-
-// CheckStake is ErrEventStakeLimit when userID would stake more than
-// MaxPersonStakes on the event in all, and ErrEventFull when the stakes on
-// the outcome would pay more than MaxOutcomePayout, with a stake of amount
-// paying potential added to the stakes made.
-func CheckStake(stakes []Stake, userID uuid.UUID, outcome int, amount, potential int64) error {
-	mine, owed := amount, potential
-	for _, s := range stakes {
-		if s.UserID == userID {
-			mine += s.Amount
-		}
-		if s.Outcome == outcome {
-			owed += s.Potential
-		}
-	}
-
-	switch {
-	case mine > MaxPersonStakes:
-		return ErrEventStakeLimit
-	case owed > MaxOutcomePayout:
-		return ErrEventFull
 	}
 
 	return nil

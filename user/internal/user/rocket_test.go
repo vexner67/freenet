@@ -19,8 +19,7 @@ func TestNewCasinoRocket(t *testing.T) {
 		want        error
 	}{
 		{name: "fine", least: 1, most: 100, ret: 8500, top: 1000},
-		{name: "the most", least: 1, most: 1, ret: user.MaxRocketReturn, top: user.MaxWin * 100},
-		{name: "wins too much", least: 1, most: 101, ret: 8500, top: 1000, want: user.ErrRocketWin},
+		{name: "the most", least: 1, most: user.MaxBet, ret: user.MaxRocketReturn, top: user.MaxRocketTop},
 		{name: "free", least: 0, most: 10, ret: 8500, top: 1000, want: user.ErrRocketLimits},
 		{name: "too big", least: 1, most: user.MaxBet + 1, ret: 8500, top: 1000, want: user.ErrRocketLimits},
 		{name: "upside down", least: 10, most: 5, ret: 8500, top: 1000, want: user.ErrRocketLimits},

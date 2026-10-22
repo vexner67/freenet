@@ -196,7 +196,7 @@ func (s *BetEventService) Delete(ctx context.Context, adminID, id uuid.UUID) err
 // Stake takes amount votes of userID and puts them on the outcome, in one
 // transaction, and returns what is left; user.ErrBetEventNotFound,
 // user.ErrBetEventClosed, user.ErrBetOutcome, user.ErrStakeAmount,
-// user.ErrEventStakeLimit, user.ErrEventFull, user.ErrNotEnoughVotes.
+// user.ErrNotEnoughVotes.
 func (s *BetEventService) Stake(ctx context.Context, userID, id uuid.UUID, outcome int, amount int64) (int64, error) {
 	var balance int64
 
@@ -209,15 +209,6 @@ func (s *BetEventService) Stake(ctx context.Context, userID, id uuid.UUID, outco
 		potential, err := e.Stake(outcome, amount, s.now())
 		if err != nil {
 			return errs.Wrap("e.Stake", err)
-		}
-
-		stakes, err := s.events.Stakes(ctx, id)
-		if err != nil {
-			return errs.Wrap("s.events.Stakes", err)
-		}
-
-		if err = user.CheckStake(stakes, userID, outcome, amount, potential); err != nil {
-			return errs.Wrap("user.CheckStake", err)
 		}
 
 		if balance, err = s.wallets.Spend(ctx, userID, amount, user.Entry(user.VoteStake, uuid.Nil, e.Question().String())); err != nil {

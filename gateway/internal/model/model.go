@@ -1389,9 +1389,22 @@ type Treasury struct {
 	Votes       int64
 	Outstanding int64
 	Bonus       int64
-	MaxWin      int64
 	// Held is the votes on the accounts of the pages.
 	Held int64
+	// The fees in percent: of a transfer, of a sale of a sticker pack and
+	// of the same with Prime.
+	TransferFee     int
+	StickerTax      int
+	PrimeStickerTax int
+}
+
+// Economy is what the administrators set of the votes: the daily bonus and
+// the fees in percent.
+type Economy struct {
+	Bonus           int64
+	TransferFee     int
+	StickerTax      int
+	PrimeStickerTax int
 }
 
 // Transferred is what a transfer left the sender and the fee it took on

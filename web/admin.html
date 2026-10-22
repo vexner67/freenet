@@ -98,10 +98,36 @@
             <div id="held-words"></div>
             <ul>
               <li><b id="count-bonus"></b> <span id="bonus-words"></span></li>
-              <li><b id="count-maxWin"></b> <span id="maxWin-words"></span></li>
             </ul>
           </div>
         </div>
+        <h2>Бонус и комиссии</h2>
+        <div class="aui-message aui-message-success" id="economy-saved" hidden></div>
+        <form class="aui" id="economy-form">
+          <div class="field-group">
+            <label for="economy-bonus">Ежедневный бонус</label>
+            <input class="text admin-casino-field" id="economy-bonus" type="number" min="1" required>
+            <div class="description">В голосах, не меньше 1: столько голосов Казна даёт раз в сутки.</div>
+          </div>
+          <div class="field-group">
+            <label for="economy-fee">Комиссия перевода, %</label>
+            <input class="text admin-casino-field" id="economy-fee" type="number" min="0" max="100" required>
+            <div class="description">Сверх перевода, не меньше 1 голоса; с Freenet Prime комиссии нет.</div>
+          </div>
+          <div class="field-group">
+            <label for="economy-tax">Налог со стикеров, %</label>
+            <input class="text admin-casino-field" id="economy-tax" type="number" min="0" max="100" required>
+            <div class="description">Его платит автор с продажи своего набора.</div>
+          </div>
+          <div class="field-group">
+            <label for="economy-prime-tax">Налог со стикеров с Prime, %</label>
+            <input class="text admin-casino-field" id="economy-prime-tax" type="number" min="0" max="100" required>
+            <div class="description">От 0 до 100.</div>
+          </div>
+          <div class="buttons-container">
+            <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
+          </div>
+        </form>
       </div>
     </section>
 
@@ -183,7 +209,7 @@
       <h1 class="aui-page-heading">Подарки</h1>
       <form class="aui admin-rate" id="rate-form">
         <label for="rate-rubles">Курс голоса</label>
-        <input class="text" id="rate-rubles" type="number" min="0.01" max="1000000" step="0.01" required>
+        <input class="text" id="rate-rubles" type="number" min="0.01" step="0.01" required>
         <span>₽ за голос</span>
         <button class="aui-button" type="submit">Сохранить</button>
         <div class="description">Сайт показывает его рядом с голосами: в «Голосах» настроек, в «Магазине» и при выборе подарка.</div>
@@ -226,7 +252,7 @@
         </div>
         <div class="field-group">
           <label for="mint-start">Начальная ставка</label>
-          <input class="text admin-casino-field" id="mint-start" type="number" min="1" max="1000000" required>
+          <input class="text admin-casino-field" id="mint-start" type="number" min="1" required>
           <div class="description">В голосах. Каждая следующая ставка больше предыдущей на 5 %.</div>
         </div>
         <div class="field-group">
@@ -265,21 +291,21 @@
 
     <section id="prime" hidden>
       <h1 class="aui-page-heading">Freenet Prime</h1>
-      <p class="admin-lead">Подписка сайта: значок после имени, золотая рамка и стиль, подарки Prime, новости без рекламы, «Невидимка», переводы без комиссии и налог 5 % со стикеров. Голоса за неё уходят в Казну. Новые цены действуют для следующих покупок.</p>
+      <p class="admin-lead">Подписка сайта: значок после имени, золотая рамка и стиль, подарки Prime, новости без рекламы, «Невидимка», переводы без комиссии и меньший налог со стикеров. Голоса за неё уходят в Казну. Новые цены действуют для следующих покупок.</p>
       <div class="aui-message aui-message-success" id="prime-saved" hidden></div>
       <form class="aui" id="prime-form">
         <div class="field-group">
           <label for="prime-month">Месяц</label>
-          <input class="text admin-casino-field" id="prime-month" type="number" min="1" max="1000000" required>
-          <div class="description">В голосах, от 1 до 1 000 000.</div>
+          <input class="text admin-casino-field" id="prime-month" type="number" min="1" required>
+          <div class="description">В голосах, не меньше 1.</div>
         </div>
         <div class="field-group">
           <label for="prime-quarter">3 месяца</label>
-          <input class="text admin-casino-field" id="prime-quarter" type="number" min="1" max="1000000" required>
+          <input class="text admin-casino-field" id="prime-quarter" type="number" min="1" required>
         </div>
         <div class="field-group">
           <label for="prime-year">Год</label>
-          <input class="text admin-casino-field" id="prime-year" type="number" min="1" max="1000000" required>
+          <input class="text admin-casino-field" id="prime-year" type="number" min="1" required>
         </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
@@ -290,14 +316,14 @@
     <section id="casino" hidden>
       <h1 class="aui-page-heading">Казино</h1>
       <h2>Огонёк</h2>
-      <p class="admin-lead">Прокрутка стоит голосов и выигрывает один из призов. Шанс приза — его вес среди весов всех призов: чем больше вес, тем чаще приз выпадает, вес 0 — не выпадает никогда. Люди видят призы, но не шансы. Казино возвращает не больше 85 % потраченного, приз — не больше 1000 голосов.</p>
+      <p class="admin-lead">Прокрутка стоит голосов и выигрывает один из призов. Шанс приза — его вес среди весов всех призов: чем больше вес, тем чаще приз выпадает, вес 0 — не выпадает никогда. Люди видят призы, но не шансы.</p>
       <p class="admin-casino-stats" id="casino-stats"></p>
       <div class="aui-message aui-message-success" id="casino-saved" hidden></div>
       <form class="aui" id="casino-form">
         <div class="field-group">
           <label for="casino-price">Цена прокрутки</label>
-          <input class="text admin-casino-field" id="casino-price" type="number" min="1" max="10000" required>
-          <div class="description">В голосах, от 1 до 10 000.</div>
+          <input class="text admin-casino-field" id="casino-price" type="number" min="1" required>
+          <div class="description">В голосах, не меньше 1.</div>
         </div>
         <div class="aui-table-wrap">
           <table class="aui">
@@ -327,12 +353,12 @@
       <form class="aui" id="bets-form">
         <div class="field-group">
           <label for="bets-least">Наименьшая ставка</label>
-          <input class="text admin-casino-field" id="bets-least" type="number" min="1" max="100000000" required>
+          <input class="text admin-casino-field" id="bets-least" type="number" min="1" required>
         </div>
         <div class="field-group">
           <label for="bets-most">Наибольшая ставка</label>
-          <input class="text admin-casino-field" id="bets-most" type="number" min="1" max="100000000" required>
-          <div class="description">В голосах, от 1 до 100 000 000.</div>
+          <input class="text admin-casino-field" id="bets-most" type="number" min="1" required>
+          <div class="description">В голосах, не меньше 1.</div>
         </div>
         <div class="aui-table-wrap">
           <table class="aui">
@@ -349,30 +375,30 @@
         </div>
         <div class="admin-casino-add">
           <button class="aui-button" id="aim-add" type="button">Добавить множитель</button>
-          <span class="admin-decor-now">От 1 до 10 множителей, каждый — от ×1,01 до ×1000, шанс — от 0,01 до 99,99 %.</span>
+          <span class="admin-decor-now">От 1 до 10 множителей, каждый — от ×1,01 до ×10 000, шанс — от 0,01 до 99,99 %.</span>
         </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
         </div>
       </form>
       <h2>Ракетка</h2>
-      <p class="admin-lead">Ставка запускает ракету, и множитель растёт от ×1. Игрок забирает ставку, пока ракета летит, — она возвращается умноженной на то, что ракета показывала, — или задаёт множитель, на котором ракета заберёт её сама. Где ракета взорвётся, решается при взлёте: отдача — сколько поставленных голосов ракета возвращает в среднем, как бы ни играли (85 % — ракета долетает до ×2 в 42 % полётов, до ×10 — примерно в каждом двенадцатом). Отдача — не больше 85 %, а наибольшая ставка на наибольшем множителе выигрывает не больше 1000 голосов. Дальше наибольшего множителя ракета не улетает.</p>
+      <p class="admin-lead">Ставка запускает ракету, и множитель растёт от ×1. Игрок забирает ставку, пока ракета летит, — она возвращается умноженной на то, что ракета показывала, — или задаёт множитель, на котором ракета заберёт её сама. Где ракета взорвётся, решается при взлёте: отдача — сколько поставленных голосов ракета возвращает в среднем, как бы ни играли (85 % — ракета долетает до ×2 в 42 % полётов, до ×10 — примерно в каждом двенадцатом). Дальше наибольшего множителя ракета не улетает.</p>
       <p class="admin-casino-stats" id="rocket-stats"></p>
       <div class="aui-message aui-message-success" id="rocket-saved" hidden></div>
       <form class="aui" id="rocket-form">
         <div class="field-group">
           <label for="rocket-least">Наименьшая ставка</label>
-          <input class="text admin-casino-field" id="rocket-least" type="number" min="1" max="100000000" required>
+          <input class="text admin-casino-field" id="rocket-least" type="number" min="1" required>
         </div>
         <div class="field-group">
           <label for="rocket-most">Наибольшая ставка</label>
-          <input class="text admin-casino-field" id="rocket-most" type="number" min="1" max="100000000" required>
-          <div class="description">В голосах, от 1 до 100 000 000.</div>
+          <input class="text admin-casino-field" id="rocket-most" type="number" min="1" required>
+          <div class="description">В голосах, не меньше 1.</div>
         </div>
         <div class="field-group">
           <label for="rocket-return">Отдача, %</label>
           <input class="text admin-casino-field" id="rocket-return" inputmode="decimal" required>
-          <div class="description">От 0,01 до 85 %.</div>
+          <div class="description">От 0,01 до 100 %.</div>
         </div>
         <div class="field-group">
           <label for="rocket-top">Наибольший множитель</label>
@@ -389,8 +415,8 @@
       <form class="aui" id="jackpot-form">
         <div class="field-group">
           <label for="jackpot-votes">Порог джекпота</label>
-          <input class="text admin-casino-field" id="jackpot-votes" type="number" min="1" max="1000" required>
-          <div class="description">В голосах, от 1 до 1000.</div>
+          <input class="text admin-casino-field" id="jackpot-votes" type="number" min="1" required>
+          <div class="description">В голосах, не меньше 1.</div>
         </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
@@ -424,26 +450,26 @@
         <h2>Энергия</h2>
         <div class="field-group">
           <label for="mine-energy">Запас энергии</label>
-          <input class="text admin-casino-field" id="mine-energy" type="number" min="1" max="1000" required>
-          <div class="description">От 1 до 1000 и не меньше, чем тратит копка любой руды. Новый шахтёр начинает с полным запасом.</div>
+          <input class="text admin-casino-field" id="mine-energy" type="number" min="1" required>
+          <div class="description">Не меньше, чем тратит копка любой руды. Новый шахтёр начинает с полным запасом.</div>
         </div>
         <div class="field-group">
           <label for="mine-regen">Восстановление, минут</label>
           <input class="text admin-casino-field" id="mine-regen" inputmode="decimal" required>
-          <div class="description">Сколько восстанавливается единица энергии: от 1 секунды до 24 часов (1440 минут), можно дробно — 0,5.</div>
+          <div class="description">Сколько восстанавливается единица энергии: не быстрее 1 секунды, можно дробно — 0,5.</div>
         </div>
         <h2>События</h2>
         <p class="admin-decor-now">Шансы — на одну копку, вместе не больше 100 %.</p>
         <div class="field-group">
           <label for="mine-nugget">Самородок, %</label>
           <input class="text admin-casino-field" id="mine-nugget" inputmode="decimal" required>
-          <span class="admin-times">руды ×<input class="text admin-casino-field" id="mine-nugget-times" type="number" min="2" max="100" required aria-label="Во сколько раз больше руды"></span>
+          <span class="admin-times">руды ×<input class="text admin-casino-field" id="mine-nugget-times" type="number" min="2" required aria-label="Во сколько раз больше руды"></span>
         </div>
         <div class="field-group">
           <label for="mine-chest">Сундук, %</label>
           <input class="text admin-casino-field" id="mine-chest" inputmode="decimal" required>
-          <span class="admin-times">от <input class="text admin-casino-field" id="mine-chest-least" type="number" min="1" max="1000" required aria-label="Наименьший сундук"> до <input class="text admin-casino-field" id="mine-chest-most" type="number" min="1" max="1000" required aria-label="Наибольший сундук"> голосов</span>
-          <div class="description">Голоса из Казны сразу на счёт, от 1 до 1000.</div>
+          <span class="admin-times">от <input class="text admin-casino-field" id="mine-chest-least" type="number" min="1" required aria-label="Наименьший сундук"> до <input class="text admin-casino-field" id="mine-chest-most" type="number" min="1" required aria-label="Наибольший сундук"> голосов</span>
+          <div class="description">Голоса из Казны сразу на счёт, не меньше 1.</div>
         </div>
         <div class="field-group">
           <label for="mine-collapse">Обвал, %</label>
@@ -453,7 +479,7 @@
         <div class="field-group">
           <label for="mine-drink">Энергетик, %</label>
           <input class="text admin-casino-field" id="mine-drink" inputmode="decimal" required>
-          <span class="admin-times">+<input class="text admin-casino-field" id="mine-drink-energy" type="number" min="1" max="1000" required aria-label="Сколько энергии даёт энергетик"> энергии</span>
+          <span class="admin-times">+<input class="text admin-casino-field" id="mine-drink-energy" type="number" min="1" required aria-label="Сколько энергии даёт энергетик"> энергии</span>
         </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
@@ -476,7 +502,7 @@
           <label>Исходы</label>
           <div id="bet-outcomes"></div>
           <button class="aui-button aui-button-compact" id="bet-outcome-add" type="button">Добавить исход</button>
-          <div class="description">От 2 до 10, каждый до 64 символов. Справа — коэффициент исхода, от 1,01 до 1000.</div>
+          <div class="description">От 2 до 10, каждый до 64 символов. Справа — коэффициент исхода, от 1,01 до 10 000.</div>
         </div>
         <div class="field-group">
           <label for="bet-closes">Приём ставок до</label>
@@ -583,15 +609,15 @@
         </div>
         <div class="field-group">
           <label for="voucher-votes">Количество голосов</label>
-          <input class="text" type="number" id="voucher-votes" min="0" max="100000000" value="0" required>
+          <input class="text" type="number" id="voucher-votes" min="0" value="0" required>
         </div>
         <div class="field-group">
           <label for="voucher-rating">Количество рейтинга</label>
-          <input class="text" type="number" id="voucher-rating" min="0" max="1000" value="0" required>
+          <input class="text" type="number" id="voucher-rating" min="0" value="0" required>
         </div>
         <div class="field-group">
           <label for="voucher-usages">Количество использований</label>
-          <input class="text" type="number" id="voucher-usages" min="-1" max="1000000" value="1" required>
+          <input class="text" type="number" id="voucher-usages" min="-1" value="1" required>
           <div class="description">Количество аккаунтов, которые могут использовать ваучер. Если написать -1, будет бесконечность.</div>
         </div>
         <div class="buttons-container">

@@ -2,23 +2,20 @@ package user
 
 import "errors"
 
-// The bounds of the casino: what a spin may cost, how many prizes it has
-// and how big a prize and a weight may be.
+// The bounds of the casino: how many prizes it has — the cells of the
+// field — and how big a weight may be, so that the weights add up in int64.
 const (
-	MaxCasinoPrice  = 10_000
 	MaxCasinoPrizes = 12
-	MaxCasinoPrize  = MaxWin
-	MaxCasinoWeight = 1_000_000
+	MaxCasinoWeight = 1_000_000_000
 )
 
 var (
-	ErrCasinoPrice   = errors.New("a spin must cost from 1 to 10000 votes")
+	ErrCasinoPrice   = errors.New("a spin must cost at least 1 vote")
 	ErrCasinoPrizes  = errors.New("the casino must have from 2 to 12 prizes")
-	ErrCasinoPrize   = errors.New("a prize must be from 0 to 1000 votes")
-	ErrCasinoWeight  = errors.New("the weight of a prize must be from 0 to 1000000")
+	ErrCasinoPrize   = errors.New("a prize must be at least 0 votes")
+	ErrCasinoWeight  = errors.New("the weight of a prize must be from 0 to 1000000000")
 	ErrCasinoNoOdds  = errors.New("at least one prize must have a weight")
 	ErrCasinoRollOut = errors.New("the roll is out of the weights")
-	ErrCasinoReturn  = errors.New("the casino gives back at most 85 percent of what is spent")
 )
 
 // CasinoPrize is what a spin may win, in votes (0 — nothing), and how
@@ -37,17 +34,17 @@ type Casino struct {
 }
 
 func NewCasino(price int64, prizes []CasinoPrize) (Casino, error) {
-	if price < 1 || price > MaxCasinoPrice {
+	if price < 1 || price > MaxAmount {
 		return Casino{}, ErrCasinoPrice
 	}
 	if len(prizes) < 2 || len(prizes) > MaxCasinoPrizes {
 		return Casino{}, ErrCasinoPrizes
 	}
 
-	var total, paid int64
+	var total int64
 
 	for _, p := range prizes {
-		if p.Votes < 0 || p.Votes > MaxCasinoPrize {
+		if p.Votes < 0 || p.Votes > MaxAmount {
 			return Casino{}, ErrCasinoPrize
 		}
 		if p.Weight < 0 || p.Weight > MaxCasinoWeight {
@@ -55,16 +52,10 @@ func NewCasino(price int64, prizes []CasinoPrize) (Casino, error) {
 		}
 
 		total += int64(p.Weight)
-		paid += p.Votes * int64(p.Weight)
 	}
 
 	if total == 0 {
 		return Casino{}, ErrCasinoNoOdds
-	}
-
-	// On average a spin wins paid / total of price.
-	if paid*100 > MaxCasinoReturn*price*total {
-		return Casino{}, ErrCasinoReturn
 	}
 
 	return Casino{price: price, prizes: append([]CasinoPrize(nil), prizes...)}, nil

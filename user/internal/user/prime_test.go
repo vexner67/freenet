@@ -84,11 +84,12 @@ func TestUser_Prime(t *testing.T) {
 		t.Fatal("CheckInvisible refused what is allowed")
 	}
 
-	if plain.TransferFeeAt(100, now) != user.TransferFee(100) || prime.TransferFeeAt(100, now) != 0 {
+	e := user.DefaultEconomy
+	if plain.TransferFeeAt(e, 100, now) != 3 || prime.TransferFeeAt(e, 100, now) != 0 {
 		t.Fatal("TransferFeeAt")
 	}
-	if plain.StickerTaxAt(10, now) != user.StickerTax(10) || prime.StickerTaxAt(100, now) != 5 || prime.StickerTaxAt(10, now) != 1 {
-		t.Fatalf("StickerTaxAt = %d, %d", prime.StickerTaxAt(100, now), prime.StickerTaxAt(10, now))
+	if plain.StickerTaxAt(e, 10, now) != 1 || prime.StickerTaxAt(e, 100, now) != 5 || prime.StickerTaxAt(e, 10, now) != 1 {
+		t.Fatalf("StickerTaxAt = %d, %d", prime.StickerTaxAt(e, 100, now), prime.StickerTaxAt(e, 10, now))
 	}
 }
 

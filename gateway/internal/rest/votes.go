@@ -320,11 +320,13 @@ func (a *api) setVoteRate(w http.ResponseWriter, r *http.Request) {
 
 // treasuryJSON is the treasury of the site.
 type treasuryJSON struct {
-	Votes       int64 `json:"votes"`
-	Outstanding int64 `json:"outstanding"`
-	Bonus       int64 `json:"bonus"`
-	MaxWin      int64 `json:"maxWin"`
-	Held        int64 `json:"held"`
+	Votes           int64 `json:"votes"`
+	Outstanding     int64 `json:"outstanding"`
+	Bonus           int64 `json:"bonus"`
+	Held            int64 `json:"held"`
+	TransferFee     int   `json:"transferFee"`
+	StickerTax      int   `json:"stickerTax"`
+	PrimeStickerTax int   `json:"primeStickerTax"`
 }
 
 // treasury is public: everyone may see how many votes the site holds.
@@ -336,6 +338,37 @@ func (a *api) treasury(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, treasuryJSON(t))
+}
+
+// economyJSON is the bonus and the fees an administrator sets.
+type economyJSON struct {
+	Bonus           int64 `json:"bonus"`
+	TransferFee     int   `json:"transferFee"`
+	StickerTax      int   `json:"stickerTax"`
+	PrimeStickerTax int   `json:"primeStickerTax"`
+}
+
+// setEconomy is "Экономика" of the admin panel: the daily bonus and the
+// fees of transfers and sticker packs.
+func (a *api) setEconomy(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req economyJSON
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.votes.SetEconomy(r.Context(), token, model.Economy(req)); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // bonusJSON is the daily bonus of the caller.

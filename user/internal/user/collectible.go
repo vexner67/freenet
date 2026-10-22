@@ -26,7 +26,7 @@ const (
 	PrimeGiftFeePermille = 25
 	// MaxGiftSalePrice is the dearest a collectible may be sold or bid
 	// for.
-	MaxGiftSalePrice = 1_000_000
+	MaxGiftSalePrice = MaxAmount
 	// MinAuctionHours and MaxAuctionHours bound how long an auction runs.
 	MinAuctionHours = 1
 	MaxAuctionHours = 7 * 24
@@ -37,7 +37,7 @@ const (
 	// on, so that nobody wins by bidding in the last second.
 	AuctionExtension = 5 * time.Minute
 	// MaxGiftSupply is the largest edition a gift may be limited to.
-	MaxGiftSupply = 1_000_000
+	MaxGiftSupply = 1_000_000_000
 	// TraitWeights is what the weights of every list of traits add up to:
 	// a weight is the chance of the trait in tenths of a percent.
 	TraitWeights = 1000
@@ -54,12 +54,12 @@ var (
 	ErrGiftOnSale       = errors.New("the gift is on sale")
 	ErrGiftNotOnSale    = errors.New("the gift is not on sale")
 	ErrGiftPriceChanged = errors.New("the price of the gift changed")
-	ErrGiftSalePrice    = errors.New("the price of a gift must be from 1 to 1000000 votes")
+	ErrGiftSalePrice    = errors.New("the price of a gift must be at least 1 vote")
 	// ErrOwnGift: one does not buy, bid on or give oneself what is one's
 	// own.
 	ErrOwnGift           = errors.New("this gift is yours")
 	ErrGiftSoldOut       = errors.New("this gift is sold out")
-	ErrGiftSupplyInvalid = errors.New("the edition of a gift must be from 0 to 1000000")
+	ErrGiftSupplyInvalid = errors.New("the edition of a gift must be from 0 to 1000000000")
 	ErrUnknownTrait      = errors.New("unknown trait of a gift")
 	ErrMarketSort        = errors.New("unknown order of the market")
 	ErrAuctionHours      = errors.New("an auction runs from 1 to 168 hours")

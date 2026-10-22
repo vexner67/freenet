@@ -8,7 +8,7 @@
 // the treasury of the site holds and what the pages hold).
 
 import { api, currentUser, started } from './api.js';
-import { MAX_RATING, RATING_PRICE, formatDateTime, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, votesFontSize, voucherGave } from './labels.js';
+import { MAX_RATING, RATING_PRICE, TRANSFER_FEE_PERCENT, formatDateTime, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, votesFontSize, voucherGave } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError, verifiedMark } from './layout.js';
 import { tr } from './i18n.js';
 
@@ -162,10 +162,13 @@ function initTransfer(me) {
     return found;
   }
 
-  // The fee comes on top of the votes, so the form says it beforehand.
+  // The fee comes on top of the votes, so the form says it beforehand: at
+  // the percent the administrators set, none with Prime.
+  let percent = TRANSFER_FEE_PERCENT;
+  api.treasury().then((t) => { percent = me?.prime ? 0 : t.transferFee ?? percent; }, () => {});
   $('transfer-votes').addEventListener('input', () => {
     const votes = Number($('transfer-votes').value);
-    const fee = Number.isSafeInteger(votes) ? transferFee(votes) : 0;
+    const fee = Number.isSafeInteger(votes) ? transferFee(votes, percent) : 0;
     $('transfer-fee').textContent = fee ? tr('Комиссия {0}, всего спишется {1}.', votesAmount(fee), votesAmount(votes + fee)) : '';
     $('transfer-fee').hidden = !fee;
   });
@@ -263,8 +266,7 @@ async function initTreasury() {
       figure(tr('Сальдо Казны'), t.votes),
       figure(tr('На счетах людей'), t.held ?? 0),
       figure(tr('Обещают ваучеры'), t.outstanding),
-      figure(tr('Ежедневный бонус'), t.bonus),
-      figure(tr('Наибольший выигрыш за раунд'), t.maxWin));
+      figure(tr('Ежедневный бонус'), t.bonus));
   } catch (e) {
     showError(error, e);
   }

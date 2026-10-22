@@ -137,7 +137,7 @@ func TestPrime_Perks(t *testing.T) {
 	if err != nil || fee != 0 || left != before-100 {
 		t.Fatalf("Transfer with Prime = %d, %d, %v", left, fee, err)
 	}
-	if _, fee, err = w.wallets.Transfer(ctx, bob, ann, 100, ""); err != nil || fee != user.TransferFee(100) {
+	if _, fee, err = w.wallets.Transfer(ctx, bob, ann, 100, ""); err != nil || fee != 3 {
 		t.Fatalf("Transfer without Prime: fee %d, %v", fee, err)
 	}
 }

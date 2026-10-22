@@ -13,25 +13,27 @@ const BetOdds = 10_000
 // The bounds of the bets: how big a bet may be, how many multipliers it
 // chooses from and how big they are, in hundredths: 101 is ×1.01.
 const (
-	MaxBet            = 100_000_000
+	MaxBet            = MaxAmount
 	MaxAimMultipliers = 10
 	MinAimMultiplier  = 101
-	MaxAimMultiplier  = 100_000
+	MaxAimMultiplier  = MaxMultiplier
 )
+
+// defaultReturn is what the default games give back on average, in
+// percent.
+const defaultReturn = 85
 
 // defaultAim are the multipliers until the administrators change them,
 // each winning with the chance 85% divided by it: the casino gives back
-// 85% of what is bet on average, the most it may.
+// 85% of what is bet on average.
 var defaultAim = []int{200, 300, 400, 500, 700, 1000}
 
 var (
-	ErrBetLimits          = errors.New("bets must be from 1 to 100000000 votes, the least not above the most")
+	ErrBetLimits          = errors.New("bets must be at least 1 vote, the least not above the most")
 	ErrAimMultipliers     = errors.New("bets have from 1 to 10 multipliers")
-	ErrAimMultiplier      = errors.New("a multiplier must be from 1.01 to 1000")
+	ErrAimMultiplier      = errors.New("a multiplier must be from 1.01 to 10000")
 	ErrAimChance          = errors.New("the chance of a multiplier must be from 0.01 to 99.99 percent")
 	ErrAimMultiplierTwice = errors.New("the multipliers repeat")
-	ErrAimReturn          = errors.New("a multiplier gives back at most 85 percent: the multiplier times its chance")
-	ErrAimWin             = errors.New("the biggest bet on the biggest multiplier wins at most 1000 votes")
 	ErrBetAmount          = errors.New("the bet is out of the limits of the casino")
 	ErrBetMultiplier      = errors.New("unknown multiplier")
 )
@@ -73,13 +75,7 @@ func NewCasinoBets(least, most int64, aim []AimMultiplier) (CasinoBets, error) {
 			return CasinoBets{}, ErrAimChance
 		case i > 0 && sorted[i-1].Multiplier == m.Multiplier:
 			return CasinoBets{}, ErrAimMultiplierTwice
-		case m.Multiplier*m.Chance > MaxCasinoReturn*BetOdds:
-			return CasinoBets{}, ErrAimReturn
 		}
-	}
-
-	if most*int64(sorted[len(sorted)-1].Multiplier)/100 > MaxWin {
-		return CasinoBets{}, ErrAimWin
 	}
 
 	return CasinoBets{least: least, most: most, aim: sorted}, nil
@@ -94,7 +90,7 @@ func DefaultCasinoBets() CasinoBets {
 func DefaultAim() []AimMultiplier {
 	aim := make([]AimMultiplier, len(defaultAim))
 	for i, m := range defaultAim {
-		aim[i] = AimMultiplier{Multiplier: m, Chance: MaxCasinoReturn * BetOdds / m}
+		aim[i] = AimMultiplier{Multiplier: m, Chance: defaultReturn * BetOdds / m}
 	}
 
 	return aim

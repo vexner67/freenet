@@ -18,19 +18,19 @@ const RocketGrowth = 0.00012
 const RocketRolls = 1 << 52
 
 // The bounds of "Ракетка": the return of the casino in hundredths of a
-// percent (8500 — 85%, the most it may), the highest multiplier a rocket reaches in
-// hundredths (100000 — ×1000) and the multiplier to cash at by itself.
+// percent (10000 — 100%: the chance a rocket reaches ×1 cannot be more),
+// the highest multiplier a rocket reaches in hundredths (100000 — ×1000)
+// and the multiplier to cash at by itself.
 const (
-	MaxRocketReturn = MaxCasinoReturn * 100
+	MaxRocketReturn = 10_000
 	MinRocketTop    = 200
-	MaxRocketTop    = 1_000_000
+	MaxRocketTop    = MaxMultiplier
 	MinRocketAuto   = 101
 )
 
 var (
-	ErrRocketLimits   = errors.New("rocket bets must be from 1 to 100000000 votes, the least not above the most")
-	ErrRocketReturn   = errors.New("the return of the rocket must be from 0.01 to 85 percent")
-	ErrRocketWin      = errors.New("the biggest bet at the top of the rocket wins at most 1000 votes")
+	ErrRocketLimits   = errors.New("rocket bets must be at least 1 vote, the least not above the most")
+	ErrRocketReturn   = errors.New("the return of the rocket must be from 0.01 to 100 percent")
 	ErrRocketTop      = errors.New("the top of the rocket must be from 2 to 10000")
 	ErrRocketAmount   = errors.New("the bet is out of the limits of the rocket")
 	ErrRocketAuto     = errors.New("the rocket cashes by itself from 1.01 to its top")
@@ -58,8 +58,6 @@ func NewCasinoRocket(least, most int64, ret, top int) (CasinoRocket, error) {
 		return CasinoRocket{}, ErrRocketReturn
 	case top < MinRocketTop || top > MaxRocketTop:
 		return CasinoRocket{}, ErrRocketTop
-	case most*int64(top)/100 > MaxWin:
-		return CasinoRocket{}, ErrRocketWin
 	}
 
 	return CasinoRocket{least: least, most: most, ret: ret, top: top}, nil

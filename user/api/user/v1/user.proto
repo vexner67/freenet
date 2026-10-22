@@ -191,9 +191,12 @@ service UserService {
   // GetTreasury is public. The daily bonus comes out of it: GetBonus says
   // it to the caller, ClaimBonus gives it once a Moscow day to a page a
   // week old with a filled profile (FailedPrecondition otherwise).
+  // SetEconomy sets the bonus and the fees, for the administrators
+  // (PermissionDenied for others).
   rpc GetTreasury(GetTreasuryRequest) returns (GetTreasuryResponse);
   rpc GetBonus(GetBonusRequest) returns (GetBonusResponse);
   rpc ClaimBonus(ClaimBonusRequest) returns (ClaimBonusResponse);
+  rpc SetEconomy(SetEconomyRequest) returns (google.protobuf.Empty);
   // RaiseRating sells the caller rating ("Повысить рейтинг" of openvk) for
   // 3 votes a percent, into the treasury: FailedPrecondition "not enough
   // votes" and "the rating cannot go above 1000 percent".
@@ -1428,8 +1431,8 @@ message SetVoteRateRequest {
 message GetTreasuryRequest {}
 
 message GetTreasuryResponse {
-  reserved 2, 3, 4;
-  reserved "reserve", "free", "minted";
+  reserved 2, 3, 4, 7;
+  reserved "reserve", "free", "minted", "max_win";
 
   // What the treasury has taken more than paid since it was made: it has
   // no bottom, so this is below zero when it has paid more.
@@ -1438,10 +1441,22 @@ message GetTreasuryResponse {
   int64 outstanding = 5;
   // The daily bonus.
   int64 bonus = 6;
-  // The largest win of one round of the casino.
-  int64 max_win = 7;
   // The votes on the accounts of the pages.
   int64 held = 8;
+  // The fee of a transfer, the tax of a sale of a sticker pack and the
+  // same with Prime, in percent.
+  int32 transfer_fee = 9;
+  int32 sticker_tax = 10;
+  int32 prime_sticker_tax = 11;
+}
+
+message SetEconomyRequest {
+  // The daily bonus, at least 1 vote.
+  int64 bonus = 1;
+  // The fees, from 0 to 100 percent.
+  int32 transfer_fee = 2;
+  int32 sticker_tax = 3;
+  int32 prime_sticker_tax = 4;
 }
 
 message GetBonusRequest {}

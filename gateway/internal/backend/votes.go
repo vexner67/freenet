@@ -151,12 +151,42 @@ func (v *Votes) Treasury(ctx context.Context) (model.Treasury, error) {
 	}
 
 	return model.Treasury{
-		Votes:       resp.GetVotes(),
-		Outstanding: resp.GetOutstanding(),
-		Bonus:       resp.GetBonus(),
-		MaxWin:      resp.GetMaxWin(),
-		Held:        resp.GetHeld(),
+		Votes:           resp.GetVotes(),
+		Outstanding:     resp.GetOutstanding(),
+		Bonus:           resp.GetBonus(),
+		Held:            resp.GetHeld(),
+		TransferFee:     int(resp.GetTransferFee()),
+		StickerTax:      int(resp.GetStickerTax()),
+		PrimeStickerTax: int(resp.GetPrimeStickerTax()),
 	}, nil
+}
+
+func (v *Votes) SetEconomy(ctx context.Context, accessToken string, e model.Economy) error {
+	req := &userv1.SetEconomyRequest{Bonus: e.Bonus}
+
+	fees := []struct {
+		n    int
+		what string
+		to   *int32
+	}{
+		{e.TransferFee, "the fee of a transfer", &req.TransferFee},
+		{e.StickerTax, "the tax of a sticker pack", &req.StickerTax},
+		{e.PrimeStickerTax, "the tax of a sticker pack with prime", &req.PrimeStickerTax},
+	}
+	for _, f := range fees {
+		n, err := int32Of(f.n, f.what)
+		if err != nil {
+			return err
+		}
+
+		*f.to = n
+	}
+
+	if _, err := v.api.SetEconomy(withToken(ctx, accessToken), req); err != nil {
+		return errs.Wrap("v.api.SetEconomy", fromStatus(err))
+	}
+
+	return nil
 }
 
 func (v *Votes) Bonus(ctx context.Context, accessToken string) (model.Bonus, error) {

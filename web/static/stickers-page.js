@@ -10,7 +10,7 @@
 // are chosen from a person's page now: ?act=gifts leads to one's own.
 
 import { api, currentUser } from './api.js';
-import { STICKER_SECTIONS, installsCount, stickerIncome, shopPacks, stickerImage, stickerPackAction, stickerPackName, stickerPackPrice, stickersCount, votesCount } from './labels.js';
+import { STICKER_SECTIONS, STICKER_TAX_PERCENT, installsCount, stickerIncome, shopPacks, stickerImage, stickerPackAction, stickerPackName, stickerPackPrice, stickersCount, votesCount } from './labels.js';
 import { pickPath } from './gifts.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
@@ -254,15 +254,20 @@ function initForm(pack) {
   }
 
   // The site takes its tax of a sale, so the form says what comes to the
-  // author.
+  // author: at the percent the administrators set, a smaller one with Prime.
+  let tax = STICKER_TAX_PERCENT;
   const income = () => {
     const price = Number($('pack-price').value);
     $('pack-income').textContent = Number.isSafeInteger(price) && price > 0
-      ? tr('вы получите {0} из {1}', stickerIncome(price), votesCount(price))
+      ? tr('вы получите {0} из {1}', stickerIncome(price, tax), votesCount(price))
       : tr('в голосах, 0 — бесплатно');
   };
   $('pack-price').addEventListener('input', income);
   income();
+  api.treasury().then((t) => {
+    tax = (me?.prime ? t.primeStickerTax : t.stickerTax) ?? tax;
+    income();
+  }, () => {});
 
   const render = () => {
     $('pack-stickers').replaceChildren(...items.map((item) => el('div', { className: 'sticker-studio-item' },

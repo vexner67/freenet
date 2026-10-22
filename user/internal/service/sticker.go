@@ -89,20 +89,23 @@ type StickerService struct {
 	packs    StickerPackRepository
 	wallets  WalletRepository
 	users    UserRepository
+	economy  EconomyRepository
 	tx       TxManager
 	now      func() time.Time
 }
 
 // NewStickerService takes users to know who of the authors has Prime,
-// which lowers the tax on their sales.
+// which lowers the tax on their sales, and the economy for the tax.
 func NewStickerService(
-	stickers StickerRepository, packs StickerPackRepository, wallets WalletRepository, users UserRepository, tx TxManager,
+	stickers StickerRepository, packs StickerPackRepository, wallets WalletRepository, users UserRepository,
+	economy EconomyRepository, tx TxManager,
 ) *StickerService {
 	return &StickerService{
 		stickers: stickers,
 		packs:    packs,
 		wallets:  wallets,
 		users:    users,
+		economy:  economy,
 		tx:       tx,
 		now:      time.Now,
 	}
@@ -232,9 +235,14 @@ func (s *StickerService) pay(ctx context.Context, userID, authorID uuid.UUID, pr
 		return errs.Wrap("s.users.GetByID", err)
 	}
 
+	economy, err := s.economy.Economy(ctx)
+	if err != nil {
+		return errs.Wrap("s.economy.Economy", err)
+	}
+
 	// The author pays the tax out of the price just received: it cannot
 	// be short.
-	if tax := author.StickerTaxAt(price, s.now()); tax > 0 {
+	if tax := author.StickerTaxAt(economy, price, s.now()); tax > 0 {
 		_, err = s.wallets.Spend(ctx, authorID, tax, user.Entry(user.VoteTax, userID, note))
 	}
 

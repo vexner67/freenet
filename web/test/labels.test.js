@@ -1227,22 +1227,27 @@ test('the fees of the economy', () => {
   assert.equal(transferFee(34), 2);
   assert.equal(transferFee(100), 3);
   assert.equal(transferFee(101), 4);
+  // The administrators set the percent: 0 takes nothing.
+  assert.equal(transferFee(100, 0), 0);
+  assert.equal(transferFee(1000, 5), 50);
 
   // The author gets 90% of a sale, rounded down.
   assert.equal(stickerIncome(1), 0);
   assert.equal(stickerIncome(3), 2);
   assert.equal(stickerIncome(10), 9);
   assert.equal(stickerIncome(55), 49);
+  assert.equal(stickerIncome(100, 5), 95);
+  assert.equal(stickerIncome(100, 0), 100);
 });
 
 test('adminEconomy: the words under the treasury and the votes of the pages', () => {
-  const said = adminEconomy({ votes: 21, outstanding: 0, held: 1, bonus: 10, maxWin: 1 });
+  const said = adminEconomy({ votes: 21, outstanding: 0, held: 1, bonus: 10 });
   assert.equal(said.treasury, 'голос — сальдо Казны: собрано минус выплачено');
   assert.equal(said.held, 'голос на счетах людей');
   assert.equal(said.bonus, 'голосов — ежедневный бонус');
-  assert.equal(said.maxWin, 'голос — наибольший выигрыш за раунд');
-  assert.equal(adminEconomy({ votes: -2, bonus: 2, maxWin: 3 }).treasury, 'голоса — сальдо Казны: собрано минус выплачено');
-  assert.equal(adminEconomy({ votes: 5, bonus: 2, maxWin: 3 }).held, 'голосов на счетах людей');
+  assert.equal(said.maxWin, undefined);
+  assert.equal(adminEconomy({ votes: -2, bonus: 2 }).treasury, 'голоса — сальдо Казны: собрано минус выплачено');
+  assert.equal(adminEconomy({ votes: 5, bonus: 2 }).held, 'голосов на счетах людей');
 });
 
 test('Freenet Prime is sold by the month, the quarter and the year', () => {

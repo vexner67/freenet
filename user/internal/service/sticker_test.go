@@ -17,7 +17,7 @@ func TestStickerService(t *testing.T) {
 	ctx := context.Background()
 	users := inmem.NewUserRepository()
 	stickers := inmem.NewStickerRepository(users)
-	svc := service.NewStickerService(stickers, inmem.NewStickerPackRepository(users, stickers), users, users, inmem.TxManager{})
+	svc := service.NewStickerService(stickers, inmem.NewStickerPackRepository(users, stickers), users, users, inmem.NewEconomyRepository(), inmem.TxManager{})
 
 	ann, err := service.NewUserService(users).GetOrCreateByEmail(ctx, mustEmail(t, "ann@example.com"))
 	if err != nil {
@@ -99,7 +99,7 @@ func TestStickerService_Studio(t *testing.T) {
 	ctx := context.Background()
 	users := inmem.NewUserRepository()
 	stickers := inmem.NewStickerRepository(users)
-	svc := service.NewStickerService(stickers, inmem.NewStickerPackRepository(users, stickers), users, users, inmem.TxManager{})
+	svc := service.NewStickerService(stickers, inmem.NewStickerPackRepository(users, stickers), users, users, inmem.NewEconomyRepository(), inmem.TxManager{})
 
 	people := service.NewUserService(users)
 	author, err := people.GetOrCreateByEmail(ctx, mustEmail(t, "author@example.com"))

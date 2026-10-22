@@ -16,7 +16,7 @@ const (
 	MaxStickerPackNameLength  = 64
 	MaxStickerPackAboutLength = 500
 	// MaxStickerPackPrice is the most a pack may cost, in votes.
-	MaxStickerPackPrice = 1000
+	MaxStickerPackPrice = MaxAmount
 	// MaxPackStickers is how many stickers a pack of a person holds.
 	MaxPackStickers = 40
 	// MaxStickerPacks is how many packs one person makes.

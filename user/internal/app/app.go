@@ -192,7 +192,7 @@ func (a *App) build(cfg config.Config) error {
 			Blocks:   service.NewBlockService(store.users, store.blocks, store.tx, notifier),
 			Ignores:  service.NewIgnoreService(store.ignores),
 			Gifts:    a.gifts,
-			Stickers: service.NewStickerService(store.stickers, store.stickerPacks, store.wallets, store.users, store.tx),
+			Stickers: service.NewStickerService(store.stickers, store.stickerPacks, store.wallets, store.users, store.economy, store.tx),
 			Wallets: service.NewWalletService(service.WalletDeps{
 				Users:       store.users,
 				Wallets:     store.wallets,
@@ -200,6 +200,7 @@ func (a *App) build(cfg config.Config) error {
 				Bonuses:     store.bonuses,
 				Vouchers:    store.vouchers,
 				Rates:       store.rates,
+				Economy:     store.economy,
 				Permissions: permissions,
 				Tx:          store.tx,
 				Notifier:    deliver.votes,
@@ -354,6 +355,8 @@ type storage struct {
 	decor service.DecorRepository
 	// primes are the subscriptions of Freenet Prime and their prices.
 	primes service.PrimeRepository
+	// economy is the daily bonus and the fees.
+	economy service.EconomyRepository
 	// casino is the casino of the site.
 	casino service.CasinoRepository
 	// mine is the mine of the site and its miners.
@@ -390,6 +393,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			bonuses:      users,
 			vouchers:     inmem.NewVoucherRepository(users),
 			rates:        inmem.NewVoteRateRepository(),
+			economy:      inmem.NewEconomyRepository(),
 			decor:        inmem.NewDecorRepository(),
 			primes:       inmem.NewPrimeRepository(users),
 			casino:       inmem.NewCasinoRepository(),
@@ -439,6 +443,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		bonuses:      postgres.NewWalletRepository(a.pool),
 		vouchers:     postgres.NewVoucherRepository(a.pool),
 		rates:        postgres.NewVoteRateRepository(a.pool),
+		economy:      postgres.NewEconomyRepository(a.pool),
 		decor:        postgres.NewDecorRepository(a.pool),
 		primes:       postgres.NewPrimeRepository(a.pool),
 		casino:       postgres.NewCasinoRepository(a.pool),

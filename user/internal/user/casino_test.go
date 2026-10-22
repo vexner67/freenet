@@ -19,15 +19,15 @@ func TestNewCasino(t *testing.T) {
 	}{
 		{name: "fine", price: 10, prizes: two},
 		{name: "free", price: 0, prizes: two, want: user.ErrCasinoPrice},
-		{name: "too dear", price: user.MaxCasinoPrice + 1, prizes: two, want: user.ErrCasinoPrice},
+		{name: "too dear", price: user.MaxAmount + 1, prizes: two, want: user.ErrCasinoPrice},
 		{name: "one prize", price: 10, prizes: two[:1], want: user.ErrCasinoPrizes},
 		{name: "too many prizes", price: 10, prizes: make([]user.CasinoPrize, user.MaxCasinoPrizes+1), want: user.ErrCasinoPrizes},
 		{name: "a negative prize", price: 10, prizes: []user.CasinoPrize{{Votes: -1, Weight: 1}, {Weight: 1}}, want: user.ErrCasinoPrize},
-		{name: "a huge prize", price: 10, prizes: []user.CasinoPrize{{Votes: user.MaxCasinoPrize + 1, Weight: 1}, {Weight: 1}}, want: user.ErrCasinoPrize},
+		{name: "a huge prize", price: 10, prizes: []user.CasinoPrize{{Votes: user.MaxAmount + 1, Weight: 1}, {Weight: 1}}, want: user.ErrCasinoPrize},
 		{name: "a negative weight", price: 10, prizes: []user.CasinoPrize{{Weight: -1}, {Weight: 1}}, want: user.ErrCasinoWeight},
 		{name: "no odds", price: 10, prizes: []user.CasinoPrize{{Votes: 5}, {Votes: 10}}, want: user.ErrCasinoNoOdds},
 		{name: "85%", price: 10, prizes: []user.CasinoPrize{{Votes: 0, Weight: 3}, {Votes: 17, Weight: 2}}},
-		{name: "more than 85%", price: 10, prizes: []user.CasinoPrize{{Votes: 0, Weight: 1}, {Votes: 18, Weight: 1}}, want: user.ErrCasinoReturn},
+		{name: "more than it takes", price: 10, prizes: []user.CasinoPrize{{Votes: 0, Weight: 1}, {Votes: 1_000_000, Weight: 1}}},
 	}
 
 	for _, tt := range tests {
@@ -77,7 +77,7 @@ func TestDefaultCasino(t *testing.T) {
 	if _, err := user.NewCasino(d.Price(), d.Prizes()); err != nil {
 		t.Fatalf("the default casino is not valid: %v", err)
 	}
-	if d.MaxPrize() != user.MaxWin {
+	if d.MaxPrize() != 1000 {
 		t.Fatalf("MaxPrize = %d", d.MaxPrize())
 	}
 

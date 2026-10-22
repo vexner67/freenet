@@ -85,6 +85,14 @@ type VoteRateRepository interface {
 	SetRate(ctx context.Context, rate user.VoteRate) error
 }
 
+// EconomyRepository keeps the economy the administrators tune: the daily
+// bonus and the fees.
+type EconomyRepository interface {
+	// Economy is user.DefaultEconomy until one is set.
+	Economy(ctx context.Context) (user.Economy, error)
+	SetEconomy(ctx context.Context, e user.Economy) error
+}
+
 // VotesNotifier records what the notification service has to hear about
 // transfers, in the transaction of the transfer, as Notifier does.
 type VotesNotifier interface {
@@ -144,6 +152,7 @@ type WalletService struct {
 	bonuses     BonusRepository
 	vouchers    VoucherRepository
 	rates       VoteRateRepository
+	economy     EconomyRepository
 	permissions *PermissionService
 	tx          TxManager
 	notifier    VotesNotifier
@@ -159,6 +168,7 @@ type WalletDeps struct {
 	Bonuses     BonusRepository
 	Vouchers    VoucherRepository
 	Rates       VoteRateRepository
+	Economy     EconomyRepository
 	Permissions *PermissionService
 	Tx          TxManager
 	Notifier    VotesNotifier
@@ -173,6 +183,7 @@ func NewWalletService(d WalletDeps) *WalletService {
 		bonuses:     d.Bonuses,
 		vouchers:    d.Vouchers,
 		rates:       d.Rates,
+		economy:     d.Economy,
 		permissions: d.Permissions,
 		tx:          d.Tx,
 		notifier:    d.Notifier,
@@ -188,7 +199,8 @@ func (s *WalletService) IsAdmin(u *user.User) bool {
 
 // Transfer hands votes of senderID to recipientID, who hears of it, and
 // returns what the sender has left and the fee: the sender pays
-// User.TransferFeeAt on top, into the treasury (nothing with Prime). user.ErrNotFound for an unknown recipient,
+// User.TransferFeeAt on top, into the treasury (nothing with Prime).
+// user.ErrNotFound for an unknown recipient,
 // user.ErrTransferSelf, user.ErrDeactivated, user.ErrTransferRefused and
 // user.ErrNotEnoughVotes for votes that do not cover the fee as well.
 // The note goes with it to the statements of both.
@@ -209,7 +221,12 @@ func (s *WalletService) Transfer(
 		return 0, 0, errs.Wrap("s.userRepo.GetByID", err)
 	}
 
-	fee = sender.TransferFeeAt(votes.Int64(), s.now())
+	economy, err := s.economy.Economy(ctx)
+	if err != nil {
+		return 0, 0, errs.Wrap("s.economy.Economy", err)
+	}
+
+	fee = sender.TransferFeeAt(economy, votes.Int64(), s.now())
 
 	// The notification names the transfer: one per transfer.
 	transferID, err := uuid.NewV7()
@@ -338,8 +355,13 @@ func (s *WalletService) Bonus(ctx context.Context, userID uuid.UUID, now time.Ti
 		return Bonus{}, errs.Wrap("s.bonuses.LastBonus", err)
 	}
 
+	economy, err := s.economy.Economy(ctx)
+	if err != nil {
+		return Bonus{}, errs.Wrap("s.economy.Economy", err)
+	}
+
 	return Bonus{
-		Votes:    user.MaxBonus,
+		Votes:    economy.Bonus,
 		Taken:    !last.Before(user.BonusDay(now)),
 		Eligible: u.CheckBonusAt(now) == nil,
 	}, nil
@@ -357,6 +379,11 @@ func (s *WalletService) ClaimBonus(ctx context.Context, userID uuid.UUID, now ti
 		return Redeemed{}, errs.Wrap("u.CheckBonusAt", err)
 	}
 
+	economy, err := s.economy.Economy(ctx)
+	if err != nil {
+		return Redeemed{}, errs.Wrap("s.economy.Economy", err)
+	}
+
 	var claimed Redeemed
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
@@ -364,7 +391,7 @@ func (s *WalletService) ClaimBonus(ctx context.Context, userID uuid.UUID, now ti
 			return errs.Wrap("s.bonuses.TakeBonus", err)
 		}
 
-		claimed.Votes = user.MaxBonus
+		claimed.Votes = economy.Bonus
 
 		var err error
 		claimed.Wallet, err = s.wallets.Credit(ctx, userID, claimed.Votes, 0, user.Entry(user.VoteBonus, uuid.Nil, ""))
@@ -467,6 +494,22 @@ func (s *WalletService) SetRate(ctx context.Context, adminID uuid.UUID, rate use
 	}
 
 	return errs.Wrap("s.rates.SetRate", s.rates.SetRate(ctx, rate))
+}
+
+// Economy is the bonus and the fees of the site now; anyone may ask.
+func (s *WalletService) Economy(ctx context.Context) (user.Economy, error) {
+	e, err := s.economy.Economy(ctx)
+
+	return e, errs.Wrap("s.economy.Economy", err)
+}
+
+// SetEconomy sets the bonus and the fees from now on; user.ErrNotAdmin.
+func (s *WalletService) SetEconomy(ctx context.Context, adminID uuid.UUID, e user.Economy) error {
+	if err := checkAdmin(ctx, s.userRepo, s.admins, adminID); err != nil {
+		return errs.Wrap("checkAdmin", err)
+	}
+
+	return errs.Wrap("s.economy.SetEconomy", s.economy.SetEconomy(ctx, e))
 }
 
 // checkAdmin is user.ErrNotAdmin unless userID runs the site.

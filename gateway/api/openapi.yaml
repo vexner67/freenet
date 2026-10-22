@@ -3986,7 +3986,7 @@ paths:
               type: object
               required: [supply]
               properties:
-                supply: { type: integer, minimum: 0, maximum: 1000000 }
+                supply: { type: integer, minimum: 0, maximum: 1000000000 }
       responses:
         "204": { description: Limited }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -4018,7 +4018,7 @@ paths:
               type: object
               required: [price]
               properties:
-                price: { type: integer, minimum: 0, maximum: 1000000 }
+                price: { type: integer, minimum: 0 }
       responses:
         "204": { description: Priced }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -4214,7 +4214,7 @@ paths:
               additionalProperties: false
               required: [votes]
               properties:
-                votes: { type: integer, minimum: 1, maximum: 100000000 }
+                votes: { type: integer, minimum: 1 }
                 note: { type: string, maxLength: 140, description: "The message with the transfer, one line; both statements show it" }
       responses:
         "200":
@@ -4290,8 +4290,8 @@ paths:
               required: [usages]
               properties:
                 code: { type: string, description: "The serial number, 24 letters and digits; left out or empty for a generated one" }
-                votes: { type: integer, minimum: 0, maximum: 100000000 }
-                rating: { type: integer, minimum: 0, maximum: 1000, description: Percent added to the page of whoever uses it }
+                votes: { type: integer, minimum: 0 }
+                rating: { type: integer, minimum: 0, maximum: 1000000, description: Percent added to the page of whoever uses it }
                 usages: { type: integer, description: "How many accounts may use it: 1-1000000, or -1 for any number" }
       responses:
         "201":
@@ -4548,6 +4548,26 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Treasury" }
 
+  /api/v1/economy:
+    put:
+      summary: Set the economy of the site
+      description: Only for the administrators of the site. The daily bonus and the fees in percent; GET /api/v1/treasury says them.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Economy" }
+      responses:
+        "204": { description: Set }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/me/bonus:
     get:
       summary: The caller's daily bonus
@@ -4758,7 +4778,7 @@ paths:
               type: object
               required: [price, prizes]
               properties:
-                price: { type: integer, format: int64, minimum: 1, maximum: 10000 }
+                price: { type: integer, format: int64, minimum: 1 }
                 prizes:
                   type: array
                   minItems: 2
@@ -4856,7 +4876,7 @@ paths:
               required: [least, most, multipliers]
               properties:
                 least: { type: integer, format: int64, minimum: 1 }
-                most: { type: integer, format: int64, maximum: 100000000 }
+                most: { type: integer, format: int64 }
                 multipliers:
                   type: array
                   minItems: 1
@@ -4940,7 +4960,7 @@ paths:
               additionalProperties: false
               required: [jackpot]
               properties:
-                jackpot: { type: integer, format: int64, minimum: 1, maximum: 1000 }
+                jackpot: { type: integer, format: int64, minimum: 1 }
       responses:
         "204": { description: Set }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -5581,7 +5601,7 @@ paths:
               type: object
               required: [price]
               properties:
-                price: { type: integer, format: int64, minimum: 1, maximum: 1000000 }
+                price: { type: integer, format: int64, minimum: 1 }
       responses:
         "200": { description: The gift, content: { application/json: { schema: { $ref: "#/components/schemas/Gift" } } } }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -5643,7 +5663,7 @@ paths:
               type: object
               required: [start, hours]
               properties:
-                start: { type: integer, format: int64, minimum: 1, maximum: 1000000 }
+                start: { type: integer, format: int64, minimum: 1 }
                 hours: { type: integer, minimum: 1, maximum: 168 }
       responses:
         "204": { description: Started }
@@ -5680,7 +5700,7 @@ paths:
               type: object
               required: [amount]
               properties:
-                amount: { type: integer, format: int64, minimum: 1, maximum: 1000000 }
+                amount: { type: integer, format: int64, minimum: 1 }
       responses:
         "200": { description: Your balance after, content: { application/json: { schema: { $ref: "#/components/schemas/Balance" } } } }
         "401": { $ref: "#/components/responses/Unauthenticated" }
@@ -5736,7 +5756,7 @@ paths:
                 model: { type: string }
                 backdrop: { type: string }
                 symbol: { type: string }
-                start: { type: integer, format: int64, minimum: 1, maximum: 1000000 }
+                start: { type: integer, format: int64, minimum: 1 }
                 hours: { type: integer, minimum: 1, maximum: 168 }
       responses:
         "201":
@@ -7452,7 +7472,7 @@ components:
       properties:
         name: { type: string, maxLength: 64, description: "One line" }
         about: { type: string, maxLength: 500 }
-        price: { type: integer, minimum: 0, maximum: 1000, description: "In votes, 0 for a free pack" }
+        price: { type: integer, minimum: 0, description: "In votes, 0 for a free pack" }
         published: { type: boolean, description: "Show it in the shop" }
         photos:
           type: array
@@ -8584,9 +8604,9 @@ components:
       additionalProperties: false
       required: [month, quarter, year]
       properties:
-        month: { type: integer, format: int64, minimum: 1, maximum: 1000000 }
-        quarter: { type: integer, format: int64, minimum: 1, maximum: 1000000 }
-        year: { type: integer, format: int64, minimum: 1, maximum: 1000000 }
+        month: { type: integer, format: int64, minimum: 1 }
+        quarter: { type: integer, format: int64, minimum: 1 }
+        year: { type: integer, format: int64, minimum: 1 }
 
     PrimeOrder:
       type: object
@@ -8747,17 +8767,28 @@ components:
       type: object
       required: [kopecks]
       properties:
-        kopecks: { type: integer, format: int64, minimum: 1, maximum: 100000000, description: What one vote is worth, in kopecks }
+        kopecks: { type: integer, format: int64, minimum: 1, description: What one vote is worth, in kopecks }
 
     Treasury:
       type: object
-      required: [votes, outstanding, bonus, maxWin, held]
+      required: [votes, outstanding, bonus, held, transferFee, stickerTax, primeStickerTax]
       properties:
         votes: { type: integer, format: int64, description: What the treasury has taken more than paid; below zero when it has paid more }
         outstanding: { type: integer, format: int64, description: What the vouchers promise }
         bonus: { type: integer, format: int64, description: The daily bonus }
-        maxWin: { type: integer, format: int64, description: The largest win of one round of the casino }
         held: { type: integer, format: int64, description: The votes on the accounts of the pages }
+        transferFee: { type: integer, description: The fee of a transfer of votes, in percent; none with Prime }
+        stickerTax: { type: integer, description: The tax the author of a sticker pack pays on its sale, in percent }
+        primeStickerTax: { type: integer, description: The same tax for an author with Prime }
+
+    Economy:
+      type: object
+      required: [bonus, transferFee, stickerTax, primeStickerTax]
+      properties:
+        bonus: { type: integer, format: int64, minimum: 1, description: The daily bonus }
+        transferFee: { type: integer, minimum: 0, maximum: 100 }
+        stickerTax: { type: integer, minimum: 0, maximum: 100 }
+        primeStickerTax: { type: integer, minimum: 0, maximum: 100 }
 
     Bonus:
       type: object
@@ -8793,7 +8824,7 @@ components:
       required: [least, most, top]
       properties:
         least: { type: integer, format: int64, minimum: 1 }
-        most: { type: integer, format: int64, maximum: 100000000 }
+        most: { type: integer, format: int64 }
         return: { type: integer, minimum: 1, maximum: 10000, description: 'What the rocket gives back on average, in hundredths of a percent: 9500 — 95%. Only for the administrators' }
         top: { type: integer, minimum: 200, maximum: 1000000, description: 'The top multiplier, in hundredths: 100000 — ×1000' }
 
@@ -8875,8 +8906,8 @@ components:
       type: object
       required: [votes, weight]
       properties:
-        votes: { type: integer, format: int64, minimum: 0, maximum: 1000000 }
-        weight: { type: integer, minimum: 0, maximum: 1000000, description: How likely the prize is among the weights of all prizes }
+        votes: { type: integer, format: int64, minimum: 0 }
+        weight: { type: integer, minimum: 0, maximum: 1000000000, description: How likely the prize is among the weights of all prizes }
 
     VoteOperation:
       type: object

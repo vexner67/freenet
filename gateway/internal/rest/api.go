@@ -509,6 +509,8 @@ type Votes interface {
 	// Treasury is public; Bonus and ClaimBonus are the caller's daily
 	// bonus out of it.
 	Treasury(ctx context.Context) (model.Treasury, error)
+	// SetEconomy sets the bonus and the fees; the administrators'.
+	SetEconomy(ctx context.Context, accessToken string, e model.Economy) error
 	Bonus(ctx context.Context, accessToken string) (model.Bonus, error)
 	ClaimBonus(ctx context.Context, accessToken string) (model.Redeemed, error)
 }
@@ -850,6 +852,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/me/bonus", a.claimBonus)
 	mux.HandleFunc("POST /api/v1/me/rating", a.raiseRating)
 	mux.HandleFunc("GET /api/v1/treasury", a.treasury)
+	mux.HandleFunc("PUT /api/v1/economy", a.setEconomy)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/votes", a.transferVotes)
 	mux.HandleFunc("GET /api/v1/vouchers", a.listVouchers)
 	mux.HandleFunc("POST /api/v1/vouchers", a.createVoucher)
