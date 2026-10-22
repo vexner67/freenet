@@ -87,6 +87,9 @@ const (
 	Kind_KIND_STORY_LIKE Kind = 26
 	// The actor wrote comment_id under the recipient's story post_id.
 	Kind_KIND_STORY_COMMENT Kind = 27
+	// The actor gave the recipient Freenet Prime; post_id is the purchase,
+	// which the user service names.
+	Kind_KIND_PRIME Kind = 28
 )
 
 // Enum value maps for Kind.
@@ -118,6 +121,7 @@ var (
 		25: "KIND_CLUB_VERIFIED",
 		26: "KIND_STORY_LIKE",
 		27: "KIND_STORY_COMMENT",
+		28: "KIND_PRIME",
 	}
 	Kind_value = map[string]int32{
 		"KIND_UNSPECIFIED":        0,
@@ -146,6 +150,7 @@ var (
 		"KIND_CLUB_VERIFIED":      25,
 		"KIND_STORY_LIKE":         26,
 		"KIND_STORY_COMMENT":      27,
+		"KIND_PRIME":              28,
 	}
 )
 
@@ -1319,7 +1324,7 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\rrecipient_ids\x18\x03 \x03(\tR\frecipientIds\x12\x17\n" +
 	"\achat_id\x18\x04 \x01(\tR\x06chatId\x12\x1d\n" +
 	"\n" +
-	"chat_title\x18\x05 \x01(\tR\tchatTitle*\xe7\x04\n" +
+	"chat_title\x18\x05 \x01(\tR\tchatTitle*\xf7\x04\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tKIND_LIKE\x10\x01\x12\x10\n" +
@@ -1348,7 +1353,9 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\rKIND_VERIFIED\x10\x18\x12\x16\n" +
 	"\x12KIND_CLUB_VERIFIED\x10\x19\x12\x13\n" +
 	"\x0fKIND_STORY_LIKE\x10\x1a\x12\x16\n" +
-	"\x12KIND_STORY_COMMENT\x10\x1b\"\x04\b\x12\x10\x12\"\x04\b\x14\x10\x14*\x13KIND_EVENT_REMINDER*\x11KIND_NOTE_COMMENT*;\n" +
+	"\x12KIND_STORY_COMMENT\x10\x1b\x12\x0e\n" +
+	"\n" +
+	"KIND_PRIME\x10\x1c\"\x04\b\x12\x10\x12\"\x04\b\x14\x10\x14*\x13KIND_EVENT_REMINDER*\x11KIND_NOTE_COMMENT*;\n" +
 	"\x03Box\x12\x13\n" +
 	"\x0fBOX_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +

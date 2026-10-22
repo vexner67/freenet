@@ -85,6 +85,9 @@ const (
 	// KindStoryComment: the actor wrote the comment CommentID under the
 	// recipient's story PostID.
 	KindStoryComment Kind = "story_comment"
+	// KindPrime: the actor gave the recipient Freenet Prime; PostID
+	// names the purchase.
+	KindPrime Kind = "prime"
 )
 
 var (
@@ -130,7 +133,7 @@ func (e Event) Validate() error {
 
 	switch e.Kind {
 	case KindLike, KindWallPost, KindRepost, KindPostAccepted, KindSuggestedPost, KindPostMention, KindPhotoLike, KindGift,
-		KindVotes, KindStoryLike:
+		KindVotes, KindStoryLike, KindPrime:
 		ok = hasPost && !hasComment
 	case KindComment, KindCommentReply, KindCommentLike, KindTopicMessage, KindCommentMention, KindTopicMention,
 		KindPhotoComment, KindTopicMessageLike, KindPhotoMention,

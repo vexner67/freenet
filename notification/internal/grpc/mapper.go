@@ -41,6 +41,7 @@ var (
 		notification.KindClubVerified: notificationv1.Kind_KIND_CLUB_VERIFIED,
 		notification.KindStoryLike:    notificationv1.Kind_KIND_STORY_LIKE,
 		notification.KindStoryComment: notificationv1.Kind_KIND_STORY_COMMENT,
+		notification.KindPrime:        notificationv1.Kind_KIND_PRIME,
 	}
 	kindFromProto = map[notificationv1.Kind]notification.Kind{
 		notificationv1.Kind_KIND_LIKE:      notification.KindLike,
@@ -73,6 +74,7 @@ var (
 		notificationv1.Kind_KIND_CLUB_VERIFIED: notification.KindClubVerified,
 		notificationv1.Kind_KIND_STORY_LIKE:    notification.KindStoryLike,
 		notificationv1.Kind_KIND_STORY_COMMENT: notification.KindStoryComment,
+		notificationv1.Kind_KIND_PRIME:         notification.KindPrime,
 	}
 )
 
