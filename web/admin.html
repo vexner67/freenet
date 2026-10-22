@@ -199,11 +199,47 @@
               <th>Подарок</th>
               <th>Коллекция</th>
               <th>Цена</th>
+              <th>Тираж</th>
             </tr>
           </thead>
           <tbody id="gift-rows"></tbody>
         </table>
       </div>
+      <p class="admin-lead">Тираж — сколько таких подарков можно отправить всего, 0 — без ограничения. Он не трогает уже отправленные.</p>
+      <h2>Аукцион редкого подарка</h2>
+      <p class="admin-lead">Сайт выпускает коллекционный подарок с выбранными особенностями и продаёт его на аукционе. Последняя ставка уходит в Казну; без ставок подарок исчезает.</p>
+      <div class="aui-message aui-message-success" id="minted" hidden></div>
+      <form class="aui" id="mint-form">
+        <div class="field-group">
+          <label for="mint-gift">Подарок</label>
+          <select class="select" id="mint-gift"></select>
+        </div>
+        <div class="field-group">
+          <label for="mint-model">Модель</label>
+          <select class="select" id="mint-model"></select>
+        </div>
+        <div class="field-group">
+          <label for="mint-backdrop">Фон</label>
+          <select class="select" id="mint-backdrop"></select>
+        </div>
+        <div class="field-group">
+          <label for="mint-symbol">Узор</label>
+          <select class="select" id="mint-symbol"></select>
+        </div>
+        <div class="field-group">
+          <label for="mint-start">Начальная ставка</label>
+          <input class="text admin-casino-field" id="mint-start" type="number" min="1" max="1000000" required>
+          <div class="description">В голосах. Каждая следующая ставка больше предыдущей на 5 %.</div>
+        </div>
+        <div class="field-group">
+          <label for="mint-hours">Длительность, часов</label>
+          <input class="text admin-casino-field" id="mint-hours" type="number" min="1" max="168" value="24" required>
+          <div class="description">От 1 до 168. Ставка в последние 5 минут продлевает аукцион на 5 минут.</div>
+        </div>
+        <div class="buttons-container">
+          <button class="aui-button aui-button-primary" type="submit">Выставить</button>
+        </div>
+      </form>
     </section>
 
     <section id="decor" hidden>

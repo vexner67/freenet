@@ -17,7 +17,7 @@
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 import { remember } from './newyear.js';
 
@@ -540,12 +540,84 @@ async function gifts({ catalog, rate }) {
       el('td', {}, el('div', { className: 'admin-gift' }, el('img', { src: giftImage(gift), alt: '' }), name)),
       el('td', { textContent: giftCollections[collection.id] ?? collection.id }),
       el('td', {}, form),
+      el('td', {}, supplyForm(collection, gift, name)),
     );
   }
 
+  // supplyForm is "Тираж": how many of the gift may ever be sent, with
+  // how many are left.
+  function supplyForm(collection, gift, name) {
+    const i = collection.gifts.indexOf(gift);
+    const sold = collection.sold?.[i] ?? 0;
+    const field = el('input', { className: 'text', type: 'number', min: 0, max: 1000000, value: String(collection.supplies?.[i] ?? 0), required: true });
+    field.setAttribute('aria-label', tr('Тираж: {0}', name));
+    const save = el('button', { className: 'aui-button', type: 'submit', textContent: tr('Сохранить') });
+    const left = el('div', { className: 'description', textContent: editionLeft(Number(field.value), sold) || tr('отправлено {0}', sold) });
+    const form = el('form', { className: 'aui admin-price' }, field, save);
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      error.hidden = true;
+      $('priced').hidden = true;
+      save.disabled = true;
+
+      try {
+        const supply = Number(field.value);
+        await api.setGiftSupply(gift, supply);
+        left.textContent = editionLeft(supply, sold) || tr('отправлено {0}', sold);
+        $('priced').textContent = supply ? tr('{0}: тираж {1}.', name, supply) : tr('{0}: без ограничения тиража.', name);
+        $('priced').hidden = false;
+      } catch (e) {
+        showError(e);
+      } finally {
+        save.disabled = false;
+      }
+    });
+
+    return el('div', {}, form, left);
+  }
+
   $('gift-rows').replaceChildren(...collections.flatMap((c) => giftCosts(c).map((g) => row(c, g))));
+  mintForm(collections);
   showRate(await rate);
   $('gifts').hidden = false;
+}
+
+// mintForm is "Аукцион редкого подарка": an edition of the site with the
+// traits chosen, auctioned; the new gift's page is linked when it is up.
+function mintForm(collections) {
+  const fill = (id, list) => $(id).replaceChildren(...list.map(([value, text]) => el('option', { value, textContent: text })));
+
+  fill('mint-gift', collections.flatMap((c) => c.gifts).map((gift) => [gift, giftNames[gift] ?? gift]));
+  fill('mint-model', giftModels);
+  fill('mint-backdrop', giftBackdrops);
+  fill('mint-symbol', giftSymbols);
+
+  const form = $('mint-form');
+  const submit = form.querySelector('button');
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    $('minted').hidden = true;
+    submit.disabled = true;
+
+    try {
+      const { id } = await api.mintGiftAuction({
+        gift: $('mint-gift').value,
+        model: $('mint-model').value,
+        backdrop: $('mint-backdrop').value,
+        symbol: $('mint-symbol').value,
+        start: Number($('mint-start').value),
+        hours: Number($('mint-hours').value),
+      });
+      $('minted').replaceChildren(tr('Аукцион начался: '), el('a', { href: '/gift/' + encodeURIComponent(id), textContent: tr('страница подарка') }), '.');
+      $('minted').hidden = false;
+    } catch (e) {
+      showError(e);
+    } finally {
+      submit.disabled = false;
+    }
+  });
 }
 
 // showRate is the form of what a vote is worth, in rubles with kopecks.

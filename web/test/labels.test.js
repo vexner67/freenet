@@ -1257,3 +1257,54 @@ test('Freenet Prime is sold by the month, the quarter and the year', () => {
   assert.equal(notificationVerb('prime', { gender: 'female' }), 'подарила');
   assert.equal(errorText({ message: 'this is for freenet prime only' }), 'Это доступно только с Freenet Prime.');
 });
+
+test('collectible gifts: the traits of the domain, their pictures, fees and statements', async () => {
+  const { giftModels, giftBackdrops, giftSymbols, marketSorts, collectibleImage, collectibleName, backdropGradient, traitChance, giftIncome, auctionLeft, editionLeft, giftHistoryLine, voteOperation, errorText } = await import('../static/labels.js');
+
+  // The traits are the user service's, in its order, and a select offers
+  // them in lower case.
+  const source = readFileSync(new URL('../../user/internal/user/collectible.go', import.meta.url), 'utf8');
+  const traits = (name) => [...new RegExp(`${name} = \\[\\]GiftTrait\\{([\\s\\S]*?)\\n\\t\\}`).exec(source)[1].matchAll(/\{"(\w+)", \d+\}/g)].map((m) => m[1]);
+  assert.deepEqual(giftModels.map(([m]) => m), traits('giftModels'));
+  assert.deepEqual(giftBackdrops.map(([b]) => b), traits('giftBackdrops'));
+  assert.deepEqual(giftSymbols.map(([s]) => s), traits('giftSymbols'));
+  for (const [, text] of [...giftModels, ...giftBackdrops, ...giftSymbols, ...marketSorts]) assert.equal(text[0], text[0].toLowerCase(), text);
+  for (const [backdrop] of giftBackdrops) assert.match(backdropGradient(backdrop), /^radial-gradient/);
+
+  // Every gift has a picture in every model, drawn by scripts/giftgen.
+  for (const gift of ['freenet_coin', 'prime_star']) {
+    for (const [model] of giftModels) {
+      const path = collectibleImage(gift, model);
+      assert.equal(path, `/static/gifts/models/${gift}_${model}.png`);
+      assert.ok(existsSync(new URL(`..${path}`, import.meta.url)), path);
+    }
+  }
+  assert.equal(collectibleImage('rose', 'onyx'), '/static/gifts/unknown.svg');
+  assert.equal(collectibleName({ gift: 'freenet_coin', number: 7 }), 'Золотая монета #7');
+
+  assert.equal(traitChance([{ name: 'onyx', weight: 100 }], 'onyx'), '10 %');
+  assert.equal(traitChance([{ name: 'black', weight: 5 }], 'black'), '0,5 %');
+  assert.equal(traitChance([], 'onyx'), '');
+
+  // The fee is rounded up, as the service takes it.
+  assert.equal(giftIncome(100), 95);
+  assert.equal(giftIncome(100, true), 97);
+  assert.equal(giftIncome(1), 0);
+
+  const now = Date.parse('2026-10-22T12:00:00Z');
+  assert.equal(auctionLeft('2026-10-22T12:00:30Z', now), 'заканчивается');
+  assert.equal(auctionLeft('2026-10-22T12:07:00Z', now), '7 мин');
+  assert.equal(auctionLeft('2026-10-22T14:15:00Z', now), '2 ч 15 мин');
+  assert.equal(auctionLeft('2026-10-24T15:00:00Z', now), '2 д 3 ч');
+
+  assert.equal(editionLeft(0, 5), '');
+  assert.equal(editionLeft(500, 380), 'осталось 120 из 500');
+  assert.equal(editionLeft(500, 500), 'распродан');
+  assert.equal(giftHistoryLine('auction'), 'Продан на аукционе');
+
+  assert.equal(voteOperation({ kind: 'gift_upgrade', amount: -50, note: 'freenet_coin' }).title, 'Улучшение подарка «Золотая монета»');
+  assert.deepEqual(voteOperation({ kind: 'gift_sale', amount: 95, note: 'freenet_coin#7' }), { title: 'Продажа подарка «Золотая монета» #7', role: 'Покупатель:' });
+  assert.equal(voteOperation({ kind: 'gift_sale', amount: -100, note: 'freenet_coin#7' }).title, 'Покупка подарка «Золотая монета» #7');
+  assert.equal(voteOperation({ kind: 'gift_refund', amount: 20, note: 'prime_star#1' }).title, 'Возврат ставки: «Звезда Prime» #1');
+  assert.equal(errorText({ message: 'the bid is too low' }), 'Ставка слишком мала.');
+});
