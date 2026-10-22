@@ -31,8 +31,8 @@ func TestNewCasinoBets(t *testing.T) {
 	}{
 		{name: "fine", least: 1, most: 100, aim: aim(200, 4250, 150, 5666)},
 		{name: "one amount", least: 7, most: 7, aim: aim(101, 8415)},
-		{name: "returns too much", least: 1, most: 10, aim: aim(200, 4251), want: user.ErrAimReturn},
-		{name: "wins too much", least: 1, most: 101, aim: aim(200, 4250, 1000, 850), want: user.ErrAimWin},
+		{name: "returns more than it takes", least: 1, most: 10, aim: aim(200, 9000)},
+		{name: "wins much", least: 1, most: 1_000_000_000, aim: aim(1000, 850)},
 		{name: "free", least: 0, most: 10, aim: aim(200, 4750), want: user.ErrBetLimits},
 		{name: "too big", least: 1, most: user.MaxBet + 1, aim: aim(200, 4750), want: user.ErrBetLimits},
 		{name: "upside down", least: 10, most: 5, aim: aim(200, 4750), want: user.ErrBetLimits},

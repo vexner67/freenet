@@ -100,6 +100,34 @@ async function summary({ about, treasury }) {
     $(key + '-words').textContent = said[key];
   }
   $('economy').hidden = false;
+  economySettings(economy);
+}
+
+// economySettings is "Бонус и комиссии": the daily bonus and the fees in
+// percent the user service takes.
+function economySettings(economy) {
+  const form = $('economy-form');
+  const save = form.querySelector('button[type=submit]');
+  const fields = { bonus: 'economy-bonus', transferFee: 'economy-fee', stickerTax: 'economy-tax', primeStickerTax: 'economy-prime-tax' };
+  for (const [key, id] of Object.entries(fields)) $(id).value = String(economy[key] ?? 0);
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    $('economy-saved').hidden = true;
+    save.disabled = true;
+
+    try {
+      await api.setEconomy(Object.fromEntries(Object.entries(fields).map(([key, id]) => [key, Number($(id).value)])));
+      $('count-bonus').textContent = number(Number($('economy-bonus').value));
+      $('economy-saved').textContent = tr('Изменения сохранены');
+      $('economy-saved').hidden = false;
+    } catch (e) {
+      showError(e);
+    } finally {
+      save.disabled = false;
+    }
+  });
 }
 
 // checkmark is the site's mark of a confirmed page, as by its names.
@@ -514,7 +542,7 @@ async function gifts({ catalog, rate }) {
 
   function row(collection, { gift, price }) {
     const name = giftNames[gift] ?? gift;
-    const field = el('input', { className: 'text', type: 'number', min: 0, max: 1000000, value: String(price), required: true });
+    const field = el('input', { className: 'text', type: 'number', min: 0, value: String(price), required: true });
     field.setAttribute('aria-label', tr('Цена: {0}', name));
     const save = el('button', { className: 'aui-button', type: 'submit', textContent: tr('Сохранить') });
     const form = el('form', { className: 'aui admin-price' }, field, save);
@@ -550,7 +578,7 @@ async function gifts({ catalog, rate }) {
   function supplyForm(collection, gift, name) {
     const i = collection.gifts.indexOf(gift);
     const sold = collection.sold?.[i] ?? 0;
-    const field = el('input', { className: 'text', type: 'number', min: 0, max: 1000000, value: String(collection.supplies?.[i] ?? 0), required: true });
+    const field = el('input', { className: 'text', type: 'number', min: 0, value: String(collection.supplies?.[i] ?? 0), required: true });
     field.setAttribute('aria-label', tr('Тираж: {0}', name));
     const save = el('button', { className: 'aui-button', type: 'submit', textContent: tr('Сохранить') });
     const left = el('div', { className: 'description', textContent: editionLeft(Number(field.value), sold) || tr('отправлено {0}', sold) });
@@ -719,20 +747,20 @@ async function mineSettings(answered) {
   const { settings, digs, sold, chests, miners } = await answered;
   const rows = $('mine-rows');
   const save = $('mine-form').querySelector('button[type=submit]');
-  const number = (min, max, value, label) => {
-    const field = el('input', { className: 'text admin-casino-field', type: 'number', min, max, value: String(value), required: true });
+  const number = (min, value, label) => {
+    const field = el('input', { className: 'text admin-casino-field', type: 'number', min, value: String(value), required: true });
     field.setAttribute('aria-label', label);
     return field;
   };
 
   const lines = settings.veins.map((vein) => {
     const parts = {
-      experience: number(0, 1000000000, vein.experience, tr('Нужно опыта')),
-      least: number(1, 1000000, vein.least, tr('Наименьшая добыча')),
-      most: number(1, 1000000, vein.most, tr('Наибольшая добыча')),
-      price: number(0, 1000000, vein.price, tr('Цена 100 шт., голосов')),
-      gain: number(0, 1000000, vein.gain, tr('Опыт за копку')),
-      energy: number(1, 100, vein.energy, tr('Энергия за копку')),
+      experience: number(0, vein.experience, tr('Нужно опыта')),
+      least: number(1, vein.least, tr('Наименьшая добыча')),
+      most: number(1, vein.most, tr('Наибольшая добыча')),
+      price: number(0, vein.price, tr('Цена 100 шт., голосов')),
+      gain: number(0, vein.gain, tr('Опыт за копку')),
+      energy: number(1, vein.energy, tr('Энергия за копку')),
     };
     if (vein.ore === 'stone') parts.experience.disabled = true;
 
@@ -844,8 +872,8 @@ async function casino(answered) {
   }
 
   function row(prize) {
-    const votes = el('input', { className: 'text admin-casino-field', type: 'number', min: 0, max: 1000000, value: String(prize.votes), required: true });
-    const weight = el('input', { className: 'text admin-casino-field', type: 'number', min: 0, max: 1000000, value: String(prize.weight), required: true });
+    const votes = el('input', { className: 'text admin-casino-field', type: 'number', min: 0, value: String(prize.votes), required: true });
+    const weight = el('input', { className: 'text admin-casino-field', type: 'number', min: 0, value: String(prize.weight), required: true });
     votes.setAttribute('aria-label', tr('Приз, голосов'));
     weight.setAttribute('aria-label', tr('Вес'));
     const chance = el('td');

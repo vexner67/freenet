@@ -45,7 +45,7 @@ func TestVouchersAndVotes(t *testing.T) {
 	invalid := []*userv1.CreateVoucherRequest{
 		{Usages: 1},
 		{Votes: -1, Usages: 1},
-		{Votes: 1, Rating: 1001, Usages: 1},
+		{Votes: 1, Rating: 1_000_001, Usages: 1},
 		{Votes: 1},
 		{Votes: 1, Usages: 1, Token: "short"},
 	}
@@ -161,7 +161,7 @@ func TestVouchersAndVotes(t *testing.T) {
 		want codes.Code
 	}{
 		{"nothing", &userv1.TransferVotesRequest{UserId: bobID}, codes.InvalidArgument},
-		{"too much at once", &userv1.TransferVotesRequest{UserId: bobID, Votes: 100_000_001}, codes.InvalidArgument},
+		{"too much at once", &userv1.TransferVotesRequest{UserId: bobID, Votes: user.MaxAmount + 1}, codes.InvalidArgument},
 		{"more than there is", &userv1.TransferVotesRequest{UserId: bobID, Votes: 5}, codes.FailedPrecondition},
 		{"to oneself", &userv1.TransferVotesRequest{UserId: annID, Votes: 1}, codes.InvalidArgument},
 		{"to nobody", &userv1.TransferVotesRequest{UserId: uuid.NewString(), Votes: 1}, codes.NotFound},
@@ -237,7 +237,7 @@ func TestSetGiftPrice(t *testing.T) {
 	if _, err := s.client.SetGiftPrice(ann, &userv1.SetGiftPriceRequest{Gift: "freenet_coin", Price: 2}); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("not an administrator prices a gift: %v", err)
 	}
-	for _, req := range []*userv1.SetGiftPriceRequest{{Gift: "nothing", Price: 2}, {Gift: "freenet_coin", Price: -1}, {Gift: "freenet_coin", Price: 1_000_001}} {
+	for _, req := range []*userv1.SetGiftPriceRequest{{Gift: "nothing", Price: 2}, {Gift: "freenet_coin", Price: -1}, {Gift: "freenet_coin", Price: user.MaxAmount + 1}} {
 		if _, err := s.client.SetGiftPrice(admin, req); status.Code(err) != codes.InvalidArgument {
 			t.Fatalf("SetGiftPrice(%v): %v", req, err)
 		}
@@ -280,7 +280,7 @@ func TestVoteRate(t *testing.T) {
 	if _, err := s.client.SetVoteRate(ann, &userv1.SetVoteRateRequest{Kopecks: 1000}); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("not an administrator sets the rate: %v", err)
 	}
-	for _, kopecks := range []int64{0, -1, 100_000_001} {
+	for _, kopecks := range []int64{0, -1, user.MaxAmount + 1} {
 		if _, err := s.client.SetVoteRate(admin, &userv1.SetVoteRateRequest{Kopecks: kopecks}); status.Code(err) != codes.InvalidArgument {
 			t.Fatalf("SetVoteRate(%d): %v", kopecks, err)
 		}

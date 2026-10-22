@@ -2,6 +2,7 @@ package user
 
 import (
 	"errors"
+	"math/big"
 	"time"
 )
 
@@ -24,18 +25,19 @@ var Ores = []Ore{OreStone, OreCoal, OreIron, OreGold, OreDiamond, OreCrystal}
 // one dig in a hundred.
 const MineOdds = 10_000
 
-// The bounds of the mine settings.
+// The bounds of the mine settings: not rules of the game, only what the
+// arithmetic and the fields of the API hold.
 const (
-	MaxOreExperience = 1_000_000_000
-	MaxOreYield      = 1_000_000
-	MaxOrePrice      = 1_000_000
-	MaxOreGain       = 1_000_000
-	MaxOreEnergy     = 100
-	MaxMineEnergy    = 1_000
+	MaxOreExperience = 1_000_000_000_000_000
+	MaxOreYield      = 1_000_000_000
+	MaxOrePrice      = MaxAmount * 100
+	MaxOreGain       = 1_000_000_000
+	MaxOreEnergy     = 1_000_000
+	MaxMineEnergy    = 1_000_000
 	MinMineRegen     = time.Second
-	MaxMineRegen     = 24 * time.Hour
-	MaxNuggetTimes   = 100
-	MaxChestVotes    = MaxWin
+	MaxMineRegen     = 365 * 24 * time.Hour
+	MaxNuggetTimes   = 1_000
+	MaxChestVotes    = MaxAmount
 	MaxDrinkEnergy   = MaxMineEnergy
 )
 
@@ -61,17 +63,17 @@ var (
 	ErrNothingToSell   = errors.New("not enough ore to sell")
 	ErrMineNotYet      = errors.New("ore is sold by pages a week old with a filled profile")
 	ErrMineVeins       = errors.New("the mine must set every ore once, in order")
-	ErrOreExperience   = errors.New("the experience of an ore must be from 0 to 1000000000, the stone from 0, each not below the one before")
-	ErrOreYield        = errors.New("the yield of an ore must be from 1 to 1000000, the least not above the most")
-	ErrOrePrice        = errors.New("the price of an ore must be from 0 to 1000000 hundredths of a vote")
-	ErrOreGain         = errors.New("the experience of a dig must be from 0 to 1000000")
-	ErrOreEnergy       = errors.New("a dig must take from 1 to 100 energy")
-	ErrMineEnergy      = errors.New("the energy of a miner must be from 1 to 1000, not below a dig")
-	ErrMineRegen       = errors.New("a point of energy must come back in 1 second to 24 hours")
+	ErrOreExperience   = errors.New("the experience of an ore must be at least 0, the stone 0, each not below the one before")
+	ErrOreYield        = errors.New("the yield of an ore must be at least 1, the least not above the most")
+	ErrOrePrice        = errors.New("the price of an ore must be at least 0")
+	ErrOreGain         = errors.New("the experience of a dig must be at least 0")
+	ErrOreEnergy       = errors.New("a dig must take at least 1 energy")
+	ErrMineEnergy      = errors.New("the energy of a miner must be at least 1, not below a dig")
+	ErrMineRegen       = errors.New("a point of energy must come back in at least 1 second")
 	ErrMineChances     = errors.New("the chances of the events must be from 0 and together at most 10000")
-	ErrMineNugget      = errors.New("a nugget must multiply the ore from 2 to 100 times")
-	ErrMineChest       = errors.New("a chest must hold from 1 to 1000 votes, the least not above the most")
-	ErrMineDrinkEnergy = errors.New("a drink must give from 1 to 1000 energy")
+	ErrMineNugget      = errors.New("a nugget must multiply the ore at least 2 times")
+	ErrMineChest       = errors.New("a chest must hold at least 1 vote, the least not above the most")
+	ErrMineDrinkEnergy = errors.New("a drink must give at least 1 energy")
 )
 
 func NewOre(s string) (Ore, error) {
@@ -446,8 +448,18 @@ func (m Miner) Dig(mine Mine, ore Ore, now time.Time, rolls MineRolls) (Miner, H
 // SaleValue is what units of ore sell for: whole votes, the rest of a vote
 // is lost.
 func (v OreVein) SaleValue(units int64) int64 {
-	return units * v.Price / 100
+	value := new(big.Int).Mul(big.NewInt(units), big.NewInt(v.Price))
+	value.Quo(value, big.NewInt(100))
+	if !value.IsInt64() || value.Int64() > maxSaleValue {
+		return maxSaleValue
+	}
+
+	return value.Int64()
 }
+
+// maxSaleValue is the most one sale brings, so that a balance it is added
+// to still fits in int64: past any sane price of ore anyway.
+const maxSaleValue = 1 << 60
 
 // Sell is the miner after selling all of ore and the votes it got;
 // ErrUnknownOre, ErrNothingToSell when that is not a whole vote.

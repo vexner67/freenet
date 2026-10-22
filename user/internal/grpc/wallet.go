@@ -25,6 +25,8 @@ type WalletService interface {
 	Rate(ctx context.Context) (user.VoteRate, error)
 	SetRate(ctx context.Context, adminID uuid.UUID, rate user.VoteRate) error
 	Treasury(ctx context.Context) (user.Treasury, error)
+	Economy(ctx context.Context) (user.Economy, error)
+	SetEconomy(ctx context.Context, adminID uuid.UUID, e user.Economy) error
 	Bonus(ctx context.Context, userID uuid.UUID, now time.Time) (service.Bonus, error)
 	ClaimBonus(ctx context.Context, userID uuid.UUID, now time.Time) (service.Redeemed, error)
 	RaiseRating(ctx context.Context, userID uuid.UUID, raise user.RatingRaise) (user.Wallet, error)
@@ -253,13 +255,38 @@ func (h *UserHandler) GetTreasury(ctx context.Context, _ *userv1.GetTreasuryRequ
 		return nil, err
 	}
 
+	economy, err := h.walletService.Economy(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &userv1.GetTreasuryResponse{
-		Votes:       treasury.Votes,
-		Outstanding: treasury.Outstanding,
-		Bonus:       user.MaxBonus,
-		MaxWin:      user.MaxWin,
-		Held:        treasury.Held,
+		Votes:           treasury.Votes,
+		Outstanding:     treasury.Outstanding,
+		Bonus:           economy.Bonus,
+		Held:            treasury.Held,
+		TransferFee:     int32(economy.TransferFee),     //nolint:gosec // at most 100
+		StickerTax:      int32(economy.StickerTax),      //nolint:gosec // at most 100
+		PrimeStickerTax: int32(economy.PrimeStickerTax), //nolint:gosec // at most 100
 	}, nil
+}
+
+func (h *UserHandler) SetEconomy(ctx context.Context, req *userv1.SetEconomyRequest) (*emptypb.Empty, error) {
+	adminID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	economy, err := user.NewEconomy(req.GetBonus(), int(req.GetTransferFee()), int(req.GetStickerTax()), int(req.GetPrimeStickerTax()))
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.walletService.SetEconomy(ctx, adminID, economy); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func (h *UserHandler) GetBonus(ctx context.Context, _ *userv1.GetBonusRequest) (*userv1.GetBonusResponse, error) {

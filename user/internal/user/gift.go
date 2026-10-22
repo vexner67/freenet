@@ -14,12 +14,12 @@ import (
 const MaxGiftCaptionLength = 250
 
 // MaxGiftPrice is the dearest an administrator may make a gift, in votes.
-const MaxGiftPrice = 1_000_000
+const MaxGiftPrice = MaxAmount
 
 var (
 	ErrUnknownGift        = errors.New("unknown gift")
 	ErrGiftCaptionTooLong = errors.New("gift caption is too long")
-	ErrGiftPriceInvalid   = errors.New("the price of a gift must be between 0 and 1000000")
+	ErrGiftPriceInvalid   = errors.New("the price of a gift must be at least 0")
 	ErrGiftNotFound       = errors.New("gift not found")
 	// ErrGiftRefused: the page is not shown to the sender or either of the
 	// two has blacklisted the other.

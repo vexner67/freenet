@@ -71,7 +71,7 @@ func TestNewMine(t *testing.T) {
 			return v
 		}, user.ErrMineNugget},
 		{"a chest too big", func(v []user.OreVein, _ *int, _ *time.Duration, e *user.MineEvents) []user.OreVein {
-			e.ChestMost = user.MaxWin + 1
+			e.ChestMost = user.MaxChestVotes + 1
 			return v
 		}, user.ErrMineChest},
 		{"a drink of nothing", func(v []user.OreVein, _ *int, _ *time.Duration, e *user.MineEvents) []user.OreVein {

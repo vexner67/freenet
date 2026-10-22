@@ -73,7 +73,7 @@ func (c *Casino) Set(ctx context.Context, accessToken string, casino model.Casin
 	req := &userv1.SetCasinoRequest{Price: casino.Price}
 	for _, p := range casino.Prizes {
 		if p.Weight < 0 || p.Weight > math.MaxInt32 {
-			return failure.New(failure.InvalidArgument, "the weight of a prize must be from 0 to 1000000")
+			return failure.New(failure.InvalidArgument, "the weight of a prize must be from 0 to 1000000000")
 		}
 
 		req.Prizes = append(req.Prizes, &userv1.CasinoPrize{Votes: p.Votes, Weight: int32(p.Weight)})

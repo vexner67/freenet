@@ -93,6 +93,7 @@ const (
 	UserService_GetTreasury_FullMethodName        = "/user.v1.UserService/GetTreasury"
 	UserService_GetBonus_FullMethodName           = "/user.v1.UserService/GetBonus"
 	UserService_ClaimBonus_FullMethodName         = "/user.v1.UserService/ClaimBonus"
+	UserService_SetEconomy_FullMethodName         = "/user.v1.UserService/SetEconomy"
 	UserService_RaiseRating_FullMethodName        = "/user.v1.UserService/RaiseRating"
 	UserService_GetPrime_FullMethodName           = "/user.v1.UserService/GetPrime"
 	UserService_BuyPrime_FullMethodName           = "/user.v1.UserService/BuyPrime"
@@ -312,9 +313,12 @@ type UserServiceClient interface {
 	// GetTreasury is public. The daily bonus comes out of it: GetBonus says
 	// it to the caller, ClaimBonus gives it once a Moscow day to a page a
 	// week old with a filled profile (FailedPrecondition otherwise).
+	// SetEconomy sets the bonus and the fees, for the administrators
+	// (PermissionDenied for others).
 	GetTreasury(ctx context.Context, in *GetTreasuryRequest, opts ...grpc.CallOption) (*GetTreasuryResponse, error)
 	GetBonus(ctx context.Context, in *GetBonusRequest, opts ...grpc.CallOption) (*GetBonusResponse, error)
 	ClaimBonus(ctx context.Context, in *ClaimBonusRequest, opts ...grpc.CallOption) (*ClaimBonusResponse, error)
+	SetEconomy(ctx context.Context, in *SetEconomyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// RaiseRating sells the caller rating ("Повысить рейтинг" of openvk) for
 	// 3 votes a percent, into the treasury: FailedPrecondition "not enough
 	// votes" and "the rating cannot go above 1000 percent".
@@ -1184,6 +1188,16 @@ func (c *userServiceClient) ClaimBonus(ctx context.Context, in *ClaimBonusReques
 	return out, nil
 }
 
+func (c *userServiceClient) SetEconomy(ctx context.Context, in *SetEconomyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetEconomy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) RaiseRating(ctx context.Context, in *RaiseRatingRequest, opts ...grpc.CallOption) (*RaiseRatingResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RaiseRatingResponse)
@@ -1797,9 +1811,12 @@ type UserServiceServer interface {
 	// GetTreasury is public. The daily bonus comes out of it: GetBonus says
 	// it to the caller, ClaimBonus gives it once a Moscow day to a page a
 	// week old with a filled profile (FailedPrecondition otherwise).
+	// SetEconomy sets the bonus and the fees, for the administrators
+	// (PermissionDenied for others).
 	GetTreasury(context.Context, *GetTreasuryRequest) (*GetTreasuryResponse, error)
 	GetBonus(context.Context, *GetBonusRequest) (*GetBonusResponse, error)
 	ClaimBonus(context.Context, *ClaimBonusRequest) (*ClaimBonusResponse, error)
+	SetEconomy(context.Context, *SetEconomyRequest) (*emptypb.Empty, error)
 	// RaiseRating sells the caller rating ("Повысить рейтинг" of openvk) for
 	// 3 votes a percent, into the treasury: FailedPrecondition "not enough
 	// votes" and "the rating cannot go above 1000 percent".
@@ -2157,6 +2174,9 @@ func (UnimplementedUserServiceServer) GetBonus(context.Context, *GetBonusRequest
 }
 func (UnimplementedUserServiceServer) ClaimBonus(context.Context, *ClaimBonusRequest) (*ClaimBonusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ClaimBonus not implemented")
+}
+func (UnimplementedUserServiceServer) SetEconomy(context.Context, *SetEconomyRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetEconomy not implemented")
 }
 func (UnimplementedUserServiceServer) RaiseRating(context.Context, *RaiseRatingRequest) (*RaiseRatingResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RaiseRating not implemented")
@@ -3625,6 +3645,24 @@ func _UserService_ClaimBonus_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_SetEconomy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetEconomyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetEconomy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetEconomy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetEconomy(ctx, req.(*SetEconomyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_RaiseRating_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RaiseRatingRequest)
 	if err := dec(in); err != nil {
@@ -4715,6 +4753,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ClaimBonus",
 			Handler:    _UserService_ClaimBonus_Handler,
+		},
+		{
+			MethodName: "SetEconomy",
+			Handler:    _UserService_SetEconomy_Handler,
 		},
 		{
 			MethodName: "RaiseRating",

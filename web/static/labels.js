@@ -723,15 +723,14 @@ export function adminOverview({ users, verified = 0, clubs, posts }) {
 
 // adminEconomy are the words under the numbers of "Экономика" of the
 // summary: the balance of the treasury and what the vouchers promise; the
-// votes of the pages, the bonus and the largest win of a round.
-export function adminEconomy({ votes, held = 0, bonus, maxWin }) {
+// votes of the pages and the bonus.
+export function adminEconomy({ votes, held = 0, bonus }) {
   const of = (n) => plural(Math.abs(n), ['голос', 'голоса', 'голосов']);
   return {
     treasury: tr('{0} — сальдо Казны: собрано минус выплачено', of(votes)),
     outstanding: tr('обещают ваучеры'),
     held: tr('{0} на счетах людей', of(held)),
     bonus: tr('{0} — ежедневный бонус', of(bonus)),
-    maxWin: tr('{0} — наибольший выигрыш за раунд', of(maxWin)),
   };
 }
 
@@ -1508,22 +1507,23 @@ export function signedVotes(amount) {
   return `${amount < 0 ? '−' : '+'}${groupedVotes(amount)}`;
 }
 
-// The fees of the economy, as the user service takes them: 3% of a
-// transfer on top (rounded up, at least 1), 10% of the price of a sticker
-// pack sold, and 3 votes a percent of rating, up to 1000%.
+// The fees of the economy until GET /treasury says the ones the
+// administrators set: a percent of a transfer on top (rounded up, at
+// least 1 vote) and of the price of a sticker pack sold; and 3 votes a
+// percent of rating, up to 1000%.
 export const TRANSFER_FEE_PERCENT = 3;
 export const STICKER_TAX_PERCENT = 10;
 export const RATING_PRICE = 3;
 export const MAX_RATING = 1000;
 
-// transferFee is what a transfer of votes costs on top of them.
-export function transferFee(votes) {
-  return votes > 0 ? Math.ceil(votes * TRANSFER_FEE_PERCENT / 100) : 0;
+// transferFee is what a transfer of votes costs on top of them at percent.
+export function transferFee(votes, percent = TRANSFER_FEE_PERCENT) {
+  return votes > 0 && percent > 0 ? Math.ceil(votes * percent / 100) : 0;
 }
 
-// stickerIncome is what the author gets of a sale at price.
-export function stickerIncome(price) {
-  return Math.floor(price * (100 - STICKER_TAX_PERCENT) / 100);
+// stickerIncome is what the author gets of a sale at price, taxed percent.
+export function stickerIncome(price, percent = STICKER_TAX_PERCENT) {
+  return Math.floor(price * (100 - percent) / 100);
 }
 
 // voteOperation is what a line of the statement of votes says: its title
@@ -1987,10 +1987,10 @@ const errorTexts = {
   'the gift is on sale': tr('Подарок выставлен на продажу или аукцион — сначала снимите его.'),
   'the gift is not on sale': tr('Подарок уже не продаётся.'),
   'the price of the gift changed': tr('Цена подарка изменилась — посмотрите её ещё раз.'),
-  'the price of a gift must be from 1 to 1000000 votes': tr('Цена — от 1 до 1 000 000 голосов.'),
+  'the price of a gift must be at least 1 vote': tr('Цена — не меньше 1 голоса.'),
   'this gift is yours': tr('Это ваш подарок.'),
   'this gift is sold out': tr('Тираж этого подарка распродан.'),
-  'the edition of a gift must be from 0 to 1000000': tr('Тираж — от 0 до 1 000 000.'),
+  'the edition of a gift must be from 0 to 1000000000': tr('Тираж — от 0 до 1 000 000 000.'),
   'unknown trait of a gift': tr('Такой особенности у подарков нет.'),
   'an auction runs from 1 to 168 hours': tr('Аукцион идёт от 1 до 168 часов.'),
   'auction not found': tr('Аукцион не найден.'),
@@ -2000,47 +2000,42 @@ const errorTexts = {
   'not enough votes': tr('У вас недостаточно голосов.'),
   'this is for freenet prime only': tr('Это доступно только с Freenet Prime.'),
   'unknown period of prime': tr('Неизвестный срок подписки.'),
-  'the price of prime must be between 1 and 1000000': tr('Цена подписки — от 1 до 1 000 000 голосов.'),
-  'a spin must cost from 1 to 10000 votes': tr('Прокрутка должна стоить от 1 до 10 000 голосов.'),
+  'the price of prime must be at least 1 vote': tr('Цена подписки — не меньше 1 голоса.'),
+  'a spin must cost at least 1 vote': tr('Прокрутка должна стоить не меньше 1 голоса.'),
   'the casino must have from 2 to 12 prizes': tr('В казино должно быть от 2 до 12 призов.'),
-  'a prize must be from 0 to 1000 votes': tr('Приз — от 0 до 1000 голосов.'),
-  'the casino gives back at most 85 percent of what is spent': tr('Казино возвращает не больше 85 % потраченного.'),
-  'a multiplier gives back at most 85 percent: the multiplier times its chance': tr('Множитель возвращает не больше 85 %: множитель, умноженный на шанс.'),
-  'the biggest bet on the biggest multiplier wins at most 1000 votes': tr('Наибольшая ставка на наибольший множитель выигрывает не больше 1000 голосов.'),
-  'the biggest bet at the top of the rocket wins at most 1000 votes': tr('Наибольшая ставка на наибольшем множителе ракеты выигрывает не больше 1000 голосов.'),
+  'a prize must be at least 0 votes': tr('Приз — не меньше 0 голосов.'),
   'unknown ore': tr('Такой руды нет.'),
   'this ore needs more experience': tr('Эту руду можно копать, набравшись опыта.'),
   'not enough energy': tr('Не хватает энергии. Она восстанавливается сама.'),
   'not enough ore to sell': tr('Продавать нечего: руды не хватает и на голос.'),
   'ore is sold by pages a week old with a filled profile': tr('Руду продают страницы старше недели с заполненной анкетой.'),
   'the mine must set every ore once, in order': tr('В шахте должны быть все руды, по порядку.'),
-  'the experience of an ore must be from 0 to 1000000000, the stone from 0, each not below the one before': tr('Опыт руды — от 0 до 1 000 000 000: камень — с 0, каждая руда — не меньше предыдущей.'),
-  'the yield of an ore must be from 1 to 1000000, the least not above the most': tr('Добыча — от 1 до 1 000 000 шт., наименьшая не больше наибольшей.'),
-  'the price of an ore must be from 0 to 1000000 hundredths of a vote': tr('Цена руды — от 0 до 1 000 000 голосов за 100 шт.'),
-  'the experience of a dig must be from 0 to 1000000': tr('Опыт за копку — от 0 до 1 000 000.'),
-  'a dig must take from 1 to 100 energy': tr('Копка тратит от 1 до 100 энергии.'),
-  'the energy of a miner must be from 1 to 1000, not below a dig': tr('Энергия — от 1 до 1000 и не меньше, чем тратит копка.'),
-  'a point of energy must come back in 1 second to 24 hours': tr('Единица энергии восстанавливается от 1 секунды до 24 часов.'),
+  'the experience of an ore must be at least 0, the stone 0, each not below the one before': tr('Опыт руды — не меньше 0: у камня — 0, каждая руда — не меньше предыдущей.'),
+  'the yield of an ore must be at least 1, the least not above the most': tr('Добыча — не меньше 1 шт., наименьшая не больше наибольшей.'),
+  'the price of an ore must be at least 0': tr('Цена руды — не меньше 0.'),
+  'the experience of a dig must be at least 0': tr('Опыт за копку — не меньше 0.'),
+  'a dig must take at least 1 energy': tr('Копка тратит не меньше 1 энергии.'),
+  'the energy of a miner must be at least 1, not below a dig': tr('Энергия — не меньше 1 и не меньше, чем тратит копка.'),
+  'a point of energy must come back in at least 1 second': tr('Единица энергии восстанавливается не быстрее, чем за 1 секунду.'),
   'the chances of the events must be from 0 and together at most 10000': tr('Шансы событий вместе — не больше 100 %.'),
-  'a nugget must multiply the ore from 2 to 100 times': tr('Самородок умножает руду в 2–100 раз.'),
-  'a chest must hold from 1 to 1000 votes, the least not above the most': tr('В сундуке — от 1 до 1000 голосов, наименьшее не больше наибольшего.'),
-  'a drink must give from 1 to 1000 energy': tr('Энергетик даёт от 1 до 1000 энергии.'),
+  'a nugget must multiply the ore at least 2 times': tr('Самородок умножает руду не меньше чем в 2 раза.'),
+  'a chest must hold at least 1 vote, the least not above the most': tr('В сундуке — не меньше 1 голоса, наименьшее не больше наибольшего.'),
+  'a drink must give at least 1 energy': tr('Энергетик даёт не меньше 1 энергии.'),
   'the bonus is taken today': tr('Сегодня вы уже получили бонус.'),
   'the bonus is for pages a week old with a filled profile': tr('Бонус получают страницы старше недели с заполненной анкетой.'),
   'a voucher with votes has a limited number of usages': tr('Ваучер с голосами действует ограниченное число раз.'),
   'the rating is raised by 1 to 1000 percent': tr('Рейтинг повышается на 1–1000 %.'),
   'the rating cannot go above 1000 percent': tr('Рейтинг не может быть больше 1000 %.'),
-  'the jackpot must be from 1 to 1000 votes': tr('Джекпот — от 1 до 1000 голосов.'),
-  'the odds pay too much: the sum of 1/odds must be at least 1.05': tr('Коэффициенты слишком велики: сумма 1/коэффициент должна быть не меньше 1,05.'),
-  'one person stakes at most 300 votes on an event': tr('На одно событие можно поставить не больше 300 голосов.'),
-  'the outcome takes no more stakes: its payouts reached 3000 votes': tr('На этот исход больше не принимают ставок.'),
-  'the weight of a prize must be from 0 to 1000000': tr('Вес приза — от 0 до 1 000 000.'),
+  'the daily bonus must be at least 1 vote': tr('Бонус — не меньше 1 голоса.'),
+  'a fee must be from 0 to 100 percent': tr('Комиссия — от 0 до 100 %.'),
+  'the jackpot must be at least 1 vote': tr('Джекпот — не меньше 1 голоса.'),
+  'the weight of a prize must be from 0 to 1000000000': tr('Вес приза — от 0 до 1 000 000 000.'),
   'at least one prize must have a weight': tr('Хотя бы у одного приза вес должен быть больше нуля.'),
   'the bet is out of the limits of the casino': tr('Такую ставку казино не принимает.'),
   'unknown multiplier': tr('Такого множителя нет.'),
-  'bets must be from 1 to 100000000 votes, the least not above the most': tr('Ставки — от 1 до 100 000 000 голосов, наименьшая не больше наибольшей.'),
+  'bets must be at least 1 vote, the least not above the most': tr('Ставки — не меньше 1 голоса, наименьшая не больше наибольшей.'),
   'bets have from 1 to 10 multipliers': tr('В «Прицеле» должно быть от 1 до 10 множителей.'),
-  'a multiplier must be from 1.01 to 1000': tr('Множитель — от ×1,01 до ×1000.'),
+  'a multiplier must be from 1.01 to 10000': tr('Множитель — от ×1,01 до ×10 000.'),
   'the chance of a multiplier must be from 0.01 to 99.99 percent': tr('Шанс множителя — от 0,01 до 99,99 %.'),
   'the multipliers repeat': tr('Множители не должны повторяться.'),
   'the question of the event is empty': tr('Напишите вопрос события.'),
@@ -2057,13 +2052,13 @@ const errorTexts = {
   'the rocket cashes by itself from 1.01 to its top': tr('Забрать само можно на множителе от ×1,01 до наибольшего у ракеты.'),
   'rocket not found': tr('Полёт не найден.'),
   'the rocket is over': tr('Этот полёт уже закончился.'),
-  'rocket bets must be from 1 to 100000000 votes, the least not above the most': tr('Ставки — от 1 до 100 000 000 голосов, наименьшая не больше наибольшей.'),
-  'the return of the rocket must be from 0.01 to 85 percent': tr('Отдача ракеты — от 0,01 до 85 %.'),
+  'rocket bets must be at least 1 vote, the least not above the most': tr('Ставки — не меньше 1 голоса, наименьшая не больше наибольшей.'),
+  'the return of the rocket must be from 0.01 to 100 percent': tr('Отдача ракеты — от 0,01 до 100 %.'),
   'the top of the rocket must be from 2 to 10000': tr('Наибольший множитель — от ×2 до ×10 000.'),
   'the event is not over yet': tr('Сначала подведите итог события или отмените его.'),
   'unknown outcome': tr('Такого исхода нет.'),
-  'a stake must be from 1 to 100000000 votes': tr('Ставка — от 1 до 100 000 000 голосов.'),
-  'the odds of an outcome must be from 1.01 to 1000': tr('Коэффициент исхода — от 1,01 до 1000.'),
+  'a stake must be at least 1 vote': tr('Ставка — не меньше 1 голоса.'),
+  'the odds of an outcome must be from 1.01 to 10000': tr('Коэффициент исхода — от 1,01 до 10 000.'),
   'every outcome needs its odds': tr('У каждого исхода должен быть коэффициент.'),
   'the event shares its stakes and has no odds': tr('У этого события нет коэффициентов: ставки на нём делят угадавшие.'),
   'invalid sticker': tr('Такого стикера нет.'),
@@ -2098,13 +2093,13 @@ const errorTexts = {
   'an administrator cannot be banned': tr('Администратора сайта заблокировать нельзя.'),
   'you cannot transfer votes to yourself': tr('Нельзя передать голоса самому себе.'),
   'you cannot transfer votes to this user': tr('Вы не можете передать голоса этому пользователю.'),
-  'the number of votes must be between 1 and 100000000': tr('Количество голосов — от 1 до 100 000 000.'),
+  'the number of votes must be at least 1': tr('Количество голосов — не меньше 1.'),
   'the message of a transfer is too long': tr('Сообщение к переводу — не больше 140 символов.'),
   'the message of a transfer is one line': tr('Сообщение к переводу — одна строка.'),
   'voucher serial number must be 24 letters and digits': tr('Серийный номер — 24 латинские буквы и цифры.'),
   'voucher must give votes or rating': tr('Ваучер должен давать голоса или рейтинг.'),
-  'voucher gives up to 100000000 votes and up to 1000 of rating': tr('Ваучер даёт не больше 100 000 000 голосов и 1000 рейтинга.'),
-  'voucher usages must be -1 or between 1 and 1000000': tr('Количество использований — от 1 до 1 000 000 или -1.'),
+  'a voucher gives at least 0 votes and at least 0 of rating': tr('Ваучер даёт не меньше 0 голосов и 0 рейтинга.'),
+  'voucher usages must be -1 or between 1 and 1000000000': tr('Количество использований — от 1 до 1 000 000 000 или -1.'),
   'voucher with this serial number already exists': tr('Ваучер с таким серийным номером уже есть.'),
   'only the sender can edit the message': tr('Редактировать можно только свои сообщения.'),
   'the message can no longer be edited': tr('Сообщение можно редактировать только в течение суток после отправки.'),

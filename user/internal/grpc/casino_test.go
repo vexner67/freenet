@@ -29,8 +29,8 @@ func TestCasino(t *testing.T) {
 		t.Fatalf("SetCasino without odds: %v", err)
 	}
 
-	if _, err := s.client.SetCasino(admin, &userv1.SetCasinoRequest{Price: 4, Prizes: []*userv1.CasinoPrize{{Votes: 0, Weight: 1}, {Votes: 9, Weight: 5}}}); status.Code(err) != codes.InvalidArgument {
-		t.Fatalf("SetCasino giving back more than 85%%: %v", err)
+	if _, err := s.client.SetCasino(admin, &userv1.SetCasinoRequest{Price: 0, Prizes: []*userv1.CasinoPrize{{Votes: 0, Weight: 1}, {Votes: 9, Weight: 5}}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("SetCasino for free: %v", err)
 	}
 
 	// A casino that always pays 8.
@@ -86,8 +86,8 @@ func TestCasinoBets(t *testing.T) {
 	if _, err := s.client.SetCasinoBets(admin, &userv1.SetCasinoBetsRequest{Least: 2, Most: 20}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("SetCasinoBets without multipliers: %v", err)
 	}
-	if _, err := s.client.SetCasinoBets(admin, &userv1.SetCasinoBetsRequest{Least: 2, Most: 20, Aim: []*userv1.AimMultiplier{{Multiplier: 200, Chance: 5000}}}); status.Code(err) != codes.InvalidArgument {
-		t.Fatalf("SetCasinoBets giving back 100%%: %v", err)
+	if _, err := s.client.SetCasinoBets(admin, &userv1.SetCasinoBetsRequest{Least: 2, Most: 20, Aim: []*userv1.AimMultiplier{{Multiplier: 200, Chance: 0}}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("SetCasinoBets without a chance: %v", err)
 	}
 	tuned := &userv1.SetCasinoBetsRequest{Least: 2, Most: 20, Aim: []*userv1.AimMultiplier{{Multiplier: 200, Chance: 4250}, {Multiplier: 700, Chance: 1000}}}
 	if _, err := s.client.SetCasinoBets(ann, tuned); status.Code(err) != codes.PermissionDenied {

@@ -21,7 +21,7 @@ func TestWalletService_Bonus(t *testing.T) {
 
 	// A page without a profile, and a page younger than a week, takes no
 	// bonus.
-	if b, err := w.wallets.Bonus(ctx, ann, now); err != nil || b.Eligible || b.Taken || b.Votes != user.MaxBonus {
+	if b, err := w.wallets.Bonus(ctx, ann, now); err != nil || b.Eligible || b.Taken || b.Votes != user.DefaultEconomy.Bonus {
 		t.Fatalf("Bonus = %+v, %v", b, err)
 	}
 	if _, err := w.wallets.ClaimBonus(ctx, ann, now); !errors.Is(err, user.ErrBonusNotYet) {
@@ -38,7 +38,7 @@ func TestWalletService_Bonus(t *testing.T) {
 	now = now.Add(user.BonusAge + time.Hour)
 
 	claimed, err := w.wallets.ClaimBonus(ctx, ann, now)
-	if err != nil || claimed.Votes != user.MaxBonus || claimed.Wallet.Votes != user.MaxBonus {
+	if err != nil || claimed.Votes != user.DefaultEconomy.Bonus || claimed.Wallet.Votes != user.DefaultEconomy.Bonus {
 		t.Fatalf("ClaimBonus = %+v, %v", claimed, err)
 	}
 	if _, err := w.wallets.ClaimBonus(ctx, ann, now); !errors.Is(err, user.ErrBonusTaken) {
@@ -49,12 +49,12 @@ func TestWalletService_Bonus(t *testing.T) {
 	}
 
 	treasury, err := w.wallets.Treasury(ctx)
-	if err != nil || treasury.Votes != user.TreasuryStart-user.MaxBonus {
+	if err != nil || treasury.Votes != user.TreasuryStart-user.DefaultEconomy.Bonus {
 		t.Fatalf("Treasury = %+v, %v", treasury, err)
 	}
 
 	// The next day there is another.
-	if claimed, err = w.wallets.ClaimBonus(ctx, ann, now.Add(24*time.Hour)); err != nil || claimed.Wallet.Votes != 2*user.MaxBonus {
+	if claimed, err = w.wallets.ClaimBonus(ctx, ann, now.Add(24*time.Hour)); err != nil || claimed.Wallet.Votes != 2*user.DefaultEconomy.Bonus {
 		t.Fatalf("next ClaimBonus = %+v, %v", claimed, err)
 	}
 
@@ -127,5 +127,42 @@ func TestWalletService_RaiseRating(t *testing.T) {
 	}
 	if got := w.votes(t, ann); got != 40-five.Cost() {
 		t.Fatalf("after the refused raise ann has %d votes", got)
+	}
+}
+
+// The administrators set the bonus and the fees; the next bonus, transfer
+// and sale take them.
+func TestWalletService_SetEconomy(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	w := newWalletWorld(t)
+	admin, ann, bob := w.person(t, "admin"), w.person(t, "ann"), w.person(t, "bob")
+
+	economy := user.Economy{Bonus: 10_000, TransferFee: 10, StickerTax: 20, PrimeStickerTax: 1}
+	if err := w.wallets.SetEconomy(ctx, ann, economy); !errors.Is(err, user.ErrNotAdmin) {
+		t.Fatalf("SetEconomy by ann: %v", err)
+	}
+	if err := w.wallets.SetEconomy(ctx, admin, economy); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := w.wallets.Economy(ctx); err != nil || got != economy {
+		t.Fatalf("Economy = %+v, %v", got, err)
+	}
+
+	if b, err := w.wallets.Bonus(ctx, ann, time.Now()); err != nil || b.Votes != 10_000 {
+		t.Fatalf("Bonus = %+v, %v", b, err)
+	}
+
+	for id, name := range map[uuid.UUID]string{ann: "ann", bob: "bob"} {
+		if _, err := w.userSvc.UpdateProfile(ctx, id, profile(t, name), ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := w.users.Credit(ctx, ann, 1000, 0, user.VoteEntry{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, fee, err := w.wallets.Transfer(ctx, ann, bob, 100, ""); err != nil || fee != 10 {
+		t.Fatalf("Transfer: fee %d, %v", fee, err)
 	}
 }

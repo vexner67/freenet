@@ -19,7 +19,8 @@ func TestTreasury(t *testing.T) {
 
 	// Anyone sees the treasury.
 	got, err := s.client.GetTreasury(context.Background(), &userv1.GetTreasuryRequest{})
-	if err != nil || got.GetVotes() != user.TreasuryStart || got.GetBonus() != user.MaxBonus || got.GetMaxWin() != user.MaxWin {
+	if err != nil || got.GetVotes() != user.TreasuryStart || got.GetBonus() != user.DefaultEconomy.Bonus ||
+		got.GetTransferFee() != 3 || got.GetStickerTax() != 10 || got.GetPrimeStickerTax() != 5 {
 		t.Fatalf("GetTreasury = %v, %v", got, err)
 	}
 
@@ -52,7 +53,7 @@ func TestTreasury(t *testing.T) {
 		t.Fatalf("GetBonus by nobody: %v", err)
 	}
 	bonus, err := s.client.GetBonus(ann, &userv1.GetBonusRequest{})
-	if err != nil || bonus.GetEligible() || bonus.GetTaken() || bonus.GetVotes() != user.MaxBonus {
+	if err != nil || bonus.GetEligible() || bonus.GetTaken() || bonus.GetVotes() != user.DefaultEconomy.Bonus {
 		t.Fatalf("GetBonus = %v, %v", bonus, err)
 	}
 	if _, err := s.client.ClaimBonus(ann, &userv1.ClaimBonusRequest{}); status.Code(err) != codes.FailedPrecondition {
@@ -96,8 +97,8 @@ func TestRaiseRatingAndJackpot(t *testing.T) {
 	if _, err = s.client.SetCasinoJackpot(ann, &userv1.SetCasinoJackpotRequest{Jackpot: 500}); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("SetCasinoJackpot by ann: %v", err)
 	}
-	if _, err = s.client.SetCasinoJackpot(admin, &userv1.SetCasinoJackpotRequest{Jackpot: user.MaxWin + 1}); status.Code(err) != codes.InvalidArgument {
-		t.Fatalf("SetCasinoJackpot past the most win: %v", err)
+	if _, err = s.client.SetCasinoJackpot(admin, &userv1.SetCasinoJackpotRequest{Jackpot: 0}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("SetCasinoJackpot of nothing: %v", err)
 	}
 	if _, err = s.client.SetCasinoJackpot(admin, &userv1.SetCasinoJackpotRequest{Jackpot: 500}); err != nil {
 		t.Fatal(err)

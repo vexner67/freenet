@@ -14,10 +14,7 @@ import (
 
 const (
 	// MaxPrimePrice is the dearest a period of Prime may be, in votes.
-	MaxPrimePrice = 1_000_000
-	// PrimeStickerTaxPercent is the tax on a sale of a sticker pack whose
-	// author has Prime, instead of StickerTaxPercent.
-	PrimeStickerTaxPercent = 5
+	MaxPrimePrice = MaxAmount
 )
 
 // DefaultPrimePrices are what Prime costs until the administrators say
@@ -27,7 +24,7 @@ var DefaultPrimePrices = PrimePrices{Month: 150, Quarter: 400, Year: 1500}
 
 var (
 	ErrPrimePeriodInvalid = errors.New("unknown period of prime")
-	ErrPrimePriceInvalid  = errors.New("the price of prime must be between 1 and 1000000")
+	ErrPrimePriceInvalid  = errors.New("the price of prime must be at least 1 vote")
 	// ErrPrimeOnly: what only those with Prime may have — its gifts, its
 	// theme, being invisible.
 	ErrPrimeOnly = errors.New("this is for freenet prime only")
@@ -153,22 +150,18 @@ func (u *User) CheckInvisible(invisible bool, now time.Time) error {
 	return nil
 }
 
-// TransferFeeAt is what a transfer of votes costs u on top at now: nothing
-// with Prime.
-func (u *User) TransferFeeAt(votes int64, now time.Time) int64 {
+// TransferFeeAt is what a transfer of votes costs u on top at now in e:
+// nothing with Prime.
+func (u *User) TransferFeeAt(e Economy, votes int64, now time.Time) int64 {
 	if u.IsPrimeAt(now) {
 		return 0
 	}
 
-	return TransferFee(votes)
+	return e.TransferFeeOf(votes)
 }
 
 // StickerTaxAt is what the treasury takes of a sale of a pack of u, its
-// author, for price at now: PrimeStickerTaxPercent with Prime.
-func (u *User) StickerTaxAt(price int64, now time.Time) int64 {
-	if u.IsPrimeAt(now) {
-		return price - price*(100-PrimeStickerTaxPercent)/100
-	}
-
-	return StickerTax(price)
+// author, for price at now in e: the tax of Prime with it.
+func (u *User) StickerTaxAt(e Economy, price int64, now time.Time) int64 {
+	return e.StickerTaxOf(price, u.IsPrimeAt(now))
 }

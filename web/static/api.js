@@ -658,6 +658,7 @@ export const api = {
   giftCatalog: () => request('GET', '/api/v1/gifts'),
   voteRate: () => request('GET', '/api/v1/vote-rate'),
   treasury: () => request('GET', '/api/v1/treasury'),
+  setEconomy: (economy) => authorized('PUT', '/api/v1/economy', economy),
   bonus: () => authorized('GET', '/api/v1/me/bonus'),
   claimBonus: () => authorized('POST', '/api/v1/me/bonus'),
   // raiseRating is "Повысить рейтинг": percent of rating for votes.

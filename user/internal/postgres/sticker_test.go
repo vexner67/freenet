@@ -18,7 +18,7 @@ func TestStickerRepository(t *testing.T) {
 	repo, pool := newRepo(t)
 	stickers := postgres.NewStickerRepository(pool)
 	wallets := postgres.NewWalletRepository(pool)
-	svc := service.NewStickerService(stickers, postgres.NewStickerPackRepository(pool), wallets, repo, pgpool.NewTxManager(pool))
+	svc := service.NewStickerService(stickers, postgres.NewStickerPackRepository(pool), wallets, repo, postgres.NewEconomyRepository(pool), pgpool.NewTxManager(pool))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -98,7 +98,7 @@ func TestStickerPackRepository(t *testing.T) {
 	stickers := postgres.NewStickerRepository(pool)
 	packs := postgres.NewStickerPackRepository(pool)
 	wallets := postgres.NewWalletRepository(pool)
-	svc := service.NewStickerService(stickers, packs, wallets, repo, pgpool.NewTxManager(pool))
+	svc := service.NewStickerService(stickers, packs, wallets, repo, postgres.NewEconomyRepository(pool), pgpool.NewTxManager(pool))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

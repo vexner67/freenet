@@ -16,6 +16,7 @@ type fakeVotes struct {
 	votes                                            int64
 	limit                                            int
 	draft                                            model.VoucherDraft
+	economy                                          model.Economy
 	err                                              error
 }
 
@@ -80,7 +81,12 @@ func (f *fakeVotes) SetRate(_ context.Context, token string, kopecks int64) erro
 }
 
 func (f *fakeVotes) Treasury(context.Context) (model.Treasury, error) {
-	return model.Treasury{Votes: 26000, Outstanding: 200, Bonus: 10, MaxWin: 1000, Held: 7}, f.err
+	return model.Treasury{Votes: 26000, Outstanding: 200, Bonus: 10, Held: 7, TransferFee: 3, StickerTax: 10, PrimeStickerTax: 5}, f.err
+}
+
+func (f *fakeVotes) SetEconomy(_ context.Context, token string, e model.Economy) error {
+	f.token, f.economy = token, e
+	return f.err
 }
 
 func (f *fakeVotes) Bonus(_ context.Context, token string) (model.Bonus, error) {
@@ -296,14 +302,40 @@ func TestTreasury(t *testing.T) {
 
 	w := newHarness(rest.Config{}).do("GET", "/api/v1/treasury", "")
 	got := decode[struct {
-		Votes  int64 `json:"votes"`
-		Free   int64 `json:"free"`
-		Bonus  int64 `json:"bonus"`
-		MaxWin int64 `json:"maxWin"`
-		Held   int64 `json:"held"`
+		Votes           int64 `json:"votes"`
+		Bonus           int64 `json:"bonus"`
+		Held            int64 `json:"held"`
+		TransferFee     int   `json:"transferFee"`
+		StickerTax      int   `json:"stickerTax"`
+		PrimeStickerTax int   `json:"primeStickerTax"`
 	}](t, w)
-	if w.Code != http.StatusOK || got.Votes != 26000 || got.Bonus != 10 || got.MaxWin != 1000 || got.Held != 7 {
+	if w.Code != http.StatusOK || got.Votes != 26000 || got.Bonus != 10 || got.Held != 7 ||
+		got.TransferFee != 3 || got.StickerTax != 10 || got.PrimeStickerTax != 5 {
 		t.Fatalf("%d %+v", w.Code, got)
+	}
+}
+
+func TestSetEconomy(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	body := `{"bonus":10000,"transferFee":2,"stickerTax":8,"primeStickerTax":4}`
+	if w := h.do("PUT", "/api/v1/economy", body, "Authorization", "Bearer tok"); w.Code != http.StatusNoContent {
+		t.Fatalf("%d %s", w.Code, w.Body)
+	}
+	want := model.Economy{Bonus: 10_000, TransferFee: 2, StickerTax: 8, PrimeStickerTax: 4}
+	if h.votes.token != "tok" || h.votes.economy != want {
+		t.Fatalf("SetEconomy got %q %+v", h.votes.token, h.votes.economy)
+	}
+
+	if w := newHarness(rest.Config{}).do("PUT", "/api/v1/economy", body); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without token: %d", w.Code)
+	}
+
+	h = newHarness(rest.Config{})
+	h.votes.err = failure.New(failure.PermissionDenied, "permission denied")
+	if w := h.do("PUT", "/api/v1/economy", body, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
+		t.Fatalf("not an administrator: %d", w.Code)
 	}
 }
 

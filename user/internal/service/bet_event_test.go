@@ -76,9 +76,6 @@ func TestBetEventService_Resolve(t *testing.T) {
 	if _, err := events.Create(ctx, admin, q, outcomes, []int{150}, time.Time{}); !errors.Is(err, user.ErrEventOddsCount) {
 		t.Fatalf("Create without all the odds: %v", err)
 	}
-	if _, err := events.Create(ctx, admin, q, outcomes, []int{150, 300}, time.Time{}); !errors.Is(err, user.ErrEventMargin) {
-		t.Fatalf("Create paying out all: %v", err)
-	}
 	e, err := events.Create(ctx, admin, q, outcomes, []int{150, 250}, now.Add(24*time.Hour))
 	if err != nil {
 		t.Fatal(err)
@@ -112,16 +109,6 @@ func TestBetEventService_Resolve(t *testing.T) {
 	}
 	if got := w.votes(t, ann); got != 70 {
 		t.Fatalf("ann has %d; want 70", got)
-	}
-	w.users.Fund(1000)
-	if _, err := w.users.Credit(ctx, ann, 300, 0, user.VoteEntry{}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := events.Stake(ctx, ann, e.ID(), 1, 271); !errors.Is(err, user.ErrEventStakeLimit) {
-		t.Fatalf("Stake past 300 of a person: %v", err)
-	}
-	if _, err := w.users.Spend(ctx, ann, 300, user.VoteEntry{}); err != nil {
-		t.Fatal(err)
 	}
 
 	views, err := events.Events(ctx, ann, service.BetEventsAll)
@@ -283,9 +270,6 @@ func TestBetEventService_SetOdds(t *testing.T) {
 	}
 	if err := events.SetOdds(ctx, admin, e.ID(), []int{300}); !errors.Is(err, user.ErrEventOddsCount) {
 		t.Fatalf("SetOdds short: %v", err)
-	}
-	if err := events.SetOdds(ctx, admin, e.ID(), []int{300, 150}); !errors.Is(err, user.ErrEventMargin) {
-		t.Fatalf("SetOdds paying out all: %v", err)
 	}
 	if err := events.SetOdds(ctx, admin, e.ID(), []int{300, 130}); err != nil {
 		t.Fatal(err)

@@ -184,20 +184,10 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.FailedPrecondition, user.ErrBonusTaken.Error()), true
 	case errors.Is(err, user.ErrBonusNotYet):
 		return status.New(codes.FailedPrecondition, user.ErrBonusNotYet.Error()), true
-	case errors.Is(err, user.ErrEventStakeLimit):
-		return status.New(codes.FailedPrecondition, user.ErrEventStakeLimit.Error()), true
-	case errors.Is(err, user.ErrEventFull):
-		return status.New(codes.FailedPrecondition, user.ErrEventFull.Error()), true
-	case errors.Is(err, user.ErrEventMargin):
-		return status.New(codes.InvalidArgument, user.ErrEventMargin.Error()), true
-	case errors.Is(err, user.ErrCasinoReturn):
-		return status.New(codes.InvalidArgument, user.ErrCasinoReturn.Error()), true
-	case errors.Is(err, user.ErrAimReturn):
-		return status.New(codes.InvalidArgument, user.ErrAimReturn.Error()), true
-	case errors.Is(err, user.ErrAimWin):
-		return status.New(codes.InvalidArgument, user.ErrAimWin.Error()), true
-	case errors.Is(err, user.ErrRocketWin):
-		return status.New(codes.InvalidArgument, user.ErrRocketWin.Error()), true
+	case errors.Is(err, user.ErrEconomyBonus):
+		return status.New(codes.InvalidArgument, user.ErrEconomyBonus.Error()), true
+	case errors.Is(err, user.ErrEconomyPercent):
+		return status.New(codes.InvalidArgument, user.ErrEconomyPercent.Error()), true
 	case errors.Is(err, user.ErrVoucherUnlimitedVotes):
 		return status.New(codes.InvalidArgument, user.ErrVoucherUnlimitedVotes.Error()), true
 	case errors.Is(err, user.ErrTransferSelf):

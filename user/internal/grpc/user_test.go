@@ -86,9 +86,9 @@ func newServer(t *testing.T) testServer {
 			Users: users, Gifts: gifts, Prices: gifts, Stock: gifts, Collectibles: gifts, Auctions: gifts, Permissions: permissions, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{},
 			Wallets: users, Admins: admins,
 		}),
-		Stickers: service.NewStickerService(stickers, inmem.NewStickerPackRepository(users, stickers), users, users, inmem.TxManager{}),
+		Stickers: service.NewStickerService(stickers, inmem.NewStickerPackRepository(users, stickers), users, users, inmem.NewEconomyRepository(), inmem.TxManager{}),
 		Wallets: service.NewWalletService(service.WalletDeps{
-			Users: users, Wallets: users, Statements: users, Bonuses: users, Vouchers: inmem.NewVoucherRepository(users), Rates: inmem.NewVoteRateRepository(), Permissions: permissions,
+			Users: users, Wallets: users, Statements: users, Bonuses: users, Vouchers: inmem.NewVoucherRepository(users), Rates: inmem.NewVoteRateRepository(), Economy: inmem.NewEconomyRepository(), Permissions: permissions,
 			Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Admins: admins,
 		}),
 		Verification: service.NewVerificationService(service.VerificationDeps{
