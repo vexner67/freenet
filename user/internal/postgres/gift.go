@@ -36,14 +36,22 @@ const saveGiftQuery = `
 		sender_id,
 		gift,
 		caption,
-		anonymous
+		anonymous,
+		number,
+		model,
+		backdrop,
+		symbol,
+		sale_price
 	)
-	VALUES ($1, $2, $3, $4, $5, $6)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 `
 
 func (r *GiftRepository) Save(ctx context.Context, g *user.Gift) error {
+	number, model, backdrop, symbol, price := collectibleArgs(g)
+
 	_, err := r.conn(ctx).Exec(ctx, saveGiftQuery,
-		g.ID(), g.RecipientID(), g.SenderID(), g.Kind().String(), g.Caption().String(), g.Anonymous())
+		g.ID(), nullID(g.RecipientID()), nullID(g.SenderID()), g.Kind().String(), g.Caption().String(), g.Anonymous(),
+		number, model, backdrop, symbol, price)
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode {
@@ -63,7 +71,12 @@ const giftColumns = `
 		sender_id,
 		gift,
 		caption,
-		anonymous`
+		anonymous,
+		number,
+		model,
+		backdrop,
+		symbol,
+		sale_price`
 
 const getGiftQuery = `
 	SELECT` + giftColumns + `
@@ -153,23 +166,70 @@ func (r *GiftRepository) Count(ctx context.Context, recipientID uuid.UUID) (int,
 
 func scanGift(row pgx.Row) (*user.Gift, error) {
 	var (
-		id, recipientID uuid.UUID
-		senderID        *uuid.UUID
-		kind, caption   string
-		anonymous       bool
+		id                      uuid.UUID
+		recipientID, senderID   *uuid.UUID
+		kind, caption           string
+		anonymous               bool
+		number                  *int
+		model, backdrop, symbol *string
+		salePrice               *int64
 	)
 
-	if err := row.Scan(&id, &recipientID, &senderID, &kind, &caption, &anonymous); err != nil {
+	if err := row.Scan(&id, &recipientID, &senderID, &kind, &caption, &anonymous,
+		&number, &model, &backdrop, &symbol, &salePrice); err != nil {
 		return nil, err
 	}
 
-	// The sender's page is erased: the gift is nobody's.
-	sender := uuid.Nil
-	if senderID != nil {
-		sender = *senderID
+	// No recipient: the site holds it. The sender's page is erased: the
+	// gift is nobody's.
+	g := user.RestoreGift(id, idOrNil(recipientID), idOrNil(senderID), user.GiftKind(kind), user.GiftCaption(caption), anonymous)
+
+	if number == nil {
+		return g, nil
 	}
 
-	return user.RestoreGift(id, recipientID, sender, user.GiftKind(kind), user.GiftCaption(caption), anonymous), nil
+	traits := user.GiftTraits{Model: *model, Backdrop: *backdrop, Symbol: *symbol}
+
+	var price int64
+	if salePrice != nil {
+		price = *salePrice
+	}
+
+	return g.RestoreCollectible(*number, traits, price), nil
+}
+
+// collectibleArgs are the collectible columns of g, NULL for a plain gift
+// and for one not on sale.
+func collectibleArgs(g *user.Gift) (number *int, model, backdrop, symbol *string, price *int64) {
+	if !g.IsCollectible() {
+		return nil, nil, nil, nil, nil
+	}
+
+	n, t := g.Number(), g.Traits()
+	number, model, backdrop, symbol = &n, &t.Model, &t.Backdrop, &t.Symbol
+
+	if g.IsOnSale() {
+		p := g.SalePrice()
+		price = &p
+	}
+
+	return number, model, backdrop, symbol, price
+}
+
+func nullID(id uuid.UUID) *uuid.UUID {
+	if id == uuid.Nil {
+		return nil
+	}
+
+	return &id
+}
+
+func idOrNil(id *uuid.UUID) uuid.UUID {
+	if id == nil {
+		return uuid.Nil
+	}
+
+	return *id
 }
 
 const listGiftPricesQuery = `

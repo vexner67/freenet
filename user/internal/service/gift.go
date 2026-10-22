@@ -56,12 +56,20 @@ type SentGift struct {
 	Anonymous bool
 	SentAt    time.Time
 	Sender    *user.PublicProfile
+	// Number is above zero for a collectible, with its traits; SalePrice
+	// is above zero for one on sale and Auctioned tells one at an auction.
+	Number    int
+	Traits    user.GiftTraits
+	SalePrice int64
+	Auctioned bool
 }
 
-// PricedGift is a gift of the catalogue and what it costs now.
+// PricedGift is a gift of the catalogue, what it costs now and how many
+// of it there may be and have been sent.
 type PricedGift struct {
 	Kind  user.GiftKind
 	Price user.GiftPrice
+	Stock user.GiftStock
 }
 
 // GiftShelf is a collection of the catalogue with what each gift costs;
@@ -85,15 +93,19 @@ type GiftPage struct {
 // GiftService is openvk's "Подарки": people send each other gifts of the
 // catalogue, and a page shows the gifts it was sent.
 type GiftService struct {
-	userRepo    UserRepository
-	giftRepo    GiftRepository
-	prices      GiftPriceRepository
-	wallets     WalletRepository
-	permissions *PermissionService
-	tx          TxManager
-	notifier    GiftNotifier
-	admins      user.Admins
-	now         func() time.Time
+	userRepo     UserRepository
+	giftRepo     GiftRepository
+	prices       GiftPriceRepository
+	stock        GiftStockRepository
+	collectibles CollectibleRepository
+	auctions     AuctionRepository
+	roll         func(n int64) (int64, error)
+	wallets      WalletRepository
+	permissions  *PermissionService
+	tx           TxManager
+	notifier     GiftNotifier
+	admins       user.Admins
+	now          func() time.Time
 }
 
 // GiftDeps are what GiftService works with.
@@ -102,6 +114,11 @@ type GiftDeps struct {
 	Gifts GiftRepository
 	// Prices are what the administrators make the gifts cost.
 	Prices GiftPriceRepository
+	// Stock, Collectibles and Auctions are the editions of the gifts, the
+	// collectibles and their auctions.
+	Stock        GiftStockRepository
+	Collectibles CollectibleRepository
+	Auctions     AuctionRepository
 	// Wallets pay for the gifts that cost votes.
 	Wallets     WalletRepository
 	Permissions *PermissionService
@@ -113,15 +130,19 @@ type GiftDeps struct {
 
 func NewGiftService(d GiftDeps) *GiftService {
 	return &GiftService{
-		userRepo:    d.Users,
-		giftRepo:    d.Gifts,
-		prices:      d.Prices,
-		wallets:     d.Wallets,
-		permissions: d.Permissions,
-		tx:          d.Tx,
-		notifier:    d.Notifier,
-		admins:      d.Admins,
-		now:         time.Now,
+		userRepo:     d.Users,
+		giftRepo:     d.Gifts,
+		prices:       d.Prices,
+		stock:        d.Stock,
+		collectibles: d.Collectibles,
+		auctions:     d.Auctions,
+		roll:         cryptoRoll,
+		wallets:      d.Wallets,
+		permissions:  d.Permissions,
+		tx:           d.Tx,
+		notifier:     d.Notifier,
+		admins:       d.Admins,
+		now:          time.Now,
 	}
 }
 
@@ -133,13 +154,18 @@ func (s *GiftService) Catalog(ctx context.Context) ([]GiftShelf, error) {
 		return nil, errs.Wrap("s.prices.Prices", err)
 	}
 
+	stocks, err := s.stock.Stocks(ctx)
+	if err != nil {
+		return nil, errs.Wrap("s.stock.Stocks", err)
+	}
+
 	catalog := user.GiftCatalog()
 	shelves := make([]GiftShelf, 0, len(catalog))
 
 	for _, c := range catalog {
 		shelf := GiftShelf{ID: c.ID, Price: c.Price, Gifts: make([]PricedGift, 0, len(c.Gifts)), Prime: c.Prime}
 		for _, kind := range c.Gifts {
-			shelf.Gifts = append(shelf.Gifts, PricedGift{Kind: kind, Price: prices.Of(kind)})
+			shelf.Gifts = append(shelf.Gifts, PricedGift{Kind: kind, Price: prices.Of(kind), Stock: stocks[kind]})
 		}
 
 		shelves = append(shelves, shelf)
@@ -186,6 +212,12 @@ func (s *GiftService) Send(ctx context.Context, senderID, recipientID uuid.UUID,
 	}
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		// The edition is counted before the votes are taken: sold out,
+		// nothing is paid even where nothing rolls back (inmem).
+		if err := s.stock.Sell(ctx, d.Kind); err != nil {
+			return errs.Wrap("s.stock.Sell", err)
+		}
+
 		if price := prices.Of(d.Kind); price > 0 {
 			if _, err := s.wallets.Spend(ctx, senderID, price.Int64(), user.Entry(user.VoteGift, recipientID, string(d.Kind))); err != nil {
 				return errs.Wrap("s.wallets.Spend", err)
@@ -239,6 +271,12 @@ func (s *GiftService) Delete(ctx context.Context, userID, giftID uuid.UUID) erro
 
 	if !gift.CanBeDeletedBy(userID) {
 		return user.ErrCannotDeleteGift
+	}
+
+	// The votes of a bid are someone's: a gift at an auction stays, as
+	// does one on sale, until it is taken off.
+	if err = s.checkOff(ctx, gift); err != nil {
+		return errs.Wrap("s.checkOff", err)
 	}
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
@@ -314,6 +352,11 @@ func (s *GiftService) shown(ctx context.Context, viewerID uuid.UUID, gifts []*us
 
 	senders := make(map[uuid.UUID]*user.User, len(senderIDs))
 
+	auctioned, err := s.auctioned(ctx, gifts)
+	if err != nil {
+		return nil, errs.Wrap("s.auctioned", err)
+	}
+
 	if len(senderIDs) > 0 {
 		found, err := s.userRepo.GetByIDs(ctx, senderIDs)
 		if err != nil {
@@ -329,7 +372,15 @@ func (s *GiftService) shown(ctx context.Context, viewerID uuid.UUID, gifts []*us
 	shown := make([]SentGift, 0, len(gifts))
 
 	for _, g := range gifts {
-		sent := SentGift{ID: g.ID(), Kind: g.Kind(), SentAt: g.SentAt()}
+		sent := SentGift{
+			ID:        g.ID(),
+			Kind:      g.Kind(),
+			SentAt:    g.SentAt(),
+			Number:    g.Number(),
+			Traits:    g.Traits(),
+			SalePrice: g.SalePrice(),
+			Auctioned: auctioned[g.ID()],
+		}
 
 		if g.SignedFor(viewerID) {
 			sent.Caption, sent.Anonymous = g.Caption(), g.Anonymous()

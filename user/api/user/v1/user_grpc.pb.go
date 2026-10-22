@@ -62,6 +62,18 @@ const (
 	UserService_ListGifts_FullMethodName          = "/user.v1.UserService/ListGifts"
 	UserService_DeleteGift_FullMethodName         = "/user.v1.UserService/DeleteGift"
 	UserService_SetGiftPrice_FullMethodName       = "/user.v1.UserService/SetGiftPrice"
+	UserService_UpgradeGift_FullMethodName        = "/user.v1.UserService/UpgradeGift"
+	UserService_TransferGift_FullMethodName       = "/user.v1.UserService/TransferGift"
+	UserService_SetGiftSale_FullMethodName        = "/user.v1.UserService/SetGiftSale"
+	UserService_BuyGift_FullMethodName            = "/user.v1.UserService/BuyGift"
+	UserService_GetCollectible_FullMethodName     = "/user.v1.UserService/GetCollectible"
+	UserService_ListGiftMarket_FullMethodName     = "/user.v1.UserService/ListGiftMarket"
+	UserService_StartGiftAuction_FullMethodName   = "/user.v1.UserService/StartGiftAuction"
+	UserService_MintGiftAuction_FullMethodName    = "/user.v1.UserService/MintGiftAuction"
+	UserService_CancelGiftAuction_FullMethodName  = "/user.v1.UserService/CancelGiftAuction"
+	UserService_BidGift_FullMethodName            = "/user.v1.UserService/BidGift"
+	UserService_ListGiftAuctions_FullMethodName   = "/user.v1.UserService/ListGiftAuctions"
+	UserService_SetGiftSupply_FullMethodName      = "/user.v1.UserService/SetGiftSupply"
 	UserService_GetStickerCatalog_FullMethodName  = "/user.v1.UserService/GetStickerCatalog"
 	UserService_AddStickerPack_FullMethodName     = "/user.v1.UserService/AddStickerPack"
 	UserService_RemoveStickerPack_FullMethodName  = "/user.v1.UserService/RemoveStickerPack"
@@ -227,6 +239,30 @@ type UserServiceClient interface {
 	ListGifts(ctx context.Context, in *ListGiftsRequest, opts ...grpc.CallOption) (*ListGiftsResponse, error)
 	DeleteGift(ctx context.Context, in *DeleteGiftRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SetGiftPrice(ctx context.Context, in *SetGiftPriceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Collectible gifts, as Telegram's. UpgradeGift turns the caller's own
+	// gift into a collectible for votes: a number of its kind and three
+	// traits rolled by rarity. TransferGift gives one away (votes to the
+	// treasury; PermissionDenied as SendGift), SetGiftSale puts it up for a
+	// price (0 takes it off) and BuyGift buys one for the price the buyer
+	// was shown (FailedPrecondition when it changed). GetCollectible,
+	// ListGiftMarket and ListGiftAuctions are public. StartGiftAuction puts
+	// the caller's collectible up for the highest bid, BidGift holds the
+	// votes of a bid until someone bids more, CancelGiftAuction takes back
+	// an auction nobody bid on. MintGiftAuction and SetGiftSupply are for
+	// the administrators of the site: an edition the site auctions, and how
+	// many of a gift may ever be sent.
+	UpgradeGift(ctx context.Context, in *UpgradeGiftRequest, opts ...grpc.CallOption) (*UpgradeGiftResponse, error)
+	TransferGift(ctx context.Context, in *TransferGiftRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SetGiftSale(ctx context.Context, in *SetGiftSaleRequest, opts ...grpc.CallOption) (*SetGiftSaleResponse, error)
+	BuyGift(ctx context.Context, in *BuyGiftRequest, opts ...grpc.CallOption) (*BuyGiftResponse, error)
+	GetCollectible(ctx context.Context, in *GetCollectibleRequest, opts ...grpc.CallOption) (*GetCollectibleResponse, error)
+	ListGiftMarket(ctx context.Context, in *ListGiftMarketRequest, opts ...grpc.CallOption) (*ListGiftMarketResponse, error)
+	StartGiftAuction(ctx context.Context, in *StartGiftAuctionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	MintGiftAuction(ctx context.Context, in *MintGiftAuctionRequest, opts ...grpc.CallOption) (*MintGiftAuctionResponse, error)
+	CancelGiftAuction(ctx context.Context, in *CancelGiftAuctionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	BidGift(ctx context.Context, in *BidGiftRequest, opts ...grpc.CallOption) (*BidGiftResponse, error)
+	ListGiftAuctions(ctx context.Context, in *ListGiftAuctionsRequest, opts ...grpc.CallOption) (*ListGiftAuctionsResponse, error)
+	SetGiftSupply(ctx context.Context, in *SetGiftSupplyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Stickers ("Стикеры" on openvk). GetStickerCatalog is public: the
 	// packs there are, and with a token which of them the caller has taken
 	// and keeps among their stickers. AddStickerPack takes a pack, paying
@@ -811,6 +847,126 @@ func (c *userServiceClient) SetGiftPrice(ctx context.Context, in *SetGiftPriceRe
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, UserService_SetGiftPrice_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) UpgradeGift(ctx context.Context, in *UpgradeGiftRequest, opts ...grpc.CallOption) (*UpgradeGiftResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpgradeGiftResponse)
+	err := c.cc.Invoke(ctx, UserService_UpgradeGift_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) TransferGift(ctx context.Context, in *TransferGiftRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_TransferGift_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SetGiftSale(ctx context.Context, in *SetGiftSaleRequest, opts ...grpc.CallOption) (*SetGiftSaleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetGiftSaleResponse)
+	err := c.cc.Invoke(ctx, UserService_SetGiftSale_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) BuyGift(ctx context.Context, in *BuyGiftRequest, opts ...grpc.CallOption) (*BuyGiftResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BuyGiftResponse)
+	err := c.cc.Invoke(ctx, UserService_BuyGift_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetCollectible(ctx context.Context, in *GetCollectibleRequest, opts ...grpc.CallOption) (*GetCollectibleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCollectibleResponse)
+	err := c.cc.Invoke(ctx, UserService_GetCollectible_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ListGiftMarket(ctx context.Context, in *ListGiftMarketRequest, opts ...grpc.CallOption) (*ListGiftMarketResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListGiftMarketResponse)
+	err := c.cc.Invoke(ctx, UserService_ListGiftMarket_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) StartGiftAuction(ctx context.Context, in *StartGiftAuctionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_StartGiftAuction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) MintGiftAuction(ctx context.Context, in *MintGiftAuctionRequest, opts ...grpc.CallOption) (*MintGiftAuctionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MintGiftAuctionResponse)
+	err := c.cc.Invoke(ctx, UserService_MintGiftAuction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CancelGiftAuction(ctx context.Context, in *CancelGiftAuctionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_CancelGiftAuction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) BidGift(ctx context.Context, in *BidGiftRequest, opts ...grpc.CallOption) (*BidGiftResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BidGiftResponse)
+	err := c.cc.Invoke(ctx, UserService_BidGift_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ListGiftAuctions(ctx context.Context, in *ListGiftAuctionsRequest, opts ...grpc.CallOption) (*ListGiftAuctionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListGiftAuctionsResponse)
+	err := c.cc.Invoke(ctx, UserService_ListGiftAuctions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SetGiftSupply(ctx context.Context, in *SetGiftSupplyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetGiftSupply_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1502,6 +1658,30 @@ type UserServiceServer interface {
 	ListGifts(context.Context, *ListGiftsRequest) (*ListGiftsResponse, error)
 	DeleteGift(context.Context, *DeleteGiftRequest) (*emptypb.Empty, error)
 	SetGiftPrice(context.Context, *SetGiftPriceRequest) (*emptypb.Empty, error)
+	// Collectible gifts, as Telegram's. UpgradeGift turns the caller's own
+	// gift into a collectible for votes: a number of its kind and three
+	// traits rolled by rarity. TransferGift gives one away (votes to the
+	// treasury; PermissionDenied as SendGift), SetGiftSale puts it up for a
+	// price (0 takes it off) and BuyGift buys one for the price the buyer
+	// was shown (FailedPrecondition when it changed). GetCollectible,
+	// ListGiftMarket and ListGiftAuctions are public. StartGiftAuction puts
+	// the caller's collectible up for the highest bid, BidGift holds the
+	// votes of a bid until someone bids more, CancelGiftAuction takes back
+	// an auction nobody bid on. MintGiftAuction and SetGiftSupply are for
+	// the administrators of the site: an edition the site auctions, and how
+	// many of a gift may ever be sent.
+	UpgradeGift(context.Context, *UpgradeGiftRequest) (*UpgradeGiftResponse, error)
+	TransferGift(context.Context, *TransferGiftRequest) (*emptypb.Empty, error)
+	SetGiftSale(context.Context, *SetGiftSaleRequest) (*SetGiftSaleResponse, error)
+	BuyGift(context.Context, *BuyGiftRequest) (*BuyGiftResponse, error)
+	GetCollectible(context.Context, *GetCollectibleRequest) (*GetCollectibleResponse, error)
+	ListGiftMarket(context.Context, *ListGiftMarketRequest) (*ListGiftMarketResponse, error)
+	StartGiftAuction(context.Context, *StartGiftAuctionRequest) (*emptypb.Empty, error)
+	MintGiftAuction(context.Context, *MintGiftAuctionRequest) (*MintGiftAuctionResponse, error)
+	CancelGiftAuction(context.Context, *CancelGiftAuctionRequest) (*emptypb.Empty, error)
+	BidGift(context.Context, *BidGiftRequest) (*BidGiftResponse, error)
+	ListGiftAuctions(context.Context, *ListGiftAuctionsRequest) (*ListGiftAuctionsResponse, error)
+	SetGiftSupply(context.Context, *SetGiftSupplyRequest) (*emptypb.Empty, error)
 	// Stickers ("Стикеры" on openvk). GetStickerCatalog is public: the
 	// packs there are, and with a token which of them the caller has taken
 	// and keeps among their stickers. AddStickerPack takes a pack, paying
@@ -1797,6 +1977,42 @@ func (UnimplementedUserServiceServer) DeleteGift(context.Context, *DeleteGiftReq
 }
 func (UnimplementedUserServiceServer) SetGiftPrice(context.Context, *SetGiftPriceRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetGiftPrice not implemented")
+}
+func (UnimplementedUserServiceServer) UpgradeGift(context.Context, *UpgradeGiftRequest) (*UpgradeGiftResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpgradeGift not implemented")
+}
+func (UnimplementedUserServiceServer) TransferGift(context.Context, *TransferGiftRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method TransferGift not implemented")
+}
+func (UnimplementedUserServiceServer) SetGiftSale(context.Context, *SetGiftSaleRequest) (*SetGiftSaleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetGiftSale not implemented")
+}
+func (UnimplementedUserServiceServer) BuyGift(context.Context, *BuyGiftRequest) (*BuyGiftResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BuyGift not implemented")
+}
+func (UnimplementedUserServiceServer) GetCollectible(context.Context, *GetCollectibleRequest) (*GetCollectibleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCollectible not implemented")
+}
+func (UnimplementedUserServiceServer) ListGiftMarket(context.Context, *ListGiftMarketRequest) (*ListGiftMarketResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListGiftMarket not implemented")
+}
+func (UnimplementedUserServiceServer) StartGiftAuction(context.Context, *StartGiftAuctionRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method StartGiftAuction not implemented")
+}
+func (UnimplementedUserServiceServer) MintGiftAuction(context.Context, *MintGiftAuctionRequest) (*MintGiftAuctionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method MintGiftAuction not implemented")
+}
+func (UnimplementedUserServiceServer) CancelGiftAuction(context.Context, *CancelGiftAuctionRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method CancelGiftAuction not implemented")
+}
+func (UnimplementedUserServiceServer) BidGift(context.Context, *BidGiftRequest) (*BidGiftResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BidGift not implemented")
+}
+func (UnimplementedUserServiceServer) ListGiftAuctions(context.Context, *ListGiftAuctionsRequest) (*ListGiftAuctionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListGiftAuctions not implemented")
+}
+func (UnimplementedUserServiceServer) SetGiftSupply(context.Context, *SetGiftSupplyRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetGiftSupply not implemented")
 }
 func (UnimplementedUserServiceServer) GetStickerCatalog(context.Context, *GetStickerCatalogRequest) (*GetStickerCatalogResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetStickerCatalog not implemented")
@@ -2745,6 +2961,222 @@ func _UserService_SetGiftPrice_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).SetGiftPrice(ctx, req.(*SetGiftPriceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_UpgradeGift_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpgradeGiftRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).UpgradeGift(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_UpgradeGift_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).UpgradeGift(ctx, req.(*UpgradeGiftRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_TransferGift_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TransferGiftRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).TransferGift(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_TransferGift_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).TransferGift(ctx, req.(*TransferGiftRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SetGiftSale_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetGiftSaleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetGiftSale(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetGiftSale_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetGiftSale(ctx, req.(*SetGiftSaleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_BuyGift_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BuyGiftRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).BuyGift(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_BuyGift_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).BuyGift(ctx, req.(*BuyGiftRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetCollectible_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCollectibleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetCollectible(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetCollectible_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetCollectible(ctx, req.(*GetCollectibleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ListGiftMarket_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListGiftMarketRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListGiftMarket(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListGiftMarket_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListGiftMarket(ctx, req.(*ListGiftMarketRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_StartGiftAuction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartGiftAuctionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).StartGiftAuction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_StartGiftAuction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).StartGiftAuction(ctx, req.(*StartGiftAuctionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_MintGiftAuction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MintGiftAuctionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).MintGiftAuction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_MintGiftAuction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).MintGiftAuction(ctx, req.(*MintGiftAuctionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CancelGiftAuction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelGiftAuctionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CancelGiftAuction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CancelGiftAuction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CancelGiftAuction(ctx, req.(*CancelGiftAuctionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_BidGift_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BidGiftRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).BidGift(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_BidGift_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).BidGift(ctx, req.(*BidGiftRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ListGiftAuctions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListGiftAuctionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListGiftAuctions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListGiftAuctions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListGiftAuctions(ctx, req.(*ListGiftAuctionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SetGiftSupply_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetGiftSupplyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetGiftSupply(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetGiftSupply_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetGiftSupply(ctx, req.(*SetGiftSupplyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3967,6 +4399,54 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetGiftPrice",
 			Handler:    _UserService_SetGiftPrice_Handler,
+		},
+		{
+			MethodName: "UpgradeGift",
+			Handler:    _UserService_UpgradeGift_Handler,
+		},
+		{
+			MethodName: "TransferGift",
+			Handler:    _UserService_TransferGift_Handler,
+		},
+		{
+			MethodName: "SetGiftSale",
+			Handler:    _UserService_SetGiftSale_Handler,
+		},
+		{
+			MethodName: "BuyGift",
+			Handler:    _UserService_BuyGift_Handler,
+		},
+		{
+			MethodName: "GetCollectible",
+			Handler:    _UserService_GetCollectible_Handler,
+		},
+		{
+			MethodName: "ListGiftMarket",
+			Handler:    _UserService_ListGiftMarket_Handler,
+		},
+		{
+			MethodName: "StartGiftAuction",
+			Handler:    _UserService_StartGiftAuction_Handler,
+		},
+		{
+			MethodName: "MintGiftAuction",
+			Handler:    _UserService_MintGiftAuction_Handler,
+		},
+		{
+			MethodName: "CancelGiftAuction",
+			Handler:    _UserService_CancelGiftAuction_Handler,
+		},
+		{
+			MethodName: "BidGift",
+			Handler:    _UserService_BidGift_Handler,
+		},
+		{
+			MethodName: "ListGiftAuctions",
+			Handler:    _UserService_ListGiftAuctions_Handler,
+		},
+		{
+			MethodName: "SetGiftSupply",
+			Handler:    _UserService_SetGiftSupply_Handler,
 		},
 		{
 			MethodName: "GetStickerCatalog",

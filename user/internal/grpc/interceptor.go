@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/vexner67/freenet/pkg/grpcserver"
+	"github.com/vexner67/freenet/user/internal/service"
 	"github.com/vexner67/freenet/user/internal/user"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -26,10 +27,42 @@ var invalidStickerPack = []error{
 	user.ErrTooManyPackStickers,
 }
 
+// giftMarket are the errors of collectible gifts, their sales and
+// auctions, with their codes.
+var giftMarket = []struct {
+	err  error
+	code codes.Code
+}{
+	{user.ErrGiftCollectible, codes.FailedPrecondition},
+	{user.ErrNotCollectible, codes.FailedPrecondition},
+	{user.ErrNotGiftOwner, codes.PermissionDenied},
+	{user.ErrGiftOnSale, codes.FailedPrecondition},
+	{user.ErrGiftNotOnSale, codes.FailedPrecondition},
+	{user.ErrGiftPriceChanged, codes.FailedPrecondition},
+	{user.ErrGiftSalePrice, codes.InvalidArgument},
+	{user.ErrOwnGift, codes.FailedPrecondition},
+	{user.ErrGiftSoldOut, codes.FailedPrecondition},
+	{user.ErrGiftSupplyInvalid, codes.InvalidArgument},
+	{user.ErrUnknownTrait, codes.InvalidArgument},
+	{user.ErrMarketSort, codes.InvalidArgument},
+	{user.ErrAuctionHours, codes.InvalidArgument},
+	{user.ErrAuctionNotFound, codes.NotFound},
+	{user.ErrAuctionEnded, codes.FailedPrecondition},
+	{user.ErrBidTooLow, codes.FailedPrecondition},
+	{user.ErrAuctionHasBids, codes.FailedPrecondition},
+	{service.ErrCursor, codes.InvalidArgument},
+}
+
 func toStatus(err error) (*status.Status, bool) {
 	for _, invalid := range invalidStickerPack {
 		if errors.Is(err, invalid) {
 			return status.New(codes.InvalidArgument, invalid.Error()), true
+		}
+	}
+
+	for _, known := range giftMarket {
+		if errors.Is(err, known.err) {
+			return status.New(known.code, known.err.Error()), true
 		}
 	}
 

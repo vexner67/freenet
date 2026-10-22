@@ -220,3 +220,26 @@ func (a *App) runPurge(ctx context.Context, every time.Duration) error {
 		}
 	}
 }
+
+// runAuctions settles the auctions of gifts that ended every interval
+// until ctx ends; a failure is logged and tried again next time.
+func (a *App) runAuctions(ctx context.Context, every time.Duration) error {
+	t := time.NewTicker(every)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-t.C:
+		}
+
+		settled, err := a.gifts.SettleDue(ctx)
+		if err != nil && ctx.Err() == nil {
+			a.logger.ErrorContext(ctx, "settlement of gift auctions", "error", err)
+		}
+		if settled > 0 {
+			a.logger.InfoContext(ctx, "gift auctions settled", "count", settled)
+		}
+	}
+}

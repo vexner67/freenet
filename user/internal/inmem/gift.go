@@ -14,17 +14,22 @@ import (
 // GiftRepository keeps gifts in memory and behaves as the table does: a
 // gift goes with the page it was sent to and loses its sender with theirs.
 type GiftRepository struct {
-	mu     sync.RWMutex
-	gifts  map[uuid.UUID]*user.Gift
-	prices user.GiftPrices
-	users  *UserRepository
+	mu       sync.RWMutex
+	gifts    map[uuid.UUID]*user.Gift
+	prices   user.GiftPrices
+	stock    map[user.GiftKind]user.GiftStock
+	auctions map[uuid.UUID]*user.GiftAuction
+	history  []user.GiftEvent
+	users    *UserRepository
 }
 
 func NewGiftRepository(users *UserRepository) *GiftRepository {
 	r := &GiftRepository{
-		gifts:  make(map[uuid.UUID]*user.Gift),
-		prices: make(user.GiftPrices),
-		users:  users,
+		gifts:    make(map[uuid.UUID]*user.Gift),
+		prices:   make(user.GiftPrices),
+		stock:    make(map[user.GiftKind]user.GiftStock),
+		auctions: make(map[uuid.UUID]*user.GiftAuction),
+		users:    users,
 	}
 	users.onDelete(r.forget)
 
@@ -41,15 +46,29 @@ func (r *GiftRepository) forget(userID uuid.UUID) {
 		switch {
 		case g.RecipientID() == userID:
 			delete(r.gifts, id)
+			delete(r.auctions, id)
 		case g.SenderID() == userID:
-			r.gifts[id] = user.RestoreGift(g.ID(), g.RecipientID(), uuid.Nil, g.Kind(), g.Caption(), g.Anonymous())
+			unsigned := user.RestoreGift(g.ID(), g.RecipientID(), uuid.Nil, g.Kind(), g.Caption(), g.Anonymous())
+			r.gifts[id] = unsigned.RestoreCollectible(g.Number(), g.Traits(), g.SalePrice())
 		}
 	}
+
+	for id, a := range r.auctions {
+		if a.BidderID() == userID {
+			r.auctions[id] = user.RestoreGiftAuction(a.GiftID(), a.SellerID(), a.Start(), a.EndsAt(), a.TopBid(), uuid.Nil, a.Bids())
+		}
+	}
+
+	r.history = forgetEvents(r.history, userID)
 }
 
 // Gifts are immutable, so sharing pointers with callers is safe.
 func (r *GiftRepository) Save(ctx context.Context, g *user.Gift) error {
 	for _, id := range []uuid.UUID{g.RecipientID(), g.SenderID()} {
+		if id == uuid.Nil {
+			continue // the site holds it, or it came from nobody
+		}
+
 		if _, err := r.users.GetByID(ctx, id); err != nil {
 			return errs.Wrap("r.users.GetByID", err)
 		}
@@ -88,6 +107,9 @@ func (r *GiftRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	defer r.mu.Unlock()
 
 	delete(r.gifts, id)
+	delete(r.auctions, id)
+
+	r.history = slices.DeleteFunc(r.history, func(e user.GiftEvent) bool { return e.GiftID == id })
 
 	return nil
 }

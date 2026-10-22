@@ -19,6 +19,18 @@ type GiftService interface {
 	List(ctx context.Context, viewerID, ownerID, cursor uuid.UUID, size int) (service.GiftPage, error)
 	Catalog(ctx context.Context) ([]service.GiftShelf, error)
 	SetPrice(ctx context.Context, adminID uuid.UUID, kind user.GiftKind, price user.GiftPrice) error
+	Upgrade(ctx context.Context, ownerID, giftID uuid.UUID) (service.SentGift, error)
+	Transfer(ctx context.Context, ownerID, toID, giftID uuid.UUID) error
+	SetSale(ctx context.Context, ownerID, giftID uuid.UUID, price int64) (service.SentGift, error)
+	Buy(ctx context.Context, buyerID, giftID uuid.UUID, price int64) (int64, error)
+	Get(ctx context.Context, viewerID, giftID uuid.UUID) (service.Collectible, error)
+	Market(ctx context.Context, viewerID uuid.UUID, f user.MarketFilter, cursor string, size int) (service.CollectiblePage, error)
+	StartAuction(ctx context.Context, ownerID, giftID uuid.UUID, start int64, hours user.AuctionHours) error
+	MintAuction(ctx context.Context, adminID uuid.UUID, kind user.GiftKind, traits user.GiftTraits, start int64, hours user.AuctionHours) (uuid.UUID, error)
+	CancelAuction(ctx context.Context, userID, giftID uuid.UUID) error
+	Bid(ctx context.Context, bidderID, giftID uuid.UUID, amount int64) (int64, error)
+	Auctions(ctx context.Context, viewerID uuid.UUID, cursor string, size int) (service.CollectiblePage, error)
+	SetSupply(ctx context.Context, adminID uuid.UUID, kind user.GiftKind, supply user.GiftSupply) error
 }
 
 func (h *UserHandler) GetGiftCatalog(ctx context.Context, _ *userv1.GetGiftCatalogRequest) (*userv1.GetGiftCatalogResponse, error) {
@@ -27,19 +39,30 @@ func (h *UserHandler) GetGiftCatalog(ctx context.Context, _ *userv1.GetGiftCatal
 		return nil, err
 	}
 
-	resp := &userv1.GetGiftCatalogResponse{Collections: make([]*userv1.GiftCollection, 0, len(catalog))}
+	resp := &userv1.GetGiftCatalogResponse{
+		Collections:   make([]*userv1.GiftCollection, 0, len(catalog)),
+		Models:        toProtoTraits(user.GiftModels()),
+		Backdrops:     toProtoTraits(user.GiftBackdrops()),
+		Symbols:       toProtoTraits(user.GiftSymbols()),
+		UpgradePrice:  user.UpgradePrice,
+		TransferPrice: user.GiftTransferPrice,
+	}
 	for _, c := range catalog {
 		collection := &userv1.GiftCollection{
-			Id:     c.ID,
-			Gifts:  make([]string, 0, len(c.Gifts)),
-			Price:  c.Price.Int64(),
-			Prices: make([]int64, 0, len(c.Gifts)),
-			Prime:  c.Prime,
+			Id:       c.ID,
+			Gifts:    make([]string, 0, len(c.Gifts)),
+			Price:    c.Price.Int64(),
+			Prices:   make([]int64, 0, len(c.Gifts)),
+			Prime:    c.Prime,
+			Supplies: make([]int32, 0, len(c.Gifts)),
+			Sold:     make([]int32, 0, len(c.Gifts)),
 		}
 
 		for _, g := range c.Gifts {
 			collection.Gifts = append(collection.Gifts, g.Kind.String())
 			collection.Prices = append(collection.Prices, g.Price.Int64())
+			collection.Supplies = append(collection.Supplies, int32(g.Stock.Supply.Int())) //nolint:gosec // editions are up to a million
+			collection.Sold = append(collection.Sold, int32(g.Stock.Sold))                 //nolint:gosec // as many as sent
 		}
 
 		resp.Collections = append(resp.Collections, collection)
@@ -164,5 +187,23 @@ func toProtoGift(g service.SentGift) *userv1.Gift {
 		gift.Sender = toProtoPublicProfile(*g.Sender)
 	}
 
+	if g.Number > 0 {
+		gift.Number = int32(g.Number) //nolint:gosec // numbers of an edition fit in int32
+		gift.Model = g.Traits.Model
+		gift.Backdrop = g.Traits.Backdrop
+		gift.Symbol = g.Traits.Symbol
+		gift.SalePrice = g.SalePrice
+		gift.Auctioned = g.Auctioned
+	}
+
 	return gift
+}
+
+func toProtoTraits(traits []user.GiftTrait) []*userv1.GiftTrait {
+	out := make([]*userv1.GiftTrait, 0, len(traits))
+	for _, t := range traits {
+		out = append(out, &userv1.GiftTrait{Name: t.Name, Weight: int32(t.Weight)}) //nolint:gosec // weights are up to 1000
+	}
+
+	return out
 }

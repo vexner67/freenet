@@ -55,6 +55,7 @@ func newGiftWorld() giftWorld {
 	blocks := inmem.NewBlockRepository(follows)
 	notifier := &fakeGiftNotifier{}
 	gifts := inmem.NewGiftRepository(users)
+	admins, _ := user.NewAdmins([]string{"admin@example.com"})
 
 	return giftWorld{
 		users:    users,
@@ -65,13 +66,17 @@ func newGiftWorld() giftWorld {
 			Users: users, Follows: follows, Lists: follows, Blocks: blocks, Tx: inmem.TxManager{}, Notifier: &fakeNotifier{},
 		}),
 		gifts: service.NewGiftService(service.GiftDeps{
-			Users:       users,
-			Gifts:       gifts,
-			Prices:      gifts,
-			Permissions: service.NewPermissionService(users, follows, blocks),
-			Tx:          inmem.TxManager{},
-			Wallets:     users,
-			Notifier:    notifier,
+			Users:        users,
+			Gifts:        gifts,
+			Prices:       gifts,
+			Stock:        gifts,
+			Collectibles: gifts,
+			Auctions:     gifts,
+			Permissions:  service.NewPermissionService(users, follows, blocks),
+			Tx:           inmem.TxManager{},
+			Wallets:      users,
+			Notifier:     notifier,
+			Admins:       admins,
 		}),
 		notifier: notifier,
 	}
@@ -292,7 +297,7 @@ func TestGiftService_SetPrice(t *testing.T) {
 	gifts := inmem.NewGiftRepository(users)
 	admins, _ := user.NewAdmins([]string{"admin@example.com"})
 	svc := service.NewGiftService(service.GiftDeps{
-		Users: users, Gifts: gifts, Prices: gifts, Permissions: service.NewPermissionService(users, follows, blocks),
+		Users: users, Gifts: gifts, Prices: gifts, Stock: gifts, Collectibles: gifts, Auctions: gifts, Permissions: service.NewPermissionService(users, follows, blocks),
 		Tx: inmem.TxManager{}, Wallets: users, Notifier: &fakeGiftNotifier{}, Admins: admins,
 	})
 
