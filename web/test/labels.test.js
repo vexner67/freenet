@@ -1236,12 +1236,12 @@ test('the fees of the economy', () => {
 });
 
 test('adminEconomy: the words under the treasury and the votes of the pages', () => {
-  const said = adminEconomy({ votes: 21, reserve: 20000, free: 0, outstanding: 0, held: 1, minted: 1000, bonus: 10, maxWin: 1 });
-  assert.equal(said.treasury, 'голос в Казне, из них:');
+  const said = adminEconomy({ votes: 21, outstanding: 0, held: 1, bonus: 10, maxWin: 1 });
+  assert.equal(said.treasury, 'голос — сальдо Казны: собрано минус выплачено');
   assert.equal(said.held, 'голос на счетах людей');
   assert.equal(said.bonus, 'голосов — ежедневный бонус');
   assert.equal(said.maxWin, 'голос — наибольший выигрыш за раунд');
-  assert.equal(said.minted, 'голосов принесли участники');
+  assert.equal(adminEconomy({ votes: -2, bonus: 2, maxWin: 3 }).treasury, 'голоса — сальдо Казны: собрано минус выплачено');
   assert.equal(adminEconomy({ votes: 5, bonus: 2, maxWin: 3 }).held, 'голосов на счетах людей');
 });
 

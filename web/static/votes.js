@@ -260,12 +260,9 @@ async function initTreasury() {
     const figure = (title, votes) => el('div', {}, el('span', { textContent: title }), el('b', { textContent: votesAmount(votes) }));
 
     $('treasury-figures').replaceChildren(
-      figure(tr('В Казне'), t.votes),
+      figure(tr('Сальдо Казны'), t.votes),
       figure(tr('На счетах людей'), t.held ?? 0),
-      figure(tr('Принесли участники'), t.minted),
-      figure(tr('Резерв'), t.reserve),
       figure(tr('Обещают ваучеры'), t.outstanding),
-      figure(tr('Свободно для ваучеров'), t.free),
       figure(tr('Ежедневный бонус'), t.bonus),
       figure(tr('Наибольший выигрыш за раунд'), t.maxWin));
   } catch (e) {
