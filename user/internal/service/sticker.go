@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -87,15 +88,23 @@ type StickerService struct {
 	stickers StickerRepository
 	packs    StickerPackRepository
 	wallets  WalletRepository
+	users    UserRepository
 	tx       TxManager
+	now      func() time.Time
 }
 
-func NewStickerService(stickers StickerRepository, packs StickerPackRepository, wallets WalletRepository, tx TxManager) *StickerService {
+// NewStickerService takes users to know who of the authors has Prime,
+// which lowers the tax on their sales.
+func NewStickerService(
+	stickers StickerRepository, packs StickerPackRepository, wallets WalletRepository, users UserRepository, tx TxManager,
+) *StickerService {
 	return &StickerService{
 		stickers: stickers,
 		packs:    packs,
 		wallets:  wallets,
+		users:    users,
 		tx:       tx,
+		now:      time.Now,
 	}
 }
 
@@ -204,7 +213,7 @@ func (s *StickerService) bought(ctx context.Context, userID uuid.UUID, pack user
 
 // pay takes the price of a pack from userID: the votes for a pack of the
 // site go to the treasury, those for a pack of a person go to its author,
-// who pays the treasury user.StickerTax of them. The statements name the
+// who pays the treasury User.StickerTaxAt of them. The statements name the
 // pack by note.
 func (s *StickerService) pay(ctx context.Context, userID, authorID uuid.UUID, price int64, note string) error {
 	e := user.Entry(user.VoteStickers, uuid.Nil, note)
@@ -218,9 +227,16 @@ func (s *StickerService) pay(ctx context.Context, userID, authorID uuid.UUID, pr
 		return errs.Wrap("s.wallets.Move", err)
 	}
 
+	author, err := s.users.GetByID(ctx, authorID)
+	if err != nil {
+		return errs.Wrap("s.users.GetByID", err)
+	}
+
 	// The author pays the tax out of the price just received: it cannot
 	// be short.
-	_, err := s.wallets.Spend(ctx, authorID, user.StickerTax(price), user.Entry(user.VoteTax, userID, note))
+	if tax := author.StickerTaxAt(price, s.now()); tax > 0 {
+		_, err = s.wallets.Spend(ctx, authorID, tax, user.Entry(user.VoteTax, userID, note))
+	}
 
 	return errs.Wrap("s.wallets.Spend", err)
 }

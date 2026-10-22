@@ -49,7 +49,18 @@ func toProtoUser(u *user.User) *userv1.User {
 		Verified:              u.IsVerified(),
 		Ban:                   toProtoBan(u.BanAt(time.Now())),
 		Alert:                 u.Alert().String(),
+		PrimeUntil:            toProtoPrimeUntil(u, time.Now()),
+		PrimeInvisible:        u.Prime().Invisible,
 	}
+}
+
+// toProtoPrimeUntil is nil unless u has Prime now.
+func toProtoPrimeUntil(u *user.User, now time.Time) *timestamppb.Timestamp {
+	if !u.IsPrimeAt(now) {
+		return nil
+	}
+
+	return timestamppb.New(u.Prime().Until)
 }
 
 // toProtoBan is nil for a page that is not blocked.
@@ -417,6 +428,7 @@ func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
 		Verified:              p.Verified,
 		Ban:                   toProtoBan(p.Ban),
 		Alert:                 p.Alert.String(),
+		Prime:                 p.Prime,
 	}
 
 	// The date of registration is information too. A list tells who is
@@ -882,4 +894,8 @@ func fromProtoCasinoPrizes(prizes []*userv1.CasinoPrize) []user.CasinoPrize {
 	}
 
 	return out
+}
+
+func toProtoPrimePrices(p user.PrimePrices) *userv1.PrimePrices {
+	return &userv1.PrimePrices{Month: p.Month, Quarter: p.Quarter, Year: p.Year}
 }

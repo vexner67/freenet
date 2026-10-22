@@ -35,7 +35,9 @@ type walletWorld struct {
 	blocks   *service.BlockService
 	gifts    *service.GiftService
 	wallets  *service.WalletService
+	primes   *service.PrimeService
 	notifier *fakeVotesNotifier
+	given    *fakePrimeNotifier
 }
 
 // newWalletWorld is a site that admin@example.com runs.
@@ -54,6 +56,7 @@ func newWalletWorld(t *testing.T) walletWorld {
 	}
 
 	gifts := inmem.NewGiftRepository(users)
+	given := &fakePrimeNotifier{}
 
 	return walletWorld{
 		users:    users,
@@ -68,7 +71,12 @@ func newWalletWorld(t *testing.T) walletWorld {
 			Users: users, Wallets: users, Statements: users, Bonuses: users, Vouchers: inmem.NewVoucherRepository(users), Rates: inmem.NewVoteRateRepository(), Permissions: permissions,
 			Tx: inmem.TxManager{}, Notifier: notifier, Admins: admins,
 		}),
+		primes: service.NewPrimeService(service.PrimeDeps{
+			Users: users, Primes: inmem.NewPrimeRepository(users), Wallets: users, Permissions: permissions,
+			Tx: inmem.TxManager{}, Notifier: given, Admins: admins,
+		}),
 		notifier: notifier,
+		given:    given,
 	}
 }
 
@@ -216,7 +224,7 @@ func TestWalletService_Transfer(t *testing.T) {
 	}
 
 	// The sender pays the fee on top: 4 and 1.
-	left, err := w.wallets.Transfer(ctx, ann, bob, 4, "")
+	left, _, err := w.wallets.Transfer(ctx, ann, bob, 4, "")
 	if err != nil || left != 5 || w.votes(t, ann) != 5 || w.votes(t, bob) != 4 {
 		t.Fatalf("Transfer = %d, %v; ann %d, bob %d", left, err, w.votes(t, ann), w.votes(t, bob))
 	}
@@ -237,7 +245,7 @@ func TestWalletService_Transfer(t *testing.T) {
 		{"to nobody", ann, uuid.New(), 1, user.ErrNotFound},
 	}
 	for _, tt := range tests {
-		if _, err = w.wallets.Transfer(ctx, tt.from, tt.to, tt.votes, ""); !errors.Is(err, tt.want) {
+		if _, _, err = w.wallets.Transfer(ctx, tt.from, tt.to, tt.votes, ""); !errors.Is(err, tt.want) {
 			t.Errorf("%s: %v, want %v", tt.name, err, tt.want)
 		}
 	}
@@ -246,13 +254,13 @@ func TestWalletService_Transfer(t *testing.T) {
 	if err = w.blocks.Block(ctx, cat, ann); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = w.wallets.Transfer(ctx, ann, cat, 1, ""); !errors.Is(err, user.ErrTransferRefused) {
+	if _, _, err = w.wallets.Transfer(ctx, ann, cat, 1, ""); !errors.Is(err, user.ErrTransferRefused) {
 		t.Fatalf("to the one who blocked: %v", err)
 	}
-	if _, err = w.wallets.Transfer(ctx, bob, cat, 1, ""); err != nil {
+	if _, _, err = w.wallets.Transfer(ctx, bob, cat, 1, ""); err != nil {
 		t.Fatalf("bob to cat: %v", err)
 	}
-	if _, err = w.wallets.Transfer(ctx, cat, ann, 1, ""); !errors.Is(err, user.ErrTransferRefused) {
+	if _, _, err = w.wallets.Transfer(ctx, cat, ann, 1, ""); !errors.Is(err, user.ErrTransferRefused) {
 		t.Fatalf("to the blocked one: %v", err)
 	}
 
@@ -260,14 +268,14 @@ func TestWalletService_Transfer(t *testing.T) {
 	if _, err = w.accounts.Deactivate(ctx, bob, ""); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = w.wallets.Transfer(ctx, ann, bob, 1, ""); !errors.Is(err, user.ErrDeactivated) {
+	if _, _, err = w.wallets.Transfer(ctx, ann, bob, 1, ""); !errors.Is(err, user.ErrDeactivated) {
 		t.Fatalf("to a deleted page: %v", err)
 	}
 
 	// A transfer that was not recorded for the notification service did
 	// not tell it either; in memory the votes are not undone.
 	w.notifier.err = errors.New("outbox is down")
-	if _, err = w.wallets.Transfer(ctx, cat, admin, 1, ""); err == nil {
+	if _, _, err = w.wallets.Transfer(ctx, cat, admin, 1, ""); err == nil {
 		t.Fatal("a transfer nobody was told of succeeded")
 	}
 	if len(w.notifier.sent) != 2 {
@@ -360,7 +368,7 @@ func TestWalletService_Statement(t *testing.T) {
 	if _, err = w.wallets.Redeem(ctx, ann, voucher.Token()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = w.wallets.Transfer(ctx, ann, bob, 4, "За пиццу"); err != nil {
+	if _, _, err = w.wallets.Transfer(ctx, ann, bob, 4, "За пиццу"); err != nil {
 		t.Fatal(err)
 	}
 

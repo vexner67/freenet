@@ -98,6 +98,17 @@ func (o *Outbox) VotesSent(ctx context.Context, transferID, senderID, recipientI
 	}})
 }
 
+func (o *Outbox) PrimeGiven(ctx context.Context, purchaseID, buyerID, recipientID uuid.UUID) error {
+	return o.add(ctx, kindNotify, &notificationv1.NotifyRequest{Event: &notificationv1.Event{
+		Kind:        notificationv1.Kind_KIND_PRIME,
+		RecipientId: recipientID.String(),
+		ActorId:     buyerID.String(),
+		// The purchase stands where other events name a post: one
+		// notification per present.
+		PostId: purchaseID.String(),
+	}})
+}
+
 func (o *Outbox) add(ctx context.Context, kind string, req proto.Message) error {
 	payload, err := proto.Marshal(req)
 	if err != nil {
@@ -187,6 +198,8 @@ func (Nop) GiftSent(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error    {
 func (Nop) GiftDeleted(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error { return nil }
 
 func (Nop) VotesSent(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error { return nil }
+
+func (Nop) PrimeGiven(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error { return nil }
 
 func (Nop) Verified(context.Context, uuid.UUID, uuid.UUID) error   { return nil }
 func (Nop) Unverified(context.Context, uuid.UUID, uuid.UUID) error { return nil }

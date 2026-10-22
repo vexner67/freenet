@@ -86,7 +86,7 @@ func newServer(t *testing.T) testServer {
 			Users: users, Gifts: gifts, Prices: gifts, Permissions: permissions, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{},
 			Wallets: users, Admins: admins,
 		}),
-		Stickers: service.NewStickerService(stickers, inmem.NewStickerPackRepository(users, stickers), users, inmem.TxManager{}),
+		Stickers: service.NewStickerService(stickers, inmem.NewStickerPackRepository(users, stickers), users, users, inmem.TxManager{}),
 		Wallets: service.NewWalletService(service.WalletDeps{
 			Users: users, Wallets: users, Statements: users, Bonuses: users, Vouchers: inmem.NewVoucherRepository(users), Rates: inmem.NewVoteRateRepository(), Permissions: permissions,
 			Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Admins: admins,
@@ -94,10 +94,14 @@ func newServer(t *testing.T) testServer {
 		Verification: service.NewVerificationService(service.VerificationDeps{
 			Users: users, Verifications: users, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Admins: admins,
 		}),
-		Bans:        service.NewBanService(users, users, admins),
-		Alerts:      service.NewAlertService(users, users, admins),
-		Ads:         service.NewAdService(users, adRepo, adRepo, inmem.TxManager{}, admins),
-		Decors:      service.NewDecorService(users, inmem.NewDecorRepository(), admins),
+		Bans:   service.NewBanService(users, users, admins),
+		Alerts: service.NewAlertService(users, users, admins),
+		Ads:    service.NewAdService(users, adRepo, adRepo, inmem.TxManager{}, admins),
+		Decors: service.NewDecorService(users, inmem.NewDecorRepository(), admins),
+		Primes: service.NewPrimeService(service.PrimeDeps{
+			Users: users, Primes: inmem.NewPrimeRepository(users), Wallets: users, Permissions: permissions,
+			Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Admins: admins,
+		}),
 		Casinos:     service.NewCasinoService(users, casinos, users, inmem.TxManager{}, admins),
 		Rockets:     service.NewRocketService(users, casinos, inmem.NewRocketRepository(), users, inmem.TxManager{}, admins),
 		BetEvents:   service.NewBetEventService(users, inmem.NewBetEventRepository(), users, inmem.TxManager{}, admins),

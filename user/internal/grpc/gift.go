@@ -34,6 +34,7 @@ func (h *UserHandler) GetGiftCatalog(ctx context.Context, _ *userv1.GetGiftCatal
 			Gifts:  make([]string, 0, len(c.Gifts)),
 			Price:  c.Price.Int64(),
 			Prices: make([]int64, 0, len(c.Gifts)),
+			Prime:  c.Prime,
 		}
 
 		for _, g := range c.Gifts {

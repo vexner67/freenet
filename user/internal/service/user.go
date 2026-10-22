@@ -168,8 +168,7 @@ func (s *UserService) UpdateStatus(ctx context.Context, id uuid.UUID, status use
 // UpdateInterface replaces the settings of "Интерфейс".
 func (s *UserService) UpdateInterface(ctx context.Context, id uuid.UUID, ui user.Interface) (*user.User, error) {
 	return s.update(ctx, id, func(u *user.User) error {
-		u.UpdateInterface(ui)
-		return nil
+		return errs.Wrap("u.UpdateInterface", u.UpdateInterface(ui, s.now()))
 	})
 }
 

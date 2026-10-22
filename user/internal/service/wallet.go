@@ -142,6 +142,7 @@ type WalletService struct {
 	tx          TxManager
 	notifier    VotesNotifier
 	admins      user.Admins
+	now         func() time.Time
 }
 
 // WalletDeps are what WalletService works with.
@@ -170,6 +171,7 @@ func NewWalletService(d WalletDeps) *WalletService {
 		tx:          d.Tx,
 		notifier:    d.Notifier,
 		admins:      d.Admins,
+		now:         time.Now,
 	}
 }
 
@@ -179,33 +181,41 @@ func (s *WalletService) IsAdmin(u *user.User) bool {
 }
 
 // Transfer hands votes of senderID to recipientID, who hears of it, and
-// returns what the sender has left: the sender pays user.TransferFee on
-// top, into the treasury. user.ErrNotFound for an unknown recipient,
+// returns what the sender has left and the fee: the sender pays
+// User.TransferFeeAt on top, into the treasury (nothing with Prime). user.ErrNotFound for an unknown recipient,
 // user.ErrTransferSelf, user.ErrDeactivated, user.ErrTransferRefused and
 // user.ErrNotEnoughVotes for votes that do not cover the fee as well.
 // The note goes with it to the statements of both.
-func (s *WalletService) Transfer(ctx context.Context, senderID, recipientID uuid.UUID, votes user.Votes, note user.TransferNote) (int64, error) {
+func (s *WalletService) Transfer(
+	ctx context.Context, senderID, recipientID uuid.UUID, votes user.Votes, note user.TransferNote,
+) (left, fee int64, err error) {
 	recipient, ties, err := s.permissions.ties(ctx, senderID, recipientID)
 	if err != nil {
-		return 0, errs.Wrap("s.permissions.ties", err)
+		return 0, 0, errs.Wrap("s.permissions.ties", err)
 	}
 
 	if err = recipient.CheckTransferFrom(senderID, ties); err != nil {
-		return 0, errs.Wrap("recipient.CheckTransferFrom", err)
+		return 0, 0, errs.Wrap("recipient.CheckTransferFrom", err)
 	}
+
+	sender, err := s.userRepo.GetByID(ctx, senderID)
+	if err != nil {
+		return 0, 0, errs.Wrap("s.userRepo.GetByID", err)
+	}
+
+	fee = sender.TransferFeeAt(votes.Int64(), s.now())
 
 	// The notification names the transfer: one per transfer.
 	transferID, err := uuid.NewV7()
 	if err != nil {
-		return 0, errs.Wrap("uuid.NewV7", err)
+		return 0, 0, errs.Wrap("uuid.NewV7", err)
 	}
 
-	var left int64
-
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		if _, err = s.wallets.Spend(ctx, senderID, user.TransferFee(votes.Int64()),
-			user.Entry(user.VoteFee, recipientID, "")); err != nil {
-			return errs.Wrap("s.wallets.Spend", err)
+		if fee > 0 {
+			if _, err = s.wallets.Spend(ctx, senderID, fee, user.Entry(user.VoteFee, recipientID, "")); err != nil {
+				return errs.Wrap("s.wallets.Spend", err)
+			}
 		}
 
 		if left, err = s.wallets.Move(ctx, senderID, recipientID, votes.Int64(),
@@ -216,10 +226,10 @@ func (s *WalletService) Transfer(ctx context.Context, senderID, recipientID uuid
 		return errs.Wrap("s.notifier.VotesSent", s.notifier.VotesSent(ctx, transferID, senderID, recipientID))
 	})
 	if err != nil {
-		return 0, errs.Wrap("s.tx.WithinTx", err)
+		return 0, 0, errs.Wrap("s.tx.WithinTx", err)
 	}
 
-	return left, nil
+	return left, fee, nil
 }
 
 // Statement is one screen of the statement of userID: the operations of

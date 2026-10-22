@@ -3,6 +3,7 @@ package user
 import (
 	"errors"
 	"slices"
+	"time"
 )
 
 var (
@@ -86,11 +87,13 @@ const (
 	ThemeDefault Theme = "default"
 	ThemeBlue    Theme = "blue"
 	ThemeDark    Theme = "dark"
+	// ThemeGold is the theme of Freenet Prime.
+	ThemeGold Theme = "gold"
 )
 
 func NewTheme(s string) (Theme, error) {
 	switch Theme(s) {
-	case ThemeDefault, ThemeBlue, ThemeDark:
+	case ThemeDefault, ThemeBlue, ThemeDark, ThemeGold:
 		return Theme(s), nil
 	default:
 		return "", ErrInvalidTheme
@@ -293,6 +296,14 @@ func (u *User) Interface() Interface {
 }
 
 // UpdateInterface replaces the settings of "Интерфейс".
-func (u *User) UpdateInterface(ui Interface) {
+// UpdateInterface replaces how the site looks to u at now; the theme of
+// Prime only with Prime, but one chosen before stays when it ends.
+func (u *User) UpdateInterface(ui Interface, now time.Time) error {
+	if ui.Theme == ThemeGold && u.ui.Theme != ThemeGold && !u.IsPrimeAt(now) {
+		return ErrPrimeOnly
+	}
+
 	u.ui = ui
+
+	return nil
 }
