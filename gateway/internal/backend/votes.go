@@ -152,9 +152,6 @@ func (v *Votes) Treasury(ctx context.Context) (model.Treasury, error) {
 
 	return model.Treasury{
 		Votes:       resp.GetVotes(),
-		Reserve:     resp.GetReserve(),
-		Free:        resp.GetFree(),
-		Minted:      resp.GetMinted(),
 		Outstanding: resp.GetOutstanding(),
 		Bonus:       resp.GetBonus(),
 		MaxWin:      resp.GetMaxWin(),

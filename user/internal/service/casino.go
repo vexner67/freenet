@@ -141,10 +141,6 @@ func (s *CasinoService) Spin(ctx context.Context, userID uuid.UUID) (Spin, error
 			return errs.Wrap("s.casinos.Casino", err)
 		}
 
-		if err = checkWin(ctx, s.wallets, casino.MaxPrize()); err != nil {
-			return errs.Wrap("checkWin", err)
-		}
-
 		if spin.Balance, err = s.wallets.Spend(ctx, userID, casino.Price(), user.Entry(user.VoteCasino, uuid.Nil, "")); err != nil {
 			return errs.Wrap("s.wallets.Spend", err)
 		}
@@ -178,18 +174,6 @@ func (s *CasinoService) Spin(ctx context.Context, userID uuid.UUID) (Spin, error
 	return spin, nil
 }
 
-// checkWin refuses a game which may win more than the treasury pays out
-// in one go; user.ErrTreasuryLow. In a transaction the treasury stays
-// locked until its end.
-func checkWin(ctx context.Context, wallets WalletRepository, votes int64) error {
-	treasury, err := wallets.Treasury(ctx)
-	if err != nil {
-		return errs.Wrap("wallets.Treasury", err)
-	}
-
-	return errs.Wrap("treasury.CheckWin", treasury.CheckWin(votes))
-}
-
 // SetBets changes the limits and the return of the bets; user.ErrNotAdmin.
 func (s *CasinoService) SetBets(ctx context.Context, adminID uuid.UUID, bets user.CasinoBets) error {
 	if err := checkAdmin(ctx, s.userRepo, s.admins, adminID); err != nil {
@@ -215,10 +199,6 @@ func (s *CasinoService) Bet(ctx context.Context, userID uuid.UUID, amount int64,
 		bet, err := bets.Bet(amount, multiplier)
 		if err != nil {
 			return errs.Wrap("bets.Bet", err)
-		}
-
-		if err = checkWin(ctx, s.wallets, bet.Prize()); err != nil {
-			return errs.Wrap("checkWin", err)
 		}
 
 		if wager.Balance, err = s.wallets.Spend(ctx, userID, bet.Amount(), user.Entry(user.VoteAim, uuid.Nil, "")); err != nil {

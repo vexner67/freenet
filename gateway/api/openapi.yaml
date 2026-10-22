@@ -4540,7 +4540,7 @@ paths:
   /api/v1/treasury:
     get:
       summary: The treasury of the site
-      description: 'Public. Every vote given — the daily bonus, vouchers, wins of the casino, payouts of events — comes out of the treasury, and every vote spent goes into it; transfers between people go past it. It starts with 25000 votes and gets 1000 for each member (a page a week old with a filled profile) at their first bonus. `free` is what vouchers may still promise: the votes less the reserve and what vouchers promise already.'
+      description: 'Public. Every vote given — the daily bonus, vouchers, wins of the casino, payouts of events, wages — comes out of the treasury, and every vote spent goes into it; transfers between people go past it. It has no bottom: `votes` is what it has taken more than paid since it was made with 25000, below zero when it has paid more.'
       responses:
         "200":
           description: The treasury
@@ -4551,7 +4551,7 @@ paths:
   /api/v1/me/bonus:
     get:
       summary: The caller's daily bonus
-      description: What the bonus gives now (up to 10 votes, less while the treasury is below its reserve), whether the caller took it today (a Moscow day) and whether they may take it at all.
+      description: What the bonus gives (the administrators set it), whether the caller took it today (a Moscow day) and whether they may take it at all.
       security: [{ bearer: [] }]
       responses:
         "200":
@@ -4562,7 +4562,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
     post:
       summary: Take the daily bonus
-      description: 'Once a Moscow day, for a page a week old with a filled profile, not deleted and not banned: `the bonus is for pages a week old with a filled profile`, `the bonus is taken today`, `the treasury is empty` (409).'
+      description: 'Once a Moscow day, for a page a week old with a filled profile, not deleted and not banned: `the bonus is for pages a week old with a filled profile`, `the bonus is taken today` (409).'
       security: [{ bearer: [] }]
       responses:
         "200":
@@ -8632,15 +8632,12 @@ components:
 
     Treasury:
       type: object
-      required: [votes, reserve, free, minted, outstanding, bonus, maxWin, held]
+      required: [votes, outstanding, bonus, maxWin, held]
       properties:
-        votes: { type: integer, format: int64, description: The votes in the treasury }
-        reserve: { type: integer, format: int64, description: What it keeps back; below it the bonus shrinks }
-        free: { type: integer, format: int64, description: What vouchers may still promise }
-        minted: { type: integer, format: int64, description: What the members have brought in }
+        votes: { type: integer, format: int64, description: What the treasury has taken more than paid; below zero when it has paid more }
         outstanding: { type: integer, format: int64, description: What the vouchers promise }
-        bonus: { type: integer, format: int64, description: The daily bonus now }
-        maxWin: { type: integer, format: int64, description: 'The largest win of one round of the casino now: 1000, or a twentieth of the treasury when that is less' }
+        bonus: { type: integer, format: int64, description: The daily bonus }
+        maxWin: { type: integer, format: int64, description: The largest win of one round of the casino }
         held: { type: integer, format: int64, description: The votes on the accounts of the pages }
 
     Bonus:
