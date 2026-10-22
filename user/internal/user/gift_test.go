@@ -111,7 +111,7 @@ func TestUser_GiftFrom(t *testing.T) {
 
 			u := page(t, tt.change)
 
-			g, err := u.GiftFrom(sender, tt.ties, "rose", "Привет", false)
+			g, err := u.GiftFrom(sender, tt.ties, "freenet_coin", "Привет", false)
 			if !errors.Is(err, tt.want) {
 				t.Fatalf("GiftFrom: %v, want %v", err, tt.want)
 			}
@@ -119,7 +119,7 @@ func TestUser_GiftFrom(t *testing.T) {
 				return
 			}
 
-			if g.RecipientID() != u.ID() || g.SenderID() != sender || g.Kind() != "rose" || g.Caption() != "Привет" || g.Anonymous() {
+			if g.RecipientID() != u.ID() || g.SenderID() != sender || g.Kind() != "freenet_coin" || g.Caption() != "Привет" || g.Anonymous() {
 				t.Fatalf("gift = %+v", g)
 			}
 			if time.Since(g.SentAt()) > time.Minute || !g.Notifies() {
@@ -136,7 +136,7 @@ func TestUser_GiftFrom(t *testing.T) {
 
 		u := page(t, func(p *user.Privacy) { p.Closed = true })
 
-		g, err := u.GiftFrom(u.ID(), user.Ties{}, "cake", "", false)
+		g, err := u.GiftFrom(u.ID(), user.Ties{}, "freenet_ring", "", false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -153,7 +153,7 @@ func TestUser_GiftFrom(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if _, err := u.GiftFrom(sender, user.Ties{Followed: true}, "rose", "", false); !errors.Is(err, user.ErrDeactivated) {
+		if _, err := u.GiftFrom(sender, user.Ties{Followed: true}, "freenet_coin", "", false); !errors.Is(err, user.ErrDeactivated) {
 			t.Fatalf("GiftFrom: %v", err)
 		}
 	})
@@ -164,14 +164,14 @@ func TestGift_SignedFor(t *testing.T) {
 
 	recipient, sender, stranger := uuid.New(), uuid.New(), uuid.New()
 
-	open := user.RestoreGift(uuid.New(), recipient, sender, "rose", "", false)
+	open := user.RestoreGift(uuid.New(), recipient, sender, "freenet_coin", "", false)
 	for _, viewer := range []uuid.UUID{recipient, sender, stranger, uuid.Nil} {
 		if !open.SignedFor(viewer) {
 			t.Fatalf("a signed gift hides its sender from %v", viewer)
 		}
 	}
 
-	anonymous := user.RestoreGift(uuid.New(), recipient, sender, "rose", "", true)
+	anonymous := user.RestoreGift(uuid.New(), recipient, sender, "freenet_coin", "", true)
 	if !anonymous.SignedFor(recipient) || !anonymous.SignedFor(sender) {
 		t.Fatal("an anonymous gift is signed for the two")
 	}
@@ -180,7 +180,7 @@ func TestGift_SignedFor(t *testing.T) {
 	}
 
 	// The sender's page is erased: nobody is the sender.
-	orphan := user.RestoreGift(uuid.New(), recipient, uuid.Nil, "rose", "", true)
+	orphan := user.RestoreGift(uuid.New(), recipient, uuid.Nil, "freenet_coin", "", true)
 	if orphan.SignedFor(uuid.Nil) || orphan.Notifies() {
 		t.Fatal("an anonymous gift of nobody")
 	}

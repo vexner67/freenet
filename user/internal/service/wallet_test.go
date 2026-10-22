@@ -290,15 +290,17 @@ func TestGiftService_Prices(t *testing.T) {
 	w := newWalletWorld(t)
 	admin, ann, bob := w.person(t, "admin"), w.person(t, "ann"), w.person(t, "bob")
 
+	// No gift is free but those the administrators make free.
 	var free, paid user.GiftKind
 	for _, c := range user.GiftCatalog() {
-		if c.Price == 0 {
-			free = c.Gifts[0]
-		} else if paid == "" || c.Price < paid.DefaultPrice() {
-			paid = c.Gifts[0]
+		if !c.Prime && (paid == "" || c.Price < paid.DefaultPrice()) {
+			paid, free = c.Gifts[0], c.Gifts[1]
 		}
 	}
 	price := paid.DefaultPrice().Int64()
+	if err := w.gifts.SetPrice(ctx, admin, free, 0); err != nil {
+		t.Fatal(err)
+	}
 
 	if _, err := w.gifts.Send(ctx, ann, bob, service.GiftDraft{Kind: free}); err != nil {
 		t.Fatalf("a free gift with no votes: %v", err)
@@ -423,21 +425,21 @@ func TestWalletService_Statement(t *testing.T) {
 	}
 
 	// A gift is written down with its recipient and kind.
-	cake, err := w.wallets.CreateVoucher(ctx, admin, service.VoucherDraft{Votes: user.GiftKind("cake").DefaultPrice().Int64(), Usages: 1})
+	cake, err := w.wallets.CreateVoucher(ctx, admin, service.VoucherDraft{Votes: user.GiftKind("freenet_ring").DefaultPrice().Int64(), Usages: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err = w.wallets.Redeem(ctx, ann, cake.Token()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = w.gifts.Send(ctx, ann, bob, service.GiftDraft{Kind: "cake"}); err != nil {
+	if _, err = w.gifts.Send(ctx, ann, bob, service.GiftDraft{Kind: "freenet_ring"}); err != nil {
 		t.Fatal(err)
 	}
 	page, err = w.wallets.Statement(ctx, ann, uuid.Nil, user.VoteFlowAll, 1, time.Now())
 	if err != nil || len(page.Operations) != 1 {
 		t.Fatal(page, err)
 	}
-	if op := page.Operations[0]; op.Kind != user.VoteGift || op.PeerID != bob || op.Note != "cake" || op.Amount >= 0 {
+	if op := page.Operations[0]; op.Kind != user.VoteGift || op.PeerID != bob || op.Note != "freenet_ring" || op.Amount >= 0 {
 		t.Fatalf("the gift = %+v", op)
 	}
 }

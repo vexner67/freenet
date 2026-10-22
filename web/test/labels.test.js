@@ -774,15 +774,15 @@ test('gifts are counted, named and pictured as the catalogue of the user service
   const gifts = [...catalog.matchAll(/Gifts:[^{]*\{([^}]*)\}/g)].flatMap((m) => [...m[1].matchAll(/"(\w+)"/g)].map((g) => g[1]));
 
   assert.deepEqual(Object.keys(giftCollections), collections);
-  assert.equal(gifts.length, 26);
+  assert.equal(gifts.length, 11);
   assert.deepEqual(Object.keys(giftNames), gifts);
   for (const gift of gifts) {
-    // The site's own gifts are pictures rendered by scripts/giftgen.
-    const file = `${gift}.${gift.startsWith('freenet_') ? 'png' : 'svg'}`;
+    // The gifts are pictures rendered by scripts/giftgen.
+    const file = `${gift}.png`;
     assert.equal(giftImage(gift), `/static/gifts/${file}`);
     assert.ok(existsSync(new URL(`../static/gifts/${file}`, import.meta.url)), gift);
   }
-  assert.equal(giftImage('unknown'), '/static/gifts/present.svg');
+  assert.equal(giftImage('rose'), '/static/gifts/unknown.svg');
 });
 
 test('stickers are named and pictured as the catalogue of the user service has them', () => {
@@ -945,10 +945,10 @@ test('textParts leaves "#" and "@" of an address to it', () => {
 
 test('giftCosts: a gift priced apart from its collection', async () => {
   const { giftCosts } = await import('../static/labels.js');
-  assert.deepEqual(giftCosts({ gifts: ['rose', 'tulip'], price: 1, prices: [4, 0] }), [{ gift: 'rose', price: 4 }, { gift: 'tulip', price: 0 }]);
+  assert.deepEqual(giftCosts({ gifts: ['freenet_coin', 'freenet_ring'], price: 1, prices: [4, 0] }), [{ gift: 'freenet_coin', price: 4 }, { gift: 'freenet_ring', price: 0 }]);
   // A server that does not say what each costs prices them as the collection.
-  assert.deepEqual(giftCosts({ gifts: ['cake'], price: 2 }), [{ gift: 'cake', price: 2 }]);
-  assert.deepEqual(giftCosts({ gifts: ['cake'], price: 2, prices: [] }), [{ gift: 'cake', price: 2 }]);
+  assert.deepEqual(giftCosts({ gifts: ['freenet_cup'], price: 2 }), [{ gift: 'freenet_cup', price: 2 }]);
+  assert.deepEqual(giftCosts({ gifts: ['freenet_cup'], price: 2, prices: [] }), [{ gift: 'freenet_cup', price: 2 }]);
 });
 
 test('banUntil ends a block after a term, at a date or never', () => {
@@ -1173,8 +1173,8 @@ test('the statement of votes speaks of each line', () => {
   assert.deepEqual(voteOperation({ kind: 'fee', amount: -1, peer: bob }, 'a'), { title: 'Комиссия за перевод', role: 'Получатель:' });
   assert.deepEqual(voteOperation({ kind: 'tax', amount: -1, note: 'cats', peer: bob }, 'a'), { title: 'Налог с продажи набора «Котики»', role: 'Покупатель:' });
   assert.deepEqual(voteOperation({ kind: 'rating', amount: -15, note: '5' }, 'a'), { title: 'Повышение рейтинга на 5 %', role: '' });
-  assert.deepEqual(voteOperation({ kind: 'gift', amount: -1, peer: bob, note: 'cake' }, 'a'), { title: 'Подарок «Торт»', role: 'Получатель:' });
-  assert.deepEqual(voteOperation({ kind: 'gift', amount: -1, peer: ann, note: 'rose' }, 'a'), { title: 'Покупка подарка «Роза»', role: '' });
+  assert.deepEqual(voteOperation({ kind: 'gift', amount: -1, peer: bob, note: 'freenet_cup' }, 'a'), { title: 'Подарок «Кубок»', role: 'Получатель:' });
+  assert.deepEqual(voteOperation({ kind: 'gift', amount: -1, peer: ann, note: 'freenet_coin' }, 'a'), { title: 'Покупка подарка «Золотая монета»', role: '' });
   assert.equal(voteOperation({ kind: 'stickers', amount: -2, note: 'cats' }, 'a').title, 'Набор стикеров «Котики»');
   assert.deepEqual(voteOperation({ kind: 'stickers', amount: 2, peer: bob, note: 'Мои коты' }, 'a'), { title: 'Продажа набора стикеров «Мои коты»', role: 'Покупатель:' });
   assert.equal(voteOperation({ kind: 'casino', amount: -10 }, 'a').title, 'Казино: прокрутка «Огонька»');
