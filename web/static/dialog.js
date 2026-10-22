@@ -627,13 +627,6 @@ async function sendSticker(sticker) {
 // setUpInput shows the form, or why there is none; canWrite is the
 // peer's privacy and blacklists, as the first page of the dialog says.
 async function setUpInput(canWrite) {
-  if (me.id === peer.id) {
-    $('form').hidden = true;
-    $('blocked').textContent = tr('Нельзя написать самому себе.');
-    $('blocked').hidden = false;
-    return;
-  }
-
   if (!me.profileCompleted) {
     $('form').hidden = true;
     $('blocked').replaceChildren(tr('Чтобы писать сообщения, '), el('a', { href: '/edit', textContent: tr('заполните свою страницу') }), '.');
@@ -678,8 +671,16 @@ async function setUpInput(canWrite) {
       $('form').requestSubmit();
     }
   });
-  // Editing a message is not writing one.
+  // Editing a message is not writing one; nobody reads «Избранное» but
+  // the one who writes.
+  if (saved()) return;
   typingWatch = watchTyping($('text'), () => (editing ? Promise.resolve() : api.dialogTyping(peer.nickname)));
+}
+
+// saved tells whether this is «Избранное», the dialog with oneself: sealed
+// with one's own key, with no one to compare a code with.
+function saved() {
+  return peer?.id === me?.id;
 }
 
 // keyHint is why this browser can neither open nor seal messages, with
@@ -692,7 +693,7 @@ function keyHint(state) {
 // browser saw before: a new device of theirs, or someone between.
 async function showKeys() {
   peerKey = (await api.messageKey(peer.nickname)).publicKey;
-  if (!peerKey) return;
+  if (!peerKey || saved()) return;
 
   if (notePeerKey(me.id, peer.id, peerKey) === 'changed') {
     $('key-notice').replaceChildren(
@@ -753,16 +754,18 @@ if (!me) {
     const first = await firstPage();
     peer = first.peer;
 
-    document.title = tr('{0} | Сообщения', fullName(peer));
+    document.title = saved() ? tr('Избранное') : tr('{0} | Сообщения', fullName(peer));
     $('title').replaceChildren(
       el('a', { href: '/im', textContent: tr('Мои Сообщения') }),
       ' » ',
-      el('a', { href: '/' + peer.nickname, textContent: fullName(peer) }),
-      verifiedMark(peer),
+      ...(saved()
+        ? [tr('Избранное')]
+        : [el('a', { href: '/' + peer.nickname, textContent: fullName(peer) }), verifiedMark(peer)]),
     );
 
     $('search-link').href = '/im?peer=' + encodeURIComponent(peer.nickname);
     $('safety-link').addEventListener('click', showSafetyCode);
+    if (saved()) $('dialog-links').replaceChildren($('search-link'));
     $('dialog-links').hidden = false;
     const selectedMessages = () => [...selected].map((id) => shown.get(id)?.message).filter(Boolean);
 

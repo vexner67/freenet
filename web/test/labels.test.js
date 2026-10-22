@@ -440,7 +440,7 @@ test('the admin panel counts the site as openvk\'s "Сводка"', () => {
 test('the choices of the interface are those the API knows', () => {
   assert.deepEqual(avatarStyles.map(([v]) => v), ['square', 'round']);
   assert.deepEqual(mainPages.map(([v]) => v), ['page', 'feed']);
-  assert.deepEqual(menuItems.map(([v]) => v), ['photos', 'messages', 'groups', 'feed', 'notifications']);
+  assert.deepEqual(menuItems.map(([v]) => v), ['messages', 'groups', 'feed', 'notifications']);
   assert.equal(errorText({ message: 'invalid menu item' }), 'Неизвестный пункт меню.');
 });
 

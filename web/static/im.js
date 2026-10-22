@@ -86,7 +86,7 @@ function dialogNode(d) {
   return el('a', { className: 'dialog', href: '/im/' + encodeURIComponent(d.peer.nickname) },
     el('img', { className: 'dialog-avatar', src: avatarURL(d.peer, 'small'), alt: '' }),
     el('div', { className: 'dialog-info' },
-      el('b', { className: 'dialog-name' }, fullName(d.peer), verifiedMark(d.peer)),
+      el('b', { className: 'dialog-name' }, ...(d.peer.id === me.id ? [tr('Избранное')] : [fullName(d.peer), verifiedMark(d.peer)])),
       el('div', { className: 'dialog-date', textContent: formatPostDate(m.createdAt) }),
     ),
     el('div', { className: unread ? 'dialog-message unread' : 'dialog-message' },

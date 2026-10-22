@@ -1,30 +1,31 @@
-/* "Золотой" of "Стиль", Freenet Prime's: warm gold over the page as it
-   is. Loaded after style.css by layout.js, as the blue one. */
+/* "Аметистовый" of "Стиль", Freenet Prime's: amethyst violet over the
+   page as it is. Its value is still "gold", as the settings keep it.
+   Loaded after style.css by layout.js, as the blue one. */
 
-a { color: #8a6116; }
+a { color: #5d3496; }
 
-.header { background: linear-gradient(#c9a43e, #9c7419); border-color: #7f5d12; }
-.logo-mark path { stroke: #9c7419; }
-.header-links a { border-left-color: #7f5d12; box-shadow: inset 1px 0 #d9b95c; }
+.header { background: linear-gradient(#8a63c9, #5b3496); border-color: #45247a; }
+.logo-mark path { stroke: #5b3496; }
+.header-links a { border-left-color: #45247a; box-shadow: inset 1px 0 #a786dc; }
 
-.page-title { background: #f4e7bf; border-color: #e0cc8e; color: #7a5a14; }
-.page-title .aside { color: #a8883c; }
+.page-title { background: #ebe2f8; border-color: #cdbbea; color: #4f2b85; }
+.page-title .aside { color: #8467b8; }
 
-.section-title { background: #f5ecd0; border-top-color: #d8bf75; color: #7a5a14; }
-.section-title::before { border-top-color: #a8883c; }
-.section-title .count { color: #a8883c; }
+.section-title { background: #efe8f9; border-top-color: #b9a0e0; color: #4f2b85; }
+.section-title::before { border-top-color: #8467b8; }
+.section-title .count { color: #8467b8; }
 
-.menu a:hover { background: #f4e7bf; }
-.menu .counter { background: #f4e7bf; }
+.menu a:hover { background: #ebe2f8; }
+.menu .counter { background: #ebe2f8; }
 
-.button { background: #a8801f; border-color: #7f5d12; }
-.button:active { background: #7f5d12; }
+.button { background: #6b44a8; border-color: #45247a; }
+.button:active { background: #45247a; }
 
-.post-author { background: #faf5e6; border-top-color: #d8bf75; border-bottom-color: #efe4c4; }
-.modal-header { background: linear-gradient(#c9a43e, #9c7419); }
-.viewer-header { background: #f4e7bf; }
-.sugglist { background: #f5ecd0; border-top-color: #d8bf75; }
-.sugglist a { color: #7a5a14; }
-.faq-head { background: #f4e7bf; border-color: #e0cc8e; }
-.completeness-gauge { background: #f5ecd0; border-top-color: #d8bf75; }
-.completeness-gauge > div { background: #e3cd85; }
+.post-author { background: #f7f3fc; border-top-color: #b9a0e0; border-bottom-color: #e3d8f3; }
+.modal-header { background: linear-gradient(#8a63c9, #5b3496); }
+.viewer-header { background: #ebe2f8; }
+.sugglist { background: #efe8f9; border-top-color: #b9a0e0; }
+.sugglist a { color: #4f2b85; }
+.faq-head { background: #ebe2f8; border-color: #cdbbea; }
+.completeness-gauge { background: #efe8f9; border-top-color: #b9a0e0; }
+.completeness-gauge > div { background: #c3a8eb; }

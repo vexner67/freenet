@@ -377,7 +377,7 @@ export const themes = [
   ['blue', tr('синий')],
   ['dark', tr('тёмный')],
   // Only Freenet Prime chooses it; it stays after Prime ends.
-  ['gold', tr('золотой (Freenet Prime)')],
+  ['gold', tr('аметистовый (Freenet Prime)')],
 ];
 
 export const ratings = [
@@ -446,7 +446,6 @@ export const mainPages = [
 ];
 
 export const menuItems = [
-  ['photos', tr('Фотографии')],
   ['messages', tr('Сообщения')],
   ['groups', tr('Группы')],
   ['feed', tr('Новости')],
