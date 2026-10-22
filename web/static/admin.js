@@ -1317,8 +1317,7 @@ if (!me) {
     await listPage.more(reads);
   } else if (path === '/admin/vouchers') {
     reads.treasury.then((treasury) => {
-      $('treasury-free').textContent = tr('В Казне {0}; ваучеры обещают {1}, свободно для новых — {2}. Ваучер не может обещать больше свободного.',
-        votesCount(treasury.votes), votesCount(treasury.outstanding), votesCount(treasury.free));
+      $('treasury-free').textContent = tr('Ваучеры обещают {0}. У Казны нет дна — ваучер может обещать сколько угодно.', votesCount(treasury.outstanding));
       $('treasury-free').hidden = false;
     }, showError);
     await vouchers()(reads.page);

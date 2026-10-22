@@ -722,18 +722,14 @@ export function adminOverview({ users, verified = 0, clubs, posts }) {
 }
 
 // adminEconomy are the words under the numbers of "Экономика" of the
-// summary: the treasury with its reserve, the votes free for vouchers and
-// those they promise; the votes of the pages with what the members
-// brought in, the bonus and the largest win of a round.
-export function adminEconomy({ votes, held = 0, minted, bonus, maxWin }) {
-  const of = (n) => plural(n, ['голос', 'голоса', 'голосов']);
+// summary: the balance of the treasury and what the vouchers promise; the
+// votes of the pages, the bonus and the largest win of a round.
+export function adminEconomy({ votes, held = 0, bonus, maxWin }) {
+  const of = (n) => plural(Math.abs(n), ['голос', 'голоса', 'голосов']);
   return {
-    treasury: tr('{0} в Казне, из них:', of(votes)),
-    reserve: tr('в резерве'),
-    free: tr('свободно для ваучеров'),
+    treasury: tr('{0} — сальдо Казны: собрано минус выплачено', of(votes)),
     outstanding: tr('обещают ваучеры'),
     held: tr('{0} на счетах людей', of(held)),
-    minted: tr('{0} принесли участники', of(minted)),
     bonus: tr('{0} — ежедневный бонус', of(bonus)),
     maxWin: tr('{0} — наибольший выигрыш за раунд', of(maxWin)),
   };
@@ -1911,9 +1907,6 @@ const errorTexts = {
   'a multiplier gives back at most 85 percent: the multiplier times its chance': tr('Множитель возвращает не больше 85 %: множитель, умноженный на шанс.'),
   'the biggest bet on the biggest multiplier wins at most 1000 votes': tr('Наибольшая ставка на наибольший множитель выигрывает не больше 1000 голосов.'),
   'the biggest bet at the top of the rocket wins at most 1000 votes': tr('Наибольшая ставка на наибольшем множителе ракеты выигрывает не больше 1000 голосов.'),
-  'the treasury is empty': tr('В Казне не осталось голосов.'),
-  'the treasury cannot pay such a win now': tr('Казна сейчас не может выплатить такой выигрыш. Поставьте меньше.'),
-  'the treasury cannot cover this voucher': tr('В Казне не хватает свободных голосов на этот ваучер.'),
   'the bonus is taken today': tr('Сегодня вы уже получили бонус.'),
   'the bonus is for pages a week old with a filled profile': tr('Бонус получают страницы старше недели с заполненной анкетой.'),
   'a voucher with votes has a limited number of usages': tr('Ваучер с голосами действует ограниченное число раз.'),
