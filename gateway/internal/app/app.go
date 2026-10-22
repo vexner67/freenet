@@ -149,6 +149,7 @@ func (a *App) build(cfg config.Config) error {
 			Decor:         backend.NewDecor(userv1.NewUserServiceClient(a.userConn)),
 			Prime:         backend.NewPrime(userv1.NewUserServiceClient(a.userConn)),
 			Casino:        backend.NewCasino(userv1.NewUserServiceClient(a.userConn)),
+			Mine:          backend.NewMine(userv1.NewUserServiceClient(a.userConn)),
 			Bets:          backend.NewBets(userv1.NewUserServiceClient(a.userConn)),
 			Faves:         backend.NewFaves(postv1.NewPostServiceClient(a.postConn)),
 			Previews:      previews(cfg.LinkPreviewTimeout),

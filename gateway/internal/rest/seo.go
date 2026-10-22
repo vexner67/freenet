@@ -33,6 +33,7 @@ Disallow: /fave/
 Disallow: /docs$
 Disallow: /stickers$
 Disallow: /casino$
+Disallow: /mine$
 Disallow: /votes$
 Disallow: /prime$
 Disallow: /admin$
