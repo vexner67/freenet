@@ -78,6 +78,50 @@ func (r *UserRepository) Credit(ctx context.Context, userID uuid.UUID, votes int
 	return wallet, err
 }
 
+// Hold takes votes from userID and keeps them out of the treasury.
+func (r *UserRepository) Hold(ctx context.Context, userID uuid.UUID, votes int64, e user.VoteEntry) (int64, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return r.spend(userID, votes, e)
+}
+
+// Release gives held votes to userID past the treasury.
+func (r *UserRepository) Release(ctx context.Context, userID uuid.UUID, votes int64, e user.VoteEntry) (int64, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.users[userID]; !ok {
+		return 0, user.ErrNotFound
+	}
+
+	w, err := r.credit(userID, votes, 0, e)
+
+	return w.Votes, err
+}
+
+// Deposit puts held votes into the treasury.
+func (r *UserRepository) Deposit(ctx context.Context, votes int64) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.treasury.Votes += votes
+
+	return nil
+}
+
 func (r *UserRepository) RaiseRating(ctx context.Context, userID uuid.UUID, percent int) (user.Wallet, error) {
 	if err := ctx.Err(); err != nil {
 		return user.Wallet{}, errs.Wrap("ctx.Err", err)

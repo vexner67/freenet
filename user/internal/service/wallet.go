@@ -27,6 +27,15 @@ type WalletRepository interface {
 	// The votes come out of the treasury, as Spend puts them in;
 	// user.ErrTreasuryEmpty when it holds fewer. Move goes past it.
 	Credit(ctx context.Context, userID uuid.UUID, votes int64, rating int, e user.VoteEntry) (user.Wallet, error)
+	// Hold takes votes from userID and keeps them out of the treasury:
+	// the bid of an auction, until Release gives them back or Deposit
+	// pays them on. As Spend otherwise.
+	Hold(ctx context.Context, userID uuid.UUID, votes int64, e user.VoteEntry) (int64, error)
+	// Release gives held votes to userID, past the treasury;
+	// user.ErrNotFound.
+	Release(ctx context.Context, userID uuid.UUID, votes int64, e user.VoteEntry) (int64, error)
+	// Deposit puts held votes into the treasury.
+	Deposit(ctx context.Context, votes int64) error
 	// Treasury is the treasury now; in a transaction it stays so until
 	// the end, as every change of votes waits for it.
 	Treasury(ctx context.Context) (user.Treasury, error)

@@ -55,9 +55,12 @@ type App struct {
 	// presenceEvery, all at once.
 	presence      *service.PresenceService
 	presenceEvery time.Duration
-	server        *grpcserver.Server
-	metrics       *metrics.Server
-	addr          string
+	// gifts settle the auctions of collectibles every auctionEvery.
+	gifts        *service.GiftService
+	auctionEvery time.Duration
+	server       *grpcserver.Server
+	metrics      *metrics.Server
+	addr         string
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -149,12 +152,28 @@ func (a *App) build(cfg config.Config) error {
 	if err != nil {
 		return errs.Wrap("grpcserver.New", err)
 	}
+
 	permissions := service.NewPermissionService(store.users, store.follows, store.blocks)
 
 	admins, err := user.NewAdmins(cfg.AdminEmails)
 	if err != nil {
 		return errs.Wrap("user.NewAdmins", err)
 	}
+
+	a.gifts = service.NewGiftService(service.GiftDeps{
+		Users:        store.users,
+		Gifts:        store.gifts,
+		Prices:       store.gifts,
+		Stock:        store.gifts,
+		Collectibles: store.gifts,
+		Auctions:     store.gifts,
+		Permissions:  permissions,
+		Tx:           store.tx,
+		Wallets:      store.wallets,
+		Notifier:     deliver.gifts,
+		Admins:       admins,
+	})
+	a.auctionEvery = cfg.GiftAuctionInterval
 
 	userv1.RegisterUserServiceServer(
 		a.server.Registrar(),
@@ -170,18 +189,9 @@ func (a *App) build(cfg config.Config) error {
 				Tx:       store.tx,
 				Notifier: notifier,
 			}),
-			Blocks:  service.NewBlockService(store.users, store.blocks, store.tx, notifier),
-			Ignores: service.NewIgnoreService(store.ignores),
-			Gifts: service.NewGiftService(service.GiftDeps{
-				Users:       store.users,
-				Gifts:       store.gifts,
-				Prices:      store.gifts,
-				Permissions: permissions,
-				Tx:          store.tx,
-				Wallets:     store.wallets,
-				Notifier:    deliver.gifts,
-				Admins:      admins,
-			}),
+			Blocks:   service.NewBlockService(store.users, store.blocks, store.tx, notifier),
+			Ignores:  service.NewIgnoreService(store.ignores),
+			Gifts:    a.gifts,
 			Stickers: service.NewStickerService(store.stickers, store.stickerPacks, store.wallets, store.users, store.tx),
 			Wallets: service.NewWalletService(service.WalletDeps{
 				Users:       store.users,
@@ -243,6 +253,15 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
 		userv1.UserService_Follow_FullMethodName:   cfg.FollowLimits,
 		userv1.UserService_SendGift_FullMethodName: cfg.GiftLimits,
+		// A gift is upgraded, given away, put up and bought or bid on:
+		// each counted apart.
+		userv1.UserService_UpgradeGift_FullMethodName:       cfg.GiftMarketLimits,
+		userv1.UserService_TransferGift_FullMethodName:      cfg.GiftMarketLimits,
+		userv1.UserService_SetGiftSale_FullMethodName:       cfg.GiftMarketLimits,
+		userv1.UserService_BuyGift_FullMethodName:           cfg.GiftMarketLimits,
+		userv1.UserService_StartGiftAuction_FullMethodName:  cfg.GiftMarketLimits,
+		userv1.UserService_CancelGiftAuction_FullMethodName: cfg.GiftMarketLimits,
+		userv1.UserService_BidGift_FullMethodName:           cfg.GiftMarketLimits,
 		// An invitation is a follow, counted apart.
 		userv1.UserService_AcceptInvite_FullMethodName: cfg.FollowLimits,
 
@@ -309,6 +328,9 @@ type storage struct {
 	gifts   interface {
 		service.GiftRepository
 		service.GiftPriceRepository
+		service.GiftStockRepository
+		service.CollectibleRepository
+		service.AuctionRepository
 	}
 	// stickers are the packs of stickers users have taken.
 	stickers service.StickerRepository
@@ -448,6 +470,10 @@ func (a *App) Run(ctx context.Context) error {
 
 	g.Go(func() error {
 		return errs.Wrap("a.runPurge", a.runPurge(ctx, a.purgeEvery))
+	})
+
+	g.Go(func() error {
+		return errs.Wrap("a.runAuctions", a.runAuctions(ctx, a.auctionEvery))
 	})
 
 	if a.sync != nil {

@@ -58,6 +58,21 @@ const (
 	// VotePrime: Freenet Prime bought; the note is its period, the peer
 	// whom it is a present for.
 	VotePrime VoteKind = "prime"
+	// VoteGiftUpgrade: a gift made collectible; the note is the gift.
+	VoteGiftUpgrade VoteKind = "gift_upgrade"
+	// VoteGiftTransfer: a collectible given away; the peer is whom to.
+	VoteGiftTransfer VoteKind = "gift_transfer"
+	// VoteGiftSale: a collectible bought or sold; the peer is the other
+	// side, none for the site.
+	VoteGiftSale VoteKind = "gift_sale"
+	// VoteGiftFee: what the treasury took of a sale; the peer is the
+	// buyer.
+	VoteGiftFee VoteKind = "gift_fee"
+	// VoteGiftBid: votes held for a bid at an auction.
+	VoteGiftBid VoteKind = "gift_bid"
+	// VoteGiftRefund: the votes of a bid given back, when someone bid
+	// more or the auction was called off.
+	VoteGiftRefund VoteKind = "gift_refund"
 )
 
 // VoteEntry is what a change of votes is written down as: why, with whom

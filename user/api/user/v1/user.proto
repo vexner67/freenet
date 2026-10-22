@@ -118,6 +118,31 @@ service UserService {
   rpc DeleteGift(DeleteGiftRequest) returns (google.protobuf.Empty);
   rpc SetGiftPrice(SetGiftPriceRequest) returns (google.protobuf.Empty);
 
+  // Collectible gifts, as Telegram's. UpgradeGift turns the caller's own
+  // gift into a collectible for votes: a number of its kind and three
+  // traits rolled by rarity. TransferGift gives one away (votes to the
+  // treasury; PermissionDenied as SendGift), SetGiftSale puts it up for a
+  // price (0 takes it off) and BuyGift buys one for the price the buyer
+  // was shown (FailedPrecondition when it changed). GetCollectible,
+  // ListGiftMarket and ListGiftAuctions are public. StartGiftAuction puts
+  // the caller's collectible up for the highest bid, BidGift holds the
+  // votes of a bid until someone bids more, CancelGiftAuction takes back
+  // an auction nobody bid on. MintGiftAuction and SetGiftSupply are for
+  // the administrators of the site: an edition the site auctions, and how
+  // many of a gift may ever be sent.
+  rpc UpgradeGift(UpgradeGiftRequest) returns (UpgradeGiftResponse);
+  rpc TransferGift(TransferGiftRequest) returns (google.protobuf.Empty);
+  rpc SetGiftSale(SetGiftSaleRequest) returns (SetGiftSaleResponse);
+  rpc BuyGift(BuyGiftRequest) returns (BuyGiftResponse);
+  rpc GetCollectible(GetCollectibleRequest) returns (GetCollectibleResponse);
+  rpc ListGiftMarket(ListGiftMarketRequest) returns (ListGiftMarketResponse);
+  rpc StartGiftAuction(StartGiftAuctionRequest) returns (google.protobuf.Empty);
+  rpc MintGiftAuction(MintGiftAuctionRequest) returns (MintGiftAuctionResponse);
+  rpc CancelGiftAuction(CancelGiftAuctionRequest) returns (google.protobuf.Empty);
+  rpc BidGift(BidGiftRequest) returns (BidGiftResponse);
+  rpc ListGiftAuctions(ListGiftAuctionsRequest) returns (ListGiftAuctionsResponse);
+  rpc SetGiftSupply(SetGiftSupplyRequest) returns (google.protobuf.Empty);
+
   // Stickers ("Стикеры" on openvk). GetStickerCatalog is public: the
   // packs there are, and with a token which of them the caller has taken
   // and keeps among their stickers. AddStickerPack takes a pack, paying
@@ -1000,6 +1025,20 @@ message GetGiftCatalogRequest {}
 
 message GetGiftCatalogResponse {
   repeated GiftCollection collections = 1;
+  // The traits a collectible may roll, commonest first.
+  repeated GiftTrait models = 2;
+  repeated GiftTrait backdrops = 3;
+  repeated GiftTrait symbols = 4;
+  // What upgrading a gift and giving a collectible away cost, in votes.
+  int64 upgrade_price = 5;
+  int64 transfer_price = 6;
+}
+
+// A model, a backdrop or a symbol of collectibles.
+message GiftTrait {
+  string name = 1;
+  // The chance of it in tenths of a percent.
+  int32 weight = 2;
 }
 
 // A shelf of the catalogue ("Коллекции").
@@ -1015,6 +1054,10 @@ message GiftCollection {
   repeated int64 prices = 4;
   // Only those with Freenet Prime send its gifts.
   bool prime = 5;
+  // How many of each of gifts may ever be sent, 0 for no end, and how
+  // many have been, in their order.
+  repeated int32 supplies = 6;
+  repeated int32 sold = 7;
 }
 
 message SendGiftRequest {
@@ -1046,6 +1089,16 @@ message Gift {
   // Unset when the caller is not told who sent the gift: it is
   // anonymous, or the page of the sender is deleted.
   PublicProfile sender = 6;
+  // Above zero for a collectible: its number of the kind, with its
+  // traits.
+  int32 number = 7;
+  string model = 8;
+  string backdrop = 9;
+  string symbol = 10;
+  // Above zero while it is on sale.
+  int64 sale_price = 11;
+  // While it is at an auction.
+  bool auctioned = 12;
 }
 
 message ListGiftsRequest {
@@ -1072,6 +1125,163 @@ message SetGiftPriceRequest {
   string gift = 1;
   // In votes, 0-1000000; 0 makes it free.
   int64 price = 2;
+}
+
+message UpgradeGiftRequest {
+  string gift_id = 1;
+}
+
+message UpgradeGiftResponse {
+  Gift gift = 1;
+}
+
+message TransferGiftRequest {
+  string gift_id = 1;
+  string user_id = 2;
+}
+
+message SetGiftSaleRequest {
+  string gift_id = 1;
+  // In votes, 1-1000000; 0 takes the gift off sale.
+  int64 price = 2;
+}
+
+message SetGiftSaleResponse {
+  Gift gift = 1;
+}
+
+message BuyGiftRequest {
+  string gift_id = 1;
+  // The price the buyer was shown.
+  int64 price = 2;
+}
+
+message BuyGiftResponse {
+  // The buyer's votes after it.
+  int64 balance = 1;
+}
+
+message GetCollectibleRequest {
+  string gift_id = 1;
+}
+
+message GetCollectibleResponse {
+  Collectible collectible = 1;
+}
+
+// A collectible gift as the caller sees it: who has it, what it is at
+// and where it has been.
+message Collectible {
+  Gift gift = 1;
+  // Unset when the site holds it or the page of the owner is gone.
+  PublicProfile owner = 2;
+  // The site holds it: an edition of the site at an auction.
+  bool site = 3;
+  // The caller owns it.
+  bool mine = 4;
+  GiftAuction auction = 5;
+  // Newest first, up to 50; only on GetCollectible.
+  repeated GiftHistoryLine history = 6;
+}
+
+message GiftAuction {
+  int64 start = 1;
+  // 0 while nobody has bid.
+  int64 top_bid = 2;
+  // The least bid taken now.
+  int64 min_bid = 3;
+  int32 bids = 4;
+  google.protobuf.Timestamp ends_at = 5;
+  // The site sells: an edition of the site.
+  bool site = 6;
+  PublicProfile seller = 7;
+  // Whose bid is on top, unset while nobody has bid.
+  PublicProfile bidder = 8;
+  // The caller's bid is on top.
+  bool mine = 9;
+}
+
+message GiftHistoryLine {
+  // "upgrade", "mint", "transfer", "sale" or "auction".
+  string kind = 1;
+  google.protobuf.Timestamp at = 2;
+  int64 price = 3;
+  // Unset for the site and for erased pages.
+  PublicProfile from = 4;
+  PublicProfile to = 5;
+}
+
+message ListGiftMarketRequest {
+  // A gift of the catalogue, empty for any.
+  string gift = 1;
+  // Traits, empty for any.
+  string model = 2;
+  string backdrop = 3;
+  string symbol = 4;
+  // "price" (default), "price_desc" or "number".
+  string sort = 5;
+  string cursor = 6;
+  // 1-50; anything else means 20.
+  int32 limit = 7;
+}
+
+message ListGiftMarketResponse {
+  repeated Collectible collectibles = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+}
+
+message StartGiftAuctionRequest {
+  string gift_id = 1;
+  // The least first bid, 1-1000000 votes.
+  int64 start = 2;
+  // 1-168.
+  int32 hours = 3;
+}
+
+message MintGiftAuctionRequest {
+  // A gift of the catalogue.
+  string gift = 1;
+  string model = 2;
+  string backdrop = 3;
+  string symbol = 4;
+  int64 start = 5;
+  int32 hours = 6;
+}
+
+message MintGiftAuctionResponse {
+  string gift_id = 1;
+}
+
+message CancelGiftAuctionRequest {
+  string gift_id = 1;
+}
+
+message BidGiftRequest {
+  string gift_id = 1;
+  int64 amount = 2;
+}
+
+message BidGiftResponse {
+  int64 balance = 1;
+}
+
+message ListGiftAuctionsRequest {
+  string cursor = 1;
+  // 1-50; anything else means 20.
+  int32 limit = 2;
+}
+
+message ListGiftAuctionsResponse {
+  // Ending soonest first.
+  repeated Collectible collectibles = 1;
+  string next_cursor = 2;
+}
+
+message SetGiftSupplyRequest {
+  string gift = 1;
+  // 0-1000000; 0 for no end.
+  int64 supply = 2;
 }
 
 message TransferVotesRequest {

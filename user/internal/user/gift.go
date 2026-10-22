@@ -165,7 +165,10 @@ func (c GiftCaption) String() string {
 }
 
 // Gift is a gift someone sent to a page, as openvk's "Подарки". The
-// sender is uuid.Nil once their page is erased: the gift stays.
+// sender is uuid.Nil once their page is erased: the gift stays. A gift
+// upgraded to a collectible (collectible.go) has a number and traits, may
+// be on sale and changes hands: its recipient is its owner, uuid.Nil while
+// the site holds it, and its sender — whom it came from last.
 type Gift struct {
 	id          uuid.UUID
 	recipientID uuid.UUID
@@ -173,6 +176,9 @@ type Gift struct {
 	kind        GiftKind
 	caption     GiftCaption
 	anonymous   bool
+	number      int
+	traits      GiftTraits
+	salePrice   int64
 }
 
 // GiftFrom is the gift senderID, tied to u by t, sends to u. A deleted
@@ -223,6 +229,15 @@ func RestoreGift(id, recipientID, senderID uuid.UUID, kind GiftKind, caption Gif
 		caption:     caption,
 		anonymous:   anonymous,
 	}
+}
+
+// RestoreCollectible is g as the collectible of number with traits, on
+// sale for salePrice (0: not on sale), as storage keeps it.
+func (g *Gift) RestoreCollectible(number int, traits GiftTraits, salePrice int64) *Gift {
+	c := *g
+	c.number, c.traits, c.salePrice = number, traits, salePrice
+
+	return &c
 }
 
 func (g *Gift) ID() uuid.UUID          { return g.id }

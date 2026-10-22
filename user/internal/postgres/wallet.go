@@ -238,6 +238,45 @@ func (r *WalletRepository) Credit(ctx context.Context, userID uuid.UUID, votes i
 	return w, errs.Wrap("r.credit", err)
 }
 
+// Hold keeps the votes taken out of the treasury.
+func (r *WalletRepository) Hold(ctx context.Context, userID uuid.UUID, votes int64, e user.VoteEntry) (int64, error) {
+	if err := r.lockTreasury(ctx); err != nil {
+		return 0, errs.Wrap("r.lockTreasury", err)
+	}
+
+	left, err := r.spend(ctx, userID, votes, e, false)
+
+	return left, errs.Wrap("r.spend", err)
+}
+
+// Release gives held votes back past the treasury.
+func (r *WalletRepository) Release(ctx context.Context, userID uuid.UUID, votes int64, e user.VoteEntry) (int64, error) {
+	if err := r.lockTreasury(ctx); err != nil {
+		return 0, errs.Wrap("r.lockTreasury", err)
+	}
+
+	w, err := r.credit(ctx, userID, votes, 0, e, false)
+
+	return w.Votes, errs.Wrap("r.credit", err)
+}
+
+const depositTreasuryQuery = `
+	UPDATE treasury
+	SET votes = votes + $1
+`
+
+func (r *WalletRepository) Deposit(ctx context.Context, votes int64) error {
+	if err := r.lockTreasury(ctx); err != nil {
+		return errs.Wrap("r.lockTreasury", err)
+	}
+
+	if _, err := r.conn(ctx).Exec(ctx, depositTreasuryQuery, votes); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	return nil
+}
+
 // credit adds to the wallet of userID, out of the treasury if treasured.
 func (r *WalletRepository) credit(ctx context.Context, userID uuid.UUID, votes int64, rating int, e user.VoteEntry, treasured bool) (user.Wallet, error) {
 	id, err := uuid.NewV7()

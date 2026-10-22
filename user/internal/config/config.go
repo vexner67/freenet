@@ -68,6 +68,9 @@ type Config struct {
 	AdEventLimits ratelimit.Rules `env:"RATE_LIMIT_AD_EVENTS" envDefault:"60/1m,3000/24h"`
 	// Spins of the casino.
 	CasinoLimits ratelimit.Rules `env:"RATE_LIMIT_CASINO" envDefault:"30/1m,1000/24h"`
+	// Collectible gifts upgraded, given away, put on sale, bought,
+	// auctioned and bid on, each counted apart.
+	GiftMarketLimits ratelimit.Rules `env:"RATE_LIMIT_GIFT_MARKET" envDefault:"30/1m,500/24h"`
 
 	// AdminEmails are the emails of the people who run the site: they make
 	// the vouchers. Nobody without it.
@@ -88,6 +91,10 @@ type Config struct {
 	// site are written, all at once: a person shows as online that much
 	// later.
 	PresenceFlushInterval time.Duration `env:"PRESENCE_FLUSH_INTERVAL" envDefault:"10s"`
+
+	// GiftAuctionInterval is how often the auctions of gifts that ended
+	// are settled: a gift goes to its winner that much later.
+	GiftAuctionInterval time.Duration `env:"GIFT_AUCTION_INTERVAL" envDefault:"30s"`
 
 	// Access tokens are issued by the auth service; user only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`
@@ -111,6 +118,10 @@ func (c Config) Validate() error {
 
 	if c.AccountRetention <= 0 || c.AccountPurgeInterval <= 0 {
 		return errors.New("ACCOUNT_RETENTION and ACCOUNT_PURGE_INTERVAL must be positive")
+	}
+
+	if c.GiftAuctionInterval <= 0 {
+		return errors.New("GIFT_AUCTION_INTERVAL must be positive")
 	}
 
 	if c.FeedSyncInterval < 0 {

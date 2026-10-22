@@ -64,7 +64,7 @@ func newWalletWorld(t *testing.T) walletWorld {
 		accounts: service.NewAccountService(users, inmem.TxManager{}, purgeclient.NoReactions{}, time.Hour),
 		blocks:   service.NewBlockService(users, blocks, inmem.TxManager{}, &fakeNotifier{}),
 		gifts: service.NewGiftService(service.GiftDeps{
-			Users: users, Gifts: gifts, Prices: gifts, Permissions: permissions,
+			Users: users, Gifts: gifts, Prices: gifts, Stock: gifts, Collectibles: gifts, Auctions: gifts, Permissions: permissions,
 			Tx: inmem.TxManager{}, Wallets: users, Notifier: &fakeGiftNotifier{}, Admins: admins,
 		}),
 		wallets: service.NewWalletService(service.WalletDeps{
