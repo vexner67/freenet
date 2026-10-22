@@ -463,6 +463,7 @@ export function applyInterface(me) {
     el('a', { href: '/stickers', textContent: tr('Стикеры') }),
     el('a', { href: '/votes', textContent: tr('Голоса') }),
     el('a', { href: '/prime', textContent: 'Freenet Prime' }),
+    el('a', { href: '/mine', textContent: tr('Шахта') }),
     el('a', { href: '/casino', textContent: tr('Азартные игры') }),
     accountsLink(me),
     el('a', { href: '/search', textContent: tr('Поиск') }),

@@ -1786,6 +1786,38 @@ a.poll-result-name { cursor: pointer; }
 .finance-rate { font-weight: bold; }
 .finance-rubles { color: var(--text-808080); font-weight: normal; }
 
+/* "Шахта": the energy and experience over the ores, a row a ore with
+   its icon and "Копать", the log of digs and the backpack; the balance at
+   the right, as in the casino. */
+.mine { display: flex; gap: 20px; align-items: flex-start; }
+.mine-main { flex: 1; min-width: 0; }
+.mine-status { display: flex; flex-wrap: wrap; gap: 6px 24px; align-items: center; margin: 0 0 10px; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.mine-energy { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mine-stat-label { color: var(--text-808080); }
+.mine-bar { width: 120px; height: 8px; background: var(--back-e6e6e6); border: 1px solid var(--line-ccc); }
+.mine-bar-fill { height: 100%; background: var(--back-43a047); transition: width 0.3s; }
+.mine-ores, .mine-backpack { margin: 0 0 10px; }
+.mine-ore, .mine-item { display: flex; gap: 8px; align-items: center; padding: 6px 4px; border-bottom: 1px solid var(--line-e8ebee); }
+.mine-ore-text { flex: 1; min-width: 0; }
+.mine-locked { opacity: 0.55; }
+.mine-opens { white-space: nowrap; }
+.mine-icon { flex: none; width: 24px; height: 24px; background: center / contain no-repeat; }
+.mine-icon-stone { background-image: url("/static/icons/ore-stone.svg"); }
+.mine-icon-coal { background-image: url("/static/icons/ore-coal.svg"); }
+.mine-icon-iron { background-image: url("/static/icons/ore-iron.svg"); }
+.mine-icon-gold { background-image: url("/static/icons/ore-gold.svg"); }
+.mine-icon-diamond { background-image: url("/static/icons/ore-diamond.svg"); }
+.mine-icon-crystal { background-image: url("/static/icons/ore-crystal.svg"); }
+.mine-item-name { flex: 1; min-width: 0; }
+.mine-item-units { font-weight: bold; white-space: nowrap; }
+.mine-item-worth { min-width: 110px; text-align: right; white-space: nowrap; }
+.mine-log { margin: 0 0 10px; padding: 6px 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.mine-line { margin: 2px 0; color: var(--text-808080); }
+.mine-line:first-child { color: var(--text-000); font-weight: bold; }
+.mine-line.mine-win:first-child { color: var(--text-58462a); }
+.mine-sell-all { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin: 0 0 6px; }
+.mine-totals { margin: 0; text-align: right; }
+
 /* "Казино": the prizes in cells and a light running over them; the
    balance at the right, as in "Голоса". */
 .casino { display: flex; gap: 20px; align-items: flex-start; }
