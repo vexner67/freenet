@@ -17,6 +17,15 @@ type giftCollectionJSON struct {
 	Prices []int64 `json:"prices"`
 	// Prime: only those with Freenet Prime send its gifts.
 	Prime bool `json:"prime"`
+	// Supplies are how many of each of gifts may ever be sent, 0 for no
+	// end, and sold how many have been, in their order.
+	Supplies []int `json:"supplies"`
+	Sold     []int `json:"sold"`
+}
+
+type giftTraitJSON struct {
+	Name   string `json:"name"`
+	Weight int    `json:"weight"`
 }
 
 type giftPriceRequest struct {
@@ -24,7 +33,12 @@ type giftPriceRequest struct {
 }
 
 type giftCatalogResponse struct {
-	Collections []giftCollectionJSON `json:"collections"`
+	Collections   []giftCollectionJSON `json:"collections"`
+	Models        []giftTraitJSON      `json:"models"`
+	Backdrops     []giftTraitJSON      `json:"backdrops"`
+	Symbols       []giftTraitJSON      `json:"symbols"`
+	UpgradePrice  int64                `json:"upgradePrice"`
+	TransferPrice int64                `json:"transferPrice"`
 }
 
 type sendGiftRequest struct {
@@ -43,6 +57,14 @@ type giftJSON struct {
 	Anonymous bool        `json:"anonymous"`
 	SentAt    string      `json:"sentAt"`
 	Sender    *authorJSON `json:"sender"`
+	// Number is above zero for a collectible, with its traits; salePrice
+	// above zero while it is on sale.
+	Number    int    `json:"number,omitempty"`
+	Model     string `json:"model,omitempty"`
+	Backdrop  string `json:"backdrop,omitempty"`
+	Symbol    string `json:"symbol,omitempty"`
+	SalePrice int64  `json:"salePrice,omitempty"`
+	Auctioned bool   `json:"auctioned,omitempty"`
 }
 
 type giftPageResponse struct {
@@ -58,6 +80,12 @@ func toGiftJSON(g model.Gift) giftJSON {
 		Caption:   g.Caption,
 		Anonymous: g.Anonymous,
 		SentAt:    g.SentAt.UTC().Format(time.RFC3339),
+		Number:    g.Number,
+		Model:     g.Model,
+		Backdrop:  g.Backdrop,
+		Symbol:    g.Symbol,
+		SalePrice: g.SalePrice,
+		Auctioned: g.Auctioned,
 	}
 
 	if g.Sender != nil {
@@ -76,11 +104,24 @@ func (a *api) giftCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := giftCatalogResponse{Collections: make([]giftCollectionJSON, 0, len(catalog))}
-	for _, c := range catalog {
+	resp := giftCatalogResponse{
+		Collections:   make([]giftCollectionJSON, 0, len(catalog.Collections)),
+		Models:        toGiftTraitsJSON(catalog.Models),
+		Backdrops:     toGiftTraitsJSON(catalog.Backdrops),
+		Symbols:       toGiftTraitsJSON(catalog.Symbols),
+		UpgradePrice:  catalog.UpgradePrice,
+		TransferPrice: catalog.TransferPrice,
+	}
+	for _, c := range catalog.Collections {
 		collection := giftCollectionJSON(c)
 		if collection.Prices == nil {
 			collection.Prices = []int64{}
+		}
+		if collection.Supplies == nil {
+			collection.Supplies = []int{}
+		}
+		if collection.Sold == nil {
+			collection.Sold = []int{}
 		}
 
 		resp.Collections = append(resp.Collections, collection)
@@ -201,4 +242,13 @@ func (a *api) setGiftPrice(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func toGiftTraitsJSON(traits []model.GiftTrait) []giftTraitJSON {
+	out := make([]giftTraitJSON, 0, len(traits))
+	for _, t := range traits {
+		out = append(out, giftTraitJSON(t))
+	}
+
+	return out
 }

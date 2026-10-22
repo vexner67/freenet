@@ -28,7 +28,11 @@ type fakeGiftAPI struct {
 var giftSentAt = time.Date(2026, 10, 12, 9, 30, 0, 0, time.UTC)
 
 func (f *fakeGiftAPI) GetGiftCatalog(context.Context, *userv1.GetGiftCatalogRequest, ...grpc.CallOption) (*userv1.GetGiftCatalogResponse, error) {
-	return &userv1.GetGiftCatalogResponse{Collections: []*userv1.GiftCollection{{Id: "flowers", Gifts: []string{"rose", "tulip"}, Price: 3}}}, f.err
+	return &userv1.GetGiftCatalogResponse{
+		Collections:  []*userv1.GiftCollection{{Id: "flowers", Gifts: []string{"rose", "tulip"}, Price: 3, Supplies: []int32{0, 5}, Sold: []int32{2, 5}}},
+		Models:       []*userv1.GiftTrait{{Name: "classic", Weight: 1000}},
+		UpgradePrice: 50,
+	}, f.err
 }
 
 func (f *fakeGiftAPI) SendGift(ctx context.Context, req *userv1.SendGiftRequest, _ ...grpc.CallOption) (*userv1.SendGiftResponse, error) {
@@ -67,7 +71,8 @@ func TestGifts(t *testing.T) {
 	gifts := NewGifts(api)
 
 	catalog, err := gifts.Catalog(ctx)
-	if err != nil || len(catalog) != 1 || catalog[0].ID != "flowers" || len(catalog[0].Gifts) != 2 || catalog[0].Price != 3 {
+	if err != nil || len(catalog.Collections) != 1 || catalog.Collections[0].ID != "flowers" || len(catalog.Collections[0].Gifts) != 2 ||
+		catalog.Collections[0].Price != 3 || catalog.Collections[0].Sold[1] != 5 || catalog.Models[0].Name != "classic" || catalog.UpgradePrice != 50 {
 		t.Fatalf("Catalog = %+v, %v", catalog, err)
 	}
 

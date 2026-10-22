@@ -3950,6 +3950,52 @@ paths:
                           type: array
                           description: What each of `gifts` costs now, in their order; empty from a server that does not know them
                           items: { type: integer, minimum: 0 }
+                        supplies:
+                          type: array
+                          description: 'How many of each of `gifts` may ever be sent, in their order; 0 — no end'
+                          items: { type: integer, minimum: 0 }
+                        sold:
+                          type: array
+                          description: How many of each of `gifts` were sent, in their order
+                          items: { type: integer, minimum: 0 }
+                  models: { type: array, items: { $ref: "#/components/schemas/GiftTrait" }, description: The models a collectible may roll, commonest first }
+                  backdrops: { type: array, items: { $ref: "#/components/schemas/GiftTrait" }, description: The backdrops, commonest first }
+                  symbols: { type: array, items: { $ref: "#/components/schemas/GiftTrait" }, description: The symbols of the pattern, commonest first }
+                  upgradePrice: { type: integer, description: What "Улучшить" costs, in votes }
+                  transferPrice: { type: integer, description: What giving a collectible away costs, in votes }
+
+  /api/v1/gifts/{gift}/supply:
+    parameters:
+      - name: gift
+        in: path
+        required: true
+        schema: { type: string }
+        description: The name of a gift, as `freenet_coin`
+    put:
+      summary: Limit the edition of a gift ("Тираж" in the admin panel)
+      description: |
+        For the administrators of the site: no more than `supply` of the
+        gift are ever sent, 0 for no end. A limit below what was sent
+        already sells nothing more.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [supply]
+              properties:
+                supply: { type: integer, minimum: 0, maximum: 1000000 }
+      responses:
+        "204": { description: Limited }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator of the site
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/v1/gifts/{gift}/price:
     parameters:
@@ -5339,6 +5385,254 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
+    get:
+      summary: A collectible gift ("Коллекционный подарок")
+      description: |
+        No token needed. Who has it (`owner`, null when the site does —
+        `site` — or the page is gone), its sale or auction and its
+        history, newest first. A gift that is not collectible, or whose
+        owner hides their gifts from you, is not found.
+      responses:
+        "200":
+          description: The gift
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Collectible" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/gifts/{id}/upgrade:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Make your gift collectible ("Улучшить")
+      description: |
+        For `upgradePrice` votes, which go to the treasury, the gift gets
+        the next number of its kind and three traits rolled by rarity.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The gift, collectible
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Gift" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: The gift is not yours, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: 'Collectible already, or not enough votes', content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  /api/v1/gifts/{id}/transfer:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Give your collectible away ("Передать")
+      description: |
+        For `transferPrice` votes to the treasury it goes to `nickname`,
+        as a gift from you would: a filled-in profile is needed, and not
+        through a blacklist or to a page that does not take gifts from you.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nickname]
+              properties:
+                nickname: { type: string }
+      responses:
+        "204": { description: Given }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: Not yours, or you cannot send gifts to them, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: 'On sale, not collectible, yours already or not enough votes', content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  /api/v1/gifts/{id}/sale:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      summary: Put your collectible on the market ("Продать")
+      description: For `price` votes, from 1 to 1 000 000; putting it up again changes the price.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [price]
+              properties:
+                price: { type: integer, format: int64, minimum: 1, maximum: 1000000 }
+      responses:
+        "200": { description: The gift, content: { application/json: { schema: { $ref: "#/components/schemas/Gift" } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: The gift is not yours, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Not collectible, or at an auction, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    delete:
+      summary: Take your collectible off the market
+      security: [{ bearer: [] }]
+      responses:
+        "200": { description: The gift, content: { application/json: { schema: { $ref: "#/components/schemas/Gift" } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: The gift is not yours, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/gifts/{id}/purchase:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Buy a collectible on the market
+      description: |
+        `price` is the price you were shown: another one —
+        `the price of the gift changed` (409). The seller gets it less a
+        fee to the treasury of 5% (2.5% for a seller with Freenet Prime),
+        rounded up.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [price]
+              properties:
+                price: { type: integer, format: int64 }
+      responses:
+        "200": { description: Your balance after, content: { application/json: { schema: { $ref: "#/components/schemas/Balance" } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: 'Not on sale, the price changed, yours or not enough votes', content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  /api/v1/gifts/{id}/auction:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Auction your collectible ("Аукцион")
+      description: |
+        Bids start at `start` votes and run `hours`, from 1 to 168. Each
+        bid beats the last by 5%, and a bid in the last 5 minutes moves
+        the end 5 minutes on. At the end the top bidder gets the gift and
+        you the bid less the fee; without bids it stays yours.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [start, hours]
+              properties:
+                start: { type: integer, format: int64, minimum: 1, maximum: 1000000 }
+                hours: { type: integer, minimum: 1, maximum: 168 }
+      responses:
+        "204": { description: Started }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: The gift is not yours, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Not collectible, or on sale, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    delete:
+      summary: Cancel the auction of your collectible
+      description: Only while nobody has bid.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Cancelled }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: The gift is not yours, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: Somebody has bid, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  /api/v1/gifts/{id}/bids:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      summary: Bid at an auction
+      description: |
+        At least `minBid`. Your votes are held until someone bids more —
+        then they come back — or you win.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount: { type: integer, format: int64, minimum: 1, maximum: 1000000 }
+      responses:
+        "200": { description: Your balance after, content: { application/json: { schema: { $ref: "#/components/schemas/Balance" } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: 'Too low, over, yours or not enough votes', content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  /api/v1/market:
+    get:
+      summary: The market of collectibles ("Маркет")
+      description: |
+        No token needed. The collectibles on sale, of owners whose pages
+        are neither deleted nor banned, filtered by gift and traits.
+      parameters:
+        - { name: gift, in: query, schema: { type: string } }
+        - { name: model, in: query, schema: { type: string } }
+        - { name: backdrop, in: query, schema: { type: string } }
+        - { name: symbol, in: query, schema: { type: string } }
+        - { name: sort, in: query, schema: { type: string, enum: [price, price_desc, number] }, description: Cheapest first by default }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+      responses:
+        "200": { description: A page, content: { application/json: { schema: { $ref: "#/components/schemas/CollectiblePage" } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/auctions:
+    get:
+      summary: The running auctions ("Аукционы"), ending soonest first
+      description: No token needed.
+      parameters:
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+      responses:
+        "200": { description: A page, content: { application/json: { schema: { $ref: "#/components/schemas/CollectiblePage" } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      summary: Auction a rare edition of the site
+      description: |
+        For the administrators of the site: a new collectible of `gift`
+        with the traits chosen, auctioned by the site; the winning bid goes
+        to the treasury. Without bids the edition is gone.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [gift, model, backdrop, symbol, start, hours]
+              properties:
+                gift: { type: string }
+                model: { type: string }
+                backdrop: { type: string }
+                symbol: { type: string }
+                start: { type: integer, format: int64, minimum: 1, maximum: 1000000 }
+                hours: { type: integer, minimum: 1, maximum: 168 }
+      responses:
+        "201":
+          description: The new gift
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: { type: string, format: uuid }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: You are not an administrator of the site, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: The gift is sold out, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/v1/stickers:
     get:
@@ -8261,6 +8555,74 @@ components:
             - $ref: "#/components/schemas/Author"
             - type: "null"
           description: "Who sent it; null when you are not told (an anonymous gift) and when the page of the sender is deleted"
+        number: { type: integer, description: "The number of a collectible among those of its kind; absent for a plain gift" }
+        model: { type: string, description: The model of a collectible }
+        backdrop: { type: string, description: The backdrop of a collectible }
+        symbol: { type: string, description: The symbol of its pattern }
+        salePrice: { type: integer, format: int64, description: Its price on the market; absent when not on sale }
+        auctioned: { type: boolean, description: It is at an auction }
+
+    GiftTrait:
+      type: object
+      required: [name, weight]
+      properties:
+        name: { type: string }
+        weight: { type: integer, description: Its chance, in tenths of a percent }
+
+    Balance:
+      type: object
+      required: [balance]
+      properties:
+        balance: { type: integer, format: int64, description: Your votes after }
+
+    CollectiblePage:
+      type: object
+      required: [collectibles, nextCursor]
+      properties:
+        collectibles: { type: array, items: { $ref: "#/components/schemas/Collectible" } }
+        nextCursor: { type: string, description: Empty on the last page }
+
+    Collectible:
+      type: object
+      required: [gift, owner, site, mine, auction, history]
+      properties:
+        gift: { $ref: "#/components/schemas/Gift" }
+        owner:
+          oneOf:
+            - $ref: "#/components/schemas/Author"
+            - type: "null"
+        site: { type: boolean, description: The site holds it (an edition at its auction) }
+        mine: { type: boolean, description: It is yours }
+        auction:
+          oneOf:
+            - $ref: "#/components/schemas/GiftAuction"
+            - type: "null"
+        history:
+          type: array
+          description: Newest first; only with one gift
+          items:
+            type: object
+            required: [kind, at, price, from, to]
+            properties:
+              kind: { type: string, enum: [upgrade, mint, transfer, sale, auction] }
+              at: { type: string, format: date-time }
+              price: { type: integer, format: int64 }
+              from: { oneOf: [{ $ref: "#/components/schemas/Author" }, { type: "null" }], description: null — the site or a page that is gone }
+              to: { oneOf: [{ $ref: "#/components/schemas/Author" }, { type: "null" }] }
+
+    GiftAuction:
+      type: object
+      required: [start, topBid, minBid, bids, endsAt, site, seller, bidder, mine]
+      properties:
+        start: { type: integer, format: int64 }
+        topBid: { type: integer, format: int64, description: 0 — no bids }
+        minBid: { type: integer, format: int64, description: The least the next bid may be }
+        bids: { type: integer }
+        endsAt: { type: string, format: date-time }
+        site: { type: boolean, description: The site sells it }
+        seller: { oneOf: [{ $ref: "#/components/schemas/Author" }, { type: "null" }] }
+        bidder: { oneOf: [{ $ref: "#/components/schemas/Author" }, { type: "null" }], description: The top bidder }
+        mine: { type: boolean, description: You are the top bidder }
 
     VoteRate:
       type: object
