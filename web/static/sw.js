@@ -18,6 +18,7 @@ const notificationVerbs = {
   mention: ['упомянул', 'упомянула', 'упомянул(а)', 'упомянуло'],
   gift: ['отправил', 'отправила', 'отправил(а)', 'отправило'],
   votes: ['передал', 'передала', 'передал(а)', 'передало'],
+  prime: ['подарил', 'подарила', 'подарил(а)', 'подарило'],
   invite: ['присоединился', 'присоединилась', 'присоединился(-ась)', 'присоединилось'],
   verified: ['подтвердил', 'подтвердила', 'подтвердил(а)', 'подтвердило'],
 };
@@ -44,6 +45,7 @@ const pushTexts = {
   story_comment: ['comment', 'комментарий под вашей историей'],
   gift: ['gift', 'вам подарок'],
   votes: ['votes', 'вам голоса'],
+  prime: ['prime', 'вам Freenet Prime'],
   invite: ['invite', 'по вашему приглашению'],
   verified: ['verified', 'вашу страницу'],
 };
@@ -61,7 +63,7 @@ const clubTexts = {
 const english = {
   verbs: {
     like: 'liked', comment: 'left', follow: 'followed', wall_post: 'wrote', repost: 'shared', comment_reply: 'replied',
-    mention: 'mentioned', gift: 'sent', votes: 'gave', invite: 'joined', verified: 'verified',
+    mention: 'mentioned', gift: 'sent', votes: 'gave', prime: 'gave', invite: 'joined', verified: 'verified',
   },
   texts: {
     like: 'your post',
@@ -83,6 +85,7 @@ const english = {
     story_comment: 'a comment under your story',
     gift: 'you a gift',
     votes: 'you votes',
+    prime: 'you Freenet Prime',
     invite: 'by your invitation',
     verified: 'your page',
   },
@@ -146,7 +149,7 @@ function notificationOf(p, lang = 'ru') {
   const text = pushTexts[p.kind];
   if (!text) return null;
 
-  const url = { gift: '/gifts', votes: '/votes' }[p.kind] ?? '/notifications';
+  const url = { gift: '/gifts', votes: '/votes', prime: '/prime' }[p.kind] ?? '/notifications';
   const said = en ? english.texts[p.kind] : text[1];
 
   return { title: name, body: capitalized(verbOf(text[0], actor, lang) + ' ' + said + '.'), url, tag };

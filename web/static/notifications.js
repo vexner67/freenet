@@ -178,6 +178,11 @@ function notificationText(n) {
     return [name, tr(' {0} по вашему ', notificationVerb('invite', n.actor)), el('a', { href: '/invite' }, el('b', { textContent: tr('приглашению') })), '.'];
   }
 
+  // Freenet Prime given as a present: its term is on its page.
+  if (n.type === 'prime') {
+    return [name, tr(' {0} вам ', notificationVerb('prime', n.actor)), el('a', { href: '/prime' }, el('b', { textContent: 'Freenet Prime' })), '.'];
+  }
+
   // openvk's "передал вам голоса"; the balance is in the settings.
   if (n.type === 'votes') {
     return [name, tr(' {0} вам ', notificationVerb('votes', n.actor)), el('a', { href: '/votes' }, el('b', { textContent: tr('голоса') })), '.'];

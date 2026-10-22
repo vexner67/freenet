@@ -52,6 +52,7 @@
   const themes = {
     blue: '/static/themes/blue.css',
     dark: '/static/themes/dark.css',
+    gold: '/static/themes/gold.css',
   };
 
   let theme = null;

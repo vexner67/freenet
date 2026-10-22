@@ -121,7 +121,10 @@ function initInterface(me) {
   const device = deviceTheme();
 
   fill($('avatar-style'), avatarStyles, ui.avatarStyle);
-  fill($('theme-select'), themes, device ?? ui.theme);
+  // The gold style is Freenet Prime's: offered with it, and kept by one
+  // who chose it before Prime ended.
+  const chosen = device ?? ui.theme;
+  fill($('theme-select'), themes.filter(([v]) => v !== 'gold' || me.prime || chosen === 'gold'), chosen);
   fill($('rating'), ratings, ui.hideRating ? 'hide' : 'show');
   fill($('nsfw'), nsfwContents, ui.nsfw);
   fill($('post-view'), postViews, ui.postView);

@@ -324,6 +324,7 @@ const THEME_KEY = 'freenet.theme';
 const THEMES = {
   blue: '/static/themes/blue.css',
   dark: '/static/themes/dark.css',
+  gold: '/static/themes/gold.css',
 };
 
 function stored(key) {
@@ -455,6 +456,7 @@ export function applyInterface(me) {
     el('a', { href: '/stickers', textContent: tr('Стикеры') }),
     el('a', { href: '/docs', textContent: tr('Документы') }),
     el('a', { href: '/votes', textContent: tr('Голоса') }),
+    el('a', { href: '/prime', textContent: 'Freenet Prime' }),
     el('a', { href: '/casino', textContent: tr('Азартные игры') }),
     accountsLink(me),
     el('a', { href: '/search', textContent: tr('Поиск') }),
@@ -749,12 +751,25 @@ export function fullName(user) {
 // verifiedMark is openvk's checkmark after the name of a page the
 // administrators confirmed ("Подтверждённая страница"), nothing for others.
 export function verifiedMark(user) {
-  if (!user?.verified) return '';
+  const marks = [
+    user?.verified && el('img', {
+      className: 'name-checkmark', src: '/static/icons/checkmark.svg', alt: '', width: 13, height: 11,
+      title: tr('Подтверждённая страница'),
+    }),
+    // Freenet Prime has its badge after the name, wherever the checkmark
+    // would be.
+    user?.prime && el('img', {
+      className: 'name-prime', src: '/static/icons/prime.svg', alt: '', width: 12, height: 12,
+      title: 'Freenet Prime',
+    }),
+  ].filter(Boolean);
+  if (marks.length === 0) return '';
+  if (marks.length === 1) return marks[0];
 
-  return el('img', {
-    className: 'name-checkmark', src: '/static/icons/checkmark.svg', alt: '', width: 13, height: 11,
-    title: tr('Подтверждённая страница'),
-  });
+  const both = document.createDocumentFragment();
+  both.append(...marks);
+
+  return both;
 }
 
 export function showError(container, error) {

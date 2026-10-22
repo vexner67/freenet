@@ -38,6 +38,7 @@
         <div class="aui-nav-heading">Платные услуги</div>
         <a class="aui-nav-item" href="/admin/vouchers" title="Ваучеры"><span class="aui-icon aui-icon-card"></span><span class="aui-nav-item-label">Ваучеры</span></a>
         <a class="aui-nav-item" href="/admin/gifts" title="Подарки"><span class="aui-icon aui-icon-gift"></span><span class="aui-nav-item-label">Подарки</span></a>
+        <a class="aui-nav-item" href="/admin/prime" title="Freenet Prime"><span class="aui-icon aui-icon-prime"></span><span class="aui-nav-item-label">Freenet Prime</span></a>
         <a class="aui-nav-item" href="/admin/casino" title="Казино"><span class="aui-icon aui-icon-casino"></span><span class="aui-nav-item-label">Казино</span></a>
         <a class="aui-nav-item" href="/admin/bets" title="Ставки"><span class="aui-icon aui-icon-bets"></span><span class="aui-nav-item-label">Ставки</span></a>
         <a class="aui-nav-item" href="/admin/ads" title="Реклама"><span class="aui-icon aui-icon-ad"></span><span class="aui-nav-item-label">Реклама</span></a>
@@ -221,6 +222,30 @@
         </div>
         <div class="field-group">
           <span class="admin-decor-now" id="decor-now"></span>
+        </div>
+        <div class="buttons-container">
+          <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="prime" hidden>
+      <h1 class="aui-page-heading">Freenet Prime</h1>
+      <p class="admin-lead">Подписка сайта: значок после имени, золотая рамка и стиль, подарки Prime, новости без рекламы, «Невидимка», переводы без комиссии и налог 5 % со стикеров. Голоса за неё уходят в Казну. Новые цены действуют для следующих покупок.</p>
+      <div class="aui-message aui-message-success" id="prime-saved" hidden></div>
+      <form class="aui" id="prime-form">
+        <div class="field-group">
+          <label for="prime-month">Месяц</label>
+          <input class="text admin-casino-field" id="prime-month" type="number" min="1" max="1000000" required>
+          <div class="description">В голосах, от 1 до 1 000 000.</div>
+        </div>
+        <div class="field-group">
+          <label for="prime-quarter">3 месяца</label>
+          <input class="text admin-casino-field" id="prime-quarter" type="number" min="1" max="1000000" required>
+        </div>
+        <div class="field-group">
+          <label for="prime-year">Год</label>
+          <input class="text admin-casino-field" id="prime-year" type="number" min="1" max="1000000" required>
         </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>

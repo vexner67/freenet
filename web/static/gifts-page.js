@@ -168,15 +168,26 @@ function sent(owner, mine) {
   modal.actions.append(button('OK', modal.close));
 }
 
+// primeOnly says that a gift of Freenet Prime takes it.
+function primeOnly() {
+  const modal = openModal('Freenet Prime');
+
+  modal.body.append(el('span', {}, tr('Эти подарки могут отправлять только подписчики '),
+    el('a', { href: '/prime', textContent: 'Freenet Prime' }), '.'));
+  modal.actions.append(button('OK', modal.close));
+}
+
 // showCatalog is "Выбрать подарок": the collections, five gifts of each,
 // or all the gifts of the one chosen.
 async function showCatalog(owner, me) {
   try {
     const { collections } = await api.giftCatalog();
-    const pick = (gift, price) => confirm(owner, me, gift, price);
+    // The gifts of Freenet Prime are sent only by those who have it: the
+    // rest are told where to get it.
+    const pick = (c) => (gift, price) => (c.prime && !me.prime ? primeOnly() : confirm(owner, me, gift, price));
     const rows = collection
-      ? collections.filter((c) => c.id === collection).map((c) => giftRow(c, {}, pick))
-      : collections.map((c) => giftRow(c, { more: menuPath(owner, c.id), limit: 5 }, pick));
+      ? collections.filter((c) => c.id === collection).map((c) => giftRow(c, {}, pick(c)))
+      : collections.map((c) => giftRow(c, { more: menuPath(owner, c.id), limit: 5 }, pick(c)));
 
     $('catalog').replaceChildren(...rows);
     $('catalog').hidden = false;

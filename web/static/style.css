@@ -9,6 +9,7 @@
 :root {
   /* Backgrounds */
   --back-fff: #fff;
+  --back-f6d365: #f6d365;
   --back-fafafa: #fafafa;
   --back-f9f9f9: #f9f9f9;
   --back-f7f7f7: #f7f7f7;
@@ -45,6 +46,7 @@
   --back-3e3e3e: #3e3e3e;
   --back-d23a32: #d23a32;
   /* Text */
+  --text-a87a12: #a87a12;
   --text-000: #000;
   --text-58462a: #58462a;
   --text-686868: #686868;
@@ -802,6 +804,14 @@ a.like:hover svg { opacity: .7; }
 /* Photo */
 
 .avatar { object-fit: cover; }
+/* Freenet Prime: a golden frame of the photo and a golden name on the
+   page of the person. */
+.prime-page .avatar {
+  border: 3px solid var(--back-f6d365);
+  outline: 1px solid var(--text-a87a12);
+}
+.prime-name { color: var(--text-a87a12); font-weight: bold; }
+
 /* The controls on the photo for whom it is theirs to change, as openvk's
    .avatar_controls: they show when the photo is pointed at — "Загрузить
    новую фотографию" on a dark band along its bottom and "×" in its top
@@ -1620,6 +1630,7 @@ a.poll-result-name { cursor: pointer; }
 .gift-cat-row:not(:last-child) { border-bottom: 1px solid var(--line-ddd); }
 .gift-cat-info { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; min-height: 23px; margin: 0 0 4px; }
 .gift-cat-header { margin: 0; padding: 4px 0 3px; color: var(--text-45688e); font-size: 11px; }
+.gift-cat-prime { margin-right: auto; padding: 4px 0 3px; color: var(--text-a87a12); font-weight: bold; }
 .gift-grid { display: flex; flex-wrap: wrap; width: calc(100% + 16px); margin: 0 -8px; }
 .gift-sel { position: relative; box-sizing: border-box; width: 122px; padding: 8px 10px; border-radius: 3px; text-align: center; cursor: pointer; }
 .gift-sel:hover { text-decoration: none; }
@@ -1712,6 +1723,25 @@ a.poll-result-name { cursor: pointer; }
 
 /* "Голоса" of the settings, as openvk's: what votes are on the left, the
    account on the right; the serial number of a voucher in four fields. */
+/* "Freenet Prime" (/prime): the badge with the term, the perks and the
+   three periods side by side. */
+.prime-hero { display: flex; gap: 12px; align-items: center; margin: 0 0 8px; }
+.prime-hero-title { color: var(--text-a87a12); font-size: 16px; }
+.prime-state { margin: 4px 0 0; }
+.prime-perks { margin: 0 0 8px; padding-left: 20px; }
+.prime-perks li { margin: 0 0 4px; }
+.prime-plans { display: flex; gap: 10px; margin: 0 0 8px; }
+.prime-plan {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--back-f6d365);
+  background: var(--back-fff);
+  text-align: center;
+}
+.prime-plan-name { display: block; margin-bottom: 6px; color: var(--text-a87a12); font-size: 13px; }
+.prime-plan-price { font-size: 16px; }
+.prime-plan-saving { margin: 2px 0 8px; color: var(--text-808080); }
+
 .finance { display: flex; gap: 20px; align-items: flex-start; }
 .finance-about { flex: 1; }
 .finance-about p { margin: 0 0 8px; }
@@ -2283,6 +2313,18 @@ img.name-checkmark.name-checkmark {
   border: 0;
   border-radius: 0;
   vertical-align: baseline;
+}
+
+/* The badge of Freenet Prime after the name, beside the checkmark. */
+img.name-prime.name-prime {
+  display: inline;
+  width: 12px;
+  height: 12px;
+  margin: 0 0 0 2pt;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  vertical-align: -1px;
 }
 
 /* On the black of the story viewer, as in the dark theme. */
