@@ -151,6 +151,8 @@ const updateUserQuery = `
 		chats_invite = $52,
 		closed = $53,
 		gifts_read = $54,
+		messages_prime = $55,
+		message_price = $56,
 		updated_at = now()
 	WHERE id = $1
 `
@@ -225,6 +227,8 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		pr.ChatsInvite.String(),
 		pr.Closed,
 		pr.GiftsRead.String(),
+		pr.MessagesPrime,
+		pr.MessagePrice.Int64(),
 	)
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", translateError(err))
@@ -429,7 +433,9 @@ const userColumns = `
 		ban_reason,
 		alert,
 		prime_until,
-		prime_invisible`
+		prime_invisible,
+		messages_prime,
+		message_price`
 
 // qualifiedUserColumns are userColumns of the users table joined as u.
 const qualifiedUserColumns = `
@@ -499,7 +505,9 @@ const qualifiedUserColumns = `
 		u.ban_reason,
 		u.alert,
 		u.prime_until,
-		u.prime_invisible`
+		u.prime_invisible,
+		u.messages_prime,
+		u.message_price`
 
 const getUserByIDQuery = `
 	SELECT` + userColumns + `
@@ -699,6 +707,8 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&alert,
 		&primeUntil,
 		&primeInvisible,
+		&privacy.MessagesPrime,
+		&privacy.MessagePrice,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound

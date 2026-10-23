@@ -231,6 +231,8 @@ func toProtoPrivacy(p user.Privacy) *userv1.PrivacySettings {
 		GiftsRead:          toProtoAudience(p.GiftsRead),
 		Closed:             p.Closed,
 		ChatsInvite:        toProtoMessagesWrite(p.ChatsInvite),
+		MessagesPrime:      p.MessagesPrime,
+		MessagePrice:       p.MessagePrice.Int64(),
 	}
 }
 
@@ -301,7 +303,14 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		}
 	}
 
+	messagePrice, err := user.NewMessagePrice(p.GetMessagePrice())
+	if err != nil {
+		return user.Privacy{}, err
+	}
+
 	return user.Privacy{
+		MessagesPrime:      p.GetMessagesPrime(),
+		MessagePrice:       messagePrice,
 		ShowBirthday:       p.GetShowBirthday(),
 		ShowRelationship:   p.GetShowRelationship(),
 		ShowWorldview:      p.GetShowWorldview(),

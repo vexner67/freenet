@@ -230,6 +230,7 @@ func (a *App) build(cfg config.Config) error {
 			Rockets:     service.NewRocketService(store.users, store.casino, store.rockets, store.wallets, store.tx, admins),
 			Mines:       service.NewMineService(store.users, store.mine, store.wallets, store.tx, admins),
 			BetEvents:   service.NewBetEventService(store.users, store.betEvents, store.wallets, store.tx, admins),
+			Paid:        service.NewPaidService(store.users, store.wallets, store.purchases, store.economy, permissions, store.tx),
 			Permissions: permissions,
 			Presence:    a.presence,
 			Backdrops:   service.NewBackdropService(store.users, store.users),
@@ -365,6 +366,8 @@ type storage struct {
 	rockets service.RocketRepository
 	// betEvents are the events people stake on.
 	betEvents service.BetEventRepository
+	// purchases are the paid posts opened and the messages paid for.
+	purchases service.PurchaseRepository
 	// ads are the advertising of the global feed, and how it does.
 	ads interface {
 		service.AdRepository
@@ -400,6 +403,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			mine:         inmem.NewMineRepository(),
 			rockets:      inmem.NewRocketRepository(),
 			betEvents:    inmem.NewBetEventRepository(),
+			purchases:    inmem.NewPurchaseRepository(),
 			ads:          inmem.NewAdRepository(),
 			tx:           inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
@@ -450,6 +454,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		mine:         postgres.NewMineRepository(a.pool),
 		rockets:      postgres.NewRocketRepository(a.pool),
 		betEvents:    postgres.NewBetEventRepository(a.pool),
+		purchases:    postgres.NewPurchaseRepository(a.pool),
 		ads:          postgres.NewAdRepository(a.pool),
 		tx:           pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {

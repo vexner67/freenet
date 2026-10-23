@@ -84,3 +84,42 @@ func TestUser_MessagesWriteDefaults(t *testing.T) {
 		t.Fatalf("UpdatePrivacy without MessagesWrite = %v, want ErrInvalidMessagesWrite", err)
 	}
 }
+
+func TestUser_PaidAndPrimeMessages(t *testing.T) {
+	t.Parallel()
+
+	if _, err := user.NewMessagePrice(-1); !errors.Is(err, user.ErrInvalidMessagePrice) {
+		t.Fatalf("NewMessagePrice(-1) = %v", err)
+	}
+	if _, err := user.NewMessagePrice(user.MaxMessagePrice + 1); !errors.Is(err, user.ErrInvalidMessagePrice) {
+		t.Fatalf("NewMessagePrice(max+1) = %v", err)
+	}
+
+	u, err := user.New("ann@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	privacy := u.Privacy()
+	privacy.MessagesPrime = true
+	privacy.MessagePrice, _ = user.NewMessagePrice(15)
+	if err = u.UpdatePrivacy(privacy); err != nil {
+		t.Fatal(err)
+	}
+
+	sender := uuid.New()
+	if u.CanBeMessagedBy(sender, user.Ties{}) || !u.WantsPrimeFrom(sender, user.Ties{}) {
+		t.Fatal("a sender without Prime let in")
+	}
+	if !u.CanBeMessagedBy(sender, user.Ties{Prime: true}) || u.MessagePriceFor(sender, user.Ties{Prime: true}) != 15 {
+		t.Fatal("a sender with Prime kept out or not charged")
+	}
+	if !u.CanBeMessagedBy(sender, user.Ties{WroteFirst: true}) || u.MessagePriceFor(sender, user.Ties{WroteFirst: true}) != 0 {
+		t.Fatal("a reply to ann charged or refused")
+	}
+	if u.WantsPrimeFrom(sender, user.Ties{Prime: true, Blocked: true}) {
+		t.Fatal("a block told as Prime only")
+	}
+	if u.MessagePriceFor(u.ID(), user.Ties{}) != 0 {
+		t.Fatal("messages to oneself charged")
+	}
+}

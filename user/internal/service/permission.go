@@ -50,14 +50,37 @@ func (s *PermissionService) CanPostOnWall(ctx context.Context, authorID, ownerID
 // is whether the recipient has written to the sender, which the message
 // service knows. user.ErrNotFound for an unknown recipient.
 func (s *PermissionService) CanMessage(ctx context.Context, senderID, recipientID uuid.UUID, wroteFirst bool) (bool, error) {
+	recipient, ties, err := s.messageTies(ctx, senderID, recipientID, wroteFirst)
+	if err != nil {
+		return false, errs.Wrap("s.messageTies", err)
+	}
+
+	return recipient.CanBeMessagedBy(senderID, ties), nil
+}
+
+// messageTies is the recipient and how they are tied to the sender, for
+// messages: whether the recipient wrote first and whether the sender has
+// Freenet Prime, which a recipient may ask for.
+func (s *PermissionService) messageTies(
+	ctx context.Context, senderID, recipientID uuid.UUID, wroteFirst bool,
+) (*user.User, user.Ties, error) {
 	recipient, ties, err := s.ties(ctx, senderID, recipientID)
 	if err != nil {
-		return false, errs.Wrap("s.ties", err)
+		return nil, user.Ties{}, errs.Wrap("s.ties", err)
 	}
 
 	ties.WroteFirst = wroteFirst
 
-	return recipient.CanBeMessagedBy(senderID, ties), nil
+	if senderID != recipientID {
+		sender, err := s.userRepo.GetByID(ctx, senderID)
+		if err != nil {
+			return nil, user.Ties{}, errs.Wrap("s.userRepo.GetByID", err)
+		}
+
+		ties.Prime = sender.IsPrimeAt(s.now())
+	}
+
+	return recipient, ties, nil
 }
 
 // Access tells what of ownerID's page viewerID (uuid.Nil: anonymous) may

@@ -77,6 +77,12 @@ const (
 	VoteMine VoteKind = "mine"
 	// VoteMineChest: a chest found in the mine; the note is the ore.
 	VoteMineChest VoteKind = "mine_chest"
+	// VotePost: the photos of a paid post opened or, for its author,
+	// sold; the note is the post.
+	VotePost VoteKind = "post"
+	// VoteMessage: a paid message, or its votes given back when it was
+	// not sent (the note is "refund").
+	VoteMessage VoteKind = "message"
 )
 
 // VoteEntry is what a change of votes is written down as: why, with whom
