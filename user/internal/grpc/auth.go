@@ -62,5 +62,10 @@ func InternalMethods() map[string][]string {
 	return map[string][]string{
 		userv1.UserService_GetOrCreateByEmail_FullMethodName: {mtls.Auth},
 		userv1.UserService_GetAccountState_FullMethodName:    {mtls.Auth},
+		userv1.UserService_BuyPost_FullMethodName:            {mtls.Gateway},
+		// A refund after a message that was sent would make it free: only
+		// the gateway, which sends it, tells whether it was.
+		userv1.UserService_PayMessage_FullMethodName:    {mtls.Gateway},
+		userv1.UserService_RefundMessage_FullMethodName: {mtls.Gateway},
 	}
 }

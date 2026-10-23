@@ -170,6 +170,14 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, user.ErrUnknownOre.Error()), true
 	case errors.Is(err, user.ErrRocketOver):
 		return status.New(codes.FailedPrecondition, user.ErrRocketOver.Error()), true
+	case errors.Is(err, user.ErrInvalidPostPrice), errors.Is(err, user.ErrMessagePriceChanged):
+		return status.New(codes.FailedPrecondition, err.Error()), true
+	case errors.Is(err, user.ErrCannotMessage):
+		return status.New(codes.PermissionDenied, user.ErrCannotMessage.Error()), true
+	case errors.Is(err, user.ErrPaymentNotFound):
+		return status.New(codes.NotFound, user.ErrPaymentNotFound.Error()), true
+	case errors.Is(err, service.ErrTooManyPosts), errors.Is(err, user.ErrInvalidMessagePrice):
+		return status.New(codes.InvalidArgument, err.Error()), true
 	case errors.Is(err, user.ErrNotEnoughVotes):
 		return status.New(codes.FailedPrecondition, user.ErrNotEnoughVotes.Error()), true
 	case errors.Is(err, user.ErrPrimeOnly):

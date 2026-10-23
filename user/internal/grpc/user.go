@@ -50,6 +50,7 @@ type UserHandler struct {
 	rockets           RocketService
 	betEvents         BetEventService
 	mines             MineService
+	paid              PaidService
 	permissionService PermissionService
 	presenceService   PresenceService
 	backdropService   BackdropService
@@ -85,7 +86,9 @@ type Services struct {
 	// BetEvents are the bets on events.
 	BetEvents BetEventService
 	// Mines are the mine of the site.
-	Mines       MineService
+	Mines MineService
+	// Paid sells paid posts and messages.
+	Paid        PaidService
 	Permissions PermissionService
 	Presence    PresenceService
 	Backdrops   BackdropService
@@ -111,6 +114,7 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		rockets:           s.Rockets,
 		betEvents:         s.BetEvents,
 		mines:             s.Mines,
+		paid:              s.Paid,
 		permissionService: s.Permissions,
 		presenceService:   s.Presence,
 		backdropService:   s.Backdrops,

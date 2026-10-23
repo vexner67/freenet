@@ -72,6 +72,11 @@ type Privacy struct {
 	// Closed is openvk's "Тип профиля: закрытый": only the owner and the
 	// people the owner follows see the page (see AccessFor).
 	Closed bool
+	// MessagesPrime lets only people with Freenet Prime write to the
+	// owner; MessagePrice is what each message to the owner costs (see
+	// CanBeMessagedBy, MessagePriceFor).
+	MessagesPrime bool
+	MessagePrice  MessagePrice
 }
 
 // PublicProfile is the part of a profile other users may see. Hidden
@@ -310,6 +315,10 @@ func (u *User) UpdatePrivacy(privacy Privacy) error {
 	}
 
 	if _, err := NewMessagesWrite(privacy.ChatsInvite.String()); err != nil {
+		return err
+	}
+
+	if _, err := NewMessagePrice(privacy.MessagePrice.Int64()); err != nil {
 		return err
 	}
 

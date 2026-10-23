@@ -45,6 +45,10 @@ const (
 	UserService_GetStatistics_FullMethodName      = "/user.v1.UserService/GetStatistics"
 	UserService_CanPostOnWall_FullMethodName      = "/user.v1.UserService/CanPostOnWall"
 	UserService_CanMessage_FullMethodName         = "/user.v1.UserService/CanMessage"
+	UserService_GetBoughtPosts_FullMethodName     = "/user.v1.UserService/GetBoughtPosts"
+	UserService_BuyPost_FullMethodName            = "/user.v1.UserService/BuyPost"
+	UserService_PayMessage_FullMethodName         = "/user.v1.UserService/PayMessage"
+	UserService_RefundMessage_FullMethodName      = "/user.v1.UserService/RefundMessage"
 	UserService_ResolveMentions_FullMethodName    = "/user.v1.UserService/ResolveMentions"
 	UserService_ResolveInvites_FullMethodName     = "/user.v1.UserService/ResolveInvites"
 	UserService_FindNicknames_FullMethodName      = "/user.v1.UserService/FindNicknames"
@@ -199,6 +203,18 @@ type UserServiceClient interface {
 	// Requires an access token: whether the caller may write private
 	// messages to the user, as the user's privacy and blacklists allow.
 	CanMessage(ctx context.Context, in *CanMessageRequest, opts ...grpc.CallOption) (*CanMessageResponse, error)
+	// Requires an access token: which of the paid posts the caller opened.
+	GetBoughtPosts(ctx context.Context, in *GetBoughtPostsRequest, opts ...grpc.CallOption) (*GetBoughtPostsResponse, error)
+	// Internal, for the gateway, with the caller's token: opens the photos
+	// and documents of a paid post to the caller, paying its author
+	// ("Открыть за N голосов"); opened before, it costs nothing.
+	// FailedPrecondition "not enough votes".
+	BuyPost(ctx context.Context, in *BuyPostRequest, opts ...grpc.CallOption) (*BuyPostResponse, error)
+	// Requires an access token: pays for a message to a user who asks votes
+	// for messages, before it is sent; RefundMessage gives the votes back
+	// when it is not. PermissionDenied "you cannot write to this user".
+	PayMessage(ctx context.Context, in *PayMessageRequest, opts ...grpc.CallOption) (*PayMessageResponse, error)
+	RefundMessage(ctx context.Context, in *RefundMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Requires an access token: who of the people a text of the caller
 	// names by nickname hears of it ("Вас упомянул пользователь" of
 	// openvk): not the caller, not across a blacklist, not a deleted page.
@@ -702,6 +718,46 @@ func (c *userServiceClient) CanMessage(ctx context.Context, in *CanMessageReques
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CanMessageResponse)
 	err := c.cc.Invoke(ctx, UserService_CanMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetBoughtPosts(ctx context.Context, in *GetBoughtPostsRequest, opts ...grpc.CallOption) (*GetBoughtPostsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetBoughtPostsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetBoughtPosts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) BuyPost(ctx context.Context, in *BuyPostRequest, opts ...grpc.CallOption) (*BuyPostResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BuyPostResponse)
+	err := c.cc.Invoke(ctx, UserService_BuyPost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) PayMessage(ctx context.Context, in *PayMessageRequest, opts ...grpc.CallOption) (*PayMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PayMessageResponse)
+	err := c.cc.Invoke(ctx, UserService_PayMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) RefundMessage(ctx context.Context, in *RefundMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_RefundMessage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1697,6 +1753,18 @@ type UserServiceServer interface {
 	// Requires an access token: whether the caller may write private
 	// messages to the user, as the user's privacy and blacklists allow.
 	CanMessage(context.Context, *CanMessageRequest) (*CanMessageResponse, error)
+	// Requires an access token: which of the paid posts the caller opened.
+	GetBoughtPosts(context.Context, *GetBoughtPostsRequest) (*GetBoughtPostsResponse, error)
+	// Internal, for the gateway, with the caller's token: opens the photos
+	// and documents of a paid post to the caller, paying its author
+	// ("Открыть за N голосов"); opened before, it costs nothing.
+	// FailedPrecondition "not enough votes".
+	BuyPost(context.Context, *BuyPostRequest) (*BuyPostResponse, error)
+	// Requires an access token: pays for a message to a user who asks votes
+	// for messages, before it is sent; RefundMessage gives the votes back
+	// when it is not. PermissionDenied "you cannot write to this user".
+	PayMessage(context.Context, *PayMessageRequest) (*PayMessageResponse, error)
+	RefundMessage(context.Context, *RefundMessageRequest) (*emptypb.Empty, error)
 	// Requires an access token: who of the people a text of the caller
 	// names by nickname hears of it ("Вас упомянул пользователь" of
 	// openvk): not the caller, not across a blacklist, not a deleted page.
@@ -2030,6 +2098,18 @@ func (UnimplementedUserServiceServer) CanPostOnWall(context.Context, *CanPostOnW
 }
 func (UnimplementedUserServiceServer) CanMessage(context.Context, *CanMessageRequest) (*CanMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CanMessage not implemented")
+}
+func (UnimplementedUserServiceServer) GetBoughtPosts(context.Context, *GetBoughtPostsRequest) (*GetBoughtPostsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetBoughtPosts not implemented")
+}
+func (UnimplementedUserServiceServer) BuyPost(context.Context, *BuyPostRequest) (*BuyPostResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BuyPost not implemented")
+}
+func (UnimplementedUserServiceServer) PayMessage(context.Context, *PayMessageRequest) (*PayMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PayMessage not implemented")
+}
+func (UnimplementedUserServiceServer) RefundMessage(context.Context, *RefundMessageRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method RefundMessage not implemented")
 }
 func (UnimplementedUserServiceServer) ResolveMentions(context.Context, *ResolveMentionsRequest) (*ResolveMentionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveMentions not implemented")
@@ -2777,6 +2857,78 @@ func _UserService_CanMessage_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).CanMessage(ctx, req.(*CanMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetBoughtPosts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBoughtPostsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetBoughtPosts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetBoughtPosts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetBoughtPosts(ctx, req.(*GetBoughtPostsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_BuyPost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BuyPostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).BuyPost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_BuyPost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).BuyPost(ctx, req.(*BuyPostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_PayMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PayMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).PayMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_PayMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).PayMessage(ctx, req.(*PayMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_RefundMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RefundMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).RefundMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_RefundMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).RefundMessage(ctx, req.(*RefundMessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4561,6 +4713,22 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CanMessage",
 			Handler:    _UserService_CanMessage_Handler,
+		},
+		{
+			MethodName: "GetBoughtPosts",
+			Handler:    _UserService_GetBoughtPosts_Handler,
+		},
+		{
+			MethodName: "BuyPost",
+			Handler:    _UserService_BuyPost_Handler,
+		},
+		{
+			MethodName: "PayMessage",
+			Handler:    _UserService_PayMessage_Handler,
+		},
+		{
+			MethodName: "RefundMessage",
+			Handler:    _UserService_RefundMessage_Handler,
 		},
 		{
 			MethodName: "ResolveMentions",

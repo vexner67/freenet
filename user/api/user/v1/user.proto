@@ -69,6 +69,18 @@ service UserService {
   // Requires an access token: whether the caller may write private
   // messages to the user, as the user's privacy and blacklists allow.
   rpc CanMessage(CanMessageRequest) returns (CanMessageResponse);
+  // Requires an access token: which of the paid posts the caller opened.
+  rpc GetBoughtPosts(GetBoughtPostsRequest) returns (GetBoughtPostsResponse);
+  // Internal, for the gateway, with the caller's token: opens the photos
+  // and documents of a paid post to the caller, paying its author
+  // ("Открыть за N голосов"); opened before, it costs nothing.
+  // FailedPrecondition "not enough votes".
+  rpc BuyPost(BuyPostRequest) returns (BuyPostResponse);
+  // Requires an access token: pays for a message to a user who asks votes
+  // for messages, before it is sent; RefundMessage gives the votes back
+  // when it is not. PermissionDenied "you cannot write to this user".
+  rpc PayMessage(PayMessageRequest) returns (PayMessageResponse);
+  rpc RefundMessage(RefundMessageRequest) returns (google.protobuf.Empty);
   // Requires an access token: who of the people a text of the caller
   // names by nickname hears of it ("Вас упомянул пользователь" of
   // openvk): not the caller, not across a blacklist, not a deleted page.
@@ -505,6 +517,12 @@ message PrivacySettings {
   // Who sees the gifts ("Кому видны мои подарки"); unspecified, as from
   // a client that does not know it, is everyone.
   Audience gifts_read = 16;
+  // Only people with Freenet Prime write to the user (but whom the user
+  // wrote to first).
+  bool messages_prime = 17;
+  // Votes each message to the user costs, 0 for free, up to 1 000 000;
+  // the user gets them (less the tax of sticker packs).
+  int64 message_price = 18;
 }
 
 // Who sees a part of a page.
@@ -917,6 +935,53 @@ message CanMessageRequest {
 
 message CanMessageResponse {
   bool allowed = 1;
+  // Refused only for having no Freenet Prime, which the recipient asks.
+  bool prime_only = 2;
+  // Votes each message costs the caller, 0 for free (PayMessage).
+  int64 price = 3;
+}
+
+message GetBoughtPostsRequest {
+  // Up to 100 posts.
+  repeated string post_ids = 1;
+}
+
+message GetBoughtPostsResponse {
+  // Those of the posts the caller has paid for.
+  repeated string post_ids = 1;
+}
+
+message BuyPostRequest {
+  string post_id = 1;
+  // The author and the price of the post, as the post service tells.
+  string author_id = 2;
+  int64 price = 3;
+}
+
+message BuyPostResponse {
+  // The votes the caller has left.
+  int64 votes = 1;
+}
+
+message PayMessageRequest {
+  // The recipient.
+  string user_id = 1;
+  // As in CanMessageRequest.
+  bool wrote_first = 2;
+  // The price the caller agreed to; another one is FailedPrecondition
+  // "the price of messages changed".
+  int64 price = 3;
+}
+
+message PayMessageResponse {
+  // Empty when the message costs nothing.
+  string payment_id = 1;
+  // The votes the caller has left.
+  int64 votes = 2;
+}
+
+message RefundMessageRequest {
+  string payment_id = 1;
 }
 
 message BlockRequest {

@@ -21,7 +21,6 @@ type BlockService interface {
 
 type PermissionService interface {
 	CanPostOnWall(ctx context.Context, authorID, ownerID uuid.UUID) (bool, error)
-	CanMessage(ctx context.Context, senderID, recipientID uuid.UUID, wroteFirst bool) (bool, error)
 	Access(ctx context.Context, viewerID, ownerID uuid.UUID) (user.Access, error)
 	ProfileFor(ctx context.Context, viewerID uuid.UUID, nickname user.Nickname) (user.PublicProfile, error)
 	Mentioned(ctx context.Context, authorID uuid.UUID, nicknames []user.Nickname) ([]uuid.UUID, error)
@@ -85,20 +84,6 @@ func viewerID(ctx context.Context) uuid.UUID {
 	}
 
 	return uuid.Nil
-}
-
-func (h *UserHandler) CanMessage(ctx context.Context, req *userv1.CanMessageRequest) (*userv1.CanMessageResponse, error) {
-	senderID, recipientID, err := callerAnd(ctx, req.GetUserId())
-	if err != nil {
-		return nil, err
-	}
-
-	allowed, err := h.permissionService.CanMessage(ctx, senderID, recipientID, req.GetWroteFirst())
-	if err != nil {
-		return nil, err
-	}
-
-	return &userv1.CanMessageResponse{Allowed: allowed}, nil
 }
 
 func (h *UserHandler) ResolveMentions(ctx context.Context, req *userv1.ResolveMentionsRequest) (*userv1.ResolveMentionsResponse, error) {
