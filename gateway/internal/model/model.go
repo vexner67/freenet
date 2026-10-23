@@ -138,6 +138,26 @@ type Privacy struct {
 	// Closed is openvk's "Тип профиля: закрытый": only the owner and the
 	// people the owner follows see the page.
 	Closed bool
+	// MessagesPrime: only people with Freenet Prime write to the user;
+	// MessagePrice is what a message to them costs, 0 for free. Neither
+	// holds for those the user wrote to first.
+	MessagesPrime bool
+	MessagePrice  int64
+}
+
+// MessageTerms are on what terms the caller writes to someone: Allowed or
+// not, refused only for having no Freenet Prime, and for how many votes a
+// message.
+type MessageTerms struct {
+	Allowed   bool
+	PrimeOnly bool
+	Price     int64
+}
+
+// MessagePayment is a message paid for; ID is "" when it is free.
+type MessagePayment struct {
+	ID      string
+	Balance int64
 }
 
 // People is what the site counts of its people: the pages that are not
@@ -344,6 +364,12 @@ type Post struct {
 	DocumentIDs []string
 	// Link is the card of the page the text links to, nil for none.
 	Link *Link
+	// Price is what the photos and documents cost to see, 0 for free; a
+	// viewer who has not paid sees them Locked, only how many there are.
+	Price           int64
+	Locked          bool
+	LockedPhotos    int
+	LockedDocuments int
 }
 
 // Link is the card of a page a post links to, as the page told it when
@@ -433,6 +459,8 @@ type NewPost struct {
 	// Link is the card of the page the text links to, nil for none; its
 	// picture is published already.
 	Link *Link
+	// Price is what others pay to see its photos and documents, 0 for free.
+	Price int64
 }
 
 // PostEdit is what an edit makes of a post: its text and photos, whole,

@@ -221,6 +221,8 @@ func toUser(u *userv1.User) model.User {
 			GiftsRead:          enumName(u.GetPrivacy().GetGiftsRead().String(), audiencePrefix),
 			ChatsInvite:        enumName(u.GetPrivacy().GetChatsInvite().String(), messagesWritePrefix),
 			Closed:             u.GetPrivacy().GetClosed(),
+			MessagesPrime:      u.GetPrivacy().GetMessagesPrime(),
+			MessagePrice:       u.GetPrivacy().GetMessagePrice(),
 		},
 	}
 }

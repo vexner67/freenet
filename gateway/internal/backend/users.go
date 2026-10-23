@@ -175,6 +175,8 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 			GiftsRead:          reads[5],
 			ChatsInvite:        userv1.MessagesWrite(chatsInvite),
 			Closed:             p.Closed,
+			MessagesPrime:      p.MessagesPrime,
+			MessagePrice:       p.MessagePrice,
 		},
 	})
 	if err != nil {
@@ -283,13 +285,52 @@ func (u *Users) Access(ctx context.Context, accessToken, userID string) (model.A
 
 // CanMessage tells whether the caller may write to userID; wroteFirst is
 // whether userID has written to the caller, from the message service.
-func (u *Users) CanMessage(ctx context.Context, accessToken, userID string, wroteFirst bool) (bool, error) {
+func (u *Users) CanMessage(ctx context.Context, accessToken, userID string, wroteFirst bool) (model.MessageTerms, error) {
 	resp, err := u.api.CanMessage(withToken(ctx, accessToken), &userv1.CanMessageRequest{UserId: userID, WroteFirst: wroteFirst})
 	if err != nil {
-		return false, errs.Wrap("u.api.CanMessage", fromStatus(err))
+		return model.MessageTerms{}, errs.Wrap("u.api.CanMessage", fromStatus(err))
 	}
 
-	return resp.GetAllowed(), nil
+	return model.MessageTerms{Allowed: resp.GetAllowed(), PrimeOnly: resp.GetPrimeOnly(), Price: resp.GetPrice()}, nil
+}
+
+// PayMessage pays for a message of the caller to userID at price, what the
+// caller agreed to; the payment has no ID when the message is free.
+func (u *Users) PayMessage(ctx context.Context, accessToken, userID string, wroteFirst bool, price int64) (model.MessagePayment, error) {
+	resp, err := u.api.PayMessage(withToken(ctx, accessToken), &userv1.PayMessageRequest{UserId: userID, WroteFirst: wroteFirst, Price: price})
+	if err != nil {
+		return model.MessagePayment{}, errs.Wrap("u.api.PayMessage", fromStatus(err))
+	}
+
+	return model.MessagePayment{ID: resp.GetPaymentId(), Balance: resp.GetVotes()}, nil
+}
+
+// RefundMessage gives back the votes of a message that was not sent.
+func (u *Users) RefundMessage(ctx context.Context, accessToken, paymentID string) error {
+	_, err := u.api.RefundMessage(withToken(ctx, accessToken), &userv1.RefundMessageRequest{PaymentId: paymentID})
+
+	return errs.Wrap("u.api.RefundMessage", fromStatus(err))
+}
+
+// BoughtPosts are those of postIDs the caller has paid to see.
+func (u *Users) BoughtPosts(ctx context.Context, accessToken string, postIDs []string) ([]string, error) {
+	resp, err := u.api.GetBoughtPosts(withToken(ctx, accessToken), &userv1.GetBoughtPostsRequest{PostIds: postIDs})
+	if err != nil {
+		return nil, errs.Wrap("u.api.GetBoughtPosts", fromStatus(err))
+	}
+
+	return resp.GetPostIds(), nil
+}
+
+// BuyPost pays price of the caller to authorID for the photos and documents
+// of postID and returns the votes left.
+func (u *Users) BuyPost(ctx context.Context, accessToken, postID, authorID string, price int64) (int64, error) {
+	resp, err := u.api.BuyPost(withToken(ctx, accessToken), &userv1.BuyPostRequest{PostId: postID, AuthorId: authorID, Price: price})
+	if err != nil {
+		return 0, errs.Wrap("u.api.BuyPost", fromStatus(err))
+	}
+
+	return resp.GetVotes(), nil
 }
 
 func (u *Users) ResolveMentions(ctx context.Context, accessToken string, nicknames []string) ([]string, error) {

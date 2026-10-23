@@ -124,6 +124,13 @@ func (a *api) pollsOf(r *http.Request, posts ...model.Post) (map[string]*pollJSO
 
 // asked is the response of a post just written, with the poll it asks.
 func (a *api) asked(r *http.Request, p model.Post) (postResponse, error) {
+	locked := []model.Post{p}
+	if err := a.lockPaid(r, locked); err != nil {
+		return postResponse{}, err
+	}
+
+	p = locked[0]
+
 	polls, err := a.pollsOf(r, p)
 	if err != nil {
 		return postResponse{}, err

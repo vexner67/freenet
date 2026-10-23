@@ -1394,6 +1394,37 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/posts/{id}/purchase:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Pay to see the photos and documents of a paid post
+      description: |
+        The post's price goes to its author, who pays the tax of sticker
+        packs of it into the treasury. Paid before, it costs nothing again.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The votes you have left and the post, open
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [balance, post]
+                properties:
+                  balance: { type: integer }
+                  post: { $ref: "#/components/schemas/Post" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`this post is not for sale` (free, or yours); `not enough votes`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/posts/{id}/archive:
     parameters:
       - name: id
@@ -6850,6 +6881,7 @@ paths:
                   type: array
                   maxItems: 20
                   items: { type: string, format: uuid }
+                price: { type: integer, minimum: 0, description: "The votes a message to the user costs, as the dialog's `messagePrice` tells: you agree to pay them. 409 `the price of messages changed` when the price is another; given back when the message is not sent" }
                 replyTo: { type: string, format: uuid, description: "A message of this conversation to answer (\"Ответить\"): one you see, not an action; 400 `replied message not found` otherwise" }
       responses:
         "201":
@@ -6860,13 +6892,13 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: The user's privacy or a blacklist does not let you write
+          description: "The user's privacy or a blacklist does not let you write; `only people with freenet prime can write to this user` when they let in only people with Freenet Prime"
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
-          description: "`the encryption keys changed`: the message is sealed for keys that are not yours or the user's anymore, or the user has none"
+          description: "`the encryption keys changed`: the message is sealed for keys that are not yours or the user's anymore, or the user has none; `the price of messages changed`; `not enough votes` to pay for it"
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -7633,6 +7665,8 @@ components:
         closed:
           type: boolean
           description: "A closed profile (\"Тип профиля: закрытый\"): only the people you follow see anything of the page but the names and the photo, whatever the other settings say; false when left out"
+        messagesPrime: { type: boolean, description: "Only people with Freenet Prime write to you (\"Писать мне могут только подписчики Freenet Prime\"); those you wrote to first answer all the same" }
+        messagePrice: { type: integer, minimum: 0, maximum: 1000000, description: "What a message to you costs, in votes; 0 for free, also when left out. You get them less the tax of sticker packs; those you wrote to first answer freely" }
 
     User:
       allOf:
@@ -7839,6 +7873,7 @@ components:
           description: "The poll a new post asks; with it `text` and `photos` may be empty. Only when writing: the poll of a post stays as asked, and an edit that carries one is refused (400)"
           allOf:
             - { $ref: "#/components/schemas/NewPoll" }
+        price: { type: integer, minimum: 0, maximum: 1000000, description: "Only for a new post on your own wall with photos or documents, not a repost: others see them for so many votes (POST /posts/{id}/purchase), which go to you less the tax of sticker packs. 400 otherwise; an edit keeps it" }
 
     NewPoll:
       type: object
@@ -8014,6 +8049,10 @@ components:
         archived: { type: boolean, description: "Put away in the archive of its wall (\"Архив записей\"): only the owner of the wall, or the admins of the community, see it" }
         commentsClosed: { type: boolean, description: "It takes no new comments: the owner of the wall closed them" }
         nsfw: { type: boolean, description: "Its author marked it as adult (\"Содержит NSFW-контент\"): the site blurs it until clicked, as the reader's settings say" }
+        price: { type: integer, description: "What its photos and documents cost to see, in votes; absent for a free post" }
+        locked: { type: boolean, description: "You have not paid for a paid post: `photos` and `documents` are none, `lockedPhotos` and `lockedDocuments` tell how many. Absent otherwise; the author sees them always" }
+        lockedPhotos: { type: integer }
+        lockedDocuments: { type: integer }
         fromWall:
           type: boolean
           description: "The post speaks for its wall, a community (\"От имени сообщества\"): `author` is the community, `wall` null, who wrote it is not told"
@@ -8040,6 +8079,10 @@ components:
         id: { type: string, format: uuid }
         deleted: { type: boolean }
         nsfw: { type: boolean, description: "Its author marked it as adult, as Post's nsfw" }
+        price: { type: integer, description: "As Post's price: what its photos and documents cost to see, in votes; absent for a free post" }
+        locked: { type: boolean, description: "You have not paid for a paid post: `photos` and `documents` are none, `lockedPhotos` and `lockedDocuments` tell how many. Absent otherwise; the author sees them always" }
+        lockedPhotos: { type: integer }
+        lockedDocuments: { type: integer }
         textCut: { type: boolean, description: "`text` is only its beginning, as Post's textCut" }
         author:
           oneOf:
@@ -8490,6 +8533,8 @@ components:
         canWrite:
           type: boolean
           description: "You may write to the peer; told on the first page, false on older pages and with after"
+        primeOnly: { type: boolean, description: "The peer lets in only people with Freenet Prime, which you have not; told with canWrite" }
+        messagePrice: { type: integer, description: "What a message to the peer costs, in votes, 0 for free; told with canWrite. Nothing for answering one who wrote to you first" }
 
     Relation:
       type: object

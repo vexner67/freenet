@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"net/http"
 	"slices"
 	"strings"
@@ -52,6 +53,9 @@ type messageRequest struct {
 	// ReplyTo is a message of the same dialog or chat it answers
 	// ("Ответить"); the words it quotes of a dialog's go in Sealed.
 	ReplyTo string `json:"replyTo"`
+	// Price is what the caller agreed a message costs, the recipient's
+	// messagePrice: a message to someone who asks votes for it is paid.
+	Price int64 `json:"price"`
 }
 
 // messageJSON: Out is the caller's own message, Read means its recipient
@@ -229,6 +233,11 @@ type messagePageResponse struct {
 	// CanWrite: the peer's privacy and blacklists let the caller write;
 	// told on the first page of a dialog, not on older pages or polls.
 	CanWrite bool `json:"canWrite"`
+	// PrimeOnly: the peer is written to only by people with Freenet Prime,
+	// which the caller has not. MessagePrice: a message to the peer costs
+	// so many votes, 0 for free.
+	PrimeOnly    bool  `json:"primeOnly"`
+	MessagePrice int64 `json:"messagePrice"`
 }
 
 // toMessageJSON: a message is the caller's when the peer did not send it.
@@ -439,25 +448,67 @@ func (a *api) listMessages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if at.Cursor == "" && at.After == "" {
-		if resp.CanWrite, err = a.canMessage(r, token, peer.ID); err != nil {
+		terms, _, err := a.messageTerms(r, token, peer.ID)
+		if err != nil {
 			a.writeError(w, r, err)
 			return
 		}
+
+		resp.CanWrite, resp.PrimeOnly, resp.MessagePrice = terms.Allowed, terms.PrimeOnly, terms.Price
 	}
 
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// canMessage asks the user service, which keeps privacy and blacklists,
-// whether the caller may write to peerID, telling it what only the message
-// service knows: whether the peer wrote first, so may be answered.
-func (a *api) canMessage(r *http.Request, token, peerID string) (bool, error) {
+// messageTerms asks the user service, which keeps privacy and blacklists,
+// whether and for how much the caller may write to peerID, telling it what
+// only the message service knows: whether the peer wrote first, so may be
+// answered (freely). It returns that too.
+func (a *api) messageTerms(r *http.Request, token, peerID string) (model.MessageTerms, bool, error) {
 	wroteFirst, err := a.messages.HasMessagesFrom(r.Context(), token, peerID)
 	if err != nil {
-		return false, err
+		return model.MessageTerms{}, false, err
 	}
 
-	return a.users.CanMessage(r.Context(), token, peerID, wroteFirst)
+	terms, err := a.users.CanMessage(r.Context(), token, peerID, wroteFirst)
+
+	return terms, wroteFirst, err
+}
+
+// errCannotMessage and errPrimeOnly refuse a message to someone whose
+// privacy or blacklist keeps the caller out.
+var (
+	errCannotMessage = failure.New(failure.PermissionDenied, "you cannot write to this user")
+	errPrimeOnly     = failure.New(failure.PermissionDenied, "only people with freenet prime can write to this user")
+)
+
+func refusal(terms model.MessageTerms) error {
+	if terms.PrimeOnly {
+		return errPrimeOnly
+	}
+
+	return errCannotMessage
+}
+
+// refundMessage gives back the votes of a paid message the message service
+// refused: one that may have been written all the same stays paid.
+func (a *api) refundMessage(r *http.Request, token string, payment model.MessagePayment, refused error) {
+	if payment.ID == "" {
+		return
+	}
+
+	switch failure.From(refused).Kind {
+	case failure.InvalidArgument, failure.PermissionDenied, failure.NotFound, failure.Conflict, failure.TooManyRequests:
+	default:
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), releaseTimeout)
+	defer cancel()
+
+	if err := a.users.RefundMessage(ctx, token, payment.ID); err != nil {
+		a.logger.WarnContext(r.Context(), "the votes of an unsent message kept", "error", err)
+	}
 }
 
 // errPlainText refuses the plain words of a message of a dialog: its two
@@ -504,14 +555,19 @@ func (a *api) sendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allowed, err := a.canMessage(r, token, recipient.ID)
+	terms, wroteFirst, err := a.messageTerms(r, token, recipient.ID)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	if !allowed {
-		a.writeError(w, r, failure.New(failure.PermissionDenied, "you cannot write to this user"))
+	if !terms.Allowed {
+		a.writeError(w, r, refusal(terms))
+		return
+	}
+
+	if terms.Price != req.Price {
+		a.writeError(w, r, failure.New(failure.Conflict, "the price of messages changed"))
 		return
 	}
 
@@ -521,8 +577,18 @@ func (a *api) sendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The message is paid before it is sent, and the votes go back when
+	// the message service refuses it: the two live in different services.
+	payment, err := a.users.PayMessage(r.Context(), token, recipient.ID, wroteFirst, req.Price)
+	if err != nil {
+		a.releasePhotos(r, token, req.Photos, err)
+		a.writeError(w, r, err)
+		return
+	}
+
 	m, err := a.messages.Send(r.Context(), token, recipient.ID, draft)
 	if err != nil {
+		a.refundMessage(r, token, payment, err)
 		a.releasePhotos(r, token, req.Photos, err)
 		a.writeError(w, r, err)
 		return
@@ -793,14 +859,14 @@ func (a *api) dialogTyping(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allowed, err := a.canMessage(r, token, peer.ID)
+	terms, _, err := a.messageTerms(r, token, peer.ID)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	if !allowed {
-		a.writeError(w, r, failure.New(failure.PermissionDenied, "you cannot write to this user"))
+	if !terms.Allowed {
+		a.writeError(w, r, refusal(terms))
 		return
 	}
 

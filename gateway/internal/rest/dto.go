@@ -194,6 +194,10 @@ type privacyJSON struct {
 	ChatsInvite string `json:"chatsInvite"`
 	// Closed is "Тип профиля: закрытый".
 	Closed bool `json:"closed"`
+	// MessagesPrime: only people with Freenet Prime write to the user;
+	// MessagePrice: a message costs so many votes, 0 for free.
+	MessagesPrime bool  `json:"messagesPrime"`
+	MessagePrice  int64 `json:"messagePrice"`
 }
 
 func (p privacyJSON) toModel() model.Privacy {
@@ -213,6 +217,8 @@ func (p privacyJSON) toModel() model.Privacy {
 		GiftsRead:          p.GiftsRead,
 		ChatsInvite:        p.ChatsInvite,
 		Closed:             p.Closed,
+		MessagesPrime:      p.MessagesPrime,
+		MessagePrice:       p.MessagePrice,
 	}
 }
 
@@ -321,6 +327,8 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 			GiftsRead:          u.Privacy.GiftsRead,
 			ChatsInvite:        u.Privacy.ChatsInvite,
 			Closed:             u.Privacy.Closed,
+			MessagesPrime:      u.Privacy.MessagesPrime,
+			MessagePrice:       u.Privacy.MessagePrice,
 		},
 		Deactivated: u.Deactivated,
 		PurgeAt:     timeString(u.PurgeAt),

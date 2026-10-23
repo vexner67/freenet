@@ -29,6 +29,9 @@ type postRequest struct {
 	// Documents are IDs of the caller's documents a new post attaches;
 	// an edit keeps those the post has.
 	Documents []string `json:"documents"`
+	// Price: a new post on the caller's own wall shows its photos and
+	// documents to others for so many votes; 0 for free.
+	Price int64 `json:"price"`
 }
 
 type authorJSON struct {
@@ -82,6 +85,7 @@ type postResponse struct {
 	// Link is the card of the page the text links to, as it was when the
 	// post was written; null for none.
 	Link *linkJSON `json:"link"`
+	paidJSON
 	// EditedAt is null for a post never edited; its author may edit it
 	// until EditableUntil.
 	EditedAt      *string `json:"editedAt"`
@@ -157,6 +161,21 @@ type repostJSON struct {
 	Documents []documentJSON `json:"documents,omitempty"`
 	// Link is the card of the shared post, null for none.
 	Link *linkJSON `json:"link"`
+	paidJSON
+}
+
+// paidJSON tells what the photos and documents of a post cost: Price, 0
+// for free. Locked: the viewer has not paid, and photos and documents are
+// none, only LockedPhotos and LockedDocuments tell how many.
+type paidJSON struct {
+	Price           int64 `json:"price,omitempty"`
+	Locked          bool  `json:"locked,omitempty"`
+	LockedPhotos    int   `json:"lockedPhotos,omitempty"`
+	LockedDocuments int   `json:"lockedDocuments,omitempty"`
+}
+
+func toPaidJSON(p model.Post) paidJSON {
+	return paidJSON{Price: p.Price, Locked: p.Locked, LockedPhotos: p.LockedPhotos, LockedDocuments: p.LockedDocuments}
 }
 
 type likeResponse struct {
@@ -281,6 +300,7 @@ func toPostResponse(p model.Post) postResponse {
 		Mine:           p.Mine,
 		Signer:         signerJSON(p),
 		Link:           toLinkJSON(p.Author.ID, p.Link),
+		paidJSON:       toPaidJSON(p),
 	}
 }
 
@@ -345,8 +365,9 @@ func toRepostJSON(p model.Post) *repostJSON {
 		CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339),
 		RepostOf:  p.RepostOf,
 
-		NSFW: p.NSFW,
-		Link: toLinkJSON(p.Author.ID, p.Link),
+		NSFW:     p.NSFW,
+		Link:     toLinkJSON(p.Author.ID, p.Link),
+		paidJSON: toPaidJSON(p),
 	}
 }
 
@@ -386,6 +407,14 @@ func (a *api) getPost(w http.ResponseWriter, r *http.Request) {
 func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, error) {
 	shared, err := a.sharedPosts(r, posts)
 	if err != nil {
+		return nil, err
+	}
+
+	if err = a.lockPaid(r, posts); err != nil {
+		return nil, err
+	}
+
+	if err = a.lockShared(r, shared); err != nil {
 		return nil, err
 	}
 
@@ -594,6 +623,10 @@ func (a *api) sharedPosts(r *http.Request, posts []model.Post) (map[string]model
 		return nil, err
 	}
 
+	if err = a.lockPaid(r, found); err != nil {
+		return nil, err
+	}
+
 	shared := make(map[string]model.Post, len(found))
 	for _, p := range found {
 		shared[p.ID] = p
@@ -790,7 +823,7 @@ func (a *api) writePost(w http.ResponseWriter, r *http.Request, nickname string)
 
 	p, err := a.posts.Create(r.Context(), token, model.NewPost{
 		WallID: wall.ID, Text: req.Text, PhotoIDs: req.Photos, NSFW: req.NSFW != nil && *req.NSFW, Mentions: mentions,
-		Poll: toNewPoll(req.Poll), DocumentIDs: req.Documents, Link: link,
+		Poll: toNewPoll(req.Poll), DocumentIDs: req.Documents, Link: link, Price: req.Price,
 	})
 	if err != nil {
 		a.releasePhotos(r, token, req.Photos, err)
