@@ -43,7 +43,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
   const fromClub = () => owner.wall !== 'open' || $('post-from-club').checked;
   const create = owner.club
     ? (text, photos) => api.createClubPost(clubRef(owner), text, photos, { fromClub: fromClub(), signed: fromClub() && $('post-signed').checked, nsfw: $('post-nsfw').checked, poll: poll.value(), documents: documents.ids() })
-    : (text, photos) => api.createPost(owner.nickname, text, photos, $('post-nsfw').checked, poll.value(), documents.ids());
+    : (text, photos) => api.createPost(owner.nickname, text, photos, $('post-nsfw').checked, poll.value(), documents.ids(), isOwner ? price() : 0);
   let attachments;
   // documents are those of "Мои Документы" attached to the post.
   let documents;
@@ -151,6 +151,11 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       return;
     }
 
+    if (timer?.active() && price() > 0) {
+      showError(error, tr('Отложенную запись нельзя сделать платной.'));
+      return;
+    }
+
     if ((timer?.active() || suggesting) && documents.count()) {
       showError(error, suggesting ? tr('К предложенной записи нельзя прикрепить документ.') : tr('К отложенной записи нельзя прикрепить документ.'));
       return;
@@ -181,6 +186,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       }
       $('post-text').value = '';
       $('post-nsfw').checked = false;
+      if ($('post-price')) $('post-price').value = '0';
       autosize($('post-text'));
       $('post-text').blur();
       attachments.clear();
@@ -209,6 +215,9 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
     if (suggest) text.placeholder = tr('Предложить новость');
     // A suggested post is marked by the admins, if at all.
     $('post-nsfw-label').hidden = suggest;
+    // Only a post on your own wall sells its photos: the votes are yours.
+    // The page of a club has no such field.
+    if ($('post-price-label')) $('post-price-label').hidden = !(isOwner && !owner.club);
     let showSigned = null;
     if (speaksForClub) {
       // "От имени сообщества" only where there is a choice; "Подпись
@@ -278,6 +287,11 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
   }
 
   // postpone keeps the post for the time the timer says.
+  // price: the votes others pay for the photos and documents of the post.
+  function price() {
+    return Math.max(0, Math.floor(Number($('post-price')?.value) || 0));
+  }
+
   function postpone(text, photos) {
     const nsfw = $('post-nsfw').checked;
     if (!owner.club) return api.postpone(text, photos, nsfw, timer.value());

@@ -158,6 +158,10 @@ function initForm(me) {
     },
   });
 
+  // price: the votes others pay for the photos and documents of the post.
+  const price = () => Math.max(0, Math.floor(Number($('post-price').value) || 0));
+  $('post-price-label').hidden = false;
+
   function updateCounter() {
     const left = MAX_LENGTH - text.value.length;
     $('post-counter').textContent = left <= MAX_LENGTH - COUNTER_FROM ? tr('осталось {0}', left) : '';
@@ -178,6 +182,11 @@ function initForm(me) {
       return;
     }
 
+    if (timer.active() && price() > 0) {
+      showError(error, tr('Отложенную запись нельзя сделать платной.'));
+      return;
+    }
+
     if (timer.active() && documents.count()) {
       showError(error, tr('К отложенной записи нельзя прикрепить документ.'));
       return;
@@ -191,11 +200,12 @@ function initForm(me) {
         $('posts').prepend(postponedNotice(p, me));
         timer.clear();
       } else {
-        $('posts').prepend(feedNode(await api.createPost(me.nickname, text.value, attachments.ids(), $('post-nsfw').checked, poll.value(), documents.ids()), me));
+        $('posts').prepend(feedNode(await api.createPost(me.nickname, text.value, attachments.ids(), $('post-nsfw').checked, poll.value(), documents.ids(), price()), me));
       }
       showEmpty();
       text.value = '';
       $('post-nsfw').checked = false;
+      $('post-price').value = '0';
       autosize(text);
       text.blur();
       attachments.clear();

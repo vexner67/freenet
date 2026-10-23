@@ -319,8 +319,12 @@ export const api = {
   // nsfw marks the post as adult ("Содержит NSFW-контент").
   // poll: the poll the post asks ({ title, options, anonymous, multiple,
   // locked, days }), null for none. documents are IDs of your documents.
-  createPost: (nickname, text, photos = [], nsfw = false, poll = null, documents = []) =>
-    authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/posts`, { text, photos, nsfw, documents, ...(poll && { poll }) }),
+  // price: the votes others pay to see the photos and documents of a post
+  // on your own wall, 0 for free.
+  createPost: (nickname, text, photos = [], nsfw = false, poll = null, documents = [], price = 0) =>
+    authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/posts`, { text, photos, nsfw, documents, ...(poll && { poll }), ...(price > 0 && { price }) }),
+  // Opens the paid photos and documents of a post: { balance, post }.
+  buyPost: (id) => authorized('POST', '/api/v1/posts/' + encodeURIComponent(id) + '/purchase'),
   // VK's "Таймер": a post kept to come out at publishAt (ISO) on your own
   // wall, or, as postponeClubPost, speaking for a club you run.
   postpone: (text, photos, nsfw, publishAt) => authorized('POST', '/api/v1/me/postponed', { text, photos, nsfw, publishAt }),
@@ -465,15 +469,17 @@ export const api = {
   // ("Поделиться" "в переписку"), albumPhoto a photo of an album; forward
   // carries messages of your dialogs and chats on ("Переслать"); replyTo
   // answers a message of the dialog ("Ответить").
-  sendMessage: (nickname, { sealed = null, photos = [], post = '', forward = [], albumPhoto = '', documents = [], replyTo = '' } = {}) =>
-    authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sealed, photos, post, forward, albumPhoto, documents, replyTo }),
+  // price: the votes a message to nickname costs, as the dialog said —
+  // another price is refused.
+  sendMessage: (nickname, { sealed = null, photos = [], post = '', forward = [], albumPhoto = '', documents = [], replyTo = '', price = 0 } = {}) =>
+    authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sealed, photos, post, forward, albumPhoto, documents, replyTo, ...(price > 0 && { price }) }),
   // One reaction a person on a message of a dialog (heart, like, laugh,
   // wow, sad, fire); '' takes yours away.
   reactToMessage: (id, reaction) => (reaction
     ? authorized('PUT', `/api/v1/messages/${encodeURIComponent(id)}/reaction`, { reaction })
     : authorized('DELETE', `/api/v1/messages/${encodeURIComponent(id)}/reaction`)),
   // A sticker is a message by itself, not sealed: it says nothing.
-  sendSticker: (nickname, sticker) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sticker }),
+  sendSticker: (nickname, sticker, price = 0) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sticker, ...(price > 0 && { price }) }),
   // Chats of several people ("беседы"): members are nicknames.
   createChat: (title, members) => authorized('POST', '/api/v1/chats', { title, members }),
   chat: (id) => authorized('GET', `/api/v1/chats/${encodeURIComponent(id)}`),
