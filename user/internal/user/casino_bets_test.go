@@ -90,10 +90,10 @@ func TestCasinoBets_Bet(t *testing.T) {
 		chance     int
 		prize      int64
 	}{
-		{amount: 10, multiplier: 200, chance: 4250, prize: 20},
-		{amount: 11, multiplier: 300, chance: 2833, prize: 33},
-		{amount: 50, multiplier: 200, chance: 4250, prize: 100},
-		{amount: 100, multiplier: 1000, chance: 850, prize: 1000},
+		{amount: 10, multiplier: 200, chance: 4850, prize: 20},
+		{amount: 11, multiplier: 300, chance: 3233, prize: 33},
+		{amount: 50, multiplier: 200, chance: 4850, prize: 100},
+		{amount: 100, multiplier: 1000, chance: 970, prize: 1000},
 	}
 	for _, tt := range tests {
 		bet, err := bets.Bet(tt.amount, tt.multiplier)

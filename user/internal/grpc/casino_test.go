@@ -76,7 +76,7 @@ func TestCasinoBets(t *testing.T) {
 	ann, _ := s.member(t, "ann")
 
 	got, err := s.client.GetCasino(context.Background(), &userv1.GetCasinoRequest{})
-	if err != nil || got.GetBetLeast() != 1 || got.GetBetMost() != 100 || len(got.GetAim()) != 6 || got.GetAim()[0].GetMultiplier() != 200 || got.GetAim()[0].GetChance() != 4250 {
+	if err != nil || got.GetBetLeast() != 1 || got.GetBetMost() != 100 || len(got.GetAim()) != 6 || got.GetAim()[0].GetMultiplier() != 200 || got.GetAim()[0].GetChance() != 4850 {
 		t.Fatalf("GetCasino = %v, %v", got, err)
 	}
 

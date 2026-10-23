@@ -57,10 +57,13 @@ func TestCasinoRocket_Crash(t *testing.T) {
 		roll int64
 		want int
 	}{
-		// Return / 1 is below ×1: the rocket explodes at the start.
+		// 15% of the rolls explode the rocket at the start, no more.
 		{name: "the start", roll: 0, want: 100},
-		{name: "×1.7", roll: user.RocketRolls / 2, want: 170},
-		{name: "×8.49", roll: user.RocketRolls / 10 * 9, want: 849},
+		{name: "still the start", roll: user.RocketRolls / 100 * 14, want: 100},
+		{name: "just off", roll: user.RocketRolls / 1000 * 151, want: 101},
+		{name: "past ×1.01", roll: user.RocketRolls / 100 * 16, want: 102},
+		{name: "×1.7", roll: user.RocketRolls / 2, want: 171},
+		{name: "×8.5", roll: user.RocketRolls / 10 * 9, want: 850},
 		{name: "the top", roll: user.RocketRolls - 1, want: 100_000},
 	}
 
