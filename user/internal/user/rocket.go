@@ -42,7 +42,7 @@ var (
 // votes, a rocket takes off with a multiplier growing from ×1, and the bet
 // comes back multiplied by what it showed when the player cashed — if the
 // rocket had not exploded yet. It explodes at a crash point drawn at the
-// launch: at x or later with the chance Return / x, never past Top.
+// launch: past x with the chance Return / x, never past Top.
 type CasinoRocket struct {
 	least, most int64
 	ret, top    int
@@ -64,9 +64,9 @@ func NewCasinoRocket(least, most int64, ret, top int) (CasinoRocket, error) {
 }
 
 // DefaultCasinoRocket is the rocket until the administrators change it:
-// bets of 1 to 100 votes, 85% back on average, up to ×10.
+// bets of 1 to 100 votes, 97% back on average, up to ×10.
 func DefaultCasinoRocket() CasinoRocket {
-	return CasinoRocket{least: 1, most: 100, ret: 8500, top: 1000}
+	return CasinoRocket{least: 1, most: 100, ret: 9700, top: 1000}
 }
 
 func (r CasinoRocket) Least() int64 {
@@ -89,17 +89,20 @@ func (r CasinoRocket) Top() int {
 	return r.top
 }
 
-// Crash is the crash point of a roll in [0, RocketRolls), in hundredths:
-// Return / (1 - roll / RocketRolls), at least ×1 (the rocket explodes at
-// the start) and at most Top.
+// Crash is the crash point of a roll in [0, RocketRolls), in hundredths.
+// The rocket explodes at the start (×1) with the chance 1 - Return, so
+// that is the whole edge of the casino; otherwise it flies past x with the
+// chance Return / x exactly: the crash is the first hundredth above
+// Return / (1 - roll / RocketRolls), at most Top. Rounding the crash down
+// instead would explode the rocket at ×1 once more in a hundred launches.
 func (r CasinoRocket) Crash(roll int64) int {
 	left := 1 - float64(roll)/RocketRolls
-	crash := math.Floor(float64(r.ret) / 100 / left)
-
-	if crash < 100 || math.IsNaN(crash) {
+	if left > float64(r.ret)/MaxRocketReturn {
 		return 100
 	}
-	if crash > float64(r.top) {
+
+	crash := math.Floor(float64(r.ret)/100/left) + 1
+	if crash > float64(r.top) || math.IsNaN(crash) {
 		return r.top
 	}
 

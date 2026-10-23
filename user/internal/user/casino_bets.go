@@ -21,11 +21,11 @@ const (
 
 // defaultReturn is what the default games give back on average, in
 // percent.
-const defaultReturn = 85
+const defaultReturn = 97
 
 // defaultAim are the multipliers until the administrators change them,
-// each winning with the chance 85% divided by it: the casino gives back
-// 85% of what is bet on average.
+// each winning with the chance 97% divided by it: the casino gives back
+// 97% of what is bet on average, as real casinos do.
 var defaultAim = []int{200, 300, 400, 500, 700, 1000}
 
 var (

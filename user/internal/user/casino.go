@@ -62,19 +62,19 @@ func NewCasino(price int64, prizes []CasinoPrize) (Casino, error) {
 }
 
 // DefaultCasino is the casino until the administrators change it: a spin
-// for 10 votes gives back 85% of them, a thousand once in 1000 spins.
+// for 10 votes gives back 97% of them, a thousand once in 1000 spins.
 func DefaultCasino() Casino {
 	return Casino{price: 10, prizes: []CasinoPrize{
 		{Votes: 5, Weight: 200_000},
-		{Votes: 0, Weight: 89_500},
+		{Votes: 0, Weight: 59_500},
 		{Votes: 1000, Weight: 1_000},
-		{Votes: 0, Weight: 89_500},
+		{Votes: 0, Weight: 59_500},
 		{Votes: 20, Weight: 80_000},
 		{Votes: 2, Weight: 200_000},
-		{Votes: 0, Weight: 89_500},
+		{Votes: 0, Weight: 59_500},
 		{Votes: 300, Weight: 3_000},
-		{Votes: 10, Weight: 120_000},
-		{Votes: 0, Weight: 89_500},
+		{Votes: 10, Weight: 240_000},
+		{Votes: 0, Weight: 59_500},
 		{Votes: 100, Weight: 10_000},
 		{Votes: 50, Weight: 28_000},
 	}}
