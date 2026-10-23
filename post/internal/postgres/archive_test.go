@@ -321,3 +321,31 @@ func TestPostRepository_ArchiveByYears(t *testing.T) {
 		t.Fatalf("restoring all = %d, %v", n, err)
 	}
 }
+
+func TestPostRepository_Price(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	repo := postgres.NewPostRepository(newPool(t))
+	ann := uuid.New()
+
+	photos, _ := post.NewPhotos([]uuid.UUID{uuid.New()})
+	p, err := post.New(ann, ann, post.RestoreContent("", photos, uuid.Nil), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p, err = p.Priced(25); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = repo.Save(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+
+	if got, err := repo.Get(ctx, p.ID()); err != nil || got.Price() != 25 {
+		t.Fatalf("the paid post = %+v, %v", got, err)
+	}
+	if wall, err := repo.ListFeed(ctx, service.FeedSources{Reader: ann}, uuid.Nil, 10); err != nil || len(wall) != 1 || wall[0].Price() != 25 {
+		t.Fatalf("the wall = %+v, %v", wall, err)
+	}
+}

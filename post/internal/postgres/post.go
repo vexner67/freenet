@@ -50,11 +50,12 @@ const savePostQuery = `
 		shared_photo_id,
 		hashtags,
 		nsfw,
+		price,
 		polled,
 		document_ids,
 		link
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 `
 
 // saveRepostQuery counts the repost in the shared post and adds it in one
@@ -94,7 +95,7 @@ func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 	}
 
 	if content.RepostOf() == uuid.Nil {
-		if _, err := r.conn(ctx).Exec(ctx, savePostQuery, append(args, p.NSFW(), content.Polled(), documentIDs(content.Documents()), linkToDB(content.Link()))...); err != nil {
+		if _, err := r.conn(ctx).Exec(ctx, savePostQuery, append(args, p.NSFW(), p.Price().Int64(), content.Polled(), documentIDs(content.Documents()), linkToDB(content.Link()))...); err != nil {
 			return errs.Wrap("r.conn.Exec", err)
 		}
 
@@ -134,6 +135,7 @@ const getPostQuery = `
 		archived,
 		comments_closed,
 		nsfw,
+		price,
 		polled,
 		document_ids,
 		link,
@@ -174,6 +176,7 @@ const getPostsQuery = `
 		archived,
 		comments_closed,
 		nsfw,
+		price,
 		polled,
 		document_ids,
 		link,
@@ -309,6 +312,7 @@ const getPinnedPostQuery = `
 		archived,
 		comments_closed,
 		nsfw,
+		price,
 		polled,
 		document_ids,
 		link,
@@ -349,6 +353,7 @@ const postsByWallSelect = `
 		archived,
 		comments_closed,
 		nsfw,
+		price,
 		polled,
 		document_ids,
 		link,
@@ -466,6 +471,7 @@ const listFeedQuery = `
 		archived,
 		comments_closed,
 		nsfw,
+		price,
 		polled,
 		document_ids,
 		link,
@@ -519,6 +525,7 @@ const listGlobalFeedQuery = `
 		archived,
 		comments_closed,
 		nsfw,
+		price,
 		polled,
 		document_ids,
 		link,
@@ -583,6 +590,7 @@ const listRepostsQuery = `
 		archived,
 		comments_closed,
 		nsfw,
+		price,
 		polled,
 		document_ids,
 		link,
@@ -706,6 +714,7 @@ const (
 		archived,
 		comments_closed,
 		nsfw,
+		price,
 		polled,
 		document_ids,
 		link,
@@ -935,7 +944,7 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 
 	err := row.Scan(&s.ID, &s.WallID, &s.AuthorID, &text, &photos, &s.CreatedAt, &repostOf,
 		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.FromWall, &s.Signed, &s.Suggested,
-		&photo, &s.Archived, &s.CommentsClosed, &s.NSFW, &polled, &docs, &link, &s.Pinned)
+		&photo, &s.Archived, &s.CommentsClosed, &s.NSFW, &s.Price, &polled, &docs, &link, &s.Pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -1003,6 +1012,7 @@ const deletePostsByUserQuery = `
 			archived,
 			comments_closed,
 			nsfw,
+			price,
 			polled,
 			document_ids,
 			link,
@@ -1039,6 +1049,7 @@ const deletePostsByUserQuery = `
 		archived,
 		comments_closed,
 		nsfw,
+		price,
 		polled,
 		document_ids,
 		link,

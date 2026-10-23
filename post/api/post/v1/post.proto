@@ -398,6 +398,9 @@ message Post {
   repeated string document_ids = 25;
   // The card of the page the text links to; unset for none.
   Link link = 26;
+  // Votes others pay to see its photos and documents, 0 for free; the
+  // caller hides them from those who have not paid.
+  int64 price = 27;
 }
 
 // Link is the card of a page a post links to, as the page tells it.
@@ -629,6 +632,9 @@ message CreatePostRequest {
   // picture is a photo of the author the caller has published already.
   // An edit keeps it.
   Link link = 12;
+  // Votes others pay to see its photos and documents, 0 for free: only
+  // on the author's own wall, with photos or documents.
+  int64 price = 13;
 }
 
 // PollDraft is a poll as its author asks it.

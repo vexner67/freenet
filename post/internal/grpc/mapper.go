@@ -249,6 +249,7 @@ func toProtoPost(p *post.Post, liked bool, viewerID uuid.UUID) *postv1.Post {
 		Polled:         p.Content().Polled(),
 		DocumentIds:    idStrings(p.Content().Documents()),
 		Link:           toProtoLink(p.Content().Link()),
+		Price:          p.Price().Int64(),
 	}
 
 	if !p.EditedAt().IsZero() {

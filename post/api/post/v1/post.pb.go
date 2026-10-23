@@ -192,7 +192,10 @@ type Post struct {
 	// what they are, and a deleted one is gone.
 	DocumentIds []string `protobuf:"bytes,25,rep,name=document_ids,json=documentIds,proto3" json:"document_ids,omitempty"`
 	// The card of the page the text links to; unset for none.
-	Link          *Link `protobuf:"bytes,26,opt,name=link,proto3" json:"link,omitempty"`
+	Link *Link `protobuf:"bytes,26,opt,name=link,proto3" json:"link,omitempty"`
+	// Votes others pay to see its photos and documents, 0 for free; the
+	// caller hides them from those who have not paid.
+	Price         int64 `protobuf:"varint,27,opt,name=price,proto3" json:"price,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -400,6 +403,13 @@ func (x *Post) GetLink() *Link {
 		return x.Link
 	}
 	return nil
+}
+
+func (x *Post) GetPrice() int64 {
+	if x != nil {
+		return x.Price
+	}
+	return 0
 }
 
 // Link is the card of a page a post links to, as the page tells it.
@@ -1886,7 +1896,10 @@ type CreatePostRequest struct {
 	// The card of the page the text links to, as the caller read it; its
 	// picture is a photo of the author the caller has published already.
 	// An edit keeps it.
-	Link          *Link `protobuf:"bytes,12,opt,name=link,proto3" json:"link,omitempty"`
+	Link *Link `protobuf:"bytes,12,opt,name=link,proto3" json:"link,omitempty"`
+	// Votes others pay to see its photos and documents, 0 for free: only
+	// on the author's own wall, with photos or documents.
+	Price         int64 `protobuf:"varint,13,opt,name=price,proto3" json:"price,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1996,6 +2009,13 @@ func (x *CreatePostRequest) GetLink() *Link {
 		return x.Link
 	}
 	return nil
+}
+
+func (x *CreatePostRequest) GetPrice() int64 {
+	if x != nil {
+		return x.Price
+	}
+	return 0
 }
 
 // PollDraft is a poll as its author asks it.
@@ -12486,7 +12506,7 @@ var File_api_post_v1_post_proto protoreflect.FileDescriptor
 
 const file_api_post_v1_post_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xbe\x06\n" +
+	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd4\x06\n" +
 	"\x04Post\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\tR\bauthorId\x12\x12\n" +
@@ -12515,7 +12535,8 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\btext_cut\x18\x17 \x01(\bR\atextCut\x12\x16\n" +
 	"\x06polled\x18\x18 \x01(\bR\x06polled\x12!\n" +
 	"\fdocument_ids\x18\x19 \x03(\tR\vdocumentIds\x12!\n" +
-	"\x04link\x18\x1a \x01(\v2\r.post.v1.LinkR\x04linkJ\x04\b\x12\x10\x13R\ravatar_update\"\x7f\n" +
+	"\x04link\x18\x1a \x01(\v2\r.post.v1.LinkR\x04link\x12\x14\n" +
+	"\x05price\x18\x1b \x01(\x03R\x05priceJ\x04\b\x12\x10\x13R\ravatar_update\"\x7f\n" +
 	"\x04Link\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
@@ -12628,7 +12649,7 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x18PublishPostponedResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\"(\n" +
 	"\x16DeletePostponedRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xeb\x02\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x81\x03\n" +
 	"\x11CreatePostRequest\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\x12\x17\n" +
@@ -12641,7 +12662,8 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x04poll\x18\n" +
 	" \x01(\v2\x12.post.v1.PollDraftR\x04poll\x12!\n" +
 	"\fdocument_ids\x18\v \x03(\tR\vdocumentIds\x12!\n" +
-	"\x04link\x18\f \x01(\v2\r.post.v1.LinkR\x04linkJ\x04\b\a\x10\bR\ravatar_update\"\xa1\x01\n" +
+	"\x04link\x18\f \x01(\v2\r.post.v1.LinkR\x04link\x12\x14\n" +
+	"\x05price\x18\r \x01(\x03R\x05priceJ\x04\b\a\x10\bR\ravatar_update\"\xa1\x01\n" +
 	"\tPollDraft\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x18\n" +
 	"\aoptions\x18\x02 \x03(\tR\aoptions\x12\x1c\n" +

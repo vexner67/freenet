@@ -257,6 +257,7 @@ const listPostsByAuthorQuery = `
 		archived,
 		comments_closed,
 		nsfw,
+		price,
 		polled,
 		document_ids,
 		link,

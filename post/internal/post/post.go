@@ -201,6 +201,8 @@ type Post struct {
 	// nsfw: the author marked the post as adult ("Содержит NSFW-контент"
 	// of openvk); readers see it blurred until they ask.
 	nsfw bool
+	// price: what others pay to see its photos and documents.
+	price Price
 }
 
 // New creates a post by authorID on the wall of wallID. Its UUIDv7 ID
@@ -259,6 +261,7 @@ type Stored struct {
 	// CommentsClosed: nobody comments the post anymore.
 	CommentsClosed bool
 	NSFW           bool
+	Price          Price
 }
 
 // Restore rebuilds a post from storage without validation or new IDs.
@@ -279,6 +282,7 @@ func Restore(s Stored) *Post {
 
 		commentsClosed: s.CommentsClosed,
 		nsfw:           s.NSFW,
+		price:          s.Price,
 	}
 }
 
@@ -300,6 +304,7 @@ func (p *Post) Stored() Stored {
 
 		CommentsClosed: p.commentsClosed,
 		NSFW:           p.nsfw,
+		Price:          p.price,
 	}
 }
 
@@ -343,6 +348,11 @@ func (p *Post) Edited(requesterID uuid.UUID, text Text, photos Photos, now time.
 
 	// The card stays: an edit changes the words and the photos.
 	content.link = p.content.link
+
+	// What is sold must stay: a paid post keeps photos or documents.
+	if p.price > 0 && !content.hasMedia() {
+		return nil, ErrPriceWithoutMedia
+	}
 
 	edited := *p
 	edited.content = content
@@ -403,6 +413,34 @@ func (p *Post) Marked(nsfw bool) *Post {
 	return &marked
 }
 
+// Price is what others pay to see the photos and documents of the post.
+func (p *Post) Price() Price {
+	return p.price
+}
+
+// Priced is p selling its photos and documents for price, as its author
+// says when writing it: only on the author's own wall (the votes go to
+// the author), and only with photos or documents to sell. Like Edited,
+// it returns a new post.
+func (p *Post) Priced(price Price) (*Post, error) {
+	if price == 0 {
+		return p, nil
+	}
+
+	if !p.OnOwnWall() || p.content.repostOf != uuid.Nil {
+		return nil, ErrPricedElsewhere
+	}
+
+	if !p.content.hasMedia() {
+		return nil, ErrPriceWithoutMedia
+	}
+
+	priced := *p
+	priced.price = price
+
+	return &priced, nil
+}
+
 // CommentsClosed: nobody comments the post anymore.
 func (p *Post) CommentsClosed() bool {
 	return p.commentsClosed
@@ -437,9 +475,10 @@ func (p *Post) OnOwnWall() bool {
 
 // InWallAlbum tells whether the photos of the post go to its author's
 // "Фотографии со стены", as openvk keeps what a person uploads writing on
-// their own wall.
+// their own wall. The photos of a paid post do not: the album would show
+// them free.
 func (p *Post) InWallAlbum() bool {
-	return p.OnOwnWall()
+	return p.OnOwnWall() && p.price == 0
 }
 
 func (p *Post) ID() uuid.UUID {

@@ -385,7 +385,13 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 		return nil, err
 	}
 
+	price, err := post.NewPrice(req.GetPrice())
+	if err != nil {
+		return nil, err
+	}
+
 	p, err := h.postService.Create(ctx, service.CreateInput{
+		Price:    price,
 		Poll:     poll,
 		WallID:   wallID,
 		AuthorID: authorID,

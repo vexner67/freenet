@@ -273,6 +273,8 @@ type CreateInput struct {
 	Signed   bool
 	// NSFW marks the post as adult.
 	NSFW bool
+	// Price is what others pay to see its photos and documents.
+	Price post.Price
 	// Mentions are the people the text names, who hear of it.
 	Mentions post.Mentions
 	// Poll is the poll the post asks, nil for none; with it Content is
@@ -303,6 +305,10 @@ func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, e
 
 	if in.NSFW {
 		p = p.Marked(true)
+	}
+
+	if p, err = p.Priced(in.Price); err != nil {
+		return nil, errs.Wrap("p.Priced", err)
 	}
 
 	poll, err := newPoll(p, in.Poll, s.now())
