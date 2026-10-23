@@ -41,7 +41,15 @@ type Users interface {
 	GetProfile(ctx context.Context, accessToken, nickname string) (model.PublicProfile, error)
 	GetProfiles(ctx context.Context, ids []string) ([]model.PublicProfile, error)
 	CanPostOnWall(ctx context.Context, accessToken, userID string) (bool, error)
-	CanMessage(ctx context.Context, accessToken, userID string, wroteFirst bool) (bool, error)
+	CanMessage(ctx context.Context, accessToken, userID string, wroteFirst bool) (model.MessageTerms, error)
+	// PayMessage pays for a message of the caller to userID at price; the
+	// payment has no ID for a free one. RefundMessage gives it back.
+	PayMessage(ctx context.Context, accessToken, userID string, wroteFirst bool, price int64) (model.MessagePayment, error)
+	RefundMessage(ctx context.Context, accessToken, paymentID string) error
+	// BoughtPosts are those of postIDs the caller has paid to see; BuyPost
+	// pays for one and returns the votes left.
+	BoughtPosts(ctx context.Context, accessToken string, postIDs []string) ([]string, error)
+	BuyPost(ctx context.Context, accessToken, postID, authorID string, price int64) (int64, error)
 	// ResolveMentions are the IDs of the people the caller names by these
 	// nicknames who hear of it: who exist and whom the caller may name.
 	ResolveMentions(ctx context.Context, accessToken string, nicknames []string) ([]string, error)
@@ -634,6 +642,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PATCH /api/v1/posts/{id}", a.editPost)
 	mux.HandleFunc("PUT /api/v1/posts/{id}/pin", a.pinPost)
 	mux.HandleFunc("DELETE /api/v1/posts/{id}/pin", a.unpinPost)
+	mux.HandleFunc("POST /api/v1/posts/{id}/purchase", a.buyPost)
 	mux.HandleFunc("PUT /api/v1/posts/{id}/archive", a.archivePost)
 	mux.HandleFunc("DELETE /api/v1/posts/{id}/archive", a.unarchivePost)
 	mux.HandleFunc("PUT /api/v1/posts/{id}/closed-comments", a.closeComments)

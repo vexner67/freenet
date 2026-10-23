@@ -294,8 +294,8 @@ func TestWallPrivacy(t *testing.T) {
 		t.Fatalf("CanPostOnWall = %v, %v", allowed, err)
 	}
 
-	if allowed, err = users.CanMessage(context.Background(), "tok", "u2", true); err != nil || !allowed {
-		t.Fatalf("CanMessage passes wroteFirst on: %v, %v", allowed, err)
+	if terms, err := users.CanMessage(context.Background(), "tok", "u2", true); err != nil || !terms.Allowed {
+		t.Fatalf("CanMessage passes wroteFirst on: %+v, %v", terms, err)
 	}
 
 	rel, err := users.Relation(context.Background(), "tok", "u2")

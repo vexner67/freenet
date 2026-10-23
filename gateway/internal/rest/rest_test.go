@@ -78,6 +78,16 @@ func (f *fakeAuth) EndOtherSessions(context.Context, string) (int, error) {
 func (f *fakeAuth) Logout(context.Context, string) error { return f.err }
 
 type fakeUsers struct {
+	// primeOnly: the peer lets in only people with Freenet Prime;
+	// messagePrice: a message costs so many votes. paid are the payments
+	// "price", refunded those given back; bought the posts paid for and
+	// purchases the purchases "post:author:price".
+	primeOnly    bool
+	messagePrice int64
+	paid         []int64
+	refunded     []string
+	bought       []string
+	purchases    []string
 	// verified are the checkmarks given and taken: "token:id:bool"; bans
 	// the blocks given and lifted: "token:id:reason:until" and
 	// "token:id:-"; ban blocks the caller's page.
@@ -279,9 +289,51 @@ func (f *fakeUsers) Access(_ context.Context, token, userID string) (model.Acces
 	}, f.err
 }
 
-func (f *fakeUsers) CanMessage(_ context.Context, token, _ string, wroteFirst bool) (bool, error) {
+func (f *fakeUsers) CanMessage(_ context.Context, token, _ string, wroteFirst bool) (model.MessageTerms, error) {
 	f.token, f.wroteFirst = token, wroteFirst
-	return !f.relation.Blocked() && (!f.closedMessages || wroteFirst), f.err
+	if f.primeOnly && !wroteFirst {
+		return model.MessageTerms{PrimeOnly: true}, f.err
+	}
+
+	terms := model.MessageTerms{Allowed: !f.relation.Blocked() && (!f.closedMessages || wroteFirst)}
+	if !wroteFirst {
+		terms.Price = f.messagePrice
+	}
+
+	return terms, f.err
+}
+
+func (f *fakeUsers) PayMessage(_ context.Context, _, _ string, _ bool, price int64) (model.MessagePayment, error) {
+	if price == 0 {
+		return model.MessagePayment{}, f.err
+	}
+
+	f.paid = append(f.paid, price)
+
+	return model.MessagePayment{ID: "payment", Balance: 100 - price}, f.err
+}
+
+func (f *fakeUsers) RefundMessage(_ context.Context, _, paymentID string) error {
+	f.refunded = append(f.refunded, paymentID)
+	return f.err
+}
+
+func (f *fakeUsers) BoughtPosts(_ context.Context, _ string, postIDs []string) ([]string, error) {
+	var bought []string
+	for _, id := range postIDs {
+		if slices.Contains(f.bought, id) {
+			bought = append(bought, id)
+		}
+	}
+
+	return bought, f.err
+}
+
+func (f *fakeUsers) BuyPost(_ context.Context, _, postID, authorID string, price int64) (int64, error) {
+	f.purchases = append(f.purchases, fmt.Sprintf("%s:%s:%d", postID, authorID, price))
+	f.bought = append(f.bought, postID)
+
+	return 100 - price, f.err
 }
 
 // KnownNicknames knows ann and bob, who is verified.
@@ -827,6 +879,12 @@ func (f *fakePosts) Get(_ context.Context, token, id string) (model.Post, error)
 		return model.Post{ID: "p8", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u2"}, RepostOf: "p-deleted"}, nil
 	case "p5":
 		return model.Post{ID: "p5", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "k1"}, Text: "в группе"}, nil
+	case "p9":
+		// A paid post of ann's; its author reads it with the token "ann".
+		return model.Post{
+			ID: "p9", Author: model.Author{ID: "u1"}, Wall: model.Author{ID: "u1"}, Text: "за голоса", PhotoIDs: []string{"ph1", "ph2"},
+			DocumentIDs: []string{"d1"}, Price: 15, Mine: token == "ann",
+		}, nil
 	default:
 		return model.Post{}, failure.New(failure.NotFound, "post not found")
 	}
@@ -1360,6 +1418,11 @@ func (f *fakeMessages) HasMessagesFrom(_ context.Context, token, peerID string) 
 // Send carries each forwarded message on as one bob (u2) wrote, and
 // "gone" as one of somebody whose page is no more.
 func (f *fakeMessages) Send(_ context.Context, token, recipientID string, d model.MessageDraft) (model.Message, error) {
+	// "nope" is refused, as the message service refuses a bad message.
+	if string(d.Sealed) == "nope" {
+		return model.Message{}, failure.New(failure.InvalidArgument, "message is invalid")
+	}
+
 	f.token, f.peerID, f.sent = token, recipientID, string(d.Sealed)
 
 	var forwarded []model.ForwardedMessage

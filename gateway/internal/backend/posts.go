@@ -40,6 +40,7 @@ func (p *Posts) Create(ctx context.Context, accessToken string, np model.NewPost
 		MentionedIds: np.Mentions,
 		Poll:         toProtoPollDraft(np.Poll),
 		Link:         toProtoLink(np.Link),
+		Price:        np.Price,
 	})
 	if err != nil {
 		return model.Post{}, errs.Wrap("p.api.CreatePost", fromStatus(err))
@@ -701,6 +702,7 @@ func toPost(p *postv1.Post) model.Post {
 		Mine:           p.GetMine(),
 		Polled:         p.GetPolled(),
 		Link:           toLink(p.GetLink()),
+		Price:          p.GetPrice(),
 	}
 }
 
