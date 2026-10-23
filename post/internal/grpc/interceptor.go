@@ -39,6 +39,8 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, "post text is empty"), true
 	case errors.Is(err, post.ErrFromOwnWall):
 		return status.New(codes.InvalidArgument, "a post on your own wall speaks for you"), true
+	case errors.Is(err, post.ErrInvalidPrice), errors.Is(err, post.ErrPricedElsewhere), errors.Is(err, post.ErrPriceWithoutMedia):
+		return status.New(codes.InvalidArgument, err.Error()), true
 	case errors.Is(err, post.ErrRepostPhotos):
 		return status.New(codes.InvalidArgument, "a post sharing a photo has no photos of its own"), true
 	case errors.Is(err, post.ErrCannotPin):
