@@ -1563,7 +1563,18 @@ export function voteOperation(op, myId) {
       return { title: tr('Шахта: сундук'), role: '' };
     case 'fee':
       return { title: tr('Комиссия за перевод'), role: tr('Получатель:') };
+    case 'post':
+      return out
+        ? { title: tr('Открытие платной записи'), role: tr('Автор:') }
+        : { title: tr('Продажа фото и документов записи'), role: tr('Покупатель:') };
+    case 'message':
+      if (note === 'refund') return { title: tr('Возврат за неотправленное сообщение'), role: out ? tr('Отправитель:') : tr('Получатель:') };
+      return out
+        ? { title: tr('Платное сообщение'), role: tr('Получатель:') }
+        : { title: tr('Оплата сообщения'), role: tr('Отправитель:') };
     case 'tax':
+      if (note === '#post') return { title: tr('Налог с продажи записи'), role: tr('Покупатель:') };
+      if (note === '#message') return { title: tr('Налог с платного сообщения'), role: tr('Отправитель:') };
       return { title: tr('Налог с продажи набора «{0}»', stickerPacks[note] ?? note), role: tr('Покупатель:') };
     case 'rating':
       return { title: tr('Повышение рейтинга на {0} %', note), role: '' };
@@ -1998,6 +2009,14 @@ const errorTexts = {
   'the bid is too low': tr('Ставка слишком мала.'),
   'an auction with bids cannot be cancelled': tr('Аукцион, на котором уже есть ставки, отменить нельзя.'),
   'not enough votes': tr('У вас недостаточно голосов.'),
+  'this post is not for sale': tr('Эта запись не продаётся.'),
+  'the post is not paid': tr('Эта запись не продаётся.'),
+  'the price must be between 0 and 1000000 votes': tr('Цена должна быть от 0 до 1 000 000 голосов.'),
+  'the price of a message must be between 0 and 1000000 votes': tr('Цена сообщения должна быть от 0 до 1 000 000 голосов.'),
+  'only a post on one\'s own wall may be paid': tr('Платной может быть только запись на своей стене.'),
+  'a paid post needs photos or documents': tr('Платной может быть только запись с фото или документами.'),
+  'the price of messages changed': tr('Цена сообщений этому человеку изменилась. Обновите страницу.'),
+  'only people with freenet prime can write to this user': tr('Этому пользователю могут писать только подписчики Freenet Prime.'),
   'this is for freenet prime only': tr('Это доступно только с Freenet Prime.'),
   'unknown period of prime': tr('Неизвестный срок подписки.'),
   'the price of prime must be at least 1 vote': tr('Цена подписки — не меньше 1 голоса.'),

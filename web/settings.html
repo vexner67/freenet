@@ -170,6 +170,14 @@
               <td class="control">
                 <select id="messages-write"></select>
                 <p class="hint">Вам смогут ответить, если вы напишете первыми.</p>
+                <label><input type="checkbox" id="messages-prime"> Только подписчики Freenet Prime</label>
+              </td>
+            </tr>
+            <tr>
+              <th><label for="message-price">Цена сообщения, голосов</label></th>
+              <td class="control">
+                <input type="number" id="message-price" min="0" max="1000000" value="0">
+                <p class="hint">Голоса за каждое сообщение достанутся вам, за вычетом налога. 0 — бесплатно. Тем, кому вы написали первыми, отвечать бесплатно.</p>
               </td>
             </tr>
             <tr>

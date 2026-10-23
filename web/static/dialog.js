@@ -21,7 +21,7 @@ import { initDocuments } from './docs.js';
 import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, openMessages, ownKey, safetyCode, sendSealed } from './e2ee.js';
 import { isLive, onEvent } from './events.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
-import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, messagesCount, selectedCount } from './labels.js';
+import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, messagesCount, selectedCount, votesCount } from './labels.js';
 import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
@@ -57,6 +57,8 @@ let loadingNewer = false;
 let attachments;
 // documents are those of "Мои Документы" attached to the message.
 let documents;
+// messagePrice: the votes a message to the peer costs, 0 — free.
+let messagePrice = 0;
 // typingWatch tells the peer while the user types.
 let typingWatch;
 // The key messages to the peer are sealed with, as the server has it.
@@ -592,7 +594,7 @@ async function send(event) {
   button.disabled = true;
 
   try {
-    const m = await sendSealed(me.id, nickname, text.value, { photos: attachments.ids(), documents: documents.ids(), replyTo: replies.replyingTo() });
+    const m = await sendSealed(me.id, nickname, text.value, { photos: attachments.ids(), documents: documents.ids(), replyTo: replies.replyingTo(), price: messagePrice });
 
     text.value = '';
     autosize(text);
@@ -616,7 +618,7 @@ async function sendSticker(sticker) {
   if (editing) cancelEdit();
 
   try {
-    showSent((await openMessages(me.id, [await api.sendSticker(nickname, sticker)]))[0]);
+    showSent((await openMessages(me.id, [await api.sendSticker(nickname, sticker, messagePrice)]))[0]);
     return true;
   } catch (e) {
     showError($('error'), e);
@@ -624,9 +626,10 @@ async function sendSticker(sticker) {
   }
 }
 
-// setUpInput shows the form, or why there is none; canWrite is the
-// peer's privacy and blacklists, as the first page of the dialog says.
-async function setUpInput(canWrite) {
+// setUpInput shows the form, or why there is none: the peer's privacy and
+// blacklists, as the first page of the dialog says, with what a message
+// costs and whether only Freenet Prime writes to the peer.
+async function setUpInput({ canWrite, primeOnly, messagePrice: price = 0 }) {
   if (!me.profileCompleted) {
     $('form').hidden = true;
     $('blocked').replaceChildren(tr('Чтобы писать сообщения, '), el('a', { href: '/edit', textContent: tr('заполните свою страницу') }), '.');
@@ -636,7 +639,7 @@ async function setUpInput(canWrite) {
 
   if (!canWrite) {
     $('form').hidden = true;
-    $('blocked').replaceChildren(...await whyNotWrite());
+    $('blocked').replaceChildren(...(primeOnly ? primeOnlyHint() : await whyNotWrite()));
     $('blocked').hidden = false;
     return;
   }
@@ -648,6 +651,12 @@ async function setUpInput(canWrite) {
     $('blocked').replaceChildren(...(ownState !== KEY_READY ? keyHint(ownState) : [NO_PEER_KEY]));
     $('blocked').hidden = false;
     return;
+  }
+
+  messagePrice = price;
+  if (price > 0) {
+    $('price-note').textContent = tr('Каждое сообщение для {0} стоит {1}: голоса получит собеседник.', genitiveName(peer), votesCount(price));
+    $('price-note').hidden = false;
   }
 
   $('my-avatar').src = avatarURL(me, 'small');
@@ -727,6 +736,11 @@ async function showSafetyCode() {
 
 // whyNotWrite tells the caller's own blacklist and a deleted page apart
 // from the peer's choice, which openvk words the same for both.
+// primeOnlyHint: only people with Freenet Prime write to the peer.
+function primeOnlyHint() {
+  return [tr('{0} принимает сообщения только от подписчиков ', fullName(peer)), el('a', { href: '/prime', textContent: 'Freenet Prime' }), '.'];
+}
+
 async function whyNotWrite() {
   const profile = await api.profile(peer.nickname).catch(() => null);
 
@@ -779,7 +793,7 @@ if (!me) {
     olderCursor = first.nextCursor;
     // At the end, and kept there while the messages take their height.
     const stick = stickToBottom(list);
-    await setUpInput(first.canWrite);
+    await setUpInput(first);
     if (gap) {
       stick(false);
       await showFound();

@@ -963,6 +963,7 @@ label.chat-person { cursor: pointer; }
 .chat-person > img { width: 30px; height: 30px; object-fit: cover; border-radius: 3px; }
 .chat-kick { display: block; font-size: 10px; cursor: pointer; }
 .messenger-blocked { padding: 20px; background: var(--back-f9f9f9); border-top: 1px solid var(--line-d6d6d6); font-weight: bold; text-align: center; }
+.messenger-price { margin: 0; padding: 6px 10px; background: var(--back-f9f9f9); border-top: 1px solid var(--line-d6d6d6); color: var(--text-555); text-align: center; }
 
 /* Photos of a post, as on openvk: one at its own proportions, more as tiles. */
 .post-photos { display: grid; gap: 3px; padding: 6px 4px; border-bottom: 1px solid var(--line-ececec); }
@@ -1193,6 +1194,12 @@ label.chat-person { cursor: pointer; }
 .timer-remove { margin-left: 4px; color: var(--text-999); }
 .post-options label { display: block; padding: 1px 0; color: var(--text-555); }
 .post-options input { vertical-align: middle; margin: 0 3px 0 0; }
+.post-options .price-input { width: 70px; margin: 0 3px; }
+/* The photos and documents of a paid post, until they are bought. */
+.post-paid { margin: 6px 0; padding: 10px; background: var(--back-f9f9f9); border: 1px solid var(--line-d6d6d6); text-align: center; }
+.post-paid-title { margin-bottom: 6px; color: var(--text-555); }
+.post-paid .error { margin: 6px 0 0; }
+.post-paid-note { margin: 4px 0; color: var(--text-808080); }
 .club-role { color: var(--text-808080); }
 /* "Отображение аватаров": round small photos for whoever chose them. */
 .avatars-round .post-avatar img,

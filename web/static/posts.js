@@ -4,7 +4,7 @@
 
 import { api } from './api.js';
 import { attachLikers } from './likers.js';
-import { formatPostDate, genitiveName, sharedBy, wrote } from './labels.js';
+import { documentsCount, errorText, formatPostDate, genitiveName, photosCount, sharedBy, votesCount, wrote } from './labels.js';
 import { adult, avatarURL, el, externalLink, fullName, isMicroblog, pagePath, textNode, verifiedMark } from './layout.js';
 import { editPost } from './postedit.js';
 import { openShare } from './share.js';
@@ -74,6 +74,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       photosNode(post.photos ?? []) ?? '',
       linkCardNode(post.link) ?? '',
       documentsNode(post.documents) ?? '',
+      paidNode(post, { canBuy: canLike, onBought: render }) ?? '',
       post.poll ? pollNode(post, { canVote: canLike, onError }) : '',
       signatureNode(post.signer) ?? '',
     );
@@ -309,6 +310,45 @@ async function wholeText(post) {
   return post.text;
 }
 
+// paidNode is what a paid post says of its photos and documents: to one
+// who has not opened them, how many there are and "Открыть за N голосов"
+// (canBuy: a signed-in viewer), which opens them and runs onBought; to the
+// author, what others pay for them.
+function paidNode(post, { canBuy, onBought }) {
+  if (post.mine && post.price > 0) {
+    return el('div', { className: 'post-paid-note', textContent: tr('Фото и документы этой записи другие открывают за {0}.', votesCount(post.price)) });
+  }
+
+  if (!post.locked) return null;
+
+  const what = [
+    post.lockedPhotos ? photosCount(post.lockedPhotos) : '',
+    post.lockedDocuments ? documentsCount(post.lockedDocuments) : '',
+  ].filter(Boolean).join(tr(' и '));
+  const error = el('div', { className: 'error', hidden: true });
+  const buy = el('button', { className: 'button', type: 'button', textContent: tr('Открыть за {0}', votesCount(post.price)) });
+
+  buy.addEventListener('click', async () => {
+    buy.disabled = true;
+    error.hidden = true;
+
+    try {
+      Object.assign(post, (await api.buyPost(post.id)).post);
+      onBought();
+    } catch (e) {
+      error.textContent = errorText(e);
+      error.hidden = false;
+      buy.disabled = false;
+    }
+  });
+
+  return el('div', { className: 'post-paid' },
+    el('div', { className: 'post-paid-title', textContent: tr('Скрыто автором: {0}.', what) }),
+    canBuy ? buy : el('div', { className: 'hint', textContent: tr('Открыть их можно, войдя на сайт.') }),
+    error,
+  );
+}
+
 // sharedNode is the post a repost shares, compact as on openvk: a small
 // avatar, the name, the date, the text and photos, no menu. A post shared
 // by the shared post itself is a link, not one more box inside. Its poll
@@ -319,13 +359,16 @@ export function sharedNode(shared, { canVote = false, onError } = {}) {
   }
 
   const path = pagePath(shared.author);
-  const content = el('div', { className: 'shared-content' },
-    shared.text ? textNode(shared.text, { rest: shared.textCut ? () => wholeText(shared) : null }) : null,
-    photosNode(shared.photos ?? []),
-    linkCardNode(shared.link),
-    documentsNode(shared.documents),
-    shared.poll ? pollNode(shared, { canVote, onError }) : null,
+  const content = el('div', { className: 'shared-content' });
+  const fill = () => content.replaceChildren(
+    shared.text ? textNode(shared.text, { rest: shared.textCut ? () => wholeText(shared) : null }) : '',
+    photosNode(shared.photos ?? []) ?? '',
+    linkCardNode(shared.link) ?? '',
+    documentsNode(shared.documents) ?? '',
+    paidNode(shared, { canBuy: canVote, onBought: fill }) ?? '',
+    shared.poll ? pollNode(shared, { canVote, onError }) : '',
   );
+  fill();
   revealOnClick(content);
 
   return el('div', { className: 'post-shared' + (shared.nsfw ? ' shared-nsfw' : '') },

@@ -103,11 +103,15 @@ function initPrivacy(me) {
   for (const [id, key] of Object.entries(shows)) $(id).checked = me.privacy[key];
   fill($('wall-write'), wallWrites, me.privacy.wallWrite);
   fill($('messages-write'), messagesWrites, me.privacy.messagesWrite);
+  $('messages-prime').checked = Boolean(me.privacy.messagesPrime);
+  $('message-price').value = String(me.privacy.messagePrice ?? 0);
   fill($('chats-invite'), chatsInvites, me.privacy.chatsInvite);
   fill($('profile-type'), profileTypes, me.privacy.closed ? 'closed' : 'open');
 
   onSubmit($('privacy'), async () => {
     const privacy = { wallWrite: $('wall-write').value, messagesWrite: $('messages-write').value, chatsInvite: $('chats-invite').value, closed: $('profile-type').value === 'closed' };
+    privacy.messagesPrime = $('messages-prime').checked;
+    privacy.messagePrice = Math.max(0, Math.floor(Number($('message-price').value) || 0));
     for (const [id, key] of Object.entries(reads)) privacy[key] = $(id).value;
     for (const [id, key] of Object.entries(shows)) privacy[key] = $(id).checked;
     await api.updatePrivacy(privacy);
