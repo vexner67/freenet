@@ -304,8 +304,10 @@ input, select, textarea { font-size: 16px !important; }
 .mine-ore .button, .mine-item .button { min-height: 32px; }
 /* The businesses: the balance over them, the buttons big enough for a finger. */
 .business { flex-direction: column-reverse; align-items: stretch; }
-.business .button { min-height: 32px; }
-.business-label { white-space: normal; }
+.business .button, .biz-dialog .button { min-height: 32px; }
+.biz-lots { grid-template-columns: 1fr; }
+.biz-sign { font-size: 9px; }
+.biz-board { font-size: 8px; }
 .casino-balance { width: auto; }
 .casino-board, .casino-multipliers { grid-template-columns: repeat(3, 1fr); }
 .casino-controls .button { width: 100%; }

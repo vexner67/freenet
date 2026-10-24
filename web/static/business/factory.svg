@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 160">
+  <defs>
+    <linearGradient id="brick" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c46448"/>
+      <stop offset="1" stop-color="#a24a31"/>
+    </linearGradient>
+    <linearGradient id="lit" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff4c2"/>
+      <stop offset="1" stop-color="#f2d777"/>
+    </linearGradient>
+    <linearGradient id="gate" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a7adb5"/>
+      <stop offset="1" stop-color="#7e858e"/>
+    </linearGradient>
+  </defs>
+  <rect x="20" y="4" width="150" height="20" fill="#fff" stroke="#6b2b1c" stroke-width="2"/>
+  <rect x="186" y="6" width="16" height="56" fill="#e8e8e8" stroke="#7a7a7a" stroke-width="1.5"/>
+  <rect x="186" y="12" width="16" height="7" fill="#d23a32"/><rect x="186" y="30" width="16" height="7" fill="#d23a32"/>
+  <rect x="184" y="4" width="20" height="4" fill="#7a7a7a"/>
+  <polygon points="14,48 14,32 50,46 50,32 86,46 86,32 122,46 122,32 158,46 158,32 194,46 194,48" fill="#7b8189" stroke="#555b62" stroke-width="1.5"/>
+  <rect x="14" y="48" width="180" height="112" fill="url(#brick)" stroke="#6b2b1c" stroke-width="2"/>
+  <g fill="#8f3e28">
+    <rect x="14" y="62" width="180" height="1"/><rect x="14" y="132" width="180" height="1"/><rect x="14" y="146" width="180" height="1"/>
+  </g>
+  <rect x="30" y="66" width="46" height="34" fill="url(#lit)" stroke="#6b2b1c" stroke-width="2"/>
+  <rect x="82" y="66" width="46" height="34" fill="url(#lit)" stroke="#6b2b1c" stroke-width="2"/>
+  <rect x="134" y="66" width="46" height="34" fill="url(#lit)" stroke="#6b2b1c" stroke-width="2"/>
+  <g fill="#6b2b1c"><rect x="52" y="66" width="2" height="34"/><rect x="104" y="66" width="2" height="34"/><rect x="156" y="66" width="2" height="34"/></g>
+  <rect x="26" y="98" width="158" height="5" fill="#7b8189"/>
+  <rect x="82" y="110" width="46" height="50" fill="url(#gate)" stroke="#555b62" stroke-width="2"/>
+  <g fill="#6c727a"><rect x="82" y="118" width="46" height="1"/><rect x="82" y="126" width="46" height="1"/><rect x="82" y="134" width="46" height="1"/><rect x="82" y="142" width="46" height="1"/><rect x="82" y="150" width="46" height="1"/></g>
+  <rect x="140" y="112" width="40" height="22" fill="#ffd54a" stroke="#a87a00" stroke-width="1.5"/>
+  <g fill="#3a3a3a"><polygon points="144,130 150,116 156,130"/><polygon points="160,130 166,116 172,130"/></g>
+  <rect x="30" y="112" width="40" height="22" fill="url(#lit)" stroke="#6b2b1c" stroke-width="2"/>
+</svg>

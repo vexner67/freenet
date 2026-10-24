@@ -2006,22 +2006,137 @@ a.poll-result-name { cursor: pointer; }
 .mine-sell-all { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin: 0 0 6px; }
 .mine-totals { margin: 0; text-align: right; }
 
-/* "Бизнес": each business a block of facts, the price and staff, goods and
-   actions under them; the balance at the right, as at the mine. */
+/* "Бизнес": each business a picture of a street (480×240, every part
+   placed in percents of it) — a billboard, the building with its sign,
+   workers in its window, a safe and a warehouse, people walking along the
+   pavement; a click on a part opens its box. The balance at the right, as
+   at the mine. */
 .business { display: flex; gap: 20px; align-items: flex-start; }
 .business-main { flex: 1; min-width: 0; }
 .business-done { margin: 0 0 10px; padding: 8px; background: var(--back-eee5b8); border: 1px solid var(--line-d7cf9e); color: var(--text-58462a); font-weight: bold; }
-.business-card { margin: 0 0 14px; }
-.business-facts { margin: 6px 0; border-collapse: collapse; }
-.business-facts td { padding: 2px 8px 2px 0; vertical-align: top; }
-.business-label { color: var(--text-808080); white-space: nowrap; }
-.business-warn { color: var(--text-c33); font-weight: bold; }
-.business-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
-.business-row .business-number { width: 80px; }
-.business-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
-.business-bankrupt { margin: 6px 0; padding: 8px; background: var(--back-ffefe8); border: 1px solid var(--line-ccc); color: var(--text-c33); font-weight: bold; }
-.business-offer { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; padding: 6px 4px; border-bottom: 1px solid var(--line-e8ebee); }
-.business-offer .hint { flex: 1; min-width: 200px; }
+.biz-hint { margin: 0 0 8px; }
+.biz-card { margin: 0 0 14px; }
+.biz-head { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; padding: 0 0 4px; border-bottom: 1px solid var(--line-e8ebee); }
+.biz-icon { width: 32px; height: 24px; }
+.biz-head b { color: var(--text-45688e); font-size: 12px; }
+.biz-level { color: var(--text-808080); }
+.biz-hour { margin-left: auto; font-weight: bold; }
+.biz-hour.good { color: var(--text-43a047); }
+.biz-hour.bad { color: var(--text-c33); }
+.biz-scene {
+  position: relative;
+  aspect-ratio: 2 / 1;
+  overflow: hidden;
+  border: 1px solid var(--line-c0cad5);
+  background: url("/static/business/scene.svg") center / 100% 100% no-repeat;
+  user-select: none;
+}
+.biz-spot { position: absolute; padding: 0; border: 0; background: none; cursor: pointer; font: inherit; }
+.biz-spot > img { display: block; width: 100%; height: 100%; }
+.biz-spot:hover > img, .biz-spot:focus-visible > img { filter: brightness(1.08) drop-shadow(0 0 3px var(--back-ffd54a)); }
+.biz-spot:focus-visible { outline: 1px dotted var(--line-333); }
+.biz-building { left: 25%; top: 12.5%; width: 43.75%; height: 66.667%; }
+.biz-storage { left: 80.208%; top: 43.75%; width: 17.708%; height: 35.417%; }
+.biz-safe { left: 70.833%; top: 62.5%; width: 8.333%; height: 16.667%; }
+.biz-billboard { left: 2.083%; top: 25%; width: 18.75%; height: 45.833%; }
+.biz-cover { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+.biz-sign {
+  position: absolute; left: 14.286%; top: 2.5%; width: 71.429%; height: 12.5%;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; color: var(--text-2b587a); font: bold 11px tahoma, verdana, arial, sans-serif; letter-spacing: 1px; text-transform: uppercase; white-space: nowrap;
+}
+.biz-sign-cafe { color: var(--text-58462a); }
+.biz-sign-carwash { color: var(--text-fff); }
+.biz-sign-factory { left: 9.524%; color: var(--text-7a0f1d); }
+.biz-stamp {
+  position: absolute; left: 22%; top: 40%; padding: 2px 8px;
+  border: 2px solid var(--line-e89b88); background: var(--back-ffefe8); color: var(--text-c33);
+  font-size: 13px; font-weight: bold; text-transform: uppercase; transform: rotate(-8deg); pointer-events: none;
+}
+.biz-board {
+  position: absolute; left: 2.2%; top: 3.6%; width: 95.6%; height: 54.5%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  padding: 2px; box-sizing: border-box; overflow: hidden;
+  color: var(--text-808080); font-size: 9px; line-height: 1.15; text-align: center;
+}
+.biz-billboard-on .biz-board { color: var(--text-c33); font-weight: bold; }
+.biz-billboard-on .biz-board b { color: var(--text-2b587a); font-size: 10px; text-transform: uppercase; }
+.biz-badge {
+  position: absolute; left: 50%; bottom: 100%; margin-bottom: 2px; padding: 1px 4px;
+  border: 1px solid var(--line-d7cf9e); background: var(--back-fbf3c3); color: var(--text-58462a);
+  font-size: 10px; font-weight: bold; white-space: nowrap; transform: translateX(-50%);
+}
+.biz-badge-bad { border-color: var(--line-e89b88); background: var(--back-ffefe8); color: var(--text-c33); }
+.biz-meter { display: block; height: 3px; margin: 1px 0 0; background: var(--back-e4e4e4); }
+.biz-fill { display: block; height: 100%; background: var(--back-43a047); }
+.biz-fill.bad { background: var(--back-d23a32); }
+.biz-alert {
+  position: absolute; right: -4px; top: -6px; width: 15px; height: 15px;
+  border: 1px solid var(--line-fff); border-radius: 50%; background: var(--back-d23a32);
+  color: var(--text-fff); font-size: 11px; font-weight: bold; line-height: 15px; text-align: center;
+  animation: biz-blink 1s steps(2) infinite;
+}
+.biz-workers { display: flex; align-items: flex-end; justify-content: space-evenly; }
+.biz-workers > img { height: 100%; width: auto; }
+.biz-more { align-self: center; padding: 0 3px; background: var(--back-fff); color: var(--text-333); font-size: 10px; font-weight: bold; }
+.biz-walker {
+  --door: 46%;
+  position: absolute; top: 69.583%; width: 3.333%; height: 14.167%;
+  pointer-events: none;
+}
+.biz-walker-in { animation: biz-in 9s linear infinite, biz-step 0.5s steps(2) infinite; }
+.biz-walker-by { animation: biz-by 9s linear infinite, biz-step 0.5s steps(2) infinite; }
+.biz-smoke { position: absolute; left: 63.5%; top: 6%; width: 5%; aspect-ratio: 1; pointer-events: none; animation: biz-smoke 3s linear infinite; }
+.biz-float {
+  position: absolute; left: 66%; top: 50%; padding: 1px 5px;
+  border: 1px solid var(--line-d7cf9e); background: var(--back-fbf3c3); color: var(--text-0c7a3c);
+  font-size: 12px; font-weight: bold; pointer-events: none; animation: biz-float 1.6s ease-out forwards;
+}
+.biz-float.bad { color: var(--text-c33); }
+.biz-for-sale {
+  position: absolute; left: 21%; top: 21%; width: 52.4%; height: 32.5%;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; padding: 0 0 4px; box-sizing: border-box;
+  color: var(--text-333); font-size: 10px; font-weight: bold;
+}
+.biz-for-sale b { color: var(--text-c33); font-size: 11px; text-transform: uppercase; }
+.biz-lots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.biz-lots .biz-card { margin: 0; }
+.biz-lots .biz-for-sale { font-size: 9px; }
+.biz-lots .biz-for-sale b { font-size: 9px; }
+.modal-box.biz-dialog { width: 430px; }
+.biz-said { padding: 6px 8px; background: var(--back-eee5b8); border: 1px solid var(--line-d7cf9e); color: var(--text-58462a); font-weight: bold; }
+.biz-facts { border-collapse: collapse; }
+.biz-facts td { padding: 2px 8px 2px 0; vertical-align: top; }
+.biz-label { color: var(--text-808080); }
+.biz-facts .biz-label { white-space: nowrap; }
+.biz-warn { color: var(--text-c33); font-weight: bold; }
+.biz-bar { display: block; height: 8px; border: 1px solid var(--line-c0cad5); background: var(--back-f2f2f2); }
+.biz-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.biz-row .biz-number { width: 90px; }
+.modal-body .hint { margin: 0; }
+.biz-bankrupt { margin: 0; padding: 8px; background: var(--back-ffefe8); border: 1px solid var(--line-e89b88); color: var(--text-c33); font-weight: bold; }
+.biz-preview { height: 120px; text-align: center; }
+.biz-preview img { height: 100%; }
+@keyframes biz-in {
+  0% { left: -5%; opacity: 1; }
+  55% { left: var(--door); opacity: 1; }
+  62%, 100% { left: var(--door); opacity: 0; }
+}
+@keyframes biz-by { from { left: -5%; } to { left: 102%; } }
+@keyframes biz-step { 50% { transform: translateY(-1px); } }
+@keyframes biz-blink { 50% { opacity: 0.35; } }
+@keyframes biz-smoke {
+  from { transform: translate(0, 0) scale(0.5); opacity: 0.9; }
+  to { transform: translate(40%, -160%) scale(1.4); opacity: 0; }
+}
+@keyframes biz-float {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(-40px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .biz-walker, .biz-smoke, .biz-alert, .biz-float { animation: none; }
+  .biz-float { display: none; }
+}
 
 /* "Казино": the prizes in cells and a light running over them; the
    balance at the right, as in "Голоса". */
