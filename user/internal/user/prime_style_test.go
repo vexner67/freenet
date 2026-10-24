@@ -54,10 +54,16 @@ func TestUser_PrimeStyle(t *testing.T) {
 	if p := u.PublicProfileFor(u.ID(), user.Ties{}, now); p.PrimeStyle == nil || *p.PrimeStyle != dressed {
 		t.Fatalf("the page with prime = %+v", p.PrimeStyle)
 	}
+	if p := u.ListedProfile(now); p.PrimeStyle == nil || *p.PrimeStyle != dressed {
+		t.Fatalf("in a list with prime = %+v", p.PrimeStyle)
+	}
 
 	// Prime has ended: the owner keeps the style, others no longer see it.
 	later := now.Add(2 * time.Hour)
 	if p := u.PublicProfileFor(u.ID(), user.Ties{}, later); p.PrimeStyle != nil || u.PrimeStyle() != dressed {
 		t.Fatalf("after prime = %+v, kept %+v", p.PrimeStyle, u.PrimeStyle())
+	}
+	if p := u.ListedProfile(later); p.PrimeStyle != nil {
+		t.Fatalf("in a list after prime = %+v", p.PrimeStyle)
 	}
 }

@@ -37,9 +37,9 @@ func (u *User) IsOnline(now time.Time) bool {
 
 // ListedProfile is the person in a list of people at now: what anyone
 // may see (PublicProfile) and whether they are online ("Онлайн" by a
-// name, as on openvk). A list does not know its viewer, so only a page
-// open to everyone says it; when the person last visited, a list never
-// tells.
+// name, as on openvk), with the Prime style that dresses their name and
+// posts. A list does not know its viewer, so only a page open to everyone
+// says it is online; when the person last visited, a list never tells.
 func (u *User) ListedProfile(now time.Time) PublicProfile {
 	if u.IsBannedAt(now) {
 		return u.bannedProfile(now)
@@ -47,6 +47,7 @@ func (u *User) ListedProfile(now time.Time) PublicProfile {
 
 	p := u.PublicProfile()
 	p.Prime = u.IsPrimeAt(now)
+	p.PrimeStyle = u.shownPrimeStyle(now)
 	p.Online = !u.IsDeactivated() && u.privacy.PageRead == AudienceEveryone && !u.privacy.Closed && u.IsOnline(now) &&
 		!u.invisibleAt(now)
 
