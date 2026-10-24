@@ -65,9 +65,23 @@ func TestPrimeRepository(t *testing.T) {
 		t.Fatalf("SetInvisible nobody: %v", err)
 	}
 
+	style, err := user.NewPrimeStyle("sapphire", "silver", "sparkles", "sleepy")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = primes.SetStyle(ctx, u.ID(), style); err != nil {
+		t.Fatal(err)
+	}
+	if err = primes.SetStyle(ctx, uuid.New(), style); !errors.Is(err, user.ErrNotFound) {
+		t.Fatalf("SetStyle nobody: %v", err)
+	}
+
 	got, err := repo.GetByID(ctx, u.ID())
 	if err != nil || !got.Prime().Until.Equal(until) || !got.Prime().Invisible || !got.IsPrimeAt(now) {
 		t.Fatalf("read back = %+v, %v", got.Prime(), err)
+	}
+	if got.PrimeStyle() != style {
+		t.Fatalf("style read back = %+v", got.PrimeStyle())
 	}
 
 	// The gold theme of Prime is stored.

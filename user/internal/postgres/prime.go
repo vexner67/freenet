@@ -114,3 +114,25 @@ func (r *PrimeRepository) SetInvisible(ctx context.Context, userID uuid.UUID, in
 
 	return nil
 }
+
+const setPrimeStyleQuery = `
+	UPDATE users
+	SET prime_name = $2,
+		prime_frame = $3,
+		prime_background = $4,
+		prime_mood = $5
+	WHERE id = $1
+`
+
+func (r *PrimeRepository) SetStyle(ctx context.Context, userID uuid.UUID, s user.PrimeStyle) error {
+	tag, err := r.conn(ctx).Exec(ctx, setPrimeStyleQuery, userID, s.Name, s.Frame, s.Background, s.Mood)
+	if err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return user.ErrNotFound
+	}
+
+	return nil
+}

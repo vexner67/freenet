@@ -137,6 +137,9 @@ type PublicProfile struct {
 	// Prime: the page has Freenet Prime, a mark by the name; told as the
 	// checkmark is, by those that know the time.
 	Prime bool
+	// PrimeStyle is how the page is dressed with Prime: only on the page
+	// itself, open to the viewer, while Prime lasts; nil otherwise.
+	PrimeStyle *PrimeStyle
 }
 
 // birthYearMask is the year of a birthday told without one: a leap year,
@@ -179,6 +182,9 @@ type User struct {
 	// prime is the subscription Freenet Prime; like wallet, storage alone
 	// changes it.
 	prime Prime
+	// primeStyle is how the page is dressed with Prime; like prime,
+	// storage alone changes it.
+	primeStyle PrimeStyle
 }
 
 // New creates a user with only an email set, as happens on the first
@@ -198,7 +204,8 @@ func New(email Email) (*User, error) {
 			OnlineRead: AudienceEveryone, GiftsRead: AudienceEveryone,
 			ChatsInvite: DefaultChatsInvite,
 		},
-		ui: DefaultInterface(),
+		ui:         DefaultInterface(),
+		primeStyle: DefaultPrimeStyle(),
 	}, nil
 }
 
@@ -221,6 +228,7 @@ type Stored struct {
 	Ban          Ban
 	Alert        Alert
 	Prime        Prime
+	PrimeStyle   PrimeStyle
 }
 
 // Restore rebuilds a user from storage without validation or new IDs.
@@ -243,6 +251,7 @@ func Restore(s Stored) *User {
 		ban:          s.Ban,
 		alert:        s.Alert,
 		prime:        s.Prime,
+		primeStyle:   s.PrimeStyle,
 	}
 }
 
@@ -407,6 +416,7 @@ func (u *User) PublicProfileFor(viewerID uuid.UUID, t Ties, now time.Time) Publi
 
 	p := u.publicProfile(access.Info)
 	p.Prime = u.IsPrimeAt(now)
+	p.PrimeStyle = u.shownPrimeStyle(now)
 	if p.LastSeen = u.lastSeenFor(viewerID, t, now); !p.LastSeen.IsZero() {
 		p.Online = u.IsOnline(now)
 	}
