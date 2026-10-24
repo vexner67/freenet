@@ -20,129 +20,134 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UserService_GetOrCreateByEmail_FullMethodName = "/user.v1.UserService/GetOrCreateByEmail"
-	UserService_GetMe_FullMethodName              = "/user.v1.UserService/GetMe"
-	UserService_UpdateProfile_FullMethodName      = "/user.v1.UserService/UpdateProfile"
-	UserService_UpdateStatus_FullMethodName       = "/user.v1.UserService/UpdateStatus"
-	UserService_UpdateNickname_FullMethodName     = "/user.v1.UserService/UpdateNickname"
-	UserService_UpdatePrivacy_FullMethodName      = "/user.v1.UserService/UpdatePrivacy"
-	UserService_UpdateInterface_FullMethodName    = "/user.v1.UserService/UpdateInterface"
-	UserService_UpdateContacts_FullMethodName     = "/user.v1.UserService/UpdateContacts"
-	UserService_UpdateInterests_FullMethodName    = "/user.v1.UserService/UpdateInterests"
-	UserService_UpdateExtraFields_FullMethodName  = "/user.v1.UserService/UpdateExtraFields"
-	UserService_SetAvatar_FullMethodName          = "/user.v1.UserService/SetAvatar"
-	UserService_SetBackdrop_FullMethodName        = "/user.v1.UserService/SetBackdrop"
-	UserService_GetProfile_FullMethodName         = "/user.v1.UserService/GetProfile"
-	UserService_GetProfiles_FullMethodName        = "/user.v1.UserService/GetProfiles"
-	UserService_SearchUsers_FullMethodName        = "/user.v1.UserService/SearchUsers"
-	UserService_Follow_FullMethodName             = "/user.v1.UserService/Follow"
-	UserService_Unfollow_FullMethodName           = "/user.v1.UserService/Unfollow"
-	UserService_AcceptInvite_FullMethodName       = "/user.v1.UserService/AcceptInvite"
-	UserService_GetFollowStats_FullMethodName     = "/user.v1.UserService/GetFollowStats"
-	UserService_ListFollowers_FullMethodName      = "/user.v1.UserService/ListFollowers"
-	UserService_ListFollowing_FullMethodName      = "/user.v1.UserService/ListFollowing"
-	UserService_MarkOnline_FullMethodName         = "/user.v1.UserService/MarkOnline"
-	UserService_GetStatistics_FullMethodName      = "/user.v1.UserService/GetStatistics"
-	UserService_CanPostOnWall_FullMethodName      = "/user.v1.UserService/CanPostOnWall"
-	UserService_CanMessage_FullMethodName         = "/user.v1.UserService/CanMessage"
-	UserService_GetBoughtPosts_FullMethodName     = "/user.v1.UserService/GetBoughtPosts"
-	UserService_BuyPost_FullMethodName            = "/user.v1.UserService/BuyPost"
-	UserService_PayMessage_FullMethodName         = "/user.v1.UserService/PayMessage"
-	UserService_RefundMessage_FullMethodName      = "/user.v1.UserService/RefundMessage"
-	UserService_ResolveMentions_FullMethodName    = "/user.v1.UserService/ResolveMentions"
-	UserService_ResolveInvites_FullMethodName     = "/user.v1.UserService/ResolveInvites"
-	UserService_FindNicknames_FullMethodName      = "/user.v1.UserService/FindNicknames"
-	UserService_GetAccess_FullMethodName          = "/user.v1.UserService/GetAccess"
-	UserService_Block_FullMethodName              = "/user.v1.UserService/Block"
-	UserService_Unblock_FullMethodName            = "/user.v1.UserService/Unblock"
-	UserService_ListBlocked_FullMethodName        = "/user.v1.UserService/ListBlocked"
-	UserService_ListBlockedIDs_FullMethodName     = "/user.v1.UserService/ListBlockedIDs"
-	UserService_IgnoreSource_FullMethodName       = "/user.v1.UserService/IgnoreSource"
-	UserService_UnignoreSources_FullMethodName    = "/user.v1.UserService/UnignoreSources"
-	UserService_ListIgnoredSources_FullMethodName = "/user.v1.UserService/ListIgnoredSources"
-	UserService_GetRelation_FullMethodName        = "/user.v1.UserService/GetRelation"
-	UserService_GetGiftCatalog_FullMethodName     = "/user.v1.UserService/GetGiftCatalog"
-	UserService_SendGift_FullMethodName           = "/user.v1.UserService/SendGift"
-	UserService_ListGifts_FullMethodName          = "/user.v1.UserService/ListGifts"
-	UserService_DeleteGift_FullMethodName         = "/user.v1.UserService/DeleteGift"
-	UserService_SetGiftPrice_FullMethodName       = "/user.v1.UserService/SetGiftPrice"
-	UserService_UpgradeGift_FullMethodName        = "/user.v1.UserService/UpgradeGift"
-	UserService_TransferGift_FullMethodName       = "/user.v1.UserService/TransferGift"
-	UserService_SetGiftSale_FullMethodName        = "/user.v1.UserService/SetGiftSale"
-	UserService_BuyGift_FullMethodName            = "/user.v1.UserService/BuyGift"
-	UserService_GetCollectible_FullMethodName     = "/user.v1.UserService/GetCollectible"
-	UserService_ListGiftMarket_FullMethodName     = "/user.v1.UserService/ListGiftMarket"
-	UserService_StartGiftAuction_FullMethodName   = "/user.v1.UserService/StartGiftAuction"
-	UserService_MintGiftAuction_FullMethodName    = "/user.v1.UserService/MintGiftAuction"
-	UserService_CancelGiftAuction_FullMethodName  = "/user.v1.UserService/CancelGiftAuction"
-	UserService_BidGift_FullMethodName            = "/user.v1.UserService/BidGift"
-	UserService_ListGiftAuctions_FullMethodName   = "/user.v1.UserService/ListGiftAuctions"
-	UserService_SetGiftSupply_FullMethodName      = "/user.v1.UserService/SetGiftSupply"
-	UserService_GetStickerCatalog_FullMethodName  = "/user.v1.UserService/GetStickerCatalog"
-	UserService_AddStickerPack_FullMethodName     = "/user.v1.UserService/AddStickerPack"
-	UserService_RemoveStickerPack_FullMethodName  = "/user.v1.UserService/RemoveStickerPack"
-	UserService_ListMyStickerPacks_FullMethodName = "/user.v1.UserService/ListMyStickerPacks"
-	UserService_CreateStickerPack_FullMethodName  = "/user.v1.UserService/CreateStickerPack"
-	UserService_EditStickerPack_FullMethodName    = "/user.v1.UserService/EditStickerPack"
-	UserService_DeleteStickerPack_FullMethodName  = "/user.v1.UserService/DeleteStickerPack"
-	UserService_GetStickerAuthors_FullMethodName  = "/user.v1.UserService/GetStickerAuthors"
-	UserService_TransferVotes_FullMethodName      = "/user.v1.UserService/TransferVotes"
-	UserService_RedeemVoucher_FullMethodName      = "/user.v1.UserService/RedeemVoucher"
-	UserService_ListVoteOperations_FullMethodName = "/user.v1.UserService/ListVoteOperations"
-	UserService_CreateVoucher_FullMethodName      = "/user.v1.UserService/CreateVoucher"
-	UserService_ListVouchers_FullMethodName       = "/user.v1.UserService/ListVouchers"
-	UserService_DeleteVoucher_FullMethodName      = "/user.v1.UserService/DeleteVoucher"
-	UserService_GetVoteRate_FullMethodName        = "/user.v1.UserService/GetVoteRate"
-	UserService_SetVoteRate_FullMethodName        = "/user.v1.UserService/SetVoteRate"
-	UserService_GetTreasury_FullMethodName        = "/user.v1.UserService/GetTreasury"
-	UserService_GetBonus_FullMethodName           = "/user.v1.UserService/GetBonus"
-	UserService_ClaimBonus_FullMethodName         = "/user.v1.UserService/ClaimBonus"
-	UserService_SetEconomy_FullMethodName         = "/user.v1.UserService/SetEconomy"
-	UserService_RaiseRating_FullMethodName        = "/user.v1.UserService/RaiseRating"
-	UserService_GetPrime_FullMethodName           = "/user.v1.UserService/GetPrime"
-	UserService_BuyPrime_FullMethodName           = "/user.v1.UserService/BuyPrime"
-	UserService_SetPrimePrices_FullMethodName     = "/user.v1.UserService/SetPrimePrices"
-	UserService_SetPrimeInvisible_FullMethodName  = "/user.v1.UserService/SetPrimeInvisible"
-	UserService_SetPrimeStyle_FullMethodName      = "/user.v1.UserService/SetPrimeStyle"
-	UserService_GetDecor_FullMethodName           = "/user.v1.UserService/GetDecor"
-	UserService_SetDecor_FullMethodName           = "/user.v1.UserService/SetDecor"
-	UserService_GetCasino_FullMethodName          = "/user.v1.UserService/GetCasino"
-	UserService_GetCasinoSettings_FullMethodName  = "/user.v1.UserService/GetCasinoSettings"
-	UserService_SetCasino_FullMethodName          = "/user.v1.UserService/SetCasino"
-	UserService_SpinCasino_FullMethodName         = "/user.v1.UserService/SpinCasino"
-	UserService_SetCasinoBets_FullMethodName      = "/user.v1.UserService/SetCasinoBets"
-	UserService_BetCasino_FullMethodName          = "/user.v1.UserService/BetCasino"
-	UserService_ListBetEvents_FullMethodName      = "/user.v1.UserService/ListBetEvents"
-	UserService_CreateBetEvent_FullMethodName     = "/user.v1.UserService/CreateBetEvent"
-	UserService_CloseBetEvent_FullMethodName      = "/user.v1.UserService/CloseBetEvent"
-	UserService_ResolveBetEvent_FullMethodName    = "/user.v1.UserService/ResolveBetEvent"
-	UserService_CancelBetEvent_FullMethodName     = "/user.v1.UserService/CancelBetEvent"
-	UserService_DeleteBetEvent_FullMethodName     = "/user.v1.UserService/DeleteBetEvent"
-	UserService_SetBetEventOdds_FullMethodName    = "/user.v1.UserService/SetBetEventOdds"
-	UserService_StakeBet_FullMethodName           = "/user.v1.UserService/StakeBet"
-	UserService_SetCasinoRocket_FullMethodName    = "/user.v1.UserService/SetCasinoRocket"
-	UserService_SetCasinoJackpot_FullMethodName   = "/user.v1.UserService/SetCasinoJackpot"
-	UserService_LaunchRocket_FullMethodName       = "/user.v1.UserService/LaunchRocket"
-	UserService_GetRocket_FullMethodName          = "/user.v1.UserService/GetRocket"
-	UserService_CashRocket_FullMethodName         = "/user.v1.UserService/CashRocket"
-	UserService_SetVerified_FullMethodName        = "/user.v1.UserService/SetVerified"
-	UserService_SetAlert_FullMethodName           = "/user.v1.UserService/SetAlert"
-	UserService_ListAds_FullMethodName            = "/user.v1.UserService/ListAds"
-	UserService_CreateAd_FullMethodName           = "/user.v1.UserService/CreateAd"
-	UserService_EditAd_FullMethodName             = "/user.v1.UserService/EditAd"
-	UserService_DeleteAd_FullMethodName           = "/user.v1.UserService/DeleteAd"
-	UserService_ViewAd_FullMethodName             = "/user.v1.UserService/ViewAd"
-	UserService_ClickAd_FullMethodName            = "/user.v1.UserService/ClickAd"
-	UserService_BanUser_FullMethodName            = "/user.v1.UserService/BanUser"
-	UserService_UnbanUser_FullMethodName          = "/user.v1.UserService/UnbanUser"
-	UserService_DeactivateAccount_FullMethodName  = "/user.v1.UserService/DeactivateAccount"
-	UserService_ReactivateAccount_FullMethodName  = "/user.v1.UserService/ReactivateAccount"
-	UserService_GetAccountState_FullMethodName    = "/user.v1.UserService/GetAccountState"
-	UserService_GetMine_FullMethodName            = "/user.v1.UserService/GetMine"
-	UserService_DigOre_FullMethodName             = "/user.v1.UserService/DigOre"
-	UserService_SellOre_FullMethodName            = "/user.v1.UserService/SellOre"
-	UserService_GetMineSettings_FullMethodName    = "/user.v1.UserService/GetMineSettings"
-	UserService_SetMine_FullMethodName            = "/user.v1.UserService/SetMine"
+	UserService_GetOrCreateByEmail_FullMethodName  = "/user.v1.UserService/GetOrCreateByEmail"
+	UserService_GetMe_FullMethodName               = "/user.v1.UserService/GetMe"
+	UserService_UpdateProfile_FullMethodName       = "/user.v1.UserService/UpdateProfile"
+	UserService_UpdateStatus_FullMethodName        = "/user.v1.UserService/UpdateStatus"
+	UserService_UpdateNickname_FullMethodName      = "/user.v1.UserService/UpdateNickname"
+	UserService_UpdatePrivacy_FullMethodName       = "/user.v1.UserService/UpdatePrivacy"
+	UserService_UpdateInterface_FullMethodName     = "/user.v1.UserService/UpdateInterface"
+	UserService_UpdateContacts_FullMethodName      = "/user.v1.UserService/UpdateContacts"
+	UserService_UpdateInterests_FullMethodName     = "/user.v1.UserService/UpdateInterests"
+	UserService_UpdateExtraFields_FullMethodName   = "/user.v1.UserService/UpdateExtraFields"
+	UserService_SetAvatar_FullMethodName           = "/user.v1.UserService/SetAvatar"
+	UserService_SetBackdrop_FullMethodName         = "/user.v1.UserService/SetBackdrop"
+	UserService_GetProfile_FullMethodName          = "/user.v1.UserService/GetProfile"
+	UserService_GetProfiles_FullMethodName         = "/user.v1.UserService/GetProfiles"
+	UserService_SearchUsers_FullMethodName         = "/user.v1.UserService/SearchUsers"
+	UserService_Follow_FullMethodName              = "/user.v1.UserService/Follow"
+	UserService_Unfollow_FullMethodName            = "/user.v1.UserService/Unfollow"
+	UserService_AcceptInvite_FullMethodName        = "/user.v1.UserService/AcceptInvite"
+	UserService_GetFollowStats_FullMethodName      = "/user.v1.UserService/GetFollowStats"
+	UserService_ListFollowers_FullMethodName       = "/user.v1.UserService/ListFollowers"
+	UserService_ListFollowing_FullMethodName       = "/user.v1.UserService/ListFollowing"
+	UserService_MarkOnline_FullMethodName          = "/user.v1.UserService/MarkOnline"
+	UserService_GetStatistics_FullMethodName       = "/user.v1.UserService/GetStatistics"
+	UserService_CanPostOnWall_FullMethodName       = "/user.v1.UserService/CanPostOnWall"
+	UserService_CanMessage_FullMethodName          = "/user.v1.UserService/CanMessage"
+	UserService_GetBoughtPosts_FullMethodName      = "/user.v1.UserService/GetBoughtPosts"
+	UserService_BuyPost_FullMethodName             = "/user.v1.UserService/BuyPost"
+	UserService_PayMessage_FullMethodName          = "/user.v1.UserService/PayMessage"
+	UserService_RefundMessage_FullMethodName       = "/user.v1.UserService/RefundMessage"
+	UserService_ResolveMentions_FullMethodName     = "/user.v1.UserService/ResolveMentions"
+	UserService_ResolveInvites_FullMethodName      = "/user.v1.UserService/ResolveInvites"
+	UserService_FindNicknames_FullMethodName       = "/user.v1.UserService/FindNicknames"
+	UserService_GetAccess_FullMethodName           = "/user.v1.UserService/GetAccess"
+	UserService_Block_FullMethodName               = "/user.v1.UserService/Block"
+	UserService_Unblock_FullMethodName             = "/user.v1.UserService/Unblock"
+	UserService_ListBlocked_FullMethodName         = "/user.v1.UserService/ListBlocked"
+	UserService_ListBlockedIDs_FullMethodName      = "/user.v1.UserService/ListBlockedIDs"
+	UserService_IgnoreSource_FullMethodName        = "/user.v1.UserService/IgnoreSource"
+	UserService_UnignoreSources_FullMethodName     = "/user.v1.UserService/UnignoreSources"
+	UserService_ListIgnoredSources_FullMethodName  = "/user.v1.UserService/ListIgnoredSources"
+	UserService_GetRelation_FullMethodName         = "/user.v1.UserService/GetRelation"
+	UserService_GetGiftCatalog_FullMethodName      = "/user.v1.UserService/GetGiftCatalog"
+	UserService_SendGift_FullMethodName            = "/user.v1.UserService/SendGift"
+	UserService_ListGifts_FullMethodName           = "/user.v1.UserService/ListGifts"
+	UserService_DeleteGift_FullMethodName          = "/user.v1.UserService/DeleteGift"
+	UserService_SetGiftPrice_FullMethodName        = "/user.v1.UserService/SetGiftPrice"
+	UserService_UpgradeGift_FullMethodName         = "/user.v1.UserService/UpgradeGift"
+	UserService_TransferGift_FullMethodName        = "/user.v1.UserService/TransferGift"
+	UserService_SetGiftSale_FullMethodName         = "/user.v1.UserService/SetGiftSale"
+	UserService_BuyGift_FullMethodName             = "/user.v1.UserService/BuyGift"
+	UserService_GetCollectible_FullMethodName      = "/user.v1.UserService/GetCollectible"
+	UserService_ListGiftMarket_FullMethodName      = "/user.v1.UserService/ListGiftMarket"
+	UserService_StartGiftAuction_FullMethodName    = "/user.v1.UserService/StartGiftAuction"
+	UserService_MintGiftAuction_FullMethodName     = "/user.v1.UserService/MintGiftAuction"
+	UserService_CancelGiftAuction_FullMethodName   = "/user.v1.UserService/CancelGiftAuction"
+	UserService_BidGift_FullMethodName             = "/user.v1.UserService/BidGift"
+	UserService_ListGiftAuctions_FullMethodName    = "/user.v1.UserService/ListGiftAuctions"
+	UserService_SetGiftSupply_FullMethodName       = "/user.v1.UserService/SetGiftSupply"
+	UserService_GetStickerCatalog_FullMethodName   = "/user.v1.UserService/GetStickerCatalog"
+	UserService_AddStickerPack_FullMethodName      = "/user.v1.UserService/AddStickerPack"
+	UserService_RemoveStickerPack_FullMethodName   = "/user.v1.UserService/RemoveStickerPack"
+	UserService_ListMyStickerPacks_FullMethodName  = "/user.v1.UserService/ListMyStickerPacks"
+	UserService_CreateStickerPack_FullMethodName   = "/user.v1.UserService/CreateStickerPack"
+	UserService_EditStickerPack_FullMethodName     = "/user.v1.UserService/EditStickerPack"
+	UserService_DeleteStickerPack_FullMethodName   = "/user.v1.UserService/DeleteStickerPack"
+	UserService_GetStickerAuthors_FullMethodName   = "/user.v1.UserService/GetStickerAuthors"
+	UserService_TransferVotes_FullMethodName       = "/user.v1.UserService/TransferVotes"
+	UserService_RedeemVoucher_FullMethodName       = "/user.v1.UserService/RedeemVoucher"
+	UserService_ListVoteOperations_FullMethodName  = "/user.v1.UserService/ListVoteOperations"
+	UserService_CreateVoucher_FullMethodName       = "/user.v1.UserService/CreateVoucher"
+	UserService_ListVouchers_FullMethodName        = "/user.v1.UserService/ListVouchers"
+	UserService_DeleteVoucher_FullMethodName       = "/user.v1.UserService/DeleteVoucher"
+	UserService_GetVoteRate_FullMethodName         = "/user.v1.UserService/GetVoteRate"
+	UserService_SetVoteRate_FullMethodName         = "/user.v1.UserService/SetVoteRate"
+	UserService_GetTreasury_FullMethodName         = "/user.v1.UserService/GetTreasury"
+	UserService_GetBonus_FullMethodName            = "/user.v1.UserService/GetBonus"
+	UserService_ClaimBonus_FullMethodName          = "/user.v1.UserService/ClaimBonus"
+	UserService_SetEconomy_FullMethodName          = "/user.v1.UserService/SetEconomy"
+	UserService_RaiseRating_FullMethodName         = "/user.v1.UserService/RaiseRating"
+	UserService_GetPrime_FullMethodName            = "/user.v1.UserService/GetPrime"
+	UserService_BuyPrime_FullMethodName            = "/user.v1.UserService/BuyPrime"
+	UserService_SetPrimePrices_FullMethodName      = "/user.v1.UserService/SetPrimePrices"
+	UserService_SetPrimeInvisible_FullMethodName   = "/user.v1.UserService/SetPrimeInvisible"
+	UserService_SetPrimeStyle_FullMethodName       = "/user.v1.UserService/SetPrimeStyle"
+	UserService_GetDecor_FullMethodName            = "/user.v1.UserService/GetDecor"
+	UserService_SetDecor_FullMethodName            = "/user.v1.UserService/SetDecor"
+	UserService_GetCasino_FullMethodName           = "/user.v1.UserService/GetCasino"
+	UserService_GetCasinoSettings_FullMethodName   = "/user.v1.UserService/GetCasinoSettings"
+	UserService_SetCasino_FullMethodName           = "/user.v1.UserService/SetCasino"
+	UserService_SpinCasino_FullMethodName          = "/user.v1.UserService/SpinCasino"
+	UserService_SetCasinoBets_FullMethodName       = "/user.v1.UserService/SetCasinoBets"
+	UserService_BetCasino_FullMethodName           = "/user.v1.UserService/BetCasino"
+	UserService_ListBetEvents_FullMethodName       = "/user.v1.UserService/ListBetEvents"
+	UserService_CreateBetEvent_FullMethodName      = "/user.v1.UserService/CreateBetEvent"
+	UserService_CloseBetEvent_FullMethodName       = "/user.v1.UserService/CloseBetEvent"
+	UserService_ResolveBetEvent_FullMethodName     = "/user.v1.UserService/ResolveBetEvent"
+	UserService_CancelBetEvent_FullMethodName      = "/user.v1.UserService/CancelBetEvent"
+	UserService_DeleteBetEvent_FullMethodName      = "/user.v1.UserService/DeleteBetEvent"
+	UserService_SetBetEventOdds_FullMethodName     = "/user.v1.UserService/SetBetEventOdds"
+	UserService_StakeBet_FullMethodName            = "/user.v1.UserService/StakeBet"
+	UserService_SetCasinoRocket_FullMethodName     = "/user.v1.UserService/SetCasinoRocket"
+	UserService_SetCasinoJackpot_FullMethodName    = "/user.v1.UserService/SetCasinoJackpot"
+	UserService_LaunchRocket_FullMethodName        = "/user.v1.UserService/LaunchRocket"
+	UserService_GetRocket_FullMethodName           = "/user.v1.UserService/GetRocket"
+	UserService_CashRocket_FullMethodName          = "/user.v1.UserService/CashRocket"
+	UserService_SetVerified_FullMethodName         = "/user.v1.UserService/SetVerified"
+	UserService_SetAlert_FullMethodName            = "/user.v1.UserService/SetAlert"
+	UserService_ListAds_FullMethodName             = "/user.v1.UserService/ListAds"
+	UserService_CreateAd_FullMethodName            = "/user.v1.UserService/CreateAd"
+	UserService_EditAd_FullMethodName              = "/user.v1.UserService/EditAd"
+	UserService_DeleteAd_FullMethodName            = "/user.v1.UserService/DeleteAd"
+	UserService_ViewAd_FullMethodName              = "/user.v1.UserService/ViewAd"
+	UserService_ClickAd_FullMethodName             = "/user.v1.UserService/ClickAd"
+	UserService_BanUser_FullMethodName             = "/user.v1.UserService/BanUser"
+	UserService_UnbanUser_FullMethodName           = "/user.v1.UserService/UnbanUser"
+	UserService_DeactivateAccount_FullMethodName   = "/user.v1.UserService/DeactivateAccount"
+	UserService_ReactivateAccount_FullMethodName   = "/user.v1.UserService/ReactivateAccount"
+	UserService_GetAccountState_FullMethodName     = "/user.v1.UserService/GetAccountState"
+	UserService_GetMine_FullMethodName             = "/user.v1.UserService/GetMine"
+	UserService_DigOre_FullMethodName              = "/user.v1.UserService/DigOre"
+	UserService_SellOre_FullMethodName             = "/user.v1.UserService/SellOre"
+	UserService_GetMineSettings_FullMethodName     = "/user.v1.UserService/GetMineSettings"
+	UserService_SetMine_FullMethodName             = "/user.v1.UserService/SetMine"
+	UserService_GetBusinesses_FullMethodName       = "/user.v1.UserService/GetBusinesses"
+	UserService_BuyBusiness_FullMethodName         = "/user.v1.UserService/BuyBusiness"
+	UserService_RunBusiness_FullMethodName         = "/user.v1.UserService/RunBusiness"
+	UserService_GetBusinessSettings_FullMethodName = "/user.v1.UserService/GetBusinessSettings"
+	UserService_SetBusinessSettings_FullMethodName = "/user.v1.UserService/SetBusinessSettings"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -468,6 +473,24 @@ type UserServiceClient interface {
 	// energy and the events of the mine, and how it does.
 	GetMineSettings(ctx context.Context, in *GetMineSettingsRequest, opts ...grpc.CallOption) (*GetMineSettingsResponse, error)
 	SetMine(ctx context.Context, in *SetMineRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Require an access token: the businesses of the caller. A business is
+	// bought for votes into the treasury (FailedPrecondition "you own this
+	// business already", "not enough votes"), and runs by itself: customers
+	// buy its goods at its price, workers serve them, wages and rent run,
+	// the premises wear down. RunBusiness does an action: "manage" (price
+	// and staff), "restock" (amount — units), "upgrade", "repair",
+	// "advertise", "deposit" (amount — votes into the till), "collect" (the
+	// till, less the tax) and "sell" (half of what went into it and the
+	// till). A business that runs too deep into debt goes bankrupt
+	// (FailedPrecondition "the business went bankrupt"). Taking votes out is
+	// for pages a week old with a filled profile.
+	GetBusinesses(ctx context.Context, in *GetBusinessesRequest, opts ...grpc.CallOption) (*BusinessesState, error)
+	BuyBusiness(ctx context.Context, in *BuyBusinessRequest, opts ...grpc.CallOption) (*RunBusinessResponse, error)
+	RunBusiness(ctx context.Context, in *RunBusinessRequest, opts ...grpc.CallOption) (*RunBusinessResponse, error)
+	// For the administrators (PermissionDenied for others): the plans of the
+	// businesses and the tax, and how they do.
+	GetBusinessSettings(ctx context.Context, in *GetBusinessSettingsRequest, opts ...grpc.CallOption) (*GetBusinessSettingsResponse, error)
+	SetBusinessSettings(ctx context.Context, in *SetBusinessSettingsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type userServiceClient struct {
@@ -1708,6 +1731,56 @@ func (c *userServiceClient) SetMine(ctx context.Context, in *SetMineRequest, opt
 	return out, nil
 }
 
+func (c *userServiceClient) GetBusinesses(ctx context.Context, in *GetBusinessesRequest, opts ...grpc.CallOption) (*BusinessesState, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BusinessesState)
+	err := c.cc.Invoke(ctx, UserService_GetBusinesses_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) BuyBusiness(ctx context.Context, in *BuyBusinessRequest, opts ...grpc.CallOption) (*RunBusinessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunBusinessResponse)
+	err := c.cc.Invoke(ctx, UserService_BuyBusiness_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) RunBusiness(ctx context.Context, in *RunBusinessRequest, opts ...grpc.CallOption) (*RunBusinessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunBusinessResponse)
+	err := c.cc.Invoke(ctx, UserService_RunBusiness_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetBusinessSettings(ctx context.Context, in *GetBusinessSettingsRequest, opts ...grpc.CallOption) (*GetBusinessSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetBusinessSettingsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetBusinessSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SetBusinessSettings(ctx context.Context, in *SetBusinessSettingsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetBusinessSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -2031,6 +2104,24 @@ type UserServiceServer interface {
 	// energy and the events of the mine, and how it does.
 	GetMineSettings(context.Context, *GetMineSettingsRequest) (*GetMineSettingsResponse, error)
 	SetMine(context.Context, *SetMineRequest) (*emptypb.Empty, error)
+	// Require an access token: the businesses of the caller. A business is
+	// bought for votes into the treasury (FailedPrecondition "you own this
+	// business already", "not enough votes"), and runs by itself: customers
+	// buy its goods at its price, workers serve them, wages and rent run,
+	// the premises wear down. RunBusiness does an action: "manage" (price
+	// and staff), "restock" (amount — units), "upgrade", "repair",
+	// "advertise", "deposit" (amount — votes into the till), "collect" (the
+	// till, less the tax) and "sell" (half of what went into it and the
+	// till). A business that runs too deep into debt goes bankrupt
+	// (FailedPrecondition "the business went bankrupt"). Taking votes out is
+	// for pages a week old with a filled profile.
+	GetBusinesses(context.Context, *GetBusinessesRequest) (*BusinessesState, error)
+	BuyBusiness(context.Context, *BuyBusinessRequest) (*RunBusinessResponse, error)
+	RunBusiness(context.Context, *RunBusinessRequest) (*RunBusinessResponse, error)
+	// For the administrators (PermissionDenied for others): the plans of the
+	// businesses and the tax, and how they do.
+	GetBusinessSettings(context.Context, *GetBusinessSettingsRequest) (*GetBusinessSettingsResponse, error)
+	SetBusinessSettings(context.Context, *SetBusinessSettingsRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -2409,6 +2500,21 @@ func (UnimplementedUserServiceServer) GetMineSettings(context.Context, *GetMineS
 }
 func (UnimplementedUserServiceServer) SetMine(context.Context, *SetMineRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetMine not implemented")
+}
+func (UnimplementedUserServiceServer) GetBusinesses(context.Context, *GetBusinessesRequest) (*BusinessesState, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetBusinesses not implemented")
+}
+func (UnimplementedUserServiceServer) BuyBusiness(context.Context, *BuyBusinessRequest) (*RunBusinessResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BuyBusiness not implemented")
+}
+func (UnimplementedUserServiceServer) RunBusiness(context.Context, *RunBusinessRequest) (*RunBusinessResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RunBusiness not implemented")
+}
+func (UnimplementedUserServiceServer) GetBusinessSettings(context.Context, *GetBusinessSettingsRequest) (*GetBusinessSettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetBusinessSettings not implemented")
+}
+func (UnimplementedUserServiceServer) SetBusinessSettings(context.Context, *SetBusinessSettingsRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetBusinessSettings not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -4645,6 +4751,96 @@ func _UserService_SetMine_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetBusinesses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBusinessesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetBusinesses(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetBusinesses_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetBusinesses(ctx, req.(*GetBusinessesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_BuyBusiness_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BuyBusinessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).BuyBusiness(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_BuyBusiness_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).BuyBusiness(ctx, req.(*BuyBusinessRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_RunBusiness_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunBusinessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).RunBusiness(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_RunBusiness_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).RunBusiness(ctx, req.(*RunBusinessRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetBusinessSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBusinessSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetBusinessSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetBusinessSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetBusinessSettings(ctx, req.(*GetBusinessSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SetBusinessSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetBusinessSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetBusinessSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetBusinessSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetBusinessSettings(ctx, req.(*SetBusinessSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -5143,6 +5339,26 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetMine",
 			Handler:    _UserService_SetMine_Handler,
+		},
+		{
+			MethodName: "GetBusinesses",
+			Handler:    _UserService_GetBusinesses_Handler,
+		},
+		{
+			MethodName: "BuyBusiness",
+			Handler:    _UserService_BuyBusiness_Handler,
+		},
+		{
+			MethodName: "RunBusiness",
+			Handler:    _UserService_RunBusiness_Handler,
+		},
+		{
+			MethodName: "GetBusinessSettings",
+			Handler:    _UserService_GetBusinessSettings_Handler,
+		},
+		{
+			MethodName: "SetBusinessSettings",
+			Handler:    _UserService_SetBusinessSettings_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

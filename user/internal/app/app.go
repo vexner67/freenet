@@ -229,6 +229,7 @@ func (a *App) build(cfg config.Config) error {
 			Casinos:     service.NewCasinoService(store.users, store.casino, store.wallets, store.tx, admins),
 			Rockets:     service.NewRocketService(store.users, store.casino, store.rockets, store.wallets, store.tx, admins),
 			Mines:       service.NewMineService(store.users, store.mine, store.wallets, store.tx, admins),
+			Businesses:  service.NewBusinessService(store.users, store.business, store.wallets, store.tx, admins),
 			BetEvents:   service.NewBetEventService(store.users, store.betEvents, store.wallets, store.tx, admins),
 			Paid:        service.NewPaidService(store.users, store.wallets, store.purchases, store.economy, permissions, store.tx),
 			Permissions: permissions,
@@ -290,6 +291,9 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		// Energy holds the digs back; the limit is against scripts.
 		userv1.UserService_DigOre_FullMethodName:  cfg.MineLimits,
 		userv1.UserService_SellOre_FullMethodName: cfg.MineLimits,
+
+		userv1.UserService_BuyBusiness_FullMethodName: cfg.BusinessLimits,
+		userv1.UserService_RunBusiness_FullMethodName: cfg.BusinessLimits,
 	}
 }
 
@@ -362,6 +366,8 @@ type storage struct {
 	casino service.CasinoRepository
 	// mine is the mine of the site and its miners.
 	mine service.MineRepository
+	// business is the rules of the businesses and the businesses of pages.
+	business service.BusinessRepository
 	// rockets are the rounds of "Ракетка".
 	rockets service.RocketRepository
 	// betEvents are the events people stake on.
@@ -401,6 +407,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			primes:       inmem.NewPrimeRepository(users),
 			casino:       inmem.NewCasinoRepository(),
 			mine:         inmem.NewMineRepository(),
+			business:     inmem.NewBusinessRepository(),
 			rockets:      inmem.NewRocketRepository(),
 			betEvents:    inmem.NewBetEventRepository(),
 			purchases:    inmem.NewPurchaseRepository(),
@@ -452,6 +459,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		primes:       postgres.NewPrimeRepository(a.pool),
 		casino:       postgres.NewCasinoRepository(a.pool),
 		mine:         postgres.NewMineRepository(a.pool),
+		business:     postgres.NewBusinessRepository(a.pool),
 		rockets:      postgres.NewRocketRepository(a.pool),
 		betEvents:    postgres.NewBetEventRepository(a.pool),
 		purchases:    postgres.NewPurchaseRepository(a.pool),

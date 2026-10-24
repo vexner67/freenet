@@ -347,6 +347,25 @@ service UserService {
   // energy and the events of the mine, and how it does.
   rpc GetMineSettings(GetMineSettingsRequest) returns (GetMineSettingsResponse);
   rpc SetMine(SetMineRequest) returns (google.protobuf.Empty);
+
+  // Require an access token: the businesses of the caller. A business is
+  // bought for votes into the treasury (FailedPrecondition "you own this
+  // business already", "not enough votes"), and runs by itself: customers
+  // buy its goods at its price, workers serve them, wages and rent run,
+  // the premises wear down. RunBusiness does an action: "manage" (price
+  // and staff), "restock" (amount — units), "upgrade", "repair",
+  // "advertise", "deposit" (amount — votes into the till), "collect" (the
+  // till, less the tax) and "sell" (half of what went into it and the
+  // till). A business that runs too deep into debt goes bankrupt
+  // (FailedPrecondition "the business went bankrupt"). Taking votes out is
+  // for pages a week old with a filled profile.
+  rpc GetBusinesses(GetBusinessesRequest) returns (BusinessesState);
+  rpc BuyBusiness(BuyBusinessRequest) returns (RunBusinessResponse);
+  rpc RunBusiness(RunBusinessRequest) returns (RunBusinessResponse);
+  // For the administrators (PermissionDenied for others): the plans of the
+  // businesses and the tax, and how they do.
+  rpc GetBusinessSettings(GetBusinessSettingsRequest) returns (GetBusinessSettingsResponse);
+  rpc SetBusinessSettings(SetBusinessSettingsRequest) returns (google.protobuf.Empty);
 }
 
 message User {
@@ -2184,4 +2203,118 @@ message GetMineSettingsResponse {
 
 message SetMineRequest {
   MineSettings settings = 1;
+}
+
+// BusinessPlan is a kind of business: the votes it costs and its next
+// level costs times the level; customers an hour at the fair price, which
+// the demand falls to nothing at twice of; the cost of a unit of goods,
+// the storage, the customers a worker serves an hour and the workers a
+// level employs; wages and rent an hour in hundredths of a vote; the
+// condition lost an hour in hundredths of a percent and the votes a
+// percent of repair costs; the till and the debt, in votes times the
+// level; an advertisement.
+message BusinessPlan {
+  string kind = 1;
+  int64 price = 2;
+  int64 upgrade = 3;
+  int32 levels = 4;
+  int64 demand = 5;
+  // Hundredths of a vote.
+  int64 fair = 6;
+  // Hundredths of a vote.
+  int64 cost = 7;
+  int64 storage = 8;
+  int64 serve = 9;
+  int32 staff = 10;
+  int64 wage = 11;
+  int64 rent = 12;
+  int32 wear = 13;
+  int64 repair = 14;
+  int64 till = 15;
+  int64 debt = 16;
+  int64 ad_price = 17;
+  int32 ad_hours = 18;
+  // The percent an advertisement raises the demand.
+  int32 ad_boost = 19;
+}
+
+message BusinessSettings {
+  // All kinds in order: kiosk, cafe, carwash, factory.
+  repeated BusinessPlan plans = 1;
+  // The percent of the till taken out that goes to the treasury.
+  int32 tax = 2;
+}
+
+// Business is a business of the caller now.
+message Business {
+  string kind = 1;
+  int32 level = 2;
+  int64 stock = 3;
+  // Hundredths of a vote.
+  int64 price = 4;
+  int32 staff = 5;
+  // Hundredths of a percent.
+  int32 condition = 6;
+  // Hundredths of a vote; below zero — a debt.
+  int64 cash = 7;
+  // When the advertisement ends; empty without one.
+  google.protobuf.Timestamp ad_until = 8;
+  bool bankrupt = 9;
+  int64 invested = 10;
+  int64 collected = 11;
+  // An hour now: customers, those served, income and costs in hundredths
+  // of a vote.
+  double customers = 12;
+  double served = 13;
+  double income = 14;
+  double costs = 15;
+  // The votes the business sells for now; 0 when bankrupt or in debt.
+  int64 resale = 16;
+  bool in_debt = 17;
+}
+
+message GetBusinessesRequest {}
+
+message BusinessesState {
+  BusinessSettings settings = 1;
+  repeated Business businesses = 2;
+}
+
+message BuyBusinessRequest {
+  string kind = 1;
+}
+
+message RunBusinessRequest {
+  string kind = 1;
+  string action = 2;
+  // The units of a restock, the votes of a deposit.
+  int64 amount = 3;
+  // What a manage sets: the price in hundredths and the workers.
+  int64 price = 4;
+  int32 staff = 5;
+}
+
+message RunBusinessResponse {
+  // The votes the action spent and got, the tax of a collect, and the
+  // balance after them (0 when no votes moved).
+  int64 spent = 1;
+  int64 got = 2;
+  int64 tax = 3;
+  int64 balance = 4;
+  BusinessesState businesses = 5;
+}
+
+message GetBusinessSettingsRequest {}
+
+message GetBusinessSettingsResponse {
+  BusinessSettings settings = 1;
+  // How the businesses do: those open now, the votes spent on them and
+  // taken out.
+  int64 businesses = 2;
+  int64 spent = 3;
+  int64 paid = 4;
+}
+
+message SetBusinessSettingsRequest {
+  BusinessSettings settings = 1;
 }
