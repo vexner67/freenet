@@ -1026,6 +1026,21 @@ body.prime-bg { background: var(--back-f2f5f8) var(--prime-pattern); }
 .messenger-typing { height: 14px; padding: 0 20px 3px 67px; color: var(--text-808080); line-height: 14px; }
 .im-message { display: flex; gap: 10px; margin-bottom: 3px; padding: 8px 10px; border-radius: 3px; touch-action: manipulation; }
 .im-message.unread { background: var(--back-ededed); }
+/* An unread message also gets a blue stripe at its left edge: the grey
+   tint alone vanishes under the pattern of a Prime author (.prime-dressed). */
+.im-message { position: relative; }
+.im-message.unread::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--back-5b7aa1);
+  z-index: 1;
+  pointer-events: none;
+}
 .im-message img { display: block; width: 37px; height: 37px; object-fit: cover; border-radius: 3px; }
 .im-message-content { flex: 1; min-width: 0; line-height: 1.45; }
 .im-message-text { white-space: pre-wrap; overflow-wrap: anywhere; }
