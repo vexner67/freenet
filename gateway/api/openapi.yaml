@@ -7775,6 +7775,9 @@ components:
         online: { type: boolean, description: "The person is on the site now (\"Онлайн\"); told only of a page open to everyone, absent otherwise" }
         verified: { type: boolean, description: "The page or the community is confirmed by the administrators (\"Подтверждённая страница\"): a checkmark by the name; absent otherwise" }
         prime: { type: boolean, description: "The person has Freenet Prime: its badge by the name; absent otherwise" }
+        primeStyle:
+          allOf: [{ $ref: "#/components/schemas/PrimeStyle" }]
+          description: "How the person with Freenet Prime dressed their page: the site colours the name and lays the pattern behind their posts and messages; absent without Prime"
 
     Interface:
       type: object
