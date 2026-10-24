@@ -2006,6 +2006,23 @@ a.poll-result-name { cursor: pointer; }
 .mine-sell-all { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin: 0 0 6px; }
 .mine-totals { margin: 0; text-align: right; }
 
+/* "Бизнес": each business a block of facts, the price and staff, goods and
+   actions under them; the balance at the right, as at the mine. */
+.business { display: flex; gap: 20px; align-items: flex-start; }
+.business-main { flex: 1; min-width: 0; }
+.business-done { margin: 0 0 10px; padding: 8px; background: var(--back-eee5b8); border: 1px solid var(--line-d7cf9e); color: var(--text-58462a); font-weight: bold; }
+.business-card { margin: 0 0 14px; }
+.business-facts { margin: 6px 0; border-collapse: collapse; }
+.business-facts td { padding: 2px 8px 2px 0; vertical-align: top; }
+.business-label { color: var(--text-808080); white-space: nowrap; }
+.business-warn { color: var(--text-c33); font-weight: bold; }
+.business-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+.business-row .business-number { width: 80px; }
+.business-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+.business-bankrupt { margin: 6px 0; padding: 8px; background: var(--back-ffefe8); border: 1px solid var(--line-ccc); color: var(--text-c33); font-weight: bold; }
+.business-offer { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; padding: 6px 4px; border-bottom: 1px solid var(--line-e8ebee); }
+.business-offer .hint { flex: 1; min-width: 200px; }
+
 /* "Казино": the prizes in cells and a light running over them; the
    balance at the right, as in "Голоса". */
 .casino { display: flex; gap: 20px; align-items: flex-start; }

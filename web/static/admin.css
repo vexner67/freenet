@@ -205,6 +205,7 @@ a:hover { text-decoration: underline; }
 .aui-icon-prime { --icon: url("/static/icons/admin-prime.svg"); }
 .aui-icon-bets { --icon: url("/static/icons/admin-bets.svg"); }
 .aui-icon-mine { --icon: url("/static/icons/admin-mine.svg"); }
+.aui-icon-business { --icon: url("/static/icons/admin-business.svg"); }
 .aui-icon-users { --icon: url("/static/icons/admin-users.svg"); }
 .aui-icon-clubs { --icon: url("/static/icons/admin-clubs.svg"); }
 .aui-icon-ban { --icon: url("/static/icons/admin-ban.svg"); }

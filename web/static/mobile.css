@@ -302,6 +302,10 @@ input, select, textarea { font-size: 16px !important; }
 .mine-item { flex-wrap: wrap; }
 .mine-item-worth { min-width: 0; }
 .mine-ore .button, .mine-item .button { min-height: 32px; }
+/* The businesses: the balance over them, the buttons big enough for a finger. */
+.business { flex-direction: column-reverse; align-items: stretch; }
+.business .button { min-height: 32px; }
+.business-label { white-space: normal; }
 .casino-balance { width: auto; }
 .casino-board, .casino-multipliers { grid-template-columns: repeat(3, 1fr); }
 .casino-controls .button { width: 100%; }

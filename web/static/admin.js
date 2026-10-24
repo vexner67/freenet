@@ -10,7 +10,8 @@
 // and the limits and the return of "Прицел", and the limits, the return and
 // the top of "Ракетка"), "Ставки" (/admin/bets: the
 // events people stake on, a new one, and closing, resolving, cancelling
-// and deleting them), "Шахта" (/admin/mine: the ores, the energy and the
+// and deleting them), "Бизнес" (/admin/business: the plans of the
+// businesses and the tax), "Шахта" (/admin/mine: the ores, the energy and the
 // events of a dig)
 // and "Реклама" (/admin/ads: the ads of the global feed, the form of a new
 // one at /admin/ads/new and of one at /admin/ads/<id>). The page is its own, AUI as openvk's:
@@ -18,7 +19,7 @@
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, businessName, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 import { remember } from './newyear.js';
 
@@ -843,6 +844,79 @@ async function mineSettings(answered) {
   $('mine').hidden = false;
 }
 
+// businessFields are the settings of a business plan in the order of the
+// table, with what each is called.
+const businessFields = [
+  ['price', () => tr('Цена бизнеса, голосов')],
+  ['upgrade', () => tr('Улучшение, голосов × уровень')],
+  ['levels', () => tr('Уровней')],
+  ['demand', () => tr('Покупателей в час')],
+  ['fair', () => tr('Обычная цена товара, сотых')],
+  ['cost', () => tr('Себестоимость товара, сотых')],
+  ['storage', () => tr('Склад, шт.')],
+  ['serve', () => tr('Работник обслуживает в час')],
+  ['staff', () => tr('Работников на уровень')],
+  ['wage', () => tr('Зарплата в час, сотых')],
+  ['rent', () => tr('Аренда в час, сотых')],
+  ['wear', () => tr('Износ в час, сотых %')],
+  ['repair', () => tr('Ремонт 1 %, голосов')],
+  ['till', () => tr('Касса, голосов')],
+  ['debt', () => tr('Допустимый долг, голосов')],
+  ['adPrice', () => tr('Реклама, голосов')],
+  ['adHours', () => tr('Реклама, часов')],
+  ['adBoost', () => tr('Реклама, +% покупателей')],
+];
+
+// businessSettings is "Бизнес": the plans of the four businesses side by
+// side, the tax and how the businesses have done.
+async function businessSettings(answered) {
+  const { settings, businesses, spent, paid } = await answered;
+  const save = $('business-form').querySelector('button[type=submit]');
+
+  for (const plan of settings.plans) $('business-head').append(el('th', { textContent: businessName(plan.kind) }));
+  const inputs = settings.plans.map(() => ({}));
+  for (const [key, label] of businessFields) {
+    $('business-rows').append(el('tr', {},
+      el('td', {}, el('b', { textContent: label() })),
+      ...settings.plans.map((plan, i) => {
+        const field = el('input', { className: 'text admin-casino-field', type: 'number', min: '0', value: String(plan[key]), required: true });
+        field.setAttribute('aria-label', `${businessName(plan.kind)}: ${label()}`);
+        inputs[i][key] = field;
+        return el('td', {}, field);
+      }),
+    ));
+  }
+  $('business-tax').value = String(settings.tax);
+  $('business-stats').textContent = businesses > 0
+    ? tr('Бизнесов: {0}. Люди потратили на них {1}, забрали {2}.', groupedVotes(businesses), votesCount(spent), votesCount(paid))
+    : tr('Ещё никто не купил бизнес.');
+
+  $('business-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    $('business-saved').hidden = true;
+    save.disabled = true;
+
+    const plans = settings.plans.map((plan, i) => {
+      const typed = { kind: plan.kind };
+      for (const [key] of businessFields) typed[key] = Number(inputs[i][key].value);
+      return typed;
+    });
+
+    try {
+      await api.setBusinessSettings({ plans, tax: Number($('business-tax').value) });
+      $('business-saved').textContent = tr('Изменения сохранены');
+      $('business-saved').hidden = false;
+    } catch (e) {
+      showError(e);
+    } finally {
+      save.disabled = false;
+    }
+  });
+
+  $('business').hidden = false;
+}
+
 // casino is "Казино": the price of a spin and the prizes with their
 // weights, the chance of each and the share of the votes the casino gives
 // back by them as they are typed, and how it has done in fact.
@@ -1430,6 +1504,7 @@ const reads = {
   '/admin/casino': () => started(api.casinoSettings()),
   '/admin/bets': () => started(api.betEvents()),
   '/admin/mine': () => started(api.mineSettings()),
+  '/admin/business': () => started(api.businessSettings()),
 }[adID ? '/admin/ads' : path]?.();
 
 const me = await currentUser().catch(() => null);
@@ -1468,6 +1543,8 @@ if (!me) {
     await bets(reads).catch(showError);
   } else if (path === '/admin/mine') {
     await mineSettings(reads).catch(showError);
+  } else if (path === '/admin/business') {
+    await businessSettings(reads).catch(showError);
   } else if (path === '/admin/ads') {
     await ads(reads).catch(showError);
   } else if (path === '/admin/ads/new' || adID) {
