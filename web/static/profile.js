@@ -1,5 +1,5 @@
 import { api, currentUser, started } from './api.js';
-import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeStyleClasses } from './labels.js';
+import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses } from './labels.js';
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
@@ -119,8 +119,9 @@ function renderHeader(profile, isOwner) {
   // as the owner dressed the page ("Оформление страницы").
   document.body.classList.toggle('prime-page', Boolean(profile.prime));
   document.body.classList.add(...primeStyleClasses(profile.primeStyle));
-  mood = profile.primeStyle?.mood ?? '';
-  $('title').replaceChildren(profile.prime ? el('span', { className: 'prime-name', textContent: name }) : name,
+  showMood(profile.primeStyle?.mood ?? '');
+  showSparkles(profile.prime && profile.primeStyle?.frame === 'glitter');
+  $('title').replaceChildren(profile.prime ? el('span', { className: primeNameClass(profile), textContent: name }) : name,
     verifiedMark(profile), ...(isOwner ? [' ', el('b', { textContent: tr('(это вы)') })] : []));
   $('title-aside').replaceChildren(isOwner || profile.online ? el('b', { textContent: seen }) : seen || '@' + profile.nickname);
 }
@@ -151,19 +152,31 @@ function render(user, isOwner, profile) {
   initWall(user, me);
 }
 
-// mood is the smiley the owner with Prime put by the status, "" for none.
-let mood = '';
+// showMood is the smiley of the mood the owner with Prime chose ("" for
+// none): on the right, under "Онлайн".
+function showMood(mood) {
+  const smiley = $('mood');
+  smiley.hidden = !primeMoodIcons[mood];
+  if (smiley.hidden) return;
+
+  smiley.src = primeMoodIcons[mood];
+  smiley.title = primeMoodText(mood);
+}
+
+// showSparkles blinks sparkles around the photo in the glitter frame.
+function showSparkles(on) {
+  const box = document.querySelector('.profile .avatar-box');
+  box.querySelectorAll('.prime-sparkles').forEach((s) => s.remove());
+  if (on) box.append(el('span', { className: 'prime-sparkles' }), el('span', { className: 'prime-sparkles late' }));
+}
 
 // showStatus is the status under the name; to the owner it is openvk's
 // "[ изменить статус ]" when empty, and either opens the box to edit it.
 function showStatus(text, isOwner) {
   const status = $('status');
-  const smiley = primeMoodIcons[mood] && el('img', {
-    className: 'prime-mood', src: primeMoodIcons[mood], alt: '', width: 16, height: 16, title: primeMoodText(mood),
-  });
   status.classList.toggle('empty', !text);
   status.classList.toggle('status-editable', isOwner);
-  status.replaceChildren(...[smiley, text || (isOwner ? tr('[ изменить статус ]') : '')].filter(Boolean));
+  status.textContent = text || (isOwner ? tr('[ изменить статус ]') : '');
   status.onclick = isOwner ? () => editStatus(text) : null;
 }
 
@@ -217,11 +230,12 @@ function showCompleteness(user, isOwner) {
     })
     : [];
 
+  // "Повысить рейтинг" is a button above the gauge it raises.
   $('completeness').replaceChildren(
+    ...(isOwner ? [el('a', { className: 'button completeness-raise', href: '/votes?act=rating', textContent: tr('Повысить рейтинг') })] : []),
     el('div', { className: 'completeness-gauge' + (percent >= 100 ? ' completeness-gauge-gold' : '') },
       bar, el('span', { textContent: percent + '%' })),
     ...(hints.length ? [el('div', { className: 'completeness-hints' }, ...hints)] : []),
-    ...(isOwner ? [el('a', { className: 'completeness-raise', href: '/votes?act=rating', textContent: tr('Повысить рейтинг') })] : []),
   );
   $('completeness').hidden = false;
 }

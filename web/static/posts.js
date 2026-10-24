@@ -4,7 +4,7 @@
 
 import { api } from './api.js';
 import { attachLikers } from './likers.js';
-import { documentsCount, errorText, formatPostDate, genitiveName, photosCount, sharedBy, votesCount, wrote } from './labels.js';
+import { documentsCount, errorText, formatPostDate, genitiveName, photosCount, primeDress, primeNameClass, sharedBy, votesCount, wrote } from './labels.js';
 import { adult, avatarURL, el, externalLink, fullName, isMicroblog, pagePath, textNode, verifiedMark } from './layout.js';
 import { editPost } from './postedit.js';
 import { openShare } from './share.js';
@@ -14,6 +14,12 @@ import { pollNode } from './poll.js';
 import { button, openModal } from './modal.js';
 import { documentsNode } from './docs.js';
 import { tr } from './i18n.js';
+
+// nameClass is the class of the name of an author by a post, a comment or
+// a message: coloured as a person with Freenet Prime dressed it.
+export function nameClass(author) {
+  return ['post-name', primeNameClass(author)].filter(Boolean).join(' ');
+}
 
 const SVG = 'http://www.w3.org/2000/svg';
 
@@ -217,7 +223,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     }
   }
 
-  const node = el('div', { className: 'post' },
+  const node = el('div', { className: ['post', ...primeDress(post.author)].join(' ') },
     el('a', { className: 'post-avatar', href: path },
       el('img', { src: avatarURL(post.author, 'small'), alt: '' }),
       // openvk's "Онлайн" under the photo of a person who is on the site.
@@ -225,7 +231,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     ),
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },
-        el('a', { className: 'post-name', href: path, textContent: fullName(post.author) }),
+        el('a', { className: nameClass(post.author), href: path, textContent: fullName(post.author) }),
         verifiedMark(post.author),
         microblog ? null : wroteBy(post),
         ...(onWallOf !== undefined && post.wall ? [' ', wallLink(post.wall, onWallOf)] : []),
@@ -371,11 +377,11 @@ export function sharedNode(shared, { canVote = false, onError } = {}) {
   fill();
   revealOnClick(content);
 
-  return el('div', { className: 'post-shared' + (shared.nsfw ? ' shared-nsfw' : '') },
+  return el('div', { className: ['post-shared', ...(shared.nsfw ? ['shared-nsfw'] : []), ...primeDress(shared.author)].join(' ') },
     el('a', { className: 'post-avatar', href: path }, el('img', { src: avatarURL(shared.author, 'small'), alt: '' })),
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },
-        el('a', { className: 'post-name', href: path, textContent: fullName(shared.author) }),
+        el('a', { className: nameClass(shared.author), href: path, textContent: fullName(shared.author) }),
         verifiedMark(shared.author),
         wroteBy(shared),
         ...(shared.wall ? [' ', wallLink(shared.wall, null)] : []),

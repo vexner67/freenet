@@ -21,7 +21,7 @@ import { initDocuments } from './docs.js';
 import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, openMessages, ownKey, safetyCode, sendSealed } from './e2ee.js';
 import { isLive, onEvent } from './events.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
-import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, messagesCount, selectedCount, votesCount } from './labels.js';
+import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, messagesCount, primeDress, primeNameClass, selectedCount, votesCount } from './labels.js';
 import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
@@ -77,10 +77,10 @@ function messageNode(m) {
   const content = el('div', { className: 'im-message-body' });
   const date = el('div', { className: 'im-message-date' });
 
-  const node = el('div', { className: m.read ? 'im-message' : 'im-message unread' },
+  const node = el('div', { className: ['im-message', ...(m.read ? [] : ['unread']), ...primeDress(author)].join(' ') },
     el('a', { href: '/' + author.nickname }, el('img', { src: avatarURL(author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
-      el('a', { className: 'post-name', href: '/' + author.nickname, textContent: fullName(author) }),
+      el('a', { className: ['post-name', primeNameClass(author)].filter(Boolean).join(' '), href: '/' + author.nickname, textContent: fullName(author) }),
       verifiedMark(author),
       content,
     ),
