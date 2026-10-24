@@ -189,7 +189,8 @@ const feedAll = "all"
 // also follows its people to the walls of others. "Настройки ленты" of
 // openvk come with the request: alien=false takes away what people wrote
 // on the walls of others, ignored=true brings back the walls the reader
-// ignores.
+// ignores, ranked=true puts the posts of the week by how interesting they
+// are ("Сначала интересные"; the cursor of such news says so itself).
 func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -219,7 +220,9 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// "Не показывать в ленте" of the reader's settings.
-	sources := model.FeedSources{HideNSFW: me.Interface.NSFW == nsfwHide, Hidden: blocked, OwnOnly: !alien}
+	sources := model.FeedSources{
+		HideNSFW: me.Interface.NSFW == nsfwHide, Hidden: blocked, OwnOnly: !alien, Ranked: r.URL.Query().Get("ranked") == "true",
+	}
 
 	if !withIgnored {
 		if sources.Ignored, err = a.users.IgnoredIDs(r.Context(), token); err != nil {

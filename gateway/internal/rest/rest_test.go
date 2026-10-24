@@ -601,6 +601,7 @@ type fakePosts struct {
 	searched string
 	// ownOnly and ignored: the feed settings the gateway passed on.
 	ownOnly                bool
+	ranked                 bool
 	ignored                []string
 	newPost                model.NewPost
 	token, cursor, deleted string
@@ -935,7 +936,7 @@ func (f *fakePosts) CommentsByID(_ context.Context, ids []string) ([]model.Comme
 func (f *fakePosts) Feed(_ context.Context, token string, sources model.FeedSources, cursor string, _ int) (model.PostPage, error) {
 	f.token, f.cursor, f.hideNSFW = token, cursor, sources.HideNSFW
 	f.everyone, f.hidden = sources.Everyone, sources.Hidden
-	f.ownOnly, f.ignored = sources.OwnOnly, sources.Ignored
+	f.ownOnly, f.ignored, f.ranked = sources.OwnOnly, sources.Ignored, sources.Ranked
 	return model.PostPage{
 		Posts: append([]model.Post{
 			{ID: "p3", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u2"}, Text: "от боба", Likes: 1, Liked: true},

@@ -568,6 +568,10 @@ type FeedSources struct {
 	// Ignored are the walls whose posts are left out: the reader's
 	// "Игнорируемые источники".
 	Ignored []string
+	// Ranked puts the posts of the last week by how interesting they are
+	// to the reader ("Сначала интересные"), then the older ones newest
+	// first; otherwise the news go newest first.
+	Ranked bool
 }
 
 // WallPick is which posts of a wall to read: Filter is a tab of openvk's

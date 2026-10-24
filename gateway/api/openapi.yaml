@@ -659,6 +659,10 @@ paths:
           in: query
           description: 'The posts written in this year (UTC) only, as the years of openvk''s "Архив записей"; the pinned post is then in its place. The first page of the archive tells in `years` which there are'
           schema: { type: integer, minimum: 1970, maximum: 9999 }
+        - name: ranked
+          in: query
+          description: "`true` puts the posts of the last week by how interesting they are to you (\"Сначала интересные\": likes, comments, reposts, photos, whom you like and comment on, how fresh), then the older ones newest first; the next pages follow the cursor, which says so itself"
+          schema: { type: boolean, default: false }
         - name: comments
           in: query
           description: "`last` brings each post with `lastComments`, its three newest comments (\"Микроблог\")"
