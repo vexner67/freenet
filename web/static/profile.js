@@ -1,5 +1,5 @@
 import { api, currentUser, started } from './api.js';
-import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName } from './labels.js';
+import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeStyleClasses } from './labels.js';
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
@@ -115,8 +115,11 @@ function renderHeader(profile, isOwner) {
   const seen = isOwner ? tr('Онлайн') : presence(profile);
 
   document.title = `${name} | Freenet`;
-  // Freenet Prime: the name is golden, and so is the frame of the photo.
+  // Freenet Prime: the name and the frame of the photo are amethyst, or
+  // as the owner dressed the page ("Оформление страницы").
   document.body.classList.toggle('prime-page', Boolean(profile.prime));
+  document.body.classList.add(...primeStyleClasses(profile.primeStyle));
+  mood = profile.primeStyle?.mood ?? '';
   $('title').replaceChildren(profile.prime ? el('span', { className: 'prime-name', textContent: name }) : name,
     verifiedMark(profile), ...(isOwner ? [' ', el('b', { textContent: tr('(это вы)') })] : []));
   $('title-aside').replaceChildren(isOwner || profile.online ? el('b', { textContent: seen }) : seen || '@' + profile.nickname);
@@ -148,13 +151,19 @@ function render(user, isOwner, profile) {
   initWall(user, me);
 }
 
+// mood is the smiley the owner with Prime put by the status, "" for none.
+let mood = '';
+
 // showStatus is the status under the name; to the owner it is openvk's
 // "[ изменить статус ]" when empty, and either opens the box to edit it.
 function showStatus(text, isOwner) {
   const status = $('status');
+  const smiley = primeMoodIcons[mood] && el('img', {
+    className: 'prime-mood', src: primeMoodIcons[mood], alt: '', width: 16, height: 16, title: primeMoodText(mood),
+  });
   status.classList.toggle('empty', !text);
   status.classList.toggle('status-editable', isOwner);
-  status.replaceChildren(text || (isOwner ? tr('[ изменить статус ]') : ''));
+  status.replaceChildren(...[smiley, text || (isOwner ? tr('[ изменить статус ]') : '')].filter(Boolean));
   status.onclick = isOwner ? () => editStatus(text) : null;
 }
 

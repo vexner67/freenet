@@ -4,8 +4,11 @@
 // openvk has nothing like it.
 
 import { api, currentUser, started } from './api.js';
-import { formatDateTime, primePeriods, primeSaving, transferNickname, votesAmount } from './labels.js';
-import { $, el, fullName, hideError, pagePath, renderChrome, showError } from './layout.js';
+import {
+  formatDateTime, primeBackgrounds, primeFrames, primeMoodIcons, primeMoodText, primeMoods, primeNames, primePeriods,
+  primeSaving, primeStyleClasses, transferNickname, votesAmount,
+} from './labels.js';
+import { $, avatarURL, el, fullName, hideError, pagePath, profilePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { tr } from './i18n.js';
 
 const error = $('error');
@@ -28,6 +31,7 @@ function showState(me) {
     : tr('У вас пока нет Freenet Prime.');
   $('balance').textContent = votesAmount(me.votes ?? 0);
   $('invisible-part').hidden = !until;
+  $('style-part').hidden = !until;
   $('invisible').checked = Boolean(me.primeInvisible);
 }
 
@@ -93,6 +97,81 @@ function initGive(me) {
   });
 }
 
+// styleOf is the style the form of "Оформление страницы" has chosen.
+function styleOf() {
+  const chosen = (name) => $('style').querySelector(`input[name="${name}"]:checked`)?.value ?? '';
+
+  return { name: chosen('name'), frame: chosen('frame'), background: chosen('background'), mood: chosen('mood') };
+}
+
+// showPreview dresses the small copy of the page in style.
+function showPreview(me, style) {
+  const preview = $('style-preview');
+  const icon = primeMoodIcons[style.mood];
+
+  preview.className = ['prime-preview', 'prime-page', ...primeStyleClasses(style)].join(' ');
+  $('style-title').replaceChildren(el('span', { className: 'prime-name', textContent: fullName(me) }), verifiedMark({ prime: true }));
+  $('style-status').replaceChildren(...[
+    icon && el('img', { className: 'prime-mood', src: icon, alt: '', width: 16, height: 16, title: primeMoodText(style.mood) }),
+    me.status || tr('Ваш статус'),
+  ].filter(Boolean));
+}
+
+// swatch is one choice of the form: a radio with what it looks like.
+function swatch(group, value, name, sample, chosen) {
+  return el('label', { className: 'prime-swatch' },
+    el('input', { type: 'radio', name: group, value, checked: value === chosen }),
+    sample,
+    el('span', { textContent: name }));
+}
+
+// initStyle is "Оформление страницы": the colour of the name, the frame of
+// the photo, the pattern behind the page and the smiley by the status.
+function initStyle(me) {
+  const form = $('style');
+  const style = { name: 'amethyst', frame: 'amethyst', background: '', mood: '', ...me.primeStyle };
+  const photo = avatarURL(me, 'small');
+
+  $('style-avatar').src = photo;
+  $('style-names').replaceChildren(...primeNames.map(([value, name]) => swatch('name', value, name,
+    el('span', { className: 'prime-name-' + value }, el('span', { className: 'prime-name', textContent: me.name || 'Freenet' })),
+    style.name)));
+  $('style-frames').replaceChildren(...primeFrames.map(([value, name]) => swatch('frame', value, name,
+    el('span', { className: 'prime-page prime-frame-' + value },
+      el('img', { className: 'avatar prime-swatch-sample', src: photo, alt: '', width: 40, height: 40 })),
+    style.frame)));
+  $('style-backgrounds').replaceChildren(...primeBackgrounds.map(([value, name]) => swatch('background', value, name,
+    el('span', { className: 'prime-swatch-sample prime-swatch-bg' + (value ? ' prime-bg-' + value : '') }),
+    style.background)));
+  $('style-moods').replaceChildren(...primeMoods.map(([value, name]) => swatch('mood', value, name,
+    primeMoodIcons[value]
+      ? el('img', { src: primeMoodIcons[value], alt: '', width: 16, height: 16 })
+      : el('span', { className: 'prime-swatch-none', textContent: '—' }),
+    style.mood)));
+  showPreview(me, style);
+
+  form.addEventListener('change', () => showPreview(me, styleOf()));
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    hideError(error);
+    $('notice').hidden = true;
+
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+
+    try {
+      const chosen = styleOf();
+      await api.setPrimeStyle(chosen);
+      me.primeStyle = chosen;
+      say(tr('Оформление сохранено'), el('a', { href: profilePath(me), textContent: tr('Посмотреть свою страницу') }));
+    } catch (e) {
+      showError(error, e);
+    } finally {
+      submit.disabled = false;
+    }
+  });
+}
+
 // initInvisible turns «Невидимка» on and off at once.
 function initInvisible(me) {
   const box = $('invisible');
@@ -126,6 +205,7 @@ if (!me) {
     showState(me);
     initGive(me);
     initInvisible(me);
+    initStyle(me);
     $('prime').hidden = false;
   } catch (e) {
     showError(error, e);

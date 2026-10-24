@@ -46,7 +46,7 @@
           <h4>Что даёт Freenet Prime</h4>
           <ul class="prime-perks">
             <li><b>Значок Prime</b> после имени — везде, где у подтверждённых страниц стоит галочка.</li>
-            <li><b>Аметистовая рамка</b> вокруг фото и аметистовое имя на вашей странице.</li>
+            <li><b>Оформление страницы</b>: цвет имени, рамка фото, узор за страницей и смайлик настроения у статуса.</li>
             <li><b>Аметистовый стиль</b> сайта во «Внешнем виде» настроек.</li>
             <li><b>Подарки Freenet Prime</b> — коллекция, которую могут отправлять только подписчики.</li>
             <li><b>Без рекламы</b> в новостях.</li>
@@ -73,6 +73,29 @@
             </table>
             <div class="actions"><button class="button" type="submit">Подарить</button></div>
           </form>
+
+          <div id="style-part" hidden>
+            <h4>Оформление страницы</h4>
+            <p>Так ваша страница выглядит для всех, пока у вас есть Freenet Prime.</p>
+            <div class="prime-preview" id="style-preview">
+              <img class="avatar" id="style-avatar" src="/static/avatar.svg" alt="" width="60" height="60">
+              <div>
+                <span id="style-title"></span>
+                <div id="style-status"></div>
+              </div>
+            </div>
+            <form id="style">
+              <p class="prime-style-label">Цвет имени:</p>
+              <div class="prime-swatches" id="style-names"></div>
+              <p class="prime-style-label">Рамка фото:</p>
+              <div class="prime-swatches" id="style-frames"></div>
+              <p class="prime-style-label">Узор за страницей:</p>
+              <div class="prime-swatches" id="style-backgrounds"></div>
+              <p class="prime-style-label">Настроение у статуса:</p>
+              <div class="prime-swatches" id="style-moods"></div>
+              <div class="actions"><button class="button" type="submit">Сохранить</button></div>
+            </form>
+          </div>
 
           <div id="invisible-part" hidden>
             <h4>Невидимка</h4>

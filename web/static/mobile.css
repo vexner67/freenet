@@ -148,7 +148,8 @@ input, select, textarea { font-size: 16px !important; }
 
 /* Under the menu of a phone, the greeting without the tree. */
 .festive .layout::before,
-.festive .layout::after { left: 0; right: 0; box-shadow: none; }
+.festive .layout::after,
+.prime-bg .layout::before { left: 0; right: 0; box-shadow: none; }
 .festive .header::after { left: 0; right: 0; }
 .newyear { margin: 6px 0 8px; }
 .newyear-tree { display: none; }
