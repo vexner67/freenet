@@ -78,6 +78,8 @@ func (f *fakeAuth) EndOtherSessions(context.Context, string) (int, error) {
 func (f *fakeAuth) Logout(context.Context, string) error { return f.err }
 
 type fakeUsers struct {
+	// bobStyle gives bob (u2) Freenet Prime dressed so.
+	bobStyle *model.PrimeStyle
 	// primeOnly: the peer lets in only people with Freenet Prime;
 	// messagePrice: a message costs so many votes. paid are the payments
 	// "price", refunded those given back; bought the posts paid for and
@@ -261,7 +263,8 @@ func (f *fakeUsers) GetProfiles(_ context.Context, ids []string) ([]model.Public
 			found = append(found, model.PublicProfile{ID: id, Profile: model.Profile{Name: id, Nickname: id}})
 		}
 		if id == "u2" {
-			found = append(found, model.PublicProfile{ID: "u2", Profile: model.Profile{Name: "Bob", Nickname: "bob", Gender: "male"}})
+			found = append(found, model.PublicProfile{ID: "u2", Profile: model.Profile{Name: "Bob", Nickname: "bob", Gender: "male"},
+				Prime: f.bobStyle != nil, PrimeStyle: f.bobStyle})
 		}
 		if id == "u1" {
 			found = append(found, model.PublicProfile{ID: "u1", Profile: model.Profile{Name: "Ann", Nickname: "ann"}})

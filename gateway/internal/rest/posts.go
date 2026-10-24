@@ -54,6 +54,9 @@ type authorJSON struct {
 	Verified bool `json:"verified,omitempty"`
 	// Prime: the person has Freenet Prime (a badge by the name).
 	Prime bool `json:"prime,omitempty"`
+	// PrimeStyle is how the person with Prime dressed their page: the
+	// site colours the name and lays the pattern behind their posts.
+	PrimeStyle *primeStyleJSON `json:"primeStyle,omitempty"`
 }
 
 type postResponse struct {
@@ -220,6 +223,7 @@ func authorOfProfile(p model.PublicProfile) model.Author {
 	a.Online = p.Online
 	a.Verified = p.Verified
 	a.Prime = p.Prime
+	a.PrimeStyle = p.PrimeStyle
 
 	return a
 }
@@ -228,7 +232,10 @@ func authorOfProfile(p model.PublicProfile) model.Author {
 func meAuthor(me model.User) model.Author {
 	a := authorOf(me.ID, me.AvatarID, me.Profile)
 	a.Verified = me.Verified
-	a.Prime = me.HasPrime(time.Now())
+	if a.Prime = me.HasPrime(time.Now()); a.Prime {
+		style := me.PrimeStyle
+		a.PrimeStyle = &style
+	}
 
 	return a
 }
@@ -252,6 +259,7 @@ func toAuthorJSON(a model.Author) authorJSON {
 		Online:      a.Online,
 		Verified:    a.Verified,
 		Prime:       a.Prime,
+		PrimeStyle:  toShownPrimeStyleJSON(a.PrimeStyle),
 	}
 }
 

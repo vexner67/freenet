@@ -1176,6 +1176,7 @@ func peerAuthor(p model.PublicProfile) model.Author {
 	a := authorOf(p.ID, p.AvatarID, p.Profile)
 	a.Verified = p.Verified
 	a.Prime = p.Prime
+	a.PrimeStyle = p.PrimeStyle
 
 	return a
 }

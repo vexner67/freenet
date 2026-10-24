@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
@@ -55,6 +56,18 @@ func TestListPosts(t *testing.T) {
 		}
 		if got.CanPost || h.users.wallAsked != "" {
 			t.Fatalf("anonymous viewer: canPost = %v, asked about %q", got.CanPost, h.users.wallAsked)
+		}
+	})
+
+	t.Run("an author with prime dresses their posts", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+		h.users.bobStyle = &model.PrimeStyle{Name: "rainbow", Background: "stars"}
+		body := h.do("GET", "/api/v1/users/ann/posts?cursor=p5&limit=2", "").Body.String()
+		if strings.Count(body, `"primeStyle":{"name":"rainbow","frame":"","background":"stars","mood":""}`) == 0 ||
+			strings.Count(body, `"primeStyle"`) != strings.Count(body, `"nickname":"bob"`) {
+			t.Fatalf("only bob with prime dresses his posts: %s", body)
 		}
 	})
 

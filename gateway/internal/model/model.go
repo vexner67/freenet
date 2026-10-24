@@ -320,6 +320,9 @@ type Author struct {
 	Verified bool
 	// Prime: the person has Freenet Prime (a badge by the name).
 	Prime bool
+	// PrimeStyle is how the person with Prime dressed their page, which
+	// dresses their name and posts too; nil without Prime.
+	PrimeStyle *PrimeStyle
 }
 
 type Post struct {
