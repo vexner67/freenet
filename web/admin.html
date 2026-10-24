@@ -42,6 +42,7 @@
         <a class="aui-nav-item" href="/admin/casino" title="Казино"><span class="aui-icon aui-icon-casino"></span><span class="aui-nav-item-label">Казино</span></a>
         <a class="aui-nav-item" href="/admin/bets" title="Ставки"><span class="aui-icon aui-icon-bets"></span><span class="aui-nav-item-label">Ставки</span></a>
         <a class="aui-nav-item" href="/admin/mine" title="Шахта"><span class="aui-icon aui-icon-mine"></span><span class="aui-nav-item-label">Шахта</span></a>
+        <a class="aui-nav-item" href="/admin/business" title="Бизнес"><span class="aui-icon aui-icon-business"></span><span class="aui-nav-item-label">Бизнес</span></a>
         <a class="aui-nav-item" href="/admin/ads" title="Реклама"><span class="aui-icon aui-icon-ad"></span><span class="aui-nav-item-label">Реклама</span></a>
       </div>
       <div class="aui-sidebar-group">
@@ -480,6 +481,29 @@
           <label for="mine-drink">Энергетик, %</label>
           <input class="text admin-casino-field" id="mine-drink" inputmode="decimal" required>
           <span class="admin-times">+<input class="text admin-casino-field" id="mine-drink-energy" type="number" min="1" required aria-label="Сколько энергии даёт энергетик"> энергии</span>
+        </div>
+        <div class="buttons-container">
+          <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="business" hidden>
+      <h1 class="aui-page-heading">Бизнес</h1>
+      <p class="admin-lead">Люди покупают бизнес за голоса и управляют им: закупают товар, ставят цену, нанимают работников, чинят помещение, дают рекламу и улучшают его. Бизнес работает час за часом: покупатели приходят тем реже, чем дороже товар, зарплаты и аренда идут всегда, а долг больше допустимого разоряет бизнес. Выручку забирают из кассы за вычетом налога в Казну. Всё, что люди тратят, уходит в Казну, всё, что забирают, — из неё. Новые настройки действуют с ближайшего пересчёта.</p>
+      <p class="admin-casino-stats" id="business-stats"></p>
+      <div class="aui-message aui-message-success" id="business-saved" hidden></div>
+      <form class="aui" id="business-form">
+        <div class="aui-table-wrap">
+          <table class="aui">
+            <thead><tr id="business-head"><th>Настройка</th></tr></thead>
+            <tbody id="business-rows"></tbody>
+          </table>
+        </div>
+        <p class="admin-decor-now">Цены товара, его себестоимость, зарплата и аренда — в сотых голоса: 20 — 0,2 голоса. Покупатели, склад, работники, касса, долг и аренда растут с уровнем: на 3-м уровне — втрое. Износ — в сотых процента в час: 10 — 0,1 %.</p>
+        <div class="field-group">
+          <label for="business-tax">Налог с выручки, %</label>
+          <input class="text admin-casino-field" id="business-tax" type="number" min="0" max="100" required>
         </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>

@@ -1486,6 +1486,61 @@ export function typedMineChance(value) {
   return Math.round(Number(String(value).trim().replace(',', '.')) * 100) || 0;
 }
 
+// businessKinds are the businesses of "Бизнес" from the cheapest, as the
+// user service has them (user/internal/user/business.go).
+export const businessKinds = ['kiosk', 'cafe', 'carwash', 'factory'];
+
+// businessName is the name of a business: "Ларёк", "Автомойка".
+export function businessName(kind) {
+  return {
+    kiosk: tr('Ларёк'),
+    cafe: tr('Кафе'),
+    carwash: tr('Автомойка'),
+    factory: tr('Завод'),
+  }[kind] ?? kind;
+}
+
+// hundredths is a sum in hundredths of a vote as votes: "1,7", "-12,05".
+export function hundredths(n) {
+  const sign = n < 0 ? '-' : '';
+  const whole = groupedVotes(Math.trunc(Math.abs(n) / 100));
+  const part = Math.round(Math.abs(n)) % 100;
+
+  return part ? `${sign}${whole},${String(part).padStart(2, '0').replace(/0$/, '')}` : `${sign}${whole}`;
+}
+
+// restockCost is what units of goods cost at cost hundredths a unit,
+// rounded up as the user service does.
+export function restockCost(units, cost) {
+  return Math.ceil((units * cost) / 100);
+}
+
+// repairCost is what bringing the premises back to full condition costs:
+// a started percent is a whole one.
+export function repairCost(condition, repair) {
+  return Math.ceil((10000 - condition) / 100) * repair;
+}
+
+// businessActionName is what a line of the statement of a business says
+// was done: "покупка", "закупка товара".
+export function businessActionName(action) {
+  return {
+    buy: tr('покупка'),
+    restock: tr('закупка товара'),
+    upgrade: tr('улучшение'),
+    repair: tr('ремонт'),
+    advertise: tr('реклама'),
+    deposit: tr('пополнение кассы'),
+    collect: tr('выручка'),
+    sell: tr('продажа'),
+  }[action] ?? action;
+}
+
+// businessLevelCost is what raising level costs at upgrade votes a level.
+export function businessLevelCost(level, upgrade) {
+  return upgrade * level;
+}
+
 // primePeriods are the periods of Freenet Prime with their names and
 // how many months each is.
 export const primePeriods = [
@@ -1654,6 +1709,10 @@ export function voteOperation(op, myId) {
       return { title: tr('Шахта: продажа руды «{0}»', oreName(note)), role: '' };
     case 'mine_chest':
       return { title: tr('Шахта: сундук'), role: '' };
+    case 'business': {
+      const [kind, action] = note.split(':');
+      return { title: tr('Бизнес «{0}»: {1}', businessName(kind), businessActionName(action)), role: '' };
+    }
     case 'fee':
       return { title: tr('Комиссия за перевод'), role: tr('Получатель:') };
     case 'post':
