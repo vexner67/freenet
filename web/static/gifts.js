@@ -25,11 +25,12 @@ export function giftPicture(gift) {
   return el('img', { className: 'gift-pic', src: giftImage(gift), alt: giftNames[gift] ?? tr('Подарок'), loading: 'lazy' });
 }
 
-// giftThumb is a sent gift in a row: a collectible in its model.
+// giftThumb is a sent gift in a row: a collectible as its card, on its
+// backdrop and pattern.
 export function giftThumb(gift) {
   if (!gift.number) return giftPicture(gift.gift);
 
-  return el('img', { className: 'gift-pic', src: collectibleImage(gift.gift, gift.model), alt: collectibleName(gift), loading: 'lazy' });
+  return collectibleCard(gift, 'thumb');
 }
 
 // giftsBlock is openvk's block "Подарки" of a page: how many, "Отправить
@@ -75,7 +76,7 @@ export function giftPath(id) {
 
 // collectibleCard is a collectible as Telegram draws one: its backdrop,
 // the symbol of its pattern scattered over it and the gift in its model
-// on top; size is 'small' or 'large'. The colours are the gift's own, so
+// on top; size is 'thumb' (in the row of a page), 'small' or 'large'. The colours are the gift's own, so
 // they are painted through the CSSOM rather than by the theme.
 export function collectibleCard(gift, size = 'small') {
   const pattern = el('div', { className: 'collectible-pattern' },

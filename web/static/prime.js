@@ -6,7 +6,7 @@
 import { api, currentUser, started } from './api.js';
 import {
   formatDateTime, primeBackgrounds, primeFrames, primeMoodIcons, primeMoodText, primeMoods, primeNames, primePeriods,
-  primeSaving, primeStyleClasses, transferNickname, votesAmount,
+  primeNameClass, primeSaving, primeStyleClasses, transferNickname, votesAmount,
 } from './labels.js';
 import { $, avatarURL, el, fullName, hideError, pagePath, profilePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { tr } from './i18n.js';
@@ -110,11 +110,15 @@ function showPreview(me, style) {
   const icon = primeMoodIcons[style.mood];
 
   preview.className = ['prime-preview', 'prime-page', ...primeStyleClasses(style)].join(' ');
-  $('style-title').replaceChildren(el('span', { className: 'prime-name', textContent: fullName(me) }), verifiedMark({ prime: true }));
-  $('style-status').replaceChildren(...[
-    icon && el('img', { className: 'prime-mood', src: icon, alt: '', width: 16, height: 16, title: primeMoodText(style.mood) }),
-    me.status || tr('Ваш статус'),
-  ].filter(Boolean));
+  $('style-title').replaceChildren(el('span', { className: primeNameClass({ prime: true, primeStyle: style }), textContent: fullName(me) }),
+    verifiedMark({ prime: true }));
+  $('style-status').textContent = me.status || tr('Ваш статус');
+  $('style-mood').hidden = !icon;
+  if (icon) Object.assign($('style-mood'), { src: icon, title: primeMoodText(style.mood) });
+
+  const photo = $('style-photo');
+  photo.querySelectorAll('.prime-sparkles').forEach((s) => s.remove());
+  if (style.frame === 'glitter') photo.append(el('span', { className: 'prime-sparkles' }), el('span', { className: 'prime-sparkles late' }));
 }
 
 // swatch is one choice of the form: a radio with what it looks like.
@@ -134,7 +138,7 @@ function initStyle(me) {
 
   $('style-avatar').src = photo;
   $('style-names').replaceChildren(...primeNames.map(([value, name]) => swatch('name', value, name,
-    el('span', { className: 'prime-name-' + value }, el('span', { className: 'prime-name', textContent: me.name || 'Freenet' })),
+    el('span', { className: primeNameClass({ prime: true, primeStyle: { name: value } }), textContent: me.name || 'Freenet' }),
     style.name)));
   $('style-frames').replaceChildren(...primeFrames.map(([value, name]) => swatch('frame', value, name,
     el('span', { className: 'prime-page prime-frame-' + value },

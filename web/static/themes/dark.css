@@ -158,7 +158,8 @@ a { color: #7fa9d4; }
 .archive-menu { background: #1c1c1c; }
 .archive-menu .archive-year:hover { background: #2a3440; }
 .button { color: #f0f0f0; }
-input[type="text"], input[type="email"], input[type="date"], input[type="time"], select, textarea,
+input[type="text"], input:not([type]), input[type="email"], input[type="date"], input[type="time"], input[type="datetime-local"],
+input[type="number"], input[type="search"], input[type="url"], input[type="tel"], input[type="password"], select, textarea,
 .form textarea, .wall-form textarea, .modal-body textarea, .messenger-box textarea, .board-search input { background: #242424; border-color: #444; color: #e0e0e0; color-scheme: dark; }
 input:focus, select:focus, textarea:focus,
 .form textarea:focus, .wall-form textarea:focus, .modal-body textarea:focus { outline-color: #5b7fa6; }
@@ -198,3 +199,7 @@ input:focus, select:focus, textarea:focus,
 /* The New Year decoration: the drifts and the snow on photos dimmed. */
 .festive .layout::after, .festive .post > .post-avatar::before { opacity: 0.55; }
 .festive .layout::before { box-shadow: 0 0 12px rgba(0, 0, 0, 0.5); }
+
+/* The pattern of a person with Prime behind their posts and messages, and
+   the light frame glow, fainter on the dark. */
+.prime-dressed::before { opacity: 0.25; }

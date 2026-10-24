@@ -1557,16 +1557,34 @@ export function primeMoodText(mood) {
 }
 
 // primeStyleClasses are the classes of the page of a person dressed with
-// style (null: none) — the colour of the name, the frame of the photo and
-// the pattern behind the page.
+// style (null: none) — the frame of the photo and the pattern behind the
+// page; the name has its own (primeNameClass).
 export function primeStyleClasses(style) {
   if (!style) return [];
 
   return [
-    'prime-name-' + (style.name || 'amethyst'),
     'prime-frame-' + (style.frame || 'amethyst'),
     ...(style.background ? ['prime-bg', 'prime-bg-' + style.background] : []),
   ];
+}
+
+// primeNameClass is the class of the name of a person (an author, the
+// owner of a page): coloured as they dressed it with Prime, amethyst with
+// Prime undressed, "" without.
+export function primeNameClass(person) {
+  if (!person?.prime) return '';
+
+  const name = person.primeStyle?.name;
+
+  return name && name !== 'amethyst' ? 'prime-name prime-name-' + name : 'prime-name';
+}
+
+// primeDress are the classes of a post or a message of the person: the
+// pattern of their page faintly behind it, none without one.
+export function primeDress(person) {
+  const background = person?.prime && person.primeStyle?.background;
+
+  return background ? ['prime-dressed', 'prime-bg-' + background] : [];
 }
 
 // primeSaving is how much cheaper a month of a longer period is than a

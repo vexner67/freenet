@@ -22,7 +22,9 @@ test('the stylesheet writes colours only as variables', () => {
 });
 
 test('every variable the stylesheet uses is in its palette', () => {
-  const used = new Set([...style.matchAll(/var\((--[\w-]+)\)/g)].map((m) => m[1]));
+  // A variable a rule gives (--prime-pattern: a picture) is no colour.
+  const given = new Set([...style.replace(/:root\s*\{[^}]*\}/, '').matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
+  const used = new Set([...style.matchAll(/var\((--[\w-]+)\)/g)].map((m) => m[1]).filter((name) => !given.has(name)));
 
   assert.deepEqual([...used].filter((name) => !plain.has(name)), []);
   assert.deepEqual([...plain.keys()].filter((name) => !used.has(name)), [], 'a variable nothing uses');

@@ -2141,6 +2141,7 @@ export default {
   'В шахте должны быть все руды, по порядку.': 'The mine must have every ore, in order.',
   'Шансы событий вместе — не больше 100 %.': 'The chances of the events together are at most 100 %.',
   'Шахта': 'Mine',
+  'Работа': 'Work',
   '+1 через {0}': '+1 in {0}',
   'полная': 'full',
   'Копать': 'Dig',

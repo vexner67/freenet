@@ -23,7 +23,7 @@ import { openAddMembers } from './chats.js';
 import { isLive, onEvent } from './events.js';
 import { openAvatarDialog } from './avatar.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
-import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, photoChanges, selectedCount, snippet } from './labels.js';
+import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, photoChanges, primeDress, primeNameClass, selectedCount, snippet } from './labels.js';
 import { $, avatarURL, chatPhotoURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
@@ -88,10 +88,11 @@ function messageNode(m) {
 
   const content = el('div', { className: 'im-message-body' });
   const date = el('div', { className: 'im-message-date' });
-  const node = el('div', { className: m.unread ? 'im-message unread' : 'im-message' },
+  const node = el('div', { className: ['im-message', ...(m.unread ? ['unread'] : []), ...primeDress(m.author)].join(' ') },
     el('a', { href: '/' + m.author.nickname }, el('img', { src: avatarURL(m.author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
-      el('a', { className: 'post-name', href: '/' + m.author.nickname, textContent: fullName(m.author) }), verifiedMark(m.author), content),
+      el('a', { className: ['post-name', primeNameClass(m.author)].filter(Boolean).join(' '), href: '/' + m.author.nickname, textContent: fullName(m.author) }),
+      verifiedMark(m.author), content),
     date,
   );
 
