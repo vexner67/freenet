@@ -848,9 +848,10 @@ function withType(path, type, q = '', comments = false, year = 0) {
 
 // feedPath is the request of a page of the news with its settings; what
 // is as the server has it by default is not said.
-function feedPath(cursor, comments, all, { limit = 0, alien = true, ignored = false }) {
+function feedPath(cursor, comments, all, { limit = 0, alien = true, ignored = false, ranked = false }) {
   let path = withType(page('/api/v1/feed', cursor, limit), all ? 'all' : '', '', comments);
   if (!alien) path = withQuery(path, 'alien=false');
+  if (ranked) path = withQuery(path, 'ranked=true');
   if (ignored) path = withQuery(path, 'ignored=true');
 
   return path;

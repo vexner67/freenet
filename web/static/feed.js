@@ -35,7 +35,7 @@ let ads = [];
 let withAds = (nodes) => nodes;
 
 function feedPage() {
-  return api.feed(cursor, isMicroblog(), all, { limit: settings.posts, alien: settings.alien, ignored: showIgnored });
+  return api.feed(cursor, isMicroblog(), all, { limit: settings.posts, alien: settings.alien, ignored: showIgnored, ranked: settings.order === 'interesting' });
 }
 
 async function loadMore(me) {
