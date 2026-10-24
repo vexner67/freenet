@@ -83,6 +83,9 @@ const (
 	// VoteMessage: a paid message, or its votes given back when it was
 	// not sent (the note is "refund").
 	VoteMessage VoteKind = "message"
+	// VoteBusiness: votes spent on a business or taken out of it; the
+	// note is the business and the action, "kiosk:collect".
+	VoteBusiness VoteKind = "business"
 )
 
 // VoteEntry is what a change of votes is written down as: why, with whom

@@ -168,6 +168,12 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.FailedPrecondition, user.ErrMineNotYet.Error()), true
 	case errors.Is(err, user.ErrUnknownOre):
 		return status.New(codes.InvalidArgument, user.ErrUnknownOre.Error()), true
+	case sentinel(err, businessInvalid) != nil:
+		return status.New(codes.InvalidArgument, sentinel(err, businessInvalid).Error()), true
+	case errors.Is(err, user.ErrBusinessNotFound):
+		return status.New(codes.NotFound, user.ErrBusinessNotFound.Error()), true
+	case sentinel(err, businessRefused) != nil:
+		return status.New(codes.FailedPrecondition, sentinel(err, businessRefused).Error()), true
 	case errors.Is(err, user.ErrRocketOver):
 		return status.New(codes.FailedPrecondition, user.ErrRocketOver.Error()), true
 	case errors.Is(err, user.ErrInvalidPostPrice), errors.Is(err, user.ErrMessagePriceChanged):
@@ -239,4 +245,31 @@ func toStatus(err error) (*status.Status, bool) {
 	default:
 		return nil, false
 	}
+}
+
+// businessInvalid and businessRefused are the errors of the businesses the
+// client is told as they are.
+var (
+	businessInvalid = []error{
+		user.ErrUnknownBusiness, user.ErrUnknownAction, user.ErrBusinessStock, user.ErrBusinessSetPrice,
+		user.ErrBusinessSetStaff, user.ErrBusinessDeposit, user.ErrBusinessPlans, user.ErrBusinessPlanPrice,
+		user.ErrBusinessLevels, user.ErrBusinessDemand, user.ErrBusinessCapacity, user.ErrBusinessCosts,
+		user.ErrBusinessAd, user.ErrBusinessTax,
+	}
+	businessRefused = []error{
+		user.ErrBusinessOwned, user.ErrBusinessBankrupt, user.ErrBusinessInDebt, user.ErrBusinessTopLevel,
+		user.ErrBusinessIntact, user.ErrNothingToCollect, user.ErrBusinessNotYet,
+	}
+)
+
+// sentinel is the one of known that err wraps, or nil: its text, not the
+// chain of calls around it, is what the client may read.
+func sentinel(err error, known []error) error {
+	for _, k := range known {
+		if errors.Is(err, k) {
+			return k
+		}
+	}
+
+	return nil
 }
