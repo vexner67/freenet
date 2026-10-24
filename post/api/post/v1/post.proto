@@ -912,6 +912,12 @@ message ListFeedRequest {
   // At most 50: the walls the reader ignores ("Игнорируемые источники"
   // of openvk). Their posts are left out, whoever wrote them.
   repeated string ignored_wall_ids = 10;
+  // "Сначала интересные": the posts of the last week by how interesting
+  // they are to the caller (likes, comments, reposts, photos and the
+  // caller's likes and comments of the same source, against the age),
+  // then the older ones newest first. Asked on the first page; the
+  // cursors it gives go on in the same order by themselves.
+  bool ranked = 11;
 }
 
 message ListFeedResponse {

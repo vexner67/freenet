@@ -1717,3 +1717,48 @@ func TestSearchPosts(t *testing.T) {
 		t.Fatalf("anonymous: %v", err)
 	}
 }
+
+func TestRankedFeed(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	for _, text := range []string{"раз", "два", "три"} {
+		if _, err := s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{Text: text}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ctx := s.reads(t, bob, []uuid.UUID{ann})
+
+	seen := map[string]bool{}
+	req := &postv1.ListFeedRequest{Ranked: true, Limit: 2}
+	for pages := 0; ; pages++ {
+		page, err := s.client.ListFeed(ctx, req)
+		if err != nil {
+			t.Fatalf("ListFeed: %v", err)
+		}
+		for _, p := range page.GetPosts() {
+			if seen[p.GetId()] {
+				t.Fatalf("post %s twice", p.GetId())
+			}
+			seen[p.GetId()] = true
+		}
+		if page.GetNextCursor() == "" || pages > 3 {
+			break
+		}
+		if !strings.HasPrefix(page.GetNextCursor(), "r:") {
+			t.Fatalf("cursor %q of the ranked news", page.GetNextCursor())
+		}
+		req.Cursor = page.GetNextCursor()
+	}
+	if len(seen) != 3 {
+		t.Fatalf("read %d posts of 3", len(seen))
+	}
+
+	for _, cursor := range []string{"r:", "r:1:2", "r:x::" + uuid.NewString(), "r:1:zz:" + uuid.NewString(), "r:1::nope", "r:1:7ff8000000000001:" + uuid.NewString()} {
+		if _, err := s.client.ListFeed(ctx, &postv1.ListFeedRequest{Ranked: true, Cursor: cursor}); status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("cursor %q: %v", cursor, err)
+		}
+	}
+}
