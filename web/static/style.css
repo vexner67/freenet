@@ -1581,6 +1581,9 @@ label.chat-person { cursor: pointer; }
 .completeness-hints a { display: flex; align-items: center; gap: 3px; margin-bottom: 2px; }
 .completeness-hint::before { content: ''; flex-shrink: 0; width: 16px; height: 16px; background-repeat: no-repeat; background-position: center; }
 .profile-links.completeness-raise { margin: 0 0 6px; }
+/* With "Повысить рейтинг" first, the hints follow the links under the
+   photo with no gap, so its grey hover touches the link above, as on openvk. */
+.profile-hints:has(> .completeness-raise:first-child) { margin-top: -10px; }
 .hint-interests::before { background-image: url("/static/icons/info.svg"); }
 .hint-email::before, .hint-telegram::before { background-image: url("/static/icons/document.svg"); }
 .hint-status::before { background-image: url("/static/icons/status.svg"); }
