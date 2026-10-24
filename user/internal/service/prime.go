@@ -21,6 +21,8 @@ type PrimeRepository interface {
 	Extend(ctx context.Context, userID uuid.UUID, period user.PrimePeriod, now time.Time) (time.Time, error)
 	// SetInvisible: user.ErrNotFound.
 	SetInvisible(ctx context.Context, userID uuid.UUID, invisible bool) error
+	// SetStyle: user.ErrNotFound.
+	SetStyle(ctx context.Context, userID uuid.UUID, s user.PrimeStyle) error
 }
 
 // PrimeNotifier records what the notification service has to hear about
@@ -169,4 +171,19 @@ func (s *PrimeService) SetInvisible(ctx context.Context, userID uuid.UUID, invis
 	}
 
 	return errs.Wrap("s.primes.SetInvisible", s.primes.SetInvisible(ctx, userID, invisible))
+}
+
+// SetStyle dresses the page of userID; any style but the default one
+// takes Prime (user.ErrPrimeOnly).
+func (s *PrimeService) SetStyle(ctx context.Context, userID uuid.UUID, style user.PrimeStyle) error {
+	u, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return errs.Wrap("s.userRepo.GetByID", err)
+	}
+
+	if err = u.CheckPrimeStyle(style, s.now()); err != nil {
+		return errs.Wrap("u.CheckPrimeStyle", err)
+	}
+
+	return errs.Wrap("s.primes.SetStyle", s.primes.SetStyle(ctx, userID, style))
 }

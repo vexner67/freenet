@@ -18,6 +18,7 @@ type PrimeService interface {
 	SetPrices(ctx context.Context, adminID uuid.UUID, prices user.PrimePrices) error
 	Buy(ctx context.Context, buyerID, recipientID uuid.UUID, period user.PrimePeriod) (service.PrimePurchase, error)
 	SetInvisible(ctx context.Context, userID uuid.UUID, invisible bool) error
+	SetStyle(ctx context.Context, userID uuid.UUID, style user.PrimeStyle) error
 }
 
 func (h *UserHandler) GetPrime(ctx context.Context, _ *userv1.GetPrimeRequest) (*userv1.GetPrimeResponse, error) {
@@ -82,6 +83,26 @@ func (h *UserHandler) SetPrimeInvisible(ctx context.Context, req *userv1.SetPrim
 	}
 
 	if err = h.primes.SetInvisible(ctx, userID, req.GetInvisible()); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *UserHandler) SetPrimeStyle(ctx context.Context, req *userv1.SetPrimeStyleRequest) (*emptypb.Empty, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	st := req.GetStyle()
+
+	style, err := user.NewPrimeStyle(st.GetName(), st.GetFrame(), st.GetBackground(), st.GetMood())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err = h.primes.SetStyle(ctx, userID, style); err != nil {
 		return nil, err
 	}
 

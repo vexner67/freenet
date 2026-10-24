@@ -435,7 +435,11 @@ const userColumns = `
 		prime_until,
 		prime_invisible,
 		messages_prime,
-		message_price`
+		message_price,
+		prime_name,
+		prime_frame,
+		prime_background,
+		prime_mood`
 
 // qualifiedUserColumns are userColumns of the users table joined as u.
 const qualifiedUserColumns = `
@@ -507,7 +511,11 @@ const qualifiedUserColumns = `
 		u.prime_until,
 		u.prime_invisible,
 		u.messages_prime,
-		u.message_price`
+		u.message_price,
+		u.prime_name,
+		u.prime_frame,
+		u.prime_background,
+		u.prime_mood`
 
 const getUserByIDQuery = `
 	SELECT` + userColumns + `
@@ -658,6 +666,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		alert                                      *string
 		primeUntil                                 *time.Time
 		primeInvisible                             bool
+		primeStyle                                 [4]string
 	)
 
 	err := row.Scan(
@@ -709,6 +718,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&primeInvisible,
 		&privacy.MessagesPrime,
 		&privacy.MessagePrice,
+		&primeStyle[0], &primeStyle[1], &primeStyle[2], &primeStyle[3],
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound
@@ -795,6 +805,12 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		},
 		Alert: alertFromDB(alert),
 		Prime: user.Prime{Until: timeFromDB(primeUntil), Invisible: primeInvisible},
+		PrimeStyle: user.PrimeStyle{
+			Name:       user.PrimeName(primeStyle[0]),
+			Frame:      user.PrimeFrame(primeStyle[1]),
+			Background: user.PrimeBackground(primeStyle[2]),
+			Mood:       user.PrimeMood(primeStyle[3]),
+		},
 	}), nil
 }
 

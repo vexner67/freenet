@@ -42,6 +42,14 @@ func TestPrime(t *testing.T) {
 	if _, err := s.client.SetPrimeInvisible(ann, &userv1.SetPrimeInvisibleRequest{Invisible: true}); status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("SetPrimeInvisible without Prime: %v", err)
 	}
+	// So does dressing the page, but not undressing it.
+	stars := &userv1.PrimeStyle{Name: "rainbow", Frame: "stars", Background: "hearts", Mood: "love"}
+	if _, err := s.client.SetPrimeStyle(ann, &userv1.SetPrimeStyleRequest{Style: stars}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("SetPrimeStyle without Prime: %v", err)
+	}
+	if _, err := s.client.SetPrimeStyle(ann, &userv1.SetPrimeStyleRequest{Style: &userv1.PrimeStyle{}}); err != nil {
+		t.Fatalf("SetPrimeStyle back to the default: %v", err)
+	}
 
 	voucher, err := s.client.CreateVoucher(admin, &userv1.CreateVoucherRequest{Votes: 300, Usages: 1})
 	if err != nil {
@@ -65,13 +73,26 @@ func TestPrime(t *testing.T) {
 	if me, err = s.client.GetMe(ann, &userv1.GetMeRequest{}); err != nil || !me.GetUser().GetPrimeInvisible() {
 		t.Fatalf("GetMe invisible = %v, %v", me.GetUser(), err)
 	}
+	if _, err = s.client.SetPrimeStyle(ann, &userv1.SetPrimeStyleRequest{Style: &userv1.PrimeStyle{Name: "pink"}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("SetPrimeStyle pink: %v", err)
+	}
+	if _, err = s.client.SetPrimeStyle(ann, &userv1.SetPrimeStyleRequest{Style: stars}); err != nil {
+		t.Fatalf("SetPrimeStyle: %v", err)
+	}
+	if me, err = s.client.GetMe(ann, &userv1.GetMeRequest{}); err != nil || me.GetUser().GetPrimeStyle().GetFrame() != "stars" {
+		t.Fatalf("GetMe dressed = %v, %v", me.GetUser(), err)
+	}
+	page, err := s.client.GetProfile(context.Background(), &userv1.GetProfileRequest{Nickname: "ann"})
+	if err != nil || page.GetProfile().GetPrimeStyle().GetMood() != "love" || page.GetProfile().GetPrimeStyle().GetName() != "rainbow" {
+		t.Fatalf("ann's dressed page = %v, %v", page.GetProfile(), err)
+	}
 
 	// A present: bob has it and everybody sees the badge.
 	if bought, err = s.client.BuyPrime(ann, &userv1.BuyPrimeRequest{Period: "month", UserId: bobID}); err != nil || bought.GetBalance() != 100 {
 		t.Fatalf("BuyPrime for bob = %v, %v", bought, err)
 	}
 	got, err := s.client.GetProfile(context.Background(), &userv1.GetProfileRequest{Nickname: "bob"})
-	if err != nil || !got.GetProfile().GetPrime() {
+	if err != nil || !got.GetProfile().GetPrime() || got.GetProfile().GetPrimeStyle().GetName() != "amethyst" {
 		t.Fatalf("bob's profile = %v, %v", got.GetProfile(), err)
 	}
 	if me, err = s.client.GetMe(bob, &userv1.GetMeRequest{}); err != nil || me.GetUser().GetPrimeUntil() == nil {

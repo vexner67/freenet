@@ -70,6 +70,24 @@ func (r *PrimeRepository) SetInvisible(ctx context.Context, userID uuid.UUID, in
 	})
 }
 
+func (r *PrimeRepository) SetStyle(ctx context.Context, userID uuid.UUID, s user.PrimeStyle) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.users.mu.Lock()
+	defer r.users.mu.Unlock()
+
+	u, ok := r.users.users[userID]
+	if !ok {
+		return user.ErrNotFound
+	}
+
+	r.users.users[userID] = *u.WithPrimeStyle(s)
+
+	return nil
+}
+
 func (r *PrimeRepository) change(ctx context.Context, userID uuid.UUID, change func(user.Prime) user.Prime) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)

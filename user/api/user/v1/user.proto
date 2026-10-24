@@ -220,11 +220,14 @@ service UserService {
   // enough votes", PermissionDenied as SendGift for a refused recipient.
   // SetPrimePrices is for the administrators (PermissionDenied for
   // others). SetPrimeInvisible hides when the caller is online, with
-  // Prime only (FailedPrecondition "this is for freenet prime only").
+  // Prime only (FailedPrecondition "this is for freenet prime only");
+  // SetPrimeStyle dresses the caller's page, any style but the default
+  // one with Prime only too (InvalidArgument for an unknown choice).
   rpc GetPrime(GetPrimeRequest) returns (GetPrimeResponse);
   rpc BuyPrime(BuyPrimeRequest) returns (BuyPrimeResponse);
   rpc SetPrimePrices(SetPrimePricesRequest) returns (google.protobuf.Empty);
   rpc SetPrimeInvisible(SetPrimeInvisibleRequest) returns (google.protobuf.Empty);
+  rpc SetPrimeStyle(SetPrimeStyleRequest) returns (google.protobuf.Empty);
 
   // The New Year decoration of the site. GetDecor is public and says
   // whether to wear it now; SetDecor is for the administrators
@@ -402,6 +405,8 @@ message User {
   google.protobuf.Timestamp prime_until = 35;
   // "Невидимка" of Prime: others are not told when the user is online.
   bool prime_invisible = 36;
+  // How the page is dressed with Prime; kept after Prime ends.
+  PrimeStyle prime_style = 37;
 }
 
 // Ban is a block of a page by the administrators of the site.
@@ -625,6 +630,9 @@ message PublicProfile {
   string alert = 31;
   // The user has Freenet Prime: a mark by the name, told as verified is.
   bool prime = 32;
+  // How the page is dressed with Prime: only GetProfile tells it, of a
+  // page open to the caller, while Prime lasts.
+  PrimeStyle prime_style = 33;
 }
 
 enum Gender {
@@ -1588,6 +1596,27 @@ message SetPrimePricesRequest {
 
 message SetPrimeInvisibleRequest {
   bool invisible = 1;
+}
+
+// PrimeStyle is how a member of Prime dresses their page, as pages of the
+// 2000s were: names of choices the site draws.
+message PrimeStyle {
+  // The colour of the name: amethyst, ruby, emerald, sapphire, gold,
+  // rainbow; "" — amethyst.
+  string name = 1;
+  // The frame of the photo: amethyst, gold, silver, glitter, hearts,
+  // stars; "" — amethyst.
+  string frame = 2;
+  // The pattern behind the page: "", stars, hearts, checks, clouds,
+  // flowers, sparkles.
+  string background = 3;
+  // The smiley by the status: "", happy, love, cool, wink, sad, angry,
+  // sleepy.
+  string mood = 4;
+}
+
+message SetPrimeStyleRequest {
+  PrimeStyle style = 1;
 }
 
 // How the site is dressed for the New Year.

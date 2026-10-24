@@ -103,6 +103,7 @@ const (
 	UserService_BuyPrime_FullMethodName           = "/user.v1.UserService/BuyPrime"
 	UserService_SetPrimePrices_FullMethodName     = "/user.v1.UserService/SetPrimePrices"
 	UserService_SetPrimeInvisible_FullMethodName  = "/user.v1.UserService/SetPrimeInvisible"
+	UserService_SetPrimeStyle_FullMethodName      = "/user.v1.UserService/SetPrimeStyle"
 	UserService_GetDecor_FullMethodName           = "/user.v1.UserService/GetDecor"
 	UserService_SetDecor_FullMethodName           = "/user.v1.UserService/SetDecor"
 	UserService_GetCasino_FullMethodName          = "/user.v1.UserService/GetCasino"
@@ -345,11 +346,14 @@ type UserServiceClient interface {
 	// enough votes", PermissionDenied as SendGift for a refused recipient.
 	// SetPrimePrices is for the administrators (PermissionDenied for
 	// others). SetPrimeInvisible hides when the caller is online, with
-	// Prime only (FailedPrecondition "this is for freenet prime only").
+	// Prime only (FailedPrecondition "this is for freenet prime only");
+	// SetPrimeStyle dresses the caller's page, any style but the default
+	// one with Prime only too (InvalidArgument for an unknown choice).
 	GetPrime(ctx context.Context, in *GetPrimeRequest, opts ...grpc.CallOption) (*GetPrimeResponse, error)
 	BuyPrime(ctx context.Context, in *BuyPrimeRequest, opts ...grpc.CallOption) (*BuyPrimeResponse, error)
 	SetPrimePrices(ctx context.Context, in *SetPrimePricesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SetPrimeInvisible(ctx context.Context, in *SetPrimeInvisibleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SetPrimeStyle(ctx context.Context, in *SetPrimeStyleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// The New Year decoration of the site. GetDecor is public and says
 	// whether to wear it now; SetDecor is for the administrators
 	// (PermissionDenied for others).
@@ -1304,6 +1308,16 @@ func (c *userServiceClient) SetPrimeInvisible(ctx context.Context, in *SetPrimeI
 	return out, nil
 }
 
+func (c *userServiceClient) SetPrimeStyle(ctx context.Context, in *SetPrimeStyleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetPrimeStyle_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) GetDecor(ctx context.Context, in *GetDecorRequest, opts ...grpc.CallOption) (*GetDecorResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetDecorResponse)
@@ -1895,11 +1909,14 @@ type UserServiceServer interface {
 	// enough votes", PermissionDenied as SendGift for a refused recipient.
 	// SetPrimePrices is for the administrators (PermissionDenied for
 	// others). SetPrimeInvisible hides when the caller is online, with
-	// Prime only (FailedPrecondition "this is for freenet prime only").
+	// Prime only (FailedPrecondition "this is for freenet prime only");
+	// SetPrimeStyle dresses the caller's page, any style but the default
+	// one with Prime only too (InvalidArgument for an unknown choice).
 	GetPrime(context.Context, *GetPrimeRequest) (*GetPrimeResponse, error)
 	BuyPrime(context.Context, *BuyPrimeRequest) (*BuyPrimeResponse, error)
 	SetPrimePrices(context.Context, *SetPrimePricesRequest) (*emptypb.Empty, error)
 	SetPrimeInvisible(context.Context, *SetPrimeInvisibleRequest) (*emptypb.Empty, error)
+	SetPrimeStyle(context.Context, *SetPrimeStyleRequest) (*emptypb.Empty, error)
 	// The New Year decoration of the site. GetDecor is public and says
 	// whether to wear it now; SetDecor is for the administrators
 	// (PermissionDenied for others).
@@ -2272,6 +2289,9 @@ func (UnimplementedUserServiceServer) SetPrimePrices(context.Context, *SetPrimeP
 }
 func (UnimplementedUserServiceServer) SetPrimeInvisible(context.Context, *SetPrimeInvisibleRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetPrimeInvisible not implemented")
+}
+func (UnimplementedUserServiceServer) SetPrimeStyle(context.Context, *SetPrimeStyleRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetPrimeStyle not implemented")
 }
 func (UnimplementedUserServiceServer) GetDecor(context.Context, *GetDecorRequest) (*GetDecorResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetDecor not implemented")
@@ -3905,6 +3925,24 @@ func _UserService_SetPrimeInvisible_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_SetPrimeStyle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetPrimeStyleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetPrimeStyle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetPrimeStyle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetPrimeStyle(ctx, req.(*SetPrimeStyleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetDecor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetDecorRequest)
 	if err := dec(in); err != nil {
@@ -4945,6 +4983,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetPrimeInvisible",
 			Handler:    _UserService_SetPrimeInvisible_Handler,
+		},
+		{
+			MethodName: "SetPrimeStyle",
+			Handler:    _UserService_SetPrimeStyle_Handler,
 		},
 		{
 			MethodName: "GetDecor",

@@ -51,6 +51,16 @@ func toProtoUser(u *user.User) *userv1.User {
 		Alert:                 u.Alert().String(),
 		PrimeUntil:            toProtoPrimeUntil(u, time.Now()),
 		PrimeInvisible:        u.Prime().Invisible,
+		PrimeStyle:            toProtoPrimeStyle(u.PrimeStyle()),
+	}
+}
+
+func toProtoPrimeStyle(s user.PrimeStyle) *userv1.PrimeStyle {
+	return &userv1.PrimeStyle{
+		Name:       string(s.Name),
+		Frame:      string(s.Frame),
+		Background: string(s.Background),
+		Mood:       string(s.Mood),
 	}
 }
 
@@ -438,6 +448,9 @@ func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
 		Ban:                   toProtoBan(p.Ban),
 		Alert:                 p.Alert.String(),
 		Prime:                 p.Prime,
+	}
+	if p.PrimeStyle != nil {
+		pp.PrimeStyle = toProtoPrimeStyle(*p.PrimeStyle)
 	}
 
 	// The date of registration is information too. A list tells who is

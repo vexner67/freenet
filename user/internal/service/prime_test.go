@@ -107,6 +107,24 @@ func TestPrimeService(t *testing.T) {
 	if u, _ := w.users.GetByID(ctx, ann); !u.Prime().Invisible {
 		t.Fatal("not invisible")
 	}
+
+	// So is a dressed page; the default one is anyone's.
+	style, err := user.NewPrimeStyle("gold", "glitter", "clouds", "wink")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = w.primes.SetStyle(ctx, cat, style); !errors.Is(err, user.ErrPrimeOnly) {
+		t.Fatalf("a style without Prime: %v", err)
+	}
+	if err = w.primes.SetStyle(ctx, cat, user.DefaultPrimeStyle()); err != nil {
+		t.Fatalf("the default style without Prime: %v", err)
+	}
+	if err = w.primes.SetStyle(ctx, ann, style); err != nil {
+		t.Fatal(err)
+	}
+	if u, _ := w.users.GetByID(ctx, ann); u.PrimeStyle() != style {
+		t.Fatalf("style = %+v", u.PrimeStyle())
+	}
 }
 
 func TestPrime_Perks(t *testing.T) {
