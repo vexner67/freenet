@@ -2691,7 +2691,15 @@ export const feedPageSizes = [1, 5, 10, 20, 30, 40, 50];
 // Ten posts a page, and the posts on the walls of others are there unless
 // left out (openvk leaves them out by default; the owner of the site
 // wants them).
-export const defaultFeedSettings = Object.freeze({ posts: 10, alien: true });
+export const defaultFeedSettings = Object.freeze({ posts: 10, alien: true, order: 'interesting' });
+
+// feedOrders are how the news stand: by how interesting the posts of the
+// week are to the reader (likes, comments, reposts, whom they like, how
+// fresh), then the older ones newest first; or newest first only.
+export const feedOrders = Object.freeze([
+  { value: 'interesting', label: tr('сначала интересные') },
+  { value: 'time', label: tr('по времени') },
+]);
 
 // feedSettings reads what the browser kept; anything else is the default.
 export function feedSettings(raw) {
@@ -2706,6 +2714,7 @@ export function feedSettings(raw) {
   return {
     posts: feedPageSizes.includes(kept?.posts) ? kept.posts : defaultFeedSettings.posts,
     alien: typeof kept?.alien === 'boolean' ? kept.alien : defaultFeedSettings.alien,
+    order: feedOrders.some((o) => o.value === kept?.order) ? kept.order : defaultFeedSettings.order,
   };
 }
 

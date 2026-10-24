@@ -230,9 +230,11 @@ function showCompleteness(user, isOwner) {
     })
     : [];
 
-  // "Повысить рейтинг" is a button above the gauge it raises.
+  // "Повысить рейтинг" stands above the gauge it raises, a link like
+  // "Редактировать страницу" under the photo.
   $('completeness').replaceChildren(
-    ...(isOwner ? [el('a', { className: 'button completeness-raise', href: '/votes?act=rating', textContent: tr('Повысить рейтинг') })] : []),
+    ...(isOwner ? [el('div', { className: 'profile-links completeness-raise' },
+      el('a', { className: 'profile-link', href: '/votes?act=rating', textContent: tr('Повысить рейтинг') }))] : []),
     el('div', { className: 'completeness-gauge' + (percent >= 100 ? ' completeness-gauge-gold' : '') },
       bar, el('span', { textContent: percent + '%' })),
     ...(hints.length ? [el('div', { className: 'completeness-hints' }, ...hints)] : []),

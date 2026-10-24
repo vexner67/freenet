@@ -936,7 +936,7 @@ body.prime-bg { background: var(--back-f2f5f8) var(--prime-pattern); }
 .prime-mood { width: 32px; height: 32px; }
 /* The mood sits on the right under "Онлайн", by the name. */
 .account-info { display: flow-root; }
-.account-info .prime-mood { float: right; margin: 4px 2px 0 8px; }
+.account-info .prime-mood { float: right; margin: 0 2px 6px 8px; }
 .prime-preview .prime-mood { margin-left: auto; align-self: flex-start; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1565,8 +1565,7 @@ label.chat-person { cursor: pointer; }
 .completeness-hints { margin-top: 12px; }
 .completeness-hints a { display: flex; align-items: center; gap: 3px; margin-bottom: 2px; }
 .completeness-hint::before { content: ''; flex-shrink: 0; width: 16px; height: 16px; background-repeat: no-repeat; background-position: center; }
-.completeness-raise { display: block; margin: 0 0 6px; text-align: center; }
-.completeness-raise:hover { text-decoration: none; }
+.profile-links.completeness-raise { margin: 0 0 6px; }
 .hint-interests::before { background-image: url("/static/icons/info.svg"); }
 .hint-email::before, .hint-telegram::before { background-image: url("/static/icons/document.svg"); }
 .hint-status::before { background-image: url("/static/icons/status.svg"); }
@@ -1777,6 +1776,7 @@ a.poll-result-name { cursor: pointer; }
 .feed-settings { display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
 .feed-settings-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .feed-settings-row select { display: inline-block; width: 70px; margin: 0; }
+.feed-settings-row select.feed-order { width: 150px; }
 .ignored-list { max-height: 260px; overflow-y: auto; }
 .ignored-row { display: flex; align-items: center; gap: 8px; padding: 4px 2px; border-bottom: 1px solid var(--line-eee); cursor: pointer; }
 .ignored-row:last-child { border-bottom: 0; }
@@ -2412,6 +2412,14 @@ a.poll-result-name { cursor: pointer; }
 .bank-op-sum b { font-size: 13px; }
 .bank-empty { color: var(--text-808080); text-align: center; }
 .bank-recipient { margin: 3px 0 0; }
+/* Whom to send votes to, as the field is typed in: a list under it, like
+   the people of the search. */
+.bank-people { max-height: 260px; overflow-y: auto; border: 1px solid var(--line-c0cad5); border-top: 0; background: var(--back-fff); }
+.bank-people-title { padding: 3px 6px; background: var(--back-f2f2f2); color: var(--text-808080); }
+.bank-person { display: flex; gap: 6px; align-items: center; padding: 3px 6px; border-top: 1px solid var(--line-e8e8e8); color: inherit; }
+.bank-person:hover { background: var(--back-ededed); text-decoration: none; }
+.bank-person img { flex: none; width: 30px; height: 30px; object-fit: cover; }
+.bank-person b { color: var(--text-2b587a); }
 .bank-link { display: flex; gap: 6px; margin: 10px 0; }
 .bank-link input { flex: 1; min-width: 0; }
 .voucher-keys { margin: 10px 0; }

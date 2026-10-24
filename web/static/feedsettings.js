@@ -1,12 +1,13 @@
-// openvk's "Настройки ленты": a box with two tabs. "Основное" is how
-// many posts a page of the news holds, whether the ignored sources are
+// openvk's "Настройки ленты": a box with two tabs. "Основное" is how the
+// news stand (ours: "сначала интересные" or "по времени"), how many posts
+// a page of the news holds, whether the ignored sources are
 // shown and whether what people wrote on the walls of others is;
 // "Игнорируемые источники" lists the people and the communities whose
 // walls the news leave out, to stop ignoring them. The link that ignores
 // a page ("Игнорировать пользователя") is here too.
 
 import { api } from './api.js';
-import { defaultFeedSettings, feedPageSizes, feedSettings, ignoreLabel } from './labels.js';
+import { defaultFeedSettings, feedOrders, feedPageSizes, feedSettings, ignoreLabel } from './labels.js';
 import { avatarURL, el, fullName, pagePath, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { tr } from './i18n.js';
@@ -72,15 +73,18 @@ export function openFeedSettings({ showIgnored, onApply, onUnignored }) {
     const posts = el('select', { id: 'feed-posts' }, ...feedPageSizes.map((n) => el('option', { value: String(n), textContent: String(n) })));
     const ignored = el('input', { type: 'checkbox', id: 'feed-show-ignored', checked: showIgnored });
     const alien = el('input', { type: 'checkbox', id: 'feed-alien', checked: settings.alien });
+    const order = el('select', { id: 'feed-order', className: 'feed-order' }, ...feedOrders.map((o) => el('option', { value: o.value, textContent: o.label })));
 
     posts.value = String(settings.posts);
+    order.value = settings.order;
     content.append(
+      el('label', { className: 'feed-settings-row', htmlFor: 'feed-order' }, el('span', { textContent: tr('Порядок записей') }), order),
       el('label', { className: 'feed-settings-row', htmlFor: 'feed-posts' }, el('span', { textContent: tr('Количество записей на странице') }), posts),
       el('label', { className: 'modal-option' }, ignored, tr('Показывать игнорируемые источники')),
       el('label', { className: 'modal-option' }, alien, tr('Показывать посты на чужих стенах')),
     );
     modal.actions.prepend(button(tr('Применить'), () => {
-      const chosen = { posts: Number(posts.value), alien: alien.checked };
+      const chosen = { posts: Number(posts.value), alien: alien.checked, order: order.value };
 
       keep(chosen);
       modal.close();
