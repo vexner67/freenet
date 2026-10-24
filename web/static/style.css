@@ -10,6 +10,15 @@
   /* Backgrounds */
   --back-fff: #fff;
   --back-c7b2ee: #c7b2ee;
+  --back-f0d878: #f0d878;
+  --line-a8800f: #a8800f;
+  --back-dfe3e8: #dfe3e8;
+  --line-7d8792: #7d8792;
+  --text-b3122e: #b3122e;
+  --text-0c7a3c: #0c7a3c;
+  --text-1d4fb5: #1d4fb5;
+  --text-a87a00: #a87a00;
+  --text-e0650a: #e0650a;
   --back-fafafa: #fafafa;
   --back-f9f9f9: #f9f9f9;
   --back-f7f7f7: #f7f7f7;
@@ -811,6 +820,86 @@ a.like:hover svg { opacity: .7; }
   outline: 1px solid var(--text-6b3fb8);
 }
 .prime-name { color: var(--text-6b3fb8); font-weight: bold; }
+
+/* "Оформление страницы" of Prime, as pages of the 2000s were dressed: the
+   colour of the name, the frame of the photo, the pattern behind the page
+   (a white column on it, as the New Year's) and the smiley of the mood by
+   the status. The classes are those of primeStyleClasses in labels.js. */
+.prime-name-ruby .prime-name { color: var(--text-b3122e); }
+.prime-name-emerald .prime-name { color: var(--text-0c7a3c); }
+.prime-name-sapphire .prime-name { color: var(--text-1d4fb5); }
+.prime-name-gold .prime-name { color: var(--text-a87a00); text-shadow: 0 1px 0 var(--back-f0d878); }
+.prime-name-rainbow .prime-name {
+  background: linear-gradient(90deg, var(--text-b3122e), var(--text-e0650a), var(--text-a87a00), var(--text-0c7a3c),
+    var(--text-1d4fb5), var(--text-6b3fb8), var(--text-b3122e)) 0 0 / 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: prime-rainbow 6s linear infinite;
+}
+@keyframes prime-rainbow { to { background-position: 200% 0; } }
+
+.prime-page.prime-frame-gold .avatar { border-color: var(--back-f0d878); outline-color: var(--line-a8800f); }
+.prime-page.prime-frame-silver .avatar { border-color: var(--back-dfe3e8); outline-color: var(--line-7d8792); }
+.prime-page.prime-frame-glitter .avatar,
+.prime-page.prime-frame-hearts .avatar,
+.prime-page.prime-frame-stars .avatar { border-width: 6px; outline: none; border-image: url("/static/prime/frame-glitter.svg") 8 round; }
+.prime-page.prime-frame-hearts .avatar { border-image-source: url("/static/prime/frame-hearts.svg"); }
+.prime-page.prime-frame-stars .avatar { border-image-source: url("/static/prime/frame-stars.svg"); }
+
+body.prime-bg { background-color: var(--back-f2f5f8); }
+.prime-bg-stars { background-image: url("/static/prime/bg-stars.svg"); }
+.prime-bg-hearts { background-image: url("/static/prime/bg-hearts.svg"); }
+.prime-bg-checks { background-image: url("/static/prime/bg-checks.svg"); }
+.prime-bg-clouds { background-image: url("/static/prime/bg-clouds.svg"); }
+.prime-bg-flowers { background-image: url("/static/prime/bg-flowers.svg"); }
+.prime-bg-sparkles { background-image: url("/static/prime/bg-sparkles.svg"); }
+.prime-bg .layout { position: relative; min-height: 100vh; }
+.prime-bg .layout::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -10px;
+  right: -10px;
+  background: var(--back-fff);
+  box-shadow: 0 0 12px rgba(80, 60, 120, 0.25);
+  z-index: -1;
+}
+
+.prime-mood { margin-right: 4px; vertical-align: -3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .prime-name-rainbow .prime-name { animation: none; }
+}
+
+/* The choices of "Оформление страницы" on /prime: swatches in a row, the
+   chosen one framed. */
+.prime-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.prime-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  width: 78px;
+  padding: 6px 2px;
+  border: 1px solid var(--line-ccc);
+  background: var(--back-fff);
+  cursor: pointer;
+  text-align: center;
+}
+.prime-swatch:hover { background: var(--back-f7f7f7); }
+.prime-swatch input { position: absolute; opacity: 0; pointer-events: none; }
+.prime-swatch:has(input:checked) { border-color: var(--text-6b3fb8); outline: 1px solid var(--text-6b3fb8); background: var(--back-f2f5f8); }
+.prime-swatch:has(input:focus-visible) { outline: 2px solid var(--text-6b3fb8); }
+.prime-swatch-sample { display: block; width: 40px; height: 40px; box-sizing: border-box; background-color: var(--back-f2f2f2); }
+.prime-swatch-sample.prime-name { width: auto; height: auto; background: none; font-size: 13px; }
+.prime-swatch-bg { border: 1px solid var(--line-ccc); background-color: var(--back-f2f5f8); }
+.prime-swatch-none { display: block; width: 16px; height: 16px; color: var(--text-808080); }
+.prime-style-label { margin: 10px 0 4px; font-weight: bold; }
+.prime-preview { display: flex; gap: 10px; align-items: center; margin: 8px 0; padding: 10px; border: 1px solid var(--line-ccc); }
+.prime-preview .avatar { width: 60px; height: 60px; }
 
 /* The controls on the photo for whom it is theirs to change, as openvk's
    .avatar_controls: they show when the photo is pointed at — "Загрузить

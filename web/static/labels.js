@@ -1494,6 +1494,81 @@ export const primePeriods = [
   ['year', tr('Год'), 12],
 ];
 
+// The choices of "Оформление страницы" of Freenet Prime with their names,
+// the default first, as the user service keeps them (PrimeNames,
+// PrimeFrames, PrimeBackgrounds, PrimeMoods in prime_style.go; a test
+// compares them). style.css draws each by its class: prime-name-<name>,
+// prime-frame-<frame>, prime-bg-<background>, and the smileys of moods are primeMoodIcons.
+export const primeNames = [
+  ['amethyst', tr('аметистовое')],
+  ['ruby', tr('рубиновое')],
+  ['emerald', tr('изумрудное')],
+  ['sapphire', tr('сапфировое')],
+  ['gold', tr('золотое')],
+  ['rainbow', tr('радужное')],
+];
+
+export const primeFrames = [
+  ['amethyst', tr('аметистовая')],
+  ['gold', tr('золотая')],
+  ['silver', tr('серебряная')],
+  ['glitter', tr('блёстки')],
+  ['hearts', tr('сердечки')],
+  ['stars', tr('звёздочки')],
+];
+
+export const primeBackgrounds = [
+  ['', tr('без узора')],
+  ['stars', tr('звёзды')],
+  ['hearts', tr('сердечки')],
+  ['checks', tr('клетка')],
+  ['clouds', tr('облака')],
+  ['flowers', tr('цветы')],
+  ['sparkles', tr('блёстки')],
+];
+
+export const primeMoods = [
+  ['', tr('не показывать')],
+  ['happy', tr('весёлое')],
+  ['love', tr('влюблённое')],
+  ['cool', tr('крутое')],
+  ['wink', tr('игривое')],
+  ['sad', tr('грустное')],
+  ['angry', tr('злое')],
+  ['sleepy', tr('сонное')],
+];
+
+// primeMoodIcons are the smileys of the moods: whole paths, so that the
+// gateway gives each its version.
+export const primeMoodIcons = {
+  happy: '/static/prime/mood-happy.svg',
+  love: '/static/prime/mood-love.svg',
+  cool: '/static/prime/mood-cool.svg',
+  wink: '/static/prime/mood-wink.svg',
+  sad: '/static/prime/mood-sad.svg',
+  angry: '/static/prime/mood-angry.svg',
+  sleepy: '/static/prime/mood-sleepy.svg',
+};
+
+// primeMoodText is the title of the smiley by the status.
+export function primeMoodText(mood) {
+  const name = primeMoods.find(([value]) => value === mood)?.[1];
+  return name && mood ? tr('Настроение: {0}', name) : '';
+}
+
+// primeStyleClasses are the classes of the page of a person dressed with
+// style (null: none) — the colour of the name, the frame of the photo and
+// the pattern behind the page.
+export function primeStyleClasses(style) {
+  if (!style) return [];
+
+  return [
+    'prime-name-' + (style.name || 'amethyst'),
+    'prime-frame-' + (style.frame || 'amethyst'),
+    ...(style.background ? ['prime-bg', 'prime-bg-' + style.background] : []),
+  ];
+}
+
 // primeSaving is how much cheaper a month of a longer period is than a
 // month bought alone, in whole percent; 0 when it is not.
 export function primeSaving(prices, months, price) {

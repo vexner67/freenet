@@ -677,6 +677,7 @@ export const api = {
   buyPrime: (period) => authorized('POST', '/api/v1/me/prime', { period }),
   givePrime: (nickname, period) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/prime`, { period }),
   setPrimeInvisible: (invisible) => authorized('PUT', '/api/v1/me/prime/invisible', { invisible }),
+  setPrimeStyle: (style) => authorized('PUT', '/api/v1/me/prime/style', style),
   decor: () => request('GET', '/api/v1/decor'),
   setDecor: (mode) => authorized('PUT', '/api/v1/decor', { mode }),
   casino: () => request('GET', '/api/v1/casino'),
