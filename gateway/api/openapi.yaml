@@ -5161,6 +5161,113 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/me/businesses:
+    get:
+      summary: Your businesses
+      description: '"Бизнес": the kinds of business with their plans and the tax of the till, and your businesses as they are now — counted hour by hour since you last looked: customers come by the demand of the level (fewer the dearer the goods, the worse the premises; more with an advertisement), workers serve them while there are goods, wages and rent run, the premises wear down, the till holds at most `till` votes times the level. Below `debt` votes times the level the business goes bankrupt.'
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The businesses
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Businesses" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      summary: Buy a business
+      description: 'Buys a business of the kind for its price, into the treasury; one of each kind. 409 when you own it already or lack the votes. Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind]
+              properties:
+                kind: { type: string, enum: [kiosk, cafe, carwash, factory] }
+      responses:
+        "200":
+          description: What the purchase did
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessDone" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/businesses/{kind}/{action}:
+    post:
+      summary: Run a business
+      description: '`manage` sets `price` (hundredths of a vote, from 1) and `staff` (0 to what the level employs); `restock` buys `amount` units of goods, up to the storage; `upgrade` raises the level; `repair` brings the premises back to full; `advertise` raises the demand for a while; `deposit` puts `amount` votes into the till (to pay debts); `collect` takes the whole votes of the till, less the tax; `sell` sells the business for half of what went into buying and upgrading it and the till — nothing when bankrupt, 409 in debt. Votes spent go to the treasury, votes taken out come from it; `collect` and `sell` are for pages a week old with a filled profile. 404 for a business you do not own; 409 when bankrupt, at the top level, intact or with less than a vote in the till. Rate limited.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: kind, in: path, required: true, schema: { type: string, enum: [kiosk, cafe, carwash, factory] } }
+        - { name: action, in: path, required: true, schema: { type: string, enum: [manage, restock, upgrade, repair, advertise, deposit, collect, sell] } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount: { type: integer, format: int64, description: Units of a restock, votes of a deposit }
+                price: { type: integer, format: int64, description: The price a manage sets, in hundredths of a vote }
+                staff: { type: integer, description: The workers a manage sets }
+      responses:
+        "200":
+          description: What the action did
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessDone" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/business/settings:
+    get:
+      summary: The businesses for the administrators
+      description: 'Only for the administrators of the site: the plans of the businesses, the tax, and how they do — businesses open, votes spent on them and taken out.'
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The settings and the stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings: { $ref: "#/components/schemas/BusinessSettings" }
+                  businesses: { type: integer, format: int64 }
+                  spent: { type: integer, format: int64 }
+                  paid: { type: integer, format: int64 }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    put:
+      summary: Change the businesses
+      description: 'Only for the administrators of the site: all four kinds in order and the tax (0–100 %). New plans count from the next look at a business.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessSettings" }
+      responses:
+        "204": { description: Set }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/mine/settings:
     get:
       summary: The mine for the administrators
@@ -8936,6 +9043,66 @@ components:
         price: { type: integer, format: int64, description: Hundredths of a vote a unit sells for }
         gain: { type: integer, format: int64, description: The experience a dig gives }
         energy: { type: integer, description: The energy a dig takes }
+    BusinessPlan:
+      type: object
+      properties:
+        kind: { type: string, enum: [kiosk, cafe, carwash, factory] }
+        price: { type: integer, format: int64, description: The votes the business costs }
+        upgrade: { type: integer, format: int64, description: The votes the next level costs, times the level }
+        levels: { type: integer }
+        demand: { type: integer, format: int64, description: Customers an hour at the fair price, times the level }
+        fair: { type: integer, format: int64, description: The fair price of the goods in hundredths of a vote; at twice of it nobody buys }
+        cost: { type: integer, format: int64, description: Hundredths of a vote a unit of goods costs }
+        storage: { type: integer, format: int64, description: The units the storage holds, times the level }
+        serve: { type: integer, format: int64, description: Customers a worker serves an hour }
+        staff: { type: integer, description: Workers a level employs }
+        wage: { type: integer, format: int64, description: Hundredths of a vote a worker costs an hour }
+        rent: { type: integer, format: int64, description: Hundredths of a vote the rent costs an hour, times the level }
+        wear: { type: integer, description: Hundredths of a percent of condition lost an hour }
+        repair: { type: integer, format: int64, description: The votes a percent of repair costs }
+        till: { type: integer, format: int64, description: The votes the till holds, times the level }
+        debt: { type: integer, format: int64, description: The debt in votes, times the level, the business goes bankrupt past }
+        adPrice: { type: integer, format: int64 }
+        adHours: { type: integer }
+        adBoost: { type: integer, description: The percent an advertisement raises the demand }
+    BusinessSettings:
+      type: object
+      properties:
+        plans: { type: array, items: { $ref: "#/components/schemas/BusinessPlan" } }
+        tax: { type: integer, description: The percent of the till taken out that goes to the treasury }
+    Business:
+      type: object
+      properties:
+        kind: { type: string }
+        level: { type: integer }
+        stock: { type: integer, format: int64 }
+        price: { type: integer, format: int64, description: Hundredths of a vote }
+        staff: { type: integer }
+        condition: { type: integer, description: Hundredths of a percent }
+        cash: { type: integer, format: int64, description: Hundredths of a vote; below zero — a debt }
+        adUntil: { type: string, format: date-time, nullable: true }
+        bankrupt: { type: boolean }
+        invested: { type: integer, format: int64 }
+        collected: { type: integer, format: int64 }
+        customers: { type: number, description: Customers an hour now }
+        served: { type: number, description: Customers served an hour now }
+        income: { type: number, description: Hundredths of a vote an hour now }
+        costs: { type: number, description: Hundredths of a vote an hour now }
+        resale: { type: integer, format: int64, description: The votes the business sells for now }
+        inDebt: { type: boolean }
+    Businesses:
+      type: object
+      properties:
+        settings: { $ref: "#/components/schemas/BusinessSettings" }
+        businesses: { type: array, items: { $ref: "#/components/schemas/Business" } }
+    BusinessDone:
+      type: object
+      properties:
+        spent: { type: integer, format: int64 }
+        got: { type: integer, format: int64 }
+        tax: { type: integer, format: int64 }
+        balance: { type: integer, format: int64, description: The balance after the votes moved; 0 when none did }
+        businesses: { $ref: "#/components/schemas/Businesses" }
     MineSettings:
       type: object
       properties:

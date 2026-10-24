@@ -1569,6 +1569,7 @@ type harness struct {
 	prime         *fakePrime
 	casino        *fakeCasino
 	mine          *fakeMine
+	business      *fakeBusiness
 	bets          *fakeBets
 	documents     *fakeDocuments
 	stories       *fakeStories
@@ -1599,6 +1600,7 @@ func newHarness(cfg rest.Config) harness {
 		prime:         &fakePrime{},
 		casino:        &fakeCasino{},
 		mine:          &fakeMine{},
+		business:      &fakeBusiness{},
 		bets:          &fakeBets{},
 		faves:         &fakeFaves{},
 		documents:     &fakeDocuments{},
@@ -1625,6 +1627,7 @@ func newHarness(cfg rest.Config) harness {
 		Prime:         h.prime,
 		Casino:        h.casino,
 		Mine:          h.mine,
+		Business:      h.business,
 		Bets:          h.bets,
 		Faves:         h.faves,
 		Documents:     h.documents,
