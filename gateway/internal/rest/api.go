@@ -881,6 +881,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/prime/prices", a.setPrimePrices)
 	mux.HandleFunc("POST /api/v1/me/prime", a.buyPrime)
 	mux.HandleFunc("PUT /api/v1/me/prime/invisible", a.setPrimeInvisible)
+	mux.HandleFunc("PUT /api/v1/me/prime/style", a.setPrimeStyle)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/prime", a.givePrime)
 	mux.HandleFunc("GET /api/v1/casino", a.casino)
 	mux.HandleFunc("PUT /api/v1/casino", a.setCasino)

@@ -16,6 +16,9 @@ type Prime interface {
 	// caller.
 	Buy(ctx context.Context, accessToken, userID, period string) (model.PrimePurchase, error)
 	SetInvisible(ctx context.Context, accessToken string, invisible bool) error
+	// SetStyle dresses the caller's page; any style but the default one
+	// takes Prime.
+	SetStyle(ctx context.Context, accessToken string, style model.PrimeStyle) error
 }
 
 type primePricesJSON struct {
@@ -128,6 +131,53 @@ func (a *api) setPrimeInvisible(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = a.primes.SetInvisible(r.Context(), token, req.Invisible); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// primeStyleJSON is how a member of Prime dressed their page: name,
+// frame, background and mood, names the site draws ("" — the default).
+type primeStyleJSON struct {
+	Name       string `json:"name"`
+	Frame      string `json:"frame"`
+	Background string `json:"background"`
+	Mood       string `json:"mood"`
+}
+
+func toPrimeStyleJSON(s model.PrimeStyle) primeStyleJSON {
+	return primeStyleJSON(s)
+}
+
+// toShownPrimeStyleJSON is null for a page that tells no style.
+func toShownPrimeStyleJSON(s *model.PrimeStyle) *primeStyleJSON {
+	if s == nil {
+		return nil
+	}
+
+	style := toPrimeStyleJSON(*s)
+
+	return &style
+}
+
+// setPrimeStyle dresses the page of a member of Prime ("Оформление
+// страницы"), the whole form at once.
+func (a *api) setPrimeStyle(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req primeStyleJSON
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.primes.SetStyle(r.Context(), token, model.PrimeStyle(req)); err != nil {
 		a.writeError(w, r, err)
 		return
 	}

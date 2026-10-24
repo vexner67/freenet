@@ -4729,6 +4729,23 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "409": { $ref: "#/components/responses/Conflict" }
 
+  /api/v1/me/prime/style:
+    put:
+      summary: Dress your page with Freenet Prime
+      description: 'The colour of the name, the frame of the photo, the pattern behind the page and the mood by the status, all at once; "" for the name and the frame is the default. Others see it while Prime lasts. Any style but the default one takes Prime: `this is for freenet prime only` (409).'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrimeStyle"
+      responses:
+        "204": { description: Set }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
   /api/v1/users/{nickname}/prime:
     post:
       summary: Give Freenet Prime as a present
@@ -7703,6 +7720,8 @@ components:
             primeInvisible:
               type: boolean
               description: «Невидимка» of Freenet Prime is on
+            primeStyle:
+              $ref: "#/components/schemas/PrimeStyle"
             alert:
               type: string
               description: The label the administrators put on your page (an orange one above the name), "" for none
@@ -8667,6 +8686,28 @@ components:
         until: { type: string, format: date-time, description: Until when the recipient has Freenet Prime now }
         balance: { type: integer, format: int64, description: The votes you have left }
 
+    PrimeStyle:
+      type: object
+      description: How a member of Freenet Prime dresses their page, as pages of the 2000s were
+      required: [name, frame, background, mood]
+      properties:
+        name:
+          type: string
+          enum: [amethyst, ruby, emerald, sapphire, gold, rainbow]
+          description: The colour of the name
+        frame:
+          type: string
+          enum: [amethyst, gold, silver, glitter, hearts, stars]
+          description: The frame of the photo
+        background:
+          type: string
+          enum: ["", stars, hearts, checks, clouds, flowers, sparkles]
+          description: The pattern behind the page, "" for none
+        mood:
+          type: string
+          enum: ["", happy, love, cool, wink, sad, angry, sleepy]
+          description: The smiley by the status ("настроение"), "" for none
+
     PublicProfile:
       allOf:
         - $ref: "#/components/schemas/Profile"
@@ -8690,6 +8731,11 @@ components:
             prime:
               type: boolean
               description: "The person has Freenet Prime: its badge by the name, a golden frame of the photo and a golden name"
+            primeStyle:
+              description: "How the page is dressed with Freenet Prime: only on the page itself (not in lists), while Prime lasts; null otherwise"
+              oneOf:
+                - { $ref: "#/components/schemas/PrimeStyle" }
+                - { type: "null" }
             alert:
               type: string
               description: "The label the administrators put on the page: openvk's orange \"user-alert\" above the name, \"\" for none; told on a hidden page too and never on a deleted one, and in lists too"

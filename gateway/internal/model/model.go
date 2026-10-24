@@ -225,6 +225,8 @@ type User struct {
 	// PrimeInvisible: they hide when they are online.
 	PrimeUntil     time.Time
 	PrimeInvisible bool
+	// PrimeStyle is how the user dressed their page with Prime.
+	PrimeStyle PrimeStyle
 }
 
 // HasPrime tells whether u has Freenet Prime at now.
@@ -283,6 +285,9 @@ type PublicProfile struct {
 	Alert string
 	// Prime: the page has Freenet Prime (a badge by the name).
 	Prime bool
+	// PrimeStyle is how the page is dressed with Prime; nil but on the
+	// page itself while Prime lasts.
+	PrimeStyle *PrimeStyle
 	// LastSeen is when the user last visited ("был в сети"), zero if never
 	// or hidden; Online: just now ("Онлайн").
 	LastSeen time.Time
@@ -1569,6 +1574,16 @@ type StoryCommentPage struct {
 	Comments   []StoryComment
 	NextCursor string
 	Total      int
+}
+
+// PrimeStyle is how a member of Freenet Prime dresses their page: the
+// colour of the name, the frame of the photo, the pattern behind the page
+// and the mood by the status, names the site draws.
+type PrimeStyle struct {
+	Name       string
+	Frame      string
+	Background string
+	Mood       string
 }
 
 // PrimePrices are what each period of Freenet Prime costs, in votes.
