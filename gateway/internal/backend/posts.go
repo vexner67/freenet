@@ -225,6 +225,7 @@ func (p *Posts) Feed(ctx context.Context, accessToken string, sources model.Feed
 		HiddenAuthorIds: sources.Hidden,
 		OwnOnly:         sources.OwnOnly,
 		IgnoredWallIds:  sources.Ignored,
+		Ranked:          sources.Ranked,
 		Cursor:          cursor,
 		Limit:           toLimit(limit),
 		TextLimit:       model.ExcerptLength,

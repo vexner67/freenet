@@ -126,8 +126,13 @@ func TestFeed_Settings(t *testing.T) {
 	}
 
 	h := feed("")
-	if h.posts.ownOnly || len(h.posts.ignored) != 0 || h.posts.everyone {
-		t.Fatalf("by default: own only %v, ignored %v, everyone %v", h.posts.ownOnly, h.posts.ignored, h.posts.everyone)
+	if h.posts.ownOnly || len(h.posts.ignored) != 0 || h.posts.everyone || h.posts.ranked {
+		t.Fatalf("by default: own only %v, ignored %v, everyone %v, ranked %v", h.posts.ownOnly, h.posts.ignored, h.posts.everyone, h.posts.ranked)
+	}
+
+	// "Сначала интересные": the post service ranks the news itself.
+	if h = feed("?ranked=true&cursor=r:1::x"); !h.posts.ranked || h.posts.cursor != "r:1::x" {
+		t.Fatalf("ranked news: ranked %v, cursor %q", h.posts.ranked, h.posts.cursor)
 	}
 
 	// The post service leaves the ignored out itself.
