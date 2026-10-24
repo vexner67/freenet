@@ -1,6 +1,12 @@
 package grpc
 
 import (
+	"fmt"
+	"math"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/google/uuid"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
 	"github.com/vexner67/freenet/post/internal/post"
@@ -297,4 +303,62 @@ func idString(id uuid.UUID) string {
 	}
 
 	return id.String()
+}
+
+// rankedCursorPrefix starts the cursors of the ranked news: "r:<the
+// milliseconds of their time>:<the bits of the score in hex>:<an ID>", the
+// ID where the ranked posts ended; or with no score, the ID below which the
+// older posts go on.
+const rankedCursorPrefix = "r:"
+
+func feedCursorString(c *service.FeedCursor) string {
+	switch {
+	case c == nil:
+		return ""
+	case !c.Ranked:
+		return cursorString(c.Before)
+	case c.Mark != nil:
+		return fmt.Sprintf("%s%d:%x:%s", rankedCursorPrefix, c.At.UnixMilli(), math.Float64bits(c.Mark.Score), c.Mark.ID)
+	default:
+		return fmt.Sprintf("%s%d::%s", rankedCursorPrefix, c.At.UnixMilli(), c.Before)
+	}
+}
+
+// parseFeedCursor reads a cursor of feedCursorString; an empty one starts
+// the ranked news when they are asked for, the plain ones otherwise.
+func parseFeedCursor(s string, ranked bool) (service.FeedCursor, error) {
+	rest, isRanked := strings.CutPrefix(s, rankedCursorPrefix)
+	if !isRanked {
+		before, err := parseCursor(s)
+		return service.FeedCursor{Ranked: ranked && s == "", Before: before}, err
+	}
+
+	invalid := status.Error(codes.InvalidArgument, "invalid cursor")
+	parts := strings.Split(rest, ":")
+	if len(parts) != 3 {
+		return service.FeedCursor{}, invalid
+	}
+
+	ms, err := strconv.ParseInt(parts[0], 10, 64)
+	if err != nil {
+		return service.FeedCursor{}, invalid
+	}
+	id, err := uuid.Parse(parts[2])
+	if err != nil {
+		return service.FeedCursor{}, invalid
+	}
+
+	cursor := service.FeedCursor{Ranked: true, At: time.UnixMilli(ms).UTC()}
+	if parts[1] == "" {
+		cursor.Before = id
+		return cursor, nil
+	}
+
+	bits, err := strconv.ParseUint(parts[1], 16, 64)
+	if err != nil || math.IsNaN(math.Float64frombits(bits)) {
+		return service.FeedCursor{}, invalid
+	}
+	cursor.Mark = &service.RankMark{Score: math.Float64frombits(bits), ID: id}
+
+	return cursor, nil
 }

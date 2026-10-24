@@ -58,6 +58,11 @@ type PostRepository interface {
 	// whichever walls, but for those that speak for a wall, together with
 	// all the posts on several walls; archived posts are left out.
 	ListFeed(ctx context.Context, sources FeedSources, before uuid.UUID, limit int) ([]*post.Post, error)
+	// RankFeed is ListFeed for the posts written in post.RankWindow before
+	// at, the most interesting to the reader first (post.Interest scored
+	// at at), then the newest; after is where the previous page ended,
+	// nil for the first one.
+	RankFeed(ctx context.Context, sources FeedSources, at time.Time, after *RankMark, limit int) ([]Ranked, error)
 	// ListByAuthor is ListByWall for what authorID wrote, on whichever
 	// wall (post.ListedFor), and CountByAuthor counts it.
 	ListByAuthor(ctx context.Context, authorID, before uuid.UUID, limit int) ([]*post.Post, error)
@@ -171,6 +176,39 @@ type LikeRepository interface {
 
 // Page is one screen of a wall. NextCursor is uuid.Nil on the last page.
 // Liked marks the posts the viewer likes; it is empty for anonymous viewers.
+// RankMark is where a page of the ranked news ended: the score and the
+// ID of its last post.
+type RankMark struct {
+	Score float64
+	ID    uuid.UUID
+}
+
+// Ranked is a post of the ranked news with its score.
+type Ranked struct {
+	Post  *post.Post
+	Score float64
+}
+
+// FeedCursor is where a page of the news starts. The ranked news ("Сначала
+// интересные") score the posts of the week before At, all pages at the same
+// At so that they stay in one order, and go on with the older posts newest
+// first, below Before, as the plain news do.
+type FeedCursor struct {
+	Ranked bool
+	At     time.Time
+	// Mark is where the ranked posts of the previous page ended; nil for
+	// the first page, or once they are over (Before then says where).
+	Mark   *RankMark
+	Before uuid.UUID
+}
+
+// FeedPage is a page of the news and where the next one starts; Next is
+// nil on the last page.
+type FeedPage struct {
+	Page
+	Next *FeedCursor
+}
+
 type Page struct {
 	Posts      []*post.Post
 	Liked      map[uuid.UUID]bool
@@ -1370,6 +1408,86 @@ func (s *PostService) Feed(ctx context.Context, viewerID uuid.UUID, sources Feed
 	}
 
 	return page, nil
+}
+
+// RankedFeed is Feed in the order of what is interesting to the viewer:
+// the posts of the last week by post.Interest, then the older ones newest
+// first. A cursor that is not ranked reads the plain news.
+func (s *PostService) RankedFeed(ctx context.Context, viewerID uuid.UUID, sources FeedSources, cursor FeedCursor, size int) (FeedPage, error) {
+	if !cursor.Ranked {
+		page, err := s.Feed(ctx, viewerID, sources, cursor.Before, size)
+		if err != nil {
+			return FeedPage{}, err
+		}
+
+		out := FeedPage{Page: page}
+		if page.NextCursor != uuid.Nil {
+			out.Next = &FeedCursor{Before: page.NextCursor}
+		}
+
+		return out, nil
+	}
+
+	if len(sources.Hidden) > MaxFeedHidden || len(sources.Ignored) > MaxFeedIgnored {
+		return FeedPage{}, ErrTooManyAuthors
+	}
+	if !sources.Everyone && viewerID == uuid.Nil {
+		return FeedPage{}, nil
+	}
+	sources.Reader = viewerID
+
+	if size <= 0 || size > MaxPageSize {
+		size = DefaultPageSize
+	}
+	if cursor.At.IsZero() {
+		cursor.At = s.now()
+	}
+
+	var out FeedPage
+	if cursor.Before == uuid.Nil {
+		ranked, err := s.postRepo.RankFeed(ctx, sources, cursor.At, cursor.Mark, size+1)
+		if err != nil {
+			return FeedPage{}, errs.Wrap("s.postRepo.RankFeed", err)
+		}
+
+		if len(ranked) > size {
+			last := ranked[size-1]
+			out.Next = &FeedCursor{Ranked: true, At: cursor.At, Mark: &RankMark{Score: last.Score, ID: last.Post.ID()}}
+			ranked = ranked[:size]
+		}
+		for _, r := range ranked {
+			out.Posts = append(out.Posts, r.Post)
+		}
+
+		cursor.Before = post.WindowStart(cursor.At.Add(-post.RankWindow))
+	}
+
+	// The week is over: the rest of the page is the older news.
+	if out.Next == nil {
+		left := size - len(out.Posts)
+		older, err := s.postRepo.ListFeed(ctx, sources, cursor.Before, left+1)
+		if err != nil {
+			return FeedPage{}, errs.Wrap("s.postRepo.ListFeed", err)
+		}
+
+		if len(older) > left {
+			older = older[:left]
+			// A page all ranked posts may end with no older one yet.
+			before := cursor.Before
+			if len(older) > 0 {
+				before = older[len(older)-1].ID()
+			}
+			out.Next = &FeedCursor{Ranked: true, At: cursor.At, Before: before}
+		}
+		out.Posts = append(out.Posts, older...)
+	}
+
+	var err error
+	if out.Liked, err = s.liked(ctx, viewerID, out.Posts); err != nil {
+		return FeedPage{}, errs.Wrap("s.liked", err)
+	}
+
+	return out, nil
 }
 
 // liked tells which posts the viewer likes; nothing for anonymous viewers.

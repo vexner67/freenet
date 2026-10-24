@@ -405,6 +405,100 @@ func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSourc
 	return r.list(ctx, r.inFeed(sources), before, limit)
 }
 
+func (r *PostRepository) RankFeed(ctx context.Context, sources service.FeedSources, at time.Time, after *service.RankMark, limit int) ([]service.Ranked, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	inFeed := r.inFeed(sources)
+	affinity := r.s.affinity(sources.Reader, at)
+	start := post.WindowStart(at.Add(-post.RankWindow))
+
+	var found []service.Ranked
+	for _, p := range r.s.posts {
+		id := p.ID()
+		if !inFeed(p) || bytes.Compare(id[:], start[:]) < 0 {
+			continue
+		}
+
+		p = r.s.seen(p)
+		ranked := service.Ranked{Post: p, Score: post.Interest{
+			Counters: p.Counters(),
+			Photos:   len(p.Content().Photos()) > 0,
+			Affinity: affinity[source(p)],
+			Age:      at.Sub(p.CreatedAt()),
+		}.Score()}
+		if after == nil || below(ranked, *after) {
+			found = append(found, ranked)
+		}
+	}
+
+	slices.SortFunc(found, func(a, b service.Ranked) int {
+		if a.Score != b.Score {
+			if a.Score > b.Score {
+				return -1
+			}
+			return 1
+		}
+		ai, bi := a.Post.ID(), b.Post.ID()
+		return bytes.Compare(bi[:], ai[:])
+	})
+
+	return found[:min(len(found), limit)], nil
+}
+
+// below says whether a ranked post comes after mark: a lower score, or the
+// same score and an older ID, as (score, id) < mark in PostgreSQL.
+func below(r service.Ranked, mark service.RankMark) bool {
+	if r.Score != mark.Score {
+		return r.Score < mark.Score
+	}
+	id := r.Post.ID()
+
+	return bytes.Compare(id[:], mark.ID[:]) < 0
+}
+
+// source is whose a post is to the affinity of its reader: the community
+// it speaks for, or its author.
+func source(p *post.Post) uuid.UUID {
+	if p.FromWall() {
+		return p.WallID()
+	}
+
+	return p.AuthorID()
+}
+
+// affinity counts the likes and comments reader gave the posts of each
+// source in post.AffinityPeriod before at; their own posts count in full.
+// It is called with the store locked.
+func (s *Store) affinity(reader uuid.UUID, at time.Time) map[uuid.UUID]int {
+	counts := map[uuid.UUID]int{reader: post.MaxAffinity}
+	if reader == uuid.Nil {
+		return counts
+	}
+
+	since := at.Add(-post.AffinityPeriod)
+	for postID, users := range s.likes {
+		if when, ok := users[reader]; ok && when.After(since) {
+			if p, ok := s.posts[postID]; ok {
+				counts[source(p)]++
+			}
+		}
+	}
+	for _, c := range s.comments {
+		if c.AuthorID() == reader && c.CreatedAt().After(since) {
+			if p, ok := s.posts[c.PostID()]; ok {
+				counts[source(p)]++
+			}
+		}
+	}
+
+	return counts
+}
+
 // inFeed tells which posts a feed of sources shows; it is called with
 // the store locked.
 func (r *PostRepository) inFeed(sources service.FeedSources) func(*post.Post) bool {

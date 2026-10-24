@@ -3898,8 +3898,14 @@ type ListFeedRequest struct {
 	// At most 50: the walls the reader ignores ("Игнорируемые источники"
 	// of openvk). Their posts are left out, whoever wrote them.
 	IgnoredWallIds []string `protobuf:"bytes,10,rep,name=ignored_wall_ids,json=ignoredWallIds,proto3" json:"ignored_wall_ids,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// "Сначала интересные": the posts of the last week by how interesting
+	// they are to the caller (likes, comments, reposts, photos and the
+	// caller's likes and comments of the same source, against the age),
+	// then the older ones newest first. Asked on the first page; the
+	// cursors it gives go on in the same order by themselves.
+	Ranked        bool `protobuf:"varint,11,opt,name=ranked,proto3" json:"ranked,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListFeedRequest) Reset() {
@@ -3986,6 +3992,13 @@ func (x *ListFeedRequest) GetIgnoredWallIds() []string {
 		return x.IgnoredWallIds
 	}
 	return nil
+}
+
+func (x *ListFeedRequest) GetRanked() bool {
+	if x != nil {
+		return x.Ranked
+	}
+	return false
 }
 
 type ListFeedResponse struct {
@@ -12781,7 +12794,7 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x05R\x05total\"\xaa\x02\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"\xc2\x02\n" +
 	"\x0fListFeedRequest\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x1b\n" +
@@ -12792,7 +12805,8 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x11hidden_author_ids\x18\b \x03(\tR\x0fhiddenAuthorIds\x12\x19\n" +
 	"\bown_only\x18\t \x01(\bR\aownOnly\x12(\n" +
 	"\x10ignored_wall_ids\x18\n" +
-	" \x03(\tR\x0eignoredWallIdsJ\x04\b\x01\x10\x02J\x04\b\x04\x10\x05R\n" +
+	" \x03(\tR\x0eignoredWallIds\x12\x16\n" +
+	"\x06ranked\x18\v \x01(\bR\x06rankedJ\x04\b\x01\x10\x02J\x04\b\x04\x10\x05R\n" +
 	"author_idsR\bwall_ids\"X\n" +
 	"\x10ListFeedResponse\x12#\n" +
 	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\x12\x1f\n" +

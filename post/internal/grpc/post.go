@@ -32,6 +32,7 @@ type PostService interface {
 	OpenComments(ctx context.Context, requesterID, postID uuid.UUID) error
 	ListWall(ctx context.Context, viewerID, wallID uuid.UUID, pick service.WallPick, cursor uuid.UUID, size int) (service.Page, error)
 	Feed(ctx context.Context, viewerID uuid.UUID, sources service.FeedSources, cursor uuid.UUID, size int) (service.Page, error)
+	RankedFeed(ctx context.Context, viewerID uuid.UUID, sources service.FeedSources, cursor service.FeedCursor, size int) (service.FeedPage, error)
 	Reposts(ctx context.Context, viewerID, postID, cursor uuid.UUID, size int) (service.Page, error)
 	Own(ctx context.Context, userID, cursor uuid.UUID, size int) (service.Page, error)
 	Search(ctx context.Context, viewerID uuid.UUID, query post.SearchQuery, hidden []uuid.UUID, cursor uuid.UUID, size int) (service.Page, error)
@@ -708,7 +709,7 @@ func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest)
 		return nil, err
 	}
 
-	cursor, err := parseCursor(req.GetCursor())
+	cursor, err := parseFeedCursor(req.GetCursor(), req.GetRanked())
 	if err != nil {
 		return nil, err
 	}
@@ -717,14 +718,14 @@ func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest)
 		HideNSFW: req.GetHideNsfw(), Everyone: req.GetEveryone(), Hidden: hidden, OwnOnly: req.GetOwnOnly(), Ignored: ignored,
 	}
 
-	page, err := h.postService.Feed(ctx, viewerID(ctx), sources, cursor, int(req.GetLimit()))
+	page, err := h.postService.RankedFeed(ctx, viewerID(ctx), sources, cursor, int(req.GetLimit()))
 	if err != nil {
 		return nil, err
 	}
 
 	return &postv1.ListFeedResponse{
-		Posts:      toProtoPosts(page, viewerID(ctx), req.GetTextLimit()),
-		NextCursor: cursorString(page.NextCursor),
+		Posts:      toProtoPosts(page.Page, viewerID(ctx), req.GetTextLimit()),
+		NextCursor: feedCursorString(page.Next),
 	}, nil
 }
 
