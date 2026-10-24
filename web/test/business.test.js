@@ -31,3 +31,21 @@ test('a line of the statement names the business and the action', () => {
   assert.equal(voteOperation({ kind: 'business', amount: -500, note: 'kiosk:buy' }).title, 'Бизнес «Ларёк»: покупка');
   assert.equal(voteOperation({ kind: 'business', amount: 12, note: 'cafe:collect' }).title, 'Бизнес «Кафе»: выручка');
 });
+
+test('the picture of a business shows its customers', async () => {
+  const { businessWalkers, businessHours, businessCondition } = await import('../static/labels.js');
+  const plan = { demand: 10 };
+
+  assert.deepEqual(businessWalkers({ level: 1, customers: 0, served: 0 }, plan), { served: 0, passing: 0 });
+  assert.deepEqual(businessWalkers({ level: 1, customers: 10, served: 10 }, plan), { served: 4, passing: 0 });
+  assert.deepEqual(businessWalkers({ level: 1, customers: 10, served: 5 }, plan), { served: 2, passing: 2 });
+  assert.deepEqual(businessWalkers({ level: 1, customers: 0.5, served: 0 }, plan), { served: 0, passing: 1 });
+  assert.deepEqual(businessWalkers({ level: 1, customers: 40, served: 40 }, plan), { served: 6, passing: 0 });
+  assert.deepEqual(businessWalkers({ level: 1, customers: 10, served: 10, bankrupt: true }, plan), { served: 0, passing: 0 });
+
+  assert.equal(businessHours(100, 8), 12);
+  assert.equal(businessHours(100, 0), null);
+  assert.equal(businessCondition(10000), 0);
+  assert.equal(businessCondition(6999), 1);
+  assert.equal(businessCondition(3999), 2);
+});

@@ -1541,6 +1541,33 @@ export function businessLevelCost(level, upgrade) {
   return upgrade * level;
 }
 
+// businessWalkers is how many people the picture of a business shows
+// walking by: up to six, as many as its customers make of what its level
+// could bring, at least one while anyone comes. served of them go in, the
+// rest pass by the door — no goods, no workers or dear goods.
+export function businessWalkers(b, plan) {
+  if (b.bankrupt || b.customers <= 0) return { served: 0, passing: 0 };
+
+  const most = plan.demand * b.level;
+  const total = Math.min(6, Math.max(1, Math.ceil((b.customers / Math.max(most, 1)) * 4)));
+  const served = Math.round((total * Math.min(b.served, b.customers)) / b.customers);
+
+  return { served, passing: total - served };
+}
+
+// businessHours is how many hours the goods in stock last at served
+// customers an hour; null when nobody buys them.
+export function businessHours(stock, served) {
+  return served > 0 ? Math.floor(stock / served) : null;
+}
+
+// businessCondition is how worn the picture of the premises looks:
+// 0 — whole, 1 — cracked, 2 — falling apart.
+export function businessCondition(condition) {
+  if (condition < 4000) return 2;
+  return condition < 7000 ? 1 : 0;
+}
+
 // primePeriods are the periods of Freenet Prime with their names and
 // how many months each is.
 export const primePeriods = [
