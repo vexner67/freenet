@@ -278,6 +278,9 @@ type userResponse struct {
 	Prime          bool    `json:"prime"`
 	PrimeUntil     *string `json:"primeUntil"`
 	PrimeInvisible bool    `json:"primeInvisible"`
+	// PrimeStyle is how the user dressed their page with Prime, kept
+	// after it ends.
+	PrimeStyle primeStyleJSON `json:"primeStyle"`
 	// PinnedClubs are the clubs in the left menu ("Добавить в левое
 	// меню"); GET /me alone tells them.
 	PinnedClubs []clubJSON `json:"pinnedClubs,omitempty"`
@@ -345,6 +348,7 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 		Prime:          u.HasPrime(time.Now()),
 		PrimeUntil:     optionalTime(u.PrimeUntil),
 		PrimeInvisible: u.PrimeInvisible,
+		PrimeStyle:     toPrimeStyleJSON(u.PrimeStyle),
 		Interface: interfaceJSON{
 			AvatarStyle: u.Interface.AvatarStyle,
 			MainPage:    u.Interface.MainPage,
@@ -409,6 +413,9 @@ type publicProfileResponse struct {
 	Alert string `json:"alert"`
 	// Prime: the page has Freenet Prime, a badge by the name.
 	Prime bool `json:"prime"`
+	// PrimeStyle is how the page is dressed with Prime: only on the page
+	// itself, while Prime lasts; null otherwise.
+	PrimeStyle *primeStyleJSON `json:"primeStyle"`
 	// LastSeenAt is when the user last visited ("был в сети"), null if
 	// never, hidden or in a list; Online: just now ("Онлайн"), which a
 	// list tells too if the page is open to everyone.
@@ -442,6 +449,7 @@ func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
 		Ban:         toBanJSON(p.Ban),
 		Alert:       p.Alert,
 		Prime:       p.Prime,
+		PrimeStyle:  toShownPrimeStyleJSON(p.PrimeStyle),
 		InfoHidden:  p.InfoHidden,
 		LastSeenAt:  optionalTime(p.LastSeen),
 		Online:      p.Online,

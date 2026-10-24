@@ -194,6 +194,7 @@ func toUser(u *userv1.User) model.User {
 		Alert:            u.GetAlert(),
 		PrimeUntil:       fromTimestamp(u.GetPrimeUntil()),
 		PrimeInvisible:   u.GetPrimeInvisible(),
+		PrimeStyle:       toPrimeStyle(u.GetPrimeStyle()),
 		Interface: model.Interface{
 			AvatarStyle: u.GetInterface().GetAvatarStyle(),
 			MainPage:    u.GetInterface().GetMainPage(),
@@ -277,4 +278,19 @@ func toBan(b *userv1.Ban) *model.Ban {
 	}
 
 	return &model.Ban{Reason: b.GetReason(), At: fromTimestamp(b.GetBannedAt()), Until: fromTimestamp(b.GetUntil())}
+}
+
+func toPrimeStyle(s *userv1.PrimeStyle) model.PrimeStyle {
+	return model.PrimeStyle{Name: s.GetName(), Frame: s.GetFrame(), Background: s.GetBackground(), Mood: s.GetMood()}
+}
+
+// toShownPrimeStyle is nil when the page tells no style.
+func toShownPrimeStyle(s *userv1.PrimeStyle) *model.PrimeStyle {
+	if s == nil {
+		return nil
+	}
+
+	style := toPrimeStyle(s)
+
+	return &style
 }

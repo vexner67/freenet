@@ -60,3 +60,13 @@ func (p *Prime) SetInvisible(ctx context.Context, accessToken string, invisible 
 
 	return nil
 }
+
+func (p *Prime) SetStyle(ctx context.Context, accessToken string, style model.PrimeStyle) error {
+	if _, err := p.api.SetPrimeStyle(withToken(ctx, accessToken), &userv1.SetPrimeStyleRequest{Style: &userv1.PrimeStyle{
+		Name: style.Name, Frame: style.Frame, Background: style.Background, Mood: style.Mood,
+	}}); err != nil {
+		return errs.Wrap("p.api.SetPrimeStyle", fromStatus(err))
+	}
+
+	return nil
+}

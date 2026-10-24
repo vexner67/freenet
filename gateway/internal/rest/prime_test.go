@@ -15,6 +15,7 @@ type fakePrime struct {
 	token, userID, period string
 	prices                model.PrimePrices
 	invisible             bool
+	style                 model.PrimeStyle
 	err                   error
 }
 
@@ -34,6 +35,11 @@ func (f *fakePrime) Buy(_ context.Context, token, userID, period string) (model.
 
 func (f *fakePrime) SetInvisible(_ context.Context, token string, invisible bool) error {
 	f.token, f.invisible = token, invisible
+	return f.err
+}
+
+func (f *fakePrime) SetStyle(_ context.Context, token string, style model.PrimeStyle) error {
+	f.token, f.style = token, style
 	return f.err
 }
 
@@ -67,6 +73,10 @@ func TestPrime(t *testing.T) {
 
 	if w = h.do("PUT", "/api/v1/me/prime/invisible", `{"invisible":true}`, "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || !h.prime.invisible {
 		t.Fatalf("invisible: %d", w.Code)
+	}
+	if w = h.do("PUT", "/api/v1/me/prime/style", `{"name":"ruby","frame":"hearts","background":"stars","mood":"love"}`, "Authorization", "Bearer tok"); w.Code != http.StatusNoContent ||
+		h.prime.style != (model.PrimeStyle{Name: "ruby", Frame: "hearts", Background: "stars", Mood: "love"}) {
+		t.Fatalf("style: %d %+v", w.Code, h.prime.style)
 	}
 
 	h.prime.err = failure.New(failure.Conflict, "not enough votes")
