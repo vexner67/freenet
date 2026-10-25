@@ -35,7 +35,7 @@ var (
 )
 
 // Bank is what the administrators tune of the bank: the rate of deposits
-// and the most a deposit grows to, the rate of loans, the most a loan
+// and the most that may be put on a deposit and earns, the rate of loans, the most a loan
 // lends, its term, and the rate of a loan past its term. Rates are in
 // hundredths of a percent a day.
 type Bank struct {
@@ -108,17 +108,15 @@ func (a BankAccount) HasLoan() bool { return a.debt > 0 }
 func (a BankAccount) OverdueAt(now time.Time) bool { return a.HasLoan() && now.After(a.dueAt) }
 
 // At is the account with the interest of the whole days to now counted:
-// a deposit grows until it reaches the most a deposit grows to, a debt
-// until DebtCap times what was borrowed.
+// a deposit earns on as much of it as the most a deposit may be, and what
+// it earns above that keeps piling up; a debt grows until DebtCap times
+// what was borrowed.
 func (a BankAccount) At(b Bank, now time.Time) BankAccount {
 	if a.deposit > 0 {
 		days := wholeDays(a.depositAt, now)
-		most := max(b.DepositMost*100, a.deposit)
 		for range days {
-			if a.deposit >= most {
-				break
-			}
-			a.deposit = min(a.deposit+a.deposit*int64(b.DepositRate)/BankOdds, most)
+			earning := min(a.deposit, b.DepositMost*100)
+			a.deposit = min(a.deposit+earning*int64(b.DepositRate)/BankOdds, MaxAmount*100)
 		}
 		a.depositAt = a.depositAt.Add(time.Duration(days) * bankDay)
 	}

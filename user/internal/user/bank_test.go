@@ -84,7 +84,7 @@ func TestBankAccount_Deposit(t *testing.T) {
 	}
 }
 
-func TestBankAccount_DepositStopsAtTheMost(t *testing.T) {
+func TestBankAccount_DepositPilesUpAboveTheMost(t *testing.T) {
 	t.Parallel()
 
 	b := user.Bank{DepositRate: 1000, DepositMost: 110, LoanRate: 0, LoanMost: 1, LoanDays: 1, PenaltyRate: 0}
@@ -94,8 +94,12 @@ func TestBankAccount_DepositStopsAtTheMost(t *testing.T) {
 		t.Fatalf("Put: %v", err)
 	}
 
-	if got := a.At(b, day(30)).DepositVotes(); got != 110 {
-		t.Errorf("deposit after a month = %d, want the most, 110", got)
+	// 10 % of 100 the first day, then 10 % of the most, 110, every day.
+	if got := a.At(b, day(30)).DepositVotes(); got != 429 {
+		t.Errorf("deposit after a month = %d, want 429", got)
+	}
+	if _, err := a.At(b, day(30)).Put(b, 1, day(30)); !errors.Is(err, user.ErrDepositMost) {
+		t.Errorf("Put above the most = %v, want ErrDepositMost", err)
 	}
 }
 
