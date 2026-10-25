@@ -104,7 +104,8 @@ func (k BusinessKind) String() string {
 
 func NewBusinessAction(s string) (BusinessAction, error) {
 	switch a := BusinessAction(s); a {
-	case BusinessManage, BusinessRestock, BusinessUpgrade, BusinessRepair, BusinessAdvertise, BusinessCollect, BusinessDeposit, BusinessSell:
+	case BusinessManage, BusinessRestock, BusinessUpgrade, BusinessRepair, BusinessAdvertise, BusinessCollect, BusinessDeposit, BusinessSell,
+		BusinessImprove:
 		return a, nil
 	default:
 		return "", ErrUnknownAction
@@ -254,7 +255,8 @@ func (r BusinessRules) Plan(kind BusinessKind) (BusinessPlan, error) {
 // the goods in its storage, their price, its workers, the condition of
 // its premises, the cash of its till in hundredths of a vote (below zero —
 // a debt), until when it is advertised, whether it went bankrupt, the
-// votes put into buying and upgrading it and the votes taken out of it.
+// votes put into buying, upgrading and improving it, the votes taken out
+// of it and the tiers of its improvements.
 type Business struct {
 	kind      BusinessKind
 	level     int
@@ -268,6 +270,7 @@ type Business struct {
 	bankrupt  bool
 	invested  int64
 	collected int64
+	perks     map[BusinessPerk]int
 }
 
 // NewBusiness is a business just bought: one worker, goods at the fair
@@ -275,7 +278,7 @@ type Business struct {
 func NewBusiness(plan BusinessPlan, now time.Time) Business {
 	return Business{
 		kind: plan.Kind, level: 1, price: plan.Fair, staff: 1, condition: FullCondition,
-		countedAt: now.UTC(), invested: plan.Price,
+		countedAt: now.UTC(), invested: plan.Price, perks: map[BusinessPerk]int{},
 	}
 }
 
@@ -293,13 +296,22 @@ type BusinessState struct {
 	Bankrupt  bool
 	Invested  int64
 	Collected int64
+	Perks     map[BusinessPerk]int
 }
 
+// RestoreBusiness keeps only the known improvements and their tiers.
 func RestoreBusiness(s BusinessState) Business {
+	perks := map[BusinessPerk]int{}
+	for _, p := range BusinessPerks {
+		if tier := s.Perks[p]; tier > 0 {
+			perks[p] = min(tier, MaxPerkTier)
+		}
+	}
+
 	return Business{
 		kind: s.Kind, level: s.Level, stock: s.Stock, price: s.Price, staff: s.Staff,
 		condition: s.Condition, cash: s.Cash, adUntil: s.AdUntil.UTC(), countedAt: s.CountedAt.UTC(),
-		bankrupt: s.Bankrupt, invested: s.Invested, collected: s.Collected,
+		bankrupt: s.Bankrupt, invested: s.Invested, collected: s.Collected, perks: perks,
 	}
 }
 
@@ -307,7 +319,7 @@ func (b Business) State() BusinessState {
 	return BusinessState{
 		Kind: b.kind, Level: b.level, Stock: b.stock, Price: b.price, Staff: b.staff,
 		Condition: b.condition, Cash: b.cash, AdUntil: b.adUntil, CountedAt: b.countedAt,
-		Bankrupt: b.bankrupt, Invested: b.invested, Collected: b.collected,
+		Bankrupt: b.bankrupt, Invested: b.invested, Collected: b.collected, Perks: b.Perks(),
 	}
 }
 
@@ -351,20 +363,20 @@ type BusinessHour struct {
 
 // hour is the hour of b at t, the goods not counted.
 func (b Business) hour(p BusinessPlan, t time.Time) BusinessHour {
-	demand := float64(p.Demand) * float64(b.level)
-	demand *= max(0, 2-float64(b.price)/float64(p.Fair))
+	demand := float64(p.Demand) * float64(b.level) * b.perkRate(PerkDecor, 20)
+	demand *= max(0, 2-float64(b.price)/(float64(p.Fair)*b.perkRate(PerkBrand, 15)))
 	demand *= 0.4 + 0.6*float64(b.condition)/FullCondition
 	if t.Before(b.adUntil) {
 		demand *= 1 + float64(p.AdBoost)/100
 	}
 
-	served := min(demand, float64(b.staff)*float64(p.Serve))
+	served := min(demand, float64(b.staff)*float64(p.Serve)*b.perkRate(PerkEquipment, 30))
 
 	return BusinessHour{
 		Customers: demand,
 		Served:    served,
 		Income:    served * float64(b.price),
-		Costs:     float64(b.staff)*float64(p.Wage) + float64(p.Rent)*float64(b.level),
+		Costs:     float64(b.staff)*float64(p.Wage)*b.perkRate(PerkTraining, -15) + float64(p.Rent)*float64(b.level),
 	}
 }
 
@@ -416,7 +428,7 @@ func (b Business) At(p BusinessPlan, now time.Time) Business {
 
 		stock -= sold
 		cash = min(cash+sold*float64(b.price)-h.Costs*hours, till)
-		condition = max(condition-float64(p.Wear)*hours, 0)
+		condition = max(condition-float64(p.Wear)*b.perkRate(PerkFinish, -25)*hours, 0)
 		t = t.Add(dt)
 
 		if cash < debt {
@@ -467,7 +479,7 @@ func (b Business) Restocked(p BusinessPlan, units int64) (Business, int64, error
 	if err := b.checkOpen(); err != nil {
 		return Business{}, 0, err
 	}
-	if units < 1 || units > p.StorageAt(b.level)-b.stock {
+	if units < 1 || units > b.Storage(p)-b.stock {
 		return Business{}, 0, ErrBusinessStock
 	}
 
@@ -565,8 +577,8 @@ func (b Business) Deposited(votes int64) (Business, error) {
 	return b, nil
 }
 
-// Resale is what the site pays for b: half of what was put into buying
-// and upgrading it and the whole votes of the till; nothing for a bankrupt
+// Resale is what the site pays for b: half of what was put into buying,
+// upgrading and improving it and the whole votes of the till; nothing for a bankrupt
 // one, which only closes. ErrBusinessInDebt for one in debt.
 func (b Business) Resale() (int64, error) {
 	if b.bankrupt {

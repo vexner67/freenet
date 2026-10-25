@@ -39,12 +39,14 @@ type BusinessesView struct {
 }
 
 // BusinessAct is an action with a business: Amount is the units of a
-// restock or the votes of a deposit, Price and Staff — what a manage sets.
+// restock or the votes of a deposit, Price and Staff — what a manage sets,
+// Perk — the improvement an improve buys the next tier of.
 type BusinessAct struct {
 	Action user.BusinessAction
 	Amount int64
 	Price  int64
 	Staff  int
+	Perk   user.BusinessPerk
 }
 
 // BusinessDone is what an action did: the business after it (Closed when
@@ -69,7 +71,8 @@ type BusinessSettings struct {
 }
 
 // BusinessService is the businesses: people buy them for votes into the
-// treasury, run them — goods, price, staff, repairs, advertising, levels —
+// treasury, run them — goods, price, staff, repairs, advertising, levels,
+// improvements —
 // and take their cash out; a business run badly runs into debt and goes
 // bankrupt.
 type BusinessService struct {
@@ -231,6 +234,8 @@ func (s *BusinessService) apply(b user.Business, plan user.BusinessPlan, rules u
 		b, done.Spent, err = b.Upgraded(plan)
 	case user.BusinessRepair:
 		b, done.Spent, err = b.Repaired(plan)
+	case user.BusinessImprove:
+		b, done.Spent, err = b.Improved(plan, act.Perk)
 	case user.BusinessAdvertise:
 		b, done.Spent, err = b.Advertised(plan, now)
 	case user.BusinessDeposit:

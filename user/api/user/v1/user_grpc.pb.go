@@ -480,8 +480,10 @@ type UserServiceClient interface {
 	// the premises wear down. RunBusiness does an action: "manage" (price
 	// and staff), "restock" (amount — units), "upgrade", "repair",
 	// "advertise", "deposit" (amount — votes into the till), "collect" (the
-	// till, less the tax) and "sell" (half of what went into it and the
-	// till). A business that runs too deep into debt goes bankrupt
+	// till, less the tax), "improve" (perk — the next tier of an
+	// improvement, opened by the level: FailedPrecondition "the business
+	// level is too low for this improvement") and "sell" (half of what went
+	// into it and the till). A business that runs too deep into debt goes bankrupt
 	// (FailedPrecondition "the business went bankrupt"). Taking votes out is
 	// for pages a week old with a filled profile.
 	GetBusinesses(ctx context.Context, in *GetBusinessesRequest, opts ...grpc.CallOption) (*BusinessesState, error)
@@ -2111,8 +2113,10 @@ type UserServiceServer interface {
 	// the premises wear down. RunBusiness does an action: "manage" (price
 	// and staff), "restock" (amount — units), "upgrade", "repair",
 	// "advertise", "deposit" (amount — votes into the till), "collect" (the
-	// till, less the tax) and "sell" (half of what went into it and the
-	// till). A business that runs too deep into debt goes bankrupt
+	// till, less the tax), "improve" (perk — the next tier of an
+	// improvement, opened by the level: FailedPrecondition "the business
+	// level is too low for this improvement") and "sell" (half of what went
+	// into it and the till). A business that runs too deep into debt goes bankrupt
 	// (FailedPrecondition "the business went bankrupt"). Taking votes out is
 	// for pages a week old with a filled profile.
 	GetBusinesses(context.Context, *GetBusinessesRequest) (*BusinessesState, error)

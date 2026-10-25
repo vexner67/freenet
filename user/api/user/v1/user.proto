@@ -355,8 +355,10 @@ service UserService {
   // the premises wear down. RunBusiness does an action: "manage" (price
   // and staff), "restock" (amount — units), "upgrade", "repair",
   // "advertise", "deposit" (amount — votes into the till), "collect" (the
-  // till, less the tax) and "sell" (half of what went into it and the
-  // till). A business that runs too deep into debt goes bankrupt
+  // till, less the tax), "improve" (perk — the next tier of an
+  // improvement, opened by the level: FailedPrecondition "the business
+  // level is too low for this improvement") and "sell" (half of what went
+  // into it and the till). A business that runs too deep into debt goes bankrupt
   // (FailedPrecondition "the business went bankrupt"). Taking votes out is
   // for pages a week old with a filled profile.
   rpc GetBusinesses(GetBusinessesRequest) returns (BusinessesState);
@@ -2271,6 +2273,21 @@ message Business {
   // The votes the business sells for now; 0 when bankrupt or in debt.
   int64 resale = 16;
   bool in_debt = 17;
+  // The improvements in order: decor, brand, equipment, shelves, finish,
+  // training.
+  repeated BusinessPerk perks = 18;
+  // The units of goods the storage holds now: the level and the racks.
+  int64 storage = 19;
+}
+
+// BusinessPerk is an improvement of a business: its tier (0 — not
+// bought, 3 at most), and the votes and the level of the business its
+// next tier costs and opens at (0 at the top tier).
+message BusinessPerk {
+  string perk = 1;
+  int32 tier = 2;
+  int64 next_price = 3;
+  int32 next_level = 4;
 }
 
 message GetBusinessesRequest {}
@@ -2292,6 +2309,8 @@ message RunBusinessRequest {
   // What a manage sets: the price in hundredths and the workers.
   int64 price = 4;
   int32 staff = 5;
+  // The improvement an "improve" buys the next tier of.
+  string perk = 6;
 }
 
 message RunBusinessResponse {

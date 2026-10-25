@@ -111,7 +111,25 @@ func toProtoBusiness(b user.Business, plan user.BusinessPlan, now time.Time) *us
 		Costs:     h.Costs,
 		Resale:    resale,
 		InDebt:    s.Cash < 0,
+		Perks:     toProtoBusinessPerks(b, plan),
+		Storage:   b.Storage(plan),
 	}
+}
+
+func toProtoBusinessPerks(b user.Business, plan user.BusinessPlan) []*userv1.BusinessPerk {
+	perks := make([]*userv1.BusinessPerk, 0, len(user.BusinessPerks))
+	for _, p := range user.BusinessPerks {
+		tier := b.Perk(p)
+		perk := &userv1.BusinessPerk{Perk: p.String(), Tier: int32(tier)} //nolint:gosec // at most user.MaxPerkTier
+		if tier < user.MaxPerkTier {
+			perk.NextPrice = plan.PerkPrice(tier + 1)
+			perk.NextLevel = int32(plan.PerkLevel(tier + 1)) //nolint:gosec // at most user.MaxBusinessLevels
+		}
+
+		perks = append(perks, perk)
+	}
+
+	return perks
 }
 
 func toProtoBusinesses(v service.BusinessesView) *userv1.BusinessesState {
@@ -196,8 +214,16 @@ func (h *UserHandler) RunBusiness(ctx context.Context, req *userv1.RunBusinessRe
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	var perk user.BusinessPerk
+	if action == user.BusinessImprove {
+		if perk, err = user.NewBusinessPerk(req.GetPerk()); err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+	}
+
 	d, err := h.businesses.Act(ctx, userID, kind, service.BusinessAct{
 		Action: action,
+		Perk:   perk,
 		Amount: req.GetAmount(),
 		Price:  req.GetPrice(),
 		Staff:  int(req.GetStaff()),

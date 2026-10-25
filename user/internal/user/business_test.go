@@ -198,3 +198,58 @@ func TestBusiness_Actions(t *testing.T) {
 		t.Errorf("Resale in debt: %v", err)
 	}
 }
+
+func TestBusiness_Improved(t *testing.T) {
+	t.Parallel()
+
+	plan := kiosk(t)
+	now := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
+	b := user.NewBusiness(plan, now)
+
+	b, cost, err := b.Improved(plan, user.PerkShelves)
+	if err != nil || cost != plan.PerkPrice(1) || b.Perk(user.PerkShelves) != 1 {
+		t.Fatalf("Improved = %d, %v, tier %d", cost, err, b.Perk(user.PerkShelves))
+	}
+	if got := b.Storage(plan); got != plan.StorageAt(1)*3/2 {
+		t.Errorf("Storage with racks = %d, want half again", got)
+	}
+	if _, _, err = b.Improved(plan, user.PerkShelves); !errors.Is(err, user.ErrPerkLocked) {
+		t.Errorf("the second tier at level 1: %v", err)
+	}
+	if b.Invested() != plan.Price+cost {
+		t.Errorf("Invested = %d", b.Invested())
+	}
+
+	top := user.RestoreBusiness(user.BusinessState{
+		Kind: plan.Kind, Level: plan.Levels, Price: plan.Fair, Staff: 1, Condition: user.FullCondition,
+		Perks: map[user.BusinessPerk]int{user.PerkDecor: 3, "teleport": 2},
+	})
+	if _, _, err = top.Improved(plan, user.PerkDecor); !errors.Is(err, user.ErrPerkTop) {
+		t.Errorf("the fourth tier: %v", err)
+	}
+	if perks := top.Perks(); len(perks) != 1 {
+		t.Errorf("restored perks = %v, want the known one", perks)
+	}
+
+	plain := user.RestoreBusiness(user.BusinessState{Kind: plan.Kind, Level: 1, Price: plan.Fair, Staff: 1, Condition: user.FullCondition})
+	decorated := user.RestoreBusiness(user.BusinessState{
+		Kind: plan.Kind, Level: 1, Price: plan.Fair, Staff: 1, Condition: user.FullCondition,
+		Perks: map[user.BusinessPerk]int{user.PerkDecor: 1, user.PerkTraining: 2},
+	})
+	if p, d := plain.Hour(plan, now), decorated.Hour(plan, now); d.Customers <= p.Customers || d.Costs >= p.Costs {
+		t.Errorf("an hour of the improved = %+v, of the plain = %+v", d, p)
+	}
+
+	if plan.PerkLevel(3) != 6 || plan.PerkLevel(9) != 6 {
+		t.Errorf("PerkLevel(3) = %d", plan.PerkLevel(3))
+	}
+	short := plan
+	short.Levels = 2
+	if short.PerkLevel(3) != 2 {
+		t.Errorf("PerkLevel(3) of two levels = %d", short.PerkLevel(3))
+	}
+
+	if _, err = user.NewBusinessPerk("teleport"); !errors.Is(err, user.ErrUnknownPerk) {
+		t.Errorf("NewBusinessPerk(teleport) = %v", err)
+	}
+}

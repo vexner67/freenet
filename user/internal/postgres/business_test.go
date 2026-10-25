@@ -97,6 +97,10 @@ func TestBusinessRepository(t *testing.T) {
 		if err != nil {
 			return err
 		}
+		b, _, err = b.Improved(kiosk, user.PerkShelves)
+		if err != nil {
+			return err
+		}
 		if err = businesses.SaveBusiness(ctx, ann.ID(), b.At(kiosk, now.Add(2*time.Hour))); err != nil {
 			return err
 		}
@@ -108,7 +112,7 @@ func TestBusinessRepository(t *testing.T) {
 	}
 
 	got, err := businesses.Business(ctx, ann.ID(), user.BusinessKiosk)
-	if err != nil || got.State().Stock >= 50 || got.State().AdUntil.IsZero() {
+	if err != nil || got.State().Stock >= 50 || got.State().AdUntil.IsZero() || got.Perk(user.PerkShelves) != 1 {
 		t.Errorf("saved kiosk = %+v, %v", got.State(), err)
 	}
 

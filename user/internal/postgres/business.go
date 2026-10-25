@@ -137,21 +137,27 @@ const businessColumns = `
 		counted_at,
 		bankrupt,
 		invested,
-		collected`
+		collected,
+		perks`
 
 func scanBusiness(row pgx.Row) (user.Business, error) {
 	var (
-		s    user.BusinessState
-		kind string
+		s     user.BusinessState
+		kind  string
+		perks map[string]int
 	)
 
 	err := row.Scan(&kind, &s.Level, &s.Stock, &s.Price, &s.Staff, &s.Condition, &s.Cash,
-		&s.AdUntil, &s.CountedAt, &s.Bankrupt, &s.Invested, &s.Collected)
+		&s.AdUntil, &s.CountedAt, &s.Bankrupt, &s.Invested, &s.Collected, &perks)
 	if err != nil {
 		return user.Business{}, err
 	}
 
 	s.Kind = user.BusinessKind(kind)
+	s.Perks = make(map[user.BusinessPerk]int, len(perks))
+	for p, tier := range perks {
+		s.Perks[user.BusinessPerk(p)] = tier
+	}
 
 	return user.RestoreBusiness(s), nil
 }
@@ -207,15 +213,20 @@ const addBusinessQuery = `
 	INSERT INTO businesses (
 		user_id,` + businessColumns + `
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	ON CONFLICT (user_id, kind) DO NOTHING
 `
 
 func businessArgs(userID uuid.UUID, b user.Business) []any {
 	s := b.State()
 
+	perks := make(map[string]int, len(s.Perks))
+	for p, tier := range s.Perks {
+		perks[p.String()] = tier
+	}
+
 	return []any{userID, s.Kind.String(), s.Level, s.Stock, s.Price, s.Staff, s.Condition, s.Cash,
-		s.AdUntil, s.CountedAt, s.Bankrupt, s.Invested, s.Collected}
+		s.AdUntil, s.CountedAt, s.Bankrupt, s.Invested, s.Collected, perks}
 }
 
 func (r *BusinessRepository) AddBusiness(ctx context.Context, userID uuid.UUID, b user.Business) error {
@@ -247,7 +258,8 @@ const saveBusinessQuery = `
 		counted_at = $10,
 		bankrupt = $11,
 		invested = $12,
-		collected = $13
+		collected = $13,
+		perks = $14
 	WHERE user_id = $1
 		AND kind = $2
 `

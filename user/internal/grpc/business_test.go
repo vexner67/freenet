@@ -38,6 +38,9 @@ func TestBusiness(t *testing.T) {
 	if _, err = s.client.RunBusiness(ann, &userv1.RunBusinessRequest{Kind: "kiosk", Action: "steal"}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("RunBusiness of an unknown action: %v", err)
 	}
+	if _, err = s.client.RunBusiness(ann, &userv1.RunBusinessRequest{Kind: "kiosk", Action: "improve", Perk: "teleport"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("RunBusiness improve of an unknown perk: %v", err)
+	}
 	_, err = s.client.RunBusiness(ann, &userv1.RunBusinessRequest{Kind: "kiosk", Action: "collect"})
 	if st := status.Convert(err); st.Code() != codes.FailedPrecondition || st.Message() != user.ErrBusinessNotYet.Error() {
 		t.Fatalf("RunBusiness collect of a new page: %v", err)

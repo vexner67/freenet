@@ -254,11 +254,11 @@ var (
 		user.ErrUnknownBusiness, user.ErrUnknownAction, user.ErrBusinessStock, user.ErrBusinessSetPrice,
 		user.ErrBusinessSetStaff, user.ErrBusinessDeposit, user.ErrBusinessPlans, user.ErrBusinessPlanPrice,
 		user.ErrBusinessLevels, user.ErrBusinessDemand, user.ErrBusinessCapacity, user.ErrBusinessCosts,
-		user.ErrBusinessAd, user.ErrBusinessTax,
+		user.ErrBusinessAd, user.ErrBusinessTax, user.ErrUnknownPerk,
 	}
 	businessRefused = []error{
 		user.ErrBusinessOwned, user.ErrBusinessBankrupt, user.ErrBusinessInDebt, user.ErrBusinessTopLevel,
-		user.ErrBusinessIntact, user.ErrNothingToCollect, user.ErrBusinessNotYet,
+		user.ErrBusinessIntact, user.ErrNothingToCollect, user.ErrBusinessNotYet, user.ErrPerkTop, user.ErrPerkLocked,
 	}
 )
 

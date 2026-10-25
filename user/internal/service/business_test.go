@@ -56,6 +56,12 @@ func TestBusinessService(t *testing.T) {
 		t.Fatalf("restock = %+v, %v", stocked, err)
 	}
 
+	improved, err := businesses.Act(ctx, ann, user.BusinessKiosk, service.BusinessAct{Action: user.BusinessImprove, Perk: user.PerkDecor}, now)
+	if err != nil || improved.Spent != kiosk.PerkPrice(1) || improved.Business.Perk(user.PerkDecor) != 1 {
+		t.Fatalf("improve = %+v, %v", improved, err)
+	}
+	spent := kiosk.Price + 30 + improved.Spent
+
 	// Taking votes out is for pages a week old with a filled profile.
 	later := now.Add(10 * time.Hour)
 	if _, err = businesses.Act(ctx, ann, user.BusinessKiosk, service.BusinessAct{Action: user.BusinessCollect}, later); !errors.Is(err, user.ErrBusinessNotYet) {
@@ -66,12 +72,12 @@ func TestBusinessService(t *testing.T) {
 	}
 
 	collected, err := businesses.Act(ctx, ann, user.BusinessKiosk, service.BusinessAct{Action: user.BusinessCollect}, later)
-	if err != nil || collected.Got < 1 || collected.Tax < 1 || collected.Balance != 1000-kiosk.Price-30+collected.Got {
+	if err != nil || collected.Got < 1 || collected.Tax < 1 || collected.Balance != 1000-spent+collected.Got {
 		t.Fatalf("collect = %+v, %v", collected, err)
 	}
 
 	sold, err := businesses.Act(ctx, ann, user.BusinessKiosk, service.BusinessAct{Action: user.BusinessSell}, later)
-	if err != nil || !sold.Closed || sold.Got != kiosk.Price/2 {
+	if err != nil || !sold.Closed || sold.Got != (kiosk.Price+improved.Spent)/2 {
 		t.Fatalf("sell = %+v, %v", sold, err)
 	}
 	if view, err := businesses.Businesses(ctx, ann, later); err != nil || len(view.Businesses) != 0 {
@@ -93,7 +99,7 @@ func TestBusinessService(t *testing.T) {
 
 	settings, err := businesses.Settings(ctx, admin)
 	if err != nil || settings.Rules.Tax() != 10 ||
-		settings.Stats != (user.BusinessStats{Spent: kiosk.Price + 30, Paid: collected.Got + sold.Got}) {
+		settings.Stats != (user.BusinessStats{Spent: spent, Paid: collected.Got + sold.Got}) {
 		t.Fatalf("Settings = %+v, %v", settings, err)
 	}
 }
