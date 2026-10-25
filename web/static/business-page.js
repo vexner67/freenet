@@ -1,40 +1,28 @@
 // "Бизнес" (/business), a tab of "Работа": a page buys businesses for votes
-// and runs them as a little game. Each business is a picture of a street:
-// the building with its workers in the window, people walking by and going
-// in, a warehouse, a safe with the till and a billboard. Clicking a part
-// opens a box of what it is and what to do with it — the price of the
-// goods and levels at the building, workers at the window, goods at the
-// warehouse, votes at the safe, advertising at the billboard. Worn premises
-// crack, a ruined business is boarded up. The server counts the hours; the
-// page only shows what it said. The administrators tune the businesses in
-// the admin panel (/admin/business).
+// and runs them as a little game. Each business is its premises seen from
+// above in pixels (business-art.js): customers come in to be served, workers
+// stand at their places, the storeroom fills with boxes, and every
+// improvement shows. Clicking a part — the hall, the workers, the till, the
+// storeroom, the billboard, the sign — opens a box of what it is and what to
+// do with it; the same parts are links under the picture. The server counts
+// the hours; the page only shows what it said. The administrators tune the
+// businesses in the admin panel (/admin/business).
 
 import { api, currentUser, session, started } from './api.js';
-import { businessCondition, businessHours, businessLevelCost, businessName, businessWalkers, formatDateTime, groupedVotes, hundredths, plural, repairCost, restockCost, votesAmount, votesFontSize } from './labels.js';
+import { businessHours, businessLevelCost, businessName, businessPerkEffect, businessPerkName, businessPerkRate, businessPerks, formatDateTime, groupedVotes, hundredths, plural, repairCost, restockCost, votesAmount, votesFontSize } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { tr } from './i18n.js';
+import { H, Premises, W } from './business-art.js';
 
 const answered = session.get() ? started(api.businesses()) : null;
 
-// The pictures of the businesses and of their parts.
+// The pictures of the businesses for their headings and the lots.
 const buildings = {
   kiosk: '/static/business/kiosk.svg',
   cafe: '/static/business/cafe.svg',
   carwash: '/static/business/carwash.svg',
   factory: '/static/business/factory.svg',
-};
-const customers = ['/static/business/customer-1.svg', '/static/business/customer-2.svg', '/static/business/customer-3.svg'];
-const cracks = [null, '/static/business/cracks-1.svg', '/static/business/cracks-2.svg'];
-
-// Where on the street (480×240) each building has its door and the
-// window its workers stand in: x from and to, and the line they stand on.
-const doors = { kiosk: 225, cafe: 295, carwash: 259, factory: 225 };
-const windows = {
-  kiosk: [168, 282, 150],
-  cafe: [142, 270, 152],
-  carwash: [136, 194, 150],
-  factory: [150, 300, 128],
 };
 
 let state = null;
@@ -59,95 +47,111 @@ function picture(src, className = '') {
   return el('img', { src, alt: '', className, draggable: false });
 }
 
-// spot is a clickable part of the picture of a business.
-function spot(className, title, onclick, ...children) {
-  return el('button', { type: 'button', className: `biz-spot ${className}`, title, onclick }, ...children);
+// The premises on the page, each with its canvas, drawn by one loop.
+const premises = new Map();
+const still = matchMedia('(prefers-reduced-motion: reduce)');
+
+// fit sizes a canvas to a whole number of its pixels per picture pixel.
+function fit(canvas) {
+  const ratio = window.devicePixelRatio || 1;
+  const width = canvas.parentElement.clientWidth || W;
+  const scale = Math.max(1, Math.floor((width * ratio) / W));
+  canvas.width = W * scale;
+  canvas.height = H * scale;
+  canvas.style.width = `${(W * scale) / ratio}px`;
+  canvas.style.height = `${(H * scale) / ratio}px`;
+  return scale;
 }
 
-function alert(on) {
-  return on ? el('span', { className: 'biz-alert', textContent: '!' }) : null;
+function paint(p) {
+  const ctx = p.canvas.getContext('2d');
+  ctx.setTransform(p.scale, 0, 0, p.scale, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  p.art.draw(ctx);
 }
 
-function walkers(b, plan) {
-  const { served, passing } = businessWalkers(b, plan);
-  const all = [...Array(served).fill(true), ...Array(passing).fill(false)];
-  const length = 9;
-
-  return all.map((going, i) => {
-    const node = picture(customers[i % customers.length], going ? 'biz-walker biz-walker-in' : 'biz-walker biz-walker-by');
-    node.style.setProperty('--door', percent(doors[b.kind] - 8, 480));
-    node.style.left = percent(20 + i * 22, 480);
-    node.style.animationDelay = `${-((i * length) / all.length).toFixed(2)}s, 0s`;
-    return node;
-  });
+let last = 0;
+function loop(now) {
+  const dt = Math.min((now - (last || now)) / 1000, 0.1);
+  last = now;
+  for (const [kind, p] of premises) {
+    if (!p.canvas.isConnected) {
+      premises.delete(kind);
+      continue;
+    }
+    p.art.step(dt, still.matches);
+    paint(p);
+  }
+  if (premises.size) requestAnimationFrame(loop);
+  else last = 0;
 }
 
-function workers(b) {
-  const [from, to, line] = windows[b.kind];
-  const room = Math.floor((to - from) / 15);
-  const shown = Math.min(b.staff, room);
+window.addEventListener('resize', () => {
+  for (const p of premises.values()) p.scale = fit(p.canvas);
+});
 
-  const region = spot('biz-workers', tr('Работники'), () => openPanel(b.kind, 'staff'),
-    ...Array.from({ length: shown }, () => picture('/static/business/worker.svg')),
-    b.staff > shown ? el('span', { className: 'biz-more', textContent: `×${b.staff}` }) : null,
-    alert(b.staff === 0 && !b.bankrupt),
-  );
-  region.style.left = percent(from, 480);
-  region.style.width = percent(to - from, 480);
-  region.style.top = percent(line - 22, 240);
-  region.style.height = percent(22, 240);
-
-  return region;
+function pointAt(p, e) {
+  const box = p.canvas.getBoundingClientRect();
+  return [((e.clientX - box.left) / box.width) * W, ((e.clientY - box.top) / box.height) * H];
 }
 
+// scene is the canvas of a business; the people on it keep walking when
+// the business changes, only the premises are drawn anew.
 function scene(b, plan) {
-  const worn = businessCondition(b.condition);
-  const storage = plan.storage * b.level;
-  const ad = b.adUntil && new Date(b.adUntil) > new Date();
-  const working = !b.bankrupt && b.served > 0;
+  let p = premises.get(b.kind);
+  if (!p) {
+    const canvas = el('canvas', { className: 'biz-canvas', role: 'img' });
+    p = { canvas, art: new Premises(b.kind), scale: 1 };
+    canvas.addEventListener('mousemove', (e) => {
+      p.art.hover = p.art.partAt(...pointAt(p, e));
+      canvas.title = p.art.hover?.label ?? '';
+      canvas.classList.toggle('biz-pointing', Boolean(p.art.hover));
+    });
+    canvas.addEventListener('mouseleave', () => { p.art.hover = null; });
+    canvas.addEventListener('click', (e) => {
+      const part = p.art.partAt(...pointAt(p, e));
+      if (part) openPanel(b.kind, part.part);
+    });
+    const start = premises.size === 0;
+    premises.set(b.kind, p);
+    if (start) requestAnimationFrame(loop);
+  }
+  p.art.set(b, plan);
+  p.canvas.setAttribute('aria-label', tr('{0}: уровень {1}', businessName(b.kind), b.level));
+  const box = el('div', { className: 'biz-scene' }, p.canvas);
+  requestAnimationFrame(() => {
+    p.scale = fit(p.canvas);
+    paint(p);
+  });
+  return box;
+}
 
-  const building = spot('biz-building', businessName(b.kind), () => openPanel(b.kind, 'building'),
-    picture(buildings[b.kind]),
-    el('span', { className: `biz-sign biz-sign-${b.kind}`, textContent: businessName(b.kind) }),
-    cracks[worn] ? picture(cracks[worn], 'biz-cover') : null,
-    b.bankrupt ? picture('/static/business/boards.svg', 'biz-cover') : null,
-    b.bankrupt ? el('span', { className: 'biz-stamp', textContent: tr('Разорён') }) : null,
-    alert(!b.bankrupt && worn === 2),
-  );
+const parts = [
+  ['building', tr('Здание')],
+  ['staff', tr('Работники')],
+  ['storage', tr('Склад')],
+  ['till', tr('Касса')],
+  ['ad', tr('Реклама')],
+  ['perks', tr('Улучшения')],
+];
 
-  const fill = el('span', { className: 'biz-fill' });
-  fill.style.width = percent(Math.min(b.stock, storage), Math.max(storage, 1));
-  const warehouse = spot('biz-storage', tr('Склад'), () => openPanel(b.kind, 'storage'),
-    picture('/static/business/storage.svg'),
-    el('span', { className: b.stock > 0 ? 'biz-badge' : 'biz-badge biz-badge-bad' },
-      b.stock > 0 ? tr('{0} шт.', groupedVotes(b.stock)) : tr('Пусто'),
-      el('span', { className: 'biz-meter' }, fill),
-    ),
-    alert(!b.bankrupt && b.stock <= 0),
-  );
-
-  const safe = spot('biz-safe', tr('Касса'), () => openPanel(b.kind, 'till'),
-    picture('/static/business/safe.svg'),
-    el('span', { className: b.inDebt ? 'biz-badge biz-badge-bad' : 'biz-badge' }, tr('{0} гол.', hundredths(b.cash))),
-    alert(b.inDebt),
-  );
-
-  const board = spot(ad ? 'biz-billboard biz-billboard-on' : 'biz-billboard', tr('Рекламный щит'), () => openPanel(b.kind, 'ad'),
-    picture('/static/business/billboard.svg'),
-    el('span', { className: 'biz-board' }, ...(ad
-      ? [el('b', { textContent: businessName(b.kind) }), el('span', { textContent: tr('+{0} % покупателей', plan.adBoost) })]
-      : [el('span', { textContent: tr('Здесь могла быть ваша реклама') })])),
-  );
-
-  const smoke = b.kind === 'factory' && working
-    ? [0, 1, 2].map((i) => {
-      const puff = picture('/static/business/smoke.svg', 'biz-smoke');
-      puff.style.animationDelay = `${-i}s`;
-      return puff;
-    })
-    : [];
-
-  return el('div', { className: 'biz-scene' }, board, building, ...smoke, workers(b), safe, warehouse, ...walkers(b, plan));
+// links are the parts of a business as words under its picture, for those
+// who would rather not aim at pixels; a part that needs care is marked.
+function links(b) {
+  const care = {
+    building: b.condition < 4000,
+    staff: b.staff === 0,
+    storage: b.stock <= 0,
+    till: b.inDebt,
+  };
+  const shown = b.bankrupt ? parts.slice(0, 1) : parts;
+  return el('div', { className: 'biz-links' }, ...shown.flatMap(([part, name], i) => [
+    i ? ' | ' : '',
+    el('a', { href: '#', className: care[part] && !b.bankrupt ? 'biz-care' : '', textContent: name, onclick: (e) => {
+      e.preventDefault();
+      openPanel(b.kind, part);
+    } }),
+  ]));
 }
 
 function businessCard(b, plan) {
@@ -164,6 +168,7 @@ function businessCard(b, plan) {
       hour,
     ),
     scene(b, plan),
+    links(b),
   );
 }
 
@@ -178,7 +183,7 @@ function lot(plan) {
       el('span', { className: 'biz-level', textContent: votesAmount(plan.price) }),
     ),
     el('div', { className: 'biz-scene biz-scene-lot' },
-      spot('biz-building', tr('Купить: {0}', name), buy,
+      el('button', { type: 'button', className: 'biz-lot', title: tr('Купить: {0}', name), onclick: buy },
         picture('/static/business/lot.svg'),
         el('span', { className: 'biz-for-sale' }, el('b', { textContent: tr('Продаётся') }), el('span', { textContent: name })),
       ),
@@ -325,7 +330,9 @@ function buildingPanel(b, plan) {
 
 function staffPanel(b, plan) {
   const most = plan.staff * b.level;
-  const need = Math.ceil(b.customers / Math.max(plan.serve, 1));
+  const serve = plan.serve * businessPerkRate(b, 'equipment');
+  const wage = Math.round(plan.wage * businessPerkRate(b, 'training'));
+  const need = Math.ceil(b.customers / Math.max(serve, 1));
   const staff = numberField(b.staff, 0, most);
 
   return {
@@ -333,8 +340,8 @@ function staffPanel(b, plan) {
     body: [
       facts(
         fact(tr('Работают:'), tr('{0} из {1}', b.staff, most), b.staff === 0),
-        fact(tr('Один обслуживает:'), tr('{0} покупателей в час', plan.serve)),
-        fact(tr('Зарплата:'), tr('{0} гол. в час каждому', hundredths(plan.wage))),
+        fact(tr('Один обслуживает:'), tr('{0} покупателей в час', decimal(serve))),
+        fact(tr('Зарплата:'), tr('{0} гол. в час каждому', hundredths(wage))),
         fact(tr('Нужно сейчас:'), tr('{0} — на {1} покупателей в час', need, decimal(b.customers)), b.staff < need),
       ),
       b.bankrupt ? null : row(el('span', { className: 'biz-label', textContent: tr('Работников:') }), staff),
@@ -347,7 +354,7 @@ function staffPanel(b, plan) {
 }
 
 function storagePanel(b, plan) {
-  const storage = plan.storage * b.level;
+  const storage = b.storage;
   const room = Math.max(storage - b.stock, 0);
   const units = numberField(room, 1, room || 1);
   const cost = el('span', { className: 'hint' });
@@ -450,7 +457,40 @@ function lotPanel(plan) {
   };
 }
 
-const panels = { building: buildingPanel, staff: staffPanel, storage: storagePanel, till: tillPanel, ad: adPanel };
+// perksPanel is the improvements of a business: each in three tiers, the
+// next opening at a level of the business, each showing on the premises.
+function perksPanel(b, plan) {
+  const name = businessName(b.kind);
+  const rows = businessPerks.map(([perk]) => {
+    const p = b.perks?.find((x) => x.perk === perk) ?? { tier: 0, nextPrice: 0, nextLevel: 0 };
+    const pips = el('span', { className: 'biz-pips' }, ...[1, 2, 3].map((t) => el('span', { className: t <= p.tier ? 'biz-pip on' : 'biz-pip' })));
+    let action;
+    if (!p.nextPrice) action = el('span', { className: 'biz-top', textContent: tr('максимум') });
+    else if (b.level < p.nextLevel) action = el('span', { className: 'hint', textContent: tr('откроется на {0} уровне', p.nextLevel) });
+    else {
+      action = button(tr('Купить за {0}', votesAmount(p.nextPrice)), () => act(
+        b.kind, () => api.runBusiness(b.kind, 'improve', { perk }), () => tr('Куплено улучшение «{0}».', businessPerkName(b.kind, perk)),
+      ));
+      action.disabled = b.bankrupt;
+    }
+    return el('tr', {},
+      el('td', {}, el('b', { textContent: businessPerkName(b.kind, perk) }), el('div', { className: 'hint', textContent: businessPerkEffect(perk) })),
+      el('td', { className: 'biz-pips-cell' }, pips),
+      el('td', { className: 'biz-perk-action' }, action),
+    );
+  });
+
+  return {
+    title: tr('{0} — улучшения', name),
+    body: [
+      el('p', { className: 'hint', textContent: tr('Каждое улучшение — три ступени: первая открыта сразу, вторая — с 3 уровня, третья — с 6. Купленное видно в помещении и возвращается половиной при продаже.') }),
+      el('table', { className: 'biz-perks' }, ...rows),
+    ],
+    actions: [],
+  };
+}
+
+const panels = { building: buildingPanel, staff: staffPanel, storage: storagePanel, till: tillPanel, ad: adPanel, perks: perksPanel };
 
 // fillPanel fills the open box with the part it shows, as it is now.
 function fillPanel(message = '') {

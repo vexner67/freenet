@@ -1530,6 +1530,7 @@ export function businessActionName(action) {
     upgrade: tr('улучшение'),
     repair: tr('ремонт'),
     advertise: tr('реклама'),
+    improve: tr('покупка улучшения'),
     deposit: tr('пополнение кассы'),
     collect: tr('выручка'),
     sell: tr('продажа'),
@@ -1553,6 +1554,61 @@ export function businessWalkers(b, plan) {
   const served = Math.round((total * Math.min(b.served, b.customers)) / b.customers);
 
   return { served, passing: total - served };
+}
+
+// businessPerks are the improvements of a business in order, as the user
+// service has them (user/internal/user/business_perk.go), with the
+// percent each tier changes: more customers, a dearer fair price, a
+// worker serving more, a bigger storage, slower wear, lower wages.
+export const businessPerks = [
+  ['decor', 20],
+  ['brand', 15],
+  ['equipment', 30],
+  ['shelves', 50],
+  ['finish', -25],
+  ['training', -15],
+];
+
+// businessPerkName is what an improvement is called at a business:
+// "Кофемашина" at the cafe, "Станки" at the factory.
+export function businessPerkName(kind, perk) {
+  const names = {
+    decor: { kiosk: tr('Навес и цветы'), cafe: tr('Уютный зал'), carwash: tr('Зал ожидания'), factory: tr('Комната отдыха') },
+    brand: { kiosk: tr('Яркая вывеска'), cafe: tr('Неоновая вывеска'), carwash: tr('Световое табло'), factory: tr('Торговая марка') },
+    equipment: { kiosk: tr('Холодильники'), cafe: tr('Кофемашины'), carwash: tr('Аппараты высокого давления'), factory: tr('Станки') },
+    shelves: { kiosk: tr('Стеллажи'), cafe: tr('Кладовая'), carwash: tr('Склад химии'), factory: tr('Высотный склад') },
+    finish: { kiosk: tr('Отделка'), cafe: tr('Отделка'), carwash: tr('Покрытие пола'), factory: tr('Покрытие цеха') },
+    training: { kiosk: tr('Обучение продавцов'), cafe: tr('Курсы бариста'), carwash: tr('Обучение мойщиков'), factory: tr('Обучение рабочих') },
+  };
+
+  return names[perk]?.[kind] ?? perk;
+}
+
+// businessPerkEffect is what a tier of an improvement does.
+export function businessPerkEffect(perk) {
+  return {
+    decor: tr('+20 % покупателей за ступень'),
+    brand: tr('+15 % к обычной цене товара за ступень: покупатели готовы платить больше'),
+    equipment: tr('+30 % к тому, сколько обслуживает работник, за ступень'),
+    shelves: tr('+50 % к складу за ступень'),
+    finish: tr('помещение изнашивается на 25 % медленнее за ступень'),
+    training: tr('−15 % к зарплатам за ступень'),
+  }[perk] ?? '';
+}
+
+// businessPerkRate is what the improvement perk of b multiplies its
+// numbers by: 1.3 for the equipment of the first tier.
+export function businessPerkRate(b, perk) {
+  const tier = b.perks?.find((p) => p.perk === perk)?.tier ?? 0;
+  const percent = businessPerks.find(([name]) => name === perk)?.[1] ?? 0;
+
+  return 1 + (percent * tier) / 100;
+}
+
+// businessStations is how many places the premises of a level serve at:
+// a counter, a bay, a machine more every three levels, four at most.
+export function businessStations(level) {
+  return Math.min(4, 1 + Math.floor((Math.max(level, 1) - 1) / 3));
 }
 
 // businessHours is how many hours the goods in stock last at served

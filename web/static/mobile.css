@@ -306,8 +306,6 @@ input, select, textarea { font-size: 16px !important; }
 .business { flex-direction: column-reverse; align-items: stretch; }
 .business .button, .biz-dialog .button { min-height: 32px; }
 .biz-lots { grid-template-columns: 1fr; }
-.biz-sign { font-size: 9px; }
-.biz-board { font-size: 8px; }
 .casino-balance { width: auto; }
 .casino-board, .casino-multipliers { grid-template-columns: repeat(3, 1fr); }
 .casino-controls .button { width: 100%; }

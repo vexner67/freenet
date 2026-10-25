@@ -49,3 +49,22 @@ test('the picture of a business shows its customers', async () => {
   assert.equal(businessCondition(6999), 1);
   assert.equal(businessCondition(3999), 2);
 });
+
+test('the improvements of the site are those of the user service', async () => {
+  const { businessPerks, businessPerkName, businessPerkEffect, businessPerkRate, businessStations } = await import('../static/labels.js');
+  const source = readFileSync(new URL('../../user/internal/user/business_perk.go', import.meta.url), 'utf8');
+  const rules = readFileSync(new URL('../../user/internal/user/business.go', import.meta.url), 'utf8');
+  const perks = [...source.matchAll(/Perk\w+ +BusinessPerk = "(\w+)"/g)].map((m) => m[1]);
+  assert.deepEqual(businessPerks.map(([name]) => name), perks);
+  for (const [perk, percent] of businessPerks) {
+    if (perk !== 'shelves') assert.ok(rules.includes(`perkRate(Perk${perk[0].toUpperCase()}${perk.slice(1)}, ${percent})`), perk);
+    assert.notEqual(businessPerkName('cafe', perk), perk);
+    assert.notEqual(businessPerkEffect(perk), '');
+    assert.equal(businessPerkRate({ perks: [{ perk, tier: 2 }] }, perk), 1 + (2 * percent) / 100);
+  }
+  assert.equal(businessPerkRate({}, 'decor'), 1);
+
+  assert.equal(businessStations(1), 1);
+  assert.equal(businessStations(4), 2);
+  assert.equal(businessStations(10), 4);
+});
