@@ -8816,7 +8816,7 @@ components:
           description: The frame of the photo
         background:
           type: string
-          enum: ["", stars, hearts, checks, clouds, flowers, sparkles]
+          enum: ["", stars, hearts, checks, clouds, flowers, sparkles, kalash]
           description: The pattern behind the page, "" for none
         mood:
           type: string
