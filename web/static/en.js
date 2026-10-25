@@ -2613,7 +2613,7 @@ export default {
   'Заработок': 'Earnings',
   'Подписка активна до {0}. Купить её снова можно, когда она закончится.': 'Your subscription is active until {0}. You can buy it again once it ends.',
   'Больше повысить нельзя': 'It cannot go higher',
-  'Ваш рейтинг уже {0} % — это наибольший рейтинг, который можно купить.': 'Your rating is {0}% already — the most rating that can be bought.',
+  'Ваш рейтинг уже {0} %: из них {1} % — повышение, а больше {1} % повысить нельзя.': 'Your rating is {0} % already: {1} % of it is the raise, and the raise cannot go above {1} %.',
   'Ставка {0} на сумму до {1}; положить можно до {1}.': 'Rate {0} on up to {1}; you can put up to {1}.',
   'Голоса уходят в Казну Freenet. На вашем счету': 'The votes go to the Freenet Treasury. You have',
   'Голоса на вкладе каждый день растут на процент. Проценты начисляются на сумму до предела вклада, а всё, что они принесли сверх него, копится на вкладе дальше и не сгорает.': 'Votes on a deposit grow by a percent every day. The interest is paid on up to the limit of a deposit, and what it brings above the limit keeps piling up on the deposit and does not burn.',

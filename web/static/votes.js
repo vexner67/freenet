@@ -286,15 +286,20 @@ function initTransfer(me) {
 function initRating(me) {
   const percent = $('rating-percent');
   $('rating-balance').textContent = votesAmount(me.votes ?? 0);
-  // The rating bought stops at MAX_RATING: one who has it is told so
-  // rather than given a form that cannot work.
-  const full = () => (me.rating ?? 0) >= MAX_RATING;
-  if (full()) say(tr('Больше повысить нельзя'), tr('Ваш рейтинг уже {0} % — это наибольший рейтинг, который можно купить.', me.rating));
+  // The rating of the page is what its profile shows: how full it is
+  // plus the rating raised (me.rating). Only the raise stops at
+  // MAX_RATING: one who has it is told so rather than given a form that
+  // cannot work.
+  const page = () => me.completeness ?? me.rating ?? 0;
+  const left = () => MAX_RATING - (me.rating ?? 0);
+  const full = () => left() <= 0;
+  const tellFull = () => say(tr('Больше повысить нельзя'), tr('Ваш рейтинг уже {0} %: из них {1} % — повышение, а больше {1} % повысить нельзя.', page(), MAX_RATING));
+  if (full()) tellFull();
   percent.focus();
 
   percent.addEventListener('input', () => {
     const n = Number(percent.value);
-    const fits = Number.isSafeInteger(n) && n > 0 && n <= MAX_RATING;
+    const fits = Number.isSafeInteger(n) && n > 0 && n <= left();
     $('rating-cost').textContent = fits ? tr('Стоимость: {0}.', votesAmount(n * RATING_PRICE)) : '';
     $('rating-cost').hidden = !fits;
   });
@@ -305,7 +310,7 @@ function initRating(me) {
     $('notice').hidden = true;
 
     if (full()) {
-      say(tr('Больше повысить нельзя'), tr('Ваш рейтинг уже {0} % — это наибольший рейтинг, который можно купить.', me.rating));
+      tellFull();
       return;
     }
 
@@ -315,11 +320,12 @@ function initRating(me) {
     try {
       const raised = await api.raiseRating(Number(percent.value));
       me.votes = raised.balance;
+      me.completeness = page() + raised.rating - (me.rating ?? 0);
       me.rating = raised.rating;
       $('rating-balance').textContent = votesAmount(raised.balance);
       percent.value = '';
       $('rating-cost').hidden = true;
-      say(tr('Рейтинг повышен'), tr('Теперь ваш рейтинг — {0} %.', raised.rating), ' ',
+      say(tr('Рейтинг повышен'), tr('Теперь ваш рейтинг — {0} %.', page()), ' ',
         el('a', { href: '/votes', textContent: tr('На вашем счету {0}.', votesAmount(raised.balance)) }));
     } catch (e) {
       showError(error, e);
