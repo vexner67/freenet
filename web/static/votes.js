@@ -4,16 +4,18 @@
 // recipient; the fee is shown as the votes are typed), "Пополнить"
 // (?act=top-up: a voucher), "Получить" (?act=receive: the link that opens a
 // transfer to you), "Рейтинг" (?act=rating: openvk's "Повысить
-// рейтинг", for votes) and "Банк" (?act=bank: a deposit and a loan).
+// рейтинг", for votes), "Вклад" (?act=deposit; the old ?act=bank too)
+// and "Кредит" (?act=loan).
 
 import { api, currentUser, started } from './api.js';
-import { MAX_RATING, RATING_PRICE, bankRate, bankVotes, TRANSFER_FEE_PERCENT, formatDateTime, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, votesFontSize, voucherGave } from './labels.js';
+import { MAX_RATING, RATING_PRICE, bankRate, bankVotes, TRANSFER_FEE_PERCENT, formatDateTime, groupedVotes, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, votesFontSize, voucherGave } from './labels.js';
 import { $, avatarURL, el, fullName, pagePath, renderChrome, showError, hideError, verifiedMark } from './layout.js';
 import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
-const tabs = { transfer: initTransfer, 'top-up': initTopUp, receive: initReceive, rating: initRating, bank: initBank };
-const act = Object.hasOwn(tabs, params.get('act')) ? params.get('act') : 'account';
+const tabs = { transfer: initTransfer, 'top-up': initTopUp, receive: initReceive, rating: initRating, deposit: initBank, loan: initBank };
+const asked = params.get('act') === 'bank' ? 'deposit' : params.get('act');
+const act = Object.hasOwn(tabs, asked) ? asked : 'account';
 const flow = ['in', 'out'].includes(params.get('flow')) ? params.get('flow') : '';
 const error = $('error');
 
@@ -22,7 +24,7 @@ const error = $('error');
 const statement = act === 'account' ? started(api.voteStatement('', flow)) : null;
 const rate = act === 'account' ? api.voteRate().then((r) => r.kopecks, () => 0) : Promise.resolve(0);
 const bonus = act === 'account' ? started(api.bonus()) : null;
-const bankState = act === 'bank' ? started(api.bank()) : null;
+const bankState = ['deposit', 'loan'].includes(act) ? started(api.bank()) : null;
 
 // isNickname says whether a word could be the address of a page.
 function isNickname(word) {
@@ -37,7 +39,7 @@ function say(title, ...rest) {
 }
 
 function showBalance(votes, kopecks) {
-  $('votes').textContent = votes;
+  $('votes').textContent = groupedVotes(votes);
   $('votes').style.fontSize = `${votesFontSize(votes)}px`;
   $('votes-word').textContent = plural(votes, ['голос', 'голоса', 'голосов']);
   $('votes-rubles').textContent = kopecks ? `≈ ${rubles(votes * kopecks)}` : '';
@@ -284,6 +286,10 @@ function initTransfer(me) {
 function initRating(me) {
   const percent = $('rating-percent');
   $('rating-balance').textContent = votesAmount(me.votes ?? 0);
+  // The rating bought stops at MAX_RATING: one who has it is told so
+  // rather than given a form that cannot work.
+  const full = () => (me.rating ?? 0) >= MAX_RATING;
+  if (full()) say(tr('Больше повысить нельзя'), tr('Ваш рейтинг уже {0} % — это наибольший рейтинг, который можно купить.', me.rating));
   percent.focus();
 
   percent.addEventListener('input', () => {
@@ -298,12 +304,18 @@ function initRating(me) {
     hideError(error);
     $('notice').hidden = true;
 
+    if (full()) {
+      say(tr('Больше повысить нельзя'), tr('Ваш рейтинг уже {0} % — это наибольший рейтинг, который можно купить.', me.rating));
+      return;
+    }
+
     const submit = $('rating').querySelector('button[type="submit"]');
     submit.disabled = true;
 
     try {
       const raised = await api.raiseRating(Number(percent.value));
       me.votes = raised.balance;
+      me.rating = raised.rating;
       $('rating-balance').textContent = votesAmount(raised.balance);
       percent.value = '';
       $('rating-cost').hidden = true;
@@ -322,11 +334,11 @@ function showBank(bank, balance) {
   const { settings: s, account: a } = bank;
   const owed = Math.ceil(a.debt / 100);
 
-  $('bank-balance').textContent = votesAmount(balance);
+  for (const b of document.querySelectorAll('.bank-balance-votes')) b.textContent = votesAmount(balance);
   $('deposit-state').textContent = a.deposit
     ? tr('На вкладе {0}.', bankVotes(a.deposit))
     : tr('Вклада пока нет.');
-  $('deposit-terms').textContent = tr('Ставка {0}, вклад растёт до {1}.', bankRate(s.depositRate), votesAmount(s.depositMost));
+  $('deposit-terms').textContent = tr('Ставка {0} на сумму до {1}; положить можно до {1}.', bankRate(s.depositRate), votesAmount(s.depositMost));
   $('deposit-take').disabled = a.deposit < 100;
 
   if (a.debt) {
@@ -348,8 +360,8 @@ function showBank(bank, balance) {
     votesAmount(s.loanMost), `${s.loanDays} ${plural(s.loanDays, ['день', 'дня', 'дней'])}`, bankRate(s.loanRate), bankRate(s.penaltyRate));
 }
 
-// initBank is "Банк": put votes on the deposit and take them off, take a
-// loan and pay it back.
+// initBank is "Вклад" and "Кредит": put votes on the deposit and take them
+// off, take a loan and pay it back.
 async function initBank(me) {
   let bank;
   try {

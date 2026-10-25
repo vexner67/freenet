@@ -1,4 +1,4 @@
-// "Бизнес" (/business), a tab of "Работа": a page buys businesses for votes
+// "Бизнес" (/business), a tab of "Заработок": a page buys businesses for votes
 // and runs them as a little game of supplies, offers and workers. Each
 // business is its premises seen from above in pixels (business-art.js):
 // customers come in to be served, workers stand at their places, the
@@ -12,7 +12,7 @@
 import { api, currentUser, session, started } from './api.js';
 import {
   businessAdvice, businessEvent, businessLoad, businessMood, businessName, businessNote, businessOption,
-  businessTotals, businessUnits, formatDateTime, hundredths, offerName, orderCost, plural, professionName,
+  businessTotals, businessUnits, formatDateTime, groupedVotes, hundredths, offerName, orderCost, plural, professionName,
   professionWork, supplierAbout, supplierName, supplyName, traitName, votesAmount, votesFontSize,
 } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
@@ -35,7 +35,7 @@ let busy = false;
 let panel = null;
 
 function showBalance(votes) {
-  $('votes').textContent = votes;
+  $('votes').textContent = groupedVotes(votes);
   $('votes').style.fontSize = `${votesFontSize(votes)}px`;
   $('votes-word').textContent = plural(votes, ['голос', 'голоса', 'голосов']);
   $('balance').hidden = false;

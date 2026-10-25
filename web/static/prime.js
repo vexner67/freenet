@@ -1,6 +1,7 @@
 // "Freenet Prime" at /prime, the subscription of the site: what it gives,
 // buying a month, three months or a year for votes into the treasury,
-// giving it to another as a present and «Невидимка» for one who has it.
+// giving it to another as a present and «Невидимка» for one who has it;
+// one who has it is not offered to buy it again until it ends.
 // openvk has nothing like it.
 
 import { api, currentUser, started } from './api.js';
@@ -27,8 +28,10 @@ function showState(me) {
   const until = me.primeUntil && new Date(me.primeUntil) > new Date() ? me.primeUntil : '';
 
   $('state').textContent = until
-    ? tr('У вас Freenet Prime до {0}.', formatDateTime(until))
+    ? tr('Подписка активна до {0}. Купить её снова можно, когда она закончится.', formatDateTime(until))
     : tr('У вас пока нет Freenet Prime.');
+  // One who has Prime sees what it gives, not its prices.
+  $('buy-part').hidden = Boolean(until);
   $('balance').textContent = votesAmount(me.votes ?? 0);
   $('invisible-part').hidden = !until;
   $('style-part').hidden = !until;

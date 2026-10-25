@@ -23,7 +23,7 @@
 // the jackpot of the casino takes the whole screen (jackpot.js).
 
 import { api, currentUser, started } from './api.js';
-import { aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betPrize, betRoll, casinoChance, casinoPlan, plural, rocketMultiplier, rocketScale, rocketShown, rocketTime, rocketsCount, spinsCount, typedOdds, votesCount, votesFontSize, wagersCount } from './labels.js';
+import { aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betPrize, betRoll, casinoChance, casinoPlan, groupedVotes, plural, rocketMultiplier, rocketScale, rocketShown, rocketTime, rocketsCount, spinsCount, typedOdds, votesCount, votesFontSize, wagersCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
 import { jackpot } from './jackpot.js';
@@ -65,7 +65,7 @@ const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
 function showBoard(prizes) {
   cells = prizes.map((votes) => el('div', { className: votes > 0 ? 'casino-cell' : 'casino-cell casino-empty' },
-    el('span', { className: 'casino-votes', textContent: votes > 0 ? String(votes) : '×' }),
+    el('span', { className: 'casino-votes', textContent: votes > 0 ? groupedVotes(votes) : '×' }),
     el('span', { className: 'casino-unit', textContent: votes > 0 ? plural(votes, ['голос', 'голоса', 'голосов']) : tr('Пусто') }),
   ));
   $('board').replaceChildren(...cells);
@@ -106,7 +106,7 @@ function showBalance(votes) {
     $('votes').classList.add('bump');
   }
   balance = votes;
-  $('votes').textContent = votes;
+  $('votes').textContent = groupedVotes(votes);
   $('votes').style.fontSize = `${votesFontSize(votes)}px`;
   $('votes-word').textContent = plural(votes, ['голос', 'голоса', 'голосов']);
   $('balance').hidden = false;
@@ -312,7 +312,7 @@ function betting(bets, signedIn) {
   amount.min = String(bets.least);
   amount.max = String(bets.most);
   amount.value = String(Math.min(bets.most, Math.max(bets.least, 10)));
-  $('bet-limits').textContent = tr('От {0} до {1} за ставку.', bets.least, votesCount(bets.most));
+  $('bet-limits').textContent = tr('От {0} до {1} за ставку.', groupedVotes(bets.least), votesCount(bets.most));
 
   const buttons = bets.multipliers.map((m) => {
     const button = el('button', { className: 'casino-cell casino-multiplier', type: 'button' },
@@ -351,7 +351,7 @@ function betting(bets, signedIn) {
     $('dice-win').classList.toggle('narrow', odds < 200);
     $('bet-sum').textContent = fits
       ? tr('Шанс выигрыша {0}, выигрыш — {1}.', betChance(odds), votesCount(betPrize(votes, chosen.multiplier)))
-      : tr('Ставка — от {0} до {1}.', bets.least, votesCount(bets.most));
+      : tr('Ставка — от {0} до {1}.', groupedVotes(bets.least), votesCount(bets.most));
     $('bet').textContent = fits ? tr('Поставить {0}', votesCount(votes)) : tr('Поставить');
     $('bet').disabled = playing || !fits;
   }
@@ -671,7 +671,7 @@ function rocketing(rocket, signedIn) {
   amount.min = String(rocket.least);
   amount.max = String(rocket.most);
   amount.value = String(Math.min(rocket.most, Math.max(rocket.least, 10)));
-  $('rocket-limits').textContent = tr('От {0} до {1} за ставку. Наибольший множитель — {2}.', rocket.least, votesCount(rocket.most), betMultiplier(rocket.top));
+  $('rocket-limits').textContent = tr('От {0} до {1} за ставку. Наибольший множитель — {2}.', groupedVotes(rocket.least), votesCount(rocket.most), betMultiplier(rocket.top));
 
   const stake = () => Math.floor(Number(amount.value));
   // auto is the multiplier to cash at by itself, 0 — by hand, -1 — not
@@ -688,7 +688,7 @@ function rocketing(rocket, signedIn) {
     const at = auto();
     const fits = votes >= rocket.least && votes <= rocket.most;
 
-    if (!fits) $('rocket-sum').textContent = tr('Ставка — от {0} до {1}.', rocket.least, votesCount(rocket.most));
+    if (!fits) $('rocket-sum').textContent = tr('Ставка — от {0} до {1}.', groupedVotes(rocket.least), votesCount(rocket.most));
     else if (at < 0) $('rocket-sum').textContent = tr('Забрать само можно на множителе от ×1,01 до {0}.', betMultiplier(rocket.top));
     else if (at > 0) $('rocket-sum').textContent = tr('Ракета сама заберёт ставку на {0}: выигрыш — {1}.', rocketShown(at), votesCount(betPrize(votes, at)));
     else $('rocket-sum').textContent = tr('Нажмите «Забрать», пока ракета летит.');

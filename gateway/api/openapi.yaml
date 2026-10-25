@@ -7909,6 +7909,9 @@ components:
             votes:
               type: integer
               description: '"Баланс": the votes you have, told by GET /api/v1/me; vouchers and transfers give them, paid gifts and transfers take them'
+            rating:
+              type: integer
+              description: The rating you have, in percent, up to 1000 bought; vouchers and "Повысить рейтинг" give it
             admin:
               type: boolean
               description: You are an administrator of the site and make the vouchers
@@ -8909,7 +8912,7 @@ components:
           description: The frame of the photo
         background:
           type: string
-          enum: ["", stars, hearts, checks, clouds, flowers, sparkles, kalash]
+          enum: ["", stars, hearts, checks, clouds, flowers, sparkles, islam]
           description: The pattern behind the page, "" for none
         mood:
           type: string

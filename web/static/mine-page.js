@@ -25,7 +25,7 @@ let busy = false;
 let rows = new Map();
 
 function showBalance(votes) {
-  $('votes').textContent = votes;
+  $('votes').textContent = groupedVotes(votes);
   $('votes').style.fontSize = `${votesFontSize(votes)}px`;
   $('votes-word').textContent = plural(votes, ['голос', 'голоса', 'голосов']);
   $('balance').hidden = false;

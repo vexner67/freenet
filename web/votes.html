@@ -35,7 +35,8 @@
           <a id="tab-top-up" href="/votes?act=top-up">Пополнить</a>
           <a id="tab-receive" href="/votes?act=receive">Получить</a>
           <a id="tab-rating" href="/votes?act=rating">Рейтинг</a>
-          <a id="tab-bank" href="/votes?act=bank">Банк</a>
+          <a id="tab-deposit" href="/votes?act=deposit">Вклад</a>
+          <a id="tab-loan" href="/votes?act=loan">Кредит</a>
         </div>
         <div class="container-gray">
         <p id="loading">Загрузка…</p>
@@ -144,11 +145,9 @@
           <div class="actions"><button class="button" type="submit">Повысить рейтинг</button></div>
         </form>
 
-        <div id="bank" hidden>
-          <p>Голоса на вкладе каждый день растут на процент, пока вклад не дорастёт до предела. Кредит выручит, когда голосов не хватает: его возвращают с процентами до срока, а после срока процент больше, и банк сам забирает долг с баланса, а потом со вклада.</p>
-          <p class="bank-balance">Ваш баланс: <b id="bank-balance"></b></p>
-
-          <div class="section-title">Вклад</div>
+        <div id="deposit" hidden>
+          <p>Голоса на вкладе каждый день растут на процент. Проценты начисляются на сумму до предела вклада, а всё, что они принесли сверх него, копится на вкладе дальше и не сгорает.</p>
+          <p class="bank-balance">Ваш баланс: <b class="bank-balance-votes"></b></p>
           <div class="bank-box">
             <p id="deposit-state"></p>
             <p class="hint" id="deposit-terms"></p>
@@ -159,8 +158,11 @@
             </form>
             <p class="hint">Пустое поле у «Снять» — снять все целые голоса.</p>
           </div>
+        </div>
 
-          <div class="section-title">Кредит</div>
+        <div id="loan" hidden>
+          <p>Кредит выручит, когда голосов не хватает: его возвращают с процентами до срока, а после срока процент больше, и банк сам забирает долг с баланса, а потом со вклада.</p>
+          <p class="bank-balance">Ваш баланс: <b class="bank-balance-votes"></b></p>
           <div class="bank-box">
             <p id="loan-state"></p>
             <p class="hint" id="loan-terms"></p>

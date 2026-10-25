@@ -1144,8 +1144,9 @@ export function autoplayNext({ played, times, balance, cost }) {
 // textFit does.
 export function votesFontSize(votes, width = 140) {
   const digits = String(Math.max(0, Math.trunc(votes))).length;
+  const gaps = Math.floor((digits - 1) / 3);
 
-  return Math.max(12, Math.min(48, Math.floor(width / (digits * 0.65))));
+  return Math.max(12, Math.min(48, Math.floor(width / (digits * 0.65 + gaps * 0.3))));
 }
 
 // wagersCount is "1 ставка", "5 ставок".
@@ -1318,7 +1319,7 @@ export function installsCount(n) {
 // голосов"; giftPrice is what stands under a gift to choose, "Бесплатно"
 // for a free one.
 export function votesCount(n) {
-  return `${n} ${plural(n, ['голос', 'голоса', 'голосов'])}`;
+  return `${n < 0 ? '-' : ''}${groupedVotes(n)} ${plural(Math.abs(n), ['голос', 'голоса', 'голосов'])}`;
 }
 
 export function giftPrice(price) {
@@ -1871,7 +1872,7 @@ export const primeBackgrounds = [
   ['clouds', tr('облака')],
   ['flowers', tr('цветы')],
   ['sparkles', tr('блёстки')],
-  ['kalash', tr('калаши')],
+  ['islam', tr('исламизм')],
 ];
 
 export const primeMoods = [
@@ -2535,7 +2536,7 @@ const errorTexts = {
   'the bonus is for pages a week old with a filled profile': tr('Бонус получают страницы старше недели с заполненной анкетой.'),
   'a voucher with votes has a limited number of usages': tr('Ваучер с голосами действует ограниченное число раз.'),
   'the rating is raised by 1 to 1000 percent': tr('Рейтинг повышается на 1–1000 %.'),
-  'the rating cannot go above 1000 percent': tr('Рейтинг не может быть больше 1000 %.'),
+  'the rating cannot go above 1000 percent': tr('Больше нельзя: рейтинг не может быть больше 1000 %.'),
   'the daily bonus must be at least 1 vote': tr('Бонус — не меньше 1 голоса.'),
   'a fee must be from 0 to 100 percent': tr('Комиссия — от 0 до 100 %.'),
   'the jackpot must be at least 1 vote': tr('Джекпот — не меньше 1 голоса.'),

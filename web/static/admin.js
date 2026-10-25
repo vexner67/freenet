@@ -1262,7 +1262,7 @@ async function bets(answered) {
 
   // outcomesText says what is staked on each outcome, and its odds.
   const outcomesText = (e) => e.outcomes
-    .map((o) => `${o.name}${o.odds > 0 ? ' ' + betMultiplier(o.odds) : ''}: ${o.staked}`).join(' · ');
+    .map((o) => `${o.name}${o.odds > 0 ? ' ' + betMultiplier(o.odds) : ''}: ${groupedVotes(o.staked)}`).join(' · ');
 
   function row(e) {
     const actions = el('div', { className: 'admin-actions' });

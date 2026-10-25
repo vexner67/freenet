@@ -824,6 +824,7 @@ test('votes are counted and vouchers shown as openvk shows them', () => {
   assert.equal(votesCount(1), '1 голос');
   assert.equal(votesCount(3), '3 голоса');
   assert.equal(votesCount(11), '11 голосов');
+  assert.equal(votesCount(3000000), '3\u00a0000\u00a0000 голосов');
   assert.equal(giftPrice(0), 'Бесплатно');
   assert.equal(giftPrice(3), '3 голоса');
   assert.deepEqual(unusedVotes(1), ['У Вас ', '1', ' неиспользованный голос.']);
@@ -1153,9 +1154,9 @@ test('autoplayNext plays the rounds chosen while the votes pay for them', () => 
 
 test('votesFontSize makes a large balance fit its box', () => {
   assert.equal(votesFontSize(0), 48);
-  assert.equal(votesFontSize(12345), 43);
-  assert.equal(votesFontSize(1234567), 30);
-  assert.equal(votesFontSize(1234567890), 21);
+  assert.equal(votesFontSize(12345), 39);
+  assert.equal(votesFontSize(1234567), 27);
+  assert.equal(votesFontSize(1234567890), 18);
   assert.equal(votesFontSize(10 ** 20), 12);
 });
 
