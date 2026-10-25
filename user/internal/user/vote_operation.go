@@ -86,6 +86,12 @@ const (
 	// VoteBusiness: votes spent on a business or taken out of it; the
 	// note is the business and the action, "kiosk:collect".
 	VoteBusiness VoteKind = "business"
+	// VoteDeposit: votes put on the deposit of the bank or taken off it
+	// with the interest.
+	VoteDeposit VoteKind = "deposit"
+	// VoteLoan: votes lent by the bank or paid back to it; the note is
+	// "overdue" when the site took them for a loan past its term.
+	VoteLoan VoteKind = "loan"
 )
 
 // VoteEntry is what a change of votes is written down as: why, with whom

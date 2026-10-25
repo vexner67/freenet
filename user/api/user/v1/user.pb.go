@@ -16770,6 +16770,524 @@ func (x *SetBusinessSettingsRequest) GetSettings() *BusinessSettings {
 	return nil
 }
 
+// BankSettings are the rates of the bank, in hundredths of a percent a
+// day, and its limits: the most a deposit grows to and a loan lends, in
+// votes, and the term of a loan in days.
+type BankSettings struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	DepositRate   int32                  `protobuf:"varint,1,opt,name=deposit_rate,json=depositRate,proto3" json:"deposit_rate,omitempty"`
+	DepositMost   int64                  `protobuf:"varint,2,opt,name=deposit_most,json=depositMost,proto3" json:"deposit_most,omitempty"`
+	LoanRate      int32                  `protobuf:"varint,3,opt,name=loan_rate,json=loanRate,proto3" json:"loan_rate,omitempty"`
+	LoanMost      int64                  `protobuf:"varint,4,opt,name=loan_most,json=loanMost,proto3" json:"loan_most,omitempty"`
+	LoanDays      int32                  `protobuf:"varint,5,opt,name=loan_days,json=loanDays,proto3" json:"loan_days,omitempty"`
+	PenaltyRate   int32                  `protobuf:"varint,6,opt,name=penalty_rate,json=penaltyRate,proto3" json:"penalty_rate,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BankSettings) Reset() {
+	*x = BankSettings{}
+	mi := &file_api_user_v1_user_proto_msgTypes[257]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BankSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BankSettings) ProtoMessage() {}
+
+func (x *BankSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[257]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BankSettings.ProtoReflect.Descriptor instead.
+func (*BankSettings) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{257}
+}
+
+func (x *BankSettings) GetDepositRate() int32 {
+	if x != nil {
+		return x.DepositRate
+	}
+	return 0
+}
+
+func (x *BankSettings) GetDepositMost() int64 {
+	if x != nil {
+		return x.DepositMost
+	}
+	return 0
+}
+
+func (x *BankSettings) GetLoanRate() int32 {
+	if x != nil {
+		return x.LoanRate
+	}
+	return 0
+}
+
+func (x *BankSettings) GetLoanMost() int64 {
+	if x != nil {
+		return x.LoanMost
+	}
+	return 0
+}
+
+func (x *BankSettings) GetLoanDays() int32 {
+	if x != nil {
+		return x.LoanDays
+	}
+	return 0
+}
+
+func (x *BankSettings) GetPenaltyRate() int32 {
+	if x != nil {
+		return x.PenaltyRate
+	}
+	return 0
+}
+
+// BankAccount is the deposit and the loan of the caller now: the deposit
+// and the debt in hundredths of a vote, what was borrowed and when it is
+// due (unset without a loan).
+type BankAccount struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Deposit       int64                  `protobuf:"varint,1,opt,name=deposit,proto3" json:"deposit,omitempty"`
+	Debt          int64                  `protobuf:"varint,2,opt,name=debt,proto3" json:"debt,omitempty"`
+	Borrowed      int64                  `protobuf:"varint,3,opt,name=borrowed,proto3" json:"borrowed,omitempty"`
+	DueAt         *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=due_at,json=dueAt,proto3" json:"due_at,omitempty"`
+	Overdue       bool                   `protobuf:"varint,5,opt,name=overdue,proto3" json:"overdue,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BankAccount) Reset() {
+	*x = BankAccount{}
+	mi := &file_api_user_v1_user_proto_msgTypes[258]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BankAccount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BankAccount) ProtoMessage() {}
+
+func (x *BankAccount) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[258]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BankAccount.ProtoReflect.Descriptor instead.
+func (*BankAccount) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{258}
+}
+
+func (x *BankAccount) GetDeposit() int64 {
+	if x != nil {
+		return x.Deposit
+	}
+	return 0
+}
+
+func (x *BankAccount) GetDebt() int64 {
+	if x != nil {
+		return x.Debt
+	}
+	return 0
+}
+
+func (x *BankAccount) GetBorrowed() int64 {
+	if x != nil {
+		return x.Borrowed
+	}
+	return 0
+}
+
+func (x *BankAccount) GetDueAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DueAt
+	}
+	return nil
+}
+
+func (x *BankAccount) GetOverdue() bool {
+	if x != nil {
+		return x.Overdue
+	}
+	return false
+}
+
+type GetBankRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetBankRequest) Reset() {
+	*x = GetBankRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[259]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetBankRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBankRequest) ProtoMessage() {}
+
+func (x *GetBankRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[259]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBankRequest.ProtoReflect.Descriptor instead.
+func (*GetBankRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{259}
+}
+
+type BankState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Settings      *BankSettings          `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	Account       *BankAccount           `protobuf:"bytes,2,opt,name=account,proto3" json:"account,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BankState) Reset() {
+	*x = BankState{}
+	mi := &file_api_user_v1_user_proto_msgTypes[260]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BankState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BankState) ProtoMessage() {}
+
+func (x *BankState) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[260]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BankState.ProtoReflect.Descriptor instead.
+func (*BankState) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{260}
+}
+
+func (x *BankState) GetSettings() *BankSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+func (x *BankState) GetAccount() *BankAccount {
+	if x != nil {
+		return x.Account
+	}
+	return nil
+}
+
+type BankAmountRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Votes; 0 takes the whole deposit or pays the whole loan back.
+	Amount        int64 `protobuf:"varint,1,opt,name=amount,proto3" json:"amount,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BankAmountRequest) Reset() {
+	*x = BankAmountRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[261]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BankAmountRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BankAmountRequest) ProtoMessage() {}
+
+func (x *BankAmountRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[261]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BankAmountRequest.ProtoReflect.Descriptor instead.
+func (*BankAmountRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{261}
+}
+
+func (x *BankAmountRequest) GetAmount() int64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+type BankMoveResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The votes moved and the balance after them.
+	Votes         int64      `protobuf:"varint,1,opt,name=votes,proto3" json:"votes,omitempty"`
+	Balance       int64      `protobuf:"varint,2,opt,name=balance,proto3" json:"balance,omitempty"`
+	Bank          *BankState `protobuf:"bytes,3,opt,name=bank,proto3" json:"bank,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BankMoveResponse) Reset() {
+	*x = BankMoveResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[262]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BankMoveResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BankMoveResponse) ProtoMessage() {}
+
+func (x *BankMoveResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[262]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BankMoveResponse.ProtoReflect.Descriptor instead.
+func (*BankMoveResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{262}
+}
+
+func (x *BankMoveResponse) GetVotes() int64 {
+	if x != nil {
+		return x.Votes
+	}
+	return 0
+}
+
+func (x *BankMoveResponse) GetBalance() int64 {
+	if x != nil {
+		return x.Balance
+	}
+	return 0
+}
+
+func (x *BankMoveResponse) GetBank() *BankState {
+	if x != nil {
+		return x.Bank
+	}
+	return nil
+}
+
+type GetBankSettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetBankSettingsRequest) Reset() {
+	*x = GetBankSettingsRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[263]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetBankSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBankSettingsRequest) ProtoMessage() {}
+
+func (x *GetBankSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[263]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBankSettingsRequest.ProtoReflect.Descriptor instead.
+func (*GetBankSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{263}
+}
+
+type GetBankSettingsResponse struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Settings *BankSettings          `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	// Votes on deposits and owed on loans, in hundredths, as counted last,
+	// and how many pages have each.
+	Deposits      int64 `protobuf:"varint,2,opt,name=deposits,proto3" json:"deposits,omitempty"`
+	Depositors    int64 `protobuf:"varint,3,opt,name=depositors,proto3" json:"depositors,omitempty"`
+	Debts         int64 `protobuf:"varint,4,opt,name=debts,proto3" json:"debts,omitempty"`
+	Debtors       int64 `protobuf:"varint,5,opt,name=debtors,proto3" json:"debtors,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetBankSettingsResponse) Reset() {
+	*x = GetBankSettingsResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[264]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetBankSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBankSettingsResponse) ProtoMessage() {}
+
+func (x *GetBankSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[264]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBankSettingsResponse.ProtoReflect.Descriptor instead.
+func (*GetBankSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{264}
+}
+
+func (x *GetBankSettingsResponse) GetSettings() *BankSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+func (x *GetBankSettingsResponse) GetDeposits() int64 {
+	if x != nil {
+		return x.Deposits
+	}
+	return 0
+}
+
+func (x *GetBankSettingsResponse) GetDepositors() int64 {
+	if x != nil {
+		return x.Depositors
+	}
+	return 0
+}
+
+func (x *GetBankSettingsResponse) GetDebts() int64 {
+	if x != nil {
+		return x.Debts
+	}
+	return 0
+}
+
+func (x *GetBankSettingsResponse) GetDebtors() int64 {
+	if x != nil {
+		return x.Debtors
+	}
+	return 0
+}
+
+type SetBankSettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Settings      *BankSettings          `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetBankSettingsRequest) Reset() {
+	*x = SetBankSettingsRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[265]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetBankSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetBankSettingsRequest) ProtoMessage() {}
+
+func (x *SetBankSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[265]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetBankSettingsRequest.ProtoReflect.Descriptor instead.
+func (*SetBankSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{265}
+}
+
+func (x *SetBankSettingsRequest) GetSettings() *BankSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
 var File_api_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_api_user_v1_user_proto_rawDesc = "" +
@@ -17939,7 +18457,41 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x05spent\x18\x03 \x01(\x03R\x05spent\x12\x12\n" +
 	"\x04paid\x18\x04 \x01(\x03R\x04paid\"S\n" +
 	"\x1aSetBusinessSettingsRequest\x125\n" +
-	"\bsettings\x18\x01 \x01(\v2\x19.user.v1.BusinessSettingsR\bsettings*^\n" +
+	"\bsettings\x18\x01 \x01(\v2\x19.user.v1.BusinessSettingsR\bsettings\"\xce\x01\n" +
+	"\fBankSettings\x12!\n" +
+	"\fdeposit_rate\x18\x01 \x01(\x05R\vdepositRate\x12!\n" +
+	"\fdeposit_most\x18\x02 \x01(\x03R\vdepositMost\x12\x1b\n" +
+	"\tloan_rate\x18\x03 \x01(\x05R\bloanRate\x12\x1b\n" +
+	"\tloan_most\x18\x04 \x01(\x03R\bloanMost\x12\x1b\n" +
+	"\tloan_days\x18\x05 \x01(\x05R\bloanDays\x12!\n" +
+	"\fpenalty_rate\x18\x06 \x01(\x05R\vpenaltyRate\"\xa4\x01\n" +
+	"\vBankAccount\x12\x18\n" +
+	"\adeposit\x18\x01 \x01(\x03R\adeposit\x12\x12\n" +
+	"\x04debt\x18\x02 \x01(\x03R\x04debt\x12\x1a\n" +
+	"\bborrowed\x18\x03 \x01(\x03R\bborrowed\x121\n" +
+	"\x06due_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x05dueAt\x12\x18\n" +
+	"\aoverdue\x18\x05 \x01(\bR\aoverdue\"\x10\n" +
+	"\x0eGetBankRequest\"n\n" +
+	"\tBankState\x121\n" +
+	"\bsettings\x18\x01 \x01(\v2\x15.user.v1.BankSettingsR\bsettings\x12.\n" +
+	"\aaccount\x18\x02 \x01(\v2\x14.user.v1.BankAccountR\aaccount\"+\n" +
+	"\x11BankAmountRequest\x12\x16\n" +
+	"\x06amount\x18\x01 \x01(\x03R\x06amount\"j\n" +
+	"\x10BankMoveResponse\x12\x14\n" +
+	"\x05votes\x18\x01 \x01(\x03R\x05votes\x12\x18\n" +
+	"\abalance\x18\x02 \x01(\x03R\abalance\x12&\n" +
+	"\x04bank\x18\x03 \x01(\v2\x12.user.v1.BankStateR\x04bank\"\x18\n" +
+	"\x16GetBankSettingsRequest\"\xb8\x01\n" +
+	"\x17GetBankSettingsResponse\x121\n" +
+	"\bsettings\x18\x01 \x01(\v2\x15.user.v1.BankSettingsR\bsettings\x12\x1a\n" +
+	"\bdeposits\x18\x02 \x01(\x03R\bdeposits\x12\x1e\n" +
+	"\n" +
+	"depositors\x18\x03 \x01(\x03R\n" +
+	"depositors\x12\x14\n" +
+	"\x05debts\x18\x04 \x01(\x03R\x05debts\x12\x18\n" +
+	"\adebtors\x18\x05 \x01(\x03R\adebtors\"K\n" +
+	"\x16SetBankSettingsRequest\x121\n" +
+	"\bsettings\x18\x01 \x01(\v2\x15.user.v1.BankSettingsR\bsettings*^\n" +
 	"\n" +
 	"FieldPlace\x12\x1b\n" +
 	"\x17FIELD_PLACE_UNSPECIFIED\x10\x00\x12\x18\n" +
@@ -18019,7 +18571,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x18ROCKET_STATE_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13ROCKET_STATE_FLYING\x10\x01\x12\x17\n" +
 	"\x13ROCKET_STATE_CASHED\x10\x02\x12\x18\n" +
-	"\x14ROCKET_STATE_CRASHED\x10\x032\x9eJ\n" +
+	"\x14ROCKET_STATE_CRASHED\x10\x032\x8aN\n" +
 	"\vUserService\x12]\n" +
 	"\x12GetOrCreateByEmail\x12\".user.v1.GetOrCreateByEmailRequest\x1a#.user.v1.GetOrCreateByEmailResponse\x126\n" +
 	"\x05GetMe\x12\x15.user.v1.GetMeRequest\x1a\x16.user.v1.GetMeResponse\x12N\n" +
@@ -18157,7 +18709,15 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\vBuyBusiness\x12\x1b.user.v1.BuyBusinessRequest\x1a\x1c.user.v1.RunBusinessResponse\x12H\n" +
 	"\vRunBusiness\x12\x1b.user.v1.RunBusinessRequest\x1a\x1c.user.v1.RunBusinessResponse\x12`\n" +
 	"\x13GetBusinessSettings\x12#.user.v1.GetBusinessSettingsRequest\x1a$.user.v1.GetBusinessSettingsResponse\x12R\n" +
-	"\x13SetBusinessSettings\x12#.user.v1.SetBusinessSettingsRequest\x1a\x16.google.protobuf.EmptyB5Z3github.com/vexner67/freenet/user/api/user/v1;userv1b\x06proto3"
+	"\x13SetBusinessSettings\x12#.user.v1.SetBusinessSettingsRequest\x1a\x16.google.protobuf.Empty\x126\n" +
+	"\aGetBank\x12\x17.user.v1.GetBankRequest\x1a\x12.user.v1.BankState\x12C\n" +
+	"\n" +
+	"PutDeposit\x12\x1a.user.v1.BankAmountRequest\x1a\x19.user.v1.BankMoveResponse\x12D\n" +
+	"\vTakeDeposit\x12\x1a.user.v1.BankAmountRequest\x1a\x19.user.v1.BankMoveResponse\x12A\n" +
+	"\bTakeLoan\x12\x1a.user.v1.BankAmountRequest\x1a\x19.user.v1.BankMoveResponse\x12B\n" +
+	"\tRepayLoan\x12\x1a.user.v1.BankAmountRequest\x1a\x19.user.v1.BankMoveResponse\x12T\n" +
+	"\x0fGetBankSettings\x12\x1f.user.v1.GetBankSettingsRequest\x1a .user.v1.GetBankSettingsResponse\x12J\n" +
+	"\x0fSetBankSettings\x12\x1f.user.v1.SetBankSettingsRequest\x1a\x16.google.protobuf.EmptyB5Z3github.com/vexner67/freenet/user/api/user/v1;userv1b\x06proto3"
 
 var (
 	file_api_user_v1_user_proto_rawDescOnce sync.Once
@@ -18172,7 +18732,7 @@ func file_api_user_v1_user_proto_rawDescGZIP() []byte {
 }
 
 var file_api_user_v1_user_proto_enumTypes = make([]protoimpl.EnumInfo, 12)
-var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 262)
+var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 271)
 var file_api_user_v1_user_proto_goTypes = []any{
 	(FieldPlace)(0),                     // 0: user.v1.FieldPlace
 	(Audience)(0),                       // 1: user.v1.Audience
@@ -18443,32 +19003,41 @@ var file_api_user_v1_user_proto_goTypes = []any{
 	(*GetBusinessSettingsRequest)(nil),  // 266: user.v1.GetBusinessSettingsRequest
 	(*GetBusinessSettingsResponse)(nil), // 267: user.v1.GetBusinessSettingsResponse
 	(*SetBusinessSettingsRequest)(nil),  // 268: user.v1.SetBusinessSettingsRequest
-	nil,                                 // 269: user.v1.GetStickerAuthorsResponse.AuthorsEntry
-	nil,                                 // 270: user.v1.Miner.BackpackEntry
-	nil,                                 // 271: user.v1.Business.LoadEntry
-	nil,                                 // 272: user.v1.BusinessStock.UnitCostsEntry
-	nil,                                 // 273: user.v1.BusinessHour.SoldEntry
-	(*timestamppb.Timestamp)(nil),       // 274: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),               // 275: google.protobuf.Empty
+	(*BankSettings)(nil),                // 269: user.v1.BankSettings
+	(*BankAccount)(nil),                 // 270: user.v1.BankAccount
+	(*GetBankRequest)(nil),              // 271: user.v1.GetBankRequest
+	(*BankState)(nil),                   // 272: user.v1.BankState
+	(*BankAmountRequest)(nil),           // 273: user.v1.BankAmountRequest
+	(*BankMoveResponse)(nil),            // 274: user.v1.BankMoveResponse
+	(*GetBankSettingsRequest)(nil),      // 275: user.v1.GetBankSettingsRequest
+	(*GetBankSettingsResponse)(nil),     // 276: user.v1.GetBankSettingsResponse
+	(*SetBankSettingsRequest)(nil),      // 277: user.v1.SetBankSettingsRequest
+	nil,                                 // 278: user.v1.GetStickerAuthorsResponse.AuthorsEntry
+	nil,                                 // 279: user.v1.Miner.BackpackEntry
+	nil,                                 // 280: user.v1.Business.LoadEntry
+	nil,                                 // 281: user.v1.BusinessStock.UnitCostsEntry
+	nil,                                 // 282: user.v1.BusinessHour.SoldEntry
+	(*timestamppb.Timestamp)(nil),       // 283: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),               // 284: google.protobuf.Empty
 }
 var file_api_user_v1_user_proto_depIdxs = []int32{
 	5,   // 0: user.v1.User.gender:type_name -> user.v1.Gender
 	6,   // 1: user.v1.User.relationship:type_name -> user.v1.Relationship
 	7,   // 2: user.v1.User.worldview:type_name -> user.v1.Worldview
 	8,   // 3: user.v1.User.political_views:type_name -> user.v1.PoliticalViews
-	274, // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
+	283, // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
 	20,  // 5: user.v1.User.privacy:type_name -> user.v1.PrivacySettings
-	274, // 6: user.v1.User.purge_at:type_name -> google.protobuf.Timestamp
+	283, // 6: user.v1.User.purge_at:type_name -> google.protobuf.Timestamp
 	17,  // 7: user.v1.User.contacts:type_name -> user.v1.Contacts
 	18,  // 8: user.v1.User.interests:type_name -> user.v1.Interests
 	19,  // 9: user.v1.User.extra_fields:type_name -> user.v1.ExtraField
-	274, // 10: user.v1.User.registered_at:type_name -> google.protobuf.Timestamp
+	283, // 10: user.v1.User.registered_at:type_name -> google.protobuf.Timestamp
 	14,  // 11: user.v1.User.interface:type_name -> user.v1.InterfaceSettings
 	13,  // 12: user.v1.User.ban:type_name -> user.v1.Ban
-	274, // 13: user.v1.User.prime_until:type_name -> google.protobuf.Timestamp
+	283, // 13: user.v1.User.prime_until:type_name -> google.protobuf.Timestamp
 	164, // 14: user.v1.User.prime_style:type_name -> user.v1.PrimeStyle
-	274, // 15: user.v1.Ban.banned_at:type_name -> google.protobuf.Timestamp
-	274, // 16: user.v1.Ban.until:type_name -> google.protobuf.Timestamp
+	283, // 15: user.v1.Ban.banned_at:type_name -> google.protobuf.Timestamp
+	283, // 16: user.v1.Ban.until:type_name -> google.protobuf.Timestamp
 	14,  // 17: user.v1.UpdateInterfaceRequest.interface:type_name -> user.v1.InterfaceSettings
 	12,  // 18: user.v1.UpdateInterfaceResponse.user:type_name -> user.v1.User
 	0,   // 19: user.v1.ExtraField.place:type_name -> user.v1.FieldPlace
@@ -18486,12 +19055,12 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	6,   // 31: user.v1.PublicProfile.relationship:type_name -> user.v1.Relationship
 	7,   // 32: user.v1.PublicProfile.worldview:type_name -> user.v1.Worldview
 	8,   // 33: user.v1.PublicProfile.political_views:type_name -> user.v1.PoliticalViews
-	274, // 34: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
+	283, // 34: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
 	17,  // 35: user.v1.PublicProfile.contacts:type_name -> user.v1.Contacts
 	18,  // 36: user.v1.PublicProfile.interests:type_name -> user.v1.Interests
 	19,  // 37: user.v1.PublicProfile.extra_fields:type_name -> user.v1.ExtraField
-	274, // 38: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
-	274, // 39: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
+	283, // 38: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
+	283, // 39: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
 	13,  // 40: user.v1.PublicProfile.ban:type_name -> user.v1.Ban
 	164, // 41: user.v1.PublicProfile.prime_style:type_name -> user.v1.PrimeStyle
 	12,  // 42: user.v1.GetMeResponse.user:type_name -> user.v1.User
@@ -18499,7 +19068,7 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	6,   // 44: user.v1.UpdateProfileRequest.relationship:type_name -> user.v1.Relationship
 	7,   // 45: user.v1.UpdateProfileRequest.worldview:type_name -> user.v1.Worldview
 	8,   // 46: user.v1.UpdateProfileRequest.political_views:type_name -> user.v1.PoliticalViews
-	274, // 47: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
+	283, // 47: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
 	12,  // 48: user.v1.UpdateProfileResponse.user:type_name -> user.v1.User
 	17,  // 49: user.v1.UpdateContactsRequest.contacts:type_name -> user.v1.Contacts
 	12,  // 50: user.v1.UpdateContactsResponse.user:type_name -> user.v1.User
@@ -18527,7 +19096,7 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	100, // 72: user.v1.GetGiftCatalogResponse.backdrops:type_name -> user.v1.GiftTrait
 	100, // 73: user.v1.GetGiftCatalogResponse.symbols:type_name -> user.v1.GiftTrait
 	104, // 74: user.v1.SendGiftResponse.gift:type_name -> user.v1.Gift
-	274, // 75: user.v1.Gift.sent_at:type_name -> google.protobuf.Timestamp
+	283, // 75: user.v1.Gift.sent_at:type_name -> google.protobuf.Timestamp
 	21,  // 76: user.v1.Gift.sender:type_name -> user.v1.PublicProfile
 	104, // 77: user.v1.ListGiftsResponse.gifts:type_name -> user.v1.Gift
 	104, // 78: user.v1.UpgradeGiftResponse.gift:type_name -> user.v1.Gift
@@ -18537,20 +19106,20 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	21,  // 82: user.v1.Collectible.owner:type_name -> user.v1.PublicProfile
 	119, // 83: user.v1.Collectible.auction:type_name -> user.v1.GiftAuction
 	120, // 84: user.v1.Collectible.history:type_name -> user.v1.GiftHistoryLine
-	274, // 85: user.v1.GiftAuction.ends_at:type_name -> google.protobuf.Timestamp
+	283, // 85: user.v1.GiftAuction.ends_at:type_name -> google.protobuf.Timestamp
 	21,  // 86: user.v1.GiftAuction.seller:type_name -> user.v1.PublicProfile
 	21,  // 87: user.v1.GiftAuction.bidder:type_name -> user.v1.PublicProfile
-	274, // 88: user.v1.GiftHistoryLine.at:type_name -> google.protobuf.Timestamp
+	283, // 88: user.v1.GiftHistoryLine.at:type_name -> google.protobuf.Timestamp
 	21,  // 89: user.v1.GiftHistoryLine.from:type_name -> user.v1.PublicProfile
 	21,  // 90: user.v1.GiftHistoryLine.to:type_name -> user.v1.PublicProfile
 	118, // 91: user.v1.ListGiftMarketResponse.collectibles:type_name -> user.v1.Collectible
 	118, // 92: user.v1.ListGiftAuctionsResponse.collectibles:type_name -> user.v1.Collectible
-	274, // 93: user.v1.VoteOperation.created_at:type_name -> google.protobuf.Timestamp
+	283, // 93: user.v1.VoteOperation.created_at:type_name -> google.protobuf.Timestamp
 	137, // 94: user.v1.ListVoteOperationsResponse.operations:type_name -> user.v1.VoteOperation
 	139, // 95: user.v1.CreateVoucherResponse.voucher:type_name -> user.v1.Voucher
 	139, // 96: user.v1.ListVouchersResponse.vouchers:type_name -> user.v1.Voucher
 	157, // 97: user.v1.GetPrimeResponse.prices:type_name -> user.v1.PrimePrices
-	274, // 98: user.v1.BuyPrimeResponse.until:type_name -> google.protobuf.Timestamp
+	283, // 98: user.v1.BuyPrimeResponse.until:type_name -> google.protobuf.Timestamp
 	157, // 99: user.v1.SetPrimePricesRequest.prices:type_name -> user.v1.PrimePrices
 	164, // 100: user.v1.SetPrimeStyleRequest.style:type_name -> user.v1.PrimeStyle
 	10,  // 101: user.v1.GetDecorResponse.decor:type_name -> user.v1.Decor
@@ -18565,23 +19134,23 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	169, // 110: user.v1.SetCasinoRequest.prizes:type_name -> user.v1.CasinoPrize
 	172, // 111: user.v1.SetCasinoBetsRequest.aim:type_name -> user.v1.AimMultiplier
 	187, // 112: user.v1.BetEvent.outcomes:type_name -> user.v1.BetOutcome
-	274, // 113: user.v1.BetEvent.closes_at:type_name -> google.protobuf.Timestamp
-	274, // 114: user.v1.BetEvent.created_at:type_name -> google.protobuf.Timestamp
+	283, // 113: user.v1.BetEvent.closes_at:type_name -> google.protobuf.Timestamp
+	283, // 114: user.v1.BetEvent.created_at:type_name -> google.protobuf.Timestamp
 	188, // 115: user.v1.ListBetEventsResponse.events:type_name -> user.v1.BetEvent
-	274, // 116: user.v1.CreateBetEventRequest.closes_at:type_name -> google.protobuf.Timestamp
+	283, // 116: user.v1.CreateBetEventRequest.closes_at:type_name -> google.protobuf.Timestamp
 	200, // 117: user.v1.Ad.stats:type_name -> user.v1.AdStats
 	199, // 118: user.v1.ListAdsResponse.ads:type_name -> user.v1.Ad
 	199, // 119: user.v1.CreateAdResponse.ad:type_name -> user.v1.Ad
 	199, // 120: user.v1.EditAdResponse.ad:type_name -> user.v1.Ad
-	274, // 121: user.v1.BanUserRequest.until:type_name -> google.protobuf.Timestamp
+	283, // 121: user.v1.BanUserRequest.until:type_name -> google.protobuf.Timestamp
 	217, // 122: user.v1.GetStickerCatalogResponse.packs:type_name -> user.v1.StickerPack
 	217, // 123: user.v1.ListMyStickerPacksResponse.packs:type_name -> user.v1.StickerPack
 	217, // 124: user.v1.CreateStickerPackResponse.pack:type_name -> user.v1.StickerPack
 	217, // 125: user.v1.EditStickerPackResponse.pack:type_name -> user.v1.StickerPack
-	269, // 126: user.v1.GetStickerAuthorsResponse.authors:type_name -> user.v1.GetStickerAuthorsResponse.AuthorsEntry
+	278, // 126: user.v1.GetStickerAuthorsResponse.authors:type_name -> user.v1.GetStickerAuthorsResponse.AuthorsEntry
 	230, // 127: user.v1.MineSettings.veins:type_name -> user.v1.OreVein
 	231, // 128: user.v1.MineSettings.events:type_name -> user.v1.MineEvents
-	270, // 129: user.v1.Miner.backpack:type_name -> user.v1.Miner.BackpackEntry
+	279, // 129: user.v1.Miner.backpack:type_name -> user.v1.Miner.BackpackEntry
 	232, // 130: user.v1.MineState.settings:type_name -> user.v1.MineSettings
 	233, // 131: user.v1.MineState.miner:type_name -> user.v1.Miner
 	235, // 132: user.v1.DigOreResponse.mine:type_name -> user.v1.MineState
@@ -18593,27 +19162,27 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	247, // 138: user.v1.BusinessCatalog.offers:type_name -> user.v1.BusinessOfferSpec
 	249, // 139: user.v1.BusinessCatalog.professions:type_name -> user.v1.BusinessProfessionSpec
 	248, // 140: user.v1.BusinessOfferSpec.recipe:type_name -> user.v1.BusinessIngredient
-	274, // 141: user.v1.Business.ad_until:type_name -> google.protobuf.Timestamp
+	283, // 141: user.v1.Business.ad_until:type_name -> google.protobuf.Timestamp
 	252, // 142: user.v1.Business.supplies:type_name -> user.v1.BusinessStock
 	253, // 143: user.v1.Business.offers:type_name -> user.v1.BusinessOfferState
 	254, // 144: user.v1.Business.workers:type_name -> user.v1.BusinessWorker
 	255, // 145: user.v1.Business.candidates:type_name -> user.v1.BusinessCandidate
-	274, // 146: user.v1.Business.candidates_until:type_name -> google.protobuf.Timestamp
+	283, // 146: user.v1.Business.candidates_until:type_name -> google.protobuf.Timestamp
 	256, // 147: user.v1.Business.orders:type_name -> user.v1.BusinessOrder
 	257, // 148: user.v1.Business.contracts:type_name -> user.v1.BusinessContract
 	258, // 149: user.v1.Business.event:type_name -> user.v1.BusinessEvent
 	259, // 150: user.v1.Business.notes:type_name -> user.v1.BusinessNote
 	260, // 151: user.v1.Business.hours:type_name -> user.v1.BusinessHour
-	274, // 152: user.v1.Business.review_until:type_name -> google.protobuf.Timestamp
-	271, // 153: user.v1.Business.load:type_name -> user.v1.Business.LoadEntry
-	274, // 154: user.v1.Business.broken_until:type_name -> google.protobuf.Timestamp
-	272, // 155: user.v1.BusinessStock.unit_costs:type_name -> user.v1.BusinessStock.UnitCostsEntry
+	283, // 152: user.v1.Business.review_until:type_name -> google.protobuf.Timestamp
+	280, // 153: user.v1.Business.load:type_name -> user.v1.Business.LoadEntry
+	283, // 154: user.v1.Business.broken_until:type_name -> google.protobuf.Timestamp
+	281, // 155: user.v1.BusinessStock.unit_costs:type_name -> user.v1.BusinessStock.UnitCostsEntry
 	254, // 156: user.v1.BusinessCandidate.worker:type_name -> user.v1.BusinessWorker
-	274, // 157: user.v1.BusinessOrder.arrives:type_name -> google.protobuf.Timestamp
-	274, // 158: user.v1.BusinessEvent.until:type_name -> google.protobuf.Timestamp
-	274, // 159: user.v1.BusinessNote.at:type_name -> google.protobuf.Timestamp
-	274, // 160: user.v1.BusinessHour.hour:type_name -> google.protobuf.Timestamp
-	273, // 161: user.v1.BusinessHour.sold:type_name -> user.v1.BusinessHour.SoldEntry
+	283, // 157: user.v1.BusinessOrder.arrives:type_name -> google.protobuf.Timestamp
+	283, // 158: user.v1.BusinessEvent.until:type_name -> google.protobuf.Timestamp
+	283, // 159: user.v1.BusinessNote.at:type_name -> google.protobuf.Timestamp
+	283, // 160: user.v1.BusinessHour.hour:type_name -> google.protobuf.Timestamp
+	282, // 161: user.v1.BusinessHour.sold:type_name -> user.v1.BusinessHour.SoldEntry
 	244, // 162: user.v1.BusinessesState.settings:type_name -> user.v1.BusinessSettings
 	251, // 163: user.v1.BusinessesState.businesses:type_name -> user.v1.Business
 	245, // 164: user.v1.BusinessesState.catalog:type_name -> user.v1.BusinessCatalog
@@ -18621,267 +19190,287 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	262, // 166: user.v1.RunBusinessResponse.businesses:type_name -> user.v1.BusinessesState
 	244, // 167: user.v1.GetBusinessSettingsResponse.settings:type_name -> user.v1.BusinessSettings
 	244, // 168: user.v1.SetBusinessSettingsRequest.settings:type_name -> user.v1.BusinessSettings
-	22,  // 169: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
-	24,  // 170: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
-	26,  // 171: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
-	51,  // 172: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
-	53,  // 173: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
-	36,  // 174: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
-	15,  // 175: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
-	28,  // 176: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
-	30,  // 177: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
-	32,  // 178: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
-	50,  // 179: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
-	56,  // 180: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
-	34,  // 181: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
-	38,  // 182: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
-	58,  // 183: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
-	40,  // 184: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
-	42,  // 185: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
-	41,  // 186: user.v1.UserService.AcceptInvite:input_type -> user.v1.AcceptInviteRequest
-	43,  // 187: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
-	45,  // 188: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
-	45,  // 189: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
-	46,  // 190: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
-	47,  // 191: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
-	60,  // 192: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
-	64,  // 193: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
-	66,  // 194: user.v1.UserService.GetBoughtPosts:input_type -> user.v1.GetBoughtPostsRequest
-	68,  // 195: user.v1.UserService.BuyPost:input_type -> user.v1.BuyPostRequest
-	70,  // 196: user.v1.UserService.PayMessage:input_type -> user.v1.PayMessageRequest
-	72,  // 197: user.v1.UserService.RefundMessage:input_type -> user.v1.RefundMessageRequest
-	83,  // 198: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
-	85,  // 199: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
-	88,  // 200: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
-	62,  // 201: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
-	73,  // 202: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
-	74,  // 203: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
-	75,  // 204: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
-	77,  // 205: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
-	79,  // 206: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
-	80,  // 207: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
-	81,  // 208: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
-	90,  // 209: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
-	98,  // 210: user.v1.UserService.GetGiftCatalog:input_type -> user.v1.GetGiftCatalogRequest
-	102, // 211: user.v1.UserService.SendGift:input_type -> user.v1.SendGiftRequest
-	105, // 212: user.v1.UserService.ListGifts:input_type -> user.v1.ListGiftsRequest
-	107, // 213: user.v1.UserService.DeleteGift:input_type -> user.v1.DeleteGiftRequest
-	108, // 214: user.v1.UserService.SetGiftPrice:input_type -> user.v1.SetGiftPriceRequest
-	109, // 215: user.v1.UserService.UpgradeGift:input_type -> user.v1.UpgradeGiftRequest
-	111, // 216: user.v1.UserService.TransferGift:input_type -> user.v1.TransferGiftRequest
-	112, // 217: user.v1.UserService.SetGiftSale:input_type -> user.v1.SetGiftSaleRequest
-	114, // 218: user.v1.UserService.BuyGift:input_type -> user.v1.BuyGiftRequest
-	116, // 219: user.v1.UserService.GetCollectible:input_type -> user.v1.GetCollectibleRequest
-	121, // 220: user.v1.UserService.ListGiftMarket:input_type -> user.v1.ListGiftMarketRequest
-	123, // 221: user.v1.UserService.StartGiftAuction:input_type -> user.v1.StartGiftAuctionRequest
-	124, // 222: user.v1.UserService.MintGiftAuction:input_type -> user.v1.MintGiftAuctionRequest
-	126, // 223: user.v1.UserService.CancelGiftAuction:input_type -> user.v1.CancelGiftAuctionRequest
-	127, // 224: user.v1.UserService.BidGift:input_type -> user.v1.BidGiftRequest
-	129, // 225: user.v1.UserService.ListGiftAuctions:input_type -> user.v1.ListGiftAuctionsRequest
-	131, // 226: user.v1.UserService.SetGiftSupply:input_type -> user.v1.SetGiftSupplyRequest
-	215, // 227: user.v1.UserService.GetStickerCatalog:input_type -> user.v1.GetStickerCatalogRequest
-	218, // 228: user.v1.UserService.AddStickerPack:input_type -> user.v1.AddStickerPackRequest
-	219, // 229: user.v1.UserService.RemoveStickerPack:input_type -> user.v1.RemoveStickerPackRequest
-	220, // 230: user.v1.UserService.ListMyStickerPacks:input_type -> user.v1.ListMyStickerPacksRequest
-	222, // 231: user.v1.UserService.CreateStickerPack:input_type -> user.v1.CreateStickerPackRequest
-	224, // 232: user.v1.UserService.EditStickerPack:input_type -> user.v1.EditStickerPackRequest
-	226, // 233: user.v1.UserService.DeleteStickerPack:input_type -> user.v1.DeleteStickerPackRequest
-	228, // 234: user.v1.UserService.GetStickerAuthors:input_type -> user.v1.GetStickerAuthorsRequest
-	132, // 235: user.v1.UserService.TransferVotes:input_type -> user.v1.TransferVotesRequest
-	134, // 236: user.v1.UserService.RedeemVoucher:input_type -> user.v1.RedeemVoucherRequest
-	136, // 237: user.v1.UserService.ListVoteOperations:input_type -> user.v1.ListVoteOperationsRequest
-	140, // 238: user.v1.UserService.CreateVoucher:input_type -> user.v1.CreateVoucherRequest
-	142, // 239: user.v1.UserService.ListVouchers:input_type -> user.v1.ListVouchersRequest
-	144, // 240: user.v1.UserService.DeleteVoucher:input_type -> user.v1.DeleteVoucherRequest
-	145, // 241: user.v1.UserService.GetVoteRate:input_type -> user.v1.GetVoteRateRequest
-	147, // 242: user.v1.UserService.SetVoteRate:input_type -> user.v1.SetVoteRateRequest
-	148, // 243: user.v1.UserService.GetTreasury:input_type -> user.v1.GetTreasuryRequest
-	151, // 244: user.v1.UserService.GetBonus:input_type -> user.v1.GetBonusRequest
-	153, // 245: user.v1.UserService.ClaimBonus:input_type -> user.v1.ClaimBonusRequest
-	150, // 246: user.v1.UserService.SetEconomy:input_type -> user.v1.SetEconomyRequest
-	155, // 247: user.v1.UserService.RaiseRating:input_type -> user.v1.RaiseRatingRequest
-	158, // 248: user.v1.UserService.GetPrime:input_type -> user.v1.GetPrimeRequest
-	160, // 249: user.v1.UserService.BuyPrime:input_type -> user.v1.BuyPrimeRequest
-	162, // 250: user.v1.UserService.SetPrimePrices:input_type -> user.v1.SetPrimePricesRequest
-	163, // 251: user.v1.UserService.SetPrimeInvisible:input_type -> user.v1.SetPrimeInvisibleRequest
-	165, // 252: user.v1.UserService.SetPrimeStyle:input_type -> user.v1.SetPrimeStyleRequest
-	166, // 253: user.v1.UserService.GetDecor:input_type -> user.v1.GetDecorRequest
-	168, // 254: user.v1.UserService.SetDecor:input_type -> user.v1.SetDecorRequest
-	170, // 255: user.v1.UserService.GetCasino:input_type -> user.v1.GetCasinoRequest
-	173, // 256: user.v1.UserService.GetCasinoSettings:input_type -> user.v1.GetCasinoSettingsRequest
-	181, // 257: user.v1.UserService.SetCasino:input_type -> user.v1.SetCasinoRequest
-	182, // 258: user.v1.UserService.SpinCasino:input_type -> user.v1.SpinCasinoRequest
-	184, // 259: user.v1.UserService.SetCasinoBets:input_type -> user.v1.SetCasinoBetsRequest
-	185, // 260: user.v1.UserService.BetCasino:input_type -> user.v1.BetCasinoRequest
-	189, // 261: user.v1.UserService.ListBetEvents:input_type -> user.v1.ListBetEventsRequest
-	191, // 262: user.v1.UserService.CreateBetEvent:input_type -> user.v1.CreateBetEventRequest
-	193, // 263: user.v1.UserService.CloseBetEvent:input_type -> user.v1.BetEventRequest
-	194, // 264: user.v1.UserService.ResolveBetEvent:input_type -> user.v1.ResolveBetEventRequest
-	193, // 265: user.v1.UserService.CancelBetEvent:input_type -> user.v1.BetEventRequest
-	193, // 266: user.v1.UserService.DeleteBetEvent:input_type -> user.v1.BetEventRequest
-	192, // 267: user.v1.UserService.SetBetEventOdds:input_type -> user.v1.SetBetEventOddsRequest
-	195, // 268: user.v1.UserService.StakeBet:input_type -> user.v1.StakeBetRequest
-	176, // 269: user.v1.UserService.SetCasinoRocket:input_type -> user.v1.SetCasinoRocketRequest
-	177, // 270: user.v1.UserService.SetCasinoJackpot:input_type -> user.v1.SetCasinoJackpotRequest
-	178, // 271: user.v1.UserService.LaunchRocket:input_type -> user.v1.LaunchRocketRequest
-	179, // 272: user.v1.UserService.GetRocket:input_type -> user.v1.RocketRequest
-	179, // 273: user.v1.UserService.CashRocket:input_type -> user.v1.RocketRequest
-	197, // 274: user.v1.UserService.SetVerified:input_type -> user.v1.SetVerifiedRequest
-	198, // 275: user.v1.UserService.SetAlert:input_type -> user.v1.SetAlertRequest
-	201, // 276: user.v1.UserService.ListAds:input_type -> user.v1.ListAdsRequest
-	203, // 277: user.v1.UserService.CreateAd:input_type -> user.v1.CreateAdRequest
-	205, // 278: user.v1.UserService.EditAd:input_type -> user.v1.EditAdRequest
-	207, // 279: user.v1.UserService.DeleteAd:input_type -> user.v1.DeleteAdRequest
-	209, // 280: user.v1.UserService.ViewAd:input_type -> user.v1.ViewAdRequest
-	211, // 281: user.v1.UserService.ClickAd:input_type -> user.v1.ClickAdRequest
-	213, // 282: user.v1.UserService.BanUser:input_type -> user.v1.BanUserRequest
-	214, // 283: user.v1.UserService.UnbanUser:input_type -> user.v1.UnbanUserRequest
-	92,  // 284: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
-	94,  // 285: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
-	96,  // 286: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
-	234, // 287: user.v1.UserService.GetMine:input_type -> user.v1.GetMineRequest
-	236, // 288: user.v1.UserService.DigOre:input_type -> user.v1.DigOreRequest
-	238, // 289: user.v1.UserService.SellOre:input_type -> user.v1.SellOreRequest
-	240, // 290: user.v1.UserService.GetMineSettings:input_type -> user.v1.GetMineSettingsRequest
-	242, // 291: user.v1.UserService.SetMine:input_type -> user.v1.SetMineRequest
-	261, // 292: user.v1.UserService.GetBusinesses:input_type -> user.v1.GetBusinessesRequest
-	263, // 293: user.v1.UserService.BuyBusiness:input_type -> user.v1.BuyBusinessRequest
-	264, // 294: user.v1.UserService.RunBusiness:input_type -> user.v1.RunBusinessRequest
-	266, // 295: user.v1.UserService.GetBusinessSettings:input_type -> user.v1.GetBusinessSettingsRequest
-	268, // 296: user.v1.UserService.SetBusinessSettings:input_type -> user.v1.SetBusinessSettingsRequest
-	23,  // 297: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
-	25,  // 298: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
-	27,  // 299: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
-	52,  // 300: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
-	54,  // 301: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
-	37,  // 302: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
-	16,  // 303: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
-	29,  // 304: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
-	31,  // 305: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
-	33,  // 306: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
-	55,  // 307: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
-	57,  // 308: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
-	35,  // 309: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
-	39,  // 310: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
-	59,  // 311: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
-	275, // 312: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
-	275, // 313: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
-	275, // 314: user.v1.UserService.AcceptInvite:output_type -> google.protobuf.Empty
-	44,  // 315: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
-	49,  // 316: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
-	49,  // 317: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
-	275, // 318: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
-	48,  // 319: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
-	61,  // 320: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
-	65,  // 321: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
-	67,  // 322: user.v1.UserService.GetBoughtPosts:output_type -> user.v1.GetBoughtPostsResponse
-	69,  // 323: user.v1.UserService.BuyPost:output_type -> user.v1.BuyPostResponse
-	71,  // 324: user.v1.UserService.PayMessage:output_type -> user.v1.PayMessageResponse
-	275, // 325: user.v1.UserService.RefundMessage:output_type -> google.protobuf.Empty
-	84,  // 326: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
-	86,  // 327: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
-	89,  // 328: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
-	63,  // 329: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
-	275, // 330: user.v1.UserService.Block:output_type -> google.protobuf.Empty
-	275, // 331: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
-	76,  // 332: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
-	78,  // 333: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
-	275, // 334: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
-	275, // 335: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
-	82,  // 336: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
-	91,  // 337: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
-	99,  // 338: user.v1.UserService.GetGiftCatalog:output_type -> user.v1.GetGiftCatalogResponse
-	103, // 339: user.v1.UserService.SendGift:output_type -> user.v1.SendGiftResponse
-	106, // 340: user.v1.UserService.ListGifts:output_type -> user.v1.ListGiftsResponse
-	275, // 341: user.v1.UserService.DeleteGift:output_type -> google.protobuf.Empty
-	275, // 342: user.v1.UserService.SetGiftPrice:output_type -> google.protobuf.Empty
-	110, // 343: user.v1.UserService.UpgradeGift:output_type -> user.v1.UpgradeGiftResponse
-	275, // 344: user.v1.UserService.TransferGift:output_type -> google.protobuf.Empty
-	113, // 345: user.v1.UserService.SetGiftSale:output_type -> user.v1.SetGiftSaleResponse
-	115, // 346: user.v1.UserService.BuyGift:output_type -> user.v1.BuyGiftResponse
-	117, // 347: user.v1.UserService.GetCollectible:output_type -> user.v1.GetCollectibleResponse
-	122, // 348: user.v1.UserService.ListGiftMarket:output_type -> user.v1.ListGiftMarketResponse
-	275, // 349: user.v1.UserService.StartGiftAuction:output_type -> google.protobuf.Empty
-	125, // 350: user.v1.UserService.MintGiftAuction:output_type -> user.v1.MintGiftAuctionResponse
-	275, // 351: user.v1.UserService.CancelGiftAuction:output_type -> google.protobuf.Empty
-	128, // 352: user.v1.UserService.BidGift:output_type -> user.v1.BidGiftResponse
-	130, // 353: user.v1.UserService.ListGiftAuctions:output_type -> user.v1.ListGiftAuctionsResponse
-	275, // 354: user.v1.UserService.SetGiftSupply:output_type -> google.protobuf.Empty
-	216, // 355: user.v1.UserService.GetStickerCatalog:output_type -> user.v1.GetStickerCatalogResponse
-	275, // 356: user.v1.UserService.AddStickerPack:output_type -> google.protobuf.Empty
-	275, // 357: user.v1.UserService.RemoveStickerPack:output_type -> google.protobuf.Empty
-	221, // 358: user.v1.UserService.ListMyStickerPacks:output_type -> user.v1.ListMyStickerPacksResponse
-	223, // 359: user.v1.UserService.CreateStickerPack:output_type -> user.v1.CreateStickerPackResponse
-	225, // 360: user.v1.UserService.EditStickerPack:output_type -> user.v1.EditStickerPackResponse
-	227, // 361: user.v1.UserService.DeleteStickerPack:output_type -> user.v1.DeleteStickerPackResponse
-	229, // 362: user.v1.UserService.GetStickerAuthors:output_type -> user.v1.GetStickerAuthorsResponse
-	133, // 363: user.v1.UserService.TransferVotes:output_type -> user.v1.TransferVotesResponse
-	135, // 364: user.v1.UserService.RedeemVoucher:output_type -> user.v1.RedeemVoucherResponse
-	138, // 365: user.v1.UserService.ListVoteOperations:output_type -> user.v1.ListVoteOperationsResponse
-	141, // 366: user.v1.UserService.CreateVoucher:output_type -> user.v1.CreateVoucherResponse
-	143, // 367: user.v1.UserService.ListVouchers:output_type -> user.v1.ListVouchersResponse
-	275, // 368: user.v1.UserService.DeleteVoucher:output_type -> google.protobuf.Empty
-	146, // 369: user.v1.UserService.GetVoteRate:output_type -> user.v1.GetVoteRateResponse
-	275, // 370: user.v1.UserService.SetVoteRate:output_type -> google.protobuf.Empty
-	149, // 371: user.v1.UserService.GetTreasury:output_type -> user.v1.GetTreasuryResponse
-	152, // 372: user.v1.UserService.GetBonus:output_type -> user.v1.GetBonusResponse
-	154, // 373: user.v1.UserService.ClaimBonus:output_type -> user.v1.ClaimBonusResponse
-	275, // 374: user.v1.UserService.SetEconomy:output_type -> google.protobuf.Empty
-	156, // 375: user.v1.UserService.RaiseRating:output_type -> user.v1.RaiseRatingResponse
-	159, // 376: user.v1.UserService.GetPrime:output_type -> user.v1.GetPrimeResponse
-	161, // 377: user.v1.UserService.BuyPrime:output_type -> user.v1.BuyPrimeResponse
-	275, // 378: user.v1.UserService.SetPrimePrices:output_type -> google.protobuf.Empty
-	275, // 379: user.v1.UserService.SetPrimeInvisible:output_type -> google.protobuf.Empty
-	275, // 380: user.v1.UserService.SetPrimeStyle:output_type -> google.protobuf.Empty
-	167, // 381: user.v1.UserService.GetDecor:output_type -> user.v1.GetDecorResponse
-	275, // 382: user.v1.UserService.SetDecor:output_type -> google.protobuf.Empty
-	171, // 383: user.v1.UserService.GetCasino:output_type -> user.v1.GetCasinoResponse
-	174, // 384: user.v1.UserService.GetCasinoSettings:output_type -> user.v1.GetCasinoSettingsResponse
-	275, // 385: user.v1.UserService.SetCasino:output_type -> google.protobuf.Empty
-	183, // 386: user.v1.UserService.SpinCasino:output_type -> user.v1.SpinCasinoResponse
-	275, // 387: user.v1.UserService.SetCasinoBets:output_type -> google.protobuf.Empty
-	186, // 388: user.v1.UserService.BetCasino:output_type -> user.v1.BetCasinoResponse
-	190, // 389: user.v1.UserService.ListBetEvents:output_type -> user.v1.ListBetEventsResponse
-	188, // 390: user.v1.UserService.CreateBetEvent:output_type -> user.v1.BetEvent
-	275, // 391: user.v1.UserService.CloseBetEvent:output_type -> google.protobuf.Empty
-	275, // 392: user.v1.UserService.ResolveBetEvent:output_type -> google.protobuf.Empty
-	275, // 393: user.v1.UserService.CancelBetEvent:output_type -> google.protobuf.Empty
-	275, // 394: user.v1.UserService.DeleteBetEvent:output_type -> google.protobuf.Empty
-	275, // 395: user.v1.UserService.SetBetEventOdds:output_type -> google.protobuf.Empty
-	196, // 396: user.v1.UserService.StakeBet:output_type -> user.v1.StakeBetResponse
-	275, // 397: user.v1.UserService.SetCasinoRocket:output_type -> google.protobuf.Empty
-	275, // 398: user.v1.UserService.SetCasinoJackpot:output_type -> google.protobuf.Empty
-	180, // 399: user.v1.UserService.LaunchRocket:output_type -> user.v1.RocketRound
-	180, // 400: user.v1.UserService.GetRocket:output_type -> user.v1.RocketRound
-	180, // 401: user.v1.UserService.CashRocket:output_type -> user.v1.RocketRound
-	275, // 402: user.v1.UserService.SetVerified:output_type -> google.protobuf.Empty
-	275, // 403: user.v1.UserService.SetAlert:output_type -> google.protobuf.Empty
-	202, // 404: user.v1.UserService.ListAds:output_type -> user.v1.ListAdsResponse
-	204, // 405: user.v1.UserService.CreateAd:output_type -> user.v1.CreateAdResponse
-	206, // 406: user.v1.UserService.EditAd:output_type -> user.v1.EditAdResponse
-	208, // 407: user.v1.UserService.DeleteAd:output_type -> user.v1.DeleteAdResponse
-	210, // 408: user.v1.UserService.ViewAd:output_type -> user.v1.ViewAdResponse
-	212, // 409: user.v1.UserService.ClickAd:output_type -> user.v1.ClickAdResponse
-	275, // 410: user.v1.UserService.BanUser:output_type -> google.protobuf.Empty
-	275, // 411: user.v1.UserService.UnbanUser:output_type -> google.protobuf.Empty
-	93,  // 412: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
-	95,  // 413: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
-	97,  // 414: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
-	235, // 415: user.v1.UserService.GetMine:output_type -> user.v1.MineState
-	237, // 416: user.v1.UserService.DigOre:output_type -> user.v1.DigOreResponse
-	239, // 417: user.v1.UserService.SellOre:output_type -> user.v1.SellOreResponse
-	241, // 418: user.v1.UserService.GetMineSettings:output_type -> user.v1.GetMineSettingsResponse
-	275, // 419: user.v1.UserService.SetMine:output_type -> google.protobuf.Empty
-	262, // 420: user.v1.UserService.GetBusinesses:output_type -> user.v1.BusinessesState
-	265, // 421: user.v1.UserService.BuyBusiness:output_type -> user.v1.RunBusinessResponse
-	265, // 422: user.v1.UserService.RunBusiness:output_type -> user.v1.RunBusinessResponse
-	267, // 423: user.v1.UserService.GetBusinessSettings:output_type -> user.v1.GetBusinessSettingsResponse
-	275, // 424: user.v1.UserService.SetBusinessSettings:output_type -> google.protobuf.Empty
-	297, // [297:425] is the sub-list for method output_type
-	169, // [169:297] is the sub-list for method input_type
-	169, // [169:169] is the sub-list for extension type_name
-	169, // [169:169] is the sub-list for extension extendee
-	0,   // [0:169] is the sub-list for field type_name
+	283, // 169: user.v1.BankAccount.due_at:type_name -> google.protobuf.Timestamp
+	269, // 170: user.v1.BankState.settings:type_name -> user.v1.BankSettings
+	270, // 171: user.v1.BankState.account:type_name -> user.v1.BankAccount
+	272, // 172: user.v1.BankMoveResponse.bank:type_name -> user.v1.BankState
+	269, // 173: user.v1.GetBankSettingsResponse.settings:type_name -> user.v1.BankSettings
+	269, // 174: user.v1.SetBankSettingsRequest.settings:type_name -> user.v1.BankSettings
+	22,  // 175: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
+	24,  // 176: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
+	26,  // 177: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
+	51,  // 178: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
+	53,  // 179: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
+	36,  // 180: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
+	15,  // 181: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
+	28,  // 182: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
+	30,  // 183: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
+	32,  // 184: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
+	50,  // 185: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
+	56,  // 186: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
+	34,  // 187: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
+	38,  // 188: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
+	58,  // 189: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
+	40,  // 190: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
+	42,  // 191: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
+	41,  // 192: user.v1.UserService.AcceptInvite:input_type -> user.v1.AcceptInviteRequest
+	43,  // 193: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
+	45,  // 194: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
+	45,  // 195: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
+	46,  // 196: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
+	47,  // 197: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
+	60,  // 198: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
+	64,  // 199: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
+	66,  // 200: user.v1.UserService.GetBoughtPosts:input_type -> user.v1.GetBoughtPostsRequest
+	68,  // 201: user.v1.UserService.BuyPost:input_type -> user.v1.BuyPostRequest
+	70,  // 202: user.v1.UserService.PayMessage:input_type -> user.v1.PayMessageRequest
+	72,  // 203: user.v1.UserService.RefundMessage:input_type -> user.v1.RefundMessageRequest
+	83,  // 204: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
+	85,  // 205: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
+	88,  // 206: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
+	62,  // 207: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
+	73,  // 208: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
+	74,  // 209: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
+	75,  // 210: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
+	77,  // 211: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
+	79,  // 212: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
+	80,  // 213: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
+	81,  // 214: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
+	90,  // 215: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
+	98,  // 216: user.v1.UserService.GetGiftCatalog:input_type -> user.v1.GetGiftCatalogRequest
+	102, // 217: user.v1.UserService.SendGift:input_type -> user.v1.SendGiftRequest
+	105, // 218: user.v1.UserService.ListGifts:input_type -> user.v1.ListGiftsRequest
+	107, // 219: user.v1.UserService.DeleteGift:input_type -> user.v1.DeleteGiftRequest
+	108, // 220: user.v1.UserService.SetGiftPrice:input_type -> user.v1.SetGiftPriceRequest
+	109, // 221: user.v1.UserService.UpgradeGift:input_type -> user.v1.UpgradeGiftRequest
+	111, // 222: user.v1.UserService.TransferGift:input_type -> user.v1.TransferGiftRequest
+	112, // 223: user.v1.UserService.SetGiftSale:input_type -> user.v1.SetGiftSaleRequest
+	114, // 224: user.v1.UserService.BuyGift:input_type -> user.v1.BuyGiftRequest
+	116, // 225: user.v1.UserService.GetCollectible:input_type -> user.v1.GetCollectibleRequest
+	121, // 226: user.v1.UserService.ListGiftMarket:input_type -> user.v1.ListGiftMarketRequest
+	123, // 227: user.v1.UserService.StartGiftAuction:input_type -> user.v1.StartGiftAuctionRequest
+	124, // 228: user.v1.UserService.MintGiftAuction:input_type -> user.v1.MintGiftAuctionRequest
+	126, // 229: user.v1.UserService.CancelGiftAuction:input_type -> user.v1.CancelGiftAuctionRequest
+	127, // 230: user.v1.UserService.BidGift:input_type -> user.v1.BidGiftRequest
+	129, // 231: user.v1.UserService.ListGiftAuctions:input_type -> user.v1.ListGiftAuctionsRequest
+	131, // 232: user.v1.UserService.SetGiftSupply:input_type -> user.v1.SetGiftSupplyRequest
+	215, // 233: user.v1.UserService.GetStickerCatalog:input_type -> user.v1.GetStickerCatalogRequest
+	218, // 234: user.v1.UserService.AddStickerPack:input_type -> user.v1.AddStickerPackRequest
+	219, // 235: user.v1.UserService.RemoveStickerPack:input_type -> user.v1.RemoveStickerPackRequest
+	220, // 236: user.v1.UserService.ListMyStickerPacks:input_type -> user.v1.ListMyStickerPacksRequest
+	222, // 237: user.v1.UserService.CreateStickerPack:input_type -> user.v1.CreateStickerPackRequest
+	224, // 238: user.v1.UserService.EditStickerPack:input_type -> user.v1.EditStickerPackRequest
+	226, // 239: user.v1.UserService.DeleteStickerPack:input_type -> user.v1.DeleteStickerPackRequest
+	228, // 240: user.v1.UserService.GetStickerAuthors:input_type -> user.v1.GetStickerAuthorsRequest
+	132, // 241: user.v1.UserService.TransferVotes:input_type -> user.v1.TransferVotesRequest
+	134, // 242: user.v1.UserService.RedeemVoucher:input_type -> user.v1.RedeemVoucherRequest
+	136, // 243: user.v1.UserService.ListVoteOperations:input_type -> user.v1.ListVoteOperationsRequest
+	140, // 244: user.v1.UserService.CreateVoucher:input_type -> user.v1.CreateVoucherRequest
+	142, // 245: user.v1.UserService.ListVouchers:input_type -> user.v1.ListVouchersRequest
+	144, // 246: user.v1.UserService.DeleteVoucher:input_type -> user.v1.DeleteVoucherRequest
+	145, // 247: user.v1.UserService.GetVoteRate:input_type -> user.v1.GetVoteRateRequest
+	147, // 248: user.v1.UserService.SetVoteRate:input_type -> user.v1.SetVoteRateRequest
+	148, // 249: user.v1.UserService.GetTreasury:input_type -> user.v1.GetTreasuryRequest
+	151, // 250: user.v1.UserService.GetBonus:input_type -> user.v1.GetBonusRequest
+	153, // 251: user.v1.UserService.ClaimBonus:input_type -> user.v1.ClaimBonusRequest
+	150, // 252: user.v1.UserService.SetEconomy:input_type -> user.v1.SetEconomyRequest
+	155, // 253: user.v1.UserService.RaiseRating:input_type -> user.v1.RaiseRatingRequest
+	158, // 254: user.v1.UserService.GetPrime:input_type -> user.v1.GetPrimeRequest
+	160, // 255: user.v1.UserService.BuyPrime:input_type -> user.v1.BuyPrimeRequest
+	162, // 256: user.v1.UserService.SetPrimePrices:input_type -> user.v1.SetPrimePricesRequest
+	163, // 257: user.v1.UserService.SetPrimeInvisible:input_type -> user.v1.SetPrimeInvisibleRequest
+	165, // 258: user.v1.UserService.SetPrimeStyle:input_type -> user.v1.SetPrimeStyleRequest
+	166, // 259: user.v1.UserService.GetDecor:input_type -> user.v1.GetDecorRequest
+	168, // 260: user.v1.UserService.SetDecor:input_type -> user.v1.SetDecorRequest
+	170, // 261: user.v1.UserService.GetCasino:input_type -> user.v1.GetCasinoRequest
+	173, // 262: user.v1.UserService.GetCasinoSettings:input_type -> user.v1.GetCasinoSettingsRequest
+	181, // 263: user.v1.UserService.SetCasino:input_type -> user.v1.SetCasinoRequest
+	182, // 264: user.v1.UserService.SpinCasino:input_type -> user.v1.SpinCasinoRequest
+	184, // 265: user.v1.UserService.SetCasinoBets:input_type -> user.v1.SetCasinoBetsRequest
+	185, // 266: user.v1.UserService.BetCasino:input_type -> user.v1.BetCasinoRequest
+	189, // 267: user.v1.UserService.ListBetEvents:input_type -> user.v1.ListBetEventsRequest
+	191, // 268: user.v1.UserService.CreateBetEvent:input_type -> user.v1.CreateBetEventRequest
+	193, // 269: user.v1.UserService.CloseBetEvent:input_type -> user.v1.BetEventRequest
+	194, // 270: user.v1.UserService.ResolveBetEvent:input_type -> user.v1.ResolveBetEventRequest
+	193, // 271: user.v1.UserService.CancelBetEvent:input_type -> user.v1.BetEventRequest
+	193, // 272: user.v1.UserService.DeleteBetEvent:input_type -> user.v1.BetEventRequest
+	192, // 273: user.v1.UserService.SetBetEventOdds:input_type -> user.v1.SetBetEventOddsRequest
+	195, // 274: user.v1.UserService.StakeBet:input_type -> user.v1.StakeBetRequest
+	176, // 275: user.v1.UserService.SetCasinoRocket:input_type -> user.v1.SetCasinoRocketRequest
+	177, // 276: user.v1.UserService.SetCasinoJackpot:input_type -> user.v1.SetCasinoJackpotRequest
+	178, // 277: user.v1.UserService.LaunchRocket:input_type -> user.v1.LaunchRocketRequest
+	179, // 278: user.v1.UserService.GetRocket:input_type -> user.v1.RocketRequest
+	179, // 279: user.v1.UserService.CashRocket:input_type -> user.v1.RocketRequest
+	197, // 280: user.v1.UserService.SetVerified:input_type -> user.v1.SetVerifiedRequest
+	198, // 281: user.v1.UserService.SetAlert:input_type -> user.v1.SetAlertRequest
+	201, // 282: user.v1.UserService.ListAds:input_type -> user.v1.ListAdsRequest
+	203, // 283: user.v1.UserService.CreateAd:input_type -> user.v1.CreateAdRequest
+	205, // 284: user.v1.UserService.EditAd:input_type -> user.v1.EditAdRequest
+	207, // 285: user.v1.UserService.DeleteAd:input_type -> user.v1.DeleteAdRequest
+	209, // 286: user.v1.UserService.ViewAd:input_type -> user.v1.ViewAdRequest
+	211, // 287: user.v1.UserService.ClickAd:input_type -> user.v1.ClickAdRequest
+	213, // 288: user.v1.UserService.BanUser:input_type -> user.v1.BanUserRequest
+	214, // 289: user.v1.UserService.UnbanUser:input_type -> user.v1.UnbanUserRequest
+	92,  // 290: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
+	94,  // 291: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
+	96,  // 292: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
+	234, // 293: user.v1.UserService.GetMine:input_type -> user.v1.GetMineRequest
+	236, // 294: user.v1.UserService.DigOre:input_type -> user.v1.DigOreRequest
+	238, // 295: user.v1.UserService.SellOre:input_type -> user.v1.SellOreRequest
+	240, // 296: user.v1.UserService.GetMineSettings:input_type -> user.v1.GetMineSettingsRequest
+	242, // 297: user.v1.UserService.SetMine:input_type -> user.v1.SetMineRequest
+	261, // 298: user.v1.UserService.GetBusinesses:input_type -> user.v1.GetBusinessesRequest
+	263, // 299: user.v1.UserService.BuyBusiness:input_type -> user.v1.BuyBusinessRequest
+	264, // 300: user.v1.UserService.RunBusiness:input_type -> user.v1.RunBusinessRequest
+	266, // 301: user.v1.UserService.GetBusinessSettings:input_type -> user.v1.GetBusinessSettingsRequest
+	268, // 302: user.v1.UserService.SetBusinessSettings:input_type -> user.v1.SetBusinessSettingsRequest
+	271, // 303: user.v1.UserService.GetBank:input_type -> user.v1.GetBankRequest
+	273, // 304: user.v1.UserService.PutDeposit:input_type -> user.v1.BankAmountRequest
+	273, // 305: user.v1.UserService.TakeDeposit:input_type -> user.v1.BankAmountRequest
+	273, // 306: user.v1.UserService.TakeLoan:input_type -> user.v1.BankAmountRequest
+	273, // 307: user.v1.UserService.RepayLoan:input_type -> user.v1.BankAmountRequest
+	275, // 308: user.v1.UserService.GetBankSettings:input_type -> user.v1.GetBankSettingsRequest
+	277, // 309: user.v1.UserService.SetBankSettings:input_type -> user.v1.SetBankSettingsRequest
+	23,  // 310: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
+	25,  // 311: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
+	27,  // 312: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
+	52,  // 313: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
+	54,  // 314: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
+	37,  // 315: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
+	16,  // 316: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
+	29,  // 317: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
+	31,  // 318: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
+	33,  // 319: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
+	55,  // 320: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
+	57,  // 321: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
+	35,  // 322: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
+	39,  // 323: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
+	59,  // 324: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
+	284, // 325: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
+	284, // 326: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
+	284, // 327: user.v1.UserService.AcceptInvite:output_type -> google.protobuf.Empty
+	44,  // 328: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
+	49,  // 329: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
+	49,  // 330: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
+	284, // 331: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
+	48,  // 332: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
+	61,  // 333: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
+	65,  // 334: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
+	67,  // 335: user.v1.UserService.GetBoughtPosts:output_type -> user.v1.GetBoughtPostsResponse
+	69,  // 336: user.v1.UserService.BuyPost:output_type -> user.v1.BuyPostResponse
+	71,  // 337: user.v1.UserService.PayMessage:output_type -> user.v1.PayMessageResponse
+	284, // 338: user.v1.UserService.RefundMessage:output_type -> google.protobuf.Empty
+	84,  // 339: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
+	86,  // 340: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
+	89,  // 341: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
+	63,  // 342: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
+	284, // 343: user.v1.UserService.Block:output_type -> google.protobuf.Empty
+	284, // 344: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
+	76,  // 345: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
+	78,  // 346: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
+	284, // 347: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
+	284, // 348: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
+	82,  // 349: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
+	91,  // 350: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
+	99,  // 351: user.v1.UserService.GetGiftCatalog:output_type -> user.v1.GetGiftCatalogResponse
+	103, // 352: user.v1.UserService.SendGift:output_type -> user.v1.SendGiftResponse
+	106, // 353: user.v1.UserService.ListGifts:output_type -> user.v1.ListGiftsResponse
+	284, // 354: user.v1.UserService.DeleteGift:output_type -> google.protobuf.Empty
+	284, // 355: user.v1.UserService.SetGiftPrice:output_type -> google.protobuf.Empty
+	110, // 356: user.v1.UserService.UpgradeGift:output_type -> user.v1.UpgradeGiftResponse
+	284, // 357: user.v1.UserService.TransferGift:output_type -> google.protobuf.Empty
+	113, // 358: user.v1.UserService.SetGiftSale:output_type -> user.v1.SetGiftSaleResponse
+	115, // 359: user.v1.UserService.BuyGift:output_type -> user.v1.BuyGiftResponse
+	117, // 360: user.v1.UserService.GetCollectible:output_type -> user.v1.GetCollectibleResponse
+	122, // 361: user.v1.UserService.ListGiftMarket:output_type -> user.v1.ListGiftMarketResponse
+	284, // 362: user.v1.UserService.StartGiftAuction:output_type -> google.protobuf.Empty
+	125, // 363: user.v1.UserService.MintGiftAuction:output_type -> user.v1.MintGiftAuctionResponse
+	284, // 364: user.v1.UserService.CancelGiftAuction:output_type -> google.protobuf.Empty
+	128, // 365: user.v1.UserService.BidGift:output_type -> user.v1.BidGiftResponse
+	130, // 366: user.v1.UserService.ListGiftAuctions:output_type -> user.v1.ListGiftAuctionsResponse
+	284, // 367: user.v1.UserService.SetGiftSupply:output_type -> google.protobuf.Empty
+	216, // 368: user.v1.UserService.GetStickerCatalog:output_type -> user.v1.GetStickerCatalogResponse
+	284, // 369: user.v1.UserService.AddStickerPack:output_type -> google.protobuf.Empty
+	284, // 370: user.v1.UserService.RemoveStickerPack:output_type -> google.protobuf.Empty
+	221, // 371: user.v1.UserService.ListMyStickerPacks:output_type -> user.v1.ListMyStickerPacksResponse
+	223, // 372: user.v1.UserService.CreateStickerPack:output_type -> user.v1.CreateStickerPackResponse
+	225, // 373: user.v1.UserService.EditStickerPack:output_type -> user.v1.EditStickerPackResponse
+	227, // 374: user.v1.UserService.DeleteStickerPack:output_type -> user.v1.DeleteStickerPackResponse
+	229, // 375: user.v1.UserService.GetStickerAuthors:output_type -> user.v1.GetStickerAuthorsResponse
+	133, // 376: user.v1.UserService.TransferVotes:output_type -> user.v1.TransferVotesResponse
+	135, // 377: user.v1.UserService.RedeemVoucher:output_type -> user.v1.RedeemVoucherResponse
+	138, // 378: user.v1.UserService.ListVoteOperations:output_type -> user.v1.ListVoteOperationsResponse
+	141, // 379: user.v1.UserService.CreateVoucher:output_type -> user.v1.CreateVoucherResponse
+	143, // 380: user.v1.UserService.ListVouchers:output_type -> user.v1.ListVouchersResponse
+	284, // 381: user.v1.UserService.DeleteVoucher:output_type -> google.protobuf.Empty
+	146, // 382: user.v1.UserService.GetVoteRate:output_type -> user.v1.GetVoteRateResponse
+	284, // 383: user.v1.UserService.SetVoteRate:output_type -> google.protobuf.Empty
+	149, // 384: user.v1.UserService.GetTreasury:output_type -> user.v1.GetTreasuryResponse
+	152, // 385: user.v1.UserService.GetBonus:output_type -> user.v1.GetBonusResponse
+	154, // 386: user.v1.UserService.ClaimBonus:output_type -> user.v1.ClaimBonusResponse
+	284, // 387: user.v1.UserService.SetEconomy:output_type -> google.protobuf.Empty
+	156, // 388: user.v1.UserService.RaiseRating:output_type -> user.v1.RaiseRatingResponse
+	159, // 389: user.v1.UserService.GetPrime:output_type -> user.v1.GetPrimeResponse
+	161, // 390: user.v1.UserService.BuyPrime:output_type -> user.v1.BuyPrimeResponse
+	284, // 391: user.v1.UserService.SetPrimePrices:output_type -> google.protobuf.Empty
+	284, // 392: user.v1.UserService.SetPrimeInvisible:output_type -> google.protobuf.Empty
+	284, // 393: user.v1.UserService.SetPrimeStyle:output_type -> google.protobuf.Empty
+	167, // 394: user.v1.UserService.GetDecor:output_type -> user.v1.GetDecorResponse
+	284, // 395: user.v1.UserService.SetDecor:output_type -> google.protobuf.Empty
+	171, // 396: user.v1.UserService.GetCasino:output_type -> user.v1.GetCasinoResponse
+	174, // 397: user.v1.UserService.GetCasinoSettings:output_type -> user.v1.GetCasinoSettingsResponse
+	284, // 398: user.v1.UserService.SetCasino:output_type -> google.protobuf.Empty
+	183, // 399: user.v1.UserService.SpinCasino:output_type -> user.v1.SpinCasinoResponse
+	284, // 400: user.v1.UserService.SetCasinoBets:output_type -> google.protobuf.Empty
+	186, // 401: user.v1.UserService.BetCasino:output_type -> user.v1.BetCasinoResponse
+	190, // 402: user.v1.UserService.ListBetEvents:output_type -> user.v1.ListBetEventsResponse
+	188, // 403: user.v1.UserService.CreateBetEvent:output_type -> user.v1.BetEvent
+	284, // 404: user.v1.UserService.CloseBetEvent:output_type -> google.protobuf.Empty
+	284, // 405: user.v1.UserService.ResolveBetEvent:output_type -> google.protobuf.Empty
+	284, // 406: user.v1.UserService.CancelBetEvent:output_type -> google.protobuf.Empty
+	284, // 407: user.v1.UserService.DeleteBetEvent:output_type -> google.protobuf.Empty
+	284, // 408: user.v1.UserService.SetBetEventOdds:output_type -> google.protobuf.Empty
+	196, // 409: user.v1.UserService.StakeBet:output_type -> user.v1.StakeBetResponse
+	284, // 410: user.v1.UserService.SetCasinoRocket:output_type -> google.protobuf.Empty
+	284, // 411: user.v1.UserService.SetCasinoJackpot:output_type -> google.protobuf.Empty
+	180, // 412: user.v1.UserService.LaunchRocket:output_type -> user.v1.RocketRound
+	180, // 413: user.v1.UserService.GetRocket:output_type -> user.v1.RocketRound
+	180, // 414: user.v1.UserService.CashRocket:output_type -> user.v1.RocketRound
+	284, // 415: user.v1.UserService.SetVerified:output_type -> google.protobuf.Empty
+	284, // 416: user.v1.UserService.SetAlert:output_type -> google.protobuf.Empty
+	202, // 417: user.v1.UserService.ListAds:output_type -> user.v1.ListAdsResponse
+	204, // 418: user.v1.UserService.CreateAd:output_type -> user.v1.CreateAdResponse
+	206, // 419: user.v1.UserService.EditAd:output_type -> user.v1.EditAdResponse
+	208, // 420: user.v1.UserService.DeleteAd:output_type -> user.v1.DeleteAdResponse
+	210, // 421: user.v1.UserService.ViewAd:output_type -> user.v1.ViewAdResponse
+	212, // 422: user.v1.UserService.ClickAd:output_type -> user.v1.ClickAdResponse
+	284, // 423: user.v1.UserService.BanUser:output_type -> google.protobuf.Empty
+	284, // 424: user.v1.UserService.UnbanUser:output_type -> google.protobuf.Empty
+	93,  // 425: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
+	95,  // 426: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
+	97,  // 427: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
+	235, // 428: user.v1.UserService.GetMine:output_type -> user.v1.MineState
+	237, // 429: user.v1.UserService.DigOre:output_type -> user.v1.DigOreResponse
+	239, // 430: user.v1.UserService.SellOre:output_type -> user.v1.SellOreResponse
+	241, // 431: user.v1.UserService.GetMineSettings:output_type -> user.v1.GetMineSettingsResponse
+	284, // 432: user.v1.UserService.SetMine:output_type -> google.protobuf.Empty
+	262, // 433: user.v1.UserService.GetBusinesses:output_type -> user.v1.BusinessesState
+	265, // 434: user.v1.UserService.BuyBusiness:output_type -> user.v1.RunBusinessResponse
+	265, // 435: user.v1.UserService.RunBusiness:output_type -> user.v1.RunBusinessResponse
+	267, // 436: user.v1.UserService.GetBusinessSettings:output_type -> user.v1.GetBusinessSettingsResponse
+	284, // 437: user.v1.UserService.SetBusinessSettings:output_type -> google.protobuf.Empty
+	272, // 438: user.v1.UserService.GetBank:output_type -> user.v1.BankState
+	274, // 439: user.v1.UserService.PutDeposit:output_type -> user.v1.BankMoveResponse
+	274, // 440: user.v1.UserService.TakeDeposit:output_type -> user.v1.BankMoveResponse
+	274, // 441: user.v1.UserService.TakeLoan:output_type -> user.v1.BankMoveResponse
+	274, // 442: user.v1.UserService.RepayLoan:output_type -> user.v1.BankMoveResponse
+	276, // 443: user.v1.UserService.GetBankSettings:output_type -> user.v1.GetBankSettingsResponse
+	284, // 444: user.v1.UserService.SetBankSettings:output_type -> google.protobuf.Empty
+	310, // [310:445] is the sub-list for method output_type
+	175, // [175:310] is the sub-list for method input_type
+	175, // [175:175] is the sub-list for extension type_name
+	175, // [175:175] is the sub-list for extension extendee
+	0,   // [0:175] is the sub-list for field type_name
 }
 
 func init() { file_api_user_v1_user_proto_init() }
@@ -18897,7 +19486,7 @@ func file_api_user_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_user_v1_user_proto_rawDesc), len(file_api_user_v1_user_proto_rawDesc)),
 			NumEnums:      12,
-			NumMessages:   262,
+			NumMessages:   271,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

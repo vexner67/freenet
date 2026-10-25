@@ -58,9 +58,12 @@ type App struct {
 	// gifts settle the auctions of collectibles every auctionEvery.
 	gifts        *service.GiftService
 	auctionEvery time.Duration
-	server       *grpcserver.Server
-	metrics      *metrics.Server
-	addr         string
+	// banks collect the loans past their term every bankEvery.
+	banks     *service.BankService
+	bankEvery time.Duration
+	server    *grpcserver.Server
+	metrics   *metrics.Server
+	addr      string
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -174,6 +177,8 @@ func (a *App) build(cfg config.Config) error {
 		Admins:       admins,
 	})
 	a.auctionEvery = cfg.GiftAuctionInterval
+	a.banks = service.NewBankService(store.users, store.bank, store.wallets, store.tx, admins)
+	a.bankEvery = cfg.BankInterval
 
 	userv1.RegisterUserServiceServer(
 		a.server.Registrar(),
@@ -230,6 +235,7 @@ func (a *App) build(cfg config.Config) error {
 			Rockets:     service.NewRocketService(store.users, store.casino, store.rockets, store.wallets, store.tx, admins),
 			Mines:       service.NewMineService(store.users, store.mine, store.wallets, store.tx, admins),
 			Businesses:  service.NewBusinessService(store.users, store.business, store.wallets, store.tx, admins),
+			Banks:       a.banks,
 			BetEvents:   service.NewBetEventService(store.users, store.betEvents, store.wallets, store.tx, admins),
 			Paid:        service.NewPaidService(store.users, store.wallets, store.purchases, store.economy, permissions, store.tx),
 			Permissions: permissions,
@@ -294,6 +300,11 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 
 		userv1.UserService_BuyBusiness_FullMethodName: cfg.BusinessLimits,
 		userv1.UserService_RunBusiness_FullMethodName: cfg.BusinessLimits,
+
+		userv1.UserService_PutDeposit_FullMethodName:  cfg.BankLimits,
+		userv1.UserService_TakeDeposit_FullMethodName: cfg.BankLimits,
+		userv1.UserService_TakeLoan_FullMethodName:    cfg.BankLimits,
+		userv1.UserService_RepayLoan_FullMethodName:   cfg.BankLimits,
 	}
 }
 
@@ -368,6 +379,8 @@ type storage struct {
 	mine service.MineRepository
 	// business is the rules of the businesses and the businesses of pages.
 	business service.BusinessRepository
+	// bank is the bank of the site and the accounts of pages.
+	bank service.BankRepository
 	// rockets are the rounds of "Ракетка".
 	rockets service.RocketRepository
 	// betEvents are the events people stake on.
@@ -408,6 +421,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			casino:       inmem.NewCasinoRepository(),
 			mine:         inmem.NewMineRepository(),
 			business:     inmem.NewBusinessRepository(),
+			bank:         inmem.NewBankRepository(),
 			rockets:      inmem.NewRocketRepository(),
 			betEvents:    inmem.NewBetEventRepository(),
 			purchases:    inmem.NewPurchaseRepository(),
@@ -460,6 +474,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		casino:       postgres.NewCasinoRepository(a.pool),
 		mine:         postgres.NewMineRepository(a.pool),
 		business:     postgres.NewBusinessRepository(a.pool),
+		bank:         postgres.NewBankRepository(a.pool),
 		rockets:      postgres.NewRocketRepository(a.pool),
 		betEvents:    postgres.NewBetEventRepository(a.pool),
 		purchases:    postgres.NewPurchaseRepository(a.pool),
@@ -501,6 +516,10 @@ func (a *App) Run(ctx context.Context) error {
 
 	g.Go(func() error {
 		return errs.Wrap("a.runAuctions", a.runAuctions(ctx, a.auctionEvery))
+	})
+
+	g.Go(func() error {
+		return errs.Wrap("a.runBank", a.runBank(ctx, a.bankEvery))
 	})
 
 	if a.sync != nil {

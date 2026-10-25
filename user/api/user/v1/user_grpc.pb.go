@@ -148,6 +148,13 @@ const (
 	UserService_RunBusiness_FullMethodName         = "/user.v1.UserService/RunBusiness"
 	UserService_GetBusinessSettings_FullMethodName = "/user.v1.UserService/GetBusinessSettings"
 	UserService_SetBusinessSettings_FullMethodName = "/user.v1.UserService/SetBusinessSettings"
+	UserService_GetBank_FullMethodName             = "/user.v1.UserService/GetBank"
+	UserService_PutDeposit_FullMethodName          = "/user.v1.UserService/PutDeposit"
+	UserService_TakeDeposit_FullMethodName         = "/user.v1.UserService/TakeDeposit"
+	UserService_TakeLoan_FullMethodName            = "/user.v1.UserService/TakeLoan"
+	UserService_RepayLoan_FullMethodName           = "/user.v1.UserService/RepayLoan"
+	UserService_GetBankSettings_FullMethodName     = "/user.v1.UserService/GetBankSettings"
+	UserService_SetBankSettings_FullMethodName     = "/user.v1.UserService/SetBankSettings"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -497,6 +504,28 @@ type UserServiceClient interface {
 	// businesses and the tax, and how they do.
 	GetBusinessSettings(ctx context.Context, in *GetBusinessSettingsRequest, opts ...grpc.CallOption) (*GetBusinessSettingsResponse, error)
 	SetBusinessSettings(ctx context.Context, in *SetBusinessSettingsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Require an access token: the bank of the caller. A deposit takes votes
+	// into the treasury and grows by a percent a day up to the most a
+	// deposit may be (FailedPrecondition "the deposit cannot be larger",
+	// "not enough votes"); TakeDeposit gives back whole votes, all of them
+	// with amount 0 ("there are not so many votes on the deposit"). A loan
+	// lends votes out of the treasury, one at a time and up to a most
+	// ("pay back the loan you have first", "the loan cannot be larger"), to
+	// pages a week old with a filled profile ("loans are for pages a week
+	// old with a filled profile"); it grows by a percent a day, and past its
+	// term by a larger one, and the site takes it back of the balance and
+	// the deposit itself. RepayLoan pays back amount, all of it with 0
+	// ("you have no loan", "not enough votes"). Amounts below 1 —
+	// InvalidArgument.
+	GetBank(ctx context.Context, in *GetBankRequest, opts ...grpc.CallOption) (*BankState, error)
+	PutDeposit(ctx context.Context, in *BankAmountRequest, opts ...grpc.CallOption) (*BankMoveResponse, error)
+	TakeDeposit(ctx context.Context, in *BankAmountRequest, opts ...grpc.CallOption) (*BankMoveResponse, error)
+	TakeLoan(ctx context.Context, in *BankAmountRequest, opts ...grpc.CallOption) (*BankMoveResponse, error)
+	RepayLoan(ctx context.Context, in *BankAmountRequest, opts ...grpc.CallOption) (*BankMoveResponse, error)
+	// For the administrators (PermissionDenied for others): the rates and
+	// limits of the bank, and how it does.
+	GetBankSettings(ctx context.Context, in *GetBankSettingsRequest, opts ...grpc.CallOption) (*GetBankSettingsResponse, error)
+	SetBankSettings(ctx context.Context, in *SetBankSettingsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type userServiceClient struct {
@@ -1787,6 +1816,76 @@ func (c *userServiceClient) SetBusinessSettings(ctx context.Context, in *SetBusi
 	return out, nil
 }
 
+func (c *userServiceClient) GetBank(ctx context.Context, in *GetBankRequest, opts ...grpc.CallOption) (*BankState, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BankState)
+	err := c.cc.Invoke(ctx, UserService_GetBank_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) PutDeposit(ctx context.Context, in *BankAmountRequest, opts ...grpc.CallOption) (*BankMoveResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BankMoveResponse)
+	err := c.cc.Invoke(ctx, UserService_PutDeposit_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) TakeDeposit(ctx context.Context, in *BankAmountRequest, opts ...grpc.CallOption) (*BankMoveResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BankMoveResponse)
+	err := c.cc.Invoke(ctx, UserService_TakeDeposit_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) TakeLoan(ctx context.Context, in *BankAmountRequest, opts ...grpc.CallOption) (*BankMoveResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BankMoveResponse)
+	err := c.cc.Invoke(ctx, UserService_TakeLoan_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) RepayLoan(ctx context.Context, in *BankAmountRequest, opts ...grpc.CallOption) (*BankMoveResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BankMoveResponse)
+	err := c.cc.Invoke(ctx, UserService_RepayLoan_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetBankSettings(ctx context.Context, in *GetBankSettingsRequest, opts ...grpc.CallOption) (*GetBankSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetBankSettingsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetBankSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SetBankSettings(ctx context.Context, in *SetBankSettingsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetBankSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -2134,6 +2233,28 @@ type UserServiceServer interface {
 	// businesses and the tax, and how they do.
 	GetBusinessSettings(context.Context, *GetBusinessSettingsRequest) (*GetBusinessSettingsResponse, error)
 	SetBusinessSettings(context.Context, *SetBusinessSettingsRequest) (*emptypb.Empty, error)
+	// Require an access token: the bank of the caller. A deposit takes votes
+	// into the treasury and grows by a percent a day up to the most a
+	// deposit may be (FailedPrecondition "the deposit cannot be larger",
+	// "not enough votes"); TakeDeposit gives back whole votes, all of them
+	// with amount 0 ("there are not so many votes on the deposit"). A loan
+	// lends votes out of the treasury, one at a time and up to a most
+	// ("pay back the loan you have first", "the loan cannot be larger"), to
+	// pages a week old with a filled profile ("loans are for pages a week
+	// old with a filled profile"); it grows by a percent a day, and past its
+	// term by a larger one, and the site takes it back of the balance and
+	// the deposit itself. RepayLoan pays back amount, all of it with 0
+	// ("you have no loan", "not enough votes"). Amounts below 1 —
+	// InvalidArgument.
+	GetBank(context.Context, *GetBankRequest) (*BankState, error)
+	PutDeposit(context.Context, *BankAmountRequest) (*BankMoveResponse, error)
+	TakeDeposit(context.Context, *BankAmountRequest) (*BankMoveResponse, error)
+	TakeLoan(context.Context, *BankAmountRequest) (*BankMoveResponse, error)
+	RepayLoan(context.Context, *BankAmountRequest) (*BankMoveResponse, error)
+	// For the administrators (PermissionDenied for others): the rates and
+	// limits of the bank, and how it does.
+	GetBankSettings(context.Context, *GetBankSettingsRequest) (*GetBankSettingsResponse, error)
+	SetBankSettings(context.Context, *SetBankSettingsRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -2527,6 +2648,27 @@ func (UnimplementedUserServiceServer) GetBusinessSettings(context.Context, *GetB
 }
 func (UnimplementedUserServiceServer) SetBusinessSettings(context.Context, *SetBusinessSettingsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetBusinessSettings not implemented")
+}
+func (UnimplementedUserServiceServer) GetBank(context.Context, *GetBankRequest) (*BankState, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetBank not implemented")
+}
+func (UnimplementedUserServiceServer) PutDeposit(context.Context, *BankAmountRequest) (*BankMoveResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PutDeposit not implemented")
+}
+func (UnimplementedUserServiceServer) TakeDeposit(context.Context, *BankAmountRequest) (*BankMoveResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method TakeDeposit not implemented")
+}
+func (UnimplementedUserServiceServer) TakeLoan(context.Context, *BankAmountRequest) (*BankMoveResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method TakeLoan not implemented")
+}
+func (UnimplementedUserServiceServer) RepayLoan(context.Context, *BankAmountRequest) (*BankMoveResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RepayLoan not implemented")
+}
+func (UnimplementedUserServiceServer) GetBankSettings(context.Context, *GetBankSettingsRequest) (*GetBankSettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetBankSettings not implemented")
+}
+func (UnimplementedUserServiceServer) SetBankSettings(context.Context, *SetBankSettingsRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetBankSettings not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -4853,6 +4995,132 @@ func _UserService_SetBusinessSettings_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetBank_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBankRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetBank(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetBank_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetBank(ctx, req.(*GetBankRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_PutDeposit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BankAmountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).PutDeposit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_PutDeposit_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).PutDeposit(ctx, req.(*BankAmountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_TakeDeposit_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BankAmountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).TakeDeposit(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_TakeDeposit_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).TakeDeposit(ctx, req.(*BankAmountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_TakeLoan_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BankAmountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).TakeLoan(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_TakeLoan_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).TakeLoan(ctx, req.(*BankAmountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_RepayLoan_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BankAmountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).RepayLoan(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_RepayLoan_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).RepayLoan(ctx, req.(*BankAmountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetBankSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBankSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetBankSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetBankSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetBankSettings(ctx, req.(*GetBankSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SetBankSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetBankSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetBankSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetBankSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetBankSettings(ctx, req.(*SetBankSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -5371,6 +5639,34 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetBusinessSettings",
 			Handler:    _UserService_SetBusinessSettings_Handler,
+		},
+		{
+			MethodName: "GetBank",
+			Handler:    _UserService_GetBank_Handler,
+		},
+		{
+			MethodName: "PutDeposit",
+			Handler:    _UserService_PutDeposit_Handler,
+		},
+		{
+			MethodName: "TakeDeposit",
+			Handler:    _UserService_TakeDeposit_Handler,
+		},
+		{
+			MethodName: "TakeLoan",
+			Handler:    _UserService_TakeLoan_Handler,
+		},
+		{
+			MethodName: "RepayLoan",
+			Handler:    _UserService_RepayLoan_Handler,
+		},
+		{
+			MethodName: "GetBankSettings",
+			Handler:    _UserService_GetBankSettings_Handler,
+		},
+		{
+			MethodName: "SetBankSettings",
+			Handler:    _UserService_SetBankSettings_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -72,6 +72,8 @@ type Config struct {
 	MineLimits ratelimit.Rules `env:"RATE_LIMIT_MINE" envDefault:"60/1m,3000/24h"`
 	// Businesses bought and actions with them, each counted apart.
 	BusinessLimits ratelimit.Rules `env:"RATE_LIMIT_BUSINESS" envDefault:"60/1m,3000/24h"`
+	// Deposits and loans put, taken, lent and paid back, each counted apart.
+	BankLimits ratelimit.Rules `env:"RATE_LIMIT_BANK" envDefault:"30/1m,500/24h"`
 	// Collectible gifts upgraded, given away, put on sale, bought,
 	// auctioned and bid on, each counted apart.
 	GiftMarketLimits ratelimit.Rules `env:"RATE_LIMIT_GIFT_MARKET" envDefault:"30/1m,500/24h"`
@@ -100,6 +102,9 @@ type Config struct {
 	// are settled: a gift goes to its winner that much later.
 	GiftAuctionInterval time.Duration `env:"GIFT_AUCTION_INTERVAL" envDefault:"30s"`
 
+	// BankInterval is how often the loans past their term are collected.
+	BankInterval time.Duration `env:"BANK_INTERVAL" envDefault:"10m"`
+
 	// Access tokens are issued by the auth service; user only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`
 	JWTIssuer        string `env:"JWT_ISSUER,required,notEmpty"`
@@ -126,6 +131,10 @@ func (c Config) Validate() error {
 
 	if c.GiftAuctionInterval <= 0 {
 		return errors.New("GIFT_AUCTION_INTERVAL must be positive")
+	}
+
+	if c.BankInterval <= 0 {
+		return errors.New("BANK_INTERVAL must be positive")
 	}
 
 	if c.FeedSyncInterval < 0 {

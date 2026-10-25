@@ -53,6 +53,14 @@ var giftMarket = []struct {
 	{service.ErrCursor, codes.InvalidArgument},
 }
 
+// bankInvalid are the amounts and settings the bank does not take.
+var bankInvalid = []error{user.ErrBankAmount, user.ErrBankRate, user.ErrBankMost, user.ErrBankDays}
+
+// bankRefused are what the account of a page does not allow.
+var bankRefused = []error{
+	user.ErrDepositMost, user.ErrDepositShort, user.ErrLoanMost, user.ErrLoanActive, user.ErrNoLoan, user.ErrBankNotYet,
+}
+
 func toStatus(err error) (*status.Status, bool) {
 	for _, invalid := range invalidStickerPack {
 		if errors.Is(err, invalid) {
@@ -174,6 +182,10 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.NotFound, sentinel(err, businessMissing).Error()), true
 	case sentinel(err, businessRefused) != nil:
 		return status.New(codes.FailedPrecondition, sentinel(err, businessRefused).Error()), true
+	case sentinel(err, bankInvalid) != nil:
+		return status.New(codes.InvalidArgument, sentinel(err, bankInvalid).Error()), true
+	case sentinel(err, bankRefused) != nil:
+		return status.New(codes.FailedPrecondition, sentinel(err, bankRefused).Error()), true
 	case errors.Is(err, user.ErrRocketOver):
 		return status.New(codes.FailedPrecondition, user.ErrRocketOver.Error()), true
 	case errors.Is(err, user.ErrInvalidPostPrice), errors.Is(err, user.ErrMessagePriceChanged):

@@ -372,6 +372,29 @@ service UserService {
   // businesses and the tax, and how they do.
   rpc GetBusinessSettings(GetBusinessSettingsRequest) returns (GetBusinessSettingsResponse);
   rpc SetBusinessSettings(SetBusinessSettingsRequest) returns (google.protobuf.Empty);
+
+  // Require an access token: the bank of the caller. A deposit takes votes
+  // into the treasury and grows by a percent a day up to the most a
+  // deposit may be (FailedPrecondition "the deposit cannot be larger",
+  // "not enough votes"); TakeDeposit gives back whole votes, all of them
+  // with amount 0 ("there are not so many votes on the deposit"). A loan
+  // lends votes out of the treasury, one at a time and up to a most
+  // ("pay back the loan you have first", "the loan cannot be larger"), to
+  // pages a week old with a filled profile ("loans are for pages a week
+  // old with a filled profile"); it grows by a percent a day, and past its
+  // term by a larger one, and the site takes it back of the balance and
+  // the deposit itself. RepayLoan pays back amount, all of it with 0
+  // ("you have no loan", "not enough votes"). Amounts below 1 —
+  // InvalidArgument.
+  rpc GetBank(GetBankRequest) returns (BankState);
+  rpc PutDeposit(BankAmountRequest) returns (BankMoveResponse);
+  rpc TakeDeposit(BankAmountRequest) returns (BankMoveResponse);
+  rpc TakeLoan(BankAmountRequest) returns (BankMoveResponse);
+  rpc RepayLoan(BankAmountRequest) returns (BankMoveResponse);
+  // For the administrators (PermissionDenied for others): the rates and
+  // limits of the bank, and how it does.
+  rpc GetBankSettings(GetBankSettingsRequest) returns (GetBankSettingsResponse);
+  rpc SetBankSettings(SetBankSettingsRequest) returns (google.protobuf.Empty);
 }
 
 message User {
@@ -2528,4 +2551,62 @@ message GetBusinessSettingsResponse {
 
 message SetBusinessSettingsRequest {
   BusinessSettings settings = 1;
+}
+
+// BankSettings are the rates of the bank, in hundredths of a percent a
+// day, and its limits: the most a deposit grows to and a loan lends, in
+// votes, and the term of a loan in days.
+message BankSettings {
+  int32 deposit_rate = 1;
+  int64 deposit_most = 2;
+  int32 loan_rate = 3;
+  int64 loan_most = 4;
+  int32 loan_days = 5;
+  int32 penalty_rate = 6;
+}
+
+// BankAccount is the deposit and the loan of the caller now: the deposit
+// and the debt in hundredths of a vote, what was borrowed and when it is
+// due (unset without a loan).
+message BankAccount {
+  int64 deposit = 1;
+  int64 debt = 2;
+  int64 borrowed = 3;
+  google.protobuf.Timestamp due_at = 4;
+  bool overdue = 5;
+}
+
+message GetBankRequest {}
+
+message BankState {
+  BankSettings settings = 1;
+  BankAccount account = 2;
+}
+
+message BankAmountRequest {
+  // Votes; 0 takes the whole deposit or pays the whole loan back.
+  int64 amount = 1;
+}
+
+message BankMoveResponse {
+  // The votes moved and the balance after them.
+  int64 votes = 1;
+  int64 balance = 2;
+  BankState bank = 3;
+}
+
+message GetBankSettingsRequest {}
+
+message GetBankSettingsResponse {
+  BankSettings settings = 1;
+  // Votes on deposits and owed on loans, in hundredths, as counted last,
+  // and how many pages have each.
+  int64 deposits = 2;
+  int64 depositors = 3;
+  int64 debts = 4;
+  int64 debtors = 5;
+}
+
+message SetBankSettingsRequest {
+  BankSettings settings = 1;
 }

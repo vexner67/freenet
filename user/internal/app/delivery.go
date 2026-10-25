@@ -243,3 +243,26 @@ func (a *App) runAuctions(ctx context.Context, every time.Duration) error {
 		}
 	}
 }
+
+// runBank collects the loans past their term every interval until ctx
+// ends; a failure is logged and tried again next time.
+func (a *App) runBank(ctx context.Context, every time.Duration) error {
+	t := time.NewTicker(every)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-t.C:
+		}
+
+		collected, err := a.banks.CollectDue(ctx, time.Now())
+		if err != nil && ctx.Err() == nil {
+			a.logger.ErrorContext(ctx, "collection of overdue loans", "error", err)
+		}
+		if collected > 0 {
+			a.logger.InfoContext(ctx, "overdue loans collected", "count", collected)
+		}
+	}
+}
