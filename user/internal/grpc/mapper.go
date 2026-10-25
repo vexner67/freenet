@@ -46,6 +46,7 @@ func toProtoUser(u *user.User) *userv1.User {
 		Completeness:          int32(completeness), //nolint:gosec // a percent
 		Unfilled:              unfilled,
 		Votes:                 u.Wallet().Votes,
+		Rating:                int32(u.Wallet().Rating), //nolint:gosec // a percent
 		Verified:              u.IsVerified(),
 		Ban:                   toProtoBan(u.BanAt(time.Now())),
 		Alert:                 u.Alert().String(),

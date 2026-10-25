@@ -769,7 +769,10 @@ type User struct {
 	// "Невидимка" of Prime: others are not told when the user is online.
 	PrimeInvisible bool `protobuf:"varint,36,opt,name=prime_invisible,json=primeInvisible,proto3" json:"prime_invisible,omitempty"`
 	// How the page is dressed with Prime; kept after Prime ends.
-	PrimeStyle    *PrimeStyle `protobuf:"bytes,37,opt,name=prime_style,json=primeStyle,proto3" json:"prime_style,omitempty"`
+	PrimeStyle *PrimeStyle `protobuf:"bytes,37,opt,name=prime_style,json=primeStyle,proto3" json:"prime_style,omitempty"`
+	// The rating the user has, in percent: vouchers and "Повысить рейтинг"
+	// give it.
+	Rating        int32 `protobuf:"varint,38,opt,name=rating,proto3" json:"rating,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1054,6 +1057,13 @@ func (x *User) GetPrimeStyle() *PrimeStyle {
 		return x.PrimeStyle
 	}
 	return nil
+}
+
+func (x *User) GetRating() int32 {
+	if x != nil {
+		return x.Rating
+	}
+	return 0
 }
 
 // Ban is a block of a page by the administrators of the site.
@@ -9768,7 +9778,7 @@ type PrimeStyle struct {
 	// stars; "" — amethyst.
 	Frame string `protobuf:"bytes,2,opt,name=frame,proto3" json:"frame,omitempty"`
 	// The pattern behind the page: "", stars, hearts, checks, clouds,
-	// flowers, sparkles, kalash.
+	// flowers, sparkles, islam.
 	Background string `protobuf:"bytes,3,opt,name=background,proto3" json:"background,omitempty"`
 	// The smiley by the status: "", happy, love, cool, wink, sad, angry,
 	// sleepy.
@@ -17292,7 +17302,7 @@ var File_api_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_api_user_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/user/v1/user.proto\x12\auser.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc0\v\n" +
+	"\x16api/user/v1/user.proto\x12\auser.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd8\v\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -17332,7 +17342,8 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"primeUntil\x12'\n" +
 	"\x0fprime_invisible\x18$ \x01(\bR\x0eprimeInvisible\x124\n" +
 	"\vprime_style\x18% \x01(\v2\x13.user.v1.PrimeStyleR\n" +
-	"primeStyleJ\x04\b!\x10\"R\rforeign_agent\"\x88\x01\n" +
+	"primeStyle\x12\x16\n" +
+	"\x06rating\x18& \x01(\x05R\x06ratingJ\x04\b!\x10\"R\rforeign_agent\"\x88\x01\n" +
 	"\x03Ban\x12\x16\n" +
 	"\x06reason\x18\x01 \x01(\tR\x06reason\x127\n" +
 	"\tbanned_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bbannedAt\x120\n" +

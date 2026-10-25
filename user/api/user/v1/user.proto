@@ -455,6 +455,9 @@ message User {
   bool prime_invisible = 36;
   // How the page is dressed with Prime; kept after Prime ends.
   PrimeStyle prime_style = 37;
+  // The rating the user has, in percent: vouchers and "Повысить рейтинг"
+  // give it.
+  int32 rating = 38;
 }
 
 // Ban is a block of a page by the administrators of the site.
@@ -1656,7 +1659,7 @@ message PrimeStyle {
   // stars; "" — amethyst.
   string frame = 2;
   // The pattern behind the page: "", stars, hearts, checks, clouds,
-  // flowers, sparkles, kalash.
+  // flowers, sparkles, islam.
   string background = 3;
   // The smiley by the status: "", happy, love, cool, wink, sad, angry,
   // sleepy.
