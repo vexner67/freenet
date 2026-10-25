@@ -1924,6 +1924,7 @@ export default {
   'звёзды': 'stars',
   'клетка': 'checks',
   'облака': 'clouds',
+  'калаши': 'Kalashnikovs',
   'цветы': 'flowers',
   'не показывать': 'none',
   'весёлое': 'happy',

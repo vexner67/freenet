@@ -905,6 +905,7 @@ a.like:hover svg { opacity: .7; }
 .prime-bg-clouds { --prime-pattern: url("/static/prime/bg-clouds.svg"); }
 .prime-bg-flowers { --prime-pattern: url("/static/prime/bg-flowers.svg"); }
 .prime-bg-sparkles { --prime-pattern: url("/static/prime/bg-sparkles.svg"); }
+.prime-bg-kalash { --prime-pattern: url("/static/prime/bg-kalash.svg"); }
 /* body.prime-bg comes after ".festive body": the New Year's look leaves
    the pattern of the page. */
 body.prime-bg { background: var(--back-f2f5f8) var(--prime-pattern); }
