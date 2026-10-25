@@ -265,7 +265,9 @@ type userResponse struct {
 	Interface interfaceJSON `json:"interface"`
 	// Votes is "Баланс"; Admin tells the one who makes the vouchers.
 	Votes int64 `json:"votes"`
-	Admin bool  `json:"admin"`
+	// Rating is the rating the user has, in percent.
+	Rating int  `json:"rating"`
+	Admin  bool `json:"admin"`
 	// Verified: the page wears the checkmark of a confirmed one.
 	Verified bool `json:"verified"`
 	// Ban: the administrators blocked the page, null if they did not.
@@ -341,6 +343,7 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 		Completeness:   u.Completeness,
 		Unfilled:       append([]string{}, u.Unfilled...),
 		Votes:          u.Votes,
+		Rating:         u.Rating,
 		Admin:          u.Admin,
 		Verified:       u.Verified,
 		Ban:            toBanJSON(u.Ban),

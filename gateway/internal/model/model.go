@@ -212,6 +212,8 @@ type User struct {
 	Interface    Interface
 	// Votes is "Баланс": what the user has to pay for gifts with.
 	Votes int64
+	// Rating is the rating the user has, in percent.
+	Rating int
 	// Admin: the user makes the vouchers.
 	Admin bool
 	// Verified: the administrators confirmed the page (a checkmark).

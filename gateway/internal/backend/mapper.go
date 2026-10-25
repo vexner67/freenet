@@ -188,6 +188,7 @@ func toUser(u *userv1.User) model.User {
 		Completeness:     int(u.GetCompleteness()),
 		Unfilled:         u.GetUnfilled(),
 		Votes:            u.GetVotes(),
+		Rating:           int(u.GetRating()),
 		Admin:            u.GetAdmin(),
 		Verified:         u.GetVerified(),
 		Ban:              toBan(u.GetBan()),
