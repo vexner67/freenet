@@ -36,7 +36,7 @@ type PrimeMood string
 var (
 	PrimeNames       = []PrimeName{"amethyst", "ruby", "emerald", "sapphire", "gold", "rainbow"}
 	PrimeFrames      = []PrimeFrame{"amethyst", "gold", "silver", "glitter", "hearts", "stars"}
-	PrimeBackgrounds = []PrimeBackground{"", "stars", "hearts", "checks", "clouds", "flowers", "sparkles"}
+	PrimeBackgrounds = []PrimeBackground{"", "stars", "hearts", "checks", "clouds", "flowers", "sparkles", "kalash"}
 	PrimeMoods       = []PrimeMood{"", "happy", "love", "cool", "wink", "sad", "angry", "sleepy"}
 )
 

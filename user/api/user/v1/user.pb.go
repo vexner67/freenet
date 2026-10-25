@@ -9768,7 +9768,7 @@ type PrimeStyle struct {
 	// stars; "" — amethyst.
 	Frame string `protobuf:"bytes,2,opt,name=frame,proto3" json:"frame,omitempty"`
 	// The pattern behind the page: "", stars, hearts, checks, clouds,
-	// flowers, sparkles.
+	// flowers, sparkles, kalash.
 	Background string `protobuf:"bytes,3,opt,name=background,proto3" json:"background,omitempty"`
 	// The smiley by the status: "", happy, love, cool, wink, sad, angry,
 	// sleepy.
