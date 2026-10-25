@@ -109,6 +109,9 @@ func TestListMessages(t *testing.T) {
 	if h.messages.peerID != "u2" || h.messages.cursor != "m7" || h.messages.after != "" {
 		t.Fatalf("request = %+v", h.messages)
 	}
+	if h.users.profileToken != "tok" {
+		t.Fatalf("peer read with token %q; the viewer's, so a page for users only tells its Prime style", h.users.profileToken)
+	}
 	if len(got.Messages) != 2 || !got.Messages[0].Out || !got.Messages[0].Read || got.Messages[1].Out || string(got.Messages[1].Sealed) != "как дела?" {
 		t.Fatalf("messages = %+v; ann's own first, then bob's", got.Messages)
 	}

@@ -415,7 +415,9 @@ func (a *api) listMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	peer, err := a.users.GetProfile(r.Context(), "", r.PathValue("nickname"))
+	// The caller's own token: a page open only to users of the site, or to
+	// those its owner follows, tells the anonymous none of its Prime style.
+	peer, err := a.users.GetProfile(r.Context(), token, r.PathValue("nickname"))
 	if err != nil {
 		a.writeError(w, r, err)
 		return
