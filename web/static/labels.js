@@ -1149,6 +1149,15 @@ export function votesFontSize(votes, width = 140) {
   return Math.max(12, Math.min(48, Math.floor(width / (digits * 0.65 + gaps * 0.3))));
 }
 
+// cellFontSize is the size, in pixels, of a number in a cell of the
+// casino, about 70 px wide: 20 px while it fits, smaller as it grows, so
+// that "1 000 000" stays in its cell.
+export function cellFontSize(text, width = 70) {
+  const length = Math.max(1, String(text).length);
+
+  return Math.max(10, Math.min(20, Math.floor(width / (length * 0.62))));
+}
+
 // wagersCount is "1 ставка", "5 ставок".
 export function wagersCount(n) {
   return `${n} ${plural(n, ['ставка', 'ставки', 'ставок'])}`;
@@ -1328,6 +1337,93 @@ export function pokerCard(card) {
   if (!m) return null;
 
   return { rank: m[1] === 'T' ? '10' : m[1], suit: cardSuits[m[2]], red: m[2] === 'h' || m[2] === 'd' };
+}
+
+// HOLDEM_STAKES are the big blinds of the quick games of the tables, as
+// user.TableStakes.
+export const HOLDEM_STAKES = [2, 10, 50, 200, 1000];
+
+// holdemBlinds is "5/10" of a big blind of 10: the small blind is half.
+export function holdemBlinds(bigBlind) {
+  return `${groupedVotes(Math.floor(bigBlind / 2))}/${groupedVotes(bigBlind)}`;
+}
+
+const holdemStreets = {
+  waiting: tr('Ждём игроков'),
+  preflop: tr('Префлоп'),
+  flop: tr('Флоп'),
+  turn: tr('Тёрн'),
+  river: tr('Ривер'),
+  showdown: tr('Вскрытие'),
+};
+
+// holdemStreet is "Флоп" of "flop".
+export function holdemStreet(street) {
+  return holdemStreets[street] ?? street;
+}
+
+const holdemActions = {
+  fold: tr('Фолд'),
+  check: tr('Чек'),
+  call: tr('Колл'),
+  raise: tr('Рейз'),
+  allin: tr('Ва-банк'),
+  small_blind: tr('Малый блайнд'),
+  big_blind: tr('Большой блайнд'),
+};
+
+// holdemAction is "Рейз" of "raise", what a player did last.
+export function holdemAction(action) {
+  return holdemActions[action] ?? '';
+}
+
+// holdemBetting is whether the street is one where players act.
+export function holdemBetting(street) {
+  return ['preflop', 'flop', 'turn', 'river'].includes(street);
+}
+
+// holdemPlace is where seat i of n stands around the oval, in percents
+// of the table: the seat of the viewer (or the first) at the bottom, the
+// others clockwise.
+export function holdemPlace(i, n, you = -1) {
+  const base = you >= 0 ? you : 0;
+  const angle = Math.PI / 2 + ((i - base + n) % n) * (2 * Math.PI / n);
+
+  return { x: Math.round(50 + 44 * Math.cos(angle)), y: Math.round(50 + 42 * Math.sin(angle)) };
+}
+
+// holdemChips splits a bet into chips of 1000, 100, 25, 5 and 1, the
+// biggest first, at most six of them for the stack drawn on the felt.
+export function holdemChips(amount) {
+  const chips = [];
+  let left = Math.max(0, Math.trunc(amount));
+  for (const value of [1000, 100, 25, 5, 1]) {
+    while (left >= value && chips.length < 6) {
+      chips.push(value);
+      left -= value;
+    }
+  }
+
+  return chips;
+}
+
+// holdemBuyIn is the buy-in to suggest: 100 big blinds, within the table
+// and the balance.
+export function holdemBuyIn(bigBlind, balance) {
+  const least = bigBlind * 20;
+  const most = bigBlind * 200;
+
+  return Math.max(least, Math.min(most, bigBlind * 100, balance ?? most));
+}
+
+// tablesCount is "1 стол", "5 столов".
+export function tablesCount(n) {
+  return `${n} ${plural(n, ['стол', 'стола', 'столов'])}`;
+}
+
+// playersCount is "Игроков: 2 из 6".
+export function playersCount(n, seats) {
+  return tr('Игроков: {0} из {1}', n, seats);
 }
 
 // pokerOutcome is what a hand over came to, for the line under the table.

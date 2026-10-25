@@ -320,6 +320,15 @@ input, select, textarea { font-size: 16px !important; }
 .poker-pip { font-size: 22px; line-height: 22px; }
 .poker-corner { font-size: 12px; line-height: 12px; }
 .poker-controls .button + .button { margin: 6px 0 0; }
+.holdem-forms { flex-direction: column; }
+.holdem-felt { aspect-ratio: 3 / 4; margin: 40px 34px 50px; border-width: 7px; }
+.holdem-seat { width: 84px; }
+.holdem-avatar { display: none; }
+.holdem-board .poker-card { width: 30px; height: 43px; }
+.holdem-board .poker-pip { font-size: 15px; line-height: 15px; }
+.holdem-raise-box input[type="range"] { width: 100%; }
+.holdem-actions .button { min-height: 32px; }
+.holdem-invite input[type="text"] { width: 100%; }
 .rocket-sky { height: 180px; }
 .rocket-multiplier { font-size: 28px; }
 .bet-outcome-head { flex-wrap: wrap; }

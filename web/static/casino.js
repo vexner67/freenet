@@ -24,11 +24,12 @@
 // the jackpot of the casino takes the whole screen (jackpot.js).
 
 import { api, currentUser, started } from './api.js';
-import { aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betPrize, betRoll, casinoChance, casinoPlan, groupedVotes, plural, rocketMultiplier, rocketScale, rocketShown, rocketTime, rocketsCount, spinsCount, typedOdds, votesCount, votesFontSize, wagersCount } from './labels.js';
+import { aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betPrize, betRoll, casinoChance, cellFontSize, casinoPlan, groupedVotes, plural, rocketMultiplier, rocketScale, rocketShown, rocketTime, rocketsCount, spinsCount, typedOdds, votesCount, votesFontSize, wagersCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
 import { jackpot } from './jackpot.js';
 import { poker } from './poker.js';
+import { holdem } from './holdem.js';
 
 const answered = started(api.casino());
 // The table of poker; a server without it has no poker.
@@ -60,6 +61,28 @@ let refreshBet = () => {};
 let refreshRocket = () => {};
 let refreshPoker = () => {};
 let pokerShown = false;
+// showTables shows the lobby or a table of "Столы" by the address.
+let showTables = () => {};
+
+// showPokerMode shows "Столы" or "Против дилера" by the address.
+function showPokerMode(url) {
+  const dealer = new URL(url, location.href).searchParams.get('mode') === 'dealer';
+  $('poker-mode-tables').classList.toggle('active', !dealer);
+  $('poker-mode-dealer').classList.toggle('active', dealer);
+  $('poker-against').hidden = !dealer;
+  if (dealer) {
+    $('holdem-lobby').hidden = true;
+    $('holdem-table').hidden = true;
+  } else {
+    showTables(url);
+  }
+}
+
+// navigate goes to another address of the casino without a reload.
+function navigate(url) {
+  history.pushState(null, '', url);
+  showGame(url);
+}
 // auto is "Автоигра" under way: its button, which stops it, and whether
 // it is asked to.
 let auto = null;
@@ -69,9 +92,17 @@ const roundGap = 2100;
 
 const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
+// cellNumber is the big number of a cell, sized to stay inside it.
+function cellNumber(text) {
+  const node = el('span', { className: 'casino-votes', textContent: text });
+  node.style.fontSize = `${cellFontSize(text)}px`;
+
+  return node;
+}
+
 function showBoard(prizes) {
   cells = prizes.map((votes) => el('div', { className: votes > 0 ? 'casino-cell' : 'casino-cell casino-empty' },
-    el('span', { className: 'casino-votes', textContent: votes > 0 ? groupedVotes(votes) : '×' }),
+    cellNumber(votes > 0 ? groupedVotes(votes) : '×'),
     el('span', { className: 'casino-unit', textContent: votes > 0 ? plural(votes, ['голос', 'голоса', 'голосов']) : tr('Пусто') }),
   ));
   $('board').replaceChildren(...cells);
@@ -293,6 +324,7 @@ function showGame(url) {
   $('rocket-game').hidden = game !== 'rocket';
   if (game === 'rocket') drawSky(sky.ms, sky.cashedAt);
   $('poker-game').hidden = game !== 'poker';
+  if (game === 'poker') showPokerMode(url);
   $('events-game').hidden = game !== 'events';
   if (game === 'events') showEvents(sectionOf(url));
 }
@@ -326,7 +358,7 @@ function betting(bets, signedIn) {
 
   const buttons = bets.multipliers.map((m) => {
     const button = el('button', { className: 'casino-cell casino-multiplier', type: 'button' },
-      el('span', { className: 'casino-votes', textContent: betMultiplier(m.multiplier) }),
+      cellNumber(betMultiplier(m.multiplier)),
       el('span', { className: 'casino-unit', textContent: tr('шанс {0}', betChance(m.chance)) }),
     );
     button.setAttribute('role', 'radio');
@@ -882,6 +914,14 @@ try {
       cheer,
       jackpotFrom: () => jackpotFrom,
     });
+    showTables = holdem({ signedIn, balance: () => balance, showBalance, navigate });
+    for (const mode of [$('poker-mode-tables'), $('poker-mode-dealer')]) {
+      mode.addEventListener('click', (event) => {
+        if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        event.preventDefault();
+        navigate(mode.href);
+      });
+    }
   }
   // An address of the time the game was "Ставка" becomes its new one.
   if (new URL(location.href).searchParams.get('game') === 'bet') {
