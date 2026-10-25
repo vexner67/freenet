@@ -92,6 +92,8 @@ const (
 	// VoteLoan: votes lent by the bank or paid back to it; the note is
 	// "overdue" when the site took them for a loan past its term.
 	VoteLoan VoteKind = "loan"
+	// VotePoker: an ante or a call of "Покер" and what the hand paid.
+	VotePoker VoteKind = "poker"
 )
 
 // VoteEntry is what a change of votes is written down as: why, with whom

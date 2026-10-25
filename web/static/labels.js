@@ -1872,7 +1872,6 @@ export const primeBackgrounds = [
   ['clouds', tr('облака')],
   ['flowers', tr('цветы')],
   ['sparkles', tr('блёстки')],
-  ['islam', tr('исламизм')],
 ];
 
 export const primeMoods = [

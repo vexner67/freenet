@@ -125,6 +125,12 @@ const (
 	UserService_LaunchRocket_FullMethodName        = "/user.v1.UserService/LaunchRocket"
 	UserService_GetRocket_FullMethodName           = "/user.v1.UserService/GetRocket"
 	UserService_CashRocket_FullMethodName          = "/user.v1.UserService/CashRocket"
+	UserService_GetPoker_FullMethodName            = "/user.v1.UserService/GetPoker"
+	UserService_DealPoker_FullMethodName           = "/user.v1.UserService/DealPoker"
+	UserService_FoldPoker_FullMethodName           = "/user.v1.UserService/FoldPoker"
+	UserService_CallPoker_FullMethodName           = "/user.v1.UserService/CallPoker"
+	UserService_GetPokerSettings_FullMethodName    = "/user.v1.UserService/GetPokerSettings"
+	UserService_SetPokerSettings_FullMethodName    = "/user.v1.UserService/SetPokerSettings"
 	UserService_SetVerified_FullMethodName         = "/user.v1.UserService/SetVerified"
 	UserService_SetAlert_FullMethodName            = "/user.v1.UserService/SetAlert"
 	UserService_ListAds_FullMethodName             = "/user.v1.UserService/ListAds"
@@ -424,6 +430,23 @@ type UserServiceClient interface {
 	LaunchRocket(ctx context.Context, in *LaunchRocketRequest, opts ...grpc.CallOption) (*RocketRound, error)
 	GetRocket(ctx context.Context, in *RocketRequest, opts ...grpc.CallOption) (*RocketRound, error)
 	CashRocket(ctx context.Context, in *RocketRequest, opts ...grpc.CallOption) (*RocketRound, error)
+	// "Покер" of the casino: Casino Hold'em against the dealer. GetPoker
+	// tells the limits of the ante and the pays and, with a token, the hand
+	// of the caller still waiting. DealPoker takes the ante and deals two
+	// cards to the player and the flop (InvalidArgument for an ante out of
+	// the limits, FailedPrecondition "not enough votes", "a poker hand is
+	// under way"); FoldPoker gives the hand up, CallPoker pays twice the ante
+	// and opens the dealer and the board (NotFound for a hand not of the
+	// caller, FailedPrecondition "the poker hand is over"). The dealer plays
+	// with a pair of fours or better; when he does not, the ante is paid by
+	// its pay and the call comes back.
+	GetPoker(ctx context.Context, in *GetPokerRequest, opts ...grpc.CallOption) (*PokerTable, error)
+	DealPoker(ctx context.Context, in *DealPokerRequest, opts ...grpc.CallOption) (*PokerHand, error)
+	FoldPoker(ctx context.Context, in *PokerHandRequest, opts ...grpc.CallOption) (*PokerHand, error)
+	CallPoker(ctx context.Context, in *PokerHandRequest, opts ...grpc.CallOption) (*PokerHand, error)
+	// For the administrators (PermissionDenied for others).
+	GetPokerSettings(ctx context.Context, in *GetPokerSettingsRequest, opts ...grpc.CallOption) (*GetPokerSettingsResponse, error)
+	SetPokerSettings(ctx context.Context, in *SetPokerSettingsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
@@ -1586,6 +1609,66 @@ func (c *userServiceClient) CashRocket(ctx context.Context, in *RocketRequest, o
 	return out, nil
 }
 
+func (c *userServiceClient) GetPoker(ctx context.Context, in *GetPokerRequest, opts ...grpc.CallOption) (*PokerTable, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PokerTable)
+	err := c.cc.Invoke(ctx, UserService_GetPoker_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) DealPoker(ctx context.Context, in *DealPokerRequest, opts ...grpc.CallOption) (*PokerHand, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PokerHand)
+	err := c.cc.Invoke(ctx, UserService_DealPoker_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) FoldPoker(ctx context.Context, in *PokerHandRequest, opts ...grpc.CallOption) (*PokerHand, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PokerHand)
+	err := c.cc.Invoke(ctx, UserService_FoldPoker_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CallPoker(ctx context.Context, in *PokerHandRequest, opts ...grpc.CallOption) (*PokerHand, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PokerHand)
+	err := c.cc.Invoke(ctx, UserService_CallPoker_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetPokerSettings(ctx context.Context, in *GetPokerSettingsRequest, opts ...grpc.CallOption) (*GetPokerSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPokerSettingsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetPokerSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SetPokerSettings(ctx context.Context, in *SetPokerSettingsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetPokerSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) SetVerified(ctx context.Context, in *SetVerifiedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -2153,6 +2236,23 @@ type UserServiceServer interface {
 	LaunchRocket(context.Context, *LaunchRocketRequest) (*RocketRound, error)
 	GetRocket(context.Context, *RocketRequest) (*RocketRound, error)
 	CashRocket(context.Context, *RocketRequest) (*RocketRound, error)
+	// "Покер" of the casino: Casino Hold'em against the dealer. GetPoker
+	// tells the limits of the ante and the pays and, with a token, the hand
+	// of the caller still waiting. DealPoker takes the ante and deals two
+	// cards to the player and the flop (InvalidArgument for an ante out of
+	// the limits, FailedPrecondition "not enough votes", "a poker hand is
+	// under way"); FoldPoker gives the hand up, CallPoker pays twice the ante
+	// and opens the dealer and the board (NotFound for a hand not of the
+	// caller, FailedPrecondition "the poker hand is over"). The dealer plays
+	// with a pair of fours or better; when he does not, the ante is paid by
+	// its pay and the call comes back.
+	GetPoker(context.Context, *GetPokerRequest) (*PokerTable, error)
+	DealPoker(context.Context, *DealPokerRequest) (*PokerHand, error)
+	FoldPoker(context.Context, *PokerHandRequest) (*PokerHand, error)
+	CallPoker(context.Context, *PokerHandRequest) (*PokerHand, error)
+	// For the administrators (PermissionDenied for others).
+	GetPokerSettings(context.Context, *GetPokerSettingsRequest) (*GetPokerSettingsResponse, error)
+	SetPokerSettings(context.Context, *SetPokerSettingsRequest) (*emptypb.Empty, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
@@ -2579,6 +2679,24 @@ func (UnimplementedUserServiceServer) GetRocket(context.Context, *RocketRequest)
 }
 func (UnimplementedUserServiceServer) CashRocket(context.Context, *RocketRequest) (*RocketRound, error) {
 	return nil, status.Error(codes.Unimplemented, "method CashRocket not implemented")
+}
+func (UnimplementedUserServiceServer) GetPoker(context.Context, *GetPokerRequest) (*PokerTable, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPoker not implemented")
+}
+func (UnimplementedUserServiceServer) DealPoker(context.Context, *DealPokerRequest) (*PokerHand, error) {
+	return nil, status.Error(codes.Unimplemented, "method DealPoker not implemented")
+}
+func (UnimplementedUserServiceServer) FoldPoker(context.Context, *PokerHandRequest) (*PokerHand, error) {
+	return nil, status.Error(codes.Unimplemented, "method FoldPoker not implemented")
+}
+func (UnimplementedUserServiceServer) CallPoker(context.Context, *PokerHandRequest) (*PokerHand, error) {
+	return nil, status.Error(codes.Unimplemented, "method CallPoker not implemented")
+}
+func (UnimplementedUserServiceServer) GetPokerSettings(context.Context, *GetPokerSettingsRequest) (*GetPokerSettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPokerSettings not implemented")
+}
+func (UnimplementedUserServiceServer) SetPokerSettings(context.Context, *SetPokerSettingsRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetPokerSettings not implemented")
 }
 func (UnimplementedUserServiceServer) SetVerified(context.Context, *SetVerifiedRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetVerified not implemented")
@@ -4581,6 +4699,114 @@ func _UserService_CashRocket_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetPoker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPokerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetPoker(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetPoker_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetPoker(ctx, req.(*GetPokerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_DealPoker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DealPokerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DealPoker(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DealPoker_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DealPoker(ctx, req.(*DealPokerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_FoldPoker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PokerHandRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).FoldPoker(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_FoldPoker_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).FoldPoker(ctx, req.(*PokerHandRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CallPoker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PokerHandRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CallPoker(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CallPoker_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CallPoker(ctx, req.(*PokerHandRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetPokerSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPokerSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetPokerSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetPokerSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetPokerSettings(ctx, req.(*GetPokerSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SetPokerSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetPokerSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetPokerSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetPokerSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetPokerSettings(ctx, req.(*SetPokerSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_SetVerified_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetVerifiedRequest)
 	if err := dec(in); err != nil {
@@ -5547,6 +5773,30 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CashRocket",
 			Handler:    _UserService_CashRocket_Handler,
+		},
+		{
+			MethodName: "GetPoker",
+			Handler:    _UserService_GetPoker_Handler,
+		},
+		{
+			MethodName: "DealPoker",
+			Handler:    _UserService_DealPoker_Handler,
+		},
+		{
+			MethodName: "FoldPoker",
+			Handler:    _UserService_FoldPoker_Handler,
+		},
+		{
+			MethodName: "CallPoker",
+			Handler:    _UserService_CallPoker_Handler,
+		},
+		{
+			MethodName: "GetPokerSettings",
+			Handler:    _UserService_GetPokerSettings_Handler,
+		},
+		{
+			MethodName: "SetPokerSettings",
+			Handler:    _UserService_SetPokerSettings_Handler,
 		},
 		{
 			MethodName: "SetVerified",

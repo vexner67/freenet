@@ -288,6 +288,23 @@ service UserService {
   rpc LaunchRocket(LaunchRocketRequest) returns (RocketRound);
   rpc GetRocket(RocketRequest) returns (RocketRound);
   rpc CashRocket(RocketRequest) returns (RocketRound);
+  // "Покер" of the casino: Casino Hold'em against the dealer. GetPoker
+  // tells the limits of the ante and the pays and, with a token, the hand
+  // of the caller still waiting. DealPoker takes the ante and deals two
+  // cards to the player and the flop (InvalidArgument for an ante out of
+  // the limits, FailedPrecondition "not enough votes", "a poker hand is
+  // under way"); FoldPoker gives the hand up, CallPoker pays twice the ante
+  // and opens the dealer and the board (NotFound for a hand not of the
+  // caller, FailedPrecondition "the poker hand is over"). The dealer plays
+  // with a pair of fours or better; when he does not, the ante is paid by
+  // its pay and the call comes back.
+  rpc GetPoker(GetPokerRequest) returns (PokerTable);
+  rpc DealPoker(DealPokerRequest) returns (PokerHand);
+  rpc FoldPoker(PokerHandRequest) returns (PokerHand);
+  rpc CallPoker(PokerHandRequest) returns (PokerHand);
+  // For the administrators (PermissionDenied for others).
+  rpc GetPokerSettings(GetPokerSettingsRequest) returns (GetPokerSettingsResponse);
+  rpc SetPokerSettings(SetPokerSettingsRequest) returns (google.protobuf.Empty);
 
   // Requires an access token of an administrator of the site
   // (PermissionDenied otherwise): gives a page the checkmark of a
@@ -1659,7 +1676,7 @@ message PrimeStyle {
   // stars; "" — amethyst.
   string frame = 2;
   // The pattern behind the page: "", stars, hearts, checks, clouds,
-  // flowers, sparkles, islam.
+  // flowers, sparkles.
   string background = 3;
   // The smiley by the status: "", happy, love, cool, wink, sad, angry,
   // sleepy.
@@ -1806,6 +1823,80 @@ message RocketRound {
   int64 elapsed_ms = 8;
   // The balance after the launch or the cash; 0 from GetRocket.
   int64 balance = 9;
+}
+
+// Poker is the table of "Покер": antes from least to most votes and the
+// pays of the ante to one by the hand of the player — straight, flush, full
+// house, four of a kind, straight flush, royal flush.
+message Poker {
+  int64 least = 1;
+  int64 most = 2;
+  repeated int32 pays = 3;
+}
+
+message GetPokerRequest {}
+
+message PokerTable {
+  Poker poker = 1;
+  // The hand of the caller waiting for the call or the fold; none without.
+  PokerHand dealt = 2;
+}
+
+message DealPokerRequest {
+  int64 ante = 1;
+}
+
+message PokerHandRequest {
+  string hand_id = 1;
+}
+
+enum PokerState {
+  POKER_STATE_UNSPECIFIED = 0;
+  POKER_STATE_DEALT = 1;
+  POKER_STATE_FOLDED = 2;
+  POKER_STATE_WON = 3;
+  POKER_STATE_LOST = 4;
+  POKER_STATE_TIED = 5;
+  // Won as the dealer did not qualify: the ante paid, the call back.
+  POKER_STATE_UNQUALIFIED = 6;
+}
+
+// PokerHand is a hand of "Покер" as its player sees it; cards are "As",
+// "Td" — the rank of 23456789TJQKA and the suit of shdc.
+message PokerHand {
+  string id = 1;
+  int64 ante = 2;
+  PokerState state = 3;
+  repeated string player = 4;
+  // The flop until the call, all five after.
+  repeated string board = 5;
+  // Empty until the call.
+  repeated string dealer = 6;
+  // What the hand paid back, the bets included; 0 — nothing.
+  int64 payout = 7;
+  // The best hands: "high_card", "pair", "two_pair", "three", "straight",
+  // "flush", "full_house", "four", "straight_flush", "royal_flush"; the
+  // dealer's once open.
+  string player_hand = 8;
+  string dealer_hand = 9;
+  // The five cards of the best hand of the player and of the dealer.
+  repeated string player_best = 10;
+  repeated string dealer_best = 11;
+  // The balance after the deal, the fold or the call.
+  int64 balance = 12;
+}
+
+message GetPokerSettingsRequest {}
+
+message GetPokerSettingsResponse {
+  Poker poker = 1;
+  int64 hands = 2;
+  int64 spent = 3;
+  int64 won = 4;
+}
+
+message SetPokerSettingsRequest {
+  Poker poker = 1;
 }
 
 message SetCasinoRequest {

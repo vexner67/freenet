@@ -1920,7 +1920,6 @@ export default {
   'звёзды': 'stars',
   'клетка': 'checks',
   'облака': 'clouds',
-  'исламизм': 'Islamism',
   'цветы': 'flowers',
   'не показывать': 'none',
   'весёлое': 'happy',

@@ -160,6 +160,14 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.FailedPrecondition, user.ErrBetEventFinished.Error()), true
 	case errors.Is(err, user.ErrBetEventActive):
 		return status.New(codes.FailedPrecondition, user.ErrBetEventActive.Error()), true
+	case errors.Is(err, user.ErrPokerAnte):
+		return status.New(codes.InvalidArgument, user.ErrPokerAnte.Error()), true
+	case errors.Is(err, user.ErrPokerNotFound):
+		return status.New(codes.NotFound, user.ErrPokerNotFound.Error()), true
+	case errors.Is(err, user.ErrPokerOver):
+		return status.New(codes.FailedPrecondition, user.ErrPokerOver.Error()), true
+	case errors.Is(err, user.ErrPokerOpen):
+		return status.New(codes.FailedPrecondition, user.ErrPokerOpen.Error()), true
 	case errors.Is(err, user.ErrRocketAmount):
 		return status.New(codes.InvalidArgument, user.ErrRocketAmount.Error()), true
 	case errors.Is(err, user.ErrRocketAuto):

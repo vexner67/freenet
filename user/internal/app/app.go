@@ -233,6 +233,7 @@ func (a *App) build(cfg config.Config) error {
 			}),
 			Casinos:     service.NewCasinoService(store.users, store.casino, store.wallets, store.tx, admins),
 			Rockets:     service.NewRocketService(store.users, store.casino, store.rockets, store.wallets, store.tx, admins),
+			Pokers:      service.NewPokerService(store.users, store.pokers, store.wallets, store.tx, admins),
 			Mines:       service.NewMineService(store.users, store.mine, store.wallets, store.tx, admins),
 			Businesses:  service.NewBusinessService(store.users, store.business, store.wallets, store.tx, admins),
 			Banks:       a.banks,
@@ -293,6 +294,9 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		// A round is launched and cashed once: both counted apart.
 		userv1.UserService_LaunchRocket_FullMethodName: cfg.CasinoLimits,
 		userv1.UserService_CashRocket_FullMethodName:   cfg.CasinoLimits,
+		userv1.UserService_DealPoker_FullMethodName:    cfg.CasinoLimits,
+		userv1.UserService_FoldPoker_FullMethodName:    cfg.CasinoLimits,
+		userv1.UserService_CallPoker_FullMethodName:    cfg.CasinoLimits,
 
 		// Energy holds the digs back; the limit is against scripts.
 		userv1.UserService_DigOre_FullMethodName:  cfg.MineLimits,
@@ -383,6 +387,8 @@ type storage struct {
 	bank service.BankRepository
 	// rockets are the rounds of "Ракетка".
 	rockets service.RocketRepository
+	// pokers are the table and the hands of "Покер".
+	pokers service.PokerRepository
 	// betEvents are the events people stake on.
 	betEvents service.BetEventRepository
 	// purchases are the paid posts opened and the messages paid for.
@@ -423,6 +429,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			business:     inmem.NewBusinessRepository(),
 			bank:         inmem.NewBankRepository(),
 			rockets:      inmem.NewRocketRepository(),
+			pokers:       inmem.NewPokerRepository(),
 			betEvents:    inmem.NewBetEventRepository(),
 			purchases:    inmem.NewPurchaseRepository(),
 			ads:          inmem.NewAdRepository(),
@@ -476,6 +483,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		business:     postgres.NewBusinessRepository(a.pool),
 		bank:         postgres.NewBankRepository(a.pool),
 		rockets:      postgres.NewRocketRepository(a.pool),
+		pokers:       postgres.NewPokerRepository(a.pool),
 		betEvents:    postgres.NewBetEventRepository(a.pool),
 		purchases:    postgres.NewPurchaseRepository(a.pool),
 		ads:          postgres.NewAdRepository(a.pool),
