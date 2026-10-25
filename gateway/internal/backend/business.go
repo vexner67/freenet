@@ -45,7 +45,7 @@ func (b *Business) Run(ctx context.Context, accessToken string, act model.Busine
 	}
 
 	resp, err := b.api.RunBusiness(withToken(ctx, accessToken), &userv1.RunBusinessRequest{
-		Kind: act.Kind, Action: act.Action, Amount: act.Amount, Price: act.Price, Staff: staff,
+		Kind: act.Kind, Action: act.Action, Amount: act.Amount, Price: act.Price, Staff: staff, Perk: act.Perk,
 	})
 	if err != nil {
 		return model.BusinessDone{}, errs.Wrap("b.api.RunBusiness", fromStatus(err))
@@ -96,7 +96,12 @@ func fromProtoBusinesses(s *userv1.BusinessesState) model.Businesses {
 			Staff: int(b.GetStaff()), Condition: int(b.GetCondition()), Cash: b.GetCash(),
 			Bankrupt: b.GetBankrupt(), Invested: b.GetInvested(), Collected: b.GetCollected(),
 			Customers: b.GetCustomers(), Served: b.GetServed(), Income: b.GetIncome(), Costs: b.GetCosts(),
-			Resale: b.GetResale(), InDebt: b.GetInDebt(),
+			Resale: b.GetResale(), InDebt: b.GetInDebt(), Storage: b.GetStorage(),
+		}
+		for _, p := range b.GetPerks() {
+			biz.Perks = append(biz.Perks, model.BusinessPerk{
+				Perk: p.GetPerk(), Tier: int(p.GetTier()), NextPrice: p.GetNextPrice(), NextLevel: int(p.GetNextLevel()),
+			})
 		}
 		if b.GetAdUntil() != nil {
 			biz.AdUntil = b.GetAdUntil().AsTime()

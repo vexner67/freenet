@@ -60,6 +60,17 @@ type Business struct {
 	Costs     float64
 	Resale    int64
 	InDebt    bool
+	Perks     []BusinessPerk
+	Storage   int64
+}
+
+// BusinessPerk is an improvement of a business: its tier, and the votes
+// and the level its next tier costs and opens at (0 at the top tier).
+type BusinessPerk struct {
+	Perk      string
+	Tier      int
+	NextPrice int64
+	NextLevel int
 }
 
 // Businesses are the businesses of the caller with the settings.
@@ -69,13 +80,15 @@ type Businesses struct {
 }
 
 // BusinessAct is an action: Amount is the units of a restock or the votes
-// of a deposit, Price and Staff — what a manage sets.
+// of a deposit, Price and Staff — what a manage sets, Perk — the
+// improvement an improve buys the next tier of.
 type BusinessAct struct {
 	Kind   string
 	Action string
 	Amount int64
 	Price  int64
 	Staff  int
+	Perk   string
 }
 
 // BusinessDone is what an action did: votes spent and got, the tax, the

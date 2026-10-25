@@ -5200,11 +5200,11 @@ paths:
   /api/v1/me/businesses/{kind}/{action}:
     post:
       summary: Run a business
-      description: '`manage` sets `price` (hundredths of a vote, from 1) and `staff` (0 to what the level employs); `restock` buys `amount` units of goods, up to the storage; `upgrade` raises the level; `repair` brings the premises back to full; `advertise` raises the demand for a while; `deposit` puts `amount` votes into the till (to pay debts); `collect` takes the whole votes of the till, less the tax; `sell` sells the business for half of what went into buying and upgrading it and the till — nothing when bankrupt, 409 in debt. Votes spent go to the treasury, votes taken out come from it; `collect` and `sell` are for pages a week old with a filled profile. 404 for a business you do not own; 409 when bankrupt, at the top level, intact or with less than a vote in the till. Rate limited.'
+      description: '`manage` sets `price` (hundredths of a vote, from 1) and `staff` (0 to what the level employs); `restock` buys `amount` units of goods, up to the storage; `improve` buys the next tier of the improvement `perk` (decor — more customers, brand — a dearer fair price, equipment — a worker serves more, shelves — a bigger storage, finish — slower wear, training — lower wages; three tiers, opened at levels 1, 3 and 6, 409 otherwise); `upgrade` raises the level; `repair` brings the premises back to full; `advertise` raises the demand for a while; `deposit` puts `amount` votes into the till (to pay debts); `collect` takes the whole votes of the till, less the tax; `sell` sells the business for half of what went into buying and upgrading it and the till — nothing when bankrupt, 409 in debt. Votes spent go to the treasury, votes taken out come from it; `collect` and `sell` are for pages a week old with a filled profile. 404 for a business you do not own; 409 when bankrupt, at the top level, intact or with less than a vote in the till. Rate limited.'
       security: [{ bearer: [] }]
       parameters:
         - { name: kind, in: path, required: true, schema: { type: string, enum: [kiosk, cafe, carwash, factory] } }
-        - { name: action, in: path, required: true, schema: { type: string, enum: [manage, restock, upgrade, repair, advertise, deposit, collect, sell] } }
+        - { name: action, in: path, required: true, schema: { type: string, enum: [manage, restock, upgrade, repair, advertise, improve, deposit, collect, sell] } }
       requestBody:
         content:
           application/json:
@@ -5214,6 +5214,7 @@ paths:
                 amount: { type: integer, format: int64, description: Units of a restock, votes of a deposit }
                 price: { type: integer, format: int64, description: The price a manage sets, in hundredths of a vote }
                 staff: { type: integer, description: The workers a manage sets }
+                perk: { type: string, enum: [decor, brand, equipment, shelves, finish, training], description: The improvement an improve buys the next tier of }
       responses:
         "200":
           description: What the action did
@@ -9090,6 +9091,17 @@ components:
         costs: { type: number, description: Hundredths of a vote an hour now }
         resale: { type: integer, format: int64, description: The votes the business sells for now }
         inDebt: { type: boolean }
+        storage: { type: integer, format: int64, description: The units of goods the storage holds now }
+        perks:
+          type: array
+          description: The improvements in order
+          items:
+            type: object
+            properties:
+              perk: { type: string, enum: [decor, brand, equipment, shelves, finish, training] }
+              tier: { type: integer, description: 0 to 3 }
+              nextPrice: { type: integer, format: int64, description: The votes of the next tier; 0 at the top }
+              nextLevel: { type: integer, description: The level the next tier opens at; 0 at the top }
     Businesses:
       type: object
       properties:

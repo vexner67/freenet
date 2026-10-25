@@ -46,23 +46,32 @@ type businessSettingsJSON struct {
 }
 
 type businessJSON struct {
-	Kind      string     `json:"kind"`
-	Level     int        `json:"level"`
-	Stock     int64      `json:"stock"`
-	Price     int64      `json:"price"`
-	Staff     int        `json:"staff"`
-	Condition int        `json:"condition"`
-	Cash      int64      `json:"cash"`
-	AdUntil   *time.Time `json:"adUntil"`
-	Bankrupt  bool       `json:"bankrupt"`
-	Invested  int64      `json:"invested"`
-	Collected int64      `json:"collected"`
-	Customers float64    `json:"customers"`
-	Served    float64    `json:"served"`
-	Income    float64    `json:"income"`
-	Costs     float64    `json:"costs"`
-	Resale    int64      `json:"resale"`
-	InDebt    bool       `json:"inDebt"`
+	Kind      string             `json:"kind"`
+	Level     int                `json:"level"`
+	Stock     int64              `json:"stock"`
+	Price     int64              `json:"price"`
+	Staff     int                `json:"staff"`
+	Condition int                `json:"condition"`
+	Cash      int64              `json:"cash"`
+	AdUntil   *time.Time         `json:"adUntil"`
+	Bankrupt  bool               `json:"bankrupt"`
+	Invested  int64              `json:"invested"`
+	Collected int64              `json:"collected"`
+	Customers float64            `json:"customers"`
+	Served    float64            `json:"served"`
+	Income    float64            `json:"income"`
+	Costs     float64            `json:"costs"`
+	Resale    int64              `json:"resale"`
+	InDebt    bool               `json:"inDebt"`
+	Perks     []businessPerkJSON `json:"perks"`
+	Storage   int64              `json:"storage"`
+}
+
+type businessPerkJSON struct {
+	Perk      string `json:"perk"`
+	Tier      int    `json:"tier"`
+	NextPrice int64  `json:"nextPrice"`
+	NextLevel int    `json:"nextLevel"`
 }
 
 type businessesJSON struct {
@@ -86,7 +95,11 @@ func toBusinessesJSON(b model.Businesses) businessesJSON {
 			Kind: biz.Kind, Level: biz.Level, Stock: biz.Stock, Price: biz.Price, Staff: biz.Staff,
 			Condition: biz.Condition, Cash: biz.Cash, Bankrupt: biz.Bankrupt, Invested: biz.Invested,
 			Collected: biz.Collected, Customers: biz.Customers, Served: biz.Served, Income: biz.Income,
-			Costs: biz.Costs, Resale: biz.Resale, InDebt: biz.InDebt,
+			Costs: biz.Costs, Resale: biz.Resale, InDebt: biz.InDebt, Storage: biz.Storage,
+			Perks: make([]businessPerkJSON, 0, len(biz.Perks)),
+		}
+		for _, p := range biz.Perks {
+			j.Perks = append(j.Perks, businessPerkJSON(p))
 		}
 		if !biz.AdUntil.IsZero() {
 			until := biz.AdUntil
@@ -159,9 +172,10 @@ func (a *api) runBusiness(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Amount int64 `json:"amount"`
-		Price  int64 `json:"price"`
-		Staff  int   `json:"staff"`
+		Amount int64  `json:"amount"`
+		Price  int64  `json:"price"`
+		Staff  int    `json:"staff"`
+		Perk   string `json:"perk"`
 	}
 	if err = decode(w, r, &req); err != nil {
 		a.writeError(w, r, err)
@@ -170,7 +184,7 @@ func (a *api) runBusiness(w http.ResponseWriter, r *http.Request) {
 
 	d, err := a.business.Run(r.Context(), token, model.BusinessAct{
 		Kind: r.PathValue("kind"), Action: r.PathValue("action"),
-		Amount: req.Amount, Price: req.Price, Staff: req.Staff,
+		Amount: req.Amount, Price: req.Price, Staff: req.Staff, Perk: req.Perk,
 	})
 	if err != nil {
 		a.writeError(w, r, err)
