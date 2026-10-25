@@ -1280,6 +1280,77 @@ export function rocketsCount(n) {
   return `${n} ${plural(n, ['полёт', 'полёта', 'полётов'])}`;
 }
 
+// handsCount is "1 раздача", "5 раздач".
+export function handsCount(n) {
+  return `${n} ${plural(n, ['раздача', 'раздачи', 'раздач'])}`;
+}
+
+// POKER_HANDS are the hands of poker, the weakest first.
+export const POKER_HANDS = ['high_card', 'pair', 'two_pair', 'three', 'straight', 'flush', 'full_house', 'four', 'straight_flush', 'royal_flush'];
+
+// POKER_PAID are the hands the pays of the table go to, in their order: a
+// royal flush first, the last pay for a straight and everything below it.
+export const POKER_PAID = ['royal_flush', 'straight_flush', 'four', 'full_house', 'flush', 'straight'];
+
+const pokerHandNames = {
+  high_card: tr('Старшая карта'),
+  pair: tr('Пара'),
+  two_pair: tr('Две пары'),
+  three: tr('Тройка'),
+  straight: tr('Стрит'),
+  flush: tr('Флеш'),
+  full_house: tr('Фулл-хаус'),
+  four: tr('Каре'),
+  straight_flush: tr('Стрит-флеш'),
+  royal_flush: tr('Роял-флеш'),
+};
+
+// pokerHandName is "Две пары" of "two_pair".
+export function pokerHandName(hand) {
+  return pokerHandNames[hand] ?? hand;
+}
+
+// pokerPay is what the ante pays to one by the hand of the player: the
+// pays of the table go from a royal flush down, the last one for a
+// straight and anything weaker.
+export function pokerPay(hand, pays) {
+  const i = POKER_PAID.indexOf(hand);
+
+  return pays[i >= 0 ? i : POKER_PAID.length - 1] ?? 1;
+}
+
+const cardSuits = { s: '♠', h: '♥', d: '♦', c: '♣' };
+
+// pokerCard is a card of "As", "Td": its rank as written on it ("10" for
+// "T"), its suit and whether it is red; null for anything else.
+export function pokerCard(card) {
+  const m = /^([2-9TJQKA])([shdc])$/.exec(card ?? '');
+  if (!m) return null;
+
+  return { rank: m[1] === 'T' ? '10' : m[1], suit: cardSuits[m[2]], red: m[2] === 'h' || m[2] === 'd' };
+}
+
+// pokerOutcome is what a hand over came to, for the line under the table.
+export function pokerOutcome(hand) {
+  const mine = pokerHandName(hand.playerHand).toLowerCase();
+  const his = pokerHandName(hand.dealerHand).toLowerCase();
+
+  switch (hand.state) {
+    case 'folded':
+      return tr('Вы сбросили карты: анте {0} проиграно.', votesCount(hand.ante));
+    case 'won':
+      return tr('У вас {0}, у дилера {1}. Вы выиграли {2}!', mine, his, votesCount(hand.payout));
+    case 'unqualified':
+      return tr('У дилера {0} — он не играет: нужна пара четвёрок или лучше. Анте оплачено, колл вернулся — {1}.', his, votesCount(hand.payout));
+    case 'tied':
+      return tr('Ничья: {0} у обоих. Ставки вернулись — {1}.', mine, votesCount(hand.payout));
+    case 'lost':
+      return tr('У дилера {0}, у вас {1}. Ставки проиграны.', his, mine);
+    default:
+      return '';
+  }
+}
+
 // rocketScale is the view of the sky of "Ракетка" over a flight of ms:
 // at least 8 s and ×2, and a little more than the flight, so that the
 // rocket stays in sight as it climbs.
@@ -1995,6 +2066,8 @@ export function voteOperation(op, myId) {
       return { title: out ? tr('Казино: ставка в «Прицеле»') : tr('Казино: выигрыш в «Прицеле»'), role: '' };
     case 'rocket':
       return { title: out ? tr('Казино: ставка в «Ракетке»') : tr('Казино: выигрыш в «Ракетке»'), role: '' };
+    case 'poker':
+      return { title: out ? tr('Казино: ставка в «Покере»') : tr('Казино: выигрыш в «Покере»'), role: '' };
     case 'bonus':
       return { title: tr('Ежедневный бонус'), role: '' };
     case 'mine':

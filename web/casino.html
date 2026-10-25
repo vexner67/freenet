@@ -35,6 +35,7 @@
           <a id="tab-wheel" href="/casino">Огонёк</a>
           <a id="tab-aim" href="/casino?game=aim" hidden>Прицел</a>
           <a id="tab-rocket" href="/casino?game=rocket" hidden>Ракетка</a>
+          <a id="tab-poker" href="/casino?game=poker" hidden>Покер</a>
           <a id="tab-events" href="/casino?game=events">Ставки</a>
         </div>
         <div class="casino" id="casino" hidden>
@@ -129,6 +130,52 @@
             <p class="hint casino-session" id="rocket-auto-state" hidden></p>
             <div class="casino-result" id="rocket-result" hidden></div>
             <p class="hint casino-session" id="rocket-session" hidden></p>
+          </div>
+          <div class="casino-game" id="poker-game" hidden>
+            <p class="casino-lead">Покер против дилера. Поставьте анте — вам придут две карты, на стол лягут три. Нравятся карты — колл, он вдвое больше анте, и откроются ещё две карты и карты дилера; нет — фолд, и анте пропадёт. Побеждает лучшая комбинация из пяти карт.</p>
+            <form class="casino-bet" id="poker-form">
+              <div class="casino-stake">
+                <label class="casino-label" for="poker-amount">Анте:</label>
+                <input class="casino-amount" id="poker-amount" type="number" inputmode="numeric" required>
+                <span class="casino-quick">
+                  <button class="button" type="button" data-quick="least">мин.</button>
+                  <button class="button" type="button" data-quick="half">½</button>
+                  <button class="button" type="button" data-quick="double">×2</button>
+                  <button class="button" type="button" data-quick="most">макс.</button>
+                </span>
+              </div>
+              <p class="hint casino-limits" id="poker-limits"></p>
+            </form>
+            <div class="poker-table" id="poker-table">
+              <div class="poker-row">
+                <span class="poker-label">Дилер</span>
+                <div class="poker-cards" id="poker-dealer"></div>
+                <span class="poker-hand" id="poker-dealer-hand"></span>
+              </div>
+              <div class="poker-row">
+                <span class="poker-label">Стол</span>
+                <div class="poker-cards" id="poker-board"></div>
+                <span class="poker-bets" id="poker-bets"></span>
+              </div>
+              <div class="poker-row">
+                <span class="poker-label">Вы</span>
+                <div class="poker-cards" id="poker-player"></div>
+                <span class="poker-hand" id="poker-player-hand"></span>
+              </div>
+            </div>
+            <div class="casino-controls poker-controls">
+              <button class="button" id="poker-deal" type="button" hidden></button>
+              <button class="button" id="poker-call" type="button" hidden></button>
+              <button class="button" id="poker-fold" type="button" hidden>Фолд</button>
+              <span class="hint" id="poker-guest" hidden>Играть могут только вошедшие на сайт.</span>
+            </div>
+            <div class="casino-result" id="poker-result" hidden></div>
+            <p class="hint casino-session" id="poker-session" hidden></p>
+            <table class="poker-pays" id="poker-pays">
+              <caption>Выплаты по анте</caption>
+              <tbody id="poker-pays-rows"></tbody>
+            </table>
+            <p class="hint poker-rules">Дилер играет с парой четвёрок или лучше. Не играет — анте оплачивается по таблице, а колл возвращается. Играет и проигрывает — анте по таблице, колл 1 к 1. Ничья — ставки возвращаются.</p>
           </div>
           <div class="casino-game" id="events-game" hidden>
             <p class="casino-lead">Угадайте, чем кончится событие, и поставьте на исход сколько хотите голосов. У каждого исхода свой коэффициент: если исход сбудется, ставка вернётся умноженной на коэффициент, с которым её сделали.</p>

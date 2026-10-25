@@ -8,7 +8,7 @@
 // "Freenet Prime" (/admin/prime: the prices of its periods),
 // "Казино" (/admin/casino: the price of a spin, the prizes and their odds,
 // and the limits and the return of "Прицел", and the limits, the return and
-// the top of "Ракетка"), "Ставки" (/admin/bets: the
+// the top of "Ракетка", and the antes and the pays of "Покер"), "Ставки" (/admin/bets: the
 // events people stake on, a new one, and closing, resolving, cancelling
 // and deleting them), "Бизнес" (/admin/business: the plans of the
 // businesses and the tax), "Банк" (/admin/bank: the rates and limits of
@@ -20,7 +20,7 @@
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, bankVotes, businessName, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, handsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, bankVotes, businessName, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 import { remember } from './newyear.js';
 
@@ -1158,6 +1158,41 @@ function rocketSettings(rocket, rockets) {
   });
 }
 
+// pokerSettings is "Покер" of "Казино": the limits of the ante, the pays
+// of the ante by the hand of the player and how the hands have done.
+async function pokerSettings(answered) {
+  const { poker, hands, spent, won } = await answered;
+  const save = $('poker-form').querySelector('button[type=submit]');
+
+  $('poker-stats').textContent = hands > 0
+    ? tr('Сыграно {0}: поставлено {1}, выиграно {2} — {3} поставленного.', handsCount(hands), votesCount(spent), votesCount(won), casinoPayout({ spent, won }))
+    : tr('Ещё никто не играл.');
+  $('poker-least').value = String(poker.least);
+  $('poker-most').value = String(poker.most);
+  poker.pays.forEach((pay, i) => { $(`poker-pay-${i}`).value = String(pay); });
+
+  $('poker-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    $('poker-saved').hidden = true;
+    save.disabled = true;
+
+    try {
+      await api.setPokerSettings({
+        least: Number($('poker-least').value),
+        most: Number($('poker-most').value),
+        pays: poker.pays.map((_, i) => Number($(`poker-pay-${i}`).value)),
+      });
+      $('poker-saved').textContent = tr('Изменения сохранены');
+      $('poker-saved').hidden = false;
+    } catch (e) {
+      showError(e);
+    } finally {
+      save.disabled = false;
+    }
+  });
+}
+
 // jackpotSettings is "Джекпот" of "Казино": the win the site celebrates
 // over the whole screen.
 function jackpotSettings(jackpot) {
@@ -1539,7 +1574,7 @@ const reads = {
   '/admin/ads': () => started(api.ads(true)),
   '/admin/decor': () => started(api.decor()),
   '/admin/prime': () => started(api.primePrices()),
-  '/admin/casino': () => started(api.casinoSettings()),
+  '/admin/casino': () => ({ casino: started(api.casinoSettings()), poker: started(api.pokerSettings()) }),
   '/admin/bets': () => started(api.betEvents()),
   '/admin/mine': () => started(api.mineSettings()),
   '/admin/business': () => started(api.businessSettings()),
@@ -1577,7 +1612,8 @@ if (!me) {
   } else if (path === '/admin/prime') {
     await prime(reads).catch(showError);
   } else if (path === '/admin/casino') {
-    await casino(reads).catch(showError);
+    await casino(reads.casino).catch(showError);
+    await pokerSettings(reads.poker).catch(showError);
   } else if (path === '/admin/bets') {
     await bets(reads).catch(showError);
   } else if (path === '/admin/mine') {

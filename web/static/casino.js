@@ -1,4 +1,4 @@
-// "Азартные игры" (/casino): three games for votes, chosen by the tabs over them.
+// "Азартные игры" (/casino): five games for votes, chosen by the tabs over them.
 // "Огонёк": a spin costs votes and wins one of the prizes, votes again —
 // the administrators tune how likely each is in the admin panel. A light
 // runs over the prizes, slowing down, and stops on the one won.
@@ -12,6 +12,7 @@
 // itself. The server draws where it explodes at the launch and says it once
 // the round is over; the page draws the flight by its own clock, asks how
 // the round is twice a second and lets the server judge the cash.
+// "Покер" (?game=poker): casino hold'em against the dealer (poker.js).
 // "Ставки" (?game=events): events the administrators make, each with its
 // outcomes and their odds; people stake votes on an outcome, and once it is
 // resolved a stake on the outcome won brings the stake by the odds it was
@@ -27,8 +28,11 @@ import { aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventStat
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
 import { jackpot } from './jackpot.js';
+import { poker } from './poker.js';
 
 const answered = started(api.casino());
+// The table of poker; a server without it has no poker.
+const pokerTable = started(api.poker()).catch(() => null);
 
 // jackpotFrom is the win that takes the whole screen; the casino says it.
 let jackpotFrom = Infinity;
@@ -54,6 +58,8 @@ let reading = 0;
 // once they are made.
 let refreshBet = () => {};
 let refreshRocket = () => {};
+let refreshPoker = () => {};
+let pokerShown = false;
 // auto is "Автоигра" under way: its button, which stops it, and whether
 // it is asked to.
 let auto = null;
@@ -96,6 +102,7 @@ function setPlaying(on) {
   for (const tab of tabs()) tab.setAttribute('aria-disabled', String(on));
   refreshBet();
   refreshRocket();
+  refreshPoker();
 }
 
 function showBalance(votes) {
@@ -254,16 +261,17 @@ function watchAuto(game, cost, round, count) {
 
 // tabs are the links that switch the game or the section of "Ставки".
 function tabs() {
-  return [$('tab-wheel'), $('tab-aim'), $('tab-rocket'), $('tab-events'), $('section-all'), $('section-popular')];
+  return [$('tab-wheel'), $('tab-aim'), $('tab-rocket'), $('tab-poker'), $('tab-events'), $('section-all'), $('section-popular')];
 }
 
-// The game shown: "wheel", "aim", "rocket" or "events", by the address;
+// The game shown: "wheel", "aim", "rocket", "poker" or "events", by the address;
 // "bet" is the name "Прицел" had.
 function gameOf(url) {
   const game = new URL(url, location.href).searchParams.get('game');
 
   if (game === 'aim' || game === 'bet') return aimShown ? 'aim' : 'wheel';
   if (game === 'rocket') return rocketShownTab ? 'rocket' : 'wheel';
+  if (game === 'poker') return pokerShown ? 'poker' : 'wheel';
 
   return game === 'events' ? 'events' : 'wheel';
 }
@@ -278,11 +286,13 @@ function showGame(url) {
   $('tab-wheel').classList.toggle('active', game === 'wheel');
   $('tab-aim').classList.toggle('active', game === 'aim');
   $('tab-rocket').classList.toggle('active', game === 'rocket');
+  $('tab-poker').classList.toggle('active', game === 'poker');
   $('tab-events').classList.toggle('active', game === 'events');
   $('wheel-game').hidden = game !== 'wheel';
   $('aim-game').hidden = game !== 'aim';
   $('rocket-game').hidden = game !== 'rocket';
   if (game === 'rocket') drawSky(sky.ms, sky.cashedAt);
+  $('poker-game').hidden = game !== 'poker';
   $('events-game').hidden = game !== 'events';
   if (game === 'events') showEvents(sectionOf(url));
 }
@@ -858,6 +868,20 @@ try {
     rocketShownTab = true;
     $('tab-rocket').hidden = false;
     rocketing(rocket, signedIn);
+  }
+  const tablePoker = await pokerTable;
+  if (tablePoker?.poker) {
+    pokerShown = true;
+    $('tab-poker').hidden = false;
+    refreshPoker = poker(tablePoker.poker, tablePoker.dealt, {
+      signedIn,
+      balance: () => balance,
+      playing: () => playing,
+      setPlaying,
+      showBalance,
+      cheer,
+      jackpotFrom: () => jackpotFrom,
+    });
   }
   // An address of the time the game was "Ставка" becomes its new one.
   if (new URL(location.href).searchParams.get('game') === 'bet') {

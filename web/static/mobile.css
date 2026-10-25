@@ -314,6 +314,12 @@ input, select, textarea { font-size: 16px !important; }
 .casino-quick { width: 100%; }
 .casino-quick .button { flex: 1; min-height: 32px; }
 .casino-multiplier { min-height: 58px; }
+.poker-table { padding: 6px; }
+.poker-cards { gap: 4px; }
+.poker-card { width: 44px; height: 62px; }
+.poker-pip { font-size: 22px; line-height: 22px; }
+.poker-corner { font-size: 12px; line-height: 12px; }
+.poker-controls .button + .button { margin: 6px 0 0; }
 .rocket-sky { height: 180px; }
 .rocket-multiplier { font-size: 28px; }
 .bet-outcome-head { flex-wrap: wrap; }

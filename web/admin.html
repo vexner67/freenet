@@ -411,8 +411,50 @@
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
         </div>
       </form>
+      <h2>Покер</h2>
+      <p class="admin-lead">Покер против дилера, как в онлайн-казино: анте даёт две карты игроку и три на стол, колл — вдвое больше анте. Дилер играет с парой четвёрок или лучше; не играет — анте платится по таблице, колл возвращается; играет и проигрывает — анте по таблице, колл 1 к 1. Таблица по умолчанию — 100, 20, 10, 3, 2 и 1 к 1 — возвращает около 97 % поставленного.</p>
+      <p class="admin-casino-stats" id="poker-stats"></p>
+      <div class="aui-message aui-message-success" id="poker-saved" hidden></div>
+      <form class="aui" id="poker-form">
+        <div class="field-group">
+          <label for="poker-least">Наименьшее анте</label>
+          <input class="text admin-casino-field" id="poker-least" type="number" min="1" required>
+        </div>
+        <div class="field-group">
+          <label for="poker-most">Наибольшее анте</label>
+          <input class="text admin-casino-field" id="poker-most" type="number" min="1" required>
+          <div class="description">В голосах, не меньше 1.</div>
+        </div>
+        <div class="field-group">
+          <label for="poker-pay-0">Роял-флеш</label>
+          <span class="admin-times"><input class="text admin-casino-field" id="poker-pay-0" type="number" min="1" required> к 1</span>
+        </div>
+        <div class="field-group">
+          <label for="poker-pay-1">Стрит-флеш</label>
+          <span class="admin-times"><input class="text admin-casino-field" id="poker-pay-1" type="number" min="1" required> к 1</span>
+        </div>
+        <div class="field-group">
+          <label for="poker-pay-2">Каре</label>
+          <span class="admin-times"><input class="text admin-casino-field" id="poker-pay-2" type="number" min="1" required> к 1</span>
+        </div>
+        <div class="field-group">
+          <label for="poker-pay-3">Фулл-хаус</label>
+          <span class="admin-times"><input class="text admin-casino-field" id="poker-pay-3" type="number" min="1" required> к 1</span>
+        </div>
+        <div class="field-group">
+          <label for="poker-pay-4">Флеш</label>
+          <span class="admin-times"><input class="text admin-casino-field" id="poker-pay-4" type="number" min="1" required> к 1</span>
+        </div>
+        <div class="field-group">
+          <label for="poker-pay-5">Стрит и ниже</label>
+          <span class="admin-times"><input class="text admin-casino-field" id="poker-pay-5" type="number" min="1" required> к 1</span>
+        </div>
+        <div class="buttons-container">
+          <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
+        </div>
+      </form>
       <h2>Джекпот</h2>
-      <p class="admin-lead">Выигрыш за один раунд «Огонька», «Прицела» или «Ракетки» от этого числа голосов сайт празднует на весь экран — вспышкой, фейерверками и дождём монет.</p>
+      <p class="admin-lead">Выигрыш за один раунд «Огонька», «Прицела», «Ракетки» или «Покера» от этого числа голосов сайт празднует на весь экран — вспышкой, фейерверками и дождём монет.</p>
       <div class="aui-message aui-message-success" id="jackpot-saved" hidden></div>
       <form class="aui" id="jackpot-form">
         <div class="field-group">
