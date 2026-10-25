@@ -547,6 +547,7 @@ type Backends struct {
 	Business      Business
 	Bank          Bank
 	Poker         Poker
+	Holdem        Holdem
 	Bets          Bets
 	Documents     Documents
 	Stories       Stories
@@ -584,6 +585,7 @@ type api struct {
 	business          Business
 	banks             Bank
 	pokers            Poker
+	holdems           Holdem
 	bets              Bets
 	documents         Documents
 	stories           Stories
@@ -905,6 +907,15 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/casino/poker/hands/{id}/{action}", a.playPoker)
 	mux.HandleFunc("GET /api/v1/casino/poker/settings", a.pokerSettings)
 	mux.HandleFunc("PUT /api/v1/casino/poker/settings", a.setPokerSettings)
+	mux.HandleFunc("GET /api/v1/casino/tables", a.listHoldemTables)
+	mux.HandleFunc("POST /api/v1/casino/tables", a.createHoldemTable)
+	mux.HandleFunc("POST /api/v1/casino/tables/quick", a.quickHoldem)
+	mux.HandleFunc("GET /api/v1/casino/tables/{id}", a.holdemTable)
+	mux.HandleFunc("POST /api/v1/casino/tables/{id}/seat", a.sitHoldemTable)
+	mux.HandleFunc("DELETE /api/v1/casino/tables/{id}/seat", a.leaveHoldemTable)
+	mux.HandleFunc("POST /api/v1/casino/tables/{id}/actions", a.actHoldemTable)
+	mux.HandleFunc("POST /api/v1/casino/tables/{id}/back", a.backHoldemTable)
+	mux.HandleFunc("POST /api/v1/casino/tables/{id}/invitations", a.inviteHoldemTable)
 
 	mux.HandleFunc("GET /api/v1/me/mine", a.mine)
 	mux.HandleFunc("POST /api/v1/me/mine/digs", a.digOre)

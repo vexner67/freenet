@@ -5184,6 +5184,194 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/PermissionDenied" }
 
+  /api/v1/casino/tables:
+    get:
+      summary: Poker tables
+      description: 'No-limit Texas Hold''em of people. `section`: `public` (the default; the open tables, the fullest first), `mine` (the tables you sit at), `invited` (private tables you are invited to). Up to 50.'
+      parameters:
+        - { name: section, in: query, schema: { type: string, enum: [public, mine, invited] } }
+      responses:
+        "200":
+          description: The tables
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [tables]
+                properties:
+                  tables: { type: array, items: { $ref: "#/components/schemas/HoldemTable" } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+    post:
+      summary: Open a poker table
+      description: 'Opens a table of 2 to 9 seats with the big blind (2 and up; the small one is half) and seats you with the buy-in — from 20 to 200 big blinds, taken from your votes. A private table is seen and sat at by its owner, the invited and those sitting. 400 for wrong settings, 409 without votes. Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [seats, bigBlind, buyIn]
+              properties:
+                name: { type: string }
+                private: { type: boolean }
+                seats: { type: integer }
+                bigBlind: { type: integer, format: int64 }
+                buyIn: { type: integer, format: int64 }
+      responses:
+        "200": { $ref: "#/components/responses/HoldemSeat" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/casino/tables/quick:
+    post:
+      summary: A quick poker game
+      description: 'Seats you at the fullest open table of the big blind (2, 10, 50, 200 or 1000) with a free seat, or opens one of six seats. 400 for another big blind or a buy-in out of the limits, 409 without votes. Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bigBlind, buyIn]
+              properties:
+                bigBlind: { type: integer, format: int64 }
+                buyIn: { type: integer, format: int64 }
+      responses:
+        "200": { $ref: "#/components/responses/HoldemSeat" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/casino/tables/{id}:
+    get:
+      summary: A poker table
+      description: 'The table as you see it: your cards and those shown at the showdown. It moves on as it is read — a turn passes after 30 s (a check when it costs nothing, else a fold; two missed turns sit the player out, five minutes out stand them up with their chips), a hand is dealt 6 s after the last. With `version` equal to the table''s while a turn runs, only `{version, turnMs, same: true}`. 404 for an unknown table or a private one not yours.'
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: version, in: query, schema: { type: integer, format: int64 } }
+      responses:
+        "200":
+          description: The table
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HoldemTable" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/casino/tables/{id}/seat:
+    post:
+      summary: Sit at a poker table
+      description: '`seat` from 0, or absent for the first free one; the buy-in is taken from your votes. 409 for a full table, a taken seat, sitting already, a private table you are not invited to or without votes. Rate limited.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [buyIn]
+              properties:
+                seat: { type: integer }
+                buyIn: { type: integer, format: int64 }
+      responses:
+        "200": { $ref: "#/components/responses/HoldemSeat" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Leave a poker table
+      description: 'Your chips come back as votes; in a hand you fold first. The table closes when nobody sits at it — `table` is null then. 409 when you do not sit at it.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { $ref: "#/components/responses/HoldemSeat" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/casino/tables/{id}/actions:
+    post:
+      summary: Act at a poker table
+      description: '`fold`, `check`, `call`, `raise` (`amount` — the bet in all, from `raiseLeast` to `raiseMost`), `allin`. 400 for a raise out of the limits, 409 out of turn or for an action not possible now.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [fold, check, call, raise, allin] }
+                amount: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: The table
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HoldemTable" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/casino/tables/{id}/back:
+    post:
+      summary: Come back to a poker table
+      description: A player sat out comes back into the next hands. 409 when you do not sit at it.
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The table
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HoldemTable" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/casino/tables/{id}/invitations:
+    post:
+      summary: Invite people to a poker table
+      description: 'By nicknames (unknown ones are skipped), up to 50 a table; the owner and those sitting invite. 409 for others. Rate limited.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nicknames]
+              properties:
+                nicknames: { type: array, items: { type: string } }
+      responses:
+        "200":
+          description: The table
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HoldemTable" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/me/mine:
     get:
       summary: Your mine
@@ -7594,6 +7782,18 @@ components:
       schema: { type: string }
 
   responses:
+    HoldemSeat:
+      description: The table after your buy-in or payout and your balance; `table` is null when it closed as you left.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [table, balance]
+            properties:
+              table:
+                nullable: true
+                allOf: [{ $ref: "#/components/schemas/HoldemTable" }]
+              balance: { type: integer, format: int64 }
     ClubList:
       description: Communities
       content:
@@ -9523,6 +9723,57 @@ components:
           minItems: 6
           maxItems: 6
 
+    HoldemSeat:
+      type: object
+      description: A seat; `player` is null on a free one. `cards` are yours and those shown at the showdown, `hand` and `best` — the best hand of them.
+      required: [player, stack, bet, cards, hasCards, folded, allIn, away, leaving, last, won, hand, best]
+      properties:
+        player:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/Author" }]
+        stack: { type: integer, format: int64 }
+        bet: { type: integer, format: int64 }
+        cards: { type: array, items: { type: string } }
+        hasCards: { type: boolean }
+        folded: { type: boolean }
+        allIn: { type: boolean }
+        away: { type: boolean }
+        leaving: { type: boolean }
+        last: { type: string, enum: ["", fold, check, call, raise, allin, small_blind, big_blind] }
+        won: { type: integer, format: int64 }
+        hand: { type: string }
+        best: { type: array, items: { type: string } }
+    HoldemTable:
+      type: object
+      description: 'A poker table as the viewer sees it. `you` — your seat, -1 for none; `turn` — the seat to act, -1 for none; `turnMs` — till the turn passes or the next hand. `toCall`, `raiseLeast` and `raiseMost` are yours (0 — no raise).'
+      required: [id, name, private, owner, bigBlind, smallBlind, minBuyIn, maxBuyIn, street, hand, button, turn, turnMs, board, pot, currentBet, version, seats, players, you, toCall, raiseLeast, raiseMost, invited]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        private: { type: boolean }
+        owner:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/Author" }]
+        bigBlind: { type: integer, format: int64 }
+        smallBlind: { type: integer, format: int64 }
+        minBuyIn: { type: integer, format: int64 }
+        maxBuyIn: { type: integer, format: int64 }
+        street: { type: string, enum: [waiting, preflop, flop, turn, river, showdown] }
+        hand: { type: integer, format: int64 }
+        button: { type: integer }
+        turn: { type: integer }
+        turnMs: { type: integer, format: int64 }
+        board: { type: array, items: { type: string } }
+        pot: { type: integer, format: int64 }
+        currentBet: { type: integer, format: int64 }
+        version: { type: integer, format: int64 }
+        seats: { type: array, items: { $ref: "#/components/schemas/HoldemSeat" } }
+        players: { type: integer }
+        you: { type: integer }
+        toCall: { type: integer, format: int64 }
+        raiseLeast: { type: integer, format: int64 }
+        raiseMost: { type: integer, format: int64 }
+        invited: { type: boolean }
     PokerHand:
       type: object
       required: [id, ante, state, player, board, dealer, payout, playerHand, dealerHand, playerBest, dealerBest, balance]
