@@ -5274,6 +5274,94 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /api/v1/me/bank:
+    get:
+      summary: The bank of the caller
+      description: 'The rates and limits of the bank and the account of the caller at the moment: the deposit and the debt in hundredths of a vote, with the interest of the whole days counted, what was borrowed and when it is due.'
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The bank
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Bank" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/bank/{action}:
+    post:
+      summary: Put or take a deposit, take or repay a loan
+      description: '`deposit` puts votes on the deposit (they go to the treasury), `withdraw` takes whole votes off it (0 — all), `loan` lends votes (one loan at a time, pages a week old with a filled profile), `repay` pays the loan back (0 or more than owed — all). Rate limit RATE_LIMIT_BANK.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: action, in: path, required: true, schema: { type: string, enum: [deposit, withdraw, loan, repay] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: Moved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  votes: { type: integer, format: int64, description: The votes moved }
+                  balance: { type: integer, format: int64 }
+                  bank: { $ref: "#/components/schemas/Bank" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { description: Unknown action }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { description: Too many requests }
+
+  /api/v1/bank/settings:
+    get:
+      summary: The bank for the administrators
+      description: 'Only for the administrators of the site: the rates and limits and how the bank does — votes on deposits and owed on loans (hundredths, as counted last) and how many pages have each.'
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The settings and the stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings: { $ref: "#/components/schemas/BankSettings" }
+                  deposits: { type: integer, format: int64 }
+                  depositors: { type: integer, format: int64 }
+                  debts: { type: integer, format: int64 }
+                  debtors: { type: integer, format: int64 }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    put:
+      summary: Change the bank
+      description: 'Only for the administrators of the site. Rates are in hundredths of a percent a day (0–10000), limits at least 1 vote, the term 1–365 days.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BankSettings" }
+      responses:
+        "204": { description: Set }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/mine/settings:
     get:
       summary: The mine for the administrators
@@ -9049,6 +9137,27 @@ components:
         price: { type: integer, format: int64, description: Hundredths of a vote a unit sells for }
         gain: { type: integer, format: int64, description: The experience a dig gives }
         energy: { type: integer, description: The energy a dig takes }
+    BankSettings:
+      type: object
+      properties:
+        depositRate: { type: integer, description: Hundredths of a percent a day }
+        depositMost: { type: integer, format: int64, description: The most a deposit grows to, in votes }
+        loanRate: { type: integer }
+        loanMost: { type: integer, format: int64 }
+        loanDays: { type: integer }
+        penaltyRate: { type: integer, description: The rate of a loan past its term }
+    Bank:
+      type: object
+      properties:
+        settings: { $ref: "#/components/schemas/BankSettings" }
+        account:
+          type: object
+          properties:
+            deposit: { type: integer, format: int64, description: Hundredths of a vote }
+            debt: { type: integer, format: int64, description: Hundredths of a vote }
+            borrowed: { type: integer, format: int64 }
+            dueAt: { type: string, format: date-time, nullable: true }
+            overdue: { type: boolean }
     BusinessPlan:
       type: object
       properties:
