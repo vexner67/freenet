@@ -35,7 +35,7 @@
           <a id="tab-top-up" href="/votes?act=top-up">Пополнить</a>
           <a id="tab-receive" href="/votes?act=receive">Получить</a>
           <a id="tab-rating" href="/votes?act=rating">Рейтинг</a>
-          <a id="tab-treasury" href="/votes?act=treasury">Казна</a>
+          <a id="tab-bank" href="/votes?act=bank">Банк</a>
         </div>
         <div class="container-gray">
         <p id="loading">Загрузка…</p>
@@ -84,7 +84,7 @@
         </div>
 
         <form id="transfer" hidden>
-          <p>Вы можете отправить в подарок или передать часть голосов другому человеку. Голоса приходят сразу, вернуть их нельзя. Комиссия — процент от суммы, не меньше 1 голоса: она списывается сверх перевода и уходит в Казну Freenet, а сколько она, форма скажет, пока вы печатаете.</p>
+          <p>Вы можете отправить в подарок или передать часть голосов другому человеку. Голоса приходят сразу, вернуть их нельзя. Комиссия — процент от суммы, не меньше 1 голоса: она списывается сверх перевода, а сколько она, форма скажет, пока вы печатаете.</p>
           <table class="form">
             <tr>
               <th>Ваш баланс:</th>
@@ -127,7 +127,7 @@
         </div>
 
         <form id="rating" hidden>
-          <p>Рейтинг прибавляется к заполненности страницы: страница с рейтингом может быть заполнена больше чем на 100 %, и тогда шкала становится золотой. Один процент рейтинга стоит 3 голоса, голоса уходят в Казну Freenet. Рейтинг — не больше 1000 %.</p>
+          <p>Рейтинг прибавляется к заполненности страницы: страница с рейтингом может быть заполнена больше чем на 100 %, и тогда шкала становится золотой. Один процент рейтинга стоит 3 голоса. Рейтинг — не больше 1000 %.</p>
           <table class="form">
             <tr>
               <th>Ваш баланс:</th>
@@ -144,10 +144,32 @@
           <div class="actions"><button class="button" type="submit">Повысить рейтинг</button></div>
         </form>
 
-        <div id="treasury" hidden>
-          <p>Казна Freenet — голоса, которые ничьи. Из неё сайт платит всё: ежедневный бонус, ваучеры, выигрыши в Азартных играх, руду Шахты. В неё уходит всё, что тратится: подарки, наборы стикеров сайта, рейтинг, ставки, комиссии и налоги. Переводы между людьми Казну не трогают. Дна у Казны нет: сайт платит всё, что обещают его правила.</p>
-          <div class="bank-totals treasury-figures" id="treasury-figures"></div>
-          <p>Сальдо Казны — сколько она собрала больше, чем выплатила. Когда она выплатила больше, сальдо меньше нуля.</p>
+        <div id="bank" hidden>
+          <p>Голоса на вкладе каждый день растут на процент, пока вклад не дорастёт до предела. Кредит выручит, когда голосов не хватает: его возвращают с процентами до срока, а после срока процент больше, и банк сам забирает долг с баланса, а потом со вклада.</p>
+          <p class="bank-balance">Ваш баланс: <b id="bank-balance"></b></p>
+
+          <div class="section-title">Вклад</div>
+          <div class="bank-box">
+            <p id="deposit-state"></p>
+            <p class="hint" id="deposit-terms"></p>
+            <form class="bank-form" id="deposit-form">
+              <input type="text" id="deposit-amount" inputmode="numeric" pattern="[0-9]{0,13}" maxlength="13" autocomplete="off" placeholder="сколько голосов" aria-label="Сколько голосов">
+              <button class="button" type="submit" id="deposit-put">Положить</button>
+              <button class="button" type="button" id="deposit-take">Снять</button>
+            </form>
+            <p class="hint">Пустое поле у «Снять» — снять все целые голоса.</p>
+          </div>
+
+          <div class="section-title">Кредит</div>
+          <div class="bank-box">
+            <p id="loan-state"></p>
+            <p class="hint" id="loan-terms"></p>
+            <form class="bank-form" id="loan-form">
+              <input type="text" id="loan-amount" inputmode="numeric" pattern="[0-9]{0,13}" maxlength="13" autocomplete="off" placeholder="сколько голосов" aria-label="Сколько голосов">
+              <button class="button" type="submit" id="loan-go"></button>
+            </form>
+            <p class="hint" id="loan-hint"></p>
+          </div>
         </div>
 
         <div id="receive" hidden>

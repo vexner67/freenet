@@ -43,6 +43,7 @@
         <a class="aui-nav-item" href="/admin/bets" title="Ставки"><span class="aui-icon aui-icon-bets"></span><span class="aui-nav-item-label">Ставки</span></a>
         <a class="aui-nav-item" href="/admin/mine" title="Шахта"><span class="aui-icon aui-icon-mine"></span><span class="aui-nav-item-label">Шахта</span></a>
         <a class="aui-nav-item" href="/admin/business" title="Бизнес"><span class="aui-icon aui-icon-business"></span><span class="aui-nav-item-label">Бизнес</span></a>
+        <a class="aui-nav-item" href="/admin/bank" title="Банк"><span class="aui-icon aui-icon-bank"></span><span class="aui-nav-item-label">Банк</span></a>
         <a class="aui-nav-item" href="/admin/ads" title="Реклама"><span class="aui-icon aui-icon-ad"></span><span class="aui-nav-item-label">Реклама</span></a>
       </div>
       <div class="aui-sidebar-group">
@@ -481,6 +482,46 @@
           <label for="mine-drink">Энергетик, %</label>
           <input class="text admin-casino-field" id="mine-drink" inputmode="decimal" required>
           <span class="admin-times">+<input class="text admin-casino-field" id="mine-drink-energy" type="number" min="1" required aria-label="Сколько энергии даёт энергетик"> энергии</span>
+        </div>
+        <div class="buttons-container">
+          <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="bank" hidden>
+      <h1 class="aui-page-heading">Банк</h1>
+      <p class="admin-lead">Люди кладут голоса на вклад, и он каждый день растёт на процент до предела, а кредит берут под процент на срок; после срока процент больше, и банк сам забирает долг с баланса, а потом со вклада. Проценты вклада и кредиты выплачивает Казна, погашения уходят в неё. Ставки — в процентах в день, можно дробно: 0,2. Новые ставки действуют и на уже открытые вклады и кредиты.</p>
+      <p class="admin-casino-stats" id="bank-stats"></p>
+      <div class="aui-message aui-message-success" id="bank-saved" hidden></div>
+      <form class="aui" id="bank-form">
+        <h2>Вклады</h2>
+        <div class="field-group">
+          <label for="bank-deposit-rate">Ставка, % в день</label>
+          <input class="text admin-casino-field" id="bank-deposit-rate" inputmode="decimal" required>
+        </div>
+        <div class="field-group">
+          <label for="bank-deposit-most">Наибольший вклад, голосов</label>
+          <input class="text admin-casino-field" id="bank-deposit-most" type="number" min="1" required>
+          <div class="description">До стольких вклад растёт и больше не принимает.</div>
+        </div>
+        <h2>Кредиты</h2>
+        <div class="field-group">
+          <label for="bank-loan-rate">Ставка, % в день</label>
+          <input class="text admin-casino-field" id="bank-loan-rate" inputmode="decimal" required>
+        </div>
+        <div class="field-group">
+          <label for="bank-loan-most">Наибольший кредит, голосов</label>
+          <input class="text admin-casino-field" id="bank-loan-most" type="number" min="1" required>
+        </div>
+        <div class="field-group">
+          <label for="bank-loan-days">Срок, дней</label>
+          <input class="text admin-casino-field" id="bank-loan-days" type="number" min="1" max="365" required>
+        </div>
+        <div class="field-group">
+          <label for="bank-penalty-rate">После срока, % в день</label>
+          <input class="text admin-casino-field" id="bank-penalty-rate" inputmode="decimal" required>
+          <div class="description">Долг растёт не больше чем до трёх взятых сумм.</div>
         </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>

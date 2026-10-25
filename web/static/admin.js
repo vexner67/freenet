@@ -11,7 +11,8 @@
 // the top of "Ракетка"), "Ставки" (/admin/bets: the
 // events people stake on, a new one, and closing, resolving, cancelling
 // and deleting them), "Бизнес" (/admin/business: the plans of the
-// businesses and the tax), "Шахта" (/admin/mine: the ores, the energy and the
+// businesses and the tax), "Банк" (/admin/bank: the rates and limits of
+// deposits and loans), "Шахта" (/admin/mine: the ores, the energy and the
 // events of a dig)
 // and "Реклама" (/admin/ads: the ads of the global feed, the form of a new
 // one at /admin/ads/new and of one at /admin/ads/<id>). The page is its own, AUI as openvk's:
@@ -19,7 +20,7 @@
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, businessName, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, bankVotes, businessName, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 import { remember } from './newyear.js';
 
@@ -844,6 +845,44 @@ async function mineSettings(answered) {
   $('mine').hidden = false;
 }
 
+// bankSettings is "Банк": the rates and limits of deposits and loans, and
+// how the bank does. Rates are typed in percents a day, as mine chances.
+async function bankSettings(answered) {
+  const { settings, deposits, depositors, debts, debtors } = await answered;
+  const save = $('bank-form').querySelector('button[type=submit]');
+  const rates = { depositRate: $('bank-deposit-rate'), loanRate: $('bank-loan-rate'), penaltyRate: $('bank-penalty-rate') };
+  const counts = { depositMost: $('bank-deposit-most'), loanMost: $('bank-loan-most'), loanDays: $('bank-loan-days') };
+
+  for (const [name, field] of Object.entries(rates)) field.value = mineChance(settings[name]);
+  for (const [name, field] of Object.entries(counts)) field.value = String(settings[name]);
+
+  $('bank-stats').textContent = tr('На вкладах {0} у {1}, в долгах {2} у {3}.',
+    bankVotes(deposits), peopleCount(depositors), bankVotes(debts), peopleCount(debtors));
+
+  $('bank-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    $('bank-saved').hidden = true;
+    save.disabled = true;
+
+    const typed = {};
+    for (const [name, field] of Object.entries(rates)) typed[name] = typedMineChance(field.value);
+    for (const [name, field] of Object.entries(counts)) typed[name] = Number(field.value);
+
+    try {
+      await api.setBank(typed);
+      $('bank-saved').textContent = tr('Изменения сохранены');
+      $('bank-saved').hidden = false;
+    } catch (e) {
+      showError(e);
+    } finally {
+      save.disabled = false;
+    }
+  });
+
+  $('bank').hidden = false;
+}
+
 // businessFields are the settings of a business plan in the order of the
 // table, with what each is called.
 const businessFields = [
@@ -1504,6 +1543,7 @@ const reads = {
   '/admin/bets': () => started(api.betEvents()),
   '/admin/mine': () => started(api.mineSettings()),
   '/admin/business': () => started(api.businessSettings()),
+  '/admin/bank': () => started(api.bankSettings()),
 }[adID ? '/admin/ads' : path]?.();
 
 const me = await currentUser().catch(() => null);
@@ -1544,6 +1584,8 @@ if (!me) {
     await mineSettings(reads).catch(showError);
   } else if (path === '/admin/business') {
     await businessSettings(reads).catch(showError);
+  } else if (path === '/admin/bank') {
+    await bankSettings(reads).catch(showError);
   } else if (path === '/admin/ads') {
     await ads(reads).catch(showError);
   } else if (path === '/admin/ads/new' || adID) {

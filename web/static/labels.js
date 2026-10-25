@@ -1486,6 +1486,24 @@ export function typedMineChance(value) {
   return Math.round(Number(String(value).trim().replace(',', '.')) * 100) || 0;
 }
 
+// bankVotes is an amount of the bank in hundredths of a vote:
+// "102,01 голоса", "100 голосов".
+export function bankVotes(hundredths) {
+  const whole = Math.trunc(hundredths / 100);
+  const cents = Math.abs(hundredths % 100);
+  if (!cents) return votesAmount(whole);
+
+  return `${groupedVotes(whole)}${lang === 'en' ? '.' : ','}${String(cents).padStart(2, '0')} ${plural(2, ['голос', 'голоса', 'голосов'])}`;
+}
+
+// bankRate is a rate of the bank, in hundredths of a percent a day:
+// "0,2 % в день".
+export function bankRate(rate) {
+  const n = String(rate / 100);
+
+  return tr('{0} % в день', lang === 'en' ? n : n.replace('.', ','));
+}
+
 // businessKinds are the businesses of "Бизнес" from the cheapest, as the
 // user service has them (user/internal/user/business.go).
 export const businessKinds = ['kiosk', 'cafe', 'carwash', 'factory'];
@@ -1983,6 +2001,11 @@ export function voteOperation(op, myId) {
       return { title: tr('Шахта: продажа руды «{0}»', oreName(note)), role: '' };
     case 'mine_chest':
       return { title: tr('Шахта: сундук'), role: '' };
+    case 'deposit':
+      return { title: out ? tr('Банк: пополнение вклада') : tr('Банк: снятие со вклада'), role: '' };
+    case 'loan':
+      if (note === 'overdue') return { title: tr('Банк: взыскание просроченного кредита'), role: '' };
+      return { title: out ? tr('Банк: погашение кредита') : tr('Банк: кредит'), role: '' };
     case 'business': {
       const [kind, action] = note.split(':');
       return { title: tr('Бизнес «{0}»: {1}', businessName(kind), businessActionName(action)), role: '' };
@@ -2438,6 +2461,16 @@ const errorTexts = {
   'you own this business already': tr('Такой бизнес у вас уже есть.'),
   'you do not own this business': tr('У вас нет такого бизнеса.'),
   'the business went bankrupt': tr('Бизнес разорился.'),
+  'the bank takes and gives at least 1 vote': tr('Сумма — хотя бы 1 голос.'),
+  'the deposit cannot be larger': tr('Вклад не может быть больше.'),
+  'there are not so many votes on the deposit': tr('На вкладе нет столько голосов.'),
+  'the loan cannot be larger': tr('Кредит не может быть больше.'),
+  'pay back the loan you have first': tr('Сначала погасите прежний кредит.'),
+  'you have no loan': tr('У вас нет кредита.'),
+  'loans are for pages a week old with a filled profile': tr('Кредит дают страницам старше недели с заполненной анкетой.'),
+  'a rate must be from 0 to 100 percent a day': tr('Ставка — от 0 до 100 % в день.'),
+  'a limit of the bank must be at least 1 vote': tr('Пределы банка — хотя бы 1 голос.'),
+  'the term of a loan is from 1 to 365 days': tr('Срок кредита — от 1 до 365 дней.'),
   'pay the debts of the business off first': tr('Сначала погасите долги бизнеса.'),
   'the business is at its top level': tr('Бизнес уже на высшем уровне.'),
   'the premises need no repair': tr('Ремонт не нужен.'),

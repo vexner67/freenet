@@ -3,17 +3,16 @@
 // ?flow=in|out), "Перевести" (?act=transfer, ?to=<nickname> names the
 // recipient; the fee is shown as the votes are typed), "Пополнить"
 // (?act=top-up: a voucher), "Получить" (?act=receive: the link that opens a
-// transfer to you) and "Рейтинг" (?act=rating: openvk's "Повысить
-// рейтинг", for votes into the treasury) and "Казна" (?act=treasury: what
-// the treasury of the site holds and what the pages hold).
+// transfer to you), "Рейтинг" (?act=rating: openvk's "Повысить
+// рейтинг", for votes) and "Банк" (?act=bank: a deposit and a loan).
 
 import { api, currentUser, started } from './api.js';
-import { MAX_RATING, RATING_PRICE, TRANSFER_FEE_PERCENT, formatDateTime, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, votesFontSize, voucherGave } from './labels.js';
+import { MAX_RATING, RATING_PRICE, bankRate, bankVotes, TRANSFER_FEE_PERCENT, formatDateTime, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, votesFontSize, voucherGave } from './labels.js';
 import { $, avatarURL, el, fullName, pagePath, renderChrome, showError, hideError, verifiedMark } from './layout.js';
 import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
-const tabs = { transfer: initTransfer, 'top-up': initTopUp, receive: initReceive, rating: initRating, treasury: initTreasury };
+const tabs = { transfer: initTransfer, 'top-up': initTopUp, receive: initReceive, rating: initRating, bank: initBank };
 const act = Object.hasOwn(tabs, params.get('act')) ? params.get('act') : 'account';
 const flow = ['in', 'out'].includes(params.get('flow')) ? params.get('flow') : '';
 const error = $('error');
@@ -23,7 +22,7 @@ const error = $('error');
 const statement = act === 'account' ? started(api.voteStatement('', flow)) : null;
 const rate = act === 'account' ? api.voteRate().then((r) => r.kopecks, () => 0) : Promise.resolve(0);
 const bonus = act === 'account' ? started(api.bonus()) : null;
-const treasury = act === 'treasury' ? started(api.treasury()) : null;
+const bankState = act === 'bank' ? started(api.bank()) : null;
 
 // isNickname says whether a word could be the address of a page.
 function isNickname(word) {
@@ -75,7 +74,7 @@ function showBonus(state, me, kopecks) {
     ? tr('Бонус получают страницы старше недели с заполненной анкетой.')
     : state.taken
       ? tr('Сегодня вы его уже получили. Следующий — завтра.')
-      : tr('Каждый день — {0} из Казны Freenet.', votesAmount(state.votes));
+      : tr('Каждый день — {0}.', votesAmount(state.votes));
   claim.textContent = tr('Получить {0}', votesAmount(state.votes));
   claim.hidden = !state.eligible || state.taken;
   $('bonus').hidden = false;
@@ -318,21 +317,88 @@ function initRating(me) {
   });
 }
 
-// initTreasury is the treasury of the site in figures, each a box of
-// "Поступило за 30 дней".
-async function initTreasury() {
-  try {
-    const t = await treasury;
-    const figure = (title, votes) => el('div', {}, el('span', { textContent: title }), el('b', { textContent: votesAmount(votes) }));
+// showBank shows the deposit and the loan as the bank counts them now.
+function showBank(bank, balance) {
+  const { settings: s, account: a } = bank;
+  const owed = Math.ceil(a.debt / 100);
 
-    $('treasury-figures').replaceChildren(
-      figure(tr('Сальдо Казны'), t.votes),
-      figure(tr('На счетах людей'), t.held ?? 0),
-      figure(tr('Обещают ваучеры'), t.outstanding),
-      figure(tr('Ежедневный бонус'), t.bonus));
+  $('bank-balance').textContent = votesAmount(balance);
+  $('deposit-state').textContent = a.deposit
+    ? tr('На вкладе {0}.', bankVotes(a.deposit))
+    : tr('Вклада пока нет.');
+  $('deposit-terms').textContent = tr('Ставка {0}, вклад растёт до {1}.', bankRate(s.depositRate), votesAmount(s.depositMost));
+  $('deposit-take').disabled = a.deposit < 100;
+
+  if (a.debt) {
+    $('loan-state').replaceChildren(
+      tr('Вы должны {0} — взято {1}.', bankVotes(a.debt), votesAmount(a.borrowed)), ' ',
+      a.overdue
+        ? el('b', { className: 'bank-out', textContent: tr('Срок прошёл: банк сам заберёт долг с баланса и вклада.') })
+        : tr('Вернуть до {0}.', formatDateTime(a.dueAt)));
+    $('loan-go').textContent = tr('Погасить');
+    $('loan-amount').placeholder = tr('всё — {0}', votesAmount(owed));
+    $('loan-hint').textContent = tr('Пустое поле — погасить весь долг.');
+  } else {
+    $('loan-state').textContent = tr('Кредита нет.');
+    $('loan-go').textContent = tr('Взять кредит');
+    $('loan-amount').placeholder = tr('сколько голосов');
+    $('loan-hint').textContent = tr('Кредит дают страницам старше недели с заполненной анкетой, по одному за раз.');
+  }
+  $('loan-terms').textContent = tr('До {0} на {1} под {2}, после срока — {3}.',
+    votesAmount(s.loanMost), `${s.loanDays} ${plural(s.loanDays, ['день', 'дня', 'дней'])}`, bankRate(s.loanRate), bankRate(s.penaltyRate));
+}
+
+// initBank is "Банк": put votes on the deposit and take them off, take a
+// loan and pay it back.
+async function initBank(me) {
+  let bank;
+  try {
+    bank = await bankState;
   } catch (e) {
     showError(error, e);
+    return;
   }
+  showBank(bank, me.votes ?? 0);
+
+  const move = async (action, input, button) => {
+    hideError(error);
+    $('notice').hidden = true;
+    const amount = input.value.trim() === '' ? 0 : Number(input.value);
+    if (!Number.isSafeInteger(amount) || amount < 0 || (amount === 0 && ['deposit', 'loan'].includes(action))) {
+      input.focus();
+      return;
+    }
+
+    button.disabled = true;
+    try {
+      const moved = await api.moveBank(action, amount);
+      me.votes = moved.balance;
+      bank = moved.bank;
+      input.value = '';
+      showBank(bank, moved.balance);
+      say({
+        deposit: tr('Голоса положены на вклад'),
+        withdraw: tr('Голоса сняты со вклада'),
+        loan: tr('Кредит получен'),
+        repay: bank.account.debt ? tr('Часть кредита погашена') : tr('Кредит погашен'),
+      }[action], tr('{0}. На вашем счету {1}.', votesAmount(moved.votes), votesAmount(moved.balance)));
+    } catch (e) {
+      showError(error, e);
+    } finally {
+      button.disabled = false;
+      $('deposit-take').disabled = bank.account.deposit < 100;
+    }
+  };
+
+  $('deposit-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    move('deposit', $('deposit-amount'), $('deposit-put'));
+  });
+  $('deposit-take').addEventListener('click', () => move('withdraw', $('deposit-amount'), $('deposit-take')));
+  $('loan-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    move(bank.account.debt ? 'repay' : 'loan', $('loan-amount'), $('loan-go'));
+  });
 }
 
 // initTopUp is "Есть ваучер?": the serial number in four fields of six,

@@ -669,6 +669,11 @@ export const api = {
   claimBonus: () => authorized('POST', '/api/v1/me/bonus'),
   // raiseRating is "Повысить рейтинг": percent of rating for votes.
   raiseRating: (percent) => authorized('POST', '/api/v1/me/rating', { percent }),
+  bank: () => authorized('GET', '/api/v1/me/bank'),
+  // moveBank is "deposit", "withdraw", "loan" or "repay" of amount votes.
+  moveBank: (action, amount) => authorized('POST', `/api/v1/me/bank/${action}`, { amount }),
+  bankSettings: () => authorized('GET', '/api/v1/bank/settings'),
+  setBank: (settings) => authorized('PUT', '/api/v1/bank/settings', settings),
   setVoteRate: (kopecks) => authorized('PUT', '/api/v1/vote-rate', { kopecks }),
   // "Freenet Prime": its prices, buying it for oneself or as a present,
   // «Невидимка»; the administrators price it.
