@@ -131,6 +131,15 @@ const (
 	UserService_CallPoker_FullMethodName           = "/user.v1.UserService/CallPoker"
 	UserService_GetPokerSettings_FullMethodName    = "/user.v1.UserService/GetPokerSettings"
 	UserService_SetPokerSettings_FullMethodName    = "/user.v1.UserService/SetPokerSettings"
+	UserService_ListHoldemTables_FullMethodName    = "/user.v1.UserService/ListHoldemTables"
+	UserService_CreateHoldemTable_FullMethodName   = "/user.v1.UserService/CreateHoldemTable"
+	UserService_QuickHoldem_FullMethodName         = "/user.v1.UserService/QuickHoldem"
+	UserService_GetHoldemTable_FullMethodName      = "/user.v1.UserService/GetHoldemTable"
+	UserService_SitHoldemTable_FullMethodName      = "/user.v1.UserService/SitHoldemTable"
+	UserService_LeaveHoldemTable_FullMethodName    = "/user.v1.UserService/LeaveHoldemTable"
+	UserService_ActHoldemTable_FullMethodName      = "/user.v1.UserService/ActHoldemTable"
+	UserService_BackHoldemTable_FullMethodName     = "/user.v1.UserService/BackHoldemTable"
+	UserService_InviteHoldemTable_FullMethodName   = "/user.v1.UserService/InviteHoldemTable"
 	UserService_SetVerified_FullMethodName         = "/user.v1.UserService/SetVerified"
 	UserService_SetAlert_FullMethodName            = "/user.v1.UserService/SetAlert"
 	UserService_ListAds_FullMethodName             = "/user.v1.UserService/ListAds"
@@ -447,6 +456,22 @@ type UserServiceClient interface {
 	// For the administrators (PermissionDenied for others).
 	GetPokerSettings(ctx context.Context, in *GetPokerSettingsRequest, opts ...grpc.CallOption) (*GetPokerSettingsResponse, error)
 	SetPokerSettings(ctx context.Context, in *SetPokerSettingsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Tables of "Покер": no-limit Texas Hold'em of people. ListHoldemTables
+	// tells the open tables, the caller's and those they are invited to;
+	// CreateHoldemTable opens a table and seats the caller, QuickHoldem seats
+	// them at the fullest open table of the stake or opens one. The buy-in
+	// goes to the treasury, chips come back as votes on leaving. The table
+	// moves on when read: turns pass after 30 s, hands are dealt by
+	// themselves.
+	ListHoldemTables(ctx context.Context, in *ListHoldemTablesRequest, opts ...grpc.CallOption) (*ListHoldemTablesResponse, error)
+	CreateHoldemTable(ctx context.Context, in *CreateHoldemTableRequest, opts ...grpc.CallOption) (*HoldemTableResponse, error)
+	QuickHoldem(ctx context.Context, in *QuickHoldemRequest, opts ...grpc.CallOption) (*HoldemTableResponse, error)
+	GetHoldemTable(ctx context.Context, in *HoldemTableRequest, opts ...grpc.CallOption) (*HoldemTable, error)
+	SitHoldemTable(ctx context.Context, in *SitHoldemTableRequest, opts ...grpc.CallOption) (*HoldemTableResponse, error)
+	LeaveHoldemTable(ctx context.Context, in *HoldemTableRequest, opts ...grpc.CallOption) (*HoldemTableResponse, error)
+	ActHoldemTable(ctx context.Context, in *ActHoldemTableRequest, opts ...grpc.CallOption) (*HoldemTable, error)
+	BackHoldemTable(ctx context.Context, in *HoldemTableRequest, opts ...grpc.CallOption) (*HoldemTable, error)
+	InviteHoldemTable(ctx context.Context, in *InviteHoldemTableRequest, opts ...grpc.CallOption) (*HoldemTable, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
@@ -1669,6 +1694,96 @@ func (c *userServiceClient) SetPokerSettings(ctx context.Context, in *SetPokerSe
 	return out, nil
 }
 
+func (c *userServiceClient) ListHoldemTables(ctx context.Context, in *ListHoldemTablesRequest, opts ...grpc.CallOption) (*ListHoldemTablesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListHoldemTablesResponse)
+	err := c.cc.Invoke(ctx, UserService_ListHoldemTables_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CreateHoldemTable(ctx context.Context, in *CreateHoldemTableRequest, opts ...grpc.CallOption) (*HoldemTableResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HoldemTableResponse)
+	err := c.cc.Invoke(ctx, UserService_CreateHoldemTable_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) QuickHoldem(ctx context.Context, in *QuickHoldemRequest, opts ...grpc.CallOption) (*HoldemTableResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HoldemTableResponse)
+	err := c.cc.Invoke(ctx, UserService_QuickHoldem_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetHoldemTable(ctx context.Context, in *HoldemTableRequest, opts ...grpc.CallOption) (*HoldemTable, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HoldemTable)
+	err := c.cc.Invoke(ctx, UserService_GetHoldemTable_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SitHoldemTable(ctx context.Context, in *SitHoldemTableRequest, opts ...grpc.CallOption) (*HoldemTableResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HoldemTableResponse)
+	err := c.cc.Invoke(ctx, UserService_SitHoldemTable_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) LeaveHoldemTable(ctx context.Context, in *HoldemTableRequest, opts ...grpc.CallOption) (*HoldemTableResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HoldemTableResponse)
+	err := c.cc.Invoke(ctx, UserService_LeaveHoldemTable_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ActHoldemTable(ctx context.Context, in *ActHoldemTableRequest, opts ...grpc.CallOption) (*HoldemTable, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HoldemTable)
+	err := c.cc.Invoke(ctx, UserService_ActHoldemTable_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) BackHoldemTable(ctx context.Context, in *HoldemTableRequest, opts ...grpc.CallOption) (*HoldemTable, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HoldemTable)
+	err := c.cc.Invoke(ctx, UserService_BackHoldemTable_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) InviteHoldemTable(ctx context.Context, in *InviteHoldemTableRequest, opts ...grpc.CallOption) (*HoldemTable, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HoldemTable)
+	err := c.cc.Invoke(ctx, UserService_InviteHoldemTable_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) SetVerified(ctx context.Context, in *SetVerifiedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -2253,6 +2368,22 @@ type UserServiceServer interface {
 	// For the administrators (PermissionDenied for others).
 	GetPokerSettings(context.Context, *GetPokerSettingsRequest) (*GetPokerSettingsResponse, error)
 	SetPokerSettings(context.Context, *SetPokerSettingsRequest) (*emptypb.Empty, error)
+	// Tables of "Покер": no-limit Texas Hold'em of people. ListHoldemTables
+	// tells the open tables, the caller's and those they are invited to;
+	// CreateHoldemTable opens a table and seats the caller, QuickHoldem seats
+	// them at the fullest open table of the stake or opens one. The buy-in
+	// goes to the treasury, chips come back as votes on leaving. The table
+	// moves on when read: turns pass after 30 s, hands are dealt by
+	// themselves.
+	ListHoldemTables(context.Context, *ListHoldemTablesRequest) (*ListHoldemTablesResponse, error)
+	CreateHoldemTable(context.Context, *CreateHoldemTableRequest) (*HoldemTableResponse, error)
+	QuickHoldem(context.Context, *QuickHoldemRequest) (*HoldemTableResponse, error)
+	GetHoldemTable(context.Context, *HoldemTableRequest) (*HoldemTable, error)
+	SitHoldemTable(context.Context, *SitHoldemTableRequest) (*HoldemTableResponse, error)
+	LeaveHoldemTable(context.Context, *HoldemTableRequest) (*HoldemTableResponse, error)
+	ActHoldemTable(context.Context, *ActHoldemTableRequest) (*HoldemTable, error)
+	BackHoldemTable(context.Context, *HoldemTableRequest) (*HoldemTable, error)
+	InviteHoldemTable(context.Context, *InviteHoldemTableRequest) (*HoldemTable, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
@@ -2697,6 +2828,33 @@ func (UnimplementedUserServiceServer) GetPokerSettings(context.Context, *GetPoke
 }
 func (UnimplementedUserServiceServer) SetPokerSettings(context.Context, *SetPokerSettingsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetPokerSettings not implemented")
+}
+func (UnimplementedUserServiceServer) ListHoldemTables(context.Context, *ListHoldemTablesRequest) (*ListHoldemTablesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListHoldemTables not implemented")
+}
+func (UnimplementedUserServiceServer) CreateHoldemTable(context.Context, *CreateHoldemTableRequest) (*HoldemTableResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateHoldemTable not implemented")
+}
+func (UnimplementedUserServiceServer) QuickHoldem(context.Context, *QuickHoldemRequest) (*HoldemTableResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method QuickHoldem not implemented")
+}
+func (UnimplementedUserServiceServer) GetHoldemTable(context.Context, *HoldemTableRequest) (*HoldemTable, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetHoldemTable not implemented")
+}
+func (UnimplementedUserServiceServer) SitHoldemTable(context.Context, *SitHoldemTableRequest) (*HoldemTableResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SitHoldemTable not implemented")
+}
+func (UnimplementedUserServiceServer) LeaveHoldemTable(context.Context, *HoldemTableRequest) (*HoldemTableResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LeaveHoldemTable not implemented")
+}
+func (UnimplementedUserServiceServer) ActHoldemTable(context.Context, *ActHoldemTableRequest) (*HoldemTable, error) {
+	return nil, status.Error(codes.Unimplemented, "method ActHoldemTable not implemented")
+}
+func (UnimplementedUserServiceServer) BackHoldemTable(context.Context, *HoldemTableRequest) (*HoldemTable, error) {
+	return nil, status.Error(codes.Unimplemented, "method BackHoldemTable not implemented")
+}
+func (UnimplementedUserServiceServer) InviteHoldemTable(context.Context, *InviteHoldemTableRequest) (*HoldemTable, error) {
+	return nil, status.Error(codes.Unimplemented, "method InviteHoldemTable not implemented")
 }
 func (UnimplementedUserServiceServer) SetVerified(context.Context, *SetVerifiedRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetVerified not implemented")
@@ -4807,6 +4965,168 @@ func _UserService_SetPokerSettings_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ListHoldemTables_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListHoldemTablesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListHoldemTables(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListHoldemTables_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListHoldemTables(ctx, req.(*ListHoldemTablesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CreateHoldemTable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateHoldemTableRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CreateHoldemTable(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CreateHoldemTable_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CreateHoldemTable(ctx, req.(*CreateHoldemTableRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_QuickHoldem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QuickHoldemRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).QuickHoldem(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_QuickHoldem_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).QuickHoldem(ctx, req.(*QuickHoldemRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetHoldemTable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HoldemTableRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetHoldemTable(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetHoldemTable_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetHoldemTable(ctx, req.(*HoldemTableRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SitHoldemTable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SitHoldemTableRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SitHoldemTable(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SitHoldemTable_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SitHoldemTable(ctx, req.(*SitHoldemTableRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_LeaveHoldemTable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HoldemTableRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).LeaveHoldemTable(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_LeaveHoldemTable_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).LeaveHoldemTable(ctx, req.(*HoldemTableRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ActHoldemTable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ActHoldemTableRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ActHoldemTable(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ActHoldemTable_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ActHoldemTable(ctx, req.(*ActHoldemTableRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_BackHoldemTable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HoldemTableRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).BackHoldemTable(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_BackHoldemTable_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).BackHoldemTable(ctx, req.(*HoldemTableRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_InviteHoldemTable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InviteHoldemTableRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).InviteHoldemTable(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_InviteHoldemTable_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).InviteHoldemTable(ctx, req.(*InviteHoldemTableRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_SetVerified_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetVerifiedRequest)
 	if err := dec(in); err != nil {
@@ -5797,6 +6117,42 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetPokerSettings",
 			Handler:    _UserService_SetPokerSettings_Handler,
+		},
+		{
+			MethodName: "ListHoldemTables",
+			Handler:    _UserService_ListHoldemTables_Handler,
+		},
+		{
+			MethodName: "CreateHoldemTable",
+			Handler:    _UserService_CreateHoldemTable_Handler,
+		},
+		{
+			MethodName: "QuickHoldem",
+			Handler:    _UserService_QuickHoldem_Handler,
+		},
+		{
+			MethodName: "GetHoldemTable",
+			Handler:    _UserService_GetHoldemTable_Handler,
+		},
+		{
+			MethodName: "SitHoldemTable",
+			Handler:    _UserService_SitHoldemTable_Handler,
+		},
+		{
+			MethodName: "LeaveHoldemTable",
+			Handler:    _UserService_LeaveHoldemTable_Handler,
+		},
+		{
+			MethodName: "ActHoldemTable",
+			Handler:    _UserService_ActHoldemTable_Handler,
+		},
+		{
+			MethodName: "BackHoldemTable",
+			Handler:    _UserService_BackHoldemTable_Handler,
+		},
+		{
+			MethodName: "InviteHoldemTable",
+			Handler:    _UserService_InviteHoldemTable_Handler,
 		},
 		{
 			MethodName: "SetVerified",

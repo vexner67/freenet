@@ -190,6 +190,12 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.NotFound, sentinel(err, businessMissing).Error()), true
 	case sentinel(err, businessRefused) != nil:
 		return status.New(codes.FailedPrecondition, sentinel(err, businessRefused).Error()), true
+	case sentinel(err, holdemInvalid) != nil:
+		return status.New(codes.InvalidArgument, sentinel(err, holdemInvalid).Error()), true
+	case errors.Is(err, user.ErrTableNotFound):
+		return status.New(codes.NotFound, user.ErrTableNotFound.Error()), true
+	case sentinel(err, holdemRefused) != nil:
+		return status.New(codes.FailedPrecondition, sentinel(err, holdemRefused).Error()), true
 	case sentinel(err, bankInvalid) != nil:
 		return status.New(codes.InvalidArgument, sentinel(err, bankInvalid).Error()), true
 	case sentinel(err, bankRefused) != nil:

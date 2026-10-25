@@ -49,6 +49,7 @@ type UserHandler struct {
 	casinos           CasinoService
 	rockets           RocketService
 	pokers            PokerService
+	holdems           HoldemService
 	betEvents         BetEventService
 	mines             MineService
 	businesses        BusinessService
@@ -88,6 +89,8 @@ type Services struct {
 	Rockets RocketService
 	// Pokers are "Покер" of the casino.
 	Pokers PokerService
+	// Holdems are the poker tables of people.
+	Holdems HoldemService
 	// BetEvents are the bets on events.
 	BetEvents BetEventService
 	// Mines are the mine of the site.
@@ -122,6 +125,7 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		casinos:           s.Casinos,
 		rockets:           s.Rockets,
 		pokers:            s.Pokers,
+		holdems:           s.Holdems,
 		betEvents:         s.BetEvents,
 		mines:             s.Mines,
 		businesses:        s.Businesses,

@@ -266,3 +266,22 @@ func (a *App) runBank(ctx context.Context, every time.Duration) error {
 		}
 	}
 }
+
+// runHoldem moves on the poker tables due every interval until ctx is
+// done: turns pass and hands are dealt at tables nobody reads.
+func (a *App) runHoldem(ctx context.Context, every time.Duration) error {
+	t := time.NewTicker(every)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-t.C:
+		}
+
+		if _, err := a.holdems.SweepDue(ctx); err != nil && ctx.Err() == nil {
+			a.logger.ErrorContext(ctx, "poker tables", "error", err)
+		}
+	}
+}

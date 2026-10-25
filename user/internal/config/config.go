@@ -105,6 +105,9 @@ type Config struct {
 	// BankInterval is how often the loans past their term are collected.
 	BankInterval time.Duration `env:"BANK_INTERVAL" envDefault:"10m"`
 
+	// HoldemInterval is how often the poker tables nobody reads move on.
+	HoldemInterval time.Duration `env:"HOLDEM_INTERVAL" envDefault:"5s"`
+
 	// Access tokens are issued by the auth service; user only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`
 	JWTIssuer        string `env:"JWT_ISSUER,required,notEmpty"`
@@ -135,6 +138,10 @@ func (c Config) Validate() error {
 
 	if c.BankInterval <= 0 {
 		return errors.New("BANK_INTERVAL must be positive")
+	}
+
+	if c.HoldemInterval <= 0 {
+		return errors.New("HOLDEM_INTERVAL must be positive")
 	}
 
 	if c.FeedSyncInterval < 0 {

@@ -61,9 +61,12 @@ type App struct {
 	// banks collect the loans past their term every bankEvery.
 	banks     *service.BankService
 	bankEvery time.Duration
-	server    *grpcserver.Server
-	metrics   *metrics.Server
-	addr      string
+	// holdems move on the poker tables nobody looks at every holdemEvery.
+	holdems     *service.HoldemService
+	holdemEvery time.Duration
+	server      *grpcserver.Server
+	metrics     *metrics.Server
+	addr        string
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -179,6 +182,8 @@ func (a *App) build(cfg config.Config) error {
 	a.auctionEvery = cfg.GiftAuctionInterval
 	a.banks = service.NewBankService(store.users, store.bank, store.wallets, store.tx, admins)
 	a.bankEvery = cfg.BankInterval
+	a.holdems = service.NewHoldemService(store.users, store.holdems, store.wallets, store.tx)
+	a.holdemEvery = cfg.HoldemInterval
 
 	userv1.RegisterUserServiceServer(
 		a.server.Registrar(),
@@ -237,6 +242,7 @@ func (a *App) build(cfg config.Config) error {
 			Mines:       service.NewMineService(store.users, store.mine, store.wallets, store.tx, admins),
 			Businesses:  service.NewBusinessService(store.users, store.business, store.wallets, store.tx, admins),
 			Banks:       a.banks,
+			Holdems:     a.holdems,
 			BetEvents:   service.NewBetEventService(store.users, store.betEvents, store.wallets, store.tx, admins),
 			Paid:        service.NewPaidService(store.users, store.wallets, store.purchases, store.economy, permissions, store.tx),
 			Permissions: permissions,
@@ -292,11 +298,15 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		userv1.UserService_BetCasino_FullMethodName:  cfg.CasinoLimits,
 		userv1.UserService_StakeBet_FullMethodName:   cfg.CasinoLimits,
 		// A round is launched and cashed once: both counted apart.
-		userv1.UserService_LaunchRocket_FullMethodName: cfg.CasinoLimits,
-		userv1.UserService_CashRocket_FullMethodName:   cfg.CasinoLimits,
-		userv1.UserService_DealPoker_FullMethodName:    cfg.CasinoLimits,
-		userv1.UserService_FoldPoker_FullMethodName:    cfg.CasinoLimits,
-		userv1.UserService_CallPoker_FullMethodName:    cfg.CasinoLimits,
+		userv1.UserService_LaunchRocket_FullMethodName:      cfg.CasinoLimits,
+		userv1.UserService_CashRocket_FullMethodName:        cfg.CasinoLimits,
+		userv1.UserService_DealPoker_FullMethodName:         cfg.CasinoLimits,
+		userv1.UserService_FoldPoker_FullMethodName:         cfg.CasinoLimits,
+		userv1.UserService_CallPoker_FullMethodName:         cfg.CasinoLimits,
+		userv1.UserService_CreateHoldemTable_FullMethodName: cfg.CasinoLimits,
+		userv1.UserService_QuickHoldem_FullMethodName:       cfg.CasinoLimits,
+		userv1.UserService_SitHoldemTable_FullMethodName:    cfg.CasinoLimits,
+		userv1.UserService_InviteHoldemTable_FullMethodName: cfg.CasinoLimits,
 
 		// Energy holds the digs back; the limit is against scripts.
 		userv1.UserService_DigOre_FullMethodName:  cfg.MineLimits,
@@ -389,6 +399,8 @@ type storage struct {
 	rockets service.RocketRepository
 	// pokers are the table and the hands of "Покер".
 	pokers service.PokerRepository
+	// holdems are the poker tables of people.
+	holdems service.HoldemRepository
 	// betEvents are the events people stake on.
 	betEvents service.BetEventRepository
 	// purchases are the paid posts opened and the messages paid for.
@@ -430,6 +442,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			bank:         inmem.NewBankRepository(),
 			rockets:      inmem.NewRocketRepository(),
 			pokers:       inmem.NewPokerRepository(),
+			holdems:      inmem.NewHoldemRepository(),
 			betEvents:    inmem.NewBetEventRepository(),
 			purchases:    inmem.NewPurchaseRepository(),
 			ads:          inmem.NewAdRepository(),
@@ -484,6 +497,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		bank:         postgres.NewBankRepository(a.pool),
 		rockets:      postgres.NewRocketRepository(a.pool),
 		pokers:       postgres.NewPokerRepository(a.pool),
+		holdems:      postgres.NewHoldemRepository(a.pool),
 		betEvents:    postgres.NewBetEventRepository(a.pool),
 		purchases:    postgres.NewPurchaseRepository(a.pool),
 		ads:          postgres.NewAdRepository(a.pool),
@@ -528,6 +542,10 @@ func (a *App) Run(ctx context.Context) error {
 
 	g.Go(func() error {
 		return errs.Wrap("a.runBank", a.runBank(ctx, a.bankEvery))
+	})
+
+	g.Go(func() error {
+		return errs.Wrap("a.runHoldem", a.runHoldem(ctx, a.holdemEvery))
 	})
 
 	if a.sync != nil {

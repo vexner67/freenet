@@ -306,6 +306,23 @@ service UserService {
   rpc GetPokerSettings(GetPokerSettingsRequest) returns (GetPokerSettingsResponse);
   rpc SetPokerSettings(SetPokerSettingsRequest) returns (google.protobuf.Empty);
 
+  // Tables of "Покер": no-limit Texas Hold'em of people. ListHoldemTables
+  // tells the open tables, the caller's and those they are invited to;
+  // CreateHoldemTable opens a table and seats the caller, QuickHoldem seats
+  // them at the fullest open table of the stake or opens one. The buy-in
+  // goes to the treasury, chips come back as votes on leaving. The table
+  // moves on when read: turns pass after 30 s, hands are dealt by
+  // themselves.
+  rpc ListHoldemTables(ListHoldemTablesRequest) returns (ListHoldemTablesResponse);
+  rpc CreateHoldemTable(CreateHoldemTableRequest) returns (HoldemTableResponse);
+  rpc QuickHoldem(QuickHoldemRequest) returns (HoldemTableResponse);
+  rpc GetHoldemTable(HoldemTableRequest) returns (HoldemTable);
+  rpc SitHoldemTable(SitHoldemTableRequest) returns (HoldemTableResponse);
+  rpc LeaveHoldemTable(HoldemTableRequest) returns (HoldemTableResponse);
+  rpc ActHoldemTable(ActHoldemTableRequest) returns (HoldemTable);
+  rpc BackHoldemTable(HoldemTableRequest) returns (HoldemTable);
+  rpc InviteHoldemTable(InviteHoldemTableRequest) returns (HoldemTable);
+
   // Requires an access token of an administrator of the site
   // (PermissionDenied otherwise): gives a page the checkmark of a
   // confirmed one ("Верификация" of openvk) or takes it.
@@ -2703,4 +2720,111 @@ message GetBankSettingsResponse {
 
 message SetBankSettingsRequest {
   BankSettings settings = 1;
+}
+
+message ListHoldemTablesRequest {
+  // "public" (the default), "mine", "invited".
+  string section = 1;
+}
+
+message ListHoldemTablesResponse {
+  repeated HoldemTable tables = 1;
+}
+
+message CreateHoldemTableRequest {
+  string name = 1;
+  bool private = 2;
+  int32 seats = 3;
+  int64 big_blind = 4;
+  int64 buy_in = 5;
+}
+
+message QuickHoldemRequest {
+  int64 big_blind = 1;
+  int64 buy_in = 2;
+}
+
+message HoldemTableRequest {
+  string id = 1;
+}
+
+message SitHoldemTableRequest {
+  string id = 1;
+  // -1 — the first free seat.
+  int32 seat = 2;
+  int64 buy_in = 3;
+}
+
+message ActHoldemTableRequest {
+  string id = 1;
+  // "fold", "check", "call", "raise", "allin".
+  string action = 2;
+  // The bet a raise makes in all.
+  int64 amount = 3;
+}
+
+message InviteHoldemTableRequest {
+  string id = 1;
+  repeated string nicknames = 2;
+}
+
+message HoldemTableResponse {
+  // Absent when the table closed as the caller left it.
+  HoldemTable table = 1;
+  // The balance of the caller after the buy-in or the payout.
+  int64 balance = 2;
+}
+
+// HoldemSeat is a seat as the viewer sees it; user_id is empty on a free
+// one. Cards are the viewer's own and those shown at the showdown.
+message HoldemSeat {
+  string user_id = 1;
+  int64 stack = 2;
+  int64 bet = 3;
+  repeated string cards = 4;
+  bool has_cards = 5;
+  bool folded = 6;
+  bool all_in = 7;
+  bool away = 8;
+  bool leaving = 9;
+  // The last action: "fold", "check", "call", "raise", "allin",
+  // "small_blind", "big_blind"; empty for none.
+  string last = 10;
+  // What the seat won in the hand over.
+  int64 won = 11;
+  // The best hand of the cards seen ("pair", "flush"...) and its cards.
+  string hand = 12;
+  repeated string best = 13;
+}
+
+message HoldemTable {
+  string id = 1;
+  string name = 2;
+  bool private = 3;
+  string owner_id = 4;
+  int64 big_blind = 5;
+  int64 small_blind = 6;
+  int64 min_buy_in = 7;
+  int64 max_buy_in = 8;
+  // "waiting", "preflop", "flop", "turn", "river", "showdown".
+  string street = 9;
+  int64 hand = 10;
+  int32 button = 11;
+  // The seat to act, -1 for none.
+  int32 turn = 12;
+  // Milliseconds until the turn passes or the next hand is dealt.
+  int64 turn_ms = 13;
+  repeated string board = 14;
+  int64 pot = 15;
+  int64 current_bet = 16;
+  int64 version = 17;
+  repeated HoldemSeat seats = 18;
+  int32 players = 19;
+  // The seat of the viewer, -1 for none; what they have to call and the
+  // least and most bets of a raise, 0 when they cannot raise.
+  int32 you = 20;
+  int64 to_call = 21;
+  int64 raise_least = 22;
+  int64 raise_most = 23;
+  bool invited = 24;
 }

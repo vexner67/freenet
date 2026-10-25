@@ -26,6 +26,8 @@ func PublicMethods() []string {
 		userv1.UserService_GetPrime_FullMethodName,
 		userv1.UserService_GetCasino_FullMethodName,
 		userv1.UserService_GetPoker_FullMethodName,
+		userv1.UserService_ListHoldemTables_FullMethodName,
+		userv1.UserService_GetHoldemTable_FullMethodName,
 		userv1.UserService_ListBetEvents_FullMethodName,
 		userv1.UserService_ListAds_FullMethodName,
 		userv1.UserService_GetStickerCatalog_FullMethodName,
