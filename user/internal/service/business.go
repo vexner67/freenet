@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"time"
 
@@ -38,15 +40,22 @@ type BusinessesView struct {
 	At         time.Time
 }
 
-// BusinessAct is an action with a business: Amount is the units of a
-// restock or the votes of a deposit, Price and Staff — what a manage sets,
-// Perk — the improvement an improve buys the next tier of.
+// BusinessAct is an action with a business: Amount is the units of an
+// order or a contract or the votes of a deposit, Price — the hundredths
+// of a vote a price sets the offer at, Below — the units a contract keeps
+// the supply from going under, Worker and Candidate — whom a hire, a
+// fire, a bonus or a raise is about, Option — the answer to the event.
 type BusinessAct struct {
-	Action user.BusinessAction
-	Amount int64
-	Price  int64
-	Staff  int
-	Perk   user.BusinessPerk
+	Action    user.BusinessAction
+	Amount    int64
+	Price     int64
+	Offer     user.Offer
+	Supply    user.Supply
+	Supplier  user.Supplier
+	Below     int64
+	Worker    int
+	Candidate int64
+	Option    string
 }
 
 // BusinessDone is what an action did: the business after it (Closed when
@@ -71,9 +80,8 @@ type BusinessSettings struct {
 }
 
 // BusinessService is the businesses: people buy them for votes into the
-// treasury, run them — goods, price, staff, repairs, advertising, levels,
-// improvements —
-// and take their cash out; a business run badly runs into debt and goes
+// treasury, run them — supplies and contracts, prices, workers, repairs,
+// advertising, levels, events — and take their cash out; a business run badly runs into debt and goes
 // bankrupt.
 type BusinessService struct {
 	userRepo   UserRepository
@@ -105,7 +113,7 @@ func (s *BusinessService) Businesses(ctx context.Context, userID uuid.UUID, now 
 			return BusinessesView{}, errs.Wrap("rules.Plan", err)
 		}
 
-		owned[i] = b.At(plan, now)
+		owned[i] = b.At(plan, rules, now)
 	}
 
 	return BusinessesView{Rules: rules, Businesses: owned, At: now}, nil
@@ -146,7 +154,10 @@ func (s *BusinessService) Buy(ctx context.Context, userID uuid.UUID, kind user.B
 			return errs.Wrap("s.wallets.Spend", err)
 		}
 
-		b := user.NewBusiness(plan, now)
+		b, err := user.NewBusiness(plan, seed(), now)
+		if err != nil {
+			return errs.Wrap("user.NewBusiness", err)
+		}
 		if err = s.businesses.AddBusiness(ctx, userID, b); err != nil {
 			return errs.Wrap("s.businesses.AddBusiness", err)
 		}
@@ -195,7 +206,7 @@ func (s *BusinessService) Act(ctx context.Context, userID uuid.UUID, kind user.B
 		}
 
 		done = BusinessDone{Rules: rules, At: now}
-		if done.Business, err = s.apply(b.At(plan, now), plan, rules, act, now, &done); err != nil {
+		if done.Business, err = s.apply(b.At(plan, rules, now), plan, rules, act, now, &done); err != nil {
 			return errs.Wrap("s.apply", err)
 		}
 
@@ -226,23 +237,33 @@ func (s *BusinessService) apply(b user.Business, plan user.BusinessPlan, rules u
 	var err error
 
 	switch act.Action {
-	case user.BusinessManage:
-		b, err = b.Managed(plan, act.Price, act.Staff)
-	case user.BusinessRestock:
-		b, done.Spent, err = b.Restocked(plan, act.Amount)
+	case user.BusinessOrder:
+		b, done.Spent, err = b.Ordered(rules, act.Supply, act.Supplier, act.Amount, now)
+	case user.BusinessContract:
+		b, err = b.Contracted(act.Supply, act.Supplier, act.Below, act.Amount)
+	case user.BusinessPrice:
+		b, err = b.Priced(act.Offer, act.Price)
+	case user.BusinessHire:
+		b, err = b.Hired(plan, rules, act.Candidate, now)
+	case user.BusinessFire:
+		b, err = b.Fired(act.Worker, now)
+	case user.BusinessBonus:
+		b, done.Spent, err = b.Bonused(act.Worker)
+	case user.BusinessRaise:
+		b, err = b.Raised(act.Worker)
 	case user.BusinessUpgrade:
 		b, done.Spent, err = b.Upgraded(plan)
 	case user.BusinessRepair:
-		b, done.Spent, err = b.Repaired(plan)
-	case user.BusinessImprove:
-		b, done.Spent, err = b.Improved(plan, act.Perk)
+		b, done.Spent, err = b.Repaired(plan, now)
 	case user.BusinessAdvertise:
 		b, done.Spent, err = b.Advertised(plan, now)
 	case user.BusinessDeposit:
 		b, err = b.Deposited(act.Amount)
 		done.Spent = act.Amount
 	case user.BusinessCollect:
-		b, done.Got, done.Tax, err = b.Collected(rules.Tax())
+		b, done.Got, done.Tax, err = b.Collected(rules)
+	case user.BusinessDecide:
+		b, err = decided(b, act.Option, now)
 	case user.BusinessSell:
 		done.Got, err = b.Resale()
 		done.Closed = true
@@ -254,6 +275,26 @@ func (s *BusinessService) apply(b user.Business, plan user.BusinessPlan, rules u
 	}
 
 	return b, nil
+}
+
+func decided(b user.Business, option string, now time.Time) (user.Business, error) {
+	spec, err := user.BusinessCatalog(b.Kind())
+	if err != nil {
+		return user.Business{}, errs.Wrap("user.BusinessCatalog", err)
+	}
+
+	b, err = b.Decided(spec, option, now)
+
+	return b, errs.Wrap("b.Decided", err)
+}
+
+// seed is the luck of a business just bought: its candidates, events and
+// deliveries.
+func seed() uint64 {
+	var buf [8]byte
+	_, _ = rand.Read(buf[:]) // crypto/rand.Read never fails
+
+	return binary.LittleEndian.Uint64(buf[:])
 }
 
 // settle moves the votes of done: what is spent goes to the treasury,

@@ -475,15 +475,19 @@ type UserServiceClient interface {
 	SetMine(ctx context.Context, in *SetMineRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Require an access token: the businesses of the caller. A business is
 	// bought for votes into the treasury (FailedPrecondition "you own this
-	// business already", "not enough votes"), and runs by itself: customers
-	// buy its goods at its price, workers serve them, wages and rent run,
-	// the premises wear down. RunBusiness does an action: "manage" (price
-	// and staff), "restock" (amount — units), "upgrade", "repair",
-	// "advertise", "deposit" (amount — votes into the till), "collect" (the
-	// till, less the tax), "improve" (perk — the next tier of an
-	// improvement, opened by the level: FailedPrecondition "the business
-	// level is too low for this improvement") and "sell" (half of what went
-	// into it and the till). A business that runs too deep into debt goes bankrupt
+	// business already", "not enough votes") and runs by itself, an hour
+	// after another: customers buy its offers at its prices while its
+	// workers serve them and its supplies last, wages and rent come out of
+	// the till, supplies spoil, the premises wear down, workers learn and
+	// change their mood, and events wait for an answer. RunBusiness does an
+	// action: "order" (supply, supplier, amount — units, for the votes of
+	// the owner), "contract" (supply, supplier, below, amount — a standing
+	// order from the till; amount 0 ends it), "price" (offer, price),
+	// "hire" (candidate), "fire", "bonus" and "raise" (worker), "upgrade",
+	// "repair", "advertise", "deposit" (amount — votes into the till),
+	// "collect" (the till, less the tax), "decide" (option — the answer to
+	// the event) and "sell" (half of what went into it and the till). A
+	// business that runs too deep into debt goes bankrupt
 	// (FailedPrecondition "the business went bankrupt"). Taking votes out is
 	// for pages a week old with a filled profile.
 	GetBusinesses(ctx context.Context, in *GetBusinessesRequest, opts ...grpc.CallOption) (*BusinessesState, error)
@@ -2108,15 +2112,19 @@ type UserServiceServer interface {
 	SetMine(context.Context, *SetMineRequest) (*emptypb.Empty, error)
 	// Require an access token: the businesses of the caller. A business is
 	// bought for votes into the treasury (FailedPrecondition "you own this
-	// business already", "not enough votes"), and runs by itself: customers
-	// buy its goods at its price, workers serve them, wages and rent run,
-	// the premises wear down. RunBusiness does an action: "manage" (price
-	// and staff), "restock" (amount — units), "upgrade", "repair",
-	// "advertise", "deposit" (amount — votes into the till), "collect" (the
-	// till, less the tax), "improve" (perk — the next tier of an
-	// improvement, opened by the level: FailedPrecondition "the business
-	// level is too low for this improvement") and "sell" (half of what went
-	// into it and the till). A business that runs too deep into debt goes bankrupt
+	// business already", "not enough votes") and runs by itself, an hour
+	// after another: customers buy its offers at its prices while its
+	// workers serve them and its supplies last, wages and rent come out of
+	// the till, supplies spoil, the premises wear down, workers learn and
+	// change their mood, and events wait for an answer. RunBusiness does an
+	// action: "order" (supply, supplier, amount — units, for the votes of
+	// the owner), "contract" (supply, supplier, below, amount — a standing
+	// order from the till; amount 0 ends it), "price" (offer, price),
+	// "hire" (candidate), "fire", "bonus" and "raise" (worker), "upgrade",
+	// "repair", "advertise", "deposit" (amount — votes into the till),
+	// "collect" (the till, less the tax), "decide" (option — the answer to
+	// the event) and "sell" (half of what went into it and the till). A
+	// business that runs too deep into debt goes bankrupt
 	// (FailedPrecondition "the business went bankrupt"). Taking votes out is
 	// for pages a week old with a filled profile.
 	GetBusinesses(context.Context, *GetBusinessesRequest) (*BusinessesState, error)

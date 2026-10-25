@@ -2,14 +2,15 @@
 // above, in pixels as the games of the 2000s drew them — the hall with the
 // counter, the bays or the workshop, the storeroom with its racks, the
 // street with the billboard. Customers walk in (drive in at the carwash,
-// come by lorry to the factory), workers stand at their places, and every
-// improvement shows: the rug and the plants of the decor, the sign over the
-// door, the machines, the racks, the floor of the finish, the uniforms of
-// the trained staff. Worn premises crack, a ruined business is boarded up.
+// come by lorry to the factory), workers stand at their places, and the
+// premises grow richer every three levels: the rug and the plants, the sign
+// over the door, the machines, the racks, the floor; the uniforms smarten
+// with the skill of the staff. Worn premises crack, a ruined business is
+// boarded up.
 // Everything is drawn here with rectangles on a small canvas, scaled up by
 // a whole number so the pixels stay square.
 
-import { businessCondition, businessStations, businessWalkers } from './labels.js';
+import { businessCondition, businessStations, businessTotals, businessWalkers } from './labels.js';
 import { tr } from './i18n.js';
 
 export const W = 224;
@@ -106,7 +107,13 @@ function random(seed) {
   };
 }
 
-const tierOf = (b, perk) => b.perks?.find((p) => p.perk === perk)?.tier ?? 0;
+// grade is how rich the premises of b look, from 0 to 3: a step every
+// three levels.
+const grade = (b) => Math.min(3, Math.floor((Math.max(b.level, 1) - 1) / 3));
+
+// trained is how well the uniforms of the staff look, from 0 to 3: by the
+// skill of the most skilled worker.
+const trained = (b) => Math.max(0, ...b.workers.map((w) => w.skill - 2));
 
 // Sprites: rows of letters, each a colour of the palette given.
 const person = [
@@ -220,10 +227,10 @@ export class Premises {
 
   // set gives the picture the business as it is now; the people walking
   // stay, only as many come and go as the business draws.
-  set(b, plan) {
+  set(b, spec) {
     this.b = b;
-    this.plan = plan;
-    let { served, passing } = businessWalkers(b, plan);
+    this.totals = businessTotals(b);
+    let { served, passing } = businessWalkers(b, spec);
     // Cars and lorries do not queue on top of each other: as many come in
     // as there are bays, and one lorry loads at the gate at a time.
     if (this.kind === 'carwash') served = Math.min(served, this.stations());
@@ -384,7 +391,7 @@ export class Premises {
     }
     parts.push({ part: 'storage', x: STORE[0], y: FLOOR, w: STORE[1] - STORE[0], h: BOTTOM - FLOOR, label: tr('Склад') });
     parts.push({ part: 'ad', x: 182, y: WALK, w: 36, h: 12, label: tr('Рекламный щит') });
-    parts.push({ part: 'perks', x: doors[this.kind][1] + 2, y: BOTTOM - 1, w: 30, h: 8, label: tr('Улучшения') });
+    parts.push({ part: 'offers', x: doors[this.kind][1] + 2, y: BOTTOM - 1, w: 30, h: 8, label: tr('Товары и цены') });
     parts.push({ part: 'building', x: HALL[0], y: FACE, w: HALL[1] - HALL[0], h: BOTTOM - FACE + 6, label: tr('Здание') });
     return parts;
   }
@@ -397,21 +404,21 @@ export class Premises {
     const b = this.b;
     if (!b) return;
     const rnd = random(this.seed);
-    const finish = tierOf(b, 'finish');
+    const finish = grade(b);
     const style = (this.kind === 'carwash' || this.kind === 'factory' ? concrete : finishes)[finish];
 
     this.drawStreet(ctx);
     this.drawFloor(ctx, style, finish, rnd);
     this.drawWalls(ctx, style, finish);
     this.drawFixtures(ctx);
-    this.drawDecor(ctx, tierOf(b, 'decor'));
-    this.drawStore(ctx, tierOf(b, 'shelves'));
+    this.drawDecor(ctx, grade(b));
+    this.drawStore(ctx, grade(b));
     if (this.kind === 'carwash') this.drawBays(ctx);
     else if (this.kind === 'factory') this.drawWorkshop(ctx);
     else this.drawCounter(ctx);
     this.drawTables(ctx);
     this.drawWorkers(ctx);
-    this.drawSign(ctx, tierOf(b, 'brand'));
+    this.drawSign(ctx, grade(b));
     this.drawBillboard(ctx);
     this.drawWear(ctx, rnd);
 
@@ -553,7 +560,7 @@ export class Premises {
 
   drawCounter(ctx) {
     const n = this.stations();
-    const equip = tierOf(this.b, 'equipment');
+    const equip = grade(this.b);
     const x = 24;
     const w = n * 30 + 4;
     // The back wall: fridges at the kiosk, coffee machines at the cafe.
@@ -603,7 +610,7 @@ export class Premises {
   }
 
   drawBays(ctx) {
-    const equip = tierOf(this.b, 'equipment');
+    const equip = grade(this.b);
     this.places().forEach((p) => {
       rect(ctx, p.x - 15, FLOOR + 6, 1, 70, C.yellow);
       rect(ctx, p.x + 15, FLOOR + 6, 1, 70, C.yellow);
@@ -623,8 +630,8 @@ export class Premises {
   }
 
   drawWorkshop(ctx) {
-    const equip = tierOf(this.b, 'equipment');
-    const working = !this.b.bankrupt && this.b.served > 0;
+    const equip = grade(this.b);
+    const working = !this.b.bankrupt && this.totals.served > 0;
     // The office desk with the till.
     rect(ctx, 8, FLOOR + 2, 22, 12, C.wood);
     rect(ctx, 10, FLOOR + 3, 8, 6, C.black);
@@ -658,7 +665,7 @@ export class Premises {
 
   drawWorkers(ctx) {
     const b = this.b;
-    const training = tierOf(b, 'training');
+    const training = trained(b);
     const look = {
       skin: C.skin[1], hair: C.hair[0], shirt: C.uniform[training], pants: C.pants[0],
       apron: training >= 2 ? C.white : null, badge: training >= 1 ? C.yellow : null,
@@ -666,17 +673,17 @@ export class Premises {
     };
     let spots;
     if (this.kind === 'carwash') spots = this.places().map((p) => ({ x: p.x - 10, y: p.y + 4 }));
-    else if (this.kind === 'factory') spots = Array.from({ length: tierOf(b, 'equipment') + 1 }, (_, i) => ({ x: 50 + i * 28, y: 82 }));
+    else if (this.kind === 'factory') spots = Array.from({ length: grade(b) + 1 }, (_, i) => ({ x: 50 + i * 28, y: 82 }));
     else spots = this.places().map((p) => ({ x: p.x, y: 38 }));
 
-    const shown = Math.min(b.staff, spots.length);
+    const shown = Math.min(this.totals.staff, spots.length);
     for (let i = 0; i < shown; i++) {
       const s = spots[i];
       const bob = !b.bankrupt && Math.floor(this.time * 2 + i) % 2 ? 1 : 0;
       drawPerson(ctx, { ...look, skin: C.skin[i % C.skin.length], hair: C.hair[(i + 1) % C.hair.length] }, s.x, s.y - bob, 0);
     }
     // The rest carry boxes about the storeroom.
-    const extra = Math.min(b.staff - shown, 3);
+    const extra = Math.min(this.totals.staff - shown, 3);
     for (let i = 0; i < extra; i++) {
       const span = 40;
       const t = (this.time * 10 + i * 17) % (span * 2);
@@ -687,11 +694,11 @@ export class Premises {
 
   drawStore(ctx, shelves) {
     const racks = 1 + shelves;
-    const storage = Math.max(this.b.storage ?? this.plan.storage * this.b.level, 1);
-    const fill = Math.max(0, Math.min(1, this.b.stock / storage));
+    const { stock, storage } = this.totals;
+    const fill = Math.max(0, Math.min(1, stock / Math.max(storage, 1)));
     const slots = racks * 7;
     let boxes = Math.round(fill * slots);
-    if (this.b.stock > 0 && boxes === 0) boxes = 1;
+    if (stock > 0 && boxes === 0) boxes = 1;
     for (let r = 0; r < racks; r++) {
       const x = STORE[0] + 50 - r * 14;
       rect(ctx, x, FLOOR + 2, 10, 70, C.metalDark);
@@ -839,9 +846,9 @@ export class Premises {
     const b = this.b;
     if (Math.floor(this.time * 2) % 2) return;
     const alerts = [];
-    if (b.stock <= 0) alerts.push('storage');
+    if (this.totals.empty) alerts.push('storage');
     if (b.inDebt) alerts.push('till');
-    if (b.staff === 0) alerts.push('staff');
+    if (this.totals.staff === 0) alerts.push('staff');
     if (businessCondition(b.condition) === 2) alerts.push('building');
     for (const part of alerts) {
       const p = this.parts.find((q) => q.part === part);

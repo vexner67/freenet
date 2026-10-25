@@ -34,7 +34,7 @@ func TestBusinessRepository(t *testing.T) {
 	def := user.DefaultBusinessRules()
 	plans := def.Plans()
 	plans[1].Price = 4321
-	tuned, err := user.NewBusinessRules(plans, 7)
+	tuned, err := user.NewBusinessRules(plans, 7, 120, 90)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,21 +57,30 @@ func TestBusinessRepository(t *testing.T) {
 	kiosk, _ := tuned.Plan(user.BusinessKiosk)
 	cafe, _ := tuned.Plan(user.BusinessCafe)
 
+	newBusiness := func(plan user.BusinessPlan) user.Business {
+		b, err := user.NewBusiness(plan, 42, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return b
+	}
+
 	before, err := businesses.Stats(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err = businesses.AddBusiness(ctx, ann.ID(), user.NewBusiness(cafe, now)); err != nil {
+	if err = businesses.AddBusiness(ctx, ann.ID(), newBusiness(cafe)); err != nil {
 		t.Fatal(err)
 	}
-	if err = businesses.AddBusiness(ctx, ann.ID(), user.NewBusiness(kiosk, now)); err != nil {
+	if err = businesses.AddBusiness(ctx, ann.ID(), newBusiness(kiosk)); err != nil {
 		t.Fatal(err)
 	}
-	if err = businesses.AddBusiness(ctx, ann.ID(), user.NewBusiness(kiosk, now)); !errors.Is(err, user.ErrBusinessOwned) {
+	if err = businesses.AddBusiness(ctx, ann.ID(), newBusiness(kiosk)); !errors.Is(err, user.ErrBusinessOwned) {
 		t.Errorf("a second kiosk: %v", err)
 	}
-	if err = businesses.AddBusiness(ctx, uuid.New(), user.NewBusiness(kiosk, now)); !errors.Is(err, user.ErrNotFound) {
+	if err = businesses.AddBusiness(ctx, uuid.New(), newBusiness(kiosk)); !errors.Is(err, user.ErrNotFound) {
 		t.Errorf("a business of nobody: %v", err)
 	}
 
@@ -80,16 +89,17 @@ func TestBusinessRepository(t *testing.T) {
 		t.Fatalf("Businesses = %+v, %v; want the kiosk, then the cafe", owned, err)
 	}
 
+	var saved user.Business
 	err = tx.WithinTx(ctx, func(ctx context.Context) error {
 		b, err := businesses.Business(ctx, ann.ID(), user.BusinessKiosk)
 		if err != nil {
 			return err
 		}
-		if !reflect.DeepEqual(b, user.NewBusiness(kiosk, now)) {
+		if !reflect.DeepEqual(b.State(), newBusiness(kiosk).State()) {
 			t.Errorf("Business = %+v; want the new kiosk", b.State())
 		}
 
-		b, _, err = b.Restocked(kiosk, 50)
+		b, _, err = b.Ordered(tuned, user.SupplyDrinks, user.SupplierExpress, 50, now)
 		if err != nil {
 			return err
 		}
@@ -97,11 +107,12 @@ func TestBusinessRepository(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		b, _, err = b.Improved(kiosk, user.PerkShelves)
+		b, err = b.Hired(kiosk, tuned, b.Candidates(tuned, now)[0].ID, now)
 		if err != nil {
 			return err
 		}
-		if err = businesses.SaveBusiness(ctx, ann.ID(), b.At(kiosk, now.Add(2*time.Hour))); err != nil {
+		saved = b.At(kiosk, tuned, now.Add(2*time.Hour))
+		if err = businesses.SaveBusiness(ctx, ann.ID(), saved); err != nil {
 			return err
 		}
 
@@ -111,9 +122,10 @@ func TestBusinessRepository(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	want := saved.State()
 	got, err := businesses.Business(ctx, ann.ID(), user.BusinessKiosk)
-	if err != nil || got.State().Stock >= 50 || got.State().AdUntil.IsZero() || got.Perk(user.PerkShelves) != 1 {
-		t.Errorf("saved kiosk = %+v, %v", got.State(), err)
+	if err != nil || !reflect.DeepEqual(got.State(), want) {
+		t.Errorf("saved kiosk = %+v, %v; want %+v", got.State(), err, want)
 	}
 
 	if err = businesses.DeleteBusiness(ctx, ann.ID(), user.BusinessCafe); err != nil {
@@ -122,7 +134,7 @@ func TestBusinessRepository(t *testing.T) {
 	if _, err = businesses.Business(ctx, ann.ID(), user.BusinessCafe); !errors.Is(err, user.ErrBusinessNotFound) {
 		t.Errorf("deleted cafe: %v", err)
 	}
-	if err = businesses.SaveBusiness(ctx, ann.ID(), user.NewBusiness(cafe, now)); !errors.Is(err, user.ErrBusinessNotFound) {
+	if err = businesses.SaveBusiness(ctx, ann.ID(), newBusiness(cafe)); !errors.Is(err, user.ErrBusinessNotFound) {
 		t.Errorf("SaveBusiness of a deleted cafe: %v", err)
 	}
 

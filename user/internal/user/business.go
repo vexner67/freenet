@@ -3,7 +3,6 @@ package user
 import (
 	"errors"
 	"math"
-	"math/big"
 	"time"
 )
 
@@ -25,13 +24,26 @@ var BusinessKinds = []BusinessKind{BusinessKiosk, BusinessCafe, BusinessCarwash,
 type BusinessAction string
 
 const (
-	// BusinessManage sets the price of the goods and the staff.
-	BusinessManage BusinessAction = "manage"
-	// BusinessRestock buys goods into the storage.
-	BusinessRestock BusinessAction = "restock"
+	// BusinessOrder buys supplies from a supplier with the votes of the
+	// owner; they come in the hours of the supplier.
+	BusinessOrder BusinessAction = "order"
+	// BusinessContract sets (or, with no units, ends) a standing order of
+	// a supply: the buyer orders it from the till when it runs low.
+	BusinessContract BusinessAction = "contract"
+	// BusinessPrice sets the price of an offer.
+	BusinessPrice BusinessAction = "price"
+	// BusinessHire takes a candidate on, BusinessFire lets a worker go.
+	BusinessHire BusinessAction = "hire"
+	BusinessFire BusinessAction = "fire"
+	// BusinessBonus pays a worker eight hours of the wage from the votes
+	// of the owner: the mood rises.
+	BusinessBonus BusinessAction = "bonus"
+	// BusinessRaise raises a wage a tenth: the mood rises.
+	BusinessRaise BusinessAction = "raise"
 	// BusinessUpgrade raises the level.
 	BusinessUpgrade BusinessAction = "upgrade"
-	// BusinessRepair brings the premises back to full condition.
+	// BusinessRepair brings the premises back to full condition and mends
+	// a breakdown.
 	BusinessRepair BusinessAction = "repair"
 	// BusinessAdvertise buys an advertising campaign.
 	BusinessAdvertise BusinessAction = "advertise"
@@ -39,10 +51,17 @@ const (
 	BusinessCollect BusinessAction = "collect"
 	// BusinessDeposit puts votes into the till: pays a debt off.
 	BusinessDeposit BusinessAction = "deposit"
+	// BusinessDecide answers the event that waits for the owner.
+	BusinessDecide BusinessAction = "decide"
 	// BusinessSell sells the business back to the site, or closes a
 	// bankrupt one.
 	BusinessSell BusinessAction = "sell"
 )
+
+var businessActions = []BusinessAction{
+	BusinessOrder, BusinessContract, BusinessPrice, BusinessHire, BusinessFire, BusinessBonus, BusinessRaise,
+	BusinessUpgrade, BusinessRepair, BusinessAdvertise, BusinessCollect, BusinessDeposit, BusinessDecide, BusinessSell,
+}
 
 // FullCondition is the condition of new premises, in hundredths of a
 // percent.
@@ -52,10 +71,10 @@ const FullCondition = 10_000
 // the arithmetic and the fields of the API hold.
 const (
 	MaxBusinessLevels   = 1_000
-	MaxBusinessDemand   = 1_000_000
+	MaxBusinessPercent  = 10_000
 	MaxBusinessPrice    = MaxAmount * 100
-	MaxBusinessStorage  = 1_000_000_000
-	MaxBusinessStaff    = 10_000
+	MaxBusinessUnits    = 1_000_000_000
+	MaxBusinessStaff    = 1_000
 	MaxBusinessWear     = FullCondition
 	MaxBusinessAdHours  = 365 * 24
 	MaxBusinessAdBoost  = 10_000
@@ -72,18 +91,18 @@ var (
 	ErrBusinessInDebt    = errors.New("pay the debts of the business off first")
 	ErrBusinessTopLevel  = errors.New("the business is at its top level")
 	ErrBusinessIntact    = errors.New("the premises need no repair")
-	ErrBusinessStock     = errors.New("the goods must be at least 1 and fit in the storage")
-	ErrBusinessSetPrice  = errors.New("the price of the goods must be from 1")
-	ErrBusinessSetStaff  = errors.New("the staff must be from 0 to what the level allows")
+	ErrBusinessOrder     = errors.New("an order must be at least 1 unit and fit in the storage with what is on the way")
+	ErrBusinessContract  = errors.New("a contract must order at least 1 unit, fit in the storage and order below what it fills")
+	ErrBusinessSetPrice  = errors.New("the price must be from 1")
 	ErrBusinessDeposit   = errors.New("a deposit must be at least 1 vote")
 	ErrNothingToCollect  = errors.New("there is not a whole vote in the till")
 	ErrBusinessNotYet    = errors.New("businesses pay pages a week old with a filled profile")
 	ErrBusinessPlans     = errors.New("the settings must set every business once, in order")
 	ErrBusinessPlanPrice = errors.New("a business must cost at least 1 vote, an upgrade at least 0")
 	ErrBusinessLevels    = errors.New("a business must have from 1 level")
-	ErrBusinessDemand    = errors.New("the demand must be from 0, the fair price from 1, the cost of goods from 0")
-	ErrBusinessCapacity  = errors.New("the storage, the till and the debt must be from 1, a worker must serve at least 1 customer")
-	ErrBusinessCosts     = errors.New("the wages, the rent and the repair must be from 0, the wear from 0 to 10000")
+	ErrBusinessPercent   = errors.New("the demand, the wages and the supplies must be from 0 to 10000 percent")
+	ErrBusinessCapacity  = errors.New("the till and the debt must be from 1, the seats from 1")
+	ErrBusinessCosts     = errors.New("the rent and the repair must be from 0, the wear from 0 to 10000")
 	ErrBusinessAd        = errors.New("an advertisement must cost from 0, last at least 1 hour and raise the demand at least 1 percent")
 	ErrBusinessTax       = errors.New("the tax must be from 0 to 100 percent")
 )
@@ -103,23 +122,21 @@ func (k BusinessKind) String() string {
 }
 
 func NewBusinessAction(s string) (BusinessAction, error) {
-	switch a := BusinessAction(s); a {
-	case BusinessManage, BusinessRestock, BusinessUpgrade, BusinessRepair, BusinessAdvertise, BusinessCollect, BusinessDeposit, BusinessSell,
-		BusinessImprove:
-		return a, nil
-	default:
-		return "", ErrUnknownAction
+	for _, a := range businessActions {
+		if string(a) == s {
+			return a, nil
+		}
 	}
+
+	return "", ErrUnknownAction
 }
 
-// BusinessPlan is how a business works, as the administrators set it.
-// Money is in votes unless said: Price buys it and Upgrade×level raises
-// its level, up to Levels. Each level draws Demand customers an hour at
-// the Fair price of the goods (hundredths of a vote a unit) — fewer the
-// dearer, none at twice of it, — keeps Storage units and Till votes in the
-// till, pays Rent hundredths an hour and goes bankrupt past Debt votes of
-// debt. A unit of goods costs Cost hundredths; a worker serves Serve
-// customers an hour for Wage hundredths, a level employs Staff of them.
+// BusinessPlan is how a business works, as the administrators set it;
+// what it deals in and whom it employs is BusinessCatalog. Money is in
+// votes unless said: Price buys it and Upgrade×level raises its level, up
+// to Levels. The customers of its offers are Demand percent of those of
+// the catalog; a level seats Staff workers, keeps Till votes in the till,
+// pays Rent hundredths an hour and goes bankrupt past Debt votes of debt.
 // The premises lose Wear hundredths of a percent of condition an hour,
 // and a percent costs Repair to bring back. An advertisement costs
 // AdPrice and raises the demand AdBoost percent for AdHours.
@@ -128,13 +145,8 @@ type BusinessPlan struct {
 	Price   int64
 	Upgrade int64
 	Levels  int
-	Demand  int64
-	Fair    int64
-	Cost    int64
-	Storage int64
-	Serve   int64
+	Demand  int
 	Staff   int
-	Wage    int64
 	Rent    int64
 	Wear    int
 	Repair  int64
@@ -151,15 +163,11 @@ func (p BusinessPlan) check() error {
 		return ErrBusinessPlanPrice
 	case p.Levels < 1 || p.Levels > MaxBusinessLevels:
 		return ErrBusinessLevels
-	case p.Demand < 0 || p.Demand > MaxBusinessDemand || p.Fair < 1 || p.Fair > MaxBusinessPrice ||
-		p.Cost < 0 || p.Cost > MaxBusinessPrice:
-		return ErrBusinessDemand
-	case p.Storage < 1 || p.Storage > MaxBusinessStorage || p.Till < 1 || p.Till > MaxAmount ||
-		p.Debt < 1 || p.Debt > MaxAmount || p.Serve < 1 || p.Serve > MaxBusinessDemand ||
-		p.Staff < 1 || p.Staff > MaxBusinessStaff:
+	case p.Demand < 0 || p.Demand > MaxBusinessPercent:
+		return ErrBusinessPercent
+	case p.Till < 1 || p.Till > MaxAmount || p.Debt < 1 || p.Debt > MaxAmount || p.Staff < 1 || p.Staff > MaxBusinessStaff:
 		return ErrBusinessCapacity
-	case p.Wage < 0 || p.Wage > MaxBusinessPrice || p.Rent < 0 || p.Rent > MaxBusinessPrice ||
-		p.Repair < 0 || p.Repair > MaxAmount || p.Wear < 0 || p.Wear > MaxBusinessWear:
+	case p.Rent < 0 || p.Rent > MaxBusinessPrice || p.Repair < 0 || p.Repair > MaxAmount || p.Wear < 0 || p.Wear > MaxBusinessWear:
 		return ErrBusinessCosts
 	case p.AdPrice < 0 || p.AdPrice > MaxAmount || p.AdHours < 1 || p.AdHours > MaxBusinessAdHours ||
 		p.AdBoost < 1 || p.AdBoost > MaxBusinessAdBoost:
@@ -169,14 +177,23 @@ func (p BusinessPlan) check() error {
 	return nil
 }
 
+// StaffAt is how many workers the level seats.
+func (p BusinessPlan) StaffAt(level int) int {
+	return p.Staff * level
+}
+
 // BusinessRules are the businesses of the site: the plans of all kinds in
-// order and the tax percent of the cash taken out, into the treasury.
+// order, the tax percent of the cash taken out (into the treasury), and
+// the percents of the wages and the supplies of the catalog all
+// businesses pay.
 type BusinessRules struct {
 	plans []BusinessPlan
 	tax   int
+	wages int
+	goods int
 }
 
-func NewBusinessRules(plans []BusinessPlan, tax int) (BusinessRules, error) {
+func NewBusinessRules(plans []BusinessPlan, tax, wages, goods int) (BusinessRules, error) {
 	if len(plans) != len(BusinessKinds) {
 		return BusinessRules{}, ErrBusinessPlans
 	}
@@ -190,45 +207,41 @@ func NewBusinessRules(plans []BusinessPlan, tax int) (BusinessRules, error) {
 		}
 	}
 
-	if tax < 0 || tax > MaxBusinessTax {
+	switch {
+	case tax < 0 || tax > MaxBusinessTax:
 		return BusinessRules{}, ErrBusinessTax
+	case wages < 0 || wages > MaxBusinessPercent || goods < 0 || goods > MaxBusinessPercent:
+		return BusinessRules{}, ErrBusinessPercent
 	}
 
-	return BusinessRules{plans: append([]BusinessPlan(nil), plans...), tax: tax}, nil
+	return BusinessRules{plans: append([]BusinessPlan(nil), plans...), tax: tax, wages: wages, goods: goods}, nil
 }
 
 // DefaultBusinessRules are the businesses until the administrators change
-// them: run well, each pays its price back in a month or so; the next
-// level, in about as long times the level.
+// them: run well, each pays its price back in a month or so.
 func DefaultBusinessRules() BusinessRules {
 	return BusinessRules{
 		plans: []BusinessPlan{
 			{
-				Kind: BusinessKiosk, Price: 500, Upgrade: 300, Levels: 10,
-				Demand: 10, Fair: 20, Cost: 10, Storage: 300, Serve: 12, Staff: 2,
-				Wage: 20, Rent: 10, Wear: 10, Repair: 1, Till: 40, Debt: 100,
-				AdPrice: 10, AdHours: 24, AdBoost: 50,
+				Kind: BusinessKiosk, Price: 500, Upgrade: 300, Levels: 10, Demand: 100, Staff: 4,
+				Rent: 10, Wear: 10, Repair: 1, Till: 40, Debt: 100, AdPrice: 10, AdHours: 24, AdBoost: 50,
 			},
 			{
-				Kind: BusinessCafe, Price: 3_000, Upgrade: 1_800, Levels: 10,
-				Demand: 20, Fair: 60, Cost: 30, Storage: 600, Serve: 10, Staff: 3,
-				Wage: 100, Rent: 50, Wear: 15, Repair: 6, Till: 200, Debt: 600,
-				AdPrice: 60, AdHours: 24, AdBoost: 50,
+				Kind: BusinessCafe, Price: 3_000, Upgrade: 1_800, Levels: 10, Demand: 100, Staff: 6,
+				Rent: 50, Wear: 15, Repair: 3, Till: 200, Debt: 600, AdPrice: 60, AdHours: 24, AdBoost: 50,
 			},
 			{
-				Kind: BusinessCarwash, Price: 12_000, Upgrade: 7_200, Levels: 10,
-				Demand: 12, Fair: 350, Cost: 150, Storage: 300, Serve: 4, Staff: 4,
-				Wage: 300, Rent: 200, Wear: 20, Repair: 24, Till: 1_000, Debt: 3_000,
-				AdPrice: 240, AdHours: 24, AdBoost: 50,
+				Kind: BusinessCarwash, Price: 12_000, Upgrade: 7_200, Levels: 10, Demand: 100, Staff: 7,
+				Rent: 200, Wear: 20, Repair: 10, Till: 1_000, Debt: 3_000, AdPrice: 240, AdHours: 24, AdBoost: 50,
 			},
 			{
-				Kind: BusinessFactory, Price: 50_000, Upgrade: 30_000, Levels: 10,
-				Demand: 50, Fair: 300, Cost: 150, Storage: 2_000, Serve: 10, Staff: 6,
-				Wage: 400, Rent: 500, Wear: 15, Repair: 100, Till: 3_000, Debt: 10_000,
-				AdPrice: 1_000, AdHours: 24, AdBoost: 50,
+				Kind: BusinessFactory, Price: 50_000, Upgrade: 30_000, Levels: 10, Demand: 100, Staff: 10,
+				Rent: 500, Wear: 15, Repair: 40, Till: 3_000, Debt: 10_000, AdPrice: 1_000, AdHours: 24, AdBoost: 50,
 			},
 		},
-		tax: 5,
+		tax:   5,
+		wages: 100,
+		goods: 100,
 	}
 }
 
@@ -241,6 +254,16 @@ func (r BusinessRules) Tax() int {
 	return r.tax
 }
 
+// Wages is the percent of the wages of the catalog workers get.
+func (r BusinessRules) Wages() int {
+	return r.wages
+}
+
+// Goods is the percent of the costs of the catalog supplies cost.
+func (r BusinessRules) Goods() int {
+	return r.goods
+}
+
 func (r BusinessRules) Plan(kind BusinessKind) (BusinessPlan, error) {
 	for _, p := range r.plans {
 		if p.Kind == kind {
@@ -251,76 +274,172 @@ func (r BusinessRules) Plan(kind BusinessKind) (BusinessPlan, error) {
 	return BusinessPlan{}, ErrUnknownBusiness
 }
 
-// Business is a business of a page as counted at CountedAt: its level,
-// the goods in its storage, their price, its workers, the condition of
-// its premises, the cash of its till in hundredths of a vote (below zero —
-// a debt), until when it is advertised, whether it went bankrupt, the
-// votes put into buying, upgrading and improving it, the votes taken out
-// of it and the tiers of its improvements.
+// Business is a business of a page as counted at countedAt. Money in the
+// till is in hundredths of a vote (below zero — a debt), the supplies are
+// in units; both, like the condition and the moods, are fractions the
+// hours add up.
 type Business struct {
-	kind      BusinessKind
-	level     int
-	stock     int64
-	price     int64
-	staff     int
-	condition int
-	cash      int64
-	adUntil   time.Time
-	countedAt time.Time
-	bankrupt  bool
-	invested  int64
-	collected int64
-	perks     map[BusinessPerk]int
+	kind        BusinessKind
+	seed        uint64
+	level       int
+	condition   float64
+	cash        float64
+	adUntil     time.Time
+	reviewUntil time.Time
+	countedAt   time.Time
+	bankrupt    bool
+	invested    int64
+	collected   int64
+	stock       map[Supply]float64
+	prices      map[Offer]int64
+	workers     []Worker
+	nextID      int
+	window      int64
+	hired       []int
+	orders      []Order
+	contracts   []Contract
+	event       Event
+	broken      Offer
+	brokenUntil time.Time
+	hours       []BusinessHour
+	notes       []Note
 }
 
-// NewBusiness is a business just bought: one worker, goods at the fair
-// price, an empty storage and till.
-func NewBusiness(plan BusinessPlan, now time.Time) Business {
-	return Business{
-		kind: plan.Kind, level: 1, price: plan.Fair, staff: 1, condition: FullCondition,
-		countedAt: now.UTC(), invested: plan.Price, perks: map[BusinessPerk]int{},
+// NewBusiness is a business just bought: no workers, no supplies, the
+// offers at their fair prices. The seed makes its luck: candidates,
+// events, deliveries.
+func NewBusiness(plan BusinessPlan, seed uint64, now time.Time) (Business, error) {
+	spec, err := BusinessCatalog(plan.Kind)
+	if err != nil {
+		return Business{}, err
 	}
+
+	b := Business{
+		kind: plan.Kind, seed: seed, level: 1, condition: FullCondition,
+		countedAt: now.UTC(), invested: plan.Price, nextID: 1,
+		stock: map[Supply]float64{}, prices: map[Offer]int64{},
+	}
+	for _, o := range spec.Offers {
+		b.prices[o.Offer] = o.Fair
+	}
+
+	return b, nil
 }
 
 // BusinessState is a business as kept.
 type BusinessState struct {
-	Kind      BusinessKind
-	Level     int
-	Stock     int64
-	Price     int64
-	Staff     int
-	Condition int
-	Cash      int64
-	AdUntil   time.Time
-	CountedAt time.Time
-	Bankrupt  bool
-	Invested  int64
-	Collected int64
-	Perks     map[BusinessPerk]int
+	Kind        BusinessKind
+	Seed        uint64
+	Level       int
+	Condition   float64
+	Cash        float64
+	AdUntil     time.Time
+	ReviewUntil time.Time
+	CountedAt   time.Time
+	Bankrupt    bool
+	Invested    int64
+	Collected   int64
+	Stock       map[Supply]float64
+	Prices      map[Offer]int64
+	Workers     []Worker
+	NextID      int
+	Window      int64
+	Hired       []int
+	Orders      []Order
+	Contracts   []Contract
+	Event       Event
+	Broken      Offer
+	BrokenUntil time.Time
+	Hours       []BusinessHour
+	Notes       []Note
 }
 
-// RestoreBusiness keeps only the known improvements and their tiers.
+// RestoreBusiness keeps what the catalog still knows: supplies, offers
+// and professions it no longer has are dropped, offers it has come at
+// their fair prices.
 func RestoreBusiness(s BusinessState) Business {
-	perks := map[BusinessPerk]int{}
-	for _, p := range BusinessPerks {
-		if tier := s.Perks[p]; tier > 0 {
-			perks[p] = min(tier, MaxPerkTier)
+	spec, _ := BusinessCatalog(s.Kind)
+
+	b := Business{
+		kind: s.Kind, seed: s.Seed, level: max(s.Level, 1), condition: s.Condition, cash: s.Cash,
+		adUntil: s.AdUntil.UTC(), reviewUntil: s.ReviewUntil.UTC(), countedAt: s.CountedAt.UTC(),
+		bankrupt: s.Bankrupt, invested: s.Invested, collected: s.Collected, nextID: max(s.NextID, 1),
+		window: s.Window, hired: append([]int(nil), s.Hired...), event: s.Event,
+		brokenUntil: s.BrokenUntil.UTC(), hours: cloneHours(s.Hours), notes: append([]Note(nil), s.Notes...),
+		stock: map[Supply]float64{}, prices: map[Offer]int64{},
+	}
+
+	for _, sup := range spec.Supplies {
+		if v := s.Stock[sup.Supply]; v > 0 {
+			b.stock[sup.Supply] = v
+		}
+	}
+	for _, o := range spec.Offers {
+		b.prices[o.Offer] = o.Fair
+		if p := s.Prices[o.Offer]; p >= 1 && p <= MaxBusinessPrice {
+			b.prices[o.Offer] = p
+		}
+		if o.Offer == s.Broken {
+			b.broken = o.Offer
+		}
+	}
+	for _, w := range s.Workers {
+		if _, err := spec.Profession(w.Profession); err == nil {
+			b.workers = append(b.workers, w)
+		}
+	}
+	for _, o := range s.Orders {
+		if _, err := spec.Supply(o.Supply); err == nil {
+			b.orders = append(b.orders, o)
+		}
+	}
+	for _, c := range s.Contracts {
+		if _, err := spec.Supply(c.Supply); err == nil {
+			b.contracts = append(b.contracts, c)
 		}
 	}
 
-	return Business{
-		kind: s.Kind, level: s.Level, stock: s.Stock, price: s.Price, staff: s.Staff,
-		condition: s.Condition, cash: s.Cash, adUntil: s.AdUntil.UTC(), countedAt: s.CountedAt.UTC(),
-		bankrupt: s.Bankrupt, invested: s.Invested, collected: s.Collected, perks: perks,
-	}
+	return b
 }
 
 func (b Business) State() BusinessState {
+	b = b.clone()
+
 	return BusinessState{
-		Kind: b.kind, Level: b.level, Stock: b.stock, Price: b.price, Staff: b.staff,
-		Condition: b.condition, Cash: b.cash, AdUntil: b.adUntil, CountedAt: b.countedAt,
-		Bankrupt: b.bankrupt, Invested: b.invested, Collected: b.collected, Perks: b.Perks(),
+		Kind: b.kind, Seed: b.seed, Level: b.level, Condition: b.condition, Cash: b.cash,
+		AdUntil: b.adUntil, ReviewUntil: b.reviewUntil, CountedAt: b.countedAt, Bankrupt: b.bankrupt,
+		Invested: b.invested, Collected: b.collected, Stock: b.stock, Prices: b.prices,
+		Workers: b.workers, NextID: b.nextID, Window: b.window, Hired: b.hired, Orders: b.orders,
+		Contracts: b.contracts, Event: b.event, Broken: b.broken, BrokenUntil: b.brokenUntil,
+		Hours: b.hours, Notes: b.notes,
 	}
+}
+
+// clone is b sharing nothing with it, without the empty supplies, as it
+// is restored: actions change the clone, so a business held elsewhere
+// (inmem) stays as it was.
+func (b Business) clone() Business {
+	stock := make(map[Supply]float64, len(b.stock))
+	for k, v := range b.stock {
+		if v > 0 {
+			stock[k] = v
+		}
+	}
+
+	prices := make(map[Offer]int64, len(b.prices))
+	for k, v := range b.prices {
+		prices[k] = v
+	}
+
+	b.stock, b.prices = stock, prices
+	b.workers = append([]Worker(nil), b.workers...)
+	b.hired = append([]int(nil), b.hired...)
+	b.orders = append([]Order(nil), b.orders...)
+	b.contracts = append([]Contract(nil), b.contracts...)
+	b.hours = cloneHours(b.hours)
+	b.notes = append([]Note(nil), b.notes...)
+
+	return b
 }
 
 func (b Business) Kind() BusinessKind {
@@ -335,115 +454,93 @@ func (b Business) Bankrupt() bool {
 	return b.bankrupt
 }
 
-// Cash is the till in hundredths of a vote; below zero it is a debt.
+// Cash is the till in hundredths of a vote, rounded down; below zero it
+// is a debt.
 func (b Business) Cash() int64 {
-	return b.cash
+	return int64(math.Floor(b.cash))
 }
 
-// StorageAt is how many units of goods the storage of the level holds.
-func (p BusinessPlan) StorageAt(level int) int64 {
-	return p.Storage * int64(level)
+// Condition is the premises in hundredths of a percent.
+func (b Business) Condition() int {
+	return int(b.condition)
 }
 
-// StaffAt is how many workers the level employs at most.
-func (p BusinessPlan) StaffAt(level int) int {
-	return p.Staff * level
+func (b Business) AdUntil() time.Time {
+	return b.adUntil
 }
 
-// BusinessHour is what a business does in an hour as it is now:
-// customers who come, those served (by the staff, while there are goods),
-// the income of their purchases and what the wages and the rent cost, in
+// ReviewUntil is until when a good review brings more customers.
+func (b Business) ReviewUntil() time.Time {
+	return b.reviewUntil
+}
+
+// Stock is the units of a supply in the storage.
+func (b Business) Stock(s Supply) float64 {
+	return b.stock[s]
+}
+
+// Price is the price of an offer in hundredths of a vote.
+func (b Business) Price(o Offer) int64 {
+	return b.prices[o]
+}
+
+func (b Business) Workers() []Worker {
+	return append([]Worker(nil), b.workers...)
+}
+
+func (b Business) Orders() []Order {
+	return append([]Order(nil), b.orders...)
+}
+
+func (b Business) Contracts() []Contract {
+	return append([]Contract(nil), b.contracts...)
+}
+
+// Event is what waits for the owner to decide; false without one.
+func (b Business) Event() (Event, bool) {
+	return b.event, b.event.Kind != ""
+}
+
+// Broken is the offer whose equipment broke down, and until when a
+// technician mends it (zero — until a repair); "" without a breakdown.
+func (b Business) Broken() (Offer, time.Time) {
+	return b.broken, b.brokenUntil
+}
+
+// Hours are the last hours of the business, the oldest first.
+func (b Business) Hours() []BusinessHour {
+	return cloneHours(b.hours)
+}
+
+// Notes are what happened lately, the oldest first.
+func (b Business) Notes() []Note {
+	return append([]Note(nil), b.notes...)
+}
+
+// TillAt is the most the till keeps, in hundredths of a vote.
+func (b Business) TillAt(p BusinessPlan) float64 {
+	return float64(p.Till) * float64(b.level) * 100
+}
+
+// DebtAt is the debt past which the business goes bankrupt, in
 // hundredths of a vote.
-type BusinessHour struct {
-	Customers float64
-	Served    float64
-	Income    float64
-	Costs     float64
+func (b Business) DebtAt(p BusinessPlan) float64 {
+	return float64(p.Debt) * float64(b.level) * 100
 }
 
-// hour is the hour of b at t, the goods not counted.
-func (b Business) hour(p BusinessPlan, t time.Time) BusinessHour {
-	demand := float64(p.Demand) * float64(b.level) * b.perkRate(PerkDecor, 20)
-	demand *= max(0, 2-float64(b.price)/(float64(p.Fair)*b.perkRate(PerkBrand, 15)))
-	demand *= 0.4 + 0.6*float64(b.condition)/FullCondition
-	if t.Before(b.adUntil) {
-		demand *= 1 + float64(p.AdBoost)/100
-	}
-
-	served := min(demand, float64(b.staff)*float64(p.Serve)*b.perkRate(PerkEquipment, 30))
-
-	return BusinessHour{
-		Customers: demand,
-		Served:    served,
-		Income:    served * float64(b.price),
-		Costs:     float64(b.staff)*float64(p.Wage)*b.perkRate(PerkTraining, -15) + float64(p.Rent)*float64(b.level),
-	}
+// StorageOf is the units of a supply the storage keeps.
+func (b Business) StorageOf(s SupplySpec) int64 {
+	return s.Storage * int64(b.level)
 }
 
-// Hour is the hour of b now: nobody is served without goods or after a
-// bankruptcy.
-func (b Business) Hour(p BusinessPlan, now time.Time) BusinessHour {
-	h := b.hour(p, now.UTC())
-	if b.stock <= 0 || b.bankrupt {
-		h.Served, h.Income = 0, 0
-	}
-	if b.bankrupt {
-		h.Costs = 0
-	}
-
-	return h
+// Seats are the workers the business may have.
+func (b Business) Seats(p BusinessPlan) int {
+	return p.StaffAt(b.level)
 }
 
-// At is b at now: the hours since it was counted, an hour after another —
-// customers buy the goods, the wages and the rent are paid from the till,
-// the premises wear out. The till keeps no more than it holds, the rest is
-// lost; a debt past the bound makes the business bankrupt, and then it
-// stops.
-func (b Business) At(p BusinessPlan, now time.Time) Business {
-	now = now.UTC()
-	if b.bankrupt || !now.After(b.countedAt) {
-		return b
-	}
-
-	step := time.Hour
-	if elapsed := now.Sub(b.countedAt); elapsed > step*maxBusinessSimSteps {
-		step = elapsed / maxBusinessSimSteps
-	}
-
-	var (
-		stock     = float64(b.stock)
-		cash      = float64(b.cash)
-		condition = float64(b.condition)
-		till      = float64(p.Till) * float64(b.level) * 100
-		debt      = -float64(p.Debt) * float64(b.level) * 100
-	)
-
-	for t := b.countedAt; t.Before(now); {
-		dt := min(step, now.Sub(t))
-		hours := dt.Hours()
-
-		b.condition = int(condition)
-		h := b.hour(p, t)
-		sold := min(h.Served*hours, stock)
-
-		stock -= sold
-		cash = min(cash+sold*float64(b.price)-h.Costs*hours, till)
-		condition = max(condition-float64(p.Wear)*b.perkRate(PerkFinish, -25)*hours, 0)
-		t = t.Add(dt)
-
-		if cash < debt {
-			b.bankrupt = true
-
-			break
-		}
-	}
-
-	b.stock = int64(stock)
-	b.cash = int64(math.Floor(cash))
-	b.condition = int(condition)
-	b.countedAt = now
-
-	return b
+// InDebt is whether the till is below zero.
+func (b Business) InDebt() bool {
+	return b.cash < 0
 }
 
 func (b Business) checkOpen() error {
@@ -454,45 +551,38 @@ func (b Business) checkOpen() error {
 	return nil
 }
 
-// Managed is b with goods at price hundredths of a vote and staff
-// workers.
-func (b Business) Managed(p BusinessPlan, price int64, staff int) (Business, error) {
+// Priced is b with an offer at price hundredths of a vote.
+func (b Business) Priced(o Offer, price int64) (Business, error) {
 	if err := b.checkOpen(); err != nil {
 		return Business{}, err
 	}
-
-	switch {
-	case price < 1 || price > MaxBusinessPrice:
+	if _, ok := b.prices[o]; !ok {
+		return Business{}, ErrUnknownOffer
+	}
+	if price < 1 || price > MaxBusinessPrice {
 		return Business{}, ErrBusinessSetPrice
-	case staff < 0 || staff > p.StaffAt(b.level):
-		return Business{}, ErrBusinessSetStaff
 	}
 
-	b.price, b.staff = price, staff
+	b = b.clone()
+	b.prices[o] = price
 
 	return b, nil
 }
 
-// Restocked is b with units of goods more and what they cost: whole votes,
-// rounded up.
-func (b Business) Restocked(p BusinessPlan, units int64) (Business, int64, error) {
-	if err := b.checkOpen(); err != nil {
-		return Business{}, 0, err
-	}
-	if units < 1 || units > b.Storage(p)-b.stock {
-		return Business{}, 0, ErrBusinessStock
-	}
+// UpgradeCost is what the next level of b costs.
+func (b Business) UpgradeCost(p BusinessPlan) int64 {
+	return p.Upgrade * int64(b.level)
+}
 
-	cost := new(big.Int).Mul(big.NewInt(units), big.NewInt(p.Cost))
-	cost.Add(cost, big.NewInt(99))
-	cost.Quo(cost, big.NewInt(100))
-	if !cost.IsInt64() || cost.Int64() > MaxAmount {
-		return Business{}, 0, ErrNotEnoughVotes
+// RepairCost is what a repair of b costs now: a started percent counts
+// whole, a breakdown — a fortieth of the price of the business.
+func (b Business) RepairCost(p BusinessPlan) int64 {
+	cost := p.Repair * int64(math.Ceil((FullCondition-b.condition)/100))
+	if b.broken != "" {
+		cost += breakdownCost(p)
 	}
 
-	b.stock += units
-
-	return b, cost.Int64(), nil
+	return cost
 }
 
 // Upgraded is b a level higher and what that cost.
@@ -504,27 +594,37 @@ func (b Business) Upgraded(p BusinessPlan) (Business, int64, error) {
 		return Business{}, 0, ErrBusinessTopLevel
 	}
 
-	cost := p.Upgrade * int64(b.level)
+	cost := b.UpgradeCost(p)
+	b = b.clone()
 	b.level++
 	b.invested += cost
 
 	return b, cost, nil
 }
 
-// Repaired is b in full condition and what that cost: a started percent
-// counts whole.
-func (b Business) Repaired(p BusinessPlan) (Business, int64, error) {
+// Repaired is b in full condition, its breakdown mended, and what that
+// cost: a started percent counts whole, a breakdown — a fortieth of the
+// price of the business.
+func (b Business) Repaired(p BusinessPlan, now time.Time) (Business, int64, error) {
 	if err := b.checkOpen(); err != nil {
 		return Business{}, 0, err
 	}
-	if b.condition >= FullCondition {
+	if b.condition >= FullCondition && b.broken == "" {
 		return Business{}, 0, ErrBusinessIntact
 	}
 
-	percents := int64(FullCondition-b.condition+99) / 100
+	cost := b.RepairCost(p)
+	b = b.clone()
+	if b.broken != "" {
+		b.note(Note{At: now.UTC(), Kind: NoteRepaired, Subject: string(b.broken)})
+		b.broken, b.brokenUntil = "", time.Time{}
+		if b.event.Kind == EventBreakdown {
+			b.event = Event{}
+		}
+	}
 	b.condition = FullCondition
 
-	return b, p.Repair * percents, nil
+	return b, cost, nil
 }
 
 // Advertised is b advertised for AdHours more from now, or from the end
@@ -539,25 +639,33 @@ func (b Business) Advertised(p BusinessPlan, now time.Time) (Business, int64, er
 		from = b.adUntil
 	}
 
+	b = b.clone()
 	b.adUntil = from.Add(time.Duration(p.AdHours) * time.Hour)
 
 	return b, p.AdPrice, nil
 }
 
+// TaxOf is the tax percent of the cash b takes out: an accountant takes
+// his skill off it.
+func (b Business) TaxOf(r BusinessRules) int {
+	return max(r.Tax()-b.skillOf(ProfAccountant), 0)
+}
+
 // Collected is b with the whole votes of its till taken out: what the
 // owner gets and the tax of the treasury, rounded up.
-func (b Business) Collected(tax int) (Business, int64, int64, error) {
+func (b Business) Collected(r BusinessRules) (Business, int64, int64, error) {
 	if err := b.checkOpen(); err != nil {
 		return Business{}, 0, 0, err
 	}
 
-	votes := b.cash / 100
+	votes := int64(math.Floor(b.cash / 100))
 	if votes < 1 {
 		return Business{}, 0, 0, ErrNothingToCollect
 	}
 
-	taxed := (votes*int64(tax) + 99) / 100
-	b.cash -= votes * 100
+	taxed := (votes*int64(b.TaxOf(r)) + 99) / 100
+	b = b.clone()
+	b.cash -= float64(votes) * 100
 	b.collected += votes - taxed
 
 	return b, votes - taxed, taxed, nil
@@ -572,14 +680,15 @@ func (b Business) Deposited(votes int64) (Business, error) {
 		return Business{}, ErrBusinessDeposit
 	}
 
-	b.cash += votes * 100
+	b = b.clone()
+	b.cash += float64(votes) * 100
 
 	return b, nil
 }
 
-// Resale is what the site pays for b: half of what was put into buying,
-// upgrading and improving it and the whole votes of the till; nothing for a bankrupt
-// one, which only closes. ErrBusinessInDebt for one in debt.
+// Resale is what the site pays for b: half of what was put into buying
+// and upgrading it and the whole votes of the till; nothing for a
+// bankrupt one, which only closes. ErrBusinessInDebt for one in debt.
 func (b Business) Resale() (int64, error) {
 	if b.bankrupt {
 		return 0, nil
@@ -588,7 +697,7 @@ func (b Business) Resale() (int64, error) {
 		return 0, ErrBusinessInDebt
 	}
 
-	return b.invested/2 + b.cash/100, nil
+	return b.invested/2 + int64(b.cash/100), nil
 }
 
 // Invested is the votes put into buying and upgrading b.

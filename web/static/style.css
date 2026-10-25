@@ -2054,14 +2054,11 @@ a.poll-result-name { cursor: pointer; }
   color: var(--text-333); font-size: 10px; font-weight: bold;
 }
 .biz-for-sale b { color: var(--text-c33); font-size: 11px; text-transform: uppercase; }
-.biz-perks { width: 100%; border-collapse: collapse; }
-.biz-perks td { padding: 5px 4px; border-top: 1px solid var(--line-e8ebee); vertical-align: middle; }
-.biz-perks b { color: var(--text-45688e); }
-.biz-pips-cell { white-space: nowrap; }
-.biz-pip { display: inline-block; width: 8px; height: 8px; margin: 0 1px; border: 1px solid var(--line-c0cad5); background: var(--back-f2f2f2); }
-.biz-pip.on { border-color: var(--line-d7cf9e); background: var(--back-ffd54a); }
-.biz-perk-action { text-align: right; white-space: nowrap; }
-.biz-top { color: var(--text-43a047); font-weight: bold; }
+.biz-table { width: 100%; border-collapse: collapse; }
+.biz-table td { padding: 5px 4px; border-top: 1px solid var(--line-e8ebee); vertical-align: middle; }
+.biz-table b { color: var(--text-45688e); }
+.biz-cell-action { text-align: right; white-space: nowrap; }
+.biz-buttons { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
 .biz-lots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .biz-lots .biz-card { margin: 0; }
 .biz-lots .biz-for-sale { font-size: 9px; }
@@ -2074,6 +2071,13 @@ a.poll-result-name { cursor: pointer; }
 .biz-facts .biz-label { white-space: nowrap; }
 .biz-warn { color: var(--text-c33); font-weight: bold; }
 .biz-bar { display: block; height: 8px; border: 1px solid var(--line-c0cad5); background: var(--back-f2f2f2); }
+.biz-fill { display: block; height: 100%; background: var(--back-43a047); }
+.biz-fill.bad { background: var(--back-d23a32); }
+.biz-subtitle { margin: 10px 0 4px; padding: 0 0 2px; border-bottom: 1px solid var(--line-e8ebee); color: var(--text-45688e); font-size: 11px; }
+.biz-list { margin: 4px 0; padding: 0 0 0 16px; }
+.biz-list.biz-notes { max-height: 240px; overflow-y: auto; }
+.biz-advice { margin: 0 0 6px; padding: 6px 8px 6px 22px; background: var(--back-ffefe8); border: 1px solid var(--line-e89b88); color: var(--text-c33); }
+.biz-select { max-width: 180px; }
 .biz-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .biz-row .biz-number { width: 90px; }
 .modal-body .hint { margin: 0; }

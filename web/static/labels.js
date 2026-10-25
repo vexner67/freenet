@@ -1509,24 +1509,14 @@ export function hundredths(n) {
   return part ? `${sign}${whole},${String(part).padStart(2, '0').replace(/0$/, '')}` : `${sign}${whole}`;
 }
 
-// restockCost is what units of goods cost at cost hundredths a unit,
-// rounded up as the user service does.
-export function restockCost(units, cost) {
-  return Math.ceil((units * cost) / 100);
-}
-
-// repairCost is what bringing the premises back to full condition costs:
-// a started percent is a whole one.
-export function repairCost(condition, repair) {
-  return Math.ceil((10000 - condition) / 100) * repair;
-}
-
 // businessActionName is what a line of the statement of a business says
-// was done: "покупка", "закупка товара".
+// was done: "покупка", "закупка". The old actions stay for old lines.
 export function businessActionName(action) {
   return {
     buy: tr('покупка'),
+    order: tr('закупка'),
     restock: tr('закупка товара'),
+    bonus: tr('премия работнику'),
     upgrade: tr('улучшение'),
     repair: tr('ремонт'),
     advertise: tr('реклама'),
@@ -1534,87 +1524,287 @@ export function businessActionName(action) {
     deposit: tr('пополнение кассы'),
     collect: tr('выручка'),
     sell: tr('продажа'),
+    refund: tr('возврат вложенного'),
   }[action] ?? action;
 }
 
-// businessLevelCost is what raising level costs at upgrade votes a level.
-export function businessLevelCost(level, upgrade) {
-  return upgrade * level;
+// supplyName is the name of a supply of a business, as the user service
+// has them (user/internal/user/business_catalog.go): "Молоко".
+export function supplyName(supply) {
+  return {
+    drinks: tr('Напитки'),
+    snacks: tr('Снеки'),
+    icecream: tr('Мороженое'),
+    papers: tr('Газеты'),
+    beans: tr('Кофейные зёрна'),
+    milk: tr('Молоко'),
+    groceries: tr('Продукты'),
+    pastry: tr('Выпечка'),
+    shampoo: tr('Автошампунь'),
+    wax: tr('Воск'),
+    chemicals: tr('Химчистка салона'),
+    metal: tr('Металл'),
+    plastic: tr('Пластик'),
+  }[supply] ?? supply;
+}
+
+// offerName is what a business sells: "Кофе", "Комплексная мойка".
+export function offerName(offer) {
+  return {
+    drinks: tr('Напитки'),
+    snacks: tr('Снеки'),
+    icecream: tr('Мороженое'),
+    papers: tr('Газеты'),
+    coffee: tr('Кофе'),
+    lunch: tr('Обед'),
+    pastry: tr('Выпечка'),
+    wash: tr('Мойка кузова'),
+    full: tr('Комплексная мойка'),
+    interior: tr('Чистка салона'),
+    parts: tr('Детали'),
+    cases: tr('Корпуса'),
+    assembly: tr('Сборка'),
+  }[offer] ?? offer;
+}
+
+// professionName is who a worker is: "Бариста", "Кладовщик".
+export function professionName(profession) {
+  return {
+    seller: tr('Продавец'),
+    barista: tr('Бариста'),
+    cook: tr('Повар'),
+    cashier: tr('Кассир'),
+    washer: tr('Мойщик'),
+    cleaner: tr('Уборщик салона'),
+    worker: tr('Рабочий'),
+    master: tr('Мастер'),
+    storekeeper: tr('Кладовщик'),
+    buyer: tr('Закупщик'),
+    technician: tr('Техник'),
+    marketer: tr('Маркетолог'),
+    accountant: tr('Бухгалтер'),
+    guard: tr('Охранник'),
+  }[profession] ?? profession;
+}
+
+// professionWork is what a worker of a profession does, for those who do
+// not serve the customers; '' for those who do.
+export function professionWork(profession) {
+  return {
+    storekeeper: tr('принимает поставки: без него теряется 10 % каждой'),
+    buyer: tr('ведёт договоры поставок и сбивает цену на 2 % за каждый навык'),
+    technician: tr('чинит сломанное сам и замедляет износ помещения'),
+    marketer: tr('приводит на 4 % покупателей больше за каждый навык'),
+    accountant: tr('снижает налог на 1 % за каждый навык и вдвое — штрафы'),
+    guard: tr('не даёт обокрасть кассу'),
+  }[profession] ?? '';
+}
+
+// supplierName is who brings the supplies: "Оптовик".
+export function supplierName(supplier) {
+  return {
+    wholesale: tr('Оптовик'),
+    reliable: tr('Надёжный поставщик'),
+    express: tr('Срочная доставка'),
+  }[supplier] ?? supplier;
+}
+
+// supplierAbout says what a supplier is like: its price, how long it
+// brings and how much it may bring short.
+export function supplierAbout(s) {
+  const parts = [tr('цена {0} %', s.percent), tr('везёт {0}', businessDuration(s.hours))];
+  if (s.short > 0) parts.push(tr('может недовезти до {0} %', s.short));
+  return parts.join(', ');
+}
+
+// businessDuration is hours as "6 ч" or "30 мин".
+export function businessDuration(hours) {
+  if (hours < 1) return tr('{0} мин', Math.round(hours * 60));
+  return tr('{0} ч', String(Math.round(hours * 10) / 10).replace('.', ','));
+}
+
+// traitName is what a worker is like: "быстрый".
+export function traitName(trait) {
+  return {
+    fast: tr('быстрый: обслуживает на 20 % больше'),
+    studious: tr('прилежный: учится вдвое быстрее'),
+    lazy: tr('ленивый: работает на 20 % меньше, но и просит меньше'),
+    calm: tr('спокойный: не устаёт от перегрузки'),
+  }[trait] ?? '';
+}
+
+// businessUnits is units as "120 шт.", rounded down.
+export function businessUnits(n) {
+  return tr('{0} шт.', groupedVotes(Math.floor(n + 1e-9)));
+}
+
+// orderCost is what units of a supply cost at unitCost hundredths a unit,
+// in whole votes rounded up, as the user service counts it.
+export function orderCost(units, unitCost) {
+  return Math.max(0, Math.ceil((units * unitCost) / 100 - 1e-9));
+}
+
+// businessMood is how a worker feels: "хорошее", "плохое — может уволиться".
+export function businessMood(mood) {
+  if (mood < 20) return tr('ужасное — вот-вот уволится');
+  if (mood < 40) return tr('плохое — работает хуже');
+  if (mood < 70) return tr('обычное');
+  return tr('хорошее');
+}
+
+// businessLoad says how loaded the workers of a profession are: their
+// customers against what they serve.
+export function businessLoad(ratio) {
+  if (ratio === null || ratio === undefined || !Number.isFinite(ratio)) return tr('нет работников — покупатели уходят');
+  if (ratio > 1.2) return tr('перегружены ({0} %): покупатели уходят, настроение падает', Math.round(ratio * 100));
+  if (ratio > 1) return tr('не успевают ({0} %)', Math.round(ratio * 100));
+  return tr('справляются ({0} %)', Math.round(ratio * 100));
+}
+
+// businessEvent is what waits for the owner of a business, as a title and
+// a text.
+export function businessEvent(e) {
+  switch (e.kind) {
+    case 'inspection':
+      return {
+        title: tr('Пришла проверка'),
+        text: tr('Инспектор нашёл нарушения. Можно заплатить штраф {0} из кассы — или дать взятку вдвое меньше, но её раскрывают в трёх случаях из десяти, и тогда уходит в два с половиной раза больше штрафа.', votesAmount(e.votes)),
+      };
+    case 'breakdown':
+      return {
+        title: tr('Сломалось оборудование: {0}', offerName(e.offer)),
+        text: tr('Пока его не починят, «{0}» обслуживают вдвое меньше покупателей. Ремонт стоит {1} из кассы; техник починил бы сам.', offerName(e.offer), votesAmount(e.votes)),
+      };
+    case 'bigorder':
+      return {
+        title: tr('Большой заказ: {0}', offerName(e.offer)),
+        text: tr('Покупатель хочет сразу {0} и заплатит {1} — дороже обычного. Нужно, чтобы на складе хватило всего для заказа.', businessUnits(e.units), hundredths(e.pay)),
+      };
+    case 'raise':
+      return {
+        title: tr('{0} просит прибавку', e.name),
+        text: e.female
+          ? tr('Если отказать, у неё испортится настроение; если согласиться, её зарплата вырастет на 10 %.')
+          : tr('Если отказать, у него испортится настроение; если согласиться, его зарплата вырастет на 10 %.'),
+      };
+    default:
+      return { title: e.kind, text: '' };
+  }
+}
+
+// businessOption is an answer to an event: "Заплатить штраф".
+export function businessOption(option, e) {
+  return {
+    fine: tr('Заплатить штраф'),
+    bribe: tr('Дать взятку {0}', hundredths(e.votes * 50)),
+    leave: tr('Оставить как есть'),
+    repair: tr('Починить за {0}', votesAmount(e.votes)),
+    decline: tr('Отказать'),
+    accept: e.kind === 'raise' ? tr('Согласиться') : tr('Принять заказ'),
+  }[option] ?? option;
+}
+
+// businessNote is a line of the journal of a business.
+export function businessNote(n) {
+  const f = n.female;
+  switch (n.kind) {
+    case 'delivery':
+      return n.money >= 1
+        ? tr('Привезли «{0}»: {1}, потеряно {2}.', supplyName(n.subject), businessUnits(n.amount), businessUnits(n.money))
+        : tr('Привезли «{0}»: {1}.', supplyName(n.subject), businessUnits(n.amount));
+    case 'ordered':
+      return tr('Закупщик заказал «{0}» по договору: {1} за {2} из кассы.', supplyName(n.subject), businessUnits(n.amount), hundredths(n.money));
+    case 'unpaid':
+      return tr('Договор на «{0}» стоит: в кассе не хватает денег.', supplyName(n.subject));
+    case 'hired':
+      return tr('{0} {1} на работу: {2}.', n.name, f ? tr('принята') : tr('принят'), professionName(n.subject).toLowerCase());
+    case 'fired':
+      return tr('{0} {1}.', n.name, f ? tr('уволена') : tr('уволен'));
+    case 'quit':
+      return tr('{0} {1}: настроение было слишком плохим.', n.name, f ? tr('уволилась сама') : tr('уволился сам'));
+    case 'skill':
+      return tr('{0} {1}: теперь навык {2}.', n.name, f ? tr('научилась большему') : tr('научился большему'), n.amount);
+    case 'breakdown':
+      return tr('Сломалось оборудование «{0}», техник уже чинит.', offerName(n.subject));
+    case 'repaired':
+      return n.money > 0
+        ? tr('Оборудование «{0}» починили за {1}.', offerName(n.subject), hundredths(n.money))
+        : tr('Оборудование «{0}» снова работает.', offerName(n.subject));
+    case 'theft':
+      return tr('Кассу обокрали: пропало {0}. Охранник бы не допустил.', hundredths(n.money));
+    case 'review':
+      return tr('О бизнесе написали хороший отзыв: сутки покупателей на 30 % больше.');
+    case 'fine':
+      return tr('Заплачен штраф проверки: {0}.', hundredths(n.money));
+    case 'bribe':
+      return tr('Проверяющий взял взятку {0} и ушёл.', hundredths(n.money));
+    case 'caught':
+      return tr('Взятку раскрыли: ушло {0}.', hundredths(n.money));
+    case 'bigorder':
+      return tr('Большой заказ «{0}» выполнен: {1}, в кассу {2}.', offerName(n.subject), businessUnits(n.amount), hundredths(n.money));
+    case 'raise':
+      return n.amount ? tr('{0} получает прибавку.', n.name) : tr('{0} остаётся без прибавки.', n.name);
+    case 'bankrupt':
+      return tr('Бизнес разорился: долг превысил допустимый.');
+    default:
+      return n.kind;
+  }
+}
+
+// businessAdvice is what a business needs first, from the most urgent:
+// an empty list when it runs well. spec is its kind in the catalog.
+export function businessAdvice(b, spec) {
+  if (b.bankrupt) return [tr('Бизнес разорился. Его можно только закрыть и купить заново.')];
+
+  const advice = [];
+  if (b.event) advice.push(tr('Ждёт вашего решения: «{0}».', businessEvent(b.event).title));
+  if (b.inDebt) advice.push(tr('Касса в долгу: пополните её, иначе бизнес разорится.'));
+
+  const professions = new Set(b.workers.map((w) => w.profession));
+  for (const o of spec.offers) {
+    if (!professions.has(o.profession)) advice.push(tr('Наймите: {0} — без него «{1}» не продаются.', professionName(o.profession).toLowerCase(), offerName(o.offer)));
+  }
+  const empty = b.supplies.filter((s) => s.units < 1 && s.onWay === 0).map((s) => supplyName(s.supply));
+  if (empty.length) advice.push(tr('Склад пуст: {0}. Закупите товар.', empty.join(', ')));
+  if (b.condition < 5000) advice.push(tr('Помещение износилось — покупателей меньше. Сделайте ремонт.'));
+
+  return advice;
+}
+
+// businessTotals is a business summed up for its picture: the customers
+// and those served an hour, the workers, and the supplies in the storage
+// against what it keeps.
+export function businessTotals(b) {
+  const sum = (list, key) => list.reduce((n, x) => n + x[key], 0);
+  return {
+    customers: sum(b.offers, 'demand'),
+    served: sum(b.offers, 'served'),
+    staff: b.workers.length,
+    stock: sum(b.supplies, 'units'),
+    storage: sum(b.supplies, 'storage'),
+    empty: b.supplies.some((s) => s.units < 1 && s.onWay === 0),
+  };
 }
 
 // businessWalkers is how many people the picture of a business shows
-// walking by: up to six, as many as its customers make of what its level
-// could bring, at least one while anyone comes. served of them go in, the
-// rest pass by the door — no goods, no workers or dear goods.
-export function businessWalkers(b, plan) {
-  if (b.bankrupt || b.customers <= 0) return { served: 0, passing: 0 };
+// walking by: up to six, as many as its customers make of what its offers
+// draw at the fair price, at least one while anyone comes. served of them
+// go in, the rest pass by the door.
+export function businessWalkers(b, spec) {
+  const { customers, served } = businessTotals(b);
+  if (b.bankrupt || customers <= 0) return { served: 0, passing: 0 };
 
-  const most = plan.demand * b.level;
-  const total = Math.min(6, Math.max(1, Math.ceil((b.customers / Math.max(most, 1)) * 4)));
-  const served = Math.round((total * Math.min(b.served, b.customers)) / b.customers);
+  const most = spec.offers.reduce((n, o) => n + o.demand, 0) * b.level;
+  const total = Math.min(6, Math.max(1, Math.ceil((customers / Math.max(most, 1)) * 4)));
+  const going = Math.round((total * Math.min(served, customers)) / customers);
 
-  return { served, passing: total - served };
-}
-
-// businessPerks are the improvements of a business in order, as the user
-// service has them (user/internal/user/business_perk.go), with the
-// percent each tier changes: more customers, a dearer fair price, a
-// worker serving more, a bigger storage, slower wear, lower wages.
-export const businessPerks = [
-  ['decor', 20],
-  ['brand', 15],
-  ['equipment', 30],
-  ['shelves', 50],
-  ['finish', -25],
-  ['training', -15],
-];
-
-// businessPerkName is what an improvement is called at a business:
-// "Кофемашина" at the cafe, "Станки" at the factory.
-export function businessPerkName(kind, perk) {
-  const names = {
-    decor: { kiosk: tr('Навес и цветы'), cafe: tr('Уютный зал'), carwash: tr('Зал ожидания'), factory: tr('Комната отдыха') },
-    brand: { kiosk: tr('Яркая вывеска'), cafe: tr('Неоновая вывеска'), carwash: tr('Световое табло'), factory: tr('Торговая марка') },
-    equipment: { kiosk: tr('Холодильники'), cafe: tr('Кофемашины'), carwash: tr('Аппараты высокого давления'), factory: tr('Станки') },
-    shelves: { kiosk: tr('Стеллажи'), cafe: tr('Кладовая'), carwash: tr('Склад химии'), factory: tr('Высотный склад') },
-    finish: { kiosk: tr('Отделка'), cafe: tr('Отделка'), carwash: tr('Покрытие пола'), factory: tr('Покрытие цеха') },
-    training: { kiosk: tr('Обучение продавцов'), cafe: tr('Курсы бариста'), carwash: tr('Обучение мойщиков'), factory: tr('Обучение рабочих') },
-  };
-
-  return names[perk]?.[kind] ?? perk;
-}
-
-// businessPerkEffect is what a tier of an improvement does.
-export function businessPerkEffect(perk) {
-  return {
-    decor: tr('+20 % покупателей за ступень'),
-    brand: tr('+15 % к обычной цене товара за ступень: покупатели готовы платить больше'),
-    equipment: tr('+30 % к тому, сколько обслуживает работник, за ступень'),
-    shelves: tr('+50 % к складу за ступень'),
-    finish: tr('помещение изнашивается на 25 % медленнее за ступень'),
-    training: tr('−15 % к зарплатам за ступень'),
-  }[perk] ?? '';
-}
-
-// businessPerkRate is what the improvement perk of b multiplies its
-// numbers by: 1.3 for the equipment of the first tier.
-export function businessPerkRate(b, perk) {
-  const tier = b.perks?.find((p) => p.perk === perk)?.tier ?? 0;
-  const percent = businessPerks.find(([name]) => name === perk)?.[1] ?? 0;
-
-  return 1 + (percent * tier) / 100;
+  return { served: going, passing: total - going };
 }
 
 // businessStations is how many places the premises of a level serve at:
 // a counter, a bay, a machine more every three levels, four at most.
 export function businessStations(level) {
   return Math.min(4, 1 + Math.floor((Math.max(level, 1) - 1) / 3));
-}
-
-// businessHours is how many hours the goods in stock last at served
-// customers an hour; null when nobody buys them.
-export function businessHours(stock, served) {
-  return served > 0 ? Math.floor(stock / served) : null;
 }
 
 // businessCondition is how worn the picture of the premises looks:
@@ -2245,6 +2435,38 @@ const errorTexts = {
   'the bid is too low': tr('Ставка слишком мала.'),
   'an auction with bids cannot be cancelled': tr('Аукцион, на котором уже есть ставки, отменить нельзя.'),
   'not enough votes': tr('У вас недостаточно голосов.'),
+  'you own this business already': tr('Такой бизнес у вас уже есть.'),
+  'you do not own this business': tr('У вас нет такого бизнеса.'),
+  'the business went bankrupt': tr('Бизнес разорился.'),
+  'pay the debts of the business off first': tr('Сначала погасите долги бизнеса.'),
+  'the business is at its top level': tr('Бизнес уже на высшем уровне.'),
+  'the premises need no repair': tr('Ремонт не нужен.'),
+  'an order must be at least 1 unit and fit in the storage with what is on the way': tr('Закажите хотя бы 1 шт. и не больше, чем поместится на складе вместе с тем, что уже везут.'),
+  'a contract must order at least 1 unit, fit in the storage and order below what it fills': tr('Договор должен заказывать от 1 шт., помещаться на складе, а порог — быть не больше склада.'),
+  'the price must be from 1': tr('Цена — от 0,01 голоса.'),
+  'a deposit must be at least 1 vote': tr('Пополнить можно хотя бы на 1 голос.'),
+  'there is not a whole vote in the till': tr('В кассе нет и целого голоса.'),
+  'businesses pay pages a week old with a filled profile': tr('Забирать голоса из бизнеса могут страницы старше недели с заполненной анкетой.'),
+  'this candidate is gone, look at the new ones': tr('Этот кандидат уже ушёл — посмотрите новых.'),
+  'there are no free seats: upgrade the business': tr('Свободных мест нет: улучшите бизнес.'),
+  'there is no such worker': tr('Такого работника нет.'),
+  'nothing waits for an answer': tr('Решать уже нечего.'),
+  'there are not enough supplies for the order': tr('На складе не хватает товара для этого заказа.'),
+  'unknown business': tr('Такого бизнеса нет.'),
+  'unknown business action': tr('Такого действия с бизнесом нет.'),
+  'unknown supply': tr('Такого товара нет.'),
+  'unknown offer': tr('Такой услуги нет.'),
+  'unknown supplier': tr('Такого поставщика нет.'),
+  'unknown profession': tr('Такой профессии нет.'),
+  'unknown answer': tr('Такого ответа нет.'),
+  'the settings must set every business once, in order': tr('В настройках должен быть каждый бизнес по одному разу и по порядку.'),
+  'a business must cost at least 1 vote, an upgrade at least 0': tr('Бизнес стоит хотя бы 1 голос, улучшение — от 0.'),
+  'a business must have from 1 level': tr('У бизнеса должен быть хотя бы 1 уровень.'),
+  'the demand, the wages and the supplies must be from 0 to 10000 percent': tr('Покупатели, зарплаты и цены товара — от 0 до 10 000 %.'),
+  'the till and the debt must be from 1, the seats from 1': tr('Касса, допустимый долг и места для работников — от 1.'),
+  'the rent and the repair must be from 0, the wear from 0 to 10000': tr('Аренда и ремонт — от 0, износ — от 0 до 10 000.'),
+  'an advertisement must cost from 0, last at least 1 hour and raise the demand at least 1 percent': tr('Реклама стоит от 0, идёт хотя бы час и приводит хотя бы на 1 % покупателей больше.'),
+  'the tax must be from 0 to 100 percent': tr('Налог — от 0 до 100 %.'),
   'this post is not for sale': tr('Эта запись не продаётся.'),
   'the post is not paid': tr('Эта запись не продаётся.'),
   'the price must be between 0 and 1000000 votes': tr('Цена должна быть от 0 до 1 000 000 голосов.'),

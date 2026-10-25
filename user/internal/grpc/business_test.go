@@ -22,7 +22,8 @@ func TestBusiness(t *testing.T) {
 	}
 
 	got, err := s.client.GetBusinesses(ann, &userv1.GetBusinessesRequest{})
-	if err != nil || len(got.GetSettings().GetPlans()) != len(user.BusinessKinds) || len(got.GetBusinesses()) != 0 {
+	if err != nil || len(got.GetSettings().GetPlans()) != len(user.BusinessKinds) || len(got.GetBusinesses()) != 0 ||
+		len(got.GetCatalog()) != len(user.BusinessKinds) || len(got.GetSuppliers()) != 3 {
 		t.Fatalf("GetBusinesses = %v, %v", got, err)
 	}
 
@@ -37,9 +38,6 @@ func TestBusiness(t *testing.T) {
 	}
 	if _, err = s.client.RunBusiness(ann, &userv1.RunBusinessRequest{Kind: "kiosk", Action: "steal"}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("RunBusiness of an unknown action: %v", err)
-	}
-	if _, err = s.client.RunBusiness(ann, &userv1.RunBusinessRequest{Kind: "kiosk", Action: "improve", Perk: "teleport"}); status.Code(err) != codes.InvalidArgument {
-		t.Fatalf("RunBusiness improve of an unknown perk: %v", err)
 	}
 	_, err = s.client.RunBusiness(ann, &userv1.RunBusinessRequest{Kind: "kiosk", Action: "collect"})
 	if st := status.Convert(err); st.Code() != codes.FailedPrecondition || st.Message() != user.ErrBusinessNotYet.Error() {

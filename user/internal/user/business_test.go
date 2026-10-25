@@ -2,254 +2,673 @@ package user_test
 
 import (
 	"errors"
+	"math"
 	"testing"
 	"time"
 
 	"github.com/vexner67/freenet/user/internal/user"
 )
 
-func kiosk(t *testing.T) user.BusinessPlan {
+var businessNow = time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC)
+
+func plan(t *testing.T, kind user.BusinessKind) user.BusinessPlan {
 	t.Helper()
 
-	plan, err := user.DefaultBusinessRules().Plan(user.BusinessKiosk)
+	p, err := user.DefaultBusinessRules().Plan(kind)
 	if err != nil {
 		t.Fatalf("Plan: %v", err)
 	}
 
-	return plan
+	return p
+}
+
+func newBusiness(t *testing.T, kind user.BusinessKind) user.Business {
+	t.Helper()
+
+	b, err := user.NewBusiness(plan(t, kind), 42, businessNow)
+	if err != nil {
+		t.Fatalf("NewBusiness: %v", err)
+	}
+
+	return b
+}
+
+// hire hires a candidate of prof, looking through the windows from now on,
+// and the time it was hired at.
+func hire(t *testing.T, b user.Business, prof user.Profession, now time.Time) (user.Business, time.Time) {
+	t.Helper()
+
+	p, r := plan(t, b.Kind()), user.DefaultBusinessRules()
+	for range 200 {
+		for _, c := range b.Candidates(r, now) {
+			if c.Worker.Profession != prof {
+				continue
+			}
+
+			hired, err := b.At(p, r, now).Hired(p, r, c.ID, now)
+			if err != nil {
+				t.Fatalf("Hired: %v", err)
+			}
+
+			return hired, now
+		}
+		now = user.CandidatesRenewAt(now)
+	}
+
+	t.Fatalf("no candidate of %s", prof)
+
+	return user.Business{}, now
+}
+
+// stocked is b with its storage full of every supply, ordered from the
+// express supplier and come.
+func stocked(t *testing.T, b user.Business, now time.Time) (user.Business, time.Time) {
+	t.Helper()
+
+	r := user.DefaultBusinessRules()
+	spec, _ := user.BusinessCatalog(b.Kind())
+	for _, s := range spec.Supplies {
+		units := int64(math.Floor(float64(b.StorageOf(s)-b.OnTheWay(s.Supply)) - b.Stock(s.Supply)))
+		if units < 1 {
+			continue
+		}
+
+		var err error
+		if b, _, err = b.Ordered(r, s.Supply, user.SupplierExpress, units, now); err != nil {
+			t.Fatalf("Ordered %s: %v", s.Supply, err)
+		}
+	}
+
+	now = now.Add(time.Hour)
+
+	return b.At(plan(t, b.Kind()), r, now), now
 }
 
 func TestNewBusinessRules(t *testing.T) {
 	t.Parallel()
 
 	def := user.DefaultBusinessRules()
-	if _, err := user.NewBusinessRules(def.Plans(), def.Tax()); err != nil {
+	if _, err := user.NewBusinessRules(def.Plans(), def.Tax(), def.Wages(), def.Goods()); err != nil {
 		t.Fatalf("NewBusinessRules of the defaults: %v", err)
 	}
 
 	tests := []struct {
 		name   string
-		change func(p []user.BusinessPlan, tax *int) []user.BusinessPlan
+		change func(p []user.BusinessPlan, n []int) []user.BusinessPlan
 		want   error
 	}{
-		{"a kind missing", func(p []user.BusinessPlan, _ *int) []user.BusinessPlan { return p[1:] }, user.ErrBusinessPlans},
-		{"out of order", func(p []user.BusinessPlan, _ *int) []user.BusinessPlan {
+		{"a kind missing", func(p []user.BusinessPlan, _ []int) []user.BusinessPlan { return p[1:] }, user.ErrBusinessPlans},
+		{"out of order", func(p []user.BusinessPlan, _ []int) []user.BusinessPlan {
 			p[0], p[1] = p[1], p[0]
 			return p
 		}, user.ErrBusinessPlans},
-		{"free", func(p []user.BusinessPlan, _ *int) []user.BusinessPlan { p[0].Price = 0; return p }, user.ErrBusinessPlanPrice},
-		{"no levels", func(p []user.BusinessPlan, _ *int) []user.BusinessPlan { p[1].Levels = 0; return p }, user.ErrBusinessLevels},
-		{"no fair price", func(p []user.BusinessPlan, _ *int) []user.BusinessPlan { p[2].Fair = 0; return p }, user.ErrBusinessDemand},
-		{"no storage", func(p []user.BusinessPlan, _ *int) []user.BusinessPlan { p[0].Storage = 0; return p }, user.ErrBusinessCapacity},
-		{"wear past full", func(p []user.BusinessPlan, _ *int) []user.BusinessPlan { p[0].Wear = 10_001; return p }, user.ErrBusinessCosts},
-		{"an ad of no hours", func(p []user.BusinessPlan, _ *int) []user.BusinessPlan { p[3].AdHours = 0; return p }, user.ErrBusinessAd},
-		{"tax past 100", func(p []user.BusinessPlan, tax *int) []user.BusinessPlan { *tax = 101; return p }, user.ErrBusinessTax},
+		{"free", func(p []user.BusinessPlan, _ []int) []user.BusinessPlan { p[0].Price = 0; return p }, user.ErrBusinessPlanPrice},
+		{"no levels", func(p []user.BusinessPlan, _ []int) []user.BusinessPlan { p[1].Levels = 0; return p }, user.ErrBusinessLevels},
+		{"demand below zero", func(p []user.BusinessPlan, _ []int) []user.BusinessPlan { p[2].Demand = -1; return p }, user.ErrBusinessPercent},
+		{"no seats", func(p []user.BusinessPlan, _ []int) []user.BusinessPlan { p[0].Staff = 0; return p }, user.ErrBusinessCapacity},
+		{"wear past full", func(p []user.BusinessPlan, _ []int) []user.BusinessPlan { p[0].Wear = 10_001; return p }, user.ErrBusinessCosts},
+		{"an ad of no hours", func(p []user.BusinessPlan, _ []int) []user.BusinessPlan { p[3].AdHours = 0; return p }, user.ErrBusinessAd},
+		{"tax past 100", func(p []user.BusinessPlan, n []int) []user.BusinessPlan { n[0] = 101; return p }, user.ErrBusinessTax},
+		{"wages below zero", func(p []user.BusinessPlan, n []int) []user.BusinessPlan { n[1] = -1; return p }, user.ErrBusinessPercent},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tax := def.Tax()
-			plans := tt.change(def.Plans(), &tax)
-			if _, err := user.NewBusinessRules(plans, tax); !errors.Is(err, tt.want) {
+			n := []int{def.Tax(), def.Wages(), def.Goods()}
+			plans := tt.change(def.Plans(), n)
+			if _, err := user.NewBusinessRules(plans, n[0], n[1], n[2]); !errors.Is(err, tt.want) {
 				t.Fatalf("err = %v, want %v", err, tt.want)
 			}
 		})
 	}
 }
 
-func TestBusiness_Earns(t *testing.T) {
+func TestBusinessCatalog(t *testing.T) {
 	t.Parallel()
 
-	plan := kiosk(t)
-	now := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
+	for _, kind := range user.BusinessKinds {
+		spec, err := user.BusinessCatalog(kind)
+		if err != nil {
+			t.Fatalf("BusinessCatalog(%s): %v", kind, err)
+		}
+		if len(spec.Serving()) == 0 {
+			t.Errorf("%s serves nobody", kind)
+		}
+		for _, o := range spec.Offers {
+			if _, err := spec.Profession(o.Profession); err != nil {
+				t.Errorf("%s: %s served by unknown %s", kind, o.Offer, o.Profession)
+			}
+			for _, in := range o.Recipe {
+				if _, err := spec.Supply(in.Supply); err != nil {
+					t.Errorf("%s: %s uses unknown %s", kind, o.Offer, in.Supply)
+				}
+			}
+		}
+	}
+}
 
-	b, cost, err := user.NewBusiness(plan, now).Restocked(plan, 100)
-	if err != nil || cost != 10 {
-		t.Fatalf("Restocked = %d, %v, want 10 votes", cost, err)
+func TestBusiness_NothingWithoutWorkersAndSupplies(t *testing.T) {
+	t.Parallel()
+
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	b := newBusiness(t, user.BusinessKiosk).At(p, r, businessNow.Add(5*time.Hour))
+	for _, h := range b.Hours() {
+		if h.Income != 0 {
+			t.Fatalf("income %v without workers", h.Income)
+		}
+	}
+	if b.Cash() >= 0 {
+		t.Fatalf("cash = %d, want the rent to make a debt", b.Cash())
 	}
 
-	// An hour: 10 customers buy at 0.20, one worker costs 0.20 and the
-	// rent 0.10.
-	b = b.At(plan, now.Add(time.Hour))
-	st := b.State()
-	if st.Stock != 90 {
-		t.Errorf("stock = %d, want 90", st.Stock)
+	b, now := hire(t, newBusiness(t, user.BusinessKiosk), user.ProfSeller, businessNow)
+	b = b.At(p, r, now.Add(5*time.Hour))
+	for _, h := range b.Hours() {
+		if h.Income != 0 {
+			t.Fatalf("income %v without supplies", h.Income)
+		}
 	}
-	if st.Cash != 170 {
-		t.Errorf("cash = %d, want 170", st.Cash)
+}
+
+func TestBusiness_Sells(t *testing.T) {
+	t.Parallel()
+
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	b, now := hire(t, newBusiness(t, user.BusinessKiosk), user.ProfSeller, businessNow)
+	b, now = stocked(t, b, now)
+	before := b.Stock(user.SupplyDrinks)
+
+	b = b.At(p, r, now.Add(3*time.Hour))
+	var income, sold float64
+	for _, h := range b.Hours() {
+		income += h.Income
+		sold += h.Sold[user.OfferDrinks]
 	}
-	if st.Condition != user.FullCondition-plan.Wear {
-		t.Errorf("condition = %d, want %d", st.Condition, user.FullCondition-plan.Wear)
+	if income <= 0 || sold <= 0 {
+		t.Fatalf("income %v, sold %v, want sales", income, sold)
+	}
+	if got := before - b.Stock(user.SupplyDrinks); got < sold-1e-6 || got > sold+1e-6 {
+		t.Fatalf("drinks used %v, sold %v", got, sold)
 	}
 
-	b, votes, tax, err := b.Collected(5)
-	if err != nil || votes != 0 || tax != 1 {
-		t.Fatalf("Collected = %d, %d, %v, want 0 and a tax of 1", votes, tax, err)
+	rates := b.Rates(p, r, now)
+	if rates.Load[user.ProfSeller] <= 1 {
+		t.Fatalf("one seller has load %v, want more than he can serve", rates.Load[user.ProfSeller])
 	}
-	if b.Cash() != 70 {
-		t.Errorf("cash after = %d, want 70", b.Cash())
+}
+
+func TestBusiness_DearerSellsLess(t *testing.T) {
+	t.Parallel()
+
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	b := newBusiness(t, user.BusinessKiosk)
+	fair := b.Rates(p, r, businessNow).Offers[0].Demand
+
+	dear, err := b.Priced(user.OfferDrinks, b.Price(user.OfferDrinks)*2)
+	if err != nil {
+		t.Fatalf("Priced: %v", err)
 	}
-	if _, _, _, err = b.Collected(5); !errors.Is(err, user.ErrNothingToCollect) {
-		t.Errorf("Collected of less than a vote: %v", err)
+	if got := dear.Rates(p, r, businessNow).Offers[0].Demand; got != 0 || fair <= 0 {
+		t.Fatalf("demand %v at twice the fair price (%v at fair), want 0", got, fair)
+	}
+
+	if _, err := b.Priced(user.OfferDrinks, 0); !errors.Is(err, user.ErrBusinessSetPrice) {
+		t.Fatalf("price 0: %v", err)
+	}
+	if _, err := b.Priced(user.OfferCoffee, 10); !errors.Is(err, user.ErrUnknownOffer) {
+		t.Fatalf("coffee of a kiosk: %v", err)
+	}
+}
+
+func TestBusiness_Orders(t *testing.T) {
+	t.Parallel()
+
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	b := newBusiness(t, user.BusinessKiosk)
+
+	if _, _, err := b.Ordered(r, user.SupplyDrinks, user.SupplierReliable, 201, businessNow); !errors.Is(err, user.ErrBusinessOrder) {
+		t.Fatalf("past the storage: %v", err)
+	}
+	if _, _, err := b.Ordered(r, user.SupplyBeans, user.SupplierReliable, 1, businessNow); !errors.Is(err, user.ErrUnknownSupply) {
+		t.Fatalf("beans of a kiosk: %v", err)
+	}
+
+	b, cost, err := b.Ordered(r, user.SupplyDrinks, user.SupplierReliable, 100, businessNow)
+	if err != nil || cost != 4 {
+		t.Fatalf("Ordered = %d, %v; want 4 votes", cost, err)
+	}
+	if got := b.OnTheWay(user.SupplyDrinks); got != 100 {
+		t.Fatalf("on the way %d, want 100", got)
+	}
+
+	b = b.At(p, r, businessNow.Add(time.Hour))
+	if b.Stock(user.SupplyDrinks) != 0 {
+		t.Fatalf("the reliable supplier came in an hour")
+	}
+
+	b = b.At(p, r, businessNow.Add(2*time.Hour))
+	if got := b.Stock(user.SupplyDrinks); got != 90 {
+		t.Fatalf("stock %v, want 90: a tenth lost without a storekeeper", got)
+	}
+}
+
+func TestBusiness_StorekeeperKeepsDeliveries(t *testing.T) {
+	t.Parallel()
+
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	b, now := hire(t, newBusiness(t, user.BusinessKiosk), user.ProfStorekeeper, businessNow)
+	b, _, err := b.Ordered(r, user.SupplyDrinks, user.SupplierReliable, 100, now)
+	if err != nil {
+		t.Fatalf("Ordered: %v", err)
+	}
+
+	b = b.At(p, r, now.Add(2*time.Hour))
+	if got := b.Stock(user.SupplyDrinks); got != 100 {
+		t.Fatalf("stock %v, want 100 with a storekeeper", got)
+	}
+}
+
+func TestBusiness_Contracts(t *testing.T) {
+	t.Parallel()
+
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	b := newBusiness(t, user.BusinessKiosk)
+	if _, err := b.Contracted(user.SupplyDrinks, user.SupplierReliable, 300, 10); !errors.Is(err, user.ErrBusinessContract) {
+		t.Fatalf("below past the storage: %v", err)
+	}
+
+	b, err := b.Contracted(user.SupplyDrinks, user.SupplierReliable, 50, 100)
+	if err != nil {
+		t.Fatalf("Contracted: %v", err)
+	}
+	b, err = b.Deposited(20)
+	if err != nil {
+		t.Fatalf("Deposited: %v", err)
+	}
+
+	if got := b.At(p, r, businessNow.Add(time.Hour)).OnTheWay(user.SupplyDrinks); got != 0 {
+		t.Fatalf("a contract ran without a buyer: %d on the way", got)
+	}
+
+	b, now := hire(t, b, user.ProfBuyer, businessNow)
+	b = b.At(p, r, now.Add(time.Hour))
+	if b.OnTheWay(user.SupplyDrinks)+int64(b.Stock(user.SupplyDrinks)) == 0 {
+		t.Fatalf("the buyer ordered nothing")
+	}
+
+	if b, err = b.Contracted(user.SupplyDrinks, user.SupplierReliable, 0, 0); err != nil || len(b.Contracts()) != 0 {
+		t.Fatalf("ending the contract: %v, %d left", err, len(b.Contracts()))
+	}
+}
+
+func TestBusiness_Spoils(t *testing.T) {
+	t.Parallel()
+
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	b, now := hire(t, newBusiness(t, user.BusinessKiosk), user.ProfStorekeeper, businessNow)
+	b, _, err := b.Ordered(r, user.SupplyPapers, user.SupplierExpress, 80, now)
+	if err != nil {
+		t.Fatalf("Ordered: %v", err)
+	}
+
+	b = b.At(p, r, now.Add(time.Hour))
+	full := b.Stock(user.SupplyPapers)
+	b = b.At(p, r, now.Add(13*time.Hour))
+	if got := b.Stock(user.SupplyPapers); got >= full || got <= 0 {
+		t.Fatalf("papers %v after 12 hours of %v, want some spoiled", got, full)
+	}
+}
+
+func TestBusiness_Staff(t *testing.T) {
+	t.Parallel()
+
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	b := newBusiness(t, user.BusinessKiosk)
+
+	candidates := b.Candidates(r, businessNow)
+	if len(candidates) != user.CandidatesShown {
+		t.Fatalf("%d candidates, want %d", len(candidates), user.CandidatesShown)
+	}
+	for _, c := range candidates[:2] {
+		if c.Worker.Profession != user.ProfSeller {
+			t.Fatalf("the first candidates are %s, want sellers", c.Worker.Profession)
+		}
+	}
+
+	b, err := b.Hired(p, r, candidates[0].ID, businessNow)
+	if err != nil {
+		t.Fatalf("Hired: %v", err)
+	}
+	if _, err := b.Hired(p, r, candidates[0].ID, businessNow); !errors.Is(err, user.ErrCandidateGone) {
+		t.Fatalf("hiring twice: %v", err)
+	}
+	if got := len(b.Candidates(r, businessNow)); got != user.CandidatesShown-1 {
+		t.Fatalf("%d candidates after hiring, want %d", got, user.CandidatesShown-1)
+	}
+	if _, err := b.Hired(p, r, candidates[1].ID, user.CandidatesRenewAt(businessNow)); !errors.Is(err, user.ErrCandidateGone) {
+		t.Fatalf("hiring an old candidate: %v", err)
+	}
+
+	for _, c := range candidates[1:p.Staff] {
+		if b, err = b.Hired(p, r, c.ID, businessNow); err != nil {
+			t.Fatalf("Hired: %v", err)
+		}
+	}
+	if len(b.Workers()) != p.Staff {
+		t.Fatalf("%d workers, want %d", len(b.Workers()), p.Staff)
+	}
+
+	id := b.Workers()[0].ID
+	wage := b.Workers()[0].Wage
+	if b, err = b.Raised(id); err != nil || b.Workers()[0].Wage <= wage {
+		t.Fatalf("Raised: %v, wage %d from %d", err, b.Workers()[0].Wage, wage)
+	}
+	if _, cost, err := b.Bonused(id); err != nil || cost < 1 {
+		t.Fatalf("Bonused = %d, %v", cost, err)
+	}
+	if b, err = b.Fired(id, businessNow); err != nil || len(b.Workers()) != p.Staff-1 {
+		t.Fatalf("Fired: %v", err)
+	}
+	if _, err := b.Fired(id, businessNow); !errors.Is(err, user.ErrWorkerNotFound) {
+		t.Fatalf("firing twice: %v", err)
+	}
+}
+
+func TestBusiness_NoSeats(t *testing.T) {
+	t.Parallel()
+
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	p.Staff = 1
+	b := newBusiness(t, user.BusinessKiosk)
+	candidates := b.Candidates(r, businessNow)
+
+	b, err := b.Hired(p, r, candidates[0].ID, businessNow)
+	if err != nil {
+		t.Fatalf("Hired: %v", err)
+	}
+	if _, err := b.Hired(p, r, candidates[1].ID, businessNow); !errors.Is(err, user.ErrNoSeats) {
+		t.Fatalf("past the seats: %v", err)
+	}
+}
+
+func TestBusiness_UnpaidWorkersQuit(t *testing.T) {
+	t.Parallel()
+
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	p.Debt = 1_000
+	b, now := hire(t, newBusiness(t, user.BusinessKiosk), user.ProfSeller, businessNow)
+
+	b = b.At(p, r, now.Add(80*time.Hour))
+	if len(b.Workers()) != 0 {
+		t.Fatalf("a worker unpaid for 80 hours stays, mood %v", b.Workers()[0].Mood)
+	}
+
+	quit := false
+	for _, n := range b.Notes() {
+		quit = quit || n.Kind == user.NoteQuit
+	}
+	if !quit {
+		t.Fatalf("no note of quitting")
+	}
+}
+
+func TestBusiness_Learns(t *testing.T) {
+	t.Parallel()
+
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	p.Rent, p.Demand, p.Till = 0, 0, 100_000
+	b, now := hire(t, newBusiness(t, user.BusinessKiosk), user.ProfSeller, businessNow)
+	b, err := b.Deposited(1_000)
+	if err != nil {
+		t.Fatalf("Deposited: %v", err)
+	}
+
+	w := b.Workers()[0]
+	if w.Skill == user.MaxSkill {
+		t.Skip("the candidate has the top skill")
+	}
+
+	b = b.At(p, r, now.Add(time.Duration(w.NextSkillHours()+1)*time.Hour))
+	if got := b.Workers()[0].Skill; got != w.Skill+1 {
+		t.Fatalf("skill %d after %v hours, want %d", got, w.NextSkillHours(), w.Skill+1)
 	}
 }
 
 func TestBusiness_TillAndDebt(t *testing.T) {
 	t.Parallel()
 
-	plan := kiosk(t)
-	now := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	b := newBusiness(t, user.BusinessKiosk)
 
-	b, _, err := user.NewBusiness(plan, now).Restocked(plan, plan.Storage)
+	b, err := b.Deposited(1_000)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Deposited: %v", err)
+	}
+	if b = b.At(p, r, businessNow.Add(time.Hour)); float64(b.Cash()) > b.TillAt(p) {
+		t.Fatalf("cash %d past the till %v", b.Cash(), b.TillAt(p))
 	}
 
-	// A day of sales fills the till: what it does not hold is lost.
-	b = b.At(plan, now.Add(29*time.Hour))
-	if b.Cash() != plan.Till*100 {
-		t.Errorf("cash = %d, want the full till %d", b.Cash(), plan.Till*100)
-	}
-
-	// Without goods the wages and the rent run into debt until the
-	// business goes bankrupt.
-	b = b.At(plan, now.Add(60*24*time.Hour))
+	b = newBusiness(t, user.BusinessKiosk).At(p, r, businessNow.Add(2_000*time.Hour))
 	if !b.Bankrupt() {
-		t.Fatalf("not bankrupt after two months without goods: %+v", b.State())
+		t.Fatalf("a kiosk paying rent for 2000 hours with nothing is not bankrupt: cash %d", b.Cash())
 	}
-	if _, _, err = b.Upgraded(plan); !errors.Is(err, user.ErrBusinessBankrupt) {
-		t.Errorf("Upgraded of a bankrupt: %v", err)
+	if _, err := b.Deposited(1); !errors.Is(err, user.ErrBusinessBankrupt) {
+		t.Fatalf("depositing into a bankrupt business: %v", err)
 	}
-	if votes, err := b.Resale(); err != nil || votes != 0 {
-		t.Errorf("Resale of a bankrupt = %d, %v, want nothing", votes, err)
+	if resale, err := b.Resale(); err != nil || resale != 0 {
+		t.Fatalf("Resale of a bankrupt = %d, %v", resale, err)
+	}
+
+	debt := newBusiness(t, user.BusinessKiosk).At(p, r, businessNow.Add(5*time.Hour))
+	if _, err := debt.Resale(); !errors.Is(err, user.ErrBusinessInDebt) {
+		t.Fatalf("Resale in debt: %v", err)
 	}
 }
 
-func TestBusiness_Price(t *testing.T) {
+func TestBusiness_Collect(t *testing.T) {
 	t.Parallel()
 
-	plan := kiosk(t)
-	now := time.Now()
-	b := user.NewBusiness(plan, now)
-
-	if _, err := b.Managed(plan, 0, 1); !errors.Is(err, user.ErrBusinessSetPrice) {
-		t.Errorf("price 0: %v", err)
-	}
-	if _, err := b.Managed(plan, 20, plan.Staff+1); !errors.Is(err, user.ErrBusinessSetStaff) {
-		t.Errorf("staff past the level: %v", err)
+	r := user.DefaultBusinessRules()
+	b := newBusiness(t, user.BusinessKiosk)
+	if _, _, _, err := b.Collected(r); !errors.Is(err, user.ErrNothingToCollect) {
+		t.Fatalf("collecting nothing: %v", err)
 	}
 
-	dear, err := b.Managed(plan, 2*plan.Fair, 1)
+	b, err := b.Deposited(20)
 	if err != nil {
-		t.Fatal(err)
-	}
-	if h := dear.Hour(plan, now); h.Customers != 0 {
-		t.Errorf("customers at twice the fair price = %v, want none", h.Customers)
+		t.Fatalf("Deposited: %v", err)
 	}
 
-	if h := b.Hour(plan, now); h.Served != 0 || h.Customers != float64(plan.Demand) {
-		t.Errorf("hour without goods = %+v, want customers and nobody served", h)
+	after, got, tax, err := b.Collected(r)
+	if err != nil || got != 19 || tax != 1 || after.Cash() != 0 {
+		t.Fatalf("Collected = %d, %d, %v; cash %d", got, tax, err, after.Cash())
+	}
+
+	if resale, err := b.Resale(); err != nil || resale != 250+20 {
+		t.Fatalf("Resale = %d, %v; want 270", resale, err)
 	}
 }
 
-func TestBusiness_Actions(t *testing.T) {
+func TestBusiness_UpgradeAndRepair(t *testing.T) {
 	t.Parallel()
 
-	plan := kiosk(t)
-	now := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
-	b := user.NewBusiness(plan, now)
-
-	b, cost, err := b.Upgraded(plan)
-	if err != nil || cost != plan.Upgrade || b.Level() != 2 {
-		t.Fatalf("Upgraded = %d, %v, level %d", cost, err, b.Level())
-	}
-	if _, _, err = b.Restocked(plan, plan.StorageAt(2)+1); !errors.Is(err, user.ErrBusinessStock) {
-		t.Errorf("restock past the storage: %v", err)
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	b := newBusiness(t, user.BusinessKiosk)
+	if _, _, err := b.Repaired(p, businessNow); !errors.Is(err, user.ErrBusinessIntact) {
+		t.Fatalf("repairing new premises: %v", err)
 	}
 
-	if _, _, err = b.Repaired(plan); !errors.Is(err, user.ErrBusinessIntact) {
-		t.Errorf("repair of full condition: %v", err)
-	}
-	worn := b.At(plan, now.Add(15*time.Hour))
-	if _, cost, err = worn.Repaired(plan); err != nil || cost != 2*plan.Repair {
-		t.Errorf("Repaired of 1.5 %% = %d, %v, want two percents", cost, err)
+	up, cost, err := b.Upgraded(p)
+	if err != nil || cost != p.Upgrade || up.Level() != 2 || up.Seats(p) != 2*p.Staff {
+		t.Fatalf("Upgraded = %d, %v; level %d", cost, err, up.Level())
 	}
 
-	b, cost, err = b.Advertised(plan, now)
-	if err != nil || cost != plan.AdPrice {
-		t.Fatalf("Advertised = %d, %v", cost, err)
-	}
-	b, _, _ = b.Advertised(plan, now)
-	if until := b.State().AdUntil; !until.Equal(now.Add(2 * time.Duration(plan.AdHours) * time.Hour)) {
-		t.Errorf("two campaigns end %v", until)
+	worn := b.At(p, r, businessNow.Add(100*time.Hour))
+	if worn.Condition() >= user.FullCondition {
+		t.Fatalf("no wear in 100 hours")
 	}
 
-	b, err = b.Deposited(3)
-	if err != nil || b.Cash() != 300 {
-		t.Fatalf("Deposited = %d, %v", b.Cash(), err)
-	}
-	if votes, err := b.Resale(); err != nil || votes != (plan.Price+plan.Upgrade)/2+3 {
-		t.Errorf("Resale = %d, %v", votes, err)
+	fixed, cost, err := worn.Repaired(p, businessNow.Add(100*time.Hour))
+	if err != nil || cost < 1 || fixed.Condition() != user.FullCondition {
+		t.Fatalf("Repaired = %d, %v; condition %d", cost, err, fixed.Condition())
 	}
 
-	indebted := user.RestoreBusiness(user.BusinessState{Kind: plan.Kind, Level: 1, Cash: -1})
-	if _, err = indebted.Resale(); !errors.Is(err, user.ErrBusinessInDebt) {
-		t.Errorf("Resale in debt: %v", err)
+	top := b
+	for top.Level() < p.Levels {
+		top, _, _ = top.Upgraded(p)
+	}
+	if _, _, err := top.Upgraded(p); !errors.Is(err, user.ErrBusinessTopLevel) {
+		t.Fatalf("past the top: %v", err)
 	}
 }
 
-func TestBusiness_Improved(t *testing.T) {
+func TestBusiness_Events(t *testing.T) {
 	t.Parallel()
 
-	plan := kiosk(t)
-	now := time.Date(2026, 10, 24, 12, 0, 0, 0, time.UTC)
-	b := user.NewBusiness(plan, now)
-
-	b, cost, err := b.Improved(plan, user.PerkShelves)
-	if err != nil || cost != plan.PerkPrice(1) || b.Perk(user.PerkShelves) != 1 {
-		t.Fatalf("Improved = %d, %v, tier %d", cost, err, b.Perk(user.PerkShelves))
-	}
-	if got := b.Storage(plan); got != plan.StorageAt(1)*3/2 {
-		t.Errorf("Storage with racks = %d, want half again", got)
-	}
-	if _, _, err = b.Improved(plan, user.PerkShelves); !errors.Is(err, user.ErrPerkLocked) {
-		t.Errorf("the second tier at level 1: %v", err)
-	}
-	if b.Invested() != plan.Price+cost {
-		t.Errorf("Invested = %d", b.Invested())
+	p, r := plan(t, user.BusinessCafe), user.DefaultBusinessRules()
+	p.Rent, p.Wear = 0, 0
+	b, err := newBusiness(t, user.BusinessCafe).Deposited(10_000)
+	if err != nil {
+		t.Fatalf("Deposited: %v", err)
 	}
 
-	top := user.RestoreBusiness(user.BusinessState{
-		Kind: plan.Kind, Level: plan.Levels, Price: plan.Fair, Staff: 1, Condition: user.FullCondition,
-		Perks: map[user.BusinessPerk]int{user.PerkDecor: 3, "teleport": 2},
-	})
-	if _, _, err = top.Improved(plan, user.PerkDecor); !errors.Is(err, user.ErrPerkTop) {
-		t.Errorf("the fourth tier: %v", err)
-	}
-	if perks := top.Perks(); len(perks) != 1 {
-		t.Errorf("restored perks = %v, want the known one", perks)
+	spec, _ := user.BusinessCatalog(user.BusinessCafe)
+	if _, err := b.Decided(spec, user.OptionFine, businessNow); !errors.Is(err, user.ErrNoEvent) {
+		t.Fatalf("deciding nothing: %v", err)
 	}
 
-	plain := user.RestoreBusiness(user.BusinessState{Kind: plan.Kind, Level: 1, Price: plan.Fair, Staff: 1, Condition: user.FullCondition})
-	decorated := user.RestoreBusiness(user.BusinessState{
-		Kind: plan.Kind, Level: 1, Price: plan.Fair, Staff: 1, Condition: user.FullCondition,
-		Perks: map[user.BusinessPerk]int{user.PerkDecor: 1, user.PerkTraining: 2},
-	})
-	if p, d := plain.Hour(plan, now), decorated.Hour(plan, now); d.Customers <= p.Customers || d.Costs >= p.Costs {
-		t.Errorf("an hour of the improved = %+v, of the plain = %+v", d, p)
+	now := businessNow
+	seen := map[user.EventKind]bool{}
+	for range 400 {
+		now = now.Add(time.Hour)
+		b = b.At(p, r, now)
+
+		e, ok := b.Event()
+		if !ok {
+			continue
+		}
+
+		seen[e.Kind] = true
+		if _, err := b.Decided(spec, "nonsense", now); !errors.Is(err, user.ErrUnknownOption) {
+			t.Fatalf("an unknown answer: %v", err)
+		}
+
+		decided, err := b.Decided(spec, e.Options()[0], now)
+		if err != nil {
+			t.Fatalf("Decided %s: %v", e.Kind, err)
+		}
+		if _, ok := decided.Event(); ok {
+			t.Fatalf("the event stays after the answer")
+		}
+		b = decided
 	}
 
-	if plan.PerkLevel(3) != 6 || plan.PerkLevel(9) != 6 {
-		t.Errorf("PerkLevel(3) = %d", plan.PerkLevel(3))
+	if len(seen) == 0 {
+		t.Fatalf("nothing happened in 400 hours")
 	}
-	short := plan
-	short.Levels = 2
-	if short.PerkLevel(3) != 2 {
-		t.Errorf("PerkLevel(3) of two levels = %d", short.PerkLevel(3))
+}
+
+func TestBusiness_EventsExpire(t *testing.T) {
+	t.Parallel()
+
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	p.Rent, p.Wear = 0, 0
+	b, err := newBusiness(t, user.BusinessKiosk).Deposited(1_000)
+	if err != nil {
+		t.Fatalf("Deposited: %v", err)
 	}
 
-	if _, err = user.NewBusinessPerk("teleport"); !errors.Is(err, user.ErrUnknownPerk) {
-		t.Errorf("NewBusinessPerk(teleport) = %v", err)
+	now := businessNow
+	for range 400 {
+		now = now.Add(time.Hour)
+		b = b.At(p, r, now)
+
+		if e, ok := b.Event(); ok {
+			if later := b.At(p, r, e.Until.Add(time.Minute)); later.Notes() == nil {
+				t.Fatalf("no notes")
+			}
+			if later, _ := b.At(p, r, e.Until.Add(time.Minute)).Event(); later.Until.Equal(e.Until) {
+				t.Fatalf("the event of %v waits past its day", e.Until)
+			}
+
+			return
+		}
+	}
+
+	t.Fatalf("nothing happened in 400 hours")
+}
+
+func TestBusiness_StateRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	b, now := hire(t, newBusiness(t, user.BusinessKiosk), user.ProfSeller, businessNow)
+	b, now = stocked(t, b, now)
+	b = b.At(p, r, now.Add(3*time.Hour))
+
+	restored := user.RestoreBusiness(b.State())
+	if restored.Cash() != b.Cash() || len(restored.Workers()) != 1 || restored.Stock(user.SupplyDrinks) != b.Stock(user.SupplyDrinks) ||
+		len(restored.Hours()) != len(b.Hours()) || len(restored.Notes()) != len(b.Notes()) {
+		t.Fatalf("restored %+v, want %+v", restored.State(), b.State())
+	}
+
+	later := now.Add(5 * time.Hour)
+	if got, want := restored.At(p, r, later).Cash(), b.At(p, r, later).Cash(); got != want {
+		t.Fatalf("the restored business runs to %d, the kept one to %d", got, want)
+	}
+}
+
+func TestBusiness_DoesNotChangeTheOriginal(t *testing.T) {
+	t.Parallel()
+
+	p, r := plan(t, user.BusinessKiosk), user.DefaultBusinessRules()
+	b, now := hire(t, newBusiness(t, user.BusinessKiosk), user.ProfSeller, businessNow)
+	b, now = stocked(t, b, now)
+
+	stock := b.Stock(user.SupplyDrinks)
+	_ = b.At(p, r, now.Add(5*time.Hour))
+	if b.Stock(user.SupplyDrinks) != stock {
+		t.Fatalf("At changed the original stock")
+	}
+}
+
+func TestBusiness_PaysBackWellRun(t *testing.T) {
+	t.Parallel()
+
+	r := user.DefaultBusinessRules()
+	for _, kind := range user.BusinessKinds {
+		t.Run(string(kind), func(t *testing.T) {
+			t.Parallel()
+
+			p := plan(t, kind)
+			spec, _ := user.BusinessCatalog(kind)
+			b, now := newBusiness(t, kind), businessNow
+			for _, prof := range append(spec.Serving(), spec.Serving()...) {
+				if len(b.Workers()) < b.Seats(p)-1 {
+					b, now = hire(t, b, prof, now)
+				}
+			}
+			b, now = hire(t, b, user.ProfStorekeeper, now)
+
+			var err error
+			if b, err = b.Deposited(p.Till); err != nil {
+				t.Fatalf("Deposited: %v", err)
+			}
+
+			var earned int64
+			for range 7 * 24 {
+				b, now = stocked(t, b, now)
+				if b.Cash() >= 100 {
+					var got int64
+					b, got, _, _ = b.Collected(r)
+					earned += got
+				}
+			}
+
+			if earned <= 0 {
+				t.Fatalf("a %s run well earned %d in a week", kind, earned)
+			}
+		})
 	}
 }

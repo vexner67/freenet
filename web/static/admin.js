@@ -850,13 +850,8 @@ const businessFields = [
   ['price', () => tr('Цена бизнеса, голосов')],
   ['upgrade', () => tr('Улучшение, голосов × уровень')],
   ['levels', () => tr('Уровней')],
-  ['demand', () => tr('Покупателей в час')],
-  ['fair', () => tr('Обычная цена товара, сотых')],
-  ['cost', () => tr('Себестоимость товара, сотых')],
-  ['storage', () => tr('Склад, шт.')],
-  ['serve', () => tr('Работник обслуживает в час')],
+  ['demand', () => tr('Покупатели, % от каталога')],
   ['staff', () => tr('Работников на уровень')],
-  ['wage', () => tr('Зарплата в час, сотых')],
   ['rent', () => tr('Аренда в час, сотых')],
   ['wear', () => tr('Износ в час, сотых %')],
   ['repair', () => tr('Ремонт 1 %, голосов')],
@@ -887,6 +882,8 @@ async function businessSettings(answered) {
     ));
   }
   $('business-tax').value = String(settings.tax);
+  $('business-wages').value = String(settings.wages);
+  $('business-goods').value = String(settings.goods);
   $('business-stats').textContent = businesses > 0
     ? tr('Бизнесов: {0}. Люди потратили на них {1}, забрали {2}.', groupedVotes(businesses), votesCount(spent), votesCount(paid))
     : tr('Ещё никто не купил бизнес.');
@@ -904,7 +901,9 @@ async function businessSettings(answered) {
     });
 
     try {
-      await api.setBusinessSettings({ plans, tax: Number($('business-tax').value) });
+      await api.setBusinessSettings({
+        plans, tax: Number($('business-tax').value), wages: Number($('business-wages').value), goods: Number($('business-goods').value),
+      });
       $('business-saved').textContent = tr('Изменения сохранены');
       $('business-saved').hidden = false;
     } catch (e) {

@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -30,13 +31,8 @@ func toProtoBusinessSettings(r user.BusinessRules) *userv1.BusinessSettings {
 			Price:   p.Price,
 			Upgrade: p.Upgrade,
 			Levels:  int32(p.Levels), //nolint:gosec // at most user.MaxBusinessLevels
-			Demand:  p.Demand,
-			Fair:    p.Fair,
-			Cost:    p.Cost,
-			Storage: p.Storage,
-			Serve:   p.Serve,
+			Demand:  int64(p.Demand),
 			Staff:   int32(p.Staff), //nolint:gosec // at most user.MaxBusinessStaff
-			Wage:    p.Wage,
 			Rent:    p.Rent,
 			Wear:    int32(p.Wear), //nolint:gosec // at most user.MaxBusinessWear
 			Repair:  p.Repair,
@@ -50,25 +46,27 @@ func toProtoBusinessSettings(r user.BusinessRules) *userv1.BusinessSettings {
 
 	return &userv1.BusinessSettings{
 		Plans: plans,
-		Tax:   int32(r.Tax()), //nolint:gosec // at most user.MaxBusinessTax
+		Tax:   int32(r.Tax()),   //nolint:gosec // at most user.MaxBusinessTax
+		Wages: int32(r.Wages()), //nolint:gosec // at most user.MaxBusinessPercent
+		Goods: int32(r.Goods()), //nolint:gosec // at most user.MaxBusinessPercent
 	}
 }
 
 func fromProtoBusinessSettings(s *userv1.BusinessSettings) (user.BusinessRules, error) {
 	plans := make([]user.BusinessPlan, 0, len(s.GetPlans()))
 	for _, p := range s.GetPlans() {
+		demand := p.GetDemand()
+		if demand < 0 || demand > user.MaxBusinessPercent {
+			return user.BusinessRules{}, user.ErrBusinessPercent
+		}
+
 		plans = append(plans, user.BusinessPlan{
 			Kind:    user.BusinessKind(p.GetKind()),
 			Price:   p.GetPrice(),
 			Upgrade: p.GetUpgrade(),
 			Levels:  int(p.GetLevels()),
-			Demand:  p.GetDemand(),
-			Fair:    p.GetFair(),
-			Cost:    p.GetCost(),
-			Storage: p.GetStorage(),
-			Serve:   p.GetServe(),
+			Demand:  int(demand),
 			Staff:   int(p.GetStaff()),
-			Wage:    p.GetWage(),
 			Rent:    p.GetRent(),
 			Wear:    int(p.GetWear()),
 			Repair:  p.GetRepair(),
@@ -80,56 +78,203 @@ func fromProtoBusinessSettings(s *userv1.BusinessSettings) (user.BusinessRules, 
 		})
 	}
 
-	return user.NewBusinessRules(plans, int(s.GetTax()))
+	return user.NewBusinessRules(plans, int(s.GetTax()), int(s.GetWages()), int(s.GetGoods()))
 }
 
-func toProtoBusiness(b user.Business, plan user.BusinessPlan, now time.Time) *userv1.Business {
-	s := b.State()
-	h := b.Hour(plan, now)
-	resale, _ := b.Resale() // 0 in debt: the business does not sell then
-
-	var adUntil *timestamppb.Timestamp
-	if s.AdUntil.After(now) {
-		adUntil = timestamppb.New(s.AdUntil)
+// timeAfter is t when it is after now, nil otherwise: what has ended is
+// not told.
+func timeAfter(t, now time.Time) *timestamppb.Timestamp {
+	if !t.After(now) {
+		return nil
 	}
 
-	return &userv1.Business{
-		Kind:      s.Kind.String(),
-		Level:     int32(s.Level), //nolint:gosec // at most user.MaxBusinessLevels
-		Stock:     s.Stock,
-		Price:     s.Price,
-		Staff:     int32(s.Staff),     //nolint:gosec // at most user.MaxBusinessStaff
-		Condition: int32(s.Condition), //nolint:gosec // at most user.FullCondition
-		Cash:      s.Cash,
-		AdUntil:   adUntil,
-		Bankrupt:  s.Bankrupt,
-		Invested:  s.Invested,
-		Collected: s.Collected,
-		Customers: h.Customers,
-		Served:    h.Served,
-		Income:    h.Income,
-		Costs:     h.Costs,
-		Resale:    resale,
-		InDebt:    s.Cash < 0,
-		Perks:     toProtoBusinessPerks(b, plan),
-		Storage:   b.Storage(plan),
-	}
+	return timestamppb.New(t)
 }
 
-func toProtoBusinessPerks(b user.Business, plan user.BusinessPlan) []*userv1.BusinessPerk {
-	perks := make([]*userv1.BusinessPerk, 0, len(user.BusinessPerks))
-	for _, p := range user.BusinessPerks {
-		tier := b.Perk(p)
-		perk := &userv1.BusinessPerk{Perk: p.String(), Tier: int32(tier)} //nolint:gosec // at most user.MaxPerkTier
-		if tier < user.MaxPerkTier {
-			perk.NextPrice = plan.PerkPrice(tier + 1)
-			perk.NextLevel = int32(plan.PerkLevel(tier + 1)) //nolint:gosec // at most user.MaxBusinessLevels
+func toProtoBusinessCatalog() []*userv1.BusinessCatalog {
+	catalog := make([]*userv1.BusinessCatalog, 0, len(user.BusinessKinds))
+	for _, kind := range user.BusinessKinds {
+		spec, err := user.BusinessCatalog(kind)
+		if err != nil {
+			continue
 		}
 
-		perks = append(perks, perk)
+		c := &userv1.BusinessCatalog{Kind: kind.String()}
+		for _, s := range spec.Supplies {
+			c.Supplies = append(c.Supplies, &userv1.BusinessSupplySpec{
+				Supply: s.Supply.String(), Cost: s.Cost, Spoil: int32(s.Spoil), Storage: s.Storage, //nolint:gosec // a catalog constant
+			})
+		}
+		for _, o := range spec.Offers {
+			offer := &userv1.BusinessOfferSpec{Offer: o.Offer.String(), Profession: o.Profession.String(), Fair: o.Fair, Demand: o.Demand}
+			for _, in := range o.Recipe {
+				offer.Recipe = append(offer.Recipe, &userv1.BusinessIngredient{Supply: in.Supply.String(), Units: in.Units})
+			}
+			c.Offers = append(c.Offers, offer)
+		}
+		for _, p := range spec.Professions {
+			c.Professions = append(c.Professions, &userv1.BusinessProfessionSpec{Profession: p.Profession.String(), Wage: p.Wage, Serve: p.Serve})
+		}
+
+		catalog = append(catalog, c)
 	}
 
-	return perks
+	return catalog
+}
+
+func toProtoBusinessSuppliers() []*userv1.BusinessSupplier {
+	specs := user.SupplierSpecs()
+	suppliers := make([]*userv1.BusinessSupplier, 0, len(specs))
+	for _, s := range specs {
+		suppliers = append(suppliers, &userv1.BusinessSupplier{
+			Supplier: s.Supplier.String(), Percent: s.Percent, Hours: s.Hours, Short: int32(s.Short), //nolint:gosec // a catalog constant
+		})
+	}
+
+	return suppliers
+}
+
+func toProtoBusinessWorker(w user.Worker) *userv1.BusinessWorker {
+	return &userv1.BusinessWorker{
+		Id:         int32(w.ID), //nolint:gosec // a counter of a business
+		Name:       w.Name,
+		Female:     w.Female,
+		Profession: w.Profession.String(),
+		Skill:      int32(w.Skill), //nolint:gosec // at most user.MaxSkill
+		Xp:         w.XP,
+		NextXp:     w.NextSkillHours(),
+		Wage:       w.Wage,
+		Trait:      string(w.Trait),
+		Mood:       w.Mood,
+		Rate:       w.Rate(),
+		Bonus:      w.BonusCost(),
+	}
+}
+
+func toProtoBusinessHour(h user.BusinessHour) *userv1.BusinessHour {
+	sold := make(map[string]float64, len(h.Sold))
+	for o, units := range h.Sold {
+		sold[o.String()] = units
+	}
+
+	return &userv1.BusinessHour{
+		Hour: timestamppb.New(h.Hour), Sold: sold, Income: h.Income, Wages: h.Wages, Rent: h.Rent,
+		Supplies: h.Supplies, Losses: h.Losses, Spoiled: h.Spoiled, Unserved: h.Unserved,
+	}
+}
+
+func toProtoBusinessEvent(b user.Business) *userv1.BusinessEvent {
+	e, ok := b.Event()
+	if !ok {
+		return nil
+	}
+
+	return &userv1.BusinessEvent{
+		Kind: string(e.Kind), Until: timestamppb.New(e.Until), Offer: e.Offer.String(),
+		Worker: int32(e.Worker), Name: e.Name, Female: e.Female, //nolint:gosec // a counter of a business
+		Votes: e.Votes, Units: e.Units, Pay: e.Pay, Options: e.Options(),
+	}
+}
+
+func toProtoBusinessStock(b user.Business, spec user.KindSpec, r user.BusinessRules, rates user.BusinessRates) []*userv1.BusinessStock {
+	stock := make([]*userv1.BusinessStock, 0, len(spec.Supplies))
+	for _, s := range spec.Supplies {
+		costs := map[string]float64{}
+		for _, sup := range user.SupplierSpecs() {
+			costs[sup.Supplier.String()] = b.UnitCost(s, sup, r)
+		}
+
+		stock = append(stock, &userv1.BusinessStock{
+			Supply: s.Supply.String(), Units: b.Stock(s.Supply), OnWay: b.OnTheWay(s.Supply),
+			Storage: b.StorageOf(s), UnitCosts: costs, Use: rates.Use[s.Supply],
+		})
+	}
+
+	return stock
+}
+
+func toProtoBusiness(b user.Business, plan user.BusinessPlan, r user.BusinessRules, now time.Time) *userv1.Business {
+	spec, _ := user.BusinessCatalog(b.Kind()) // a kept business is of a known kind
+	rates := b.Rates(plan, r, now)
+	resale, _ := b.Resale() // 0 in debt: the business does not sell then
+
+	pb := &userv1.Business{
+		Kind:            b.Kind().String(),
+		Level:           int32(b.Level()),     //nolint:gosec // at most user.MaxBusinessLevels
+		Condition:       int32(b.Condition()), //nolint:gosec // at most user.FullCondition
+		Cash:            b.Cash(),
+		AdUntil:         timeAfter(b.AdUntil(), now),
+		Bankrupt:        b.Bankrupt(),
+		Invested:        b.Invested(),
+		Collected:       b.CollectedVotes(),
+		Resale:          resale,
+		InDebt:          b.InDebt(),
+		Supplies:        toProtoBusinessStock(b, spec, r, rates),
+		CandidatesUntil: timestamppb.New(user.CandidatesRenewAt(now)),
+		Event:           toProtoBusinessEvent(b),
+		Seats:           int32(b.Seats(plan)), //nolint:gosec // at most user.MaxBusinessStaff × levels
+		ReviewUntil:     timeAfter(b.ReviewUntil(), now),
+		Tax:             int32(b.TaxOf(r)), //nolint:gosec // at most user.MaxBusinessTax
+		Wages:           rates.Wages,
+		Rent:            rates.Rent,
+		Till:            int64(b.TillAt(plan)),
+		DebtLimit:       int64(b.DebtAt(plan)),
+		Load:            map[string]float64{},
+		RepairCost:      b.RepairCost(plan),
+	}
+	if b.Level() < plan.Levels {
+		pb.UpgradeCost = b.UpgradeCost(plan)
+	}
+
+	for _, o := range rates.Offers {
+		pb.Offers = append(pb.Offers, &userv1.BusinessOfferState{
+			Offer: o.Offer.String(), Price: b.Price(o.Offer), Demand: o.Demand, Served: o.Served,
+			Capacity: o.Capacity, Broken: o.Broken,
+		})
+	}
+	for prof, load := range rates.Load {
+		if !math.IsInf(load, 0) {
+			pb.Load[prof.String()] = load
+		}
+	}
+	for _, w := range b.Workers() {
+		pb.Workers = append(pb.Workers, toProtoBusinessWorker(w))
+	}
+	if !b.Bankrupt() {
+		for _, c := range b.Candidates(r, now) {
+			pb.Candidates = append(pb.Candidates, &userv1.BusinessCandidate{Id: c.ID, Worker: toProtoBusinessWorker(c.Worker)})
+		}
+	}
+	for _, o := range b.Orders() {
+		pb.Orders = append(pb.Orders, &userv1.BusinessOrder{
+			Id: int32(o.ID), Supply: o.Supply.String(), Supplier: o.Supplier.String(), //nolint:gosec // a counter of a business
+			Units: o.Units, Arrives: timestamppb.New(o.Arrives), FromTill: o.FromTill,
+		})
+	}
+	for _, c := range b.Contracts() {
+		pb.Contracts = append(pb.Contracts, &userv1.BusinessContract{
+			Supply: c.Supply.String(), Supplier: c.Supplier.String(), Below: c.Below, Units: c.Units, Stalled: c.Stalled,
+		})
+	}
+	notes := b.Notes()
+	for i := len(notes) - 1; i >= 0; i-- {
+		n := notes[i]
+		pb.Notes = append(pb.Notes, &userv1.BusinessNote{
+			At: timestamppb.New(n.At), Kind: string(n.Kind), Subject: n.Subject, Name: n.Name,
+			Female: n.Female, Amount: n.Amount, Money: n.Money,
+		})
+	}
+	for _, h := range b.Hours() {
+		pb.Hours = append(pb.Hours, toProtoBusinessHour(h))
+	}
+	if broken, until := b.Broken(); broken != "" {
+		pb.Broken = broken.String()
+		if !until.IsZero() {
+			pb.BrokenUntil = timestamppb.New(until)
+		}
+	}
+
+	return pb
 }
 
 func toProtoBusinesses(v service.BusinessesView) *userv1.BusinessesState {
@@ -140,12 +285,14 @@ func toProtoBusinesses(v service.BusinessesView) *userv1.BusinessesState {
 			continue
 		}
 
-		businesses = append(businesses, toProtoBusiness(b, plan, v.At))
+		businesses = append(businesses, toProtoBusiness(b, plan, v.Rules, v.At))
 	}
 
 	return &userv1.BusinessesState{
 		Settings:   toProtoBusinessSettings(v.Rules),
 		Businesses: businesses,
+		Catalog:    toProtoBusinessCatalog(),
+		Suppliers:  toProtoBusinessSuppliers(),
 	}
 }
 
@@ -214,19 +361,17 @@ func (h *UserHandler) RunBusiness(ctx context.Context, req *userv1.RunBusinessRe
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	var perk user.BusinessPerk
-	if action == user.BusinessImprove {
-		if perk, err = user.NewBusinessPerk(req.GetPerk()); err != nil {
-			return nil, status.Error(codes.InvalidArgument, err.Error())
-		}
-	}
-
 	d, err := h.businesses.Act(ctx, userID, kind, service.BusinessAct{
-		Action: action,
-		Perk:   perk,
-		Amount: req.GetAmount(),
-		Price:  req.GetPrice(),
-		Staff:  int(req.GetStaff()),
+		Action:    action,
+		Amount:    req.GetAmount(),
+		Price:     req.GetPrice(),
+		Offer:     user.Offer(req.GetOffer()),
+		Supply:    user.Supply(req.GetSupply()),
+		Supplier:  user.Supplier(req.GetSupplier()),
+		Below:     req.GetBelow(),
+		Worker:    int(req.GetWorker()),
+		Candidate: req.GetCandidate(),
+		Option:    req.GetOption(),
 	}, time.Now())
 	if err != nil {
 		return nil, err

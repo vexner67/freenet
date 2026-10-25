@@ -38,13 +38,8 @@ type storedPlan struct {
 	Price   int64             `json:"price"`
 	Upgrade int64             `json:"upgrade"`
 	Levels  int               `json:"levels"`
-	Demand  int64             `json:"demand"`
-	Fair    int64             `json:"fair"`
-	Cost    int64             `json:"cost"`
-	Storage int64             `json:"storage"`
-	Serve   int64             `json:"serve"`
+	Demand  int               `json:"demand"`
 	Staff   int               `json:"staff"`
-	Wage    int64             `json:"wage"`
 	Rent    int64             `json:"rent"`
 	Wear    int               `json:"wear"`
 	Repair  int64             `json:"repair"`
@@ -59,13 +54,14 @@ type storedPlan struct {
 type storedRules struct {
 	Plans []storedPlan `json:"plans"`
 	Tax   int          `json:"tax"`
+	Wages int          `json:"wages"`
+	Goods int          `json:"goods"`
 }
 
 func storeRules(rules user.BusinessRules) ([]byte, error) {
-	stored := storedRules{Tax: rules.Tax()}
+	stored := storedRules{Tax: rules.Tax(), Wages: rules.Wages(), Goods: rules.Goods()}
 	for _, p := range rules.Plans() {
-		sp := storedPlan(p)
-		stored.Plans = append(stored.Plans, sp)
+		stored.Plans = append(stored.Plans, storedPlan(p))
 	}
 
 	data, err := json.Marshal(stored)
@@ -79,7 +75,7 @@ func restoreRules(stored storedRules) (user.BusinessRules, error) {
 		plans[i] = user.BusinessPlan(p)
 	}
 
-	rules, err := user.NewBusinessRules(plans, stored.Tax)
+	rules, err := user.NewBusinessRules(plans, stored.Tax, stored.Wages, stored.Goods)
 
 	return rules, errs.Wrap("user.NewBusinessRules", err)
 }
@@ -125,45 +121,17 @@ func (r *BusinessRepository) SetRules(ctx context.Context, rules user.BusinessRu
 	return nil
 }
 
-const businessColumns = `
-		kind,
-		level,
-		stock,
-		price,
-		staff,
-		condition,
-		cash,
-		ad_until,
-		counted_at,
-		bankrupt,
-		invested,
-		collected,
-		perks`
-
 func scanBusiness(row pgx.Row) (user.Business, error) {
-	var (
-		s     user.BusinessState
-		kind  string
-		perks map[string]int
-	)
-
-	err := row.Scan(&kind, &s.Level, &s.Stock, &s.Price, &s.Staff, &s.Condition, &s.Cash,
-		&s.AdUntil, &s.CountedAt, &s.Bankrupt, &s.Invested, &s.Collected, &perks)
-	if err != nil {
+	var stored storedBusiness
+	if err := row.Scan(&stored); err != nil {
 		return user.Business{}, err
 	}
 
-	s.Kind = user.BusinessKind(kind)
-	s.Perks = make(map[user.BusinessPerk]int, len(perks))
-	for p, tier := range perks {
-		s.Perks[user.BusinessPerk(p)] = tier
-	}
-
-	return user.RestoreBusiness(s), nil
+	return user.RestoreBusiness(stored.restore()), nil
 }
 
 const listBusinessesQuery = `
-	SELECT` + businessColumns + `
+	SELECT state
 	FROM businesses
 	WHERE user_id = $1
 	ORDER BY array_position(ARRAY['kiosk', 'cafe', 'carwash', 'factory'], kind)
@@ -190,7 +158,7 @@ func (r *BusinessRepository) Businesses(ctx context.Context, userID uuid.UUID) (
 }
 
 const lockBusinessQuery = `
-	SELECT` + businessColumns + `
+	SELECT state
 	FROM businesses
 	WHERE user_id = $1
 		AND kind = $2
@@ -211,26 +179,16 @@ func (r *BusinessRepository) Business(ctx context.Context, userID uuid.UUID, kin
 
 const addBusinessQuery = `
 	INSERT INTO businesses (
-		user_id,` + businessColumns + `
+		user_id,
+		kind,
+		state
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+	VALUES ($1, $2, $3)
 	ON CONFLICT (user_id, kind) DO NOTHING
 `
 
-func businessArgs(userID uuid.UUID, b user.Business) []any {
-	s := b.State()
-
-	perks := make(map[string]int, len(s.Perks))
-	for p, tier := range s.Perks {
-		perks[p.String()] = tier
-	}
-
-	return []any{userID, s.Kind.String(), s.Level, s.Stock, s.Price, s.Staff, s.Condition, s.Cash,
-		s.AdUntil, s.CountedAt, s.Bankrupt, s.Invested, s.Collected, perks}
-}
-
 func (r *BusinessRepository) AddBusiness(ctx context.Context, userID uuid.UUID, b user.Business) error {
-	tag, err := r.conn(ctx).Exec(ctx, addBusinessQuery, businessArgs(userID, b)...)
+	tag, err := r.conn(ctx).Exec(ctx, addBusinessQuery, userID, b.Kind().String(), storeBusiness(b.State()))
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode {
@@ -248,24 +206,13 @@ func (r *BusinessRepository) AddBusiness(ctx context.Context, userID uuid.UUID, 
 
 const saveBusinessQuery = `
 	UPDATE businesses
-	SET level = $3,
-		stock = $4,
-		price = $5,
-		staff = $6,
-		condition = $7,
-		cash = $8,
-		ad_until = $9,
-		counted_at = $10,
-		bankrupt = $11,
-		invested = $12,
-		collected = $13,
-		perks = $14
+	SET state = $3
 	WHERE user_id = $1
 		AND kind = $2
 `
 
 func (r *BusinessRepository) SaveBusiness(ctx context.Context, userID uuid.UUID, b user.Business) error {
-	tag, err := r.conn(ctx).Exec(ctx, saveBusinessQuery, businessArgs(userID, b)...)
+	tag, err := r.conn(ctx).Exec(ctx, saveBusinessQuery, userID, b.Kind().String(), storeBusiness(b.State()))
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}

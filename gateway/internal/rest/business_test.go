@@ -21,11 +21,16 @@ type fakeBusiness struct {
 
 func (f *fakeBusiness) businesses() model.Businesses {
 	return model.Businesses{
-		Settings: model.BusinessSettings{Plans: []model.BusinessPlan{{Kind: "kiosk", Price: 500, Fair: 20, AdHours: 24}}, Tax: 5},
+		Settings: model.BusinessSettings{Plans: []model.BusinessPlan{{Kind: "kiosk", Price: 500, AdHours: 24}}, Tax: 5, Wages: 100, Goods: 100},
 		Businesses: []model.Business{{
-			Kind: "kiosk", Level: 2, Stock: 90, Price: 20, Staff: 1, Condition: 9990, Cash: -150,
-			AdUntil: time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC), Customers: 15, Served: 12, Income: 240, Costs: 40, InDebt: true,
+			Kind: "kiosk", Level: 2, Condition: 9990, Cash: -150, InDebt: true,
+			AdUntil:    time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC),
+			Supplies:   []model.BusinessStock{{Supply: "drinks", Units: 40, Storage: 200}},
+			Candidates: []model.BusinessCandidate{{ID: 9007199254740993, Worker: model.BusinessWorker{Name: "Анна", Profession: "seller"}}},
+			Event:      &model.BusinessEvent{Kind: "inspection", Options: []string{"pay", "refuse"}},
 		}},
+		Catalog:   []model.BusinessCatalog{{Kind: "kiosk", Offers: []model.BusinessOfferSpec{{Offer: "drink", Recipe: []model.BusinessIngredient{{Supply: "drinks", Units: 1}}}}}},
+		Suppliers: []model.BusinessSupplier{{Supplier: "reliable", Percent: 100, Hours: 2}},
 	}
 }
 
@@ -66,7 +71,10 @@ func TestBusiness(t *testing.T) {
 	got := decode[map[string]any](t, w)
 	biz := got["businesses"].([]any)[0].(map[string]any)
 	if w.Code != http.StatusOK || h.business.token != "tok" || biz["cash"] != -150.0 || biz["inDebt"] != true ||
-		biz["adUntil"] != "2026-10-25T12:00:00Z" || got["settings"].(map[string]any)["tax"] != 5.0 {
+		biz["adUntil"] != "2026-10-25T12:00:00Z" || biz["reviewUntil"] != nil || got["settings"].(map[string]any)["tax"] != 5.0 ||
+		biz["candidates"].([]any)[0].(map[string]any)["id"] != "9007199254740993" || biz["orders"] == nil ||
+		biz["event"].(map[string]any)["options"].([]any)[1] != "refuse" || len(got["catalog"].([]any)) != 1 ||
+		got["suppliers"].([]any)[0].(map[string]any)["hours"] != 2.0 {
 		t.Fatalf("businesses: %d %v", w.Code, got)
 	}
 
@@ -75,10 +83,19 @@ func TestBusiness(t *testing.T) {
 		t.Fatalf("buy: %d %v", w.Code, got)
 	}
 
-	w = h.do("POST", "/api/v1/me/businesses/kiosk/manage", `{"price":25,"staff":2}`, "Authorization", "Bearer tok")
+	w = h.do("POST", "/api/v1/me/businesses/kiosk/order", `{"supply":"drinks","supplier":"reliable","amount":100}`, "Authorization", "Bearer tok")
 	if got := decode[map[string]any](t, w); w.Code != http.StatusOK ||
-		h.business.act != (model.BusinessAct{Kind: "kiosk", Action: "manage", Price: 25, Staff: 2}) || got["balance"] != 119.0 {
-		t.Fatalf("manage: %d %v %+v", w.Code, got, h.business.act)
+		h.business.act != (model.BusinessAct{Kind: "kiosk", Action: "order", Supply: "drinks", Supplier: "reliable", Amount: 100}) ||
+		got["balance"] != 119.0 {
+		t.Fatalf("order: %d %v %+v", w.Code, got, h.business.act)
+	}
+
+	w = h.do("POST", "/api/v1/me/businesses/kiosk/hire", `{"candidate":"9007199254740993"}`, "Authorization", "Bearer tok")
+	if w.Code != http.StatusOK || h.business.act.Candidate != 9007199254740993 {
+		t.Fatalf("hire: %d %+v", w.Code, h.business.act)
+	}
+	if w = h.do("POST", "/api/v1/me/businesses/kiosk/hire", `{"candidate":"anna"}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
+		t.Fatalf("hire of a word: %d", w.Code)
 	}
 
 	w = h.do("GET", "/api/v1/business/settings", "", "Authorization", "Bearer tok")
@@ -86,8 +103,8 @@ func TestBusiness(t *testing.T) {
 		t.Fatalf("settings: %d %v", w.Code, got)
 	}
 
-	w = h.do("PUT", "/api/v1/business/settings", `{"plans":[{"kind":"kiosk","price":7,"adBoost":30}],"tax":9}`, "Authorization", "Bearer tok")
-	if w.Code != http.StatusNoContent || h.business.set.Tax != 9 || h.business.set.Plans[0].Price != 7 || h.business.set.Plans[0].AdBoost != 30 {
+	w = h.do("PUT", "/api/v1/business/settings", `{"plans":[{"kind":"kiosk","price":7,"adBoost":30}],"tax":9,"wages":120,"goods":80}`, "Authorization", "Bearer tok")
+	if w.Code != http.StatusNoContent || h.business.set.Tax != 9 || h.business.set.Wages != 120 || h.business.set.Goods != 80 || h.business.set.Plans[0].Price != 7 || h.business.set.Plans[0].AdBoost != 30 {
 		t.Fatalf("set: %d %+v", w.Code, h.business.set)
 	}
 

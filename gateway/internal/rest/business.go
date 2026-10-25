@@ -3,8 +3,10 @@ package rest
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
 )
 
@@ -24,12 +26,7 @@ type businessPlanJSON struct {
 	Upgrade int64  `json:"upgrade"`
 	Levels  int    `json:"levels"`
 	Demand  int64  `json:"demand"`
-	Fair    int64  `json:"fair"`
-	Cost    int64  `json:"cost"`
-	Storage int64  `json:"storage"`
-	Serve   int64  `json:"serve"`
 	Staff   int    `json:"staff"`
-	Wage    int64  `json:"wage"`
 	Rent    int64  `json:"rent"`
 	Wear    int    `json:"wear"`
 	Repair  int64  `json:"repair"`
@@ -43,73 +40,281 @@ type businessPlanJSON struct {
 type businessSettingsJSON struct {
 	Plans []businessPlanJSON `json:"plans"`
 	Tax   int                `json:"tax"`
+	Wages int                `json:"wages"`
+	Goods int                `json:"goods"`
+}
+
+type businessCatalogJSON struct {
+	Kind        string                       `json:"kind"`
+	Supplies    []businessSupplySpecJSON     `json:"supplies"`
+	Offers      []businessOfferSpecJSON      `json:"offers"`
+	Professions []businessProfessionSpecJSON `json:"professions"`
+}
+
+type businessSupplySpecJSON struct {
+	Supply  string `json:"supply"`
+	Cost    int64  `json:"cost"`
+	Spoil   int    `json:"spoil"`
+	Storage int64  `json:"storage"`
+}
+
+type businessOfferSpecJSON struct {
+	Offer      string                   `json:"offer"`
+	Profession string                   `json:"profession"`
+	Recipe     []businessIngredientJSON `json:"recipe"`
+	Fair       int64                    `json:"fair"`
+	Demand     float64                  `json:"demand"`
+}
+
+type businessIngredientJSON struct {
+	Supply string `json:"supply"`
+	Units  int64  `json:"units"`
+}
+
+type businessProfessionSpecJSON struct {
+	Profession string  `json:"profession"`
+	Wage       int64   `json:"wage"`
+	Serve      float64 `json:"serve"`
+}
+
+type businessSupplierJSON struct {
+	Supplier string  `json:"supplier"`
+	Percent  int64   `json:"percent"`
+	Hours    float64 `json:"hours"`
+	Short    int     `json:"short"`
 }
 
 type businessJSON struct {
-	Kind      string             `json:"kind"`
-	Level     int                `json:"level"`
-	Stock     int64              `json:"stock"`
-	Price     int64              `json:"price"`
-	Staff     int                `json:"staff"`
-	Condition int                `json:"condition"`
-	Cash      int64              `json:"cash"`
-	AdUntil   *time.Time         `json:"adUntil"`
-	Bankrupt  bool               `json:"bankrupt"`
-	Invested  int64              `json:"invested"`
-	Collected int64              `json:"collected"`
-	Customers float64            `json:"customers"`
-	Served    float64            `json:"served"`
-	Income    float64            `json:"income"`
-	Costs     float64            `json:"costs"`
-	Resale    int64              `json:"resale"`
-	InDebt    bool               `json:"inDebt"`
-	Perks     []businessPerkJSON `json:"perks"`
-	Storage   int64              `json:"storage"`
+	Kind            string                  `json:"kind"`
+	Level           int                     `json:"level"`
+	Condition       int                     `json:"condition"`
+	Cash            int64                   `json:"cash"`
+	AdUntil         *time.Time              `json:"adUntil"`
+	Bankrupt        bool                    `json:"bankrupt"`
+	Invested        int64                   `json:"invested"`
+	Collected       int64                   `json:"collected"`
+	Resale          int64                   `json:"resale"`
+	InDebt          bool                    `json:"inDebt"`
+	Supplies        []businessStockJSON     `json:"supplies"`
+	Offers          []businessOfferJSON     `json:"offers"`
+	Workers         []businessWorkerJSON    `json:"workers"`
+	Candidates      []businessCandidateJSON `json:"candidates"`
+	CandidatesUntil *time.Time              `json:"candidatesUntil"`
+	Orders          []businessOrderJSON     `json:"orders"`
+	Contracts       []businessContractJSON  `json:"contracts"`
+	Event           *businessEventJSON      `json:"event"`
+	Notes           []businessNoteJSON      `json:"notes"`
+	Hours           []businessHourJSON      `json:"hours"`
+	Seats           int                     `json:"seats"`
+	ReviewUntil     *time.Time              `json:"reviewUntil"`
+	Tax             int                     `json:"tax"`
+	Wages           float64                 `json:"wages"`
+	Rent            float64                 `json:"rent"`
+	Till            int64                   `json:"till"`
+	DebtLimit       int64                   `json:"debtLimit"`
+	Load            map[string]float64      `json:"load"`
+	Broken          string                  `json:"broken"`
+	BrokenUntil     *time.Time              `json:"brokenUntil"`
+	UpgradeCost     int64                   `json:"upgradeCost"`
+	RepairCost      int64                   `json:"repairCost"`
 }
 
-type businessPerkJSON struct {
-	Perk      string `json:"perk"`
-	Tier      int    `json:"tier"`
-	NextPrice int64  `json:"nextPrice"`
-	NextLevel int    `json:"nextLevel"`
+type businessStockJSON struct {
+	Supply    string             `json:"supply"`
+	Units     float64            `json:"units"`
+	OnWay     int64              `json:"onWay"`
+	Storage   int64              `json:"storage"`
+	UnitCosts map[string]float64 `json:"unitCosts"`
+	Use       float64            `json:"use"`
+}
+
+type businessOfferJSON struct {
+	Offer    string  `json:"offer"`
+	Price    int64   `json:"price"`
+	Demand   float64 `json:"demand"`
+	Served   float64 `json:"served"`
+	Capacity float64 `json:"capacity"`
+	Broken   bool    `json:"broken"`
+}
+
+type businessWorkerJSON struct {
+	ID         int     `json:"id"`
+	Name       string  `json:"name"`
+	Female     bool    `json:"female"`
+	Profession string  `json:"profession"`
+	Skill      int     `json:"skill"`
+	XP         float64 `json:"xp"`
+	NextXP     float64 `json:"nextXp"`
+	Wage       int64   `json:"wage"`
+	Trait      string  `json:"trait"`
+	Mood       float64 `json:"mood"`
+	Rate       float64 `json:"rate"`
+	Bonus      int64   `json:"bonus"`
+}
+
+type businessCandidateJSON struct {
+	// A string: the ID does not fit the numbers of JavaScript.
+	ID     string             `json:"id"`
+	Worker businessWorkerJSON `json:"worker"`
+}
+
+type businessOrderJSON struct {
+	ID       int       `json:"id"`
+	Supply   string    `json:"supply"`
+	Supplier string    `json:"supplier"`
+	Units    int64     `json:"units"`
+	Arrives  time.Time `json:"arrives"`
+	FromTill bool      `json:"fromTill"`
+}
+
+type businessContractJSON struct {
+	Supply   string `json:"supply"`
+	Supplier string `json:"supplier"`
+	Below    int64  `json:"below"`
+	Units    int64  `json:"units"`
+	Stalled  bool   `json:"stalled"`
+}
+
+type businessEventJSON struct {
+	Kind    string    `json:"kind"`
+	Until   time.Time `json:"until"`
+	Offer   string    `json:"offer"`
+	Worker  int       `json:"worker"`
+	Name    string    `json:"name"`
+	Female  bool      `json:"female"`
+	Votes   int64     `json:"votes"`
+	Units   int64     `json:"units"`
+	Pay     int64     `json:"pay"`
+	Options []string  `json:"options"`
+}
+
+type businessNoteJSON struct {
+	At      time.Time `json:"at"`
+	Kind    string    `json:"kind"`
+	Subject string    `json:"subject"`
+	Name    string    `json:"name"`
+	Female  bool      `json:"female"`
+	Amount  float64   `json:"amount"`
+	Money   float64   `json:"money"`
+}
+
+type businessHourJSON struct {
+	Hour     time.Time          `json:"hour"`
+	Sold     map[string]float64 `json:"sold"`
+	Income   float64            `json:"income"`
+	Wages    float64            `json:"wages"`
+	Rent     float64            `json:"rent"`
+	Supplies float64            `json:"supplies"`
+	Losses   float64            `json:"losses"`
+	Spoiled  float64            `json:"spoiled"`
+	Unserved float64            `json:"unserved"`
 }
 
 type businessesJSON struct {
-	Settings   businessSettingsJSON `json:"settings"`
-	Businesses []businessJSON       `json:"businesses"`
+	Settings   businessSettingsJSON   `json:"settings"`
+	Businesses []businessJSON         `json:"businesses"`
+	Catalog    []businessCatalogJSON  `json:"catalog"`
+	Suppliers  []businessSupplierJSON `json:"suppliers"`
+}
+
+// listJSON is a list in JSON, empty rather than null.
+func listJSON[T, U any](items []T, to func(T) U) []U {
+	out := make([]U, 0, len(items))
+	for _, item := range items {
+		out = append(out, to(item))
+	}
+
+	return out
+}
+
+// mapJSON is a map in JSON, empty rather than null.
+func mapJSON(m map[string]float64) map[string]float64 {
+	if m == nil {
+		return map[string]float64{}
+	}
+
+	return m
+}
+
+// timeJSON is a time in JSON, null when zero.
+func timeJSON(t time.Time) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+
+	return &t
 }
 
 func toBusinessSettingsJSON(s model.BusinessSettings) businessSettingsJSON {
-	out := businessSettingsJSON{Plans: make([]businessPlanJSON, 0, len(s.Plans)), Tax: s.Tax}
-	for _, p := range s.Plans {
-		out.Plans = append(out.Plans, businessPlanJSON(p))
+	return businessSettingsJSON{
+		Plans: listJSON(s.Plans, func(p model.BusinessPlan) businessPlanJSON { return businessPlanJSON(p) }),
+		Tax:   s.Tax, Wages: s.Wages, Goods: s.Goods,
+	}
+}
+
+func toBusinessCatalogJSON(c model.BusinessCatalog) businessCatalogJSON {
+	return businessCatalogJSON{
+		Kind: c.Kind,
+		Supplies: listJSON(c.Supplies, func(s model.BusinessSupplySpec) businessSupplySpecJSON {
+			return businessSupplySpecJSON(s)
+		}),
+		Offers: listJSON(c.Offers, func(o model.BusinessOfferSpec) businessOfferSpecJSON {
+			return businessOfferSpecJSON{
+				Offer: o.Offer, Profession: o.Profession, Fair: o.Fair, Demand: o.Demand,
+				Recipe: listJSON(o.Recipe, func(i model.BusinessIngredient) businessIngredientJSON {
+					return businessIngredientJSON(i)
+				}),
+			}
+		}),
+		Professions: listJSON(c.Professions, func(p model.BusinessProfessionSpec) businessProfessionSpecJSON {
+			return businessProfessionSpecJSON(p)
+		}),
+	}
+}
+
+func toBusinessJSON(b model.Business) businessJSON {
+	out := businessJSON{
+		Kind: b.Kind, Level: b.Level, Condition: b.Condition, Cash: b.Cash, AdUntil: timeJSON(b.AdUntil),
+		Bankrupt: b.Bankrupt, Invested: b.Invested, Collected: b.Collected, Resale: b.Resale, InDebt: b.InDebt,
+		CandidatesUntil: timeJSON(b.CandidatesUntil), Seats: b.Seats, ReviewUntil: timeJSON(b.ReviewUntil),
+		Tax: b.Tax, Wages: b.Wages, Rent: b.Rent, Till: b.Till, DebtLimit: b.DebtLimit, Load: mapJSON(b.Load),
+		Broken: b.Broken, BrokenUntil: timeJSON(b.BrokenUntil), UpgradeCost: b.UpgradeCost, RepairCost: b.RepairCost,
+		Supplies: listJSON(b.Supplies, func(s model.BusinessStock) businessStockJSON {
+			s.UnitCosts = mapJSON(s.UnitCosts)
+			return businessStockJSON(s)
+		}),
+		Offers:  listJSON(b.Offers, func(o model.BusinessOffer) businessOfferJSON { return businessOfferJSON(o) }),
+		Workers: listJSON(b.Workers, func(w model.BusinessWorker) businessWorkerJSON { return businessWorkerJSON(w) }),
+		Candidates: listJSON(b.Candidates, func(c model.BusinessCandidate) businessCandidateJSON {
+			return businessCandidateJSON{ID: strconv.FormatInt(c.ID, 10), Worker: businessWorkerJSON(c.Worker)}
+		}),
+		Orders:    listJSON(b.Orders, func(o model.BusinessOrder) businessOrderJSON { return businessOrderJSON(o) }),
+		Contracts: listJSON(b.Contracts, func(c model.BusinessContract) businessContractJSON { return businessContractJSON(c) }),
+		Notes:     listJSON(b.Notes, func(n model.BusinessNote) businessNoteJSON { return businessNoteJSON(n) }),
+		Hours: listJSON(b.Hours, func(h model.BusinessHour) businessHourJSON {
+			h.Sold = mapJSON(h.Sold)
+			return businessHourJSON(h)
+		}),
+	}
+	if b.Event != nil {
+		e := businessEventJSON(*b.Event)
+		if e.Options == nil {
+			e.Options = []string{}
+		}
+
+		out.Event = &e
 	}
 
 	return out
 }
 
 func toBusinessesJSON(b model.Businesses) businessesJSON {
-	out := businessesJSON{Settings: toBusinessSettingsJSON(b.Settings), Businesses: make([]businessJSON, 0, len(b.Businesses))}
-	for _, biz := range b.Businesses {
-		j := businessJSON{
-			Kind: biz.Kind, Level: biz.Level, Stock: biz.Stock, Price: biz.Price, Staff: biz.Staff,
-			Condition: biz.Condition, Cash: biz.Cash, Bankrupt: biz.Bankrupt, Invested: biz.Invested,
-			Collected: biz.Collected, Customers: biz.Customers, Served: biz.Served, Income: biz.Income,
-			Costs: biz.Costs, Resale: biz.Resale, InDebt: biz.InDebt, Storage: biz.Storage,
-			Perks: make([]businessPerkJSON, 0, len(biz.Perks)),
-		}
-		for _, p := range biz.Perks {
-			j.Perks = append(j.Perks, businessPerkJSON(p))
-		}
-		if !biz.AdUntil.IsZero() {
-			until := biz.AdUntil
-			j.AdUntil = &until
-		}
-
-		out.Businesses = append(out.Businesses, j)
+	return businessesJSON{
+		Settings:   toBusinessSettingsJSON(b.Settings),
+		Businesses: listJSON(b.Businesses, toBusinessJSON),
+		Catalog:    listJSON(b.Catalog, toBusinessCatalogJSON),
+		Suppliers:  listJSON(b.Suppliers, func(s model.BusinessSupplier) businessSupplierJSON { return businessSupplierJSON(s) }),
 	}
-
-	return out
 }
 
 func writeBusinessDone(w http.ResponseWriter, d model.BusinessDone) {
@@ -172,19 +377,33 @@ func (a *api) runBusiness(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Amount int64  `json:"amount"`
-		Price  int64  `json:"price"`
-		Staff  int    `json:"staff"`
-		Perk   string `json:"perk"`
+		Amount    int64  `json:"amount"`
+		Price     int64  `json:"price"`
+		Offer     string `json:"offer"`
+		Supply    string `json:"supply"`
+		Supplier  string `json:"supplier"`
+		Below     int64  `json:"below"`
+		Worker    int    `json:"worker"`
+		Candidate string `json:"candidate"`
+		Option    string `json:"option"`
 	}
 	if err = decode(w, r, &req); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
+	var candidate int64
+	if req.Candidate != "" {
+		if candidate, err = strconv.ParseInt(req.Candidate, 10, 64); err != nil {
+			a.writeError(w, r, failure.New(failure.InvalidArgument, "invalid candidate"))
+			return
+		}
+	}
+
 	d, err := a.business.Run(r.Context(), token, model.BusinessAct{
-		Kind: r.PathValue("kind"), Action: r.PathValue("action"),
-		Amount: req.Amount, Price: req.Price, Staff: req.Staff, Perk: req.Perk,
+		Kind: r.PathValue("kind"), Action: r.PathValue("action"), Amount: req.Amount, Price: req.Price,
+		Offer: req.Offer, Supply: req.Supply, Supplier: req.Supplier, Below: req.Below, Worker: req.Worker,
+		Candidate: candidate, Option: req.Option,
 	})
 	if err != nil {
 		a.writeError(w, r, err)
@@ -230,7 +449,7 @@ func (a *api) setBusinessSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	settings := model.BusinessSettings{Tax: req.Tax}
+	settings := model.BusinessSettings{Tax: req.Tax, Wages: req.Wages, Goods: req.Goods}
 	for _, p := range req.Plans {
 		settings.Plans = append(settings.Plans, model.BusinessPlan(p))
 	}

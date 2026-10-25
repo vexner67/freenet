@@ -170,8 +170,8 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, user.ErrUnknownOre.Error()), true
 	case sentinel(err, businessInvalid) != nil:
 		return status.New(codes.InvalidArgument, sentinel(err, businessInvalid).Error()), true
-	case errors.Is(err, user.ErrBusinessNotFound):
-		return status.New(codes.NotFound, user.ErrBusinessNotFound.Error()), true
+	case sentinel(err, businessMissing) != nil:
+		return status.New(codes.NotFound, sentinel(err, businessMissing).Error()), true
 	case sentinel(err, businessRefused) != nil:
 		return status.New(codes.FailedPrecondition, sentinel(err, businessRefused).Error()), true
 	case errors.Is(err, user.ErrRocketOver):
@@ -247,18 +247,21 @@ func toStatus(err error) (*status.Status, bool) {
 	}
 }
 
-// businessInvalid and businessRefused are the errors of the businesses the
+// businessInvalid, businessMissing and businessRefused are the errors of the businesses the
 // client is told as they are.
 var (
 	businessInvalid = []error{
-		user.ErrUnknownBusiness, user.ErrUnknownAction, user.ErrBusinessStock, user.ErrBusinessSetPrice,
-		user.ErrBusinessSetStaff, user.ErrBusinessDeposit, user.ErrBusinessPlans, user.ErrBusinessPlanPrice,
-		user.ErrBusinessLevels, user.ErrBusinessDemand, user.ErrBusinessCapacity, user.ErrBusinessCosts,
-		user.ErrBusinessAd, user.ErrBusinessTax, user.ErrUnknownPerk,
+		user.ErrUnknownBusiness, user.ErrUnknownAction, user.ErrUnknownSupply, user.ErrUnknownOffer,
+		user.ErrUnknownSupplier, user.ErrUnknownProfession, user.ErrUnknownOption, user.ErrBusinessOrder,
+		user.ErrBusinessContract, user.ErrBusinessSetPrice, user.ErrBusinessDeposit, user.ErrBusinessPlans,
+		user.ErrBusinessPlanPrice, user.ErrBusinessLevels, user.ErrBusinessPercent, user.ErrBusinessCapacity,
+		user.ErrBusinessCosts, user.ErrBusinessAd, user.ErrBusinessTax,
 	}
+	businessMissing = []error{user.ErrBusinessNotFound, user.ErrWorkerNotFound}
 	businessRefused = []error{
 		user.ErrBusinessOwned, user.ErrBusinessBankrupt, user.ErrBusinessInDebt, user.ErrBusinessTopLevel,
-		user.ErrBusinessIntact, user.ErrNothingToCollect, user.ErrBusinessNotYet, user.ErrPerkTop, user.ErrPerkLocked,
+		user.ErrBusinessIntact, user.ErrNothingToCollect, user.ErrBusinessNotYet, user.ErrCandidateGone,
+		user.ErrNoSeats, user.ErrNoEvent, user.ErrEventStock,
 	}
 )
 

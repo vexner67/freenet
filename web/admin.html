@@ -500,10 +500,18 @@
             <tbody id="business-rows"></tbody>
           </table>
         </div>
-        <p class="admin-decor-now">Цены товара, его себестоимость, зарплата и аренда — в сотых голоса: 20 — 0,2 голоса. Покупатели, склад, работники, касса, долг и аренда растут с уровнем: на 3-м уровне — втрое. Износ — в сотых процента в час: 10 — 0,1 %.</p>
+        <p class="admin-decor-now">Аренда — в сотых голоса: 20 — 0,2 голоса. Покупатели — процент от того, сколько их приходит по каталогу. Покупатели, склад, работники, касса, долг и аренда растут с уровнем: на 3-м уровне — втрое. Износ — в сотых процента в час: 10 — 0,1 %. Зарплаты и закупка — процент от цен каталога.</p>
         <div class="field-group">
           <label for="business-tax">Налог с выручки, %</label>
           <input class="text admin-casino-field" id="business-tax" type="number" min="0" max="100" required>
+        </div>
+        <div class="field-group">
+          <label for="business-wages">Зарплаты, % каталога</label>
+          <input class="text admin-casino-field" id="business-wages" type="number" min="0" required>
+        </div>
+        <div class="field-group">
+          <label for="business-goods">Закупка товара, % каталога</label>
+          <input class="text admin-casino-field" id="business-goods" type="number" min="0" required>
         </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>

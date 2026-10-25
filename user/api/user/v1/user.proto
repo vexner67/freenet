@@ -350,15 +350,19 @@ service UserService {
 
   // Require an access token: the businesses of the caller. A business is
   // bought for votes into the treasury (FailedPrecondition "you own this
-  // business already", "not enough votes"), and runs by itself: customers
-  // buy its goods at its price, workers serve them, wages and rent run,
-  // the premises wear down. RunBusiness does an action: "manage" (price
-  // and staff), "restock" (amount — units), "upgrade", "repair",
-  // "advertise", "deposit" (amount — votes into the till), "collect" (the
-  // till, less the tax), "improve" (perk — the next tier of an
-  // improvement, opened by the level: FailedPrecondition "the business
-  // level is too low for this improvement") and "sell" (half of what went
-  // into it and the till). A business that runs too deep into debt goes bankrupt
+  // business already", "not enough votes") and runs by itself, an hour
+  // after another: customers buy its offers at its prices while its
+  // workers serve them and its supplies last, wages and rent come out of
+  // the till, supplies spoil, the premises wear down, workers learn and
+  // change their mood, and events wait for an answer. RunBusiness does an
+  // action: "order" (supply, supplier, amount — units, for the votes of
+  // the owner), "contract" (supply, supplier, below, amount — a standing
+  // order from the till; amount 0 ends it), "price" (offer, price),
+  // "hire" (candidate), "fire", "bonus" and "raise" (worker), "upgrade",
+  // "repair", "advertise", "deposit" (amount — votes into the till),
+  // "collect" (the till, less the tax), "decide" (option — the answer to
+  // the event) and "sell" (half of what went into it and the till). A
+  // business that runs too deep into debt goes bankrupt
   // (FailedPrecondition "the business went bankrupt"). Taking votes out is
   // for pages a week old with a filled profile.
   rpc GetBusinesses(GetBusinessesRequest) returns (BusinessesState);
@@ -2207,28 +2211,23 @@ message SetMineRequest {
   MineSettings settings = 1;
 }
 
-// BusinessPlan is a kind of business: the votes it costs and its next
-// level costs times the level; customers an hour at the fair price, which
-// the demand falls to nothing at twice of; the cost of a unit of goods,
-// the storage, the customers a worker serves an hour and the workers a
-// level employs; wages and rent an hour in hundredths of a vote; the
-// condition lost an hour in hundredths of a percent and the votes a
-// percent of repair costs; the till and the debt, in votes times the
-// level; an advertisement.
+// BusinessPlan is a kind of business, as the administrators set it: the
+// votes it costs and its next level costs times the level; the percent of
+// the customers of the catalog it draws; the workers a level seats; rent
+// an hour in hundredths of a vote; the condition lost an hour in
+// hundredths of a percent and the votes a percent of repair costs; the
+// till and the debt, in votes times the level; an advertisement.
 message BusinessPlan {
+  reserved 6, 7, 8, 9, 11;
+  reserved "fair", "cost", "storage", "serve", "wage";
+
   string kind = 1;
   int64 price = 2;
   int64 upgrade = 3;
   int32 levels = 4;
+  // Percent.
   int64 demand = 5;
-  // Hundredths of a vote.
-  int64 fair = 6;
-  // Hundredths of a vote.
-  int64 cost = 7;
-  int64 storage = 8;
-  int64 serve = 9;
   int32 staff = 10;
-  int64 wage = 11;
   int64 rent = 12;
   int32 wear = 13;
   int64 repair = 14;
@@ -2245,49 +2244,230 @@ message BusinessSettings {
   repeated BusinessPlan plans = 1;
   // The percent of the till taken out that goes to the treasury.
   int32 tax = 2;
+  // The percents of the catalog wages workers ask and of the catalog
+  // costs supplies cost.
+  int32 wages = 3;
+  int32 goods = 4;
 }
 
-// Business is a business of the caller now.
+// BusinessCatalog is what a kind deals in: its supplies, its offers and
+// whom it employs.
+message BusinessCatalog {
+  string kind = 1;
+  repeated BusinessSupplySpec supplies = 2;
+  repeated BusinessOfferSpec offers = 3;
+  repeated BusinessProfessionSpec professions = 4;
+}
+
+// BusinessSupplySpec is a supply: a unit costs cost hundredths of a vote
+// at the reliable supplier, it spoils in spoil hours (0 — never), the
+// storage keeps storage units of it a level.
+message BusinessSupplySpec {
+  string supply = 1;
+  int64 cost = 2;
+  int32 spoil = 3;
+  int64 storage = 4;
+}
+
+// BusinessOfferSpec is an offer: a worker of the profession serves it, a
+// sale uses the recipe, a level draws demand customers an hour at the
+// fair price, in hundredths of a vote.
+message BusinessOfferSpec {
+  string offer = 1;
+  string profession = 2;
+  repeated BusinessIngredient recipe = 3;
+  int64 fair = 4;
+  double demand = 5;
+}
+
+message BusinessIngredient {
+  string supply = 1;
+  int64 units = 2;
+}
+
+// BusinessProfessionSpec is a profession: the wage an hour in hundredths
+// of a vote and the customers an hour a worker serves, both at skill 2
+// (no customers for those who do not serve).
+message BusinessProfessionSpec {
+  string profession = 1;
+  int64 wage = 2;
+  double serve = 3;
+}
+
+// BusinessSupplier is a supplier: the percent of the cost it charges, the
+// hours it brings an order in, the percent less it may bring.
+message BusinessSupplier {
+  string supplier = 1;
+  int64 percent = 2;
+  double hours = 3;
+  int32 short = 4;
+}
+
+// Business is a business of the caller now. Money is in hundredths of a
+// vote unless said.
 message Business {
+  reserved 3, 4, 5, 12, 13, 14, 15, 18, 19;
+  reserved "stock", "price", "staff", "customers", "served", "income", "costs", "perks", "storage";
+
   string kind = 1;
   int32 level = 2;
-  int64 stock = 3;
-  // Hundredths of a vote.
-  int64 price = 4;
-  int32 staff = 5;
   // Hundredths of a percent.
   int32 condition = 6;
-  // Hundredths of a vote; below zero — a debt.
+  // Below zero — a debt.
   int64 cash = 7;
   // When the advertisement ends; empty without one.
   google.protobuf.Timestamp ad_until = 8;
   bool bankrupt = 9;
+  // Votes.
   int64 invested = 10;
   int64 collected = 11;
-  // An hour now: customers, those served, income and costs in hundredths
-  // of a vote.
-  double customers = 12;
-  double served = 13;
-  double income = 14;
-  double costs = 15;
   // The votes the business sells for now; 0 when bankrupt or in debt.
   int64 resale = 16;
   bool in_debt = 17;
-  // The improvements in order: decor, brand, equipment, shelves, finish,
-  // training.
-  repeated BusinessPerk perks = 18;
-  // The units of goods the storage holds now: the level and the racks.
-  int64 storage = 19;
+  repeated BusinessStock supplies = 20;
+  repeated BusinessOfferState offers = 21;
+  repeated BusinessWorker workers = 22;
+  // Who may be hired until candidates_until.
+  repeated BusinessCandidate candidates = 23;
+  google.protobuf.Timestamp candidates_until = 24;
+  repeated BusinessOrder orders = 25;
+  repeated BusinessContract contracts = 26;
+  // What waits for an answer; empty kind without one.
+  BusinessEvent event = 27;
+  // What happened lately, the newest first.
+  repeated BusinessNote notes = 28;
+  // The last hours, the oldest first; the last one is going on.
+  repeated BusinessHour hours = 29;
+  int32 seats = 30;
+  // Until when a good review brings more customers; empty without one.
+  google.protobuf.Timestamp review_until = 31;
+  // The tax percent of a collect: an accountant takes his skill off it.
+  int32 tax = 32;
+  // An hour now.
+  double wages = 33;
+  double rent = 34;
+  // The most the till keeps and the debt it goes bankrupt past.
+  int64 till = 35;
+  int64 debt_limit = 36;
+  // How loaded the workers of each profession are: 1 — fully.
+  map<string, double> load = 37;
+  // The offer whose equipment is broken, and when a technician mends it.
+  string broken = 38;
+  google.protobuf.Timestamp broken_until = 39;
+  // Votes: the next level (0 at the top), a repair now.
+  int64 upgrade_cost = 40;
+  int64 repair_cost = 41;
 }
 
-// BusinessPerk is an improvement of a business: its tier (0 — not
-// bought, 3 at most), and the votes and the level of the business its
-// next tier costs and opens at (0 at the top tier).
-message BusinessPerk {
-  string perk = 1;
-  int32 tier = 2;
-  int64 next_price = 3;
-  int32 next_level = 4;
+// BusinessStock is a supply of a business: the units in the storage, on
+// the way and that fit; what a unit costs at each supplier; the units an
+// hour the offers use now; its contract, if any.
+message BusinessStock {
+  string supply = 1;
+  double units = 2;
+  int64 on_way = 3;
+  int64 storage = 4;
+  map<string, double> unit_costs = 5;
+  double use = 6;
+}
+
+// BusinessOfferState is an offer of a business now: its price, the
+// customers an hour, those its workers serve, and whether it is broken.
+message BusinessOfferState {
+  string offer = 1;
+  int64 price = 2;
+  double demand = 3;
+  double served = 4;
+  double capacity = 5;
+  bool broken = 6;
+}
+
+// BusinessWorker is a worker: the skill (1–5), the hours worked towards
+// the next one and how many it needs (0 at the top), the wage an hour,
+// the trait, the mood (0–100), how much of the profession he does (1 at
+// skill 2) and the votes a bonus costs.
+message BusinessWorker {
+  int32 id = 1;
+  string name = 2;
+  bool female = 3;
+  string profession = 4;
+  int32 skill = 5;
+  double xp = 6;
+  double next_xp = 7;
+  int64 wage = 8;
+  string trait = 9;
+  double mood = 10;
+  double rate = 11;
+  int64 bonus = 12;
+}
+
+message BusinessCandidate {
+  int64 id = 1;
+  BusinessWorker worker = 2;
+}
+
+message BusinessOrder {
+  int32 id = 1;
+  string supply = 2;
+  string supplier = 3;
+  int64 units = 4;
+  google.protobuf.Timestamp arrives = 5;
+  bool from_till = 6;
+}
+
+// BusinessContract is a standing order: while the supply in the storage
+// and on the way is below below, a buyer orders units of it from the
+// supplier, paying from the till; stalled — the till could not pay.
+message BusinessContract {
+  string supply = 1;
+  string supplier = 2;
+  int64 below = 3;
+  int64 units = 4;
+  bool stalled = 5;
+}
+
+// BusinessEvent is what waits for the owner until until: the offer, the
+// worker, the votes of a fine or a repair, the units of a big order and
+// its pay in hundredths; the answers, the default first.
+message BusinessEvent {
+  string kind = 1;
+  google.protobuf.Timestamp until = 2;
+  string offer = 3;
+  int32 worker = 4;
+  string name = 5;
+  bool female = 6;
+  int64 votes = 7;
+  int64 units = 8;
+  int64 pay = 9;
+  repeated string options = 10;
+}
+
+// BusinessNote is what happened: subject is the supply, offer or
+// profession, amount the units (or the skill, or 1 for a yes), money the
+// hundredths of a vote — or the units a delivery lost.
+message BusinessNote {
+  google.protobuf.Timestamp at = 1;
+  string kind = 2;
+  string subject = 3;
+  string name = 4;
+  bool female = 5;
+  double amount = 6;
+  double money = 7;
+}
+
+// BusinessHour is an hour of the clock: the sales of each offer, the
+// money in and out, the units spoiled and the customers who left with
+// nothing.
+message BusinessHour {
+  google.protobuf.Timestamp hour = 1;
+  map<string, double> sold = 2;
+  double income = 3;
+  double wages = 4;
+  double rent = 5;
+  double supplies = 6;
+  double losses = 7;
+  double spoiled = 8;
+  double unserved = 9;
 }
 
 message GetBusinessesRequest {}
@@ -2295,6 +2475,9 @@ message GetBusinessesRequest {}
 message BusinessesState {
   BusinessSettings settings = 1;
   repeated Business businesses = 2;
+  // What each kind deals in, in order, and the suppliers.
+  repeated BusinessCatalog catalog = 3;
+  repeated BusinessSupplier suppliers = 4;
 }
 
 message BuyBusinessRequest {
@@ -2302,15 +2485,24 @@ message BuyBusinessRequest {
 }
 
 message RunBusinessRequest {
+  reserved 5, 6;
+  reserved "staff", "perk";
+
   string kind = 1;
   string action = 2;
-  // The units of a restock, the votes of a deposit.
+  // The units of an order or a contract, the votes of a deposit.
   int64 amount = 3;
-  // What a manage sets: the price in hundredths and the workers.
+  // The price an offer is set at, in hundredths of a vote.
   int64 price = 4;
-  int32 staff = 5;
-  // The improvement an "improve" buys the next tier of.
-  string perk = 6;
+  string offer = 7;
+  string supply = 8;
+  string supplier = 9;
+  // The units a contract keeps the supply from going under.
+  int64 below = 10;
+  int32 worker = 11;
+  int64 candidate = 12;
+  // The answer to the event.
+  string option = 13;
 }
 
 message RunBusinessResponse {

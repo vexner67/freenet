@@ -14473,29 +14473,21 @@ func (x *SetMineRequest) GetSettings() *MineSettings {
 	return nil
 }
 
-// BusinessPlan is a kind of business: the votes it costs and its next
-// level costs times the level; customers an hour at the fair price, which
-// the demand falls to nothing at twice of; the cost of a unit of goods,
-// the storage, the customers a worker serves an hour and the workers a
-// level employs; wages and rent an hour in hundredths of a vote; the
-// condition lost an hour in hundredths of a percent and the votes a
-// percent of repair costs; the till and the debt, in votes times the
-// level; an advertisement.
+// BusinessPlan is a kind of business, as the administrators set it: the
+// votes it costs and its next level costs times the level; the percent of
+// the customers of the catalog it draws; the workers a level seats; rent
+// an hour in hundredths of a vote; the condition lost an hour in
+// hundredths of a percent and the votes a percent of repair costs; the
+// till and the debt, in votes times the level; an advertisement.
 type BusinessPlan struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	Kind    string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
 	Price   int64                  `protobuf:"varint,2,opt,name=price,proto3" json:"price,omitempty"`
 	Upgrade int64                  `protobuf:"varint,3,opt,name=upgrade,proto3" json:"upgrade,omitempty"`
 	Levels  int32                  `protobuf:"varint,4,opt,name=levels,proto3" json:"levels,omitempty"`
-	Demand  int64                  `protobuf:"varint,5,opt,name=demand,proto3" json:"demand,omitempty"`
-	// Hundredths of a vote.
-	Fair int64 `protobuf:"varint,6,opt,name=fair,proto3" json:"fair,omitempty"`
-	// Hundredths of a vote.
-	Cost    int64 `protobuf:"varint,7,opt,name=cost,proto3" json:"cost,omitempty"`
-	Storage int64 `protobuf:"varint,8,opt,name=storage,proto3" json:"storage,omitempty"`
-	Serve   int64 `protobuf:"varint,9,opt,name=serve,proto3" json:"serve,omitempty"`
+	// Percent.
+	Demand  int64 `protobuf:"varint,5,opt,name=demand,proto3" json:"demand,omitempty"`
 	Staff   int32 `protobuf:"varint,10,opt,name=staff,proto3" json:"staff,omitempty"`
-	Wage    int64 `protobuf:"varint,11,opt,name=wage,proto3" json:"wage,omitempty"`
 	Rent    int64 `protobuf:"varint,12,opt,name=rent,proto3" json:"rent,omitempty"`
 	Wear    int32 `protobuf:"varint,13,opt,name=wear,proto3" json:"wear,omitempty"`
 	Repair  int64 `protobuf:"varint,14,opt,name=repair,proto3" json:"repair,omitempty"`
@@ -14574,44 +14566,9 @@ func (x *BusinessPlan) GetDemand() int64 {
 	return 0
 }
 
-func (x *BusinessPlan) GetFair() int64 {
-	if x != nil {
-		return x.Fair
-	}
-	return 0
-}
-
-func (x *BusinessPlan) GetCost() int64 {
-	if x != nil {
-		return x.Cost
-	}
-	return 0
-}
-
-func (x *BusinessPlan) GetStorage() int64 {
-	if x != nil {
-		return x.Storage
-	}
-	return 0
-}
-
-func (x *BusinessPlan) GetServe() int64 {
-	if x != nil {
-		return x.Serve
-	}
-	return 0
-}
-
 func (x *BusinessPlan) GetStaff() int32 {
 	if x != nil {
 		return x.Staff
-	}
-	return 0
-}
-
-func (x *BusinessPlan) GetWage() int64 {
-	if x != nil {
-		return x.Wage
 	}
 	return 0
 }
@@ -14677,7 +14634,11 @@ type BusinessSettings struct {
 	// All kinds in order: kiosk, cafe, carwash, factory.
 	Plans []*BusinessPlan `protobuf:"bytes,1,rep,name=plans,proto3" json:"plans,omitempty"`
 	// The percent of the till taken out that goes to the treasury.
-	Tax           int32 `protobuf:"varint,2,opt,name=tax,proto3" json:"tax,omitempty"`
+	Tax int32 `protobuf:"varint,2,opt,name=tax,proto3" json:"tax,omitempty"`
+	// The percents of the catalog wages workers ask and of the catalog
+	// costs supplies cost.
+	Wages         int32 `protobuf:"varint,3,opt,name=wages,proto3" json:"wages,omitempty"`
+	Goods         int32 `protobuf:"varint,4,opt,name=goods,proto3" json:"goods,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -14726,45 +14687,484 @@ func (x *BusinessSettings) GetTax() int32 {
 	return 0
 }
 
-// Business is a business of the caller now.
+func (x *BusinessSettings) GetWages() int32 {
+	if x != nil {
+		return x.Wages
+	}
+	return 0
+}
+
+func (x *BusinessSettings) GetGoods() int32 {
+	if x != nil {
+		return x.Goods
+	}
+	return 0
+}
+
+// BusinessCatalog is what a kind deals in: its supplies, its offers and
+// whom it employs.
+type BusinessCatalog struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	Kind          string                    `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	Supplies      []*BusinessSupplySpec     `protobuf:"bytes,2,rep,name=supplies,proto3" json:"supplies,omitempty"`
+	Offers        []*BusinessOfferSpec      `protobuf:"bytes,3,rep,name=offers,proto3" json:"offers,omitempty"`
+	Professions   []*BusinessProfessionSpec `protobuf:"bytes,4,rep,name=professions,proto3" json:"professions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BusinessCatalog) Reset() {
+	*x = BusinessCatalog{}
+	mi := &file_api_user_v1_user_proto_msgTypes[233]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessCatalog) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessCatalog) ProtoMessage() {}
+
+func (x *BusinessCatalog) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[233]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessCatalog.ProtoReflect.Descriptor instead.
+func (*BusinessCatalog) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{233}
+}
+
+func (x *BusinessCatalog) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *BusinessCatalog) GetSupplies() []*BusinessSupplySpec {
+	if x != nil {
+		return x.Supplies
+	}
+	return nil
+}
+
+func (x *BusinessCatalog) GetOffers() []*BusinessOfferSpec {
+	if x != nil {
+		return x.Offers
+	}
+	return nil
+}
+
+func (x *BusinessCatalog) GetProfessions() []*BusinessProfessionSpec {
+	if x != nil {
+		return x.Professions
+	}
+	return nil
+}
+
+// BusinessSupplySpec is a supply: a unit costs cost hundredths of a vote
+// at the reliable supplier, it spoils in spoil hours (0 — never), the
+// storage keeps storage units of it a level.
+type BusinessSupplySpec struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Supply        string                 `protobuf:"bytes,1,opt,name=supply,proto3" json:"supply,omitempty"`
+	Cost          int64                  `protobuf:"varint,2,opt,name=cost,proto3" json:"cost,omitempty"`
+	Spoil         int32                  `protobuf:"varint,3,opt,name=spoil,proto3" json:"spoil,omitempty"`
+	Storage       int64                  `protobuf:"varint,4,opt,name=storage,proto3" json:"storage,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BusinessSupplySpec) Reset() {
+	*x = BusinessSupplySpec{}
+	mi := &file_api_user_v1_user_proto_msgTypes[234]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessSupplySpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessSupplySpec) ProtoMessage() {}
+
+func (x *BusinessSupplySpec) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[234]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessSupplySpec.ProtoReflect.Descriptor instead.
+func (*BusinessSupplySpec) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{234}
+}
+
+func (x *BusinessSupplySpec) GetSupply() string {
+	if x != nil {
+		return x.Supply
+	}
+	return ""
+}
+
+func (x *BusinessSupplySpec) GetCost() int64 {
+	if x != nil {
+		return x.Cost
+	}
+	return 0
+}
+
+func (x *BusinessSupplySpec) GetSpoil() int32 {
+	if x != nil {
+		return x.Spoil
+	}
+	return 0
+}
+
+func (x *BusinessSupplySpec) GetStorage() int64 {
+	if x != nil {
+		return x.Storage
+	}
+	return 0
+}
+
+// BusinessOfferSpec is an offer: a worker of the profession serves it, a
+// sale uses the recipe, a level draws demand customers an hour at the
+// fair price, in hundredths of a vote.
+type BusinessOfferSpec struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Offer         string                 `protobuf:"bytes,1,opt,name=offer,proto3" json:"offer,omitempty"`
+	Profession    string                 `protobuf:"bytes,2,opt,name=profession,proto3" json:"profession,omitempty"`
+	Recipe        []*BusinessIngredient  `protobuf:"bytes,3,rep,name=recipe,proto3" json:"recipe,omitempty"`
+	Fair          int64                  `protobuf:"varint,4,opt,name=fair,proto3" json:"fair,omitempty"`
+	Demand        float64                `protobuf:"fixed64,5,opt,name=demand,proto3" json:"demand,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BusinessOfferSpec) Reset() {
+	*x = BusinessOfferSpec{}
+	mi := &file_api_user_v1_user_proto_msgTypes[235]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessOfferSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessOfferSpec) ProtoMessage() {}
+
+func (x *BusinessOfferSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[235]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessOfferSpec.ProtoReflect.Descriptor instead.
+func (*BusinessOfferSpec) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{235}
+}
+
+func (x *BusinessOfferSpec) GetOffer() string {
+	if x != nil {
+		return x.Offer
+	}
+	return ""
+}
+
+func (x *BusinessOfferSpec) GetProfession() string {
+	if x != nil {
+		return x.Profession
+	}
+	return ""
+}
+
+func (x *BusinessOfferSpec) GetRecipe() []*BusinessIngredient {
+	if x != nil {
+		return x.Recipe
+	}
+	return nil
+}
+
+func (x *BusinessOfferSpec) GetFair() int64 {
+	if x != nil {
+		return x.Fair
+	}
+	return 0
+}
+
+func (x *BusinessOfferSpec) GetDemand() float64 {
+	if x != nil {
+		return x.Demand
+	}
+	return 0
+}
+
+type BusinessIngredient struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Supply        string                 `protobuf:"bytes,1,opt,name=supply,proto3" json:"supply,omitempty"`
+	Units         int64                  `protobuf:"varint,2,opt,name=units,proto3" json:"units,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BusinessIngredient) Reset() {
+	*x = BusinessIngredient{}
+	mi := &file_api_user_v1_user_proto_msgTypes[236]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessIngredient) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessIngredient) ProtoMessage() {}
+
+func (x *BusinessIngredient) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[236]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessIngredient.ProtoReflect.Descriptor instead.
+func (*BusinessIngredient) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{236}
+}
+
+func (x *BusinessIngredient) GetSupply() string {
+	if x != nil {
+		return x.Supply
+	}
+	return ""
+}
+
+func (x *BusinessIngredient) GetUnits() int64 {
+	if x != nil {
+		return x.Units
+	}
+	return 0
+}
+
+// BusinessProfessionSpec is a profession: the wage an hour in hundredths
+// of a vote and the customers an hour a worker serves, both at skill 2
+// (no customers for those who do not serve).
+type BusinessProfessionSpec struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Profession    string                 `protobuf:"bytes,1,opt,name=profession,proto3" json:"profession,omitempty"`
+	Wage          int64                  `protobuf:"varint,2,opt,name=wage,proto3" json:"wage,omitempty"`
+	Serve         float64                `protobuf:"fixed64,3,opt,name=serve,proto3" json:"serve,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BusinessProfessionSpec) Reset() {
+	*x = BusinessProfessionSpec{}
+	mi := &file_api_user_v1_user_proto_msgTypes[237]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessProfessionSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessProfessionSpec) ProtoMessage() {}
+
+func (x *BusinessProfessionSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[237]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessProfessionSpec.ProtoReflect.Descriptor instead.
+func (*BusinessProfessionSpec) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{237}
+}
+
+func (x *BusinessProfessionSpec) GetProfession() string {
+	if x != nil {
+		return x.Profession
+	}
+	return ""
+}
+
+func (x *BusinessProfessionSpec) GetWage() int64 {
+	if x != nil {
+		return x.Wage
+	}
+	return 0
+}
+
+func (x *BusinessProfessionSpec) GetServe() float64 {
+	if x != nil {
+		return x.Serve
+	}
+	return 0
+}
+
+// BusinessSupplier is a supplier: the percent of the cost it charges, the
+// hours it brings an order in, the percent less it may bring.
+type BusinessSupplier struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Supplier      string                 `protobuf:"bytes,1,opt,name=supplier,proto3" json:"supplier,omitempty"`
+	Percent       int64                  `protobuf:"varint,2,opt,name=percent,proto3" json:"percent,omitempty"`
+	Hours         float64                `protobuf:"fixed64,3,opt,name=hours,proto3" json:"hours,omitempty"`
+	Short         int32                  `protobuf:"varint,4,opt,name=short,proto3" json:"short,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BusinessSupplier) Reset() {
+	*x = BusinessSupplier{}
+	mi := &file_api_user_v1_user_proto_msgTypes[238]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessSupplier) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessSupplier) ProtoMessage() {}
+
+func (x *BusinessSupplier) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[238]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessSupplier.ProtoReflect.Descriptor instead.
+func (*BusinessSupplier) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{238}
+}
+
+func (x *BusinessSupplier) GetSupplier() string {
+	if x != nil {
+		return x.Supplier
+	}
+	return ""
+}
+
+func (x *BusinessSupplier) GetPercent() int64 {
+	if x != nil {
+		return x.Percent
+	}
+	return 0
+}
+
+func (x *BusinessSupplier) GetHours() float64 {
+	if x != nil {
+		return x.Hours
+	}
+	return 0
+}
+
+func (x *BusinessSupplier) GetShort() int32 {
+	if x != nil {
+		return x.Short
+	}
+	return 0
+}
+
+// Business is a business of the caller now. Money is in hundredths of a
+// vote unless said.
 type Business struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Kind  string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
 	Level int32                  `protobuf:"varint,2,opt,name=level,proto3" json:"level,omitempty"`
-	Stock int64                  `protobuf:"varint,3,opt,name=stock,proto3" json:"stock,omitempty"`
-	// Hundredths of a vote.
-	Price int64 `protobuf:"varint,4,opt,name=price,proto3" json:"price,omitempty"`
-	Staff int32 `protobuf:"varint,5,opt,name=staff,proto3" json:"staff,omitempty"`
 	// Hundredths of a percent.
 	Condition int32 `protobuf:"varint,6,opt,name=condition,proto3" json:"condition,omitempty"`
-	// Hundredths of a vote; below zero — a debt.
+	// Below zero — a debt.
 	Cash int64 `protobuf:"varint,7,opt,name=cash,proto3" json:"cash,omitempty"`
 	// When the advertisement ends; empty without one.
-	AdUntil   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=ad_until,json=adUntil,proto3" json:"ad_until,omitempty"`
-	Bankrupt  bool                   `protobuf:"varint,9,opt,name=bankrupt,proto3" json:"bankrupt,omitempty"`
-	Invested  int64                  `protobuf:"varint,10,opt,name=invested,proto3" json:"invested,omitempty"`
-	Collected int64                  `protobuf:"varint,11,opt,name=collected,proto3" json:"collected,omitempty"`
-	// An hour now: customers, those served, income and costs in hundredths
-	// of a vote.
-	Customers float64 `protobuf:"fixed64,12,opt,name=customers,proto3" json:"customers,omitempty"`
-	Served    float64 `protobuf:"fixed64,13,opt,name=served,proto3" json:"served,omitempty"`
-	Income    float64 `protobuf:"fixed64,14,opt,name=income,proto3" json:"income,omitempty"`
-	Costs     float64 `protobuf:"fixed64,15,opt,name=costs,proto3" json:"costs,omitempty"`
+	AdUntil  *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=ad_until,json=adUntil,proto3" json:"ad_until,omitempty"`
+	Bankrupt bool                   `protobuf:"varint,9,opt,name=bankrupt,proto3" json:"bankrupt,omitempty"`
+	// Votes.
+	Invested  int64 `protobuf:"varint,10,opt,name=invested,proto3" json:"invested,omitempty"`
+	Collected int64 `protobuf:"varint,11,opt,name=collected,proto3" json:"collected,omitempty"`
 	// The votes the business sells for now; 0 when bankrupt or in debt.
-	Resale int64 `protobuf:"varint,16,opt,name=resale,proto3" json:"resale,omitempty"`
-	InDebt bool  `protobuf:"varint,17,opt,name=in_debt,json=inDebt,proto3" json:"in_debt,omitempty"`
-	// The improvements in order: decor, brand, equipment, shelves, finish,
-	// training.
-	Perks []*BusinessPerk `protobuf:"bytes,18,rep,name=perks,proto3" json:"perks,omitempty"`
-	// The units of goods the storage holds now: the level and the racks.
-	Storage       int64 `protobuf:"varint,19,opt,name=storage,proto3" json:"storage,omitempty"`
+	Resale   int64                 `protobuf:"varint,16,opt,name=resale,proto3" json:"resale,omitempty"`
+	InDebt   bool                  `protobuf:"varint,17,opt,name=in_debt,json=inDebt,proto3" json:"in_debt,omitempty"`
+	Supplies []*BusinessStock      `protobuf:"bytes,20,rep,name=supplies,proto3" json:"supplies,omitempty"`
+	Offers   []*BusinessOfferState `protobuf:"bytes,21,rep,name=offers,proto3" json:"offers,omitempty"`
+	Workers  []*BusinessWorker     `protobuf:"bytes,22,rep,name=workers,proto3" json:"workers,omitempty"`
+	// Who may be hired until candidates_until.
+	Candidates      []*BusinessCandidate   `protobuf:"bytes,23,rep,name=candidates,proto3" json:"candidates,omitempty"`
+	CandidatesUntil *timestamppb.Timestamp `protobuf:"bytes,24,opt,name=candidates_until,json=candidatesUntil,proto3" json:"candidates_until,omitempty"`
+	Orders          []*BusinessOrder       `protobuf:"bytes,25,rep,name=orders,proto3" json:"orders,omitempty"`
+	Contracts       []*BusinessContract    `protobuf:"bytes,26,rep,name=contracts,proto3" json:"contracts,omitempty"`
+	// What waits for an answer; empty kind without one.
+	Event *BusinessEvent `protobuf:"bytes,27,opt,name=event,proto3" json:"event,omitempty"`
+	// What happened lately, the newest first.
+	Notes []*BusinessNote `protobuf:"bytes,28,rep,name=notes,proto3" json:"notes,omitempty"`
+	// The last hours, the oldest first; the last one is going on.
+	Hours []*BusinessHour `protobuf:"bytes,29,rep,name=hours,proto3" json:"hours,omitempty"`
+	Seats int32           `protobuf:"varint,30,opt,name=seats,proto3" json:"seats,omitempty"`
+	// Until when a good review brings more customers; empty without one.
+	ReviewUntil *timestamppb.Timestamp `protobuf:"bytes,31,opt,name=review_until,json=reviewUntil,proto3" json:"review_until,omitempty"`
+	// The tax percent of a collect: an accountant takes his skill off it.
+	Tax int32 `protobuf:"varint,32,opt,name=tax,proto3" json:"tax,omitempty"`
+	// An hour now.
+	Wages float64 `protobuf:"fixed64,33,opt,name=wages,proto3" json:"wages,omitempty"`
+	Rent  float64 `protobuf:"fixed64,34,opt,name=rent,proto3" json:"rent,omitempty"`
+	// The most the till keeps and the debt it goes bankrupt past.
+	Till      int64 `protobuf:"varint,35,opt,name=till,proto3" json:"till,omitempty"`
+	DebtLimit int64 `protobuf:"varint,36,opt,name=debt_limit,json=debtLimit,proto3" json:"debt_limit,omitempty"`
+	// How loaded the workers of each profession are: 1 — fully.
+	Load map[string]float64 `protobuf:"bytes,37,rep,name=load,proto3" json:"load,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
+	// The offer whose equipment is broken, and when a technician mends it.
+	Broken      string                 `protobuf:"bytes,38,opt,name=broken,proto3" json:"broken,omitempty"`
+	BrokenUntil *timestamppb.Timestamp `protobuf:"bytes,39,opt,name=broken_until,json=brokenUntil,proto3" json:"broken_until,omitempty"`
+	// Votes: the next level (0 at the top), a repair now.
+	UpgradeCost   int64 `protobuf:"varint,40,opt,name=upgrade_cost,json=upgradeCost,proto3" json:"upgrade_cost,omitempty"`
+	RepairCost    int64 `protobuf:"varint,41,opt,name=repair_cost,json=repairCost,proto3" json:"repair_cost,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Business) Reset() {
 	*x = Business{}
-	mi := &file_api_user_v1_user_proto_msgTypes[233]
+	mi := &file_api_user_v1_user_proto_msgTypes[239]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14776,7 +15176,7 @@ func (x *Business) String() string {
 func (*Business) ProtoMessage() {}
 
 func (x *Business) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[233]
+	mi := &file_api_user_v1_user_proto_msgTypes[239]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14789,7 +15189,7 @@ func (x *Business) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Business.ProtoReflect.Descriptor instead.
 func (*Business) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{233}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{239}
 }
 
 func (x *Business) GetKind() string {
@@ -14802,27 +15202,6 @@ func (x *Business) GetKind() string {
 func (x *Business) GetLevel() int32 {
 	if x != nil {
 		return x.Level
-	}
-	return 0
-}
-
-func (x *Business) GetStock() int64 {
-	if x != nil {
-		return x.Stock
-	}
-	return 0
-}
-
-func (x *Business) GetPrice() int64 {
-	if x != nil {
-		return x.Price
-	}
-	return 0
-}
-
-func (x *Business) GetStaff() int32 {
-	if x != nil {
-		return x.Staff
 	}
 	return 0
 }
@@ -14869,34 +15248,6 @@ func (x *Business) GetCollected() int64 {
 	return 0
 }
 
-func (x *Business) GetCustomers() float64 {
-	if x != nil {
-		return x.Customers
-	}
-	return 0
-}
-
-func (x *Business) GetServed() float64 {
-	if x != nil {
-		return x.Served
-	}
-	return 0
-}
-
-func (x *Business) GetIncome() float64 {
-	if x != nil {
-		return x.Income
-	}
-	return 0
-}
-
-func (x *Business) GetCosts() float64 {
-	if x != nil {
-		return x.Costs
-	}
-	return 0
-}
-
 func (x *Business) GetResale() int64 {
 	if x != nil {
 		return x.Resale
@@ -14911,48 +15262,190 @@ func (x *Business) GetInDebt() bool {
 	return false
 }
 
-func (x *Business) GetPerks() []*BusinessPerk {
+func (x *Business) GetSupplies() []*BusinessStock {
 	if x != nil {
-		return x.Perks
+		return x.Supplies
 	}
 	return nil
 }
 
-func (x *Business) GetStorage() int64 {
+func (x *Business) GetOffers() []*BusinessOfferState {
 	if x != nil {
-		return x.Storage
+		return x.Offers
+	}
+	return nil
+}
+
+func (x *Business) GetWorkers() []*BusinessWorker {
+	if x != nil {
+		return x.Workers
+	}
+	return nil
+}
+
+func (x *Business) GetCandidates() []*BusinessCandidate {
+	if x != nil {
+		return x.Candidates
+	}
+	return nil
+}
+
+func (x *Business) GetCandidatesUntil() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CandidatesUntil
+	}
+	return nil
+}
+
+func (x *Business) GetOrders() []*BusinessOrder {
+	if x != nil {
+		return x.Orders
+	}
+	return nil
+}
+
+func (x *Business) GetContracts() []*BusinessContract {
+	if x != nil {
+		return x.Contracts
+	}
+	return nil
+}
+
+func (x *Business) GetEvent() *BusinessEvent {
+	if x != nil {
+		return x.Event
+	}
+	return nil
+}
+
+func (x *Business) GetNotes() []*BusinessNote {
+	if x != nil {
+		return x.Notes
+	}
+	return nil
+}
+
+func (x *Business) GetHours() []*BusinessHour {
+	if x != nil {
+		return x.Hours
+	}
+	return nil
+}
+
+func (x *Business) GetSeats() int32 {
+	if x != nil {
+		return x.Seats
 	}
 	return 0
 }
 
-// BusinessPerk is an improvement of a business: its tier (0 — not
-// bought, 3 at most), and the votes and the level of the business its
-// next tier costs and opens at (0 at the top tier).
-type BusinessPerk struct {
+func (x *Business) GetReviewUntil() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ReviewUntil
+	}
+	return nil
+}
+
+func (x *Business) GetTax() int32 {
+	if x != nil {
+		return x.Tax
+	}
+	return 0
+}
+
+func (x *Business) GetWages() float64 {
+	if x != nil {
+		return x.Wages
+	}
+	return 0
+}
+
+func (x *Business) GetRent() float64 {
+	if x != nil {
+		return x.Rent
+	}
+	return 0
+}
+
+func (x *Business) GetTill() int64 {
+	if x != nil {
+		return x.Till
+	}
+	return 0
+}
+
+func (x *Business) GetDebtLimit() int64 {
+	if x != nil {
+		return x.DebtLimit
+	}
+	return 0
+}
+
+func (x *Business) GetLoad() map[string]float64 {
+	if x != nil {
+		return x.Load
+	}
+	return nil
+}
+
+func (x *Business) GetBroken() string {
+	if x != nil {
+		return x.Broken
+	}
+	return ""
+}
+
+func (x *Business) GetBrokenUntil() *timestamppb.Timestamp {
+	if x != nil {
+		return x.BrokenUntil
+	}
+	return nil
+}
+
+func (x *Business) GetUpgradeCost() int64 {
+	if x != nil {
+		return x.UpgradeCost
+	}
+	return 0
+}
+
+func (x *Business) GetRepairCost() int64 {
+	if x != nil {
+		return x.RepairCost
+	}
+	return 0
+}
+
+// BusinessStock is a supply of a business: the units in the storage, on
+// the way and that fit; what a unit costs at each supplier; the units an
+// hour the offers use now; its contract, if any.
+type BusinessStock struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Perk          string                 `protobuf:"bytes,1,opt,name=perk,proto3" json:"perk,omitempty"`
-	Tier          int32                  `protobuf:"varint,2,opt,name=tier,proto3" json:"tier,omitempty"`
-	NextPrice     int64                  `protobuf:"varint,3,opt,name=next_price,json=nextPrice,proto3" json:"next_price,omitempty"`
-	NextLevel     int32                  `protobuf:"varint,4,opt,name=next_level,json=nextLevel,proto3" json:"next_level,omitempty"`
+	Supply        string                 `protobuf:"bytes,1,opt,name=supply,proto3" json:"supply,omitempty"`
+	Units         float64                `protobuf:"fixed64,2,opt,name=units,proto3" json:"units,omitempty"`
+	OnWay         int64                  `protobuf:"varint,3,opt,name=on_way,json=onWay,proto3" json:"on_way,omitempty"`
+	Storage       int64                  `protobuf:"varint,4,opt,name=storage,proto3" json:"storage,omitempty"`
+	UnitCosts     map[string]float64     `protobuf:"bytes,5,rep,name=unit_costs,json=unitCosts,proto3" json:"unit_costs,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
+	Use           float64                `protobuf:"fixed64,6,opt,name=use,proto3" json:"use,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *BusinessPerk) Reset() {
-	*x = BusinessPerk{}
-	mi := &file_api_user_v1_user_proto_msgTypes[234]
+func (x *BusinessStock) Reset() {
+	*x = BusinessStock{}
+	mi := &file_api_user_v1_user_proto_msgTypes[240]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *BusinessPerk) String() string {
+func (x *BusinessStock) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*BusinessPerk) ProtoMessage() {}
+func (*BusinessStock) ProtoMessage() {}
 
-func (x *BusinessPerk) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[234]
+func (x *BusinessStock) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[240]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14963,35 +15456,811 @@ func (x *BusinessPerk) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use BusinessPerk.ProtoReflect.Descriptor instead.
-func (*BusinessPerk) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{234}
+// Deprecated: Use BusinessStock.ProtoReflect.Descriptor instead.
+func (*BusinessStock) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{240}
 }
 
-func (x *BusinessPerk) GetPerk() string {
+func (x *BusinessStock) GetSupply() string {
 	if x != nil {
-		return x.Perk
+		return x.Supply
 	}
 	return ""
 }
 
-func (x *BusinessPerk) GetTier() int32 {
+func (x *BusinessStock) GetUnits() float64 {
 	if x != nil {
-		return x.Tier
+		return x.Units
 	}
 	return 0
 }
 
-func (x *BusinessPerk) GetNextPrice() int64 {
+func (x *BusinessStock) GetOnWay() int64 {
 	if x != nil {
-		return x.NextPrice
+		return x.OnWay
 	}
 	return 0
 }
 
-func (x *BusinessPerk) GetNextLevel() int32 {
+func (x *BusinessStock) GetStorage() int64 {
 	if x != nil {
-		return x.NextLevel
+		return x.Storage
+	}
+	return 0
+}
+
+func (x *BusinessStock) GetUnitCosts() map[string]float64 {
+	if x != nil {
+		return x.UnitCosts
+	}
+	return nil
+}
+
+func (x *BusinessStock) GetUse() float64 {
+	if x != nil {
+		return x.Use
+	}
+	return 0
+}
+
+// BusinessOfferState is an offer of a business now: its price, the
+// customers an hour, those its workers serve, and whether it is broken.
+type BusinessOfferState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Offer         string                 `protobuf:"bytes,1,opt,name=offer,proto3" json:"offer,omitempty"`
+	Price         int64                  `protobuf:"varint,2,opt,name=price,proto3" json:"price,omitempty"`
+	Demand        float64                `protobuf:"fixed64,3,opt,name=demand,proto3" json:"demand,omitempty"`
+	Served        float64                `protobuf:"fixed64,4,opt,name=served,proto3" json:"served,omitempty"`
+	Capacity      float64                `protobuf:"fixed64,5,opt,name=capacity,proto3" json:"capacity,omitempty"`
+	Broken        bool                   `protobuf:"varint,6,opt,name=broken,proto3" json:"broken,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BusinessOfferState) Reset() {
+	*x = BusinessOfferState{}
+	mi := &file_api_user_v1_user_proto_msgTypes[241]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessOfferState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessOfferState) ProtoMessage() {}
+
+func (x *BusinessOfferState) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[241]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessOfferState.ProtoReflect.Descriptor instead.
+func (*BusinessOfferState) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{241}
+}
+
+func (x *BusinessOfferState) GetOffer() string {
+	if x != nil {
+		return x.Offer
+	}
+	return ""
+}
+
+func (x *BusinessOfferState) GetPrice() int64 {
+	if x != nil {
+		return x.Price
+	}
+	return 0
+}
+
+func (x *BusinessOfferState) GetDemand() float64 {
+	if x != nil {
+		return x.Demand
+	}
+	return 0
+}
+
+func (x *BusinessOfferState) GetServed() float64 {
+	if x != nil {
+		return x.Served
+	}
+	return 0
+}
+
+func (x *BusinessOfferState) GetCapacity() float64 {
+	if x != nil {
+		return x.Capacity
+	}
+	return 0
+}
+
+func (x *BusinessOfferState) GetBroken() bool {
+	if x != nil {
+		return x.Broken
+	}
+	return false
+}
+
+// BusinessWorker is a worker: the skill (1–5), the hours worked towards
+// the next one and how many it needs (0 at the top), the wage an hour,
+// the trait, the mood (0–100), how much of the profession he does (1 at
+// skill 2) and the votes a bonus costs.
+type BusinessWorker struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Female        bool                   `protobuf:"varint,3,opt,name=female,proto3" json:"female,omitempty"`
+	Profession    string                 `protobuf:"bytes,4,opt,name=profession,proto3" json:"profession,omitempty"`
+	Skill         int32                  `protobuf:"varint,5,opt,name=skill,proto3" json:"skill,omitempty"`
+	Xp            float64                `protobuf:"fixed64,6,opt,name=xp,proto3" json:"xp,omitempty"`
+	NextXp        float64                `protobuf:"fixed64,7,opt,name=next_xp,json=nextXp,proto3" json:"next_xp,omitempty"`
+	Wage          int64                  `protobuf:"varint,8,opt,name=wage,proto3" json:"wage,omitempty"`
+	Trait         string                 `protobuf:"bytes,9,opt,name=trait,proto3" json:"trait,omitempty"`
+	Mood          float64                `protobuf:"fixed64,10,opt,name=mood,proto3" json:"mood,omitempty"`
+	Rate          float64                `protobuf:"fixed64,11,opt,name=rate,proto3" json:"rate,omitempty"`
+	Bonus         int64                  `protobuf:"varint,12,opt,name=bonus,proto3" json:"bonus,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BusinessWorker) Reset() {
+	*x = BusinessWorker{}
+	mi := &file_api_user_v1_user_proto_msgTypes[242]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessWorker) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessWorker) ProtoMessage() {}
+
+func (x *BusinessWorker) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[242]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessWorker.ProtoReflect.Descriptor instead.
+func (*BusinessWorker) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{242}
+}
+
+func (x *BusinessWorker) GetId() int32 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *BusinessWorker) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *BusinessWorker) GetFemale() bool {
+	if x != nil {
+		return x.Female
+	}
+	return false
+}
+
+func (x *BusinessWorker) GetProfession() string {
+	if x != nil {
+		return x.Profession
+	}
+	return ""
+}
+
+func (x *BusinessWorker) GetSkill() int32 {
+	if x != nil {
+		return x.Skill
+	}
+	return 0
+}
+
+func (x *BusinessWorker) GetXp() float64 {
+	if x != nil {
+		return x.Xp
+	}
+	return 0
+}
+
+func (x *BusinessWorker) GetNextXp() float64 {
+	if x != nil {
+		return x.NextXp
+	}
+	return 0
+}
+
+func (x *BusinessWorker) GetWage() int64 {
+	if x != nil {
+		return x.Wage
+	}
+	return 0
+}
+
+func (x *BusinessWorker) GetTrait() string {
+	if x != nil {
+		return x.Trait
+	}
+	return ""
+}
+
+func (x *BusinessWorker) GetMood() float64 {
+	if x != nil {
+		return x.Mood
+	}
+	return 0
+}
+
+func (x *BusinessWorker) GetRate() float64 {
+	if x != nil {
+		return x.Rate
+	}
+	return 0
+}
+
+func (x *BusinessWorker) GetBonus() int64 {
+	if x != nil {
+		return x.Bonus
+	}
+	return 0
+}
+
+type BusinessCandidate struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Worker        *BusinessWorker        `protobuf:"bytes,2,opt,name=worker,proto3" json:"worker,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BusinessCandidate) Reset() {
+	*x = BusinessCandidate{}
+	mi := &file_api_user_v1_user_proto_msgTypes[243]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessCandidate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessCandidate) ProtoMessage() {}
+
+func (x *BusinessCandidate) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[243]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessCandidate.ProtoReflect.Descriptor instead.
+func (*BusinessCandidate) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{243}
+}
+
+func (x *BusinessCandidate) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *BusinessCandidate) GetWorker() *BusinessWorker {
+	if x != nil {
+		return x.Worker
+	}
+	return nil
+}
+
+type BusinessOrder struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Supply        string                 `protobuf:"bytes,2,opt,name=supply,proto3" json:"supply,omitempty"`
+	Supplier      string                 `protobuf:"bytes,3,opt,name=supplier,proto3" json:"supplier,omitempty"`
+	Units         int64                  `protobuf:"varint,4,opt,name=units,proto3" json:"units,omitempty"`
+	Arrives       *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=arrives,proto3" json:"arrives,omitempty"`
+	FromTill      bool                   `protobuf:"varint,6,opt,name=from_till,json=fromTill,proto3" json:"from_till,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BusinessOrder) Reset() {
+	*x = BusinessOrder{}
+	mi := &file_api_user_v1_user_proto_msgTypes[244]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessOrder) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessOrder) ProtoMessage() {}
+
+func (x *BusinessOrder) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[244]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessOrder.ProtoReflect.Descriptor instead.
+func (*BusinessOrder) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{244}
+}
+
+func (x *BusinessOrder) GetId() int32 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *BusinessOrder) GetSupply() string {
+	if x != nil {
+		return x.Supply
+	}
+	return ""
+}
+
+func (x *BusinessOrder) GetSupplier() string {
+	if x != nil {
+		return x.Supplier
+	}
+	return ""
+}
+
+func (x *BusinessOrder) GetUnits() int64 {
+	if x != nil {
+		return x.Units
+	}
+	return 0
+}
+
+func (x *BusinessOrder) GetArrives() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Arrives
+	}
+	return nil
+}
+
+func (x *BusinessOrder) GetFromTill() bool {
+	if x != nil {
+		return x.FromTill
+	}
+	return false
+}
+
+// BusinessContract is a standing order: while the supply in the storage
+// and on the way is below below, a buyer orders units of it from the
+// supplier, paying from the till; stalled — the till could not pay.
+type BusinessContract struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Supply        string                 `protobuf:"bytes,1,opt,name=supply,proto3" json:"supply,omitempty"`
+	Supplier      string                 `protobuf:"bytes,2,opt,name=supplier,proto3" json:"supplier,omitempty"`
+	Below         int64                  `protobuf:"varint,3,opt,name=below,proto3" json:"below,omitempty"`
+	Units         int64                  `protobuf:"varint,4,opt,name=units,proto3" json:"units,omitempty"`
+	Stalled       bool                   `protobuf:"varint,5,opt,name=stalled,proto3" json:"stalled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BusinessContract) Reset() {
+	*x = BusinessContract{}
+	mi := &file_api_user_v1_user_proto_msgTypes[245]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessContract) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessContract) ProtoMessage() {}
+
+func (x *BusinessContract) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[245]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessContract.ProtoReflect.Descriptor instead.
+func (*BusinessContract) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{245}
+}
+
+func (x *BusinessContract) GetSupply() string {
+	if x != nil {
+		return x.Supply
+	}
+	return ""
+}
+
+func (x *BusinessContract) GetSupplier() string {
+	if x != nil {
+		return x.Supplier
+	}
+	return ""
+}
+
+func (x *BusinessContract) GetBelow() int64 {
+	if x != nil {
+		return x.Below
+	}
+	return 0
+}
+
+func (x *BusinessContract) GetUnits() int64 {
+	if x != nil {
+		return x.Units
+	}
+	return 0
+}
+
+func (x *BusinessContract) GetStalled() bool {
+	if x != nil {
+		return x.Stalled
+	}
+	return false
+}
+
+// BusinessEvent is what waits for the owner until until: the offer, the
+// worker, the votes of a fine or a repair, the units of a big order and
+// its pay in hundredths; the answers, the default first.
+type BusinessEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kind          string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	Until         *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=until,proto3" json:"until,omitempty"`
+	Offer         string                 `protobuf:"bytes,3,opt,name=offer,proto3" json:"offer,omitempty"`
+	Worker        int32                  `protobuf:"varint,4,opt,name=worker,proto3" json:"worker,omitempty"`
+	Name          string                 `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	Female        bool                   `protobuf:"varint,6,opt,name=female,proto3" json:"female,omitempty"`
+	Votes         int64                  `protobuf:"varint,7,opt,name=votes,proto3" json:"votes,omitempty"`
+	Units         int64                  `protobuf:"varint,8,opt,name=units,proto3" json:"units,omitempty"`
+	Pay           int64                  `protobuf:"varint,9,opt,name=pay,proto3" json:"pay,omitempty"`
+	Options       []string               `protobuf:"bytes,10,rep,name=options,proto3" json:"options,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BusinessEvent) Reset() {
+	*x = BusinessEvent{}
+	mi := &file_api_user_v1_user_proto_msgTypes[246]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessEvent) ProtoMessage() {}
+
+func (x *BusinessEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[246]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessEvent.ProtoReflect.Descriptor instead.
+func (*BusinessEvent) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{246}
+}
+
+func (x *BusinessEvent) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *BusinessEvent) GetUntil() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Until
+	}
+	return nil
+}
+
+func (x *BusinessEvent) GetOffer() string {
+	if x != nil {
+		return x.Offer
+	}
+	return ""
+}
+
+func (x *BusinessEvent) GetWorker() int32 {
+	if x != nil {
+		return x.Worker
+	}
+	return 0
+}
+
+func (x *BusinessEvent) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *BusinessEvent) GetFemale() bool {
+	if x != nil {
+		return x.Female
+	}
+	return false
+}
+
+func (x *BusinessEvent) GetVotes() int64 {
+	if x != nil {
+		return x.Votes
+	}
+	return 0
+}
+
+func (x *BusinessEvent) GetUnits() int64 {
+	if x != nil {
+		return x.Units
+	}
+	return 0
+}
+
+func (x *BusinessEvent) GetPay() int64 {
+	if x != nil {
+		return x.Pay
+	}
+	return 0
+}
+
+func (x *BusinessEvent) GetOptions() []string {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
+// BusinessNote is what happened: subject is the supply, offer or
+// profession, amount the units (or the skill, or 1 for a yes), money the
+// hundredths of a vote — or the units a delivery lost.
+type BusinessNote struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	At            *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=at,proto3" json:"at,omitempty"`
+	Kind          string                 `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	Subject       string                 `protobuf:"bytes,3,opt,name=subject,proto3" json:"subject,omitempty"`
+	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Female        bool                   `protobuf:"varint,5,opt,name=female,proto3" json:"female,omitempty"`
+	Amount        float64                `protobuf:"fixed64,6,opt,name=amount,proto3" json:"amount,omitempty"`
+	Money         float64                `protobuf:"fixed64,7,opt,name=money,proto3" json:"money,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BusinessNote) Reset() {
+	*x = BusinessNote{}
+	mi := &file_api_user_v1_user_proto_msgTypes[247]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessNote) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessNote) ProtoMessage() {}
+
+func (x *BusinessNote) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[247]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessNote.ProtoReflect.Descriptor instead.
+func (*BusinessNote) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{247}
+}
+
+func (x *BusinessNote) GetAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.At
+	}
+	return nil
+}
+
+func (x *BusinessNote) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *BusinessNote) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
+}
+
+func (x *BusinessNote) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *BusinessNote) GetFemale() bool {
+	if x != nil {
+		return x.Female
+	}
+	return false
+}
+
+func (x *BusinessNote) GetAmount() float64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *BusinessNote) GetMoney() float64 {
+	if x != nil {
+		return x.Money
+	}
+	return 0
+}
+
+// BusinessHour is an hour of the clock: the sales of each offer, the
+// money in and out, the units spoiled and the customers who left with
+// nothing.
+type BusinessHour struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Hour          *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=hour,proto3" json:"hour,omitempty"`
+	Sold          map[string]float64     `protobuf:"bytes,2,rep,name=sold,proto3" json:"sold,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
+	Income        float64                `protobuf:"fixed64,3,opt,name=income,proto3" json:"income,omitempty"`
+	Wages         float64                `protobuf:"fixed64,4,opt,name=wages,proto3" json:"wages,omitempty"`
+	Rent          float64                `protobuf:"fixed64,5,opt,name=rent,proto3" json:"rent,omitempty"`
+	Supplies      float64                `protobuf:"fixed64,6,opt,name=supplies,proto3" json:"supplies,omitempty"`
+	Losses        float64                `protobuf:"fixed64,7,opt,name=losses,proto3" json:"losses,omitempty"`
+	Spoiled       float64                `protobuf:"fixed64,8,opt,name=spoiled,proto3" json:"spoiled,omitempty"`
+	Unserved      float64                `protobuf:"fixed64,9,opt,name=unserved,proto3" json:"unserved,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BusinessHour) Reset() {
+	*x = BusinessHour{}
+	mi := &file_api_user_v1_user_proto_msgTypes[248]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BusinessHour) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BusinessHour) ProtoMessage() {}
+
+func (x *BusinessHour) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[248]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BusinessHour.ProtoReflect.Descriptor instead.
+func (*BusinessHour) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{248}
+}
+
+func (x *BusinessHour) GetHour() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Hour
+	}
+	return nil
+}
+
+func (x *BusinessHour) GetSold() map[string]float64 {
+	if x != nil {
+		return x.Sold
+	}
+	return nil
+}
+
+func (x *BusinessHour) GetIncome() float64 {
+	if x != nil {
+		return x.Income
+	}
+	return 0
+}
+
+func (x *BusinessHour) GetWages() float64 {
+	if x != nil {
+		return x.Wages
+	}
+	return 0
+}
+
+func (x *BusinessHour) GetRent() float64 {
+	if x != nil {
+		return x.Rent
+	}
+	return 0
+}
+
+func (x *BusinessHour) GetSupplies() float64 {
+	if x != nil {
+		return x.Supplies
+	}
+	return 0
+}
+
+func (x *BusinessHour) GetLosses() float64 {
+	if x != nil {
+		return x.Losses
+	}
+	return 0
+}
+
+func (x *BusinessHour) GetSpoiled() float64 {
+	if x != nil {
+		return x.Spoiled
+	}
+	return 0
+}
+
+func (x *BusinessHour) GetUnserved() float64 {
+	if x != nil {
+		return x.Unserved
 	}
 	return 0
 }
@@ -15004,7 +16273,7 @@ type GetBusinessesRequest struct {
 
 func (x *GetBusinessesRequest) Reset() {
 	*x = GetBusinessesRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[235]
+	mi := &file_api_user_v1_user_proto_msgTypes[249]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15016,7 +16285,7 @@ func (x *GetBusinessesRequest) String() string {
 func (*GetBusinessesRequest) ProtoMessage() {}
 
 func (x *GetBusinessesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[235]
+	mi := &file_api_user_v1_user_proto_msgTypes[249]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15029,20 +16298,23 @@ func (x *GetBusinessesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBusinessesRequest.ProtoReflect.Descriptor instead.
 func (*GetBusinessesRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{235}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{249}
 }
 
 type BusinessesState struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Settings      *BusinessSettings      `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
-	Businesses    []*Business            `protobuf:"bytes,2,rep,name=businesses,proto3" json:"businesses,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Settings   *BusinessSettings      `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	Businesses []*Business            `protobuf:"bytes,2,rep,name=businesses,proto3" json:"businesses,omitempty"`
+	// What each kind deals in, in order, and the suppliers.
+	Catalog       []*BusinessCatalog  `protobuf:"bytes,3,rep,name=catalog,proto3" json:"catalog,omitempty"`
+	Suppliers     []*BusinessSupplier `protobuf:"bytes,4,rep,name=suppliers,proto3" json:"suppliers,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *BusinessesState) Reset() {
 	*x = BusinessesState{}
-	mi := &file_api_user_v1_user_proto_msgTypes[236]
+	mi := &file_api_user_v1_user_proto_msgTypes[250]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15054,7 +16326,7 @@ func (x *BusinessesState) String() string {
 func (*BusinessesState) ProtoMessage() {}
 
 func (x *BusinessesState) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[236]
+	mi := &file_api_user_v1_user_proto_msgTypes[250]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15067,7 +16339,7 @@ func (x *BusinessesState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BusinessesState.ProtoReflect.Descriptor instead.
 func (*BusinessesState) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{236}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{250}
 }
 
 func (x *BusinessesState) GetSettings() *BusinessSettings {
@@ -15084,6 +16356,20 @@ func (x *BusinessesState) GetBusinesses() []*Business {
 	return nil
 }
 
+func (x *BusinessesState) GetCatalog() []*BusinessCatalog {
+	if x != nil {
+		return x.Catalog
+	}
+	return nil
+}
+
+func (x *BusinessesState) GetSuppliers() []*BusinessSupplier {
+	if x != nil {
+		return x.Suppliers
+	}
+	return nil
+}
+
 type BuyBusinessRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Kind          string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
@@ -15093,7 +16379,7 @@ type BuyBusinessRequest struct {
 
 func (x *BuyBusinessRequest) Reset() {
 	*x = BuyBusinessRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[237]
+	mi := &file_api_user_v1_user_proto_msgTypes[251]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15105,7 +16391,7 @@ func (x *BuyBusinessRequest) String() string {
 func (*BuyBusinessRequest) ProtoMessage() {}
 
 func (x *BuyBusinessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[237]
+	mi := &file_api_user_v1_user_proto_msgTypes[251]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15118,7 +16404,7 @@ func (x *BuyBusinessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BuyBusinessRequest.ProtoReflect.Descriptor instead.
 func (*BuyBusinessRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{237}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{251}
 }
 
 func (x *BuyBusinessRequest) GetKind() string {
@@ -15132,20 +16418,26 @@ type RunBusinessRequest struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Kind   string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
 	Action string                 `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
-	// The units of a restock, the votes of a deposit.
+	// The units of an order or a contract, the votes of a deposit.
 	Amount int64 `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
-	// What a manage sets: the price in hundredths and the workers.
-	Price int64 `protobuf:"varint,4,opt,name=price,proto3" json:"price,omitempty"`
-	Staff int32 `protobuf:"varint,5,opt,name=staff,proto3" json:"staff,omitempty"`
-	// The improvement an "improve" buys the next tier of.
-	Perk          string `protobuf:"bytes,6,opt,name=perk,proto3" json:"perk,omitempty"`
+	// The price an offer is set at, in hundredths of a vote.
+	Price    int64  `protobuf:"varint,4,opt,name=price,proto3" json:"price,omitempty"`
+	Offer    string `protobuf:"bytes,7,opt,name=offer,proto3" json:"offer,omitempty"`
+	Supply   string `protobuf:"bytes,8,opt,name=supply,proto3" json:"supply,omitempty"`
+	Supplier string `protobuf:"bytes,9,opt,name=supplier,proto3" json:"supplier,omitempty"`
+	// The units a contract keeps the supply from going under.
+	Below     int64 `protobuf:"varint,10,opt,name=below,proto3" json:"below,omitempty"`
+	Worker    int32 `protobuf:"varint,11,opt,name=worker,proto3" json:"worker,omitempty"`
+	Candidate int64 `protobuf:"varint,12,opt,name=candidate,proto3" json:"candidate,omitempty"`
+	// The answer to the event.
+	Option        string `protobuf:"bytes,13,opt,name=option,proto3" json:"option,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RunBusinessRequest) Reset() {
 	*x = RunBusinessRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[238]
+	mi := &file_api_user_v1_user_proto_msgTypes[252]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15157,7 +16449,7 @@ func (x *RunBusinessRequest) String() string {
 func (*RunBusinessRequest) ProtoMessage() {}
 
 func (x *RunBusinessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[238]
+	mi := &file_api_user_v1_user_proto_msgTypes[252]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15170,7 +16462,7 @@ func (x *RunBusinessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunBusinessRequest.ProtoReflect.Descriptor instead.
 func (*RunBusinessRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{238}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{252}
 }
 
 func (x *RunBusinessRequest) GetKind() string {
@@ -15201,16 +16493,51 @@ func (x *RunBusinessRequest) GetPrice() int64 {
 	return 0
 }
 
-func (x *RunBusinessRequest) GetStaff() int32 {
+func (x *RunBusinessRequest) GetOffer() string {
 	if x != nil {
-		return x.Staff
+		return x.Offer
+	}
+	return ""
+}
+
+func (x *RunBusinessRequest) GetSupply() string {
+	if x != nil {
+		return x.Supply
+	}
+	return ""
+}
+
+func (x *RunBusinessRequest) GetSupplier() string {
+	if x != nil {
+		return x.Supplier
+	}
+	return ""
+}
+
+func (x *RunBusinessRequest) GetBelow() int64 {
+	if x != nil {
+		return x.Below
 	}
 	return 0
 }
 
-func (x *RunBusinessRequest) GetPerk() string {
+func (x *RunBusinessRequest) GetWorker() int32 {
 	if x != nil {
-		return x.Perk
+		return x.Worker
+	}
+	return 0
+}
+
+func (x *RunBusinessRequest) GetCandidate() int64 {
+	if x != nil {
+		return x.Candidate
+	}
+	return 0
+}
+
+func (x *RunBusinessRequest) GetOption() string {
+	if x != nil {
+		return x.Option
 	}
 	return ""
 }
@@ -15230,7 +16557,7 @@ type RunBusinessResponse struct {
 
 func (x *RunBusinessResponse) Reset() {
 	*x = RunBusinessResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[239]
+	mi := &file_api_user_v1_user_proto_msgTypes[253]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15242,7 +16569,7 @@ func (x *RunBusinessResponse) String() string {
 func (*RunBusinessResponse) ProtoMessage() {}
 
 func (x *RunBusinessResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[239]
+	mi := &file_api_user_v1_user_proto_msgTypes[253]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15255,7 +16582,7 @@ func (x *RunBusinessResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunBusinessResponse.ProtoReflect.Descriptor instead.
 func (*RunBusinessResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{239}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{253}
 }
 
 func (x *RunBusinessResponse) GetSpent() int64 {
@@ -15301,7 +16628,7 @@ type GetBusinessSettingsRequest struct {
 
 func (x *GetBusinessSettingsRequest) Reset() {
 	*x = GetBusinessSettingsRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[240]
+	mi := &file_api_user_v1_user_proto_msgTypes[254]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15313,7 +16640,7 @@ func (x *GetBusinessSettingsRequest) String() string {
 func (*GetBusinessSettingsRequest) ProtoMessage() {}
 
 func (x *GetBusinessSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[240]
+	mi := &file_api_user_v1_user_proto_msgTypes[254]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15326,7 +16653,7 @@ func (x *GetBusinessSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBusinessSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetBusinessSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{240}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{254}
 }
 
 type GetBusinessSettingsResponse struct {
@@ -15343,7 +16670,7 @@ type GetBusinessSettingsResponse struct {
 
 func (x *GetBusinessSettingsResponse) Reset() {
 	*x = GetBusinessSettingsResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[241]
+	mi := &file_api_user_v1_user_proto_msgTypes[255]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15355,7 +16682,7 @@ func (x *GetBusinessSettingsResponse) String() string {
 func (*GetBusinessSettingsResponse) ProtoMessage() {}
 
 func (x *GetBusinessSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[241]
+	mi := &file_api_user_v1_user_proto_msgTypes[255]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15368,7 +16695,7 @@ func (x *GetBusinessSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBusinessSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetBusinessSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{241}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{255}
 }
 
 func (x *GetBusinessSettingsResponse) GetSettings() *BusinessSettings {
@@ -15408,7 +16735,7 @@ type SetBusinessSettingsRequest struct {
 
 func (x *SetBusinessSettingsRequest) Reset() {
 	*x = SetBusinessSettingsRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[242]
+	mi := &file_api_user_v1_user_proto_msgTypes[256]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15420,7 +16747,7 @@ func (x *SetBusinessSettingsRequest) String() string {
 func (*SetBusinessSettingsRequest) ProtoMessage() {}
 
 func (x *SetBusinessSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[242]
+	mi := &file_api_user_v1_user_proto_msgTypes[256]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15433,7 +16760,7 @@ func (x *SetBusinessSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetBusinessSettingsRequest.ProtoReflect.Descriptor instead.
 func (*SetBusinessSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{242}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{256}
 }
 
 func (x *SetBusinessSettingsRequest) GetSettings() *BusinessSettings {
@@ -16392,20 +17719,15 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x06chests\x18\x04 \x01(\x03R\x06chests\x12\x16\n" +
 	"\x06miners\x18\x05 \x01(\x03R\x06miners\"C\n" +
 	"\x0eSetMineRequest\x121\n" +
-	"\bsettings\x18\x01 \x01(\v2\x15.user.v1.MineSettingsR\bsettings\"\xbd\x03\n" +
+	"\bsettings\x18\x01 \x01(\v2\x15.user.v1.MineSettingsR\bsettings\"\x91\x03\n" +
 	"\fBusinessPlan\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x14\n" +
 	"\x05price\x18\x02 \x01(\x03R\x05price\x12\x18\n" +
 	"\aupgrade\x18\x03 \x01(\x03R\aupgrade\x12\x16\n" +
 	"\x06levels\x18\x04 \x01(\x05R\x06levels\x12\x16\n" +
-	"\x06demand\x18\x05 \x01(\x03R\x06demand\x12\x12\n" +
-	"\x04fair\x18\x06 \x01(\x03R\x04fair\x12\x12\n" +
-	"\x04cost\x18\a \x01(\x03R\x04cost\x12\x18\n" +
-	"\astorage\x18\b \x01(\x03R\astorage\x12\x14\n" +
-	"\x05serve\x18\t \x01(\x03R\x05serve\x12\x14\n" +
+	"\x06demand\x18\x05 \x01(\x03R\x06demand\x12\x14\n" +
 	"\x05staff\x18\n" +
 	" \x01(\x05R\x05staff\x12\x12\n" +
-	"\x04wage\x18\v \x01(\x03R\x04wage\x12\x12\n" +
 	"\x04rent\x18\f \x01(\x03R\x04rent\x12\x12\n" +
 	"\x04wear\x18\r \x01(\x05R\x04wear\x12\x16\n" +
 	"\x06repair\x18\x0e \x01(\x03R\x06repair\x12\x12\n" +
@@ -16413,53 +17735,193 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x04debt\x18\x10 \x01(\x03R\x04debt\x12\x19\n" +
 	"\bad_price\x18\x11 \x01(\x03R\aadPrice\x12\x19\n" +
 	"\bad_hours\x18\x12 \x01(\x05R\aadHours\x12\x19\n" +
-	"\bad_boost\x18\x13 \x01(\x05R\aadBoost\"Q\n" +
+	"\bad_boost\x18\x13 \x01(\x05R\aadBoostJ\x04\b\x06\x10\aJ\x04\b\a\x10\bJ\x04\b\b\x10\tJ\x04\b\t\x10\n" +
+	"J\x04\b\v\x10\fR\x04fairR\x04costR\astorageR\x05serveR\x04wage\"}\n" +
 	"\x10BusinessSettings\x12+\n" +
 	"\x05plans\x18\x01 \x03(\v2\x15.user.v1.BusinessPlanR\x05plans\x12\x10\n" +
-	"\x03tax\x18\x02 \x01(\x05R\x03tax\"\x91\x04\n" +
+	"\x03tax\x18\x02 \x01(\x05R\x03tax\x12\x14\n" +
+	"\x05wages\x18\x03 \x01(\x05R\x05wages\x12\x14\n" +
+	"\x05goods\x18\x04 \x01(\x05R\x05goods\"\xd5\x01\n" +
+	"\x0fBusinessCatalog\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\x127\n" +
+	"\bsupplies\x18\x02 \x03(\v2\x1b.user.v1.BusinessSupplySpecR\bsupplies\x122\n" +
+	"\x06offers\x18\x03 \x03(\v2\x1a.user.v1.BusinessOfferSpecR\x06offers\x12A\n" +
+	"\vprofessions\x18\x04 \x03(\v2\x1f.user.v1.BusinessProfessionSpecR\vprofessions\"p\n" +
+	"\x12BusinessSupplySpec\x12\x16\n" +
+	"\x06supply\x18\x01 \x01(\tR\x06supply\x12\x12\n" +
+	"\x04cost\x18\x02 \x01(\x03R\x04cost\x12\x14\n" +
+	"\x05spoil\x18\x03 \x01(\x05R\x05spoil\x12\x18\n" +
+	"\astorage\x18\x04 \x01(\x03R\astorage\"\xaa\x01\n" +
+	"\x11BusinessOfferSpec\x12\x14\n" +
+	"\x05offer\x18\x01 \x01(\tR\x05offer\x12\x1e\n" +
+	"\n" +
+	"profession\x18\x02 \x01(\tR\n" +
+	"profession\x123\n" +
+	"\x06recipe\x18\x03 \x03(\v2\x1b.user.v1.BusinessIngredientR\x06recipe\x12\x12\n" +
+	"\x04fair\x18\x04 \x01(\x03R\x04fair\x12\x16\n" +
+	"\x06demand\x18\x05 \x01(\x01R\x06demand\"B\n" +
+	"\x12BusinessIngredient\x12\x16\n" +
+	"\x06supply\x18\x01 \x01(\tR\x06supply\x12\x14\n" +
+	"\x05units\x18\x02 \x01(\x03R\x05units\"b\n" +
+	"\x16BusinessProfessionSpec\x12\x1e\n" +
+	"\n" +
+	"profession\x18\x01 \x01(\tR\n" +
+	"profession\x12\x12\n" +
+	"\x04wage\x18\x02 \x01(\x03R\x04wage\x12\x14\n" +
+	"\x05serve\x18\x03 \x01(\x01R\x05serve\"t\n" +
+	"\x10BusinessSupplier\x12\x1a\n" +
+	"\bsupplier\x18\x01 \x01(\tR\bsupplier\x12\x18\n" +
+	"\apercent\x18\x02 \x01(\x03R\apercent\x12\x14\n" +
+	"\x05hours\x18\x03 \x01(\x01R\x05hours\x12\x14\n" +
+	"\x05short\x18\x04 \x01(\x05R\x05short\"\xfa\n" +
+	"\n" +
 	"\bBusiness\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x14\n" +
-	"\x05level\x18\x02 \x01(\x05R\x05level\x12\x14\n" +
-	"\x05stock\x18\x03 \x01(\x03R\x05stock\x12\x14\n" +
-	"\x05price\x18\x04 \x01(\x03R\x05price\x12\x14\n" +
-	"\x05staff\x18\x05 \x01(\x05R\x05staff\x12\x1c\n" +
+	"\x05level\x18\x02 \x01(\x05R\x05level\x12\x1c\n" +
 	"\tcondition\x18\x06 \x01(\x05R\tcondition\x12\x12\n" +
 	"\x04cash\x18\a \x01(\x03R\x04cash\x125\n" +
 	"\bad_until\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\aadUntil\x12\x1a\n" +
 	"\bbankrupt\x18\t \x01(\bR\bbankrupt\x12\x1a\n" +
 	"\binvested\x18\n" +
 	" \x01(\x03R\binvested\x12\x1c\n" +
-	"\tcollected\x18\v \x01(\x03R\tcollected\x12\x1c\n" +
-	"\tcustomers\x18\f \x01(\x01R\tcustomers\x12\x16\n" +
-	"\x06served\x18\r \x01(\x01R\x06served\x12\x16\n" +
-	"\x06income\x18\x0e \x01(\x01R\x06income\x12\x14\n" +
-	"\x05costs\x18\x0f \x01(\x01R\x05costs\x12\x16\n" +
+	"\tcollected\x18\v \x01(\x03R\tcollected\x12\x16\n" +
 	"\x06resale\x18\x10 \x01(\x03R\x06resale\x12\x17\n" +
-	"\ain_debt\x18\x11 \x01(\bR\x06inDebt\x12+\n" +
-	"\x05perks\x18\x12 \x03(\v2\x15.user.v1.BusinessPerkR\x05perks\x12\x18\n" +
-	"\astorage\x18\x13 \x01(\x03R\astorage\"t\n" +
-	"\fBusinessPerk\x12\x12\n" +
-	"\x04perk\x18\x01 \x01(\tR\x04perk\x12\x12\n" +
-	"\x04tier\x18\x02 \x01(\x05R\x04tier\x12\x1d\n" +
+	"\ain_debt\x18\x11 \x01(\bR\x06inDebt\x122\n" +
+	"\bsupplies\x18\x14 \x03(\v2\x16.user.v1.BusinessStockR\bsupplies\x123\n" +
+	"\x06offers\x18\x15 \x03(\v2\x1b.user.v1.BusinessOfferStateR\x06offers\x121\n" +
+	"\aworkers\x18\x16 \x03(\v2\x17.user.v1.BusinessWorkerR\aworkers\x12:\n" +
 	"\n" +
-	"next_price\x18\x03 \x01(\x03R\tnextPrice\x12\x1d\n" +
+	"candidates\x18\x17 \x03(\v2\x1a.user.v1.BusinessCandidateR\n" +
+	"candidates\x12E\n" +
+	"\x10candidates_until\x18\x18 \x01(\v2\x1a.google.protobuf.TimestampR\x0fcandidatesUntil\x12.\n" +
+	"\x06orders\x18\x19 \x03(\v2\x16.user.v1.BusinessOrderR\x06orders\x127\n" +
+	"\tcontracts\x18\x1a \x03(\v2\x19.user.v1.BusinessContractR\tcontracts\x12,\n" +
+	"\x05event\x18\x1b \x01(\v2\x16.user.v1.BusinessEventR\x05event\x12+\n" +
+	"\x05notes\x18\x1c \x03(\v2\x15.user.v1.BusinessNoteR\x05notes\x12+\n" +
+	"\x05hours\x18\x1d \x03(\v2\x15.user.v1.BusinessHourR\x05hours\x12\x14\n" +
+	"\x05seats\x18\x1e \x01(\x05R\x05seats\x12=\n" +
+	"\freview_until\x18\x1f \x01(\v2\x1a.google.protobuf.TimestampR\vreviewUntil\x12\x10\n" +
+	"\x03tax\x18  \x01(\x05R\x03tax\x12\x14\n" +
+	"\x05wages\x18! \x01(\x01R\x05wages\x12\x12\n" +
+	"\x04rent\x18\" \x01(\x01R\x04rent\x12\x12\n" +
+	"\x04till\x18# \x01(\x03R\x04till\x12\x1d\n" +
 	"\n" +
-	"next_level\x18\x04 \x01(\x05R\tnextLevel\"\x16\n" +
-	"\x14GetBusinessesRequest\"{\n" +
+	"debt_limit\x18$ \x01(\x03R\tdebtLimit\x12/\n" +
+	"\x04load\x18% \x03(\v2\x1b.user.v1.Business.LoadEntryR\x04load\x12\x16\n" +
+	"\x06broken\x18& \x01(\tR\x06broken\x12=\n" +
+	"\fbroken_until\x18' \x01(\v2\x1a.google.protobuf.TimestampR\vbrokenUntil\x12!\n" +
+	"\fupgrade_cost\x18( \x01(\x03R\vupgradeCost\x12\x1f\n" +
+	"\vrepair_cost\x18) \x01(\x03R\n" +
+	"repairCost\x1a7\n" +
+	"\tLoadEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01J\x04\b\x03\x10\x04J\x04\b\x04\x10\x05J\x04\b\x05\x10\x06J\x04\b\f\x10\rJ\x04\b\r\x10\x0eJ\x04\b\x0e\x10\x0fJ\x04\b\x0f\x10\x10J\x04\b\x12\x10\x13J\x04\b\x13\x10\x14R\x05stockR\x05priceR\x05staffR\tcustomersR\x06servedR\x06incomeR\x05costsR\x05perksR\astorage\"\x84\x02\n" +
+	"\rBusinessStock\x12\x16\n" +
+	"\x06supply\x18\x01 \x01(\tR\x06supply\x12\x14\n" +
+	"\x05units\x18\x02 \x01(\x01R\x05units\x12\x15\n" +
+	"\x06on_way\x18\x03 \x01(\x03R\x05onWay\x12\x18\n" +
+	"\astorage\x18\x04 \x01(\x03R\astorage\x12D\n" +
+	"\n" +
+	"unit_costs\x18\x05 \x03(\v2%.user.v1.BusinessStock.UnitCostsEntryR\tunitCosts\x12\x10\n" +
+	"\x03use\x18\x06 \x01(\x01R\x03use\x1a<\n" +
+	"\x0eUnitCostsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"\xa4\x01\n" +
+	"\x12BusinessOfferState\x12\x14\n" +
+	"\x05offer\x18\x01 \x01(\tR\x05offer\x12\x14\n" +
+	"\x05price\x18\x02 \x01(\x03R\x05price\x12\x16\n" +
+	"\x06demand\x18\x03 \x01(\x01R\x06demand\x12\x16\n" +
+	"\x06served\x18\x04 \x01(\x01R\x06served\x12\x1a\n" +
+	"\bcapacity\x18\x05 \x01(\x01R\bcapacity\x12\x16\n" +
+	"\x06broken\x18\x06 \x01(\bR\x06broken\"\x93\x02\n" +
+	"\x0eBusinessWorker\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
+	"\x06female\x18\x03 \x01(\bR\x06female\x12\x1e\n" +
+	"\n" +
+	"profession\x18\x04 \x01(\tR\n" +
+	"profession\x12\x14\n" +
+	"\x05skill\x18\x05 \x01(\x05R\x05skill\x12\x0e\n" +
+	"\x02xp\x18\x06 \x01(\x01R\x02xp\x12\x17\n" +
+	"\anext_xp\x18\a \x01(\x01R\x06nextXp\x12\x12\n" +
+	"\x04wage\x18\b \x01(\x03R\x04wage\x12\x14\n" +
+	"\x05trait\x18\t \x01(\tR\x05trait\x12\x12\n" +
+	"\x04mood\x18\n" +
+	" \x01(\x01R\x04mood\x12\x12\n" +
+	"\x04rate\x18\v \x01(\x01R\x04rate\x12\x14\n" +
+	"\x05bonus\x18\f \x01(\x03R\x05bonus\"T\n" +
+	"\x11BusinessCandidate\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12/\n" +
+	"\x06worker\x18\x02 \x01(\v2\x17.user.v1.BusinessWorkerR\x06worker\"\xbc\x01\n" +
+	"\rBusinessOrder\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x16\n" +
+	"\x06supply\x18\x02 \x01(\tR\x06supply\x12\x1a\n" +
+	"\bsupplier\x18\x03 \x01(\tR\bsupplier\x12\x14\n" +
+	"\x05units\x18\x04 \x01(\x03R\x05units\x124\n" +
+	"\aarrives\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\aarrives\x12\x1b\n" +
+	"\tfrom_till\x18\x06 \x01(\bR\bfromTill\"\x8c\x01\n" +
+	"\x10BusinessContract\x12\x16\n" +
+	"\x06supply\x18\x01 \x01(\tR\x06supply\x12\x1a\n" +
+	"\bsupplier\x18\x02 \x01(\tR\bsupplier\x12\x14\n" +
+	"\x05below\x18\x03 \x01(\x03R\x05below\x12\x14\n" +
+	"\x05units\x18\x04 \x01(\x03R\x05units\x12\x18\n" +
+	"\astalled\x18\x05 \x01(\bR\astalled\"\x87\x02\n" +
+	"\rBusinessEvent\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\x120\n" +
+	"\x05until\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x05until\x12\x14\n" +
+	"\x05offer\x18\x03 \x01(\tR\x05offer\x12\x16\n" +
+	"\x06worker\x18\x04 \x01(\x05R\x06worker\x12\x12\n" +
+	"\x04name\x18\x05 \x01(\tR\x04name\x12\x16\n" +
+	"\x06female\x18\x06 \x01(\bR\x06female\x12\x14\n" +
+	"\x05votes\x18\a \x01(\x03R\x05votes\x12\x14\n" +
+	"\x05units\x18\b \x01(\x03R\x05units\x12\x10\n" +
+	"\x03pay\x18\t \x01(\x03R\x03pay\x12\x18\n" +
+	"\aoptions\x18\n" +
+	" \x03(\tR\aoptions\"\xc2\x01\n" +
+	"\fBusinessNote\x12*\n" +
+	"\x02at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x02at\x12\x12\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x18\n" +
+	"\asubject\x18\x03 \x01(\tR\asubject\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x12\x16\n" +
+	"\x06female\x18\x05 \x01(\bR\x06female\x12\x16\n" +
+	"\x06amount\x18\x06 \x01(\x01R\x06amount\x12\x14\n" +
+	"\x05money\x18\a \x01(\x01R\x05money\"\xd8\x02\n" +
+	"\fBusinessHour\x12.\n" +
+	"\x04hour\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\x04hour\x123\n" +
+	"\x04sold\x18\x02 \x03(\v2\x1f.user.v1.BusinessHour.SoldEntryR\x04sold\x12\x16\n" +
+	"\x06income\x18\x03 \x01(\x01R\x06income\x12\x14\n" +
+	"\x05wages\x18\x04 \x01(\x01R\x05wages\x12\x12\n" +
+	"\x04rent\x18\x05 \x01(\x01R\x04rent\x12\x1a\n" +
+	"\bsupplies\x18\x06 \x01(\x01R\bsupplies\x12\x16\n" +
+	"\x06losses\x18\a \x01(\x01R\x06losses\x12\x18\n" +
+	"\aspoiled\x18\b \x01(\x01R\aspoiled\x12\x1a\n" +
+	"\bunserved\x18\t \x01(\x01R\bunserved\x1a7\n" +
+	"\tSoldEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"\x16\n" +
+	"\x14GetBusinessesRequest\"\xe8\x01\n" +
 	"\x0fBusinessesState\x125\n" +
 	"\bsettings\x18\x01 \x01(\v2\x19.user.v1.BusinessSettingsR\bsettings\x121\n" +
 	"\n" +
 	"businesses\x18\x02 \x03(\v2\x11.user.v1.BusinessR\n" +
-	"businesses\"(\n" +
+	"businesses\x122\n" +
+	"\acatalog\x18\x03 \x03(\v2\x18.user.v1.BusinessCatalogR\acatalog\x127\n" +
+	"\tsuppliers\x18\x04 \x03(\v2\x19.user.v1.BusinessSupplierR\tsuppliers\"(\n" +
 	"\x12BuyBusinessRequest\x12\x12\n" +
-	"\x04kind\x18\x01 \x01(\tR\x04kind\"\x98\x01\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\"\xb5\x02\n" +
 	"\x12RunBusinessRequest\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x16\n" +
 	"\x06action\x18\x02 \x01(\tR\x06action\x12\x16\n" +
 	"\x06amount\x18\x03 \x01(\x03R\x06amount\x12\x14\n" +
 	"\x05price\x18\x04 \x01(\x03R\x05price\x12\x14\n" +
-	"\x05staff\x18\x05 \x01(\x05R\x05staff\x12\x12\n" +
-	"\x04perk\x18\x06 \x01(\tR\x04perk\"\xa3\x01\n" +
+	"\x05offer\x18\a \x01(\tR\x05offer\x12\x16\n" +
+	"\x06supply\x18\b \x01(\tR\x06supply\x12\x1a\n" +
+	"\bsupplier\x18\t \x01(\tR\bsupplier\x12\x14\n" +
+	"\x05below\x18\n" +
+	" \x01(\x03R\x05below\x12\x16\n" +
+	"\x06worker\x18\v \x01(\x05R\x06worker\x12\x1c\n" +
+	"\tcandidate\x18\f \x01(\x03R\tcandidate\x12\x16\n" +
+	"\x06option\x18\r \x01(\tR\x06optionJ\x04\b\x05\x10\x06J\x04\b\x06\x10\aR\x05staffR\x04perk\"\xa3\x01\n" +
 	"\x13RunBusinessResponse\x12\x14\n" +
 	"\x05spent\x18\x01 \x01(\x03R\x05spent\x12\x10\n" +
 	"\x03got\x18\x02 \x01(\x03R\x03got\x12\x10\n" +
@@ -16710,7 +18172,7 @@ func file_api_user_v1_user_proto_rawDescGZIP() []byte {
 }
 
 var file_api_user_v1_user_proto_enumTypes = make([]protoimpl.EnumInfo, 12)
-var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 245)
+var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 262)
 var file_api_user_v1_user_proto_goTypes = []any{
 	(FieldPlace)(0),                     // 0: user.v1.FieldPlace
 	(Audience)(0),                       // 1: user.v1.Audience
@@ -16957,39 +18419,56 @@ var file_api_user_v1_user_proto_goTypes = []any{
 	(*SetMineRequest)(nil),              // 242: user.v1.SetMineRequest
 	(*BusinessPlan)(nil),                // 243: user.v1.BusinessPlan
 	(*BusinessSettings)(nil),            // 244: user.v1.BusinessSettings
-	(*Business)(nil),                    // 245: user.v1.Business
-	(*BusinessPerk)(nil),                // 246: user.v1.BusinessPerk
-	(*GetBusinessesRequest)(nil),        // 247: user.v1.GetBusinessesRequest
-	(*BusinessesState)(nil),             // 248: user.v1.BusinessesState
-	(*BuyBusinessRequest)(nil),          // 249: user.v1.BuyBusinessRequest
-	(*RunBusinessRequest)(nil),          // 250: user.v1.RunBusinessRequest
-	(*RunBusinessResponse)(nil),         // 251: user.v1.RunBusinessResponse
-	(*GetBusinessSettingsRequest)(nil),  // 252: user.v1.GetBusinessSettingsRequest
-	(*GetBusinessSettingsResponse)(nil), // 253: user.v1.GetBusinessSettingsResponse
-	(*SetBusinessSettingsRequest)(nil),  // 254: user.v1.SetBusinessSettingsRequest
-	nil,                                 // 255: user.v1.GetStickerAuthorsResponse.AuthorsEntry
-	nil,                                 // 256: user.v1.Miner.BackpackEntry
-	(*timestamppb.Timestamp)(nil),       // 257: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),               // 258: google.protobuf.Empty
+	(*BusinessCatalog)(nil),             // 245: user.v1.BusinessCatalog
+	(*BusinessSupplySpec)(nil),          // 246: user.v1.BusinessSupplySpec
+	(*BusinessOfferSpec)(nil),           // 247: user.v1.BusinessOfferSpec
+	(*BusinessIngredient)(nil),          // 248: user.v1.BusinessIngredient
+	(*BusinessProfessionSpec)(nil),      // 249: user.v1.BusinessProfessionSpec
+	(*BusinessSupplier)(nil),            // 250: user.v1.BusinessSupplier
+	(*Business)(nil),                    // 251: user.v1.Business
+	(*BusinessStock)(nil),               // 252: user.v1.BusinessStock
+	(*BusinessOfferState)(nil),          // 253: user.v1.BusinessOfferState
+	(*BusinessWorker)(nil),              // 254: user.v1.BusinessWorker
+	(*BusinessCandidate)(nil),           // 255: user.v1.BusinessCandidate
+	(*BusinessOrder)(nil),               // 256: user.v1.BusinessOrder
+	(*BusinessContract)(nil),            // 257: user.v1.BusinessContract
+	(*BusinessEvent)(nil),               // 258: user.v1.BusinessEvent
+	(*BusinessNote)(nil),                // 259: user.v1.BusinessNote
+	(*BusinessHour)(nil),                // 260: user.v1.BusinessHour
+	(*GetBusinessesRequest)(nil),        // 261: user.v1.GetBusinessesRequest
+	(*BusinessesState)(nil),             // 262: user.v1.BusinessesState
+	(*BuyBusinessRequest)(nil),          // 263: user.v1.BuyBusinessRequest
+	(*RunBusinessRequest)(nil),          // 264: user.v1.RunBusinessRequest
+	(*RunBusinessResponse)(nil),         // 265: user.v1.RunBusinessResponse
+	(*GetBusinessSettingsRequest)(nil),  // 266: user.v1.GetBusinessSettingsRequest
+	(*GetBusinessSettingsResponse)(nil), // 267: user.v1.GetBusinessSettingsResponse
+	(*SetBusinessSettingsRequest)(nil),  // 268: user.v1.SetBusinessSettingsRequest
+	nil,                                 // 269: user.v1.GetStickerAuthorsResponse.AuthorsEntry
+	nil,                                 // 270: user.v1.Miner.BackpackEntry
+	nil,                                 // 271: user.v1.Business.LoadEntry
+	nil,                                 // 272: user.v1.BusinessStock.UnitCostsEntry
+	nil,                                 // 273: user.v1.BusinessHour.SoldEntry
+	(*timestamppb.Timestamp)(nil),       // 274: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),               // 275: google.protobuf.Empty
 }
 var file_api_user_v1_user_proto_depIdxs = []int32{
 	5,   // 0: user.v1.User.gender:type_name -> user.v1.Gender
 	6,   // 1: user.v1.User.relationship:type_name -> user.v1.Relationship
 	7,   // 2: user.v1.User.worldview:type_name -> user.v1.Worldview
 	8,   // 3: user.v1.User.political_views:type_name -> user.v1.PoliticalViews
-	257, // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
+	274, // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
 	20,  // 5: user.v1.User.privacy:type_name -> user.v1.PrivacySettings
-	257, // 6: user.v1.User.purge_at:type_name -> google.protobuf.Timestamp
+	274, // 6: user.v1.User.purge_at:type_name -> google.protobuf.Timestamp
 	17,  // 7: user.v1.User.contacts:type_name -> user.v1.Contacts
 	18,  // 8: user.v1.User.interests:type_name -> user.v1.Interests
 	19,  // 9: user.v1.User.extra_fields:type_name -> user.v1.ExtraField
-	257, // 10: user.v1.User.registered_at:type_name -> google.protobuf.Timestamp
+	274, // 10: user.v1.User.registered_at:type_name -> google.protobuf.Timestamp
 	14,  // 11: user.v1.User.interface:type_name -> user.v1.InterfaceSettings
 	13,  // 12: user.v1.User.ban:type_name -> user.v1.Ban
-	257, // 13: user.v1.User.prime_until:type_name -> google.protobuf.Timestamp
+	274, // 13: user.v1.User.prime_until:type_name -> google.protobuf.Timestamp
 	164, // 14: user.v1.User.prime_style:type_name -> user.v1.PrimeStyle
-	257, // 15: user.v1.Ban.banned_at:type_name -> google.protobuf.Timestamp
-	257, // 16: user.v1.Ban.until:type_name -> google.protobuf.Timestamp
+	274, // 15: user.v1.Ban.banned_at:type_name -> google.protobuf.Timestamp
+	274, // 16: user.v1.Ban.until:type_name -> google.protobuf.Timestamp
 	14,  // 17: user.v1.UpdateInterfaceRequest.interface:type_name -> user.v1.InterfaceSettings
 	12,  // 18: user.v1.UpdateInterfaceResponse.user:type_name -> user.v1.User
 	0,   // 19: user.v1.ExtraField.place:type_name -> user.v1.FieldPlace
@@ -17007,12 +18486,12 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	6,   // 31: user.v1.PublicProfile.relationship:type_name -> user.v1.Relationship
 	7,   // 32: user.v1.PublicProfile.worldview:type_name -> user.v1.Worldview
 	8,   // 33: user.v1.PublicProfile.political_views:type_name -> user.v1.PoliticalViews
-	257, // 34: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
+	274, // 34: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
 	17,  // 35: user.v1.PublicProfile.contacts:type_name -> user.v1.Contacts
 	18,  // 36: user.v1.PublicProfile.interests:type_name -> user.v1.Interests
 	19,  // 37: user.v1.PublicProfile.extra_fields:type_name -> user.v1.ExtraField
-	257, // 38: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
-	257, // 39: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
+	274, // 38: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
+	274, // 39: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
 	13,  // 40: user.v1.PublicProfile.ban:type_name -> user.v1.Ban
 	164, // 41: user.v1.PublicProfile.prime_style:type_name -> user.v1.PrimeStyle
 	12,  // 42: user.v1.GetMeResponse.user:type_name -> user.v1.User
@@ -17020,7 +18499,7 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	6,   // 44: user.v1.UpdateProfileRequest.relationship:type_name -> user.v1.Relationship
 	7,   // 45: user.v1.UpdateProfileRequest.worldview:type_name -> user.v1.Worldview
 	8,   // 46: user.v1.UpdateProfileRequest.political_views:type_name -> user.v1.PoliticalViews
-	257, // 47: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
+	274, // 47: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
 	12,  // 48: user.v1.UpdateProfileResponse.user:type_name -> user.v1.User
 	17,  // 49: user.v1.UpdateContactsRequest.contacts:type_name -> user.v1.Contacts
 	12,  // 50: user.v1.UpdateContactsResponse.user:type_name -> user.v1.User
@@ -17048,7 +18527,7 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	100, // 72: user.v1.GetGiftCatalogResponse.backdrops:type_name -> user.v1.GiftTrait
 	100, // 73: user.v1.GetGiftCatalogResponse.symbols:type_name -> user.v1.GiftTrait
 	104, // 74: user.v1.SendGiftResponse.gift:type_name -> user.v1.Gift
-	257, // 75: user.v1.Gift.sent_at:type_name -> google.protobuf.Timestamp
+	274, // 75: user.v1.Gift.sent_at:type_name -> google.protobuf.Timestamp
 	21,  // 76: user.v1.Gift.sender:type_name -> user.v1.PublicProfile
 	104, // 77: user.v1.ListGiftsResponse.gifts:type_name -> user.v1.Gift
 	104, // 78: user.v1.UpgradeGiftResponse.gift:type_name -> user.v1.Gift
@@ -17058,20 +18537,20 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	21,  // 82: user.v1.Collectible.owner:type_name -> user.v1.PublicProfile
 	119, // 83: user.v1.Collectible.auction:type_name -> user.v1.GiftAuction
 	120, // 84: user.v1.Collectible.history:type_name -> user.v1.GiftHistoryLine
-	257, // 85: user.v1.GiftAuction.ends_at:type_name -> google.protobuf.Timestamp
+	274, // 85: user.v1.GiftAuction.ends_at:type_name -> google.protobuf.Timestamp
 	21,  // 86: user.v1.GiftAuction.seller:type_name -> user.v1.PublicProfile
 	21,  // 87: user.v1.GiftAuction.bidder:type_name -> user.v1.PublicProfile
-	257, // 88: user.v1.GiftHistoryLine.at:type_name -> google.protobuf.Timestamp
+	274, // 88: user.v1.GiftHistoryLine.at:type_name -> google.protobuf.Timestamp
 	21,  // 89: user.v1.GiftHistoryLine.from:type_name -> user.v1.PublicProfile
 	21,  // 90: user.v1.GiftHistoryLine.to:type_name -> user.v1.PublicProfile
 	118, // 91: user.v1.ListGiftMarketResponse.collectibles:type_name -> user.v1.Collectible
 	118, // 92: user.v1.ListGiftAuctionsResponse.collectibles:type_name -> user.v1.Collectible
-	257, // 93: user.v1.VoteOperation.created_at:type_name -> google.protobuf.Timestamp
+	274, // 93: user.v1.VoteOperation.created_at:type_name -> google.protobuf.Timestamp
 	137, // 94: user.v1.ListVoteOperationsResponse.operations:type_name -> user.v1.VoteOperation
 	139, // 95: user.v1.CreateVoucherResponse.voucher:type_name -> user.v1.Voucher
 	139, // 96: user.v1.ListVouchersResponse.vouchers:type_name -> user.v1.Voucher
 	157, // 97: user.v1.GetPrimeResponse.prices:type_name -> user.v1.PrimePrices
-	257, // 98: user.v1.BuyPrimeResponse.until:type_name -> google.protobuf.Timestamp
+	274, // 98: user.v1.BuyPrimeResponse.until:type_name -> google.protobuf.Timestamp
 	157, // 99: user.v1.SetPrimePricesRequest.prices:type_name -> user.v1.PrimePrices
 	164, // 100: user.v1.SetPrimeStyleRequest.style:type_name -> user.v1.PrimeStyle
 	10,  // 101: user.v1.GetDecorResponse.decor:type_name -> user.v1.Decor
@@ -17086,23 +18565,23 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	169, // 110: user.v1.SetCasinoRequest.prizes:type_name -> user.v1.CasinoPrize
 	172, // 111: user.v1.SetCasinoBetsRequest.aim:type_name -> user.v1.AimMultiplier
 	187, // 112: user.v1.BetEvent.outcomes:type_name -> user.v1.BetOutcome
-	257, // 113: user.v1.BetEvent.closes_at:type_name -> google.protobuf.Timestamp
-	257, // 114: user.v1.BetEvent.created_at:type_name -> google.protobuf.Timestamp
+	274, // 113: user.v1.BetEvent.closes_at:type_name -> google.protobuf.Timestamp
+	274, // 114: user.v1.BetEvent.created_at:type_name -> google.protobuf.Timestamp
 	188, // 115: user.v1.ListBetEventsResponse.events:type_name -> user.v1.BetEvent
-	257, // 116: user.v1.CreateBetEventRequest.closes_at:type_name -> google.protobuf.Timestamp
+	274, // 116: user.v1.CreateBetEventRequest.closes_at:type_name -> google.protobuf.Timestamp
 	200, // 117: user.v1.Ad.stats:type_name -> user.v1.AdStats
 	199, // 118: user.v1.ListAdsResponse.ads:type_name -> user.v1.Ad
 	199, // 119: user.v1.CreateAdResponse.ad:type_name -> user.v1.Ad
 	199, // 120: user.v1.EditAdResponse.ad:type_name -> user.v1.Ad
-	257, // 121: user.v1.BanUserRequest.until:type_name -> google.protobuf.Timestamp
+	274, // 121: user.v1.BanUserRequest.until:type_name -> google.protobuf.Timestamp
 	217, // 122: user.v1.GetStickerCatalogResponse.packs:type_name -> user.v1.StickerPack
 	217, // 123: user.v1.ListMyStickerPacksResponse.packs:type_name -> user.v1.StickerPack
 	217, // 124: user.v1.CreateStickerPackResponse.pack:type_name -> user.v1.StickerPack
 	217, // 125: user.v1.EditStickerPackResponse.pack:type_name -> user.v1.StickerPack
-	255, // 126: user.v1.GetStickerAuthorsResponse.authors:type_name -> user.v1.GetStickerAuthorsResponse.AuthorsEntry
+	269, // 126: user.v1.GetStickerAuthorsResponse.authors:type_name -> user.v1.GetStickerAuthorsResponse.AuthorsEntry
 	230, // 127: user.v1.MineSettings.veins:type_name -> user.v1.OreVein
 	231, // 128: user.v1.MineSettings.events:type_name -> user.v1.MineEvents
-	256, // 129: user.v1.Miner.backpack:type_name -> user.v1.Miner.BackpackEntry
+	270, // 129: user.v1.Miner.backpack:type_name -> user.v1.Miner.BackpackEntry
 	232, // 130: user.v1.MineState.settings:type_name -> user.v1.MineSettings
 	233, // 131: user.v1.MineState.miner:type_name -> user.v1.Miner
 	235, // 132: user.v1.DigOreResponse.mine:type_name -> user.v1.MineState
@@ -17110,274 +18589,299 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	232, // 134: user.v1.GetMineSettingsResponse.settings:type_name -> user.v1.MineSettings
 	232, // 135: user.v1.SetMineRequest.settings:type_name -> user.v1.MineSettings
 	243, // 136: user.v1.BusinessSettings.plans:type_name -> user.v1.BusinessPlan
-	257, // 137: user.v1.Business.ad_until:type_name -> google.protobuf.Timestamp
-	246, // 138: user.v1.Business.perks:type_name -> user.v1.BusinessPerk
-	244, // 139: user.v1.BusinessesState.settings:type_name -> user.v1.BusinessSettings
-	245, // 140: user.v1.BusinessesState.businesses:type_name -> user.v1.Business
-	248, // 141: user.v1.RunBusinessResponse.businesses:type_name -> user.v1.BusinessesState
-	244, // 142: user.v1.GetBusinessSettingsResponse.settings:type_name -> user.v1.BusinessSettings
-	244, // 143: user.v1.SetBusinessSettingsRequest.settings:type_name -> user.v1.BusinessSettings
-	22,  // 144: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
-	24,  // 145: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
-	26,  // 146: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
-	51,  // 147: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
-	53,  // 148: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
-	36,  // 149: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
-	15,  // 150: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
-	28,  // 151: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
-	30,  // 152: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
-	32,  // 153: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
-	50,  // 154: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
-	56,  // 155: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
-	34,  // 156: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
-	38,  // 157: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
-	58,  // 158: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
-	40,  // 159: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
-	42,  // 160: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
-	41,  // 161: user.v1.UserService.AcceptInvite:input_type -> user.v1.AcceptInviteRequest
-	43,  // 162: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
-	45,  // 163: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
-	45,  // 164: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
-	46,  // 165: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
-	47,  // 166: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
-	60,  // 167: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
-	64,  // 168: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
-	66,  // 169: user.v1.UserService.GetBoughtPosts:input_type -> user.v1.GetBoughtPostsRequest
-	68,  // 170: user.v1.UserService.BuyPost:input_type -> user.v1.BuyPostRequest
-	70,  // 171: user.v1.UserService.PayMessage:input_type -> user.v1.PayMessageRequest
-	72,  // 172: user.v1.UserService.RefundMessage:input_type -> user.v1.RefundMessageRequest
-	83,  // 173: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
-	85,  // 174: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
-	88,  // 175: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
-	62,  // 176: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
-	73,  // 177: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
-	74,  // 178: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
-	75,  // 179: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
-	77,  // 180: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
-	79,  // 181: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
-	80,  // 182: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
-	81,  // 183: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
-	90,  // 184: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
-	98,  // 185: user.v1.UserService.GetGiftCatalog:input_type -> user.v1.GetGiftCatalogRequest
-	102, // 186: user.v1.UserService.SendGift:input_type -> user.v1.SendGiftRequest
-	105, // 187: user.v1.UserService.ListGifts:input_type -> user.v1.ListGiftsRequest
-	107, // 188: user.v1.UserService.DeleteGift:input_type -> user.v1.DeleteGiftRequest
-	108, // 189: user.v1.UserService.SetGiftPrice:input_type -> user.v1.SetGiftPriceRequest
-	109, // 190: user.v1.UserService.UpgradeGift:input_type -> user.v1.UpgradeGiftRequest
-	111, // 191: user.v1.UserService.TransferGift:input_type -> user.v1.TransferGiftRequest
-	112, // 192: user.v1.UserService.SetGiftSale:input_type -> user.v1.SetGiftSaleRequest
-	114, // 193: user.v1.UserService.BuyGift:input_type -> user.v1.BuyGiftRequest
-	116, // 194: user.v1.UserService.GetCollectible:input_type -> user.v1.GetCollectibleRequest
-	121, // 195: user.v1.UserService.ListGiftMarket:input_type -> user.v1.ListGiftMarketRequest
-	123, // 196: user.v1.UserService.StartGiftAuction:input_type -> user.v1.StartGiftAuctionRequest
-	124, // 197: user.v1.UserService.MintGiftAuction:input_type -> user.v1.MintGiftAuctionRequest
-	126, // 198: user.v1.UserService.CancelGiftAuction:input_type -> user.v1.CancelGiftAuctionRequest
-	127, // 199: user.v1.UserService.BidGift:input_type -> user.v1.BidGiftRequest
-	129, // 200: user.v1.UserService.ListGiftAuctions:input_type -> user.v1.ListGiftAuctionsRequest
-	131, // 201: user.v1.UserService.SetGiftSupply:input_type -> user.v1.SetGiftSupplyRequest
-	215, // 202: user.v1.UserService.GetStickerCatalog:input_type -> user.v1.GetStickerCatalogRequest
-	218, // 203: user.v1.UserService.AddStickerPack:input_type -> user.v1.AddStickerPackRequest
-	219, // 204: user.v1.UserService.RemoveStickerPack:input_type -> user.v1.RemoveStickerPackRequest
-	220, // 205: user.v1.UserService.ListMyStickerPacks:input_type -> user.v1.ListMyStickerPacksRequest
-	222, // 206: user.v1.UserService.CreateStickerPack:input_type -> user.v1.CreateStickerPackRequest
-	224, // 207: user.v1.UserService.EditStickerPack:input_type -> user.v1.EditStickerPackRequest
-	226, // 208: user.v1.UserService.DeleteStickerPack:input_type -> user.v1.DeleteStickerPackRequest
-	228, // 209: user.v1.UserService.GetStickerAuthors:input_type -> user.v1.GetStickerAuthorsRequest
-	132, // 210: user.v1.UserService.TransferVotes:input_type -> user.v1.TransferVotesRequest
-	134, // 211: user.v1.UserService.RedeemVoucher:input_type -> user.v1.RedeemVoucherRequest
-	136, // 212: user.v1.UserService.ListVoteOperations:input_type -> user.v1.ListVoteOperationsRequest
-	140, // 213: user.v1.UserService.CreateVoucher:input_type -> user.v1.CreateVoucherRequest
-	142, // 214: user.v1.UserService.ListVouchers:input_type -> user.v1.ListVouchersRequest
-	144, // 215: user.v1.UserService.DeleteVoucher:input_type -> user.v1.DeleteVoucherRequest
-	145, // 216: user.v1.UserService.GetVoteRate:input_type -> user.v1.GetVoteRateRequest
-	147, // 217: user.v1.UserService.SetVoteRate:input_type -> user.v1.SetVoteRateRequest
-	148, // 218: user.v1.UserService.GetTreasury:input_type -> user.v1.GetTreasuryRequest
-	151, // 219: user.v1.UserService.GetBonus:input_type -> user.v1.GetBonusRequest
-	153, // 220: user.v1.UserService.ClaimBonus:input_type -> user.v1.ClaimBonusRequest
-	150, // 221: user.v1.UserService.SetEconomy:input_type -> user.v1.SetEconomyRequest
-	155, // 222: user.v1.UserService.RaiseRating:input_type -> user.v1.RaiseRatingRequest
-	158, // 223: user.v1.UserService.GetPrime:input_type -> user.v1.GetPrimeRequest
-	160, // 224: user.v1.UserService.BuyPrime:input_type -> user.v1.BuyPrimeRequest
-	162, // 225: user.v1.UserService.SetPrimePrices:input_type -> user.v1.SetPrimePricesRequest
-	163, // 226: user.v1.UserService.SetPrimeInvisible:input_type -> user.v1.SetPrimeInvisibleRequest
-	165, // 227: user.v1.UserService.SetPrimeStyle:input_type -> user.v1.SetPrimeStyleRequest
-	166, // 228: user.v1.UserService.GetDecor:input_type -> user.v1.GetDecorRequest
-	168, // 229: user.v1.UserService.SetDecor:input_type -> user.v1.SetDecorRequest
-	170, // 230: user.v1.UserService.GetCasino:input_type -> user.v1.GetCasinoRequest
-	173, // 231: user.v1.UserService.GetCasinoSettings:input_type -> user.v1.GetCasinoSettingsRequest
-	181, // 232: user.v1.UserService.SetCasino:input_type -> user.v1.SetCasinoRequest
-	182, // 233: user.v1.UserService.SpinCasino:input_type -> user.v1.SpinCasinoRequest
-	184, // 234: user.v1.UserService.SetCasinoBets:input_type -> user.v1.SetCasinoBetsRequest
-	185, // 235: user.v1.UserService.BetCasino:input_type -> user.v1.BetCasinoRequest
-	189, // 236: user.v1.UserService.ListBetEvents:input_type -> user.v1.ListBetEventsRequest
-	191, // 237: user.v1.UserService.CreateBetEvent:input_type -> user.v1.CreateBetEventRequest
-	193, // 238: user.v1.UserService.CloseBetEvent:input_type -> user.v1.BetEventRequest
-	194, // 239: user.v1.UserService.ResolveBetEvent:input_type -> user.v1.ResolveBetEventRequest
-	193, // 240: user.v1.UserService.CancelBetEvent:input_type -> user.v1.BetEventRequest
-	193, // 241: user.v1.UserService.DeleteBetEvent:input_type -> user.v1.BetEventRequest
-	192, // 242: user.v1.UserService.SetBetEventOdds:input_type -> user.v1.SetBetEventOddsRequest
-	195, // 243: user.v1.UserService.StakeBet:input_type -> user.v1.StakeBetRequest
-	176, // 244: user.v1.UserService.SetCasinoRocket:input_type -> user.v1.SetCasinoRocketRequest
-	177, // 245: user.v1.UserService.SetCasinoJackpot:input_type -> user.v1.SetCasinoJackpotRequest
-	178, // 246: user.v1.UserService.LaunchRocket:input_type -> user.v1.LaunchRocketRequest
-	179, // 247: user.v1.UserService.GetRocket:input_type -> user.v1.RocketRequest
-	179, // 248: user.v1.UserService.CashRocket:input_type -> user.v1.RocketRequest
-	197, // 249: user.v1.UserService.SetVerified:input_type -> user.v1.SetVerifiedRequest
-	198, // 250: user.v1.UserService.SetAlert:input_type -> user.v1.SetAlertRequest
-	201, // 251: user.v1.UserService.ListAds:input_type -> user.v1.ListAdsRequest
-	203, // 252: user.v1.UserService.CreateAd:input_type -> user.v1.CreateAdRequest
-	205, // 253: user.v1.UserService.EditAd:input_type -> user.v1.EditAdRequest
-	207, // 254: user.v1.UserService.DeleteAd:input_type -> user.v1.DeleteAdRequest
-	209, // 255: user.v1.UserService.ViewAd:input_type -> user.v1.ViewAdRequest
-	211, // 256: user.v1.UserService.ClickAd:input_type -> user.v1.ClickAdRequest
-	213, // 257: user.v1.UserService.BanUser:input_type -> user.v1.BanUserRequest
-	214, // 258: user.v1.UserService.UnbanUser:input_type -> user.v1.UnbanUserRequest
-	92,  // 259: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
-	94,  // 260: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
-	96,  // 261: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
-	234, // 262: user.v1.UserService.GetMine:input_type -> user.v1.GetMineRequest
-	236, // 263: user.v1.UserService.DigOre:input_type -> user.v1.DigOreRequest
-	238, // 264: user.v1.UserService.SellOre:input_type -> user.v1.SellOreRequest
-	240, // 265: user.v1.UserService.GetMineSettings:input_type -> user.v1.GetMineSettingsRequest
-	242, // 266: user.v1.UserService.SetMine:input_type -> user.v1.SetMineRequest
-	247, // 267: user.v1.UserService.GetBusinesses:input_type -> user.v1.GetBusinessesRequest
-	249, // 268: user.v1.UserService.BuyBusiness:input_type -> user.v1.BuyBusinessRequest
-	250, // 269: user.v1.UserService.RunBusiness:input_type -> user.v1.RunBusinessRequest
-	252, // 270: user.v1.UserService.GetBusinessSettings:input_type -> user.v1.GetBusinessSettingsRequest
-	254, // 271: user.v1.UserService.SetBusinessSettings:input_type -> user.v1.SetBusinessSettingsRequest
-	23,  // 272: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
-	25,  // 273: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
-	27,  // 274: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
-	52,  // 275: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
-	54,  // 276: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
-	37,  // 277: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
-	16,  // 278: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
-	29,  // 279: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
-	31,  // 280: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
-	33,  // 281: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
-	55,  // 282: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
-	57,  // 283: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
-	35,  // 284: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
-	39,  // 285: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
-	59,  // 286: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
-	258, // 287: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
-	258, // 288: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
-	258, // 289: user.v1.UserService.AcceptInvite:output_type -> google.protobuf.Empty
-	44,  // 290: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
-	49,  // 291: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
-	49,  // 292: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
-	258, // 293: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
-	48,  // 294: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
-	61,  // 295: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
-	65,  // 296: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
-	67,  // 297: user.v1.UserService.GetBoughtPosts:output_type -> user.v1.GetBoughtPostsResponse
-	69,  // 298: user.v1.UserService.BuyPost:output_type -> user.v1.BuyPostResponse
-	71,  // 299: user.v1.UserService.PayMessage:output_type -> user.v1.PayMessageResponse
-	258, // 300: user.v1.UserService.RefundMessage:output_type -> google.protobuf.Empty
-	84,  // 301: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
-	86,  // 302: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
-	89,  // 303: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
-	63,  // 304: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
-	258, // 305: user.v1.UserService.Block:output_type -> google.protobuf.Empty
-	258, // 306: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
-	76,  // 307: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
-	78,  // 308: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
-	258, // 309: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
-	258, // 310: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
-	82,  // 311: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
-	91,  // 312: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
-	99,  // 313: user.v1.UserService.GetGiftCatalog:output_type -> user.v1.GetGiftCatalogResponse
-	103, // 314: user.v1.UserService.SendGift:output_type -> user.v1.SendGiftResponse
-	106, // 315: user.v1.UserService.ListGifts:output_type -> user.v1.ListGiftsResponse
-	258, // 316: user.v1.UserService.DeleteGift:output_type -> google.protobuf.Empty
-	258, // 317: user.v1.UserService.SetGiftPrice:output_type -> google.protobuf.Empty
-	110, // 318: user.v1.UserService.UpgradeGift:output_type -> user.v1.UpgradeGiftResponse
-	258, // 319: user.v1.UserService.TransferGift:output_type -> google.protobuf.Empty
-	113, // 320: user.v1.UserService.SetGiftSale:output_type -> user.v1.SetGiftSaleResponse
-	115, // 321: user.v1.UserService.BuyGift:output_type -> user.v1.BuyGiftResponse
-	117, // 322: user.v1.UserService.GetCollectible:output_type -> user.v1.GetCollectibleResponse
-	122, // 323: user.v1.UserService.ListGiftMarket:output_type -> user.v1.ListGiftMarketResponse
-	258, // 324: user.v1.UserService.StartGiftAuction:output_type -> google.protobuf.Empty
-	125, // 325: user.v1.UserService.MintGiftAuction:output_type -> user.v1.MintGiftAuctionResponse
-	258, // 326: user.v1.UserService.CancelGiftAuction:output_type -> google.protobuf.Empty
-	128, // 327: user.v1.UserService.BidGift:output_type -> user.v1.BidGiftResponse
-	130, // 328: user.v1.UserService.ListGiftAuctions:output_type -> user.v1.ListGiftAuctionsResponse
-	258, // 329: user.v1.UserService.SetGiftSupply:output_type -> google.protobuf.Empty
-	216, // 330: user.v1.UserService.GetStickerCatalog:output_type -> user.v1.GetStickerCatalogResponse
-	258, // 331: user.v1.UserService.AddStickerPack:output_type -> google.protobuf.Empty
-	258, // 332: user.v1.UserService.RemoveStickerPack:output_type -> google.protobuf.Empty
-	221, // 333: user.v1.UserService.ListMyStickerPacks:output_type -> user.v1.ListMyStickerPacksResponse
-	223, // 334: user.v1.UserService.CreateStickerPack:output_type -> user.v1.CreateStickerPackResponse
-	225, // 335: user.v1.UserService.EditStickerPack:output_type -> user.v1.EditStickerPackResponse
-	227, // 336: user.v1.UserService.DeleteStickerPack:output_type -> user.v1.DeleteStickerPackResponse
-	229, // 337: user.v1.UserService.GetStickerAuthors:output_type -> user.v1.GetStickerAuthorsResponse
-	133, // 338: user.v1.UserService.TransferVotes:output_type -> user.v1.TransferVotesResponse
-	135, // 339: user.v1.UserService.RedeemVoucher:output_type -> user.v1.RedeemVoucherResponse
-	138, // 340: user.v1.UserService.ListVoteOperations:output_type -> user.v1.ListVoteOperationsResponse
-	141, // 341: user.v1.UserService.CreateVoucher:output_type -> user.v1.CreateVoucherResponse
-	143, // 342: user.v1.UserService.ListVouchers:output_type -> user.v1.ListVouchersResponse
-	258, // 343: user.v1.UserService.DeleteVoucher:output_type -> google.protobuf.Empty
-	146, // 344: user.v1.UserService.GetVoteRate:output_type -> user.v1.GetVoteRateResponse
-	258, // 345: user.v1.UserService.SetVoteRate:output_type -> google.protobuf.Empty
-	149, // 346: user.v1.UserService.GetTreasury:output_type -> user.v1.GetTreasuryResponse
-	152, // 347: user.v1.UserService.GetBonus:output_type -> user.v1.GetBonusResponse
-	154, // 348: user.v1.UserService.ClaimBonus:output_type -> user.v1.ClaimBonusResponse
-	258, // 349: user.v1.UserService.SetEconomy:output_type -> google.protobuf.Empty
-	156, // 350: user.v1.UserService.RaiseRating:output_type -> user.v1.RaiseRatingResponse
-	159, // 351: user.v1.UserService.GetPrime:output_type -> user.v1.GetPrimeResponse
-	161, // 352: user.v1.UserService.BuyPrime:output_type -> user.v1.BuyPrimeResponse
-	258, // 353: user.v1.UserService.SetPrimePrices:output_type -> google.protobuf.Empty
-	258, // 354: user.v1.UserService.SetPrimeInvisible:output_type -> google.protobuf.Empty
-	258, // 355: user.v1.UserService.SetPrimeStyle:output_type -> google.protobuf.Empty
-	167, // 356: user.v1.UserService.GetDecor:output_type -> user.v1.GetDecorResponse
-	258, // 357: user.v1.UserService.SetDecor:output_type -> google.protobuf.Empty
-	171, // 358: user.v1.UserService.GetCasino:output_type -> user.v1.GetCasinoResponse
-	174, // 359: user.v1.UserService.GetCasinoSettings:output_type -> user.v1.GetCasinoSettingsResponse
-	258, // 360: user.v1.UserService.SetCasino:output_type -> google.protobuf.Empty
-	183, // 361: user.v1.UserService.SpinCasino:output_type -> user.v1.SpinCasinoResponse
-	258, // 362: user.v1.UserService.SetCasinoBets:output_type -> google.protobuf.Empty
-	186, // 363: user.v1.UserService.BetCasino:output_type -> user.v1.BetCasinoResponse
-	190, // 364: user.v1.UserService.ListBetEvents:output_type -> user.v1.ListBetEventsResponse
-	188, // 365: user.v1.UserService.CreateBetEvent:output_type -> user.v1.BetEvent
-	258, // 366: user.v1.UserService.CloseBetEvent:output_type -> google.protobuf.Empty
-	258, // 367: user.v1.UserService.ResolveBetEvent:output_type -> google.protobuf.Empty
-	258, // 368: user.v1.UserService.CancelBetEvent:output_type -> google.protobuf.Empty
-	258, // 369: user.v1.UserService.DeleteBetEvent:output_type -> google.protobuf.Empty
-	258, // 370: user.v1.UserService.SetBetEventOdds:output_type -> google.protobuf.Empty
-	196, // 371: user.v1.UserService.StakeBet:output_type -> user.v1.StakeBetResponse
-	258, // 372: user.v1.UserService.SetCasinoRocket:output_type -> google.protobuf.Empty
-	258, // 373: user.v1.UserService.SetCasinoJackpot:output_type -> google.protobuf.Empty
-	180, // 374: user.v1.UserService.LaunchRocket:output_type -> user.v1.RocketRound
-	180, // 375: user.v1.UserService.GetRocket:output_type -> user.v1.RocketRound
-	180, // 376: user.v1.UserService.CashRocket:output_type -> user.v1.RocketRound
-	258, // 377: user.v1.UserService.SetVerified:output_type -> google.protobuf.Empty
-	258, // 378: user.v1.UserService.SetAlert:output_type -> google.protobuf.Empty
-	202, // 379: user.v1.UserService.ListAds:output_type -> user.v1.ListAdsResponse
-	204, // 380: user.v1.UserService.CreateAd:output_type -> user.v1.CreateAdResponse
-	206, // 381: user.v1.UserService.EditAd:output_type -> user.v1.EditAdResponse
-	208, // 382: user.v1.UserService.DeleteAd:output_type -> user.v1.DeleteAdResponse
-	210, // 383: user.v1.UserService.ViewAd:output_type -> user.v1.ViewAdResponse
-	212, // 384: user.v1.UserService.ClickAd:output_type -> user.v1.ClickAdResponse
-	258, // 385: user.v1.UserService.BanUser:output_type -> google.protobuf.Empty
-	258, // 386: user.v1.UserService.UnbanUser:output_type -> google.protobuf.Empty
-	93,  // 387: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
-	95,  // 388: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
-	97,  // 389: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
-	235, // 390: user.v1.UserService.GetMine:output_type -> user.v1.MineState
-	237, // 391: user.v1.UserService.DigOre:output_type -> user.v1.DigOreResponse
-	239, // 392: user.v1.UserService.SellOre:output_type -> user.v1.SellOreResponse
-	241, // 393: user.v1.UserService.GetMineSettings:output_type -> user.v1.GetMineSettingsResponse
-	258, // 394: user.v1.UserService.SetMine:output_type -> google.protobuf.Empty
-	248, // 395: user.v1.UserService.GetBusinesses:output_type -> user.v1.BusinessesState
-	251, // 396: user.v1.UserService.BuyBusiness:output_type -> user.v1.RunBusinessResponse
-	251, // 397: user.v1.UserService.RunBusiness:output_type -> user.v1.RunBusinessResponse
-	253, // 398: user.v1.UserService.GetBusinessSettings:output_type -> user.v1.GetBusinessSettingsResponse
-	258, // 399: user.v1.UserService.SetBusinessSettings:output_type -> google.protobuf.Empty
-	272, // [272:400] is the sub-list for method output_type
-	144, // [144:272] is the sub-list for method input_type
-	144, // [144:144] is the sub-list for extension type_name
-	144, // [144:144] is the sub-list for extension extendee
-	0,   // [0:144] is the sub-list for field type_name
+	246, // 137: user.v1.BusinessCatalog.supplies:type_name -> user.v1.BusinessSupplySpec
+	247, // 138: user.v1.BusinessCatalog.offers:type_name -> user.v1.BusinessOfferSpec
+	249, // 139: user.v1.BusinessCatalog.professions:type_name -> user.v1.BusinessProfessionSpec
+	248, // 140: user.v1.BusinessOfferSpec.recipe:type_name -> user.v1.BusinessIngredient
+	274, // 141: user.v1.Business.ad_until:type_name -> google.protobuf.Timestamp
+	252, // 142: user.v1.Business.supplies:type_name -> user.v1.BusinessStock
+	253, // 143: user.v1.Business.offers:type_name -> user.v1.BusinessOfferState
+	254, // 144: user.v1.Business.workers:type_name -> user.v1.BusinessWorker
+	255, // 145: user.v1.Business.candidates:type_name -> user.v1.BusinessCandidate
+	274, // 146: user.v1.Business.candidates_until:type_name -> google.protobuf.Timestamp
+	256, // 147: user.v1.Business.orders:type_name -> user.v1.BusinessOrder
+	257, // 148: user.v1.Business.contracts:type_name -> user.v1.BusinessContract
+	258, // 149: user.v1.Business.event:type_name -> user.v1.BusinessEvent
+	259, // 150: user.v1.Business.notes:type_name -> user.v1.BusinessNote
+	260, // 151: user.v1.Business.hours:type_name -> user.v1.BusinessHour
+	274, // 152: user.v1.Business.review_until:type_name -> google.protobuf.Timestamp
+	271, // 153: user.v1.Business.load:type_name -> user.v1.Business.LoadEntry
+	274, // 154: user.v1.Business.broken_until:type_name -> google.protobuf.Timestamp
+	272, // 155: user.v1.BusinessStock.unit_costs:type_name -> user.v1.BusinessStock.UnitCostsEntry
+	254, // 156: user.v1.BusinessCandidate.worker:type_name -> user.v1.BusinessWorker
+	274, // 157: user.v1.BusinessOrder.arrives:type_name -> google.protobuf.Timestamp
+	274, // 158: user.v1.BusinessEvent.until:type_name -> google.protobuf.Timestamp
+	274, // 159: user.v1.BusinessNote.at:type_name -> google.protobuf.Timestamp
+	274, // 160: user.v1.BusinessHour.hour:type_name -> google.protobuf.Timestamp
+	273, // 161: user.v1.BusinessHour.sold:type_name -> user.v1.BusinessHour.SoldEntry
+	244, // 162: user.v1.BusinessesState.settings:type_name -> user.v1.BusinessSettings
+	251, // 163: user.v1.BusinessesState.businesses:type_name -> user.v1.Business
+	245, // 164: user.v1.BusinessesState.catalog:type_name -> user.v1.BusinessCatalog
+	250, // 165: user.v1.BusinessesState.suppliers:type_name -> user.v1.BusinessSupplier
+	262, // 166: user.v1.RunBusinessResponse.businesses:type_name -> user.v1.BusinessesState
+	244, // 167: user.v1.GetBusinessSettingsResponse.settings:type_name -> user.v1.BusinessSettings
+	244, // 168: user.v1.SetBusinessSettingsRequest.settings:type_name -> user.v1.BusinessSettings
+	22,  // 169: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
+	24,  // 170: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
+	26,  // 171: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
+	51,  // 172: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
+	53,  // 173: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
+	36,  // 174: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
+	15,  // 175: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
+	28,  // 176: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
+	30,  // 177: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
+	32,  // 178: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
+	50,  // 179: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
+	56,  // 180: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
+	34,  // 181: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
+	38,  // 182: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
+	58,  // 183: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
+	40,  // 184: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
+	42,  // 185: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
+	41,  // 186: user.v1.UserService.AcceptInvite:input_type -> user.v1.AcceptInviteRequest
+	43,  // 187: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
+	45,  // 188: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
+	45,  // 189: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
+	46,  // 190: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
+	47,  // 191: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
+	60,  // 192: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
+	64,  // 193: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
+	66,  // 194: user.v1.UserService.GetBoughtPosts:input_type -> user.v1.GetBoughtPostsRequest
+	68,  // 195: user.v1.UserService.BuyPost:input_type -> user.v1.BuyPostRequest
+	70,  // 196: user.v1.UserService.PayMessage:input_type -> user.v1.PayMessageRequest
+	72,  // 197: user.v1.UserService.RefundMessage:input_type -> user.v1.RefundMessageRequest
+	83,  // 198: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
+	85,  // 199: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
+	88,  // 200: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
+	62,  // 201: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
+	73,  // 202: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
+	74,  // 203: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
+	75,  // 204: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
+	77,  // 205: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
+	79,  // 206: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
+	80,  // 207: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
+	81,  // 208: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
+	90,  // 209: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
+	98,  // 210: user.v1.UserService.GetGiftCatalog:input_type -> user.v1.GetGiftCatalogRequest
+	102, // 211: user.v1.UserService.SendGift:input_type -> user.v1.SendGiftRequest
+	105, // 212: user.v1.UserService.ListGifts:input_type -> user.v1.ListGiftsRequest
+	107, // 213: user.v1.UserService.DeleteGift:input_type -> user.v1.DeleteGiftRequest
+	108, // 214: user.v1.UserService.SetGiftPrice:input_type -> user.v1.SetGiftPriceRequest
+	109, // 215: user.v1.UserService.UpgradeGift:input_type -> user.v1.UpgradeGiftRequest
+	111, // 216: user.v1.UserService.TransferGift:input_type -> user.v1.TransferGiftRequest
+	112, // 217: user.v1.UserService.SetGiftSale:input_type -> user.v1.SetGiftSaleRequest
+	114, // 218: user.v1.UserService.BuyGift:input_type -> user.v1.BuyGiftRequest
+	116, // 219: user.v1.UserService.GetCollectible:input_type -> user.v1.GetCollectibleRequest
+	121, // 220: user.v1.UserService.ListGiftMarket:input_type -> user.v1.ListGiftMarketRequest
+	123, // 221: user.v1.UserService.StartGiftAuction:input_type -> user.v1.StartGiftAuctionRequest
+	124, // 222: user.v1.UserService.MintGiftAuction:input_type -> user.v1.MintGiftAuctionRequest
+	126, // 223: user.v1.UserService.CancelGiftAuction:input_type -> user.v1.CancelGiftAuctionRequest
+	127, // 224: user.v1.UserService.BidGift:input_type -> user.v1.BidGiftRequest
+	129, // 225: user.v1.UserService.ListGiftAuctions:input_type -> user.v1.ListGiftAuctionsRequest
+	131, // 226: user.v1.UserService.SetGiftSupply:input_type -> user.v1.SetGiftSupplyRequest
+	215, // 227: user.v1.UserService.GetStickerCatalog:input_type -> user.v1.GetStickerCatalogRequest
+	218, // 228: user.v1.UserService.AddStickerPack:input_type -> user.v1.AddStickerPackRequest
+	219, // 229: user.v1.UserService.RemoveStickerPack:input_type -> user.v1.RemoveStickerPackRequest
+	220, // 230: user.v1.UserService.ListMyStickerPacks:input_type -> user.v1.ListMyStickerPacksRequest
+	222, // 231: user.v1.UserService.CreateStickerPack:input_type -> user.v1.CreateStickerPackRequest
+	224, // 232: user.v1.UserService.EditStickerPack:input_type -> user.v1.EditStickerPackRequest
+	226, // 233: user.v1.UserService.DeleteStickerPack:input_type -> user.v1.DeleteStickerPackRequest
+	228, // 234: user.v1.UserService.GetStickerAuthors:input_type -> user.v1.GetStickerAuthorsRequest
+	132, // 235: user.v1.UserService.TransferVotes:input_type -> user.v1.TransferVotesRequest
+	134, // 236: user.v1.UserService.RedeemVoucher:input_type -> user.v1.RedeemVoucherRequest
+	136, // 237: user.v1.UserService.ListVoteOperations:input_type -> user.v1.ListVoteOperationsRequest
+	140, // 238: user.v1.UserService.CreateVoucher:input_type -> user.v1.CreateVoucherRequest
+	142, // 239: user.v1.UserService.ListVouchers:input_type -> user.v1.ListVouchersRequest
+	144, // 240: user.v1.UserService.DeleteVoucher:input_type -> user.v1.DeleteVoucherRequest
+	145, // 241: user.v1.UserService.GetVoteRate:input_type -> user.v1.GetVoteRateRequest
+	147, // 242: user.v1.UserService.SetVoteRate:input_type -> user.v1.SetVoteRateRequest
+	148, // 243: user.v1.UserService.GetTreasury:input_type -> user.v1.GetTreasuryRequest
+	151, // 244: user.v1.UserService.GetBonus:input_type -> user.v1.GetBonusRequest
+	153, // 245: user.v1.UserService.ClaimBonus:input_type -> user.v1.ClaimBonusRequest
+	150, // 246: user.v1.UserService.SetEconomy:input_type -> user.v1.SetEconomyRequest
+	155, // 247: user.v1.UserService.RaiseRating:input_type -> user.v1.RaiseRatingRequest
+	158, // 248: user.v1.UserService.GetPrime:input_type -> user.v1.GetPrimeRequest
+	160, // 249: user.v1.UserService.BuyPrime:input_type -> user.v1.BuyPrimeRequest
+	162, // 250: user.v1.UserService.SetPrimePrices:input_type -> user.v1.SetPrimePricesRequest
+	163, // 251: user.v1.UserService.SetPrimeInvisible:input_type -> user.v1.SetPrimeInvisibleRequest
+	165, // 252: user.v1.UserService.SetPrimeStyle:input_type -> user.v1.SetPrimeStyleRequest
+	166, // 253: user.v1.UserService.GetDecor:input_type -> user.v1.GetDecorRequest
+	168, // 254: user.v1.UserService.SetDecor:input_type -> user.v1.SetDecorRequest
+	170, // 255: user.v1.UserService.GetCasino:input_type -> user.v1.GetCasinoRequest
+	173, // 256: user.v1.UserService.GetCasinoSettings:input_type -> user.v1.GetCasinoSettingsRequest
+	181, // 257: user.v1.UserService.SetCasino:input_type -> user.v1.SetCasinoRequest
+	182, // 258: user.v1.UserService.SpinCasino:input_type -> user.v1.SpinCasinoRequest
+	184, // 259: user.v1.UserService.SetCasinoBets:input_type -> user.v1.SetCasinoBetsRequest
+	185, // 260: user.v1.UserService.BetCasino:input_type -> user.v1.BetCasinoRequest
+	189, // 261: user.v1.UserService.ListBetEvents:input_type -> user.v1.ListBetEventsRequest
+	191, // 262: user.v1.UserService.CreateBetEvent:input_type -> user.v1.CreateBetEventRequest
+	193, // 263: user.v1.UserService.CloseBetEvent:input_type -> user.v1.BetEventRequest
+	194, // 264: user.v1.UserService.ResolveBetEvent:input_type -> user.v1.ResolveBetEventRequest
+	193, // 265: user.v1.UserService.CancelBetEvent:input_type -> user.v1.BetEventRequest
+	193, // 266: user.v1.UserService.DeleteBetEvent:input_type -> user.v1.BetEventRequest
+	192, // 267: user.v1.UserService.SetBetEventOdds:input_type -> user.v1.SetBetEventOddsRequest
+	195, // 268: user.v1.UserService.StakeBet:input_type -> user.v1.StakeBetRequest
+	176, // 269: user.v1.UserService.SetCasinoRocket:input_type -> user.v1.SetCasinoRocketRequest
+	177, // 270: user.v1.UserService.SetCasinoJackpot:input_type -> user.v1.SetCasinoJackpotRequest
+	178, // 271: user.v1.UserService.LaunchRocket:input_type -> user.v1.LaunchRocketRequest
+	179, // 272: user.v1.UserService.GetRocket:input_type -> user.v1.RocketRequest
+	179, // 273: user.v1.UserService.CashRocket:input_type -> user.v1.RocketRequest
+	197, // 274: user.v1.UserService.SetVerified:input_type -> user.v1.SetVerifiedRequest
+	198, // 275: user.v1.UserService.SetAlert:input_type -> user.v1.SetAlertRequest
+	201, // 276: user.v1.UserService.ListAds:input_type -> user.v1.ListAdsRequest
+	203, // 277: user.v1.UserService.CreateAd:input_type -> user.v1.CreateAdRequest
+	205, // 278: user.v1.UserService.EditAd:input_type -> user.v1.EditAdRequest
+	207, // 279: user.v1.UserService.DeleteAd:input_type -> user.v1.DeleteAdRequest
+	209, // 280: user.v1.UserService.ViewAd:input_type -> user.v1.ViewAdRequest
+	211, // 281: user.v1.UserService.ClickAd:input_type -> user.v1.ClickAdRequest
+	213, // 282: user.v1.UserService.BanUser:input_type -> user.v1.BanUserRequest
+	214, // 283: user.v1.UserService.UnbanUser:input_type -> user.v1.UnbanUserRequest
+	92,  // 284: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
+	94,  // 285: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
+	96,  // 286: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
+	234, // 287: user.v1.UserService.GetMine:input_type -> user.v1.GetMineRequest
+	236, // 288: user.v1.UserService.DigOre:input_type -> user.v1.DigOreRequest
+	238, // 289: user.v1.UserService.SellOre:input_type -> user.v1.SellOreRequest
+	240, // 290: user.v1.UserService.GetMineSettings:input_type -> user.v1.GetMineSettingsRequest
+	242, // 291: user.v1.UserService.SetMine:input_type -> user.v1.SetMineRequest
+	261, // 292: user.v1.UserService.GetBusinesses:input_type -> user.v1.GetBusinessesRequest
+	263, // 293: user.v1.UserService.BuyBusiness:input_type -> user.v1.BuyBusinessRequest
+	264, // 294: user.v1.UserService.RunBusiness:input_type -> user.v1.RunBusinessRequest
+	266, // 295: user.v1.UserService.GetBusinessSettings:input_type -> user.v1.GetBusinessSettingsRequest
+	268, // 296: user.v1.UserService.SetBusinessSettings:input_type -> user.v1.SetBusinessSettingsRequest
+	23,  // 297: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
+	25,  // 298: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
+	27,  // 299: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
+	52,  // 300: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
+	54,  // 301: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
+	37,  // 302: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
+	16,  // 303: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
+	29,  // 304: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
+	31,  // 305: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
+	33,  // 306: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
+	55,  // 307: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
+	57,  // 308: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
+	35,  // 309: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
+	39,  // 310: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
+	59,  // 311: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
+	275, // 312: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
+	275, // 313: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
+	275, // 314: user.v1.UserService.AcceptInvite:output_type -> google.protobuf.Empty
+	44,  // 315: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
+	49,  // 316: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
+	49,  // 317: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
+	275, // 318: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
+	48,  // 319: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
+	61,  // 320: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
+	65,  // 321: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
+	67,  // 322: user.v1.UserService.GetBoughtPosts:output_type -> user.v1.GetBoughtPostsResponse
+	69,  // 323: user.v1.UserService.BuyPost:output_type -> user.v1.BuyPostResponse
+	71,  // 324: user.v1.UserService.PayMessage:output_type -> user.v1.PayMessageResponse
+	275, // 325: user.v1.UserService.RefundMessage:output_type -> google.protobuf.Empty
+	84,  // 326: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
+	86,  // 327: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
+	89,  // 328: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
+	63,  // 329: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
+	275, // 330: user.v1.UserService.Block:output_type -> google.protobuf.Empty
+	275, // 331: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
+	76,  // 332: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
+	78,  // 333: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
+	275, // 334: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
+	275, // 335: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
+	82,  // 336: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
+	91,  // 337: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
+	99,  // 338: user.v1.UserService.GetGiftCatalog:output_type -> user.v1.GetGiftCatalogResponse
+	103, // 339: user.v1.UserService.SendGift:output_type -> user.v1.SendGiftResponse
+	106, // 340: user.v1.UserService.ListGifts:output_type -> user.v1.ListGiftsResponse
+	275, // 341: user.v1.UserService.DeleteGift:output_type -> google.protobuf.Empty
+	275, // 342: user.v1.UserService.SetGiftPrice:output_type -> google.protobuf.Empty
+	110, // 343: user.v1.UserService.UpgradeGift:output_type -> user.v1.UpgradeGiftResponse
+	275, // 344: user.v1.UserService.TransferGift:output_type -> google.protobuf.Empty
+	113, // 345: user.v1.UserService.SetGiftSale:output_type -> user.v1.SetGiftSaleResponse
+	115, // 346: user.v1.UserService.BuyGift:output_type -> user.v1.BuyGiftResponse
+	117, // 347: user.v1.UserService.GetCollectible:output_type -> user.v1.GetCollectibleResponse
+	122, // 348: user.v1.UserService.ListGiftMarket:output_type -> user.v1.ListGiftMarketResponse
+	275, // 349: user.v1.UserService.StartGiftAuction:output_type -> google.protobuf.Empty
+	125, // 350: user.v1.UserService.MintGiftAuction:output_type -> user.v1.MintGiftAuctionResponse
+	275, // 351: user.v1.UserService.CancelGiftAuction:output_type -> google.protobuf.Empty
+	128, // 352: user.v1.UserService.BidGift:output_type -> user.v1.BidGiftResponse
+	130, // 353: user.v1.UserService.ListGiftAuctions:output_type -> user.v1.ListGiftAuctionsResponse
+	275, // 354: user.v1.UserService.SetGiftSupply:output_type -> google.protobuf.Empty
+	216, // 355: user.v1.UserService.GetStickerCatalog:output_type -> user.v1.GetStickerCatalogResponse
+	275, // 356: user.v1.UserService.AddStickerPack:output_type -> google.protobuf.Empty
+	275, // 357: user.v1.UserService.RemoveStickerPack:output_type -> google.protobuf.Empty
+	221, // 358: user.v1.UserService.ListMyStickerPacks:output_type -> user.v1.ListMyStickerPacksResponse
+	223, // 359: user.v1.UserService.CreateStickerPack:output_type -> user.v1.CreateStickerPackResponse
+	225, // 360: user.v1.UserService.EditStickerPack:output_type -> user.v1.EditStickerPackResponse
+	227, // 361: user.v1.UserService.DeleteStickerPack:output_type -> user.v1.DeleteStickerPackResponse
+	229, // 362: user.v1.UserService.GetStickerAuthors:output_type -> user.v1.GetStickerAuthorsResponse
+	133, // 363: user.v1.UserService.TransferVotes:output_type -> user.v1.TransferVotesResponse
+	135, // 364: user.v1.UserService.RedeemVoucher:output_type -> user.v1.RedeemVoucherResponse
+	138, // 365: user.v1.UserService.ListVoteOperations:output_type -> user.v1.ListVoteOperationsResponse
+	141, // 366: user.v1.UserService.CreateVoucher:output_type -> user.v1.CreateVoucherResponse
+	143, // 367: user.v1.UserService.ListVouchers:output_type -> user.v1.ListVouchersResponse
+	275, // 368: user.v1.UserService.DeleteVoucher:output_type -> google.protobuf.Empty
+	146, // 369: user.v1.UserService.GetVoteRate:output_type -> user.v1.GetVoteRateResponse
+	275, // 370: user.v1.UserService.SetVoteRate:output_type -> google.protobuf.Empty
+	149, // 371: user.v1.UserService.GetTreasury:output_type -> user.v1.GetTreasuryResponse
+	152, // 372: user.v1.UserService.GetBonus:output_type -> user.v1.GetBonusResponse
+	154, // 373: user.v1.UserService.ClaimBonus:output_type -> user.v1.ClaimBonusResponse
+	275, // 374: user.v1.UserService.SetEconomy:output_type -> google.protobuf.Empty
+	156, // 375: user.v1.UserService.RaiseRating:output_type -> user.v1.RaiseRatingResponse
+	159, // 376: user.v1.UserService.GetPrime:output_type -> user.v1.GetPrimeResponse
+	161, // 377: user.v1.UserService.BuyPrime:output_type -> user.v1.BuyPrimeResponse
+	275, // 378: user.v1.UserService.SetPrimePrices:output_type -> google.protobuf.Empty
+	275, // 379: user.v1.UserService.SetPrimeInvisible:output_type -> google.protobuf.Empty
+	275, // 380: user.v1.UserService.SetPrimeStyle:output_type -> google.protobuf.Empty
+	167, // 381: user.v1.UserService.GetDecor:output_type -> user.v1.GetDecorResponse
+	275, // 382: user.v1.UserService.SetDecor:output_type -> google.protobuf.Empty
+	171, // 383: user.v1.UserService.GetCasino:output_type -> user.v1.GetCasinoResponse
+	174, // 384: user.v1.UserService.GetCasinoSettings:output_type -> user.v1.GetCasinoSettingsResponse
+	275, // 385: user.v1.UserService.SetCasino:output_type -> google.protobuf.Empty
+	183, // 386: user.v1.UserService.SpinCasino:output_type -> user.v1.SpinCasinoResponse
+	275, // 387: user.v1.UserService.SetCasinoBets:output_type -> google.protobuf.Empty
+	186, // 388: user.v1.UserService.BetCasino:output_type -> user.v1.BetCasinoResponse
+	190, // 389: user.v1.UserService.ListBetEvents:output_type -> user.v1.ListBetEventsResponse
+	188, // 390: user.v1.UserService.CreateBetEvent:output_type -> user.v1.BetEvent
+	275, // 391: user.v1.UserService.CloseBetEvent:output_type -> google.protobuf.Empty
+	275, // 392: user.v1.UserService.ResolveBetEvent:output_type -> google.protobuf.Empty
+	275, // 393: user.v1.UserService.CancelBetEvent:output_type -> google.protobuf.Empty
+	275, // 394: user.v1.UserService.DeleteBetEvent:output_type -> google.protobuf.Empty
+	275, // 395: user.v1.UserService.SetBetEventOdds:output_type -> google.protobuf.Empty
+	196, // 396: user.v1.UserService.StakeBet:output_type -> user.v1.StakeBetResponse
+	275, // 397: user.v1.UserService.SetCasinoRocket:output_type -> google.protobuf.Empty
+	275, // 398: user.v1.UserService.SetCasinoJackpot:output_type -> google.protobuf.Empty
+	180, // 399: user.v1.UserService.LaunchRocket:output_type -> user.v1.RocketRound
+	180, // 400: user.v1.UserService.GetRocket:output_type -> user.v1.RocketRound
+	180, // 401: user.v1.UserService.CashRocket:output_type -> user.v1.RocketRound
+	275, // 402: user.v1.UserService.SetVerified:output_type -> google.protobuf.Empty
+	275, // 403: user.v1.UserService.SetAlert:output_type -> google.protobuf.Empty
+	202, // 404: user.v1.UserService.ListAds:output_type -> user.v1.ListAdsResponse
+	204, // 405: user.v1.UserService.CreateAd:output_type -> user.v1.CreateAdResponse
+	206, // 406: user.v1.UserService.EditAd:output_type -> user.v1.EditAdResponse
+	208, // 407: user.v1.UserService.DeleteAd:output_type -> user.v1.DeleteAdResponse
+	210, // 408: user.v1.UserService.ViewAd:output_type -> user.v1.ViewAdResponse
+	212, // 409: user.v1.UserService.ClickAd:output_type -> user.v1.ClickAdResponse
+	275, // 410: user.v1.UserService.BanUser:output_type -> google.protobuf.Empty
+	275, // 411: user.v1.UserService.UnbanUser:output_type -> google.protobuf.Empty
+	93,  // 412: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
+	95,  // 413: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
+	97,  // 414: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
+	235, // 415: user.v1.UserService.GetMine:output_type -> user.v1.MineState
+	237, // 416: user.v1.UserService.DigOre:output_type -> user.v1.DigOreResponse
+	239, // 417: user.v1.UserService.SellOre:output_type -> user.v1.SellOreResponse
+	241, // 418: user.v1.UserService.GetMineSettings:output_type -> user.v1.GetMineSettingsResponse
+	275, // 419: user.v1.UserService.SetMine:output_type -> google.protobuf.Empty
+	262, // 420: user.v1.UserService.GetBusinesses:output_type -> user.v1.BusinessesState
+	265, // 421: user.v1.UserService.BuyBusiness:output_type -> user.v1.RunBusinessResponse
+	265, // 422: user.v1.UserService.RunBusiness:output_type -> user.v1.RunBusinessResponse
+	267, // 423: user.v1.UserService.GetBusinessSettings:output_type -> user.v1.GetBusinessSettingsResponse
+	275, // 424: user.v1.UserService.SetBusinessSettings:output_type -> google.protobuf.Empty
+	297, // [297:425] is the sub-list for method output_type
+	169, // [169:297] is the sub-list for method input_type
+	169, // [169:169] is the sub-list for extension type_name
+	169, // [169:169] is the sub-list for extension extendee
+	0,   // [0:169] is the sub-list for field type_name
 }
 
 func init() { file_api_user_v1_user_proto_init() }
@@ -17393,7 +18897,7 @@ func file_api_user_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_user_v1_user_proto_rawDesc), len(file_api_user_v1_user_proto_rawDesc)),
 			NumEnums:      12,
-			NumMessages:   245,
+			NumMessages:   262,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
