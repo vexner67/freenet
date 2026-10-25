@@ -256,7 +256,7 @@ input, select, textarea { font-size: 16px !important; }
 /* A dialog takes the height of the screen, and its form stays over the
    bar of sections; the date and the links of a message go under its
    text, and the form loses its photos. */
-.messenger-messages { height: calc(100dvh - 300px); min-height: 200px; padding: 8px; }
+.messenger-messages { height: calc(100dvh - 240px); min-height: 240px; padding: 8px; }
 .messenger-typing { padding-left: 54px; }
 .messenger-input {
   position: sticky;

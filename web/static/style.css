@@ -933,6 +933,10 @@ body.prime-bg { background: var(--back-f2f5f8) var(--prime-pattern); }
   pointer-events: none;
 }
 .im-message.prime-dressed::before { inset: 0; }
+/* A dressed block is its own stacking context, so the open menu of its
+   actions would slip under the next message or comment: the block with
+   the open menu rises over its neighbours. */
+.prime-dressed:has(.attach-menu.open), .im-message:has(.attach-menu.open) { z-index: 40; }
 
 .prime-mood { width: 32px; height: 32px; }
 /* The mood sits on the right under "Онлайн", by the name. */
@@ -1022,7 +1026,9 @@ body.prime-bg { background: var(--back-f2f5f8) var(--prime-pattern); }
 .dialog-text.dialog-typing { color: var(--text-808080); }
 
 .messenger { margin: -10px; border-bottom: 1px solid var(--line-c3cad2); }
-.messenger-messages { height: 420px; padding: 10px 20px; overflow-y: auto; }
+/* The messages take the height of the screen, less the header, the title
+   and the form, and never less than openvk's 420px. */
+.messenger-messages { height: max(420px, calc(100vh - 290px)); padding: 10px 20px; overflow-y: auto; }
 /* "Печатает...": a line of its own, empty when nobody types, so the form does not jump. */
 .messenger-typing { height: 14px; padding: 0 20px 3px 67px; color: var(--text-808080); line-height: 14px; }
 .im-message { display: flex; gap: 10px; margin-bottom: 3px; padding: 8px 10px; border-radius: 3px; touch-action: manipulation; }

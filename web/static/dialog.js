@@ -798,6 +798,9 @@ if (!me) {
       stick(false);
       await showFound();
     }
+    // The field is ready to type in as the conversation opens, as on VK;
+    // without scrolling, so the list keeps its place.
+    if ($('text').offsetParent) $('text').focus({ preventScroll: true });
 
     list.addEventListener('scroll', () => {
       if (list.scrollTop < LOAD_OLDER_AT) loadOlder();
