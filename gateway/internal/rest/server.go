@@ -69,6 +69,7 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger, reg prometheu
 		mines:             backends.Mine,
 		business:          backends.Business,
 		banks:             backends.Bank,
+		pokers:            backends.Poker,
 		bets:              backends.Bets,
 		media:             backends.Media,
 		notifications:     backends.Notifications,

@@ -5085,6 +5085,105 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/casino/poker:
+    get:
+      summary: The poker table
+      description: '"Покер": Casino Hold''em against the dealer. The limits of the ante and the pays of the ante to one by the hand of the player (`pays`: straight, flush, full house, four of a kind, straight flush, royal flush) and, with a token, your hand waiting for the call or the fold (`dealt`, null without).'
+      security: [{}, { bearer: [] }]
+      responses:
+        "200":
+          description: The table
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [poker, dealt]
+                properties:
+                  poker: { $ref: "#/components/schemas/Poker" }
+                  dealt:
+                    nullable: true
+                    allOf: [{ $ref: "#/components/schemas/PokerHand" }]
+
+  /api/v1/casino/poker/hands:
+    post:
+      summary: Deal a hand of poker
+      description: 'Takes the ante and deals two cards to you, two to the dealer (closed) and the flop. Then call (twice the ante) or fold. 400 for an ante out of the limits, 409 without votes or with a hand waiting already. Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ante]
+              properties:
+                ante: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: The hand dealt
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PokerHand" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/casino/poker/hands/{id}/{action}:
+    post:
+      summary: Call or fold a hand of poker
+      description: '`call` pays twice the ante and opens the dealer and the board. The dealer plays with a pair of fours or better: when he does not, the ante is paid by its pay and the call comes back (`unqualified`); when he does, the better hand wins — the ante by its pay and the call one to one (`won`), both bets back on a tie (`tied`), nothing on a loss (`lost`). `fold` gives the hand up, the ante lost. 404 for a hand not yours or an unknown action, 409 for a hand over. Rate limited.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: action, in: path, required: true, schema: { type: string, enum: [call, fold] } }
+      responses:
+        "200":
+          description: The hand over
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PokerHand" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/casino/poker/settings:
+    get:
+      summary: The poker settings
+      description: For the administrators of the site (403 for others) — the table and how it does.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The settings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [poker, hands, spent, won]
+                properties:
+                  poker: { $ref: "#/components/schemas/Poker" }
+                  hands: { type: integer, format: int64 }
+                  spent: { type: integer, format: int64 }
+                  won: { type: integer, format: int64 }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+    put:
+      summary: Change the poker settings
+      description: For the administrators of the site (403 for others) — the limits of the ante (the most up to a third of the biggest bet) and six pays, each from 1 to 10000.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Poker" }
+      responses:
+        "204": { description: Changed }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+
   /api/v1/me/mine:
     get:
       summary: Your mine
@@ -8912,7 +9011,7 @@ components:
           description: The frame of the photo
         background:
           type: string
-          enum: ["", stars, hearts, checks, clouds, flowers, sparkles, islam]
+          enum: ["", stars, hearts, checks, clouds, flowers, sparkles]
           description: The pattern behind the page, "" for none
         mood:
           type: string
@@ -9412,6 +9511,44 @@ components:
             backpack: { type: object, additionalProperties: { type: integer, format: int64 }, description: The units of each ore }
             digs: { type: integer, format: int64 }
             earned: { type: integer, format: int64, description: The votes the ore sold for }
+    Poker:
+      type: object
+      required: [least, most, pays]
+      properties:
+        least: { type: integer, format: int64 }
+        most: { type: integer, format: int64 }
+        pays:
+          type: array
+          items: { type: integer }
+          minItems: 6
+          maxItems: 6
+
+    PokerHand:
+      type: object
+      required: [id, ante, state, player, board, dealer, payout, playerHand, dealerHand, playerBest, dealerBest, balance]
+      properties:
+        id: { type: string }
+        ante: { type: integer, format: int64 }
+        state: { type: string, enum: [dealt, folded, won, lost, tied, unqualified] }
+        player:
+          type: array
+          description: 'Cards: the rank of 23456789TJQKA and the suit of shdc, "As", "Td".'
+          items: { type: string }
+        board:
+          type: array
+          description: The flop until the call, all five after.
+          items: { type: string }
+        dealer:
+          type: array
+          description: Empty until the call.
+          items: { type: string }
+        payout: { type: integer, format: int64, description: 'What the hand paid back, the bets included.' }
+        playerHand: { type: string, enum: [high_card, pair, two_pair, three, straight, flush, full_house, four, straight_flush, royal_flush] }
+        dealerHand: { type: string, description: 'As playerHand; empty until the call.' }
+        playerBest: { type: array, items: { type: string } }
+        dealerBest: { type: array, items: { type: string } }
+        balance: { type: integer, format: int64, description: 'The balance after the deal, the call or the fold; 0 in the table.' }
+
     RocketRound:
       type: object
       required: [id, amount, auto, state, cashed, payout, crash, elapsedMs, balance]
