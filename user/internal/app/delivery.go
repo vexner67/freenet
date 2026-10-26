@@ -267,6 +267,30 @@ func (a *App) runBank(ctx context.Context, every time.Duration) error {
 	}
 }
 
+// runFirms counts the hours of the economy of the enterprises that ended,
+// looking every interval, until ctx is done. Replicas count each hour
+// once: the city is locked while counted.
+func (a *App) runFirms(ctx context.Context, every time.Duration) error {
+	t := time.NewTicker(every)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-t.C:
+		}
+
+		counted, err := a.firms.Tick(ctx, time.Now())
+		if err != nil && ctx.Err() == nil {
+			a.logger.ErrorContext(ctx, "hours of the enterprises", "error", err)
+		}
+		if counted > 0 {
+			a.logger.InfoContext(ctx, "hours of the enterprises counted", "count", counted)
+		}
+	}
+}
+
 // runHoldem moves on the poker tables due every interval until ctx is
 // done: turns pass and hands are dealt at tables nobody reads.
 func (a *App) runHoldem(ctx context.Context, every time.Duration) error {

@@ -10,8 +10,8 @@
 // and the limits and the return of "Прицел", and the limits, the return and
 // the top of "Ракетка", and the antes and the pays of "Покер"), "Ставки" (/admin/bets: the
 // events people stake on, a new one, and closing, resolving, cancelling
-// and deleting them), "Бизнес" (/admin/business: the plans of the
-// businesses and the tax), "Банк" (/admin/bank: the rates and limits of
+// and deleting them), "Бизнес" (/admin/business: the prices of the
+// enterprises and the goods, the rules of the market), "Банк" (/admin/bank: the rates and limits of
 // deposits and loans), "Шахта" (/admin/mine: the ores, the energy and the
 // events of a dig), "Питомцы" (/admin/pets: the prices of the pets and their
 // fights)
@@ -21,7 +21,7 @@
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, handsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, bankVotes, businessName, formatDateTime, titleIconPath, titleIcons, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, handsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, bankVotes, firmKindName, goodName, formatDateTime, titleIconPath, titleIcons, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 import { remember } from './newyear.js';
 
@@ -1022,49 +1022,48 @@ async function bankSettings(answered) {
   $('bank').hidden = false;
 }
 
-// businessFields are the settings of a business plan in the order of the
-// table, with what each is called.
-const businessFields = [
-  ['price', () => tr('Цена бизнеса, голосов')],
-  ['upgrade', () => tr('Улучшение, голосов × уровень')],
-  ['levels', () => tr('Уровней')],
-  ['demand', () => tr('Покупатели, % от каталога')],
-  ['staff', () => tr('Работников на уровень')],
-  ['rent', () => tr('Аренда в час, сотых')],
-  ['wear', () => tr('Износ в час, сотых %')],
-  ['repair', () => tr('Ремонт 1 %, голосов')],
-  ['till', () => tr('Касса, голосов')],
-  ['debt', () => tr('Допустимый долг, голосов')],
-  ['adPrice', () => tr('Реклама, голосов')],
-  ['adHours', () => tr('Реклама, часов')],
-  ['adBoost', () => tr('Реклама, +% покупателей')],
-];
+// The settings of the enterprises and the goods in the order of the
+// columns of their tables, and the settings of the whole economy.
+const firmPlanFields = ['price', 'upgrade', 'levels', 'staff', 'upkeep'];
+const goodPlanFields = ['base', 'norm'];
+const firmGlobals = ['wage', 'fee', 'floor', 'ceiling', 'retail', 'storage', 'capital'];
 
-// businessSettings is "Бизнес": the plans of the four businesses side by
-// side, the tax and how the businesses have done.
-async function businessSettings(answered) {
-  const { settings, businesses, spent, paid } = await answered;
-  const save = $('business-form').querySelector('button[type=submit]');
-
-  for (const plan of settings.plans) $('business-head').append(el('th', { textContent: businessName(plan.kind) }));
-  const inputs = settings.plans.map(() => ({}));
-  for (const [key, label] of businessFields) {
-    $('business-rows').append(el('tr', {},
-      el('td', {}, el('b', { textContent: label() })),
-      ...settings.plans.map((plan, i) => {
-        const field = el('input', { className: 'text admin-casino-field', type: 'number', min: '0', value: String(plan[key]), required: true });
-        field.setAttribute('aria-label', `${businessName(plan.kind)}: ${label()}`);
-        inputs[i][key] = field;
+// settingsRows fills a table with a row of number fields for each item:
+// its name, then a field for each setting; it returns the fields.
+function settingsRows(body, items, fields, name) {
+  return items.map((item) => {
+    const inputs = {};
+    body.append(el('tr', {},
+      el('td', {}, el('b', { textContent: name(item) })),
+      ...fields.map((key) => {
+        const field = el('input', { className: 'text admin-casino-field', type: 'number', min: '0', value: String(item[key]), required: true });
+        field.setAttribute('aria-label', `${name(item)}: ${key}`);
+        inputs[key] = field;
         return el('td', {}, field);
       }),
     ));
-  }
-  $('business-tax').value = String(settings.tax);
-  $('business-wages').value = String(settings.wages);
-  $('business-goods').value = String(settings.goods);
-  $('business-stats').textContent = businesses > 0
-    ? tr('Бизнесов: {0}. Люди потратили на них {1}, забрали {2}.', groupedVotes(businesses), votesCount(spent), votesCount(paid))
-    : tr('Ещё никто не купил бизнес.');
+    return inputs;
+  });
+}
+
+// businessSettings is "Бизнес": the prices of the enterprises and the
+// goods, the rules of the market and how the economy has done.
+async function businessSettings(answered) {
+  const { settings, firms, spent, paid, fees } = await answered;
+  const save = $('business-form').querySelector('button[type=submit]');
+
+  const plans = settingsRows($('business-plans'), settings.plans, firmPlanFields, (p) => firmKindName(p.kind));
+  const goodsFields = settingsRows($('business-goods'), settings.goods, goodPlanFields, (g) => goodName(g.good));
+  for (const key of firmGlobals) $(`business-${key}`).value = String(settings[key]);
+  $('business-stats').textContent = firms > 0
+    ? tr('Предприятий: {0}. Люди вложили в них {1}, получили {2}, комиссии — {3}.', groupedVotes(firms), votesCount(spent), votesCount(paid), votesCount(fees))
+    : tr('Ещё никто не основал предприятие.');
+
+  const typed = (items, inputs, fields, id) => items.map((item, i) => {
+    const out = { [id]: item[id] };
+    for (const key of fields) out[key] = Number(inputs[i][key].value);
+    return out;
+  });
 
   $('business-form').addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -1072,16 +1071,14 @@ async function businessSettings(answered) {
     $('business-saved').hidden = true;
     save.disabled = true;
 
-    const plans = settings.plans.map((plan, i) => {
-      const typed = { kind: plan.kind };
-      for (const [key] of businessFields) typed[key] = Number(inputs[i][key].value);
-      return typed;
-    });
+    const changed = {
+      plans: typed(settings.plans, plans, firmPlanFields, 'kind'),
+      goods: typed(settings.goods, goodsFields, goodPlanFields, 'good'),
+    };
+    for (const key of firmGlobals) changed[key] = Number($(`business-${key}`).value);
 
     try {
-      await api.setBusinessSettings({
-        plans, tax: Number($('business-tax').value), wages: Number($('business-wages').value), goods: Number($('business-goods').value),
-      });
+      await api.setFirmSettings(changed);
       $('business-saved').textContent = tr('Изменения сохранены');
       $('business-saved').hidden = false;
     } catch (e) {
@@ -1716,7 +1713,7 @@ const reads = {
   '/admin/casino': () => ({ casino: started(api.casinoSettings()), poker: started(api.pokerSettings()) }),
   '/admin/bets': () => started(api.betEvents()),
   '/admin/mine': () => started(api.mineSettings()),
-  '/admin/business': () => started(api.businessSettings()),
+  '/admin/business': () => started(api.firmSettings()),
   '/admin/bank': () => started(api.bankSettings()),
   '/admin/pets': () => started(api.petSettings()),
 }[adID ? '/admin/ads' : path]?.();

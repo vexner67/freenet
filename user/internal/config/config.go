@@ -70,7 +70,7 @@ type Config struct {
 	CasinoLimits ratelimit.Rules `env:"RATE_LIMIT_CASINO" envDefault:"30/1m,1000/24h"`
 	// Digs and sales in the mine, each counted apart.
 	MineLimits ratelimit.Rules `env:"RATE_LIMIT_MINE" envDefault:"60/1m,3000/24h"`
-	// Businesses bought and actions with them, each counted apart.
+	// Actions with the enterprises of "Бизнес".
 	BusinessLimits ratelimit.Rules `env:"RATE_LIMIT_BUSINESS" envDefault:"60/1m,3000/24h"`
 	// Deposits and loans put, taken, lent and paid back, each counted apart.
 	BankLimits ratelimit.Rules `env:"RATE_LIMIT_BANK" envDefault:"30/1m,500/24h"`
@@ -113,6 +113,10 @@ type Config struct {
 	// HoldemInterval is how often the poker tables nobody reads move on.
 	HoldemInterval time.Duration `env:"HOLDEM_INTERVAL" envDefault:"5s"`
 
+	// FirmInterval is how often the economy of the enterprises looks
+	// whether an hour ended, to count it.
+	FirmInterval time.Duration `env:"FIRM_INTERVAL" envDefault:"1m"`
+
 	// Access tokens are issued by the auth service; user only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`
 	JWTIssuer        string `env:"JWT_ISSUER,required,notEmpty"`
@@ -147,6 +151,10 @@ func (c Config) Validate() error {
 
 	if c.HoldemInterval <= 0 {
 		return errors.New("HOLDEM_INTERVAL must be positive")
+	}
+
+	if c.FirmInterval <= 0 {
+		return errors.New("FIRM_INTERVAL must be positive")
 	}
 
 	if c.FeedSyncInterval < 0 {

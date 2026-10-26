@@ -5565,81 +5565,65 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
-  /api/v1/me/businesses:
+  /api/v1/firms:
     get:
-      summary: Your businesses
-      description: '"Бизнес": the plans and the tax, what each kind deals in (supplies, offers made of them, professions), the suppliers, and your businesses as they are now — counted hour by hour since you last looked: deliveries come, contracts order what runs low, customers come for each offer by its price, the condition and advertisements, workers of its profession serve them while the supplies of its recipe last, wages and rent run, supplies spoil, workers learn and lose heart, events happen. Past `debtLimit` of debt the business goes bankrupt.'
+      summary: The economy of the enterprises
+      description: '"Бизнес": the settings and what each enterprise does, the quotes of the goods, every enterprise with its storage, last hours and shareholders, the orders of the exchange and the offers of shares. The city counts itself hour by hour at `nextHour`: each enterprise pays wages and upkeep from its cash (working as much less as it lacks), buys what it works with from the state and sells what it makes to the state — a shop to the city — as its `stock` says. Money of the enterprises is in hundredths of a vote, of people (deposits, dividends, prices of shares) in votes.'
       security: [{ bearer: [] }]
       responses:
         "200":
-          description: The businesses
+          description: The city
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Businesses" }
+              schema: { $ref: "#/components/schemas/Firms" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-    post:
-      summary: Buy a business
-      description: 'Buys a business of the kind for its price, into the treasury; one of each kind. 409 when you own it already or lack the votes. Rate limited.'
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [kind]
-              properties:
-                kind: { type: string, enum: [kiosk, cafe, carwash, factory] }
-      responses:
-        "200":
-          description: What the purchase did
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/BusinessDone" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "409": { $ref: "#/components/responses/Conflict" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
 
-  /api/v1/me/businesses/{kind}/{action}:
+  /api/v1/firms/{action}:
     post:
-      summary: Run a business
-      description: '`order` buys `amount` units of `supply` from `supplier` with your votes; they come in the supplier''s hours. `contract` sets a standing order — when `supply` in storage and on the way falls under `below`, a buyer orders `amount` units from `supplier`, paid from the till; `amount` 0 ends it. `price` sets the price of `offer` in hundredths of a vote. `hire` takes the `candidate` on (409 without a free seat or when the candidates changed), `fire` lets `worker` go, `bonus` pays `worker` eight hours of the wage from your votes, `raise` raises the wage of `worker` a tenth — both lift the mood. `upgrade` raises the level, `repair` brings the premises back to full and mends a breakdown, `advertise` buys a campaign, `deposit` puts `amount` votes into the till, `collect` takes its whole votes out less the tax, `decide` answers the event with `option`, `sell` sells the business for half of what went into it and the till (or closes a bankrupt one; 409 in debt). Votes spent go to the treasury, votes taken out come from it; `collect` and `sell` are for pages a week old with a filled profile. 404 for a business or a worker you do not have. Rate limited.'
+      summary: Act in the economy
+      description: '`found` founds an enterprise of `kind` named `name` (1–40 characters) for its price, into the treasury: you hold its 100 shares and direct it; at most 10 directed. For the director of `firm`: `rename` (`name`), `upgrade` (paid from its cash), `staff` (`workers` up to the seats, `wage` in hundredths from half to three times the standard), `deposit` (`votes` into its cash), `dividend` (`votes` of its cash to the shareholders by their shares), `liquidate` (its worth to the shareholders; its goods are lost), `auto` (for `good`: `autoBuy` from the state paying at most `buyMax`, `autoSell` taking at least `sellMin`), `order` (`good`, `buy`, `price` in hundredths, `units` — on the exchange; what meets other orders changes hands at their price at once, the seller paying the fee), `cancel` (`order`), `state_buy` and `state_sell` (`good`, `units` — with the state at once), `issue` (`shares` new at `votes` each, into its cash). For a shareholder: `offer` (`shares` at `votes` each, in place of the last offer). For anyone: `cancel_offer` (`offer`, yours or an issue you direct) and `buy_shares` (`offer`, `shares`). The largest shareholder directs. Taking votes out (`dividend`, `liquidate`, `offer`) is for pages a week old with a filled profile. Rate limited.'
       security: [{ bearer: [] }]
       parameters:
-        - { name: kind, in: path, required: true, schema: { type: string, enum: [kiosk, cafe, carwash, factory] } }
-        - { name: action, in: path, required: true, schema: { type: string, enum: [order, contract, price, hire, fire, bonus, raise, upgrade, repair, advertise, deposit, collect, decide, sell] } }
+        - { name: action, in: path, required: true, schema: { type: string, enum: [found, rename, upgrade, staff, deposit, dividend, liquidate, auto, order, cancel, state_buy, state_sell, offer, issue, cancel_offer, buy_shares] } }
       requestBody:
         content:
           application/json:
             schema:
               type: object
               properties:
-                amount: { type: integer, format: int64, description: Units of an order or a contract, votes of a deposit }
-                price: { type: integer, format: int64, description: The price of an offer, in hundredths of a vote }
-                offer: { type: string }
-                supply: { type: string }
-                supplier: { type: string, enum: [wholesale, reliable, express] }
-                below: { type: integer, format: int64, description: The units a contract keeps the supply over }
-                worker: { type: integer }
-                candidate: { type: string, description: The ID of a candidate }
-                option: { type: string, enum: [fine, bribe, repair, leave, accept, decline] }
+                firm: { type: string, description: The ID of the enterprise }
+                kind: { type: string, enum: [farm, mine, oilrig, forestry, mill, steelworks, chemworks, sawmill, bakery, joinery, electroplant, shop] }
+                name: { type: string }
+                good: { type: string, enum: [grain, ore, oil, wood, flour, metal, plastic, boards, bread, furniture, electronics] }
+                buy: { type: boolean }
+                price: { type: integer, format: int64, description: Hundredths of a vote a unit }
+                units: { type: integer, format: int64 }
+                workers: { type: integer }
+                wage: { type: integer, format: int64, description: Hundredths of a vote an hour }
+                votes: { type: integer, format: int64 }
+                shares: { type: integer, format: int64 }
+                order: { type: string, description: The ID of an order }
+                offer: { type: string, description: The ID of an offer of shares }
+                autoBuy: { type: boolean }
+                buyMax: { type: integer, format: int64 }
+                autoSell: { type: boolean }
+                sellMin: { type: integer, format: int64 }
       responses:
         "200":
           description: What the action did
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/BusinessDone" }
+              schema: { $ref: "#/components/schemas/FirmDone" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
-  /api/v1/business/settings:
+  /api/v1/firm/settings:
     get:
-      summary: The businesses for the administrators
-      description: 'Only for the administrators of the site: the plans of the businesses, the tax, and how they do — businesses open, votes spent on them and taken out.'
+      summary: The enterprises for the administrators
+      description: 'Only for the administrators of the site: the prices of the enterprises and the goods, and how they do — enterprises open, votes spent on them and got of them, fees of the exchange in hundredths.'
       security: [{ bearer: [] }]
       responses:
         "200":
@@ -5649,10 +5633,11 @@ paths:
               schema:
                 type: object
                 properties:
-                  settings: { $ref: "#/components/schemas/BusinessSettings" }
-                  businesses: { type: integer, format: int64 }
+                  settings: { $ref: "#/components/schemas/FirmSettings" }
+                  firms: { type: integer, format: int64 }
                   spent: { type: integer, format: int64 }
                   paid: { type: integer, format: int64 }
+                  fees: { type: integer, format: int64 }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
           description: You are not an administrator
@@ -5660,14 +5645,14 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
     put:
-      summary: Change the businesses
-      description: 'Only for the administrators of the site: all four kinds in order, the tax (0–100 %) and the percents of the catalog wages and supply costs. New plans count from the next look at a business.'
+      summary: Change the enterprises
+      description: 'Only for the administrators of the site: all enterprises and goods in order, the standard wage, the fee (0–50 %), the prices of the state and the city in percent of the base (the state buying below what it sells), the hours the storage holds (1–720) and the capital of a new enterprise (0–100 % of its price).'
       security: [{ bearer: [] }]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/BusinessSettings" }
+            schema: { $ref: "#/components/schemas/FirmSettings" }
       responses:
         "204": { description: Set }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -5854,7 +5839,7 @@ paths:
   /api/v1/top:
     get:
       summary: A board of the ratings
-      description: '"Рейтинги", public: `rich` — Forbes Freenet, the votes people hold; `miners`, `business`, `casino` — what the mine paid, businesses brought and the casino gave over the bets in the last 7 days; `pets` — pets by their rating. Up to 50 places; deleted and banned pages are left out.'
+      description: '"Рейтинги", public: `rich` — Forbes Freenet, the votes people hold; `miners`, `business`, `casino` — what the mine paid, the enterprises brought (dividends and shares sold less founding, deposits and shares bought) and the casino gave over the bets in the last 7 days; `pets` — pets by their rating. Up to 50 places; deleted and banned pages are left out.'
       parameters:
         - { name: board, in: query, required: true, schema: { type: string, enum: [rich, miners, business, casino, pets] } }
       responses:
@@ -6040,29 +6025,32 @@ paths:
                   pets: { type: array, items: { $ref: "#/components/schemas/Pet" } }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/v1/users/{nickname}/businesses:
+  /api/v1/users/{nickname}/firms:
     get:
-      summary: The businesses of a page
-      description: Public as the page; what its profile shows of each business — its kind, level, how many work there and whether it went bankrupt. Empty without businesses.
+      summary: The enterprises of a page
+      description: Public as the page; the enterprises it holds shares of, those it directs first — the name, kind, level, its shares of all. Empty without shares.
       parameters:
         - { name: nickname, in: path, required: true, schema: { type: string } }
       responses:
         "200":
-          description: The businesses
+          description: The enterprises
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  businesses:
+                  firms:
                     type: array
                     items:
                       type: object
                       properties:
-                        kind: { type: string, enum: [kiosk, cafe, carwash, factory] }
+                        id: { type: string }
+                        name: { type: string }
+                        kind: { type: string }
                         level: { type: integer }
-                        workers: { type: integer }
-                        bankrupt: { type: boolean }
+                        shares: { type: integer, format: int64 }
+                        total: { type: integer, format: int64 }
+                        director: { type: boolean }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/users/{nickname}/titles:
@@ -9947,226 +9935,166 @@ components:
             borrowed: { type: integer, format: int64 }
             dueAt: { type: string, format: date-time, nullable: true }
             overdue: { type: boolean }
-    BusinessPlan:
+    FirmSettings:
       type: object
       properties:
-        kind: { type: string, enum: [kiosk, cafe, carwash, factory] }
-        price: { type: integer, format: int64, description: The votes the business costs }
-        upgrade: { type: integer, format: int64, description: The votes the next level costs, times the level }
-        levels: { type: integer }
-        demand: { type: integer, format: int64, description: The percent of the customers of the catalog }
-        staff: { type: integer, description: Workers a level seats }
-        rent: { type: integer, format: int64, description: Hundredths of a vote the rent costs an hour, times the level }
-        wear: { type: integer, description: Hundredths of a percent of condition lost an hour }
-        repair: { type: integer, format: int64, description: The votes a percent of repair costs }
-        till: { type: integer, format: int64, description: The votes the till holds, times the level }
-        debt: { type: integer, format: int64, description: The debt in votes, times the level, the business goes bankrupt past }
-        adPrice: { type: integer, format: int64 }
-        adHours: { type: integer }
-        adBoost: { type: integer, description: The percent an advertisement raises the demand }
-    BusinessSettings:
+        plans:
+          type: array
+          items:
+            type: object
+            properties:
+              kind: { type: string, enum: [farm, mine, oilrig, forestry, mill, steelworks, chemworks, sawmill, bakery, joinery, electroplant, shop] }
+              price: { type: integer, format: int64, description: The votes it costs to found }
+              upgrade: { type: integer, format: int64, description: The votes of the next level, times the level, from its cash }
+              levels: { type: integer }
+              staff: { type: integer, description: The workers a level seats }
+              upkeep: { type: integer, format: int64, description: Hundredths of a vote a level costs an hour }
+        goods:
+          type: array
+          items:
+            type: object
+            properties:
+              good: { type: string, enum: [grain, ore, oil, wood, flour, metal, plastic, boards, bread, furniture, electronics] }
+              base: { type: integer, format: int64, description: The base price in hundredths a unit }
+              norm: { type: integer, format: int64, description: The units a day that halve what the state and the city pay }
+        wage: { type: integer, format: int64, description: The standard wage, hundredths an hour }
+        fee: { type: integer, description: The percent of a sale on the exchange and of shares }
+        floor: { type: integer, description: What the state pays, percent of the base }
+        ceiling: { type: integer, description: What the state asks, percent of the base }
+        retail: { type: integer, description: What the city pays the shops, percent of the base }
+        storage: { type: integer, description: The hours of full work the storage holds }
+        capital: { type: integer, description: The percent of its price a new enterprise has in cash }
+    Firm:
       type: object
       properties:
-        plans: { type: array, items: { $ref: "#/components/schemas/BusinessPlan" } }
-        tax: { type: integer, description: The percent of the till taken out that goes to the treasury }
-        wages: { type: integer, description: The percent of the catalog wages workers ask }
-        goods: { type: integer, description: The percent of the catalog costs supplies cost }
-    BusinessCatalog:
-      type: object
-      description: What a kind deals in; the shared professions (storekeeper, buyer, technician, marketer, accountant, guard) come last and serve no offer.
-      properties:
+        id: { type: string }
         kind: { type: string }
-        supplies:
+        name: { type: string }
+        director: { allOf: [{ $ref: "#/components/schemas/PublicProfile" }], nullable: true }
+        foundedAt: { type: string, format: date-time }
+        level: { type: integer }
+        workers: { type: integer }
+        wage: { type: integer, format: int64 }
+        cash: { type: integer, format: int64, description: Hundredths of a vote }
+        escrow: { type: integer, format: int64, description: Hundredths its buying orders keep }
+        productivity: { type: number, description: What a worker paid the wage makes against the standard }
+        seats: { type: integer }
+        upgradeCost: { type: integer, format: int64, description: Votes; 0 at the top level }
+        upkeep: { type: integer, format: int64, description: Hundredths an hour }
+        profit: { type: integer, format: int64, description: Hundredths earned in the last 24 hours }
+        shares: { type: integer, format: int64 }
+        sharePrice: { type: integer, format: int64, description: Votes a share last went for; 0 before any deal }
+        worth: { type: integer, format: int64, description: Hundredths it is worth closed }
+        stock:
           type: array
           items:
             type: object
             properties:
-              supply: { type: string }
-              cost: { type: integer, format: int64, description: Hundredths of a vote a unit costs at the reliable supplier }
-              spoil: { type: integer, description: The hours it spoils in; 0 — never }
-              storage: { type: integer, format: int64, description: The units a level keeps }
-        offers:
+              good: { type: string }
+              units: { type: integer, format: int64 }
+              capacity: { type: integer, format: int64 }
+              incoming: { type: integer, format: int64 }
+              autoBuy: { type: boolean }
+              buyMax: { type: integer, format: int64 }
+              autoSell: { type: boolean }
+              sellMin: { type: integer, format: int64 }
+        hours:
           type: array
           items:
             type: object
             properties:
-              offer: { type: string }
-              profession: { type: string }
-              recipe:
+              hour: { type: string, format: date-time }
+              made: { type: integer, format: int64 }
+              bought: { type: integer, format: int64 }
+              sold: { type: integer, format: int64 }
+              income: { type: integer, format: int64 }
+              purchases: { type: integer, format: int64 }
+              wages: { type: integer, format: int64 }
+              upkeep: { type: integer, format: int64 }
+              fees: { type: integer, format: int64 }
+        holders:
+          type: array
+          items:
+            type: object
+            properties:
+              user: { $ref: "#/components/schemas/PublicProfile" }
+              shares: { type: integer, format: int64 }
+    Firms:
+      type: object
+      properties:
+        settings: { $ref: "#/components/schemas/FirmSettings" }
+        catalog:
+          type: array
+          items:
+            type: object
+            properties:
+              kind: { type: string }
+              tier: { type: integer }
+              output: { type: string, description: Empty for a shop }
+              inputs:
                 type: array
                 items:
                   type: object
                   properties:
-                    supply: { type: string }
+                    good: { type: string }
                     units: { type: integer, format: int64 }
-              fair: { type: integer, format: int64, description: The fair price in hundredths of a vote; at twice of it nobody comes }
-              demand: { type: number, description: Customers an hour a level at the fair price }
-        professions:
+              sells: { type: array, items: { type: string } }
+              rate: { type: object, additionalProperties: { type: number }, description: Units of a good a worker makes or sells an hour }
+        quotes:
           type: array
           items:
             type: object
+            description: Hundredths a unit; 0 — no such order
             properties:
-              profession: { type: string }
-              wage: { type: integer, format: int64, description: Hundredths of a vote an hour at skill 2 }
-              serve: { type: number, description: Customers an hour at skill 2; 0 for the shared ones }
-    BusinessWorker:
-      type: object
-      properties:
-        id: { type: integer }
-        name: { type: string }
-        female: { type: boolean }
-        profession: { type: string }
-        skill: { type: integer, description: 1 to 5 }
-        xp: { type: number, description: Hours worked toward the next skill }
-        nextXp: { type: number, description: Hours the next skill takes; 0 at the top }
-        wage: { type: integer, format: int64, description: Hundredths of a vote an hour }
-        trait: { type: string, enum: ["", fast, studious, lazy, calm] }
-        mood: { type: number, description: 0 to 100; below 40 works worse, below 20 quits }
-        rate: { type: number, description: How much of the profession the worker does; 1 at skill 2 }
-        bonus: { type: integer, format: int64, description: The votes a bonus costs }
-    Business:
-      type: object
-      properties:
-        kind: { type: string }
-        level: { type: integer }
-        condition: { type: integer, description: Hundredths of a percent }
-        cash: { type: integer, format: int64, description: Hundredths of a vote; below zero — a debt }
-        adUntil: { type: string, format: date-time, nullable: true }
-        bankrupt: { type: boolean }
-        invested: { type: integer, format: int64 }
-        collected: { type: integer, format: int64 }
-        resale: { type: integer, format: int64, description: The votes the business sells for now }
-        inDebt: { type: boolean }
-        supplies:
-          type: array
-          items:
-            type: object
-            properties:
-              supply: { type: string }
-              units: { type: number }
-              onWay: { type: integer, format: int64 }
-              storage: { type: integer, format: int64 }
-              unitCosts: { type: object, additionalProperties: { type: number }, description: Hundredths of a vote a unit costs at each supplier }
-              use: { type: number, description: Units used an hour now }
-        offers:
-          type: array
-          items:
-            type: object
-            properties:
-              offer: { type: string }
-              price: { type: integer, format: int64 }
-              demand: { type: number, description: Customers an hour now }
-              served: { type: number, description: Customers served an hour now }
-              capacity: { type: number, description: Customers the workers could serve an hour }
-              broken: { type: boolean }
-        workers: { type: array, items: { $ref: "#/components/schemas/BusinessWorker" } }
-        candidates:
-          type: array
-          items:
-            type: object
-            properties:
-              id: { type: string }
-              worker: { $ref: "#/components/schemas/BusinessWorker" }
-        candidatesUntil: { type: string, format: date-time, nullable: true }
+              good: { type: string }
+              stateBid: { type: integer, format: int64 }
+              stateAsk: { type: integer, format: int64 }
+              cityPrice: { type: integer, format: int64 }
+              bestBid: { type: integer, format: int64 }
+              bestAsk: { type: integer, format: int64 }
+              last: { type: integer, format: int64 }
+              volume: { type: integer, format: int64, description: Units traded on the exchange in a day }
+        firms: { type: array, items: { $ref: "#/components/schemas/Firm" } }
         orders:
           type: array
           items:
             type: object
             properties:
-              id: { type: integer }
-              supply: { type: string }
-              supplier: { type: string }
+              id: { type: string }
+              firmId: { type: string }
+              good: { type: string }
+              buy: { type: boolean }
+              price: { type: integer, format: int64 }
               units: { type: integer, format: int64 }
-              arrives: { type: string, format: date-time }
-              fromTill: { type: boolean }
-        contracts:
+              placedAt: { type: string, format: date-time }
+        offers:
           type: array
           items:
             type: object
             properties:
-              supply: { type: string }
-              supplier: { type: string }
-              below: { type: integer, format: int64 }
-              units: { type: integer, format: int64 }
-              stalled: { type: boolean, description: The till could not pay the last order }
-        event:
-          type: object
-          nullable: true
-          description: What waits for an answer until `until`; then the first option applies.
-          properties:
-            kind: { type: string, enum: [inspection, breakdown, bigorder, raise] }
-            until: { type: string, format: date-time }
-            offer: { type: string }
-            worker: { type: integer }
-            name: { type: string }
-            female: { type: boolean }
-            votes: { type: integer, format: int64, description: The fine or the repair }
-            units: { type: integer, format: int64 }
-            pay: { type: integer, format: int64, description: Hundredths of a vote a big order pays }
-            options: { type: array, items: { type: string } }
-        notes:
-          type: array
-          description: What happened lately, the newest first
-          items:
-            type: object
-            properties:
-              at: { type: string, format: date-time }
-              kind: { type: string, enum: [delivery, ordered, unpaid, hired, fired, quit, skill, breakdown, repaired, theft, review, fine, bribe, caught, bigorder, raise, bankrupt] }
-              subject: { type: string, description: The supply, offer or profession }
-              name: { type: string }
-              female: { type: boolean }
-              amount: { type: number, description: Units, the new skill, or 1 for a yes }
-              money: { type: number, description: Hundredths of a vote; for a delivery — the units lost }
-        hours:
-          type: array
-          description: The last hours, the oldest first; the last one is going on. Money in hundredths of a vote.
-          items:
-            type: object
-            properties:
-              hour: { type: string, format: date-time }
-              sold: { type: object, additionalProperties: { type: number } }
-              income: { type: number }
-              wages: { type: number }
-              rent: { type: number }
-              supplies: { type: number }
-              losses: { type: number }
-              spoiled: { type: number }
-              unserved: { type: number }
-        seats: { type: integer }
-        reviewUntil: { type: string, format: date-time, nullable: true }
-        tax: { type: integer, description: The tax percent of a collect now }
-        wages: { type: number, description: Hundredths of a vote an hour }
-        rent: { type: number, description: Hundredths of a vote an hour }
-        till: { type: integer, format: int64, description: The votes the till holds }
-        debtLimit: { type: integer, format: int64 }
-        load: { type: object, additionalProperties: { type: number }, description: How loaded the workers of each profession are; 1 — fully }
-        broken: { type: string, description: The offer whose equipment is broken }
-        brokenUntil: { type: string, format: date-time, nullable: true }
-        upgradeCost: { type: integer, format: int64, description: 0 at the top level }
-        repairCost: { type: integer, format: int64 }
-    Businesses:
-      type: object
-      properties:
-        settings: { $ref: "#/components/schemas/BusinessSettings" }
-        businesses: { type: array, items: { $ref: "#/components/schemas/Business" } }
-        catalog: { type: array, items: { $ref: "#/components/schemas/BusinessCatalog" } }
-        suppliers:
-          type: array
-          items:
-            type: object
-            properties:
-              supplier: { type: string }
-              percent: { type: integer, format: int64, description: The percent of the cost it asks }
-              hours: { type: number }
-              short: { type: integer, description: The percent an order may come short by }
-    BusinessDone:
+              id: { type: string }
+              firmId: { type: string }
+              seller: { allOf: [{ $ref: "#/components/schemas/PublicProfile" }], nullable: true, description: None — new shares of the enterprise }
+              shares: { type: integer, format: int64 }
+              price: { type: integer, format: int64, description: Votes a share }
+              placedAt: { type: string, format: date-time }
+        nextHour: { type: string, format: date-time }
+    FirmDone:
       type: object
       properties:
         spent: { type: integer, format: int64 }
         got: { type: integer, format: int64 }
-        tax: { type: integer, format: int64 }
         balance: { type: integer, format: int64, description: The balance after the votes moved; 0 when none did }
-        businesses: { $ref: "#/components/schemas/Businesses" }
+        firm: { type: string, description: The enterprise founded }
+        deals:
+          type: array
+          items:
+            type: object
+            properties:
+              good: { type: string }
+              units: { type: integer, format: int64 }
+              price: { type: integer, format: int64 }
+        firms: { $ref: "#/components/schemas/Firms" }
     MineSettings:
       type: object
       properties:

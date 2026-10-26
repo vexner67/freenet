@@ -214,12 +214,12 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.FailedPrecondition, user.ErrMineNotYet.Error()), true
 	case errors.Is(err, user.ErrUnknownOre):
 		return status.New(codes.InvalidArgument, user.ErrUnknownOre.Error()), true
-	case sentinel(err, businessInvalid) != nil:
-		return status.New(codes.InvalidArgument, sentinel(err, businessInvalid).Error()), true
-	case sentinel(err, businessMissing) != nil:
-		return status.New(codes.NotFound, sentinel(err, businessMissing).Error()), true
-	case sentinel(err, businessRefused) != nil:
-		return status.New(codes.FailedPrecondition, sentinel(err, businessRefused).Error()), true
+	case sentinel(err, firmInvalid) != nil:
+		return status.New(codes.InvalidArgument, sentinel(err, firmInvalid).Error()), true
+	case sentinel(err, firmMissing) != nil:
+		return status.New(codes.NotFound, sentinel(err, firmMissing).Error()), true
+	case sentinel(err, firmRefused) != nil:
+		return status.New(codes.FailedPrecondition, sentinel(err, firmRefused).Error()), true
 	case sentinel(err, holdemInvalid) != nil:
 		return status.New(codes.InvalidArgument, sentinel(err, holdemInvalid).Error()), true
 	case errors.Is(err, user.ErrTableNotFound):
@@ -303,21 +303,19 @@ func toStatus(err error) (*status.Status, bool) {
 	}
 }
 
-// businessInvalid, businessMissing and businessRefused are the errors of the businesses the
-// client is told as they are.
+// firmInvalid, firmMissing and firmRefused are the errors of the
+// enterprises the client is told as they are.
 var (
-	businessInvalid = []error{
-		user.ErrUnknownBusiness, user.ErrUnknownAction, user.ErrUnknownSupply, user.ErrUnknownOffer,
-		user.ErrUnknownSupplier, user.ErrUnknownProfession, user.ErrUnknownOption, user.ErrBusinessOrder,
-		user.ErrBusinessContract, user.ErrBusinessSetPrice, user.ErrBusinessDeposit, user.ErrBusinessPlans,
-		user.ErrBusinessPlanPrice, user.ErrBusinessLevels, user.ErrBusinessPercent, user.ErrBusinessCapacity,
-		user.ErrBusinessCosts, user.ErrBusinessAd, user.ErrBusinessTax,
+	firmInvalid = []error{
+		user.ErrUnknownFirm, user.ErrUnknownGood, user.ErrUnknownFirmAction, user.ErrFirmName, user.ErrFirmStaff,
+		user.ErrFirmGood, user.ErrFirmUnits, user.ErrFirmVotes, user.ErrFirmAuto, user.ErrOrder, user.ErrShareOffer,
+		user.ErrShareBuy, user.ErrFirmPlans, user.ErrFirmPlan, user.ErrGoodPlan, user.ErrFirmPercents, user.ErrFirmCapital,
 	}
-	businessMissing = []error{user.ErrBusinessNotFound, user.ErrWorkerNotFound}
-	businessRefused = []error{
-		user.ErrBusinessOwned, user.ErrBusinessBankrupt, user.ErrBusinessInDebt, user.ErrBusinessTopLevel,
-		user.ErrBusinessIntact, user.ErrNothingToCollect, user.ErrBusinessNotYet, user.ErrCandidateGone,
-		user.ErrNoSeats, user.ErrNoEvent, user.ErrEventStock,
+	firmMissing = []error{user.ErrFirmNotFound, user.ErrOrderNotFound, user.ErrOfferNotFound}
+	firmRefused = []error{
+		user.ErrNotDirector, user.ErrTooManyFirms, user.ErrFirmTopLevel, user.ErrFirmCash, user.ErrFirmStock,
+		user.ErrFirmStorage, user.ErrFirmNotYet, user.ErrFirmNoDeal, user.ErrFirmShortCash, user.ErrOwnOrder,
+		user.ErrTooManyOrders, user.ErrOwnShares,
 	}
 )
 

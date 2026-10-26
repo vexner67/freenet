@@ -301,10 +301,10 @@ input, select, textarea { font-size: 16px !important; }
 .mine-item { flex-wrap: wrap; }
 .mine-item-worth { min-width: 0; }
 .mine-ore .button, .mine-item .button { min-height: 32px; }
-/* The businesses: the balance over them, the buttons big enough for a finger. */
-.business { flex-direction: column-reverse; align-items: stretch; }
-.business .button, .biz-dialog .button { min-height: 32px; }
-.biz-lots { grid-template-columns: 1fr; }
+/* The enterprises: the buttons big enough for a finger, the name and the
+   choices as wide as the line; a wide table scrolls inside itself. */
+.business .button { min-height: 32px; }
+.firm-form input.firm-name, .firm-form select.firm-select { flex: 1 1 100%; width: auto; min-width: 0; max-width: none; }
 .casino-balance { width: auto; }
 .casino-board, .casino-multipliers { grid-template-columns: repeat(3, 1fr); }
 .casino-controls .button { width: 100%; }

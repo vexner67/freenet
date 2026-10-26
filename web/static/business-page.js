@@ -1,37 +1,31 @@
-// "Бизнес" (/business), a tab of "Заработок": a page buys businesses for votes
-// and runs them as a little game of supplies, offers and workers. Each
-// business is its premises seen from above in pixels (business-art.js):
-// customers come in to be served, workers stand at their places, the
-// storeroom fills with boxes. Clicking a part — the hall, the workers, the
-// storeroom, the till, the billboard, the sign — opens a box of what it is
-// and what to do with it; the same parts, the journal and the event that
-// waits are links under the picture. The server counts the hours; the page
-// only shows what it said. The administrators tune the businesses in the
-// admin panel (/admin/business).
+// "Бизнес" (/business), a tab of "Заработок": the economy of the
+// enterprises in tables, as the browser games of the 2000s had it. People
+// found enterprises along the chains — the raw materials, the materials,
+// the goods, the shop — and run them: the workers and their wage, the
+// storage that buys and sells by itself, the orders of the exchange, the
+// shares. The tabs: "Мои предприятия" (those the page holds shares of and
+// founding a new one; ?firm=<id> is the card of one), "Биржа" (the prices
+// of the goods; &good=<good> — its orders), "Акции" (all enterprises and
+// the shares for sale) and "Справочник" (what each enterprise does). The
+// server counts the hours; the page only shows what it said. The
+// administrators tune the economy in the admin panel (/admin/business).
 
 import { api, currentUser, session, started } from './api.js';
 import {
-  businessAdvice, businessEvent, businessLoad, businessMood, businessName, businessNote, businessOption, businessPictures,
-  businessTotals, businessUnits, formatDateTime, groupedVotes, hundredths, offerName, orderCost, plural, professionName,
-  professionWork, supplierAbout, supplierName, supplyName, traitName, votesAmount, votesFontSize,
+  firmHour, firmKindName, formatDateTime, goodName, groupedVotes, hundredths, hundredthsOf, plural, sharePercent, votesAmount,
 } from './labels.js';
-import { $, el, renderChrome, showError, hideError } from './layout.js';
+import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { tr } from './i18n.js';
-import { H, Premises, W } from './business-art.js';
 
-const answered = session.get() ? started(api.businesses()) : null;
-
-// The pictures of the businesses for their headings and the lots.
-const buildings = businessPictures;
+const answered = session.get() ? started(api.firms()) : null;
 
 let state = null;
+let me = null;
 let busy = false;
-let panel = null;
 
 function showBalance(votes) {
   $('votes').textContent = groupedVotes(votes);
-  $('votes').style.fontSize = `${votesFontSize(votes)}px`;
   $('votes-word').textContent = plural(votes, ['голос', 'голоса', 'голосов']);
   $('balance').hidden = false;
 }
@@ -41,691 +35,556 @@ function said(text) {
   $('done').hidden = !text;
 }
 
-const percent = (n, of) => `${(n / of) * 100}%`;
-const decimal = (n) => (Math.round(n * 10) / 10).toFixed(1).replace('.', ',');
-
-function picture(src, className = '') {
-  return el('img', { src, alt: '', className, draggable: false });
-}
+// money is a sum in hundredths of a vote: "12,5 гол.".
+const money = (n) => tr('{0} гол.', hundredths(n));
+const decimal = (n) => String(Math.round(n * 100) / 100).replace('.', ',');
 
 const specOf = (kind) => state.catalog.find((c) => c.kind === kind);
 const planOf = (kind) => state.settings.plans.find((p) => p.kind === kind);
+const quoteOf = (good) => state.quotes.find((q) => q.good === good);
+const firmOf = (id) => state.firms.find((f) => f.id === id);
+const held = (f) => f.holders.find((h) => h.user.id === me.id)?.shares ?? 0;
+const directs = (f) => f.director?.id === me.id;
 
-// stocked says whether the storeroom of b holds a sale of an offer.
-function stocked(b, offer) {
-  const recipe = specOf(b.kind).offers.find((o) => o.offer === offer).recipe;
-  return recipe.every((i) => b.supplies.find((s) => s.supply === i.supply).units >= i.units);
+// Whether the storage of an enterprise buys a good (what it makes of or a
+// shop sells) and sells it (what it makes, or a shop to the city).
+const buys = (spec, good) => spec.inputs.some((i) => i.good === good) || spec.sells.includes(good);
+const sells = (spec, good) => spec.output === good || spec.sells.includes(good);
+// retailed is whether the city buys a good from the shops.
+const retailed = (good) => state.catalog.some((s) => s.sells.includes(good));
+
+// The address of the page: the tab, the enterprise, the good.
+function where() {
+  const q = new URLSearchParams(location.search);
+  return { tab: q.get('tab') ?? 'mine', firm: q.get('firm') ?? '', good: q.get('good') ?? '' };
 }
 
-// hourly is what a business makes an hour as it runs now: what its workers
-// sell at its prices while the storeroom holds it, less the wages and the
-// rent, in hundredths of a vote.
-function hourly(b) {
-  const income = b.offers.reduce((n, o) => n + (stocked(b, o.offer) ? o.served * o.price : 0), 0);
-  return { income, costs: b.wages + b.rent, profit: income - b.wages - b.rent };
-}
-
-// The premises on the page, each with its canvas, drawn by one loop.
-const premises = new Map();
-const still = matchMedia('(prefers-reduced-motion: reduce)');
-
-// fit sizes a canvas to a whole number of its pixels per picture pixel.
-function fit(canvas) {
-  const ratio = window.devicePixelRatio || 1;
-  const width = canvas.parentElement.clientWidth || W;
-  const scale = Math.max(1, Math.floor((width * ratio) / W));
-  canvas.width = W * scale;
-  canvas.height = H * scale;
-  canvas.style.width = `${(W * scale) / ratio}px`;
-  canvas.style.height = `${(H * scale) / ratio}px`;
-  return scale;
-}
-
-function paint(p) {
-  const ctx = p.canvas.getContext('2d');
-  ctx.setTransform(p.scale, 0, 0, p.scale, 0, 0);
-  ctx.imageSmoothingEnabled = false;
-  p.art.draw(ctx);
-}
-
-let last = 0;
-function loop(now) {
-  const dt = Math.min((now - (last || now)) / 1000, 0.1);
-  last = now;
-  for (const [kind, p] of premises) {
-    if (!p.canvas.isConnected) {
-      premises.delete(kind);
-      continue;
-    }
-    p.art.step(dt, still.matches);
-    paint(p);
-  }
-  if (premises.size) requestAnimationFrame(loop);
-  else last = 0;
-}
-
-window.addEventListener('resize', () => {
-  for (const p of premises.values()) p.scale = fit(p.canvas);
-});
-
-function pointAt(p, e) {
-  const box = p.canvas.getBoundingClientRect();
-  return [((e.clientX - box.left) / box.width) * W, ((e.clientY - box.top) / box.height) * H];
-}
-
-// scene is the canvas of a business; the people on it keep walking when
-// the business changes, only the premises are drawn anew.
-function scene(b) {
-  let p = premises.get(b.kind);
-  if (!p) {
-    const canvas = el('canvas', { className: 'biz-canvas', role: 'img' });
-    p = { canvas, art: new Premises(b.kind), scale: 1 };
-    canvas.addEventListener('mousemove', (e) => {
-      p.art.hover = p.art.partAt(...pointAt(p, e));
-      canvas.title = p.art.hover?.label ?? '';
-      canvas.classList.toggle('biz-pointing', Boolean(p.art.hover));
-    });
-    canvas.addEventListener('mouseleave', () => { p.art.hover = null; });
-    canvas.addEventListener('click', (e) => {
-      const part = p.art.partAt(...pointAt(p, e));
-      if (part) openPanel(b.kind, part.part);
-    });
-    const start = premises.size === 0;
-    premises.set(b.kind, p);
-    if (start) requestAnimationFrame(loop);
-  }
-  p.art.set(b, specOf(b.kind));
-  p.canvas.setAttribute('aria-label', tr('{0}: уровень {1}', businessName(b.kind), b.level));
-  const box = el('div', { className: 'biz-scene' }, p.canvas);
-  requestAnimationFrame(() => {
-    p.scale = fit(p.canvas);
-    paint(p);
-  });
-  return box;
-}
-
-const parts = [
-  ['building', tr('Здание')],
-  ['offers', tr('Товары и цены')],
-  ['staff', tr('Работники')],
-  ['storage', tr('Склад')],
-  ['till', tr('Касса')],
-  ['ad', tr('Реклама')],
-  ['journal', tr('Журнал')],
-];
-
-// links are the parts of a business as words under its picture, for those
-// who would rather not aim at pixels; a part that needs care is marked, and
-// an event that waits for the owner comes first.
-function links(b) {
-  const spec = specOf(b.kind);
-  const professions = new Set(b.workers.map((w) => w.profession));
-  const care = {
-    building: b.condition < 4000 || Boolean(b.broken),
-    staff: spec.offers.some((o) => !professions.has(o.profession)),
-    storage: businessTotals(b).empty,
-    till: b.inDebt,
-  };
-  const shown = b.bankrupt ? [parts[0], parts.at(-1)] : parts;
-  const words = shown.map(([part, name]) => [part, name, care[part] && !b.bankrupt ? 'biz-care' : '']);
-  if (b.event) words.unshift(['event', businessEvent(b.event).title, 'biz-care']);
-
-  return el('div', { className: 'biz-links' }, ...words.flatMap(([part, name, className], i) => [
-    i ? ' | ' : '',
-    el('a', { href: '#', className, textContent: name, onclick: (e) => {
-      e.preventDefault();
-      openPanel(b.kind, part);
-    } }),
-  ]));
-}
-
-function businessCard(b, plan) {
-  const { profit } = hourly(b);
-  const hour = b.bankrupt
-    ? el('span', { className: 'biz-hour bad', textContent: tr('разорён') })
-    : el('span', { className: profit < 0 ? 'biz-hour bad' : 'biz-hour good', textContent: tr('за час: {0} гол.', (profit > 0 ? '+' : '') + hundredths(Math.round(profit))) });
-
-  return el('div', { className: 'biz-card', id: `biz-${b.kind}` },
-    el('div', { className: 'biz-head' },
-      picture(buildings[b.kind], 'biz-icon'),
-      el('b', { textContent: businessName(b.kind) }),
-      el('span', { className: 'biz-level', textContent: tr('уровень {0} из {1}', b.level, plan.levels) }),
-      hour,
-    ),
-    scene(b),
-    links(b),
-  );
-}
-
-function lot(plan) {
-  const name = businessName(plan.kind);
-  const buy = () => openPanel(plan.kind, 'lot');
-
-  return el('div', { className: 'biz-card' },
-    el('div', { className: 'biz-head' },
-      picture(buildings[plan.kind], 'biz-icon'),
-      el('b', { textContent: name }),
-      el('span', { className: 'biz-level', textContent: votesAmount(plan.price) }),
-    ),
-    el('div', { className: 'biz-scene biz-scene-lot' },
-      el('button', { type: 'button', className: 'biz-lot', title: tr('Купить: {0}', name), onclick: buy },
-        picture('/static/business/lot.svg'),
-        el('span', { className: 'biz-for-sale' }, el('b', { textContent: tr('Продаётся') }), el('span', { textContent: name })),
-      ),
-    ),
-  );
-}
-
-function show() {
-  const owned = new Set(state.businesses.map((b) => b.kind));
-
-  $('owned').replaceChildren(...state.businesses.map((b) => businessCard(b, planOf(b.kind))));
-  const offers = state.settings.plans.filter((p) => !owned.has(p.kind));
-  $('shop').replaceChildren(...offers.map(lot));
-  $('shop-block').hidden = offers.length === 0;
-  $('owned-hint').hidden = state.businesses.length === 0;
-}
-
-// float shows what an action brought or cost over the picture of a business.
-function float(kind, text, bad) {
-  const card = document.getElementById(`biz-${kind}`);
-  if (!card || !text) return;
-
-  const node = el('span', { className: bad ? 'biz-float bad' : 'biz-float', textContent: text });
-  card.querySelector('.biz-scene').append(node);
-  node.addEventListener('animationend', () => node.remove());
-}
-
-// act runs an action, shows the businesses it left and fills the open
-// box again, or closes it when its business is gone.
-async function act(kind, run, text) {
-  if (busy) return;
-  busy = true;
+function go(href) {
+  history.pushState(null, '', href);
   hideError($('error'));
-  if (panel) hideError(panel.error);
+  said('');
+  show();
+  window.scrollTo(0, 0);
+}
+
+// follow opens a link of the page without loading it again.
+function follow(event) {
+  if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  go(event.currentTarget.getAttribute('href'));
+}
+
+const link = (text, href) => el('a', { href, textContent: text, onclick: follow });
+const firmLink = (f) => link(f.name, `/business?firm=${encodeURIComponent(f.id)}`);
+const goodLink = (good) => link(goodName(good), `/business?tab=exchange&good=${encodeURIComponent(good)}`);
+const person = (p) => (p ? el('a', { href: pagePath(p), textContent: fullName(p) }) : tr('—'));
+const hint = (text) => el('p', { className: 'hint firm-hint', textContent: text });
+const title = (text) => el('div', { className: 'section-title', textContent: text });
+
+// table is a table of the page: the first column at the left, the numbers
+// at the right; a wide one scrolls inside itself on a narrow screen.
+function table(head, rows, footer = null) {
+  const cell = (tag, c) => (c instanceof Node ? el(tag, {}, c) : el(tag, { textContent: String(c ?? '') }));
+  return el('div', { className: 'firm-scroll' },
+    el('table', { className: 'list-table firm-table' },
+      el('thead', {}, el('tr', {}, ...head.map((h) => el('th', { textContent: h })))),
+      el('tbody', {}, ...rows.map((cells) => el('tr', {}, ...cells.map((c) => cell('td', c))))),
+      footer ? el('tfoot', {}, el('tr', {}, ...footer.map((c) => cell('td', c)))) : null,
+    ));
+}
+
+// facts is a table of names and values, as a card of an enterprise has.
+function facts(rows) {
+  return el('table', { className: 'firm-facts' },
+    ...rows.filter(Boolean).map(([name, value]) => el('tr', {},
+      el('td', { className: 'biz-label', textContent: name }),
+      value instanceof Node ? el('td', {}, value) : el('td', { textContent: String(value) }))));
+}
+
+function field(props) {
+  return el('input', { className: 'text firm-number', ...props });
+}
+
+// form is a line of fields with a button; submit gets the form and
+// whether the action went through.
+function form(children, label, submit) {
+  const node = el('form', { className: 'firm-form' }, ...children, button(label, null, { type: 'submit' }));
+  node.addEventListener('submit', (event) => {
+    event.preventDefault();
+    submit(node);
+  });
+  return node;
+}
+
+const labelled = (text, input) => el('label', { className: 'firm-field' }, el('span', { textContent: text }), input);
+
+// act does an action, shows the city it left and says what was done. The
+// error goes to box (an open dialog's) or over the tabs.
+async function act(action, body, text, box = null) {
+  if (busy) return false;
+  busy = true;
+  const error = box ?? $('error');
+  hideError(error);
+  said('');
 
   try {
-    const done = await run();
-    // Actions that move no votes say no balance.
-    if (done.balance > 0 || done.spent > 0 || done.got > 0) showBalance(done.balance);
-    state = done.businesses;
+    const done = await api.runFirms(action, body);
+    if (done.spent > 0 || done.got > 0) showBalance(done.balance);
+    state = done.firms;
+    if (action === 'found') history.pushState(null, '', `/business?firm=${encodeURIComponent(done.firm)}`);
     show();
-
-    if (done.got > 0) float(kind, `+${votesAmount(done.got)}`, false);
-    else if (done.spent > 0) float(kind, `−${votesAmount(done.spent)}`, true);
-
-    const kept = state.businesses.find((b) => b.kind === kind);
-    if (panel && panel.modal.box.isConnected && kept) {
-      if (panel.part === 'lot') panel.part = 'building';
-      if (panel.part === 'event' && !kept.event) panel.part = 'journal';
-      fillPanel(text(done));
-    } else {
-      panel?.modal.close();
-      panel = null;
-      said(text(done));
-    }
+    said(typeof text === 'function' ? text(done) : text);
+    $('done').scrollIntoView({ block: 'nearest' });
+    return true;
   } catch (e) {
-    showError(panel?.modal.box.isConnected ? panel.error : $('error'), e);
+    showError(error, e);
+    error.scrollIntoView({ block: 'nearest' });
+    return false;
   } finally {
     busy = false;
   }
 }
 
-const run = (b, action, body, text) => act(b.kind, () => api.runBusiness(b.kind, action, body), text);
-
-function fact(label, value, warn = false) {
-  return el('tr', {},
-    el('td', { className: 'biz-label', textContent: label }),
-    el('td', { className: warn ? 'biz-warn' : '', textContent: value }),
-  );
+// dialog opens a box of an action with its own place for errors.
+function dialog(heading, ...body) {
+  const modal = openModal(heading);
+  const error = el('div', { className: 'error', hidden: true });
+  modal.body.replaceChildren(error, ...body.filter(Boolean));
+  return { modal, error };
 }
 
-function facts(...rows) {
-  return el('table', { className: 'biz-facts' }, ...rows.filter(Boolean));
+function votesOf(input) {
+  const n = Number(input.value);
+  return Number.isInteger(n) ? n : NaN;
 }
 
-function bar(value, of, bad = false) {
-  const fill = el('span', { className: bad ? 'biz-fill bad' : 'biz-fill' });
-  fill.style.width = percent(Math.max(0, Math.min(value, of)), Math.max(of, 1));
-  return el('span', { className: 'biz-bar' }, fill);
+// recipe is what an enterprise does in words of the tables: "2 × зерно →
+// мука, 5 шт." or, for a shop, what it sells the city.
+function recipe(spec) {
+  if (spec.sells.length) {
+    return tr('продаёт городу: {0}', spec.sells.map((g) => `${goodName(g).toLowerCase()} — ${decimal(spec.rate[g])}`).join(', '));
+  }
+  const made = tr('{0}, {1} шт.', goodName(spec.output).toLowerCase(), decimal(spec.rate[spec.output]));
+  if (!spec.inputs.length) return made;
+
+  return `${spec.inputs.map((i) => `${i.units} × ${goodName(i.good).toLowerCase()}`).join(' + ')} → ${made}`;
 }
 
-function numberField(value, min, max) {
-  return el('input', { type: 'number', className: 'biz-number', value: String(value), min: String(min), max: String(max), step: '1' });
+function nextHour() {
+  return state.nextHour ? hint(tr('Следующий рабочий час закончится в {0}.', firmHour(state.nextHour))) : null;
 }
 
-// centsField is a price field in votes with hundredths: "1,8".
-function centsField(cents) {
-  return el('input', { type: 'text', className: 'biz-number', value: hundredths(cents), inputMode: 'decimal' });
-}
+// --- "Мои предприятия" ---
 
-const centsOf = (field) => Math.round(Number(field.value.trim().replace(/\s/g, '').replace(',', '.')) * 100) || 0;
+function myFirms() {
+  const mine = state.firms.filter((f) => held(f) > 0);
+  const nodes = [title(tr('Мои предприятия'))];
 
-function choice(options, value) {
-  const select = el('select', { className: 'biz-select' }, ...options.map(([v, label]) => el('option', { value: v, textContent: label })));
-  select.value = value;
-  return select;
-}
-
-function row(...children) {
-  return el('div', { className: 'biz-row' }, ...children);
-}
-
-function table(...rows) {
-  return el('table', { className: 'biz-table' }, ...rows);
-}
-
-function heading(text) {
-  return el('h4', { className: 'biz-subtitle', textContent: text });
-}
-
-function hint(text) {
-  return el('p', { className: 'hint', textContent: text });
-}
-
-function buildingPanel(b, plan) {
-  const name = businessName(b.kind);
-
-  if (b.bankrupt) {
-    return {
-      title: tr('{0} — разорён', name),
-      body: [
-        el('p', { className: 'biz-bankrupt', textContent: tr('Бизнес разорился: долги превысили допустимое. Его можно только закрыть — тогда его можно купить снова.') }),
-        facts(fact(tr('Долг:'), tr('{0} гол.', hundredths(-b.cash)), true), fact(tr('Вложено и выведено:'), tr('{0} / {1}', votesAmount(b.invested), votesAmount(b.collected)))),
-      ],
-      actions: [button(tr('Закрыть бизнес'), () => run(b, 'sell', {}, () => tr('Бизнес «{0}» закрыт.', name)))],
-    };
+  if (!mine.length) {
+    nodes.push(hint(tr('У вас пока нет ни предприятий, ни акций. Основайте своё или купите акции чужих во вкладке «Акции».')));
+  } else {
+    nodes.push(table(
+      [tr('Предприятие'), tr('Вид'), tr('Ур.'), tr('Касса'), tr('Прибыль за сутки'), tr('Мои акции')],
+      mine.map((f) => [
+        firmLink(f), firmKindName(f.kind), f.level, money(f.cash), money(f.profit),
+        `${held(f)} (${sharePercent(held(f), f.shares)})${directs(f) ? tr(', директор') : ''}`,
+      ]),
+    ), nextHour());
   }
 
-  const { income, costs, profit } = hourly(b);
-  const { customers, served } = businessTotals(b);
-  const advice = businessAdvice(b, specOf(b.kind));
-  const review = b.reviewUntil && new Date(b.reviewUntil) > new Date();
-
-  const actions = [];
-  if (b.level < plan.levels) actions.push(button(tr('Улучшить за {0}', votesAmount(b.upgradeCost)), () => run(b, 'upgrade', {}, () => tr('Бизнес «{0}» улучшен.', name))));
-  if (b.condition < 10000 || b.broken) actions.push(button(tr('Ремонт за {0}', votesAmount(b.repairCost)), () => run(b, 'repair', {}, () => tr('Помещение отремонтировано.'))));
-  if (!b.inDebt) actions.push(button(tr('Продать'), () => sell(b, name), { secondary: true }));
-
-  return {
-    title: tr('{0} — уровень {1} из {2}', name, b.level, plan.levels),
-    body: [
-      advice.length ? el('ul', { className: 'biz-advice' }, ...advice.map((a) => el('li', { textContent: a }))) : null,
-      facts(
-        fact(tr('Покупателей в час:'), tr('{0}, обслуживают {1}', decimal(customers), decimal(served)), served < customers * 0.8),
-        fact(tr('Выручка за час:'), tr('≈ {0} гол.', hundredths(Math.round(income)))),
-        fact(tr('Расходы за час:'), tr('{0} гол. (зарплаты {1}, аренда {2})', hundredths(Math.round(costs)), hundredths(Math.round(b.wages)), hundredths(Math.round(b.rent)))),
-        fact(tr('Итог часа:'), tr('≈ {0} гол.', hundredths(Math.round(profit))), profit < 0),
-        fact(tr('Работников:'), tr('{0} из {1}', b.workers.length, b.seats)),
-        review ? fact(tr('Отзыв:'), tr('хороший, +30 % покупателей до {0}', formatDateTime(b.reviewUntil))) : null,
-        b.broken ? fact(tr('Сломано:'), b.brokenUntil ? tr('«{0}», техник починит к {1}', offerName(b.broken), formatDateTime(b.brokenUntil)) : tr('«{0}» — обслуживают вдвое меньше', offerName(b.broken)), true) : null,
-        fact(tr('Вложено и выведено:'), tr('{0} / {1}', votesAmount(b.invested), votesAmount(b.collected))),
-      ),
-      el('div', { className: 'biz-label', textContent: tr('Состояние помещения: {0} %', hundredths(b.condition)) }),
-      bar(b.condition, 10000, b.condition < 4000),
-      hint(b.level < plan.levels
-        ? tr('Улучшение: больше покупателей, склад, касса и места для работников.')
-        : tr('Бизнес на высшем уровне.')),
-    ],
-    actions,
-  };
+  nodes.push(title(tr('Основать предприятие')), ...founding());
+  return nodes;
 }
 
-// offersPanel is what a business sells: the customers of each offer, those
-// served, what a sale uses and its price.
-function offersPanel(b) {
-  const spec = specOf(b.kind);
-  const rows = b.offers.map((o) => {
-    const os = spec.offers.find((x) => x.offer === o.offer);
-    const price = centsField(o.price);
-    const save = button(tr('Сохранить'), () => {
-      run(b, 'price', { offer: o.offer, price: centsOf(price) }, () => tr('Цена «{0}» сохранена.', offerName(o.offer)));
-    });
-    const recipe = os.recipe.map((i) => `${supplyName(i.supply)} × ${i.units}`).join(', ');
-    return el('tr', {},
-      el('td', {},
-        el('b', { textContent: offerName(o.offer) }),
-        o.broken ? el('span', { className: 'biz-warn', textContent: tr(' — сломано') }) : '',
-        el('div', { className: 'hint', textContent: tr('{0}; уходит: {1}', professionName(os.profession), recipe) }),
-        el('div', { className: 'hint', textContent: tr('покупателей {0} в час, обслуживают {1}', decimal(o.demand), decimal(o.served)) }),
-      ),
-      el('td', { className: 'biz-cell-action' },
-        row(price, save),
-        el('div', { className: 'hint', textContent: tr('обычная цена {0}', hundredths(os.fair)) }),
-      ),
-    );
-  });
-
-  return {
-    title: tr('Товары и цены'),
-    body: [
-      hint(tr('Цены — в голосах за одну продажу. Дороже обычной — меньше покупателей, вдвое дороже не купит никто.')),
-      table(...rows),
-    ],
-    actions: [],
-  };
-}
-
-function workerRow(b, w) {
-  const fire = button(tr('Уволить'), () => run(b, 'fire', { worker: w.id }, () => tr('{0} уволен(а).', w.name)), { secondary: true });
-  const bonus = button(tr('Премия {0}', votesAmount(w.bonus)), () => run(b, 'bonus', { worker: w.id }, () => tr('{0} получает премию.', w.name)));
-  const raise = button(tr('Прибавка'), () => run(b, 'raise', { worker: w.id }, () => tr('{0} получает прибавку.', w.name)));
-  const skill = w.nextXp > 0 ? tr('навык {0}, до следующего {1} ч.', w.skill, Math.ceil(w.nextXp - w.xp)) : tr('навык {0} — высший', w.skill);
-  const about = [skill, tr('зарплата {0} в час', hundredths(w.wage))];
-  if (w.trait) about.push(traitName(w.trait));
-
-  return el('tr', {},
-    el('td', {},
-      el('b', { textContent: w.name }), ' — ', professionName(w.profession).toLowerCase(),
-      el('div', { className: 'hint', textContent: about.join('; ') }),
-      el('div', { className: w.mood < 40 ? 'hint biz-warn' : 'hint', textContent: tr('настроение: {0}', businessMood(w.mood)) }),
-      professionWork(w.profession) ? el('div', { className: 'hint', textContent: professionWork(w.profession) }) : '',
-    ),
-    el('td', { className: 'biz-cell-action' }, b.bankrupt ? '' : el('div', { className: 'biz-buttons' }, bonus, raise, fire)),
-  );
-}
-
-function candidateRow(b, c) {
-  const w = c.worker;
-  const hire = button(tr('Нанять'), () => run(b, 'hire', { candidate: c.id }, () => tr('{0} принят(а) на работу.', w.name)));
-  hire.disabled = b.workers.length >= b.seats || b.bankrupt;
-  const about = [tr('навык {0}', w.skill), tr('просит {0} в час', hundredths(w.wage))];
-  if (w.trait) about.push(traitName(w.trait));
-
-  return el('tr', {},
-    el('td', {},
-      el('b', { textContent: w.name }), ' — ', professionName(w.profession).toLowerCase(),
-      el('div', { className: 'hint', textContent: about.join('; ') }),
-      professionWork(w.profession) ? el('div', { className: 'hint', textContent: professionWork(w.profession) }) : '',
-    ),
-    el('td', { className: 'biz-cell-action' }, hire),
-  );
-}
-
-function staffPanel(b) {
-  const spec = specOf(b.kind);
-  const loads = spec.professions.filter((p) => p.serve > 0).map((p) => fact(
-    `${professionName(p.profession)}:`, businessLoad(b.load[p.profession]), !(b.load[p.profession] <= 1),
-  ));
-
-  return {
-    title: tr('Работники — {0} из {1}', b.workers.length, b.seats),
-    body: [
-      facts(...loads),
-      b.workers.length ? table(...b.workers.map((w) => workerRow(b, w))) : hint(tr('Работников нет: без них покупатели уходят ни с чем.')),
-      heading(tr('Кандидаты')),
-      hint(b.candidatesUntil ? tr('Новые придут {0}.', formatDateTime(b.candidatesUntil)) : ''),
-      b.candidates.length ? table(...b.candidates.map((c) => candidateRow(b, c))) : hint(tr('Все кандидаты уже наняты — ждите новых.')),
-      b.workers.length >= b.seats ? hint(tr('Свободных мест нет: улучшите бизнес.')) : null,
-    ],
-    actions: [],
-  };
-}
-
-function supplyRow(b, s, spoil) {
-  const hours = s.use > 0 ? Math.floor(s.units / s.use) : null;
-  const left = hours === null ? tr('сейчас не расходуется') : tr('хватит на {0} ч.', hours);
-  const about = [tr('расход {0} в час', decimal(s.use)), left];
-  if (s.onWay > 0) about.push(tr('в пути {0}', businessUnits(s.onWay)));
-  if (spoil) about.push(tr('портится за {0} ч.', spoil));
-
-  return el('tr', {},
-    el('td', {},
-      el('b', { textContent: supplyName(s.supply) }),
-      el('div', { className: 'biz-label', textContent: tr('{0} из {1}', businessUnits(s.units), businessUnits(s.storage)) }),
-      bar(s.units, s.storage, s.units < 1 && s.onWay === 0),
-      el('div', { className: hours !== null && hours < 3 ? 'hint biz-warn' : 'hint', textContent: about.join('; ') }),
-    ),
-  );
-}
-
-// orderForm buys a supply from a supplier for the votes of the owner.
-function orderForm(b) {
-  const supplies = choice(b.supplies.map((s) => [s.supply, supplyName(s.supply)]), b.supplies[0].supply);
-  const suppliers = choice(state.suppliers.map((s) => [s.supplier, supplierName(s.supplier)]), 'reliable');
-  const units = numberField(0, 1, 1e9);
-  const cost = el('span', { className: 'hint' });
+function founding() {
+  const kind = el('select', { className: 'firm-select' },
+    ...state.settings.plans.map((p) => el('option', { value: p.kind, textContent: `${firmKindName(p.kind)} — ${votesAmount(p.price)}` })));
+  const name = field({ type: 'text', maxLength: 40, required: true, placeholder: tr('Название') });
+  name.classList.replace('firm-number', 'firm-name');
   const about = hint('');
-
-  const room = () => {
-    const s = b.supplies.find((x) => x.supply === supplies.value);
-    return Math.max(Math.floor(s.storage - s.units - s.onWay), 0);
+  const describe = () => {
+    const spec = specOf(kind.value);
+    const plan = planOf(kind.value);
+    about.textContent = tr('{0}: {1} в час на рабочего, {2} рабочих на уровень, до {3} уровней.', firmKindName(spec.kind), recipe(spec), plan.staff, plan.levels);
   };
-  const update = () => {
-    const s = b.supplies.find((x) => x.supply === supplies.value);
-    const sup = state.suppliers.find((x) => x.supplier === suppliers.value);
-    cost.textContent = tr('стоит {0}', votesAmount(orderCost(Number(units.value) || 0, s.unitCosts[suppliers.value] ?? 0)));
-    about.textContent = tr('{0}: {1}; поместится ещё {2}', supplierName(sup.supplier), supplierAbout(sup), businessUnits(room()));
-  };
-  supplies.addEventListener('change', () => { units.value = String(room()); update(); });
-  suppliers.addEventListener('change', update);
-  units.addEventListener('input', update);
-  units.value = String(room());
-  update();
-
-  const order = button(tr('Заказать'), () => run(b, 'order', { supply: supplies.value, supplier: suppliers.value, amount: Number(units.value) || 0 },
-    (d) => tr('Заказано за {0}.', votesAmount(d.spent))));
-
-  return [heading(tr('Закупка')), row(supplies, suppliers), row(units, order, cost), about];
-}
-
-// contractForm sets or ends the standing order of a supply: the buyer
-// orders it from the till when it runs low.
-function contractForm(b) {
-  const buyer = b.workers.some((w) => w.profession === 'buyer');
-  const supplies = choice(b.supplies.map((s) => [s.supply, supplyName(s.supply)]), b.supplies[0].supply);
-  const suppliers = choice(state.suppliers.map((s) => [s.supplier, supplierName(s.supplier)]), 'reliable');
-  const below = numberField(0, 1, 1e9);
-  const units = numberField(0, 1, 1e9);
-  const fill = () => {
-    const c = b.contracts.find((x) => x.supply === supplies.value);
-    const s = b.supplies.find((x) => x.supply === supplies.value);
-    if (c) suppliers.value = c.supplier;
-    below.value = String(c?.below ?? Math.floor(s.storage / 4));
-    units.value = String(c?.units ?? Math.floor(s.storage / 2));
-  };
-  supplies.addEventListener('change', fill);
-  fill();
-
-  const lines = b.contracts.map((c) => el('li', { className: c.stalled ? 'biz-warn' : '', textContent: tr('{0}: {1}, когда меньше {2} — {3}{4}',
-    supplyName(c.supply), businessUnits(c.units), businessUnits(c.below), supplierName(c.supplier), c.stalled ? tr(' (в кассе нет денег)') : '') }));
+  kind.addEventListener('change', describe);
+  describe();
 
   return [
-    heading(tr('Договоры поставок')),
-    hint(buyer
-      ? tr('Закупщик сам заказывает товар из кассы, когда его остаётся меньше порога.')
-      : tr('Договоры ведёт закупщик — без него они не работают. Наймите его.')),
-    lines.length ? el('ul', { className: 'biz-list' }, ...lines) : null,
-    row(supplies, suppliers),
-    row(el('span', { className: 'biz-label', textContent: tr('Когда меньше, шт.:') }), below, el('span', { className: 'biz-label', textContent: tr('заказывать, шт.:') }), units),
-    row(
-      button(tr('Заключить договор'), () => run(b, 'contract', { supply: supplies.value, supplier: suppliers.value, below: Number(below.value) || 0, amount: Number(units.value) || 0 },
-        () => tr('Договор на «{0}» заключён.', supplyName(supplies.value)))),
-      b.contracts.some((c) => c.supply === supplies.value)
-        ? button(tr('Расторгнуть'), () => run(b, 'contract', { supply: supplies.value, supplier: suppliers.value, amount: 0 },
-          () => tr('Договор на «{0}» расторгнут.', supplyName(supplies.value))), { secondary: true })
-        : '',
-    ),
+    form([kind, name], tr('Основать'), () => act('found', { kind: kind.value, name: name.value }, tr('Предприятие «{0}» основано. Рабочие уже наняты, склад закупает сырьё сам.', name.value.trim()))),
+    about,
+    hint(tr('{0} % цены уходит в кассу предприятия на первые зарплаты и закупки. Вы получаете все 100 акций и становитесь директором.', state.settings.capital)),
   ];
 }
 
-function storagePanel(b) {
-  const spec = specOf(b.kind);
-  const keeper = b.workers.some((w) => w.profession === 'storekeeper');
-  const orders = b.orders.map((o) => el('li', { textContent: tr('{0}: {1} от «{2}», привезут {3}{4}',
-    supplyName(o.supply), businessUnits(o.units), supplierName(o.supplier), formatDateTime(o.arrives), o.fromTill ? tr(' (по договору)') : '') }));
+// --- the card of an enterprise ---
 
-  return {
-    title: tr('Склад'),
-    body: [
-      table(...b.supplies.map((s) => supplyRow(b, s, spec.supplies.find((x) => x.supply === s.supply)?.spoil))),
-      keeper ? null : hint(tr('Кладовщика нет: при приёмке теряется 10 % каждой поставки.')),
-      orders.length ? heading(tr('В пути')) : null,
-      orders.length ? el('ul', { className: 'biz-list' }, ...orders) : null,
-      ...(b.bankrupt ? [] : [...orderForm(b), ...contractForm(b)]),
-    ],
-    actions: [],
-  };
+function firmCard(f) {
+  if (!f) return [hint(tr('Такого предприятия нет: его ликвидировали.')), link(tr('« Мои предприятия'), '/business')];
+
+  const plan = planOf(f.kind);
+  const shares = held(f);
+  const nodes = [
+    el('div', { className: 'firm-head' }, el('b', { textContent: f.name }), el('span', { className: 'biz-level', textContent: ` — ${firmKindName(f.kind)}` })),
+    facts([
+      [tr('Директор:'), person(f.director)],
+      [tr('Основано:'), formatDateTime(f.foundedAt)],
+      [tr('Уровень:'), tr('{0} из {1}', f.level, plan.levels)],
+      [tr('Работа:'), recipe(specOf(f.kind)) + tr(' в час на рабочего')],
+      [tr('Рабочие:'), tr('{0} из {1} мест, зарплата {2} в час, выработка {3} %', f.workers, f.seats, money(f.wage), Math.round(f.productivity * 100))],
+      [tr('Касса:'), money(f.cash)],
+      f.escrow > 0 ? [tr('В заявках:'), money(f.escrow)] : null,
+      [tr('Содержание:'), tr('{0} в час', money(f.upkeep))],
+      [tr('Прибыль за сутки:'), money(f.profit)],
+      [tr('Стоимость:'), tr('{0}, на акцию — {1}', money(f.worth), money(Math.floor(f.worth / f.shares)))],
+      [tr('Цена акции:'), f.sharePrice > 0 ? votesAmount(f.sharePrice) : tr('сделок ещё не было')],
+      shares > 0 ? [tr('Ваши акции:'), tr('{0} из {1} ({2})', shares, f.shares, sharePercent(shares, f.shares))] : null,
+    ]),
+    nextHour(),
+  ];
+
+  if (directs(f)) nodes.push(title(tr('Управление')), ...management(f, plan));
+  nodes.push(title(tr('Склад')), storage(f));
+  if (directs(f)) nodes.push(title(tr('Заявки на бирже')), ...orders(f));
+  nodes.push(title(tr('Отчёт за сутки')), report(f));
+  nodes.push(title(tr('Акционеры')), ...holders(f, shares));
+  return nodes;
 }
 
-function tillPanel(b) {
-  const amount = numberField(b.inDebt ? Math.ceil(-b.cash / 100) : 10, 1, 1e12);
-  const tax = Math.ceil((Math.floor(Math.max(b.cash, 0) / 100) * b.tax) / 100);
+function management(f, plan) {
+  const body = { firm: f.id };
+  const name = field({ type: 'text', maxLength: 40, required: true, value: f.name });
+  name.classList.replace('firm-number', 'firm-name');
+  const workers = field({ type: 'number', min: 0, max: f.seats, required: true, value: f.workers });
+  const wage = field({ type: 'text', inputMode: 'decimal', required: true, value: hundredths(f.wage).replace(/ /g, '') });
+  const deposit = field({ type: 'number', min: 1, required: true, placeholder: tr('голосов') });
+  const dividend = field({ type: 'number', min: 1, required: true, placeholder: tr('голосов') });
 
-  const actions = [];
-  if (b.cash >= 100 && !b.bankrupt) {
-    actions.push(button(tr('Забрать выручку'), () => run(b, 'collect', {}, (d) => tr('Из кассы забрано {0}, налог — {1}.', votesAmount(d.got), votesAmount(d.tax)))));
+  const nodes = [
+    form([name], tr('Переименовать'), () => act('rename', { ...body, name: name.value }, tr('Предприятие переименовано.'))),
+    form([labelled(tr('Рабочих'), workers), labelled(tr('Зарплата, гол./час'), wage)], tr('Сохранить'),
+      () => act('staff', { ...body, workers: Number(workers.value), wage: hundredthsOf(wage.value) }, tr('Рабочие и зарплата изменены.'))),
+    hint(tr('Норма зарплаты — {0} в час, платить можно от половины до тройной нормы: чем выше зарплата, тем больше делают рабочие. Зарплата и содержание идут из кассы каждый час, а когда денег нет, предприятие стоит.', money(state.settings.wage))),
+    form([labelled(tr('В кассу'), deposit)], tr('Вложить'),
+      () => act('deposit', { ...body, votes: votesOf(deposit) }, (d) => tr('Вы вложили в кассу {0}.', votesAmount(d.spent)))),
+    form([labelled(tr('Акционерам'), dividend)], tr('Выплатить дивиденды'),
+      () => act('dividend', { ...body, votes: votesOf(dividend) }, (d) => tr('Дивиденды выплачены, ваша доля — {0}.', votesAmount(d.got)))),
+    hint(tr('Дивиденды делятся из кассы между всеми акционерами по числу акций.')),
+  ];
+
+  if (f.level < plan.levels) {
+    nodes.push(el('p', { className: 'firm-buttons' },
+      button(tr('Улучшить до {0} ур. за {1}', f.level + 1, money(f.upgradeCost * 100)),
+        () => act('upgrade', body, tr('Предприятие улучшено до {0} ур.: больше мест для рабочих и больше склад.', f.level + 1)))));
+  } else {
+    nodes.push(hint(tr('Предприятие на высшем уровне.')));
   }
-  if (!b.bankrupt) {
-    actions.push(button(b.inDebt ? tr('Погасить долг') : tr('Пополнить кассу'), () => run(b, 'deposit', { amount: Number(amount.value) || 0 },
-      (d) => tr('В кассу положено {0}.', votesAmount(d.spent))), { secondary: b.cash >= 100 }));
+
+  nodes.push(el('p', { className: 'firm-buttons' }, button(tr('Ликвидировать'), () => liquidate(f), { secondary: true })));
+  return nodes;
+}
+
+function liquidate(f) {
+  const { modal, error } = dialog(tr('Ликвидация'),
+    el('p', { textContent: tr('Ликвидировать «{0}»? Предприятие закроется, заявки снимутся, а акционеры получат по акциям {1}: половину вложенного в основание и улучшения, кассу и деньги заявок.', f.name, money(f.worth)) }));
+  modal.actions.replaceChildren(
+    button(tr('Ликвидировать'), async () => {
+      if (await act('liquidate', { firm: f.id }, (d) => tr('Предприятие «{0}» ликвидировано, ваша доля — {1}.', f.name, votesAmount(d.got)), error)) modal.close();
+    }),
+    button(tr('Отмена'), modal.close, { secondary: true }),
+  );
+}
+
+// storage is what the enterprise keeps; its director sets what the
+// storage buys and sells by itself and trades with the state.
+function storage(f) {
+  const spec = specOf(f.kind);
+  const auto = (s) => {
+    const parts = [];
+    if (buys(spec, s.good)) parts.push(s.autoBuy ? tr('закупать до {0}', money(s.buyMax)) : tr('не закупать'));
+    if (sells(spec, s.good)) parts.push(s.autoSell ? tr('продавать от {0}', money(s.sellMin)) : tr('не продавать'));
+    return parts.join(', ');
+  };
+
+  if (!directs(f)) {
+    return table([tr('Товар'), tr('На складе'), tr('Вместимость')], f.stock.map((s) => [goodLink(s.good), groupedVotes(s.units), groupedVotes(s.capacity)]));
   }
 
-  return {
-    title: tr('Касса'),
-    body: [
-      b.inDebt
-        ? el('div', { className: 'biz-warn', textContent: tr('Долг: {0} гол. Разорение — с {1} гол.', hundredths(-b.cash), hundredths(b.debtLimit)) })
-        : el('div', { className: 'biz-label', textContent: tr('В кассе: {0} из {1} гол.', hundredths(b.cash), hundredths(b.till)) }),
-      b.inDebt ? bar(-b.cash, b.debtLimit, true) : bar(b.cash, b.till),
-      hint(b.inDebt
-        ? tr('Зарплаты, аренда и договоры идут из кассы всегда. Положите в неё голоса, пока долг не разорил бизнес.')
-        : tr('Выручка сверх того, что вмещает касса, пропадает — забирайте её. Налог — {0} %{1}.', b.tax, b.cash >= 100 ? tr(', сейчас — {0}', votesAmount(tax)) : '')),
-      b.bankrupt ? null : row(el('span', { className: 'biz-label', textContent: b.inDebt ? tr('Погасить, голосов:') : tr('Пополнить, голосов:') }), amount),
-    ],
-    actions,
-  };
+  return table(
+    [tr('Товар'), tr('На складе'), tr('Вместимость'), tr('Сам'), ''],
+    f.stock.map((s) => [
+      goodLink(s.good), s.incoming > 0 ? tr('{0} (+{1})', groupedVotes(s.units), groupedVotes(s.incoming)) : groupedVotes(s.units),
+      groupedVotes(s.capacity), auto(s), el('a', { href: '#', textContent: tr('Настроить'), onclick: (e) => { e.preventDefault(); stockBox(f, s); } }),
+    ]),
+  );
 }
 
-function adPanel(b, plan) {
-  const ad = b.adUntil && new Date(b.adUntil) > new Date();
+function stockBox(f, s) {
+  const spec = specOf(f.kind);
+  const q = quoteOf(s.good);
+  const units = field({ type: 'number', min: 1, required: true, placeholder: tr('шт.') });
+  const autoBuy = el('input', { type: 'checkbox', checked: s.autoBuy });
+  const buyMax = field({ type: 'text', inputMode: 'decimal', value: hundredths(s.buyMax).replace(/ /g, '') });
+  const autoSell = el('input', { type: 'checkbox', checked: s.autoSell });
+  const sellMin = field({ type: 'text', inputMode: 'decimal', value: hundredths(s.sellMin).replace(/ /g, '') });
+  const body = { firm: f.id, good: s.good };
 
-  return {
-    title: tr('Рекламный щит'),
-    body: [
-      facts(
-        fact(tr('Сейчас:'), ad ? tr('реклама до {0}', formatDateTime(b.adUntil)) : tr('рекламы нет')),
-        fact(tr('Кампания:'), tr('+{0} % покупателей на {1} ч.', plan.adBoost, plan.adHours)),
-      ),
-      hint(tr('Кампании складываются: каждая продлевает рекламу. Маркетолог приводит покупателей и без неё.')),
-    ],
-    actions: b.bankrupt ? [] : [button(tr('Реклама за {0}', votesAmount(plan.adPrice)), () => run(b, 'advertise', {},
-      () => tr('Реклама запущена: +{0} % покупателей на {1} ч.', plan.adBoost, plan.adHours)))],
-  };
+  const { modal, error } = dialog(goodName(s.good),
+    facts([
+      [tr('На складе:'), tr('{0} из {1}', groupedVotes(s.units), groupedVotes(s.capacity))],
+      s.incoming > 0 ? [tr('Придёт по заявкам:'), groupedVotes(s.incoming)] : null,
+      [tr('Государство покупает:'), tr('по {0}', money(q.stateBid))],
+      [tr('Государство продаёт:'), tr('по {0}', money(q.stateAsk))],
+      retailed(s.good) ? [tr('Город платит магазинам:'), tr('по {0}', money(q.cityPrice))] : null,
+    ]),
+    hint(tr('Цены государства — за первую штуку: чем больше с ним торгуют за сутки, тем хуже следующие.')),
+    el('div', { className: 'firm-form' }, labelled(tr('Количество'), units),
+      buys(spec, s.good) ? button(tr('Купить у государства'), () => trade('state_buy')) : null,
+      button(tr('Продать государству'), () => trade('state_sell'))),
+    el('div', { className: 'biz-subtitle', textContent: tr('Склад сам') }),
+    buys(spec, s.good) ? el('div', { className: 'firm-form' }, el('label', {}, autoBuy, tr(' закупать у государства до цены')), buyMax) : null,
+    sells(spec, s.good)
+      ? el('div', { className: 'firm-form' }, el('label', {}, autoSell, spec.sells.includes(s.good) ? tr(' продавать городу от цены') : tr(' продавать государству от цены')), sellMin)
+      : null,
+  );
+
+  async function trade(action) {
+    const n = Number(units.value);
+    const ok = await act(action, { ...body, units: n }, () => (action === 'state_buy'
+      ? tr('Куплено у государства: {0} шт.', groupedVotes(n))
+      : tr('Продано государству: {0} шт.', groupedVotes(n))), error);
+    if (ok) modal.close();
+  }
+
+  modal.actions.replaceChildren(
+    button(tr('Сохранить'), async () => {
+      const auto = {
+        ...body, autoBuy: autoBuy.checked, buyMax: hundredthsOf(buyMax.value) || 0,
+        autoSell: autoSell.checked, sellMin: hundredthsOf(sellMin.value) || 0,
+      };
+      if (await act('auto', auto, tr('Склад настроен.'), error)) modal.close();
+    }),
+    button(tr('Закрыть'), modal.close, { secondary: true }),
+  );
 }
 
-// journalPanel is what happened lately, the newest first, and the last
-// hours of the business.
-function journalPanel(b) {
-  const notes = [...b.notes].reverse().map((n) => el('li', {}, el('span', { className: 'hint', textContent: `${formatDateTime(n.at)} ` }), businessNote(n)));
-  const hours = [...b.hours].reverse().slice(0, 8).map((h) => {
-    const costs = h.wages + h.rent + h.supplies + h.losses;
-    const net = h.income - costs;
-    return el('tr', {},
-      el('td', { className: 'biz-label', textContent: formatDateTime(h.hour) }),
-      el('td', { textContent: `+${hundredths(Math.round(h.income))}` }),
-      el('td', { textContent: `−${hundredths(Math.round(costs))}` }),
-      el('td', { className: net < 0 ? 'biz-warn' : '', textContent: hundredths(Math.round(net)) }),
-      el('td', { className: 'hint', textContent: h.unserved >= 1 ? tr('ушли ни с чем: {0}', Math.floor(h.unserved)) : '' }),
-    );
+function orders(f) {
+  const own = state.orders.filter((o) => o.firmId === f.id);
+  const nodes = [];
+  if (own.length) {
+    nodes.push(table([tr('Товар'), tr('Заявка'), tr('Цена'), tr('Осталось'), ''], own.map((o) => [
+      goodLink(o.good), o.buy ? tr('покупка') : tr('продажа'), money(o.price), groupedVotes(o.units),
+      el('a', { href: '#', textContent: tr('Снять'), onclick: (e) => { e.preventDefault(); act('cancel', { order: o.id }, tr('Заявка снята.')); } }),
+    ])));
+  }
+
+  const good = el('select', { className: 'firm-select' }, ...f.stock.map((s) => el('option', { value: s.good, textContent: goodName(s.good) })));
+  const side = el('select', { className: 'firm-select' }, el('option', { value: 'sell', textContent: tr('продать') }), el('option', { value: 'buy', textContent: tr('купить') }));
+  const price = field({ type: 'text', inputMode: 'decimal', required: true, placeholder: tr('цена, гол.') });
+  const units = field({ type: 'number', min: 1, required: true, placeholder: tr('шт.') });
+  nodes.push(
+    form([side, good, units, price], tr('Выставить'), () => act('order', {
+      firm: f.id, good: good.value, buy: side.value === 'buy', price: hundredthsOf(price.value), units: Number(units.value),
+    }, (d) => {
+      const dealt = d.deals.reduce((n, deal) => n + deal.units, 0);
+      return dealt > 0 ? tr('Заявка выставлена, сразу исполнено {0} шт.', groupedVotes(dealt)) : tr('Заявка выставлена.');
+    })),
+    hint(tr('Цена — за штуку. Заявка на покупку держит деньги кассы, на продажу — товар склада, пока её не исполнят или не снимут. Сделка идёт по цене той заявки, что выставлена раньше, а продавец платит комиссию {0} %.', state.settings.fee)),
+  );
+  return nodes;
+}
+
+function report(f) {
+  if (!f.hours.length) return hint(tr('Предприятие ещё не отработало ни часа.'));
+
+  const hours = [...f.hours].reverse();
+  const costs = (h) => h.purchases + h.wages + h.upkeep + h.fees;
+  const sum = (pick) => hours.reduce((n, h) => n + pick(h), 0);
+  const profit = (h) => h.income - costs(h);
+  return table(
+    [tr('Час'), tr('Сделано'), tr('Куплено'), tr('Продано'), tr('Выручка'), tr('Расходы'), tr('Прибыль')],
+    hours.map((h) => [firmHour(h.hour), h.made, h.bought, h.sold, hundredths(h.income), hundredths(costs(h)), hundredths(profit(h))]),
+    [tr('Итого'), sum((h) => h.made), sum((h) => h.bought), sum((h) => h.sold), hundredths(sum((h) => h.income)), hundredths(sum(costs)), hundredths(sum(profit))],
+  );
+}
+
+function holders(f, shares) {
+  const nodes = [table([tr('Акционер'), tr('Акций'), tr('Доля')], f.holders.map((h) => [person(h.user), h.shares, sharePercent(h.shares, f.shares)]))];
+  const offers = state.offers.filter((o) => o.firmId === f.id);
+  if (offers.length) nodes.push(el('div', { className: 'biz-subtitle', textContent: tr('Продаются') }), offersTable(offers, false));
+
+  const count = field({ type: 'number', min: 1, required: true, placeholder: tr('акций') });
+  const price = field({ type: 'number', min: 1, required: true, placeholder: tr('гол. за акцию') });
+  if (shares > 0) {
+    nodes.push(form([count, price], tr('Продать свои акции'), () => act('offer', { firm: f.id, shares: Number(count.value), votes: votesOf(price) }, tr('Акции выставлены на продажу.'))),
+      hint(tr('Голоса за проданные акции приходят вам, кроме комиссии {0} %. Директор — тот, у кого больше всех акций.', state.settings.fee)));
+  }
+  if (directs(f)) {
+    const issued = field({ type: 'number', min: 1, required: true, placeholder: tr('акций') });
+    const issuePrice = field({ type: 'number', min: 1, required: true, placeholder: tr('гол. за акцию') });
+    nodes.push(form([issued, issuePrice], tr('Выпустить новые акции'), () => act('issue', { firm: f.id, shares: Number(issued.value), votes: votesOf(issuePrice) }, tr('Новые акции выставлены на продажу.'))),
+      hint(tr('Голоса за новые акции идут в кассу предприятия, а доли прежних акционеров становятся меньше.')));
+  }
+  return nodes;
+}
+
+// --- "Акции" ---
+
+function offersTable(offers, named) {
+  return table(
+    [...(named ? [tr('Предприятие')] : []), tr('Продавец'), tr('Акций'), tr('Цена акции'), ''],
+    offers.map((o) => {
+      const f = firmOf(o.firmId);
+      const own = o.seller?.id === me.id || (!o.seller && f && directs(f));
+      return [
+        ...(named ? [f ? firmLink(f) : ''] : []),
+        o.seller ? person(o.seller) : tr('выпуск предприятия'), groupedVotes(o.shares), votesAmount(o.price),
+        own
+          ? el('a', { href: '#', textContent: tr('Снять'), onclick: (e) => { e.preventDefault(); act('cancel_offer', { offer: o.id }, tr('Предложение снято.')); } })
+          : el('a', { href: '#', textContent: tr('Купить'), onclick: (e) => { e.preventDefault(); buyShares(o, f); } }),
+      ];
+    }),
+  );
+}
+
+function buyShares(o, f) {
+  const count = field({ type: 'number', min: 1, max: o.shares, required: true, value: o.shares });
+  const total = el('p', {});
+  const recount = () => {
+    const n = Number(count.value);
+    total.textContent = tr('Итого: {0}.', votesAmount(Number.isInteger(n) && n > 0 ? n * o.price : 0));
+  };
+  count.addEventListener('input', recount);
+  recount();
+
+  const { modal, error } = dialog(tr('Покупка акций'),
+    el('p', { textContent: tr('Акции «{0}» по {1} за штуку, продаётся {2}.', f?.name ?? '', votesAmount(o.price), groupedVotes(o.shares)) }),
+    el('div', { className: 'firm-form' }, labelled(tr('Акций'), count)),
+    total,
+  );
+  modal.actions.replaceChildren(
+    button(tr('Купить'), async () => {
+      const n = Number(count.value);
+      if (await act('buy_shares', { offer: o.id, shares: n }, (d) => tr('Вы купили {0} акц. за {1}.', groupedVotes(n), votesAmount(d.spent)), error)) modal.close();
+    }),
+    button(tr('Отмена'), modal.close, { secondary: true }),
+  );
+}
+
+function shares() {
+  const nodes = [title(tr('Все предприятия'))];
+  if (!state.firms.length) {
+    nodes.push(hint(tr('Ещё никто не основал предприятие.')));
+  } else {
+    const firms = [...state.firms].sort((a, b) => b.worth - a.worth);
+    nodes.push(table(
+      [tr('Предприятие'), tr('Вид'), tr('Ур.'), tr('Директор'), tr('Прибыль за сутки'), tr('Стоимость акции'), tr('Цена сделки')],
+      firms.map((f) => [
+        firmLink(f), firmKindName(f.kind), f.level, person(f.director), money(f.profit), money(Math.floor(f.worth / f.shares)),
+        f.sharePrice > 0 ? votesAmount(f.sharePrice) : tr('—'),
+      ]),
+    ));
+  }
+
+  nodes.push(title(tr('Акции на продажу')));
+  nodes.push(state.offers.length ? offersTable(state.offers, true) : hint(tr('Сейчас никто не продаёт акции.')));
+  nodes.push(hint(tr('Стоимость акции — сколько на неё придётся, если предприятие ликвидировать: половина вложенного в основание и улучшения, касса и деньги заявок. Акционеры получают дивиденды, когда директор их выплачивает.')));
+  return nodes;
+}
+
+// --- "Биржа" ---
+
+const price = (n) => (n > 0 ? hundredths(n) : tr('—'));
+
+function exchange() {
+  return [
+    title(tr('Котировки')),
+    table(
+      [tr('Товар'), tr('Гос. купит'), tr('Гос. продаст'), tr('Город'), tr('Спрос'), tr('Предложение'), tr('Сделка'), tr('На бирже за сутки, шт.')],
+      state.quotes.map((q) => [
+        goodLink(q.good), price(q.stateBid), price(q.stateAsk), retailed(q.good) ? price(q.cityPrice) : tr('—'), price(q.bestBid), price(q.bestAsk), price(q.last), groupedVotes(q.volume),
+      ]),
+    ),
+    hint(tr('Цены — в голосах за штуку. Государство покупает дешевле нормы и продаёт дороже: чем больше с ним наторговали за сутки, тем хуже его цены. Спрос и предложение — лучшие заявки игроков: по ним торговать выгоднее. Город платит магазинам за хлеб, мебель и электронику.')),
+  ];
+}
+
+function book(good) {
+  const q = quoteOf(good);
+  if (!q) return [hint(tr('Такого товара нет.')), link(tr('« Биржа'), '/business?tab=exchange')];
+
+  const side = (buy) => state.orders.filter((o) => o.good === good && o.buy === buy)
+    .sort((a, b) => (buy ? b.price - a.price : a.price - b.price) || a.placedAt.localeCompare(b.placedAt));
+  const rows = (list) => list.map((o) => {
+    const f = firmOf(o.firmId);
+    return [money(o.price), groupedVotes(o.units), f ? firmLink(f) : ''];
   });
+  const bids = side(true);
+  const asks = side(false);
 
-  return {
-    title: tr('Журнал'),
-    body: [
-      hours.length ? heading(tr('Последние часы')) : null,
-      hours.length ? table(...hours) : null,
-      heading(tr('События')),
-      notes.length ? el('ul', { className: 'biz-list biz-notes' }, ...notes) : hint(tr('Пока ничего не случилось.')),
-    ],
-    actions: [],
-  };
+  return [
+    el('p', {}, link(tr('« Биржа'), '/business?tab=exchange')),
+    title(goodName(good)),
+    facts([
+      [tr('Государство:'), tr('покупает по {0}, продаёт по {1}', money(q.stateBid), money(q.stateAsk))],
+      retailed(good) ? [tr('Город:'), tr('платит магазинам по {0}', money(q.cityPrice))] : null,
+      [tr('Последняя сделка:'), q.last > 0 ? money(q.last) : tr('ещё не было')],
+      [tr('Продано на бирже за сутки:'), tr('{0} шт.', groupedVotes(q.volume))],
+    ]),
+    el('div', { className: 'biz-subtitle', textContent: tr('Покупают') }),
+    bids.length ? table([tr('Цена'), tr('Шт.'), tr('Предприятие')], rows(bids)) : hint(tr('Заявок на покупку нет.')),
+    el('div', { className: 'biz-subtitle', textContent: tr('Продают') }),
+    asks.length ? table([tr('Цена'), tr('Шт.'), tr('Предприятие')], rows(asks)) : hint(tr('Заявок на продажу нет.')),
+    hint(tr('Выставить заявку можно в карточке своего предприятия, в блоке «Заявки на бирже».')),
+  ];
 }
 
-// eventPanel is what waits for the owner: the answers, the default one
-// first, which applies by itself when the day is over.
-function eventPanel(b) {
-  if (!b.event) return journalPanel(b);
-  const e = b.event;
-  const { title, text } = businessEvent(e);
+// --- "Справочник" ---
 
-  return {
-    title,
-    body: [
-      el('p', { textContent: text }),
-      hint(tr('Если не решить до {0}, будет «{1}».', formatDateTime(e.until), businessOption(e.options[0], e))),
-    ],
-    actions: e.options.map((option, i) => button(businessOption(option, e), () => run(b, 'decide', { option }, () => tr('Решено: «{0}».', businessOption(option, e))), { secondary: i === 0 })),
-  };
+function guide() {
+  const plan = (kind) => planOf(kind);
+  return [
+    title(tr('Предприятия')),
+    table(
+      [tr('Предприятие'), tr('Цена'), tr('Работа в час на рабочего'), tr('Рабочих на ур.'), tr('Уровней')],
+      state.catalog.map((s) => [firmKindName(s.kind), votesAmount(plan(s.kind).price), recipe(s), plan(s.kind).staff, plan(s.kind).levels]),
+    ),
+    title(tr('Товары')),
+    table([tr('Товар'), tr('Норма цены')], state.settings.goods.map((g) => [goodLink(g.good), money(g.base)])),
+    hint(tr('Цепочки: ферма → мельница → хлебозавод; лесхоз → лесопилка и рудник → сталелитейный завод → мебельная фабрика; нефтевышка → химзавод и сталь → завод электроники; хлеб, мебель и электронику город покупает в магазинах. Чем дальше по цепочке, тем дороже предприятие и тем больше оно зарабатывает.')),
+    hint(tr('Предприятие с полным штатом окупает основание за несколько дней, если его продукции есть сбыт. Улучшение даёт больше мест для рабочих и больший склад. Зарплата и содержание идут из кассы каждый час — следите, чтобы в ней были деньги.')),
+  ];
 }
 
-function lotPanel(plan) {
-  const name = businessName(plan.kind);
-  const spec = specOf(plan.kind);
+function show() {
+  const { tab, firm, good } = where();
+  const active = firm ? 'mine' : tab;
+  for (const a of $('firm-tabs').querySelectorAll('a')) a.classList.toggle('active', a.dataset.tab === active);
 
-  return {
-    title: tr('Купить: {0}', name),
-    body: [
-      el('div', { className: 'biz-preview' }, picture(buildings[plan.kind])),
-      facts(
-        fact(tr('Цена:'), votesAmount(plan.price)),
-        fact(tr('Уровней:'), String(plan.levels)),
-        fact(tr('Продаёт:'), spec.offers.map((o) => offerName(o.offer)).join(', ')),
-        fact(tr('Закупает:'), spec.supplies.map((s) => supplyName(s.supply)).join(', ')),
-        fact(tr('Работники:'), tr('до {0} на уровень', plan.staff)),
-        fact(tr('Аренда в час:'), tr('{0} гол. за уровень', hundredths(plan.rent))),
-      ),
-      hint(tr('После покупки закупите товар на складе и наймите работников — без них продаж нет.')),
-    ],
-    actions: [button(tr('Купить за {0}', votesAmount(plan.price)), () => act(
-      plan.kind, () => api.buyBusiness(plan.kind), () => tr('Вы купили бизнес «{0}». Закупите товар и наймите работников.', name),
-    ))],
-  };
+  let nodes;
+  if (firm) nodes = firmCard(firmOf(firm));
+  else if (tab === 'exchange') nodes = good ? book(good) : exchange();
+  else if (tab === 'shares') nodes = shares();
+  else if (tab === 'guide') nodes = guide();
+  else nodes = myFirms();
+  $('firm-view').replaceChildren(...nodes.filter(Boolean));
 }
 
-const panels = { building: buildingPanel, offers: offersPanel, staff: staffPanel, storage: storagePanel, till: tillPanel, ad: adPanel, journal: journalPanel, event: eventPanel };
-
-// fillPanel fills the open box with the part it shows, as it is now.
-function fillPanel(message = '') {
-  const plan = planOf(panel.kind);
-  const b = state.businesses.find((x) => x.kind === panel.kind);
-  const view = panel.part === 'lot' ? lotPanel(plan) : panels[panel.part](b, plan);
-
-  panel.modal.box.querySelector('.modal-header').textContent = view.title;
-  panel.error = el('div', { className: 'error', hidden: true });
-  panel.modal.body.replaceChildren(
-    message ? el('div', { className: 'biz-said', textContent: message }) : '',
-    panel.error,
-    ...view.body.filter(Boolean),
-  );
-  panel.modal.actions.replaceChildren(...view.actions, button(tr('Закрыть'), panel.modal.close, { secondary: true }));
-}
-
-function openPanel(kind, part) {
-  hideError($('error'));
-  said('');
-  const modal = openModal('');
-  modal.box.classList.add('biz-dialog');
-  panel = { kind, part, modal, error: null };
-  fillPanel();
-}
-
-function sell(b, name) {
-  panel.modal.body.replaceChildren(el('p', { textContent: tr('Продать бизнес «{0}» сайту за {1}? Касса уходит вместе с ним.', name, votesAmount(b.resale)) }));
-  panel.modal.actions.replaceChildren(
-    button(tr('Продать'), () => run(b, 'sell', {}, (d) => tr('Бизнес «{0}» продан за {1}.', name, votesAmount(d.got)))),
-    button(tr('Отмена'), () => fillPanel(), { secondary: true }),
-  );
-}
-
-const me = await currentUser().catch(() => null);
+me = await currentUser().catch(() => null);
 renderChrome(me);
 
 $('business').hidden = false;
 if (!me || !answered) {
   $('guest').hidden = false;
+  $('firm-tabs').hidden = true;
 } else {
   showBalance(me.votes ?? 0);
+  for (const a of $('firm-tabs').querySelectorAll('a')) a.addEventListener('click', follow);
+  window.addEventListener('popstate', () => {
+    hideError($('error'));
+    said('');
+    show();
+  });
   try {
     state = await answered;
     show();

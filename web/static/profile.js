@@ -1,5 +1,5 @@
 import { api, currentUser, started } from './api.js';
-import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, plural, MAX_RATING, businessLine, businessName, businessPictures, titleGroups, titleIconPath } from './labels.js';
+import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, plural, MAX_RATING, firmLine, titleGroups, titleIconPath } from './labels.js';
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
@@ -368,26 +368,25 @@ async function showTitles(user) {
   $('titles-block').hidden = false;
 }
 
-// showBusinesses is the block "Бизнес" of a page with businesses: the
-// picture, name, level and staff of each.
-async function showBusinesses(user, isOwner) {
-  let businesses;
+// showFirms is the block "Бизнес" of a page holding shares: each
+// enterprise with what it is, its level and the part of the page, and
+// whether the page directs it.
+async function showFirms(user, isOwner) {
+  let firms;
   try {
-    ({ businesses } = await api.userBusinesses(user.nickname));
+    ({ firms } = await api.userFirms(user.nickname));
   } catch {
     return; // Not to be had: the page works without it.
   }
-  if (!businesses.length) return;
+  if (!firms.length) return;
 
-  $('business-count').textContent = `${businesses.length} ${plural(businesses.length, ['бизнес', 'бизнеса', 'бизнесов'])}`;
+  $('business-count').textContent = `${firms.length} ${plural(firms.length, ['предприятие', 'предприятия', 'предприятий'])}`;
   $('business-link').hidden = !isOwner;
-  $('business-side').replaceChildren(...businesses.map((b) => el('div', { className: 'pet-side-row' + (b.bankrupt ? ' business-side-bankrupt' : '') },
-    el('a', { className: 'business-side-picture', href: isOwner ? '/business' : '/top?board=business' },
-      el('img', { src: businessPictures[b.kind], alt: '', width: 48, height: 48 })),
-    el('div', { className: 'pet-side-text' },
-      el('b', { textContent: businessName(b.kind) }),
-      el('div', { className: 'hint', textContent: businessLine(b) }),
-    ))));
+  $('business-side').replaceChildren(...firms.map((f) => el('div', { className: 'firm-side-row' },
+    el('a', { href: `/business?firm=${encodeURIComponent(f.id)}`, textContent: f.name }),
+    f.director ? el('span', { className: 'firm-side-director', textContent: tr(' — директор') }) : null,
+    el('div', { className: 'hint', textContent: firmLine(f) }),
+  )));
   $('business-block').hidden = false;
 }
 
@@ -588,7 +587,7 @@ try {
     if (profile.access.clubs) showClubs(profile);
     showGifts(profile, me, isOwner);
     showPet(profile, me, isOwner);
-    showBusinesses(profile, isOwner);
+    showFirms(profile, isOwner);
     showTitles(profile);
     if (me) showStories(profile);
     // "Гости": the owner learns of the visit, unless it leaves no trace.

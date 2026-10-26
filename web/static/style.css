@@ -2079,91 +2079,32 @@ a.poll-result-name { cursor: pointer; }
 .mine-sell-all { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin: 0 0 6px; }
 .mine-totals { margin: 0; text-align: right; }
 
-/* "Бизнес": each business a picture of a street (480×240, every part
-   placed in percents of it) — a billboard, the building with its sign,
-   workers in its window, a safe and a warehouse, people walking along the
-   pavement; a click on a part opens its box. The balance at the right, as
-   at the mine. */
-.business { display: flex; gap: 20px; align-items: flex-start; }
-.business-main { flex: 1; min-width: 0; }
+/* "Бизнес": the economy of the enterprises in tables, as the browser
+   games of the 2000s had it — the balance a line over the tabs, grey
+   heads of columns, numbers at the right, forms in a line. */
+.firm-balance { margin: 0 0 8px; text-align: right; }
+.firm-balance b { color: var(--text-45688e); font-size: 13px; }
 .business-done { margin: 0 0 10px; padding: 8px; background: var(--back-eee5b8); border: 1px solid var(--line-d7cf9e); color: var(--text-58462a); font-weight: bold; }
-.biz-hint { margin: 0 0 8px; }
-.biz-card { margin: 0 0 14px; }
-.biz-head { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; padding: 0 0 4px; border-bottom: 1px solid var(--line-e8ebee); }
-.biz-icon { width: 32px; height: 24px; }
-.biz-head b { color: var(--text-45688e); font-size: 12px; }
+.firm-tabs { margin-bottom: 10px; }
+.firm-scroll { max-width: 100%; overflow-x: auto; }
+.firm-table { margin: 4px 0 8px; }
+.firm-table th:not(:first-child), .firm-table td:not(:first-child) { text-align: right; }
+.firm-table tfoot td { border-bottom: 0; font-weight: bold; }
+.firm-head { margin: 0 0 6px; padding: 0 0 4px; border-bottom: 1px solid var(--line-e8ebee); }
+.firm-head b { color: var(--text-45688e); font-size: 13px; }
 .biz-level { color: var(--text-808080); }
-.biz-hour { margin-left: auto; font-weight: bold; }
-.biz-hour.good { color: var(--text-43a047); }
-.biz-hour.bad { color: var(--text-c33); }
-.biz-scene {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid var(--line-c0cad5);
-  background: var(--back-444);
-  line-height: 0;
-  text-align: center;
-  user-select: none;
-}
-.biz-canvas { display: inline-block; image-rendering: pixelated; }
-.biz-canvas.biz-pointing { cursor: pointer; }
-.biz-links { margin: 4px 0 0; color: var(--text-808080); }
-.biz-links a.biz-care { color: var(--text-c33); font-weight: bold; }
-.biz-links a.biz-care::after { content: " !"; }
-.biz-scene-lot { aspect-ratio: 2 / 1; background: url("/static/business/scene.svg") center / 100% 100% no-repeat; line-height: normal; }
-.biz-lot { position: absolute; left: 25%; top: 12.5%; width: 43.75%; height: 66.667%; padding: 0; border: 0; background: none; cursor: pointer; font: inherit; }
-.biz-lot > img { display: block; width: 100%; height: 100%; }
-.biz-lot:hover > img, .biz-lot:focus-visible > img { filter: brightness(1.08) drop-shadow(0 0 3px var(--back-ffd54a)); }
-.biz-float {
-  position: absolute; left: 50%; top: 40%; padding: 1px 5px; line-height: normal;
-  border: 1px solid var(--line-d7cf9e); background: var(--back-fbf3c3); color: var(--text-0c7a3c);
-  font-size: 12px; font-weight: bold; pointer-events: none; animation: biz-float 1.6s ease-out forwards;
-}
-.biz-float.bad { color: var(--text-c33); }
-.biz-for-sale {
-  position: absolute; left: 21%; top: 21%; width: 52.4%; height: 32.5%;
-  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; padding: 0 0 4px; box-sizing: border-box;
-  color: var(--text-333); font-size: 10px; font-weight: bold;
-}
-.biz-for-sale b { color: var(--text-c33); font-size: 11px; text-transform: uppercase; }
-.biz-table { width: 100%; border-collapse: collapse; }
-.biz-table td { padding: 5px 4px; border-top: 1px solid var(--line-e8ebee); vertical-align: middle; }
-.biz-table b { color: var(--text-45688e); }
-.biz-cell-action { text-align: right; white-space: nowrap; }
-.biz-buttons { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
-.biz-lots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.biz-lots .biz-card { margin: 0; }
-.biz-lots .biz-for-sale { font-size: 9px; }
-.biz-lots .biz-for-sale b { font-size: 9px; }
-.modal-box.biz-dialog { width: 430px; }
-.biz-said { padding: 6px 8px; background: var(--back-eee5b8); border: 1px solid var(--line-d7cf9e); color: var(--text-58462a); font-weight: bold; }
-.biz-facts { border-collapse: collapse; }
-.biz-facts td { padding: 2px 8px 2px 0; vertical-align: top; }
-.biz-label { color: var(--text-808080); }
-.biz-facts .biz-label { white-space: nowrap; }
-.biz-warn { color: var(--text-c33); font-weight: bold; }
-.biz-bar { display: block; height: 8px; border: 1px solid var(--line-c0cad5); background: var(--back-f2f2f2); }
-.biz-fill { display: block; height: 100%; background: var(--back-43a047); }
-.biz-fill.bad { background: var(--back-d23a32); }
+.firm-facts { margin: 0 0 6px; border-collapse: collapse; }
+.firm-facts td { padding: 2px 8px 2px 0; vertical-align: top; }
+.biz-label { color: var(--text-808080); white-space: nowrap; }
+.firm-hint { margin: 2px 0 8px; }
+.firm-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; }
+.firm-field { display: inline-flex; gap: 4px; align-items: center; color: var(--text-808080); white-space: nowrap; }
+.firm-form input.firm-number { width: 90px; }
+.firm-form input.firm-name { width: 220px; }
+.firm-form select.firm-select { width: auto; max-width: 200px; }
+.firm-buttons { margin: 6px 0; }
 .biz-subtitle { margin: 10px 0 4px; padding: 0 0 2px; border-bottom: 1px solid var(--line-e8ebee); color: var(--text-45688e); font-size: 11px; }
-.biz-list { margin: 4px 0; padding: 0 0 0 16px; }
-.biz-list.biz-notes { max-height: 240px; overflow-y: auto; }
-.biz-advice { margin: 0 0 6px; padding: 6px 8px 6px 22px; background: var(--back-ffefe8); border: 1px solid var(--line-e89b88); color: var(--text-c33); }
-.biz-select { max-width: 180px; }
-.biz-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.biz-row .biz-number { width: 90px; }
 .modal-body .hint { margin: 0; }
-.biz-bankrupt { margin: 0; padding: 8px; background: var(--back-ffefe8); border: 1px solid var(--line-e89b88); color: var(--text-c33); font-weight: bold; }
-.biz-preview { height: 120px; text-align: center; }
-.biz-preview img { height: 100%; }
-@keyframes biz-float {
-  from { transform: translateY(0); opacity: 1; }
-  to { transform: translateY(-40px); opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .biz-float { animation: none; }
-  .biz-float { display: none; }
-}
 
 /* "Казино": the prizes in cells and a light running over them; the
    balance at the right, as in "Голоса". */
@@ -3004,6 +2945,6 @@ img.name-prime.name-prime {
 .title-badge { flex: none; width: 36px; height: 36px; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 25%)); }
 .title-side-text { min-width: 0; line-height: 1.3; overflow-wrap: anywhere; }
 .title-times { color: var(--text-808080); font-weight: bold; }
-/* "Бизнес": the premises of each business, greyed once bankrupt. */
-.business-side-picture img { display: block; width: 48px; height: 48px; padding: 2px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); object-fit: cover; }
-.business-side-bankrupt .business-side-picture img { filter: grayscale(1); opacity: 0.6; }
+/* "Бизнес": the enterprises of the page, each a link with what it is. */
+.firm-side-row { padding: 3px 0; overflow-wrap: anywhere; }
+.firm-side-director { color: var(--text-808080); }

@@ -36,20 +36,17 @@
         <div class="error" id="error" hidden></div>
         <div class="business" id="business" hidden>
           <div class="business-main">
-            <p class="casino-lead">Купите бизнес и управляйте им: нажимайте на зал, работников, склад, кассу, рекламный щит и вывеску. Бизнес работает сам, час за часом: покупатели приходят за его товарами, работники своих профессий их обслуживают, а каждая продажа берёт со склада то, из чего она сделана. Закупайте у поставщиков — дешевле или быстрее — или заключайте договоры, нанимайте работников с разными навыками и характерами, ставьте цены и решайте, что делать с проверками, поломками и большими заказами. Зарплаты и аренда идут всегда — бизнес, которым плохо управляют, уходит в долги и разоряется.</p>
+            <p class="casino-lead">Основайте предприятие и стройте цепочки: фермы, рудники, нефтевышки и лесхозы добывают сырьё, мельницы, заводы и лесопилки делают из него материалы, фабрики — хлеб, мебель и электронику, а магазины продают их городу. Предприятие работает само, час за часом: рабочие получают зарплату из кассы, склад закупает сырьё, а сделанное продаётся на бирже другим игрокам или государству. Продавайте акции, чтобы найти деньги, покупайте чужие и получайте дивиденды.</p>
+            <p class="firm-balance" id="balance" hidden>На вашем счету: <b id="votes"></b> <span id="votes-word"></span></p>
             <p class="hint" id="guest" hidden>Заниматься бизнесом могут только вошедшие на сайт.</p>
             <div class="business-done" id="done" hidden></div>
-            <p class="hint biz-hint" id="owned-hint" hidden>Нажмите на часть картинки, чтобы узнать о ней и что-то сделать.</p>
-            <div id="owned"></div>
-            <div id="shop-block" hidden>
-              <div class="section-title">Свободные участки</div>
-              <div class="biz-lots" id="shop"></div>
+            <div class="tabs firm-tabs" id="firm-tabs">
+              <a href="/business" data-tab="mine">Мои предприятия</a>
+              <a href="/business?tab=exchange" data-tab="exchange">Биржа</a>
+              <a href="/business?tab=shares" data-tab="shares">Акции</a>
+              <a href="/business?tab=guide" data-tab="guide">Справочник</a>
             </div>
-          </div>
-          <div class="finance-balance casino-balance" id="balance" hidden>
-            на вашем счету
-            <div class="finance-votes" id="votes"></div>
-            <span id="votes-word"></span>
+            <div id="firm-view"></div>
           </div>
         </div>
       </div>

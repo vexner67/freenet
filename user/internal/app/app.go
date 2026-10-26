@@ -64,9 +64,13 @@ type App struct {
 	// holdems move on the poker tables nobody looks at every holdemEvery.
 	holdems     *service.HoldemService
 	holdemEvery time.Duration
-	server      *grpcserver.Server
-	metrics     *metrics.Server
-	addr        string
+	// firms count the hours of the economy of the enterprises, looking
+	// every firmEvery whether one ended.
+	firms     *service.FirmService
+	firmEvery time.Duration
+	server    *grpcserver.Server
+	metrics   *metrics.Server
+	addr      string
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -184,6 +188,8 @@ func (a *App) build(cfg config.Config) error {
 	a.bankEvery = cfg.BankInterval
 	a.holdems = service.NewHoldemService(store.users, store.holdems, store.wallets, store.tx)
 	a.holdemEvery = cfg.HoldemInterval
+	a.firms = service.NewFirmService(store.users, store.firms, store.wallets, store.tx, admins)
+	a.firmEvery = cfg.FirmInterval
 
 	userv1.RegisterUserServiceServer(
 		a.server.Registrar(),
@@ -240,7 +246,7 @@ func (a *App) build(cfg config.Config) error {
 			Rockets:     service.NewRocketService(store.users, store.casino, store.rockets, store.wallets, store.tx, admins),
 			Pokers:      service.NewPokerService(store.users, store.pokers, store.wallets, store.tx, admins),
 			Mines:       service.NewMineService(store.users, store.mine, store.wallets, store.tx, admins),
-			Businesses:  service.NewBusinessService(store.users, store.business, store.wallets, store.tx, admins),
+			Firms:       a.firms,
 			Banks:       a.banks,
 			Holdems:     a.holdems,
 			BetEvents:   service.NewBetEventService(store.users, store.betEvents, store.wallets, store.tx, admins),
@@ -316,8 +322,7 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		userv1.UserService_DigOre_FullMethodName:  cfg.MineLimits,
 		userv1.UserService_SellOre_FullMethodName: cfg.MineLimits,
 
-		userv1.UserService_BuyBusiness_FullMethodName: cfg.BusinessLimits,
-		userv1.UserService_RunBusiness_FullMethodName: cfg.BusinessLimits,
+		userv1.UserService_RunFirms_FullMethodName: cfg.BusinessLimits,
 
 		userv1.UserService_PutDeposit_FullMethodName:  cfg.BankLimits,
 		userv1.UserService_TakeDeposit_FullMethodName: cfg.BankLimits,
@@ -406,8 +411,8 @@ type storage struct {
 	casino service.CasinoRepository
 	// mine is the mine of the site and its miners.
 	mine service.MineRepository
-	// business is the rules of the businesses and the businesses of pages.
-	business service.BusinessRepository
+	// firms is the economy of the enterprises and its rules.
+	firms service.FirmRepository
 	// bank is the bank of the site and the accounts of pages.
 	bank service.BankRepository
 	// rockets are the rounds of "Ракетка".
@@ -462,7 +467,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			primes:       inmem.NewPrimeRepository(users),
 			casino:       inmem.NewCasinoRepository(),
 			mine:         inmem.NewMineRepository(),
-			business:     inmem.NewBusinessRepository(),
+			firms:        inmem.NewFirmRepository(),
 			bank:         inmem.NewBankRepository(),
 			rockets:      inmem.NewRocketRepository(),
 			pokers:       inmem.NewPokerRepository(),
@@ -521,7 +526,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		primes:       postgres.NewPrimeRepository(a.pool),
 		casino:       postgres.NewCasinoRepository(a.pool),
 		mine:         postgres.NewMineRepository(a.pool),
-		business:     postgres.NewBusinessRepository(a.pool),
+		firms:        postgres.NewFirmRepository(a.pool),
 		bank:         postgres.NewBankRepository(a.pool),
 		rockets:      postgres.NewRocketRepository(a.pool),
 		pokers:       postgres.NewPokerRepository(a.pool),
@@ -578,6 +583,10 @@ func (a *App) Run(ctx context.Context) error {
 
 	g.Go(func() error {
 		return errs.Wrap("a.runHoldem", a.runHoldem(ctx, a.holdemEvery))
+	})
+
+	g.Go(func() error {
+		return errs.Wrap("a.runFirms", a.runFirms(ctx, a.firmEvery))
 	})
 
 	if a.sync != nil {

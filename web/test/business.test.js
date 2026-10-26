@@ -3,65 +3,51 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
-  businessCondition, businessKinds, businessName, businessStations, businessWalkers, hundredths, offerName, orderCost,
-  professionName, supplierName, supplyName, traitName, voteOperation,
+  firmActionName, firmKindName, firmKinds, firmLine, goodName, goods, hundredths, hundredthsOf, sharePercent, voteOperation,
 } from '../static/labels.js';
 
-const catalog = readFileSync(new URL('../../user/internal/user/business_catalog.go', import.meta.url), 'utf8');
-const constants = (source, type) => [...source.matchAll(new RegExp(`\\w+ +${type} = "(\\w+)"`, 'g'))].map((m) => m[1]);
+const catalog = readFileSync(new URL('../../user/internal/user/firm_catalog.go', import.meta.url), 'utf8');
+const list = (name) => [...new RegExp(`var ${name} = \\[\\]\\w+\\{([\\s\\S]*?)\\n\\}`).exec(catalog)[1].matchAll(/\b(\w+)\b/g)]
+  .map((m) => new RegExp(`\\b${m[1]} +\\w+ = "(\\w+)"`).exec(catalog)[1]);
 
 test('hundredths shows a sum in hundredths of a vote', () => {
   assert.equal(hundredths(170), '1,7');
   assert.equal(hundredths(1205), '12,05');
   assert.equal(hundredths(-4000), '-40');
   assert.equal(hundredths(0), '0');
-  assert.equal(hundredths(123456700), '1 234 567');
+  assert.equal(hundredths(123456700), '1\u00a0234\u00a0567');
 });
 
-test('an order costs what the user service counts', () => {
-  assert.equal(orderCost(100, 10), 10);
-  assert.equal(orderCost(1, 10), 1);
-  assert.equal(orderCost(30, 33.333333333333336), 10);
-  assert.equal(orderCost(0, 50), 0);
+test('a sum typed in a field is read as hundredths', () => {
+  assert.equal(hundredthsOf('12'), 1200);
+  assert.equal(hundredthsOf('1,5'), 150);
+  assert.equal(hundredthsOf(' 0.05 '), 5);
+  assert.equal(hundredthsOf('2,50'), 250);
+  for (const bad of ['', 'x', '1,505', '-1', '1,', ',5', '1 000']) assert.ok(Number.isNaN(hundredthsOf(bad)), bad);
 });
 
-test('the businesses of the site are those of the user service', () => {
-  const source = readFileSync(new URL('../../user/internal/user/business.go', import.meta.url), 'utf8');
-  const kinds = constants(source, 'BusinessKind');
-  assert.deepEqual(businessKinds, kinds);
-  for (const kind of kinds) assert.notEqual(businessName(kind), kind);
+test('the enterprises and the goods of the site are those of the user service, with names', () => {
+  assert.deepEqual(firmKinds, list('FirmKinds'));
+  assert.deepEqual(goods, list('Goods'));
+  for (const kind of firmKinds) assert.notEqual(firmKindName(kind), kind, kind);
+  for (const good of goods) assert.notEqual(goodName(good), good, good);
 });
 
-test('the supplies, offers, professions and suppliers of the catalog have names', () => {
-  for (const supply of constants(catalog, 'Supply')) assert.notEqual(supplyName(supply), supply, supply);
-  for (const offer of constants(catalog, 'Offer')) assert.notEqual(offerName(offer), offer, offer);
-  for (const profession of constants(catalog, 'Profession')) assert.notEqual(professionName(profession), profession, profession);
-  for (const supplier of constants(catalog, 'Supplier')) assert.notEqual(supplierName(supplier), supplier, supplier);
-
-  const staff = readFileSync(new URL('../../user/internal/user/business_staff.go', import.meta.url), 'utf8');
-  for (const trait of constants(staff, 'Trait').filter(Boolean)) assert.notEqual(traitName(trait), trait, trait);
+test('the profile says of an enterprise what it is, its level and the part of the page', () => {
+  assert.equal(firmLine({ kind: 'mill', level: 3, shares: 40, total: 100 }), 'Мельница, 3 ур., 40 % акций');
+  assert.equal(sharePercent(1, 8), '12,5 %');
+  assert.equal(sharePercent(100, 100), '100 %');
+  assert.equal(sharePercent(0, 0), '0 %');
 });
 
-test('a line of the statement names the business and the action', () => {
-  assert.equal(voteOperation({ kind: 'business', amount: -500, note: 'kiosk:buy' }).title, 'Бизнес «Ларёк»: покупка');
-  assert.equal(voteOperation({ kind: 'business', amount: 12, note: 'cafe:collect' }).title, 'Бизнес «Кафе»: выручка');
-});
+test('a line of the statement names the action with the enterprises', () => {
+  const firm = readFileSync(new URL('../../user/internal/user/firm.go', import.meta.url), 'utf8');
+  const service = readFileSync(new URL('../../user/internal/service/firm.go', import.meta.url), 'utf8');
+  const notes = [...`${firm}\n${service}`.matchAll(/"(found|deposit|dividend|liquidate|buy_shares|sell_shares)"/g)].map((m) => m[1]);
+  for (const note of new Set([...notes, 'refund'])) assert.notEqual(firmActionName(note), firmActionName('?'), note);
 
-test('the picture of a business shows its customers', () => {
-  const spec = { offers: [{ demand: 6 }, { demand: 4 }] };
-  const business = (demand, served, more = {}) => ({ level: 1, offers: [{ demand, served }], workers: [], supplies: [], ...more });
-
-  assert.deepEqual(businessWalkers(business(0, 0), spec), { served: 0, passing: 0 });
-  assert.deepEqual(businessWalkers(business(10, 10), spec), { served: 4, passing: 0 });
-  assert.deepEqual(businessWalkers(business(10, 5), spec), { served: 2, passing: 2 });
-  assert.deepEqual(businessWalkers(business(0.5, 0), spec), { served: 0, passing: 1 });
-  assert.deepEqual(businessWalkers(business(40, 40), spec), { served: 6, passing: 0 });
-  assert.deepEqual(businessWalkers(business(10, 10, { bankrupt: true }), spec), { served: 0, passing: 0 });
-
-  assert.equal(businessCondition(10000), 0);
-  assert.equal(businessCondition(6999), 1);
-  assert.equal(businessCondition(3999), 2);
-  assert.equal(businessStations(1), 1);
-  assert.equal(businessStations(4), 2);
-  assert.equal(businessStations(10), 4);
+  assert.equal(voteOperation({ kind: 'business', amount: -1000, note: 'found' }).title, 'Бизнес: основание предприятия');
+  assert.equal(voteOperation({ kind: 'business', amount: 12, note: 'dividend' }).title, 'Бизнес: дивиденды');
+  assert.equal(voteOperation({ kind: 'business', amount: 500, note: 'refund' }).title, 'Бизнес: возврат за прежний бизнес');
+  assert.equal(voteOperation({ kind: 'business', amount: -500, note: 'kiosk:buy' }).title, 'Бизнес: прежний бизнес');
 });

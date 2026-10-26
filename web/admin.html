@@ -619,28 +619,52 @@
 
     <section id="business" hidden>
       <h1 class="aui-page-heading">Бизнес</h1>
-      <p class="admin-lead">Люди покупают бизнес за голоса и управляют им: закупают товар, ставят цену, нанимают работников, чинят помещение, дают рекламу и улучшают его. Бизнес работает час за часом: покупатели приходят тем реже, чем дороже товар, зарплаты и аренда идут всегда, а долг больше допустимого разоряет бизнес. Выручку забирают из кассы за вычетом налога в Казну. Всё, что люди тратят, уходит в Казну, всё, что забирают, — из неё. Новые настройки действуют с ближайшего пересчёта.</p>
+      <p class="admin-lead">Люди основывают предприятия за голоса: добывающие (ферма, рудник, нефтевышка, лесхоз) делают сырьё, перерабатывающие делают из него материалы, фабрики — товары, а магазины продают товары городу. Сырьё и материалы продаются на общей бирже заявками людей или государству, которое покупает дешевле нормы и продаёт дороже: чем больше с ним торгуют за сутки, тем хуже его цены. Зарплаты и содержание идут из кассы предприятия каждый час. У каждого предприятия 100 акций: их продают и выпускают за голоса, директор — тот, у кого их больше всех, а дивиденды и ликвидация делятся по акциям. Голоса за основание, вклады и акции уходят в Казну, дивиденды и ликвидация — из неё. Новые настройки действуют с ближайшего часа.</p>
       <p class="admin-casino-stats" id="business-stats"></p>
       <div class="aui-message aui-message-success" id="business-saved" hidden></div>
       <form class="aui" id="business-form">
+        <h2>Предприятия</h2>
         <div class="aui-table-wrap">
           <table class="aui">
-            <thead><tr id="business-head"><th>Настройка</th></tr></thead>
-            <tbody id="business-rows"></tbody>
+            <thead><tr><th>Предприятие</th><th>Цена, голосов</th><th>Улучшение, голосов × уровень</th><th>Уровней</th><th>Рабочих на уровень</th><th>Содержание в час, сотых × уровень</th></tr></thead>
+            <tbody id="business-plans"></tbody>
           </table>
         </div>
-        <p class="admin-decor-now">Аренда — в сотых голоса: 20 — 0,2 голоса. Покупатели — процент от того, сколько их приходит по каталогу. Покупатели, склад, работники, касса, долг и аренда растут с уровнем: на 3-м уровне — втрое. Износ — в сотых процента в час: 10 — 0,1 %. Зарплаты и закупка — процент от цен каталога.</p>
+        <h2>Товары</h2>
+        <div class="aui-table-wrap">
+          <table class="aui">
+            <thead><tr><th>Товар</th><th>Норма цены, сотых</th><th>Государство берёт в сутки, шт.</th></tr></thead>
+            <tbody id="business-goods"></tbody>
+          </table>
+        </div>
+        <p class="admin-decor-now">Цены — в сотых голоса: 250 — 2,5 голоса. Государство покупает по «нижней цене», продаёт по «верхней», город платит магазинам «цену города» — проценты от нормы; когда за сутки с ними наторговали столько, сколько они берут в сутки, их цены уходят вдвое от исходных.</p>
         <div class="field-group">
-          <label for="business-tax">Налог с выручки, %</label>
-          <input class="text admin-casino-field" id="business-tax" type="number" min="0" max="100" required>
+          <label for="business-wage">Зарплата рабочего в час, сотых</label>
+          <input class="text admin-casino-field" id="business-wage" type="number" min="1" required>
         </div>
         <div class="field-group">
-          <label for="business-wages">Зарплаты, % каталога</label>
-          <input class="text admin-casino-field" id="business-wages" type="number" min="0" required>
+          <label for="business-fee">Комиссия биржи и акций, %</label>
+          <input class="text admin-casino-field" id="business-fee" type="number" min="0" max="50" required>
         </div>
         <div class="field-group">
-          <label for="business-goods">Закупка товара, % каталога</label>
-          <input class="text admin-casino-field" id="business-goods" type="number" min="0" required>
+          <label for="business-floor">Нижняя цена государства, % нормы</label>
+          <input class="text admin-casino-field" id="business-floor" type="number" min="1" max="1000" required>
+        </div>
+        <div class="field-group">
+          <label for="business-ceiling">Верхняя цена государства, % нормы</label>
+          <input class="text admin-casino-field" id="business-ceiling" type="number" min="1" max="1000" required>
+        </div>
+        <div class="field-group">
+          <label for="business-retail">Цена города, % нормы</label>
+          <input class="text admin-casino-field" id="business-retail" type="number" min="1" max="1000" required>
+        </div>
+        <div class="field-group">
+          <label for="business-storage">Склад, часов работы</label>
+          <input class="text admin-casino-field" id="business-storage" type="number" min="1" max="720" required>
+        </div>
+        <div class="field-group">
+          <label for="business-capital">Стартовый капитал, % цены</label>
+          <input class="text admin-casino-field" id="business-capital" type="number" min="0" max="100" required>
         </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>

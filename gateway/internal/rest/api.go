@@ -558,7 +558,7 @@ type Backends struct {
 	Casino        Casino
 	Mine          Mine
 	Pets          Pets
-	Business      Business
+	Firms         Firms
 	Titles        Titles
 	Bank          Bank
 	Poker         Poker
@@ -598,7 +598,7 @@ type api struct {
 	casinos           Casino
 	mines             Mine
 	pets              Pets
-	business          Business
+	firmsBackend      Firms
 	titles            Titles
 	banks             Bank
 	pokers            Poker
@@ -957,17 +957,16 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/me/pets/{id}/play", a.playPet)
 	mux.HandleFunc("POST /api/v1/me/pets/{id}/fights", a.fightPet)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/pets", a.getUserPets)
-	mux.HandleFunc("GET /api/v1/users/{nickname}/businesses", a.getUserBusinesses)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/firms", a.getUserFirms)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/titles", a.getUserTitles)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/titles", a.grantTitle)
 	mux.HandleFunc("DELETE /api/v1/titles/{id}", a.revokeTitle)
 	mux.HandleFunc("GET /api/v1/pet/settings", a.petSettings)
 	mux.HandleFunc("PUT /api/v1/pet/settings", a.setPetSettings)
-	mux.HandleFunc("GET /api/v1/me/businesses", a.businesses)
-	mux.HandleFunc("POST /api/v1/me/businesses", a.buyBusiness)
-	mux.HandleFunc("POST /api/v1/me/businesses/{kind}/{action}", a.runBusiness)
-	mux.HandleFunc("GET /api/v1/business/settings", a.businessSettings)
-	mux.HandleFunc("PUT /api/v1/business/settings", a.setBusinessSettings)
+	mux.HandleFunc("GET /api/v1/firms", a.firms)
+	mux.HandleFunc("POST /api/v1/firms/{action}", a.runFirms)
+	mux.HandleFunc("GET /api/v1/firm/settings", a.firmSettings)
+	mux.HandleFunc("PUT /api/v1/firm/settings", a.setFirmSettings)
 	mux.HandleFunc("GET /api/v1/me/bank", a.bank)
 	mux.HandleFunc("POST /api/v1/me/bank/{action}", a.moveBank)
 	mux.HandleFunc("GET /api/v1/bank/settings", a.bankSettings)

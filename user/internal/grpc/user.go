@@ -53,7 +53,7 @@ type UserHandler struct {
 	holdems           HoldemService
 	betEvents         BetEventService
 	mines             MineService
-	businesses        BusinessService
+	firms             FirmService
 	banks             BankService
 	paid              PaidService
 	guests            GuestService
@@ -100,8 +100,8 @@ type Services struct {
 	BetEvents BetEventService
 	// Mines are the mine of the site.
 	Mines MineService
-	// Businesses are the businesses of the pages.
-	Businesses BusinessService
+	// Firms are the enterprises of "Бизнес".
+	Firms FirmService
 	// Banks are the deposits and loans of the pages.
 	Banks BankService
 	// Paid sells paid posts and messages.
@@ -141,7 +141,7 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		holdems:           s.Holdems,
 		betEvents:         s.BetEvents,
 		mines:             s.Mines,
-		businesses:        s.Businesses,
+		firms:             s.Firms,
 		banks:             s.Banks,
 		paid:              s.Paid,
 		guests:            s.Guests,

@@ -382,33 +382,34 @@ service UserService {
   rpc GetMineSettings(GetMineSettingsRequest) returns (GetMineSettingsResponse);
   rpc SetMine(SetMineRequest) returns (google.protobuf.Empty);
 
-  // Require an access token: the businesses of the caller. A business is
-  // bought for votes into the treasury (FailedPrecondition "you own this
-  // business already", "not enough votes") and runs by itself, an hour
-  // after another: customers buy its offers at its prices while its
-  // workers serve them and its supplies last, wages and rent come out of
-  // the till, supplies spoil, the premises wear down, workers learn and
-  // change their mood, and events wait for an answer. RunBusiness does an
-  // action: "order" (supply, supplier, amount — units, for the votes of
-  // the owner), "contract" (supply, supplier, below, amount — a standing
-  // order from the till; amount 0 ends it), "price" (offer, price),
-  // "hire" (candidate), "fire", "bonus" and "raise" (worker), "upgrade",
-  // "repair", "advertise", "deposit" (amount — votes into the till),
-  // "collect" (the till, less the tax), "decide" (option — the answer to
-  // the event) and "sell" (half of what went into it and the till). A
-  // business that runs too deep into debt goes bankrupt
-  // (FailedPrecondition "the business went bankrupt"). Taking votes out is
-  // for pages a week old with a filled profile.
-  rpc GetBusinesses(GetBusinessesRequest) returns (BusinessesState);
-  // Public: the businesses of nickname as its profile shows them (NotFound
-  // for a page deleted or banned).
-  rpc GetUserBusinesses(GetUserBusinessesRequest) returns (GetUserBusinessesResponse);
-  rpc BuyBusiness(BuyBusinessRequest) returns (RunBusinessResponse);
-  rpc RunBusiness(RunBusinessRequest) returns (RunBusinessResponse);
-  // For the administrators (PermissionDenied for others): the plans of the
-  // businesses and the tax, and how they do.
-  rpc GetBusinessSettings(GetBusinessSettingsRequest) returns (GetBusinessSettingsResponse);
-  rpc SetBusinessSettings(SetBusinessSettingsRequest) returns (google.protobuf.Empty);
+  // Require an access token: "Бизнес", the economy of the enterprises.
+  // GetFirms is the whole city: the rules and the catalog, the quotes of
+  // the goods, every enterprise with its storage, hours and shareholders,
+  // the orders of the exchange and the offers of shares. The city counts
+  // itself hour by hour: each enterprise pays wages and upkeep out of its
+  // cash, buys what it works with and sells what it makes by itself as
+  // set. RunFirms does an action: "found" (kind, name — for votes into
+  // the treasury, FailedPrecondition "not enough votes"), and for the
+  // director of firm_id "rename" (name), "upgrade" (from its cash),
+  // "staff" (workers, wage), "deposit" (votes), "dividend" (votes — to
+  // the shareholders by their shares), "liquidate" (its worth to them),
+  // "auto" (good, auto_buy, buy_max, auto_sell, sell_min), "order" (good,
+  // buy, price, units — on the exchange), "cancel" (order_id),
+  // "state_buy" and "state_sell" (good, units), "issue" (shares, votes —
+  // the price of a share); for any shareholder "offer" (shares, votes),
+  // and for anyone "cancel_offer" (offer_id) and "buy_shares" (offer_id,
+  // shares). Taking votes out is for pages a week old with a filled
+  // profile. Money of the enterprises is in hundredths of a vote, of
+  // people — in votes.
+  rpc GetFirms(GetFirmsRequest) returns (FirmsState);
+  rpc RunFirms(RunFirmsRequest) returns (RunFirmsResponse);
+  // Public: the enterprises nickname holds shares of, as its profile shows
+  // them (NotFound for a page deleted or banned).
+  rpc GetUserFirms(GetUserFirmsRequest) returns (GetUserFirmsResponse);
+  // For the administrators (PermissionDenied for others): the prices of
+  // the enterprises and the goods, and how they do.
+  rpc GetFirmSettings(GetFirmSettingsRequest) returns (GetFirmSettingsResponse);
+  rpc SetFirmSettings(SetFirmSettingsRequest) returns (google.protobuf.Empty);
 
   // Require an access token: the bank of the caller. A deposit takes votes
   // into the treasury and grows by a percent a day up to the most a
@@ -2404,323 +2405,222 @@ message SetMineRequest {
   MineSettings settings = 1;
 }
 
-// BusinessPlan is a kind of business, as the administrators set it: the
-// votes it costs and its next level costs times the level; the percent of
-// the customers of the catalog it draws; the workers a level seats; rent
-// an hour in hundredths of a vote; the condition lost an hour in
-// hundredths of a percent and the votes a percent of repair costs; the
-// till and the debt, in votes times the level; an advertisement.
-message BusinessPlan {
-  reserved 6, 7, 8, 9, 11;
-  reserved "fair", "cost", "storage", "serve", "wage";
-
+// FirmPlan is an enterprise as the administrators set it: the votes it
+// costs to found, its next level costs times the level (from its cash),
+// the levels, the workers a level seats and the upkeep of a level an hour
+// in hundredths of a vote.
+message FirmPlan {
   string kind = 1;
   int64 price = 2;
   int64 upgrade = 3;
   int32 levels = 4;
-  // Percent.
-  int64 demand = 5;
-  int32 staff = 10;
-  int64 rent = 12;
-  int32 wear = 13;
-  int64 repair = 14;
-  int64 till = 15;
-  int64 debt = 16;
-  int64 ad_price = 17;
-  int32 ad_hours = 18;
-  // The percent an advertisement raises the demand.
-  int32 ad_boost = 19;
+  int32 staff = 5;
+  int64 upkeep = 6;
 }
 
-message BusinessSettings {
-  // All kinds in order: kiosk, cafe, carwash, factory.
-  repeated BusinessPlan plans = 1;
-  // The percent of the till taken out that goes to the treasury.
-  int32 tax = 2;
-  // The percents of the catalog wages workers ask and of the catalog
-  // costs supplies cost.
-  int32 wages = 3;
-  int32 goods = 4;
+// GoodPlan is a good: its base price in hundredths of a vote a unit and
+// the units a day that halve what the state and the city pay for it.
+message GoodPlan {
+  string good = 1;
+  int64 base = 2;
+  int64 norm = 3;
 }
 
-// BusinessCatalog is what a kind deals in: its supplies, its offers and
-// whom it employs.
-message BusinessCatalog {
+// FirmSettings are the enterprises and the goods in order, the standard
+// wage an hour in hundredths, the fee of the exchange in percent, what
+// the state pays (floor) and asks (ceiling) and the city pays (retail) in
+// percent of the base, the hours of work the storage holds and the
+// percent of the price a new enterprise has in its cash.
+message FirmSettings {
+  repeated FirmPlan plans = 1;
+  repeated GoodPlan goods = 2;
+  int64 wage = 3;
+  int32 fee = 4;
+  int32 floor = 5;
+  int32 ceiling = 6;
+  int32 retail = 7;
+  int32 storage = 8;
+  int32 capital = 9;
+}
+
+// FirmSpec is what an enterprise does: makes rate units of output a
+// worker an hour of the inputs, or, a shop, sells rate units of each good
+// it sells.
+message FirmSpec {
   string kind = 1;
-  repeated BusinessSupplySpec supplies = 2;
-  repeated BusinessOfferSpec offers = 3;
-  repeated BusinessProfessionSpec professions = 4;
+  int32 tier = 2;
+  string output = 3;
+  repeated FirmInput inputs = 4;
+  repeated string sells = 5;
+  map<string, double> rate = 6;
 }
 
-// BusinessSupplySpec is a supply: a unit costs cost hundredths of a vote
-// at the reliable supplier, it spoils in spoil hours (0 — never), the
-// storage keeps storage units of it a level.
-message BusinessSupplySpec {
-  string supply = 1;
-  int64 cost = 2;
-  int32 spoil = 3;
-  int64 storage = 4;
-}
-
-// BusinessOfferSpec is an offer: a worker of the profession serves it, a
-// sale uses the recipe, a level draws demand customers an hour at the
-// fair price, in hundredths of a vote.
-message BusinessOfferSpec {
-  string offer = 1;
-  string profession = 2;
-  repeated BusinessIngredient recipe = 3;
-  int64 fair = 4;
-  double demand = 5;
-}
-
-message BusinessIngredient {
-  string supply = 1;
+message FirmInput {
+  string good = 1;
   int64 units = 2;
 }
 
-// BusinessProfessionSpec is a profession: the wage an hour in hundredths
-// of a vote and the customers an hour a worker serves, both at skill 2
-// (no customers for those who do not serve).
-message BusinessProfessionSpec {
-  string profession = 1;
-  int64 wage = 2;
-  double serve = 3;
+// GoodQuote is a good now, in hundredths a unit: what the state pays and
+// asks, what the city pays the shops, the best orders of the exchange (0
+// — none), the last deal there and the units traded in a day.
+message GoodQuote {
+  string good = 1;
+  int64 state_bid = 2;
+  int64 state_ask = 3;
+  int64 city_price = 4;
+  int64 best_bid = 5;
+  int64 best_ask = 6;
+  int64 last = 7;
+  int64 volume = 8;
 }
 
-// BusinessSupplier is a supplier: the percent of the cost it charges, the
-// hours it brings an order in, the percent less it may bring.
-message BusinessSupplier {
-  string supplier = 1;
-  int64 percent = 2;
-  double hours = 3;
-  int32 short = 4;
+// FirmStock is a good an enterprise keeps: the units, how many it holds,
+// those its orders wait for, and what it does with it by itself.
+message FirmStock {
+  string good = 1;
+  int64 units = 2;
+  int64 capacity = 3;
+  int64 incoming = 4;
+  bool auto_buy = 5;
+  int64 buy_max = 6;
+  bool auto_sell = 7;
+  int64 sell_min = 8;
 }
 
-// Business is a business of the caller now. Money is in hundredths of a
-// vote unless said.
-message Business {
-  reserved 3, 4, 5, 12, 13, 14, 15, 18, 19;
-  reserved "stock", "price", "staff", "customers", "served", "income", "costs", "perks", "storage";
-
-  string kind = 1;
-  int32 level = 2;
-  // Hundredths of a percent.
-  int32 condition = 6;
-  // Below zero — a debt.
-  int64 cash = 7;
-  // When the advertisement ends; empty without one.
-  google.protobuf.Timestamp ad_until = 8;
-  bool bankrupt = 9;
-  // Votes.
-  int64 invested = 10;
-  int64 collected = 11;
-  // The votes the business sells for now; 0 when bankrupt or in debt.
-  int64 resale = 16;
-  bool in_debt = 17;
-  repeated BusinessStock supplies = 20;
-  repeated BusinessOfferState offers = 21;
-  repeated BusinessWorker workers = 22;
-  // Who may be hired until candidates_until.
-  repeated BusinessCandidate candidates = 23;
-  google.protobuf.Timestamp candidates_until = 24;
-  repeated BusinessOrder orders = 25;
-  repeated BusinessContract contracts = 26;
-  // What waits for an answer; empty kind without one.
-  BusinessEvent event = 27;
-  // What happened lately, the newest first.
-  repeated BusinessNote notes = 28;
-  // The last hours, the oldest first; the last one is going on.
-  repeated BusinessHour hours = 29;
-  int32 seats = 30;
-  // Until when a good review brings more customers; empty without one.
-  google.protobuf.Timestamp review_until = 31;
-  // The tax percent of a collect: an accountant takes his skill off it.
-  int32 tax = 32;
-  // An hour now.
-  double wages = 33;
-  double rent = 34;
-  // The most the till keeps and the debt it goes bankrupt past.
-  int64 till = 35;
-  int64 debt_limit = 36;
-  // How loaded the workers of each profession are: 1 — fully.
-  map<string, double> load = 37;
-  // The offer whose equipment is broken, and when a technician mends it.
-  string broken = 38;
-  google.protobuf.Timestamp broken_until = 39;
-  // Votes: the next level (0 at the top), a repair now.
-  int64 upgrade_cost = 40;
-  int64 repair_cost = 41;
-}
-
-// BusinessStock is a supply of a business: the units in the storage, on
-// the way and that fit; what a unit costs at each supplier; the units an
-// hour the offers use now; its contract, if any.
-message BusinessStock {
-  string supply = 1;
-  double units = 2;
-  int64 on_way = 3;
-  int64 storage = 4;
-  map<string, double> unit_costs = 5;
-  double use = 6;
-}
-
-// BusinessOfferState is an offer of a business now: its price, the
-// customers an hour, those its workers serve, and whether it is broken.
-message BusinessOfferState {
-  string offer = 1;
-  int64 price = 2;
-  double demand = 3;
-  double served = 4;
-  double capacity = 5;
-  bool broken = 6;
-}
-
-// BusinessWorker is a worker: the skill (1–5), the hours worked towards
-// the next one and how many it needs (0 at the top), the wage an hour,
-// the trait, the mood (0–100), how much of the profession he does (1 at
-// skill 2) and the votes a bonus costs.
-message BusinessWorker {
-  int32 id = 1;
-  string name = 2;
-  bool female = 3;
-  string profession = 4;
-  int32 skill = 5;
-  double xp = 6;
-  double next_xp = 7;
-  int64 wage = 8;
-  string trait = 9;
-  double mood = 10;
-  double rate = 11;
-  int64 bonus = 12;
-}
-
-message BusinessCandidate {
-  int64 id = 1;
-  BusinessWorker worker = 2;
-}
-
-message BusinessOrder {
-  int32 id = 1;
-  string supply = 2;
-  string supplier = 3;
-  int64 units = 4;
-  google.protobuf.Timestamp arrives = 5;
-  bool from_till = 6;
-}
-
-// BusinessContract is a standing order: while the supply in the storage
-// and on the way is below below, a buyer orders units of it from the
-// supplier, paying from the till; stalled — the till could not pay.
-message BusinessContract {
-  string supply = 1;
-  string supplier = 2;
-  int64 below = 3;
-  int64 units = 4;
-  bool stalled = 5;
-}
-
-// BusinessEvent is what waits for the owner until until: the offer, the
-// worker, the votes of a fine or a repair, the units of a big order and
-// its pay in hundredths; the answers, the default first.
-message BusinessEvent {
-  string kind = 1;
-  google.protobuf.Timestamp until = 2;
-  string offer = 3;
-  int32 worker = 4;
-  string name = 5;
-  bool female = 6;
-  int64 votes = 7;
-  int64 units = 8;
-  int64 pay = 9;
-  repeated string options = 10;
-}
-
-// BusinessNote is what happened: subject is the supply, offer or
-// profession, amount the units (or the skill, or 1 for a yes), money the
-// hundredths of a vote — or the units a delivery lost.
-message BusinessNote {
-  google.protobuf.Timestamp at = 1;
-  string kind = 2;
-  string subject = 3;
-  string name = 4;
-  bool female = 5;
-  double amount = 6;
-  double money = 7;
-}
-
-// BusinessHour is an hour of the clock: the sales of each offer, the
-// money in and out, the units spoiled and the customers who left with
-// nothing.
-message BusinessHour {
+// FirmHour is an hour of an enterprise: units and hundredths of a vote.
+message FirmHour {
   google.protobuf.Timestamp hour = 1;
-  map<string, double> sold = 2;
-  double income = 3;
-  double wages = 4;
-  double rent = 5;
-  double supplies = 6;
-  double losses = 7;
-  double spoiled = 8;
-  double unserved = 9;
+  int64 made = 2;
+  int64 bought = 3;
+  int64 sold = 4;
+  int64 income = 5;
+  int64 purchases = 6;
+  int64 wages = 7;
+  int64 upkeep = 8;
+  int64 fees = 9;
 }
 
-message GetBusinessesRequest {}
-
-message BusinessesState {
-  BusinessSettings settings = 1;
-  repeated Business businesses = 2;
-  // What each kind deals in, in order, and the suppliers.
-  repeated BusinessCatalog catalog = 3;
-  repeated BusinessSupplier suppliers = 4;
+message FirmHolder {
+  string user_id = 1;
+  int64 shares = 2;
 }
 
-message BuyBusinessRequest {
-  string kind = 1;
+// Firm is an enterprise: the cash, what its orders keep (escrow), the
+// upkeep an hour, the profit of the last day and its worth closed are in
+// hundredths of a vote; the next level costs upgrade_cost votes (0 at
+// the top) and a share last went for share_price votes.
+message Firm {
+  string id = 1;
+  string kind = 2;
+  string name = 3;
+  string director_id = 4;
+  google.protobuf.Timestamp founded_at = 5;
+  int32 level = 6;
+  int32 workers = 7;
+  int64 wage = 8;
+  int64 cash = 9;
+  int64 escrow = 10;
+  double productivity = 11;
+  int32 seats = 12;
+  int64 upgrade_cost = 13;
+  int64 upkeep = 14;
+  int64 profit = 15;
+  int64 shares = 16;
+  int64 share_price = 17;
+  int64 worth = 18;
+  repeated FirmStock stock = 19;
+  repeated FirmHour hours = 20;
+  repeated FirmHolder holders = 21;
 }
 
-message RunBusinessRequest {
-  reserved 5, 6;
-  reserved "staff", "perk";
-
-  string kind = 1;
-  string action = 2;
-  // The units of an order or a contract, the votes of a deposit.
-  int64 amount = 3;
-  // The price an offer is set at, in hundredths of a vote.
-  int64 price = 4;
-  string offer = 7;
-  string supply = 8;
-  string supplier = 9;
-  // The units a contract keeps the supply from going under.
-  int64 below = 10;
-  int32 worker = 11;
-  int64 candidate = 12;
-  // The answer to the event.
-  string option = 13;
+message ExchangeOrder {
+  string id = 1;
+  string firm_id = 2;
+  string good = 3;
+  bool buy = 4;
+  int64 price = 5;
+  int64 units = 6;
+  google.protobuf.Timestamp placed_at = 7;
 }
 
-message RunBusinessResponse {
-  // The votes the action spent and got, the tax of a collect, and the
-  // balance after them (0 when no votes moved).
+// ShareOffer is shares for sale at price votes each; no seller — new
+// shares of the enterprise.
+message ShareOffer {
+  string id = 1;
+  string firm_id = 2;
+  string seller_id = 3;
+  int64 shares = 4;
+  int64 price = 5;
+  google.protobuf.Timestamp placed_at = 6;
+}
+
+message GetFirmsRequest {}
+
+message FirmsState {
+  FirmSettings settings = 1;
+  repeated FirmSpec catalog = 2;
+  repeated GoodQuote quotes = 3;
+  repeated Firm firms = 4;
+  repeated ExchangeOrder orders = 5;
+  repeated ShareOffer offers = 6;
+  // When the city counts the next hour.
+  google.protobuf.Timestamp next_hour = 7;
+}
+
+message RunFirmsRequest {
+  string action = 1;
+  string firm_id = 2;
+  string kind = 3;
+  string name = 4;
+  string good = 5;
+  bool buy = 6;
+  int64 price = 7;
+  int64 units = 8;
+  int32 workers = 9;
+  int64 wage = 10;
+  int64 votes = 11;
+  int64 shares = 12;
+  string order_id = 13;
+  string offer_id = 14;
+  bool auto_buy = 15;
+  int64 buy_max = 16;
+  bool auto_sell = 17;
+  int64 sell_min = 18;
+}
+
+message FirmDeal {
+  string good = 1;
+  int64 units = 2;
+  int64 price = 3;
+}
+
+// RunFirmsResponse is the votes the caller spent and got and the balance
+// after (0 when none moved), the enterprise founded, the deals of an
+// order, and the city after.
+message RunFirmsResponse {
   int64 spent = 1;
   int64 got = 2;
-  int64 tax = 3;
-  int64 balance = 4;
-  BusinessesState businesses = 5;
+  int64 balance = 3;
+  string firm_id = 4;
+  repeated FirmDeal deals = 5;
+  FirmsState firms = 6;
 }
 
-message GetBusinessSettingsRequest {}
+message GetFirmSettingsRequest {}
 
-message GetBusinessSettingsResponse {
-  BusinessSettings settings = 1;
-  // How the businesses do: those open now, the votes spent on them and
-  // taken out.
-  int64 businesses = 2;
+// GetFirmSettingsResponse is the settings and how the enterprises do: how
+// many there are, the votes people spent on them and got of them, and the
+// fees of the exchange in hundredths.
+message GetFirmSettingsResponse {
+  FirmSettings settings = 1;
+  int64 firms = 2;
   int64 spent = 3;
   int64 paid = 4;
+  int64 fees = 5;
 }
 
-message SetBusinessSettingsRequest {
-  BusinessSettings settings = 1;
+message SetFirmSettingsRequest {
+  FirmSettings settings = 1;
 }
 
 // BankSettings are the rates of the bank, in hundredths of a percent a
@@ -3075,20 +2975,24 @@ message SetPetSettingsRequest {
   PetShop shop = 1;
 }
 
-message GetUserBusinessesRequest {
+message GetUserFirmsRequest {
   string nickname = 1;
 }
 
-// UserBusiness is a business as the profile of its owner shows it.
-message UserBusiness {
-  string kind = 1;
-  int32 level = 2;
-  int32 workers = 3;
-  bool bankrupt = 4;
+// UserFirm is an enterprise as the profile of a shareholder shows it: the
+// shares of the page of all, and whether it directs it.
+message UserFirm {
+  string id = 1;
+  string name = 2;
+  string kind = 3;
+  int32 level = 4;
+  int64 shares = 5;
+  int64 total = 6;
+  bool director = 7;
 }
 
-message GetUserBusinessesResponse {
-  repeated UserBusiness businesses = 1;
+message GetUserFirmsResponse {
+  repeated UserFirm firms = 1;
 }
 
 message Title {
