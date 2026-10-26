@@ -313,6 +313,23 @@ input, select, textarea { font-size: 16px !important; }
 .firm-clock { text-align: left; }
 .firm-step-head .firm-icon { width: 32px; height: 32px; }
 .firm-grid + .firm-hint, .firm-dialog .firm-grid + .firm-hint { margin-left: 0; }
+.firm-goods, .firm-upgrades, .stock-columns, .stock-trade { grid-template-columns: minmax(0, 1fr); }
+.firm-header { flex-wrap: wrap; }
+.firm-header-level { align-items: flex-start; width: 100%; }
+.firm-header-level .meter { width: 100%; }
+.firm-contract { flex-wrap: wrap; }
+.stock-plaques { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.stock-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.stock-fact { border-bottom: 1px solid var(--line-e0e0e0); }
+.stock-head { flex-wrap: wrap; }
+.stock-head-price { align-items: flex-start; width: 100%; }
+.stock-wide { display: none; }
+.stock-spark { width: 70px; }
+@media (max-width: 360px) { .stock-table .stock-spark { display: none; } .stock-table .firm-num, .stock-table .firm-num span { white-space: normal; } }
+.step-button, .segment, .chip { min-height: 32px; }
+.stepper { height: 32px; }
+input.step-value { font-size: 16px; }
+.pop { width: calc(100vw - 16px); }
 .casino-balance { width: auto; }
 .casino-board, .casino-multipliers { grid-template-columns: repeat(3, 1fr); }
 .casino-controls .button { width: 100%; }

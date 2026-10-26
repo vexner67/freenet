@@ -1829,6 +1829,8 @@ export function firmActionName(action) {
     liquidate: tr('ликвидация предприятия'),
     buy_shares: tr('покупка акций'),
     sell_shares: tr('продажа акций'),
+    account_deposit: tr('пополнение брокерского счёта'),
+    account_withdraw: tr('вывод с брокерского счёта'),
     refund: tr('возврат за прежний бизнес'),
   }[action] ?? tr('прежний бизнес');
 }
@@ -1840,6 +1842,76 @@ export function firmHour(iso) {
 
   return `${date.getUTCHours()}:${two(date.getUTCMinutes())}`;
 }
+
+// stockHour is the hour of a candle on the visitor's clock: "27.10 14:00".
+export function stockHour(iso) {
+  const date = onClock(new Date(iso));
+
+  return `${two(date.getUTCDate())}.${two(date.getUTCMonth() + 1)} ${date.getUTCHours()}:00`;
+}
+
+// stockTick is an hour on the axis of a chart: "14:00", the date at
+// midnight.
+export function stockTick(iso) {
+  const date = onClock(new Date(iso));
+  if (date.getUTCHours() === 0) return `${two(date.getUTCDate())}.${two(date.getUTCMonth() + 1)}`;
+
+  return `${date.getUTCHours()}:00`;
+}
+
+// priceChange is how a price changed since before: "+5,2 %", "−3 %",
+// "0 %"; nothing without a price before.
+export function priceChange(now, before) {
+  if (!before) return '';
+  const percent = Math.round(((now - before) * 1000) / before) / 10;
+  const sign = percent > 0 ? '+' : percent < 0 ? '−' : '';
+
+  return `${sign}${String(Math.abs(percent)).replace('.', ',')} %`;
+}
+
+// firmEvents are what happens in the city, as user.EventKind: its name,
+// what it does and whether it is good for the shares.
+const firmEvents = {
+  drought: [tr('Засуха'), tr('Фермы собирают на 40 % меньше зерна.'), false],
+  harvest: [tr('Богатый урожай'), tr('Фермы собирают на 40 % больше зерна.'), true],
+  vein: [tr('Найдена богатая жила'), tr('Рудники добывают на 50 % больше руды.'), true],
+  collapse: [tr('Обвал в шахтах'), tr('Рудники добывают вдвое меньше руды.'), false],
+  gusher: [tr('Нефтяной фонтан'), tr('Нефтевышки качают на 50 % больше нефти.'), true],
+  storm: [tr('Шторм на промыслах'), tr('Нефтевышки качают вдвое меньше нефти.'), false],
+  wildfire: [tr('Лесной пожар'), tr('Лесхозы заготавливают вдвое меньше древесины.'), false],
+  blackout: [tr('Перебои с электричеством'), tr('Мельницы, заводы и лесопилки делают на 40 % меньше.'), false],
+  invention: [tr('Новое изобретение'), tr('Мебельные фабрики и заводы электроники делают на 30 % больше.'), true],
+  fair: [tr('Ярмарка в городе'), tr('Город платит магазинам на 30 % больше.'), true],
+  crisis: [tr('Кризис'), tr('Город платит магазинам на 20 % меньше, акции дешевеют.'), false],
+  boom: [tr('Бум'), tr('Город платит магазинам на 15 % больше, акции дорожают.'), true],
+  breakdown: [tr('Поломка оборудования'), tr('Станки износились на 25 %: их пора чинить.'), false],
+  inspection: [tr('Проверка'), tr('Предприятие оштрафовано на 5 % кассы.'), false],
+  award: [tr('Награда'), tr('Предприятие отмечено городом, его акции в цене.'), true],
+  strike: [tr('Забастовка'), tr('Рабочие бастуют 4 часа: зарплата ниже нормы.'), false],
+};
+
+// firmEventName is what happened: "Засуха".
+export function firmEventName(kind) {
+  return firmEvents[kind]?.[0] ?? kind;
+}
+
+// firmEventAbout is what an event does.
+export function firmEventAbout(kind) {
+  return firmEvents[kind]?.[1] ?? '';
+}
+
+// isGoodEvent is whether an event lifts the shares.
+export function isGoodEvent(kind) {
+  return firmEvents[kind]?.[2] ?? false;
+}
+
+// improvements are the improvements of an enterprise, as user.Improvements:
+// its name and what a rank gives.
+export const improvements = [
+  ['machines', tr('Станки'), tr('+15 % продукции за ранг')],
+  ['storage', tr('Склад'), tr('+50 % места на складе за ранг')],
+  ['sales', tr('Отдел сбыта'), tr('+5 % к цене продажи государству и городу за ранг')],
+];
 
 // primePeriods are the periods of Prime with their names and
 // how many months each is.

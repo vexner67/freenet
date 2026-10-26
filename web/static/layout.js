@@ -468,6 +468,7 @@ export function applyInterface(me) {
     el('a', { href: '/votes', textContent: tr('Банк') }),
     el('a', { href: '/prime', textContent: 'Prime' }),
     el('a', { href: '/mine', textContent: tr('Заработок') }),
+    el('a', { href: '/stocks', textContent: tr('Акции') }),
     el('a', { href: '/casino', textContent: tr('Азартные игры') }),
     el('a', { href: '/pet', textContent: tr('Питомцы') }),
     el('a', { href: '/top', textContent: tr('Рейтинги') }),

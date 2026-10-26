@@ -54,6 +54,7 @@
   --back-444: #444;
   --back-3e3e3e: #3e3e3e;
   --back-d23a32: #d23a32;
+  --back-3f8f35: #3f8f35;
   /* Text */
   --text-6b3fb8: #6b3fb8;
   --text-000: #000;
@@ -2158,12 +2159,12 @@ button.firm-kind.chosen { background: var(--back-dae1e8); border-color: var(--li
 
 /* The card of an enterprise and of a good: the picture, the name, the level. */
 .firm-header { display: flex; gap: 12px; margin: 0 0 10px; padding: 0 0 10px; border-bottom: 1px solid var(--line-dae1e8); }
-.firm-header-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.firm-header-text { display: flex; flex: 1; flex-direction: column; gap: 4px; min-width: 0; }
 .firm-header-name { color: var(--text-45688e); font-size: 14px; font-weight: bold; overflow-wrap: anywhere; }
 .firm-header-kind { color: var(--text-808080); }
-.firm-header-level { display: flex; gap: 8px; align-items: center; }
-.firm-header-level .firm-bar { width: 100px; }
-.firm-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0 0 4px; }
+.firm-header-level { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; width: 120px; }
+.firm-header-level .meter { width: 120px; }
+.firm-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 4px; }
 .firm-stat { padding: 6px 8px; background: var(--back-f7f7f7); border: 1px solid var(--line-e0e0e0); border-top: 2px solid var(--line-5b7aa1); }
 .firm-stat-name { color: var(--text-808080); }
 .firm-stat-value { margin: 2px 0; font-size: 13px; font-weight: bold; white-space: nowrap; }
@@ -2186,6 +2187,194 @@ a.firm-chain-firm:hover { border-color: var(--line-5b7aa1); background: var(--ba
 .firm-chain-good { display: flex; flex-direction: column; gap: 2px; align-items: center; width: 50px; color: var(--text-555); font-size: 10px; line-height: 11px; text-align: center; }
 .firm-chain-arrow { width: 10px; color: var(--text-999); font-weight: bold; text-align: center; }
 .modal-body .hint { margin: 0; }
+
+/* The controls of "Бизнес" and "Акции" (controls.js): a mini window under
+   what was clicked, numbers with "−" and "+", quick amounts, a slider, a
+   switch of choices and a strip filled to a part — glossy, as the browser
+   games of the 2000s drew them. */
+.pop { position: absolute; z-index: 60; width: 300px; max-width: calc(100vw - 16px); background: var(--back-fff); border: 1px solid var(--line-707070); box-shadow: 2px 3px 0 var(--line-aaa); }
+.pop-head { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px 4px 8px; background: linear-gradient(var(--back-707070), var(--back-595959)); color: var(--text-fff); font-weight: bold; text-shadow: 0 1px 0 var(--text-333); }
+.pop-close { padding: 0 4px; background: none; border: 0; color: var(--text-fff); font: bold 14px tahoma, verdana, sans-serif; line-height: 14px; cursor: pointer; }
+.pop-close:hover { color: var(--text-e8e8e8); }
+.pop .error { margin: 6px 8px 0; }
+.pop-body { display: flex; flex-direction: column; gap: 6px; padding: 8px; }
+.pop-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pop-label { width: 70px; color: var(--text-808080); }
+.pop-note { color: var(--text-555); line-height: 15px; }
+.pop-note:empty { display: none; }
+.pop-actions { display: flex; gap: 6px; justify-content: flex-end; padding: 6px 8px; margin: 2px -8px -8px; background: var(--back-f2f2f2); border-top: 1px solid var(--line-ddd); }
+.pop .biz-subtitle { margin: 4px 0 0; }
+.pop-anchor { outline: 1px solid var(--line-5b7aa1); }
+
+.stepper { display: inline-flex; align-items: stretch; height: 24px; }
+.step-button { width: 24px; padding: 0; background: linear-gradient(var(--back-fff), var(--back-e4e4e4)); border: 1px solid var(--line-aaa); color: var(--text-333); font: bold 13px tahoma, verdana, sans-serif; cursor: pointer; }
+.step-button:first-child { border-radius: 2px 0 0 2px; }
+.step-button:last-child { border-radius: 0 2px 2px 0; }
+.step-button:hover { background: linear-gradient(var(--back-fff), var(--back-dae1e8)); }
+.step-button:active { background: var(--back-dae1e8); box-shadow: inset 0 1px 2px var(--line-8b8b8b); }
+input.step-value { width: 48px; margin: 0 -1px; border-color: var(--line-aaa); font-weight: bold; text-align: center; }
+input.step-value.wide { width: 80px; }
+
+.chips { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.chip { padding: 2px 7px; background: linear-gradient(var(--back-fff), var(--back-ededed)); border: 1px solid var(--line-c0cad5); border-radius: 9px; color: var(--text-2b587a); font: 11px tahoma, verdana, sans-serif; cursor: pointer; }
+.chip:hover { border-color: var(--line-8fa7c2); background: var(--back-f2f5f8); }
+.chip:active { background: var(--back-dae1e8); }
+
+.slider { width: 100%; margin: 2px 0; accent-color: var(--back-5b7aa1); }
+
+.segmented { display: inline-flex; }
+.segment { padding: 4px 10px; background: linear-gradient(var(--back-fff), var(--back-e4e4e4)); border: 1px solid var(--line-aaa); color: var(--text-333); font: 11px tahoma, verdana, sans-serif; cursor: pointer; }
+.segment + .segment { border-left: 0; }
+.segment:first-child { border-radius: 2px 0 0 2px; }
+.segment:last-child { border-radius: 0 2px 2px 0; }
+.segment.active { background: linear-gradient(var(--back-707070), var(--back-595959)); border-color: var(--line-595959); color: var(--text-fff); font-weight: bold; text-shadow: 0 1px 0 var(--text-333); }
+.segment.buy.active { background: var(--back-3f8f35); border-color: var(--back-3f8f35); }
+.segment.sell.active { background: var(--back-d23a32); border-color: var(--back-d23a32); }
+
+.meter { position: relative; display: inline-block; width: 100%; min-width: 60px; height: 14px; overflow: hidden; vertical-align: middle; background: var(--back-fff); border: 1px solid var(--line-aaa); box-shadow: inset 0 1px 0 var(--line-e3e3e3); }
+.meter-fill { position: absolute; top: 0; bottom: 0; left: 0; background: linear-gradient(var(--back-8b8b8b), var(--back-5b7aa1)); }
+.meter-fill.good { background: var(--back-3f8f35); }
+.meter-fill.warn { background: var(--back-f0d878); }
+.meter-fill.bad { background: var(--back-d23a32); }
+.meter-text { position: relative; display: block; color: var(--text-000); font-size: 10px; font-weight: bold; line-height: 14px; text-align: center; text-shadow: 0 0 2px var(--back-fff); }
+
+/* The charts (charts.js): a canvas in a white frame and the box of the
+   prices of the hour under the pointer. */
+.chart-box { position: relative; margin: 4px 0 12px; padding: 4px; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
+.chart { display: block; width: 100%; cursor: crosshair; touch-action: pan-y; }
+.chart-tip { position: absolute; top: 8px; padding: 4px 6px; background: var(--back-fff); border: 1px solid var(--line-707070); box-shadow: 1px 2px 0 var(--line-ccc); font-size: 10px; line-height: 13px; white-space: pre; pointer-events: none; }
+.spark { display: block; height: 26px; }
+
+/* "Акции": the stock exchange. */
+.stock-up { color: var(--text-43a047); font-weight: bold; white-space: nowrap; }
+.stock-down { color: var(--text-d94c4c); font-weight: bold; white-space: nowrap; }
+.stock-flat { color: var(--text-808080); white-space: nowrap; }
+.stock-plaques { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0 0 8px; }
+.stock-plaque { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 6px 8px; background: linear-gradient(var(--back-fff), var(--back-f2f2f2)); border: 1px solid var(--line-d0d0d0); border-top: 2px solid var(--line-5b7aa1); color: var(--text-000); font: 11px tahoma, verdana, sans-serif; text-align: left; }
+button.stock-plaque { cursor: pointer; }
+button.stock-plaque:hover { background: var(--back-f2f5f8); border-color: var(--line-8fa7c2); border-top-color: var(--line-5b7aa1); }
+.stock-plaque-name { color: var(--text-808080); }
+.stock-plaque-value { overflow: hidden; font-size: 14px; font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
+.stock-plaque-sub { overflow: hidden; color: var(--text-808080); text-overflow: ellipsis; white-space: nowrap; }
+.stock-link { color: var(--text-2b587a); }
+
+/* The running tape of prices, dark as the screens of an exchange. */
+.ticker { overflow: hidden; margin: 0 0 10px; padding: 4px 0; background: linear-gradient(var(--back-444), var(--back-3e3e3e)); border: 1px solid var(--line-2f2f2f); }
+.ticker-track { display: inline-flex; gap: 22px; padding-right: 22px; white-space: nowrap; animation: ticker linear infinite; }
+.ticker:hover .ticker-track { animation-play-state: paused; }
+.ticker-item { display: inline-flex; gap: 5px; align-items: center; color: var(--text-fff); }
+.ticker-item:hover { text-decoration: none; }
+.ticker-item b { color: var(--text-ccc); }
+.ticker .stock-up { color: var(--text-43a047); }
+.ticker .stock-down { color: var(--text-d94c4c); }
+@keyframes ticker { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } }
+
+.stock-table { width: 100%; margin: 4px 0 12px; }
+.stock-table th, .stock-table td { vertical-align: middle; }
+.stock-table .firm-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stock-row { cursor: pointer; }
+.stock-row:hover td { background: var(--back-f2f5f8); }
+.stock-price { font-size: 12px; font-weight: bold; }
+.stock-spark { width: 96px; }
+.stock-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.stock-holdings, .stock-news, .stock-orders { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 10px; }
+.stock-holding { display: flex; gap: 8px; align-items: center; padding: 5px 6px; background: var(--back-f9f9f9); border: 1px solid var(--line-e8e8e8); color: var(--text-000); }
+.stock-holding:hover { background: var(--back-f2f5f8); border-color: var(--line-c5d0db); text-decoration: none; }
+.stock-holding-name { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.stock-holding-name b { overflow: hidden; color: var(--text-45688e); text-overflow: ellipsis; white-space: nowrap; }
+.stock-holding-worth { display: flex; flex-direction: column; align-items: flex-end; }
+.stock-news-item, .firm-news-item { display: flex; gap: 8px; align-items: flex-start; padding: 5px 6px; background: var(--back-f9f9f9); border: 1px solid var(--line-e8e8e8); border-left: 3px solid var(--line-aaa); }
+.stock-news-item.good, .firm-news-item.good { border-left-color: var(--text-43a047); }
+.stock-news-item.bad, .firm-news-item.bad { border-left-color: var(--text-d94c4c); }
+.stock-order { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 4px 6px; background: var(--back-f9f9f9); border: 1px solid var(--line-e8e8e8); }
+.stock-order-side { padding: 0 5px; border-radius: 2px; color: var(--text-fff); font-weight: bold; }
+.stock-order.buy .stock-order-side { background: var(--back-3f8f35); }
+.stock-order.sell .stock-order-side { background: var(--back-d23a32); }
+.stock-order .chip { margin-left: auto; }
+
+.stock-head { display: flex; gap: 12px; margin: 0 0 8px; padding: 0 0 8px; border-bottom: 1px solid var(--line-dae1e8); }
+.stock-head .stock-head-price { display: flex; flex-direction: column; align-items: flex-end; }
+.stock-big { color: var(--text-000); font-size: 24px; font-weight: bold; line-height: 28px; }
+.stock-facts { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); margin: 0 0 8px; background: var(--back-f7f7f7); border: 1px solid var(--line-e0e0e0); }
+.stock-fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 5px 6px; border-right: 1px solid var(--line-e0e0e0); }
+.stock-fact:last-child { border-right: 0; }
+.stock-fact span:first-child { overflow: hidden; color: var(--text-808080); text-overflow: ellipsis; white-space: nowrap; }
+.stock-fact b { white-space: nowrap; }
+.stock-chart-head { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.stock-chart-head .section-title { flex: 1; }
+.stock-trade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.stock-mine { margin: 4px 0; }
+
+/* The order book: who sells above, who buys below, a strip of the shares
+   behind each price. */
+.book { margin: 4px 0 10px; border: 1px solid var(--line-dae1e8); }
+.book-head, .book-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding: 3px 8px; }
+.book-head { background: var(--back-f2f2f2); color: var(--text-808080); }
+.book-row { position: relative; width: 100%; background: var(--back-fff); border: 0; border-top: 1px solid var(--line-eee); font: 11px tahoma, verdana, sans-serif; text-align: left; cursor: pointer; }
+.book-row:hover { background: var(--back-f2f5f8); }
+.book-row > span { position: relative; }
+.book-fill { position: absolute !important; top: 0; right: 0; bottom: 0; }
+.book-row.ask .book-fill { background: var(--back-ffefe8); }
+.book-row.bid .book-fill { background: var(--back-dcefd9); }
+.book-row.ask .book-price { color: var(--text-d94c4c); font-weight: bold; }
+.book-row.bid .book-price { color: var(--text-43a047); font-weight: bold; }
+.book-who { color: var(--text-808080); }
+.book-spread { padding: 4px 8px; background: var(--back-f9f6e7); border-top: 1px solid var(--line-d7cf9e); border-bottom: 1px solid var(--line-d7cf9e); color: var(--text-58462a); font-weight: bold; text-align: center; }
+.book .hint { margin: 0; padding: 4px 8px; border-top: 1px solid var(--line-eee); }
+
+/* The panel of a deal: green to buy, red to sell. */
+.deal, .firm-order { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; padding: 8px; background: var(--back-f9f9f9); border: 1px solid var(--line-dae1e8); border-top: 3px solid var(--back-3f8f35); }
+.deal.sell { border-top-color: var(--back-d23a32); }
+.deal-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.deal-label { width: 50px; color: var(--text-808080); }
+.deal-summary { display: flex; flex-direction: column; gap: 2px; padding: 6px; background: var(--back-fff); border: 1px dashed var(--line-ccc); }
+.deal-summary div { display: flex; justify-content: space-between; }
+.deal-go, .deal.buy .deal-go, .deal-go.buy { padding: 6px 10px; background: var(--back-3f8f35); border-color: var(--back-3f8f35); font-size: 12px; font-weight: bold; }
+.deal.sell .deal-go, .deal-go.sell { background: var(--back-d23a32); border-color: var(--back-d23a32); }
+
+/* The card of an enterprise: plaques that open mini windows, tiles of the
+   storage, cards of the improvements and of the orders of the city. */
+button.firm-stat { min-width: 0; color: var(--text-000); font: 11px tahoma, verdana, sans-serif; text-align: left; cursor: pointer; }
+button.firm-stat:hover { background: var(--back-f2f5f8); border-color: var(--line-8fa7c2); border-top-color: var(--line-5b7aa1); }
+.firm-stat-name { display: flex; justify-content: space-between; }
+.firm-stat-more { color: var(--text-2b587a); }
+.firm-stat-value .meter { margin: 2px 0 1px; }
+.firm-header-name { display: flex; gap: 6px; align-items: center; }
+.firm-rename { padding: 0 3px; background: none; border: 1px solid transparent; color: var(--text-808080); font-size: 12px; cursor: pointer; }
+.firm-rename:hover { border-color: var(--line-c0cad5); color: var(--text-2b587a); }
+input.firm-name-edit { width: 220px; }
+.firm-alarm { margin: 0 0 8px; padding: 6px 8px; background: var(--back-ffefe8); border: 1px solid var(--line-e89b88); color: var(--text-b3122e); font-weight: bold; }
+.firm-close { margin: 16px 0 0; padding: 6px 0 0; border-top: 1px solid var(--line-eee); text-align: right; }
+.firm-close a { color: var(--text-999); }
+.firm-work { display: flex; flex-wrap: wrap; gap: 4px 16px; justify-content: space-between; margin: 0 0 6px; }
+.firm-goods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 4px 0 8px; }
+.firm-good-tile { display: flex; gap: 8px; align-items: flex-start; min-width: 0; padding: 6px; background: linear-gradient(var(--back-fff), var(--back-f6f6f6)); border: 1px solid var(--line-d0d0d0); color: var(--text-000); font: 11px tahoma, verdana, sans-serif; text-align: left; }
+button.firm-good-tile { cursor: pointer; }
+button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(--line-8fa7c2); }
+.firm-good-text { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
+.firm-badges { display: flex; flex-wrap: wrap; gap: 3px; }
+.firm-badge { padding: 0 4px; background: var(--back-f2f2f2); border: 1px solid var(--line-ddd); color: var(--text-808080); font-size: 10px; }
+.firm-badge.on { background: var(--back-dcefd9); border-color: var(--line-d5ddb6); color: var(--text-0c7a3c); }
+.firm-upgrades { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 4px 0 8px; }
+.firm-upgrade { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; padding: 8px; background: var(--back-f9f9f9); border: 1px solid var(--line-e0e0e0); border-top: 2px solid var(--line-aaa); }
+.firm-upgrade.done { border-top-color: var(--line-5b7aa1); }
+.firm-upgrade b { color: var(--text-45688e); font-size: 12px; }
+.firm-pips { display: inline-flex; gap: 3px; }
+.firm-pip { width: 14px; height: 8px; background: var(--back-fff); border: 1px solid var(--line-aaa); }
+.firm-pip.on { background: linear-gradient(var(--back-8b8b8b), var(--back-5b7aa1)); border-color: var(--line-5b7aa1); }
+.firm-contracts, .firm-news { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 10px; }
+.firm-contract { display: flex; gap: 8px; align-items: center; padding: 6px; background: var(--back-f9f6e7); border: 1px solid var(--line-d7cf9e); }
+.firm-contract.mine { background: var(--back-f2f5f8); border-color: var(--line-c5d0db); }
+.firm-contract-text { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
+.firm-contract-actions { display: flex; gap: 4px; }
+.firm-pick { display: flex; gap: 6px; align-items: center; width: 100%; padding: 4px 6px; background: linear-gradient(var(--back-fff), var(--back-ededed)); border: 1px solid var(--line-c0cad5); color: var(--text-000); font: 11px tahoma, verdana, sans-serif; text-align: left; cursor: pointer; }
+.firm-pick:hover { background: var(--back-f2f5f8); border-color: var(--line-8fa7c2); }
+.firm-pick .hint { margin-left: auto; }
+.firm-order { border-top-color: var(--line-5b7aa1); }
+.firm-good-pick { display: flex; flex-wrap: wrap; gap: 4px; }
+.firm-good-chip { display: inline-flex; gap: 4px; align-items: center; padding: 2px 6px 2px 2px; background: linear-gradient(var(--back-fff), var(--back-ededed)); border: 1px solid var(--line-c0cad5); color: var(--text-000); font: 11px tahoma, verdana, sans-serif; cursor: pointer; }
+.firm-good-chip.active { background: var(--back-dae1e8); border-color: var(--line-5b7aa1); box-shadow: inset 0 1px 2px var(--line-8fa7c2); font-weight: bold; }
 
 /* "Казино": the prizes in cells and a light running over them; the
    balance at the right, as in "Голоса". */

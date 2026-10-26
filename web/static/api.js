@@ -754,6 +754,8 @@ export const api = {
   setPetSettings: (shop) => authorized('PUT', '/api/v1/pet/settings', shop),
   firms: () => authorized('GET', '/api/v1/firms'),
   runFirms: (action, body = {}) => authorized('POST', `/api/v1/firms/${encodeURIComponent(action)}`, body),
+  stocks: (firm = '') => authorized('GET', `/api/v1/stocks${firm ? `?firm=${encodeURIComponent(firm)}` : ''}`),
+  runStocks: (action, body = {}) => authorized('POST', `/api/v1/stocks/${encodeURIComponent(action)}`, body),
   firmSettings: () => authorized('GET', '/api/v1/firm/settings'),
   setFirmSettings: (settings) => authorized('PUT', '/api/v1/firm/settings', settings),
   betEvents: (popular = false) => optional('GET', popular ? '/api/v1/bets?section=popular' : '/api/v1/bets'),

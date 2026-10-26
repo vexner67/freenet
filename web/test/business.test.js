@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
 import {
-  firmActionName, firmKindName, firmKinds, firmLine, firmPictures, goodName, goodPictures, goods, hundredths, hundredthsOf, sharePercent, voteOperation,
+  firmActionName, firmEventAbout, firmEventName, firmKindName, firmKinds, firmLine, firmPictures, goodName, goodPictures, goods, hundredths, hundredthsOf,
+  improvements, priceChange, sharePercent, voteOperation,
 } from '../static/labels.js';
 
 const catalog = readFileSync(new URL('../../user/internal/user/firm_catalog.go', import.meta.url), 'utf8');
@@ -43,7 +44,7 @@ test('the profile says of an enterprise what it is, its level and the part of th
 test('a line of the statement names the action with the enterprises', () => {
   const firm = readFileSync(new URL('../../user/internal/user/firm.go', import.meta.url), 'utf8');
   const service = readFileSync(new URL('../../user/internal/service/firm.go', import.meta.url), 'utf8');
-  const notes = [...`${firm}\n${service}`.matchAll(/"(found|deposit|dividend|liquidate|buy_shares|sell_shares)"/g)].map((m) => m[1]);
+  const notes = [...`${firm}\n${service}`.matchAll(/"(found|deposit|dividend|liquidate|buy_shares|sell_shares|account_deposit|account_withdraw)"/g)].map((m) => m[1]);
   for (const note of new Set([...notes, 'refund'])) assert.notEqual(firmActionName(note), firmActionName('?'), note);
 
   assert.equal(voteOperation({ kind: 'business', amount: -1000, note: 'found' }).title, 'Бизнес: основание предприятия');
@@ -57,4 +58,25 @@ test('every enterprise and every good has its picture', () => {
   for (const kind of firmKinds) assert.ok(file(firmPictures[kind]), kind);
   for (const good of goods) assert.ok(file(goodPictures[good]), good);
   assert.ok(file('/static/firms/dividends.svg'));
+});
+
+test('a change of a price is a signed percent', () => {
+  assert.equal(priceChange(1100, 1000), '+10 %');
+  assert.equal(priceChange(955, 1000), '−4,5 %');
+  assert.equal(priceChange(1000, 1000), '0 %');
+  assert.equal(priceChange(1000, 0), '');
+});
+
+test('every event of the city and every improvement has its words', () => {
+  const events = readFileSync(new URL('../../user/internal/user/firm_events.go', import.meta.url), 'utf8');
+  const kinds = [...events.matchAll(/\bEvent\w+ +EventKind = "(\w+)"/g)].map((m) => m[1]);
+  assert.ok(kinds.length > 10);
+  for (const kind of kinds) {
+    assert.notEqual(firmEventName(kind), kind, kind);
+    assert.notEqual(firmEventAbout(kind), '', kind);
+  }
+
+  const care = readFileSync(new URL('../../user/internal/user/firm_care.go', import.meta.url), 'utf8');
+  const ranks = [...care.matchAll(/\bImprove\w+ +Improvement = "(\w+)"/g)].map((m) => m[1]);
+  assert.deepEqual(improvements.map(([kind]) => kind), ranks);
 });
