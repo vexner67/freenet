@@ -14,8 +14,12 @@ import (
 
 // pageCSP allows only our own scripts and styles and no inline code, so
 // markup that slips into a page cannot run. Pages and API share the origin.
+// Trusted Types close the sinks that turn a string into markup or a script
+// (innerHTML and the like) but to the two named policies of the site: the
+// theme's link (theme.js) and the service worker (push.js).
 const pageCSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; " +
-	"connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+	"connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; " +
+	"require-trusted-types-for 'script'; trusted-types freenet-theme freenet-sw"
 
 // The website holds nothing of a person, so, unlike the API, it may be
 // cached. A page and an asset at its plain path are checked with the

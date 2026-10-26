@@ -167,10 +167,10 @@ func TestPages(t *testing.T) {
 		}
 	})
 
-	// Pages load no plugins.
+	// Pages take markup and scripts only from the named policies.
 	t.Run("pages close the sinks of markup", func(t *testing.T) {
 		csp := get("/").Header().Get("Content-Security-Policy")
-		for _, want := range []string{"object-src 'none'"} {
+		for _, want := range []string{"require-trusted-types-for 'script'", "trusted-types freenet-theme freenet-sw", "object-src 'none'"} {
 			if !strings.Contains(csp, want) {
 				t.Fatalf("CSP %q lacks %q", csp, want)
 			}
