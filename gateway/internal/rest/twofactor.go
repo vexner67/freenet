@@ -69,8 +69,8 @@ func (a *api) getTwoFactor(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, twoFactorResponse{Enabled: state.Enabled, RecoveryLeft: state.RecoveryLeft})
 }
 
-// setUpTwoFactor names the page in the app by its address, or its email
-// before it has one.
+// setUpTwoFactor names the page in the app by its email, as the person
+// signs in with it.
 func (a *api) setUpTwoFactor(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -84,12 +84,7 @@ func (a *api) setUpTwoFactor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	account := me.Profile.Nickname
-	if account == "" {
-		account = me.Email
-	}
-
-	setup, err := a.auth.SetUpTwoFactor(r.Context(), token, account)
+	setup, err := a.auth.SetUpTwoFactor(r.Context(), token, me.Email)
 	if err != nil {
 		a.writeError(w, r, err)
 		return

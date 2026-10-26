@@ -110,7 +110,7 @@ func TestTwoFactorSettings(t *testing.T) {
 		URI    string   `json:"uri"`
 		QR     []string `json:"qr"`
 	}](t, w)
-	if w.Code != http.StatusOK || setup.Secret != "GEZD GNBV" || h.auth.account != "ann" || !strings.Contains(setup.URI, "Freenet:ann") {
+	if w.Code != http.StatusOK || setup.Secret != "GEZD GNBV" || h.auth.account != "ann@example.com" || !strings.Contains(setup.URI, "Freenet:ann@example.com") {
 		t.Fatalf("setup = %d %+v", w.Code, setup)
 	}
 	// A square of 0 and 1 with the finder pattern in the corner.
