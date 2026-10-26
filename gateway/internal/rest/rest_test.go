@@ -31,6 +31,9 @@ type fakeAuth struct {
 	client model.Client
 	// ended are the sessions EndSession was asked to end.
 	ended []string
+	// account names the page in the app; twoFactorOn is the second step.
+	account     string
+	twoFactorOn bool
 }
 
 func (f *fakeAuth) RequestCode(ctx context.Context, _, clientIP string) error {
@@ -43,6 +46,10 @@ func (f *fakeAuth) VerifyCode(_ context.Context, email, code string, client mode
 	f.client = client
 	if code != "123456" {
 		return model.Tokens{}, failure.New(failure.Unauthenticated, "invalid or expired code")
+	}
+	// Bob has the second step on.
+	if email == "bob@example.com" {
+		return model.Tokens{TwoFactorTicket: "ticket"}, nil
 	}
 	return model.Tokens{AccessToken: "access-" + email, RefreshToken: "refresh"}, nil
 }

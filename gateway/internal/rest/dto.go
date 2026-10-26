@@ -23,15 +23,19 @@ type refreshRequest struct {
 	RefreshToken string `json:"refreshToken"`
 }
 
+// tokensResponse has the tokens or, after the email code of a page with the
+// second step on, only twoFactorTicket.
 type tokensResponse struct {
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
+	AccessToken     string `json:"accessToken,omitempty"`
+	RefreshToken    string `json:"refreshToken,omitempty"`
+	TwoFactorTicket string `json:"twoFactorTicket,omitempty"`
 }
 
 func toTokensResponse(t model.Tokens) tokensResponse {
 	return tokensResponse{
-		AccessToken:  t.AccessToken,
-		RefreshToken: t.RefreshToken,
+		AccessToken:     t.AccessToken,
+		RefreshToken:    t.RefreshToken,
+		TwoFactorTicket: t.TwoFactorTicket,
 	}
 }
 

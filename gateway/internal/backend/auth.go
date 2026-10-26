@@ -134,9 +134,67 @@ func (a *Auth) EndOtherSessions(ctx context.Context, accessToken string) (int, e
 	return int(resp.GetEnded()), nil
 }
 
+// VerifyTwoFactor finishes the sign-in of a ticket with a code of the app
+// or a recovery code.
+func (a *Auth) VerifyTwoFactor(ctx context.Context, ticket, code string, client model.Client) (model.Tokens, error) {
+	pair, err := a.api.VerifyTwoFactor(withClient(ctx, client), &authv1.VerifyTwoFactorRequest{Ticket: ticket, Code: code})
+	if err != nil {
+		return model.Tokens{}, errs.Wrap("a.api.VerifyTwoFactor", fromStatus(err))
+	}
+
+	return toTokens(pair), nil
+}
+
+func (a *Auth) TwoFactor(ctx context.Context, accessToken string) (model.TwoFactor, error) {
+	resp, err := a.api.GetTwoFactor(withToken(ctx, accessToken), &authv1.GetTwoFactorRequest{})
+	if err != nil {
+		return model.TwoFactor{}, errs.Wrap("a.api.GetTwoFactor", fromStatus(err))
+	}
+
+	return model.TwoFactor{Enabled: resp.GetEnabled(), RecoveryLeft: int(resp.GetRecoveryLeft())}, nil
+}
+
+// SetUpTwoFactor: account names the page in the app.
+func (a *Auth) SetUpTwoFactor(ctx context.Context, accessToken, account string) (model.TwoFactorSetup, error) {
+	resp, err := a.api.SetUpTwoFactor(withToken(ctx, accessToken), &authv1.SetUpTwoFactorRequest{Account: account})
+	if err != nil {
+		return model.TwoFactorSetup{}, errs.Wrap("a.api.SetUpTwoFactor", fromStatus(err))
+	}
+
+	return model.TwoFactorSetup{Secret: resp.GetSecret(), URI: resp.GetUri()}, nil
+}
+
+// EnableTwoFactor returns the recovery codes, given this once.
+func (a *Auth) EnableTwoFactor(ctx context.Context, accessToken, code string) ([]string, error) {
+	resp, err := a.api.EnableTwoFactor(withToken(ctx, accessToken), &authv1.EnableTwoFactorRequest{Code: code})
+	if err != nil {
+		return nil, errs.Wrap("a.api.EnableTwoFactor", fromStatus(err))
+	}
+
+	return resp.GetRecoveryCodes(), nil
+}
+
+func (a *Auth) DisableTwoFactor(ctx context.Context, accessToken, code string) error {
+	if _, err := a.api.DisableTwoFactor(withToken(ctx, accessToken), &authv1.DisableTwoFactorRequest{Code: code}); err != nil {
+		return errs.Wrap("a.api.DisableTwoFactor", fromStatus(err))
+	}
+
+	return nil
+}
+
+func (a *Auth) RenewRecoveryCodes(ctx context.Context, accessToken, code string) ([]string, error) {
+	resp, err := a.api.RenewRecoveryCodes(withToken(ctx, accessToken), &authv1.RenewRecoveryCodesRequest{Code: code})
+	if err != nil {
+		return nil, errs.Wrap("a.api.RenewRecoveryCodes", fromStatus(err))
+	}
+
+	return resp.GetRecoveryCodes(), nil
+}
+
 func toTokens(pair *authv1.TokenPair) model.Tokens {
 	return model.Tokens{
-		AccessToken:  pair.GetAccessToken(),
-		RefreshToken: pair.GetRefreshToken(),
+		AccessToken:     pair.GetAccessToken(),
+		RefreshToken:    pair.GetRefreshToken(),
+		TwoFactorTicket: pair.GetTwoFactorTicket(),
 	}
 }

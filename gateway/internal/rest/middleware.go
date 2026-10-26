@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
@@ -129,12 +130,20 @@ func cors(allowedOrigins []string) middleware {
 	}
 }
 
+// apiCSP is for answers of the API opened as a page of their own: they are
+// data, so nothing in them may run, load or be framed.
+const apiCSP = "default-src 'none'; frame-ancestors 'none'; sandbox"
+
 // secureHeaders: responses carry tokens and personal data, so they must not
-// be cached or sniffed.
+// be cached, sniffed or framed by another site.
 func secureHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			w.Header().Set("Content-Security-Policy", apiCSP)
+		}
 
 		next.ServeHTTP(w, r)
 	})

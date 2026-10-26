@@ -7,6 +7,23 @@ import "time"
 type Tokens struct {
 	AccessToken  string
 	RefreshToken string
+	// TwoFactorTicket, of the email code only, stands for the tokens when
+	// the page has the second step on: it comes back with the code of the
+	// authenticator app.
+	TwoFactorTicket string
+}
+
+// TwoFactor is the second step of signing in, as the settings show it.
+type TwoFactor struct {
+	Enabled      bool
+	RecoveryLeft int
+}
+
+// TwoFactorSetup is what the authenticator app is given.
+type TwoFactorSetup struct {
+	// Secret is the key typed in by hand, URI the address of its QR code.
+	Secret string
+	URI    string
 }
 
 // Client is where a request comes from, as far as the gateway can tell:

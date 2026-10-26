@@ -23,6 +23,19 @@ type Auth interface {
 	EndSession(ctx context.Context, accessToken, sessionID string) error
 	// EndOtherSessions returns how many sessions ended.
 	EndOtherSessions(ctx context.Context, accessToken string) (int, error)
+	TwoFactorAuth
+}
+
+// TwoFactorAuth is the second step of signing in with an authenticator
+// app: VerifyCode answers a page that has it on with a ticket for it.
+type TwoFactorAuth interface {
+	VerifyTwoFactor(ctx context.Context, ticket, code string, client model.Client) (model.Tokens, error)
+	TwoFactor(ctx context.Context, accessToken string) (model.TwoFactor, error)
+	SetUpTwoFactor(ctx context.Context, accessToken, account string) (model.TwoFactorSetup, error)
+	// EnableTwoFactor and RenewRecoveryCodes return the recovery codes.
+	EnableTwoFactor(ctx context.Context, accessToken, code string) ([]string, error)
+	DisableTwoFactor(ctx context.Context, accessToken, code string) error
+	RenewRecoveryCodes(ctx context.Context, accessToken, code string) ([]string, error)
 }
 
 type Users interface {
@@ -631,6 +644,12 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/me/fields", a.updateExtraFields)
 	mux.HandleFunc("PUT /api/v1/me/privacy", a.updatePrivacy)
 	mux.HandleFunc("PUT /api/v1/me/interface", a.updateInterface)
+	mux.HandleFunc("POST /api/v1/auth/two-factor", a.verifyTwoFactor)
+	mux.HandleFunc("GET /api/v1/me/two-factor", a.getTwoFactor)
+	mux.HandleFunc("POST /api/v1/me/two-factor/setup", a.setUpTwoFactor)
+	mux.HandleFunc("POST /api/v1/me/two-factor/enable", a.enableTwoFactor)
+	mux.HandleFunc("POST /api/v1/me/two-factor/disable", a.disableTwoFactor)
+	mux.HandleFunc("POST /api/v1/me/two-factor/recovery", a.renewRecoveryCodes)
 	mux.HandleFunc("GET /api/v1/me/sessions", a.listSessions)
 	mux.HandleFunc("DELETE /api/v1/me/sessions", a.endOtherSessions)
 	mux.HandleFunc("DELETE /api/v1/me/sessions/{id}", a.endSession)

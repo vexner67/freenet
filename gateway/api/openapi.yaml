@@ -71,6 +71,44 @@ paths:
                 email: { type: string, format: email }
                 code: { type: string, pattern: "^[0-9]{6}$", example: "123456" }
       responses:
+        "200":
+          description: >-
+            The token pair, or, when the page has the second step on, only
+            `twoFactorTicket`: the sign-in ends with
+            `POST /api/v1/auth/two-factor`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken: { type: string }
+                  refreshToken: { type: string }
+                  twoFactorTicket: { type: string }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/auth/two-factor:
+    post:
+      summary: Finish a sign-in with the code of the authenticator app
+      description: |
+        The second step of a page that has it on: the ticket of
+        `POST /api/v1/auth/verify` and a six-digit code of the app (TOTP,
+        RFC 6238) or a recovery code ("abcde-fghij"). Every code works once.
+        A ticket lives 10 minutes and survives five codes; ten codes of a
+        page are checked per hour.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ticket, code]
+              additionalProperties: false
+              properties:
+                ticket: { type: string }
+                code: { type: string, example: "123456" }
+      responses:
         "200": { $ref: "#/components/responses/Tokens" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
@@ -151,6 +189,85 @@ paths:
         "200": { $ref: "#/components/responses/User" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/me/two-factor:
+    get:
+      summary: Whether signing in takes the code of an authenticator app
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The second step
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [enabled, recoveryLeft]
+                properties:
+                  enabled: { type: boolean }
+                  recoveryLeft: { type: integer, description: Recovery codes still unused }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/two-factor/setup:
+    post:
+      summary: A new secret for the authenticator app
+      description: >-
+        The key to type in by hand, the otpauth:// address and its QR code
+        as rows of "0" and "1" ("1" is dark). The second step stays off
+        until `POST /api/v1/me/two-factor/enable`; a secret set up before
+        and not enabled is replaced.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The secret
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [secret, uri, qr]
+                properties:
+                  secret: { type: string, example: "GEZD GNBV GY3T QOJQ GEZD GNBV GY3T QOJQ" }
+                  uri: { type: string }
+                  qr: { type: array, items: { type: string } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/me/two-factor/enable:
+    post:
+      summary: Turn the second step on with the first code of the app
+      description: Returns the ten recovery codes, given this once.
+      security: [{ bearer: [] }]
+      requestBody: { $ref: "#/components/requestBodies/TwoFactorCode" }
+      responses:
+        "200": { $ref: "#/components/responses/RecoveryCodes" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/two-factor/disable:
+    post:
+      summary: Turn the second step off for a code of the app or a recovery code
+      security: [{ bearer: [] }]
+      requestBody: { $ref: "#/components/requestBodies/TwoFactorCode" }
+      responses:
+        "204": { description: Turned off }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/two-factor/recovery:
+    post:
+      summary: New recovery codes for a code of the app
+      description: The ones given before stop working.
+      security: [{ bearer: [] }]
+      requestBody: { $ref: "#/components/requestBodies/TwoFactorCode" }
+      responses:
+        "200": { $ref: "#/components/responses/RecoveryCodes" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/me/sessions:
     get:
@@ -8093,6 +8210,16 @@ components:
       bearerFormat: JWT
 
   requestBodies:
+    TwoFactorCode:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code]
+            additionalProperties: false
+            properties:
+              code: { type: string, example: "123456" }
     Album:
       required: true
       content:
@@ -8243,6 +8370,17 @@ components:
             properties:
               accessToken: { type: string }
               refreshToken: { type: string }
+    RecoveryCodes:
+      description: Recovery codes, each good once
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [recoveryCodes]
+            properties:
+              recoveryCodes:
+                type: array
+                items: { type: string, example: "abcde-fghij" }
     User:
       description: The caller's account
       content:

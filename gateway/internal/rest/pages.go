@@ -15,7 +15,7 @@ import (
 // pageCSP allows only our own scripts and styles and no inline code, so
 // markup that slips into a page cannot run. Pages and API share the origin.
 const pageCSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; " +
-	"connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+	"connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 
 // The website holds nothing of a person, so, unlike the API, it may be
 // cached. A page and an asset at its plain path are checked with the

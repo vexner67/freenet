@@ -152,11 +152,30 @@ func TestPages(t *testing.T) {
 			if w.Code != tt.status || !strings.Contains(w.Body.String(), tt.body) {
 				t.Fatalf("%s: %d %q", tt.path, w.Code, w.Body.String())
 			}
-			if hasCSP := w.Header().Get("Content-Security-Policy") != ""; hasCSP != tt.csp {
-				t.Fatalf("%s: CSP present = %v, want %v", tt.path, hasCSP, tt.csp)
+			if hasCSP := w.Header().Get("Content-Security-Policy") == rest.PageCSP; hasCSP != tt.csp {
+				t.Fatalf("%s: page CSP = %v, want %v", tt.path, hasCSP, tt.csp)
 			}
 		})
 	}
+
+	// The API is data: opened on its own, nothing in it runs or is framed.
+	t.Run("the API runs nothing", func(t *testing.T) {
+		w := get("/api/v1/users/ann")
+		if w.Header().Get("Content-Security-Policy") != rest.APICSP || w.Header().Get("X-Frame-Options") != "DENY" ||
+			w.Header().Get("X-Content-Type-Options") != "nosniff" {
+			t.Fatalf("API headers = %v", w.Header())
+		}
+	})
+
+	// Pages load no plugins.
+	t.Run("pages close the sinks of markup", func(t *testing.T) {
+		csp := get("/").Header().Get("Content-Security-Policy")
+		for _, want := range []string{"object-src 'none'"} {
+			if !strings.Contains(csp, want) {
+				t.Fatalf("CSP %q lacks %q", csp, want)
+			}
+		}
+	})
 
 	// The site may be cached, the API never: a page is checked with the
 	// server each time and names the versions of its assets, which are
