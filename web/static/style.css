@@ -2982,9 +2982,11 @@ img.name-prime.name-prime {
 .pet-won { color: var(--text-43a047); }
 .pet-lost { color: var(--text-c33); }
 .pet-fights { margin: 0 0 10px; }
-.pet-fight { display: flex; gap: 8px; align-items: center; padding: 6px 4px; border-bottom: 1px solid var(--line-e8ebee); }
-.pet-fight-text { flex: 1; min-width: 0; }
-.pet-result { min-width: 90px; text-align: right; }
+.pet-fight { display: grid; grid-template-columns: 1fr 110px 1fr; gap: 8px; align-items: center; padding: 6px 4px; border-bottom: 1px solid var(--line-e8ebee); }
+.pet-fight-side { display: flex; gap: 6px; align-items: center; min-width: 0; }
+.pet-fight-side:last-child { flex-direction: row-reverse; text-align: right; }
+.pet-fight-name { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.pet-result { text-align: center; }
 .pet-links { margin: 10px 0 0; color: var(--text-808080); }
 @media (prefers-reduced-motion: reduce) {
   .pet-happy .pet-picture, .pet-hurt .pet-arena-picture { animation: none; }

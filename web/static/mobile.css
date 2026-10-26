@@ -370,6 +370,7 @@ input, select, textarea { font-size: 16px !important; }
 .pet-bar { width: 110px; }
 .pet-arena-side { width: 120px; }
 .pet-arena-side .pet-bar { width: 100px; }
+.pet-fight { grid-template-columns: 1fr 84px 1fr; gap: 4px; }
 .pet-adopt input, .pet-challenge input { flex: 1; width: auto; min-width: 0; }
 .pet-challenge #find, .pet-challenge .hint { flex-basis: 100%; }
 .top-table th.top-value, .top-table td.top-value { width: auto; }

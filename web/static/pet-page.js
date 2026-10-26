@@ -201,27 +201,30 @@ function showPet(next) {
 
 // Fights.
 
-function fighterName(fighter) {
-  return fighter.user ? `${fighter.name} (${fighter.user.name} ${fighter.user.surname})` : fighter.name;
+// fighterSide is a pet of a fight, with its owner's page under its name.
+function fighterSide(fighter) {
+  return el('div', { className: 'pet-fight-side' },
+    petImage(fighter.kind, 32),
+    el('div', { className: 'pet-fight-name' },
+      el('b', { textContent: fighter.name }),
+      fighter.user
+        ? el('a', { className: 'hint', href: '/' + fighter.user.nickname, textContent: `${fighter.user.name} ${fighter.user.surname}` })
+        : null));
 }
 
+// fightRow puts the viewer's pet on the left and the rival on the right,
+// as the arena does, with the result between them.
 function fightRow(fight) {
   const mine = fight.attacker.user?.id === me.id;
   const result = petFightResult(fight, mine);
-  const rival = mine ? fight.defender : fight.attacker;
-
   return el('div', { className: 'pet-fight' },
-    petImage(rival.kind, 32),
-    el('div', { className: 'pet-fight-text' },
-      el('div', {},
-        el('span', { textContent: mine ? tr('Вы вызвали ') : tr('Вас вызвал ') }),
-        rival.user
-          ? el('a', { href: '/' + rival.user.nickname, textContent: fighterName(rival) })
-          : el('span', { textContent: fighterName(rival) })),
+    fighterSide(mine ? fight.attacker : fight.defender),
+    el('div', { className: 'pet-result' },
+      el('b', { className: result.won ? 'pet-won' : 'pet-lost', textContent: result.text }),
+      el('div', { className: 'hint', textContent: tr('рейтинг {0}', result.rating) }),
+      el('div', { className: 'hint', textContent: mine ? tr('ваш вызов') : tr('вызов вам') }),
       el('div', { className: 'hint', textContent: formatPostDate(fight.foughtAt) })),
-    el('div', { className: result.won ? 'pet-result pet-won' : 'pet-result pet-lost' },
-      el('b', { textContent: result.text }),
-      el('div', { className: 'hint', textContent: tr('рейтинг {0}', result.rating) })));
+    fighterSide(mine ? fight.defender : fight.attacker));
 }
 
 function showFights(fights) {
