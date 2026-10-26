@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 import {
-  firmActionName, firmKindName, firmKinds, firmLine, goodName, goods, hundredths, hundredthsOf, sharePercent, voteOperation,
+  firmActionName, firmKindName, firmKinds, firmLine, firmPictures, goodName, goodPictures, goods, hundredths, hundredthsOf, sharePercent, voteOperation,
 } from '../static/labels.js';
 
 const catalog = readFileSync(new URL('../../user/internal/user/firm_catalog.go', import.meta.url), 'utf8');
@@ -50,4 +50,11 @@ test('a line of the statement names the action with the enterprises', () => {
   assert.equal(voteOperation({ kind: 'business', amount: 12, note: 'dividend' }).title, 'Бизнес: дивиденды');
   assert.equal(voteOperation({ kind: 'business', amount: 500, note: 'refund' }).title, 'Бизнес: возврат за прежний бизнес');
   assert.equal(voteOperation({ kind: 'business', amount: -500, note: 'kiosk:buy' }).title, 'Бизнес: прежний бизнес');
+});
+
+test('every enterprise and every good has its picture', () => {
+  const file = (path) => existsSync(new URL(`..${path}`, import.meta.url));
+  for (const kind of firmKinds) assert.ok(file(firmPictures[kind]), kind);
+  for (const good of goods) assert.ok(file(goodPictures[good]), good);
+  assert.ok(file('/static/firms/dividends.svg'));
 });

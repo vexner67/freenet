@@ -1756,6 +1756,38 @@ export function titleGroups(titles) {
   return [...groups.values()].sort((a, b) => (a.last < b.last ? 1 : a.last > b.last ? -1 : 0));
 }
 
+// firmPictures are the pixel pictures of the enterprises, as the pets
+// are drawn (static/firms/<kind>.svg).
+export const firmPictures = {
+  farm: '/static/firms/farm.svg',
+  mine: '/static/firms/mine.svg',
+  oilrig: '/static/firms/oilrig.svg',
+  forestry: '/static/firms/forestry.svg',
+  mill: '/static/firms/mill.svg',
+  steelworks: '/static/firms/steelworks.svg',
+  chemworks: '/static/firms/chemworks.svg',
+  sawmill: '/static/firms/sawmill.svg',
+  bakery: '/static/firms/bakery.svg',
+  joinery: '/static/firms/joinery.svg',
+  electroplant: '/static/firms/electroplant.svg',
+  shop: '/static/firms/shop.svg',
+};
+
+// goodPictures are the pixel pictures of the goods (static/goods/<good>.svg).
+export const goodPictures = {
+  grain: '/static/goods/grain.svg',
+  ore: '/static/goods/ore.svg',
+  oil: '/static/goods/oil.svg',
+  wood: '/static/goods/wood.svg',
+  flour: '/static/goods/flour.svg',
+  metal: '/static/goods/metal.svg',
+  plastic: '/static/goods/plastic.svg',
+  boards: '/static/goods/boards.svg',
+  bread: '/static/goods/bread.svg',
+  furniture: '/static/goods/furniture.svg',
+  electronics: '/static/goods/electronics.svg',
+};
+
 // firmLine is what the profile says of an enterprise under its name:
 // "Мельница, 3 ур., 40 % акций".
 export function firmLine(f) {

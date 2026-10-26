@@ -1,5 +1,5 @@
 import { api, currentUser, started } from './api.js';
-import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, plural, MAX_RATING, firmLine, titleGroups, titleIconPath } from './labels.js';
+import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, plural, MAX_RATING, firmLine, firmPictures, titleGroups, titleIconPath } from './labels.js';
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
@@ -369,8 +369,8 @@ async function showTitles(user) {
 }
 
 // showFirms is the block "Бизнес" of a page holding shares: each
-// enterprise with what it is, its level and the part of the page, and
-// whether the page directs it.
+// enterprise with its picture, as big as the pets', what it is, its
+// level, the part of the page and whether the page directs it.
 async function showFirms(user, isOwner) {
   let firms;
   try {
@@ -382,11 +382,15 @@ async function showFirms(user, isOwner) {
 
   $('business-count').textContent = `${firms.length} ${plural(firms.length, ['предприятие', 'предприятия', 'предприятий'])}`;
   $('business-link').hidden = !isOwner;
-  $('business-side').replaceChildren(...firms.map((f) => el('div', { className: 'firm-side-row' },
-    el('a', { href: `/business?firm=${encodeURIComponent(f.id)}`, textContent: f.name }),
-    f.director ? el('span', { className: 'firm-side-director', textContent: tr(' — директор') }) : null,
-    el('div', { className: 'hint', textContent: firmLine(f) }),
-  )));
+  const size = firms.length > 1 ? 48 : 64;
+  $('business-side').replaceChildren(...firms.map((f) => el('div', { className: 'pet-side-row' },
+    el('a', { className: 'pet-side-picture', href: `/business?firm=${encodeURIComponent(f.id)}` },
+      el('img', { className: 'pet-picture', src: firmPictures[f.kind], alt: '', width: size, height: size })),
+    el('div', { className: 'pet-side-text' },
+      el('a', { href: `/business?firm=${encodeURIComponent(f.id)}` }, el('b', { textContent: f.name })),
+      el('div', { className: 'hint', textContent: firmLine(f) }),
+      f.director ? el('div', { className: 'hint', textContent: tr('директор') }) : null,
+    ))));
   $('business-block').hidden = false;
 }
 
