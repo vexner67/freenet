@@ -523,8 +523,10 @@ const getUserByIDQuery = `
 	WHERE id = $1
 `
 
+// GetByID reads within the transaction of ctx, if any: a payment that
+// holds the treasury must not wait for a second connection of the pool.
 func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
-	u, err := scanUser(r.pool.QueryRow(ctx, getUserByIDQuery, id))
+	u, err := scanUser(r.conn(ctx).QueryRow(ctx, getUserByIDQuery, id))
 	if err != nil {
 		return nil, errs.Wrap("scanUser", err)
 	}
