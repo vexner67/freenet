@@ -10,8 +10,9 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-// maxAccountLen is as much of the page's name as the app is told.
-const maxAccountLen = 64
+// maxAccountLen is as much of the page's name as the app is told: an
+// email whole.
+const maxAccountLen = 254
 
 func (h *AuthHandler) VerifyTwoFactor(ctx context.Context, req *authv1.VerifyTwoFactorRequest) (*authv1.TokenPair, error) {
 	pair, err := h.authService.VerifySecondStep(ctx, req.GetTicket(), req.GetCode(), device(ctx))

@@ -75,11 +75,11 @@ func TestAuthHandler_TwoFactor(t *testing.T) {
 		t.Fatalf("GetTwoFactor without a token: %v", err)
 	}
 
-	setup, err := h.SetUpTwoFactor(ctx, &authv1.SetUpTwoFactorRequest{Account: " ann:\n" + strings.Repeat("я", 80)})
+	setup, err := h.SetUpTwoFactor(ctx, &authv1.SetUpTwoFactorRequest{Account: " ann:\n" + strings.Repeat("я", 300)})
 	if err != nil || setup.GetSecret() != "ABCD EFGH" || setup.GetUri() != "otpauth://totp/x" || fake.userID != ann {
 		t.Fatalf("SetUpTwoFactor = %v, %v", setup, err)
 	}
-	if fake.account != "ann"+strings.Repeat("я", 61) {
+	if fake.account != "ann"+strings.Repeat("я", 251) {
 		t.Fatalf("account = %q", fake.account)
 	}
 
