@@ -5692,6 +5692,252 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /api/v1/users/{nickname}/visits:
+    post:
+      summary: Visit a page
+      description: '"Гости": the site calls it when you open a page of another person; the owner sees you among the guests for 30 days, the last visit only. Freenet Prime "Невидимка" leaves no trace, nor does your own page, a deleted or a banned one. Rate limited.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: nickname, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Visited }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/guests:
+    get:
+      summary: Your guests
+      description: '"Гости": who visited your page in the last 30 days, the last visit first, people of deleted pages left out. The first page marks them seen: `new` tells those who came since you looked before (`seenAt`, null for never), and `newGuests` of GET /api/v1/me counts them.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50 } }
+      responses:
+        "200":
+          description: The guests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  guests:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        user: { $ref: "#/components/schemas/PublicProfile" }
+                        visitedAt: { type: string, format: date-time }
+                        new: { type: boolean }
+                  seenAt: { type: string, format: date-time, nullable: true }
+                  nextCursor: { type: string }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/top:
+    get:
+      summary: A board of the ratings
+      description: '"Рейтинги", public: `rich` — Forbes Freenet, the votes people hold; `miners`, `business`, `casino` — what the mine paid, businesses brought and the casino gave over the bets in the last 7 days; `pets` — pets by their rating. Up to 50 places; deleted and banned pages are left out.'
+      parameters:
+        - { name: board, in: query, required: true, schema: { type: string, enum: [rich, miners, business, casino, pets] } }
+      responses:
+        "200":
+          description: The board
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        place: { type: integer }
+                        user: { $ref: "#/components/schemas/PublicProfile" }
+                        value: { type: integer, format: int64, description: Votes, or the rating of a pet }
+                        pet:
+                          type: object
+                          nullable: true
+                          properties:
+                            kind: { type: string }
+                            name: { type: string }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+
+  /api/v1/me/pet:
+    get:
+      summary: Your pet
+      description: '"Питомец": the shop and your pet, null without one.'
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The pet
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  shop: { $ref: "#/components/schemas/PetShop" }
+                  pet: { allOf: [{ $ref: "#/components/schemas/Pet" }], nullable: true }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      summary: Adopt a pet
+      description: 'Pays the price of the kind into the treasury; one pet a person (409 with one). Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, name]
+              properties:
+                kind: { type: string, enum: [cat, dog, hamster, dragon] }
+                name: { type: string, maxLength: 20 }
+      responses:
+        "201": { description: The pet, content: { application/json: { schema: { $ref: "#/components/schemas/PetCare" } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    patch:
+      summary: Rename your pet
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 20 }
+      responses:
+        "200": { description: The pet, content: { application/json: { schema: { $ref: "#/components/schemas/PetCare" } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Release your pet
+      description: The pet and its fights are gone; nothing is paid back.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Released }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/me/pet/feed:
+    post:
+      summary: Feed your pet
+      description: 'A meal costs `meal` votes and gives 40 satiety; a pet that is not hungry (satiety above 90) takes none — 409. Rate limited.'
+      security: [{ bearer: [] }]
+      responses:
+        "200": { description: The pet, content: { application/json: { schema: { $ref: "#/components/schemas/PetCare" } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/pet/play:
+    post:
+      summary: Play with your pet
+      description: 'Free: 30 joy for 5 satiety, once in 30 minutes (409 before `playAt`). Rate limited.'
+      security: [{ bearer: [] }]
+      responses:
+        "200": { description: The pet, content: { application/json: { schema: { $ref: "#/components/schemas/PetCare" } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/pet/fights:
+    get:
+      summary: The fights of your pet
+      description: The last 20 fights it started or was set on, newest first; `user` of a fighter is null when the page is deleted.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The fights
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fights: { type: array, items: { $ref: "#/components/schemas/PetFight" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      summary: Fight
+      description: 'Sets your pet on the pet of `nickname`, or on one of a near rating without it. The pet needs 15 satiety and 15 joy and loses 10 of each; `fights` a day. A won fight brings `win` votes from the treasury and rating by Elo. Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nickname: { type: string }
+      responses:
+        "200":
+          description: The fight
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fight: { $ref: "#/components/schemas/PetFight" }
+                  pet: { $ref: "#/components/schemas/Pet" }
+                  balance: { type: integer, format: int64, description: Your votes after a won fight, 0 after a lost one }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/users/{nickname}/pet:
+    get:
+      summary: The pet of a page
+      description: Public as the page; 404 without a pet.
+      parameters:
+        - { name: nickname, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: The pet, content: { application/json: { schema: { $ref: "#/components/schemas/Pet" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/pet/settings:
+    get:
+      summary: The pets for the administrators
+      description: 'Only for the administrators of the site: the shop and how the pets do — pets, fights, votes spent on them and won by them.'
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  shop: { $ref: "#/components/schemas/PetShop" }
+                  pets: { type: integer, format: int64 }
+                  fights: { type: integer, format: int64 }
+                  spent: { type: integer, format: int64 }
+                  won: { type: integer, format: int64 }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+    put:
+      summary: Set the pet shop
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PetShop" }
+      responses:
+        "204": { description: Saved }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+
   /api/v1/bets:
     get:
       summary: The events to stake on
@@ -8246,6 +8492,9 @@ components:
               type: array
               items: { $ref: "#/components/schemas/Club" }
               description: 'The clubs in your left menu ("Добавить в левое меню"), told by GET /api/v1/me alone; absent when there are none'
+            newGuests:
+              type: integer
+              description: '"Гости": who came since you last looked, at most 100; told by GET /api/v1/me alone'
             deactivated:
               type: boolean
               description: "You deleted the page; see POST /api/v1/me/deactivate"
@@ -9698,6 +9947,73 @@ components:
             collapse: { type: integer }
             drink: { type: integer }
             drinkEnergy: { type: integer, description: The energy a drink gives back }
+    PetShop:
+      type: object
+      description: What pets cost — the price of each kind, a meal; the votes a won fight brings and the fights of a day.
+      properties:
+        prices:
+          type: object
+          additionalProperties: { type: integer, format: int64 }
+        meal: { type: integer, format: int64 }
+        win: { type: integer, format: int64 }
+        fights: { type: integer }
+    Pet:
+      type: object
+      description: 'A pet as it is now: satiety and joy from 0 to 100 (they fall by themselves), the level with the experience of it and of the next (0 at the last), how it fights.'
+      properties:
+        kind: { type: string, enum: [cat, dog, hamster, dragon] }
+        name: { type: string }
+        bornAt: { type: string, format: date-time }
+        satiety: { type: integer }
+        joy: { type: integer }
+        playAt: { type: string, format: date-time, nullable: true, description: When it may play again, null — now }
+        experience: { type: integer, format: int64 }
+        level: { type: integer }
+        levelExperience: { type: integer, format: int64 }
+        nextLevelExperience: { type: integer, format: int64 }
+        rating: { type: integer }
+        wins: { type: integer }
+        losses: { type: integer }
+        fights: { type: integer, description: The fights of today }
+        attack: { type: integer }
+        defense: { type: integer }
+        health: { type: integer }
+        speed: { type: integer, description: The chance in a hundred to dodge }
+        crit: { type: integer, description: The chance in a hundred to hit twice as hard }
+    PetCare:
+      type: object
+      properties:
+        pet: { $ref: "#/components/schemas/Pet" }
+        balance: { type: integer, format: int64, description: Your votes after a payment, 0 when nothing was paid }
+    PetFighter:
+      type: object
+      properties:
+        user: { allOf: [{ $ref: "#/components/schemas/Author" }], nullable: true }
+        kind: { type: string }
+        name: { type: string }
+        level: { type: integer }
+        health: { type: integer }
+    PetFight:
+      type: object
+      description: 'A fight: the hits in turn and whether the attacker won, with the rating it won (above zero) or lost.'
+      properties:
+        id: { type: string }
+        foughtAt: { type: string, format: date-time }
+        attacker: { $ref: "#/components/schemas/PetFighter" }
+        defender: { $ref: "#/components/schemas/PetFighter" }
+        hits:
+          type: array
+          items:
+            type: object
+            properties:
+              byAttacker: { type: boolean }
+              dodged: { type: boolean }
+              crit: { type: boolean }
+              damage: { type: integer }
+              attackerHealth: { type: integer }
+              defenderHealth: { type: integer }
+        won: { type: boolean }
+        rating: { type: integer }
     MineState:
       type: object
       properties:

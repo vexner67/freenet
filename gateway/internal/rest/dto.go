@@ -286,6 +286,9 @@ type userResponse struct {
 	// PinnedClubs are the clubs in the left menu ("Добавить в левое
 	// меню"); GET /me alone tells them.
 	PinnedClubs []clubJSON `json:"pinnedClubs,omitempty"`
+	// NewGuests are the guests who came since the owner last looked at
+	// "Гости"; GET /me alone tells them.
+	NewGuests int `json:"newGuests"`
 }
 
 // nsfwHide is the setting that leaves posts marked as adult out of the
@@ -352,6 +355,7 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 		PrimeUntil:     optionalTime(u.PrimeUntil),
 		PrimeInvisible: u.PrimeInvisible,
 		PrimeStyle:     toPrimeStyleJSON(u.PrimeStyle),
+		NewGuests:      u.NewGuests,
 		Interface: interfaceJSON{
 			AvatarStyle: u.Interface.AvatarStyle,
 			MainPage:    u.Interface.MainPage,

@@ -35,6 +35,8 @@ Disallow: /stickers$
 Disallow: /casino$
 Disallow: /mine$
 Disallow: /business$
+Disallow: /guests$
+Disallow: /pet$
 Disallow: /votes$
 Disallow: /prime$
 Disallow: /admin$

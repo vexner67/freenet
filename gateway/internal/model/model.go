@@ -229,6 +229,9 @@ type User struct {
 	PrimeInvisible bool
 	// PrimeStyle is how the user dressed their page with Prime.
 	PrimeStyle PrimeStyle
+	// NewGuests are the guests who came since the owner last looked at
+	// them ("Гости"), told by GetMe alone.
+	NewGuests int
 }
 
 // HasPrime tells whether u has Freenet Prime at now.

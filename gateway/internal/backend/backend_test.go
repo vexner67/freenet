@@ -205,7 +205,7 @@ func (f *fakeUserAPI) GetMe(ctx context.Context, _ *userv1.GetMeRequest, _ ...gr
 		Id: "u1", Nickname: "ann", Gender: userv1.Gender_GENDER_FEMALE,
 		Birthday: timestamppb.New(time.Date(1990, 5, 17, 0, 0, 0, 0, time.UTC)),
 		Privacy:  &userv1.PrivacySettings{ShowBirthday: true, WallWrite: userv1.WallWrite_WALL_WRITE_ONLY_ME},
-	}}, nil
+	}, NewGuests: 3}, nil
 }
 
 func TestMetadata(t *testing.T) {
@@ -227,7 +227,7 @@ func TestMetadata(t *testing.T) {
 	if got := userAPI.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
 		t.Fatalf("authorization metadata = %v", got)
 	}
-	if u.Profile.Gender != "female" || u.Profile.Birthday.Year() != 1990 || !u.Privacy.ShowBirthday || u.Privacy.WallWrite != "only_me" {
+	if u.Profile.Gender != "female" || u.Profile.Birthday.Year() != 1990 || !u.Privacy.ShowBirthday || u.Privacy.WallWrite != "only_me" || u.NewGuests != 3 {
 		t.Fatalf("user: %+v", u)
 	}
 }

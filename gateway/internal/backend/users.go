@@ -37,7 +37,10 @@ func (u *Users) GetMe(ctx context.Context, accessToken string) (model.User, erro
 		return model.User{}, errs.Wrap("u.api.GetMe", fromStatus(err))
 	}
 
-	return toUser(resp.GetUser()), nil
+	me := toUser(resp.GetUser())
+	me.NewGuests = int(resp.GetNewGuests())
+
+	return me, nil
 }
 
 // UpdateProfile: partner is the nickname of whom the relationship names,

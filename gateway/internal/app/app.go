@@ -154,6 +154,7 @@ func (a *App) build(cfg config.Config) error {
 			Bank:          backend.NewBank(userv1.NewUserServiceClient(a.userConn)),
 			Poker:         backend.NewPoker(userv1.NewUserServiceClient(a.userConn)),
 			Holdem:        backend.NewHoldem(userv1.NewUserServiceClient(a.userConn)),
+			Pets:          backend.NewPets(userv1.NewUserServiceClient(a.userConn)),
 			Bets:          backend.NewBets(userv1.NewUserServiceClient(a.userConn)),
 			Faves:         backend.NewFaves(postv1.NewPostServiceClient(a.postConn)),
 			Previews:      previews(cfg.LinkPreviewTimeout),
