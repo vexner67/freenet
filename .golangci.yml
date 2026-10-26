@@ -1,0 +1,13 @@
+version: "2"
+
+linters:
+  # The standard set, and gosec against SQL built from input (G201, G202)
+  # and HTML templates that trust their data (G203).
+  enable:
+    - gosec
+  settings:
+    gosec:
+      includes:
+        - G201
+        - G202
+        - G203
