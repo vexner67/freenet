@@ -62,23 +62,17 @@ func (p *Pets) Get(ctx context.Context, accessToken string) (model.PetState, err
 		return model.PetState{}, errs.Wrap("p.api.GetPet", fromStatus(err))
 	}
 
-	state := model.PetState{Shop: fromProtoPetShop(resp.GetShop())}
-	if resp.GetPet() != nil {
-		pet := fromProtoPet(resp.GetPet())
-		state.Pet = &pet
-	}
-
-	return state, nil
+	return model.PetState{Shop: fromProtoPetShop(resp.GetShop()), Pets: fromProtoPets(resp.GetPets())}, nil
 }
 
-// UserPet is the pet of a page and whose page it is.
-func (p *Pets) UserPet(ctx context.Context, accessToken, nickname string) (model.Pet, string, error) {
+// UserPets are the pets of a page, the oldest first, and whose page it is.
+func (p *Pets) UserPets(ctx context.Context, accessToken, nickname string) ([]model.Pet, string, error) {
 	resp, err := p.api.GetUserPet(withToken(ctx, accessToken), &userv1.GetUserPetRequest{Nickname: nickname})
 	if err != nil {
-		return model.Pet{}, "", errs.Wrap("p.api.GetUserPet", fromStatus(err))
+		return nil, "", errs.Wrap("p.api.GetUserPet", fromStatus(err))
 	}
 
-	return fromProtoPet(resp.GetPet()), resp.GetOwnerId(), nil
+	return fromProtoPets(resp.GetPets()), resp.GetOwnerId(), nil
 }
 
 func (p *Pets) Adopt(ctx context.Context, accessToken, kind, name string) (model.PetCare, error) {
@@ -90,8 +84,8 @@ func (p *Pets) Adopt(ctx context.Context, accessToken, kind, name string) (model
 	return fromProtoPetCare(resp), nil
 }
 
-func (p *Pets) Feed(ctx context.Context, accessToken string) (model.PetCare, error) {
-	resp, err := p.api.FeedPet(withToken(ctx, accessToken), &userv1.FeedPetRequest{})
+func (p *Pets) Feed(ctx context.Context, accessToken, petID string) (model.PetCare, error) {
+	resp, err := p.api.FeedPet(withToken(ctx, accessToken), &userv1.FeedPetRequest{PetId: petID})
 	if err != nil {
 		return model.PetCare{}, errs.Wrap("p.api.FeedPet", fromStatus(err))
 	}
@@ -99,8 +93,8 @@ func (p *Pets) Feed(ctx context.Context, accessToken string) (model.PetCare, err
 	return fromProtoPetCare(resp), nil
 }
 
-func (p *Pets) Play(ctx context.Context, accessToken string) (model.PetCare, error) {
-	resp, err := p.api.PlayPet(withToken(ctx, accessToken), &userv1.PlayPetRequest{})
+func (p *Pets) Play(ctx context.Context, accessToken, petID string) (model.PetCare, error) {
+	resp, err := p.api.PlayPet(withToken(ctx, accessToken), &userv1.PlayPetRequest{PetId: petID})
 	if err != nil {
 		return model.PetCare{}, errs.Wrap("p.api.PlayPet", fromStatus(err))
 	}
@@ -108,8 +102,8 @@ func (p *Pets) Play(ctx context.Context, accessToken string) (model.PetCare, err
 	return fromProtoPetCare(resp), nil
 }
 
-func (p *Pets) Rename(ctx context.Context, accessToken, name string) (model.PetCare, error) {
-	resp, err := p.api.RenamePet(withToken(ctx, accessToken), &userv1.RenamePetRequest{Name: name})
+func (p *Pets) Rename(ctx context.Context, accessToken, petID, name string) (model.PetCare, error) {
+	resp, err := p.api.RenamePet(withToken(ctx, accessToken), &userv1.RenamePetRequest{PetId: petID, Name: name})
 	if err != nil {
 		return model.PetCare{}, errs.Wrap("p.api.RenamePet", fromStatus(err))
 	}
@@ -117,18 +111,18 @@ func (p *Pets) Rename(ctx context.Context, accessToken, name string) (model.PetC
 	return fromProtoPetCare(resp), nil
 }
 
-func (p *Pets) Release(ctx context.Context, accessToken string) error {
-	if _, err := p.api.ReleasePet(withToken(ctx, accessToken), &userv1.ReleasePetRequest{}); err != nil {
+func (p *Pets) Release(ctx context.Context, accessToken, petID string) error {
+	if _, err := p.api.ReleasePet(withToken(ctx, accessToken), &userv1.ReleasePetRequest{PetId: petID}); err != nil {
 		return errs.Wrap("p.api.ReleasePet", fromStatus(err))
 	}
 
 	return nil
 }
 
-// Fight sets the caller's pet on the pet of nickname, "" for one of a
-// near rating.
-func (p *Pets) Fight(ctx context.Context, accessToken, nickname string) (model.PetFought, error) {
-	resp, err := p.api.FightPet(withToken(ctx, accessToken), &userv1.FightPetRequest{Nickname: nickname})
+// Fight sets the caller's pet petID on the best pet of nickname, "" for
+// one of a near rating.
+func (p *Pets) Fight(ctx context.Context, accessToken, petID, nickname string) (model.PetFought, error) {
+	resp, err := p.api.FightPet(withToken(ctx, accessToken), &userv1.FightPetRequest{PetId: petID, Nickname: nickname})
 	if err != nil {
 		return model.PetFought{}, errs.Wrap("p.api.FightPet", fromStatus(err))
 	}
@@ -179,8 +173,18 @@ func fromProtoPetShop(s *userv1.PetShop) model.PetShop {
 	return model.PetShop{Prices: s.GetPrices(), Meal: s.GetMeal(), Win: s.GetWin(), Fights: int(s.GetFights())}
 }
 
+func fromProtoPets(ps []*userv1.Pet) []model.Pet {
+	pets := make([]model.Pet, 0, len(ps))
+	for _, p := range ps {
+		pets = append(pets, fromProtoPet(p))
+	}
+
+	return pets
+}
+
 func fromProtoPet(p *userv1.Pet) model.Pet {
 	return model.Pet{
+		ID:                  p.GetId(),
 		Kind:                p.GetKind(),
 		Name:                p.GetName(),
 		BornAt:              fromTimestamp(p.GetBornAt()),

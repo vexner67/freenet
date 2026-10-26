@@ -93,16 +93,12 @@ func (r *TopRepository) Pets(ctx context.Context, now time.Time, limit int) ([]u
 	}
 
 	var entries []user.TopEntry
-	for _, id := range r.pets.ranked(ctx, now) {
+	for _, o := range r.pets.ranked(ctx, now) {
 		if len(entries) == limit {
 			break
 		}
 
-		p, err := r.pets.Pet(ctx, id)
-		if err != nil {
-			continue
-		}
-		entries = append(entries, user.TopEntry{UserID: id, Value: int64(p.Rating()), PetKind: p.Kind(), PetName: p.Name()})
+		entries = append(entries, user.TopEntry{UserID: o.owner, Value: int64(o.state.Rating), PetKind: o.state.Kind, PetName: o.state.Name})
 	}
 
 	return entries, nil

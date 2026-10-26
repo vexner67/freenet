@@ -90,88 +90,10 @@ func (r *PetRepository) SetShop(ctx context.Context, shop user.PetShop) error {
 	return errs.Wrap("r.conn.Exec", err)
 }
 
-const selectPetQuery = `
-	SELECT
-		kind,
-		name,
-		born_at,
-		satiety,
-		joy,
-		counted_at,
-		played_at,
-		experience,
-		rating,
-		wins,
-		losses,
-		fought_on,
-		fights
-	FROM pets
-	WHERE user_id = $1
-`
-
-func (r *PetRepository) Pet(ctx context.Context, userID uuid.UUID) (*user.Pet, error) {
-	p, err := r.pet(ctx, selectPetQuery, userID)
-
-	return p, errs.Wrap("r.pet", err)
-}
-
-func (r *PetRepository) LockPet(ctx context.Context, userID uuid.UUID) (*user.Pet, error) {
-	p, err := r.pet(ctx, selectPetQuery+" FOR UPDATE", userID)
-
-	return p, errs.Wrap("r.pet", err)
-}
-
-func (r *PetRepository) pet(ctx context.Context, query string, userID uuid.UUID) (*user.Pet, error) {
-	var (
-		s                  user.PetState
-		kind, name         string
-		playedAt, foughtOn *time.Time
-	)
-
-	err := r.conn(ctx).QueryRow(ctx, query, userID).Scan(
-		&kind, &name, &s.BornAt, &s.Satiety, &s.Joy, &s.CountedAt, &playedAt,
-		&s.Experience, &s.Rating, &s.Wins, &s.Losses, &foughtOn, &s.Fights,
-	)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, user.ErrPetNotFound
-	}
-	if err != nil {
-		return nil, errs.Wrap("r.conn.QueryRow", err)
-	}
-
-	s.Kind, s.Name = user.PetKind(kind), user.PetName(name)
-	if playedAt != nil {
-		s.PlayedAt = playedAt.UTC()
-	}
-	if foughtOn != nil {
-		s.FoughtOn = *foughtOn
-	}
-	s.BornAt, s.CountedAt = s.BornAt.UTC(), s.CountedAt.UTC()
-
-	return user.RestorePet(s), nil
-}
-
-// petArgs are the columns of p after user_id, in the order of the
-// queries below.
-func petArgs(userID uuid.UUID, p *user.Pet) []any {
-	s := p.State()
-
-	var playedAt, foughtOn *time.Time
-	if !s.PlayedAt.IsZero() {
-		playedAt = &s.PlayedAt
-	}
-	if !s.FoughtOn.IsZero() {
-		foughtOn = &s.FoughtOn
-	}
-
-	return []any{
-		userID, s.Kind.String(), s.Name.String(), s.BornAt, s.Satiety, s.Joy, s.CountedAt, playedAt,
-		s.Experience, s.Rating, s.Wins, s.Losses, foughtOn, s.Fights,
-	}
-}
-
-const insertPetQuery = `
-	INSERT INTO pets (
+// petColumns are the columns of a pet in the order petArgs and scanPet
+// keep them.
+const petColumns = `
+		id,
 		user_id,
 		kind,
 		name,
@@ -186,24 +108,129 @@ const insertPetQuery = `
 		losses,
 		fought_on,
 		fights
+`
+
+const listPetsQuery = `
+	SELECT` + petColumns + `
+	FROM pets
+	WHERE user_id = $1
+	ORDER BY id
+`
+
+func (r *PetRepository) Pets(ctx context.Context, userID uuid.UUID) ([]*user.Pet, error) {
+	rows, err := r.conn(ctx).Query(ctx, listPetsQuery, userID)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	pets, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*user.Pet, error) {
+		return scanPet(row)
+	})
+
+	return pets, errs.Wrap("pgx.CollectRows", err)
+}
+
+const selectPetQuery = `
+	SELECT` + petColumns + `
+	FROM pets
+	WHERE id = $2
+		AND user_id = $1
+`
+
+func (r *PetRepository) Pet(ctx context.Context, userID, petID uuid.UUID) (*user.Pet, error) {
+	p, err := r.pet(ctx, selectPetQuery, userID, petID)
+
+	return p, errs.Wrap("r.pet", err)
+}
+
+func (r *PetRepository) LockPet(ctx context.Context, userID, petID uuid.UUID) (*user.Pet, error) {
+	p, err := r.pet(ctx, selectPetQuery+" FOR UPDATE", userID, petID)
+
+	return p, errs.Wrap("r.pet", err)
+}
+
+func (r *PetRepository) pet(ctx context.Context, query string, userID, petID uuid.UUID) (*user.Pet, error) {
+	p, err := scanPet(r.conn(ctx).QueryRow(ctx, query, userID, petID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, user.ErrPetNotFound
+	}
+
+	return p, errs.Wrap("scanPet", err)
+}
+
+// scanPet reads the petColumns of row.
+func scanPet(row pgx.Row) (*user.Pet, error) {
+	var (
+		s                  user.PetState
+		ownerID            uuid.UUID
+		kind, name         string
+		playedAt, foughtOn *time.Time
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+
+	err := row.Scan(
+		&s.ID, &ownerID, &kind, &name, &s.BornAt, &s.Satiety, &s.Joy, &s.CountedAt, &playedAt,
+		&s.Experience, &s.Rating, &s.Wins, &s.Losses, &foughtOn, &s.Fights,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	s.Kind, s.Name = user.PetKind(kind), user.PetName(name)
+	if playedAt != nil {
+		s.PlayedAt = playedAt.UTC()
+	}
+	if foughtOn != nil {
+		s.FoughtOn = *foughtOn
+	}
+	s.BornAt, s.CountedAt = s.BornAt.UTC(), s.CountedAt.UTC()
+
+	return user.RestorePet(s), nil
+}
+
+// petArgs are the petColumns of p kept by userID.
+func petArgs(userID uuid.UUID, p *user.Pet) []any {
+	s := p.State()
+
+	var playedAt, foughtOn *time.Time
+	if !s.PlayedAt.IsZero() {
+		playedAt = &s.PlayedAt
+	}
+	if !s.FoughtOn.IsZero() {
+		foughtOn = &s.FoughtOn
+	}
+
+	return []any{
+		s.ID, userID, s.Kind.String(), s.Name.String(), s.BornAt, s.Satiety, s.Joy, s.CountedAt, playedAt,
+		s.Experience, s.Rating, s.Wins, s.Losses, foughtOn, s.Fights,
+	}
+}
+
+// insertPetQuery adds the pet unless its owner keeps $16 already.
+const insertPetQuery = `
+	INSERT INTO pets (` + petColumns + `)
+	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+	WHERE (
+		SELECT count(*)
+		FROM pets
+		WHERE user_id = $2
+	) < $16
 `
 
 func (r *PetRepository) AddPet(ctx context.Context, userID uuid.UUID, p *user.Pet) error {
-	_, err := r.conn(ctx).Exec(ctx, insertPetQuery, petArgs(userID, p)...)
+	tag, err := r.conn(ctx).Exec(ctx, insertPetQuery, append(petArgs(userID, p), user.MaxPets)...)
 
 	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		switch pgErr.Code {
-		case uniqueViolationCode:
-			return user.ErrPetExists
-		case foreignKeyViolationCode:
-			return user.ErrNotFound
-		}
+	if errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode {
+		return user.ErrNotFound
+	}
+	if err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return user.ErrTooManyPets
 	}
 
-	return errs.Wrap("r.conn.Exec", err)
+	return nil
 }
 
 const updatePetQuery = `
@@ -221,11 +248,14 @@ const updatePetQuery = `
 		losses = $12,
 		fought_on = $13,
 		fights = $14
-	WHERE user_id = $1
+	WHERE id = $1
 `
 
-func (r *PetRepository) SavePet(ctx context.Context, userID uuid.UUID, p *user.Pet) error {
-	tag, err := r.conn(ctx).Exec(ctx, updatePetQuery, petArgs(userID, p)...)
+func (r *PetRepository) SavePet(ctx context.Context, p *user.Pet) error {
+	args := petArgs(uuid.Nil, p)
+	args = append(args[:1], args[2:]...)
+
+	tag, err := r.conn(ctx).Exec(ctx, updatePetQuery, args...)
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -238,11 +268,12 @@ func (r *PetRepository) SavePet(ctx context.Context, userID uuid.UUID, p *user.P
 
 const deletePetQuery = `
 	DELETE FROM pets
-	WHERE user_id = $1
+	WHERE id = $2
+		AND user_id = $1
 `
 
-func (r *PetRepository) DeletePet(ctx context.Context, userID uuid.UUID) error {
-	tag, err := r.conn(ctx).Exec(ctx, deletePetQuery, userID)
+func (r *PetRepository) DeletePet(ctx context.Context, userID, petID uuid.UUID) error {
+	tag, err := r.conn(ctx).Exec(ctx, deletePetQuery, userID, petID)
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -257,29 +288,29 @@ func (r *PetRepository) DeletePet(ctx context.Context, userID uuid.UUID) error {
 // index from above and below, and one of them at random.
 const petOpponentQuery = `
 	WITH near AS (
-		(SELECT p.user_id, p.rating
+		(SELECT p.user_id, p.id, p.rating
 		FROM pets AS p
 		JOIN users AS u ON u.id = p.user_id
 		WHERE p.rating >= $2
 			AND p.user_id <> $1
 			AND ` + petShownUser + `
-		ORDER BY p.rating, p.user_id
+		ORDER BY p.rating, p.id
 		LIMIT 10)
 		UNION ALL
-		(SELECT p.user_id, p.rating
+		(SELECT p.user_id, p.id, p.rating
 		FROM pets AS p
 		JOIN users AS u ON u.id = p.user_id
 		WHERE p.rating < $2
 			AND p.user_id <> $1
 			AND ` + petShownUser + `
-		ORDER BY p.rating DESC, p.user_id
+		ORDER BY p.rating DESC, p.id
 		LIMIT 10)
 	)
-	SELECT user_id
+	SELECT user_id, id
 	FROM (
-		SELECT user_id
+		SELECT user_id, id
 		FROM near
-		ORDER BY abs(rating - $2), user_id
+		ORDER BY abs(rating - $2), id
 		LIMIT 10
 	) AS nearest
 	ORDER BY random()
@@ -290,15 +321,13 @@ const petOpponentQuery = `
 // at $3.
 const petShownUser = `u.deactivated_at IS NULL AND (u.banned_at IS NULL OR u.banned_until <= $3)`
 
-func (r *PetRepository) Opponent(ctx context.Context, userID uuid.UUID, rating int, now time.Time) (uuid.UUID, error) {
-	var id uuid.UUID
-
-	err := r.conn(ctx).QueryRow(ctx, petOpponentQuery, userID, rating, now).Scan(&id)
+func (r *PetRepository) Opponent(ctx context.Context, userID uuid.UUID, rating int, now time.Time) (owner, pet uuid.UUID, err error) {
+	err = r.conn(ctx).QueryRow(ctx, petOpponentQuery, userID, rating, now).Scan(&owner, &pet)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, user.ErrNoPetOpponent
+		return uuid.Nil, uuid.Nil, user.ErrNoPetOpponent
 	}
 
-	return id, errs.Wrap("r.conn.QueryRow", err)
+	return owner, pet, errs.Wrap("r.conn.QueryRow", err)
 }
 
 // storedHit, storedFighter and storedBout are a fight as the column keeps

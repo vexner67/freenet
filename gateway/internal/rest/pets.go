@@ -15,13 +15,13 @@ type Pets interface {
 	Guests(ctx context.Context, accessToken, cursor string, limit int) (model.GuestPage, error)
 	Top(ctx context.Context, accessToken, board string) ([]model.TopEntry, error)
 	Get(ctx context.Context, accessToken string) (model.PetState, error)
-	UserPet(ctx context.Context, accessToken, nickname string) (model.Pet, string, error)
+	UserPets(ctx context.Context, accessToken, nickname string) ([]model.Pet, string, error)
 	Adopt(ctx context.Context, accessToken, kind, name string) (model.PetCare, error)
-	Feed(ctx context.Context, accessToken string) (model.PetCare, error)
-	Play(ctx context.Context, accessToken string) (model.PetCare, error)
-	Rename(ctx context.Context, accessToken, name string) (model.PetCare, error)
-	Release(ctx context.Context, accessToken string) error
-	Fight(ctx context.Context, accessToken, nickname string) (model.PetFought, error)
+	Feed(ctx context.Context, accessToken, petID string) (model.PetCare, error)
+	Play(ctx context.Context, accessToken, petID string) (model.PetCare, error)
+	Rename(ctx context.Context, accessToken, petID, name string) (model.PetCare, error)
+	Release(ctx context.Context, accessToken, petID string) error
+	Fight(ctx context.Context, accessToken, petID, nickname string) (model.PetFought, error)
 	Fights(ctx context.Context, accessToken string) ([]model.PetFight, error)
 	Settings(ctx context.Context, accessToken string) (model.PetShop, model.PetStats, error)
 	Set(ctx context.Context, accessToken string, shop model.PetShop) error
@@ -37,6 +37,7 @@ type petShopJSON struct {
 // petJSON is a pet as it is now; playAt is when it may play again (null —
 // now), nextLevelExperience 0 at the last level.
 type petJSON struct {
+	ID                  string  `json:"id"`
 	Kind                string  `json:"kind"`
 	Name                string  `json:"name"`
 	BornAt              string  `json:"bornAt"`
@@ -98,6 +99,7 @@ func toPetShopJSON(s model.PetShop) petShopJSON {
 
 func toPetJSON(p model.Pet) petJSON {
 	return petJSON{
+		ID:                  p.ID,
 		Kind:                p.Kind,
 		Name:                p.Name,
 		BornAt:              timeString(p.BornAt),
@@ -118,6 +120,15 @@ func toPetJSON(p model.Pet) petJSON {
 		Speed:               p.Speed,
 		Crit:                p.Crit,
 	}
+}
+
+func toPetsJSON(pets []model.Pet) []petJSON {
+	out := make([]petJSON, 0, len(pets))
+	for _, p := range pets {
+		out = append(out, toPetJSON(p))
+	}
+
+	return out
 }
 
 func toPetFighterJSON(f model.PetFighter, owner string, people map[string]model.Author) petFighterJSON {
@@ -308,9 +319,9 @@ func (a *api) listTop(w http.ResponseWriter, r *http.Request) {
 	}{out})
 }
 
-// getPet is "Питомец" of the caller: the shop and the pet, null without
-// one.
-func (a *api) getPet(w http.ResponseWriter, r *http.Request) {
+// getPets is "Питомцы" of the caller: the shop and the pets, the oldest
+// first.
+func (a *api) getPets(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
 		a.writeError(w, r, err)
@@ -323,33 +334,29 @@ func (a *api) getPet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := struct {
+	writeJSON(w, http.StatusOK, struct {
 		Shop petShopJSON `json:"shop"`
-		Pet  *petJSON    `json:"pet"`
-	}{Shop: toPetShopJSON(state.Shop)}
-	if state.Pet != nil {
-		pet := toPetJSON(*state.Pet)
-		resp.Pet = &pet
-	}
-
-	writeJSON(w, http.StatusOK, resp)
+		Pets []petJSON   `json:"pets"`
+	}{toPetShopJSON(state.Shop), toPetsJSON(state.Pets)})
 }
 
-// getUserPet is the pet of a page, public as the page.
-func (a *api) getUserPet(w http.ResponseWriter, r *http.Request) {
+// getUserPets are the pets of a page, public as the page.
+func (a *api) getUserPets(w http.ResponseWriter, r *http.Request) {
 	token, err := optionalBearerToken(r)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	pet, _, err := a.pets.UserPet(r.Context(), token, r.PathValue("nickname"))
+	pets, _, err := a.pets.UserPets(r.Context(), token, r.PathValue("nickname"))
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, toPetJSON(pet))
+	writeJSON(w, http.StatusOK, struct {
+		Pets []petJSON `json:"pets"`
+	}{toPetsJSON(pets)})
 }
 
 type petCareJSON struct {
@@ -384,14 +391,14 @@ func (a *api) playPet(w http.ResponseWriter, r *http.Request) {
 	a.carePet(w, r, a.pets.Play)
 }
 
-func (a *api) carePet(w http.ResponseWriter, r *http.Request, care func(ctx context.Context, accessToken string) (model.PetCare, error)) {
+func (a *api) carePet(w http.ResponseWriter, r *http.Request, care func(ctx context.Context, accessToken, petID string) (model.PetCare, error)) {
 	token, err := bearerToken(r)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	a.writePetCare(w, r, func() (model.PetCare, error) { return care(r.Context(), token) }, http.StatusOK)
+	a.writePetCare(w, r, func() (model.PetCare, error) { return care(r.Context(), token, r.PathValue("id")) }, http.StatusOK)
 }
 
 func (a *api) renamePet(w http.ResponseWriter, r *http.Request) {
@@ -409,7 +416,7 @@ func (a *api) renamePet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.writePetCare(w, r, func() (model.PetCare, error) { return a.pets.Rename(r.Context(), token, req.Name) }, http.StatusOK)
+	a.writePetCare(w, r, func() (model.PetCare, error) { return a.pets.Rename(r.Context(), token, r.PathValue("id"), req.Name) }, http.StatusOK)
 }
 
 func (a *api) writePetCare(w http.ResponseWriter, r *http.Request, care func() (model.PetCare, error), code int) {
@@ -429,7 +436,7 @@ func (a *api) releasePet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.pets.Release(r.Context(), token); err != nil {
+	if err = a.pets.Release(r.Context(), token, r.PathValue("id")); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
@@ -437,8 +444,8 @@ func (a *api) releasePet(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// fightPet sets the caller's pet on the pet of a page, or on one of a
-// near rating without a nickname.
+// fightPet sets a pet of the caller on the best pet of a page, or on one
+// of a near rating without a nickname.
 func (a *api) fightPet(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -454,7 +461,7 @@ func (a *api) fightPet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fought, err := a.pets.Fight(r.Context(), token, req.Nickname)
+	fought, err := a.pets.Fight(r.Context(), token, r.PathValue("id"), req.Nickname)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -473,7 +480,7 @@ func (a *api) fightPet(w http.ResponseWriter, r *http.Request) {
 	}{toPetFightJSON(fought.Fight, people), toPetJSON(fought.Pet), fought.Balance})
 }
 
-// listPetFights are the last fights of the caller's pet, newest first.
+// listPetFights are the last fights of the caller's pets, newest first.
 func (a *api) listPetFights(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {

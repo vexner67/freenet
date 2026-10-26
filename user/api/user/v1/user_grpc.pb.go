@@ -602,17 +602,19 @@ type UserServiceClient interface {
 	// pets). Deleted and banned pages are left out; an unknown board —
 	// InvalidArgument.
 	ListTop(ctx context.Context, in *ListTopRequest, opts ...grpc.CallOption) (*ListTopResponse, error)
-	// "Питомец": a pet of the caller (access token), one a page. AdoptPet
-	// takes the price of its kind into the treasury (AlreadyExists "you have
-	// a pet already", FailedPrecondition "not enough votes"); FeedPet a meal
+	// "Питомец": the pets of the caller (access token), up to ten a page,
+	// each named by pet_id. AdoptPet takes the price of its kind into the
+	// treasury (FailedPrecondition "you have too many pets", "not enough
+	// votes"); FeedPet a meal
 	// ("the pet is not hungry"); PlayPet is free, once in 30 minutes ("the
 	// pet has played recently"). FightPet sets the pet on the pet of
 	// nickname, or on one of a near rating without it ("there is nobody to
-	// fight", "a pet does not fight itself"): a pet that is hungry or sad
+	// fight", "a pet does not fight itself"; the best pet of nickname
+	// defends): a pet that is hungry or sad
 	// does not fight ("the pet is too hungry to fight", "the pet is too sad
 	// to fight"), nor more times a day than the shop says ("the pet has
 	// fought enough today"); a win brings votes. Without a pet —
-	// NotFound "pet not found". GetUserPet is public: the pet of nickname.
+	// NotFound "pet not found". GetUserPet is public: the pets of nickname.
 	GetPet(ctx context.Context, in *GetPetRequest, opts ...grpc.CallOption) (*PetState, error)
 	GetUserPet(ctx context.Context, in *GetUserPetRequest, opts ...grpc.CallOption) (*GetUserPetResponse, error)
 	AdoptPet(ctx context.Context, in *AdoptPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
@@ -2692,17 +2694,19 @@ type UserServiceServer interface {
 	// pets). Deleted and banned pages are left out; an unknown board —
 	// InvalidArgument.
 	ListTop(context.Context, *ListTopRequest) (*ListTopResponse, error)
-	// "Питомец": a pet of the caller (access token), one a page. AdoptPet
-	// takes the price of its kind into the treasury (AlreadyExists "you have
-	// a pet already", FailedPrecondition "not enough votes"); FeedPet a meal
+	// "Питомец": the pets of the caller (access token), up to ten a page,
+	// each named by pet_id. AdoptPet takes the price of its kind into the
+	// treasury (FailedPrecondition "you have too many pets", "not enough
+	// votes"); FeedPet a meal
 	// ("the pet is not hungry"); PlayPet is free, once in 30 minutes ("the
 	// pet has played recently"). FightPet sets the pet on the pet of
 	// nickname, or on one of a near rating without it ("there is nobody to
-	// fight", "a pet does not fight itself"): a pet that is hungry or sad
+	// fight", "a pet does not fight itself"; the best pet of nickname
+	// defends): a pet that is hungry or sad
 	// does not fight ("the pet is too hungry to fight", "the pet is too sad
 	// to fight"), nor more times a day than the shop says ("the pet has
 	// fought enough today"); a win brings votes. Without a pet —
-	// NotFound "pet not found". GetUserPet is public: the pet of nickname.
+	// NotFound "pet not found". GetUserPet is public: the pets of nickname.
 	GetPet(context.Context, *GetPetRequest) (*PetState, error)
 	GetUserPet(context.Context, *GetUserPetRequest) (*GetUserPetResponse, error)
 	AdoptPet(context.Context, *AdoptPetRequest) (*PetCareResponse, error)

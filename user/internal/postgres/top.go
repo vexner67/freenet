@@ -99,7 +99,7 @@ const petsTopQuery = `
 	FROM pets AS p
 	JOIN users AS u ON u.id = p.user_id
 	WHERE ` + shownUser + `
-	ORDER BY p.rating DESC, p.user_id
+	ORDER BY p.rating DESC, p.id
 	LIMIT $2
 `
 

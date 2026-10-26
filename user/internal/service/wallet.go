@@ -40,8 +40,8 @@ type WalletRepository interface {
 	// the end, as every change of votes waits for it.
 	Treasury(ctx context.Context) (user.Treasury, error)
 	// RaiseRating adds percent to the rating of userID and returns the
-	// wallet; user.ErrRatingLimit above user.MaxRating, user.ErrNotFound.
-	RaiseRating(ctx context.Context, userID uuid.UUID, percent int) (user.Wallet, error)
+	// wallet; user.ErrRatingLimit above most, user.ErrNotFound.
+	RaiseRating(ctx context.Context, userID uuid.UUID, percent, most int) (user.Wallet, error)
 }
 
 // BonusRepository keeps the daily bonuses.
@@ -416,7 +416,8 @@ func (s *WalletService) RaiseRating(ctx context.Context, userID uuid.UUID, raise
 
 	// Refused before the votes go; the statement that raises the rating
 	// checks it again.
-	if u.Wallet().Rating+raise.Int() > user.MaxRating {
+	most := u.RatingMost()
+	if u.Wallet().Rating+raise.Int() > most {
 		return user.Wallet{}, user.ErrRatingLimit
 	}
 
@@ -430,7 +431,7 @@ func (s *WalletService) RaiseRating(ctx context.Context, userID uuid.UUID, raise
 			return errs.Wrap("s.wallets.Spend", err)
 		}
 
-		wallet, err = s.wallets.RaiseRating(ctx, userID, raise.Int())
+		wallet, err = s.wallets.RaiseRating(ctx, userID, raise.Int(), most)
 
 		return errs.Wrap("s.wallets.RaiseRating", err)
 	})

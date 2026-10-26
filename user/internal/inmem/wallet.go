@@ -119,7 +119,7 @@ func (r *UserRepository) Deposit(ctx context.Context, votes int64) error {
 	return nil
 }
 
-func (r *UserRepository) RaiseRating(ctx context.Context, userID uuid.UUID, percent int) (user.Wallet, error) {
+func (r *UserRepository) RaiseRating(ctx context.Context, userID uuid.UUID, percent, most int) (user.Wallet, error) {
 	if err := ctx.Err(); err != nil {
 		return user.Wallet{}, errs.Wrap("ctx.Err", err)
 	}
@@ -133,7 +133,7 @@ func (r *UserRepository) RaiseRating(ctx context.Context, userID uuid.UUID, perc
 	}
 
 	wallet := u.Wallet()
-	if wallet.Rating+percent > user.MaxRating {
+	if wallet.Rating+percent > most {
 		return user.Wallet{}, user.ErrRatingLimit
 	}
 

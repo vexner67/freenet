@@ -47,18 +47,38 @@ func TestStickerRepository(t *testing.T) {
 		t.Fatalf("List = %+v, %v", owned, err)
 	}
 
+	// The site has no packs of its own: an author sells two.
+	author, err := user.New(user.Email(unique("sticker-author") + "@example.com"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = repo.Save(ctx, author); err != nil {
+		t.Fatal(err)
+	}
+	publish := func(price int64) user.StickerPackID {
+		t.Helper()
+
+		p, err := svc.Create(ctx, author.ID(), user.StickerPackDraft{Name: "Мишки", Price: price, Published: true}, []uuid.UUID{uuid.New()})
+		if err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+
+		return p.ID()
+	}
+	bears, cats := publish(10), publish(5)
+
 	// Without the votes, the pack is not taken: the transaction is undone.
-	if err = svc.Add(ctx, u.ID(), "bears"); !errors.Is(err, user.ErrNotEnoughVotes) {
+	if err = svc.Add(ctx, u.ID(), bears); !errors.Is(err, user.ErrNotEnoughVotes) {
 		t.Fatalf("Add without votes: %v", err)
 	}
 	if owned, _ := stickers.List(ctx, u.ID()); len(owned) != 1 {
 		t.Fatalf("a pack not paid for is taken: %+v", owned)
 	}
 
-	if _, err = wallets.Credit(ctx, u.ID(), user.StickerPackID("bears").Price(), 0, user.Entry(user.VoteVoucher, uuid.Nil, "")); err != nil {
+	if _, err = wallets.Credit(ctx, u.ID(), 10, 0, user.Entry(user.VoteVoucher, uuid.Nil, "")); err != nil {
 		t.Fatal(err)
 	}
-	if err = svc.Add(ctx, u.ID(), "bears"); err != nil {
+	if err = svc.Add(ctx, u.ID(), bears); err != nil {
 		t.Fatalf("Add bought: %v", err)
 	}
 	if owned, _ := stickers.List(ctx, u.ID()); len(owned) != 2 {
@@ -67,7 +87,7 @@ func TestStickerRepository(t *testing.T) {
 
 	// Purchases of one pack at once are paid for once: the others wait for
 	// the votes, find the pack taken and are undone.
-	price := user.StickerPackID("cats").Price()
+	price := int64(5)
 	if _, err = wallets.Credit(ctx, u.ID(), 5*price, 0, user.Entry(user.VoteVoucher, uuid.Nil, "")); err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +95,7 @@ func TestStickerRepository(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make([]error, 5)
 	for i := range errs {
-		wg.Go(func() { errs[i] = svc.Add(ctx, u.ID(), "cats") })
+		wg.Go(func() { errs[i] = svc.Add(ctx, u.ID(), cats) })
 	}
 	wg.Wait()
 

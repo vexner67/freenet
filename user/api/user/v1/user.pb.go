@@ -19210,6 +19210,7 @@ func (x *PetShop) GetFights() int32 {
 // fights at its level and the fights of the day.
 type Pet struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
+	Id      string                 `protobuf:"bytes,20,opt,name=id,proto3" json:"id,omitempty"`
 	Kind    string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
 	Name    string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	BornAt  *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=born_at,json=bornAt,proto3" json:"born_at,omitempty"`
@@ -19263,6 +19264,13 @@ func (x *Pet) ProtoReflect() protoreflect.Message {
 // Deprecated: Use Pet.ProtoReflect.Descriptor instead.
 func (*Pet) Descriptor() ([]byte, []int) {
 	return file_api_user_v1_user_proto_rawDescGZIP(), []int{294}
+}
+
+func (x *Pet) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
 }
 
 func (x *Pet) GetKind() string {
@@ -19434,11 +19442,11 @@ func (*GetPetRequest) Descriptor() ([]byte, []int) {
 	return file_api_user_v1_user_proto_rawDescGZIP(), []int{295}
 }
 
-// PetState is the shop and the pet of the caller, unset without one.
+// PetState is the shop and the pets of the caller, the oldest first.
 type PetState struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Shop          *PetShop               `protobuf:"bytes,1,opt,name=shop,proto3" json:"shop,omitempty"`
-	Pet           *Pet                   `protobuf:"bytes,2,opt,name=pet,proto3" json:"pet,omitempty"`
+	Pets          []*Pet                 `protobuf:"bytes,3,rep,name=pets,proto3" json:"pets,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -19480,9 +19488,9 @@ func (x *PetState) GetShop() *PetShop {
 	return nil
 }
 
-func (x *PetState) GetPet() *Pet {
+func (x *PetState) GetPets() []*Pet {
 	if x != nil {
-		return x.Pet
+		return x.Pets
 	}
 	return nil
 }
@@ -19533,8 +19541,8 @@ func (x *GetUserPetRequest) GetNickname() string {
 
 type GetUserPetResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Pet           *Pet                   `protobuf:"bytes,1,opt,name=pet,proto3" json:"pet,omitempty"`
 	OwnerId       string                 `protobuf:"bytes,2,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	Pets          []*Pet                 `protobuf:"bytes,3,rep,name=pets,proto3" json:"pets,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -19569,18 +19577,18 @@ func (*GetUserPetResponse) Descriptor() ([]byte, []int) {
 	return file_api_user_v1_user_proto_rawDescGZIP(), []int{298}
 }
 
-func (x *GetUserPetResponse) GetPet() *Pet {
-	if x != nil {
-		return x.Pet
-	}
-	return nil
-}
-
 func (x *GetUserPetResponse) GetOwnerId() string {
 	if x != nil {
 		return x.OwnerId
 	}
 	return ""
+}
+
+func (x *GetUserPetResponse) GetPets() []*Pet {
+	if x != nil {
+		return x.Pets
+	}
+	return nil
 }
 
 type AdoptPetRequest struct {
@@ -19637,6 +19645,7 @@ func (x *AdoptPetRequest) GetName() string {
 
 type FeedPetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	PetId         string                 `protobuf:"bytes,1,opt,name=pet_id,json=petId,proto3" json:"pet_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -19671,8 +19680,16 @@ func (*FeedPetRequest) Descriptor() ([]byte, []int) {
 	return file_api_user_v1_user_proto_rawDescGZIP(), []int{300}
 }
 
+func (x *FeedPetRequest) GetPetId() string {
+	if x != nil {
+		return x.PetId
+	}
+	return ""
+}
+
 type PlayPetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	PetId         string                 `protobuf:"bytes,1,opt,name=pet_id,json=petId,proto3" json:"pet_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -19707,9 +19724,17 @@ func (*PlayPetRequest) Descriptor() ([]byte, []int) {
 	return file_api_user_v1_user_proto_rawDescGZIP(), []int{301}
 }
 
+func (x *PlayPetRequest) GetPetId() string {
+	if x != nil {
+		return x.PetId
+	}
+	return ""
+}
+
 type RenamePetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	PetId         string                 `protobuf:"bytes,2,opt,name=pet_id,json=petId,proto3" json:"pet_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -19751,8 +19776,16 @@ func (x *RenamePetRequest) GetName() string {
 	return ""
 }
 
+func (x *RenamePetRequest) GetPetId() string {
+	if x != nil {
+		return x.PetId
+	}
+	return ""
+}
+
 type ReleasePetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
+	PetId         string                 `protobuf:"bytes,1,opt,name=pet_id,json=petId,proto3" json:"pet_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -19785,6 +19818,13 @@ func (x *ReleasePetRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use ReleasePetRequest.ProtoReflect.Descriptor instead.
 func (*ReleasePetRequest) Descriptor() ([]byte, []int) {
 	return file_api_user_v1_user_proto_rawDescGZIP(), []int{303}
+}
+
+func (x *ReleasePetRequest) GetPetId() string {
+	if x != nil {
+		return x.PetId
+	}
+	return ""
 }
 
 type PetCareResponse struct {
@@ -20106,7 +20146,9 @@ func (x *PetFight) GetRating() int32 {
 type FightPetRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Empty: a pet of a near rating.
-	Nickname      string `protobuf:"bytes,1,opt,name=nickname,proto3" json:"nickname,omitempty"`
+	Nickname string `protobuf:"bytes,1,opt,name=nickname,proto3" json:"nickname,omitempty"`
+	// The pet of the caller that fights.
+	PetId         string `protobuf:"bytes,2,opt,name=pet_id,json=petId,proto3" json:"pet_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -20144,6 +20186,13 @@ func (*FightPetRequest) Descriptor() ([]byte, []int) {
 func (x *FightPetRequest) GetNickname() string {
 	if x != nil {
 		return x.Nickname
+	}
+	return ""
+}
+
+func (x *FightPetRequest) GetPetId() string {
+	if x != nil {
+		return x.PetId
 	}
 	return ""
 }
@@ -21798,8 +21847,9 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x06fights\x18\x04 \x01(\x05R\x06fights\x1a9\n" +
 	"\vPricesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xa8\x04\n" +
-	"\x03Pet\x12\x12\n" +
+	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\"\xb8\x04\n" +
+	"\x03Pet\x12\x0e\n" +
+	"\x02id\x18\x14 \x01(\tR\x02id\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x123\n" +
 	"\aborn_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x06bornAt\x12\x18\n" +
@@ -21822,23 +21872,27 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x06health\x18\x11 \x01(\x05R\x06health\x12\x14\n" +
 	"\x05speed\x18\x12 \x01(\x05R\x05speed\x12\x12\n" +
 	"\x04crit\x18\x13 \x01(\x05R\x04crit\"\x0f\n" +
-	"\rGetPetRequest\"P\n" +
+	"\rGetPetRequest\"X\n" +
 	"\bPetState\x12$\n" +
-	"\x04shop\x18\x01 \x01(\v2\x10.user.v1.PetShopR\x04shop\x12\x1e\n" +
-	"\x03pet\x18\x02 \x01(\v2\f.user.v1.PetR\x03pet\"/\n" +
+	"\x04shop\x18\x01 \x01(\v2\x10.user.v1.PetShopR\x04shop\x12 \n" +
+	"\x04pets\x18\x03 \x03(\v2\f.user.v1.PetR\x04petsJ\x04\b\x02\x10\x03\"/\n" +
 	"\x11GetUserPetRequest\x12\x1a\n" +
-	"\bnickname\x18\x01 \x01(\tR\bnickname\"O\n" +
-	"\x12GetUserPetResponse\x12\x1e\n" +
-	"\x03pet\x18\x01 \x01(\v2\f.user.v1.PetR\x03pet\x12\x19\n" +
-	"\bowner_id\x18\x02 \x01(\tR\aownerId\"9\n" +
+	"\bnickname\x18\x01 \x01(\tR\bnickname\"W\n" +
+	"\x12GetUserPetResponse\x12\x19\n" +
+	"\bowner_id\x18\x02 \x01(\tR\aownerId\x12 \n" +
+	"\x04pets\x18\x03 \x03(\v2\f.user.v1.PetR\x04petsJ\x04\b\x01\x10\x02\"9\n" +
 	"\x0fAdoptPetRequest\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"\x10\n" +
-	"\x0eFeedPetRequest\"\x10\n" +
-	"\x0ePlayPetRequest\"&\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"'\n" +
+	"\x0eFeedPetRequest\x12\x15\n" +
+	"\x06pet_id\x18\x01 \x01(\tR\x05petId\"'\n" +
+	"\x0ePlayPetRequest\x12\x15\n" +
+	"\x06pet_id\x18\x01 \x01(\tR\x05petId\"=\n" +
 	"\x10RenamePetRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"\x13\n" +
-	"\x11ReleasePetRequest\"K\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x15\n" +
+	"\x06pet_id\x18\x02 \x01(\tR\x05petId\"*\n" +
+	"\x11ReleasePetRequest\x12\x15\n" +
+	"\x06pet_id\x18\x01 \x01(\tR\x05petId\"K\n" +
 	"\x0fPetCareResponse\x12\x1e\n" +
 	"\x03pet\x18\x01 \x01(\v2\f.user.v1.PetR\x03pet\x12\x18\n" +
 	"\abalance\x18\x02 \x01(\x03R\abalance\"b\n" +
@@ -21867,9 +21921,10 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\bdefender\x18\x06 \x01(\v2\x13.user.v1.PetFighterR\bdefender\x12#\n" +
 	"\x04hits\x18\a \x03(\v2\x0f.user.v1.PetHitR\x04hits\x12\x10\n" +
 	"\x03won\x18\b \x01(\bR\x03won\x12\x16\n" +
-	"\x06rating\x18\t \x01(\x05R\x06rating\"-\n" +
+	"\x06rating\x18\t \x01(\x05R\x06rating\"D\n" +
 	"\x0fFightPetRequest\x12\x1a\n" +
-	"\bnickname\x18\x01 \x01(\tR\bnickname\"u\n" +
+	"\bnickname\x18\x01 \x01(\tR\bnickname\x12\x15\n" +
+	"\x06pet_id\x18\x02 \x01(\tR\x05petId\"u\n" +
 	"\x10FightPetResponse\x12'\n" +
 	"\x05fight\x18\x01 \x01(\v2\x11.user.v1.PetFightR\x05fight\x12\x1e\n" +
 	"\x03pet\x18\x02 \x01(\v2\f.user.v1.PetR\x03pet\x12\x18\n" +
@@ -22698,8 +22753,8 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	334, // 188: user.v1.Pet.born_at:type_name -> google.protobuf.Timestamp
 	334, // 189: user.v1.Pet.play_at:type_name -> google.protobuf.Timestamp
 	306, // 190: user.v1.PetState.shop:type_name -> user.v1.PetShop
-	307, // 191: user.v1.PetState.pet:type_name -> user.v1.Pet
-	307, // 192: user.v1.GetUserPetResponse.pet:type_name -> user.v1.Pet
+	307, // 191: user.v1.PetState.pets:type_name -> user.v1.Pet
+	307, // 192: user.v1.GetUserPetResponse.pets:type_name -> user.v1.Pet
 	307, // 193: user.v1.PetCareResponse.pet:type_name -> user.v1.Pet
 	334, // 194: user.v1.PetFight.fought_at:type_name -> google.protobuf.Timestamp
 	318, // 195: user.v1.PetFight.attacker:type_name -> user.v1.PetFighter

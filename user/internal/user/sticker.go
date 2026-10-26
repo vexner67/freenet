@@ -31,18 +31,13 @@ type StickerPack struct {
 	Published bool
 }
 
-// stickerCatalog is all there is. openvk's packs are drawn, priced and
-// put on sale by their authors and administrators; here the catalogue is
-// fixed, as that of gifts: the smiles are free, so that anyone has
-// stickers, and the rest costs votes. The pictures are the site's: it
-// knows a sticker by this name.
-var stickerCatalog = []StickerPack{
-	{ID: "smiles", Stickers: []Sticker{
-		"smile_happy", "smile_laugh", "smile_wink", "smile_love", "smile_cool", "smile_wow", "smile_sad", "smile_angry",
-	}},
-	{ID: "cats", Price: 50, Stickers: []Sticker{"cat_hi", "cat_love", "cat_lol", "cat_wow", "cat_sleep", "cat_angry"}},
-	{ID: "bears", Price: 100, Stickers: []Sticker{"bear_hi", "bear_hug", "bear_love", "bear_ok", "bear_party", "bear_sad"}},
-}
+// stickerCatalog is the packs of the site itself. openvk's packs are
+// drawn, priced and put on sale by their authors and administrators; here
+// people make them in "Студия стикеров", and the site's own packs — the
+// smiles, the cats and the bears — were taken away by the owner. A pack of
+// the catalogue would carry pictures of the site, which knows its stickers
+// by name.
+var stickerCatalog []StickerPack
 
 // StickerCatalog are the packs of stickers, in the order they are shown.
 func StickerCatalog() []StickerPack {

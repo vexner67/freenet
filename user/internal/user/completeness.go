@@ -15,11 +15,25 @@ var completenessParts = []struct {
 }
 
 // Completeness is the rating of the page, in percent, as openvk counts
-// it: how full the page is plus what vouchers added, so it may pass 100;
-// and which parts are missing ("interests", "email", "telegram",
-// "status", "city"), for the owner's hints.
+// it: how full the page is plus its rating, so it may pass 100 but not
+// MaxRating; and which parts are missing ("interests", "email",
+// "telegram", "status", "city"), for the owner's hints.
 func (u *User) Completeness() (percent int, unfilled []string) {
-	percent = 100 + u.wallet.Rating
+	percent, unfilled = u.fill()
+
+	return min(percent+u.wallet.Rating, MaxRating), unfilled
+}
+
+// RatingMost is the most rating the page may buy up to: with how full the
+// page is, it stays within MaxRating.
+func (u *User) RatingMost() int {
+	filled, _ := u.fill()
+
+	return MaxRating - filled
+}
+
+func (u *User) fill() (percent int, unfilled []string) {
+	percent = 100
 	for _, part := range completenessParts {
 		if !part.filled(u) {
 			percent -= part.weight

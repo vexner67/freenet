@@ -96,7 +96,8 @@ func registerPages(mux *http.ServeMux, dir string) {
 	mux.Handle("GET /docs", site.page(dir, "docs.html"))
 	mux.Handle("GET /casino", site.page(dir, "casino.html"))
 	mux.Handle("GET /mine", site.page(dir, "mine.html"))
-	mux.Handle("GET /guests", site.page(dir, "guests.html"))
+	// The guests are shown among the notifications now.
+	mux.Handle("GET /guests", http.RedirectHandler("/notifications?box=archive", http.StatusMovedPermanently))
 	mux.Handle("GET /top", site.page(dir, "top.html"))
 	mux.Handle("GET /pet", site.page(dir, "pet.html"))
 	mux.Handle("GET /business", site.page(dir, "business.html"))

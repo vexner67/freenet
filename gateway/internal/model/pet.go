@@ -39,6 +39,7 @@ type PetShop struct {
 // it and of the next (0 at the last), how it fights and the fights of the
 // day.
 type Pet struct {
+	ID                  string
 	Kind                string
 	Name                string
 	BornAt              time.Time
@@ -60,10 +61,10 @@ type Pet struct {
 	Crit                int
 }
 
-// PetState is the shop and the pet of the caller, nil without one.
+// PetState is the shop and the pets of the caller, the oldest first.
 type PetState struct {
 	Shop PetShop
-	Pet  *Pet
+	Pets []Pet
 }
 
 // PetCare is a pet after it was adopted, fed, played with or renamed, and

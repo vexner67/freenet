@@ -95,13 +95,13 @@ func TestTreasury(t *testing.T) {
 	}
 
 	// Rating is raised up to the limit.
-	if w, err := wallets.RaiseRating(ctx, ann.ID(), user.MaxRating-1); err != nil || w.Rating != user.MaxRating-1 {
+	if w, err := wallets.RaiseRating(ctx, ann.ID(), user.MaxRating-1, user.MaxRating); err != nil || w.Rating != user.MaxRating-1 {
 		t.Fatalf("RaiseRating = %+v, %v", w, err)
 	}
-	if _, err = wallets.RaiseRating(ctx, ann.ID(), 2); !errors.Is(err, user.ErrRatingLimit) {
+	if _, err = wallets.RaiseRating(ctx, ann.ID(), 2, user.MaxRating); !errors.Is(err, user.ErrRatingLimit) {
 		t.Fatalf("RaiseRating past the limit: %v", err)
 	}
-	if _, err = wallets.RaiseRating(ctx, uuid.New(), 1); !errors.Is(err, user.ErrNotFound) {
+	if _, err = wallets.RaiseRating(ctx, uuid.New(), 1, user.MaxRating); !errors.Is(err, user.ErrNotFound) {
 		t.Fatalf("RaiseRating of nobody: %v", err)
 	}
 

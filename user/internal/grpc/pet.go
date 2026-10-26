@@ -2,7 +2,6 @@ package grpc
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,17 +26,48 @@ type TopService interface {
 
 type PetService interface {
 	Shop(ctx context.Context) (user.PetShop, error)
-	Pet(ctx context.Context, userID uuid.UUID) (*user.Pet, error)
-	UserPet(ctx context.Context, nickname user.Nickname, now time.Time) (*user.Pet, uuid.UUID, error)
+	Pets(ctx context.Context, userID uuid.UUID) ([]*user.Pet, error)
+	UserPets(ctx context.Context, nickname user.Nickname, now time.Time) ([]*user.Pet, uuid.UUID, error)
 	Adopt(ctx context.Context, userID uuid.UUID, kind user.PetKind, name user.PetName, now time.Time) (service.PetCare, error)
-	Feed(ctx context.Context, userID uuid.UUID, now time.Time) (service.PetCare, error)
-	Play(ctx context.Context, userID uuid.UUID, now time.Time) (*user.Pet, error)
-	Rename(ctx context.Context, userID uuid.UUID, name user.PetName) (*user.Pet, error)
-	Release(ctx context.Context, userID uuid.UUID) error
-	Fight(ctx context.Context, userID uuid.UUID, nickname user.Nickname, now time.Time) (service.PetFought, error)
+	Feed(ctx context.Context, userID, petID uuid.UUID, now time.Time) (service.PetCare, error)
+	Play(ctx context.Context, userID, petID uuid.UUID, now time.Time) (*user.Pet, error)
+	Rename(ctx context.Context, userID, petID uuid.UUID, name user.PetName) (*user.Pet, error)
+	Release(ctx context.Context, userID, petID uuid.UUID) error
+	Fight(ctx context.Context, userID, petID uuid.UUID, nickname user.Nickname, now time.Time) (service.PetFought, error)
 	Fights(ctx context.Context, userID uuid.UUID) ([]user.PetFight, error)
 	Settings(ctx context.Context, adminID uuid.UUID) (service.PetSettings, error)
 	SetShop(ctx context.Context, adminID uuid.UUID, shop user.PetShop) error
+}
+
+// petOf is the ID of a pet of the caller; one of a wrong form is no pet.
+func petOf(id string) (uuid.UUID, error) {
+	petID, err := uuid.Parse(id)
+	if err != nil {
+		return uuid.Nil, user.ErrPetNotFound
+	}
+
+	return petID, nil
+}
+
+// petCaller is the caller and the pet they name.
+func petCaller(ctx context.Context, id string) (userID, petID uuid.UUID, err error) {
+	if userID, err = currentUserID(ctx); err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+
+	petID, err = petOf(id)
+
+	return userID, petID, err
+}
+
+// toProtoPets are pets at now.
+func toProtoPets(pets []*user.Pet, now time.Time) []*userv1.Pet {
+	out := make([]*userv1.Pet, len(pets))
+	for i, p := range pets {
+		out[i] = toProtoPet(p, now)
+	}
+
+	return out
 }
 
 // pageOwner is the nickname of a page; one of a wrong form names nobody.
@@ -141,6 +171,7 @@ func toProtoPet(p *user.Pet, now time.Time) *userv1.Pet {
 
 	stats, level := p.Stats(), p.Level()
 	pet := &userv1.Pet{
+		Id:              p.ID().String(),
 		Kind:            p.Kind().String(),
 		Name:            p.Name().String(),
 		BornAt:          timestamppb.New(p.BornAt()),
@@ -206,15 +237,12 @@ func (h *UserHandler) GetPet(ctx context.Context, _ *userv1.GetPetRequest) (*use
 		return nil, err
 	}
 
-	p, err := h.pets.Pet(ctx, userID)
-	switch {
-	case err == nil:
-		return &userv1.PetState{Shop: toProtoPetShop(shop), Pet: toProtoPet(p, time.Now())}, nil
-	case errors.Is(err, user.ErrPetNotFound):
-		return &userv1.PetState{Shop: toProtoPetShop(shop)}, nil
-	default:
+	pets, err := h.pets.Pets(ctx, userID)
+	if err != nil {
 		return nil, err
 	}
+
+	return &userv1.PetState{Shop: toProtoPetShop(shop), Pets: toProtoPets(pets, time.Now())}, nil
 }
 
 func (h *UserHandler) GetUserPet(ctx context.Context, req *userv1.GetUserPetRequest) (*userv1.GetUserPetResponse, error) {
@@ -225,12 +253,12 @@ func (h *UserHandler) GetUserPet(ctx context.Context, req *userv1.GetUserPetRequ
 
 	now := time.Now()
 
-	p, ownerID, err := h.pets.UserPet(ctx, nickname, now)
+	pets, ownerID, err := h.pets.UserPets(ctx, nickname, now)
 	if err != nil {
 		return nil, err
 	}
 
-	return &userv1.GetUserPetResponse{Pet: toProtoPet(p, now), OwnerId: ownerID.String()}, nil
+	return &userv1.GetUserPetResponse{Pets: toProtoPets(pets, now), OwnerId: ownerID.String()}, nil
 }
 
 func (h *UserHandler) AdoptPet(ctx context.Context, req *userv1.AdoptPetRequest) (*userv1.PetCareResponse, error) {
@@ -258,15 +286,15 @@ func (h *UserHandler) AdoptPet(ctx context.Context, req *userv1.AdoptPetRequest)
 	return &userv1.PetCareResponse{Pet: toProtoPet(care.Pet, now), Balance: care.Balance}, nil
 }
 
-func (h *UserHandler) FeedPet(ctx context.Context, _ *userv1.FeedPetRequest) (*userv1.PetCareResponse, error) {
-	userID, err := currentUserID(ctx)
+func (h *UserHandler) FeedPet(ctx context.Context, req *userv1.FeedPetRequest) (*userv1.PetCareResponse, error) {
+	userID, petID, err := petCaller(ctx, req.GetPetId())
 	if err != nil {
 		return nil, err
 	}
 
 	now := time.Now()
 
-	care, err := h.pets.Feed(ctx, userID, now)
+	care, err := h.pets.Feed(ctx, userID, petID, now)
 	if err != nil {
 		return nil, err
 	}
@@ -274,15 +302,15 @@ func (h *UserHandler) FeedPet(ctx context.Context, _ *userv1.FeedPetRequest) (*u
 	return &userv1.PetCareResponse{Pet: toProtoPet(care.Pet, now), Balance: care.Balance}, nil
 }
 
-func (h *UserHandler) PlayPet(ctx context.Context, _ *userv1.PlayPetRequest) (*userv1.PetCareResponse, error) {
-	userID, err := currentUserID(ctx)
+func (h *UserHandler) PlayPet(ctx context.Context, req *userv1.PlayPetRequest) (*userv1.PetCareResponse, error) {
+	userID, petID, err := petCaller(ctx, req.GetPetId())
 	if err != nil {
 		return nil, err
 	}
 
 	now := time.Now()
 
-	p, err := h.pets.Play(ctx, userID, now)
+	p, err := h.pets.Play(ctx, userID, petID, now)
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +319,7 @@ func (h *UserHandler) PlayPet(ctx context.Context, _ *userv1.PlayPetRequest) (*u
 }
 
 func (h *UserHandler) RenamePet(ctx context.Context, req *userv1.RenamePetRequest) (*userv1.PetCareResponse, error) {
-	userID, err := currentUserID(ctx)
+	userID, petID, err := petCaller(ctx, req.GetPetId())
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +329,7 @@ func (h *UserHandler) RenamePet(ctx context.Context, req *userv1.RenamePetReques
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	p, err := h.pets.Rename(ctx, userID, name)
+	p, err := h.pets.Rename(ctx, userID, petID, name)
 	if err != nil {
 		return nil, err
 	}
@@ -309,13 +337,13 @@ func (h *UserHandler) RenamePet(ctx context.Context, req *userv1.RenamePetReques
 	return &userv1.PetCareResponse{Pet: toProtoPet(p, time.Now())}, nil
 }
 
-func (h *UserHandler) ReleasePet(ctx context.Context, _ *userv1.ReleasePetRequest) (*emptypb.Empty, error) {
-	userID, err := currentUserID(ctx)
+func (h *UserHandler) ReleasePet(ctx context.Context, req *userv1.ReleasePetRequest) (*emptypb.Empty, error) {
+	userID, petID, err := petCaller(ctx, req.GetPetId())
 	if err != nil {
 		return nil, err
 	}
 
-	if err = h.pets.Release(ctx, userID); err != nil {
+	if err = h.pets.Release(ctx, userID, petID); err != nil {
 		return nil, err
 	}
 
@@ -323,7 +351,7 @@ func (h *UserHandler) ReleasePet(ctx context.Context, _ *userv1.ReleasePetReques
 }
 
 func (h *UserHandler) FightPet(ctx context.Context, req *userv1.FightPetRequest) (*userv1.FightPetResponse, error) {
-	userID, err := currentUserID(ctx)
+	userID, petID, err := petCaller(ctx, req.GetPetId())
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +365,7 @@ func (h *UserHandler) FightPet(ctx context.Context, req *userv1.FightPetRequest)
 
 	now := time.Now()
 
-	fought, err := h.pets.Fight(ctx, userID, nickname, now)
+	fought, err := h.pets.Fight(ctx, userID, petID, nickname, now)
 	if err != nil {
 		return nil, err
 	}

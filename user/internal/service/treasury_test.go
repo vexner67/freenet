@@ -95,7 +95,9 @@ func TestWalletService_RaiseRating(t *testing.T) {
 	if _, err = w.wallets.RaiseRating(ctx, ann, five); !errors.Is(err, user.ErrNotEnoughVotes) {
 		t.Fatalf("RaiseRating without votes: %v", err)
 	}
-	if _, err = w.users.Credit(ctx, ann, 40, user.MaxRating-10, user.VoteEntry{}); err != nil {
+	// Ann's page is filled 10 %: with it the rating stays within
+	// MaxRating, so she may buy up to 990.
+	if _, err = w.users.Credit(ctx, ann, 40, user.MaxRating-20, user.VoteEntry{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -105,7 +107,7 @@ func TestWalletService_RaiseRating(t *testing.T) {
 	}
 
 	wallet, err := w.wallets.RaiseRating(ctx, ann, five)
-	if err != nil || wallet.Votes != 40-five.Cost() || wallet.Rating != user.MaxRating-5 {
+	if err != nil || wallet.Votes != 40-five.Cost() || wallet.Rating != user.MaxRating-15 {
 		t.Fatalf("RaiseRating = %+v, %v", wallet, err)
 	}
 	if after, err := w.wallets.Treasury(ctx); err != nil || after.Votes != before.Votes+five.Cost() {

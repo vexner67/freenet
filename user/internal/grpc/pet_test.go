@@ -22,7 +22,7 @@ func TestPet(t *testing.T) {
 	}
 
 	state, err := s.client.GetPet(ann, &userv1.GetPetRequest{})
-	if err != nil || state.GetPet() != nil || state.GetShop().GetPrices()["dragon"] != 500 {
+	if err != nil || len(state.GetPets()) != 0 || state.GetShop().GetPrices()["dragon"] != 500 {
 		t.Fatalf("GetPet without a pet = %v, %v", state, err)
 	}
 
@@ -47,25 +47,27 @@ func TestPet(t *testing.T) {
 	if err != nil || adopted.GetBalance() != 100 || adopted.GetPet().GetSatiety() != 80 || adopted.GetPet().GetLevel() != 1 {
 		t.Fatalf("AdoptPet = %v, %v", adopted, err)
 	}
-	if _, err = s.client.AdoptPet(ann, &userv1.AdoptPetRequest{Kind: "dog", Name: "Шарик"}); status.Code(err) != codes.AlreadyExists {
-		t.Fatalf("a second pet: %v", err)
+	cat := adopted.GetPet().GetId()
+	if _, err = s.client.FightPet(bob, &userv1.FightPetRequest{PetId: cat}); status.Code(err) != codes.NotFound {
+		t.Fatalf("FightPet with the pet of another: %v", err)
 	}
-	if _, err = s.client.FightPet(bob, &userv1.FightPetRequest{}); status.Code(err) != codes.NotFound {
-		t.Fatalf("FightPet without a pet: %v", err)
+	if _, err = s.client.FeedPet(ann, &userv1.FeedPetRequest{PetId: "bad"}); status.Code(err) != codes.NotFound {
+		t.Fatalf("FeedPet of a bad pet: %v", err)
 	}
-	if _, err = s.client.AdoptPet(bob, &userv1.AdoptPetRequest{Kind: "hamster", Name: "Хома"}); err != nil {
+	hamster, err := s.client.AdoptPet(bob, &userv1.AdoptPetRequest{Kind: "hamster", Name: "Хома"})
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	played, err := s.client.PlayPet(ann, &userv1.PlayPetRequest{})
+	played, err := s.client.PlayPet(ann, &userv1.PlayPetRequest{PetId: cat})
 	if err != nil || played.GetPet().GetPlayAt() == nil {
 		t.Fatalf("PlayPet = %v, %v", played, err)
 	}
-	if _, err = s.client.PlayPet(ann, &userv1.PlayPetRequest{}); status.Code(err) != codes.FailedPrecondition {
+	if _, err = s.client.PlayPet(ann, &userv1.PlayPetRequest{PetId: cat}); status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("PlayPet again: %v", err)
 	}
 
-	fought, err := s.client.FightPet(ann, &userv1.FightPetRequest{Nickname: "bob"})
+	fought, err := s.client.FightPet(ann, &userv1.FightPetRequest{Nickname: "bob", PetId: cat})
 	if err != nil || len(fought.GetFight().GetHits()) == 0 || fought.GetPet().GetFights() != 1 {
 		t.Fatalf("FightPet = %v, %v", fought, err)
 	}
@@ -74,7 +76,7 @@ func TestPet(t *testing.T) {
 	}
 
 	theirs, err := s.client.GetUserPet(context.Background(), &userv1.GetUserPetRequest{Nickname: "bob"})
-	if err != nil || theirs.GetPet().GetName() != "Хома" {
+	if err != nil || len(theirs.GetPets()) != 1 || theirs.GetPets()[0].GetName() != "Хома" {
 		t.Fatalf("GetUserPet = %v, %v", theirs, err)
 	}
 	if _, err = s.client.GetUserPet(context.Background(), &userv1.GetUserPetRequest{Nickname: "nobody"}); status.Code(err) != codes.NotFound {
@@ -102,8 +104,11 @@ func TestPet(t *testing.T) {
 		t.Fatalf("SetPetSettings without fights: %v", err)
 	}
 
-	if _, err = s.client.ReleasePet(bob, &userv1.ReleasePetRequest{}); err != nil {
+	if _, err = s.client.ReleasePet(bob, &userv1.ReleasePetRequest{PetId: hamster.GetPet().GetId()}); err != nil {
 		t.Fatal(err)
+	}
+	if mine, err := s.client.GetPet(ann, &userv1.GetPetRequest{}); err != nil || len(mine.GetPets()) != 1 || mine.GetPets()[0].GetId() != cat {
+		t.Fatalf("GetPet = %v, %v", mine, err)
 	}
 }
 

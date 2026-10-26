@@ -446,17 +446,19 @@ service UserService {
   // InvalidArgument.
   rpc ListTop(ListTopRequest) returns (ListTopResponse);
 
-  // "Питомец": a pet of the caller (access token), one a page. AdoptPet
-  // takes the price of its kind into the treasury (AlreadyExists "you have
-  // a pet already", FailedPrecondition "not enough votes"); FeedPet a meal
+  // "Питомец": the pets of the caller (access token), up to ten a page,
+  // each named by pet_id. AdoptPet takes the price of its kind into the
+  // treasury (FailedPrecondition "you have too many pets", "not enough
+  // votes"); FeedPet a meal
   // ("the pet is not hungry"); PlayPet is free, once in 30 minutes ("the
   // pet has played recently"). FightPet sets the pet on the pet of
   // nickname, or on one of a near rating without it ("there is nobody to
-  // fight", "a pet does not fight itself"): a pet that is hungry or sad
+  // fight", "a pet does not fight itself"; the best pet of nickname
+  // defends): a pet that is hungry or sad
   // does not fight ("the pet is too hungry to fight", "the pet is too sad
   // to fight"), nor more times a day than the shop says ("the pet has
   // fought enough today"); a win brings votes. Without a pet —
-  // NotFound "pet not found". GetUserPet is public: the pet of nickname.
+  // NotFound "pet not found". GetUserPet is public: the pets of nickname.
   rpc GetPet(GetPetRequest) returns (PetState);
   rpc GetUserPet(GetUserPetRequest) returns (GetUserPetResponse);
   rpc AdoptPet(AdoptPetRequest) returns (PetCareResponse);
@@ -2923,6 +2925,7 @@ message PetShop {
 // Pet is a pet as it is now: satiety and joy from 0 to 100, how it
 // fights at its level and the fights of the day.
 message Pet {
+  string id = 20;
   string kind = 1;
   string name = 2;
   google.protobuf.Timestamp born_at = 3;
@@ -2948,10 +2951,11 @@ message Pet {
 
 message GetPetRequest {}
 
-// PetState is the shop and the pet of the caller, unset without one.
+// PetState is the shop and the pets of the caller, the oldest first.
 message PetState {
+  reserved 2;
   PetShop shop = 1;
-  Pet pet = 2;
+  repeated Pet pets = 3;
 }
 
 message GetUserPetRequest {
@@ -2959,8 +2963,9 @@ message GetUserPetRequest {
 }
 
 message GetUserPetResponse {
-  Pet pet = 1;
+  reserved 1;
   string owner_id = 2;
+  repeated Pet pets = 3;
 }
 
 message AdoptPetRequest {
@@ -2968,15 +2973,22 @@ message AdoptPetRequest {
   string name = 2;
 }
 
-message FeedPetRequest {}
+message FeedPetRequest {
+  string pet_id = 1;
+}
 
-message PlayPetRequest {}
+message PlayPetRequest {
+  string pet_id = 1;
+}
 
 message RenamePetRequest {
   string name = 1;
+  string pet_id = 2;
 }
 
-message ReleasePetRequest {}
+message ReleasePetRequest {
+  string pet_id = 1;
+}
 
 message PetCareResponse {
   Pet pet = 1;
@@ -3018,6 +3030,8 @@ message PetFight {
 message FightPetRequest {
   // Empty: a pet of a near rating.
   string nickname = 1;
+  // The pet of the caller that fights.
+  string pet_id = 2;
 }
 
 message FightPetResponse {

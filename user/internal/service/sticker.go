@@ -257,6 +257,10 @@ func (s *StickerService) pay(ctx context.Context, userID, authorID uuid.UUID, pr
 func (s *StickerService) priceOf(ctx context.Context, userID uuid.UUID, pack user.StickerPackID) (price int64, authorID uuid.UUID, note string, err error) {
 	id, custom := pack.Custom()
 	if !custom {
+		if _, err = user.NewStickerPackID(pack.String()); err != nil {
+			return 0, uuid.Nil, "", errs.Wrap("user.NewStickerPackID", err)
+		}
+
 		return pack.Price(), uuid.Nil, pack.String(), nil
 	}
 

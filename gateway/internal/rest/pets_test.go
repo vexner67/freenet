@@ -15,6 +15,7 @@ var petTime = time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
 
 type fakePets struct {
 	token    string
+	petID    string
 	nickname string
 	board    string
 	kind     string
@@ -25,7 +26,7 @@ type fakePets struct {
 }
 
 func (f *fakePets) pet() model.Pet {
-	return model.Pet{Kind: "cat", Name: "Барсик", BornAt: petTime, Satiety: 80, Joy: 70, Level: 2, Rating: 1016, Attack: 12}
+	return model.Pet{ID: "p1", Kind: "cat", Name: "Барсик", BornAt: petTime, Satiety: 80, Joy: 70, Level: 2, Rating: 1016, Attack: 12}
 }
 
 func (f *fakePets) fight() model.PetFight {
@@ -61,15 +62,14 @@ func (f *fakePets) Get(_ context.Context, token string) (model.PetState, error) 
 	f.token = token
 	state := model.PetState{Shop: model.PetShop{Prices: map[string]int64{"cat": 100}, Meal: 5, Win: 3, Fights: 10}}
 	if !f.noPet {
-		p := f.pet()
-		state.Pet = &p
+		state.Pets = []model.Pet{f.pet()}
 	}
 	return state, f.err
 }
 
-func (f *fakePets) UserPet(_ context.Context, token, nickname string) (model.Pet, string, error) {
+func (f *fakePets) UserPets(_ context.Context, token, nickname string) ([]model.Pet, string, error) {
 	f.token, f.nickname = token, nickname
-	return f.pet(), "u2", f.err
+	return []model.Pet{f.pet()}, "u2", f.err
 }
 
 func (f *fakePets) Adopt(_ context.Context, token, kind, name string) (model.PetCare, error) {
@@ -77,30 +77,30 @@ func (f *fakePets) Adopt(_ context.Context, token, kind, name string) (model.Pet
 	return model.PetCare{Pet: f.pet(), Balance: 900}, f.err
 }
 
-func (f *fakePets) Feed(_ context.Context, token string) (model.PetCare, error) {
-	f.token = token
+func (f *fakePets) Feed(_ context.Context, token, petID string) (model.PetCare, error) {
+	f.token, f.petID = token, petID
 	return model.PetCare{Pet: f.pet(), Balance: 895}, f.err
 }
 
-func (f *fakePets) Play(_ context.Context, token string) (model.PetCare, error) {
-	f.token = token
+func (f *fakePets) Play(_ context.Context, token, petID string) (model.PetCare, error) {
+	f.token, f.petID = token, petID
 	p := f.pet()
 	p.PlayAt = petTime.Add(time.Hour)
 	return model.PetCare{Pet: p}, f.err
 }
 
-func (f *fakePets) Rename(_ context.Context, token, name string) (model.PetCare, error) {
-	f.token, f.name = token, name
+func (f *fakePets) Rename(_ context.Context, token, petID, name string) (model.PetCare, error) {
+	f.token, f.petID, f.name = token, petID, name
 	return model.PetCare{Pet: f.pet()}, f.err
 }
 
-func (f *fakePets) Release(_ context.Context, token string) error {
-	f.token = token
+func (f *fakePets) Release(_ context.Context, token, petID string) error {
+	f.token, f.petID = token, petID
 	return f.err
 }
 
-func (f *fakePets) Fight(_ context.Context, token, nickname string) (model.PetFought, error) {
-	f.token, f.nickname = token, nickname
+func (f *fakePets) Fight(_ context.Context, token, petID, nickname string) (model.PetFought, error) {
+	f.token, f.petID, f.nickname = token, petID, nickname
 	return model.PetFought{Fight: f.fight(), Pet: f.pet(), Balance: 903}, f.err
 }
 
@@ -175,29 +175,35 @@ func TestPet(t *testing.T) {
 	auth := []string{"Authorization", "Bearer tok"}
 
 	h.pets.noPet = true
-	w := h.do("GET", "/api/v1/me/pet", "", auth...)
-	if got := decode[map[string]any](t, w); w.Code != http.StatusOK || got["pet"] != nil || got["shop"].(map[string]any)["meal"] != 5.0 {
+	w := h.do("GET", "/api/v1/me/pets", "", auth...)
+	if got := decode[map[string]any](t, w); w.Code != http.StatusOK || len(got["pets"].([]any)) != 0 || got["shop"].(map[string]any)["meal"] != 5.0 {
 		t.Fatalf("no pet: %d %v", w.Code, got)
 	}
 
-	w = h.do("POST", "/api/v1/me/pet", `{"kind":"cat","name":"Барсик"}`, auth...)
+	h.pets.noPet = false
+	w = h.do("GET", "/api/v1/me/pets", "", auth...)
+	if pets := decode[map[string]any](t, w)["pets"].([]any); len(pets) != 1 || pets[0].(map[string]any)["id"] != "p1" {
+		t.Fatalf("pets: %v", pets)
+	}
+
+	w = h.do("POST", "/api/v1/me/pets", `{"kind":"cat","name":"Барсик"}`, auth...)
 	if got := decode[map[string]any](t, w); w.Code != http.StatusCreated || h.pets.kind != "cat" || h.pets.name != "Барсик" ||
 		got["balance"] != 900.0 || got["pet"].(map[string]any)["rating"] != 1016.0 || got["pet"].(map[string]any)["playAt"] != nil {
 		t.Fatalf("adopt: %d %v", w.Code, got)
 	}
 
-	if w = h.do("POST", "/api/v1/me/pet/play", "", auth...); decode[map[string]any](t, w)["pet"].(map[string]any)["playAt"] != "2026-10-26T13:00:00Z" {
+	if w = h.do("POST", "/api/v1/me/pets/p1/play", "", auth...); decode[map[string]any](t, w)["pet"].(map[string]any)["playAt"] != "2026-10-26T13:00:00Z" {
 		t.Fatalf("play: %d", w.Code)
 	}
-	if w = h.do("POST", "/api/v1/me/pet/feed", "", auth...); w.Code != http.StatusOK {
+	if w = h.do("POST", "/api/v1/me/pets/p1/feed", "", auth...); w.Code != http.StatusOK || h.pets.petID != "p1" {
 		t.Fatalf("feed: %d", w.Code)
 	}
-	if w = h.do("PATCH", "/api/v1/me/pet", `{"name":"Кекс"}`, auth...); w.Code != http.StatusOK || h.pets.name != "Кекс" {
+	if w = h.do("PATCH", "/api/v1/me/pets/p2", `{"name":"Кекс"}`, auth...); w.Code != http.StatusOK || h.pets.name != "Кекс" || h.pets.petID != "p2" {
 		t.Fatalf("rename: %d", w.Code)
 	}
 
 	// The defender's page is deleted: the fight shows no owner of it.
-	w = h.do("POST", "/api/v1/me/pet/fights", `{"nickname":"cat"}`, auth...)
+	w = h.do("POST", "/api/v1/me/pets/p1/fights", `{"nickname":"cat"}`, auth...)
 	fought := decode[struct {
 		Fight struct {
 			Attacker map[string]any   `json:"attacker"`
@@ -213,10 +219,10 @@ func TestPet(t *testing.T) {
 		t.Fatalf("fight: %d %+v", w.Code, fought)
 	}
 
-	if w = h.do("GET", "/api/v1/me/pet/fights", "", auth...); len(decode[map[string]any](t, w)["fights"].([]any)) != 1 {
+	if w = h.do("GET", "/api/v1/me/pets/fights", "", auth...); len(decode[map[string]any](t, w)["fights"].([]any)) != 1 {
 		t.Fatalf("fights: %d", w.Code)
 	}
-	if w = h.do("GET", "/api/v1/users/bob/pet", ""); w.Code != http.StatusOK || decode[map[string]any](t, w)["name"] != "Барсик" {
+	if w = h.do("GET", "/api/v1/users/bob/pets", ""); w.Code != http.StatusOK || decode[map[string]any](t, w)["pets"].([]any)[0].(map[string]any)["name"] != "Барсик" {
 		t.Fatalf("a pet of a page: %d", w.Code)
 	}
 
@@ -229,12 +235,12 @@ func TestPet(t *testing.T) {
 		t.Fatalf("set: %d %+v", w.Code, h.pets.shop)
 	}
 
-	if w = h.do("DELETE", "/api/v1/me/pet", "", auth...); w.Code != http.StatusNoContent {
+	if w = h.do("DELETE", "/api/v1/me/pets/p1", "", auth...); w.Code != http.StatusNoContent || h.pets.petID != "p1" {
 		t.Fatalf("release: %d", w.Code)
 	}
 
 	h.pets.err = failure.New(failure.Conflict, "the pet is hungry")
-	if w = h.do("POST", "/api/v1/me/pet/fights", `{}`, auth...); w.Code != http.StatusConflict {
+	if w = h.do("POST", "/api/v1/me/pets/p1/fights", `{}`, auth...); w.Code != http.StatusConflict {
 		t.Fatalf("a hungry pet: %d", w.Code)
 	}
 }

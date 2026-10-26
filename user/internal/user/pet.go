@@ -67,6 +67,8 @@ const (
 	MaxPetFights = 20
 	// MaxPetFightsADay is the most fights a day the shop may allow.
 	MaxPetFightsADay = 1_000
+	// MaxPets are the pets a person may keep.
+	MaxPets = 10
 )
 
 var (
@@ -75,7 +77,7 @@ var (
 	ErrPetNameTooLong = errors.New("the name of a pet is too long")
 	ErrPetNameLines   = errors.New("the name of a pet is one line")
 	ErrPetNotFound    = errors.New("pet not found")
-	ErrPetExists      = errors.New("you have a pet already")
+	ErrTooManyPets    = errors.New("you have too many pets")
 	ErrPetFull        = errors.New("the pet is not hungry")
 	ErrPetTired       = errors.New("the pet has played recently")
 	ErrPetHungry      = errors.New("the pet is too hungry to fight")
@@ -237,6 +239,7 @@ func (s PetShop) Fights() int {
 // PetState is all a pet keeps: the feelings are what they were at
 // CountedAt; FoughtOn is the day of Fights.
 type PetState struct {
+	ID         uuid.UUID
 	Kind       PetKind
 	Name       PetName
 	BornAt     time.Time
@@ -252,8 +255,9 @@ type PetState struct {
 	Fights     int
 }
 
-// Pet is the pet of a person, a tamagotchi: it grows hungry and bored
-// with time, is fed for votes, played with and fights other pets.
+// Pet is a pet of a person, a tamagotchi: it grows hungry and bored with
+// time, is fed for votes, played with and fights other pets. A person
+// keeps up to MaxPets of them.
 type Pet struct {
 	s PetState
 }
@@ -261,7 +265,7 @@ type Pet struct {
 // NewPet is a pet adopted at now, fed and glad.
 func NewPet(kind PetKind, name PetName, now time.Time) *Pet {
 	return &Pet{s: PetState{
-		Kind: kind, Name: name, BornAt: now, Satiety: 80, Joy: 80, CountedAt: now, Rating: PetStartRating,
+		ID: uuid.Must(uuid.NewV7()), Kind: kind, Name: name, BornAt: now, Satiety: 80, Joy: 80, CountedAt: now, Rating: PetStartRating,
 	}}
 }
 
@@ -274,6 +278,7 @@ func (p *Pet) State() PetState {
 	return p.s
 }
 
+func (p *Pet) ID() uuid.UUID       { return p.s.ID }
 func (p *Pet) Kind() PetKind       { return p.s.Kind }
 func (p *Pet) Name() PetName       { return p.s.Name }
 func (p *Pet) BornAt() time.Time   { return p.s.BornAt }
@@ -545,7 +550,8 @@ func eloChange(a, b int, won bool) int {
 	return change
 }
 
-// PetFight is a fight as the list of fights keeps it.
+// PetFight is a fight as the list of fights keeps it: the owners of the
+// pets that fought.
 type PetFight struct {
 	ID         uuid.UUID
 	AttackerID uuid.UUID

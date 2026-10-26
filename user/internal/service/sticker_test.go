@@ -19,10 +19,29 @@ func TestStickerService(t *testing.T) {
 	stickers := inmem.NewStickerRepository(users)
 	svc := service.NewStickerService(stickers, inmem.NewStickerPackRepository(users, stickers), users, users, inmem.NewEconomyRepository(), inmem.TxManager{})
 
-	ann, err := service.NewUserService(users).GetOrCreateByEmail(ctx, mustEmail(t, "ann@example.com"))
+	people := service.NewUserService(users)
+	ann, err := people.GetOrCreateByEmail(ctx, mustEmail(t, "ann@example.com"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	author, err := people.GetOrCreateByEmail(ctx, mustEmail(t, "author@example.com"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The site has no packs of its own: the author makes a free one and
+	// one for 5 votes.
+	publish := func(price int64) user.StickerPackID {
+		t.Helper()
+
+		p, err := svc.Create(ctx, author, user.StickerPackDraft{Name: "Котики", Price: price, Published: true}, []uuid.UUID{uuid.New()})
+		if err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+
+		return p.ID()
+	}
+	free, dear := publish(0), publish(5)
 
 	packs := func(userID uuid.UUID) map[user.StickerPackID]service.StickerPackView {
 		t.Helper()
@@ -40,34 +59,33 @@ func TestStickerService(t *testing.T) {
 		return out
 	}
 
-	if got := packs(uuid.Nil); len(got) != len(user.StickerCatalog()) || got["smiles"].Bought || got["smiles"].Added {
+	if got := packs(uuid.Nil); len(got) != 2 || got[free].Bought || got[free].Added {
 		t.Fatalf("the catalogue of a guest = %+v", got)
 	}
 
 	// A free pack costs nothing.
-	if err = svc.Add(ctx, ann, "smiles"); err != nil {
+	if err = svc.Add(ctx, ann, free); err != nil {
 		t.Fatalf("Add a free pack: %v", err)
 	}
-	if got := packs(ann)["smiles"]; !got.Bought || !got.Added {
+	if got := packs(ann)[free]; !got.Bought || !got.Added {
 		t.Fatalf("a free pack taken = %+v", got)
 	}
-	if got := packs(uuid.Nil)["smiles"]; got.Holders != 1 {
+	if got := packs(uuid.Nil)[free]; got.Holders != 1 {
 		t.Fatalf("a pack taken once has %d holders", got.Holders)
 	}
 
 	// A pack with a price takes votes once, and without them is not taken.
-	if err = svc.Add(ctx, ann, "bears"); !errors.Is(err, user.ErrNotEnoughVotes) {
+	if err = svc.Add(ctx, ann, dear); !errors.Is(err, user.ErrNotEnoughVotes) {
 		t.Fatalf("Add without votes: %v", err)
 	}
-	if got := packs(ann)["bears"]; got.Bought || got.Added {
+	if got := packs(ann)[dear]; got.Bought || got.Added {
 		t.Fatalf("a pack not paid for is taken: %+v", got)
 	}
 
-	price := user.StickerPackID("cats").Price()
-	if _, err = users.Credit(ctx, ann, price, 0, user.VoteEntry{}); err != nil {
+	if _, err = users.Credit(ctx, ann, 5, 0, user.VoteEntry{}); err != nil {
 		t.Fatal(err)
 	}
-	if err = svc.Add(ctx, ann, "cats"); err != nil {
+	if err = svc.Add(ctx, ann, dear); err != nil {
 		t.Fatalf("Add a pack bought: %v", err)
 	}
 	if u, _ := users.GetByID(ctx, ann); u.Wallet().Votes != 0 {
@@ -75,20 +93,23 @@ func TestStickerService(t *testing.T) {
 	}
 
 	// Put away, it stays bought and comes back free.
-	if err = svc.Remove(ctx, ann, "cats"); err != nil {
+	if err = svc.Remove(ctx, ann, dear); err != nil {
 		t.Fatalf("Remove: %v", err)
 	}
-	if got := packs(ann)["cats"]; !got.Bought || got.Added {
+	if got := packs(ann)[dear]; !got.Bought || got.Added {
 		t.Fatalf("a pack put away = %+v", got)
 	}
-	if err = svc.Add(ctx, ann, "cats"); err != nil {
+	if err = svc.Add(ctx, ann, dear); err != nil {
 		t.Fatalf("Add back: %v", err)
 	}
-	if got := packs(ann)["cats"]; !got.Added {
+	if got := packs(ann)[dear]; !got.Added {
 		t.Fatalf("a pack added back = %+v", got)
 	}
 
-	if err = svc.Add(ctx, uuid.New(), "smiles"); !errors.Is(err, user.ErrNotFound) {
+	if err = svc.Add(ctx, ann, "smiles"); !errors.Is(err, user.ErrUnknownStickerPack) {
+		t.Fatalf("Add a pack taken away: %v", err)
+	}
+	if err = svc.Add(ctx, uuid.New(), free); !errors.Is(err, user.ErrNotFound) {
 		t.Fatalf("Add for nobody: %v", err)
 	}
 }

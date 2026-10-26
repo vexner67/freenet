@@ -312,14 +312,14 @@ const raiseRatingQuery = `
 		(SELECT rating FROM raised)
 `
 
-func (r *WalletRepository) RaiseRating(ctx context.Context, userID uuid.UUID, percent int) (user.Wallet, error) {
+func (r *WalletRepository) RaiseRating(ctx context.Context, userID uuid.UUID, percent, most int) (user.Wallet, error) {
 	var (
 		exists bool
 		votes  *int64
 		rating *int
 	)
 
-	err := r.conn(ctx).QueryRow(ctx, raiseRatingQuery, userID, percent, user.MaxRating).Scan(&exists, &votes, &rating)
+	err := r.conn(ctx).QueryRow(ctx, raiseRatingQuery, userID, percent, most).Scan(&exists, &votes, &rating)
 	if err != nil {
 		return user.Wallet{}, errs.Wrap("r.conn.QueryRow", err)
 	}

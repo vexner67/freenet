@@ -2,6 +2,7 @@ package inmem
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"sync"
 	"time"
@@ -18,13 +19,13 @@ type PetRepository struct {
 
 	mu     sync.Mutex
 	shop   user.PetShop
-	pets   map[uuid.UUID]user.PetState
+	pets   map[uuid.UUID]owned
 	fights []user.PetFight
 	stats  user.PetShopStats
 }
 
 func NewPetRepository(users *UserRepository) *PetRepository {
-	r := &PetRepository{users: users, shop: user.DefaultPetShop(), pets: map[uuid.UUID]user.PetState{}}
+	r := &PetRepository{users: users, shop: user.DefaultPetShop(), pets: map[uuid.UUID]owned{}}
 	users.onDelete(r.forget)
 
 	return r
@@ -34,7 +35,7 @@ func (r *PetRepository) forget(id uuid.UUID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	delete(r.pets, id)
+	maps.DeleteFunc(r.pets, func(_ uuid.UUID, o owned) bool { return o.owner == id })
 	r.fights = slices.DeleteFunc(r.fights, func(f user.PetFight) bool { return f.AttackerID == id || f.DefenderID == id })
 }
 
@@ -62,7 +63,13 @@ func (r *PetRepository) SetShop(ctx context.Context, shop user.PetShop) error {
 	return nil
 }
 
-func (r *PetRepository) Pet(ctx context.Context, userID uuid.UUID) (*user.Pet, error) {
+// owned is a pet with its owner.
+type owned struct {
+	owner uuid.UUID
+	state user.PetState
+}
+
+func (r *PetRepository) Pets(ctx context.Context, userID uuid.UUID) ([]*user.Pet, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
 	}
@@ -70,17 +77,36 @@ func (r *PetRepository) Pet(ctx context.Context, userID uuid.UUID) (*user.Pet, e
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	s, ok := r.pets[userID]
-	if !ok {
+	var pets []*user.Pet
+	for _, p := range r.pets {
+		if p.owner == userID {
+			pets = append(pets, user.RestorePet(p.state))
+		}
+	}
+	slices.SortFunc(pets, func(a, b *user.Pet) int { return compareUUID(a.ID(), b.ID()) })
+
+	return pets, nil
+}
+
+func (r *PetRepository) Pet(ctx context.Context, userID, petID uuid.UUID) (*user.Pet, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	p, ok := r.pets[petID]
+	if !ok || p.owner != userID {
 		return nil, user.ErrPetNotFound
 	}
 
-	return user.RestorePet(s), nil
+	return user.RestorePet(p.state), nil
 }
 
 // LockPet is Pet: there are no transactions in memory.
-func (r *PetRepository) LockPet(ctx context.Context, userID uuid.UUID) (*user.Pet, error) {
-	return r.Pet(ctx, userID)
+func (r *PetRepository) LockPet(ctx context.Context, userID, petID uuid.UUID) (*user.Pet, error) {
+	return r.Pet(ctx, userID, petID)
 }
 
 func (r *PetRepository) AddPet(ctx context.Context, userID uuid.UUID, p *user.Pet) error {
@@ -91,15 +117,21 @@ func (r *PetRepository) AddPet(ctx context.Context, userID uuid.UUID, p *user.Pe
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if _, ok := r.pets[userID]; ok {
-		return user.ErrPetExists
+	kept := 0
+	for _, o := range r.pets {
+		if o.owner == userID {
+			kept++
+		}
 	}
-	r.pets[userID] = p.State()
+	if kept >= user.MaxPets {
+		return user.ErrTooManyPets
+	}
+	r.pets[p.ID()] = owned{owner: userID, state: p.State()}
 
 	return nil
 }
 
-func (r *PetRepository) SavePet(ctx context.Context, userID uuid.UUID, p *user.Pet) error {
+func (r *PetRepository) SavePet(ctx context.Context, p *user.Pet) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
 	}
@@ -107,15 +139,17 @@ func (r *PetRepository) SavePet(ctx context.Context, userID uuid.UUID, p *user.P
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if _, ok := r.pets[userID]; !ok {
+	o, ok := r.pets[p.ID()]
+	if !ok {
 		return user.ErrPetNotFound
 	}
-	r.pets[userID] = p.State()
+	o.state = p.State()
+	r.pets[p.ID()] = o
 
 	return nil
 }
 
-func (r *PetRepository) DeletePet(ctx context.Context, userID uuid.UUID) error {
+func (r *PetRepository) DeletePet(ctx context.Context, userID, petID uuid.UUID) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
 	}
@@ -123,7 +157,10 @@ func (r *PetRepository) DeletePet(ctx context.Context, userID uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	delete(r.pets, userID)
+	if o, ok := r.pets[petID]; !ok || o.owner != userID {
+		return user.ErrPetNotFound
+	}
+	delete(r.pets, petID)
 
 	return nil
 }
@@ -136,55 +173,48 @@ func (r *PetRepository) shown(ctx context.Context, userID uuid.UUID, now time.Ti
 	return err == nil && !u.IsDeactivated() && !u.IsBannedAt(now)
 }
 
-// ranked are the owners of pets shown at now, the highest rating first.
-func (r *PetRepository) ranked(ctx context.Context, now time.Time) []uuid.UUID {
+// ranked are the pets of owners shown at now, the highest rating first.
+func (r *PetRepository) ranked(ctx context.Context, now time.Time) []owned {
 	r.mu.Lock()
-	ids := make([]uuid.UUID, 0, len(r.pets))
-	ratings := make(map[uuid.UUID]int, len(r.pets))
-	for id, s := range r.pets {
-		ids = append(ids, id)
-		ratings[id] = s.Rating
+	pets := make([]owned, 0, len(r.pets))
+	for _, o := range r.pets {
+		pets = append(pets, o)
 	}
 	r.mu.Unlock()
 
-	ids = slices.DeleteFunc(ids, func(id uuid.UUID) bool { return !r.shown(ctx, id, now) })
-	slices.SortFunc(ids, func(a, b uuid.UUID) int {
-		if ratings[a] != ratings[b] {
-			return ratings[b] - ratings[a]
+	pets = slices.DeleteFunc(pets, func(o owned) bool { return !r.shown(ctx, o.owner, now) })
+	slices.SortFunc(pets, func(a, b owned) int {
+		if a.state.Rating != b.state.Rating {
+			return b.state.Rating - a.state.Rating
 		}
 
-		return compareUUID(a, b)
+		return compareUUID(a.state.ID, b.state.ID)
 	})
 
-	return ids
+	return pets
 }
 
 // Opponent is the nearest in rating in memory: no randomness, for tests.
-func (r *PetRepository) Opponent(ctx context.Context, userID uuid.UUID, rating int, now time.Time) (uuid.UUID, error) {
-	if err := ctx.Err(); err != nil {
-		return uuid.Nil, errs.Wrap("ctx.Err", err)
+func (r *PetRepository) Opponent(ctx context.Context, userID uuid.UUID, rating int, now time.Time) (owner, pet uuid.UUID, err error) {
+	if err = ctx.Err(); err != nil {
+		return uuid.Nil, uuid.Nil, errs.Wrap("ctx.Err", err)
 	}
 
-	found, gap := uuid.Nil, -1
-	for _, id := range r.ranked(ctx, now) {
-		if id == userID {
+	gap := -1
+	for _, o := range r.ranked(ctx, now) {
+		if o.owner == userID {
 			continue
 		}
-
-		p, err := r.Pet(ctx, id)
-		if err != nil {
-			continue
-		}
-		if d := max(p.Rating()-rating, rating-p.Rating()); gap < 0 || d < gap {
-			found, gap = id, d
+		if d := max(o.state.Rating-rating, rating-o.state.Rating); gap < 0 || d < gap {
+			owner, pet, gap = o.owner, o.state.ID, d
 		}
 	}
 
-	if found == uuid.Nil {
-		return uuid.Nil, user.ErrNoPetOpponent
+	if gap < 0 {
+		return uuid.Nil, uuid.Nil, user.ErrNoPetOpponent
 	}
 
-	return found, nil
+	return owner, pet, nil
 }
 
 func (r *PetRepository) AddFight(ctx context.Context, f user.PetFight) error {

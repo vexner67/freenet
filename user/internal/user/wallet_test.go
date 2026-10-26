@@ -73,6 +73,15 @@ func TestUser_Wallet(t *testing.T) {
 	if p, _ := u.WithWallet(user.Wallet{Rating: 200}).Completeness(); p != 210 {
 		t.Fatalf("with 200 of rating: %d", p)
 	}
+
+	// Rating and fullness together stay within MaxRating: a page that had
+	// 1000 of rating shows 1000, and the empty one buys up to 990.
+	if p, _ := u.WithWallet(user.Wallet{Rating: user.MaxRating}).Completeness(); p != user.MaxRating {
+		t.Fatalf("with all the rating: %d", p)
+	}
+	if most := u.RatingMost(); most != user.MaxRating-10 {
+		t.Fatalf("RatingMost = %d", most)
+	}
 }
 
 func TestNewVoucherToken(t *testing.T) {

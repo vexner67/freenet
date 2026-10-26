@@ -99,51 +99,67 @@ func TestPetRepository(t *testing.T) {
 	ann, bob := savedUser(t, repo, "pet"), savedUser(t, repo, "pet")
 	now := time.Now().UTC().Truncate(time.Microsecond)
 
-	if _, err = pets.Pet(ctx, ann); !errors.Is(err, user.ErrPetNotFound) {
+	if _, err = pets.Pet(ctx, ann, uuid.New()); !errors.Is(err, user.ErrPetNotFound) {
 		t.Fatalf("Pet of nobody: %v", err)
 	}
 
 	// A rating nobody else has keeps the test apart from other pets.
 	rating := 100_000 + rand.IntN(1_000_000)
 	dragon := user.RestorePet(user.PetState{
-		Kind: user.PetDragon, Name: "Смауг", BornAt: now, Satiety: 90, Joy: 90, CountedAt: now,
+		ID: uuid.Must(uuid.NewV7()), Kind: user.PetDragon, Name: "Смауг", BornAt: now, Satiety: 90, Joy: 90, CountedAt: now,
 		Experience: 500, Rating: rating,
 	})
 	if err = pets.AddPet(ctx, ann, dragon); err != nil {
 		t.Fatal(err)
 	}
-	if err = pets.AddPet(ctx, ann, dragon); !errors.Is(err, user.ErrPetExists) {
-		t.Fatalf("a second pet: %v", err)
+	// Ann keeps up to ten pets.
+	for range user.MaxPets - 1 {
+		cat := user.RestorePet(user.PetState{
+			ID: uuid.Must(uuid.NewV7()), Kind: user.PetCat, Name: "Кот", BornAt: now, CountedAt: now, Rating: user.PetStartRating,
+		})
+		if err = pets.AddPet(ctx, ann, cat); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if err = pets.AddPet(ctx, uuid.New(), dragon); !errors.Is(err, user.ErrNotFound) {
+	extra := user.NewPet(user.PetCat, "Кот", now)
+	if err = pets.AddPet(ctx, ann, extra); !errors.Is(err, user.ErrTooManyPets) {
+		t.Fatalf("an eleventh pet: %v", err)
+	}
+	if err = pets.AddPet(ctx, uuid.New(), extra); !errors.Is(err, user.ErrNotFound) {
 		t.Fatalf("a pet of nobody: %v", err)
 	}
-	if got, err := pets.Pet(ctx, ann); err != nil || !reflect.DeepEqual(got.State(), dragon.State()) {
+	if got, err := pets.Pet(ctx, ann, dragon.ID()); err != nil || !reflect.DeepEqual(got.State(), dragon.State()) {
 		t.Fatalf("Pet = %+v, %v", got, err)
+	}
+	if all, err := pets.Pets(ctx, ann); err != nil || len(all) != user.MaxPets || all[0].ID() != dragon.ID() {
+		t.Fatalf("Pets = %v, %v", all, err)
 	}
 
 	hamster := user.RestorePet(user.PetState{
-		Kind: user.PetHamster, Name: "Хома", BornAt: now, Satiety: 80, Joy: 80, CountedAt: now, Rating: rating + 5,
+		ID: uuid.Must(uuid.NewV7()), Kind: user.PetHamster, Name: "Хома", BornAt: now, Satiety: 80, Joy: 80, CountedAt: now, Rating: rating + 5,
 	})
 	if err = pets.AddPet(ctx, bob, hamster); err != nil {
 		t.Fatal(err)
 	}
 
-	if id, err := pets.Opponent(ctx, ann, rating, now); err != nil || id != bob {
-		t.Fatalf("Opponent = %v, %v", id, err)
+	if _, err = pets.Pet(ctx, ann, hamster.ID()); !errors.Is(err, user.ErrPetNotFound) {
+		t.Fatalf("Pet of another: %v", err)
+	}
+	if owner, pet, err := pets.Opponent(ctx, ann, rating, now); err != nil || owner != bob || pet != hamster.ID() {
+		t.Fatalf("Opponent = %v, %v, %v", owner, pet, err)
 	}
 
 	fought, defended, bout, err := dragon.Fought(hamster, shop, now, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = pets.SavePet(ctx, ann, fought); err != nil {
+	if err = pets.SavePet(ctx, fought); err != nil {
 		t.Fatal(err)
 	}
-	if err = pets.SavePet(ctx, bob, defended); err != nil {
+	if err = pets.SavePet(ctx, defended); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := pets.LockPet(ctx, ann); err != nil || !reflect.DeepEqual(got.State(), fought.State()) {
+	if got, err := pets.LockPet(ctx, ann, dragon.ID()); err != nil || !reflect.DeepEqual(got.State(), fought.State()) {
 		t.Fatalf("LockPet after the fight = %+v, %v; want %+v", got.State(), err, fought.State())
 	}
 
@@ -188,13 +204,16 @@ func TestPetRepository(t *testing.T) {
 		t.Fatalf("Rich = %+v, %v", rich, err)
 	}
 
-	if err = pets.DeletePet(ctx, bob); err != nil {
+	if err = pets.DeletePet(ctx, ann, hamster.ID()); !errors.Is(err, user.ErrPetNotFound) {
+		t.Fatalf("DeletePet of the pet of another: %v", err)
+	}
+	if err = pets.DeletePet(ctx, bob, hamster.ID()); err != nil {
 		t.Fatal(err)
 	}
-	if err = pets.DeletePet(ctx, bob); !errors.Is(err, user.ErrPetNotFound) {
+	if err = pets.DeletePet(ctx, bob, hamster.ID()); !errors.Is(err, user.ErrPetNotFound) {
 		t.Fatalf("DeletePet twice: %v", err)
 	}
-	if err = pets.SavePet(ctx, bob, defended); !errors.Is(err, user.ErrPetNotFound) {
+	if err = pets.SavePet(ctx, defended); !errors.Is(err, user.ErrPetNotFound) {
 		t.Fatalf("SavePet of no pet: %v", err)
 	}
 }
