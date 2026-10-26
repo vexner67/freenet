@@ -20,6 +20,22 @@ service AuthService {
   // EndOtherSessions signs the caller out everywhere but in the session
   // of the access token.
   rpc EndOtherSessions(EndOtherSessionsRequest) returns (EndOtherSessionsResponse);
+
+  // VerifyTwoFactor finishes a sign-in that VerifyCode answered with a
+  // ticket: a code of the authenticator app or a recovery code.
+  rpc VerifyTwoFactor(VerifyTwoFactorRequest) returns (TokenPair);
+  // The second step of the caller, by the access token: whether it is on.
+  rpc GetTwoFactor(GetTwoFactorRequest) returns (GetTwoFactorResponse);
+  // SetUpTwoFactor makes a new secret of the app, waiting for its first
+  // code; FailedPrecondition when the second step is already on.
+  rpc SetUpTwoFactor(SetUpTwoFactorRequest) returns (SetUpTwoFactorResponse);
+  // EnableTwoFactor turns it on with the first code of the app and gives
+  // the recovery codes, this once.
+  rpc EnableTwoFactor(EnableTwoFactorRequest) returns (EnableTwoFactorResponse);
+  // DisableTwoFactor turns it off for a code of either kind.
+  rpc DisableTwoFactor(DisableTwoFactorRequest) returns (google.protobuf.Empty);
+  // RenewRecoveryCodes replaces the recovery codes for a code of the app.
+  rpc RenewRecoveryCodes(RenewRecoveryCodesRequest) returns (RenewRecoveryCodesResponse);
 }
 
 message RequestCodeRequest {
@@ -34,6 +50,9 @@ message VerifyCodeRequest {
 message TokenPair {
   string access_token = 1;
   string refresh_token = 2;
+  // Of VerifyCode only: the page has the second step on, so instead of
+  // the tokens comes the ticket that VerifyTwoFactor takes with its code.
+  string two_factor_ticket = 3;
 }
 
 message RefreshTokenRequest {
@@ -71,4 +90,49 @@ message EndOtherSessionsRequest {}
 
 message EndOtherSessionsResponse {
   int32 ended = 1;
+}
+
+message VerifyTwoFactorRequest {
+  string ticket = 1;
+  string code = 2;
+}
+
+message GetTwoFactorRequest {}
+
+message GetTwoFactorResponse {
+  bool enabled = 1;
+  // How many recovery codes are still unused.
+  int32 recovery_left = 2;
+}
+
+message SetUpTwoFactorRequest {
+  // Names the page in the app's list, under the site.
+  string account = 1;
+}
+
+message SetUpTwoFactorResponse {
+  // The key typed into the app by hand, in groups of four.
+  string secret = 1;
+  // The otpauth:// address of the QR code.
+  string uri = 2;
+}
+
+message EnableTwoFactorRequest {
+  string code = 1;
+}
+
+message EnableTwoFactorResponse {
+  repeated string recovery_codes = 1;
+}
+
+message DisableTwoFactorRequest {
+  string code = 1;
+}
+
+message RenewRecoveryCodesRequest {
+  string code = 1;
+}
+
+message RenewRecoveryCodesResponse {
+  repeated string recovery_codes = 1;
 }

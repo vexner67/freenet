@@ -11,5 +11,6 @@ func PublicMethods() []string {
 		authv1.AuthService_VerifyCode_FullMethodName,
 		authv1.AuthService_RefreshToken_FullMethodName,
 		authv1.AuthService_Logout_FullMethodName,
+		authv1.AuthService_VerifyTwoFactor_FullMethodName,
 	}
 }

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"math/big"
@@ -22,6 +23,10 @@ var (
 
 	ErrInvalidRefreshToken = errors.New("invalid refresh token")
 	ErrSessionNotFound     = errors.New("session not found")
+
+	// ErrTicketNotFound: the sign-in waiting for its second step expired,
+	// was finished or never was.
+	ErrTicketNotFound = errors.New("ticket not found")
 
 	ErrUserServiceUnavailable = errors.New("user service unavailable")
 	// ErrAccountNotFound: the user was erased after deleting the page.
@@ -81,6 +86,28 @@ type RateLimiter interface {
 	Allow(ctx context.Context, key string, limit int, window time.Duration) (bool, error)
 }
 
+// TicketRepository keeps the tickets of sign-ins waiting for the second
+// step: the email code is right, the code of the app is still to come.
+type TicketRepository interface {
+	// Save keeps the ticket of the hash for userID, with no attempts.
+	Save(ctx context.Context, hash string, userID uuid.UUID, ttl time.Duration) error
+	// Get returns ErrTicketNotFound when there is no live ticket.
+	Get(ctx context.Context, hash string) (uuid.UUID, error)
+	// IncrementAttempts atomically counts one more code brought with the
+	// ticket and returns the new count, or ErrTicketNotFound.
+	IncrementAttempts(ctx context.Context, hash string) (int, error)
+	// Delete returns ErrTicketNotFound if there was nothing to delete.
+	Delete(ctx context.Context, hash string) error
+}
+
+// SecondStep is the second step of signing in, for a page that has it on.
+type SecondStep interface {
+	Enabled(ctx context.Context, userID uuid.UUID) (bool, error)
+	// Check spends a code of the app or a recovery code;
+	// twofactor.ErrInvalidCode, ErrTooManyRequests.
+	Check(ctx context.Context, userID uuid.UUID, code string) error
+}
+
 type Mailer interface {
 	SendCode(ctx context.Context, email string, code string) error
 }
@@ -96,6 +123,8 @@ type Policy struct {
 	// CodeRequestsPerIP codes per CodeRequestsWindow from one address.
 	CodeRequestsPerIP  int
 	CodeRequestsWindow time.Duration
+	// TicketTTL is how long the second step of a sign-in may take.
+	TicketTTL time.Duration
 }
 
 // RefreshClaims is what auth needs from a verified refresh token.
@@ -121,6 +150,8 @@ type AuthService struct {
 	limiter       RateLimiter
 	mailer        Mailer
 	tokenProvider TokenProvider
+	second        SecondStep
+	tickets       TicketRepository
 	policy        Policy
 	now           func() time.Time
 }
@@ -133,6 +164,8 @@ func NewAuthService(
 	limiter RateLimiter,
 	mailer Mailer,
 	tokenProvider TokenProvider,
+	second SecondStep,
+	tickets TicketRepository,
 	policy Policy,
 ) *AuthService {
 	return &AuthService{
@@ -143,6 +176,8 @@ func NewAuthService(
 		limiter:       limiter,
 		mailer:        mailer,
 		tokenProvider: tokenProvider,
+		second:        second,
+		tickets:       tickets,
 		policy:        policy,
 		now:           time.Now,
 	}
@@ -195,19 +230,95 @@ type TokenPair struct {
 	Refresh string
 }
 
+// SignIn is the outcome of the email code: the tokens, or, for a page with
+// the second step on, the ticket that brings the code of the app.
+type SignIn struct {
+	Tokens TokenPair
+	Ticket string
+}
+
 // VerifyCode signs in: device is where from, for the owner's list of
 // sessions.
-func (s *AuthService) VerifyCode(ctx context.Context, email account.Email, code string, device session.Device) (TokenPair, error) {
+func (s *AuthService) VerifyCode(ctx context.Context, email account.Email, code string, device session.Device) (SignIn, error) {
 	if err := s.verifyCode(ctx, email, code); err != nil {
-		return TokenPair{}, errs.Wrap("s.verifyCode", err)
+		return SignIn{}, errs.Wrap("s.verifyCode", err)
 	}
 
 	acc, err := s.getOrCreateUser(ctx, email)
 	if err != nil {
-		return TokenPair{}, errs.Wrap("s.getOrCreateUser", err)
+		return SignIn{}, errs.Wrap("s.getOrCreateUser", err)
+	}
+
+	second, err := s.second.Enabled(ctx, acc.UserID)
+	if err != nil {
+		return SignIn{}, errs.Wrap("s.second.Enabled", err)
+	}
+
+	if second {
+		ticket, err := s.newTicket(ctx, acc.UserID)
+
+		return SignIn{Ticket: ticket}, errs.Wrap("s.newTicket", err)
+	}
+
+	pair, err := s.createSession(ctx, acc, device)
+
+	return SignIn{Tokens: pair}, errs.Wrap("s.createSession", err)
+}
+
+// VerifySecondStep finishes a sign-in of the ticket with a code of the app
+// or a recovery code. A ticket survives MaxCodeAttempts codes, as an email
+// code does.
+func (s *AuthService) VerifySecondStep(ctx context.Context, ticket, code string, device session.Device) (TokenPair, error) {
+	hash := s.hasher.Hash(ticket)
+
+	attempts, err := s.tickets.IncrementAttempts(ctx, hash)
+	if err != nil {
+		return TokenPair{}, errs.Wrap("s.tickets.IncrementAttempts", err)
+	}
+
+	if attempts > s.policy.MaxCodeAttempts {
+		if err = s.tickets.Delete(ctx, hash); err != nil && !errors.Is(err, ErrTicketNotFound) {
+			return TokenPair{}, errs.Wrap("s.tickets.Delete", err)
+		}
+
+		return TokenPair{}, ErrTooManyAttempts
+	}
+
+	userID, err := s.tickets.Get(ctx, hash)
+	if err != nil {
+		return TokenPair{}, errs.Wrap("s.tickets.Get", err)
+	}
+
+	if err = s.second.Check(ctx, userID, code); err != nil {
+		return TokenPair{}, errs.Wrap("s.second.Check", err)
+	}
+
+	// Only one of two requests with the same ticket gets the tokens.
+	if err = s.tickets.Delete(ctx, hash); err != nil {
+		return TokenPair{}, errs.Wrap("s.tickets.Delete", err)
+	}
+
+	acc, err := s.userProvider.Account(ctx, userID)
+	if err != nil {
+		return TokenPair{}, errs.Wrap("s.userProvider.Account", err)
 	}
 
 	return s.createSession(ctx, acc, device)
+}
+
+// newTicket is a random ticket of the sign-in of userID, kept as a hash.
+func (s *AuthService) newTicket(ctx context.Context, userID uuid.UUID) (string, error) {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", errs.Wrap("rand.Read", err)
+	}
+
+	ticket := base64.RawURLEncoding.EncodeToString(raw)
+	if err := s.tickets.Save(ctx, s.hasher.Hash(ticket), userID, s.policy.TicketTTL); err != nil {
+		return "", errs.Wrap("s.tickets.Save", err)
+	}
+
+	return ticket, nil
 }
 
 // RefreshToken exchanges a refresh token for a new pair and rotates it:

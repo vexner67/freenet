@@ -23,7 +23,8 @@ import (
 
 type AuthService interface {
 	RequestCode(ctx context.Context, email account.Email, clientIP string) error
-	VerifyCode(ctx context.Context, email account.Email, code string, device session.Device) (service.TokenPair, error)
+	VerifyCode(ctx context.Context, email account.Email, code string, device session.Device) (service.SignIn, error)
+	VerifySecondStep(ctx context.Context, ticket, code string, device session.Device) (service.TokenPair, error)
 	RefreshToken(ctx context.Context, refreshToken string, device session.Device) (service.TokenPair, error)
 	Logout(ctx context.Context, refreshToken string) error
 }
@@ -34,17 +35,27 @@ type SessionService interface {
 	EndOthers(ctx context.Context, userID, current uuid.UUID) (int, error)
 }
 
+type TwoFactorService interface {
+	State(ctx context.Context, userID uuid.UUID) (service.TwoFactorState, error)
+	SetUp(ctx context.Context, userID uuid.UUID, account string) (service.TwoFactorSetup, error)
+	Enable(ctx context.Context, userID uuid.UUID, code string) ([]string, error)
+	Disable(ctx context.Context, userID uuid.UUID, code string) error
+	RenewRecovery(ctx context.Context, userID uuid.UUID, code string) ([]string, error)
+}
+
 type AuthHandler struct {
 	authv1.UnimplementedAuthServiceServer
 	authService    AuthService
 	sessionService SessionService
+	twoFactor      TwoFactorService
 	logger         *slog.Logger
 }
 
-func NewAuthHandler(svc AuthService, sessions SessionService, logger *slog.Logger) *AuthHandler {
+func NewAuthHandler(svc AuthService, sessions SessionService, twoFactor TwoFactorService, logger *slog.Logger) *AuthHandler {
 	return &AuthHandler{
 		authService:    svc,
 		sessionService: sessions,
+		twoFactor:      twoFactor,
 		logger:         logger,
 	}
 }
@@ -68,12 +79,16 @@ func (h *AuthHandler) VerifyCode(ctx context.Context, req *authv1.VerifyCodeRequ
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	tokenPair, err := h.authService.VerifyCode(ctx, email, req.GetCode(), device(ctx))
+	signIn, err := h.authService.VerifyCode(ctx, email, req.GetCode(), device(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	return toProtoTokenPair(tokenPair), nil
+	if signIn.Ticket != "" {
+		return &authv1.TokenPair{TwoFactorTicket: signIn.Ticket}, nil
+	}
+
+	return toProtoTokenPair(signIn.Tokens), nil
 }
 
 func (h *AuthHandler) RefreshToken(ctx context.Context, req *authv1.RefreshTokenRequest) (*authv1.TokenPair, error) {

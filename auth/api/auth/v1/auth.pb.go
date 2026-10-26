@@ -120,11 +120,14 @@ func (x *VerifyCodeRequest) GetCode() string {
 }
 
 type TokenPair struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AccessToken   string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
-	RefreshToken  string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	AccessToken  string                 `protobuf:"bytes,1,opt,name=access_token,json=accessToken,proto3" json:"access_token,omitempty"`
+	RefreshToken string                 `protobuf:"bytes,2,opt,name=refresh_token,json=refreshToken,proto3" json:"refresh_token,omitempty"`
+	// Of VerifyCode only: the page has the second step on, so instead of
+	// the tokens comes the ticket that VerifyTwoFactor takes with its code.
+	TwoFactorTicket string `protobuf:"bytes,3,opt,name=two_factor_ticket,json=twoFactorTicket,proto3" json:"two_factor_ticket,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *TokenPair) Reset() {
@@ -167,6 +170,13 @@ func (x *TokenPair) GetAccessToken() string {
 func (x *TokenPair) GetRefreshToken() string {
 	if x != nil {
 		return x.RefreshToken
+	}
+	return ""
+}
+
+func (x *TokenPair) GetTwoFactorTicket() string {
+	if x != nil {
+		return x.TwoFactorTicket
 	}
 	return ""
 }
@@ -551,6 +561,466 @@ func (x *EndOtherSessionsResponse) GetEnded() int32 {
 	return 0
 }
 
+type VerifyTwoFactorRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ticket        string                 `protobuf:"bytes,1,opt,name=ticket,proto3" json:"ticket,omitempty"`
+	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VerifyTwoFactorRequest) Reset() {
+	*x = VerifyTwoFactorRequest{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifyTwoFactorRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifyTwoFactorRequest) ProtoMessage() {}
+
+func (x *VerifyTwoFactorRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifyTwoFactorRequest.ProtoReflect.Descriptor instead.
+func (*VerifyTwoFactorRequest) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *VerifyTwoFactorRequest) GetTicket() string {
+	if x != nil {
+		return x.Ticket
+	}
+	return ""
+}
+
+func (x *VerifyTwoFactorRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+type GetTwoFactorRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTwoFactorRequest) Reset() {
+	*x = GetTwoFactorRequest{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTwoFactorRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTwoFactorRequest) ProtoMessage() {}
+
+func (x *GetTwoFactorRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTwoFactorRequest.ProtoReflect.Descriptor instead.
+func (*GetTwoFactorRequest) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{12}
+}
+
+type GetTwoFactorResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Enabled bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// How many recovery codes are still unused.
+	RecoveryLeft  int32 `protobuf:"varint,2,opt,name=recovery_left,json=recoveryLeft,proto3" json:"recovery_left,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTwoFactorResponse) Reset() {
+	*x = GetTwoFactorResponse{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTwoFactorResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTwoFactorResponse) ProtoMessage() {}
+
+func (x *GetTwoFactorResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTwoFactorResponse.ProtoReflect.Descriptor instead.
+func (*GetTwoFactorResponse) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetTwoFactorResponse) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *GetTwoFactorResponse) GetRecoveryLeft() int32 {
+	if x != nil {
+		return x.RecoveryLeft
+	}
+	return 0
+}
+
+type SetUpTwoFactorRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Names the page in the app's list, under the site.
+	Account       string `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetUpTwoFactorRequest) Reset() {
+	*x = SetUpTwoFactorRequest{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetUpTwoFactorRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetUpTwoFactorRequest) ProtoMessage() {}
+
+func (x *SetUpTwoFactorRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetUpTwoFactorRequest.ProtoReflect.Descriptor instead.
+func (*SetUpTwoFactorRequest) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *SetUpTwoFactorRequest) GetAccount() string {
+	if x != nil {
+		return x.Account
+	}
+	return ""
+}
+
+type SetUpTwoFactorResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The key typed into the app by hand, in groups of four.
+	Secret string `protobuf:"bytes,1,opt,name=secret,proto3" json:"secret,omitempty"`
+	// The otpauth:// address of the QR code.
+	Uri           string `protobuf:"bytes,2,opt,name=uri,proto3" json:"uri,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetUpTwoFactorResponse) Reset() {
+	*x = SetUpTwoFactorResponse{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetUpTwoFactorResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetUpTwoFactorResponse) ProtoMessage() {}
+
+func (x *SetUpTwoFactorResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetUpTwoFactorResponse.ProtoReflect.Descriptor instead.
+func (*SetUpTwoFactorResponse) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *SetUpTwoFactorResponse) GetSecret() string {
+	if x != nil {
+		return x.Secret
+	}
+	return ""
+}
+
+func (x *SetUpTwoFactorResponse) GetUri() string {
+	if x != nil {
+		return x.Uri
+	}
+	return ""
+}
+
+type EnableTwoFactorRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnableTwoFactorRequest) Reset() {
+	*x = EnableTwoFactorRequest{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnableTwoFactorRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnableTwoFactorRequest) ProtoMessage() {}
+
+func (x *EnableTwoFactorRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnableTwoFactorRequest.ProtoReflect.Descriptor instead.
+func (*EnableTwoFactorRequest) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *EnableTwoFactorRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+type EnableTwoFactorResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RecoveryCodes []string               `protobuf:"bytes,1,rep,name=recovery_codes,json=recoveryCodes,proto3" json:"recovery_codes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnableTwoFactorResponse) Reset() {
+	*x = EnableTwoFactorResponse{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnableTwoFactorResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnableTwoFactorResponse) ProtoMessage() {}
+
+func (x *EnableTwoFactorResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnableTwoFactorResponse.ProtoReflect.Descriptor instead.
+func (*EnableTwoFactorResponse) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *EnableTwoFactorResponse) GetRecoveryCodes() []string {
+	if x != nil {
+		return x.RecoveryCodes
+	}
+	return nil
+}
+
+type DisableTwoFactorRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DisableTwoFactorRequest) Reset() {
+	*x = DisableTwoFactorRequest{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DisableTwoFactorRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DisableTwoFactorRequest) ProtoMessage() {}
+
+func (x *DisableTwoFactorRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DisableTwoFactorRequest.ProtoReflect.Descriptor instead.
+func (*DisableTwoFactorRequest) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *DisableTwoFactorRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+type RenewRecoveryCodesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RenewRecoveryCodesRequest) Reset() {
+	*x = RenewRecoveryCodesRequest{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RenewRecoveryCodesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RenewRecoveryCodesRequest) ProtoMessage() {}
+
+func (x *RenewRecoveryCodesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RenewRecoveryCodesRequest.ProtoReflect.Descriptor instead.
+func (*RenewRecoveryCodesRequest) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *RenewRecoveryCodesRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+type RenewRecoveryCodesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RecoveryCodes []string               `protobuf:"bytes,1,rep,name=recovery_codes,json=recoveryCodes,proto3" json:"recovery_codes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RenewRecoveryCodesResponse) Reset() {
+	*x = RenewRecoveryCodesResponse{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RenewRecoveryCodesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RenewRecoveryCodesResponse) ProtoMessage() {}
+
+func (x *RenewRecoveryCodesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RenewRecoveryCodesResponse.ProtoReflect.Descriptor instead.
+func (*RenewRecoveryCodesResponse) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *RenewRecoveryCodesResponse) GetRecoveryCodes() []string {
+	if x != nil {
+		return x.RecoveryCodes
+	}
+	return nil
+}
+
 var File_api_auth_v1_auth_proto protoreflect.FileDescriptor
 
 const file_api_auth_v1_auth_proto_rawDesc = "" +
@@ -560,10 +1030,11 @@ const file_api_auth_v1_auth_proto_rawDesc = "" +
 	"\x05email\x18\x01 \x01(\tR\x05email\"=\n" +
 	"\x11VerifyCodeRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\x12\x12\n" +
-	"\x04code\x18\x02 \x01(\tR\x04code\"S\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\"\x7f\n" +
 	"\tTokenPair\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
-	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\":\n" +
+	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12*\n" +
+	"\x11two_factor_ticket\x18\x03 \x01(\tR\x0ftwoFactorTicket\":\n" +
 	"\x13RefreshTokenRequest\x12#\n" +
 	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"4\n" +
 	"\rLogoutRequest\x12#\n" +
@@ -586,7 +1057,29 @@ const file_api_auth_v1_auth_proto_rawDesc = "" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"\x19\n" +
 	"\x17EndOtherSessionsRequest\"0\n" +
 	"\x18EndOtherSessionsResponse\x12\x14\n" +
-	"\x05ended\x18\x01 \x01(\x05R\x05ended2\xf3\x03\n" +
+	"\x05ended\x18\x01 \x01(\x05R\x05ended\"D\n" +
+	"\x16VerifyTwoFactorRequest\x12\x16\n" +
+	"\x06ticket\x18\x01 \x01(\tR\x06ticket\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\"\x15\n" +
+	"\x13GetTwoFactorRequest\"U\n" +
+	"\x14GetTwoFactorResponse\x12\x18\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12#\n" +
+	"\rrecovery_left\x18\x02 \x01(\x05R\frecoveryLeft\"1\n" +
+	"\x15SetUpTwoFactorRequest\x12\x18\n" +
+	"\aaccount\x18\x01 \x01(\tR\aaccount\"B\n" +
+	"\x16SetUpTwoFactorResponse\x12\x16\n" +
+	"\x06secret\x18\x01 \x01(\tR\x06secret\x12\x10\n" +
+	"\x03uri\x18\x02 \x01(\tR\x03uri\",\n" +
+	"\x16EnableTwoFactorRequest\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\"@\n" +
+	"\x17EnableTwoFactorResponse\x12%\n" +
+	"\x0erecovery_codes\x18\x01 \x03(\tR\rrecoveryCodes\"-\n" +
+	"\x17DisableTwoFactorRequest\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\"/\n" +
+	"\x19RenewRecoveryCodesRequest\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\"C\n" +
+	"\x1aRenewRecoveryCodesResponse\x12%\n" +
+	"\x0erecovery_codes\x18\x01 \x03(\tR\rrecoveryCodes2\xde\a\n" +
 	"\vAuthService\x12B\n" +
 	"\vRequestCode\x12\x1b.auth.v1.RequestCodeRequest\x1a\x16.google.protobuf.Empty\x12<\n" +
 	"\n" +
@@ -596,7 +1089,13 @@ const file_api_auth_v1_auth_proto_rawDesc = "" +
 	"\fListSessions\x12\x1c.auth.v1.ListSessionsRequest\x1a\x1d.auth.v1.ListSessionsResponse\x12@\n" +
 	"\n" +
 	"EndSession\x12\x1a.auth.v1.EndSessionRequest\x1a\x16.google.protobuf.Empty\x12W\n" +
-	"\x10EndOtherSessions\x12 .auth.v1.EndOtherSessionsRequest\x1a!.auth.v1.EndOtherSessionsResponseB5Z3github.com/vexner67/freenet/auth/api/auth/v1;authv1b\x06proto3"
+	"\x10EndOtherSessions\x12 .auth.v1.EndOtherSessionsRequest\x1a!.auth.v1.EndOtherSessionsResponse\x12F\n" +
+	"\x0fVerifyTwoFactor\x12\x1f.auth.v1.VerifyTwoFactorRequest\x1a\x12.auth.v1.TokenPair\x12K\n" +
+	"\fGetTwoFactor\x12\x1c.auth.v1.GetTwoFactorRequest\x1a\x1d.auth.v1.GetTwoFactorResponse\x12Q\n" +
+	"\x0eSetUpTwoFactor\x12\x1e.auth.v1.SetUpTwoFactorRequest\x1a\x1f.auth.v1.SetUpTwoFactorResponse\x12T\n" +
+	"\x0fEnableTwoFactor\x12\x1f.auth.v1.EnableTwoFactorRequest\x1a .auth.v1.EnableTwoFactorResponse\x12L\n" +
+	"\x10DisableTwoFactor\x12 .auth.v1.DisableTwoFactorRequest\x1a\x16.google.protobuf.Empty\x12]\n" +
+	"\x12RenewRecoveryCodes\x12\".auth.v1.RenewRecoveryCodesRequest\x1a#.auth.v1.RenewRecoveryCodesResponseB5Z3github.com/vexner67/freenet/auth/api/auth/v1;authv1b\x06proto3"
 
 var (
 	file_api_auth_v1_auth_proto_rawDescOnce sync.Once
@@ -610,25 +1109,35 @@ func file_api_auth_v1_auth_proto_rawDescGZIP() []byte {
 	return file_api_auth_v1_auth_proto_rawDescData
 }
 
-var file_api_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_api_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_api_auth_v1_auth_proto_goTypes = []any{
-	(*RequestCodeRequest)(nil),       // 0: auth.v1.RequestCodeRequest
-	(*VerifyCodeRequest)(nil),        // 1: auth.v1.VerifyCodeRequest
-	(*TokenPair)(nil),                // 2: auth.v1.TokenPair
-	(*RefreshTokenRequest)(nil),      // 3: auth.v1.RefreshTokenRequest
-	(*LogoutRequest)(nil),            // 4: auth.v1.LogoutRequest
-	(*Session)(nil),                  // 5: auth.v1.Session
-	(*ListSessionsRequest)(nil),      // 6: auth.v1.ListSessionsRequest
-	(*ListSessionsResponse)(nil),     // 7: auth.v1.ListSessionsResponse
-	(*EndSessionRequest)(nil),        // 8: auth.v1.EndSessionRequest
-	(*EndOtherSessionsRequest)(nil),  // 9: auth.v1.EndOtherSessionsRequest
-	(*EndOtherSessionsResponse)(nil), // 10: auth.v1.EndOtherSessionsResponse
-	(*timestamppb.Timestamp)(nil),    // 11: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),            // 12: google.protobuf.Empty
+	(*RequestCodeRequest)(nil),         // 0: auth.v1.RequestCodeRequest
+	(*VerifyCodeRequest)(nil),          // 1: auth.v1.VerifyCodeRequest
+	(*TokenPair)(nil),                  // 2: auth.v1.TokenPair
+	(*RefreshTokenRequest)(nil),        // 3: auth.v1.RefreshTokenRequest
+	(*LogoutRequest)(nil),              // 4: auth.v1.LogoutRequest
+	(*Session)(nil),                    // 5: auth.v1.Session
+	(*ListSessionsRequest)(nil),        // 6: auth.v1.ListSessionsRequest
+	(*ListSessionsResponse)(nil),       // 7: auth.v1.ListSessionsResponse
+	(*EndSessionRequest)(nil),          // 8: auth.v1.EndSessionRequest
+	(*EndOtherSessionsRequest)(nil),    // 9: auth.v1.EndOtherSessionsRequest
+	(*EndOtherSessionsResponse)(nil),   // 10: auth.v1.EndOtherSessionsResponse
+	(*VerifyTwoFactorRequest)(nil),     // 11: auth.v1.VerifyTwoFactorRequest
+	(*GetTwoFactorRequest)(nil),        // 12: auth.v1.GetTwoFactorRequest
+	(*GetTwoFactorResponse)(nil),       // 13: auth.v1.GetTwoFactorResponse
+	(*SetUpTwoFactorRequest)(nil),      // 14: auth.v1.SetUpTwoFactorRequest
+	(*SetUpTwoFactorResponse)(nil),     // 15: auth.v1.SetUpTwoFactorResponse
+	(*EnableTwoFactorRequest)(nil),     // 16: auth.v1.EnableTwoFactorRequest
+	(*EnableTwoFactorResponse)(nil),    // 17: auth.v1.EnableTwoFactorResponse
+	(*DisableTwoFactorRequest)(nil),    // 18: auth.v1.DisableTwoFactorRequest
+	(*RenewRecoveryCodesRequest)(nil),  // 19: auth.v1.RenewRecoveryCodesRequest
+	(*RenewRecoveryCodesResponse)(nil), // 20: auth.v1.RenewRecoveryCodesResponse
+	(*timestamppb.Timestamp)(nil),      // 21: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),              // 22: google.protobuf.Empty
 }
 var file_api_auth_v1_auth_proto_depIdxs = []int32{
-	11, // 0: auth.v1.Session.created_at:type_name -> google.protobuf.Timestamp
-	11, // 1: auth.v1.Session.last_used_at:type_name -> google.protobuf.Timestamp
+	21, // 0: auth.v1.Session.created_at:type_name -> google.protobuf.Timestamp
+	21, // 1: auth.v1.Session.last_used_at:type_name -> google.protobuf.Timestamp
 	5,  // 2: auth.v1.ListSessionsResponse.sessions:type_name -> auth.v1.Session
 	0,  // 3: auth.v1.AuthService.RequestCode:input_type -> auth.v1.RequestCodeRequest
 	1,  // 4: auth.v1.AuthService.VerifyCode:input_type -> auth.v1.VerifyCodeRequest
@@ -637,15 +1146,27 @@ var file_api_auth_v1_auth_proto_depIdxs = []int32{
 	6,  // 7: auth.v1.AuthService.ListSessions:input_type -> auth.v1.ListSessionsRequest
 	8,  // 8: auth.v1.AuthService.EndSession:input_type -> auth.v1.EndSessionRequest
 	9,  // 9: auth.v1.AuthService.EndOtherSessions:input_type -> auth.v1.EndOtherSessionsRequest
-	12, // 10: auth.v1.AuthService.RequestCode:output_type -> google.protobuf.Empty
-	2,  // 11: auth.v1.AuthService.VerifyCode:output_type -> auth.v1.TokenPair
-	2,  // 12: auth.v1.AuthService.RefreshToken:output_type -> auth.v1.TokenPair
-	12, // 13: auth.v1.AuthService.Logout:output_type -> google.protobuf.Empty
-	7,  // 14: auth.v1.AuthService.ListSessions:output_type -> auth.v1.ListSessionsResponse
-	12, // 15: auth.v1.AuthService.EndSession:output_type -> google.protobuf.Empty
-	10, // 16: auth.v1.AuthService.EndOtherSessions:output_type -> auth.v1.EndOtherSessionsResponse
-	10, // [10:17] is the sub-list for method output_type
-	3,  // [3:10] is the sub-list for method input_type
+	11, // 10: auth.v1.AuthService.VerifyTwoFactor:input_type -> auth.v1.VerifyTwoFactorRequest
+	12, // 11: auth.v1.AuthService.GetTwoFactor:input_type -> auth.v1.GetTwoFactorRequest
+	14, // 12: auth.v1.AuthService.SetUpTwoFactor:input_type -> auth.v1.SetUpTwoFactorRequest
+	16, // 13: auth.v1.AuthService.EnableTwoFactor:input_type -> auth.v1.EnableTwoFactorRequest
+	18, // 14: auth.v1.AuthService.DisableTwoFactor:input_type -> auth.v1.DisableTwoFactorRequest
+	19, // 15: auth.v1.AuthService.RenewRecoveryCodes:input_type -> auth.v1.RenewRecoveryCodesRequest
+	22, // 16: auth.v1.AuthService.RequestCode:output_type -> google.protobuf.Empty
+	2,  // 17: auth.v1.AuthService.VerifyCode:output_type -> auth.v1.TokenPair
+	2,  // 18: auth.v1.AuthService.RefreshToken:output_type -> auth.v1.TokenPair
+	22, // 19: auth.v1.AuthService.Logout:output_type -> google.protobuf.Empty
+	7,  // 20: auth.v1.AuthService.ListSessions:output_type -> auth.v1.ListSessionsResponse
+	22, // 21: auth.v1.AuthService.EndSession:output_type -> google.protobuf.Empty
+	10, // 22: auth.v1.AuthService.EndOtherSessions:output_type -> auth.v1.EndOtherSessionsResponse
+	2,  // 23: auth.v1.AuthService.VerifyTwoFactor:output_type -> auth.v1.TokenPair
+	13, // 24: auth.v1.AuthService.GetTwoFactor:output_type -> auth.v1.GetTwoFactorResponse
+	15, // 25: auth.v1.AuthService.SetUpTwoFactor:output_type -> auth.v1.SetUpTwoFactorResponse
+	17, // 26: auth.v1.AuthService.EnableTwoFactor:output_type -> auth.v1.EnableTwoFactorResponse
+	22, // 27: auth.v1.AuthService.DisableTwoFactor:output_type -> google.protobuf.Empty
+	20, // 28: auth.v1.AuthService.RenewRecoveryCodes:output_type -> auth.v1.RenewRecoveryCodesResponse
+	16, // [16:29] is the sub-list for method output_type
+	3,  // [3:16] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
@@ -662,7 +1183,7 @@ func file_api_auth_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_auth_v1_auth_proto_rawDesc), len(file_api_auth_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

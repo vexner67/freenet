@@ -17,6 +17,7 @@ import (
 	"github.com/vexner67/freenet/auth/internal/jwt"
 	"github.com/vexner67/freenet/auth/internal/postgres"
 	"github.com/vexner67/freenet/auth/internal/redis"
+	"github.com/vexner67/freenet/auth/internal/seal"
 	"github.com/vexner67/freenet/auth/internal/service"
 	"github.com/vexner67/freenet/auth/internal/smtp"
 	"github.com/vexner67/freenet/auth/internal/telegram"
@@ -64,9 +65,17 @@ type sessionRepository interface {
 
 // storage is the set of repositories chosen by STORAGE.
 type storage struct {
-	sessions sessionRepository
-	codes    service.CodeRepository
-	limiter  service.RateLimiter
+	sessions  sessionRepository
+	codes     service.CodeRepository
+	limiter   service.RateLimiter
+	tickets   service.TicketRepository
+	twoFactor twoFactorRepository
+}
+
+// twoFactorRepository keeps the factors and spends their codes.
+type twoFactorRepository interface {
+	service.TwoFactorRepository
+	service.TwoFactorCodes
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -124,20 +133,30 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("newTokenProvider", err)
 	}
 
+	hasher := hmac.NewHasher([]byte(cfg.HashSecret))
+	twoFactor := service.NewTwoFactorService(store.twoFactor, store.twoFactor, hasher, store.limiter, service.TwoFactorPolicy{
+		Issuer:        cfg.TwoFactor.Issuer,
+		ChecksPerUser: cfg.TwoFactor.ChecksPerUser,
+		ChecksWindow:  cfg.TwoFactor.ChecksWindow,
+	})
+
 	authService := service.NewAuthService(
 		userclient.New(userv1.NewUserServiceClient(a.userConn)),
 		store.sessions,
-		hmac.NewHasher([]byte(cfg.HashSecret)),
+		hasher,
 		store.codes,
 		store.limiter,
 		a.newMailer(cfg),
 		tokenProvider,
+		twoFactor,
+		store.tickets,
 		service.Policy{
 			CodeTTL:            cfg.Code.TTL,
 			MaxCodeAttempts:    cfg.Code.MaxAttempts,
 			CodeResendInterval: cfg.Code.ResendInterval,
 			CodeRequestsPerIP:  cfg.Code.RequestsPerIP,
 			CodeRequestsWindow: cfg.Code.RequestsWindow,
+			TicketTTL:          cfg.TwoFactor.TicketTTL,
 		},
 	)
 
@@ -172,6 +191,7 @@ func (a *App) build(cfg config.Config) error {
 	authv1.RegisterAuthServiceServer(a.server.Registrar(), authgrpc.NewAuthHandler(
 		authService,
 		service.NewSessionService(store.sessions, cfg.RefreshTokenTTL),
+		twoFactor,
 		a.logger,
 	))
 
@@ -189,9 +209,11 @@ func (a *App) build(cfg config.Config) error {
 func (a *App) newStorage(cfg config.Config) (storage, error) {
 	if cfg.Storage == config.StorageInmem {
 		return storage{
-			sessions: inmem.NewSessionRepository(),
-			codes:    inmem.NewCodeRepository(),
-			limiter:  ratelimit.NewMemory(),
+			sessions:  inmem.NewSessionRepository(),
+			codes:     inmem.NewCodeRepository(),
+			limiter:   ratelimit.NewMemory(),
+			tickets:   inmem.NewTicketRepository(),
+			twoFactor: inmem.NewTwoFactorRepository(),
 		}, nil
 	}
 
@@ -222,10 +244,19 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		return storage{}, errs.Wrap("redis.New", err)
 	}
 
+	// The secrets of the apps are sealed with a key of HASH_SECRET: a copy
+	// of the database alone does not give them away.
+	box, err := seal.New(cfg.HashSecret, "two-factor")
+	if err != nil {
+		return storage{}, errs.Wrap("seal.New", err)
+	}
+
 	return storage{
-		sessions: postgres.NewSessionRepository(a.pool),
-		codes:    redis.NewCodeRepository(a.redis),
-		limiter:  ratelimit.NewRedis(a.redis),
+		sessions:  postgres.NewSessionRepository(a.pool),
+		codes:     redis.NewCodeRepository(a.redis),
+		limiter:   ratelimit.NewRedis(a.redis),
+		tickets:   redis.NewTicketRepository(a.redis),
+		twoFactor: postgres.NewTwoFactorRepository(a.pool, box),
 	}, nil
 }
 

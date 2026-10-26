@@ -70,6 +70,19 @@ type Config struct {
 	RefreshTokenTTL time.Duration `env:"REFRESH_TOKEN_TTL" envDefault:"720h"`
 
 	Code CodeConfig `envPrefix:"CODE_"`
+	// TwoFactor is the second step of signing in with an authenticator app.
+	TwoFactor TwoFactorConfig `envPrefix:"TWO_FACTOR_"`
+}
+
+type TwoFactorConfig struct {
+	// Issuer names the site in the app.
+	Issuer string `env:"ISSUER" envDefault:"Freenet"`
+	// TicketTTL is how long the code of the app may take after the email
+	// code.
+	TicketTTL time.Duration `env:"TICKET_TTL" envDefault:"10m"`
+	// ChecksPerUser codes of a page are checked per ChecksWindow.
+	ChecksPerUser int           `env:"CHECKS_PER_USER" envDefault:"10"`
+	ChecksWindow  time.Duration `env:"CHECKS_WINDOW" envDefault:"1h"`
 }
 
 type SMTPConfig struct {
@@ -127,6 +140,10 @@ func (c Config) Validate() error {
 	if c.Code.TTL <= 0 || c.Code.ResendInterval <= 0 || c.Code.RequestsWindow <= 0 ||
 		c.Code.MaxAttempts <= 0 || c.Code.RequestsPerIP <= 0 {
 		return errors.New("CODE_* settings must be positive")
+	}
+
+	if c.TwoFactor.Issuer == "" || c.TwoFactor.TicketTTL <= 0 || c.TwoFactor.ChecksPerUser <= 0 || c.TwoFactor.ChecksWindow <= 0 {
+		return errors.New("TWO_FACTOR_* settings must be set and positive")
 	}
 
 	if err := c.Tracing.Validate(); err != nil {

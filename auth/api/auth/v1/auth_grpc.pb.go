@@ -20,13 +20,19 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_RequestCode_FullMethodName      = "/auth.v1.AuthService/RequestCode"
-	AuthService_VerifyCode_FullMethodName       = "/auth.v1.AuthService/VerifyCode"
-	AuthService_RefreshToken_FullMethodName     = "/auth.v1.AuthService/RefreshToken"
-	AuthService_Logout_FullMethodName           = "/auth.v1.AuthService/Logout"
-	AuthService_ListSessions_FullMethodName     = "/auth.v1.AuthService/ListSessions"
-	AuthService_EndSession_FullMethodName       = "/auth.v1.AuthService/EndSession"
-	AuthService_EndOtherSessions_FullMethodName = "/auth.v1.AuthService/EndOtherSessions"
+	AuthService_RequestCode_FullMethodName        = "/auth.v1.AuthService/RequestCode"
+	AuthService_VerifyCode_FullMethodName         = "/auth.v1.AuthService/VerifyCode"
+	AuthService_RefreshToken_FullMethodName       = "/auth.v1.AuthService/RefreshToken"
+	AuthService_Logout_FullMethodName             = "/auth.v1.AuthService/Logout"
+	AuthService_ListSessions_FullMethodName       = "/auth.v1.AuthService/ListSessions"
+	AuthService_EndSession_FullMethodName         = "/auth.v1.AuthService/EndSession"
+	AuthService_EndOtherSessions_FullMethodName   = "/auth.v1.AuthService/EndOtherSessions"
+	AuthService_VerifyTwoFactor_FullMethodName    = "/auth.v1.AuthService/VerifyTwoFactor"
+	AuthService_GetTwoFactor_FullMethodName       = "/auth.v1.AuthService/GetTwoFactor"
+	AuthService_SetUpTwoFactor_FullMethodName     = "/auth.v1.AuthService/SetUpTwoFactor"
+	AuthService_EnableTwoFactor_FullMethodName    = "/auth.v1.AuthService/EnableTwoFactor"
+	AuthService_DisableTwoFactor_FullMethodName   = "/auth.v1.AuthService/DisableTwoFactor"
+	AuthService_RenewRecoveryCodes_FullMethodName = "/auth.v1.AuthService/RenewRecoveryCodes"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -44,6 +50,21 @@ type AuthServiceClient interface {
 	// EndOtherSessions signs the caller out everywhere but in the session
 	// of the access token.
 	EndOtherSessions(ctx context.Context, in *EndOtherSessionsRequest, opts ...grpc.CallOption) (*EndOtherSessionsResponse, error)
+	// VerifyTwoFactor finishes a sign-in that VerifyCode answered with a
+	// ticket: a code of the authenticator app or a recovery code.
+	VerifyTwoFactor(ctx context.Context, in *VerifyTwoFactorRequest, opts ...grpc.CallOption) (*TokenPair, error)
+	// The second step of the caller, by the access token: whether it is on.
+	GetTwoFactor(ctx context.Context, in *GetTwoFactorRequest, opts ...grpc.CallOption) (*GetTwoFactorResponse, error)
+	// SetUpTwoFactor makes a new secret of the app, waiting for its first
+	// code; FailedPrecondition when the second step is already on.
+	SetUpTwoFactor(ctx context.Context, in *SetUpTwoFactorRequest, opts ...grpc.CallOption) (*SetUpTwoFactorResponse, error)
+	// EnableTwoFactor turns it on with the first code of the app and gives
+	// the recovery codes, this once.
+	EnableTwoFactor(ctx context.Context, in *EnableTwoFactorRequest, opts ...grpc.CallOption) (*EnableTwoFactorResponse, error)
+	// DisableTwoFactor turns it off for a code of either kind.
+	DisableTwoFactor(ctx context.Context, in *DisableTwoFactorRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// RenewRecoveryCodes replaces the recovery codes for a code of the app.
+	RenewRecoveryCodes(ctx context.Context, in *RenewRecoveryCodesRequest, opts ...grpc.CallOption) (*RenewRecoveryCodesResponse, error)
 }
 
 type authServiceClient struct {
@@ -124,6 +145,66 @@ func (c *authServiceClient) EndOtherSessions(ctx context.Context, in *EndOtherSe
 	return out, nil
 }
 
+func (c *authServiceClient) VerifyTwoFactor(ctx context.Context, in *VerifyTwoFactorRequest, opts ...grpc.CallOption) (*TokenPair, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TokenPair)
+	err := c.cc.Invoke(ctx, AuthService_VerifyTwoFactor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) GetTwoFactor(ctx context.Context, in *GetTwoFactorRequest, opts ...grpc.CallOption) (*GetTwoFactorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTwoFactorResponse)
+	err := c.cc.Invoke(ctx, AuthService_GetTwoFactor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) SetUpTwoFactor(ctx context.Context, in *SetUpTwoFactorRequest, opts ...grpc.CallOption) (*SetUpTwoFactorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetUpTwoFactorResponse)
+	err := c.cc.Invoke(ctx, AuthService_SetUpTwoFactor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) EnableTwoFactor(ctx context.Context, in *EnableTwoFactorRequest, opts ...grpc.CallOption) (*EnableTwoFactorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EnableTwoFactorResponse)
+	err := c.cc.Invoke(ctx, AuthService_EnableTwoFactor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) DisableTwoFactor(ctx context.Context, in *DisableTwoFactorRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, AuthService_DisableTwoFactor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) RenewRecoveryCodes(ctx context.Context, in *RenewRecoveryCodesRequest, opts ...grpc.CallOption) (*RenewRecoveryCodesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RenewRecoveryCodesResponse)
+	err := c.cc.Invoke(ctx, AuthService_RenewRecoveryCodes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
@@ -139,6 +220,21 @@ type AuthServiceServer interface {
 	// EndOtherSessions signs the caller out everywhere but in the session
 	// of the access token.
 	EndOtherSessions(context.Context, *EndOtherSessionsRequest) (*EndOtherSessionsResponse, error)
+	// VerifyTwoFactor finishes a sign-in that VerifyCode answered with a
+	// ticket: a code of the authenticator app or a recovery code.
+	VerifyTwoFactor(context.Context, *VerifyTwoFactorRequest) (*TokenPair, error)
+	// The second step of the caller, by the access token: whether it is on.
+	GetTwoFactor(context.Context, *GetTwoFactorRequest) (*GetTwoFactorResponse, error)
+	// SetUpTwoFactor makes a new secret of the app, waiting for its first
+	// code; FailedPrecondition when the second step is already on.
+	SetUpTwoFactor(context.Context, *SetUpTwoFactorRequest) (*SetUpTwoFactorResponse, error)
+	// EnableTwoFactor turns it on with the first code of the app and gives
+	// the recovery codes, this once.
+	EnableTwoFactor(context.Context, *EnableTwoFactorRequest) (*EnableTwoFactorResponse, error)
+	// DisableTwoFactor turns it off for a code of either kind.
+	DisableTwoFactor(context.Context, *DisableTwoFactorRequest) (*emptypb.Empty, error)
+	// RenewRecoveryCodes replaces the recovery codes for a code of the app.
+	RenewRecoveryCodes(context.Context, *RenewRecoveryCodesRequest) (*RenewRecoveryCodesResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -169,6 +265,24 @@ func (UnimplementedAuthServiceServer) EndSession(context.Context, *EndSessionReq
 }
 func (UnimplementedAuthServiceServer) EndOtherSessions(context.Context, *EndOtherSessionsRequest) (*EndOtherSessionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method EndOtherSessions not implemented")
+}
+func (UnimplementedAuthServiceServer) VerifyTwoFactor(context.Context, *VerifyTwoFactorRequest) (*TokenPair, error) {
+	return nil, status.Error(codes.Unimplemented, "method VerifyTwoFactor not implemented")
+}
+func (UnimplementedAuthServiceServer) GetTwoFactor(context.Context, *GetTwoFactorRequest) (*GetTwoFactorResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTwoFactor not implemented")
+}
+func (UnimplementedAuthServiceServer) SetUpTwoFactor(context.Context, *SetUpTwoFactorRequest) (*SetUpTwoFactorResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetUpTwoFactor not implemented")
+}
+func (UnimplementedAuthServiceServer) EnableTwoFactor(context.Context, *EnableTwoFactorRequest) (*EnableTwoFactorResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EnableTwoFactor not implemented")
+}
+func (UnimplementedAuthServiceServer) DisableTwoFactor(context.Context, *DisableTwoFactorRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DisableTwoFactor not implemented")
+}
+func (UnimplementedAuthServiceServer) RenewRecoveryCodes(context.Context, *RenewRecoveryCodesRequest) (*RenewRecoveryCodesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RenewRecoveryCodes not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -317,6 +431,114 @@ func _AuthService_EndOtherSessions_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_VerifyTwoFactor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyTwoFactorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).VerifyTwoFactor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_VerifyTwoFactor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).VerifyTwoFactor(ctx, req.(*VerifyTwoFactorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_GetTwoFactor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTwoFactorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).GetTwoFactor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_GetTwoFactor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).GetTwoFactor(ctx, req.(*GetTwoFactorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_SetUpTwoFactor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetUpTwoFactorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).SetUpTwoFactor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_SetUpTwoFactor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).SetUpTwoFactor(ctx, req.(*SetUpTwoFactorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_EnableTwoFactor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EnableTwoFactorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).EnableTwoFactor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_EnableTwoFactor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).EnableTwoFactor(ctx, req.(*EnableTwoFactorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_DisableTwoFactor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DisableTwoFactorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).DisableTwoFactor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_DisableTwoFactor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).DisableTwoFactor(ctx, req.(*DisableTwoFactorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_RenewRecoveryCodes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RenewRecoveryCodesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).RenewRecoveryCodes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_RenewRecoveryCodes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).RenewRecoveryCodes(ctx, req.(*RenewRecoveryCodesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -351,6 +573,30 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "EndOtherSessions",
 			Handler:    _AuthService_EndOtherSessions_Handler,
+		},
+		{
+			MethodName: "VerifyTwoFactor",
+			Handler:    _AuthService_VerifyTwoFactor_Handler,
+		},
+		{
+			MethodName: "GetTwoFactor",
+			Handler:    _AuthService_GetTwoFactor_Handler,
+		},
+		{
+			MethodName: "SetUpTwoFactor",
+			Handler:    _AuthService_SetUpTwoFactor_Handler,
+		},
+		{
+			MethodName: "EnableTwoFactor",
+			Handler:    _AuthService_EnableTwoFactor_Handler,
+		},
+		{
+			MethodName: "DisableTwoFactor",
+			Handler:    _AuthService_DisableTwoFactor_Handler,
+		},
+		{
+			MethodName: "RenewRecoveryCodes",
+			Handler:    _AuthService_RenewRecoveryCodes_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

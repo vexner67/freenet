@@ -99,3 +99,37 @@ func TestCodeRepository_Expiry(t *testing.T) {
 		t.Fatalf("attempts must expire with the code, ttl = %v, %v", ttl, err)
 	}
 }
+
+func TestTicketRepository(t *testing.T) {
+	repo := redis.NewTicketRepository(newClient(t))
+	ctx := context.Background()
+	hash, user := uuid.NewString(), uuid.New()
+
+	if _, err := repo.IncrementAttempts(ctx, hash); !errors.Is(err, service.ErrTicketNotFound) {
+		t.Fatalf("attempts without a ticket: %v", err)
+	}
+
+	if err := repo.Save(ctx, hash, user, time.Minute); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	if got, err := repo.Get(ctx, hash); err != nil || got != user {
+		t.Fatalf("Get = %v, %v", got, err)
+	}
+
+	for want := 1; want <= 2; want++ {
+		if got, err := repo.IncrementAttempts(ctx, hash); err != nil || got != want {
+			t.Fatalf("IncrementAttempts = %d, %v, want %d", got, err, want)
+		}
+	}
+
+	if err := repo.Delete(ctx, hash); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if err := repo.Delete(ctx, hash); !errors.Is(err, service.ErrTicketNotFound) {
+		t.Fatalf("Delete twice: %v", err)
+	}
+	if _, err := repo.Get(ctx, hash); !errors.Is(err, service.ErrTicketNotFound) {
+		t.Fatalf("Get after Delete: %v", err)
+	}
+}

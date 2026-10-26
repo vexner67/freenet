@@ -79,12 +79,13 @@ func (m *captureMailer) SendCode(_ context.Context, email, code string) error {
 }
 
 type fixture struct {
-	svc      *service.AuthService
-	users    *fakeUserProvider
-	sessions *countingSessions
-	mailer   *captureMailer
-	tokens   *jwt.JWT
-	key      *rsa.PrivateKey
+	svc       *service.AuthService
+	twoFactor *service.TwoFactorService
+	users     *fakeUserProvider
+	sessions  *countingSessions
+	mailer    *captureMailer
+	tokens    *jwt.JWT
+	key       *rsa.PrivateKey
 }
 
 // testPolicy does not get in the way unless a test tightens it.
@@ -98,7 +99,12 @@ func testPolicy() service.Policy {
 		CodeResendInterval: time.Nanosecond,
 		CodeRequestsPerIP:  1000,
 		CodeRequestsWindow: time.Hour,
+		TicketTTL:          time.Minute,
 	}
+}
+
+func testTwoFactorPolicy() service.TwoFactorPolicy {
+	return service.TwoFactorPolicy{Issuer: "Freenet", ChecksPerUser: 1000, ChecksWindow: time.Hour}
 }
 
 func newFixture(t *testing.T, userErr error, tune ...func(*service.Policy)) fixture {
@@ -126,14 +132,19 @@ func newFixture(t *testing.T, userErr error, tune ...func(*service.Policy)) fixt
 		key:      key,
 	}
 
+	hasher := hmac.NewHasher([]byte("test-secret"))
+	factors := inmem.NewTwoFactorRepository()
+	f.twoFactor = service.NewTwoFactorService(factors, factors, hasher, ratelimit.NewMemory(), testTwoFactorPolicy())
 	f.svc = service.NewAuthService(
 		f.users,
 		f.sessions,
-		hmac.NewHasher([]byte("test-secret")),
+		hasher,
 		inmem.NewCodeRepository(),
 		ratelimit.NewMemory(),
 		f.mailer,
 		tokens,
+		f.twoFactor,
+		inmem.NewTicketRepository(),
 		policy,
 	)
 
@@ -154,12 +165,12 @@ func (f fixture) requestCode(t *testing.T, email account.Email) string {
 func (f fixture) signIn(t *testing.T) service.TokenPair {
 	t.Helper()
 
-	pair, err := f.svc.VerifyCode(context.Background(), testEmail, f.requestCode(t, testEmail), testDevice)
-	if err != nil {
-		t.Fatalf("VerifyCode: %v", err)
+	signIn, err := f.svc.VerifyCode(context.Background(), testEmail, f.requestCode(t, testEmail), testDevice)
+	if err != nil || signIn.Ticket != "" {
+		t.Fatalf("VerifyCode = %+v, %v", signIn, err)
 	}
 
-	return pair
+	return signIn.Tokens
 }
 
 func TestAuthService_VerifyCode(t *testing.T) {

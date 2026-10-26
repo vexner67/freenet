@@ -6,6 +6,7 @@ import (
 
 	"github.com/vexner67/freenet/auth/internal/account"
 	"github.com/vexner67/freenet/auth/internal/service"
+	"github.com/vexner67/freenet/auth/internal/twofactor"
 	"github.com/vexner67/freenet/pkg/grpcserver"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -33,6 +34,16 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.ResourceExhausted, "too many attempts, request a new code"), true
 	case errors.Is(err, service.ErrTooManyRequests):
 		return status.New(codes.ResourceExhausted, "too many requests, try again later"), true
+	case errors.Is(err, service.ErrTicketNotFound):
+		return status.New(codes.Unauthenticated, "sign-in expired, request a new code"), true
+	case errors.Is(err, twofactor.ErrInvalidCode):
+		return status.New(codes.InvalidArgument, "invalid two-factor code"), true
+	case errors.Is(err, twofactor.ErrNotSetUp):
+		return status.New(codes.FailedPrecondition, "two-factor authentication is not set up"), true
+	case errors.Is(err, twofactor.ErrNotEnabled):
+		return status.New(codes.FailedPrecondition, "two-factor authentication is not enabled"), true
+	case errors.Is(err, twofactor.ErrEnabled):
+		return status.New(codes.FailedPrecondition, "two-factor authentication is already enabled"), true
 	case errors.Is(err, account.ErrInvalidEmail):
 		return status.New(codes.InvalidArgument, "invalid email"), true
 	case errors.Is(err, service.ErrUserServiceUnavailable):
