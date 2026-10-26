@@ -376,8 +376,8 @@ export const themes = [
   ['default', tr('обычный (по умолчанию)')],
   ['blue', tr('синий')],
   ['dark', tr('тёмный')],
-  // Only Freenet Prime chooses it; it stays after Prime ends.
-  ['gold', tr('аметистовый (Freenet Prime)')],
+  // Only Prime chooses it; it stays after Prime ends.
+  ['gold', tr('аметистовый (Prime)')],
 ];
 
 export const ratings = [
@@ -818,7 +818,7 @@ export function myAlbumsCount(n) {
 // what each gift is called and its picture. The gifts themselves are the
 // catalogue of the user service; a picture is a file of the site, named
 // by its whole path so that it is served with its version.
-export const giftCollections = { freenet: 'Freenet', prime: 'Freenet Prime' };
+export const giftCollections = { freenet: 'Freenet', prime: 'Prime' };
 
 export const giftNames = {
   freenet_crystal: tr('Кристалл Freenet'), freenet_coin: tr('Золотая монета'), freenet_ring: tr('Перстень'), freenet_crown: tr('Корона'), freenet_heart: tr('Рубиновое сердце'), freenet_cup: tr('Кубок'),
@@ -919,7 +919,7 @@ export function traitChance(traits, name) {
 }
 
 // GIFT_FEE_PERCENT is what the treasury takes of a sale; a seller with
-// Freenet Prime pays half. The auction steps by 5%.
+// Prime pays half. The auction steps by 5%.
 export const GIFT_FEE_PERCENT = 5;
 export const PRIME_GIFT_FEE_PERCENT = 2.5;
 
@@ -1660,6 +1660,75 @@ export function businessName(kind) {
   }[kind] ?? kind;
 }
 
+// titleIcons are the pictures of titles, as the user service has them
+// (TitleIcons in user/internal/user/title.go), with what each is called:
+// glossy badges of the forums of the 2000s (static/titles/<icon>.svg).
+export const titleIcons = [
+  ['crown', tr('корона')],
+  ['cup', tr('кубок')],
+  ['star', tr('звезда')],
+  ['laurel', tr('лавры')],
+  ['shield', tr('щит')],
+  ['flame', tr('пламя')],
+  ['diamond', tr('бриллиант')],
+  ['lightning', tr('молния')],
+];
+
+// The pictures of titles: whole paths, so that the gateway versions them.
+const titlePictures = {
+  crown: '/static/titles/crown.svg',
+  cup: '/static/titles/cup.svg',
+  star: '/static/titles/star.svg',
+  laurel: '/static/titles/laurel.svg',
+  shield: '/static/titles/shield.svg',
+  flame: '/static/titles/flame.svg',
+  diamond: '/static/titles/diamond.svg',
+  lightning: '/static/titles/lightning.svg',
+};
+
+// titleIconPath is the picture of the icon of a title; an unknown one is
+// the star.
+export function titleIconPath(icon) {
+  return titlePictures[icon] ?? titlePictures.star;
+}
+
+// businessPictures are the premises of each business, as "Бизнес" draws
+// them in its headings.
+export const businessPictures = {
+  kiosk: '/static/business/kiosk.svg',
+  cafe: '/static/business/cafe.svg',
+  carwash: '/static/business/carwash.svg',
+  factory: '/static/business/factory.svg',
+};
+
+// titleGroups are the titles of a page as the profile shows them: one row
+// for each title, how many times it was given and when last, the latest
+// first.
+export function titleGroups(titles) {
+  const groups = new Map();
+  for (const t of titles) {
+    const key = t.icon + '\n' + t.name;
+    const group = groups.get(key);
+    if (!group) {
+      groups.set(key, { name: t.name, icon: t.icon, count: 1, last: t.grantedAt, ids: [t.id] });
+      continue;
+    }
+    group.count++;
+    group.ids.push(t.id);
+    if (t.grantedAt > group.last) group.last = t.grantedAt;
+  }
+
+  return [...groups.values()].sort((a, b) => (a.last < b.last ? 1 : a.last > b.last ? -1 : 0));
+}
+
+// businessLine is what the profile says of a business under its name:
+// "3 ур., 4 работника" or "банкрот".
+export function businessLine(b) {
+  if (b.bankrupt) return tr('банкрот');
+
+  return `${tr('{0} ур.', b.level)}, ${b.workers} ${plural(b.workers, ['работник', 'работника', 'работников'])}`;
+}
+
 // hundredths is a sum in hundredths of a vote as votes: "1,7", "-12,05".
 export function hundredths(n) {
   const sign = n < 0 ? '-' : '';
@@ -1974,15 +2043,19 @@ export function businessCondition(condition) {
   return condition < 7000 ? 1 : 0;
 }
 
-// primePeriods are the periods of Freenet Prime with their names and
+// primePeriods are the periods of Prime with their names and
 // how many months each is.
 export const primePeriods = [
   ['month', tr('Месяц'), 1],
-  ['quarter', tr('3 месяца'), 3],
+  ['quarter', tr('Квартал'), 3],
   ['year', tr('Год'), 12],
 ];
 
-// The choices of "Оформление страницы" of Freenet Prime with their names,
+// primeTerms name the periods in the middle of a phrase and in the list
+// of "Срок:": "Prime на квартал".
+export const primeTerms = { month: tr('месяц'), quarter: tr('квартал'), year: tr('год') };
+
+// The choices of "Оформление страницы" of Prime with their names,
 // the default first, as the user service keeps them (PrimeNames,
 // PrimeFrames, PrimeBackgrounds, PrimeMoods in prime_style.go; a test
 // compares them). style.css draws each by its class: prime-name-<name>,
@@ -2178,9 +2251,9 @@ export function voteOperation(op, myId) {
     case 'denomination':
       return { title: tr('Деноминация 1 : 1 000 000'), role: '' };
     case 'prime': {
-      const period = { month: tr('месяц'), quarter: tr('3 месяца'), year: tr('год') }[note] ?? note;
+      const period = primeTerms[note] ?? note;
       const toSelf = !op.peer || op.peer.id === myId;
-      return { title: tr('Freenet Prime на {0}', period), role: toSelf ? '' : tr('Получатель:') };
+      return { title: tr('Prime на {0}', period), role: toSelf ? '' : tr('Получатель:') };
     }
     case 'stake':
       return { title: out ? tr('Ставка на событие «{0}»', note) : tr('Выплата по событию «{0}»', note), role: '' };
@@ -2655,8 +2728,8 @@ const errorTexts = {
   'only a post on one\'s own wall may be paid': tr('Платной может быть только запись на своей стене.'),
   'a paid post needs photos or documents': tr('Платной может быть только запись с фото или документами.'),
   'the price of messages changed': tr('Цена сообщений этому человеку изменилась. Обновите страницу.'),
-  'only people with freenet prime can write to this user': tr('Этому пользователю могут писать только подписчики Freenet Prime.'),
-  'this is for freenet prime only': tr('Это доступно только с Freenet Prime.'),
+  'only people with freenet prime can write to this user': tr('Этому пользователю могут писать только подписчики Prime.'),
+  'this is for freenet prime only': tr('Это доступно только с Prime.'),
   'unknown period of prime': tr('Неизвестный срок подписки.'),
   'the price of prime must be at least 1 vote': tr('Цена подписки — не меньше 1 голоса.'),
   'a spin must cost at least 1 vote': tr('Прокрутка должна стоить не меньше 1 голоса.'),
@@ -2665,6 +2738,11 @@ const errorTexts = {
   'unknown ore': tr('Такой руды нет.'),
   'unknown pet': tr('Такого питомца нет.'),
   'unknown top': tr('Такого рейтинга нет.'),
+  'the name of a title is empty': tr('Назовите титул.'),
+  'the name of a title is too long': tr('Название титула — не больше 40 знаков.'),
+  'the name of a title is one line': tr('Название титула — одна строка.'),
+  'unknown title icon': tr('Выберите значок титула.'),
+  'title not found': tr('Этого титула уже нет.'),
   'the name of a pet is empty': tr('Дайте питомцу имя.'),
   'the name of a pet is too long': tr('Имя питомца — не длиннее 20 символов.'),
   'the name of a pet is one line': tr('Имя питомца — в одну строку.'),

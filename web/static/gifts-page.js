@@ -229,12 +229,12 @@ function sent(owner, mine) {
   modal.actions.append(button('OK', modal.close));
 }
 
-// primeOnly says that a gift of Freenet Prime takes it.
+// primeOnly says that a gift of Prime takes it.
 function primeOnly() {
-  const modal = openModal('Freenet Prime');
+  const modal = openModal('Prime');
 
   modal.body.append(el('span', {}, tr('Эти подарки могут отправлять только подписчики '),
-    el('a', { href: '/prime', textContent: 'Freenet Prime' }), '.'));
+    el('a', { href: '/prime', textContent: 'Prime' }), '.'));
   modal.actions.append(button('OK', modal.close));
 }
 
@@ -243,7 +243,7 @@ function primeOnly() {
 async function showCatalog(owner, me) {
   try {
     const { collections } = await api.giftCatalog();
-    // The gifts of Freenet Prime are sent only by those who have it: the
+    // The gifts of Prime are sent only by those who have it: the
     // rest are told where to get it.
     const pick = (c) => (gift, price) => (c.prime && !me.prime ? primeOnly() : confirm(owner, me, gift, price));
     const rows = collection

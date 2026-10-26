@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Freenet Prime | Freenet</title>
+  <title>Prime | Freenet</title>
   <link rel="icon" href="/static/favicon.png" sizes="32x32">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
@@ -27,7 +27,7 @@
     </div>
 
     <div class="page">
-      <div class="page-title">Freenet Prime</div>
+      <div class="page-title">Prime</div>
       <div class="page-body">
         <div class="container-gray">
         <p id="loading">Загрузка…</p>
@@ -38,17 +38,17 @@
           <div class="prime-hero">
             <img class="prime-hero-badge" src="/static/icons/prime.svg" alt="" width="48" height="48">
             <div>
-              <b class="prime-hero-title">Freenet Prime</b>
+              <b class="prime-hero-title">Prime</b>
               <p class="prime-state" id="state"></p>
             </div>
           </div>
 
-          <h4>Что даёт Freenet Prime</h4>
+          <h4>Что даёт Prime</h4>
           <ul class="prime-perks">
             <li><b>Значок Prime</b> после имени — везде, где у подтверждённых страниц стоит галочка.</li>
             <li><b>Оформление страницы</b>: цвет имени, рамка фото, узор за страницей и смайлик настроения у статуса.</li>
             <li><b>Аметистовый стиль</b> сайта во «Внешнем виде» настроек.</li>
-            <li><b>Подарки Freenet Prime</b> — коллекция, которую могут отправлять только подписчики.</li>
+            <li><b>Подарки Prime</b> — коллекция, которую могут отправлять только подписчики.</li>
             <li><b>Без рекламы</b> в новостях.</li>
             <li><b>Невидимка</b>: никто не видит, что вы онлайн и когда были в сети, ваши просмотры историй не считаются, а заходя на чужие страницы, вы не попадаете в их гости.</li>
             <li><b>Переводы голосов без комиссии</b>.</li>
@@ -66,7 +66,11 @@
             <table class="form">
               <tr>
                 <th><label for="give-to">Получатель:</label></th>
-                <td class="control"><input type="text" id="give-to" maxlength="200" required spellcheck="false" autocomplete="off" placeholder="никнейм или ссылка на страницу"></td>
+                <td class="control">
+                  <input type="text" id="give-to" maxlength="200" required spellcheck="false" autocomplete="off" placeholder="имя, никнейм или ссылка на страницу">
+                  <div class="bank-people" id="give-people" hidden></div>
+                  <p class="hint bank-recipient" id="give-recipient" hidden></p>
+                </td>
               </tr>
               <tr>
                 <th><label for="give-period">Срок:</label></th>
@@ -78,7 +82,7 @@
 
           <div id="style-part" hidden>
             <h4>Оформление страницы</h4>
-            <p>Так ваша страница выглядит для всех, пока у вас есть Freenet Prime.</p>
+            <p>Так ваша страница выглядит для всех, пока у вас есть Prime.</p>
             <div class="prime-preview" id="style-preview">
               <span class="prime-sparkle-box" id="style-photo"><img class="avatar" id="style-avatar" src="/static/avatar.svg" alt="" width="60" height="60"></span>
               <div>

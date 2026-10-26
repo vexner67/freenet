@@ -5,7 +5,7 @@
 // "Ваучеры" (/admin/vouchers), the form of a new one
 // (/admin/vouchers/new), "Подарки" (/admin/gifts: what each gift costs)
 // "Оформление" (/admin/decor: the New Year decoration of the site),
-// "Freenet Prime" (/admin/prime: the prices of its periods),
+// "Prime" (/admin/prime: the prices of its periods),
 // "Казино" (/admin/casino: the price of a spin, the prizes and their odds,
 // and the limits and the return of "Прицел", and the limits, the return and
 // the top of "Ракетка", and the antes and the pays of "Покер"), "Ставки" (/admin/bets: the
@@ -21,7 +21,7 @@
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, handsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, bankVotes, businessName, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, handsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, bankVotes, businessName, formatDateTime, titleIconPath, titleIcons, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 import { remember } from './newyear.js';
 
@@ -157,6 +157,7 @@ const verifiable = {
     noneVerified: tr('Подтверждённых страниц пока нет. Найдите человека поиском.'),
     alertCell,
     banCell,
+    titleCell,
   },
   clubs: {
     one: 'club',
@@ -356,6 +357,100 @@ function openBan(user, done) {
   };
 }
 
+// titleCell is "Титулы" of a person: "Выдать", which opens the dialog of
+// the titles the person holds and of a new one.
+function titleCell(user) {
+  return el('button', {
+    className: 'aui-button aui-button-compact', type: 'button', textContent: tr('Выдать'),
+    onclick: () => openTitles(user),
+  });
+}
+
+// openTitles shows the titles of user, each with "Убрать", and gives a new
+// one: its name and badge.
+async function openTitles(user) {
+  const dialog = $('title-dialog');
+  const form = $('title-form');
+  const list = $('title-list');
+  const titleError = $('title-error');
+
+  const fail = (err) => {
+    titleError.textContent = errorText(err);
+    titleError.hidden = false;
+  };
+
+  function item(title) {
+    const remove = el('button', { className: 'aui-button aui-button-compact', type: 'button', textContent: tr('Убрать') });
+    remove.addEventListener('click', async () => {
+      titleError.hidden = true;
+      remove.disabled = true;
+      try {
+        await api.revokeTitle(title.id);
+        node.remove();
+      } catch (err) {
+        fail(err);
+        remove.disabled = false;
+      }
+    });
+    const node = el('li', {},
+      el('img', { src: titleIconPath(title.icon), alt: '', width: 24, height: 24 }),
+      el('span', { textContent: title.name, title: formatDateTime(title.grantedAt) }),
+      remove);
+
+    return node;
+  }
+
+  $('title-about').textContent = tr('Титулы видны всем на странице {0} (@{1}).', genitiveName(user), user.nickname);
+  form.reset();
+  $('title-icons').replaceChildren(...titleIcons.map(([icon, name], i) => el('label', {},
+    el('input', { type: 'radio', name: 'title-icon', value: icon, checked: i === 0 }),
+    el('img', { src: titleIconPath(icon), alt: '', width: 36, height: 36 }),
+    name)));
+  list.replaceChildren();
+  titleError.hidden = true;
+  dialog.hidden = false;
+  $('title-name').focus();
+
+  const close = () => {
+    dialog.hidden = true;
+    form.onsubmit = null;
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = (e) => {
+    if (e.key === 'Escape') close();
+  };
+  document.addEventListener('keydown', onKey);
+  $('title-cancel').onclick = close;
+  dialog.onclick = (e) => {
+    if (e.target === dialog) close();
+  };
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    titleError.hidden = true;
+
+    const submit = form.querySelector('[type=submit]');
+    submit.disabled = true;
+    try {
+      const icon = form.querySelector('input[name="title-icon"]:checked')?.value ?? titleIcons[0][0];
+      const title = await api.grantTitle(user.nickname, $('title-name').value.trim(), icon);
+      list.prepend(item(title));
+      $('title-name').value = '';
+    } catch (err) {
+      fail(err);
+    } finally {
+      submit.disabled = false;
+    }
+  };
+
+  try {
+    const { titles } = await api.userTitles(user.nickname);
+    list.replaceChildren(...titles.map(item));
+  } catch (err) {
+    fail(err);
+  }
+}
+
 // verifications is the page of a kind of verifiable, for query; bans:
 // without a query it lists the pages blocked now ("Блокировки").
 function verifications(kind, query, bans = false) {
@@ -404,6 +499,7 @@ function verifications(kind, query, bans = false) {
       el('td', {}, toggle),
       k.alertCell && el('td', {}, k.alertCell(page)),
       k.banCell && el('td', {}, k.banCell(page)),
+      k.titleCell && el('td', {}, k.titleCell(page)),
     ].filter(Boolean));
   }
 
@@ -712,7 +808,7 @@ async function decor(answered) {
   $('decor').hidden = false;
 }
 
-// prime is "Freenet Prime": what a month, three months and a year cost.
+// prime is "Prime": what a month, three months and a year cost.
 async function prime(answered) {
   const fields = { month: $('prime-month'), quarter: $('prime-quarter'), year: $('prime-year') };
   const save = $('prime-form').querySelector('button[type=submit]');

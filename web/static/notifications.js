@@ -5,7 +5,7 @@
 // from the menu with nothing unread, the page shows the archive at once.
 // The guests of the page are here too: those who came since the last look
 // above the unread notifications, all of the last 30 days above the
-// archive. A subscriber of Freenet Prime with "Невидимка" leaves no trace.
+// archive. A subscriber of Prime with "Невидимка" leaves no trace.
 
 import { photoPath } from './albums.js';
 import { api, currentUser, started } from './api.js';
@@ -181,9 +181,9 @@ function notificationText(n) {
     return [name, tr(' {0} по вашему ', notificationVerb('invite', n.actor)), el('a', { href: '/invite' }, el('b', { textContent: tr('приглашению') })), '.'];
   }
 
-  // Freenet Prime given as a present: its term is on its page.
+  // Prime given as a present: its term is on its page.
   if (n.type === 'prime') {
-    return [name, tr(' {0} вам ', notificationVerb('prime', n.actor)), el('a', { href: '/prime' }, el('b', { textContent: 'Freenet Prime' })), '.'];
+    return [name, tr(' {0} вам ', notificationVerb('prime', n.actor)), el('a', { href: '/prime' }, el('b', { textContent: 'Prime' })), '.'];
   }
 
   // openvk's "передал вам голоса"; the balance is in the settings.
@@ -259,7 +259,9 @@ function showGuests(page) {
 
   const count = $('guests-list').children.length;
   $('guests').hidden = count === 0;
-  $('guests-title').textContent = unreadTab ? tr('Новые гости') : tr('Гости за 30 дней');
+  // The archive is all notifications at once: guests there go untitled.
+  $('guests-title').hidden = !unreadTab;
+  $('guests-title').textContent = tr('Новые гости');
   if (count > 0) $('empty').hidden = true;
 }
 

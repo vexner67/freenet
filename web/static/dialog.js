@@ -628,7 +628,7 @@ async function sendSticker(sticker) {
 
 // setUpInput shows the form, or why there is none: the peer's privacy and
 // blacklists, as the first page of the dialog says, with what a message
-// costs and whether only Freenet Prime writes to the peer.
+// costs and whether only Prime writes to the peer.
 async function setUpInput({ canWrite, primeOnly, messagePrice: price = 0 }) {
   if (!me.profileCompleted) {
     $('form').hidden = true;
@@ -736,9 +736,9 @@ async function showSafetyCode() {
 
 // whyNotWrite tells the caller's own blacklist and a deleted page apart
 // from the peer's choice, which openvk words the same for both.
-// primeOnlyHint: only people with Freenet Prime write to the peer.
+// primeOnlyHint: only people with Prime write to the peer.
 function primeOnlyHint() {
-  return [tr('{0} принимает сообщения только от подписчиков ', fullName(peer)), el('a', { href: '/prime', textContent: 'Freenet Prime' }), '.'];
+  return [tr('{0} принимает сообщения только от подписчиков ', fullName(peer)), el('a', { href: '/prime', textContent: 'Prime' }), '.'];
 }
 
 async function whyNotWrite() {

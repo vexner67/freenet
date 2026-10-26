@@ -45,7 +45,7 @@ const pushTexts = {
   story_comment: ['comment', 'комментарий под вашей историей'],
   gift: ['gift', 'вам подарок'],
   votes: ['votes', 'вам голоса'],
-  prime: ['prime', 'вам Freenet Prime'],
+  prime: ['prime', 'вам Prime'],
   invite: ['invite', 'по вашему приглашению'],
   verified: ['verified', 'вашу страницу'],
 };
@@ -85,7 +85,7 @@ const english = {
     story_comment: 'a comment under your story',
     gift: 'you a gift',
     votes: 'you votes',
-    prime: 'you Freenet Prime',
+    prime: 'you Prime',
     invite: 'by your invitation',
     verified: 'your page',
   },

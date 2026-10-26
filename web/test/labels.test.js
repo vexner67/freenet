@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale, primePeriods, primeSaving } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale, primePeriods, primeSaving, primeTerms, titleIcons, titleIconPath, titleGroups, businessLine, businessPictures, businessKinds } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -1243,17 +1243,44 @@ test('adminEconomy: the words under the treasury and the votes of the pages', ()
   assert.equal(adminEconomy({ votes: 5, bonus: 2 }).held, 'голосов на счетах людей');
 });
 
-test('Freenet Prime is sold by the month, the quarter and the year', () => {
+test('Prime is sold by the month, the quarter and the year', () => {
   assert.deepEqual(primePeriods.map(([v, , months]) => [v, months]), [['month', 1], ['quarter', 3], ['year', 12]]);
   const prices = { month: 150, quarter: 400, year: 1500 };
   assert.equal(primeSaving(prices, 1, 150), 0);
   assert.equal(primeSaving(prices, 3, 400), 11);
   assert.equal(primeSaving(prices, 12, 1500), 16);
   assert.equal(primeSaving(prices, 3, 900), 0);
-  assert.deepEqual(voteOperation({ kind: 'prime', amount: -150, note: 'month' }, 'a'), { title: 'Freenet Prime на месяц', role: '' });
-  assert.deepEqual(voteOperation({ kind: 'prime', amount: -400, note: 'quarter', peer: { id: 'b' } }, 'a'), { title: 'Freenet Prime на 3 месяца', role: 'Получатель:' });
+  assert.deepEqual(voteOperation({ kind: 'prime', amount: -150, note: 'month' }, 'a'), { title: 'Prime на месяц', role: '' });
+  assert.deepEqual(voteOperation({ kind: 'prime', amount: -400, note: 'quarter', peer: { id: 'b' } }, 'a'), { title: 'Prime на квартал', role: 'Получатель:' });
   assert.equal(notificationVerb('prime', { gender: 'female' }), 'подарила');
-  assert.equal(errorText({ message: 'this is for freenet prime only' }), 'Это доступно только с Freenet Prime.');
+  assert.equal(errorText({ message: 'this is for freenet prime only' }), 'Это доступно только с Prime.');
+  assert.deepEqual(primeTerms, { month: 'месяц', quarter: 'квартал', year: 'год' });
+});
+
+test('the titles of a page are grouped, the latest first', () => {
+  assert.deepEqual(titleIcons.map(([icon]) => icon), ['crown', 'cup', 'star', 'laurel', 'shield', 'flame', 'diamond', 'lightning']);
+  for (const [icon] of titleIcons) assert.equal(titleIconPath(icon), `/static/titles/${icon}.svg`);
+  assert.equal(titleIconPath('skull'), '/static/titles/star.svg');
+
+  const groups = titleGroups([
+    { id: 'c', name: 'Король шахты', icon: 'crown', grantedAt: '2026-10-26T10:00:00Z' },
+    { id: 'b', name: 'Игрок недели', icon: 'cup', grantedAt: '2026-10-25T10:00:00Z' },
+    { id: 'a', name: 'Король шахты', icon: 'crown', grantedAt: '2026-10-20T10:00:00Z' },
+    { id: 'd', name: 'Король шахты', icon: 'star', grantedAt: '2026-10-21T10:00:00Z' },
+  ]);
+  assert.deepEqual(groups.map((g) => [g.name, g.icon, g.count, g.last]), [
+    ['Король шахты', 'crown', 2, '2026-10-26T10:00:00Z'],
+    ['Игрок недели', 'cup', 1, '2026-10-25T10:00:00Z'],
+    ['Король шахты', 'star', 1, '2026-10-21T10:00:00Z'],
+  ]);
+  assert.deepEqual(titleGroups([]), []);
+});
+
+test('the profile says of a business its level and staff, or that it went bankrupt', () => {
+  assert.equal(businessLine({ level: 3, workers: 4 }), '3 ур., 4 работника');
+  assert.equal(businessLine({ level: 1, workers: 1 }), '1 ур., 1 работник');
+  assert.equal(businessLine({ level: 2, workers: 0, bankrupt: true }), 'банкрот');
+  for (const kind of businessKinds) assert.equal(businessPictures[kind], `/static/business/${kind}.svg`);
 });
 
 test('collectible gifts: the traits of the domain, their pictures, fees and statements', async () => {

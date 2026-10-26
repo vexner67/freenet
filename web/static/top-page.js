@@ -35,12 +35,12 @@ function placeCell(place) {
 }
 
 // personCell is a person of the board; one with Prime wears the colour of
-// their name and their pattern, as in their posts.
+// their name, as in their posts (their pattern is behind the whole row).
 function personCell(entry) {
   const path = '/' + entry.user.nickname;
 
   return el('td', {},
-    el('div', { className: ['top-person', ...primeDress(entry.user)].join(' ') },
+    el('div', { className: 'top-person' },
       el('a', { href: path }, el('img', { className: 'top-avatar', src: avatarURL(entry.user, 'small'), alt: '' })),
       el('div', { className: 'top-who' },
         el('a', { className: ['post-name', primeNameClass(entry.user)].filter(Boolean).join(' '), href: path, textContent: fullName(entry.user) }),
@@ -51,7 +51,7 @@ function personCell(entry) {
 }
 
 function row(entry) {
-  return el('tr', { className: entry.place <= 3 ? 'top-row top-row-medal' : 'top-row' },
+  return el('tr', { className: ['top-row', ...(entry.place <= 3 ? ['top-row-medal'] : []), ...primeDress(entry.user)].join(' ') },
     placeCell(entry.place),
     personCell(entry),
     el('td', { className: 'top-value', textContent: topValue(board, entry.value) }));

@@ -1,16 +1,17 @@
-// "Freenet Prime" at /prime, the subscription of the site: what it gives,
+// "Prime" at /prime, the subscription of the site: what it gives,
 // buying a month, three months or a year for votes into the treasury,
-// giving it to another as a present and «Невидимка» for one who has it;
+// giving it to another as a present (the recipient picked as in the bank) and «Невидимка» for one who has it;
 // one who has it is not offered to buy it again until it ends.
 // openvk has nothing like it.
 
 import { api, currentUser, started } from './api.js';
 import {
   formatDateTime, primeBackgrounds, primeFrames, primeMoodIcons, primeMoodText, primeMoods, primeNames, primePeriods,
-  primeNameClass, primeSaving, primeStyleClasses, transferNickname, votesAmount,
+  primeNameClass, primeSaving, primeStyleClasses, primeTerms, transferNickname, votesAmount,
 } from './labels.js';
 import { $, avatarURL, el, fullName, hideError, pagePath, profilePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { tr } from './i18n.js';
+import { isNickname, recipientPicker } from './recipient.js';
 
 const error = $('error');
 // The prices are asked with the page, before who is signed in is known.
@@ -29,7 +30,7 @@ function showState(me) {
 
   $('state').textContent = until
     ? tr('Подписка активна до {0}. Купить её снова можно, когда она закончится.', formatDateTime(until))
-    : tr('У вас пока нет Freenet Prime.');
+    : tr('У вас пока нет Prime.');
   // One who has Prime sees what it gives, not its prices.
   $('buy-part').hidden = Boolean(until);
   $('balance').textContent = votesAmount(me.votes ?? 0);
@@ -53,7 +54,7 @@ function plan(me, cost, [period, name, months]) {
       const bought = await api.buyPrime(period);
       Object.assign(me, { votes: bought.balance, primeUntil: bought.until, prime: true });
       showState(me);
-      say(tr('Freenet Prime ваш'), tr('Подписка действует до {0}.', formatDateTime(bought.until)));
+      say(tr('Prime ваш'), tr('Подписка действует до {0}.', formatDateTime(bought.until)));
     } catch (e) {
       showError(error, e);
     } finally {
@@ -68,12 +69,16 @@ function plan(me, cost, [period, name, months]) {
     buy);
 }
 
-// initGive is "Подарить подписку": the recipient by nickname or link.
+// initGive is "Подарить подписку": the recipient picked as in the bank.
 function initGive(me) {
   const form = $('give');
   const period = $('give-period');
+  const picker = recipientPicker({
+    to: $('give-to'), me, people: $('give-people'), shown: $('give-recipient'),
+    picked: () => period.focus(),
+  });
 
-  period.replaceChildren(...primePeriods.map(([value, name]) => el('option', { value, textContent: name })));
+  period.replaceChildren(...primePeriods.map(([value]) => el('option', { value, textContent: primeTerms[value] })));
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -84,14 +89,18 @@ function initGive(me) {
     submit.disabled = true;
 
     try {
-      const nickname = transferNickname($('give-to').value);
-      const recipient = await api.profile(nickname);
-      const given = await api.givePrime(nickname, period.value);
+      const recipient = picker.found() ?? await picker.lookUp();
+      if (!recipient) {
+        showError(error, isNickname(transferNickname($('give-to').value)) ? tr('Получатель не найден.') : tr('Выберите получателя из списка.'));
+        return;
+      }
+
+      const given = await api.givePrime(recipient.nickname, period.value);
       me.votes = given.balance;
       showState(me);
-      $('give-to').value = '';
+      picker.clear();
       say(tr('Подписка подарена'), el('a', { href: pagePath(recipient), textContent: fullName(recipient) }),
-        tr(' получает Freenet Prime до {0}.', formatDateTime(given.until)));
+        tr(' получает Prime до {0}.', formatDateTime(given.until)));
     } catch (e) {
       showError(error, e);
     } finally {

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+  <defs>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffbe8"/>
+      <stop offset="0.5" stop-color="#d9b44a"/>
+      <stop offset="1" stop-color="#7a5206"/>
+    </linearGradient>
+    <radialGradient id="face" cx="40%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#b8f0a8"/>
+      <stop offset="0.55" stop-color="#2f9e2a"/>
+      <stop offset="1" stop-color="#124a10"/>
+    </radialGradient>
+    <linearGradient id="sym" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffbe0"/>
+      <stop offset="0.5" stop-color="#ffd23a"/>
+      <stop offset="1" stop-color="#c28a00"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <circle cx="18" cy="18" r="17.5" fill="#000" opacity="0.18"/>
+  <circle cx="18" cy="17.5" r="17" fill="url(#rim)"/>
+  <circle cx="18" cy="17.5" r="14.6" fill="url(#face)" stroke="#000" stroke-opacity="0.35" stroke-width="0.6"/>
+  <path d="M18 28c-6-1-9.5-6-9.5-13M18 28c6-1 9.5-6 9.5-13" fill="none" stroke="#5a3a00" stroke-width="1.6"/><ellipse cx="9" cy="13" rx="1.6" ry="3" transform="rotate(-15 9 13)" fill="url(#sym)" stroke="#5a3a00" stroke-width="0.7"/><ellipse cx="9.6" cy="18" rx="1.6" ry="3" transform="rotate(-35 9.6 18)" fill="url(#sym)" stroke="#5a3a00" stroke-width="0.7"/><ellipse cx="11.5" cy="22.5" rx="1.6" ry="3" transform="rotate(-55 11.5 22.5)" fill="url(#sym)" stroke="#5a3a00" stroke-width="0.7"/><ellipse cx="14.5" cy="25.8" rx="1.6" ry="3" transform="rotate(-75 14.5 25.8)" fill="url(#sym)" stroke="#5a3a00" stroke-width="0.7"/><ellipse cx="27" cy="13" rx="1.6" ry="3" transform="rotate(15 27 13)" fill="url(#sym)" stroke="#5a3a00" stroke-width="0.7"/><ellipse cx="26.4" cy="18" rx="1.6" ry="3" transform="rotate(35 26.4 18)" fill="url(#sym)" stroke="#5a3a00" stroke-width="0.7"/><ellipse cx="24.5" cy="22.5" rx="1.6" ry="3" transform="rotate(55 24.5 22.5)" fill="url(#sym)" stroke="#5a3a00" stroke-width="0.7"/><ellipse cx="21.5" cy="25.8" rx="1.6" ry="3" transform="rotate(75 21.5 25.8)" fill="url(#sym)" stroke="#5a3a00" stroke-width="0.7"/><path d="M18 10l1.3 2.7 2.9.4-2.1 2 .5 2.9-2.6-1.4-2.6 1.4.5-2.9-2.1-2 2.9-.4z" fill="#fff6b8" stroke="#5a3a00" stroke-width="0.6"/>
+  <path d="M5.5 15a12.8 10 0 0 1 25 0c-4-3-21-3-25 0z" fill="url(#gloss)"/>
+  <path d="M29 4.5l0.8 1.9 1.9 0.8-1.9 0.8-0.8 1.9-0.8-1.9-1.9-0.8 1.9-0.8z" fill="#fff"/>
+</svg>

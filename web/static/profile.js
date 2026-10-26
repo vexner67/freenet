@@ -1,5 +1,5 @@
 import { api, currentUser, started } from './api.js';
-import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, plural, MAX_RATING } from './labels.js';
+import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, plural, MAX_RATING, businessLine, businessName, businessPictures, titleGroups, titleIconPath } from './labels.js';
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
@@ -116,7 +116,7 @@ function renderHeader(profile, isOwner) {
   const seen = isOwner ? tr('Онлайн') : presence(profile);
 
   document.title = `${name} | Freenet`;
-  // Freenet Prime: the name and the frame of the photo are amethyst, or
+  // Prime: the name and the frame of the photo are amethyst, or
   // as the owner dressed the page ("Оформление страницы").
   document.body.classList.toggle('prime-page', Boolean(profile.prime));
   document.body.classList.add(...primeStyleClasses(profile.primeStyle));
@@ -347,6 +347,50 @@ async function showPet(user, me, isOwner) {
   $('pet-block').hidden = false;
 }
 
+// showTitles is the block "Титулы": the awards the administrators gave the
+// page, each with its picture and, given more than once, how many times.
+async function showTitles(user) {
+  let titles;
+  try {
+    ({ titles } = await api.userTitles(user.nickname));
+  } catch {
+    return; // Not to be had: the page works without it.
+  }
+  if (!titles.length) return;
+
+  $('titles-count').textContent = `${titles.length} ${plural(titles.length, ['титул', 'титула', 'титулов'])}`;
+  $('titles-list').replaceChildren(...titleGroups(titles).map((g) => el('div', { className: 'title-side-row', title: tr('Получен {0}', formatDateTime(g.last)) },
+    el('img', { className: 'title-badge', src: titleIconPath(g.icon), alt: '', width: 36, height: 36 }),
+    el('div', { className: 'title-side-text' },
+      el('b', { textContent: g.name }),
+      g.count > 1 ? el('span', { className: 'title-times', textContent: ' ×' + g.count }) : null,
+    ))));
+  $('titles-block').hidden = false;
+}
+
+// showBusinesses is the block "Бизнес" of a page with businesses: the
+// picture, name, level and staff of each.
+async function showBusinesses(user, isOwner) {
+  let businesses;
+  try {
+    ({ businesses } = await api.userBusinesses(user.nickname));
+  } catch {
+    return; // Not to be had: the page works without it.
+  }
+  if (!businesses.length) return;
+
+  $('business-count').textContent = `${businesses.length} ${plural(businesses.length, ['бизнес', 'бизнеса', 'бизнесов'])}`;
+  $('business-link').hidden = !isOwner;
+  $('business-side').replaceChildren(...businesses.map((b) => el('div', { className: 'pet-side-row' + (b.bankrupt ? ' business-side-bankrupt' : '') },
+    el('a', { className: 'business-side-picture', href: isOwner ? '/business' : '/top?board=business' },
+      el('img', { src: businessPictures[b.kind], alt: '', width: 48, height: 48 })),
+    el('div', { className: 'pet-side-text' },
+      el('b', { textContent: businessName(b.kind) }),
+      el('div', { className: 'hint', textContent: businessLine(b) }),
+    ))));
+  $('business-block').hidden = false;
+}
+
 // showStories offers "Смотреть историю" under the photo while the user
 // has live stories the viewer sees.
 async function showStories(user) {
@@ -544,6 +588,8 @@ try {
     if (profile.access.clubs) showClubs(profile);
     showGifts(profile, me, isOwner);
     showPet(profile, me, isOwner);
+    showBusinesses(profile, isOwner);
+    showTitles(profile);
     if (me) showStories(profile);
     // "Гости": the owner learns of the visit, unless it leaves no trace.
     if (me && !isOwner) api.visitPage(profile.nickname).catch(() => {});

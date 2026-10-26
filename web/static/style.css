@@ -843,7 +843,7 @@ a.like:hover svg { opacity: .7; }
 /* Photo */
 
 .avatar { object-fit: cover; }
-/* Freenet Prime: an amethyst frame of the photo and an amethyst name on the
+/* Prime: an amethyst frame of the photo and an amethyst name on the
    page of the person. */
 .prime-page .avatar {
   border: 3px solid var(--back-c7b2ee);
@@ -942,7 +942,50 @@ body.prime-bg { background: var(--back-f2f5f8) var(--prime-pattern); }
   pointer-events: none;
 }
 .im-message.prime-dressed::before, .im-quote.prime-dressed::before { inset: 0; }
-.top-person.prime-dressed::before { inset: -3px -4px; }
+/* "под кайфом" does not stay still: behind the page the pattern breathes,
+   drifts and runs through every colour, the column glows in rainbow, and
+   behind a post or a message the colours run too. */
+body.prime-bg.prime-bg-trip::before {
+  content: "";
+  position: fixed;
+  inset: -15%;
+  z-index: -2;
+  background: var(--prime-pattern);
+  background-size: 200px 200px;
+  animation: trip-colors 6s linear infinite, trip-breathe 5s ease-in-out infinite alternate, trip-drift 30s linear infinite;
+  pointer-events: none;
+}
+.prime-bg.prime-bg-trip .layout::before {
+  box-shadow: 0 0 22px 8px rgb(255 0 128 / 85%), 0 0 60px 18px rgb(0 200 255 / 55%);
+  animation: trip-colors 4s linear infinite;
+}
+.prime-dressed.prime-bg-trip::before, .prime-swatch-bg.prime-bg-trip { animation: trip-colors 5s linear infinite; }
+/* The words over it stay read: the pattern behind a post is fainter, the
+   name and status of the preview sit on a pale plate. */
+.prime-dressed.prime-bg-trip::before { opacity: 0.55; }
+.prime-preview.prime-bg-trip > div { padding: 2px 6px; background: color-mix(in srgb, var(--back-fff) 85%, transparent); }
+@keyframes trip-colors {
+  from { filter: hue-rotate(0deg) saturate(1.8) contrast(1.1); }
+  to { filter: hue-rotate(360deg) saturate(1.8) contrast(1.1); }
+}
+@keyframes trip-breathe {
+  from { transform: scale(1) rotate(-2deg) skewX(-3deg); }
+  to { transform: scale(1.12) rotate(2deg) skewX(3deg); }
+}
+@keyframes trip-drift {
+  from { background-position: 0 0; }
+  to { background-position: 400px 600px; }
+}
+/* In the ratings the pattern is behind the whole row, from edge to edge:
+   on the cells, fixed to the screen so it runs on across them unbroken
+   (a ::before of a row would be taken for a cell of its own), and faded
+   as behind a post. */
+.top-row.prime-dressed { position: static; isolation: auto; }
+.top-row.prime-dressed::before { content: none; }
+.top-row.prime-dressed td {
+  background: linear-gradient(color-mix(in srgb, var(--back-f2f5f8) 30%, transparent), color-mix(in srgb, var(--back-f2f5f8) 30%, transparent)),
+    var(--prime-pattern) fixed;
+}
 /* A dressed block is its own stacking context, so the open menu of its
    actions would slip under the next message or comment: the block with
    the open menu rises over its neighbours. */
@@ -956,6 +999,8 @@ body.prime-bg { background: var(--back-f2f5f8) var(--prime-pattern); }
 
 @media (prefers-reduced-motion: reduce) {
   .prime-name.prime-name-rainbow, .prime-page.prime-frame-glitter .avatar, .prime-frame-glitter .prime-sparkles { animation: none; }
+  body.prime-bg.prime-bg-trip::before, .prime-bg.prime-bg-trip .layout::before, .prime-dressed.prime-bg-trip::before,
+  .prime-swatch-bg.prime-bg-trip { animation: none; }
 }
 
 /* The choices of "Оформление страницы" on /prime: swatches in a row, the
@@ -1315,12 +1360,13 @@ label.chat-person { cursor: pointer; }
   inset: 0;
   z-index: 100;
   display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 16px;
+  overflow-y: auto;
   background: rgba(0, 0, 0, .7);
 }
-.modal-box { width: 400px; max-width: 100%; background: var(--back-fff); border: 1px solid var(--line-555); }
+/* A margin, not align-items, centers the box: a box taller than the
+   screen then starts at the top and scrolls instead of being cut off. */
+.modal-box { margin: auto; width: 400px; max-width: 100%; background: var(--back-fff); border: 1px solid var(--line-555); }
 .modal-header { padding: 10px 12px; background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); color: var(--text-fff); font-size: 13px; font-weight: bold; }
 .modal-body { display: flex; flex-direction: column; gap: 5px; padding: 14px 12px; }
 .modal-body textarea { height: 60px; }
@@ -1589,7 +1635,7 @@ label.chat-person { cursor: pointer; }
 .profile-hints { margin-top: 8px; }
 .completeness-gauge { position: relative; width: 95%; height: 16px; background: var(--back-e6e6e6); border-top: 1px solid var(--line-bbb); }
 .completeness-gauge > div { height: 100%; background: var(--back-d4d4d4); }
-.completeness-gauge > span { position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%); }
+.completeness-gauge > span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; line-height: 1; }
 .completeness-gauge-gold { background: var(--back-f6ebbb); border-top-color: var(--line-b9b597); }
 .completeness-gauge-gold > div { background: var(--back-e1d7a2); }
 /* The hints of openvk, each with its picture: what to tell about yourself,
@@ -1963,7 +2009,7 @@ a.poll-result-name { cursor: pointer; }
 
 /* "Голоса" of the settings, as openvk's: what votes are on the left, the
    account on the right; the serial number of a voucher in four fields. */
-/* "Freenet Prime" (/prime): the badge with the term, the perks and the
+/* "Prime" (/prime): the badge with the term, the perks and the
    three periods side by side. */
 .prime-hero { display: flex; gap: 12px; align-items: center; margin: 0 0 8px; }
 .prime-hero-title { color: var(--text-6b3fb8); font-size: 16px; }
@@ -2831,7 +2877,7 @@ img.name-checkmark.name-checkmark {
   vertical-align: baseline;
 }
 
-/* The badge of Freenet Prime after the name, beside the checkmark. */
+/* The badge of Prime after the name, beside the checkmark. */
 img.name-prime.name-prime {
   display: inline;
   width: 12px;
@@ -2939,3 +2985,13 @@ img.name-prime.name-prime {
 .pet-side-row { display: flex; gap: 8px; align-items: center; padding: 2px 0; }
 .pet-side .pet-picture { padding: 2px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
 .pet-side-text { min-width: 0; line-height: 1.5; }
+/* "Титулы": each award a glossy badge with its name, as the forums of the
+   2000s hung them under the avatar; one given more than once says ×N. */
+.title-side { padding: 2px 0; }
+.title-side-row { display: flex; gap: 8px; align-items: center; padding: 3px 0; }
+.title-badge { flex: none; width: 36px; height: 36px; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 25%)); }
+.title-side-text { min-width: 0; line-height: 1.3; overflow-wrap: anywhere; }
+.title-times { color: var(--text-808080); font-weight: bold; }
+/* "Бизнес": the premises of each business, greyed once bankrupt. */
+.business-side-picture img { display: block; width: 48px; height: 48px; padding: 2px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); object-fit: cover; }
+.business-side-bankrupt .business-side-picture img { filter: grayscale(1); opacity: 0.6; }

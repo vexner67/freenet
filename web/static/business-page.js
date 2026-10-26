@@ -11,7 +11,7 @@
 
 import { api, currentUser, session, started } from './api.js';
 import {
-  businessAdvice, businessEvent, businessLoad, businessMood, businessName, businessNote, businessOption,
+  businessAdvice, businessEvent, businessLoad, businessMood, businessName, businessNote, businessOption, businessPictures,
   businessTotals, businessUnits, formatDateTime, groupedVotes, hundredths, offerName, orderCost, plural, professionName,
   professionWork, supplierAbout, supplierName, supplyName, traitName, votesAmount, votesFontSize,
 } from './labels.js';
@@ -23,12 +23,7 @@ import { H, Premises, W } from './business-art.js';
 const answered = session.get() ? started(api.businesses()) : null;
 
 // The pictures of the businesses for their headings and the lots.
-const buildings = {
-  kiosk: '/static/business/kiosk.svg',
-  cafe: '/static/business/cafe.svg',
-  carwash: '/static/business/carwash.svg',
-  factory: '/static/business/factory.svg',
-};
+const buildings = businessPictures;
 
 let state = null;
 let busy = false;

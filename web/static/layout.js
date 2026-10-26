@@ -462,7 +462,7 @@ export function applyInterface(me) {
     el('div', { className: 'menu-divider' }),
     el('a', { href: '/stickers', textContent: tr('Стикеры') }),
     el('a', { href: '/votes', textContent: tr('Банк') }),
-    el('a', { href: '/prime', textContent: 'Freenet Prime' }),
+    el('a', { href: '/prime', textContent: 'Prime' }),
     el('a', { href: '/mine', textContent: tr('Заработок') }),
     el('a', { href: '/casino', textContent: tr('Азартные игры') }),
     el('a', { href: '/pet', textContent: tr('Питомцы') }),
@@ -779,11 +779,11 @@ export function verifiedMark(user) {
       className: 'name-checkmark', src: '/static/icons/checkmark.svg', alt: '', width: 13, height: 11,
       title: tr('Подтверждённая страница'),
     }),
-    // Freenet Prime has its badge after the name, wherever the checkmark
+    // Prime has its badge after the name, wherever the checkmark
     // would be.
     user?.prime && el('img', {
       className: 'name-prime', src: '/static/icons/prime.svg', alt: '', width: 12, height: 12,
-      title: 'Freenet Prime',
+      title: 'Prime',
     }),
   ].filter(Boolean);
   if (marks.length === 0) return '';

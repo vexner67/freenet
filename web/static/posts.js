@@ -16,7 +16,7 @@ import { documentsNode } from './docs.js';
 import { tr } from './i18n.js';
 
 // nameClass is the class of the name of an author by a post, a comment or
-// a message: coloured as a person with Freenet Prime dressed it.
+// a message: coloured as a person with Prime dressed it.
 export function nameClass(author) {
   return ['post-name', primeNameClass(author)].filter(Boolean).join(' ');
 }

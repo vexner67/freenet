@@ -38,7 +38,7 @@
         <div class="aui-nav-heading">Платные услуги</div>
         <a class="aui-nav-item" href="/admin/vouchers" title="Ваучеры"><span class="aui-icon aui-icon-card"></span><span class="aui-nav-item-label">Ваучеры</span></a>
         <a class="aui-nav-item" href="/admin/gifts" title="Подарки"><span class="aui-icon aui-icon-gift"></span><span class="aui-nav-item-label">Подарки</span></a>
-        <a class="aui-nav-item" href="/admin/prime" title="Freenet Prime"><span class="aui-icon aui-icon-prime"></span><span class="aui-nav-item-label">Freenet Prime</span></a>
+        <a class="aui-nav-item" href="/admin/prime" title="Prime"><span class="aui-icon aui-icon-prime"></span><span class="aui-nav-item-label">Prime</span></a>
         <a class="aui-nav-item" href="/admin/casino" title="Казино"><span class="aui-icon aui-icon-casino"></span><span class="aui-nav-item-label">Казино</span></a>
         <a class="aui-nav-item" href="/admin/bets" title="Ставки"><span class="aui-icon aui-icon-bets"></span><span class="aui-nav-item-label">Ставки</span></a>
         <a class="aui-nav-item" href="/admin/mine" title="Шахта"><span class="aui-icon aui-icon-mine"></span><span class="aui-nav-item-label">Шахта</span></a>
@@ -115,7 +115,7 @@
           <div class="field-group">
             <label for="economy-fee">Комиссия перевода, %</label>
             <input class="text admin-casino-field" id="economy-fee" type="number" min="0" max="100" required>
-            <div class="description">Сверх перевода, не меньше 1 голоса; с Freenet Prime комиссии нет.</div>
+            <div class="description">Сверх перевода, не меньше 1 голоса; с Prime комиссии нет.</div>
           </div>
           <div class="field-group">
             <label for="economy-tax">Налог со стикеров, %</label>
@@ -150,6 +150,7 @@
               <th>Верификация</th>
               <th>Метка</th>
               <th>Блокировка</th>
+              <th>Титулы</th>
             </tr>
           </thead>
           <tbody id="user-rows"></tbody>
@@ -293,7 +294,7 @@
     </section>
 
     <section id="prime" hidden>
-      <h1 class="aui-page-heading">Freenet Prime</h1>
+      <h1 class="aui-page-heading">Prime</h1>
       <p class="admin-lead">Подписка сайта: значок после имени, золотая рамка и стиль, подарки Prime, новости без рекламы, «Невидимка», переводы без комиссии и меньший налог со стикеров. Голоса за неё уходят в Казну. Новые цены действуют для следующих покупок.</p>
       <div class="aui-message aui-message-success" id="prime-saved" hidden></div>
       <form class="aui" id="prime-form">
@@ -303,7 +304,7 @@
           <div class="description">В голосах, не меньше 1.</div>
         </div>
         <div class="field-group">
-          <label for="prime-quarter">3 месяца</label>
+          <label for="prime-quarter">Квартал</label>
           <input class="text admin-casino-field" id="prime-quarter" type="number" min="1" required>
         </div>
         <div class="field-group">
@@ -838,6 +839,30 @@
         <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
         <button class="aui-button" type="button" id="alert-remove">Снять метку</button>
         <button class="aui-button aui-button-link" type="button" id="alert-cancel">Отмена</button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<div class="aui-blanket" id="title-dialog" hidden>
+  <section class="aui-dialog" role="dialog" aria-modal="true" aria-labelledby="title-title">
+    <header class="aui-dialog-header"><h2 id="title-title">Титулы</h2></header>
+    <form class="aui aui-dialog-content" id="title-form">
+      <p id="title-about"></p>
+      <ul class="admin-titles" id="title-list"></ul>
+      <div class="field-group">
+        <label for="title-name">Название титула</label>
+        <input class="text long-field" type="text" id="title-name" maxlength="40" required autocomplete="off">
+        <div class="description">Одна строка, до 40 знаков. Один и тот же титул можно выдавать сколько угодно раз.</div>
+      </div>
+      <fieldset class="group">
+        <legend><span>Значок</span></legend>
+        <div class="admin-title-icons" id="title-icons"></div>
+      </fieldset>
+      <p class="aui-message aui-message-error" id="title-error" hidden></p>
+      <div class="buttons-container">
+        <button class="aui-button aui-button-primary" type="submit">Выдать титул</button>
+        <button class="aui-button aui-button-link" type="button" id="title-cancel">Закрыть</button>
       </div>
     </form>
   </section>

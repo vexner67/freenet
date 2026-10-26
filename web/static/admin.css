@@ -502,6 +502,16 @@ form.aui .select {
 .admin-alert-text { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-alert-text.empty { color: var(--aui-subtle); }
 .admin-ban-until { color: var(--aui-subtle); font-size: 12px; }
+/* "Титулы": the titles a person holds, each with "Убрать", and the badges
+   to choose from for a new one. */
+.admin-titles { margin: 0 0 12px; padding: 0; list-style: none; }
+.admin-titles li { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--aui-line); }
+.admin-titles li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.admin-titles img { flex: none; }
+.admin-title-icons { display: flex; flex-wrap: wrap; gap: 6px; }
+.admin-title-icons label { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px; border: 1px solid transparent; border-radius: 3px; cursor: pointer; font-size: 12px; }
+.admin-title-icons label:has(input:checked) { border-color: var(--aui-link); background: var(--aui-hover); }
+.admin-title-icons input { position: absolute; opacity: 0; pointer-events: none; }
 
 /* AUI's dialog over a blanket: "Заблокировать пользователя". */
 .aui-blanket {
