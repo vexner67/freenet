@@ -151,6 +151,7 @@ func (a *App) build(cfg config.Config) error {
 			Casino:        backend.NewCasino(userv1.NewUserServiceClient(a.userConn)),
 			Mine:          backend.NewMine(userv1.NewUserServiceClient(a.userConn)),
 			Business:      backend.NewBusiness(userv1.NewUserServiceClient(a.userConn)),
+			Titles:        backend.NewTitles(userv1.NewUserServiceClient(a.userConn)),
 			Bank:          backend.NewBank(userv1.NewUserServiceClient(a.userConn)),
 			Poker:         backend.NewPoker(userv1.NewUserServiceClient(a.userConn)),
 			Holdem:        backend.NewHoldem(userv1.NewUserServiceClient(a.userConn)),

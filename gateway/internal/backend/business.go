@@ -31,6 +31,21 @@ func (b *Business) Get(ctx context.Context, accessToken string) (model.Businesse
 	return fromProtoBusinesses(resp), nil
 }
 
+// UserBusinesses are the businesses of a page as its profile shows them.
+func (b *Business) UserBusinesses(ctx context.Context, accessToken, nickname string) ([]model.UserBusiness, error) {
+	resp, err := b.api.GetUserBusinesses(withToken(ctx, accessToken), &userv1.GetUserBusinessesRequest{Nickname: nickname})
+	if err != nil {
+		return nil, errs.Wrap("b.api.GetUserBusinesses", fromStatus(err))
+	}
+
+	out := make([]model.UserBusiness, 0, len(resp.GetBusinesses()))
+	for _, ub := range resp.GetBusinesses() {
+		out = append(out, model.UserBusiness{Kind: ub.GetKind(), Level: int(ub.GetLevel()), Workers: int(ub.GetWorkers()), Bankrupt: ub.GetBankrupt()})
+	}
+
+	return out, nil
+}
+
 func (b *Business) Buy(ctx context.Context, accessToken, kind string) (model.BusinessDone, error) {
 	resp, err := b.api.BuyBusiness(withToken(ctx, accessToken), &userv1.BuyBusinessRequest{Kind: kind})
 	if err != nil {

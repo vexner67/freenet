@@ -14,6 +14,7 @@ import (
 // with the votes: people buy and run them, the administrators tune them.
 type Business interface {
 	Get(ctx context.Context, accessToken string) (model.Businesses, error)
+	UserBusinesses(ctx context.Context, accessToken, nickname string) ([]model.UserBusiness, error)
 	Buy(ctx context.Context, accessToken, kind string) (model.BusinessDone, error)
 	Run(ctx context.Context, accessToken string, act model.BusinessAct) (model.BusinessDone, error)
 	Settings(ctx context.Context, accessToken string) (model.BusinessSettings, model.BusinessStats, error)
@@ -460,4 +461,32 @@ func (a *api) setBusinessSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+type userBusinessJSON struct {
+	Kind     string `json:"kind"`
+	Level    int    `json:"level"`
+	Workers  int    `json:"workers"`
+	Bankrupt bool   `json:"bankrupt"`
+}
+
+// getUserBusinesses are the businesses of a page, public as the page.
+func (a *api) getUserBusinesses(w http.ResponseWriter, r *http.Request) {
+	token, err := optionalBearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	owned, err := a.business.UserBusinesses(r.Context(), token, r.PathValue("nickname"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, struct {
+		Businesses []userBusinessJSON `json:"businesses"`
+	}{listJSON(owned, func(b model.UserBusiness) userBusinessJSON {
+		return userBusinessJSON{Kind: b.Kind, Level: b.Level, Workers: b.Workers, Bankrupt: b.Bankrupt}
+	})})
 }

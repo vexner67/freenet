@@ -546,6 +546,7 @@ type Backends struct {
 	Mine          Mine
 	Pets          Pets
 	Business      Business
+	Titles        Titles
 	Bank          Bank
 	Poker         Poker
 	Holdem        Holdem
@@ -585,6 +586,7 @@ type api struct {
 	mines             Mine
 	pets              Pets
 	business          Business
+	titles            Titles
 	banks             Bank
 	pokers            Poker
 	holdems           Holdem
@@ -936,6 +938,10 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/me/pets/{id}/play", a.playPet)
 	mux.HandleFunc("POST /api/v1/me/pets/{id}/fights", a.fightPet)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/pets", a.getUserPets)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/businesses", a.getUserBusinesses)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/titles", a.getUserTitles)
+	mux.HandleFunc("POST /api/v1/users/{nickname}/titles", a.grantTitle)
+	mux.HandleFunc("DELETE /api/v1/titles/{id}", a.revokeTitle)
 	mux.HandleFunc("GET /api/v1/pet/settings", a.petSettings)
 	mux.HandleFunc("PUT /api/v1/pet/settings", a.setPetSettings)
 	mux.HandleFunc("GET /api/v1/me/businesses", a.businesses)

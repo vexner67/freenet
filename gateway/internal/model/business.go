@@ -257,3 +257,12 @@ type BusinessStats struct {
 	Spent      int64
 	Paid       int64
 }
+
+// UserBusiness is a business as the profile of its owner shows it: what
+// it is, its level, how many work there and whether it went bankrupt.
+type UserBusiness struct {
+	Kind     string
+	Level    int
+	Workers  int
+	Bankrupt bool
+}

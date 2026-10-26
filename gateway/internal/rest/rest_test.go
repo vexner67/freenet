@@ -1571,6 +1571,7 @@ type harness struct {
 	mine          *fakeMine
 	pets          *fakePets
 	business      *fakeBusiness
+	titles        *fakeTitles
 	bank          *fakeBank
 	poker         *fakePoker
 	holdem        *fakeHoldem
@@ -1606,6 +1607,7 @@ func newHarness(cfg rest.Config) harness {
 		mine:          &fakeMine{},
 		pets:          &fakePets{},
 		business:      &fakeBusiness{},
+		titles:        &fakeTitles{},
 		bank:          &fakeBank{},
 		poker:         &fakePoker{},
 		holdem:        &fakeHoldem{},
@@ -1637,6 +1639,7 @@ func newHarness(cfg rest.Config) harness {
 		Mine:          h.mine,
 		Pets:          h.pets,
 		Business:      h.business,
+		Titles:        h.titles,
 		Bank:          h.bank,
 		Poker:         h.poker,
 		Holdem:        h.holdem,

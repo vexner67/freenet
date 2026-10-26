@@ -12,11 +12,12 @@ import (
 )
 
 type fakeBusiness struct {
-	token string
-	kind  string
-	act   model.BusinessAct
-	set   model.BusinessSettings
-	err   error
+	token    string
+	nickname string
+	kind     string
+	act      model.BusinessAct
+	set      model.BusinessSettings
+	err      error
 }
 
 func (f *fakeBusiness) businesses() model.Businesses {
@@ -37,6 +38,11 @@ func (f *fakeBusiness) businesses() model.Businesses {
 func (f *fakeBusiness) Get(_ context.Context, token string) (model.Businesses, error) {
 	f.token = token
 	return f.businesses(), f.err
+}
+
+func (f *fakeBusiness) UserBusinesses(_ context.Context, token, nickname string) ([]model.UserBusiness, error) {
+	f.token, f.nickname = token, nickname
+	return []model.UserBusiness{{Kind: "kiosk", Level: 2, Workers: 3, Bankrupt: true}}, f.err
 }
 
 func (f *fakeBusiness) Buy(_ context.Context, token, kind string) (model.BusinessDone, error) {
@@ -111,5 +117,22 @@ func TestBusiness(t *testing.T) {
 	h.business.err = failure.New(failure.Conflict, "the business went bankrupt")
 	if w = h.do("POST", "/api/v1/me/businesses/kiosk/upgrade", `{}`, "Authorization", "Bearer tok"); w.Code != http.StatusConflict {
 		t.Fatalf("bankrupt: %d", w.Code)
+	}
+}
+
+func TestUserBusinesses(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	w := h.do("GET", "/api/v1/users/ann/businesses", "")
+	got := decode[map[string]any](t, w)["businesses"].([]any)
+	if w.Code != http.StatusOK || h.business.nickname != "ann" || h.business.token != "" || len(got) != 1 ||
+		got[0].(map[string]any)["kind"] != "kiosk" || got[0].(map[string]any)["workers"] != 3.0 || got[0].(map[string]any)["bankrupt"] != true {
+		t.Fatalf("businesses of a page: %d %v", w.Code, got)
+	}
+
+	h.business.err = failure.New(failure.NotFound, "user not found")
+	if w = h.do("GET", "/api/v1/users/gone/businesses", ""); w.Code != http.StatusNotFound {
+		t.Fatalf("businesses of a deleted page: %d", w.Code)
 	}
 }

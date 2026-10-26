@@ -5923,6 +5923,87 @@ paths:
                   pets: { type: array, items: { $ref: "#/components/schemas/Pet" } }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/users/{nickname}/businesses:
+    get:
+      summary: The businesses of a page
+      description: Public as the page; what its profile shows of each business — its kind, level, how many work there and whether it went bankrupt. Empty without businesses.
+      parameters:
+        - { name: nickname, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The businesses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  businesses:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind: { type: string, enum: [kiosk, cafe, carwash, factory] }
+                        level: { type: integer }
+                        workers: { type: integer }
+                        bankrupt: { type: boolean }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/users/{nickname}/titles:
+    get:
+      summary: The titles of a page
+      description: Public as the page; the awards the administrators gave it, the newest first. A page may hold the same title many times.
+      parameters:
+        - { name: nickname, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The titles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  titles: { type: array, items: { $ref: "#/components/schemas/Title" } }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Give a page a title
+      description: Only for the administrators of the site, as many times as they like. The name is one line of up to 40 characters.
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: nickname, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, icon]
+              properties:
+                name: { type: string, maxLength: 40 }
+                icon: { type: string, enum: [crown, cup, star, laurel, shield, flame, diamond, lightning] }
+      responses:
+        "201":
+          description: The title given
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Title" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/titles/{id}:
+    delete:
+      summary: Take a title away
+      description: Only for the administrators of the site.
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Taken away }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/pet/settings:
     get:
       summary: The pets for the administrators
@@ -9976,6 +10057,14 @@ components:
         meal: { type: integer, format: int64 }
         win: { type: integer, format: int64 }
         fights: { type: integer }
+    Title:
+      type: object
+      description: An award the administrators gave a page.
+      properties:
+        id: { type: string }
+        name: { type: string }
+        icon: { type: string, enum: [crown, cup, star, laurel, shield, flame, diamond, lightning] }
+        grantedAt: { type: string, format: date-time }
     Pet:
       type: object
       description: 'A pet as it is now: satiety and joy from 0 to 100 (they fall by themselves), the level with the experience of it and of the next (0 at the last), how it fights.'
