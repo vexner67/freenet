@@ -245,6 +245,9 @@ func (a *App) build(cfg config.Config) error {
 			Holdems:     a.holdems,
 			BetEvents:   service.NewBetEventService(store.users, store.betEvents, store.wallets, store.tx, admins),
 			Paid:        service.NewPaidService(store.users, store.wallets, store.purchases, store.economy, permissions, store.tx),
+			Guests:      service.NewGuestService(store.users, store.guests),
+			Tops:        service.NewTopService(store.tops),
+			Pets:        service.NewPetService(store.users, store.pets, store.wallets, store.tx, admins),
 			Permissions: permissions,
 			Presence:    a.presence,
 			Backdrops:   service.NewBackdropService(store.users, store.users),
@@ -319,6 +322,17 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		userv1.UserService_TakeDeposit_FullMethodName: cfg.BankLimits,
 		userv1.UserService_TakeLoan_FullMethodName:    cfg.BankLimits,
 		userv1.UserService_RepayLoan_FullMethodName:   cfg.BankLimits,
+
+		// A visit is a row in the guests of another page.
+		userv1.UserService_VisitPage_FullMethodName: cfg.VisitLimits,
+
+		// Hunger and the fights of a day hold pets back; the limit is
+		// against scripts.
+		userv1.UserService_AdoptPet_FullMethodName:  cfg.PetLimits,
+		userv1.UserService_FeedPet_FullMethodName:   cfg.PetLimits,
+		userv1.UserService_PlayPet_FullMethodName:   cfg.PetLimits,
+		userv1.UserService_RenamePet_FullMethodName: cfg.PetLimits,
+		userv1.UserService_FightPet_FullMethodName:  cfg.PetLimits,
 	}
 }
 
@@ -403,6 +417,12 @@ type storage struct {
 	holdems service.HoldemRepository
 	// betEvents are the events people stake on.
 	betEvents service.BetEventRepository
+	// guests are who visited whose page.
+	guests service.GuestRepository
+	// pets are the pets, their fights and the shop.
+	pets service.PetRepository
+	// tops are the boards of "Рейтинги".
+	tops service.TopRepository
 	// purchases are the paid posts opened and the messages paid for.
 	purchases service.PurchaseRepository
 	// ads are the advertising of the global feed, and how it does.
@@ -420,6 +440,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		users := inmem.NewUserRepository()
 		follows := inmem.NewFollowRepository(users)
 		stickers := inmem.NewStickerRepository(users)
+		pets := inmem.NewPetRepository(users)
 		return storage{
 			users:        users,
 			follows:      follows,
@@ -445,6 +466,9 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			holdems:      inmem.NewHoldemRepository(),
 			betEvents:    inmem.NewBetEventRepository(),
 			purchases:    inmem.NewPurchaseRepository(),
+			guests:       inmem.NewGuestRepository(users),
+			pets:         pets,
+			tops:         inmem.NewTopRepository(users, pets),
 			ads:          inmem.NewAdRepository(),
 			tx:           inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
@@ -500,6 +524,9 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		holdems:      postgres.NewHoldemRepository(a.pool),
 		betEvents:    postgres.NewBetEventRepository(a.pool),
 		purchases:    postgres.NewPurchaseRepository(a.pool),
+		guests:       postgres.NewGuestRepository(a.pool),
+		pets:         postgres.NewPetRepository(a.pool),
+		tops:         postgres.NewTopRepository(a.pool),
 		ads:          postgres.NewAdRepository(a.pool),
 		tx:           pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {

@@ -429,6 +429,47 @@ service UserService {
   // limits of the bank, and how it does.
   rpc GetBankSettings(GetBankSettingsRequest) returns (GetBankSettingsResponse);
   rpc SetBankSettings(SetBankSettingsRequest) returns (google.protobuf.Empty);
+
+  // "Гости страницы". VisitPage (access token) notes that the caller opened
+  // the page of nickname: their last visit there, once a guest; own,
+  // deleted pages and a guest with "Невидимка" of Prime leave none
+  // (NotFound "user not found" for nobody). ListGuests (access token) are
+  // the guests of the caller in the last 30 days, the last visit first;
+  // its first page marks them seen, and GetMe tells how many came since.
+  rpc VisitPage(VisitPageRequest) returns (google.protobuf.Empty);
+  rpc ListGuests(ListGuestsRequest) returns (ListGuestsResponse);
+
+  // "Рейтинги", public: a board of up to 50 pages — "rich" (the votes they
+  // have), "miners", "business" and "casino" (the votes they earned so in
+  // the last 7 days, less what they lost) and "pets" (the rating of their
+  // pets). Deleted and banned pages are left out; an unknown board —
+  // InvalidArgument.
+  rpc ListTop(ListTopRequest) returns (ListTopResponse);
+
+  // "Питомец": a pet of the caller (access token), one a page. AdoptPet
+  // takes the price of its kind into the treasury (AlreadyExists "you have
+  // a pet already", FailedPrecondition "not enough votes"); FeedPet a meal
+  // ("the pet is not hungry"); PlayPet is free, once in 30 minutes ("the
+  // pet has played recently"). FightPet sets the pet on the pet of
+  // nickname, or on one of a near rating without it ("there is nobody to
+  // fight", "a pet does not fight itself"): a pet that is hungry or sad
+  // does not fight ("the pet is too hungry to fight", "the pet is too sad
+  // to fight"), nor more times a day than the shop says ("the pet has
+  // fought enough today"); a win brings votes. Without a pet —
+  // NotFound "pet not found". GetUserPet is public: the pet of nickname.
+  rpc GetPet(GetPetRequest) returns (PetState);
+  rpc GetUserPet(GetUserPetRequest) returns (GetUserPetResponse);
+  rpc AdoptPet(AdoptPetRequest) returns (PetCareResponse);
+  rpc FeedPet(FeedPetRequest) returns (PetCareResponse);
+  rpc PlayPet(PlayPetRequest) returns (PetCareResponse);
+  rpc RenamePet(RenamePetRequest) returns (PetCareResponse);
+  rpc ReleasePet(ReleasePetRequest) returns (google.protobuf.Empty);
+  rpc FightPet(FightPetRequest) returns (FightPetResponse);
+  rpc ListPetFights(ListPetFightsRequest) returns (ListPetFightsResponse);
+  // For the administrators (PermissionDenied for others): the shop of
+  // pets and how they do.
+  rpc GetPetSettings(GetPetSettingsRequest) returns (GetPetSettingsResponse);
+  rpc SetPetSettings(SetPetSettingsRequest) returns (google.protobuf.Empty);
 }
 
 message User {
@@ -786,6 +827,8 @@ message GetMeRequest {}
 
 message GetMeResponse {
   User user = 1;
+  // The guests who came since the caller last looked, at most 100.
+  int32 new_guests = 2;
 }
 
 // Replaces the whole profile: fields left empty are cleared.
@@ -2827,4 +2870,179 @@ message HoldemTable {
   int64 raise_least = 22;
   int64 raise_most = 23;
   bool invited = 24;
+}
+
+message VisitPageRequest {
+  string nickname = 1;
+}
+
+message ListGuestsRequest {
+  string cursor = 1;
+  int32 limit = 2;
+}
+
+message Guest {
+  string user_id = 1;
+  google.protobuf.Timestamp visited_at = 2;
+}
+
+message ListGuestsResponse {
+  repeated Guest guests = 1;
+  // When the caller looked before this page; unset when never. Newer
+  // visits are new.
+  google.protobuf.Timestamp seen_at = 2;
+  string next_cursor = 3;
+}
+
+message ListTopRequest {
+  string board = 1;
+}
+
+message TopEntry {
+  string user_id = 1;
+  // Votes, or the rating of a pet.
+  int64 value = 2;
+  // The pet of the board of pets.
+  string pet_kind = 3;
+  string pet_name = 4;
+}
+
+message ListTopResponse {
+  repeated TopEntry entries = 1;
+}
+
+// PetShop is what pets cost: each kind, a meal; the votes a won fight
+// brings and the fights of a day.
+message PetShop {
+  map<string, int64> prices = 1;
+  int64 meal = 2;
+  int64 win = 3;
+  int32 fights = 4;
+}
+
+// Pet is a pet as it is now: satiety and joy from 0 to 100, how it
+// fights at its level and the fights of the day.
+message Pet {
+  string kind = 1;
+  string name = 2;
+  google.protobuf.Timestamp born_at = 3;
+  int32 satiety = 4;
+  int32 joy = 5;
+  // When it may play again; unset when it may now.
+  google.protobuf.Timestamp play_at = 6;
+  int64 experience = 7;
+  int32 level = 8;
+  // The experience of this level and of the next, 0 at the last one.
+  int64 level_experience = 9;
+  int64 next_level_experience = 10;
+  int32 rating = 11;
+  int32 wins = 12;
+  int32 losses = 13;
+  int32 fights = 14;
+  int32 attack = 15;
+  int32 defense = 16;
+  int32 health = 17;
+  int32 speed = 18;
+  int32 crit = 19;
+}
+
+message GetPetRequest {}
+
+// PetState is the shop and the pet of the caller, unset without one.
+message PetState {
+  PetShop shop = 1;
+  Pet pet = 2;
+}
+
+message GetUserPetRequest {
+  string nickname = 1;
+}
+
+message GetUserPetResponse {
+  Pet pet = 1;
+  string owner_id = 2;
+}
+
+message AdoptPetRequest {
+  string kind = 1;
+  string name = 2;
+}
+
+message FeedPetRequest {}
+
+message PlayPetRequest {}
+
+message RenamePetRequest {
+  string name = 1;
+}
+
+message ReleasePetRequest {}
+
+message PetCareResponse {
+  Pet pet = 1;
+  // The votes after a payment, 0 when nothing was paid.
+  int64 balance = 2;
+}
+
+message PetFighter {
+  string kind = 1;
+  string name = 2;
+  int32 level = 3;
+  int32 health = 4;
+}
+
+// PetHit is a turn of a fight: who hit, whether the other dodged or it
+// was a crit, the damage and the health of both after it.
+message PetHit {
+  bool by_attacker = 1;
+  bool dodged = 2;
+  bool crit = 3;
+  int32 damage = 4;
+  int32 attacker_health = 5;
+  int32 defender_health = 6;
+}
+
+message PetFight {
+  string id = 1;
+  string attacker_id = 2;
+  string defender_id = 3;
+  google.protobuf.Timestamp fought_at = 4;
+  PetFighter attacker = 5;
+  PetFighter defender = 6;
+  repeated PetHit hits = 7;
+  bool won = 8;
+  // The rating the attacker won (above zero) or lost.
+  int32 rating = 9;
+}
+
+message FightPetRequest {
+  // Empty: a pet of a near rating.
+  string nickname = 1;
+}
+
+message FightPetResponse {
+  PetFight fight = 1;
+  Pet pet = 2;
+  // The votes after a won fight, 0 after a lost one.
+  int64 balance = 3;
+}
+
+message ListPetFightsRequest {}
+
+message ListPetFightsResponse {
+  repeated PetFight fights = 1;
+}
+
+message GetPetSettingsRequest {}
+
+message GetPetSettingsResponse {
+  PetShop shop = 1;
+  int64 pets = 2;
+  int64 fights = 3;
+  int64 spent = 4;
+  int64 won = 5;
+}
+
+message SetPetSettingsRequest {
+  PetShop shop = 1;
 }

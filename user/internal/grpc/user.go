@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/jwtauth"
@@ -55,6 +56,9 @@ type UserHandler struct {
 	businesses        BusinessService
 	banks             BankService
 	paid              PaidService
+	guests            GuestService
+	tops              TopService
+	pets              PetService
 	permissionService PermissionService
 	presenceService   PresenceService
 	backdropService   BackdropService
@@ -100,7 +104,13 @@ type Services struct {
 	// Banks are the deposits and loans of the pages.
 	Banks BankService
 	// Paid sells paid posts and messages.
-	Paid        PaidService
+	Paid PaidService
+	// Guests are who visited the pages.
+	Guests GuestService
+	// Tops are the boards of "Рейтинги".
+	Tops TopService
+	// Pets are "Питомец".
+	Pets        PetService
 	Permissions PermissionService
 	Presence    PresenceService
 	Backdrops   BackdropService
@@ -131,6 +141,9 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		businesses:        s.Businesses,
 		banks:             s.Banks,
 		paid:              s.Paid,
+		guests:            s.Guests,
+		tops:              s.Tops,
+		pets:              s.Pets,
 		permissionService: s.Permissions,
 		presenceService:   s.Presence,
 		backdropService:   s.Backdrops,
@@ -176,7 +189,12 @@ func (h *UserHandler) GetMe(ctx context.Context, _ *userv1.GetMeRequest) (*userv
 	me := toProtoUser(u)
 	me.Admin = h.walletService.IsAdmin(u)
 
-	return &userv1.GetMeResponse{User: me}, nil
+	guests, err := h.guests.NewGuests(ctx, userID, time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.GetMeResponse{User: me, NewGuests: int32(guests)}, nil //nolint:gosec // at most service.MaxNewGuests
 }
 
 func (h *UserHandler) UpdateProfile(

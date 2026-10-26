@@ -37,6 +37,8 @@ func PublicMethods() []string {
 		userv1.UserService_ListGiftMarket_FullMethodName,
 		userv1.UserService_ListGiftAuctions_FullMethodName,
 		userv1.UserService_FindNicknames_FullMethodName,
+		userv1.UserService_ListTop_FullMethodName,
+		userv1.UserService_GetUserPet_FullMethodName,
 		userv1.UserService_GetOrCreateByEmail_FullMethodName,
 		userv1.UserService_GetAccountState_FullMethodName,
 	}

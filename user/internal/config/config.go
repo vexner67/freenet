@@ -74,6 +74,11 @@ type Config struct {
 	BusinessLimits ratelimit.Rules `env:"RATE_LIMIT_BUSINESS" envDefault:"60/1m,3000/24h"`
 	// Deposits and loans put, taken, lent and paid back, each counted apart.
 	BankLimits ratelimit.Rules `env:"RATE_LIMIT_BANK" envDefault:"30/1m,500/24h"`
+	// Visits of pages written down as guests.
+	VisitLimits ratelimit.Rules `env:"RATE_LIMIT_VISITS" envDefault:"120/1m,5000/24h"`
+	// Pets adopted, fed, played with, renamed and set to fight, each
+	// counted apart.
+	PetLimits ratelimit.Rules `env:"RATE_LIMIT_PETS" envDefault:"30/1m,1000/24h"`
 	// Collectible gifts upgraded, given away, put on sale, bought,
 	// auctioned and bid on, each counted apart.
 	GiftMarketLimits ratelimit.Rules `env:"RATE_LIMIT_GIFT_MARKET" envDefault:"30/1m,500/24h"`

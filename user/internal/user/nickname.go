@@ -21,10 +21,10 @@ var (
 	// take the path of a page or of the API.
 	reservedNicknames = map[string]struct{}{
 		"about": {}, "admin": {}, "album": {}, "albums": {}, "api": {}, "business": {}, "casino": {}, "club": {}, "docs": {}, "edit": {}, "events": {}, "fave": {}, "feed": {},
-		"follows": {}, "freenet": {}, "gift": {}, "gifts": {}, "groups": {}, "healthz": {}, "help": {}, "id": {}, "im": {}, "invite": {},
+		"follows": {}, "freenet": {}, "gift": {}, "gifts": {}, "groups": {}, "guests": {}, "healthz": {}, "help": {}, "id": {}, "im": {}, "invite": {},
 		"language": {}, "login": {}, "logout": {}, "market": {}, "me": {}, "media": {}, "mine": {}, "news": {}, "note": {}, "notes": {},
-		"notifications": {}, "people": {}, "photo": {}, "post": {}, "prime": {}, "search": {},
-		"settings": {}, "shop": {}, "static": {}, "stickers": {}, "support": {}, "terms": {}, "topic": {}, "votes": {}, "wall": {},
+		"notifications": {}, "people": {}, "pet": {}, "photo": {}, "post": {}, "prime": {}, "search": {},
+		"settings": {}, "shop": {}, "static": {}, "stickers": {}, "support": {}, "terms": {}, "top": {}, "topic": {}, "votes": {}, "wall": {},
 	}
 )
 

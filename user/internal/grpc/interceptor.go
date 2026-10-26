@@ -53,6 +53,29 @@ var giftMarket = []struct {
 	{service.ErrCursor, codes.InvalidArgument},
 }
 
+// petErrors are the errors of pets and boards, with their codes.
+var petErrors = []struct {
+	err  error
+	code codes.Code
+}{
+	{user.ErrUnknownPetKind, codes.InvalidArgument},
+	{user.ErrPetNameEmpty, codes.InvalidArgument},
+	{user.ErrPetNameTooLong, codes.InvalidArgument},
+	{user.ErrPetNameLines, codes.InvalidArgument},
+	{user.ErrPetShopPrice, codes.InvalidArgument},
+	{user.ErrPetShopFights, codes.InvalidArgument},
+	{user.ErrUnknownTop, codes.InvalidArgument},
+	{user.ErrPetNotFound, codes.NotFound},
+	{user.ErrPetExists, codes.AlreadyExists},
+	{user.ErrPetFull, codes.FailedPrecondition},
+	{user.ErrPetTired, codes.FailedPrecondition},
+	{user.ErrPetHungry, codes.FailedPrecondition},
+	{user.ErrPetSad, codes.FailedPrecondition},
+	{user.ErrPetFightsOver, codes.FailedPrecondition},
+	{user.ErrPetFightSelf, codes.FailedPrecondition},
+	{user.ErrNoPetOpponent, codes.FailedPrecondition},
+}
+
 // bankInvalid are the amounts and settings the bank does not take.
 var bankInvalid = []error{user.ErrBankAmount, user.ErrBankRate, user.ErrBankMost, user.ErrBankDays}
 
@@ -69,6 +92,12 @@ func toStatus(err error) (*status.Status, bool) {
 	}
 
 	for _, known := range giftMarket {
+		if errors.Is(err, known.err) {
+			return status.New(known.code, known.err.Error()), true
+		}
+	}
+
+	for _, known := range petErrors {
 		if errors.Is(err, known.err) {
 			return status.New(known.code, known.err.Error()), true
 		}

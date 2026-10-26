@@ -170,6 +170,20 @@ const (
 	UserService_RepayLoan_FullMethodName           = "/user.v1.UserService/RepayLoan"
 	UserService_GetBankSettings_FullMethodName     = "/user.v1.UserService/GetBankSettings"
 	UserService_SetBankSettings_FullMethodName     = "/user.v1.UserService/SetBankSettings"
+	UserService_VisitPage_FullMethodName           = "/user.v1.UserService/VisitPage"
+	UserService_ListGuests_FullMethodName          = "/user.v1.UserService/ListGuests"
+	UserService_ListTop_FullMethodName             = "/user.v1.UserService/ListTop"
+	UserService_GetPet_FullMethodName              = "/user.v1.UserService/GetPet"
+	UserService_GetUserPet_FullMethodName          = "/user.v1.UserService/GetUserPet"
+	UserService_AdoptPet_FullMethodName            = "/user.v1.UserService/AdoptPet"
+	UserService_FeedPet_FullMethodName             = "/user.v1.UserService/FeedPet"
+	UserService_PlayPet_FullMethodName             = "/user.v1.UserService/PlayPet"
+	UserService_RenamePet_FullMethodName           = "/user.v1.UserService/RenamePet"
+	UserService_ReleasePet_FullMethodName          = "/user.v1.UserService/ReleasePet"
+	UserService_FightPet_FullMethodName            = "/user.v1.UserService/FightPet"
+	UserService_ListPetFights_FullMethodName       = "/user.v1.UserService/ListPetFights"
+	UserService_GetPetSettings_FullMethodName      = "/user.v1.UserService/GetPetSettings"
+	UserService_SetPetSettings_FullMethodName      = "/user.v1.UserService/SetPetSettings"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -574,6 +588,44 @@ type UserServiceClient interface {
 	// limits of the bank, and how it does.
 	GetBankSettings(ctx context.Context, in *GetBankSettingsRequest, opts ...grpc.CallOption) (*GetBankSettingsResponse, error)
 	SetBankSettings(ctx context.Context, in *SetBankSettingsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// "Гости страницы". VisitPage (access token) notes that the caller opened
+	// the page of nickname: their last visit there, once a guest; own,
+	// deleted pages and a guest with "Невидимка" of Prime leave none
+	// (NotFound "user not found" for nobody). ListGuests (access token) are
+	// the guests of the caller in the last 30 days, the last visit first;
+	// its first page marks them seen, and GetMe tells how many came since.
+	VisitPage(ctx context.Context, in *VisitPageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListGuests(ctx context.Context, in *ListGuestsRequest, opts ...grpc.CallOption) (*ListGuestsResponse, error)
+	// "Рейтинги", public: a board of up to 50 pages — "rich" (the votes they
+	// have), "miners", "business" and "casino" (the votes they earned so in
+	// the last 7 days, less what they lost) and "pets" (the rating of their
+	// pets). Deleted and banned pages are left out; an unknown board —
+	// InvalidArgument.
+	ListTop(ctx context.Context, in *ListTopRequest, opts ...grpc.CallOption) (*ListTopResponse, error)
+	// "Питомец": a pet of the caller (access token), one a page. AdoptPet
+	// takes the price of its kind into the treasury (AlreadyExists "you have
+	// a pet already", FailedPrecondition "not enough votes"); FeedPet a meal
+	// ("the pet is not hungry"); PlayPet is free, once in 30 minutes ("the
+	// pet has played recently"). FightPet sets the pet on the pet of
+	// nickname, or on one of a near rating without it ("there is nobody to
+	// fight", "a pet does not fight itself"): a pet that is hungry or sad
+	// does not fight ("the pet is too hungry to fight", "the pet is too sad
+	// to fight"), nor more times a day than the shop says ("the pet has
+	// fought enough today"); a win brings votes. Without a pet —
+	// NotFound "pet not found". GetUserPet is public: the pet of nickname.
+	GetPet(ctx context.Context, in *GetPetRequest, opts ...grpc.CallOption) (*PetState, error)
+	GetUserPet(ctx context.Context, in *GetUserPetRequest, opts ...grpc.CallOption) (*GetUserPetResponse, error)
+	AdoptPet(ctx context.Context, in *AdoptPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
+	FeedPet(ctx context.Context, in *FeedPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
+	PlayPet(ctx context.Context, in *PlayPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
+	RenamePet(ctx context.Context, in *RenamePetRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
+	ReleasePet(ctx context.Context, in *ReleasePetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	FightPet(ctx context.Context, in *FightPetRequest, opts ...grpc.CallOption) (*FightPetResponse, error)
+	ListPetFights(ctx context.Context, in *ListPetFightsRequest, opts ...grpc.CallOption) (*ListPetFightsResponse, error)
+	// For the administrators (PermissionDenied for others): the shop of
+	// pets and how they do.
+	GetPetSettings(ctx context.Context, in *GetPetSettingsRequest, opts ...grpc.CallOption) (*GetPetSettingsResponse, error)
+	SetPetSettings(ctx context.Context, in *SetPetSettingsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type userServiceClient struct {
@@ -2084,6 +2136,146 @@ func (c *userServiceClient) SetBankSettings(ctx context.Context, in *SetBankSett
 	return out, nil
 }
 
+func (c *userServiceClient) VisitPage(ctx context.Context, in *VisitPageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_VisitPage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ListGuests(ctx context.Context, in *ListGuestsRequest, opts ...grpc.CallOption) (*ListGuestsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListGuestsResponse)
+	err := c.cc.Invoke(ctx, UserService_ListGuests_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ListTop(ctx context.Context, in *ListTopRequest, opts ...grpc.CallOption) (*ListTopResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTopResponse)
+	err := c.cc.Invoke(ctx, UserService_ListTop_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetPet(ctx context.Context, in *GetPetRequest, opts ...grpc.CallOption) (*PetState, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PetState)
+	err := c.cc.Invoke(ctx, UserService_GetPet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetUserPet(ctx context.Context, in *GetUserPetRequest, opts ...grpc.CallOption) (*GetUserPetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserPetResponse)
+	err := c.cc.Invoke(ctx, UserService_GetUserPet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) AdoptPet(ctx context.Context, in *AdoptPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PetCareResponse)
+	err := c.cc.Invoke(ctx, UserService_AdoptPet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) FeedPet(ctx context.Context, in *FeedPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PetCareResponse)
+	err := c.cc.Invoke(ctx, UserService_FeedPet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) PlayPet(ctx context.Context, in *PlayPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PetCareResponse)
+	err := c.cc.Invoke(ctx, UserService_PlayPet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) RenamePet(ctx context.Context, in *RenamePetRequest, opts ...grpc.CallOption) (*PetCareResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PetCareResponse)
+	err := c.cc.Invoke(ctx, UserService_RenamePet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ReleasePet(ctx context.Context, in *ReleasePetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_ReleasePet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) FightPet(ctx context.Context, in *FightPetRequest, opts ...grpc.CallOption) (*FightPetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FightPetResponse)
+	err := c.cc.Invoke(ctx, UserService_FightPet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ListPetFights(ctx context.Context, in *ListPetFightsRequest, opts ...grpc.CallOption) (*ListPetFightsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPetFightsResponse)
+	err := c.cc.Invoke(ctx, UserService_ListPetFights_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetPetSettings(ctx context.Context, in *GetPetSettingsRequest, opts ...grpc.CallOption) (*GetPetSettingsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPetSettingsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetPetSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SetPetSettings(ctx context.Context, in *SetPetSettingsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetPetSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -2486,6 +2678,44 @@ type UserServiceServer interface {
 	// limits of the bank, and how it does.
 	GetBankSettings(context.Context, *GetBankSettingsRequest) (*GetBankSettingsResponse, error)
 	SetBankSettings(context.Context, *SetBankSettingsRequest) (*emptypb.Empty, error)
+	// "Гости страницы". VisitPage (access token) notes that the caller opened
+	// the page of nickname: their last visit there, once a guest; own,
+	// deleted pages and a guest with "Невидимка" of Prime leave none
+	// (NotFound "user not found" for nobody). ListGuests (access token) are
+	// the guests of the caller in the last 30 days, the last visit first;
+	// its first page marks them seen, and GetMe tells how many came since.
+	VisitPage(context.Context, *VisitPageRequest) (*emptypb.Empty, error)
+	ListGuests(context.Context, *ListGuestsRequest) (*ListGuestsResponse, error)
+	// "Рейтинги", public: a board of up to 50 pages — "rich" (the votes they
+	// have), "miners", "business" and "casino" (the votes they earned so in
+	// the last 7 days, less what they lost) and "pets" (the rating of their
+	// pets). Deleted and banned pages are left out; an unknown board —
+	// InvalidArgument.
+	ListTop(context.Context, *ListTopRequest) (*ListTopResponse, error)
+	// "Питомец": a pet of the caller (access token), one a page. AdoptPet
+	// takes the price of its kind into the treasury (AlreadyExists "you have
+	// a pet already", FailedPrecondition "not enough votes"); FeedPet a meal
+	// ("the pet is not hungry"); PlayPet is free, once in 30 minutes ("the
+	// pet has played recently"). FightPet sets the pet on the pet of
+	// nickname, or on one of a near rating without it ("there is nobody to
+	// fight", "a pet does not fight itself"): a pet that is hungry or sad
+	// does not fight ("the pet is too hungry to fight", "the pet is too sad
+	// to fight"), nor more times a day than the shop says ("the pet has
+	// fought enough today"); a win brings votes. Without a pet —
+	// NotFound "pet not found". GetUserPet is public: the pet of nickname.
+	GetPet(context.Context, *GetPetRequest) (*PetState, error)
+	GetUserPet(context.Context, *GetUserPetRequest) (*GetUserPetResponse, error)
+	AdoptPet(context.Context, *AdoptPetRequest) (*PetCareResponse, error)
+	FeedPet(context.Context, *FeedPetRequest) (*PetCareResponse, error)
+	PlayPet(context.Context, *PlayPetRequest) (*PetCareResponse, error)
+	RenamePet(context.Context, *RenamePetRequest) (*PetCareResponse, error)
+	ReleasePet(context.Context, *ReleasePetRequest) (*emptypb.Empty, error)
+	FightPet(context.Context, *FightPetRequest) (*FightPetResponse, error)
+	ListPetFights(context.Context, *ListPetFightsRequest) (*ListPetFightsResponse, error)
+	// For the administrators (PermissionDenied for others): the shop of
+	// pets and how they do.
+	GetPetSettings(context.Context, *GetPetSettingsRequest) (*GetPetSettingsResponse, error)
+	SetPetSettings(context.Context, *SetPetSettingsRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -2945,6 +3175,48 @@ func (UnimplementedUserServiceServer) GetBankSettings(context.Context, *GetBankS
 }
 func (UnimplementedUserServiceServer) SetBankSettings(context.Context, *SetBankSettingsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetBankSettings not implemented")
+}
+func (UnimplementedUserServiceServer) VisitPage(context.Context, *VisitPageRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method VisitPage not implemented")
+}
+func (UnimplementedUserServiceServer) ListGuests(context.Context, *ListGuestsRequest) (*ListGuestsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListGuests not implemented")
+}
+func (UnimplementedUserServiceServer) ListTop(context.Context, *ListTopRequest) (*ListTopResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTop not implemented")
+}
+func (UnimplementedUserServiceServer) GetPet(context.Context, *GetPetRequest) (*PetState, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPet not implemented")
+}
+func (UnimplementedUserServiceServer) GetUserPet(context.Context, *GetUserPetRequest) (*GetUserPetResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserPet not implemented")
+}
+func (UnimplementedUserServiceServer) AdoptPet(context.Context, *AdoptPetRequest) (*PetCareResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AdoptPet not implemented")
+}
+func (UnimplementedUserServiceServer) FeedPet(context.Context, *FeedPetRequest) (*PetCareResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method FeedPet not implemented")
+}
+func (UnimplementedUserServiceServer) PlayPet(context.Context, *PlayPetRequest) (*PetCareResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PlayPet not implemented")
+}
+func (UnimplementedUserServiceServer) RenamePet(context.Context, *RenamePetRequest) (*PetCareResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RenamePet not implemented")
+}
+func (UnimplementedUserServiceServer) ReleasePet(context.Context, *ReleasePetRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReleasePet not implemented")
+}
+func (UnimplementedUserServiceServer) FightPet(context.Context, *FightPetRequest) (*FightPetResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method FightPet not implemented")
+}
+func (UnimplementedUserServiceServer) ListPetFights(context.Context, *ListPetFightsRequest) (*ListPetFightsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPetFights not implemented")
+}
+func (UnimplementedUserServiceServer) GetPetSettings(context.Context, *GetPetSettingsRequest) (*GetPetSettingsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPetSettings not implemented")
+}
+func (UnimplementedUserServiceServer) SetPetSettings(context.Context, *SetPetSettingsRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetPetSettings not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -5667,6 +5939,258 @@ func _UserService_SetBankSettings_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_VisitPage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VisitPageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).VisitPage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_VisitPage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).VisitPage(ctx, req.(*VisitPageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ListGuests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListGuestsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListGuests(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListGuests_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListGuests(ctx, req.(*ListGuestsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ListTop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTopRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListTop(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListTop_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListTop(ctx, req.(*ListTopRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetPet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetPet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetPet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetPet(ctx, req.(*GetPetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetUserPet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserPetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetUserPet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetUserPet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetUserPet(ctx, req.(*GetUserPetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_AdoptPet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AdoptPetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).AdoptPet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_AdoptPet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).AdoptPet(ctx, req.(*AdoptPetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_FeedPet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FeedPetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).FeedPet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_FeedPet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).FeedPet(ctx, req.(*FeedPetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_PlayPet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PlayPetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).PlayPet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_PlayPet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).PlayPet(ctx, req.(*PlayPetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_RenamePet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RenamePetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).RenamePet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_RenamePet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).RenamePet(ctx, req.(*RenamePetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ReleasePet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReleasePetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ReleasePet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ReleasePet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ReleasePet(ctx, req.(*ReleasePetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_FightPet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FightPetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).FightPet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_FightPet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).FightPet(ctx, req.(*FightPetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ListPetFights_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPetFightsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListPetFights(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListPetFights_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListPetFights(ctx, req.(*ListPetFightsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetPetSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPetSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetPetSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetPetSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetPetSettings(ctx, req.(*GetPetSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SetPetSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetPetSettingsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetPetSettings(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetPetSettings_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetPetSettings(ctx, req.(*SetPetSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -6273,6 +6797,62 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetBankSettings",
 			Handler:    _UserService_SetBankSettings_Handler,
+		},
+		{
+			MethodName: "VisitPage",
+			Handler:    _UserService_VisitPage_Handler,
+		},
+		{
+			MethodName: "ListGuests",
+			Handler:    _UserService_ListGuests_Handler,
+		},
+		{
+			MethodName: "ListTop",
+			Handler:    _UserService_ListTop_Handler,
+		},
+		{
+			MethodName: "GetPet",
+			Handler:    _UserService_GetPet_Handler,
+		},
+		{
+			MethodName: "GetUserPet",
+			Handler:    _UserService_GetUserPet_Handler,
+		},
+		{
+			MethodName: "AdoptPet",
+			Handler:    _UserService_AdoptPet_Handler,
+		},
+		{
+			MethodName: "FeedPet",
+			Handler:    _UserService_FeedPet_Handler,
+		},
+		{
+			MethodName: "PlayPet",
+			Handler:    _UserService_PlayPet_Handler,
+		},
+		{
+			MethodName: "RenamePet",
+			Handler:    _UserService_RenamePet_Handler,
+		},
+		{
+			MethodName: "ReleasePet",
+			Handler:    _UserService_ReleasePet_Handler,
+		},
+		{
+			MethodName: "FightPet",
+			Handler:    _UserService_FightPet_Handler,
+		},
+		{
+			MethodName: "ListPetFights",
+			Handler:    _UserService_ListPetFights_Handler,
+		},
+		{
+			MethodName: "GetPetSettings",
+			Handler:    _UserService_GetPetSettings_Handler,
+		},
+		{
+			MethodName: "SetPetSettings",
+			Handler:    _UserService_SetPetSettings_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

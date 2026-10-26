@@ -74,6 +74,7 @@ func newServer(t *testing.T) testServer {
 		t.Fatalf("user.NewAdmins: %v", err)
 	}
 	gifts := inmem.NewGiftRepository(users)
+	pets := inmem.NewPetRepository(users)
 	userv1.RegisterUserServiceServer(srv, usergrpc.NewUserHandler(usergrpc.Services{
 		Users:    service.NewUserService(users),
 		Accounts: service.NewAccountService(users, inmem.TxManager{}, purgeclient.NoReactions{}, time.Hour),
@@ -104,6 +105,9 @@ func newServer(t *testing.T) testServer {
 		}),
 		Casinos:     service.NewCasinoService(users, casinos, users, inmem.TxManager{}, admins),
 		Mines:       service.NewMineService(users, inmem.NewMineRepository(), users, inmem.TxManager{}, admins),
+		Guests:      service.NewGuestService(users, inmem.NewGuestRepository(users)),
+		Tops:        service.NewTopService(inmem.NewTopRepository(users, pets)),
+		Pets:        service.NewPetService(users, pets, users, inmem.TxManager{}, admins),
 		Businesses:  service.NewBusinessService(users, inmem.NewBusinessRepository(), users, inmem.TxManager{}, admins),
 		Banks:       service.NewBankService(users, inmem.NewBankRepository(), users, inmem.TxManager{}, admins),
 		Rockets:     service.NewRocketService(users, casinos, inmem.NewRocketRepository(), users, inmem.TxManager{}, admins),

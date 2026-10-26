@@ -94,6 +94,9 @@ const (
 	VoteLoan VoteKind = "loan"
 	// VotePoker: an ante or a call of "Покер" and what the hand paid.
 	VotePoker VoteKind = "poker"
+	// VotePet: a pet adopted or fed, or the votes a fight it won brought;
+	// the note is "adopt", "feed" or "fight".
+	VotePet VoteKind = "pet"
 )
 
 // VoteEntry is what a change of votes is written down as: why, with whom
