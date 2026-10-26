@@ -256,9 +256,27 @@ async function authorized(method, path, body) {
 export const api = {
   requestCode: (email) => request('POST', '/api/v1/auth/code', { email }),
 
+  // verifyCode signs in, or, for a page with the second step on, returns
+  // { twoFactorTicket } that verifyTwoFactor takes with the code of the app.
   async verifyCode(email, code) {
-    session.save(await request('POST', '/api/v1/auth/verify', { email, code }));
+    const answer = await request('POST', '/api/v1/auth/verify', { email, code });
+    if (answer.twoFactorTicket) return { twoFactorTicket: answer.twoFactorTicket };
+
+    session.save(answer);
+    return {};
   },
+
+  async verifyTwoFactor(ticket, code) {
+    session.save(await request('POST', '/api/v1/auth/two-factor', { ticket, code }));
+  },
+
+  // "Двухфакторная аутентификация" of the settings: setUp gives the key and
+  // its QR code, enable and renewRecoveryCodes the recovery codes.
+  twoFactor: () => authorized('GET', '/api/v1/me/two-factor'),
+  setUpTwoFactor: () => authorized('POST', '/api/v1/me/two-factor/setup'),
+  enableTwoFactor: (code) => authorized('POST', '/api/v1/me/two-factor/enable', { code }),
+  disableTwoFactor: (code) => authorized('POST', '/api/v1/me/two-factor/disable', { code }),
+  renewRecoveryCodes: (code) => authorized('POST', '/api/v1/me/two-factor/recovery', { code }),
 
   async logout() {
     const current = session.get();

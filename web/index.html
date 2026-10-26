@@ -44,6 +44,15 @@
         <p class="hint"><a id="change-email">Другая почта</a> · <a id="resend">Прислать снова</a></p>
       </form>
 
+      <form class="sidebar-form" id="two-factor-form" hidden>
+        <p>У вас включена двухфакторная аутентификация. Для входа введите код, полученный в приложении.</p>
+        <label for="two-factor-code">Код 2FA:</label>
+        <input type="text" id="two-factor-code" autocomplete="one-time-code" maxlength="11" spellcheck="false" required>
+        <button class="button" type="submit" id="two-factor-submit">Войти</button>
+        <p class="hint">Телефона нет под рукой — введите один из резервных кодов.</p>
+        <p class="hint"><a id="two-factor-back">Другая почта</a></p>
+      </form>
+
       <div class="error" id="error" hidden></div>
 
       <div class="sidebar-form" id="accounts" hidden>

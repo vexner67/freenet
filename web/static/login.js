@@ -6,6 +6,7 @@ import { tr } from './i18n.js';
 
 const emailForm = $('email-form');
 const codeForm = $('code-form');
+const twoFactorForm = $('two-factor-form');
 const error = $('error');
 
 let email = '';
@@ -39,16 +40,49 @@ emailForm.addEventListener('submit', (event) => {
   withButton($('email-submit'), sendCode);
 });
 
+// enter opens the site as the one just signed in.
+async function enter() {
+  const me = await api.me();
+  // An account that waited in this browser has a new session now.
+  settle(me);
+  signedInAs(me.id);
+  location.href = me.profileCompleted ? homePath(me) : '/edit?welcome=1';
+}
+
+// ticket is the sign-in waiting for the code of the authenticator app.
+let ticket = '';
+
 codeForm.addEventListener('submit', (event) => {
   event.preventDefault();
   withButton($('code-submit'), async () => {
-    await api.verifyCode(email, $('code').value.trim());
-    const me = await api.me();
-    // An account that waited in this browser has a new session now.
-    settle(me);
-    signedInAs(me.id);
-    location.href = me.profileCompleted ? homePath(me) : '/edit?welcome=1';
+    const answer = await api.verifyCode(email, $('code').value.trim());
+    if (!answer.twoFactorTicket) {
+      await enter();
+      return;
+    }
+
+    ticket = answer.twoFactorTicket;
+    codeForm.hidden = true;
+    twoFactorForm.hidden = false;
+    $('two-factor-code').focus();
   });
+});
+
+twoFactorForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  withButton($('two-factor-submit'), async () => {
+    await api.verifyTwoFactor(ticket, $('two-factor-code').value.trim());
+    await enter();
+  });
+});
+
+$('two-factor-back').addEventListener('click', () => {
+  hideError(error);
+  ticket = '';
+  $('two-factor-code').value = '';
+  twoFactorForm.hidden = true;
+  emailForm.hidden = false;
+  $('email').focus();
 });
 
 $('change-email').addEventListener('click', () => {

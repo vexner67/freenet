@@ -1,6 +1,7 @@
 // openvk's "Мои Настройки" at /settings: "Основное" (the e-mail, the
 // page address and "удалить свою страницу"), "Безопасность" (?act=security:
-// where you are signed in, and the key messages are sealed with) and "Приватность" (?act=privacy:
+// the second step of signing in, twofactor.js, where you are signed in,
+// and the key messages are sealed with) and "Приватность" (?act=privacy:
 // who sees the page and its parts and who writes to you) and "Внешний вид"
 // (?act=interface: the style, the photos and the posts, the clock, where
 // the site opens and what the left menu shows); "Чёрный список" is a page of its own.
@@ -14,6 +15,7 @@ import { button, openModal } from './modal.js';
 import { openDeactivate } from './deactivate.js';
 import { disablePush, enablePush, pushState } from './push.js';
 import { ensureKey, exportKeys, forgetKeys, hasKeys, importKeys, KEY_READY, newCode, newKey } from './e2ee.js';
+import { showTwoFactor } from './twofactor.js';
 import { tr } from './i18n.js';
 
 const error = $('error');
@@ -215,6 +217,7 @@ function initSecurity(me) {
   }));
 
   show().catch((e) => showError(error, e));
+  showTwoFactor(error, say);
   showKey(me);
 }
 

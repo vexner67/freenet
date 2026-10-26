@@ -55,10 +55,25 @@ function sameKey(subscription, key) {
   return a.length === key.length && a.every((b, i) => b === key[i]);
 }
 
+// workerPolicy vouches for the one script the site runs as a worker: the
+// pages take script addresses only from named policies (Trusted Types in
+// the CSP of the gateway).
+let workerPolicy;
+function workerURL() {
+  workerPolicy ??= globalThis.trustedTypes?.createPolicy('freenet-sw', {
+    createScriptURL: (url) => {
+      if (url !== '/sw.js') throw new TypeError('not the service worker');
+      return url;
+    },
+  });
+
+  return workerPolicy ? workerPolicy.createScriptURL('/sw.js') : '/sw.js';
+}
+
 // subscription is the browser's, made with the key of the server: one
 // made with a key the server no longer has is made anew.
 async function subscription(serverKey) {
-  const registration = await navigator.serviceWorker.register('/sw.js');
+  const registration = await navigator.serviceWorker.register(workerURL());
   await navigator.serviceWorker.ready;
 
   const key = keyBytes(serverKey);

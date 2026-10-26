@@ -6,7 +6,7 @@ import { accountName, canPark, onAccountChange, park, parkedAccounts, signedInAs
 import { api, idle } from './api.js';
 import { ensureKey } from './e2ee.js';
 import { connectEvents, onEvent } from './events.js';
-import { activeSection, errorText, foundParts, hashtagPath, isLongText, pushOfferText, pushStateTexts, setTimezone, textParts, unreadCountText } from './labels.js';
+import { activeSection, errorText, foundParts, hashtagPath, isLongText, pushOfferText, pushStateTexts, safeURL, setTimezone, textParts, unreadCountText } from './labels.js';
 import { acceptInvite } from './invite.js';
 import { nicknameLookup } from './nicknames.js';
 import { closePushes, endPushOffer, enablePush, forgetPushAccount, pushOffer, showUnread, syncPush } from './push.js';
@@ -19,6 +19,10 @@ export const $ = (id) => document.getElementById(id);
 export function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);
   Object.assign(node, props);
+  // An address from a person cannot become a script to run.
+  for (const name of ['href', 'src']) {
+    if (typeof props[name] === 'string') node[name] = safeURL(props[name]);
+  }
   node.append(...children.filter((c) => c !== null && c !== undefined && c !== false));
   return node;
 }

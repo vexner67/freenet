@@ -65,5 +65,14 @@
 
   if (typeof theme !== 'string' || !Object.hasOwn(themes, theme)) return;
 
-  document.write(`<link id="theme" rel="stylesheet" href="${themes[theme]}">`);
+  // The pages let only named policies make markup (Trusted Types in the
+  // CSP of the gateway): this one writes nothing but a theme's link.
+  const markup = `<link id="theme" rel="stylesheet" href="${themes[theme]}">`;
+  const policy = globalThis.trustedTypes?.createPolicy('freenet-theme', {
+    createHTML: (html) => {
+      if (html !== markup) throw new TypeError('not a theme link');
+      return html;
+    },
+  });
+  document.write(policy ? policy.createHTML(markup) : markup);
 })();

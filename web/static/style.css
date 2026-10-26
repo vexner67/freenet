@@ -1123,6 +1123,16 @@ body.prime-bg.prime-bg-trip::before {
 .im-selection { display: flex; justify-content: space-between; padding: 6px 20px; background: var(--back-f7f7f7); border-bottom: 1px solid var(--line-d6d6d6); }
 .im-selection a { cursor: pointer; }
 .safety-code { margin: 8px 0; font: bold 16px monospace; letter-spacing: 1px; text-align: center; }
+/* "Двухфакторная аутентификация" (twofactor.js): the QR code at its own
+   pixels in a white frame, the key under it, the code in a form row and
+   the recovery codes in two columns of a dashed slip, as openvk's list. */
+.qr-box { align-self: center; padding: 5px; background: var(--back-fff); border: 1px solid var(--line-c0cad5); box-shadow: inset 1px 1px 0 var(--back-e4e4e4); }
+.qr-code { display: block; image-rendering: pixelated; }
+.secret-key { margin: 0; font-size: 13px; word-spacing: 3px; }
+.two-factor-form { width: 100%; margin-top: 4px; border-spacing: 0; }
+.two-factor-form th { width: 50px; padding-right: 8px; color: var(--text-808080); font-weight: normal; text-align: right; }
+.modal-body .two-factor-form input[type="text"] { width: 100%; box-sizing: border-box; font: bold 14px monospace; letter-spacing: 2px; }
+.recovery-codes { columns: 2; margin: 4px 0; padding: 8px 8px 8px 34px; background: var(--back-f7f7f7); border: 1px dashed var(--line-c0cad5); font: bold 13px/20px monospace; }
 .im-message.deleted .im-message-text, .im-message-text.unreadable { color: var(--text-777); font-style: italic; }
 .im-message.found, .im-message.found.unread { background: var(--back-f6f0d2); }
 .found-words { background: var(--back-ffe58a); }

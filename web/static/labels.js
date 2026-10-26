@@ -490,6 +490,18 @@ export function blacklistCount(n) {
   return tr('В вашем чёрном списке {0} {1}.', n, plural(n, ['пользователь', 'пользователя', 'пользователей']));
 }
 
+// recoveryLeftText is how many recovery codes of the second step are left.
+export function recoveryLeftText(n) {
+  if (n === 0) return tr('Резервные коды кончились: получите новые.');
+  return tr('Осталось {0} {1}.', n, plural(n, ['резервный код', 'резервных кода', 'резервных кодов']));
+}
+
+// qrCells are the dark modules of a QR code that the server gives as rows
+// of "0" and "1", as [x, y]: what the page paints.
+export function qrCells(rows) {
+  return rows.flatMap((row, y) => [...row].flatMap((cell, x) => (cell === '1' ? [[x, y]] : [])));
+}
+
 // sessionsCount heads the list of sessions in the settings.
 export function sessionsCount(n) {
   return tr('Вы вошли на сайт с {0} {1}.', n, plural(n, ['устройства', 'устройств', 'устройств']));
@@ -2552,6 +2564,11 @@ const errorTexts = {
   'the poll is anonymous': tr('Невозможно просмотреть список проголосовавших в анонимном голосовании.'),
   'the poll of a post cannot be changed': tr('Опрос записи изменить нельзя.'),
   'too many attempts, request a new code': tr('Слишком много неверных попыток. Запросите новый код.'),
+  'invalid two-factor code': tr('Неверный код двухфакторной аутентификации.'),
+  'sign-in expired, request a new code': tr('Время на вход вышло. Запросите код на почту снова.'),
+  'two-factor authentication is already enabled': tr('Двухфакторная аутентификация уже включена.'),
+  'two-factor authentication is not enabled': tr('Двухфакторная аутентификация не включена.'),
+  'two-factor authentication is not set up': tr('Сначала получите секретный ключ: нажмите «Подключить».'),
   'name is empty': tr('Укажите имя.'),
   'name is too long': tr('Имя слишком длинное.'),
   'surname is too long': tr('Фамилия слишком длинная.'),
@@ -3021,6 +3038,20 @@ const linkPattern = /\bhttps?:\/\/[^\s<>"«»[\]]+/g;
 
 // MAX_LINK_SHOWN: a longer address is shown cut, as VK does.
 const MAX_LINK_SHOWN = 60;
+
+// safeURL is url when following it cannot run a script: an address of
+// this site, a web, mail or phone address, a picture or a file the page
+// made itself; anything else, such as javascript:, becomes about:invalid.
+// Browsers drop tabs and line breaks anywhere in a URL and controls and
+// spaces before it, so the scheme is read as they will read it.
+export function safeURL(url) {
+  const plain = String(url).replace(/[\t\n\r]/g, '').replace(/^[\u0000-\u0020]+/, '');
+  const scheme = /^([a-z][a-z\d+.-]*):/i.exec(plain)?.[1].toLowerCase();
+  if (scheme === undefined || ['http', 'https', 'mailto', 'tel', 'blob'].includes(scheme)) return url;
+  if (scheme === 'data' && /^data:image\/(png|jpeg|gif|webp);/i.test(plain)) return url;
+
+  return 'about:invalid';
+}
 
 // linkParts cuts s into strings and the addresses it says, { url, text }:
 // text is the address as shown, cut when long.
