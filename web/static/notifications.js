@@ -3,12 +3,15 @@
 // it: the notifications move to the archive and the menu counter clears.
 // While it is open, new ones appear at the top live (events.js). Opened
 // from the menu with nothing unread, the page shows the archive at once.
+// The guests of the page are here too: those who came since the last look
+// above the unread notifications, all of the last 30 days above the
+// archive. A subscriber of Freenet Prime with "Невидимка" leaves no trace.
 
 import { photoPath } from './albums.js';
 import { api, currentUser, started } from './api.js';
 import { onEvent } from './events.js';
-import { formatPostDate, notificationVerb, plainMentions, snippet } from './labels.js';
-import { $, avatarURL, el, fullName, pagePath, profilePath, renderChrome, setCounter, showError, hideError, verifiedMark } from './layout.js';
+import { formatPostDate, guestCame, notificationVerb, plainMentions, snippet } from './labels.js';
+import { $, avatarURL, el, fullName, guestsSeen, pagePath, profilePath, renderChrome, setCounter, showError, hideError, verifiedMark } from './layout.js';
 import { postPath } from './posts.js';
 import { topicPath } from './topics.js';
 import { tr } from './i18n.js';
@@ -228,6 +231,49 @@ function notificationNode(n) {
   );
 }
 
+// guestNode is a guest told as a notification: "Анна заходила на вашу
+// страницу.", the visit under it.
+function guestNode(guest) {
+  const name = el('span', {},
+    el('a', { className: 'post-name', href: pagePath(guest.user), textContent: fullName(guest.user) }),
+    verifiedMark(guest.user));
+
+  return el('div', { className: guest.new ? 'post notification guest-row-new' : 'post notification' },
+    el('a', { className: 'post-avatar', href: pagePath(guest.user) }, el('img', { src: avatarURL(guest.user, 'small'), alt: '' })),
+    el('div', { className: 'post-main' },
+      el('div', { className: 'notification-text' }, name, guestCame(guest)),
+      el('div', { className: 'post-date', textContent: formatPostDate(guest.visitedAt) }),
+    ),
+  );
+}
+
+let guestsCursor = '';
+
+// showGuests puts the guests of a page above the notifications: on the
+// unread tab only the new ones, on the archive all of them, page by page.
+function showGuests(page) {
+  const shown = box === 'unread' && unreadTab ? page.guests.filter((g) => g.new) : page.guests;
+  $('guests-list').append(...shown.map(guestNode));
+  guestsCursor = unreadTab ? '' : page.nextCursor;
+  $('guests-more').hidden = !guestsCursor;
+
+  const count = $('guests-list').children.length;
+  $('guests').hidden = count === 0;
+  $('guests-title').textContent = unreadTab ? tr('Новые гости') : tr('Гости за 30 дней');
+  if (count > 0) $('empty').hidden = true;
+}
+
+async function moreGuests() {
+  hideError($('error'));
+  $('guests-more').hidden = true;
+  try {
+    showGuests(await api.guests(guestsCursor));
+  } catch (e) {
+    $('guests-more').hidden = !guestsCursor;
+    showError($('error'), e);
+  }
+}
+
 async function loadMore() {
   hideError($('error'));
 
@@ -238,7 +284,7 @@ async function loadMore() {
     $('notifications').append(...nodesOf(page.notifications));
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
-    $('empty').hidden = $('notifications').children.length > 0;
+    $('empty').hidden = $('notifications').children.length + $('guests-list').children.length > 0;
 
     if (box === 'unread' && page.newestId) {
       await api.markNotificationsRead(page.newestId);
@@ -256,12 +302,15 @@ async function loadMore() {
 // the menu (no tab named) the archive too, should nothing be unread.
 let first = started(api.notifications(box, ''));
 const archive = asked ? null : started(api.notifications('archive', ''));
+// The first page of guests makes them seen: the menu counter loses them.
+const guests = started(api.guests());
 
 // toArchive turns the page to the archive when the menu opened it with
 // nothing unread: the tab "Непрочитанное" itself stays empty.
 async function toArchive() {
   const page = await first.catch(() => null);
-  if (!archive || page?.notifications.length !== 0) return;
+  const visits = await guests.catch(() => null);
+  if (!archive || page?.notifications.length !== 0 || visits?.guests.some((g) => g.new)) return;
 
   box = 'archive';
   unreadTab = false;
@@ -281,7 +330,14 @@ if (!me) {
   await toArchive();
   $(box === 'unread' ? 'tab-unread' : 'tab-archive').classList.add('active');
   $('more').addEventListener('click', loadMore);
+  $('guests-more').addEventListener('click', moreGuests);
 
+  try {
+    showGuests(await guests);
+    guestsSeen();
+  } catch (e) {
+    showError($('error'), e);
+  }
   await loadMore();
 
   if (unreadTab) {

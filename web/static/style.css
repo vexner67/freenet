@@ -914,6 +914,7 @@ a.like:hover svg { opacity: .7; }
 .prime-bg-clouds { --prime-pattern: url("/static/prime/bg-clouds.svg"); }
 .prime-bg-flowers { --prime-pattern: url("/static/prime/bg-flowers.svg"); }
 .prime-bg-sparkles { --prime-pattern: url("/static/prime/bg-sparkles.svg"); }
+.prime-bg-trip { --prime-pattern: url("/static/prime/bg-trip.svg"); }
 /* body.prime-bg comes after ".festive body": the New Year's look leaves
    the pattern of the page. */
 body.prime-bg { background: var(--back-f2f5f8) var(--prime-pattern); }
@@ -940,7 +941,8 @@ body.prime-bg { background: var(--back-f2f5f8) var(--prime-pattern); }
   z-index: -1;
   pointer-events: none;
 }
-.im-message.prime-dressed::before { inset: 0; }
+.im-message.prime-dressed::before, .im-quote.prime-dressed::before { inset: 0; }
+.top-person.prime-dressed::before { inset: -3px -4px; }
 /* A dressed block is its own stacking context, so the open menu of its
    actions would slip under the next message or comment: the block with
    the open menu rises over its neighbours. */
@@ -2114,7 +2116,7 @@ a.poll-result-name { cursor: pointer; }
 .casino-lead { margin: 0 0 10px; }
 .casino-board { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
 .casino-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 58px; background: var(--back-fff); border: 1px solid var(--line-ccc); }
-.casino-cell { min-width: 0; padding: 0 2px; overflow: hidden; }
+.casino-cell { min-width: 0; padding: 0 5px; overflow: hidden; }
 .casino-votes { max-width: 100%; color: var(--text-45688e); font-size: 20px; font-weight: bold; line-height: 24px; white-space: nowrap; }
 .casino-unit { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .casino-unit { color: var(--text-808080); }
@@ -2845,6 +2847,7 @@ img.name-prime.name-prime {
 .story-head img.name-checkmark.name-checkmark { filter: brightness(2.4); }
 
 /* "Гости" (/guests): the new guests stand out, as unread notifications. */
+.notification-guests { margin-bottom: 10px; }
 .guest-row-new { background: var(--back-f2f5f8); }
 .guest-visit { margin-top: 3px; }
 .guest-new { margin-right: 6px; color: var(--text-43a047); }
@@ -2857,10 +2860,7 @@ img.name-prime.name-prime {
 .top-table th.top-place, .top-table td.top-place { width: 44px; text-align: center; }
 .top-table th.top-value, .top-table td.top-value { width: 150px; text-align: right; white-space: nowrap; font-weight: bold; }
 .top-place span { display: inline-block; min-width: 24px; line-height: 24px; color: var(--text-808080); font-weight: bold; }
-.top-medal span { border: 1px solid; border-radius: 50%; color: var(--text-58462a); }
-.top-medal-1 span { background: var(--back-ffd54a); border-color: var(--line-e2b24a); }
-.top-medal-2 span { background: var(--back-dfe3e8); border-color: var(--line-7d8792); }
-.top-medal-3 span { background: var(--back-f3ddbd); border-color: var(--line-c3a476); }
+.top-medal img { display: block; margin: 0 auto; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 25%)); }
 .top-row-medal td { background: var(--back-f9f6e7); }
 .top-person { display: flex; gap: 8px; align-items: center; }
 .top-avatar { display: block; width: 36px; height: 36px; object-fit: cover; }
@@ -2876,6 +2876,13 @@ img.name-prime.name-prime {
 .pet-kind-name { font-weight: bold; }
 .pet-kind-about { flex: 1; color: var(--text-808080); }
 .pet-kind-price { font-weight: bold; color: var(--text-45688e); }
+/* The tabs of one's pets above the page, with "+" for the shop. */
+.pet-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 10px; padding: 0 0 6px; border-bottom: 1px solid var(--line-dae1e8); }
+.pet-tab { display: flex; align-items: center; gap: 4px; max-width: 140px; padding: 2px 8px 2px 2px; font: inherit; color: var(--text-2b587a); cursor: pointer; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.pet-tab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-tab:hover { background: var(--back-e9edf1); }
+.pet-tab-chosen, .pet-tab-chosen:hover { color: var(--text-fff); background: var(--back-595959); border-color: var(--line-595959); }
+.pet-tab-more b { display: inline-block; width: 32px; font-size: 18px; text-align: center; }
 .pet-adopt { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
 .pet-adopt input { width: 160px; }
 .pet-card { display: flex; gap: 14px; align-items: flex-start; margin: 0 0 10px; padding: 10px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
@@ -2928,6 +2935,7 @@ img.name-prime.name-prime {
 }
 
 /* The pet on the profile, under the clubs. */
-.pet-side { display: flex; gap: 8px; align-items: center; padding: 4px 0; }
+.pet-side { padding: 2px 0; }
+.pet-side-row { display: flex; gap: 8px; align-items: center; padding: 2px 0; }
 .pet-side .pet-picture { padding: 2px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
 .pet-side-text { min-width: 0; line-height: 1.5; }

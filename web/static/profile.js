@@ -1,5 +1,5 @@
 import { api, currentUser, started } from './api.js';
-import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName } from './labels.js';
+import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, plural, MAX_RATING } from './labels.js';
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
@@ -232,9 +232,9 @@ function showCompleteness(user, isOwner) {
     : [];
 
   // "Повысить рейтинг" stands above the gauge it raises, a link like
-  // "Редактировать страницу" under the photo.
+  // "Редактировать страницу" under the photo, while there is room for it.
   $('completeness').replaceChildren(
-    ...(isOwner ? [el('div', { className: 'profile-links completeness-raise' },
+    ...(isOwner && percent < MAX_RATING ? [el('div', { className: 'profile-links completeness-raise' },
       el('a', { className: 'profile-link', href: '/votes?act=rating', textContent: tr('Повысить рейтинг') }))] : []),
     el('div', { className: 'completeness-gauge' + (percent >= 100 ? ' completeness-gauge-gold' : '') },
       bar, el('span', { textContent: percent + '%' })),
@@ -317,17 +317,19 @@ async function showGifts(user, me, isOwner) {
   }
 }
 
-// showPet is the block "Питомец" of a page with a pet: its picture, name
-// and fights; another's pet is challenged from it, one's own is cared for.
+// showPet is the block "Питомцы" of a page with pets: the picture, name
+// and rating of each; another's pets are challenged from it, one's own
+// are cared for.
 async function showPet(user, me, isOwner) {
-  let pet;
+  let pets;
   try {
-    pet = await api.userPet(user.nickname);
+    ({ pets } = await api.userPets(user.nickname));
   } catch {
-    return; // No pet, or not to be had: the page works without it.
+    return; // Not to be had: the page works without it.
   }
+  if (!pets.length) return;
 
-  $('pet-level').textContent = tr('{0} ур.', pet.level);
+  $('pet-level').textContent = `${pets.length} ${plural(pets.length, ['питомец', 'питомца', 'питомцев'])}`;
   if (isOwner) {
     $('pet-link').textContent = tr('Ухаживать');
     $('pet-link').href = '/pet';
@@ -335,15 +337,13 @@ async function showPet(user, me, isOwner) {
     $('pet-link').textContent = tr('Вызвать на бой');
     $('pet-link').href = '/pet?fight=' + encodeURIComponent(user.nickname);
   }
-  $('pet-side').replaceChildren(
-    el('a', { className: 'pet-side-picture', href: isOwner ? '/pet' : '/top?board=pets' }, petImage(pet.kind, 64)),
+  $('pet-side').replaceChildren(...pets.map((pet) => el('div', { className: 'pet-side-row' },
+    el('a', { className: 'pet-side-picture', href: isOwner ? '/pet?pet=' + pet.id : '/top?board=pets' }, petImage(pet.kind, pets.length > 1 ? 48 : 64)),
     el('div', { className: 'pet-side-text' },
       el('b', { textContent: pet.name }),
-      el('div', { className: 'hint', textContent: petKindName(pet.kind) }),
+      el('div', { className: 'hint', textContent: `${petKindName(pet.kind)}, ${tr('{0} ур.', pet.level)}` }),
       el('div', { textContent: tr('Рейтинг: {0}', pet.rating) }),
-      el('div', { className: 'hint', textContent: tr('Побед: {0}, поражений: {1}', pet.wins, pet.losses) }),
-    ),
-  );
+    ))));
   $('pet-block').hidden = false;
 }
 

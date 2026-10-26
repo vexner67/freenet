@@ -4,9 +4,10 @@
 // wear medals, as the boards of the forums of the 2000s.
 
 import { api, currentUser, started } from './api.js';
-import { topBoardName, topBoardText, topBoards, topValue } from './labels.js';
+import { primeDress, primeNameClass, topBoardName, topBoardText, topBoards, topValue } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showError, verifiedMark } from './layout.js';
 import { petImage } from './pet.js';
+import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
 const board = topBoards.includes(params.get('board')) ? params.get('board') : topBoards[0];
@@ -20,19 +21,29 @@ function showTabs() {
   })));
 }
 
+// The medals of the first three places: gold, silver and bronze on a
+// ribbon, glossy as the icons of the 2000s.
+const medals = ['/static/icons/medal-1.svg', '/static/icons/medal-2.svg', '/static/icons/medal-3.svg'];
+
 function placeCell(place) {
-  return el('td', { className: place <= 3 ? `top-place top-medal top-medal-${place}` : 'top-place' },
-    el('span', { textContent: String(place) }));
+  if (place <= medals.length) {
+    return el('td', { className: 'top-place top-medal' },
+      el('img', { src: medals[place - 1], width: 28, height: 36, alt: String(place), title: tr('{0} место', place) }));
+  }
+
+  return el('td', { className: 'top-place' }, el('span', { textContent: String(place) }));
 }
 
+// personCell is a person of the board; one with Prime wears the colour of
+// their name and their pattern, as in their posts.
 function personCell(entry) {
   const path = '/' + entry.user.nickname;
 
   return el('td', {},
-    el('div', { className: 'top-person' },
+    el('div', { className: ['top-person', ...primeDress(entry.user)].join(' ') },
       el('a', { href: path }, el('img', { className: 'top-avatar', src: avatarURL(entry.user, 'small'), alt: '' })),
       el('div', { className: 'top-who' },
-        el('a', { className: 'post-name', href: path, textContent: fullName(entry.user) }),
+        el('a', { className: ['post-name', primeNameClass(entry.user)].filter(Boolean).join(' '), href: path, textContent: fullName(entry.user) }),
         verifiedMark(entry.user),
         entry.pet && el('div', { className: 'top-pet' },
           petImage(entry.pet.kind, 32),

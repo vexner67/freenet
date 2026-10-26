@@ -92,12 +92,40 @@ const roundGap = 2100;
 
 const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
-// cellNumber is the big number of a cell, sized to stay inside it.
+// cellNumber is the big number of a cell, sized by its length; fitCells
+// then shrinks it until it clears the edges of its cell.
 function cellNumber(text) {
   const node = el('span', { className: 'casino-votes', textContent: text });
   node.style.fontSize = `${cellFontSize(text)}px`;
 
   return node;
+}
+
+// fitCells sizes the numbers of the cells in box to their cells as drawn:
+// a number keeps cellMargin pixels from either edge, so that it does not
+// touch the border of its square, however wide the cell came out.
+const cellMargin = 5;
+
+function fitCells(box) {
+  for (const number of box.querySelectorAll('.casino-votes')) {
+    const cell = number.parentElement;
+    let size = cellFontSize(number.textContent);
+    number.style.fontSize = `${size}px`;
+    const room = cell.clientWidth - 2 * cellMargin;
+    while (room > 0 && size > 9 && number.scrollWidth > room) {
+      size -= 1;
+      number.style.fontSize = `${size}px`;
+    }
+  }
+}
+
+// A board hidden while drawn (another tab, the page not shown yet) has
+// cells of no width: it is fitted again whenever its size changes.
+const refit = new ResizeObserver((entries) => {
+  for (const entry of entries) fitCells(entry.target);
+});
+for (const id of ['board', 'multipliers']) {
+  if ($(id)) refit.observe($(id));
 }
 
 function showBoard(prizes) {
@@ -106,6 +134,7 @@ function showBoard(prizes) {
     el('span', { className: 'casino-unit', textContent: votes > 0 ? plural(votes, ['голос', 'голоса', 'голосов']) : tr('Пусто') }),
   ));
   $('board').replaceChildren(...cells);
+  fitCells($('board'));
   light(0);
 }
 
@@ -372,6 +401,7 @@ function betting(bets, signedIn) {
     return button;
   });
   $('multipliers').replaceChildren(...buttons);
+  fitCells($('multipliers'));
 
   const stake = () => Math.floor(Number(amount.value));
 

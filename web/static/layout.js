@@ -458,9 +458,6 @@ export function applyInterface(me) {
     menuLink(me, 'groups', '/groups', tr('Группы')),
     menuLink(me, 'feed', '/feed', tr('Новости')),
     menuLink(me, 'notifications', '/notifications', tr('Уведомления'), 'notifications-count'),
-    // "Гости": who came since the owner last looked, told by /me.
-    el('a', { href: '/guests', textContent: tr('Гости') },
-      el('span', { className: 'counter', id: 'guests-count', textContent: unreadCountText(me.newGuests ?? 0), hidden: !(me.newGuests > 0) })),
     el('a', { href: '/settings', textContent: tr('Настройки') }),
     el('div', { className: 'menu-divider' }),
     el('a', { href: '/stickers', textContent: tr('Стикеры') }),
@@ -468,7 +465,7 @@ export function applyInterface(me) {
     el('a', { href: '/prime', textContent: 'Freenet Prime' }),
     el('a', { href: '/mine', textContent: tr('Заработок') }),
     el('a', { href: '/casino', textContent: tr('Азартные игры') }),
-    el('a', { href: '/pet', textContent: tr('Питомец') }),
+    el('a', { href: '/pet', textContent: tr('Питомцы') }),
     el('a', { href: '/top', textContent: tr('Рейтинги') }),
     accountsLink(me),
     el('a', { href: '/search', textContent: tr('Поиск') }),
@@ -481,6 +478,9 @@ export function applyInterface(me) {
     el('a', { className: 'menu-phone', href: '/invite', textContent: tr('Пригласить') }),
     el('a', { className: 'menu-phone', href: '/', textContent: tr('Выйти'), onclick: logout }),
   ].filter(Boolean));
+  // The guests who came since the owner last looked, told by /me, count
+  // with the notifications: they are shown among them.
+  newGuests = me.newGuests ?? 0;
   showCounter('messages');
   showCounter('notifications');
   // The accounts that wait are looked after though the menu does not
@@ -726,6 +726,16 @@ function applyCounters(event) {
 // What the counters say, for the icon of the site on the home screen.
 const unread = {};
 
+// newGuests are the guests not seen yet: the counter of "Уведомления"
+// shows them with the unread notifications.
+let newGuests = 0;
+
+// guestsSeen drops the guests from the counter once the page showed them.
+export function guestsSeen() {
+  newGuests = 0;
+  if (unread.notifications !== undefined) setCounter('notifications', unread.notifications);
+}
+
 // Pushes about what is read here leave the notification shade.
 const pushTags = { messages: ['im:', 'chat:'], notifications: ['n:'] };
 
@@ -737,11 +747,12 @@ export function setCounter(name, n) {
   if (n <= 0) closePushes(...pushTags[name]).catch(() => {});
 
   // The menu has the counter, and the bar of sections of a phone too.
+  const shown = name === 'notifications' ? n + newGuests : n;
   for (const counter of [$(counters[name].id), $(counters[name].id + '-tab')]) {
     if (!counter) continue;
 
-    counter.textContent = unreadCountText(n);
-    counter.hidden = n <= 0;
+    counter.textContent = unreadCountText(shown);
+    counter.hidden = shown <= 0;
   }
 }
 

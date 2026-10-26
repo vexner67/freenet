@@ -964,48 +964,22 @@ export function editionLeft(supply, sold) {
   return sold >= supply ? tr('распродан') : tr('осталось {0} из {1}', supply - sold, supply);
 }
 
-// Stickers ("Стикеры" of openvk): what each pack is called and the
-// picture of each sticker. The packs are the catalogue of the user
-// service; a picture is a file of the site, named by its whole path.
+// Stickers ("Стикеры" of openvk): what each pack is called. The site had
+// packs of its own — the smiles, the cats and the bears — until the owner
+// took them away; their names stay for the statements that bought them.
 export const stickerPacks = { smiles: tr('Смайлы'), cats: tr('Котики'), bears: tr('Мишки') };
 
-const stickerImages = {
-  smile_happy: '/static/stickers/smile_happy.svg',
-  smile_laugh: '/static/stickers/smile_laugh.svg',
-  smile_wink: '/static/stickers/smile_wink.svg',
-  smile_love: '/static/stickers/smile_love.svg',
-  smile_cool: '/static/stickers/smile_cool.svg',
-  smile_wow: '/static/stickers/smile_wow.svg',
-  smile_sad: '/static/stickers/smile_sad.svg',
-  smile_angry: '/static/stickers/smile_angry.svg',
-  cat_hi: '/static/stickers/cat_hi.svg',
-  cat_love: '/static/stickers/cat_love.svg',
-  cat_lol: '/static/stickers/cat_lol.svg',
-  cat_wow: '/static/stickers/cat_wow.svg',
-  cat_sleep: '/static/stickers/cat_sleep.svg',
-  cat_angry: '/static/stickers/cat_angry.svg',
-  bear_hi: '/static/stickers/bear_hi.svg',
-  bear_hug: '/static/stickers/bear_hug.svg',
-  bear_love: '/static/stickers/bear_love.svg',
-  bear_ok: '/static/stickers/bear_ok.svg',
-  bear_party: '/static/stickers/bear_party.svg',
-  bear_sad: '/static/stickers/bear_sad.svg',
-};
-
-// A sticker of a pack a person made is the ID of its photo in 32 hex
+// A sticker is the ID of the photo of a pack a person made, in 32 hex
 // digits; the gateway serves its picture.
 const photoSticker = /^[0-9a-f]{32}$/;
 
-// stickerImage is the picture of a sticker; null for one this site does
-// not know yet (a newer catalogue).
+// stickerImage is the picture of a sticker; null for one of the packs of
+// the site that are gone.
 export function stickerImage(sticker) {
-  if (photoSticker.test(sticker)) return `/media/stickers/${sticker}`;
-
-  return stickerImages[sticker] ?? null;
+  return photoSticker.test(sticker) ? `/media/stickers/${sticker}` : null;
 }
 
-// stickerPackName is what a pack is called: its author named a pack made
-// of photos, the site names its own.
+// stickerPackName is what a pack is called: its author named it.
 export function stickerPackName(pack) {
   return pack.name || stickerPacks[pack.id] || tr('Стикеры');
 }
@@ -2039,6 +2013,7 @@ export const primeBackgrounds = [
   ['clouds', tr('облака')],
   ['flowers', tr('цветы')],
   ['sparkles', tr('блёстки')],
+  ['trip', tr('под кайфом')],
 ];
 
 export const primeMoods = [
@@ -2694,7 +2669,7 @@ const errorTexts = {
   'the name of a pet is too long': tr('Имя питомца — не длиннее 20 символов.'),
   'the name of a pet is one line': tr('Имя питомца — в одну строку.'),
   'pet not found': tr('Питомца нет.'),
-  'you have a pet already': tr('У вас уже есть питомец.'),
+  'you have too many pets': tr('У вас уже десять питомцев — больше завести нельзя.'),
   'the pet is not hungry': tr('Питомец сыт и есть не хочет.'),
   'the pet has played recently': tr('Питомец недавно играл — дайте ему отдохнуть.'),
   'the pet is too hungry to fight': tr('Питомец слишком голоден для боя. Покормите его.'),
@@ -3468,12 +3443,8 @@ export function topValue(board, value) {
   return board === 'pets' ? tr('рейтинг {0}', groupedVotes(value)) : votesAmount(value);
 }
 
-// guestVisit is when a guest came: "заходила вчера в 12:00".
-export function guestVisit(guest, now = new Date()) {
-  return `${byGender(guest.user.gender, tr('заходил'), tr('заходила'))} ${formatPostDate(guest.visitedAt, now)}`;
-}
-
-// guestsCount is "N гостей" of the page of guests.
-export function guestsCount(n) {
-  return `${n} ${plural(n, ['гость', 'гостя', 'гостей'])}`;
+// guestCame is what a guest did, told among the notifications after
+// their name: " заходила на вашу страницу.".
+export function guestCame(guest) {
+  return byGender(guest.user.gender, tr(' заходил на вашу страницу.'), tr(' заходила на вашу страницу.'));
 }

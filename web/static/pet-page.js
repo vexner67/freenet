@@ -1,5 +1,5 @@
-// "Питомец" (/pet), a tamagotchi: a person adopts one pet in the shop for
-// votes, feeds it (for votes) and plays with it (free, once a while), or
+// "Питомец" (/pet), a tamagotchi: a person adopts up to ten pets in the
+// shop for votes (?pet=<id> opens one of them) and feeds it (for votes) and plays with it (free, once a while), or
 // it gets hungry and sad by itself. Care and fights give it experience,
 // and its level makes it stronger. The pet fights the pets of others —
 // one found by the rating or one called by a nickname (?fight=<nickname>
@@ -17,15 +17,19 @@ import { button, openModal } from './modal.js';
 import { petImage } from './pet.js';
 import { tr } from './i18n.js';
 
-const answered = session.get() ? started(api.pet()) : null;
+const answered = session.get() ? started(api.pets()) : null;
 const fought = session.get() ? started(api.petFights()).catch(() => ({ fights: [] })) : null;
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // A hit of a fight lasts so long on the page.
 const hitPause = 650;
 
+// A person keeps so many pets (user.MaxPets).
+const maxPets = 10;
+
 let me = null;
 let shop = null;
+let pets = [];
 let pet = null;
 let chosen = '';
 let busy = false;
@@ -86,9 +90,40 @@ function choose(kind) {
 }
 
 function showShop() {
+  pet = null;
   $('kinds').replaceChildren(...petKinds.map(kindCard));
   $('home').hidden = true;
   $('shop').hidden = false;
+  showTabs();
+}
+
+// The tabs of the pets: one for each, and "+" for the shop while there is
+// room for one more.
+
+function showTabs() {
+  const tabs = pets.map((p) => {
+    const tab = el('button', { type: 'button', className: p.id === pet?.id ? 'pet-tab pet-tab-chosen' : 'pet-tab', title: petKindName(p.kind) },
+      petImage(p.kind, 32), el('span', { textContent: p.name }));
+    tab.addEventListener('click', () => { if (!busy) showPet(p); });
+    return tab;
+  });
+  if (pets.length < maxPets) {
+    const more = el('button', { type: 'button', className: pet ? 'pet-tab pet-tab-more' : 'pet-tab pet-tab-more pet-tab-chosen' },
+      el('b', { textContent: '+' }), el('span', { textContent: tr('Завести ещё') }));
+    more.addEventListener('click', () => { if (!busy) showShop(); });
+    tabs.push(more);
+  }
+  $('pet-tabs').replaceChildren(...tabs);
+  $('pet-tabs').hidden = pets.length === 0;
+  $('pets-count').textContent = pets.length ? tr('Питомцев: {0} из {1}.', pets.length, maxPets) : '';
+}
+
+// keep puts a pet as the server answered in its place.
+function keep(next) {
+  const i = pets.findIndex((p) => p.id === next.id);
+  if (i < 0) pets.push(next);
+  else pets[i] = next;
+  showPet(next);
 }
 
 // The home of the pet.
@@ -161,6 +196,7 @@ function showPet(next) {
   showStats();
   $('shop').hidden = true;
   $('home').hidden = false;
+  showTabs();
 }
 
 // Fights.
@@ -246,7 +282,7 @@ async function playFight(fight) {
 
 async function fight(nickname) {
   // The balance waits for the end of the fight: it would tell who won.
-  const answer = (await act(() => api.fightPet(nickname).then((fought) => ({ fought }))))?.fought;
+  const answer = (await act(() => api.fightPet(pet.id, nickname).then((fought) => ({ fought }))))?.fought;
   if (!answer) return;
 
   setBusy(true);
@@ -255,7 +291,7 @@ async function fight(nickname) {
   } finally {
     setBusy(false);
   }
-  showPet(answer.pet);
+  keep(answer.pet);
   showBalance(answer.balance);
   api.petFights().then(({ fights }) => showFights(fights)).catch(() => {});
 }
@@ -270,8 +306,8 @@ function openRename() {
   modal.box.addEventListener('submit', async (event) => {
     event.preventDefault();
     modal.close();
-    const renamed = await act(() => api.renamePet(input.value));
-    if (renamed) showPet(renamed.pet);
+    const renamed = await act(() => api.renamePet(pet.id, input.value));
+    if (renamed) keep(renamed.pet);
   });
   input.select();
 }
@@ -282,12 +318,14 @@ function openRelease() {
   modal.actions.append(
     button(tr('Отпустить'), async () => {
       modal.close();
-      if (await act(() => api.releasePet().then(() => ({})))) {
-        pet = null;
+      const gone = pet.id;
+      if (await act(() => api.releasePet(gone).then(() => ({})))) {
+        pets = pets.filter((p) => p.id !== gone);
         chosen = '';
         $('adopt').hidden = true;
         $('adopt-name').value = '';
-        showShop();
+        if (pets.length) showPet(pets[0]);
+        else showShop();
       }
     }),
     button(tr('Отмена'), modal.close, { secondary: true }));
@@ -299,17 +337,19 @@ function watch() {
     if (!chosen) return;
     const adopted = await act(() => api.adoptPet(chosen, $('adopt-name').value));
     if (adopted) {
-      showPet(adopted.pet);
-      showFights([]);
+      chosen = '';
+      $('adopt').hidden = true;
+      $('adopt-name').value = '';
+      keep(adopted.pet);
     }
   });
   $('feed').addEventListener('click', async () => {
-    const fed = await act(() => api.feedPet());
-    if (fed) showPet(fed.pet);
+    const fed = await act(() => api.feedPet(pet.id));
+    if (fed) keep(fed.pet);
   });
   $('play').addEventListener('click', async () => {
-    const played = await act(() => api.playPet());
-    if (played) showPet(played.pet);
+    const played = await act(() => api.playPet(pet.id));
+    if (played) keep(played.pet);
   });
   $('find').addEventListener('click', () => fight(''));
   $('challenge').addEventListener('submit', (event) => {
@@ -333,12 +373,11 @@ if (!me) {
     shop = answer.shop;
     showBalance(me.votes ?? 0);
     watch();
-    if (answer.pet) {
-      showPet(answer.pet);
-      showFights((await fought).fights);
-    } else {
-      showShop();
-    }
+    pets = answer.pets;
+    const wanted = new URLSearchParams(location.search).get('pet');
+    if (pets.length) showPet(pets.find((p) => p.id === wanted) ?? pets[0]);
+    else showShop();
+    showFights((await fought).fights);
     const rival = new URLSearchParams(location.search).get('fight');
     if (rival) $('rival').value = rival;
   } catch (e) {

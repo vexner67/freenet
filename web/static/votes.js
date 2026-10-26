@@ -287,15 +287,17 @@ function initRating(me) {
   const percent = $('rating-percent');
   $('rating-balance').textContent = votesAmount(me.votes ?? 0);
   // The rating of the page is what its profile shows: how full it is
-  // plus the rating raised (me.rating). Only the raise stops at
-  // MAX_RATING: one who has it is told so rather than given a form that
-  // cannot work.
+  // plus the rating raised, together at most MAX_RATING. One who has it
+  // is told so instead of the form, which cannot work.
   const page = () => me.completeness ?? me.rating ?? 0;
-  const left = () => MAX_RATING - (me.rating ?? 0);
+  const left = () => MAX_RATING - page();
   const full = () => left() <= 0;
-  const tellFull = () => say(tr('Больше повысить нельзя'), tr('Ваш рейтинг уже {0} %: из них {1} % — повышение, а больше {1} % повысить нельзя.', page(), MAX_RATING));
+  const tellFull = () => {
+    $('rating-form').hidden = true;
+    say(tr('Больше повысить нельзя'), tr('Ваш рейтинг уже {0} % — больше не бывает.', MAX_RATING));
+  };
   if (full()) tellFull();
-  percent.focus();
+  else percent.focus();
 
   percent.addEventListener('input', () => {
     const n = Number(percent.value);
@@ -320,13 +322,14 @@ function initRating(me) {
     try {
       const raised = await api.raiseRating(Number(percent.value));
       me.votes = raised.balance;
-      me.completeness = page() + raised.rating - (me.rating ?? 0);
+      me.completeness = Math.min(page() + raised.rating - (me.rating ?? 0), MAX_RATING);
       me.rating = raised.rating;
       $('rating-balance').textContent = votesAmount(raised.balance);
       percent.value = '';
       $('rating-cost').hidden = true;
       say(tr('Рейтинг повышен'), tr('Теперь ваш рейтинг — {0} %.', page()), ' ',
         el('a', { href: '/votes', textContent: tr('На вашем счету {0}.', votesAmount(raised.balance)) }));
+      if (full()) $('rating-form').hidden = true;
     } catch (e) {
       showError(error, e);
     } finally {

@@ -4,19 +4,21 @@
 // anyone in the conversation puts one reaction of six on a message, shown
 // under it with how many put each.
 
-import { REACTIONS, genitiveName, quoteText, reactionCounts, reacted } from './labels.js';
+import { REACTIONS, genitiveName, primeDress, primeNameClass, quoteText, reactionCounts, reacted } from './labels.js';
 import { $, el, fullName, showError } from './layout.js';
 import { tr } from './i18n.js';
 
 // quoteNode is the block over an answer's words; text is the words of the
 // message it answers as the page knows them, open leads to that message.
+// An author with Prime dresses the quote as their messages: the name in
+// its colour, the pattern behind.
 export function quoteNode(q, text, open) {
   return el('a', {
-    className: 'im-quote',
+    className: ['im-quote', ...primeDress(q.author)].join(' '),
     title: tr('Перейти к сообщению'),
     onclick: () => open(q.id),
   },
-  q.author && el('span', { className: 'im-quote-name', textContent: fullName(q.author) }),
+  q.author && el('span', { className: ['im-quote-name', primeNameClass(q.author)].filter(Boolean).join(' '), textContent: fullName(q.author) }),
   el('span', { className: 'im-quote-text', textContent: quoteText(q, text) }));
 }
 

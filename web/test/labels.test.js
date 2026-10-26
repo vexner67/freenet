@@ -786,20 +786,11 @@ test('gifts are counted, named and pictured as the catalogue of the user service
   assert.equal(giftImage('rose'), '/static/gifts/unknown.svg');
 });
 
-test('stickers are named and pictured as the catalogue of the user service has them', () => {
-  // The catalogue is the domain's: every pack is named here and every
-  // sticker has its picture among the files of the site.
+test('stickers are pictured by the photos people made them of', () => {
+  // The site's own packs are gone: the catalogue of the user service is empty.
   const source = readFileSync(new URL('../../user/internal/user/sticker.go', import.meta.url), 'utf8');
-  const catalog = /var stickerCatalog = [^{]*\{([\s\S]*?)\n\}/.exec(source)[1];
-  const packs = [...catalog.matchAll(/ID:\s*"(\w+)"/g)].map((m) => m[1]);
-  const stickers = [...catalog.matchAll(/Stickers:[^{]*\{([^}]*)\}/g)].flatMap((m) => [...m[1].matchAll(/"(\w+)"/g)].map((g) => g[1]));
-
-  assert.deepEqual(Object.keys(stickerPacks), packs);
-  assert.equal(stickers.length, 20);
-  for (const sticker of stickers) {
-    assert.equal(stickerImage(sticker), `/static/stickers/${sticker}.svg`);
-    assert.ok(existsSync(new URL(`../static/stickers/${sticker}.svg`, import.meta.url)), sticker);
-  }
+  assert.match(source, /var stickerCatalog \[\]StickerPack\n/);
+  assert.equal(stickerImage('cat_hi'), null);
   assert.equal(stickerImage('unknown'), null);
   // A sticker of a pack a person made is a photo the gateway serves.
   assert.equal(stickerImage('0198c0de000070008000000000000001'), '/media/stickers/0198c0de000070008000000000000001');
@@ -1402,7 +1393,7 @@ test('the pets and the boards of the site are those of the user service', async 
 });
 
 test('pets, fights, boards and guests are told', async () => {
-  const { petFightResult, petLevelProgress, petMood, petWait, petHitText, topValue, guestsCount } = await import('../static/labels.js');
+  const { petFightResult, petLevelProgress, petMood, petWait, petHitText, topValue, guestCame } = await import('../static/labels.js');
 
   assert.deepEqual(petFightResult({ won: true, rating: 16 }, true), { won: true, text: 'Победа', rating: '+16' });
   assert.deepEqual(petFightResult({ won: true, rating: 16 }, false), { won: false, text: 'Поражение', rating: '−16' });
@@ -1423,5 +1414,6 @@ test('pets, fights, boards and guests are told', async () => {
 
   assert.equal(topValue('pets', 1016), 'рейтинг 1\u00a0016');
   assert.match(topValue('rich', 3000), /^3\s000\sголосов$/);
-  assert.equal(guestsCount(2), '2 гостя');
+  assert.equal(guestCame({ user: { gender: 'female' } }), ' заходила на вашу страницу.');
+  assert.equal(guestCame({ user: {} }), ' заходил на вашу страницу.');
 });

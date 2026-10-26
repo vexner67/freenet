@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Питомец | Freenet</title>
+  <title>Питомцы | Freenet</title>
   <link rel="icon" href="/static/favicon.png" sizes="32x32">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
@@ -27,14 +27,16 @@
     </div>
 
     <div class="page">
-      <div class="page-title"><span>Питомец</span></div>
+      <div class="page-title"><span>Питомцы</span></div>
       <div class="page-body">
         <div class="error" id="error" hidden></div>
         <div class="mine pet-page" id="pet-page" hidden>
           <div class="mine-main">
+            <div class="pet-tabs" id="pet-tabs" hidden></div>
             <div id="shop" hidden>
-              <p class="casino-lead">Заведите питомца — как тамагочи из детства. Кормите его и играйте с ним, иначе он загрустит. С каждым уходом и боем он набирается опыта, растёт в уровне и становится сильнее. Вызывайте на бой питомцев других людей: победа приносит голоса и рейтинг.</p>
+              <p class="casino-lead">Заведите питомцев — как тамагочи из детства, до десяти сразу. Кормите их и играйте с ними, иначе они загрустят. С каждым уходом и боем питомец набирается опыта, растёт в уровне и становится сильнее. Вызывайте на бой питомцев других людей: победа приносит голоса и рейтинг.</p>
               <div class="section-title">Зоомагазин</div>
+              <p class="hint" id="pets-count"></p>
               <div class="pet-shop" id="kinds"></div>
               <form class="pet-adopt" id="adopt" hidden>
                 <label for="adopt-name">Имя питомца:</label>
