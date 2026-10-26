@@ -44,6 +44,7 @@
         <a class="aui-nav-item" href="/admin/mine" title="Шахта"><span class="aui-icon aui-icon-mine"></span><span class="aui-nav-item-label">Шахта</span></a>
         <a class="aui-nav-item" href="/admin/business" title="Бизнес"><span class="aui-icon aui-icon-business"></span><span class="aui-nav-item-label">Бизнес</span></a>
         <a class="aui-nav-item" href="/admin/bank" title="Банк"><span class="aui-icon aui-icon-bank"></span><span class="aui-nav-item-label">Банк</span></a>
+        <a class="aui-nav-item" href="/admin/pets" title="Питомцы"><span class="aui-icon aui-icon-pet"></span><span class="aui-nav-item-label">Питомцы</span></a>
         <a class="aui-nav-item" href="/admin/ads" title="Реклама"><span class="aui-icon aui-icon-ad"></span><span class="aui-nav-item-label">Реклама</span></a>
       </div>
       <div class="aui-sidebar-group">
@@ -308,6 +309,50 @@
         <div class="field-group">
           <label for="prime-year">Год</label>
           <input class="text admin-casino-field" id="prime-year" type="number" min="1" required>
+        </div>
+        <div class="buttons-container">
+          <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="pets" hidden>
+      <h1 class="aui-page-heading">Питомцы</h1>
+      <p class="admin-lead">Люди заводят питомца за голоса, кормят его за голоса и бесплатно играют с ним; всё потраченное уходит в Казну. Питомцы дерутся друг с другом, и победа приносит голоса из Казны и рейтинг. Новые цены действуют для следующих покупок и боёв.</p>
+      <p class="admin-casino-stats" id="pets-stats"></p>
+      <div class="aui-message aui-message-success" id="pets-saved" hidden></div>
+      <form class="aui" id="pets-form">
+        <div class="field-group">
+          <label for="pet-cat">Кот</label>
+          <input class="text admin-casino-field" id="pet-cat" type="number" min="0" required>
+          <div class="description">Цена питомца в голосах.</div>
+        </div>
+        <div class="field-group">
+          <label for="pet-dog">Пёс</label>
+          <input class="text admin-casino-field" id="pet-dog" type="number" min="0" required>
+        </div>
+        <div class="field-group">
+          <label for="pet-hamster">Хомяк</label>
+          <input class="text admin-casino-field" id="pet-hamster" type="number" min="0" required>
+        </div>
+        <div class="field-group">
+          <label for="pet-dragon">Дракон</label>
+          <input class="text admin-casino-field" id="pet-dragon" type="number" min="0" required>
+        </div>
+        <div class="field-group">
+          <label for="pet-meal">Корм</label>
+          <input class="text admin-casino-field" id="pet-meal" type="number" min="0" required>
+          <div class="description">Сколько голосов стоит покормить питомца.</div>
+        </div>
+        <div class="field-group">
+          <label for="pet-win">Победа</label>
+          <input class="text admin-casino-field" id="pet-win" type="number" min="0" required>
+          <div class="description">Сколько голосов приносит победа в бою.</div>
+        </div>
+        <div class="field-group">
+          <label for="pet-fights">Боёв в день</label>
+          <input class="text admin-casino-field" id="pet-fights" type="number" min="1" required>
+          <div class="description">Сколько раз в день питомец может вызвать на бой.</div>
         </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>

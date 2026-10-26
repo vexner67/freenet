@@ -1385,3 +1385,43 @@ test('the classes and the mood of a page dressed with Prime', async () => {
   assert.equal(primeMoodText(''), '');
   assert.equal(primeMoodText('bored'), '');
 });
+
+test('the pets and the boards of the site are those of the user service', async () => {
+  const labels = await import('../static/labels.js');
+  const listed = (file, list, type) => {
+    const source = readFileSync(new URL('../../user/internal/user/' + file, import.meta.url), 'utf8');
+    const order = source.match(new RegExp(`var ${list} = \\[\\]${type}\\{([^}]*)\\}`))[1].split(',').map((name) => name.trim());
+    const values = Object.fromEntries([...source.matchAll(new RegExp(`(\\w+)\\s+${type} = "(\\w+)"`, 'g'))].map(([, name, value]) => [name, value]));
+    return order.map((name) => values[name]);
+  };
+
+  assert.deepEqual(labels.petKinds, listed('pet.go', 'PetKinds', 'PetKind'));
+  assert.deepEqual(labels.topBoards, listed('top.go', 'TopBoards', 'TopBoard'));
+  for (const kind of labels.petKinds) assert.notEqual(labels.petKindName(kind), kind);
+  for (const board of labels.topBoards) assert.notEqual(labels.topBoardName(board), board);
+});
+
+test('pets, fights, boards and guests are told', async () => {
+  const { petFightResult, petLevelProgress, petMood, petWait, petHitText, topValue, guestsCount } = await import('../static/labels.js');
+
+  assert.deepEqual(petFightResult({ won: true, rating: 16 }, true), { won: true, text: 'Победа', rating: '+16' });
+  assert.deepEqual(petFightResult({ won: true, rating: 16 }, false), { won: false, text: 'Поражение', rating: '−16' });
+  assert.equal(petFightResult({ won: false, rating: 0 }, true).rating, '±0');
+
+  assert.equal(petLevelProgress({ experience: 150, levelExperience: 100, nextLevelExperience: 300 }), 25);
+  assert.equal(petLevelProgress({ experience: 900, levelExperience: 900, nextLevelExperience: 900 }), 100);
+  assert.equal(petMood({ satiety: 90, joy: 80 }), 'Счастлив');
+  assert.equal(petMood({ satiety: 10, joy: 80 }), 'Голоден');
+  assert.equal(petMood({ satiety: 50, joy: 10 }), 'Скучает');
+  assert.equal(petWait(61), '2 мин.');
+  assert.equal(petWait(40.2), '41 с');
+
+  const cat = { name: 'Мурка' };
+  const dog = { name: 'Рекс' };
+  assert.equal(petHitText({ byAttacker: true, damage: 5 }, cat, dog), 'Мурка бьёт. Рекс: −5.');
+  assert.equal(petHitText({ byAttacker: false, dodged: true }, cat, dog), 'Рекс бьёт, но Мурка уворачивается.');
+
+  assert.equal(topValue('pets', 1016), 'рейтинг 1\u00a0016');
+  assert.match(topValue('rich', 3000), /^3\s000\sголосов$/);
+  assert.equal(guestsCount(2), '2 гостя');
+});

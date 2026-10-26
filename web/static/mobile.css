@@ -363,3 +363,15 @@ input, select, textarea { font-size: 16px !important; }
 .collectible-info { width: 100%; }
 .collectible-grid { grid-template-columns: repeat(2, 1fr); }
 .market-filters select { flex: 1 1 45%; }
+
+/* "Питомец" and "Рейтинги" on a phone. */
+.pet-shop { grid-template-columns: repeat(2, 1fr); }
+.pet-card { flex-direction: column; align-items: center; }
+.pet-info { width: 100%; }
+.pet-bar { width: 110px; }
+.pet-arena-side { width: 120px; }
+.pet-arena-side .pet-bar { width: 100px; }
+.pet-adopt input, .pet-challenge input { flex: 1; width: auto; min-width: 0; }
+.pet-challenge #find, .pet-challenge .hint { flex-basis: 100%; }
+.top-table th.top-value, .top-table td.top-value { width: auto; }
+.top-table th.top-place, .top-table td.top-place { width: 32px; }

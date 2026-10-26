@@ -458,6 +458,9 @@ export function applyInterface(me) {
     menuLink(me, 'groups', '/groups', tr('Группы')),
     menuLink(me, 'feed', '/feed', tr('Новости')),
     menuLink(me, 'notifications', '/notifications', tr('Уведомления'), 'notifications-count'),
+    // "Гости": who came since the owner last looked, told by /me.
+    el('a', { href: '/guests', textContent: tr('Гости') },
+      el('span', { className: 'counter', id: 'guests-count', textContent: unreadCountText(me.newGuests ?? 0), hidden: !(me.newGuests > 0) })),
     el('a', { href: '/settings', textContent: tr('Настройки') }),
     el('div', { className: 'menu-divider' }),
     el('a', { href: '/stickers', textContent: tr('Стикеры') }),
@@ -465,6 +468,8 @@ export function applyInterface(me) {
     el('a', { href: '/prime', textContent: 'Freenet Prime' }),
     el('a', { href: '/mine', textContent: tr('Заработок') }),
     el('a', { href: '/casino', textContent: tr('Азартные игры') }),
+    el('a', { href: '/pet', textContent: tr('Питомец') }),
+    el('a', { href: '/top', textContent: tr('Рейтинги') }),
     accountsLink(me),
     el('a', { href: '/search', textContent: tr('Поиск') }),
     // The administrators of the site have openvk's "Админ-панель" under

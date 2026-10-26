@@ -2843,3 +2843,91 @@ img.name-prime.name-prime {
 
 /* On the black of the story viewer, as in the dark theme. */
 .story-head img.name-checkmark.name-checkmark { filter: brightness(2.4); }
+
+/* "Гости" (/guests): the new guests stand out, as unread notifications. */
+.guest-row-new { background: var(--back-f2f5f8); }
+.guest-visit { margin-top: 3px; }
+.guest-new { margin-right: 6px; color: var(--text-43a047); }
+
+/* "Рейтинги" (/top): a board of the forums of the 2000s, the first three
+   places in medals. */
+.top-table { width: 100%; border-collapse: collapse; margin: 0 0 10px; }
+.top-table th { padding: 4px 6px; background: var(--back-e6e6e6); border-bottom: 1px solid var(--line-ccc); color: var(--text-555); font-weight: bold; text-align: left; }
+.top-table td { padding: 6px; border-bottom: 1px solid var(--line-e8ebee); vertical-align: middle; }
+.top-table th.top-place, .top-table td.top-place { width: 44px; text-align: center; }
+.top-table th.top-value, .top-table td.top-value { width: 150px; text-align: right; white-space: nowrap; font-weight: bold; }
+.top-place span { display: inline-block; min-width: 24px; line-height: 24px; color: var(--text-808080); font-weight: bold; }
+.top-medal span { border: 1px solid; border-radius: 50%; color: var(--text-58462a); }
+.top-medal-1 span { background: var(--back-ffd54a); border-color: var(--line-e2b24a); }
+.top-medal-2 span { background: var(--back-dfe3e8); border-color: var(--line-7d8792); }
+.top-medal-3 span { background: var(--back-f3ddbd); border-color: var(--line-c3a476); }
+.top-row-medal td { background: var(--back-f9f6e7); }
+.top-person { display: flex; gap: 8px; align-items: center; }
+.top-avatar { display: block; width: 36px; height: 36px; object-fit: cover; }
+.top-who { min-width: 0; }
+.top-pet { display: flex; gap: 4px; align-items: center; margin-top: 2px; color: var(--text-555); }
+
+/* "Питомец" (/pet): pixel pets, drawn 16×16 and shown in whole steps. */
+.pet-picture { display: block; image-rendering: pixelated; }
+.pet-shop { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0 10px; }
+.pet-kind { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); text-align: center; }
+.pet-kind-chosen { background: var(--back-f9f6e7); border-color: var(--line-c3a476); }
+.pet-kind-picture { padding: 4px; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
+.pet-kind-name { font-weight: bold; }
+.pet-kind-about { flex: 1; color: var(--text-808080); }
+.pet-kind-price { font-weight: bold; color: var(--text-45688e); }
+.pet-adopt { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.pet-adopt input { width: 160px; }
+.pet-card { display: flex; gap: 14px; align-items: flex-start; margin: 0 0 10px; padding: 10px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.pet-stage { flex: none; display: flex; align-items: flex-end; justify-content: center; width: 120px; height: 120px; background: var(--back-fff) linear-gradient(to top, var(--back-dcefd9) 22px, transparent 22px); border: 1px solid var(--line-c3cad2); }
+.pet-stage .pet-picture { margin-bottom: 8px; }
+.pet-happy .pet-picture { animation: pet-hop 1.6s steps(2) infinite; }
+.pet-sad .pet-picture { filter: grayscale(0.7); }
+@keyframes pet-hop { 50% { transform: translateY(-6px); } }
+.pet-info { flex: 1; min-width: 0; }
+.pet-name { font-size: 13px; }
+.pet-mood { margin: 2px 0 6px; color: var(--text-808080); }
+.pet-bars { border-collapse: collapse; margin: 0 0 8px; }
+.pet-bars td { padding: 2px 6px 2px 0; }
+.pet-bar-label { width: 90px; color: var(--text-808080); white-space: nowrap; }
+.pet-bar-value { min-width: 60px; white-space: nowrap; }
+.pet-bar { width: 150px; height: 10px; background: var(--back-e6e6e6); border: 1px solid var(--line-ccc); }
+.pet-bar-fill { height: 100%; transition: width 0.3s; }
+.pet-satiety { background: var(--back-43a047); }
+.pet-joy { background: var(--back-2e7dd7); }
+.pet-experience { background: var(--back-ffd54a); }
+.pet-health { width: 100%; background: var(--back-d23a32); }
+.pet-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pet-stats { margin: 0 0 10px; }
+.pet-stats td.label { width: 140px; color: var(--text-808080); }
+.pet-fight-box { margin: 6px 0 10px; }
+.pet-challenge { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pet-challenge input { width: 140px; }
+.pet-arena { margin-top: 10px; padding: 10px; background: var(--back-f9f6e7); border: 1px solid var(--line-d7cf9e); }
+.pet-arena-ring { display: flex; align-items: center; justify-content: space-around; gap: 10px; }
+.pet-arena-side { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 170px; text-align: center; }
+.pet-arena-side .pet-bar { width: 140px; }
+.pet-arena-picture { padding: 4px; background: var(--back-fff); border: 1px solid var(--line-d7cf9e); }
+.pet-arena-hp { color: var(--text-555); }
+.pet-arena-vs { color: var(--text-c33); font-size: 18px; font-weight: bold; }
+.pet-hurt .pet-arena-picture { animation: pet-shake 0.3s; }
+@keyframes pet-shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+.pet-log { max-height: 160px; margin-top: 8px; padding: 4px 6px; overflow-y: auto; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
+.pet-log-line { margin: 2px 0; color: var(--text-555); }
+.pet-log-crit { color: var(--text-c33); font-weight: bold; }
+.pet-arena-result { margin-top: 8px; font-size: 13px; font-weight: bold; text-align: center; }
+.pet-won { color: var(--text-43a047); }
+.pet-lost { color: var(--text-c33); }
+.pet-fights { margin: 0 0 10px; }
+.pet-fight { display: flex; gap: 8px; align-items: center; padding: 6px 4px; border-bottom: 1px solid var(--line-e8ebee); }
+.pet-fight-text { flex: 1; min-width: 0; }
+.pet-result { min-width: 90px; text-align: right; }
+.pet-links { margin: 10px 0 0; color: var(--text-808080); }
+@media (prefers-reduced-motion: reduce) {
+  .pet-happy .pet-picture, .pet-hurt .pet-arena-picture { animation: none; }
+}
+
+/* The pet on the profile, under the clubs. */
+.pet-side { display: flex; gap: 8px; align-items: center; padding: 4px 0; }
+.pet-side .pet-picture { padding: 2px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.pet-side-text { min-width: 0; line-height: 1.5; }

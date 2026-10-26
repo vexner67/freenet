@@ -2179,6 +2179,10 @@ export function voteOperation(op, myId) {
       const [kind, action] = note.split(':');
       return { title: tr('Бизнес «{0}»: {1}', businessName(kind), businessActionName(action)), role: '' };
     }
+    case 'pet':
+      if (note === 'adopt') return { title: tr('Питомец: покупка'), role: '' };
+      if (note === 'feed') return { title: tr('Питомец: корм'), role: '' };
+      return { title: tr('Питомец: победа в бою'), role: tr('Соперник:') };
     case 'fee':
       return { title: tr('Комиссия за перевод'), role: tr('Получатель:') };
     case 'post':
@@ -2684,6 +2688,22 @@ const errorTexts = {
   'the casino must have from 2 to 12 prizes': tr('В казино должно быть от 2 до 12 призов.'),
   'a prize must be at least 0 votes': tr('Приз — не меньше 0 голосов.'),
   'unknown ore': tr('Такой руды нет.'),
+  'unknown pet': tr('Такого питомца нет.'),
+  'unknown top': tr('Такого рейтинга нет.'),
+  'the name of a pet is empty': tr('Дайте питомцу имя.'),
+  'the name of a pet is too long': tr('Имя питомца — не длиннее 20 символов.'),
+  'the name of a pet is one line': tr('Имя питомца — в одну строку.'),
+  'pet not found': tr('Питомца нет.'),
+  'you have a pet already': tr('У вас уже есть питомец.'),
+  'the pet is not hungry': tr('Питомец сыт и есть не хочет.'),
+  'the pet has played recently': tr('Питомец недавно играл — дайте ему отдохнуть.'),
+  'the pet is too hungry to fight': tr('Питомец слишком голоден для боя. Покормите его.'),
+  'the pet is too sad to fight': tr('Питомцу слишком скучно для боя. Поиграйте с ним.'),
+  'the pet has fought enough today': tr('Питомец сегодня уже набоялся. Приходите завтра.'),
+  'a pet does not fight itself': tr('Питомец не дерётся сам с собой.'),
+  'there is nobody to fight': tr('Соперников пока нет.'),
+  'the prices of the pet shop must be from 0': tr('Цены зоомагазина — не меньше 0.'),
+  'the fights of a day must be from 1 to 1000': tr('Боёв в день — от 1 до 1000.'),
   'this ore needs more experience': tr('Эту руду можно копать, набравшись опыта.'),
   'not enough energy': tr('Не хватает энергии. Она восстанавливается сама.'),
   'not enough ore to sell': tr('Продавать нечего: руды не хватает и на голос.'),
@@ -3345,4 +3365,115 @@ export function activeSection(path, ownPath) {
   if (ownPath && decodeURIComponent(path) === ownPath) return 'page';
 
   return '';
+}
+
+// petKinds are the pets of the shop in the order the site shows them,
+// as user.PetKinds.
+export const petKinds = ['cat', 'dog', 'hamster', 'dragon'];
+
+const petKindNames = {
+  cat: tr('Кот'),
+  dog: tr('Пёс'),
+  hamster: tr('Хомяк'),
+  dragon: tr('Дракон'),
+};
+
+const petKindAbout = {
+  cat: tr('Ловкий: чаще уворачивается от ударов.'),
+  dog: tr('Сильный и выносливый.'),
+  hamster: tr('Маленький и везучий: чаще бьёт вдвое сильнее.'),
+  dragon: tr('Силён во всём, но дорог.'),
+};
+
+export function petKindName(kind) {
+  return petKindNames[kind] ?? kind;
+}
+
+export function petKindText(kind) {
+  return petKindAbout[kind] ?? '';
+}
+
+// petMood is how a pet feels by its satiety and joy: the words over its
+// bars of satiety and joy.
+export function petMood(pet) {
+  const low = Math.min(pet.satiety, pet.joy);
+  if (low >= 70) return tr('Счастлив');
+  if (pet.satiety < 15) return tr('Голоден');
+  if (pet.joy < 15) return tr('Скучает');
+  if (low >= 40) return tr('Доволен');
+  return tr('Грустит');
+}
+
+// petLevelProgress is the share of the way to the next level, 0–100.
+export function petLevelProgress(pet) {
+  const span = pet.nextLevelExperience - pet.levelExperience;
+  if (span <= 0) return 100;
+  return Math.max(0, Math.min(100, Math.floor((100 * (pet.experience - pet.levelExperience)) / span)));
+}
+
+// petWait is how long until a pet plays again: "12 мин." or "40 с".
+export function petWait(seconds) {
+  const s = Math.max(0, Math.ceil(seconds));
+  if (s >= 60) return tr('{0} мин.', Math.ceil(s / 60));
+  return tr('{0} с', s);
+}
+
+// petHitText is a hit of a fight as its log says it.
+export function petHitText(hit, attacker, defender) {
+  const [by, to] = hit.byAttacker ? [attacker, defender] : [defender, attacker];
+  if (hit.dodged) return tr('{0} бьёт, но {1} уворачивается.', by.name, to.name);
+  if (hit.crit) return tr('{0} бьёт со всей силы! {1}: −{2}.', by.name, to.name, hit.damage);
+  return tr('{0} бьёт. {1}: −{2}.', by.name, to.name, hit.damage);
+}
+
+// petFightResult is how a fight ended for whom it is shown: attacking
+// says won, defending — the other way round.
+export function petFightResult(fight, mine) {
+  const won = mine ? fight.won : !fight.won;
+  const rating = mine ? fight.rating : -fight.rating;
+  const sign = rating > 0 ? '+' : rating < 0 ? '−' : '±';
+  return { won, text: won ? tr('Победа') : tr('Поражение'), rating: `${sign}${Math.abs(rating)}` };
+}
+
+// topBoards are the boards of "Рейтинги" (/top) in the order of its tabs,
+// as user.TopBoards.
+export const topBoards = ['rich', 'miners', 'business', 'casino', 'pets'];
+
+const topBoardNames = {
+  rich: tr('Forbes Freenet'),
+  miners: tr('Шахтёры недели'),
+  business: tr('Бизнесмены недели'),
+  casino: tr('Игроки недели'),
+  pets: tr('Питомцы'),
+};
+
+const topBoardAbout = {
+  rich: tr('У кого больше всего голосов на счету.'),
+  miners: tr('Кто продал больше руды за последние 7 дней.'),
+  business: tr('Кто заработал больше всех на бизнесах за последние 7 дней — за вычетом вложенного.'),
+  casino: tr('Кто больше всех выиграл в казино за последние 7 дней — за вычетом ставок.'),
+  pets: tr('Питомцы с самым высоким рейтингом боёв.'),
+};
+
+export function topBoardName(board) {
+  return topBoardNames[board] ?? board;
+}
+
+export function topBoardText(board) {
+  return topBoardAbout[board] ?? '';
+}
+
+// topValue is the number of a place: votes, the rating of a pet.
+export function topValue(board, value) {
+  return board === 'pets' ? tr('рейтинг {0}', groupedVotes(value)) : votesAmount(value);
+}
+
+// guestVisit is when a guest came: "заходила вчера в 12:00".
+export function guestVisit(guest, now = new Date()) {
+  return `${byGender(guest.user.gender, tr('заходил'), tr('заходила'))} ${formatPostDate(guest.visitedAt, now)}`;
+}
+
+// guestsCount is "N гостей" of the page of guests.
+export function guestsCount(n) {
+  return `${n} ${plural(n, ['гость', 'гостя', 'гостей'])}`;
 }

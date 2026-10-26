@@ -13,7 +13,8 @@
 // and deleting them), "Бизнес" (/admin/business: the plans of the
 // businesses and the tax), "Банк" (/admin/bank: the rates and limits of
 // deposits and loans), "Шахта" (/admin/mine: the ores, the energy and the
-// events of a dig)
+// events of a dig), "Питомцы" (/admin/pets: the prices of the pets and their
+// fights)
 // and "Реклама" (/admin/ads: the ads of the global feed, the form of a new
 // one at /admin/ads/new and of one at /admin/ads/<id>). The page is its own, AUI as openvk's:
 // none of the site's chrome. Only the administrators of the site
@@ -740,6 +741,48 @@ async function prime(answered) {
   });
 
   $('prime').hidden = false;
+}
+
+// petSettings is "Питомцы": the prices of the four pets, of a meal, what a
+// win brings and how many fights a day a pet has, and how the pets do.
+async function petSettings(answered) {
+  const kinds = ['cat', 'dog', 'hamster', 'dragon'];
+  const save = $('pets-form').querySelector('button[type=submit]');
+
+  const show = (settings) => {
+    for (const kind of kinds) $(`pet-${kind}`).value = String(settings.shop.prices[kind] ?? 0);
+    $('pet-meal').value = String(settings.shop.meal);
+    $('pet-win').value = String(settings.shop.win);
+    $('pet-fights').value = String(settings.shop.fights);
+    $('pets-stats').textContent = tr('Питомцев: {0}, боёв: {1}. Потрачено на питомцев {2}, выиграно в боях {3}.',
+      groupedVotes(settings.pets), groupedVotes(settings.fights), votesCount(settings.spent), votesCount(settings.won));
+  };
+  show(await answered);
+
+  $('pets-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.hidden = true;
+    $('pets-saved').hidden = true;
+    save.disabled = true;
+
+    try {
+      await api.setPetSettings({
+        prices: Object.fromEntries(kinds.map((kind) => [kind, Number($(`pet-${kind}`).value)])),
+        meal: Number($('pet-meal').value),
+        win: Number($('pet-win').value),
+        fights: Number($('pet-fights').value),
+      });
+      show(await api.petSettings());
+      $('pets-saved').textContent = tr('Изменения сохранены');
+      $('pets-saved').hidden = false;
+    } catch (e) {
+      showError(e);
+    } finally {
+      save.disabled = false;
+    }
+  });
+
+  $('pets').hidden = false;
 }
 
 // mineSettings is "Шахта": the six ores with what each needs, yields,
@@ -1579,6 +1622,7 @@ const reads = {
   '/admin/mine': () => started(api.mineSettings()),
   '/admin/business': () => started(api.businessSettings()),
   '/admin/bank': () => started(api.bankSettings()),
+  '/admin/pets': () => started(api.petSettings()),
 }[adID ? '/admin/ads' : path]?.();
 
 const me = await currentUser().catch(() => null);
@@ -1622,6 +1666,8 @@ if (!me) {
     await businessSettings(reads).catch(showError);
   } else if (path === '/admin/bank') {
     await bankSettings(reads).catch(showError);
+  } else if (path === '/admin/pets') {
+    await petSettings(reads).catch(showError);
   } else if (path === '/admin/ads') {
     await ads(reads).catch(showError);
   } else if (path === '/admin/ads/new' || adID) {

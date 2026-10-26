@@ -1,5 +1,5 @@
 import { api, currentUser, started } from './api.js';
-import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses } from './labels.js';
+import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName } from './labels.js';
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
@@ -11,6 +11,7 @@ import { initWall } from './wall.js';
 import { showBackdrop } from './backdrop.js';
 import { personCell } from './people.js';
 import { openStories } from './stories.js';
+import { petImage } from './pet.js';
 import { tr } from './i18n.js';
 
 const nickname = decodeURIComponent(location.pathname.slice(1));
@@ -316,6 +317,36 @@ async function showGifts(user, me, isOwner) {
   }
 }
 
+// showPet is the block "Питомец" of a page with a pet: its picture, name
+// and fights; another's pet is challenged from it, one's own is cared for.
+async function showPet(user, me, isOwner) {
+  let pet;
+  try {
+    pet = await api.userPet(user.nickname);
+  } catch {
+    return; // No pet, or not to be had: the page works without it.
+  }
+
+  $('pet-level').textContent = tr('{0} ур.', pet.level);
+  if (isOwner) {
+    $('pet-link').textContent = tr('Ухаживать');
+    $('pet-link').href = '/pet';
+  } else if (me) {
+    $('pet-link').textContent = tr('Вызвать на бой');
+    $('pet-link').href = '/pet?fight=' + encodeURIComponent(user.nickname);
+  }
+  $('pet-side').replaceChildren(
+    el('a', { className: 'pet-side-picture', href: isOwner ? '/pet' : '/top?board=pets' }, petImage(pet.kind, 64)),
+    el('div', { className: 'pet-side-text' },
+      el('b', { textContent: pet.name }),
+      el('div', { className: 'hint', textContent: petKindName(pet.kind) }),
+      el('div', { textContent: tr('Рейтинг: {0}', pet.rating) }),
+      el('div', { className: 'hint', textContent: tr('Побед: {0}, поражений: {1}', pet.wins, pet.losses) }),
+    ),
+  );
+  $('pet-block').hidden = false;
+}
+
 // showStories offers "Смотреть историю" under the photo while the user
 // has live stories the viewer sees.
 async function showStories(user) {
@@ -512,7 +543,10 @@ try {
     if (profile.access.photos) showAlbums(profile);
     if (profile.access.clubs) showClubs(profile);
     showGifts(profile, me, isOwner);
+    showPet(profile, me, isOwner);
     if (me) showStories(profile);
+    // "Гости": the owner learns of the visit, unless it leaves no trace.
+    if (me && !isOwner) api.visitPage(profile.nickname).catch(() => {});
     showCompleteness(isOwner ? me : profile, isOwner);
 
     // As on openvk: write to anyone but yourself.
