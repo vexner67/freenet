@@ -119,6 +119,26 @@ func (s *BusinessService) Businesses(ctx context.Context, userID uuid.UUID, now 
 	return BusinessesView{Rules: rules, Businesses: owned, At: now}, nil
 }
 
+// UserBusinesses are the businesses of the page nickname at now, as its
+// profile shows them; user.ErrNotFound for a page deleted or banned at now.
+func (s *BusinessService) UserBusinesses(ctx context.Context, nickname user.Nickname, now time.Time) ([]user.Business, error) {
+	owner, err := s.userRepo.GetByNickname(ctx, nickname)
+	if err != nil {
+		return nil, errs.Wrap("s.userRepo.GetByNickname", err)
+	}
+
+	if owner.IsDeactivated() || owner.IsBannedAt(now) {
+		return nil, user.ErrNotFound
+	}
+
+	view, err := s.Businesses(ctx, owner.ID(), now)
+	if err != nil {
+		return nil, errs.Wrap("s.Businesses", err)
+	}
+
+	return view.Businesses, nil
+}
+
 func note(kind user.BusinessKind, action user.BusinessAction) user.VoteEntry {
 	return user.Entry(user.VoteBusiness, uuid.Nil, kind.String()+":"+string(action))
 }

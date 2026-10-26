@@ -86,6 +86,15 @@ func TestBusinessService(t *testing.T) {
 		t.Fatalf("collect = %+v, %v", collected, err)
 	}
 
+	// The profile shows the businesses of the page to anyone.
+	shown, err := businesses.UserBusinesses(ctx, user.Nickname("ann"), now)
+	if err != nil || len(shown) != 1 || shown[0].Kind() != user.BusinessKiosk || len(shown[0].Workers()) != 1 {
+		t.Fatalf("UserBusinesses = %+v, %v", shown, err)
+	}
+	if _, err = businesses.UserBusinesses(ctx, user.Nickname("nobody"), now); !errors.Is(err, user.ErrNotFound) {
+		t.Fatalf("UserBusinesses of nobody: %v", err)
+	}
+
 	sold, err := businesses.Act(ctx, ann, user.BusinessKiosk, service.BusinessAct{Action: user.BusinessSell}, now)
 	if err != nil || !sold.Closed || sold.Got != kiosk.Price/2 {
 		t.Fatalf("sell = %+v, %v", sold, err)

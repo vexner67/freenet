@@ -59,6 +59,7 @@ type UserHandler struct {
 	guests            GuestService
 	tops              TopService
 	pets              PetService
+	titles            TitleService
 	permissionService PermissionService
 	presenceService   PresenceService
 	backdropService   BackdropService
@@ -110,7 +111,9 @@ type Services struct {
 	// Tops are the boards of "Рейтинги".
 	Tops TopService
 	// Pets are "Питомец".
-	Pets        PetService
+	Pets PetService
+	// Titles are the awards of the administrators.
+	Titles      TitleService
 	Permissions PermissionService
 	Presence    PresenceService
 	Backdrops   BackdropService
@@ -144,6 +147,7 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		guests:            s.Guests,
 		tops:              s.Tops,
 		pets:              s.Pets,
+		titles:            s.Titles,
 		permissionService: s.Permissions,
 		presenceService:   s.Presence,
 		backdropService:   s.Backdrops,

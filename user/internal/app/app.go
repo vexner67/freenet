@@ -248,6 +248,7 @@ func (a *App) build(cfg config.Config) error {
 			Guests:      service.NewGuestService(store.users, store.guests),
 			Tops:        service.NewTopService(store.tops),
 			Pets:        service.NewPetService(store.users, store.pets, store.wallets, store.tx, admins),
+			Titles:      service.NewTitleService(store.users, store.titles, admins),
 			Permissions: permissions,
 			Presence:    a.presence,
 			Backdrops:   service.NewBackdropService(store.users, store.users),
@@ -423,6 +424,8 @@ type storage struct {
 	pets service.PetRepository
 	// tops are the boards of "Рейтинги".
 	tops service.TopRepository
+	// titles are the awards of the administrators.
+	titles service.TitleRepository
 	// purchases are the paid posts opened and the messages paid for.
 	purchases service.PurchaseRepository
 	// ads are the advertising of the global feed, and how it does.
@@ -469,6 +472,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			guests:       inmem.NewGuestRepository(users),
 			pets:         pets,
 			tops:         inmem.NewTopRepository(users, pets),
+			titles:       inmem.NewTitleRepository(users),
 			ads:          inmem.NewAdRepository(),
 			tx:           inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
@@ -527,6 +531,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		guests:       postgres.NewGuestRepository(a.pool),
 		pets:         postgres.NewPetRepository(a.pool),
 		tops:         postgres.NewTopRepository(a.pool),
+		titles:       postgres.NewTitleRepository(a.pool),
 		ads:          postgres.NewAdRepository(a.pool),
 		tx:           pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {

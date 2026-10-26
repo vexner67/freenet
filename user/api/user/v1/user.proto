@@ -400,6 +400,9 @@ service UserService {
   // (FailedPrecondition "the business went bankrupt"). Taking votes out is
   // for pages a week old with a filled profile.
   rpc GetBusinesses(GetBusinessesRequest) returns (BusinessesState);
+  // Public: the businesses of nickname as its profile shows them (NotFound
+  // for a page deleted or banned).
+  rpc GetUserBusinesses(GetUserBusinessesRequest) returns (GetUserBusinessesResponse);
   rpc BuyBusiness(BuyBusinessRequest) returns (RunBusinessResponse);
   rpc RunBusiness(RunBusinessRequest) returns (RunBusinessResponse);
   // For the administrators (PermissionDenied for others): the plans of the
@@ -472,6 +475,17 @@ service UserService {
   // pets and how they do.
   rpc GetPetSettings(GetPetSettingsRequest) returns (GetPetSettingsResponse);
   rpc SetPetSettings(SetPetSettingsRequest) returns (google.protobuf.Empty);
+
+  // Titles: awards with a name and a picture the administrators give a
+  // page, the same one as many times as they like. GetUserTitles is
+  // public: the titles of nickname, the newest first (NotFound for a page
+  // deleted or banned). GrantTitle and RevokeTitle are for the
+  // administrators (PermissionDenied for others); the name is one line of
+  // up to 40 characters, the icon one of "crown", "cup", "star", "laurel",
+  // "shield", "flame", "diamond", "lightning" (InvalidArgument otherwise).
+  rpc GetUserTitles(GetUserTitlesRequest) returns (GetUserTitlesResponse);
+  rpc GrantTitle(GrantTitleRequest) returns (GrantTitleResponse);
+  rpc RevokeTitle(RevokeTitleRequest) returns (google.protobuf.Empty);
 }
 
 message User {
@@ -3059,4 +3073,49 @@ message GetPetSettingsResponse {
 
 message SetPetSettingsRequest {
   PetShop shop = 1;
+}
+
+message GetUserBusinessesRequest {
+  string nickname = 1;
+}
+
+// UserBusiness is a business as the profile of its owner shows it.
+message UserBusiness {
+  string kind = 1;
+  int32 level = 2;
+  int32 workers = 3;
+  bool bankrupt = 4;
+}
+
+message GetUserBusinessesResponse {
+  repeated UserBusiness businesses = 1;
+}
+
+message Title {
+  string id = 1;
+  string name = 2;
+  string icon = 3;
+  google.protobuf.Timestamp granted_at = 4;
+}
+
+message GetUserTitlesRequest {
+  string nickname = 1;
+}
+
+message GetUserTitlesResponse {
+  repeated Title titles = 1;
+}
+
+message GrantTitleRequest {
+  string nickname = 1;
+  string name = 2;
+  string icon = 3;
+}
+
+message GrantTitleResponse {
+  Title title = 1;
+}
+
+message RevokeTitleRequest {
+  string title_id = 1;
 }

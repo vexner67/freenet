@@ -68,4 +68,13 @@ func TestBusiness(t *testing.T) {
 	if err != nil || got.GetSettings().GetTax() != 8 || got.GetSettings().GetPlans()[0].GetPrice() != 1 {
 		t.Fatalf("GetBusinesses after the settings = %v, %v", got, err)
 	}
+
+	// The businesses of a page are public.
+	shown, err := s.client.GetUserBusinesses(context.Background(), &userv1.GetUserBusinessesRequest{Nickname: "ann"})
+	if err != nil || len(shown.GetBusinesses()) != 0 {
+		t.Fatalf("GetUserBusinesses = %v, %v", shown, err)
+	}
+	if _, err = s.client.GetUserBusinesses(context.Background(), &userv1.GetUserBusinessesRequest{Nickname: "nobody"}); status.Code(err) != codes.NotFound {
+		t.Fatalf("GetUserBusinesses of nobody: %v", err)
+	}
 }

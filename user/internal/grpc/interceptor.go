@@ -58,6 +58,7 @@ var petErrors = []struct {
 	err  error
 	code codes.Code
 }{
+	{user.ErrTitleNotFound, codes.NotFound},
 	{user.ErrUnknownPetKind, codes.InvalidArgument},
 	{user.ErrPetNameEmpty, codes.InvalidArgument},
 	{user.ErrPetNameTooLong, codes.InvalidArgument},

@@ -17,6 +17,7 @@ import (
 
 type BusinessService interface {
 	Businesses(ctx context.Context, userID uuid.UUID, now time.Time) (service.BusinessesView, error)
+	UserBusinesses(ctx context.Context, nickname user.Nickname, now time.Time) ([]user.Business, error)
 	Buy(ctx context.Context, userID uuid.UUID, kind user.BusinessKind, now time.Time) (service.BusinessDone, error)
 	Act(ctx context.Context, userID uuid.UUID, kind user.BusinessKind, act service.BusinessAct, now time.Time) (service.BusinessDone, error)
 	Settings(ctx context.Context, adminID uuid.UUID) (service.BusinessSettings, error)
@@ -308,6 +309,30 @@ func (h *UserHandler) GetBusinesses(ctx context.Context, _ *userv1.GetBusinesses
 	}
 
 	return toProtoBusinesses(v), nil
+}
+
+func (h *UserHandler) GetUserBusinesses(ctx context.Context, req *userv1.GetUserBusinessesRequest) (*userv1.GetUserBusinessesResponse, error) {
+	nickname, err := pageOwner(req.GetNickname())
+	if err != nil {
+		return nil, err
+	}
+
+	owned, err := h.businesses.UserBusinesses(ctx, nickname, time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]*userv1.UserBusiness, len(owned))
+	for i, b := range owned {
+		out[i] = &userv1.UserBusiness{
+			Kind:     b.Kind().String(),
+			Level:    int32(b.Level()),
+			Workers:  int32(len(b.Workers())),
+			Bankrupt: b.Bankrupt(),
+		}
+	}
+
+	return &userv1.GetUserBusinessesResponse{Businesses: out}, nil
 }
 
 // done answers an action with the businesses as they are after it.

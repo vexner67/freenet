@@ -108,6 +108,7 @@ func newServer(t *testing.T) testServer {
 		Guests:      service.NewGuestService(users, inmem.NewGuestRepository(users)),
 		Tops:        service.NewTopService(inmem.NewTopRepository(users, pets)),
 		Pets:        service.NewPetService(users, pets, users, inmem.TxManager{}, admins),
+		Titles:      service.NewTitleService(users, inmem.NewTitleRepository(users), admins),
 		Businesses:  service.NewBusinessService(users, inmem.NewBusinessRepository(), users, inmem.TxManager{}, admins),
 		Banks:       service.NewBankService(users, inmem.NewBankRepository(), users, inmem.TxManager{}, admins),
 		Rockets:     service.NewRocketService(users, casinos, inmem.NewRocketRepository(), users, inmem.TxManager{}, admins),

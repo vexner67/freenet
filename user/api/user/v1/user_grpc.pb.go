@@ -159,6 +159,7 @@ const (
 	UserService_GetMineSettings_FullMethodName     = "/user.v1.UserService/GetMineSettings"
 	UserService_SetMine_FullMethodName             = "/user.v1.UserService/SetMine"
 	UserService_GetBusinesses_FullMethodName       = "/user.v1.UserService/GetBusinesses"
+	UserService_GetUserBusinesses_FullMethodName   = "/user.v1.UserService/GetUserBusinesses"
 	UserService_BuyBusiness_FullMethodName         = "/user.v1.UserService/BuyBusiness"
 	UserService_RunBusiness_FullMethodName         = "/user.v1.UserService/RunBusiness"
 	UserService_GetBusinessSettings_FullMethodName = "/user.v1.UserService/GetBusinessSettings"
@@ -184,6 +185,9 @@ const (
 	UserService_ListPetFights_FullMethodName       = "/user.v1.UserService/ListPetFights"
 	UserService_GetPetSettings_FullMethodName      = "/user.v1.UserService/GetPetSettings"
 	UserService_SetPetSettings_FullMethodName      = "/user.v1.UserService/SetPetSettings"
+	UserService_GetUserTitles_FullMethodName       = "/user.v1.UserService/GetUserTitles"
+	UserService_GrantTitle_FullMethodName          = "/user.v1.UserService/GrantTitle"
+	UserService_RevokeTitle_FullMethodName         = "/user.v1.UserService/RevokeTitle"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -560,6 +564,9 @@ type UserServiceClient interface {
 	// (FailedPrecondition "the business went bankrupt"). Taking votes out is
 	// for pages a week old with a filled profile.
 	GetBusinesses(ctx context.Context, in *GetBusinessesRequest, opts ...grpc.CallOption) (*BusinessesState, error)
+	// Public: the businesses of nickname as its profile shows them (NotFound
+	// for a page deleted or banned).
+	GetUserBusinesses(ctx context.Context, in *GetUserBusinessesRequest, opts ...grpc.CallOption) (*GetUserBusinessesResponse, error)
 	BuyBusiness(ctx context.Context, in *BuyBusinessRequest, opts ...grpc.CallOption) (*RunBusinessResponse, error)
 	RunBusiness(ctx context.Context, in *RunBusinessRequest, opts ...grpc.CallOption) (*RunBusinessResponse, error)
 	// For the administrators (PermissionDenied for others): the plans of the
@@ -628,6 +635,16 @@ type UserServiceClient interface {
 	// pets and how they do.
 	GetPetSettings(ctx context.Context, in *GetPetSettingsRequest, opts ...grpc.CallOption) (*GetPetSettingsResponse, error)
 	SetPetSettings(ctx context.Context, in *SetPetSettingsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Titles: awards with a name and a picture the administrators give a
+	// page, the same one as many times as they like. GetUserTitles is
+	// public: the titles of nickname, the newest first (NotFound for a page
+	// deleted or banned). GrantTitle and RevokeTitle are for the
+	// administrators (PermissionDenied for others); the name is one line of
+	// up to 40 characters, the icon one of "crown", "cup", "star", "laurel",
+	// "shield", "flame", "diamond", "lightning" (InvalidArgument otherwise).
+	GetUserTitles(ctx context.Context, in *GetUserTitlesRequest, opts ...grpc.CallOption) (*GetUserTitlesResponse, error)
+	GrantTitle(ctx context.Context, in *GrantTitleRequest, opts ...grpc.CallOption) (*GrantTitleResponse, error)
+	RevokeTitle(ctx context.Context, in *RevokeTitleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type userServiceClient struct {
@@ -2028,6 +2045,16 @@ func (c *userServiceClient) GetBusinesses(ctx context.Context, in *GetBusinesses
 	return out, nil
 }
 
+func (c *userServiceClient) GetUserBusinesses(ctx context.Context, in *GetUserBusinessesRequest, opts ...grpc.CallOption) (*GetUserBusinessesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserBusinessesResponse)
+	err := c.cc.Invoke(ctx, UserService_GetUserBusinesses_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) BuyBusiness(ctx context.Context, in *BuyBusinessRequest, opts ...grpc.CallOption) (*RunBusinessResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RunBusinessResponse)
@@ -2272,6 +2299,36 @@ func (c *userServiceClient) SetPetSettings(ctx context.Context, in *SetPetSettin
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, UserService_SetPetSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetUserTitles(ctx context.Context, in *GetUserTitlesRequest, opts ...grpc.CallOption) (*GetUserTitlesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUserTitlesResponse)
+	err := c.cc.Invoke(ctx, UserService_GetUserTitles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GrantTitle(ctx context.Context, in *GrantTitleRequest, opts ...grpc.CallOption) (*GrantTitleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GrantTitleResponse)
+	err := c.cc.Invoke(ctx, UserService_GrantTitle_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) RevokeTitle(ctx context.Context, in *RevokeTitleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_RevokeTitle_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2652,6 +2709,9 @@ type UserServiceServer interface {
 	// (FailedPrecondition "the business went bankrupt"). Taking votes out is
 	// for pages a week old with a filled profile.
 	GetBusinesses(context.Context, *GetBusinessesRequest) (*BusinessesState, error)
+	// Public: the businesses of nickname as its profile shows them (NotFound
+	// for a page deleted or banned).
+	GetUserBusinesses(context.Context, *GetUserBusinessesRequest) (*GetUserBusinessesResponse, error)
 	BuyBusiness(context.Context, *BuyBusinessRequest) (*RunBusinessResponse, error)
 	RunBusiness(context.Context, *RunBusinessRequest) (*RunBusinessResponse, error)
 	// For the administrators (PermissionDenied for others): the plans of the
@@ -2720,6 +2780,16 @@ type UserServiceServer interface {
 	// pets and how they do.
 	GetPetSettings(context.Context, *GetPetSettingsRequest) (*GetPetSettingsResponse, error)
 	SetPetSettings(context.Context, *SetPetSettingsRequest) (*emptypb.Empty, error)
+	// Titles: awards with a name and a picture the administrators give a
+	// page, the same one as many times as they like. GetUserTitles is
+	// public: the titles of nickname, the newest first (NotFound for a page
+	// deleted or banned). GrantTitle and RevokeTitle are for the
+	// administrators (PermissionDenied for others); the name is one line of
+	// up to 40 characters, the icon one of "crown", "cup", "star", "laurel",
+	// "shield", "flame", "diamond", "lightning" (InvalidArgument otherwise).
+	GetUserTitles(context.Context, *GetUserTitlesRequest) (*GetUserTitlesResponse, error)
+	GrantTitle(context.Context, *GrantTitleRequest) (*GrantTitleResponse, error)
+	RevokeTitle(context.Context, *RevokeTitleRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -3147,6 +3217,9 @@ func (UnimplementedUserServiceServer) SetMine(context.Context, *SetMineRequest) 
 func (UnimplementedUserServiceServer) GetBusinesses(context.Context, *GetBusinessesRequest) (*BusinessesState, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetBusinesses not implemented")
 }
+func (UnimplementedUserServiceServer) GetUserBusinesses(context.Context, *GetUserBusinessesRequest) (*GetUserBusinessesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserBusinesses not implemented")
+}
 func (UnimplementedUserServiceServer) BuyBusiness(context.Context, *BuyBusinessRequest) (*RunBusinessResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BuyBusiness not implemented")
 }
@@ -3221,6 +3294,15 @@ func (UnimplementedUserServiceServer) GetPetSettings(context.Context, *GetPetSet
 }
 func (UnimplementedUserServiceServer) SetPetSettings(context.Context, *SetPetSettingsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetPetSettings not implemented")
+}
+func (UnimplementedUserServiceServer) GetUserTitles(context.Context, *GetUserTitlesRequest) (*GetUserTitlesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetUserTitles not implemented")
+}
+func (UnimplementedUserServiceServer) GrantTitle(context.Context, *GrantTitleRequest) (*GrantTitleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GrantTitle not implemented")
+}
+func (UnimplementedUserServiceServer) RevokeTitle(context.Context, *RevokeTitleRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method RevokeTitle not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -5745,6 +5827,24 @@ func _UserService_GetBusinesses_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetUserBusinesses_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserBusinessesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetUserBusinesses(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetUserBusinesses_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetUserBusinesses(ctx, req.(*GetUserBusinessesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_BuyBusiness_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BuyBusinessRequest)
 	if err := dec(in); err != nil {
@@ -6191,6 +6291,60 @@ func _UserService_SetPetSettings_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).SetPetSettings(ctx, req.(*SetPetSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetUserTitles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserTitlesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetUserTitles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetUserTitles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetUserTitles(ctx, req.(*GetUserTitlesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GrantTitle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GrantTitleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GrantTitle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GrantTitle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GrantTitle(ctx, req.(*GrantTitleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_RevokeTitle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevokeTitleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).RevokeTitle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_RevokeTitle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).RevokeTitle(ctx, req.(*RevokeTitleRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -6759,6 +6913,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserService_GetBusinesses_Handler,
 		},
 		{
+			MethodName: "GetUserBusinesses",
+			Handler:    _UserService_GetUserBusinesses_Handler,
+		},
+		{
 			MethodName: "BuyBusiness",
 			Handler:    _UserService_BuyBusiness_Handler,
 		},
@@ -6857,6 +7015,18 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetPetSettings",
 			Handler:    _UserService_SetPetSettings_Handler,
+		},
+		{
+			MethodName: "GetUserTitles",
+			Handler:    _UserService_GetUserTitles_Handler,
+		},
+		{
+			MethodName: "GrantTitle",
+			Handler:    _UserService_GrantTitle_Handler,
+		},
+		{
+			MethodName: "RevokeTitle",
+			Handler:    _UserService_RevokeTitle_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
