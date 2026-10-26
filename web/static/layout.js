@@ -543,13 +543,10 @@ export function renderChrome(me) {
     forgetLook();
     applyLook({});
 
-    links.replaceChildren(
-      el('a', { href: '/', textContent: tr('вход') }),
-      el('a', { href: '/', textContent: tr('регистрация') }),
-    );
+    // There is no signing up apart: the first sign-in makes the page.
+    links.replaceChildren(el('a', { href: '/', textContent: tr('вход') }));
     menu?.replaceChildren(
       el('a', { href: '/', textContent: tr('Вход') }),
-      el('a', { href: '/', textContent: tr('Регистрация') }),
       el('a', { href: '/search', textContent: tr('Поиск') }),
     );
   }

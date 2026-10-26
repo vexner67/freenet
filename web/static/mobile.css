@@ -36,8 +36,7 @@ input, select, textarea { font-size: 16px !important; }
 .languages { grid-template-columns: repeat(3, 1fr); }
 
 /* The header: a compact bar that stays at the top, with the logo on the
-   left and on the right the search — and, for a guest, "вход" and
-   "регистрация". The links of a signed-in user are the bar of sections. */
+   left and on the right the search — and, for a guest, "вход". The links of a signed-in user are the bar of sections. */
 
 .header {
   position: sticky;
