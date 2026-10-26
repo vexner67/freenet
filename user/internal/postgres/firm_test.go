@@ -60,7 +60,14 @@ func TestFirmRepository(t *testing.T) {
 	if _, err = city.Place(tuned, ann.ID(), mill.ID(), user.ExchangeOrder{Good: user.GoodGrain, Buy: true, Price: 10, Units: 5}, now); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = city.OfferShares(ann.ID(), mill.ID(), 10, 3, now); err != nil {
+	if err = city.Fund(ann.ID(), 500); err != nil {
+		t.Fatal(err)
+	}
+	order := user.StockOrder{FirmID: mill.ID(), Buy: true, Price: 1, Shares: 3}
+	if _, err = city.PlaceStock(tuned, ann.ID(), order, now); err != nil {
+		t.Fatal(err)
+	}
+	if err = city.Issue(ann.ID(), mill.ID(), 10); err != nil {
 		t.Fatal(err)
 	}
 	city.Tick(tuned, now.Add(2*time.Hour))

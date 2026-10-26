@@ -44,6 +44,8 @@ var (
 	ErrFirmNotYet    = errors.New("enterprises pay pages a week old with a filled profile")
 	ErrFirmNoDeal    = errors.New("the state does not deal in so few units now")
 	ErrFirmShortCash = errors.New("there is not a whole vote to share")
+	ErrFirmWorn      = errors.New("the enterprise needs no repair")
+	ErrImprovement   = errors.New("unknown improvement or it is at its top rank")
 )
 
 // FirmName is the name an owner gives an enterprise.
@@ -102,7 +104,10 @@ func (h FirmHour) Profit() int64 {
 // Firm is an enterprise: a company of shareholders run by its director.
 // Its cash is in hundredths of a vote and never below zero; the units of
 // goods in its storage are whole, and so is what is made of them, the
-// fractions of an hour carried to the next.
+// fractions of an hour carried to the next. Its machines wear out as it
+// works (wear, from 0 — new — to 100), its improvements have ranks, and
+// the exchange keeps its mood, the price of a share in hundredths, the
+// new shares it sells (float) and an hour of the price after another.
 type Firm struct {
 	id         uuid.UUID
 	kind       FirmKind
@@ -117,7 +122,14 @@ type Firm struct {
 	carry      map[Good]float64
 	auto       map[Good]Auto
 	hours      []FirmHour
-	sharePrice int64
+	wear       float64
+	ranks      map[Improvement]int
+	improved   int64
+	idleUntil  time.Time
+	mood       float64
+	price      int64
+	float      int64
+	candles    []Candle
 }
 
 // FirmState is an enterprise as kept.
@@ -135,7 +147,14 @@ type FirmState struct {
 	Carry      map[Good]float64
 	Auto       map[Good]Auto
 	Hours      []FirmHour
-	SharePrice int64
+	Wear       float64
+	Ranks      map[Improvement]int
+	Improved   int64
+	IdleUntil  time.Time
+	Mood       float64
+	Price      int64
+	Float      int64
+	Candles    []Candle
 }
 
 func restoreFirm(s FirmState) *Firm {
@@ -143,7 +162,14 @@ func restoreFirm(s FirmState) *Firm {
 		id: s.ID, kind: s.Kind, name: s.Name, directorID: s.DirectorID, foundedAt: s.FoundedAt.UTC(),
 		level: max(s.Level, 1), workers: max(s.Workers, 0), wage: s.Wage, cash: max(s.Cash, 0),
 		stock: map[Good]int64{}, carry: map[Good]float64{}, auto: map[Good]Auto{},
-		hours: append([]FirmHour(nil), s.Hours...), sharePrice: s.SharePrice,
+		hours: append([]FirmHour(nil), s.Hours...), wear: min(max(s.Wear, 0), 100), ranks: map[Improvement]int{},
+		improved: max(s.Improved, 0), idleUntil: s.IdleUntil.UTC(), mood: min(max(s.Mood, -maxMood), maxMood),
+		price: max(s.Price, 0), float: max(s.Float, 0), candles: append([]Candle(nil), s.Candles...),
+	}
+	for _, imp := range Improvements {
+		if r := s.Ranks[imp]; r > 0 {
+			f.ranks[imp] = min(r, MaxRank)
+		}
 	}
 
 	spec, _ := FirmCatalog(s.Kind) // a kept enterprise is of a known kind
@@ -167,7 +193,11 @@ func (f *Firm) state() FirmState {
 		ID: f.id, Kind: f.kind, Name: f.name, DirectorID: f.directorID, FoundedAt: f.foundedAt,
 		Level: f.level, Workers: f.workers, Wage: f.wage, Cash: f.cash,
 		Stock: map[Good]int64{}, Carry: map[Good]float64{}, Auto: map[Good]Auto{},
-		Hours: append([]FirmHour(nil), f.hours...), SharePrice: f.sharePrice,
+		Hours: append([]FirmHour(nil), f.hours...), Wear: f.wear, Ranks: map[Improvement]int{}, Improved: f.improved,
+		IdleUntil: f.idleUntil, Mood: f.mood, Price: f.price, Float: f.float, Candles: append([]Candle(nil), f.candles...),
+	}
+	for imp, r := range f.ranks {
+		s.Ranks[imp] = r
 	}
 	// What is empty is left out, as restoreFirm leaves it: a state kept
 	// and restored is the same.
@@ -201,8 +231,26 @@ func (f *Firm) Wage() int64           { return f.wage }
 // what its buying orders keep.
 func (f *Firm) Cash() int64 { return f.cash }
 
-// SharePrice is the votes a share last went for; 0 before any deal.
-func (f *Firm) SharePrice() int64 { return f.sharePrice }
+// Wear is how worn the machines are: from 0, new, to 100.
+func (f *Firm) Wear() float64 { return f.wear }
+
+// Rank is the rank of the improvement, from 0 to MaxRank.
+func (f *Firm) Rank(imp Improvement) int { return f.ranks[imp] }
+
+// IdleUntil is when the strike ends; zero or past — the workers work.
+func (f *Firm) IdleUntil() time.Time { return f.idleUntil }
+
+// Price is what a share goes for now, in hundredths of a vote: the last
+// deal of the hour or, between them, the price the exchange quoted.
+func (f *Firm) Price() int64 { return f.price }
+
+// Float is the new shares the enterprise sells through the exchange.
+func (f *Firm) Float() int64 { return f.float }
+
+// Candles are the hours of the price, the oldest first.
+func (f *Firm) Candles() []Candle {
+	return append([]Candle(nil), f.candles...)
+}
 
 func (f *Firm) Stock(g Good) int64 { return f.stock[g] }
 
@@ -296,15 +344,21 @@ const (
 	FirmCancel      FirmAction = "cancel"
 	FirmStateBuy    FirmAction = "state_buy"
 	FirmStateSell   FirmAction = "state_sell"
-	FirmOffer       FirmAction = "offer"
 	FirmIssue       FirmAction = "issue"
-	FirmCancelOffer FirmAction = "cancel_offer"
-	FirmBuyShares   FirmAction = "buy_shares"
+	FirmRepair      FirmAction = "repair"
+	FirmImprove     FirmAction = "improve"
+	FirmTake        FirmAction = "take_contract"
+	FirmDeliver     FirmAction = "deliver"
+	FirmFund        FirmAction = "account_deposit"
+	FirmWithdraw    FirmAction = "account_withdraw"
+	FirmStockOrder  FirmAction = "stock_order"
+	FirmStockCancel FirmAction = "stock_cancel"
 )
 
 var firmActions = []FirmAction{
 	FirmFound, FirmRename, FirmUpgrade, FirmStaff, FirmDeposit, FirmDividend, FirmLiquidate, FirmAutomate,
-	FirmOrder, FirmCancel, FirmStateBuy, FirmStateSell, FirmOffer, FirmIssue, FirmCancelOffer, FirmBuyShares,
+	FirmOrder, FirmCancel, FirmStateBuy, FirmStateSell, FirmIssue, FirmRepair, FirmImprove, FirmTake, FirmDeliver,
+	FirmFund, FirmWithdraw, FirmStockOrder, FirmStockCancel,
 }
 
 var ErrUnknownFirmAction = errors.New("unknown action with an enterprise")
@@ -321,5 +375,5 @@ func NewFirmAction(s string) (FirmAction, error) {
 
 // PaysOut is whether the action takes votes out of the enterprises.
 func (a FirmAction) PaysOut() bool {
-	return a == FirmDividend || a == FirmLiquidate || a == FirmOffer
+	return a == FirmDividend || a == FirmLiquidate || a == FirmWithdraw
 }

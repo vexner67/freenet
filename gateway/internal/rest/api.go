@@ -965,6 +965,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/pet/settings", a.setPetSettings)
 	mux.HandleFunc("GET /api/v1/firms", a.firms)
 	mux.HandleFunc("POST /api/v1/firms/{action}", a.runFirms)
+	mux.HandleFunc("GET /api/v1/stocks", a.stocks)
+	mux.HandleFunc("POST /api/v1/stocks/{action}", a.runStocks)
 	mux.HandleFunc("GET /api/v1/firm/settings", a.firmSettings)
 	mux.HandleFunc("PUT /api/v1/firm/settings", a.setFirmSettings)
 	mux.HandleFunc("GET /api/v1/me/bank", a.bank)

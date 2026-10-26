@@ -214,6 +214,13 @@ func (r FirmRules) curve(g Good, percent int, rises bool) (curve, error) {
 	return curve{start: float64(p.Base) * float64(percent) / 100, norm: float64(p.Norm), rises: rises}, nil
 }
 
+// scaled is the curve with every price times k.
+func (c curve) scaled(k float64) curve {
+	c.start *= k
+
+	return c
+}
+
 // at is the price of the next unit past sold.
 func (c curve) at(sold int64) float64 {
 	v := float64(sold)

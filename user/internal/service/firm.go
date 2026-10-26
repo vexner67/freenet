@@ -30,35 +30,41 @@ type FirmsView struct {
 }
 
 // FirmAct is an action with the enterprises: FirmID is the enterprise
-// (Kind and Name found one), Order an order of the exchange (Good, Buy,
-// Price, Units also the good and units of a deal with the state), Auto
-// what it does with Good by itself; Workers and Wage the staff, Votes a
-// deposit or dividends, Shares and Price (votes) an offer of shares,
-// OrderID and OfferID what is cancelled or bought.
+// (Kind and Name found one), Order an order of the exchange of goods
+// (Good, Buy, Price, Units also the good and units of a deal with the
+// state or of a delivery), Auto what it does with Good by itself; Workers
+// and Wage the staff, Votes a deposit, dividends or money of the broker
+// account, Shares the shares issued, Stock an order of shares,
+// Improvement what is improved, ContractID the order of the city taken or
+// delivered, OrderID what is cancelled.
 type FirmAct struct {
-	Action  user.FirmAction
-	FirmID  uuid.UUID
-	Kind    user.FirmKind
-	Name    user.FirmName
-	Order   user.ExchangeOrder
-	Auto    user.Auto
-	Workers int
-	Wage    int64
-	Votes   int64
-	Shares  int64
-	OrderID uuid.UUID
-	OfferID uuid.UUID
+	Action      user.FirmAction
+	FirmID      uuid.UUID
+	Kind        user.FirmKind
+	Name        user.FirmName
+	Order       user.ExchangeOrder
+	Auto        user.Auto
+	Workers     int
+	Wage        int64
+	Votes       int64
+	Shares      int64
+	Stock       user.StockOrder
+	Improvement user.Improvement
+	ContractID  uuid.UUID
+	OrderID     uuid.UUID
 }
 
 // FirmDone is what an action did: the votes the caller spent and got and
 // the balance after them (0 when no votes of the caller moved), the
-// enterprise founded, the deals of the exchange, and the city after it.
+// enterprise founded, the deals of the exchange, what an order of shares
+// dealt at once, and the city after it.
 type FirmDone struct {
 	Spent   int64
 	Got     int64
 	Balance int64
 	FirmID  uuid.UUID
 	Deals   []user.Deal
+	Fill    user.StockFill
 	View    FirmsView
 }
 
@@ -78,11 +84,12 @@ type FirmSettings struct {
 	Firms int
 }
 
-// FirmService is "Бизнес": the economy of the enterprises. People found
-// enterprises for votes into the treasury, the enterprises make and trade
-// goods hour by hour with each other on the exchange and with the state
-// and the city, and pay their shareholders dividends; shares change hands
-// for votes.
+// FirmService is "Бизнес" and "Акции": the economy of the enterprises.
+// People found enterprises for votes into the treasury, the enterprises
+// make and trade goods hour by hour with each other on the exchange and
+// with the state and the city, take its orders, and pay their
+// shareholders dividends; shares change hands on the stock exchange, paid
+// of the broker accounts.
 type FirmService struct {
 	userRepo UserRepository
 	firms    FirmRepository
@@ -212,8 +219,8 @@ func firmNote(action user.FirmAction) user.VoteEntry {
 }
 
 // Act does act for userID at now, the hours ended counted first. Taking
-// votes out — dividends, closing, offering shares — is for the pages that
-// take the daily bonus (user.ErrFirmNotYet).
+// votes out — dividends, closing, withdrawing from the broker account — is
+// for the pages that take the daily bonus (user.ErrFirmNotYet).
 func (s *FirmService) Act(ctx context.Context, userID uuid.UUID, act FirmAct, now time.Time) (FirmDone, error) {
 	if act.Action.PaysOut() {
 		u, err := s.userRepo.GetByID(ctx, userID)
@@ -314,16 +321,35 @@ func (r firmRun) do(ctx context.Context) error {
 	case user.FirmStateSell:
 		_, err := c.SellToState(r.rules, r.userID, a.FirmID, a.Order.Good, a.Order.Units, r.now)
 		return errs.Wrap("c.SellToState", err)
-	case user.FirmOffer:
-		_, err := c.OfferShares(r.userID, a.FirmID, a.Shares, a.Votes, r.now)
-		return errs.Wrap("c.OfferShares", err)
 	case user.FirmIssue:
-		_, err := c.IssueShares(r.userID, a.FirmID, a.Shares, a.Votes, r.now)
-		return errs.Wrap("c.IssueShares", err)
-	case user.FirmCancelOffer:
-		return errs.Wrap("c.CancelOffer", c.CancelOffer(r.userID, a.OfferID))
-	case user.FirmBuyShares:
-		return r.buyShares(ctx)
+		return errs.Wrap("c.Issue", c.Issue(r.userID, a.FirmID, a.Shares))
+	case user.FirmRepair:
+		_, err := c.Repair(r.rules, r.userID, a.FirmID)
+		return errs.Wrap("c.Repair", err)
+	case user.FirmImprove:
+		_, err := c.Improve(r.rules, r.userID, a.FirmID, a.Improvement)
+		return errs.Wrap("c.Improve", err)
+	case user.FirmTake:
+		return errs.Wrap("c.Take", c.Take(r.userID, a.FirmID, a.ContractID, r.now))
+	case user.FirmDeliver:
+		_, err := c.Deliver(r.userID, a.ContractID, a.Order.Units, r.now)
+		return errs.Wrap("c.Deliver", err)
+	case user.FirmFund:
+		if err := c.Fund(r.userID, a.Votes); err != nil {
+			return errs.Wrap("c.Fund", err)
+		}
+		return r.spend(ctx, a.Votes)
+	case user.FirmWithdraw:
+		if err := c.Withdraw(r.userID, a.Votes); err != nil {
+			return errs.Wrap("c.Withdraw", err)
+		}
+		return r.pay(ctx, []user.Payout{{UserID: r.userID, Votes: a.Votes}})
+	case user.FirmStockOrder:
+		fill, err := c.PlaceStock(r.rules, r.userID, a.Stock, r.now)
+		r.done.Fill = fill
+		return errs.Wrap("c.PlaceStock", err)
+	case user.FirmStockCancel:
+		return errs.Wrap("c.CancelStock", c.CancelStock(r.userID, a.OrderID))
 	}
 
 	return user.ErrUnknownFirmAction
@@ -386,27 +412,6 @@ func (r firmRun) pay(ctx context.Context, payouts []user.Payout) error {
 	}
 
 	return nil
-}
-
-func (r firmRun) buyShares(ctx context.Context) error {
-	deal, err := r.city.BuyShares(r.rules, r.userID, r.act.OfferID, r.act.Shares)
-	if err != nil {
-		return errs.Wrap("r.city.BuyShares", err)
-	}
-
-	// Shares of the enterprise put votes into it; those of a shareholder
-	// only change hands, less the fee.
-	if deal.SellerID == uuid.Nil {
-		return errs.Wrap("r.spend", r.spend(ctx, deal.Votes))
-	}
-
-	if err = r.charge(ctx, deal.Votes); err != nil {
-		return errs.Wrap("r.charge", err)
-	}
-
-	_, err = r.s.wallets.Credit(ctx, deal.SellerID, deal.Votes-deal.Fee, 0, firmNote("sell_shares"))
-
-	return errs.Wrap("r.s.wallets.Credit", err)
 }
 
 // Settings are the rules and the stats; user.ErrNotAdmin.

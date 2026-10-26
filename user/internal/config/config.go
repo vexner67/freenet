@@ -70,7 +70,8 @@ type Config struct {
 	CasinoLimits ratelimit.Rules `env:"RATE_LIMIT_CASINO" envDefault:"30/1m,1000/24h"`
 	// Digs and sales in the mine, each counted apart.
 	MineLimits ratelimit.Rules `env:"RATE_LIMIT_MINE" envDefault:"60/1m,3000/24h"`
-	// Actions with the enterprises of "Бизнес".
+	// Actions with the enterprises of "Бизнес" and on the stock exchange,
+	// each counted apart.
 	BusinessLimits ratelimit.Rules `env:"RATE_LIMIT_BUSINESS" envDefault:"60/1m,3000/24h"`
 	// Deposits and loans put, taken, lent and paid back, each counted apart.
 	BankLimits ratelimit.Rules `env:"RATE_LIMIT_BANK" envDefault:"30/1m,500/24h"`

@@ -56,8 +56,8 @@ func (b *Firms) Run(ctx context.Context, accessToken string, act model.FirmAct) 
 	resp, err := b.api.RunFirms(withToken(ctx, accessToken), &userv1.RunFirmsRequest{
 		Action: act.Action, FirmId: act.FirmID, Kind: act.Kind, Name: act.Name, Good: act.Good, Buy: act.Buy,
 		Price: act.Price, Units: act.Units, Workers: workers, Wage: act.Wage, Votes: act.Votes, Shares: act.Shares,
-		OrderId: act.OrderID, OfferId: act.OfferID, AutoBuy: act.AutoBuy, BuyMax: act.BuyMax,
-		AutoSell: act.AutoSell, SellMin: act.SellMin,
+		OrderId: act.OrderID, AutoBuy: act.AutoBuy, BuyMax: act.BuyMax, AutoSell: act.AutoSell, SellMin: act.SellMin,
+		Improvement: act.Improvement, ContractId: act.ContractID,
 	})
 	if err != nil {
 		return model.FirmDone{}, errs.Wrap("b.api.RunFirms", fromStatus(err))
@@ -127,12 +127,13 @@ func fromProtoFirms(s *userv1.FirmsState) model.Firms {
 			Units: o.GetUnits(), PlacedAt: timeOf(o.GetPlacedAt()),
 		})
 	}
-	for _, o := range s.GetOffers() {
-		out.Offers = append(out.Offers, model.ShareOffer{
-			ID: o.GetId(), FirmID: o.GetFirmId(), SellerID: o.GetSellerId(), Shares: o.GetShares(), Price: o.GetPrice(),
-			PlacedAt: timeOf(o.GetPlacedAt()),
+	for _, k := range s.GetContracts() {
+		out.Contracts = append(out.Contracts, model.FirmContract{
+			ID: k.GetId(), Good: k.GetGood(), Units: k.GetUnits(), Price: k.GetPrice(), Posted: timeOf(k.GetPosted()),
+			Deadline: timeOf(k.GetDeadline()), FirmID: k.GetFirmId(), Delivered: k.GetDelivered(),
 		})
 	}
+	out.News = fromProtoNews(s.GetNews())
 
 	return out
 }
@@ -142,7 +143,11 @@ func fromProtoFirm(f *userv1.Firm) model.Firm {
 		ID: f.GetId(), Kind: f.GetKind(), Name: f.GetName(), DirectorID: f.GetDirectorId(), FoundedAt: timeOf(f.GetFoundedAt()),
 		Level: int(f.GetLevel()), Workers: int(f.GetWorkers()), Wage: f.GetWage(), Cash: f.GetCash(), Escrow: f.GetEscrow(),
 		Productivity: f.GetProductivity(), Seats: int(f.GetSeats()), UpgradeCost: f.GetUpgradeCost(), Upkeep: f.GetUpkeep(),
-		Profit: f.GetProfit(), Shares: f.GetShares(), SharePrice: f.GetSharePrice(), Worth: f.GetWorth(),
+		Profit: f.GetProfit(), Shares: f.GetShares(), Worth: f.GetWorth(), Wear: f.GetWear(), RepairCost: f.GetRepairCost(),
+		IdleUntil: timeOf(f.GetIdleUntil()), Price: f.GetPrice(), Float: f.GetFloat(),
+	}
+	for _, i := range f.GetImprovements() {
+		out.Improvements = append(out.Improvements, model.FirmImprovement{Kind: i.GetKind(), Rank: int(i.GetRank()), Cost: i.GetCost()})
 	}
 	for _, s := range f.GetStock() {
 		out.Stock = append(out.Stock, model.FirmStock{
@@ -158,6 +163,18 @@ func fromProtoFirm(f *userv1.Firm) model.Firm {
 	}
 	for _, h := range f.GetHolders() {
 		out.Holders = append(out.Holders, model.FirmHolder{UserID: h.GetUserId(), Shares: h.GetShares()})
+	}
+
+	return out
+}
+
+func fromProtoNews(news []*userv1.FirmEvent) []model.FirmEvent {
+	out := make([]model.FirmEvent, 0, len(news))
+	for _, e := range news {
+		out = append(out, model.FirmEvent{
+			ID: e.GetId(), Kind: e.GetKind(), FirmID: e.GetFirmId(), Kinds: e.GetKinds(),
+			Start: timeOf(e.GetStart()), End: timeOf(e.GetEnd()),
+		})
 	}
 
 	return out

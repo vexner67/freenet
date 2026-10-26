@@ -15,6 +15,8 @@ type fakeFirms struct {
 	token    string
 	nickname string
 	act      model.FirmAct
+	stockAct model.StockAct
+	firmID   string
 	set      model.FirmSettings
 	err      error
 }
@@ -29,10 +31,12 @@ func (f *fakeFirms) city() model.Firms {
 			FoundedAt: time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC),
 			Stock:     []model.FirmStock{{Good: "grain", Units: 40, Capacity: 7200, AutoSell: true}},
 			Holders:   []model.FirmHolder{{UserID: "u1", Shares: 60}, {UserID: "u2", Shares: 40}, {UserID: "u3", Shares: 1}},
+			Wear:      12.5, RepairCost: 1250, Improvements: []model.FirmImprovement{{Kind: "machines", Rank: 1, Cost: 100000}},
 		}},
-		Orders:   []model.ExchangeOrder{{ID: "o1", FirmID: "f1", Good: "grain", Price: 22, Units: 100}},
-		Offers:   []model.ShareOffer{{ID: "s1", FirmID: "f1", SellerID: "u2", Shares: 10, Price: 9}, {ID: "s2", FirmID: "f1", Shares: 50, Price: 5}},
-		NextHour: time.Date(2026, 10, 25, 13, 0, 0, 0, time.UTC),
+		Orders:    []model.ExchangeOrder{{ID: "o1", FirmID: "f1", Good: "grain", Price: 22, Units: 100}},
+		Contracts: []model.FirmContract{{ID: "k1", Good: "grain", Units: 800, Price: 32, FirmID: "f1"}},
+		News:      []model.FirmEvent{{ID: "e1", Kind: "drought", Kinds: []string{"farm"}, Start: time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC)}},
+		NextHour:  time.Date(2026, 10, 25, 13, 0, 0, 0, time.UTC),
 	}
 }
 
@@ -49,6 +53,32 @@ func (f *fakeFirms) UserFirms(_ context.Context, token, nickname string) ([]mode
 func (f *fakeFirms) Run(_ context.Context, token string, act model.FirmAct) (model.FirmDone, error) {
 	f.token, f.act = token, act
 	return model.FirmDone{Spent: 1000, Balance: 119, FirmID: "f1", Deals: []model.FirmDeal{{Good: "grain", Units: 5, Price: 22}}, Firms: f.city()}, f.err
+}
+
+func (f *fakeFirms) exchange() model.Stocks {
+	return model.Stocks{
+		Companies: []model.StockCompany{{
+			FirmID: "f1", Name: "Колхоз", Kind: "farm", DirectorID: "u1", Shares: 100, Price: 1050, Bid: 990, Ask: 1100,
+			Candles: []model.StockCandle{{Hour: time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC), Open: 1000, Close: 1050}},
+		}},
+		Index:    []model.StockIndexPoint{{Hour: time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC), Value: 100000}},
+		Fee:      2,
+		Account:  50000,
+		Holdings: []model.StockHolding{{FirmID: "f1", Shares: 10, Free: 4}},
+		Orders:   []model.StockOrder{{ID: "o1", FirmID: "f1", Price: 1200, Shares: 6}},
+		FirmID:   f.firmID,
+		Asks:     []model.StockLevel{{Price: 1200, Shares: 6, Orders: 1}},
+	}
+}
+
+func (f *fakeFirms) Stocks(_ context.Context, token, firmID string) (model.Stocks, error) {
+	f.token, f.firmID = token, firmID
+	return f.exchange(), f.err
+}
+
+func (f *fakeFirms) RunStocks(_ context.Context, token string, act model.StockAct) (model.StockDone, error) {
+	f.token, f.stockAct, f.firmID = token, act, act.FirmID
+	return model.StockDone{Shares: 3, Money: 3150, Stocks: f.exchange()}, f.err
 }
 
 func (f *fakeFirms) Settings(_ context.Context, token string) (model.FirmSettings, model.FirmStats, error) {
@@ -72,11 +102,14 @@ func TestFirms(t *testing.T) {
 	w := h.do("GET", "/api/v1/firms", "", "Authorization", "Bearer tok")
 	got := decode[map[string]any](t, w)
 	firm := got["firms"].([]any)[0].(map[string]any)
-	offers := got["offers"].([]any)
+	contract := got["contracts"].([]any)[0].(map[string]any)
+	news := got["news"].([]any)[0].(map[string]any)
 	if w.Code != http.StatusOK || h.firms.token != "tok" || firm["cash"] != 12345.0 || firm["name"] != "Колхоз" ||
 		firm["director"].(map[string]any)["nickname"] != "ann" || len(firm["holders"].([]any)) != 2 ||
 		firm["foundedAt"] != "2026-10-25T12:00:00Z" || len(firm["hours"].([]any)) != 0 ||
-		offers[0].(map[string]any)["seller"].(map[string]any)["nickname"] != "bob" || offers[1].(map[string]any)["seller"] != nil ||
+		firm["wear"] != 12.5 || firm["repairCost"] != 1250.0 || firm["idleUntil"] != "" ||
+		firm["improvements"].([]any)[0].(map[string]any)["cost"] != 100000.0 ||
+		contract["firm"] != "f1" || contract["units"] != 800.0 || news["kind"] != "drought" || news["kinds"].([]any)[0] != "farm" ||
 		got["settings"].(map[string]any)["fee"] != 2.0 || got["nextHour"] != "2026-10-25T13:00:00Z" ||
 		got["catalog"].([]any)[0].(map[string]any)["inputs"].([]any)[0].(map[string]any)["units"] != 2.0 {
 		t.Fatalf("firms: %d %v", w.Code, got)
@@ -106,6 +139,38 @@ func TestFirms(t *testing.T) {
 
 	h.firms.err = failure.New(failure.Conflict, "the enterprise has not enough money")
 	if w = h.do("POST", "/api/v1/firms/upgrade", `{"firm":"f1"}`, "Authorization", "Bearer tok"); w.Code != http.StatusConflict {
+		t.Fatalf("no money: %d", w.Code)
+	}
+}
+
+func TestStocks(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	if w := h.do("GET", "/api/v1/stocks", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("guest: %d", w.Code)
+	}
+
+	w := h.do("GET", "/api/v1/stocks?firm=f1", "", "Authorization", "Bearer tok")
+	got := decode[map[string]any](t, w)
+	company := got["companies"].([]any)[0].(map[string]any)
+	if w.Code != http.StatusOK || h.firms.token != "tok" || h.firms.firmID != "f1" || got["firm"] != "f1" ||
+		company["director"].(map[string]any)["nickname"] != "ann" || company["price"] != 1050.0 ||
+		company["candles"].([]any)[0].(map[string]any)["hour"] != "2026-10-25T12:00:00Z" || got["account"] != 50000.0 ||
+		got["holdings"].([]any)[0].(map[string]any)["free"] != 4.0 || got["asks"].([]any)[0].(map[string]any)["shares"] != 6.0 ||
+		len(got["bids"].([]any)) != 0 || got["index"].([]any)[0].(map[string]any)["value"] != 100000.0 {
+		t.Fatalf("stocks: %d %v", w.Code, got)
+	}
+
+	w = h.do("POST", "/api/v1/stocks/stock_order", `{"firm":"f1","buy":true,"price":1100,"shares":3}`, "Authorization", "Bearer tok")
+	if got := decode[map[string]any](t, w); w.Code != http.StatusOK ||
+		h.firms.stockAct != (model.StockAct{Action: "stock_order", FirmID: "f1", Buy: true, Price: 1100, Shares: 3}) ||
+		got["shares"] != 3.0 || got["money"] != 3150.0 || got["stocks"].(map[string]any)["firm"] != "f1" {
+		t.Fatalf("order: %d %v %+v", w.Code, got, h.firms.stockAct)
+	}
+
+	h.firms.err = failure.New(failure.Conflict, "there is not so much money on your account")
+	if w = h.do("POST", "/api/v1/stocks/account_withdraw", `{"votes":10}`, "Authorization", "Bearer tok"); w.Code != http.StatusConflict {
 		t.Fatalf("no money: %d", w.Code)
 	}
 }

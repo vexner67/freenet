@@ -385,22 +385,22 @@ service UserService {
   // Require an access token: "Бизнес", the economy of the enterprises.
   // GetFirms is the whole city: the rules and the catalog, the quotes of
   // the goods, every enterprise with its storage, hours and shareholders,
-  // the orders of the exchange and the offers of shares. The city counts
-  // itself hour by hour: each enterprise pays wages and upkeep out of its
-  // cash, buys what it works with and sells what it makes by itself as
-  // set. RunFirms does an action: "found" (kind, name — for votes into
-  // the treasury, FailedPrecondition "not enough votes"), and for the
-  // director of firm_id "rename" (name), "upgrade" (from its cash),
-  // "staff" (workers, wage), "deposit" (votes), "dividend" (votes — to
-  // the shareholders by their shares), "liquidate" (its worth to them),
-  // "auto" (good, auto_buy, buy_max, auto_sell, sell_min), "order" (good,
-  // buy, price, units — on the exchange), "cancel" (order_id),
-  // "state_buy" and "state_sell" (good, units), "issue" (shares, votes —
-  // the price of a share); for any shareholder "offer" (shares, votes),
-  // and for anyone "cancel_offer" (offer_id) and "buy_shares" (offer_id,
-  // shares). Taking votes out is for pages a week old with a filled
-  // profile. Money of the enterprises is in hundredths of a vote, of
-  // people — in votes.
+  // the orders of the exchange, the orders of the city and its news. The
+  // city counts itself hour by hour: each enterprise pays wages and upkeep
+  // out of its cash, buys what it works with and sells what it makes by
+  // itself as set, its machines wear, and things happen. RunFirms does an
+  // action: "found" (kind, name — for votes into the treasury,
+  // FailedPrecondition "not enough votes"), and for the director of
+  // firm_id "rename" (name), "upgrade" (from its cash), "staff" (workers,
+  // wage), "deposit" (votes), "dividend" (votes — to the shareholders by
+  // their shares), "liquidate" (its worth to them), "auto" (good,
+  // auto_buy, buy_max, auto_sell, sell_min), "order" (good, buy, price,
+  // units — on the exchange), "cancel" (order_id), "state_buy" and
+  // "state_sell" (good, units), "issue" (shares — put up on the stock
+  // exchange), "repair", "improve" (improvement), "take_contract"
+  // (contract_id) and "deliver" (contract_id, units). Taking votes out is
+  // for pages a week old with a filled profile. Money of the enterprises
+  // is in hundredths of a vote, of people — in votes.
   rpc GetFirms(GetFirmsRequest) returns (FirmsState);
   rpc RunFirms(RunFirmsRequest) returns (RunFirmsResponse);
   // Public: the enterprises nickname holds shares of, as its profile shows
@@ -410,6 +410,17 @@ service UserService {
   // the enterprises and the goods, and how they do.
   rpc GetFirmSettings(GetFirmSettingsRequest) returns (GetFirmSettingsResponse);
   rpc SetFirmSettings(SetFirmSettingsRequest) returns (google.protobuf.Empty);
+  // Require an access token: "Акции", the stock exchange of the
+  // enterprises. GetStocks is every company with its quote, the index,
+  // the news and the account, shares and orders of the caller; firm_id is
+  // the company looked at — its candles of the week and its order book.
+  // RunStocks does an action of the caller: "account_deposit" and
+  // "account_withdraw" (votes — the broker account; withdrawing is for
+  // pages a week old with a filled profile), "stock_order" (firm_id, buy,
+  // price in hundredths a share — 0 at any, shares) and "stock_cancel"
+  // (order_id).
+  rpc GetStocks(GetStocksRequest) returns (StocksState);
+  rpc RunStocks(RunStocksRequest) returns (RunStocksResponse);
 
   // Require an access token: the bank of the caller. A deposit takes votes
   // into the treasury and grows by a percent a day up to the most a
@@ -2505,10 +2516,21 @@ message FirmHolder {
   int64 shares = 2;
 }
 
+// FirmImprovement is an improvement of an enterprise: its rank and the
+// next rank's cost in hundredths (0 at the top).
+message FirmImprovement {
+  string kind = 1;
+  int32 rank = 2;
+  int64 cost = 3;
+}
+
 // Firm is an enterprise: the cash, what its orders keep (escrow), the
-// upkeep an hour, the profit of the last day and its worth closed are in
-// hundredths of a vote; the next level costs upgrade_cost votes (0 at
-// the top) and a share last went for share_price votes.
+// upkeep an hour, the profit of the last day, its worth closed and the
+// repair of its machines are in hundredths of a vote; the next level
+// costs upgrade_cost votes (0 at the top). Its machines are worn by wear
+// percent, its workers strike till idle_until; a share last went for
+// price hundredths, and float of its new shares are up on the stock
+// exchange.
 message Firm {
   string id = 1;
   string kind = 2;
@@ -2526,11 +2548,18 @@ message Firm {
   int64 upkeep = 14;
   int64 profit = 15;
   int64 shares = 16;
-  int64 share_price = 17;
+  reserved 17;
+  reserved "share_price";
   int64 worth = 18;
   repeated FirmStock stock = 19;
   repeated FirmHour hours = 20;
   repeated FirmHolder holders = 21;
+  double wear = 22;
+  int64 repair_cost = 23;
+  google.protobuf.Timestamp idle_until = 24;
+  repeated FirmImprovement improvements = 25;
+  int64 price = 26;
+  int64 float = 27;
 }
 
 message ExchangeOrder {
@@ -2543,15 +2572,29 @@ message ExchangeOrder {
   google.protobuf.Timestamp placed_at = 7;
 }
 
-// ShareOffer is shares for sale at price votes each; no seller — new
-// shares of the enterprise.
-message ShareOffer {
+// FirmContract is an order of the city: units of a good at price
+// hundredths a unit, open till deadline or, taken by firm_id, to deliver
+// by it.
+message FirmContract {
   string id = 1;
-  string firm_id = 2;
-  string seller_id = 3;
-  int64 shares = 4;
-  int64 price = 5;
-  google.protobuf.Timestamp placed_at = 6;
+  string good = 2;
+  int64 units = 3;
+  int64 price = 4;
+  google.protobuf.Timestamp posted = 5;
+  google.protobuf.Timestamp deadline = 6;
+  string firm_id = 7;
+  int64 delivered = 8;
+}
+
+// FirmEvent is what happened in the city: to the enterprise firm_id, or
+// to all of kinds (none — all of them), from start till end.
+message FirmEvent {
+  string id = 1;
+  string kind = 2;
+  string firm_id = 3;
+  repeated string kinds = 4;
+  google.protobuf.Timestamp start = 5;
+  google.protobuf.Timestamp end = 6;
 }
 
 message GetFirmsRequest {}
@@ -2562,9 +2605,12 @@ message FirmsState {
   repeated GoodQuote quotes = 3;
   repeated Firm firms = 4;
   repeated ExchangeOrder orders = 5;
-  repeated ShareOffer offers = 6;
+  reserved 6;
+  reserved "offers";
   // When the city counts the next hour.
   google.protobuf.Timestamp next_hour = 7;
+  repeated FirmContract contracts = 8;
+  repeated FirmEvent news = 9;
 }
 
 message RunFirmsRequest {
@@ -2581,11 +2627,14 @@ message RunFirmsRequest {
   int64 votes = 11;
   int64 shares = 12;
   string order_id = 13;
-  string offer_id = 14;
+  reserved 14;
+  reserved "offer_id";
   bool auto_buy = 15;
   int64 buy_max = 16;
   bool auto_sell = 17;
   int64 sell_min = 18;
+  string improvement = 19;
+  string contract_id = 20;
 }
 
 message FirmDeal {
@@ -2604,6 +2653,125 @@ message RunFirmsResponse {
   string firm_id = 4;
   repeated FirmDeal deals = 5;
   FirmsState firms = 6;
+}
+
+message GetStocksRequest {
+  string firm_id = 1;
+}
+
+// StockCandle is an hour of a share's price in hundredths and the shares
+// traded.
+message StockCandle {
+  google.protobuf.Timestamp hour = 1;
+  int64 open = 2;
+  int64 high = 3;
+  int64 low = 4;
+  int64 close = 5;
+  int64 volume = 6;
+}
+
+// StockCompany is an enterprise on the stock exchange, in hundredths a
+// share: its shares, those the exchange holds (pool) and of the
+// enterprise (float); its worth (book) and with its profit (fair); the
+// price now, what the exchange pays and asks, the best orders of people
+// (0 — none), the price a day ago and the shares traded in a day; the
+// profit of the last day in hundredths; its candles — of the week for the
+// company looked at, of the day for the others.
+message StockCompany {
+  string firm_id = 1;
+  string name = 2;
+  string kind = 3;
+  int32 level = 4;
+  string director_id = 5;
+  int64 shares = 6;
+  int64 pool = 7;
+  int64 float = 8;
+  int64 book = 9;
+  int64 fair = 10;
+  int64 price = 11;
+  int64 bid = 12;
+  int64 ask = 13;
+  int64 best_bid = 14;
+  int64 best_ask = 15;
+  int64 day_ago = 16;
+  int64 volume = 17;
+  int64 profit = 18;
+  int32 holders = 19;
+  repeated StockCandle candles = 20;
+}
+
+// StockIndexPoint is the index of the exchange at an hour, in hundredths
+// of a point.
+message StockIndexPoint {
+  google.protobuf.Timestamp hour = 1;
+  int64 value = 2;
+}
+
+// StockOrder is an order of shares at price hundredths a share (0 — at
+// any).
+message StockOrder {
+  string id = 1;
+  string firm_id = 2;
+  bool buy = 3;
+  int64 price = 4;
+  int64 shares = 5;
+  google.protobuf.Timestamp placed_at = 6;
+}
+
+// StockLevel is a price of the order book and the shares people wait to
+// deal at it.
+message StockLevel {
+  int64 price = 1;
+  int64 shares = 2;
+  int32 orders = 3;
+}
+
+// StockHolding is shares of the caller: free are those no order of it
+// holds.
+message StockHolding {
+  string firm_id = 1;
+  int64 shares = 2;
+  int64 free = 3;
+}
+
+// StocksState is the stock exchange: the companies, the index, the news
+// of the city, the fee of a sale in percent, and for the caller its broker
+// account in hundredths, shares and orders; bids and asks are the order
+// book of firm_id, the better first.
+message StocksState {
+  repeated StockCompany companies = 1;
+  repeated StockIndexPoint index = 2;
+  repeated FirmEvent news = 3;
+  int32 fee = 4;
+  int64 account = 5;
+  repeated StockHolding holdings = 6;
+  repeated StockOrder orders = 7;
+  string firm_id = 8;
+  repeated StockLevel bids = 9;
+  repeated StockLevel asks = 10;
+  google.protobuf.Timestamp next_hour = 11;
+}
+
+message RunStocksRequest {
+  string action = 1;
+  string firm_id = 2;
+  bool buy = 3;
+  int64 price = 4;
+  int64 shares = 5;
+  int64 votes = 6;
+  string order_id = 7;
+}
+
+// RunStocksResponse is the votes the caller spent and got and the balance
+// after (0 when none moved), what an order dealt at once — shares and
+// hundredths, and the exchange after, looking at firm_id.
+message RunStocksResponse {
+  int64 spent = 1;
+  int64 got = 2;
+  int64 balance = 3;
+  int64 shares = 4;
+  int64 money = 5;
+  StocksState stocks = 6;
 }
 
 message GetFirmSettingsRequest {}

@@ -11,6 +11,33 @@ import (
 
 var cityStart = time.Date(2027, 1, 1, 0, 30, 0, 0, time.UTC)
 
+// newCity is a city where nothing happens by chance.
+func newCity() *user.City {
+	c := user.NewCity(cityStart)
+	c.SetLuck(user.CalmLuck)
+
+	return c
+}
+
+// sell has seller sell shares of the enterprise to buyer, between the
+// prices of the exchange.
+func sell(t *testing.T, c *user.City, rules user.FirmRules, f *user.Firm, seller, buyer uuid.UUID, shares int64) {
+	t.Helper()
+
+	q := c.Quote(rules, f, cityStart)
+	price := (q.Bid + q.Ask) / 2
+	if _, err := c.PlaceStock(rules, seller, user.StockOrder{FirmID: f.ID(), Price: price, Shares: shares}, cityStart); err != nil {
+		t.Fatalf("selling: %v", err)
+	}
+	if err := c.Fund(buyer, price*shares/100+1); err != nil {
+		t.Fatal(err)
+	}
+	fill, err := c.PlaceStock(rules, buyer, user.StockOrder{FirmID: f.ID(), Buy: true, Price: price, Shares: shares}, cityStart)
+	if err != nil || fill.Shares != shares {
+		t.Fatalf("buying: %+v, %v", fill, err)
+	}
+}
+
 func found(t *testing.T, c *user.City, rules user.FirmRules, owner uuid.UUID, kind user.FirmKind) *user.Firm {
 	t.Helper()
 
@@ -75,7 +102,7 @@ func TestPayback(t *testing.T) {
 
 	rules := user.DefaultFirmRules()
 	for _, kind := range user.FirmKinds {
-		c := user.NewCity(cityStart)
+		c := newCity()
 		owner := uuid.New()
 		f := found(t, c, rules, owner, kind)
 		if c.Tick(rules, cityStart.Add(24*time.Hour)) != 24 {
@@ -98,7 +125,7 @@ func TestPayback(t *testing.T) {
 func TestTickCatchesUpADayAtMost(t *testing.T) {
 	t.Parallel()
 
-	c := user.NewCity(cityStart)
+	c := newCity()
 	if n := c.Tick(user.DefaultFirmRules(), cityStart.Add(100*time.Hour)); n != 24 {
 		t.Errorf("counted %d hours, want 24", n)
 	}
@@ -112,7 +139,7 @@ func TestNoCashNoWork(t *testing.T) {
 
 	rules := user.DefaultFirmRules()
 	rules.Capital = 0
-	c := user.NewCity(cityStart)
+	c := newCity()
 	f := found(t, c, rules, uuid.New(), user.FirmFarm)
 	c.Tick(rules, cityStart.Add(3*time.Hour))
 
@@ -125,7 +152,7 @@ func TestDirectorOnly(t *testing.T) {
 	t.Parallel()
 
 	rules := user.DefaultFirmRules()
-	c := user.NewCity(cityStart)
+	c := newCity()
 	f := found(t, c, rules, uuid.New(), user.FirmFarm)
 	if err := c.Rename(uuid.New(), f.ID(), "Чужое"); !errors.Is(err, user.ErrNotDirector) {
 		t.Errorf("rename by another: %v", err)
@@ -139,7 +166,7 @@ func TestUpgradeAndStaff(t *testing.T) {
 	t.Parallel()
 
 	rules := user.DefaultFirmRules()
-	c := user.NewCity(cityStart)
+	c := newCity()
 	owner := uuid.New()
 	f := found(t, c, rules, owner, user.FirmFarm)
 
@@ -167,7 +194,7 @@ func TestFoundLimit(t *testing.T) {
 	t.Parallel()
 
 	rules := user.DefaultFirmRules()
-	c := user.NewCity(cityStart)
+	c := newCity()
 	owner := uuid.New()
 	for range user.MaxFirmsFounded {
 		found(t, c, rules, owner, user.FirmFarm)
@@ -181,7 +208,7 @@ func TestExchange(t *testing.T) {
 	t.Parallel()
 
 	rules := user.DefaultFirmRules()
-	c := user.NewCity(cityStart)
+	c := newCity()
 	farmer, miller := uuid.New(), uuid.New()
 	farm := found(t, c, rules, farmer, user.FirmFarm)
 	mill := found(t, c, rules, miller, user.FirmMill)
@@ -247,7 +274,7 @@ func TestOwnCrossingOrder(t *testing.T) {
 	t.Parallel()
 
 	rules := user.DefaultFirmRules()
-	c := user.NewCity(cityStart)
+	c := newCity()
 	owner := uuid.New()
 	mill := found(t, c, rules, owner, user.FirmMill)
 	if _, err := c.BuyFromState(rules, owner, mill.ID(), user.GoodGrain, 100, cityStart); err != nil {
@@ -265,7 +292,7 @@ func TestStatePrices(t *testing.T) {
 	t.Parallel()
 
 	rules := user.DefaultFirmRules()
-	c := user.NewCity(cityStart)
+	c := newCity()
 	owner := uuid.New()
 	mill := found(t, c, rules, owner, user.FirmMill)
 
@@ -290,89 +317,14 @@ func TestStatePrices(t *testing.T) {
 	}
 }
 
-func TestShares(t *testing.T) {
-	t.Parallel()
-
-	rules := user.DefaultFirmRules()
-	c := user.NewCity(cityStart)
-	founder, investor, other := uuid.New(), uuid.New(), uuid.New()
-	f := found(t, c, rules, founder, user.FirmFarm)
-
-	if _, err := c.OfferShares(founder, f.ID(), 101, 10, cityStart); !errors.Is(err, user.ErrShareOffer) {
-		t.Errorf("offering more than held: %v", err)
-	}
-	offer, err := c.OfferShares(founder, f.ID(), 60, 10, cityStart)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = c.BuyShares(rules, founder, offer.ID, 1); !errors.Is(err, user.ErrOwnShares) {
-		t.Errorf("buying own: %v", err)
-	}
-
-	deal, err := c.BuyShares(rules, investor, offer.ID, 40)
-	if err != nil || deal.Votes != 400 || deal.Fee != 8 || deal.SellerID != founder {
-		t.Fatalf("deal %+v, %v", deal, err)
-	}
-	if f.DirectorID() != founder {
-		t.Errorf("40 of 100 made the investor the director")
-	}
-
-	if _, err = c.BuyShares(rules, investor, offer.ID, 20); err != nil {
-		t.Fatal(err)
-	}
-	if f.DirectorID() != investor || f.SharePrice() != 10 {
-		t.Errorf("60 of 100: director %v, price %d", f.DirectorID(), f.SharePrice())
-	}
-	if len(c.Offers()) != 0 {
-		t.Errorf("a sold out offer stays")
-	}
-
-	// The new director issues shares: their price goes into the cash.
-	if _, err = c.IssueShares(founder, f.ID(), 10, 5, cityStart); !errors.Is(err, user.ErrNotDirector) {
-		t.Errorf("issue by the founder: %v", err)
-	}
-	issue, err := c.IssueShares(investor, f.ID(), 100, 5, cityStart)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cash := f.Cash()
-	if deal, err = c.BuyShares(rules, other, issue.ID, 100); err != nil || deal.SellerID != uuid.Nil || deal.Fee != 0 {
-		t.Fatalf("issue deal %+v, %v", deal, err)
-	}
-	if f.Cash() != cash+500*100 || c.Shares(f.ID()) != 200 {
-		t.Errorf("cash %d, shares %d", f.Cash(), c.Shares(f.ID()))
-	}
-	if f.DirectorID() != other {
-		t.Errorf("100 of 200 must make other the director")
-	}
-
-	// Dividends by the shares: founder 40, investor 60, other 100.
-	payouts, err := c.Dividend(other, f.ID(), 101)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := map[uuid.UUID]int64{founder: 20, investor: 30, other: 50}
-	for _, p := range payouts {
-		if want[p.UserID] != p.Votes {
-			t.Errorf("%v got %d, want %d", p.UserID, p.Votes, want[p.UserID])
-		}
-	}
-	if f.Cash() != cash+500*100-100*100 {
-		t.Errorf("the split vote left the cash: %d", f.Cash())
-	}
-}
-
 func TestLiquidate(t *testing.T) {
 	t.Parallel()
 
 	rules := user.DefaultFirmRules()
-	c := user.NewCity(cityStart)
+	c := newCity()
 	founder, investor := uuid.New(), uuid.New()
 	f := found(t, c, rules, founder, user.FirmMill)
-	offer, _ := c.OfferShares(founder, f.ID(), 50, 1, cityStart)
-	if _, err := c.BuyShares(rules, investor, offer.ID, 50); err != nil {
-		t.Fatal(err)
-	}
+	sell(t, c, rules, f, founder, investor, 50)
 	if _, err := c.Place(rules, founder, f.ID(), user.ExchangeOrder{Good: user.GoodGrain, Buy: true, Price: 10, Units: 100}, cityStart); err != nil {
 		t.Fatal(err)
 	}
@@ -396,14 +348,11 @@ func TestDropHolders(t *testing.T) {
 	t.Parallel()
 
 	rules := user.DefaultFirmRules()
-	c := user.NewCity(cityStart)
+	c := newCity()
 	founder, investor := uuid.New(), uuid.New()
 	f := found(t, c, rules, founder, user.FirmFarm)
 	lone := found(t, c, rules, founder, user.FirmMine)
-	offer, _ := c.OfferShares(founder, f.ID(), 30, 1, cityStart)
-	if _, err := c.BuyShares(rules, investor, offer.ID, 30); err != nil {
-		t.Fatal(err)
-	}
+	sell(t, c, rules, f, founder, investor, 30)
 
 	c.DropHolders([]uuid.UUID{founder})
 	if f.DirectorID() != investor {
@@ -418,7 +367,7 @@ func TestShopSellsToTheCity(t *testing.T) {
 	t.Parallel()
 
 	rules := user.DefaultFirmRules()
-	c := user.NewCity(cityStart)
+	c := newCity()
 	owner := uuid.New()
 	shop := found(t, c, rules, owner, user.FirmShop)
 	c.Tick(rules, cityStart.Add(3*time.Hour))
@@ -441,7 +390,7 @@ func TestRestoreCity(t *testing.T) {
 	t.Parallel()
 
 	rules := user.DefaultFirmRules()
-	c := user.NewCity(cityStart)
+	c := newCity()
 	owner := uuid.New()
 	found(t, c, rules, owner, user.FirmBakery)
 	c.Tick(rules, cityStart.Add(2*time.Hour))

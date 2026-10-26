@@ -80,3 +80,36 @@ func TestFirms(t *testing.T) {
 		t.Fatalf("GetUserFirms of nobody: %v", err)
 	}
 }
+
+func TestStocks(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, _ := s.member(t, "ann")
+
+	if _, err := s.client.GetStocks(context.Background(), &userv1.GetStocksRequest{}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("GetStocks by nobody: %v", err)
+	}
+
+	got, err := s.client.GetStocks(ann, &userv1.GetStocksRequest{FirmId: "0192f0a0-0000-7000-8000-000000000000"})
+	if err != nil || len(got.GetCompanies()) != 0 || got.GetAccount() != 0 || got.GetFirmId() != "" || got.GetFee() != 2 {
+		t.Fatalf("GetStocks = %v, %v", got, err)
+	}
+
+	for _, tc := range []struct {
+		name string
+		req  *userv1.RunStocksRequest
+		code codes.Code
+	}{
+		{"an action of the business", &userv1.RunStocksRequest{Action: "found"}, codes.InvalidArgument},
+		{"bad id", &userv1.RunStocksRequest{Action: "stock_order", FirmId: "x"}, codes.InvalidArgument},
+		{"no company", &userv1.RunStocksRequest{Action: "stock_order", FirmId: "0192f0a0-0000-7000-8000-000000000000", Shares: 1}, codes.NotFound},
+		{"no votes", &userv1.RunStocksRequest{Action: "account_deposit", Votes: 10}, codes.FailedPrecondition},
+		{"no money", &userv1.RunStocksRequest{Action: "account_withdraw", Votes: 10}, codes.FailedPrecondition},
+		{"no order", &userv1.RunStocksRequest{Action: "stock_cancel", OrderId: "0192f0a0-0000-7000-8000-000000000000"}, codes.NotFound},
+	} {
+		if _, err = s.client.RunStocks(ann, tc.req); status.Code(err) != tc.code {
+			t.Errorf("%s: %v, want %v", tc.name, err, tc.code)
+		}
+	}
+}

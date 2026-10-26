@@ -91,7 +91,23 @@ type storedFirm struct {
 	Carry      map[user.Good]float64    `json:"carry"`
 	Auto       map[user.Good]storedAuto `json:"auto"`
 	Hours      []storedFirmHour         `json:"hours"`
-	SharePrice int64                    `json:"sharePrice"`
+	Wear       float64                  `json:"wear"`
+	Ranks      map[user.Improvement]int `json:"ranks"`
+	Improved   int64                    `json:"improved"`
+	IdleUntil  time.Time                `json:"idleUntil"`
+	Mood       float64                  `json:"mood"`
+	Price      int64                    `json:"price"`
+	Float      int64                    `json:"float"`
+	Candles    []storedCandle           `json:"candles"`
+}
+
+type storedCandle struct {
+	Hour   time.Time `json:"hour"`
+	Open   int64     `json:"open"`
+	High   int64     `json:"high"`
+	Low    int64     `json:"low"`
+	Close  int64     `json:"close"`
+	Volume int64     `json:"volume"`
 }
 
 type storedHolding struct {
@@ -119,6 +135,52 @@ type storedShareOffer struct {
 	PlacedAt time.Time `json:"placedAt"`
 }
 
+type storedAccount struct {
+	UserID uuid.UUID `json:"userId"`
+	Cash   int64     `json:"cash"`
+}
+
+type storedStockOrder struct {
+	ID       uuid.UUID `json:"id"`
+	FirmID   uuid.UUID `json:"firmId"`
+	UserID   uuid.UUID `json:"userId"`
+	Buy      bool      `json:"buy"`
+	Price    int64     `json:"price"`
+	Shares   int64     `json:"shares"`
+	PlacedAt time.Time `json:"placedAt"`
+}
+
+type storedStockHour struct {
+	Hour   time.Time `json:"hour"`
+	FirmID uuid.UUID `json:"firmId"`
+	Sold   int64     `json:"sold"`
+	Bought int64     `json:"bought"`
+}
+
+type storedIndexPoint struct {
+	Hour  time.Time `json:"hour"`
+	Value int64     `json:"value"`
+}
+
+type storedEvent struct {
+	ID     uuid.UUID      `json:"id"`
+	Kind   user.EventKind `json:"kind"`
+	FirmID uuid.UUID      `json:"firmId"`
+	Start  time.Time      `json:"start"`
+	End    time.Time      `json:"end"`
+}
+
+type storedContract struct {
+	ID        uuid.UUID `json:"id"`
+	Good      user.Good `json:"good"`
+	Units     int64     `json:"units"`
+	Price     int64     `json:"price"`
+	Posted    time.Time `json:"posted"`
+	Deadline  time.Time `json:"deadline"`
+	FirmID    uuid.UUID `json:"firmId"`
+	Delivered int64     `json:"delivered"`
+}
+
 type storedMarketHour struct {
 	Hour        time.Time `json:"hour"`
 	Good        user.Good `json:"good"`
@@ -135,15 +197,23 @@ type storedCityStats struct {
 	Fees  int64 `json:"fees"`
 }
 
+// storedCity keeps Offers, the offers of shares before the stock
+// exchange, only to read them: the city turns them into its orders.
 type storedCity struct {
-	Hour     time.Time             `json:"hour"`
-	Firms    []storedFirm          `json:"firms"`
-	Holdings []storedHolding       `json:"holdings"`
-	Orders   []storedExchangeOrder `json:"orders"`
-	Offers   []storedShareOffer    `json:"offers"`
-	Market   []storedMarketHour    `json:"market"`
-	Last     map[user.Good]int64   `json:"last"`
-	Stats    storedCityStats       `json:"stats"`
+	Hour        time.Time             `json:"hour"`
+	Firms       []storedFirm          `json:"firms"`
+	Holdings    []storedHolding       `json:"holdings"`
+	Orders      []storedExchangeOrder `json:"orders"`
+	Offers      []storedShareOffer    `json:"offers,omitempty"`
+	Market      []storedMarketHour    `json:"market"`
+	Last        map[user.Good]int64   `json:"last"`
+	Stats       storedCityStats       `json:"stats"`
+	Accounts    []storedAccount       `json:"accounts"`
+	StockOrders []storedStockOrder    `json:"stockOrders"`
+	StockMarket []storedStockHour     `json:"stockMarket"`
+	Index       []storedIndexPoint    `json:"index"`
+	Events      []storedEvent         `json:"events"`
+	Contracts   []storedContract      `json:"contracts"`
 }
 
 func convert[From, To any](from []From, to func(From) To) []To {
@@ -164,8 +234,9 @@ func storeFirm(f user.FirmState) storedFirm {
 	return storedFirm{
 		ID: f.ID, Kind: f.Kind, Name: f.Name, DirectorID: f.DirectorID, FoundedAt: f.FoundedAt, Level: f.Level,
 		Workers: f.Workers, Wage: f.Wage, Cash: f.Cash, Stock: f.Stock, Carry: f.Carry, Auto: auto,
-		Hours:      convert(f.Hours, func(h user.FirmHour) storedFirmHour { return storedFirmHour(h) }),
-		SharePrice: f.SharePrice,
+		Hours: convert(f.Hours, func(h user.FirmHour) storedFirmHour { return storedFirmHour(h) }),
+		Wear:  f.Wear, Ranks: f.Ranks, Improved: f.Improved, IdleUntil: f.IdleUntil, Mood: f.Mood, Price: f.Price,
+		Float: f.Float, Candles: convert(f.Candles, func(c user.Candle) storedCandle { return storedCandle(c) }),
 	}
 }
 
@@ -178,22 +249,28 @@ func restoreFirm(f storedFirm) user.FirmState {
 	return user.FirmState{
 		ID: f.ID, Kind: f.Kind, Name: f.Name, DirectorID: f.DirectorID, FoundedAt: f.FoundedAt, Level: f.Level,
 		Workers: f.Workers, Wage: f.Wage, Cash: f.Cash, Stock: f.Stock, Carry: f.Carry, Auto: auto,
-		Hours:      convert(f.Hours, func(h storedFirmHour) user.FirmHour { return user.FirmHour(h) }),
-		SharePrice: f.SharePrice,
+		Hours: convert(f.Hours, func(h storedFirmHour) user.FirmHour { return user.FirmHour(h) }),
+		Wear:  f.Wear, Ranks: f.Ranks, Improved: f.Improved, IdleUntil: f.IdleUntil, Mood: f.Mood, Price: f.Price,
+		Float: f.Float, Candles: convert(f.Candles, func(c storedCandle) user.Candle { return user.Candle(c) }),
 	}
 }
 
 func storeCity(c *user.City) ([]byte, error) {
 	s := c.State()
 	data, err := json.Marshal(storedCity{
-		Hour:     s.Hour,
-		Firms:    convert(s.Firms, storeFirm),
-		Holdings: convert(s.Holdings, func(h user.Holding) storedHolding { return storedHolding(h) }),
-		Orders:   convert(s.Orders, func(o user.ExchangeOrder) storedExchangeOrder { return storedExchangeOrder(o) }),
-		Offers:   convert(s.Offers, func(o user.ShareOffer) storedShareOffer { return storedShareOffer(o) }),
-		Market:   convert(s.Market, func(m user.MarketHour) storedMarketHour { return storedMarketHour(m) }),
-		Last:     s.Last,
-		Stats:    storedCityStats(s.Stats),
+		Hour:        s.Hour,
+		Firms:       convert(s.Firms, storeFirm),
+		Holdings:    convert(s.Holdings, func(h user.Holding) storedHolding { return storedHolding(h) }),
+		Orders:      convert(s.Orders, func(o user.ExchangeOrder) storedExchangeOrder { return storedExchangeOrder(o) }),
+		Market:      convert(s.Market, func(m user.MarketHour) storedMarketHour { return storedMarketHour(m) }),
+		Last:        s.Last,
+		Stats:       storedCityStats(s.Stats),
+		Accounts:    convert(s.Accounts, func(a user.Account) storedAccount { return storedAccount(a) }),
+		StockOrders: convert(s.StockOrders, func(o user.StockOrder) storedStockOrder { return storedStockOrder(o) }),
+		StockMarket: convert(s.StockMarket, func(h user.StockHour) storedStockHour { return storedStockHour(h) }),
+		Index:       convert(s.Index, func(p user.IndexPoint) storedIndexPoint { return storedIndexPoint(p) }),
+		Events:      convert(s.Events, func(e user.Event) storedEvent { return storedEvent(e) }),
+		Contracts:   convert(s.Contracts, func(k user.Contract) storedContract { return storedContract(k) }),
 	})
 
 	return data, errs.Wrap("json.Marshal", err)
@@ -201,14 +278,20 @@ func storeCity(c *user.City) ([]byte, error) {
 
 func restoreCity(s storedCity) *user.City {
 	return user.RestoreCity(user.CityState{
-		Hour:     s.Hour,
-		Firms:    convert(s.Firms, restoreFirm),
-		Holdings: convert(s.Holdings, func(h storedHolding) user.Holding { return user.Holding(h) }),
-		Orders:   convert(s.Orders, func(o storedExchangeOrder) user.ExchangeOrder { return user.ExchangeOrder(o) }),
-		Offers:   convert(s.Offers, func(o storedShareOffer) user.ShareOffer { return user.ShareOffer(o) }),
-		Market:   convert(s.Market, func(m storedMarketHour) user.MarketHour { return user.MarketHour(m) }),
-		Last:     s.Last,
-		Stats:    user.CityStats(s.Stats),
+		Hour:        s.Hour,
+		Firms:       convert(s.Firms, restoreFirm),
+		Holdings:    convert(s.Holdings, func(h storedHolding) user.Holding { return user.Holding(h) }),
+		Orders:      convert(s.Orders, func(o storedExchangeOrder) user.ExchangeOrder { return user.ExchangeOrder(o) }),
+		Offers:      convert(s.Offers, func(o storedShareOffer) user.ShareOffer { return user.ShareOffer(o) }),
+		Market:      convert(s.Market, func(m storedMarketHour) user.MarketHour { return user.MarketHour(m) }),
+		Last:        s.Last,
+		Stats:       user.CityStats(s.Stats),
+		Accounts:    convert(s.Accounts, func(a storedAccount) user.Account { return user.Account(a) }),
+		StockOrders: convert(s.StockOrders, func(o storedStockOrder) user.StockOrder { return user.StockOrder(o) }),
+		StockMarket: convert(s.StockMarket, func(h storedStockHour) user.StockHour { return user.StockHour(h) }),
+		Index:       convert(s.Index, func(p storedIndexPoint) user.IndexPoint { return user.IndexPoint(p) }),
+		Events:      convert(s.Events, func(e storedEvent) user.Event { return user.Event(e) }),
+		Contracts:   convert(s.Contracts, func(k storedContract) user.Contract { return user.Contract(k) }),
 	})
 }
 

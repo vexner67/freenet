@@ -5568,7 +5568,7 @@ paths:
   /api/v1/firms:
     get:
       summary: The economy of the enterprises
-      description: '"Бизнес": the settings and what each enterprise does, the quotes of the goods, every enterprise with its storage, last hours and shareholders, the orders of the exchange and the offers of shares. The city counts itself hour by hour at `nextHour`: each enterprise pays wages and upkeep from its cash (working as much less as it lacks), buys what it works with from the state and sells what it makes to the state — a shop to the city — as its `stock` says. Money of the enterprises is in hundredths of a vote, of people (deposits, dividends, prices of shares) in votes.'
+      description: '"Бизнес": the settings and what each enterprise does, the quotes of the goods, every enterprise with its storage, last hours and shareholders, the orders of the exchange, the orders of the city (`contracts`) and its news. The city counts itself hour by hour at `nextHour`: each enterprise pays wages and upkeep from its cash (working as much less as it lacks), buys what it works with from the state and sells what it makes to the state — a shop to the city — as its `stock` says; its machines wear and make less past 30%, and things happen — droughts, finds, breakdowns, inspections, strikes of workers paid below the standard. Money of the enterprises is in hundredths of a vote, of people (deposits, dividends) in votes.'
       security: [{ bearer: [] }]
       responses:
         "200":
@@ -5581,10 +5581,10 @@ paths:
   /api/v1/firms/{action}:
     post:
       summary: Act in the economy
-      description: '`found` founds an enterprise of `kind` named `name` (1–40 characters) for its price, into the treasury: you hold its 100 shares and direct it; at most 10 directed. For the director of `firm`: `rename` (`name`), `upgrade` (paid from its cash), `staff` (`workers` up to the seats, `wage` in hundredths from half to three times the standard), `deposit` (`votes` into its cash), `dividend` (`votes` of its cash to the shareholders by their shares), `liquidate` (its worth to the shareholders; its goods are lost), `auto` (for `good`: `autoBuy` from the state paying at most `buyMax`, `autoSell` taking at least `sellMin`), `order` (`good`, `buy`, `price` in hundredths, `units` — on the exchange; what meets other orders changes hands at their price at once, the seller paying the fee), `cancel` (`order`), `state_buy` and `state_sell` (`good`, `units` — with the state at once), `issue` (`shares` new at `votes` each, into its cash). For a shareholder: `offer` (`shares` at `votes` each, in place of the last offer). For anyone: `cancel_offer` (`offer`, yours or an issue you direct) and `buy_shares` (`offer`, `shares`). The largest shareholder directs. Taking votes out (`dividend`, `liquidate`, `offer`) is for pages a week old with a filled profile. Rate limited.'
+      description: '`found` founds an enterprise of `kind` named `name` (1–40 characters) for its price, into the treasury: you hold its 100 shares and direct it; at most 10 directed. For the director of `firm`: `rename` (`name`), `upgrade` (paid from its cash), `staff` (`workers` up to the seats, `wage` in hundredths from half to three times the standard), `deposit` (`votes` into its cash), `dividend` (`votes` of its cash to the shareholders by their shares), `liquidate` (its worth to the shareholders; its goods are lost), `auto` (for `good`: `autoBuy` from the state paying at most `buyMax`, `autoSell` taking at least `sellMin`), `order` (`good`, `buy`, `price` in hundredths, `units` — on the exchange; what meets other orders changes hands at their price at once, the seller paying the fee), `cancel` (`order`), `state_buy` and `state_sell` (`good`, `units` — with the state at once), `issue` (`shares` new put up on the stock exchange in place of those put up before, 0 — none; sold, they pay into its cash), `repair` (its machines, from its cash), `improve` (`improvement`: `machines` make more, `storage` holds more, `sales` sell dearer; three ranks), `take_contract` (`contract` of the city its storage keeps the good of; at most 2 at once, a day to deliver, a tenth of what is left undelivered fined) and `deliver` (`contract`, `units` from its storage, paid at once). The largest shareholder directs. Taking votes out (`dividend`, `liquidate`) is for pages a week old with a filled profile. Rate limited.'
       security: [{ bearer: [] }]
       parameters:
-        - { name: action, in: path, required: true, schema: { type: string, enum: [found, rename, upgrade, staff, deposit, dividend, liquidate, auto, order, cancel, state_buy, state_sell, offer, issue, cancel_offer, buy_shares] } }
+        - { name: action, in: path, required: true, schema: { type: string, enum: [found, rename, upgrade, staff, deposit, dividend, liquidate, auto, order, cancel, state_buy, state_sell, issue, repair, improve, take_contract, deliver] } }
       requestBody:
         content:
           application/json:
@@ -5603,17 +5603,73 @@ paths:
                 votes: { type: integer, format: int64 }
                 shares: { type: integer, format: int64 }
                 order: { type: string, description: The ID of an order }
-                offer: { type: string, description: The ID of an offer of shares }
                 autoBuy: { type: boolean }
                 buyMax: { type: integer, format: int64 }
                 autoSell: { type: boolean }
                 sellMin: { type: integer, format: int64 }
+                improvement: { type: string, enum: [machines, storage, sales] }
+                contract: { type: string, description: The ID of an order of the city }
       responses:
         "200":
           description: What the action did
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FirmDone" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/stocks:
+    get:
+      summary: The stock exchange
+      description: '"Акции": every company with its quote and candles (of the week for `firm`, of the day for the others), the index (1000.00 points at the start, by the worth of the companies), the news of the city, the fee of a sale, and your broker account, shares and orders; `bids` and `asks` are the order book of `firm`. The exchange makes a market itself: it buys below the worth of a company and sells above it, dearer the more it sold in a day, and the price follows the profit of the company, the mood of the market and what people buy and sell. Money is in hundredths of a vote.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: firm, in: query, schema: { type: string }, description: The company looked at }
+      responses:
+        "200":
+          description: The exchange
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Stocks" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/stocks/{action}:
+    post:
+      summary: Act on the stock exchange
+      description: '`account_deposit` and `account_withdraw` move `votes` between your balance and your broker account (withdrawing is for pages a week old with a filled profile). `stock_order` buys or sells (`buy`) `shares` of `firm` at `price` hundredths a share or better — what meets the orders of others or the prices of the exchange deals at once, the rest waits (at most 20 orders); `price` 0 deals what it can at once at any price. Buying pays of the account; the seller pays the fee. `stock_cancel` cancels your `order`, giving back the money it keeps. Rate limited.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: action, in: path, required: true, schema: { type: string, enum: [account_deposit, account_withdraw, stock_order, stock_cancel] } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firm: { type: string, description: The ID of the company }
+                buy: { type: boolean }
+                price: { type: integer, format: int64, description: Hundredths of a vote a share; 0 — at any }
+                shares: { type: integer, format: int64 }
+                votes: { type: integer, format: int64 }
+                order: { type: string, description: The ID of an order of shares }
+      responses:
+        "200":
+          description: What the action did
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spent: { type: integer, format: int64 }
+                  got: { type: integer, format: int64 }
+                  balance: { type: integer, format: int64, description: The balance after the votes moved; 0 when none did }
+                  shares: { type: integer, format: int64, description: Shares an order dealt at once }
+                  money: { type: integer, format: int64, description: Hundredths they went for }
+                  stocks: { $ref: "#/components/schemas/Stocks" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -9983,8 +10039,20 @@ components:
         upkeep: { type: integer, format: int64, description: Hundredths an hour }
         profit: { type: integer, format: int64, description: Hundredths earned in the last 24 hours }
         shares: { type: integer, format: int64 }
-        sharePrice: { type: integer, format: int64, description: Votes a share last went for; 0 before any deal }
         worth: { type: integer, format: int64, description: Hundredths it is worth closed }
+        wear: { type: number, description: Percent its machines are worn }
+        repairCost: { type: integer, format: int64, description: Hundredths the repair costs }
+        idleUntil: { type: string, format: date-time, description: The end of a strike; empty — none }
+        improvements:
+          type: array
+          items:
+            type: object
+            properties:
+              kind: { type: string, enum: [machines, storage, sales] }
+              rank: { type: integer }
+              cost: { type: integer, format: int64, description: Hundredths the next rank costs; 0 at the top }
+        price: { type: integer, format: int64, description: Hundredths a share last went for; 0 before any deal }
+        float: { type: integer, format: int64, description: New shares up on the stock exchange }
         stock:
           type: array
           items:
@@ -10067,18 +10135,108 @@ components:
               price: { type: integer, format: int64 }
               units: { type: integer, format: int64 }
               placedAt: { type: string, format: date-time }
-        offers:
+        contracts:
           type: array
           items:
             type: object
             properties:
               id: { type: string }
-              firmId: { type: string }
-              seller: { allOf: [{ $ref: "#/components/schemas/PublicProfile" }], nullable: true, description: None — new shares of the enterprise }
-              shares: { type: integer, format: int64 }
-              price: { type: integer, format: int64, description: Votes a share }
-              placedAt: { type: string, format: date-time }
+              good: { type: string }
+              units: { type: integer, format: int64 }
+              price: { type: integer, format: int64, description: Hundredths a unit }
+              posted: { type: string, format: date-time }
+              deadline: { type: string, format: date-time, description: Open till then or, taken, to deliver by then }
+              firm: { type: string, description: The enterprise that took it; empty — open }
+              delivered: { type: integer, format: int64 }
+        news: { type: array, items: { $ref: "#/components/schemas/FirmEvent" } }
         nextHour: { type: string, format: date-time }
+    FirmEvent:
+      type: object
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [drought, harvest, vein, collapse, gusher, storm, wildfire, blackout, invention, fair, crisis, boom, breakdown, inspection, award, strike] }
+        firm: { type: string, description: The enterprise it happened to; empty — to all of kinds }
+        kinds: { type: array, items: { type: string }, description: The enterprises it touches; empty — all }
+        start: { type: string, format: date-time }
+        end: { type: string, format: date-time }
+    Stocks:
+      type: object
+      properties:
+        companies:
+          type: array
+          items:
+            type: object
+            description: Hundredths a share
+            properties:
+              firm: { type: string }
+              name: { type: string }
+              kind: { type: string }
+              level: { type: integer }
+              director: { allOf: [{ $ref: "#/components/schemas/PublicProfile" }], nullable: true }
+              shares: { type: integer, format: int64 }
+              pool: { type: integer, format: int64, description: Shares the exchange holds }
+              float: { type: integer, format: int64, description: New shares of the enterprise for sale }
+              book: { type: integer, format: int64, description: Its worth a share }
+              fair: { type: integer, format: int64, description: Its worth and profit a share }
+              price: { type: integer, format: int64 }
+              bid: { type: integer, format: int64, description: What the exchange pays }
+              ask: { type: integer, format: int64, description: What the exchange asks }
+              bestBid: { type: integer, format: int64, description: The best order of people to buy; 0 — none }
+              bestAsk: { type: integer, format: int64, description: The best order of people to sell; 0 — none }
+              dayAgo: { type: integer, format: int64 }
+              volume: { type: integer, format: int64, description: Shares traded in a day }
+              profit: { type: integer, format: int64, description: Hundredths it earned in a day }
+              holders: { type: integer }
+              candles:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    hour: { type: string, format: date-time }
+                    open: { type: integer, format: int64 }
+                    high: { type: integer, format: int64 }
+                    low: { type: integer, format: int64 }
+                    close: { type: integer, format: int64 }
+                    volume: { type: integer, format: int64 }
+        index:
+          type: array
+          items:
+            type: object
+            properties:
+              hour: { type: string, format: date-time }
+              value: { type: integer, format: int64, description: Hundredths of a point }
+        news: { type: array, items: { $ref: "#/components/schemas/FirmEvent" } }
+        fee: { type: integer, description: Percent of a sale }
+        account: { type: integer, format: int64, description: Hundredths on your broker account }
+        holdings:
+          type: array
+          items:
+            type: object
+            properties:
+              firm: { type: string }
+              shares: { type: integer, format: int64 }
+              free: { type: integer, format: int64, description: Not held by your orders }
+        orders:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              firm: { type: string }
+              buy: { type: boolean }
+              price: { type: integer, format: int64 }
+              shares: { type: integer, format: int64 }
+              placedAt: { type: string, format: date-time }
+        firm: { type: string, description: The company looked at }
+        bids: { type: array, items: { $ref: "#/components/schemas/StockLevel" } }
+        asks: { type: array, items: { $ref: "#/components/schemas/StockLevel" } }
+        nextHour: { type: string, format: date-time }
+    StockLevel:
+      type: object
+      properties:
+        price: { type: integer, format: int64 }
+        shares: { type: integer, format: int64 }
+        orders: { type: integer }
     FirmDone:
       type: object
       properties:

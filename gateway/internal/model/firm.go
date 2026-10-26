@@ -108,8 +108,18 @@ type FirmHolder struct {
 	Shares int64
 }
 
-// Firm is an enterprise; money in hundredths of a vote, UpgradeCost and
-// SharePrice in votes.
+// FirmImprovement is an improvement of an enterprise: its rank and the
+// next rank's cost in hundredths (0 at the top).
+type FirmImprovement struct {
+	Kind string
+	Rank int
+	Cost int64
+}
+
+// Firm is an enterprise; money in hundredths of a vote, UpgradeCost in
+// votes. Wear is the percent its machines are worn, IdleUntil the end of
+// a strike, Price the last price of a share and Float the new shares up on
+// the stock exchange.
 type Firm struct {
 	ID           string
 	Kind         string
@@ -127,11 +137,16 @@ type Firm struct {
 	Upkeep       int64
 	Profit       int64
 	Shares       int64
-	SharePrice   int64
 	Worth        int64
 	Stock        []FirmStock
 	Hours        []FirmHour
 	Holders      []FirmHolder
+	Wear         float64
+	RepairCost   int64
+	IdleUntil    time.Time
+	Improvements []FirmImprovement
+	Price        int64
+	Float        int64
 }
 
 // ExchangeOrder is an order of the exchange: Price in hundredths a unit.
@@ -145,26 +160,40 @@ type ExchangeOrder struct {
 	PlacedAt time.Time
 }
 
-// ShareOffer is shares for sale at Price votes each; no SellerID — new
-// shares of the enterprise.
-type ShareOffer struct {
-	ID       string
-	FirmID   string
-	SellerID string
-	Shares   int64
-	Price    int64
-	PlacedAt time.Time
+// FirmContract is an order of the city: Units of Good at Price
+// hundredths a unit; FirmID — the enterprise that took it.
+type FirmContract struct {
+	ID        string
+	Good      string
+	Units     int64
+	Price     int64
+	Posted    time.Time
+	Deadline  time.Time
+	FirmID    string
+	Delivered int64
+}
+
+// FirmEvent is what happened in the city: to the enterprise FirmID, or to
+// all of Kinds (none — all).
+type FirmEvent struct {
+	ID     string
+	Kind   string
+	FirmID string
+	Kinds  []string
+	Start  time.Time
+	End    time.Time
 }
 
 // Firms is the city of the enterprises.
 type Firms struct {
-	Settings FirmSettings
-	Catalog  []FirmSpec
-	Quotes   []GoodQuote
-	Firms    []Firm
-	Orders   []ExchangeOrder
-	Offers   []ShareOffer
-	NextHour time.Time
+	Settings  FirmSettings
+	Catalog   []FirmSpec
+	Quotes    []GoodQuote
+	Firms     []Firm
+	Orders    []ExchangeOrder
+	Contracts []FirmContract
+	News      []FirmEvent
+	NextHour  time.Time
 }
 
 // FirmAct is an action with the enterprises.
@@ -182,11 +211,13 @@ type FirmAct struct {
 	Votes    int64
 	Shares   int64
 	OrderID  string
-	OfferID  string
 	AutoBuy  bool
 	BuyMax   int64
 	AutoSell bool
 	SellMin  int64
+	// Improvement is what is improved, ContractID the order of the city.
+	Improvement string
+	ContractID  string
 }
 
 // FirmDeal is units that changed hands at a price in hundredths.
@@ -217,4 +248,108 @@ type UserFirm struct {
 	Shares   int64
 	Total    int64
 	Director bool
+}
+
+// StockCandle is an hour of a share's price in hundredths.
+type StockCandle struct {
+	Hour   time.Time
+	Open   int64
+	High   int64
+	Low    int64
+	Close  int64
+	Volume int64
+}
+
+// StockCompany is an enterprise on the stock exchange, money in
+// hundredths a share (Profit — of the last day).
+type StockCompany struct {
+	FirmID     string
+	Name       string
+	Kind       string
+	Level      int
+	DirectorID string
+	Shares     int64
+	Pool       int64
+	Float      int64
+	Book       int64
+	Fair       int64
+	Price      int64
+	Bid        int64
+	Ask        int64
+	BestBid    int64
+	BestAsk    int64
+	DayAgo     int64
+	Volume     int64
+	Profit     int64
+	Holders    int
+	Candles    []StockCandle
+}
+
+// StockIndexPoint is the index at an hour, in hundredths of a point.
+type StockIndexPoint struct {
+	Hour  time.Time
+	Value int64
+}
+
+// StockOrder is an order of shares at Price hundredths (0 — at any).
+type StockOrder struct {
+	ID       string
+	FirmID   string
+	Buy      bool
+	Price    int64
+	Shares   int64
+	PlacedAt time.Time
+}
+
+// StockLevel is a price of the order book.
+type StockLevel struct {
+	Price  int64
+	Shares int64
+	Orders int
+}
+
+// StockHolding is shares of the caller; Free — not held by its orders.
+type StockHolding struct {
+	FirmID string
+	Shares int64
+	Free   int64
+}
+
+// Stocks is the stock exchange: Account is the caller's broker account in
+// hundredths, Bids and Asks the order book of FirmID.
+type Stocks struct {
+	Companies []StockCompany
+	Index     []StockIndexPoint
+	News      []FirmEvent
+	Fee       int
+	Account   int64
+	Holdings  []StockHolding
+	Orders    []StockOrder
+	FirmID    string
+	Bids      []StockLevel
+	Asks      []StockLevel
+	NextHour  time.Time
+}
+
+// StockAct is an action on the stock exchange.
+type StockAct struct {
+	Action  string
+	FirmID  string
+	Buy     bool
+	Price   int64
+	Shares  int64
+	Votes   int64
+	OrderID string
+}
+
+// StockDone is what an action did: the votes spent and got and the
+// balance after (0 when none moved), what an order dealt at once — Shares
+// for Money hundredths, and the exchange after.
+type StockDone struct {
+	Spent   int64
+	Got     int64
+	Balance int64
+	Shares  int64
+	Money   int64
+	Stocks  Stocks
 }

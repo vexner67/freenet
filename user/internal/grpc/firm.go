@@ -94,10 +94,21 @@ func toProtoFirm(v service.FirmsView, f *user.Firm) *userv1.Firm {
 		FoundedAt: timestamppb.New(f.FoundedAt()), Level: int32(f.Level()), Workers: int32(f.Workers()), //nolint:gosec // at most user.MaxFirmLevels × user.MaxFirmStaff
 		Wage: f.Wage(), Cash: f.Cash(), Escrow: c.Escrow(f.ID()), Productivity: v.Rules.Productivity(f.Wage()),
 		Seats: int32(plan.Staff * f.Level()), Upkeep: plan.Upkeep * int64(f.Level()), Profit: f.Profit(), //nolint:gosec // as above
-		Shares: c.Shares(f.ID()), SharePrice: f.SharePrice(), Worth: c.Worth(v.Rules, f),
+		Shares: c.Shares(f.ID()), Worth: c.Worth(v.Rules, f), Wear: f.Wear(), RepairCost: user.RepairCost(plan, f),
+		Price: f.Price(), Float: f.Float(),
 	}
 	if f.Level() < plan.Levels {
 		pb.UpgradeCost = plan.UpgradeCost(f.Level())
+	}
+	if f.IdleUntil().After(v.At) {
+		pb.IdleUntil = timestamppb.New(f.IdleUntil())
+	}
+	for _, imp := range user.Improvements {
+		up := &userv1.FirmImprovement{Kind: string(imp), Rank: int32(f.Rank(imp))} //nolint:gosec // at most user.MaxRank
+		if f.Rank(imp) < user.MaxRank {
+			up.Cost = user.ImprovementCost(plan, f.Rank(imp))
+		}
+		pb.Improvements = append(pb.Improvements, up)
 	}
 
 	for _, g := range spec.Uses() {
@@ -143,17 +154,35 @@ func toProtoFirms(v service.FirmsView) *userv1.FirmsState {
 			Price: o.Price, Units: o.Units, PlacedAt: timestamppb.New(o.PlacedAt),
 		})
 	}
-	for _, o := range c.Offers() {
-		offer := &userv1.ShareOffer{
-			Id: o.ID.String(), FirmId: o.FirmID.String(), Shares: o.Shares, Price: o.Price, PlacedAt: timestamppb.New(o.PlacedAt),
+	for _, k := range c.Contracts() {
+		contract := &userv1.FirmContract{
+			Id: k.ID.String(), Good: k.Good.String(), Units: k.Units, Price: k.Price, Posted: timestamppb.New(k.Posted),
+			Deadline: timestamppb.New(k.Deadline), Delivered: k.Delivered,
 		}
-		if !o.IsIssue() {
-			offer.SellerId = o.SellerID.String()
+		if k.IsTaken() {
+			contract.FirmId = k.FirmID.String()
 		}
-		state.Offers = append(state.Offers, offer)
+		state.Contracts = append(state.Contracts, contract)
 	}
+	state.News = toProtoNews(c.News())
 
 	return state
+}
+
+func toProtoNews(news []user.Event) []*userv1.FirmEvent {
+	out := make([]*userv1.FirmEvent, 0, len(news))
+	for _, e := range news {
+		pb := &userv1.FirmEvent{Id: e.ID.String(), Kind: string(e.Kind), Start: timestamppb.New(e.Start), End: timestamppb.New(e.End)}
+		if e.FirmID != uuid.Nil {
+			pb.FirmId = e.FirmID.String()
+		}
+		for _, k := range e.Kinds() {
+			pb.Kinds = append(pb.Kinds, k.String())
+		}
+		out = append(out, pb)
+	}
+
+	return out
 }
 
 func (h *UserHandler) GetFirms(ctx context.Context, _ *userv1.GetFirmsRequest) (*userv1.FirmsState, error) {
@@ -201,7 +230,7 @@ func fromProtoFirmAct(req *userv1.RunFirmsRequest) (service.FirmAct, error) {
 		to   *uuid.UUID
 		from string
 		what string
-	}{{&act.FirmID, req.GetFirmId(), "enterprise"}, {&act.OrderID, req.GetOrderId(), "order"}, {&act.OfferID, req.GetOfferId(), "offer"}}
+	}{{&act.FirmID, req.GetFirmId(), "enterprise"}, {&act.OrderID, req.GetOrderId(), "order"}, {&act.ContractID, req.GetContractId(), "contract"}}
 	for _, id := range ids {
 		if *id.to, err = optionalID(id.from, id.what); err != nil {
 			return service.FirmAct{}, err
@@ -215,6 +244,11 @@ func fromProtoFirmAct(req *userv1.RunFirmsRequest) (service.FirmAct, error) {
 	}
 	if req.GetName() != "" || action == user.FirmFound || action == user.FirmRename {
 		if act.Name, err = user.NewFirmName(req.GetName()); err != nil {
+			return service.FirmAct{}, status.Error(codes.InvalidArgument, err.Error())
+		}
+	}
+	if req.GetImprovement() != "" || action == user.FirmImprove {
+		if act.Improvement, err = user.NewImprovement(req.GetImprovement()); err != nil {
 			return service.FirmAct{}, status.Error(codes.InvalidArgument, err.Error())
 		}
 	}

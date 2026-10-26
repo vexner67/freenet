@@ -68,38 +68,47 @@ func TestFirmService(t *testing.T) {
 		t.Fatalf("the farm earned %d", f.Profit())
 	}
 
-	// Ann sells bob 40 shares, less the fee of 2 percent.
-	if _, err = firms.Act(ctx, ann, service.FirmAct{Action: user.FirmOffer, FirmID: id, Shares: 40, Votes: 10}, now); err != nil {
-		t.Fatal(err)
+	// Bob puts 500 votes on his broker account and buys 10 new shares of
+	// the farm at the price of the exchange.
+	fund := service.FirmAct{Action: user.FirmFund, Votes: 500}
+	if done, err = firms.Act(ctx, bob, fund, now); err != nil || done.Spent != 500 || done.Balance != 1500 {
+		t.Fatalf("fund = %+v, %v", done, err)
 	}
-	view, _ = firms.View(ctx, now)
-	offer := view.City.Offers()[0].ID
-	if done, err = firms.Act(ctx, bob, service.FirmAct{Action: user.FirmBuyShares, OfferID: offer, Shares: 40}, now); err != nil || done.Spent != 400 {
+	buy := service.FirmAct{Action: user.FirmStockOrder, Stock: user.StockOrder{FirmID: id, Buy: true, Shares: 10}}
+	if done, err = firms.Act(ctx, bob, buy, now); err != nil || done.Fill.Shares != 10 || done.Fill.Money <= 0 {
 		t.Fatalf("buy shares = %+v, %v", done, err)
 	}
-	if votes := w.votes(t, ann); votes != 2000-farm.Price+392 {
-		t.Fatalf("ann has %d votes", votes)
-	}
+	paid := done.Fill.Money
 
-	// Dividends of 100 votes: 60 to ann, 40 to bob.
-	done, err = firms.Act(ctx, ann, service.FirmAct{Action: user.FirmDividend, FirmID: id, Votes: 100}, now)
-	if err != nil || done.Got != 60 {
+	// Dividends of 110 votes: 100 to ann, 10 to bob.
+	done, err = firms.Act(ctx, ann, service.FirmAct{Action: user.FirmDividend, FirmID: id, Votes: 110}, now)
+	if err != nil || done.Got != 100 {
 		t.Fatalf("dividend = %+v, %v", done, err)
 	}
-	if votes := w.votes(t, bob); votes != 2000-400+40 {
+	if votes := w.votes(t, bob); votes != 2000-500+10 {
 		t.Fatalf("bob has %d votes", votes)
+	}
+
+	// Bob takes the rest of his account out.
+	left := (500*100 - paid) / 100
+	withdraw := service.FirmAct{Action: user.FirmWithdraw, Votes: left}
+	if done, err = firms.Act(ctx, bob, withdraw, now); err != nil || done.Got != left {
+		t.Fatalf("withdraw = %+v, %v", done, err)
+	}
+	if _, err = firms.Act(ctx, bob, withdraw, now); !errors.Is(err, user.ErrAccount) {
+		t.Fatalf("withdraw twice: %v", err)
 	}
 
 	if _, err = firms.Settings(ctx, ann); !errors.Is(err, user.ErrNotAdmin) {
 		t.Fatalf("Settings by ann: %v", err)
 	}
 	settings, err := firms.Settings(ctx, admin)
-	if err != nil || settings.Firms != 1 || settings.Stats.Spent != farm.Price || settings.Stats.Paid != 100 {
+	if err != nil || settings.Firms != 1 || settings.Stats.Spent != farm.Price+500 || settings.Stats.Paid != 110+left {
 		t.Fatalf("Settings = %+v, %v", settings, err)
 	}
 
 	held, err := firms.UserFirms(ctx, "bob", now)
-	if err != nil || len(held) != 1 || held[0].Shares != 40 || held[0].Director {
+	if err != nil || len(held) != 1 || held[0].Shares != 10 || held[0].Director {
 		t.Fatalf("UserFirms of bob = %+v, %v", held, err)
 	}
 }

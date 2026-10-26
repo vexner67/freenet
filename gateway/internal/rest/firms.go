@@ -9,8 +9,11 @@ import (
 
 // Firms is "Бизнес", the economy of the enterprises, which the user
 // service keeps with the votes: people found and run enterprises, trade
-// and hold their shares, the administrators tune them.
+// and hold their shares on the stock exchange, the administrators tune
+// them.
 type Firms interface {
+	Stocks(ctx context.Context, accessToken, firmID string) (model.Stocks, error)
+	RunStocks(ctx context.Context, accessToken string, act model.StockAct) (model.StockDone, error)
 	Get(ctx context.Context, accessToken string) (model.Firms, error)
 	UserFirms(ctx context.Context, accessToken, nickname string) ([]model.UserFirm, error)
 	Run(ctx context.Context, accessToken string, act model.FirmAct) (model.FirmDone, error)
@@ -115,11 +118,22 @@ type firmJSON struct {
 	Upkeep       int64                  `json:"upkeep"`
 	Profit       int64                  `json:"profit"`
 	Shares       int64                  `json:"shares"`
-	SharePrice   int64                  `json:"sharePrice"`
 	Worth        int64                  `json:"worth"`
 	Stock        []firmStockJSON        `json:"stock"`
 	Hours        []firmHourJSON         `json:"hours"`
 	Holders      []firmHolderJSON       `json:"holders"`
+	Wear         float64                `json:"wear"`
+	RepairCost   int64                  `json:"repairCost"`
+	IdleUntil    string                 `json:"idleUntil"`
+	Improvements []firmImprovementJSON  `json:"improvements"`
+	Price        int64                  `json:"price"`
+	Float        int64                  `json:"float"`
+}
+
+type firmImprovementJSON struct {
+	Kind string `json:"kind"`
+	Rank int    `json:"rank"`
+	Cost int64  `json:"cost"`
 }
 
 type exchangeOrderJSON struct {
@@ -132,23 +146,44 @@ type exchangeOrderJSON struct {
 	PlacedAt string `json:"placedAt"`
 }
 
-type shareOfferJSON struct {
-	ID       string                 `json:"id"`
-	FirmID   string                 `json:"firmId"`
-	Seller   *publicProfileResponse `json:"seller"`
-	Shares   int64                  `json:"shares"`
-	Price    int64                  `json:"price"`
-	PlacedAt string                 `json:"placedAt"`
+type firmContractJSON struct {
+	ID        string `json:"id"`
+	Good      string `json:"good"`
+	Units     int64  `json:"units"`
+	Price     int64  `json:"price"`
+	Posted    string `json:"posted"`
+	Deadline  string `json:"deadline"`
+	Firm      string `json:"firm"`
+	Delivered int64  `json:"delivered"`
+}
+
+type firmEventJSON struct {
+	ID    string   `json:"id"`
+	Kind  string   `json:"kind"`
+	Firm  string   `json:"firm"`
+	Kinds []string `json:"kinds"`
+	Start string   `json:"start"`
+	End   string   `json:"end"`
+}
+
+func toFirmEventsJSON(news []model.FirmEvent) []firmEventJSON {
+	return listJSON(news, func(e model.FirmEvent) firmEventJSON {
+		return firmEventJSON{
+			ID: e.ID, Kind: e.Kind, Firm: e.FirmID, Kinds: listJSON(e.Kinds, func(k string) string { return k }),
+			Start: timeString(e.Start), End: timeString(e.End),
+		}
+	})
 }
 
 type firmsJSON struct {
-	Settings firmSettingsJSON    `json:"settings"`
-	Catalog  []firmSpecJSON      `json:"catalog"`
-	Quotes   []goodQuoteJSON     `json:"quotes"`
-	Firms    []firmJSON          `json:"firms"`
-	Orders   []exchangeOrderJSON `json:"orders"`
-	Offers   []shareOfferJSON    `json:"offers"`
-	NextHour string              `json:"nextHour"`
+	Settings  firmSettingsJSON    `json:"settings"`
+	Catalog   []firmSpecJSON      `json:"catalog"`
+	Quotes    []goodQuoteJSON     `json:"quotes"`
+	Firms     []firmJSON          `json:"firms"`
+	Orders    []exchangeOrderJSON `json:"orders"`
+	Contracts []firmContractJSON  `json:"contracts"`
+	News      []firmEventJSON     `json:"news"`
+	NextHour  string              `json:"nextHour"`
 }
 
 func toFirmSettingsJSON(s model.FirmSettings) firmSettingsJSON {
@@ -196,11 +231,6 @@ func (a *api) firmsResponse(r *http.Request, f model.Firms) (firmsJSON, error) {
 			ids = append(ids, h.UserID)
 		}
 	}
-	for _, o := range f.Offers {
-		if o.SellerID != "" {
-			ids = append(ids, o.SellerID)
-		}
-	}
 
 	people, err := a.profiles(r, ids)
 	if err != nil {
@@ -222,11 +252,13 @@ func (a *api) firmsResponse(r *http.Request, f model.Firms) (firmsJSON, error) {
 				ID: o.ID, FirmID: o.FirmID, Good: o.Good, Buy: o.Buy, Price: o.Price, Units: o.Units, PlacedAt: timeString(o.PlacedAt),
 			}
 		}),
-		Offers: listJSON(f.Offers, func(o model.ShareOffer) shareOfferJSON {
-			return shareOfferJSON{
-				ID: o.ID, FirmID: o.FirmID, Seller: person(people, o.SellerID), Shares: o.Shares, Price: o.Price, PlacedAt: timeString(o.PlacedAt),
+		Contracts: listJSON(f.Contracts, func(k model.FirmContract) firmContractJSON {
+			return firmContractJSON{
+				ID: k.ID, Good: k.Good, Units: k.Units, Price: k.Price, Posted: timeString(k.Posted),
+				Deadline: timeString(k.Deadline), Firm: k.FirmID, Delivered: k.Delivered,
 			}
 		}),
+		News:     toFirmEventsJSON(f.News),
 		NextHour: timeString(f.NextHour),
 	}, nil
 }
@@ -236,7 +268,9 @@ func toFirmJSON(f model.Firm, people map[string]model.PublicProfile) firmJSON {
 		ID: f.ID, Kind: f.Kind, Name: f.Name, Director: person(people, f.DirectorID), FoundedAt: timeString(f.FoundedAt),
 		Level: f.Level, Workers: f.Workers, Wage: f.Wage, Cash: f.Cash, Escrow: f.Escrow, Productivity: f.Productivity,
 		Seats: f.Seats, UpgradeCost: f.UpgradeCost, Upkeep: f.Upkeep, Profit: f.Profit, Shares: f.Shares,
-		SharePrice: f.SharePrice, Worth: f.Worth,
+		Worth: f.Worth, Wear: f.Wear, RepairCost: f.RepairCost, IdleUntil: timeString(f.IdleUntil),
+		Improvements: listJSON(f.Improvements, func(i model.FirmImprovement) firmImprovementJSON { return firmImprovementJSON(i) }),
+		Price:        f.Price, Float: f.Float,
 		Stock: listJSON(f.Stock, func(s model.FirmStock) firmStockJSON { return firmStockJSON(s) }),
 		Hours: listJSON(f.Hours, func(h model.FirmHour) firmHourJSON {
 			return firmHourJSON{
@@ -300,11 +334,12 @@ func (a *api) runFirms(w http.ResponseWriter, r *http.Request) {
 		Votes    int64  `json:"votes"`
 		Shares   int64  `json:"shares"`
 		Order    string `json:"order"`
-		Offer    string `json:"offer"`
 		AutoBuy  bool   `json:"autoBuy"`
 		BuyMax   int64  `json:"buyMax"`
 		AutoSell bool   `json:"autoSell"`
 		SellMin  int64  `json:"sellMin"`
+		Improve  string `json:"improvement"`
+		Contract string `json:"contract"`
 	}
 	if err = decode(w, r, &req); err != nil {
 		a.writeError(w, r, err)
@@ -314,7 +349,8 @@ func (a *api) runFirms(w http.ResponseWriter, r *http.Request) {
 	d, err := a.firmsBackend.Run(r.Context(), token, model.FirmAct{
 		Action: r.PathValue("action"), FirmID: req.Firm, Kind: req.Kind, Name: req.Name, Good: req.Good, Buy: req.Buy,
 		Price: req.Price, Units: req.Units, Workers: req.Workers, Wage: req.Wage, Votes: req.Votes, Shares: req.Shares,
-		OrderID: req.Order, OfferID: req.Offer, AutoBuy: req.AutoBuy, BuyMax: req.BuyMax, AutoSell: req.AutoSell, SellMin: req.SellMin,
+		OrderID: req.Order, AutoBuy: req.AutoBuy, BuyMax: req.BuyMax, AutoSell: req.AutoSell, SellMin: req.SellMin,
+		Improvement: req.Improve, ContractID: req.Contract,
 	})
 	if err != nil {
 		a.writeError(w, r, err)

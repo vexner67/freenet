@@ -322,7 +322,8 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		userv1.UserService_DigOre_FullMethodName:  cfg.MineLimits,
 		userv1.UserService_SellOre_FullMethodName: cfg.MineLimits,
 
-		userv1.UserService_RunFirms_FullMethodName: cfg.BusinessLimits,
+		userv1.UserService_RunFirms_FullMethodName:  cfg.BusinessLimits,
+		userv1.UserService_RunStocks_FullMethodName: cfg.BusinessLimits,
 
 		userv1.UserService_PutDeposit_FullMethodName:  cfg.BankLimits,
 		userv1.UserService_TakeDeposit_FullMethodName: cfg.BankLimits,

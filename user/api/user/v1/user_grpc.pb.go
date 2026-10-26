@@ -163,6 +163,8 @@ const (
 	UserService_GetUserFirms_FullMethodName       = "/user.v1.UserService/GetUserFirms"
 	UserService_GetFirmSettings_FullMethodName    = "/user.v1.UserService/GetFirmSettings"
 	UserService_SetFirmSettings_FullMethodName    = "/user.v1.UserService/SetFirmSettings"
+	UserService_GetStocks_FullMethodName          = "/user.v1.UserService/GetStocks"
+	UserService_RunStocks_FullMethodName          = "/user.v1.UserService/RunStocks"
 	UserService_GetBank_FullMethodName            = "/user.v1.UserService/GetBank"
 	UserService_PutDeposit_FullMethodName         = "/user.v1.UserService/PutDeposit"
 	UserService_TakeDeposit_FullMethodName        = "/user.v1.UserService/TakeDeposit"
@@ -548,22 +550,22 @@ type UserServiceClient interface {
 	// Require an access token: "Бизнес", the economy of the enterprises.
 	// GetFirms is the whole city: the rules and the catalog, the quotes of
 	// the goods, every enterprise with its storage, hours and shareholders,
-	// the orders of the exchange and the offers of shares. The city counts
-	// itself hour by hour: each enterprise pays wages and upkeep out of its
-	// cash, buys what it works with and sells what it makes by itself as
-	// set. RunFirms does an action: "found" (kind, name — for votes into
-	// the treasury, FailedPrecondition "not enough votes"), and for the
-	// director of firm_id "rename" (name), "upgrade" (from its cash),
-	// "staff" (workers, wage), "deposit" (votes), "dividend" (votes — to
-	// the shareholders by their shares), "liquidate" (its worth to them),
-	// "auto" (good, auto_buy, buy_max, auto_sell, sell_min), "order" (good,
-	// buy, price, units — on the exchange), "cancel" (order_id),
-	// "state_buy" and "state_sell" (good, units), "issue" (shares, votes —
-	// the price of a share); for any shareholder "offer" (shares, votes),
-	// and for anyone "cancel_offer" (offer_id) and "buy_shares" (offer_id,
-	// shares). Taking votes out is for pages a week old with a filled
-	// profile. Money of the enterprises is in hundredths of a vote, of
-	// people — in votes.
+	// the orders of the exchange, the orders of the city and its news. The
+	// city counts itself hour by hour: each enterprise pays wages and upkeep
+	// out of its cash, buys what it works with and sells what it makes by
+	// itself as set, its machines wear, and things happen. RunFirms does an
+	// action: "found" (kind, name — for votes into the treasury,
+	// FailedPrecondition "not enough votes"), and for the director of
+	// firm_id "rename" (name), "upgrade" (from its cash), "staff" (workers,
+	// wage), "deposit" (votes), "dividend" (votes — to the shareholders by
+	// their shares), "liquidate" (its worth to them), "auto" (good,
+	// auto_buy, buy_max, auto_sell, sell_min), "order" (good, buy, price,
+	// units — on the exchange), "cancel" (order_id), "state_buy" and
+	// "state_sell" (good, units), "issue" (shares — put up on the stock
+	// exchange), "repair", "improve" (improvement), "take_contract"
+	// (contract_id) and "deliver" (contract_id, units). Taking votes out is
+	// for pages a week old with a filled profile. Money of the enterprises
+	// is in hundredths of a vote, of people — in votes.
 	GetFirms(ctx context.Context, in *GetFirmsRequest, opts ...grpc.CallOption) (*FirmsState, error)
 	RunFirms(ctx context.Context, in *RunFirmsRequest, opts ...grpc.CallOption) (*RunFirmsResponse, error)
 	// Public: the enterprises nickname holds shares of, as its profile shows
@@ -573,6 +575,17 @@ type UserServiceClient interface {
 	// the enterprises and the goods, and how they do.
 	GetFirmSettings(ctx context.Context, in *GetFirmSettingsRequest, opts ...grpc.CallOption) (*GetFirmSettingsResponse, error)
 	SetFirmSettings(ctx context.Context, in *SetFirmSettingsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Require an access token: "Акции", the stock exchange of the
+	// enterprises. GetStocks is every company with its quote, the index,
+	// the news and the account, shares and orders of the caller; firm_id is
+	// the company looked at — its candles of the week and its order book.
+	// RunStocks does an action of the caller: "account_deposit" and
+	// "account_withdraw" (votes — the broker account; withdrawing is for
+	// pages a week old with a filled profile), "stock_order" (firm_id, buy,
+	// price in hundredths a share — 0 at any, shares) and "stock_cancel"
+	// (order_id).
+	GetStocks(ctx context.Context, in *GetStocksRequest, opts ...grpc.CallOption) (*StocksState, error)
+	RunStocks(ctx context.Context, in *RunStocksRequest, opts ...grpc.CallOption) (*RunStocksResponse, error)
 	// Require an access token: the bank of the caller. A deposit takes votes
 	// into the treasury and grows by a percent a day up to the most a
 	// deposit may be (FailedPrecondition "the deposit cannot be larger",
@@ -2085,6 +2098,26 @@ func (c *userServiceClient) SetFirmSettings(ctx context.Context, in *SetFirmSett
 	return out, nil
 }
 
+func (c *userServiceClient) GetStocks(ctx context.Context, in *GetStocksRequest, opts ...grpc.CallOption) (*StocksState, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StocksState)
+	err := c.cc.Invoke(ctx, UserService_GetStocks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) RunStocks(ctx context.Context, in *RunStocksRequest, opts ...grpc.CallOption) (*RunStocksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunStocksResponse)
+	err := c.cc.Invoke(ctx, UserService_RunStocks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) GetBank(ctx context.Context, in *GetBankRequest, opts ...grpc.CallOption) (*BankState, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(BankState)
@@ -2684,22 +2717,22 @@ type UserServiceServer interface {
 	// Require an access token: "Бизнес", the economy of the enterprises.
 	// GetFirms is the whole city: the rules and the catalog, the quotes of
 	// the goods, every enterprise with its storage, hours and shareholders,
-	// the orders of the exchange and the offers of shares. The city counts
-	// itself hour by hour: each enterprise pays wages and upkeep out of its
-	// cash, buys what it works with and sells what it makes by itself as
-	// set. RunFirms does an action: "found" (kind, name — for votes into
-	// the treasury, FailedPrecondition "not enough votes"), and for the
-	// director of firm_id "rename" (name), "upgrade" (from its cash),
-	// "staff" (workers, wage), "deposit" (votes), "dividend" (votes — to
-	// the shareholders by their shares), "liquidate" (its worth to them),
-	// "auto" (good, auto_buy, buy_max, auto_sell, sell_min), "order" (good,
-	// buy, price, units — on the exchange), "cancel" (order_id),
-	// "state_buy" and "state_sell" (good, units), "issue" (shares, votes —
-	// the price of a share); for any shareholder "offer" (shares, votes),
-	// and for anyone "cancel_offer" (offer_id) and "buy_shares" (offer_id,
-	// shares). Taking votes out is for pages a week old with a filled
-	// profile. Money of the enterprises is in hundredths of a vote, of
-	// people — in votes.
+	// the orders of the exchange, the orders of the city and its news. The
+	// city counts itself hour by hour: each enterprise pays wages and upkeep
+	// out of its cash, buys what it works with and sells what it makes by
+	// itself as set, its machines wear, and things happen. RunFirms does an
+	// action: "found" (kind, name — for votes into the treasury,
+	// FailedPrecondition "not enough votes"), and for the director of
+	// firm_id "rename" (name), "upgrade" (from its cash), "staff" (workers,
+	// wage), "deposit" (votes), "dividend" (votes — to the shareholders by
+	// their shares), "liquidate" (its worth to them), "auto" (good,
+	// auto_buy, buy_max, auto_sell, sell_min), "order" (good, buy, price,
+	// units — on the exchange), "cancel" (order_id), "state_buy" and
+	// "state_sell" (good, units), "issue" (shares — put up on the stock
+	// exchange), "repair", "improve" (improvement), "take_contract"
+	// (contract_id) and "deliver" (contract_id, units). Taking votes out is
+	// for pages a week old with a filled profile. Money of the enterprises
+	// is in hundredths of a vote, of people — in votes.
 	GetFirms(context.Context, *GetFirmsRequest) (*FirmsState, error)
 	RunFirms(context.Context, *RunFirmsRequest) (*RunFirmsResponse, error)
 	// Public: the enterprises nickname holds shares of, as its profile shows
@@ -2709,6 +2742,17 @@ type UserServiceServer interface {
 	// the enterprises and the goods, and how they do.
 	GetFirmSettings(context.Context, *GetFirmSettingsRequest) (*GetFirmSettingsResponse, error)
 	SetFirmSettings(context.Context, *SetFirmSettingsRequest) (*emptypb.Empty, error)
+	// Require an access token: "Акции", the stock exchange of the
+	// enterprises. GetStocks is every company with its quote, the index,
+	// the news and the account, shares and orders of the caller; firm_id is
+	// the company looked at — its candles of the week and its order book.
+	// RunStocks does an action of the caller: "account_deposit" and
+	// "account_withdraw" (votes — the broker account; withdrawing is for
+	// pages a week old with a filled profile), "stock_order" (firm_id, buy,
+	// price in hundredths a share — 0 at any, shares) and "stock_cancel"
+	// (order_id).
+	GetStocks(context.Context, *GetStocksRequest) (*StocksState, error)
+	RunStocks(context.Context, *RunStocksRequest) (*RunStocksResponse, error)
 	// Require an access token: the bank of the caller. A deposit takes votes
 	// into the treasury and grows by a percent a day up to the most a
 	// deposit may be (FailedPrecondition "the deposit cannot be larger",
@@ -3219,6 +3263,12 @@ func (UnimplementedUserServiceServer) GetFirmSettings(context.Context, *GetFirmS
 }
 func (UnimplementedUserServiceServer) SetFirmSettings(context.Context, *SetFirmSettingsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetFirmSettings not implemented")
+}
+func (UnimplementedUserServiceServer) GetStocks(context.Context, *GetStocksRequest) (*StocksState, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetStocks not implemented")
+}
+func (UnimplementedUserServiceServer) RunStocks(context.Context, *RunStocksRequest) (*RunStocksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RunStocks not implemented")
 }
 func (UnimplementedUserServiceServer) GetBank(context.Context, *GetBankRequest) (*BankState, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetBank not implemented")
@@ -5887,6 +5937,42 @@ func _UserService_SetFirmSettings_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetStocks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetStocksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetStocks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetStocks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetStocks(ctx, req.(*GetStocksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_RunStocks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunStocksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).RunStocks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_RunStocks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).RunStocks(ctx, req.(*RunStocksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetBank_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetBankRequest)
 	if err := dec(in); err != nil {
@@ -6897,6 +6983,14 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetFirmSettings",
 			Handler:    _UserService_SetFirmSettings_Handler,
+		},
+		{
+			MethodName: "GetStocks",
+			Handler:    _UserService_GetStocks_Handler,
+		},
+		{
+			MethodName: "RunStocks",
+			Handler:    _UserService_RunStocks_Handler,
 		},
 		{
 			MethodName: "GetBank",

@@ -27,10 +27,6 @@ var (
 	ErrOwnOrder      = errors.New("the enterprise has an order of its own the other way at this price: cancel it first")
 	ErrTooManyOrders = errors.New("an enterprise keeps at most 10 orders on the exchange")
 	ErrOrderNotFound = errors.New("there is no such order")
-	ErrShareOffer    = errors.New("an offer must be of 1 share or more you hold, at a price from 1 vote")
-	ErrShareBuy      = errors.New("buy from 1 share to as many as the offer has")
-	ErrOfferNotFound = errors.New("there is no such offer of shares")
-	ErrOwnShares     = errors.New("these are your own shares")
 )
 
 // Holding is the shares of an enterprise a page holds.
@@ -40,8 +36,10 @@ type Holding struct {
 	Shares int64
 }
 
-// ShareOffer is shares of an enterprise for sale at Price votes each: of
-// a shareholder, or new ones the enterprise issues, with no seller.
+// ShareOffer is shares of an enterprise for sale at Price votes each, as
+// the city kept them before the stock exchange: of a shareholder, or new
+// ones of the enterprise, with no seller. A city restored turns them into
+// orders of the exchange and shares the enterprise puts up.
 type ShareOffer struct {
 	ID       uuid.UUID
 	FirmID   uuid.UUID
@@ -49,11 +47,6 @@ type ShareOffer struct {
 	Shares   int64
 	Price    int64
 	PlacedAt time.Time
-}
-
-// IsIssue is whether the enterprise sells new shares.
-func (o ShareOffer) IsIssue() bool {
-	return o.SellerID == uuid.Nil
 }
 
 // ExchangeOrder is an order of an enterprise on the exchange: to buy or to
@@ -95,16 +88,6 @@ type Deal struct {
 	Price int64
 }
 
-// ShareDeal is shares bought: of SellerID (none — issued by the
-// enterprise) for Votes, of which the exchange takes Fee.
-type ShareDeal struct {
-	FirmID   uuid.UUID
-	SellerID uuid.UUID
-	Shares   int64
-	Votes    int64
-	Fee      int64
-}
-
 // CityStats are what the enterprises took in and paid out: the votes
 // spent on founding and in their cash and shares, those paid to people,
 // and the fees of the exchange in hundredths.
@@ -115,43 +98,61 @@ type CityStats struct {
 }
 
 // City is the economy of the enterprises: the enterprises in the order of
-// founding, their shareholders, the orders of the exchange, the offers of
-// shares and what changed hands lately. It counts the hours from hour
-// on, the hour going on counted at its end.
+// founding, their shareholders, the orders of the exchange of goods and
+// what changed hands lately, the stock exchange — the accounts, the
+// orders of shares, what the exchange dealt lately and its index — the
+// events and the orders of the city. It counts the hours from hour on,
+// the hour going on counted at its end, what happens drawn by its luck.
 type City struct {
-	hour     time.Time
-	firms    []*Firm
-	holdings []Holding
-	orders   []ExchangeOrder
-	offers   []ShareOffer
-	market   []MarketHour
-	last     map[Good]int64
-	stats    CityStats
+	hour        time.Time
+	firms       []*Firm
+	holdings    []Holding
+	orders      []ExchangeOrder
+	market      []MarketHour
+	last        map[Good]int64
+	stats       CityStats
+	accounts    []Account
+	stockOrders []StockOrder
+	stockMarket []StockHour
+	index       []IndexPoint
+	events      []Event
+	contracts   []Contract
+	luck        Luck
 }
 
-// CityState is a city as kept.
+// CityState is a city as kept; Offers are what the city kept before the
+// stock exchange, read and never written.
 type CityState struct {
-	Hour     time.Time
-	Firms    []FirmState
-	Holdings []Holding
-	Orders   []ExchangeOrder
-	Offers   []ShareOffer
-	Market   []MarketHour
-	Last     map[Good]int64
-	Stats    CityStats
+	Hour        time.Time
+	Firms       []FirmState
+	Holdings    []Holding
+	Orders      []ExchangeOrder
+	Offers      []ShareOffer
+	Market      []MarketHour
+	Last        map[Good]int64
+	Stats       CityStats
+	Accounts    []Account
+	StockOrders []StockOrder
+	StockMarket []StockHour
+	Index       []IndexPoint
+	Events      []Event
+	Contracts   []Contract
 }
 
 // NewCity is a city with no enterprises yet, counting from the hour of
 // now.
 func NewCity(now time.Time) *City {
-	return &City{hour: now.UTC().Truncate(time.Hour), last: map[Good]int64{}}
+	return &City{hour: now.UTC().Truncate(time.Hour), last: map[Good]int64{}, luck: HashLuck}
 }
 
 func RestoreCity(s CityState) *City {
 	c := &City{
 		hour: s.Hour.UTC(), holdings: append([]Holding(nil), s.Holdings...),
-		orders: append([]ExchangeOrder(nil), s.Orders...), offers: append([]ShareOffer(nil), s.Offers...),
-		market: append([]MarketHour(nil), s.Market...), last: map[Good]int64{}, stats: s.Stats,
+		orders: append([]ExchangeOrder(nil), s.Orders...), market: append([]MarketHour(nil), s.Market...),
+		last: map[Good]int64{}, stats: s.Stats, accounts: append([]Account(nil), s.Accounts...),
+		stockOrders: append([]StockOrder(nil), s.StockOrders...), stockMarket: append([]StockHour(nil), s.StockMarket...),
+		index: append([]IndexPoint(nil), s.Index...), events: append([]Event(nil), s.Events...),
+		contracts: append([]Contract(nil), s.Contracts...), luck: HashLuck,
 	}
 	for _, f := range s.Firms {
 		if _, err := FirmCatalog(f.Kind); err == nil {
@@ -161,15 +162,46 @@ func RestoreCity(s CityState) *City {
 	for g, p := range s.Last {
 		c.last[g] = p
 	}
+	c.restoreOffers(s.Offers)
 
 	return c
+}
+
+// restoreOffers turns the offers of shares kept before the stock exchange
+// into its orders, at their prices in hundredths, and the new shares of
+// the enterprises into those they put up.
+func (c *City) restoreOffers(offers []ShareOffer) {
+	for _, o := range offers {
+		f, err := c.Firm(o.FirmID)
+		if err != nil || o.Shares < 1 || o.Price < 1 {
+			continue
+		}
+
+		if o.SellerID == uuid.Nil {
+			f.float += o.Shares
+			continue
+		}
+
+		if shares := min(o.Shares, c.Free(o.FirmID, o.SellerID)); shares > 0 {
+			c.stockOrders = append(c.stockOrders, StockOrder{
+				ID: o.ID, FirmID: o.FirmID, UserID: o.SellerID, Price: o.Price * 100, Shares: shares, PlacedAt: o.PlacedAt,
+			})
+		}
+	}
+}
+
+// SetLuck sets what the city draws its events and moods of; CalmLuck — none.
+func (c *City) SetLuck(luck Luck) {
+	c.luck = luck
 }
 
 func (c *City) State() CityState {
 	s := CityState{
 		Hour: c.hour, Holdings: append([]Holding(nil), c.holdings...), Orders: append([]ExchangeOrder(nil), c.orders...),
-		Offers: append([]ShareOffer(nil), c.offers...), Market: append([]MarketHour(nil), c.market...),
-		Last: map[Good]int64{}, Stats: c.stats,
+		Market: append([]MarketHour(nil), c.market...), Last: map[Good]int64{}, Stats: c.stats,
+		Accounts: append([]Account(nil), c.accounts...), StockOrders: append([]StockOrder(nil), c.stockOrders...),
+		StockMarket: append([]StockHour(nil), c.stockMarket...), Index: append([]IndexPoint(nil), c.index...),
+		Events: append([]Event(nil), c.events...), Contracts: append([]Contract(nil), c.contracts...),
 	}
 	for _, f := range c.firms {
 		s.Firms = append(s.Firms, f.state())
@@ -232,19 +264,30 @@ func (c *City) HoldingsOf(userID uuid.UUID) []Holding {
 	return out
 }
 
-// Holders are all pages that hold shares.
+// Holders are all pages that hold shares or keep money or orders on the
+// stock exchange.
 func (c *City) Holders() []uuid.UUID {
 	var ids []uuid.UUID
-	for _, h := range c.holdings {
-		if !slices.Contains(ids, h.UserID) {
-			ids = append(ids, h.UserID)
+	add := func(id uuid.UUID) {
+		if id != MarketID && !slices.Contains(ids, id) {
+			ids = append(ids, id)
 		}
+	}
+	for _, h := range c.holdings {
+		add(h.UserID)
+	}
+	for _, a := range c.accounts {
+		add(a.UserID)
+	}
+	for _, o := range c.stockOrders {
+		add(o.UserID)
 	}
 
 	return ids
 }
 
-// Shares is how many shares of the enterprise people hold.
+// Shares is how many shares of the enterprise people and the exchange
+// hold.
 func (c *City) Shares(firmID uuid.UUID) int64 {
 	var sum int64
 	for _, h := range c.holdings {
@@ -269,11 +312,6 @@ func (c *City) held(firmID, userID uuid.UUID) int64 {
 // Orders are the orders of the exchange, the oldest first.
 func (c *City) Orders() []ExchangeOrder {
 	return append([]ExchangeOrder(nil), c.orders...)
-}
-
-// Offers are the offers of shares, the oldest first.
-func (c *City) Offers() []ShareOffer {
-	return append([]ShareOffer(nil), c.offers...)
 }
 
 // Last is the price of the last deal in g on the exchange; 0 before any.
@@ -323,10 +361,12 @@ func (c *City) Found(rules FirmRules, userID uuid.UUID, kind FirmKind, name Firm
 		id: id, kind: kind, name: name, directorID: userID, foundedAt: now.UTC(), level: 1,
 		workers: plan.Staff, wage: rules.Wage, cash: plan.Price * int64(rules.Capital),
 		stock: map[Good]int64{}, carry: map[Good]float64{}, auto: defaultAuto(spec, rules),
+		ranks: map[Improvement]int{}, float: FloatShares,
 	}
 
 	c.firms = append(c.firms, f)
 	c.holdings = append(c.holdings, Holding{FirmID: id, UserID: userID, Shares: FoundingShares})
+	f.price = c.marketOf(rules, f, now).price()
 
 	return f, nil
 }
@@ -432,7 +472,8 @@ func (c *City) SetAuto(userID, firmID uuid.UUID, g Good, a Auto) error {
 }
 
 // share splits votes among the shareholders by their shares, each down to
-// a whole vote.
+// a whole vote; the part of the exchange goes to the treasury, paid but
+// to nobody.
 func (c *City) share(firmID uuid.UUID, votes int64) ([]Payout, int64) {
 	total := c.Shares(firmID)
 	if total == 0 {
@@ -443,9 +484,14 @@ func (c *City) share(firmID uuid.UUID, votes int64) ([]Payout, int64) {
 	var paid int64
 	for _, h := range c.Holdings(firmID) {
 		// at most MaxAmount×MaxFirmShares: within int64
-		if v := votes * h.Shares / total; v > 0 {
+		v := votes * h.Shares / total
+		if v <= 0 {
+			continue
+		}
+
+		paid += v
+		if h.UserID != MarketID {
 			payouts = append(payouts, Payout{UserID: h.UserID, Votes: v})
-			paid += v
 		}
 	}
 
@@ -479,15 +525,16 @@ func (c *City) Dividend(userID, firmID uuid.UUID, votes int64) ([]Payout, error)
 }
 
 // Worth is what the enterprise is worth closed, in hundredths: the state
-// buys it back for half of what founding and the levels cost, and its
-// money — the cash and what its orders keep — goes too.
+// buys it back for half of what founding, the levels and the
+// improvements cost, and its money — the cash and what its orders keep —
+// goes too.
 func (c *City) Worth(rules FirmRules, f *Firm) int64 {
 	plan, err := rules.Plan(f.kind)
 	if err != nil {
 		return f.cash + c.Escrow(f.id)
 	}
 
-	return plan.Invested(f.level)*50 + f.cash + c.Escrow(f.id)
+	return (plan.Invested(f.level)+f.improved)*50 + f.cash + c.Escrow(f.id)
 }
 
 // Escrow is the money the buying orders of the enterprise keep.
@@ -516,41 +563,54 @@ func (c *City) Liquidate(rules FirmRules, userID, firmID uuid.UUID) ([]Payout, e
 	return payouts, nil
 }
 
-// remove takes the enterprise out with its shares, orders and offers.
+// remove takes the enterprise out with its shares, orders and orders of
+// shares — the buying ones give their money back — and the orders of the
+// city it took.
 func (c *City) remove(firmID uuid.UUID) {
 	c.firms = slices.DeleteFunc(c.firms, func(f *Firm) bool { return f.id == firmID })
 	c.holdings = slices.DeleteFunc(c.holdings, func(h Holding) bool { return h.FirmID == firmID })
 	c.orders = slices.DeleteFunc(c.orders, func(o ExchangeOrder) bool { return o.FirmID == firmID })
-	c.offers = slices.DeleteFunc(c.offers, func(o ShareOffer) bool { return o.FirmID == firmID })
+	c.contracts = slices.DeleteFunc(c.contracts, func(k Contract) bool { return k.FirmID == firmID })
+	c.stockOrders = slices.DeleteFunc(c.stockOrders, func(o StockOrder) bool {
+		if o.FirmID != firmID {
+			return false
+		}
+
+		if o.Buy {
+			c.addCash(o.UserID, o.Price*o.Shares)
+		}
+
+		return true
+	})
 }
 
-// DropHolders forgets pages gone for good: their shares and offers. An
-// enterprise nobody holds any more closes; one that lost its director
-// gets the next largest shareholder.
+// DropHolders forgets pages gone for good: their shares, accounts and
+// orders of shares. An enterprise no person holds any more closes; one
+// that lost its director gets the next largest shareholder.
 func (c *City) DropHolders(gone []uuid.UUID) {
 	if len(gone) == 0 {
 		return
 	}
 
 	c.holdings = slices.DeleteFunc(c.holdings, func(h Holding) bool { return slices.Contains(gone, h.UserID) })
-	c.offers = slices.DeleteFunc(c.offers, func(o ShareOffer) bool { return slices.Contains(gone, o.SellerID) })
+	c.accounts = slices.DeleteFunc(c.accounts, func(a Account) bool { return slices.Contains(gone, a.UserID) })
+	c.stockOrders = slices.DeleteFunc(c.stockOrders, func(o StockOrder) bool { return slices.Contains(gone, o.UserID) })
 
 	for _, f := range c.Firms() {
-		if c.Shares(f.id) == 0 {
-			c.remove(f.id)
-			continue
-		}
-
-		c.elect(f)
+		c.afterDeal(f)
 	}
 }
 
 // elect makes the largest shareholder the director; a tie keeps the
-// director, or goes to the one who holds the longest.
+// director, or goes to the one who holds the longest. The exchange never
+// directs.
 func (c *City) elect(f *Firm) {
 	best, most := f.directorID, c.held(f.id, f.directorID)
+	if best == MarketID {
+		most = 0
+	}
 	for _, h := range c.Holdings(f.id) {
-		if h.Shares > most {
+		if h.UserID != MarketID && h.Shares > most {
 			best, most = h.UserID, h.Shares
 		}
 	}
@@ -577,125 +637,6 @@ func (c *City) setHolding(firmID, userID uuid.UUID, shares int64) {
 	}
 }
 
-// OfferShares puts shares userID holds up for sale at price votes each,
-// in place of the offer userID had of them; ErrShareOffer.
-func (c *City) OfferShares(userID, firmID uuid.UUID, shares, price int64, now time.Time) (ShareOffer, error) {
-	if _, err := c.Firm(firmID); err != nil {
-		return ShareOffer{}, err
-	}
-
-	if shares < 1 || shares > c.held(firmID, userID) || price < 1 || price > MaxAmount {
-		return ShareOffer{}, ErrShareOffer
-	}
-
-	return c.offer(firmID, userID, shares, price, now)
-}
-
-// IssueShares offers shares the enterprise makes anew at price votes
-// each, into its cash, in place of its last issue; ErrShareOffer.
-func (c *City) IssueShares(userID, firmID uuid.UUID, shares, price int64, now time.Time) (ShareOffer, error) {
-	if _, err := c.directed(userID, firmID); err != nil {
-		return ShareOffer{}, err
-	}
-
-	if shares < 1 || c.Shares(firmID)+shares > MaxFirmShares || price < 1 || price > MaxAmount {
-		return ShareOffer{}, ErrShareOffer
-	}
-
-	return c.offer(firmID, uuid.Nil, shares, price, now)
-}
-
-func (c *City) offer(firmID, sellerID uuid.UUID, shares, price int64, now time.Time) (ShareOffer, error) {
-	id, err := uuid.NewV7()
-	if err != nil {
-		return ShareOffer{}, err
-	}
-
-	c.offers = slices.DeleteFunc(c.offers, func(o ShareOffer) bool { return o.FirmID == firmID && o.SellerID == sellerID })
-	o := ShareOffer{ID: id, FirmID: firmID, SellerID: sellerID, Shares: shares, Price: price, PlacedAt: now.UTC()}
-	c.offers = append(c.offers, o)
-
-	return o, nil
-}
-
-// CancelOffer takes an offer of userID, or an issue of an enterprise
-// userID directs, off sale; ErrOfferNotFound.
-func (c *City) CancelOffer(userID, offerID uuid.UUID) error {
-	for i, o := range c.offers {
-		if o.ID != offerID {
-			continue
-		}
-
-		if o.SellerID != userID && (!o.IsIssue() || c.directorOf(o.FirmID) != userID) {
-			return ErrOfferNotFound
-		}
-
-		c.offers = slices.Delete(c.offers, i, i+1)
-
-		return nil
-	}
-
-	return ErrOfferNotFound
-}
-
-func (c *City) directorOf(firmID uuid.UUID) uuid.UUID {
-	f, err := c.Firm(firmID)
-	if err != nil {
-		return uuid.Nil
-	}
-
-	return f.directorID
-}
-
-// BuyShares buys shares of an offer for userID; the votes move apart: all
-// of them into the cash of an issuing enterprise, or to the seller less
-// the fee. The largest shareholder becomes the director.
-// ErrOfferNotFound, ErrOwnShares, ErrShareBuy.
-func (c *City) BuyShares(rules FirmRules, userID, offerID uuid.UUID, shares int64) (ShareDeal, error) {
-	i := slices.IndexFunc(c.offers, func(o ShareOffer) bool { return o.ID == offerID })
-	if i < 0 {
-		return ShareDeal{}, ErrOfferNotFound
-	}
-
-	o := c.offers[i]
-	if o.SellerID == userID {
-		return ShareDeal{}, ErrOwnShares
-	}
-
-	f, err := c.Firm(o.FirmID)
-	if err != nil {
-		return ShareDeal{}, ErrOfferNotFound
-	}
-
-	if shares < 1 || shares > o.Shares || shares > MaxAmount/o.Price {
-		return ShareDeal{}, ErrShareBuy
-	}
-
-	deal := ShareDeal{FirmID: o.FirmID, SellerID: o.SellerID, Shares: shares, Votes: shares * o.Price}
-	if o.IsIssue() {
-		f.cash += deal.Votes * 100
-	} else {
-		held := c.held(o.FirmID, o.SellerID)
-		if held < shares {
-			c.offers = slices.Delete(c.offers, i, i+1)
-			return ShareDeal{}, ErrOfferNotFound
-		}
-
-		deal.Fee = deal.Votes * int64(rules.Fee) / 100
-		c.setHolding(o.FirmID, o.SellerID, held-shares)
-	}
-
-	c.setHolding(o.FirmID, userID, c.held(o.FirmID, userID)+shares)
-	if c.offers[i].Shares -= shares; c.offers[i].Shares == 0 {
-		c.offers = slices.Delete(c.offers, i, i+1)
-	}
-
-	f.sharePrice = o.Price
-	c.elect(f)
-
-	return deal, nil
-}
-
 // Incoming is the units of g the buying orders of the enterprise wait
 // for.
 func (c *City) Incoming(firmID uuid.UUID, g Good) int64 {
@@ -716,7 +657,7 @@ func (c *City) room(rules FirmRules, f *Firm, g Good) int64 {
 		return 0
 	}
 
-	return max(rules.Capacity(f.spec(), plan, f.level, g)-f.stock[g]-c.Incoming(f.id, g), 0)
+	return max(f.capacity(rules, plan, g)-f.stock[g]-c.Incoming(f.id, g), 0)
 }
 
 // Place puts an order of the enterprise on the exchange; what meets the
@@ -975,7 +916,8 @@ func (c *City) Quotes(rules FirmRules, now time.Time) []Quote {
 			q.StateAsk = int64(math.Ceil(ask.at(c.volume(g, now, stateSold))))
 		}
 		if city, err := rules.CityBuys(g); err == nil {
-			q.CityPrice = int64(city.at(c.volume(g, now, cityBought)))
+			_, events := c.effects(FirmShop, now)
+			q.CityPrice = int64(city.scaled(events).at(c.volume(g, now, cityBought)))
 		}
 		for _, o := range c.orders {
 			switch {
@@ -1035,8 +977,9 @@ func (c *City) buyFromState(f *Firm, g Good, units, cost int64, now time.Time) {
 	c.record(g, now, func(m *MarketHour) { m.StateSold += units })
 }
 
-// SellToState sells units of g of the enterprise to the state at once;
-// ErrFirmGood, ErrFirmUnits, ErrFirmStock, ErrFirmNoDeal.
+// SellToState sells units of g of the enterprise to the state at once, at
+// the prices of the state its sales add to; ErrFirmGood, ErrFirmUnits,
+// ErrFirmStock, ErrFirmNoDeal.
 func (c *City) SellToState(rules FirmRules, userID, firmID uuid.UUID, g Good, units int64, now time.Time) (int64, error) {
 	f, err := c.directed(userID, firmID)
 	if err != nil {
@@ -1053,10 +996,12 @@ func (c *City) SellToState(rules FirmRules, userID, firmID uuid.UUID, g Good, un
 		return 0, ErrFirmStock
 	}
 
-	got, err := c.sellTo(rules.StateBuys, f, g, units, now, stateBought, func(m *MarketHour) { m.StateBought += units })
+	cv, err := rules.StateBuys(g)
 	if err != nil {
 		return 0, err
 	}
+
+	got := c.sellTo(cv.scaled(f.sales()), f, g, units, now, stateBought, func(m *MarketHour) { m.StateBought += units })
 	if got == 0 {
 		return 0, ErrFirmNoDeal
 	}
@@ -1067,17 +1012,10 @@ func (c *City) SellToState(rules FirmRules, userID, firmID uuid.UUID, g Good, un
 // sellTo sells units of g of the enterprise on the curve, past what pick
 // counted today; a sale that brings less than a hundredth does not
 // happen.
-func (c *City) sellTo(curveOf func(Good) (curve, error), f *Firm, g Good, units int64, now time.Time,
-	pick func(MarketHour) int64, add func(*MarketHour),
-) (int64, error) {
-	cv, err := curveOf(g)
-	if err != nil {
-		return 0, err
-	}
-
+func (c *City) sellTo(cv curve, f *Firm, g Good, units int64, now time.Time, pick func(MarketHour) int64, add func(*MarketHour)) int64 {
 	got := int64(cv.sum(c.volume(g, now, pick), units))
 	if got < 1 {
-		return 0, nil
+		return 0
 	}
 
 	f.stock[g] -= units
@@ -1087,7 +1025,7 @@ func (c *City) sellTo(curveOf func(Good) (curve, error), f *Firm, g Good, units 
 	h.Income += got
 	c.record(g, now, add)
 
-	return got, nil
+	return got
 }
 
 // Tick counts the hours that have ended by now; how many it counted.
@@ -1111,23 +1049,31 @@ func (c *City) Tick(rules FirmRules, now time.Time) int {
 	return counted
 }
 
-// count runs every enterprise through the hour at; each hour another one
-// goes first, as the first to sell gets the best prices.
+// count is the hour at: the orders of the city that ended close, what
+// happens is drawn and the city orders goods, every enterprise works it —
+// each hour another one first, as the first to sell gets the best prices
+// — and the exchange closes it.
 func (c *City) count(rules FirmRules, at time.Time) {
-	n := len(c.firms)
-	if n == 0 {
-		return
+	c.expire(at.Add(time.Hour))
+	c.happen(rules, at)
+	c.order(rules, at)
+
+	if n := len(c.firms); n > 0 {
+		first := int(at.Unix()/3600) % n
+		for i := range n {
+			c.work(rules, c.firms[(first+i)%n], at)
+		}
 	}
 
-	first := int(at.Unix()/3600) % n
-	for i := range n {
-		c.work(rules, c.firms[(first+i)%n], at)
-	}
+	c.exchange(rules, at)
 }
 
 // work is an hour of an enterprise: it pays the wages and the upkeep — as
-// much of them as its cash holds, and works as much less — buys what the
-// hour takes, makes or, a shop, sells to the city, and sells what it made.
+// much of them as its cash holds, and works as much less; on strike it
+// pays the upkeep only — buys what the hour takes, makes or, a shop,
+// sells to the city, and sells what it made. Its output is as the wage,
+// the wear of the machines, their rank and the events of its kind make
+// it, and the machines wear by the hour.
 func (c *City) work(rules FirmRules, f *Firm, at time.Time) {
 	plan, err := rules.Plan(f.kind)
 	if err != nil {
@@ -1137,7 +1083,12 @@ func (c *City) work(rules FirmRules, f *Firm, at time.Time) {
 	spec := f.spec()
 	h := f.hour(at)
 
-	wages := int64(f.workers) * f.wage
+	working := f.workers
+	if at.Before(f.idleUntil) {
+		working = 0
+	}
+
+	wages := int64(working) * f.wage
 	upkeep := plan.Upkeep * int64(f.level)
 	paid := 1.0
 	if need := wages + upkeep; need > f.cash {
@@ -1150,7 +1101,9 @@ func (c *City) work(rules FirmRules, f *Firm, at time.Time) {
 	h.Wages += payWages
 	h.Upkeep += payUpkeep
 
-	workers := float64(f.workers) * paid * rules.Productivity(f.wage)
+	output, city := c.effects(f.kind, at)
+	workers := float64(working) * paid * rules.Productivity(f.wage) * f.condition() * f.machines() * output
+	f.wearOut(float64(working)*paid, plan.Staff*f.level)
 
 	for _, g := range spec.Uses() {
 		if spec.IsInput(g) && f.auto[g].Buy {
@@ -1160,7 +1113,7 @@ func (c *City) work(rules FirmRules, f *Firm, at time.Time) {
 
 	if spec.IsShop() {
 		for _, g := range spec.Sells {
-			c.retail(rules, f, g, workers, at)
+			c.retail(rules, f, g, workers, city, at)
 		}
 
 		return
@@ -1169,8 +1122,27 @@ func (c *City) work(rules FirmRules, f *Firm, at time.Time) {
 	c.make(rules, f, plan, workers, at)
 
 	if a := f.auto[spec.Output]; a.Sell {
-		c.autoSell(rules.StateBuys, f, spec.Output, a.SellMin, at, stateBought, func(m *MarketHour, u int64) { m.StateBought += u })
+		if cv, err := rules.StateBuys(spec.Output); err == nil {
+			c.autoSell(cv.scaled(f.sales()), f, spec.Output, f.stock[spec.Output], a.SellMin, at, stateBought,
+				func(m *MarketHour, u int64) { m.StateBought += u })
+		}
 	}
+}
+
+// capacity is how many units of g the storage of the enterprise holds, as
+// its level and the rank of the storage make it.
+func (f *Firm) capacity(rules FirmRules, plan FirmPlan, g Good) int64 {
+	return int64(float64(rules.Capacity(f.spec(), plan, f.level, g)) * f.storage())
+}
+
+// Capacity is how many units of g the storage of the enterprise holds.
+func (f *Firm) Capacity(rules FirmRules, g Good) int64 {
+	plan, err := rules.Plan(f.kind)
+	if err != nil {
+		return 0
+	}
+
+	return f.capacity(rules, plan, g)
 }
 
 // restock buys up to want units of g from the state, as far as the
@@ -1210,7 +1182,7 @@ func (c *City) make(rules FirmRules, f *Firm, plan FirmPlan, workers float64, at
 	out := spec.Output
 
 	could := workers*spec.Rate[out] + f.carry[out]
-	limit := rules.Capacity(spec, plan, f.level, out) - f.stock[out]
+	limit := f.capacity(rules, plan, out) - f.stock[out]
 	for _, in := range spec.Inputs {
 		limit = min(limit, f.stock[in.Good]/in.Units)
 	}
@@ -1230,8 +1202,9 @@ func (c *City) make(rules FirmRules, f *Firm, plan FirmPlan, workers float64, at
 	f.hour(at).Made += made
 }
 
-// retail is an hour of a shop selling g to the city.
-func (c *City) retail(rules FirmRules, f *Firm, g Good, workers float64, at time.Time) {
+// retail is an hour of a shop selling g to the city, at the prices of the
+// city its sales and the events (city) make.
+func (c *City) retail(rules FirmRules, f *Firm, g Good, workers, city float64, at time.Time) {
 	could := workers*f.spec().Rate[g] + f.carry[g]
 	served := int64(could)
 	f.carry[g] = could - float64(served)
@@ -1241,30 +1214,24 @@ func (c *City) retail(rules FirmRules, f *Firm, g Good, workers float64, at time
 		return
 	}
 
-	sold := min(served, f.stock[g])
-	c.autoSellUnits(rules.CityBuys, f, g, sold, a.SellMin, at, cityBought, func(m *MarketHour, u int64) { m.City += u })
-}
-
-// autoSell sells all of g the enterprise has on the curve, while the price
-// is not below min.
-func (c *City) autoSell(curveOf func(Good) (curve, error), f *Firm, g Good, least int64, at time.Time,
-	pick func(MarketHour) int64, add func(*MarketHour, int64),
-) {
-	c.autoSellUnits(curveOf, f, g, f.stock[g], least, at, pick, add)
-}
-
-func (c *City) autoSellUnits(curveOf func(Good) (curve, error), f *Firm, g Good, units, least int64, at time.Time,
-	pick func(MarketHour) int64, add func(*MarketHour, int64),
-) {
-	cv, err := curveOf(g)
+	cv, err := rules.CityBuys(g)
 	if err != nil {
 		return
 	}
 
+	c.autoSell(cv.scaled(f.sales()*city), f, g, min(served, f.stock[g]), a.SellMin, at, cityBought,
+		func(m *MarketHour, u int64) { m.City += u })
+}
+
+// autoSell sells up to units of g the enterprise has on the curve, while
+// the price is not below least.
+func (c *City) autoSell(cv curve, f *Firm, g Good, units, least int64, at time.Time,
+	pick func(MarketHour) int64, add func(*MarketHour, int64),
+) {
 	units = min(units, cv.within(c.volume(g, at, pick), least))
 	if units <= 0 {
 		return
 	}
 
-	_, _ = c.sellTo(curveOf, f, g, units, at, pick, func(m *MarketHour) { add(m, units) }) // the curve is known
+	c.sellTo(cv, f, g, units, at, pick, func(m *MarketHour) { add(m, units) })
 }
