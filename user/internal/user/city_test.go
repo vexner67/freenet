@@ -2,6 +2,7 @@ package user_test
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -439,5 +440,29 @@ func TestRestoreCity(t *testing.T) {
 	again := user.RestoreCity(c.State())
 	if len(again.Firms()) != 1 || again.Firms()[0].Cash() != c.Firms()[0].Cash() || !again.Hour().Equal(c.Hour()) {
 		t.Errorf("restored differently")
+	}
+}
+
+func TestForecastIsTheHourToCome(t *testing.T) {
+	t.Parallel()
+
+	rules := user.DefaultFirmRules()
+	c := newCity()
+	f := found(t, c, rules, uuid.New(), user.FirmFarm)
+	c.Tick(rules, cityStart.Add(3*time.Hour))
+	before := c.State()
+
+	forecast := c.Forecast(rules)[f.ID()]
+	if !reflect.DeepEqual(c.State(), before) {
+		t.Fatal("Forecast changed the city")
+	}
+
+	c.Tick(rules, cityStart.Add(4*time.Hour))
+	hours := f.Hours()
+	if got := hours[len(hours)-1]; got != forecast.Hour || f.Cash() != forecast.Cash {
+		t.Errorf("forecast %+v, cash %d; the hour came %+v, cash %d", forecast.Hour, forecast.Cash, got, f.Cash())
+	}
+	if forecast.Hour.Made == 0 {
+		t.Error("the forecast makes nothing")
 	}
 }

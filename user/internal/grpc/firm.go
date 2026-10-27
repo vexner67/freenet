@@ -89,6 +89,13 @@ func toProtoFirmCatalog() []*userv1.FirmSpec {
 	return out
 }
 
+func toProtoFirmHour(h user.FirmHour) *userv1.FirmHour {
+	return &userv1.FirmHour{
+		Hour: timestamppb.New(h.Hour), Made: h.Made, Bought: h.Bought, Sold: h.Sold, Income: h.Income,
+		Purchases: h.Purchases, Wages: h.Wages, Upkeep: h.Upkeep, Fees: h.Fees,
+	}
+}
+
 func toProtoFirm(v service.FirmsView, f *user.Firm) *userv1.Firm {
 	plan, _ := v.Rules.Plan(f.Kind()) // a kept enterprise is of a known kind
 	spec, _ := user.FirmCatalog(f.Kind())
@@ -124,10 +131,10 @@ func toProtoFirm(v service.FirmsView, f *user.Firm) *userv1.Firm {
 		})
 	}
 	for _, h := range f.Hours() {
-		pb.Hours = append(pb.Hours, &userv1.FirmHour{
-			Hour: timestamppb.New(h.Hour), Made: h.Made, Bought: h.Bought, Sold: h.Sold, Income: h.Income,
-			Purchases: h.Purchases, Wages: h.Wages, Upkeep: h.Upkeep, Fees: h.Fees,
-		})
+		pb.Hours = append(pb.Hours, toProtoFirmHour(h))
+	}
+	if forecast, ok := v.Forecast[f.ID()]; ok {
+		pb.Forecast, pb.ForecastCash = toProtoFirmHour(forecast.Hour), forecast.Cash
 	}
 	for _, h := range c.Holdings(f.ID()) {
 		pb.Holders = append(pb.Holders, &userv1.FirmHolder{UserId: h.UserID.String(), Shares: h.Shares})

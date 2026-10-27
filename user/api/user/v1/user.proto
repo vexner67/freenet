@@ -2568,6 +2568,10 @@ message Firm {
   repeated FirmImprovement improvements = 25;
   int64 price = 26;
   int64 float = 27;
+  // forecast is the hour going on as it ends if nothing changes, and
+  // forecast_cash the cash then; none while ended hours wait to be counted.
+  FirmHour forecast = 28;
+  int64 forecast_cash = 29;
 }
 
 message ExchangeOrder {

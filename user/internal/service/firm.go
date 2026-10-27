@@ -27,6 +27,18 @@ type FirmsView struct {
 	Rules user.FirmRules
 	City  *user.City
 	At    time.Time
+	// Forecast is how the hour going on ends for each enterprise; none
+	// while the city has ended hours yet to count.
+	Forecast map[uuid.UUID]user.FirmForecast
+}
+
+func newFirmsView(rules user.FirmRules, city *user.City, now time.Time) FirmsView {
+	v := FirmsView{Rules: rules, City: city, At: now}
+	if city.Hour().Add(time.Hour).After(now) {
+		v.Forecast = city.Forecast(rules)
+	}
+
+	return v
 }
 
 // FirmAct is an action with the enterprises: FirmID is the enterprise
@@ -115,7 +127,7 @@ func (s *FirmService) View(ctx context.Context, now time.Time) (FirmsView, error
 		return FirmsView{}, errs.Wrap("s.firms.City", err)
 	}
 
-	return FirmsView{Rules: rules, City: city, At: now}, nil
+	return newFirmsView(rules, city, now), nil
 }
 
 // UserFirms are the enterprises the page nickname holds shares of, those
@@ -255,7 +267,7 @@ func (s *FirmService) Act(ctx context.Context, userID uuid.UUID, act FirmAct, no
 			return errs.Wrap("run.do", err)
 		}
 
-		done.View = FirmsView{Rules: rules, City: city, At: now}
+		done.View = newFirmsView(rules, city, now)
 
 		return errs.Wrap("s.firms.SaveCity", s.firms.SaveCity(ctx, city))
 	})

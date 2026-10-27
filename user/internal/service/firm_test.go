@@ -67,6 +67,14 @@ func TestFirmService(t *testing.T) {
 	if f := view.City.Firms()[0]; f.Profit() <= 0 {
 		t.Fatalf("the farm earned %d", f.Profit())
 	}
+	// The hour going on is shown as it would end; an hour not yet counted
+	// has no forecast.
+	if view, _ = firms.View(ctx, now.Add(24*time.Hour)); view.Forecast[id].Hour.Made == 0 {
+		t.Fatalf("forecast = %+v", view.Forecast)
+	}
+	if view, _ = firms.View(ctx, now.Add(26*time.Hour)); view.Forecast != nil {
+		t.Fatalf("forecast of hours not counted = %+v", view.Forecast)
+	}
 
 	// Bob puts 500 votes on his broker account and buys 10 new shares of
 	// the farm at the price of the exchange.

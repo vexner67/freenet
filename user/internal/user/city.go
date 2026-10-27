@@ -1049,6 +1049,30 @@ func (c *City) Tick(rules FirmRules, now time.Time) int {
 	return counted
 }
 
+// FirmForecast is the hour going on of an enterprise as it would end were
+// nothing to change: the hour it would report and the cash it would have.
+type FirmForecast struct {
+	Hour FirmHour
+	Cash int64
+}
+
+// Forecast works the hour going on — the one Tick counts next — on a copy
+// of the city, leaving the city as it is, and tells each enterprise's
+// result. The page shows it coming minute by minute, though the hour is
+// counted only when it ends, so the balance of the economy is the same.
+func (c *City) Forecast(rules FirmRules) map[uuid.UUID]FirmForecast {
+	copied := RestoreCity(c.State())
+	copied.luck = c.luck
+	copied.count(rules, c.hour)
+
+	out := make(map[uuid.UUID]FirmForecast, len(copied.firms))
+	for _, f := range copied.firms {
+		out[f.id] = FirmForecast{Hour: *f.hour(c.hour), Cash: f.cash}
+	}
+
+	return out
+}
+
 // count is the hour at: the orders of the city that ended close, what
 // happens is drawn and the city orders goods, every enterprise works it —
 // each hour another one first, as the first to sell gets the best prices

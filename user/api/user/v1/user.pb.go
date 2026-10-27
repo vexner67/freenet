@@ -15958,33 +15958,37 @@ func (x *FirmImprovement) GetCost() int64 {
 // price hundredths, and float of its new shares are up on the stock
 // exchange.
 type Firm struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Kind          string                 `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	DirectorId    string                 `protobuf:"bytes,4,opt,name=director_id,json=directorId,proto3" json:"director_id,omitempty"`
-	FoundedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=founded_at,json=foundedAt,proto3" json:"founded_at,omitempty"`
-	Level         int32                  `protobuf:"varint,6,opt,name=level,proto3" json:"level,omitempty"`
-	Workers       int32                  `protobuf:"varint,7,opt,name=workers,proto3" json:"workers,omitempty"`
-	Wage          int64                  `protobuf:"varint,8,opt,name=wage,proto3" json:"wage,omitempty"`
-	Cash          int64                  `protobuf:"varint,9,opt,name=cash,proto3" json:"cash,omitempty"`
-	Escrow        int64                  `protobuf:"varint,10,opt,name=escrow,proto3" json:"escrow,omitempty"`
-	Productivity  float64                `protobuf:"fixed64,11,opt,name=productivity,proto3" json:"productivity,omitempty"`
-	Seats         int32                  `protobuf:"varint,12,opt,name=seats,proto3" json:"seats,omitempty"`
-	UpgradeCost   int64                  `protobuf:"varint,13,opt,name=upgrade_cost,json=upgradeCost,proto3" json:"upgrade_cost,omitempty"`
-	Upkeep        int64                  `protobuf:"varint,14,opt,name=upkeep,proto3" json:"upkeep,omitempty"`
-	Profit        int64                  `protobuf:"varint,15,opt,name=profit,proto3" json:"profit,omitempty"`
-	Shares        int64                  `protobuf:"varint,16,opt,name=shares,proto3" json:"shares,omitempty"`
-	Worth         int64                  `protobuf:"varint,18,opt,name=worth,proto3" json:"worth,omitempty"`
-	Stock         []*FirmStock           `protobuf:"bytes,19,rep,name=stock,proto3" json:"stock,omitempty"`
-	Hours         []*FirmHour            `protobuf:"bytes,20,rep,name=hours,proto3" json:"hours,omitempty"`
-	Holders       []*FirmHolder          `protobuf:"bytes,21,rep,name=holders,proto3" json:"holders,omitempty"`
-	Wear          float64                `protobuf:"fixed64,22,opt,name=wear,proto3" json:"wear,omitempty"`
-	RepairCost    int64                  `protobuf:"varint,23,opt,name=repair_cost,json=repairCost,proto3" json:"repair_cost,omitempty"`
-	IdleUntil     *timestamppb.Timestamp `protobuf:"bytes,24,opt,name=idle_until,json=idleUntil,proto3" json:"idle_until,omitempty"`
-	Improvements  []*FirmImprovement     `protobuf:"bytes,25,rep,name=improvements,proto3" json:"improvements,omitempty"`
-	Price         int64                  `protobuf:"varint,26,opt,name=price,proto3" json:"price,omitempty"`
-	Float         int64                  `protobuf:"varint,27,opt,name=float,proto3" json:"float,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Id           string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Kind         string                 `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
+	Name         string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	DirectorId   string                 `protobuf:"bytes,4,opt,name=director_id,json=directorId,proto3" json:"director_id,omitempty"`
+	FoundedAt    *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=founded_at,json=foundedAt,proto3" json:"founded_at,omitempty"`
+	Level        int32                  `protobuf:"varint,6,opt,name=level,proto3" json:"level,omitempty"`
+	Workers      int32                  `protobuf:"varint,7,opt,name=workers,proto3" json:"workers,omitempty"`
+	Wage         int64                  `protobuf:"varint,8,opt,name=wage,proto3" json:"wage,omitempty"`
+	Cash         int64                  `protobuf:"varint,9,opt,name=cash,proto3" json:"cash,omitempty"`
+	Escrow       int64                  `protobuf:"varint,10,opt,name=escrow,proto3" json:"escrow,omitempty"`
+	Productivity float64                `protobuf:"fixed64,11,opt,name=productivity,proto3" json:"productivity,omitempty"`
+	Seats        int32                  `protobuf:"varint,12,opt,name=seats,proto3" json:"seats,omitempty"`
+	UpgradeCost  int64                  `protobuf:"varint,13,opt,name=upgrade_cost,json=upgradeCost,proto3" json:"upgrade_cost,omitempty"`
+	Upkeep       int64                  `protobuf:"varint,14,opt,name=upkeep,proto3" json:"upkeep,omitempty"`
+	Profit       int64                  `protobuf:"varint,15,opt,name=profit,proto3" json:"profit,omitempty"`
+	Shares       int64                  `protobuf:"varint,16,opt,name=shares,proto3" json:"shares,omitempty"`
+	Worth        int64                  `protobuf:"varint,18,opt,name=worth,proto3" json:"worth,omitempty"`
+	Stock        []*FirmStock           `protobuf:"bytes,19,rep,name=stock,proto3" json:"stock,omitempty"`
+	Hours        []*FirmHour            `protobuf:"bytes,20,rep,name=hours,proto3" json:"hours,omitempty"`
+	Holders      []*FirmHolder          `protobuf:"bytes,21,rep,name=holders,proto3" json:"holders,omitempty"`
+	Wear         float64                `protobuf:"fixed64,22,opt,name=wear,proto3" json:"wear,omitempty"`
+	RepairCost   int64                  `protobuf:"varint,23,opt,name=repair_cost,json=repairCost,proto3" json:"repair_cost,omitempty"`
+	IdleUntil    *timestamppb.Timestamp `protobuf:"bytes,24,opt,name=idle_until,json=idleUntil,proto3" json:"idle_until,omitempty"`
+	Improvements []*FirmImprovement     `protobuf:"bytes,25,rep,name=improvements,proto3" json:"improvements,omitempty"`
+	Price        int64                  `protobuf:"varint,26,opt,name=price,proto3" json:"price,omitempty"`
+	Float        int64                  `protobuf:"varint,27,opt,name=float,proto3" json:"float,omitempty"`
+	// forecast is the hour going on as it ends if nothing changes, and
+	// forecast_cash the cash then; none while ended hours wait to be counted.
+	Forecast      *FirmHour `protobuf:"bytes,28,opt,name=forecast,proto3" json:"forecast,omitempty"`
+	ForecastCash  int64     `protobuf:"varint,29,opt,name=forecast_cash,json=forecastCash,proto3" json:"forecast_cash,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -16197,6 +16201,20 @@ func (x *Firm) GetPrice() int64 {
 func (x *Firm) GetFloat() int64 {
 	if x != nil {
 		return x.Float
+	}
+	return 0
+}
+
+func (x *Firm) GetForecast() *FirmHour {
+	if x != nil {
+		return x.Forecast
+	}
+	return nil
+}
+
+func (x *Firm) GetForecastCash() int64 {
+	if x != nil {
+		return x.ForecastCash
 	}
 	return 0
 }
@@ -22684,7 +22702,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x0fFirmImprovement\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04rank\x18\x02 \x01(\x05R\x04rank\x12\x12\n" +
-	"\x04cost\x18\x03 \x01(\x03R\x04cost\"\xb4\x06\n" +
+	"\x04cost\x18\x03 \x01(\x03R\x04cost\"\x88\a\n" +
 	"\x04Firm\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x12\n" +
@@ -22716,7 +22734,9 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"idle_until\x18\x18 \x01(\v2\x1a.google.protobuf.TimestampR\tidleUntil\x12<\n" +
 	"\fimprovements\x18\x19 \x03(\v2\x18.user.v1.FirmImprovementR\fimprovements\x12\x14\n" +
 	"\x05price\x18\x1a \x01(\x03R\x05price\x12\x14\n" +
-	"\x05float\x18\x1b \x01(\x03R\x05floatJ\x04\b\x11\x10\x12R\vshare_price\"\xc3\x01\n" +
+	"\x05float\x18\x1b \x01(\x03R\x05float\x12-\n" +
+	"\bforecast\x18\x1c \x01(\v2\x11.user.v1.FirmHourR\bforecast\x12#\n" +
+	"\rforecast_cash\x18\x1d \x01(\x03R\fforecastCashJ\x04\b\x11\x10\x12R\vshare_price\"\xc3\x01\n" +
 	"\rExchangeOrder\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\afirm_id\x18\x02 \x01(\tR\x06firmId\x12\x12\n" +
@@ -23931,412 +23951,413 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	261, // 149: user.v1.Firm.holders:type_name -> user.v1.FirmHolder
 	347, // 150: user.v1.Firm.idle_until:type_name -> google.protobuf.Timestamp
 	262, // 151: user.v1.Firm.improvements:type_name -> user.v1.FirmImprovement
-	347, // 152: user.v1.ExchangeOrder.placed_at:type_name -> google.protobuf.Timestamp
-	347, // 153: user.v1.FirmContract.posted:type_name -> google.protobuf.Timestamp
-	347, // 154: user.v1.FirmContract.deadline:type_name -> google.protobuf.Timestamp
-	347, // 155: user.v1.FirmEvent.start:type_name -> google.protobuf.Timestamp
-	347, // 156: user.v1.FirmEvent.end:type_name -> google.protobuf.Timestamp
-	255, // 157: user.v1.FirmsState.settings:type_name -> user.v1.FirmSettings
-	256, // 158: user.v1.FirmsState.catalog:type_name -> user.v1.FirmSpec
-	258, // 159: user.v1.FirmsState.quotes:type_name -> user.v1.GoodQuote
-	263, // 160: user.v1.FirmsState.firms:type_name -> user.v1.Firm
-	264, // 161: user.v1.FirmsState.orders:type_name -> user.v1.ExchangeOrder
-	347, // 162: user.v1.FirmsState.next_hour:type_name -> google.protobuf.Timestamp
-	265, // 163: user.v1.FirmsState.contracts:type_name -> user.v1.FirmContract
-	266, // 164: user.v1.FirmsState.news:type_name -> user.v1.FirmEvent
-	270, // 165: user.v1.RunFirmsResponse.deals:type_name -> user.v1.FirmDeal
-	268, // 166: user.v1.RunFirmsResponse.firms:type_name -> user.v1.FirmsState
-	347, // 167: user.v1.StockCandle.hour:type_name -> google.protobuf.Timestamp
-	273, // 168: user.v1.StockCompany.candles:type_name -> user.v1.StockCandle
-	347, // 169: user.v1.StockIndexPoint.hour:type_name -> google.protobuf.Timestamp
-	347, // 170: user.v1.StockOrder.placed_at:type_name -> google.protobuf.Timestamp
-	274, // 171: user.v1.StocksState.companies:type_name -> user.v1.StockCompany
-	275, // 172: user.v1.StocksState.index:type_name -> user.v1.StockIndexPoint
-	266, // 173: user.v1.StocksState.news:type_name -> user.v1.FirmEvent
-	278, // 174: user.v1.StocksState.holdings:type_name -> user.v1.StockHolding
-	276, // 175: user.v1.StocksState.orders:type_name -> user.v1.StockOrder
-	277, // 176: user.v1.StocksState.bids:type_name -> user.v1.StockLevel
-	277, // 177: user.v1.StocksState.asks:type_name -> user.v1.StockLevel
-	347, // 178: user.v1.StocksState.next_hour:type_name -> google.protobuf.Timestamp
-	279, // 179: user.v1.RunStocksResponse.stocks:type_name -> user.v1.StocksState
-	255, // 180: user.v1.GetFirmSettingsResponse.settings:type_name -> user.v1.FirmSettings
-	255, // 181: user.v1.SetFirmSettingsRequest.settings:type_name -> user.v1.FirmSettings
-	347, // 182: user.v1.BankAccount.due_at:type_name -> google.protobuf.Timestamp
-	285, // 183: user.v1.BankState.settings:type_name -> user.v1.BankSettings
-	286, // 184: user.v1.BankState.account:type_name -> user.v1.BankAccount
-	288, // 185: user.v1.BankMoveResponse.bank:type_name -> user.v1.BankState
-	285, // 186: user.v1.GetBankSettingsResponse.settings:type_name -> user.v1.BankSettings
-	285, // 187: user.v1.SetBankSettingsRequest.settings:type_name -> user.v1.BankSettings
-	304, // 188: user.v1.ListHoldemTablesResponse.tables:type_name -> user.v1.HoldemTable
-	304, // 189: user.v1.HoldemTableResponse.table:type_name -> user.v1.HoldemTable
-	303, // 190: user.v1.HoldemTable.seats:type_name -> user.v1.HoldemSeat
-	347, // 191: user.v1.Guest.visited_at:type_name -> google.protobuf.Timestamp
-	307, // 192: user.v1.ListGuestsResponse.guests:type_name -> user.v1.Guest
-	347, // 193: user.v1.ListGuestsResponse.seen_at:type_name -> google.protobuf.Timestamp
-	310, // 194: user.v1.ListTopResponse.entries:type_name -> user.v1.TopEntry
-	346, // 195: user.v1.PetShop.prices:type_name -> user.v1.PetShop.PricesEntry
-	347, // 196: user.v1.Pet.born_at:type_name -> google.protobuf.Timestamp
-	347, // 197: user.v1.Pet.play_at:type_name -> google.protobuf.Timestamp
-	312, // 198: user.v1.PetState.shop:type_name -> user.v1.PetShop
-	313, // 199: user.v1.PetState.pets:type_name -> user.v1.Pet
-	313, // 200: user.v1.GetUserPetResponse.pets:type_name -> user.v1.Pet
-	313, // 201: user.v1.PetCareResponse.pet:type_name -> user.v1.Pet
-	347, // 202: user.v1.PetFight.fought_at:type_name -> google.protobuf.Timestamp
-	324, // 203: user.v1.PetFight.attacker:type_name -> user.v1.PetFighter
-	324, // 204: user.v1.PetFight.defender:type_name -> user.v1.PetFighter
-	325, // 205: user.v1.PetFight.hits:type_name -> user.v1.PetHit
-	326, // 206: user.v1.FightPetResponse.fight:type_name -> user.v1.PetFight
-	313, // 207: user.v1.FightPetResponse.pet:type_name -> user.v1.Pet
-	326, // 208: user.v1.ListPetFightsResponse.fights:type_name -> user.v1.PetFight
-	312, // 209: user.v1.GetPetSettingsResponse.shop:type_name -> user.v1.PetShop
-	312, // 210: user.v1.SetPetSettingsRequest.shop:type_name -> user.v1.PetShop
-	335, // 211: user.v1.GetUserFirmsResponse.firms:type_name -> user.v1.UserFirm
-	347, // 212: user.v1.Title.granted_at:type_name -> google.protobuf.Timestamp
-	337, // 213: user.v1.GetUserTitlesResponse.titles:type_name -> user.v1.Title
-	337, // 214: user.v1.GrantTitleResponse.title:type_name -> user.v1.Title
-	23,  // 215: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
-	25,  // 216: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
-	27,  // 217: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
-	52,  // 218: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
-	54,  // 219: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
-	37,  // 220: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
-	16,  // 221: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
-	29,  // 222: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
-	31,  // 223: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
-	33,  // 224: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
-	51,  // 225: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
-	57,  // 226: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
-	35,  // 227: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
-	39,  // 228: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
-	59,  // 229: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
-	41,  // 230: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
-	43,  // 231: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
-	42,  // 232: user.v1.UserService.AcceptInvite:input_type -> user.v1.AcceptInviteRequest
-	44,  // 233: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
-	46,  // 234: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
-	46,  // 235: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
-	47,  // 236: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
-	48,  // 237: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
-	61,  // 238: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
-	65,  // 239: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
-	67,  // 240: user.v1.UserService.GetBoughtPosts:input_type -> user.v1.GetBoughtPostsRequest
-	69,  // 241: user.v1.UserService.BuyPost:input_type -> user.v1.BuyPostRequest
-	71,  // 242: user.v1.UserService.PayMessage:input_type -> user.v1.PayMessageRequest
-	73,  // 243: user.v1.UserService.RefundMessage:input_type -> user.v1.RefundMessageRequest
-	84,  // 244: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
-	86,  // 245: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
-	89,  // 246: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
-	63,  // 247: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
-	74,  // 248: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
-	75,  // 249: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
-	76,  // 250: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
-	78,  // 251: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
-	80,  // 252: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
-	81,  // 253: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
-	82,  // 254: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
-	91,  // 255: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
-	99,  // 256: user.v1.UserService.GetGiftCatalog:input_type -> user.v1.GetGiftCatalogRequest
-	103, // 257: user.v1.UserService.SendGift:input_type -> user.v1.SendGiftRequest
-	106, // 258: user.v1.UserService.ListGifts:input_type -> user.v1.ListGiftsRequest
-	108, // 259: user.v1.UserService.DeleteGift:input_type -> user.v1.DeleteGiftRequest
-	109, // 260: user.v1.UserService.SetGiftPrice:input_type -> user.v1.SetGiftPriceRequest
-	110, // 261: user.v1.UserService.UpgradeGift:input_type -> user.v1.UpgradeGiftRequest
-	112, // 262: user.v1.UserService.TransferGift:input_type -> user.v1.TransferGiftRequest
-	113, // 263: user.v1.UserService.SetGiftSale:input_type -> user.v1.SetGiftSaleRequest
-	115, // 264: user.v1.UserService.BuyGift:input_type -> user.v1.BuyGiftRequest
-	117, // 265: user.v1.UserService.GetCollectible:input_type -> user.v1.GetCollectibleRequest
-	122, // 266: user.v1.UserService.ListGiftMarket:input_type -> user.v1.ListGiftMarketRequest
-	124, // 267: user.v1.UserService.StartGiftAuction:input_type -> user.v1.StartGiftAuctionRequest
-	125, // 268: user.v1.UserService.MintGiftAuction:input_type -> user.v1.MintGiftAuctionRequest
-	127, // 269: user.v1.UserService.CancelGiftAuction:input_type -> user.v1.CancelGiftAuctionRequest
-	128, // 270: user.v1.UserService.BidGift:input_type -> user.v1.BidGiftRequest
-	130, // 271: user.v1.UserService.ListGiftAuctions:input_type -> user.v1.ListGiftAuctionsRequest
-	132, // 272: user.v1.UserService.SetGiftSupply:input_type -> user.v1.SetGiftSupplyRequest
-	225, // 273: user.v1.UserService.GetStickerCatalog:input_type -> user.v1.GetStickerCatalogRequest
-	228, // 274: user.v1.UserService.AddStickerPack:input_type -> user.v1.AddStickerPackRequest
-	229, // 275: user.v1.UserService.RemoveStickerPack:input_type -> user.v1.RemoveStickerPackRequest
-	230, // 276: user.v1.UserService.ListMyStickerPacks:input_type -> user.v1.ListMyStickerPacksRequest
-	232, // 277: user.v1.UserService.CreateStickerPack:input_type -> user.v1.CreateStickerPackRequest
-	234, // 278: user.v1.UserService.EditStickerPack:input_type -> user.v1.EditStickerPackRequest
-	236, // 279: user.v1.UserService.DeleteStickerPack:input_type -> user.v1.DeleteStickerPackRequest
-	238, // 280: user.v1.UserService.GetStickerAuthors:input_type -> user.v1.GetStickerAuthorsRequest
-	133, // 281: user.v1.UserService.TransferVotes:input_type -> user.v1.TransferVotesRequest
-	135, // 282: user.v1.UserService.RedeemVoucher:input_type -> user.v1.RedeemVoucherRequest
-	137, // 283: user.v1.UserService.ListVoteOperations:input_type -> user.v1.ListVoteOperationsRequest
-	141, // 284: user.v1.UserService.CreateVoucher:input_type -> user.v1.CreateVoucherRequest
-	143, // 285: user.v1.UserService.ListVouchers:input_type -> user.v1.ListVouchersRequest
-	145, // 286: user.v1.UserService.DeleteVoucher:input_type -> user.v1.DeleteVoucherRequest
-	146, // 287: user.v1.UserService.GetVoteRate:input_type -> user.v1.GetVoteRateRequest
-	148, // 288: user.v1.UserService.SetVoteRate:input_type -> user.v1.SetVoteRateRequest
-	149, // 289: user.v1.UserService.GetTreasury:input_type -> user.v1.GetTreasuryRequest
-	152, // 290: user.v1.UserService.GetBonus:input_type -> user.v1.GetBonusRequest
-	154, // 291: user.v1.UserService.ClaimBonus:input_type -> user.v1.ClaimBonusRequest
-	151, // 292: user.v1.UserService.SetEconomy:input_type -> user.v1.SetEconomyRequest
-	156, // 293: user.v1.UserService.RaiseRating:input_type -> user.v1.RaiseRatingRequest
-	159, // 294: user.v1.UserService.GetPrime:input_type -> user.v1.GetPrimeRequest
-	161, // 295: user.v1.UserService.BuyPrime:input_type -> user.v1.BuyPrimeRequest
-	163, // 296: user.v1.UserService.SetPrimePrices:input_type -> user.v1.SetPrimePricesRequest
-	164, // 297: user.v1.UserService.SetPrimeInvisible:input_type -> user.v1.SetPrimeInvisibleRequest
-	166, // 298: user.v1.UserService.SetPrimeStyle:input_type -> user.v1.SetPrimeStyleRequest
-	167, // 299: user.v1.UserService.GetDecor:input_type -> user.v1.GetDecorRequest
-	169, // 300: user.v1.UserService.SetDecor:input_type -> user.v1.SetDecorRequest
-	171, // 301: user.v1.UserService.GetCasino:input_type -> user.v1.GetCasinoRequest
-	174, // 302: user.v1.UserService.GetCasinoSettings:input_type -> user.v1.GetCasinoSettingsRequest
-	191, // 303: user.v1.UserService.SetCasino:input_type -> user.v1.SetCasinoRequest
-	192, // 304: user.v1.UserService.SpinCasino:input_type -> user.v1.SpinCasinoRequest
-	194, // 305: user.v1.UserService.SetCasinoBets:input_type -> user.v1.SetCasinoBetsRequest
-	195, // 306: user.v1.UserService.BetCasino:input_type -> user.v1.BetCasinoRequest
-	199, // 307: user.v1.UserService.ListBetEvents:input_type -> user.v1.ListBetEventsRequest
-	201, // 308: user.v1.UserService.CreateBetEvent:input_type -> user.v1.CreateBetEventRequest
-	203, // 309: user.v1.UserService.CloseBetEvent:input_type -> user.v1.BetEventRequest
-	204, // 310: user.v1.UserService.ResolveBetEvent:input_type -> user.v1.ResolveBetEventRequest
-	203, // 311: user.v1.UserService.CancelBetEvent:input_type -> user.v1.BetEventRequest
-	203, // 312: user.v1.UserService.DeleteBetEvent:input_type -> user.v1.BetEventRequest
-	202, // 313: user.v1.UserService.SetBetEventOdds:input_type -> user.v1.SetBetEventOddsRequest
-	205, // 314: user.v1.UserService.StakeBet:input_type -> user.v1.StakeBetRequest
-	177, // 315: user.v1.UserService.SetCasinoRocket:input_type -> user.v1.SetCasinoRocketRequest
-	178, // 316: user.v1.UserService.SetCasinoJackpot:input_type -> user.v1.SetCasinoJackpotRequest
-	179, // 317: user.v1.UserService.LaunchRocket:input_type -> user.v1.LaunchRocketRequest
-	180, // 318: user.v1.UserService.GetRocket:input_type -> user.v1.RocketRequest
-	180, // 319: user.v1.UserService.CashRocket:input_type -> user.v1.RocketRequest
-	183, // 320: user.v1.UserService.GetPoker:input_type -> user.v1.GetPokerRequest
-	185, // 321: user.v1.UserService.DealPoker:input_type -> user.v1.DealPokerRequest
-	186, // 322: user.v1.UserService.FoldPoker:input_type -> user.v1.PokerHandRequest
-	186, // 323: user.v1.UserService.CallPoker:input_type -> user.v1.PokerHandRequest
-	188, // 324: user.v1.UserService.GetPokerSettings:input_type -> user.v1.GetPokerSettingsRequest
-	190, // 325: user.v1.UserService.SetPokerSettings:input_type -> user.v1.SetPokerSettingsRequest
-	294, // 326: user.v1.UserService.ListHoldemTables:input_type -> user.v1.ListHoldemTablesRequest
-	296, // 327: user.v1.UserService.CreateHoldemTable:input_type -> user.v1.CreateHoldemTableRequest
-	297, // 328: user.v1.UserService.QuickHoldem:input_type -> user.v1.QuickHoldemRequest
-	298, // 329: user.v1.UserService.GetHoldemTable:input_type -> user.v1.HoldemTableRequest
-	299, // 330: user.v1.UserService.SitHoldemTable:input_type -> user.v1.SitHoldemTableRequest
-	298, // 331: user.v1.UserService.LeaveHoldemTable:input_type -> user.v1.HoldemTableRequest
-	300, // 332: user.v1.UserService.ActHoldemTable:input_type -> user.v1.ActHoldemTableRequest
-	298, // 333: user.v1.UserService.BackHoldemTable:input_type -> user.v1.HoldemTableRequest
-	301, // 334: user.v1.UserService.InviteHoldemTable:input_type -> user.v1.InviteHoldemTableRequest
-	207, // 335: user.v1.UserService.SetVerified:input_type -> user.v1.SetVerifiedRequest
-	208, // 336: user.v1.UserService.SetAlert:input_type -> user.v1.SetAlertRequest
-	211, // 337: user.v1.UserService.ListAds:input_type -> user.v1.ListAdsRequest
-	213, // 338: user.v1.UserService.CreateAd:input_type -> user.v1.CreateAdRequest
-	215, // 339: user.v1.UserService.EditAd:input_type -> user.v1.EditAdRequest
-	217, // 340: user.v1.UserService.DeleteAd:input_type -> user.v1.DeleteAdRequest
-	219, // 341: user.v1.UserService.ViewAd:input_type -> user.v1.ViewAdRequest
-	221, // 342: user.v1.UserService.ClickAd:input_type -> user.v1.ClickAdRequest
-	223, // 343: user.v1.UserService.BanUser:input_type -> user.v1.BanUserRequest
-	224, // 344: user.v1.UserService.UnbanUser:input_type -> user.v1.UnbanUserRequest
-	93,  // 345: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
-	95,  // 346: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
-	97,  // 347: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
-	244, // 348: user.v1.UserService.GetMine:input_type -> user.v1.GetMineRequest
-	246, // 349: user.v1.UserService.DigOre:input_type -> user.v1.DigOreRequest
-	248, // 350: user.v1.UserService.SellOre:input_type -> user.v1.SellOreRequest
-	250, // 351: user.v1.UserService.GetMineSettings:input_type -> user.v1.GetMineSettingsRequest
-	252, // 352: user.v1.UserService.SetMine:input_type -> user.v1.SetMineRequest
-	267, // 353: user.v1.UserService.GetFirms:input_type -> user.v1.GetFirmsRequest
-	269, // 354: user.v1.UserService.RunFirms:input_type -> user.v1.RunFirmsRequest
-	334, // 355: user.v1.UserService.GetUserFirms:input_type -> user.v1.GetUserFirmsRequest
-	282, // 356: user.v1.UserService.GetFirmSettings:input_type -> user.v1.GetFirmSettingsRequest
-	284, // 357: user.v1.UserService.SetFirmSettings:input_type -> user.v1.SetFirmSettingsRequest
-	272, // 358: user.v1.UserService.GetStocks:input_type -> user.v1.GetStocksRequest
-	280, // 359: user.v1.UserService.RunStocks:input_type -> user.v1.RunStocksRequest
-	287, // 360: user.v1.UserService.GetBank:input_type -> user.v1.GetBankRequest
-	289, // 361: user.v1.UserService.PutDeposit:input_type -> user.v1.BankAmountRequest
-	289, // 362: user.v1.UserService.TakeDeposit:input_type -> user.v1.BankAmountRequest
-	289, // 363: user.v1.UserService.TakeLoan:input_type -> user.v1.BankAmountRequest
-	289, // 364: user.v1.UserService.RepayLoan:input_type -> user.v1.BankAmountRequest
-	291, // 365: user.v1.UserService.GetBankSettings:input_type -> user.v1.GetBankSettingsRequest
-	293, // 366: user.v1.UserService.SetBankSettings:input_type -> user.v1.SetBankSettingsRequest
-	305, // 367: user.v1.UserService.VisitPage:input_type -> user.v1.VisitPageRequest
-	306, // 368: user.v1.UserService.ListGuests:input_type -> user.v1.ListGuestsRequest
-	309, // 369: user.v1.UserService.ListTop:input_type -> user.v1.ListTopRequest
-	314, // 370: user.v1.UserService.GetPet:input_type -> user.v1.GetPetRequest
-	316, // 371: user.v1.UserService.GetUserPet:input_type -> user.v1.GetUserPetRequest
-	318, // 372: user.v1.UserService.AdoptPet:input_type -> user.v1.AdoptPetRequest
-	319, // 373: user.v1.UserService.FeedPet:input_type -> user.v1.FeedPetRequest
-	320, // 374: user.v1.UserService.PlayPet:input_type -> user.v1.PlayPetRequest
-	321, // 375: user.v1.UserService.RenamePet:input_type -> user.v1.RenamePetRequest
-	322, // 376: user.v1.UserService.ReleasePet:input_type -> user.v1.ReleasePetRequest
-	327, // 377: user.v1.UserService.FightPet:input_type -> user.v1.FightPetRequest
-	329, // 378: user.v1.UserService.ListPetFights:input_type -> user.v1.ListPetFightsRequest
-	331, // 379: user.v1.UserService.GetPetSettings:input_type -> user.v1.GetPetSettingsRequest
-	333, // 380: user.v1.UserService.SetPetSettings:input_type -> user.v1.SetPetSettingsRequest
-	338, // 381: user.v1.UserService.GetUserTitles:input_type -> user.v1.GetUserTitlesRequest
-	340, // 382: user.v1.UserService.GrantTitle:input_type -> user.v1.GrantTitleRequest
-	342, // 383: user.v1.UserService.RevokeTitle:input_type -> user.v1.RevokeTitleRequest
-	24,  // 384: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
-	26,  // 385: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
-	28,  // 386: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
-	53,  // 387: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
-	55,  // 388: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
-	38,  // 389: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
-	17,  // 390: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
-	30,  // 391: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
-	32,  // 392: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
-	34,  // 393: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
-	56,  // 394: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
-	58,  // 395: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
-	36,  // 396: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
-	40,  // 397: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
-	60,  // 398: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
-	348, // 399: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
-	348, // 400: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
-	348, // 401: user.v1.UserService.AcceptInvite:output_type -> google.protobuf.Empty
-	45,  // 402: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
-	50,  // 403: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
-	50,  // 404: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
-	348, // 405: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
-	49,  // 406: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
-	62,  // 407: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
-	66,  // 408: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
-	68,  // 409: user.v1.UserService.GetBoughtPosts:output_type -> user.v1.GetBoughtPostsResponse
-	70,  // 410: user.v1.UserService.BuyPost:output_type -> user.v1.BuyPostResponse
-	72,  // 411: user.v1.UserService.PayMessage:output_type -> user.v1.PayMessageResponse
-	348, // 412: user.v1.UserService.RefundMessage:output_type -> google.protobuf.Empty
-	85,  // 413: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
-	87,  // 414: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
-	90,  // 415: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
-	64,  // 416: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
-	348, // 417: user.v1.UserService.Block:output_type -> google.protobuf.Empty
-	348, // 418: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
-	77,  // 419: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
-	79,  // 420: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
-	348, // 421: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
-	348, // 422: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
-	83,  // 423: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
-	92,  // 424: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
-	100, // 425: user.v1.UserService.GetGiftCatalog:output_type -> user.v1.GetGiftCatalogResponse
-	104, // 426: user.v1.UserService.SendGift:output_type -> user.v1.SendGiftResponse
-	107, // 427: user.v1.UserService.ListGifts:output_type -> user.v1.ListGiftsResponse
-	348, // 428: user.v1.UserService.DeleteGift:output_type -> google.protobuf.Empty
-	348, // 429: user.v1.UserService.SetGiftPrice:output_type -> google.protobuf.Empty
-	111, // 430: user.v1.UserService.UpgradeGift:output_type -> user.v1.UpgradeGiftResponse
-	348, // 431: user.v1.UserService.TransferGift:output_type -> google.protobuf.Empty
-	114, // 432: user.v1.UserService.SetGiftSale:output_type -> user.v1.SetGiftSaleResponse
-	116, // 433: user.v1.UserService.BuyGift:output_type -> user.v1.BuyGiftResponse
-	118, // 434: user.v1.UserService.GetCollectible:output_type -> user.v1.GetCollectibleResponse
-	123, // 435: user.v1.UserService.ListGiftMarket:output_type -> user.v1.ListGiftMarketResponse
-	348, // 436: user.v1.UserService.StartGiftAuction:output_type -> google.protobuf.Empty
-	126, // 437: user.v1.UserService.MintGiftAuction:output_type -> user.v1.MintGiftAuctionResponse
-	348, // 438: user.v1.UserService.CancelGiftAuction:output_type -> google.protobuf.Empty
-	129, // 439: user.v1.UserService.BidGift:output_type -> user.v1.BidGiftResponse
-	131, // 440: user.v1.UserService.ListGiftAuctions:output_type -> user.v1.ListGiftAuctionsResponse
-	348, // 441: user.v1.UserService.SetGiftSupply:output_type -> google.protobuf.Empty
-	226, // 442: user.v1.UserService.GetStickerCatalog:output_type -> user.v1.GetStickerCatalogResponse
-	348, // 443: user.v1.UserService.AddStickerPack:output_type -> google.protobuf.Empty
-	348, // 444: user.v1.UserService.RemoveStickerPack:output_type -> google.protobuf.Empty
-	231, // 445: user.v1.UserService.ListMyStickerPacks:output_type -> user.v1.ListMyStickerPacksResponse
-	233, // 446: user.v1.UserService.CreateStickerPack:output_type -> user.v1.CreateStickerPackResponse
-	235, // 447: user.v1.UserService.EditStickerPack:output_type -> user.v1.EditStickerPackResponse
-	237, // 448: user.v1.UserService.DeleteStickerPack:output_type -> user.v1.DeleteStickerPackResponse
-	239, // 449: user.v1.UserService.GetStickerAuthors:output_type -> user.v1.GetStickerAuthorsResponse
-	134, // 450: user.v1.UserService.TransferVotes:output_type -> user.v1.TransferVotesResponse
-	136, // 451: user.v1.UserService.RedeemVoucher:output_type -> user.v1.RedeemVoucherResponse
-	139, // 452: user.v1.UserService.ListVoteOperations:output_type -> user.v1.ListVoteOperationsResponse
-	142, // 453: user.v1.UserService.CreateVoucher:output_type -> user.v1.CreateVoucherResponse
-	144, // 454: user.v1.UserService.ListVouchers:output_type -> user.v1.ListVouchersResponse
-	348, // 455: user.v1.UserService.DeleteVoucher:output_type -> google.protobuf.Empty
-	147, // 456: user.v1.UserService.GetVoteRate:output_type -> user.v1.GetVoteRateResponse
-	348, // 457: user.v1.UserService.SetVoteRate:output_type -> google.protobuf.Empty
-	150, // 458: user.v1.UserService.GetTreasury:output_type -> user.v1.GetTreasuryResponse
-	153, // 459: user.v1.UserService.GetBonus:output_type -> user.v1.GetBonusResponse
-	155, // 460: user.v1.UserService.ClaimBonus:output_type -> user.v1.ClaimBonusResponse
-	348, // 461: user.v1.UserService.SetEconomy:output_type -> google.protobuf.Empty
-	157, // 462: user.v1.UserService.RaiseRating:output_type -> user.v1.RaiseRatingResponse
-	160, // 463: user.v1.UserService.GetPrime:output_type -> user.v1.GetPrimeResponse
-	162, // 464: user.v1.UserService.BuyPrime:output_type -> user.v1.BuyPrimeResponse
-	348, // 465: user.v1.UserService.SetPrimePrices:output_type -> google.protobuf.Empty
-	348, // 466: user.v1.UserService.SetPrimeInvisible:output_type -> google.protobuf.Empty
-	348, // 467: user.v1.UserService.SetPrimeStyle:output_type -> google.protobuf.Empty
-	168, // 468: user.v1.UserService.GetDecor:output_type -> user.v1.GetDecorResponse
-	348, // 469: user.v1.UserService.SetDecor:output_type -> google.protobuf.Empty
-	172, // 470: user.v1.UserService.GetCasino:output_type -> user.v1.GetCasinoResponse
-	175, // 471: user.v1.UserService.GetCasinoSettings:output_type -> user.v1.GetCasinoSettingsResponse
-	348, // 472: user.v1.UserService.SetCasino:output_type -> google.protobuf.Empty
-	193, // 473: user.v1.UserService.SpinCasino:output_type -> user.v1.SpinCasinoResponse
-	348, // 474: user.v1.UserService.SetCasinoBets:output_type -> google.protobuf.Empty
-	196, // 475: user.v1.UserService.BetCasino:output_type -> user.v1.BetCasinoResponse
-	200, // 476: user.v1.UserService.ListBetEvents:output_type -> user.v1.ListBetEventsResponse
-	198, // 477: user.v1.UserService.CreateBetEvent:output_type -> user.v1.BetEvent
-	348, // 478: user.v1.UserService.CloseBetEvent:output_type -> google.protobuf.Empty
-	348, // 479: user.v1.UserService.ResolveBetEvent:output_type -> google.protobuf.Empty
-	348, // 480: user.v1.UserService.CancelBetEvent:output_type -> google.protobuf.Empty
-	348, // 481: user.v1.UserService.DeleteBetEvent:output_type -> google.protobuf.Empty
-	348, // 482: user.v1.UserService.SetBetEventOdds:output_type -> google.protobuf.Empty
-	206, // 483: user.v1.UserService.StakeBet:output_type -> user.v1.StakeBetResponse
-	348, // 484: user.v1.UserService.SetCasinoRocket:output_type -> google.protobuf.Empty
-	348, // 485: user.v1.UserService.SetCasinoJackpot:output_type -> google.protobuf.Empty
-	181, // 486: user.v1.UserService.LaunchRocket:output_type -> user.v1.RocketRound
-	181, // 487: user.v1.UserService.GetRocket:output_type -> user.v1.RocketRound
-	181, // 488: user.v1.UserService.CashRocket:output_type -> user.v1.RocketRound
-	184, // 489: user.v1.UserService.GetPoker:output_type -> user.v1.PokerTable
-	187, // 490: user.v1.UserService.DealPoker:output_type -> user.v1.PokerHand
-	187, // 491: user.v1.UserService.FoldPoker:output_type -> user.v1.PokerHand
-	187, // 492: user.v1.UserService.CallPoker:output_type -> user.v1.PokerHand
-	189, // 493: user.v1.UserService.GetPokerSettings:output_type -> user.v1.GetPokerSettingsResponse
-	348, // 494: user.v1.UserService.SetPokerSettings:output_type -> google.protobuf.Empty
-	295, // 495: user.v1.UserService.ListHoldemTables:output_type -> user.v1.ListHoldemTablesResponse
-	302, // 496: user.v1.UserService.CreateHoldemTable:output_type -> user.v1.HoldemTableResponse
-	302, // 497: user.v1.UserService.QuickHoldem:output_type -> user.v1.HoldemTableResponse
-	304, // 498: user.v1.UserService.GetHoldemTable:output_type -> user.v1.HoldemTable
-	302, // 499: user.v1.UserService.SitHoldemTable:output_type -> user.v1.HoldemTableResponse
-	302, // 500: user.v1.UserService.LeaveHoldemTable:output_type -> user.v1.HoldemTableResponse
-	304, // 501: user.v1.UserService.ActHoldemTable:output_type -> user.v1.HoldemTable
-	304, // 502: user.v1.UserService.BackHoldemTable:output_type -> user.v1.HoldemTable
-	304, // 503: user.v1.UserService.InviteHoldemTable:output_type -> user.v1.HoldemTable
-	348, // 504: user.v1.UserService.SetVerified:output_type -> google.protobuf.Empty
-	348, // 505: user.v1.UserService.SetAlert:output_type -> google.protobuf.Empty
-	212, // 506: user.v1.UserService.ListAds:output_type -> user.v1.ListAdsResponse
-	214, // 507: user.v1.UserService.CreateAd:output_type -> user.v1.CreateAdResponse
-	216, // 508: user.v1.UserService.EditAd:output_type -> user.v1.EditAdResponse
-	218, // 509: user.v1.UserService.DeleteAd:output_type -> user.v1.DeleteAdResponse
-	220, // 510: user.v1.UserService.ViewAd:output_type -> user.v1.ViewAdResponse
-	222, // 511: user.v1.UserService.ClickAd:output_type -> user.v1.ClickAdResponse
-	348, // 512: user.v1.UserService.BanUser:output_type -> google.protobuf.Empty
-	348, // 513: user.v1.UserService.UnbanUser:output_type -> google.protobuf.Empty
-	94,  // 514: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
-	96,  // 515: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
-	98,  // 516: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
-	245, // 517: user.v1.UserService.GetMine:output_type -> user.v1.MineState
-	247, // 518: user.v1.UserService.DigOre:output_type -> user.v1.DigOreResponse
-	249, // 519: user.v1.UserService.SellOre:output_type -> user.v1.SellOreResponse
-	251, // 520: user.v1.UserService.GetMineSettings:output_type -> user.v1.GetMineSettingsResponse
-	348, // 521: user.v1.UserService.SetMine:output_type -> google.protobuf.Empty
-	268, // 522: user.v1.UserService.GetFirms:output_type -> user.v1.FirmsState
-	271, // 523: user.v1.UserService.RunFirms:output_type -> user.v1.RunFirmsResponse
-	336, // 524: user.v1.UserService.GetUserFirms:output_type -> user.v1.GetUserFirmsResponse
-	283, // 525: user.v1.UserService.GetFirmSettings:output_type -> user.v1.GetFirmSettingsResponse
-	348, // 526: user.v1.UserService.SetFirmSettings:output_type -> google.protobuf.Empty
-	279, // 527: user.v1.UserService.GetStocks:output_type -> user.v1.StocksState
-	281, // 528: user.v1.UserService.RunStocks:output_type -> user.v1.RunStocksResponse
-	288, // 529: user.v1.UserService.GetBank:output_type -> user.v1.BankState
-	290, // 530: user.v1.UserService.PutDeposit:output_type -> user.v1.BankMoveResponse
-	290, // 531: user.v1.UserService.TakeDeposit:output_type -> user.v1.BankMoveResponse
-	290, // 532: user.v1.UserService.TakeLoan:output_type -> user.v1.BankMoveResponse
-	290, // 533: user.v1.UserService.RepayLoan:output_type -> user.v1.BankMoveResponse
-	292, // 534: user.v1.UserService.GetBankSettings:output_type -> user.v1.GetBankSettingsResponse
-	348, // 535: user.v1.UserService.SetBankSettings:output_type -> google.protobuf.Empty
-	348, // 536: user.v1.UserService.VisitPage:output_type -> google.protobuf.Empty
-	308, // 537: user.v1.UserService.ListGuests:output_type -> user.v1.ListGuestsResponse
-	311, // 538: user.v1.UserService.ListTop:output_type -> user.v1.ListTopResponse
-	315, // 539: user.v1.UserService.GetPet:output_type -> user.v1.PetState
-	317, // 540: user.v1.UserService.GetUserPet:output_type -> user.v1.GetUserPetResponse
-	323, // 541: user.v1.UserService.AdoptPet:output_type -> user.v1.PetCareResponse
-	323, // 542: user.v1.UserService.FeedPet:output_type -> user.v1.PetCareResponse
-	323, // 543: user.v1.UserService.PlayPet:output_type -> user.v1.PetCareResponse
-	323, // 544: user.v1.UserService.RenamePet:output_type -> user.v1.PetCareResponse
-	348, // 545: user.v1.UserService.ReleasePet:output_type -> google.protobuf.Empty
-	328, // 546: user.v1.UserService.FightPet:output_type -> user.v1.FightPetResponse
-	330, // 547: user.v1.UserService.ListPetFights:output_type -> user.v1.ListPetFightsResponse
-	332, // 548: user.v1.UserService.GetPetSettings:output_type -> user.v1.GetPetSettingsResponse
-	348, // 549: user.v1.UserService.SetPetSettings:output_type -> google.protobuf.Empty
-	339, // 550: user.v1.UserService.GetUserTitles:output_type -> user.v1.GetUserTitlesResponse
-	341, // 551: user.v1.UserService.GrantTitle:output_type -> user.v1.GrantTitleResponse
-	348, // 552: user.v1.UserService.RevokeTitle:output_type -> google.protobuf.Empty
-	384, // [384:553] is the sub-list for method output_type
-	215, // [215:384] is the sub-list for method input_type
-	215, // [215:215] is the sub-list for extension type_name
-	215, // [215:215] is the sub-list for extension extendee
-	0,   // [0:215] is the sub-list for field type_name
+	260, // 152: user.v1.Firm.forecast:type_name -> user.v1.FirmHour
+	347, // 153: user.v1.ExchangeOrder.placed_at:type_name -> google.protobuf.Timestamp
+	347, // 154: user.v1.FirmContract.posted:type_name -> google.protobuf.Timestamp
+	347, // 155: user.v1.FirmContract.deadline:type_name -> google.protobuf.Timestamp
+	347, // 156: user.v1.FirmEvent.start:type_name -> google.protobuf.Timestamp
+	347, // 157: user.v1.FirmEvent.end:type_name -> google.protobuf.Timestamp
+	255, // 158: user.v1.FirmsState.settings:type_name -> user.v1.FirmSettings
+	256, // 159: user.v1.FirmsState.catalog:type_name -> user.v1.FirmSpec
+	258, // 160: user.v1.FirmsState.quotes:type_name -> user.v1.GoodQuote
+	263, // 161: user.v1.FirmsState.firms:type_name -> user.v1.Firm
+	264, // 162: user.v1.FirmsState.orders:type_name -> user.v1.ExchangeOrder
+	347, // 163: user.v1.FirmsState.next_hour:type_name -> google.protobuf.Timestamp
+	265, // 164: user.v1.FirmsState.contracts:type_name -> user.v1.FirmContract
+	266, // 165: user.v1.FirmsState.news:type_name -> user.v1.FirmEvent
+	270, // 166: user.v1.RunFirmsResponse.deals:type_name -> user.v1.FirmDeal
+	268, // 167: user.v1.RunFirmsResponse.firms:type_name -> user.v1.FirmsState
+	347, // 168: user.v1.StockCandle.hour:type_name -> google.protobuf.Timestamp
+	273, // 169: user.v1.StockCompany.candles:type_name -> user.v1.StockCandle
+	347, // 170: user.v1.StockIndexPoint.hour:type_name -> google.protobuf.Timestamp
+	347, // 171: user.v1.StockOrder.placed_at:type_name -> google.protobuf.Timestamp
+	274, // 172: user.v1.StocksState.companies:type_name -> user.v1.StockCompany
+	275, // 173: user.v1.StocksState.index:type_name -> user.v1.StockIndexPoint
+	266, // 174: user.v1.StocksState.news:type_name -> user.v1.FirmEvent
+	278, // 175: user.v1.StocksState.holdings:type_name -> user.v1.StockHolding
+	276, // 176: user.v1.StocksState.orders:type_name -> user.v1.StockOrder
+	277, // 177: user.v1.StocksState.bids:type_name -> user.v1.StockLevel
+	277, // 178: user.v1.StocksState.asks:type_name -> user.v1.StockLevel
+	347, // 179: user.v1.StocksState.next_hour:type_name -> google.protobuf.Timestamp
+	279, // 180: user.v1.RunStocksResponse.stocks:type_name -> user.v1.StocksState
+	255, // 181: user.v1.GetFirmSettingsResponse.settings:type_name -> user.v1.FirmSettings
+	255, // 182: user.v1.SetFirmSettingsRequest.settings:type_name -> user.v1.FirmSettings
+	347, // 183: user.v1.BankAccount.due_at:type_name -> google.protobuf.Timestamp
+	285, // 184: user.v1.BankState.settings:type_name -> user.v1.BankSettings
+	286, // 185: user.v1.BankState.account:type_name -> user.v1.BankAccount
+	288, // 186: user.v1.BankMoveResponse.bank:type_name -> user.v1.BankState
+	285, // 187: user.v1.GetBankSettingsResponse.settings:type_name -> user.v1.BankSettings
+	285, // 188: user.v1.SetBankSettingsRequest.settings:type_name -> user.v1.BankSettings
+	304, // 189: user.v1.ListHoldemTablesResponse.tables:type_name -> user.v1.HoldemTable
+	304, // 190: user.v1.HoldemTableResponse.table:type_name -> user.v1.HoldemTable
+	303, // 191: user.v1.HoldemTable.seats:type_name -> user.v1.HoldemSeat
+	347, // 192: user.v1.Guest.visited_at:type_name -> google.protobuf.Timestamp
+	307, // 193: user.v1.ListGuestsResponse.guests:type_name -> user.v1.Guest
+	347, // 194: user.v1.ListGuestsResponse.seen_at:type_name -> google.protobuf.Timestamp
+	310, // 195: user.v1.ListTopResponse.entries:type_name -> user.v1.TopEntry
+	346, // 196: user.v1.PetShop.prices:type_name -> user.v1.PetShop.PricesEntry
+	347, // 197: user.v1.Pet.born_at:type_name -> google.protobuf.Timestamp
+	347, // 198: user.v1.Pet.play_at:type_name -> google.protobuf.Timestamp
+	312, // 199: user.v1.PetState.shop:type_name -> user.v1.PetShop
+	313, // 200: user.v1.PetState.pets:type_name -> user.v1.Pet
+	313, // 201: user.v1.GetUserPetResponse.pets:type_name -> user.v1.Pet
+	313, // 202: user.v1.PetCareResponse.pet:type_name -> user.v1.Pet
+	347, // 203: user.v1.PetFight.fought_at:type_name -> google.protobuf.Timestamp
+	324, // 204: user.v1.PetFight.attacker:type_name -> user.v1.PetFighter
+	324, // 205: user.v1.PetFight.defender:type_name -> user.v1.PetFighter
+	325, // 206: user.v1.PetFight.hits:type_name -> user.v1.PetHit
+	326, // 207: user.v1.FightPetResponse.fight:type_name -> user.v1.PetFight
+	313, // 208: user.v1.FightPetResponse.pet:type_name -> user.v1.Pet
+	326, // 209: user.v1.ListPetFightsResponse.fights:type_name -> user.v1.PetFight
+	312, // 210: user.v1.GetPetSettingsResponse.shop:type_name -> user.v1.PetShop
+	312, // 211: user.v1.SetPetSettingsRequest.shop:type_name -> user.v1.PetShop
+	335, // 212: user.v1.GetUserFirmsResponse.firms:type_name -> user.v1.UserFirm
+	347, // 213: user.v1.Title.granted_at:type_name -> google.protobuf.Timestamp
+	337, // 214: user.v1.GetUserTitlesResponse.titles:type_name -> user.v1.Title
+	337, // 215: user.v1.GrantTitleResponse.title:type_name -> user.v1.Title
+	23,  // 216: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
+	25,  // 217: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
+	27,  // 218: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
+	52,  // 219: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
+	54,  // 220: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
+	37,  // 221: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
+	16,  // 222: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
+	29,  // 223: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
+	31,  // 224: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
+	33,  // 225: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
+	51,  // 226: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
+	57,  // 227: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
+	35,  // 228: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
+	39,  // 229: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
+	59,  // 230: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
+	41,  // 231: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
+	43,  // 232: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
+	42,  // 233: user.v1.UserService.AcceptInvite:input_type -> user.v1.AcceptInviteRequest
+	44,  // 234: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
+	46,  // 235: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
+	46,  // 236: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
+	47,  // 237: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
+	48,  // 238: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
+	61,  // 239: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
+	65,  // 240: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
+	67,  // 241: user.v1.UserService.GetBoughtPosts:input_type -> user.v1.GetBoughtPostsRequest
+	69,  // 242: user.v1.UserService.BuyPost:input_type -> user.v1.BuyPostRequest
+	71,  // 243: user.v1.UserService.PayMessage:input_type -> user.v1.PayMessageRequest
+	73,  // 244: user.v1.UserService.RefundMessage:input_type -> user.v1.RefundMessageRequest
+	84,  // 245: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
+	86,  // 246: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
+	89,  // 247: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
+	63,  // 248: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
+	74,  // 249: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
+	75,  // 250: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
+	76,  // 251: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
+	78,  // 252: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
+	80,  // 253: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
+	81,  // 254: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
+	82,  // 255: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
+	91,  // 256: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
+	99,  // 257: user.v1.UserService.GetGiftCatalog:input_type -> user.v1.GetGiftCatalogRequest
+	103, // 258: user.v1.UserService.SendGift:input_type -> user.v1.SendGiftRequest
+	106, // 259: user.v1.UserService.ListGifts:input_type -> user.v1.ListGiftsRequest
+	108, // 260: user.v1.UserService.DeleteGift:input_type -> user.v1.DeleteGiftRequest
+	109, // 261: user.v1.UserService.SetGiftPrice:input_type -> user.v1.SetGiftPriceRequest
+	110, // 262: user.v1.UserService.UpgradeGift:input_type -> user.v1.UpgradeGiftRequest
+	112, // 263: user.v1.UserService.TransferGift:input_type -> user.v1.TransferGiftRequest
+	113, // 264: user.v1.UserService.SetGiftSale:input_type -> user.v1.SetGiftSaleRequest
+	115, // 265: user.v1.UserService.BuyGift:input_type -> user.v1.BuyGiftRequest
+	117, // 266: user.v1.UserService.GetCollectible:input_type -> user.v1.GetCollectibleRequest
+	122, // 267: user.v1.UserService.ListGiftMarket:input_type -> user.v1.ListGiftMarketRequest
+	124, // 268: user.v1.UserService.StartGiftAuction:input_type -> user.v1.StartGiftAuctionRequest
+	125, // 269: user.v1.UserService.MintGiftAuction:input_type -> user.v1.MintGiftAuctionRequest
+	127, // 270: user.v1.UserService.CancelGiftAuction:input_type -> user.v1.CancelGiftAuctionRequest
+	128, // 271: user.v1.UserService.BidGift:input_type -> user.v1.BidGiftRequest
+	130, // 272: user.v1.UserService.ListGiftAuctions:input_type -> user.v1.ListGiftAuctionsRequest
+	132, // 273: user.v1.UserService.SetGiftSupply:input_type -> user.v1.SetGiftSupplyRequest
+	225, // 274: user.v1.UserService.GetStickerCatalog:input_type -> user.v1.GetStickerCatalogRequest
+	228, // 275: user.v1.UserService.AddStickerPack:input_type -> user.v1.AddStickerPackRequest
+	229, // 276: user.v1.UserService.RemoveStickerPack:input_type -> user.v1.RemoveStickerPackRequest
+	230, // 277: user.v1.UserService.ListMyStickerPacks:input_type -> user.v1.ListMyStickerPacksRequest
+	232, // 278: user.v1.UserService.CreateStickerPack:input_type -> user.v1.CreateStickerPackRequest
+	234, // 279: user.v1.UserService.EditStickerPack:input_type -> user.v1.EditStickerPackRequest
+	236, // 280: user.v1.UserService.DeleteStickerPack:input_type -> user.v1.DeleteStickerPackRequest
+	238, // 281: user.v1.UserService.GetStickerAuthors:input_type -> user.v1.GetStickerAuthorsRequest
+	133, // 282: user.v1.UserService.TransferVotes:input_type -> user.v1.TransferVotesRequest
+	135, // 283: user.v1.UserService.RedeemVoucher:input_type -> user.v1.RedeemVoucherRequest
+	137, // 284: user.v1.UserService.ListVoteOperations:input_type -> user.v1.ListVoteOperationsRequest
+	141, // 285: user.v1.UserService.CreateVoucher:input_type -> user.v1.CreateVoucherRequest
+	143, // 286: user.v1.UserService.ListVouchers:input_type -> user.v1.ListVouchersRequest
+	145, // 287: user.v1.UserService.DeleteVoucher:input_type -> user.v1.DeleteVoucherRequest
+	146, // 288: user.v1.UserService.GetVoteRate:input_type -> user.v1.GetVoteRateRequest
+	148, // 289: user.v1.UserService.SetVoteRate:input_type -> user.v1.SetVoteRateRequest
+	149, // 290: user.v1.UserService.GetTreasury:input_type -> user.v1.GetTreasuryRequest
+	152, // 291: user.v1.UserService.GetBonus:input_type -> user.v1.GetBonusRequest
+	154, // 292: user.v1.UserService.ClaimBonus:input_type -> user.v1.ClaimBonusRequest
+	151, // 293: user.v1.UserService.SetEconomy:input_type -> user.v1.SetEconomyRequest
+	156, // 294: user.v1.UserService.RaiseRating:input_type -> user.v1.RaiseRatingRequest
+	159, // 295: user.v1.UserService.GetPrime:input_type -> user.v1.GetPrimeRequest
+	161, // 296: user.v1.UserService.BuyPrime:input_type -> user.v1.BuyPrimeRequest
+	163, // 297: user.v1.UserService.SetPrimePrices:input_type -> user.v1.SetPrimePricesRequest
+	164, // 298: user.v1.UserService.SetPrimeInvisible:input_type -> user.v1.SetPrimeInvisibleRequest
+	166, // 299: user.v1.UserService.SetPrimeStyle:input_type -> user.v1.SetPrimeStyleRequest
+	167, // 300: user.v1.UserService.GetDecor:input_type -> user.v1.GetDecorRequest
+	169, // 301: user.v1.UserService.SetDecor:input_type -> user.v1.SetDecorRequest
+	171, // 302: user.v1.UserService.GetCasino:input_type -> user.v1.GetCasinoRequest
+	174, // 303: user.v1.UserService.GetCasinoSettings:input_type -> user.v1.GetCasinoSettingsRequest
+	191, // 304: user.v1.UserService.SetCasino:input_type -> user.v1.SetCasinoRequest
+	192, // 305: user.v1.UserService.SpinCasino:input_type -> user.v1.SpinCasinoRequest
+	194, // 306: user.v1.UserService.SetCasinoBets:input_type -> user.v1.SetCasinoBetsRequest
+	195, // 307: user.v1.UserService.BetCasino:input_type -> user.v1.BetCasinoRequest
+	199, // 308: user.v1.UserService.ListBetEvents:input_type -> user.v1.ListBetEventsRequest
+	201, // 309: user.v1.UserService.CreateBetEvent:input_type -> user.v1.CreateBetEventRequest
+	203, // 310: user.v1.UserService.CloseBetEvent:input_type -> user.v1.BetEventRequest
+	204, // 311: user.v1.UserService.ResolveBetEvent:input_type -> user.v1.ResolveBetEventRequest
+	203, // 312: user.v1.UserService.CancelBetEvent:input_type -> user.v1.BetEventRequest
+	203, // 313: user.v1.UserService.DeleteBetEvent:input_type -> user.v1.BetEventRequest
+	202, // 314: user.v1.UserService.SetBetEventOdds:input_type -> user.v1.SetBetEventOddsRequest
+	205, // 315: user.v1.UserService.StakeBet:input_type -> user.v1.StakeBetRequest
+	177, // 316: user.v1.UserService.SetCasinoRocket:input_type -> user.v1.SetCasinoRocketRequest
+	178, // 317: user.v1.UserService.SetCasinoJackpot:input_type -> user.v1.SetCasinoJackpotRequest
+	179, // 318: user.v1.UserService.LaunchRocket:input_type -> user.v1.LaunchRocketRequest
+	180, // 319: user.v1.UserService.GetRocket:input_type -> user.v1.RocketRequest
+	180, // 320: user.v1.UserService.CashRocket:input_type -> user.v1.RocketRequest
+	183, // 321: user.v1.UserService.GetPoker:input_type -> user.v1.GetPokerRequest
+	185, // 322: user.v1.UserService.DealPoker:input_type -> user.v1.DealPokerRequest
+	186, // 323: user.v1.UserService.FoldPoker:input_type -> user.v1.PokerHandRequest
+	186, // 324: user.v1.UserService.CallPoker:input_type -> user.v1.PokerHandRequest
+	188, // 325: user.v1.UserService.GetPokerSettings:input_type -> user.v1.GetPokerSettingsRequest
+	190, // 326: user.v1.UserService.SetPokerSettings:input_type -> user.v1.SetPokerSettingsRequest
+	294, // 327: user.v1.UserService.ListHoldemTables:input_type -> user.v1.ListHoldemTablesRequest
+	296, // 328: user.v1.UserService.CreateHoldemTable:input_type -> user.v1.CreateHoldemTableRequest
+	297, // 329: user.v1.UserService.QuickHoldem:input_type -> user.v1.QuickHoldemRequest
+	298, // 330: user.v1.UserService.GetHoldemTable:input_type -> user.v1.HoldemTableRequest
+	299, // 331: user.v1.UserService.SitHoldemTable:input_type -> user.v1.SitHoldemTableRequest
+	298, // 332: user.v1.UserService.LeaveHoldemTable:input_type -> user.v1.HoldemTableRequest
+	300, // 333: user.v1.UserService.ActHoldemTable:input_type -> user.v1.ActHoldemTableRequest
+	298, // 334: user.v1.UserService.BackHoldemTable:input_type -> user.v1.HoldemTableRequest
+	301, // 335: user.v1.UserService.InviteHoldemTable:input_type -> user.v1.InviteHoldemTableRequest
+	207, // 336: user.v1.UserService.SetVerified:input_type -> user.v1.SetVerifiedRequest
+	208, // 337: user.v1.UserService.SetAlert:input_type -> user.v1.SetAlertRequest
+	211, // 338: user.v1.UserService.ListAds:input_type -> user.v1.ListAdsRequest
+	213, // 339: user.v1.UserService.CreateAd:input_type -> user.v1.CreateAdRequest
+	215, // 340: user.v1.UserService.EditAd:input_type -> user.v1.EditAdRequest
+	217, // 341: user.v1.UserService.DeleteAd:input_type -> user.v1.DeleteAdRequest
+	219, // 342: user.v1.UserService.ViewAd:input_type -> user.v1.ViewAdRequest
+	221, // 343: user.v1.UserService.ClickAd:input_type -> user.v1.ClickAdRequest
+	223, // 344: user.v1.UserService.BanUser:input_type -> user.v1.BanUserRequest
+	224, // 345: user.v1.UserService.UnbanUser:input_type -> user.v1.UnbanUserRequest
+	93,  // 346: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
+	95,  // 347: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
+	97,  // 348: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
+	244, // 349: user.v1.UserService.GetMine:input_type -> user.v1.GetMineRequest
+	246, // 350: user.v1.UserService.DigOre:input_type -> user.v1.DigOreRequest
+	248, // 351: user.v1.UserService.SellOre:input_type -> user.v1.SellOreRequest
+	250, // 352: user.v1.UserService.GetMineSettings:input_type -> user.v1.GetMineSettingsRequest
+	252, // 353: user.v1.UserService.SetMine:input_type -> user.v1.SetMineRequest
+	267, // 354: user.v1.UserService.GetFirms:input_type -> user.v1.GetFirmsRequest
+	269, // 355: user.v1.UserService.RunFirms:input_type -> user.v1.RunFirmsRequest
+	334, // 356: user.v1.UserService.GetUserFirms:input_type -> user.v1.GetUserFirmsRequest
+	282, // 357: user.v1.UserService.GetFirmSettings:input_type -> user.v1.GetFirmSettingsRequest
+	284, // 358: user.v1.UserService.SetFirmSettings:input_type -> user.v1.SetFirmSettingsRequest
+	272, // 359: user.v1.UserService.GetStocks:input_type -> user.v1.GetStocksRequest
+	280, // 360: user.v1.UserService.RunStocks:input_type -> user.v1.RunStocksRequest
+	287, // 361: user.v1.UserService.GetBank:input_type -> user.v1.GetBankRequest
+	289, // 362: user.v1.UserService.PutDeposit:input_type -> user.v1.BankAmountRequest
+	289, // 363: user.v1.UserService.TakeDeposit:input_type -> user.v1.BankAmountRequest
+	289, // 364: user.v1.UserService.TakeLoan:input_type -> user.v1.BankAmountRequest
+	289, // 365: user.v1.UserService.RepayLoan:input_type -> user.v1.BankAmountRequest
+	291, // 366: user.v1.UserService.GetBankSettings:input_type -> user.v1.GetBankSettingsRequest
+	293, // 367: user.v1.UserService.SetBankSettings:input_type -> user.v1.SetBankSettingsRequest
+	305, // 368: user.v1.UserService.VisitPage:input_type -> user.v1.VisitPageRequest
+	306, // 369: user.v1.UserService.ListGuests:input_type -> user.v1.ListGuestsRequest
+	309, // 370: user.v1.UserService.ListTop:input_type -> user.v1.ListTopRequest
+	314, // 371: user.v1.UserService.GetPet:input_type -> user.v1.GetPetRequest
+	316, // 372: user.v1.UserService.GetUserPet:input_type -> user.v1.GetUserPetRequest
+	318, // 373: user.v1.UserService.AdoptPet:input_type -> user.v1.AdoptPetRequest
+	319, // 374: user.v1.UserService.FeedPet:input_type -> user.v1.FeedPetRequest
+	320, // 375: user.v1.UserService.PlayPet:input_type -> user.v1.PlayPetRequest
+	321, // 376: user.v1.UserService.RenamePet:input_type -> user.v1.RenamePetRequest
+	322, // 377: user.v1.UserService.ReleasePet:input_type -> user.v1.ReleasePetRequest
+	327, // 378: user.v1.UserService.FightPet:input_type -> user.v1.FightPetRequest
+	329, // 379: user.v1.UserService.ListPetFights:input_type -> user.v1.ListPetFightsRequest
+	331, // 380: user.v1.UserService.GetPetSettings:input_type -> user.v1.GetPetSettingsRequest
+	333, // 381: user.v1.UserService.SetPetSettings:input_type -> user.v1.SetPetSettingsRequest
+	338, // 382: user.v1.UserService.GetUserTitles:input_type -> user.v1.GetUserTitlesRequest
+	340, // 383: user.v1.UserService.GrantTitle:input_type -> user.v1.GrantTitleRequest
+	342, // 384: user.v1.UserService.RevokeTitle:input_type -> user.v1.RevokeTitleRequest
+	24,  // 385: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
+	26,  // 386: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
+	28,  // 387: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
+	53,  // 388: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
+	55,  // 389: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
+	38,  // 390: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
+	17,  // 391: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
+	30,  // 392: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
+	32,  // 393: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
+	34,  // 394: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
+	56,  // 395: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
+	58,  // 396: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
+	36,  // 397: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
+	40,  // 398: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
+	60,  // 399: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
+	348, // 400: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
+	348, // 401: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
+	348, // 402: user.v1.UserService.AcceptInvite:output_type -> google.protobuf.Empty
+	45,  // 403: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
+	50,  // 404: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
+	50,  // 405: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
+	348, // 406: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
+	49,  // 407: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
+	62,  // 408: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
+	66,  // 409: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
+	68,  // 410: user.v1.UserService.GetBoughtPosts:output_type -> user.v1.GetBoughtPostsResponse
+	70,  // 411: user.v1.UserService.BuyPost:output_type -> user.v1.BuyPostResponse
+	72,  // 412: user.v1.UserService.PayMessage:output_type -> user.v1.PayMessageResponse
+	348, // 413: user.v1.UserService.RefundMessage:output_type -> google.protobuf.Empty
+	85,  // 414: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
+	87,  // 415: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
+	90,  // 416: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
+	64,  // 417: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
+	348, // 418: user.v1.UserService.Block:output_type -> google.protobuf.Empty
+	348, // 419: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
+	77,  // 420: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
+	79,  // 421: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
+	348, // 422: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
+	348, // 423: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
+	83,  // 424: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
+	92,  // 425: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
+	100, // 426: user.v1.UserService.GetGiftCatalog:output_type -> user.v1.GetGiftCatalogResponse
+	104, // 427: user.v1.UserService.SendGift:output_type -> user.v1.SendGiftResponse
+	107, // 428: user.v1.UserService.ListGifts:output_type -> user.v1.ListGiftsResponse
+	348, // 429: user.v1.UserService.DeleteGift:output_type -> google.protobuf.Empty
+	348, // 430: user.v1.UserService.SetGiftPrice:output_type -> google.protobuf.Empty
+	111, // 431: user.v1.UserService.UpgradeGift:output_type -> user.v1.UpgradeGiftResponse
+	348, // 432: user.v1.UserService.TransferGift:output_type -> google.protobuf.Empty
+	114, // 433: user.v1.UserService.SetGiftSale:output_type -> user.v1.SetGiftSaleResponse
+	116, // 434: user.v1.UserService.BuyGift:output_type -> user.v1.BuyGiftResponse
+	118, // 435: user.v1.UserService.GetCollectible:output_type -> user.v1.GetCollectibleResponse
+	123, // 436: user.v1.UserService.ListGiftMarket:output_type -> user.v1.ListGiftMarketResponse
+	348, // 437: user.v1.UserService.StartGiftAuction:output_type -> google.protobuf.Empty
+	126, // 438: user.v1.UserService.MintGiftAuction:output_type -> user.v1.MintGiftAuctionResponse
+	348, // 439: user.v1.UserService.CancelGiftAuction:output_type -> google.protobuf.Empty
+	129, // 440: user.v1.UserService.BidGift:output_type -> user.v1.BidGiftResponse
+	131, // 441: user.v1.UserService.ListGiftAuctions:output_type -> user.v1.ListGiftAuctionsResponse
+	348, // 442: user.v1.UserService.SetGiftSupply:output_type -> google.protobuf.Empty
+	226, // 443: user.v1.UserService.GetStickerCatalog:output_type -> user.v1.GetStickerCatalogResponse
+	348, // 444: user.v1.UserService.AddStickerPack:output_type -> google.protobuf.Empty
+	348, // 445: user.v1.UserService.RemoveStickerPack:output_type -> google.protobuf.Empty
+	231, // 446: user.v1.UserService.ListMyStickerPacks:output_type -> user.v1.ListMyStickerPacksResponse
+	233, // 447: user.v1.UserService.CreateStickerPack:output_type -> user.v1.CreateStickerPackResponse
+	235, // 448: user.v1.UserService.EditStickerPack:output_type -> user.v1.EditStickerPackResponse
+	237, // 449: user.v1.UserService.DeleteStickerPack:output_type -> user.v1.DeleteStickerPackResponse
+	239, // 450: user.v1.UserService.GetStickerAuthors:output_type -> user.v1.GetStickerAuthorsResponse
+	134, // 451: user.v1.UserService.TransferVotes:output_type -> user.v1.TransferVotesResponse
+	136, // 452: user.v1.UserService.RedeemVoucher:output_type -> user.v1.RedeemVoucherResponse
+	139, // 453: user.v1.UserService.ListVoteOperations:output_type -> user.v1.ListVoteOperationsResponse
+	142, // 454: user.v1.UserService.CreateVoucher:output_type -> user.v1.CreateVoucherResponse
+	144, // 455: user.v1.UserService.ListVouchers:output_type -> user.v1.ListVouchersResponse
+	348, // 456: user.v1.UserService.DeleteVoucher:output_type -> google.protobuf.Empty
+	147, // 457: user.v1.UserService.GetVoteRate:output_type -> user.v1.GetVoteRateResponse
+	348, // 458: user.v1.UserService.SetVoteRate:output_type -> google.protobuf.Empty
+	150, // 459: user.v1.UserService.GetTreasury:output_type -> user.v1.GetTreasuryResponse
+	153, // 460: user.v1.UserService.GetBonus:output_type -> user.v1.GetBonusResponse
+	155, // 461: user.v1.UserService.ClaimBonus:output_type -> user.v1.ClaimBonusResponse
+	348, // 462: user.v1.UserService.SetEconomy:output_type -> google.protobuf.Empty
+	157, // 463: user.v1.UserService.RaiseRating:output_type -> user.v1.RaiseRatingResponse
+	160, // 464: user.v1.UserService.GetPrime:output_type -> user.v1.GetPrimeResponse
+	162, // 465: user.v1.UserService.BuyPrime:output_type -> user.v1.BuyPrimeResponse
+	348, // 466: user.v1.UserService.SetPrimePrices:output_type -> google.protobuf.Empty
+	348, // 467: user.v1.UserService.SetPrimeInvisible:output_type -> google.protobuf.Empty
+	348, // 468: user.v1.UserService.SetPrimeStyle:output_type -> google.protobuf.Empty
+	168, // 469: user.v1.UserService.GetDecor:output_type -> user.v1.GetDecorResponse
+	348, // 470: user.v1.UserService.SetDecor:output_type -> google.protobuf.Empty
+	172, // 471: user.v1.UserService.GetCasino:output_type -> user.v1.GetCasinoResponse
+	175, // 472: user.v1.UserService.GetCasinoSettings:output_type -> user.v1.GetCasinoSettingsResponse
+	348, // 473: user.v1.UserService.SetCasino:output_type -> google.protobuf.Empty
+	193, // 474: user.v1.UserService.SpinCasino:output_type -> user.v1.SpinCasinoResponse
+	348, // 475: user.v1.UserService.SetCasinoBets:output_type -> google.protobuf.Empty
+	196, // 476: user.v1.UserService.BetCasino:output_type -> user.v1.BetCasinoResponse
+	200, // 477: user.v1.UserService.ListBetEvents:output_type -> user.v1.ListBetEventsResponse
+	198, // 478: user.v1.UserService.CreateBetEvent:output_type -> user.v1.BetEvent
+	348, // 479: user.v1.UserService.CloseBetEvent:output_type -> google.protobuf.Empty
+	348, // 480: user.v1.UserService.ResolveBetEvent:output_type -> google.protobuf.Empty
+	348, // 481: user.v1.UserService.CancelBetEvent:output_type -> google.protobuf.Empty
+	348, // 482: user.v1.UserService.DeleteBetEvent:output_type -> google.protobuf.Empty
+	348, // 483: user.v1.UserService.SetBetEventOdds:output_type -> google.protobuf.Empty
+	206, // 484: user.v1.UserService.StakeBet:output_type -> user.v1.StakeBetResponse
+	348, // 485: user.v1.UserService.SetCasinoRocket:output_type -> google.protobuf.Empty
+	348, // 486: user.v1.UserService.SetCasinoJackpot:output_type -> google.protobuf.Empty
+	181, // 487: user.v1.UserService.LaunchRocket:output_type -> user.v1.RocketRound
+	181, // 488: user.v1.UserService.GetRocket:output_type -> user.v1.RocketRound
+	181, // 489: user.v1.UserService.CashRocket:output_type -> user.v1.RocketRound
+	184, // 490: user.v1.UserService.GetPoker:output_type -> user.v1.PokerTable
+	187, // 491: user.v1.UserService.DealPoker:output_type -> user.v1.PokerHand
+	187, // 492: user.v1.UserService.FoldPoker:output_type -> user.v1.PokerHand
+	187, // 493: user.v1.UserService.CallPoker:output_type -> user.v1.PokerHand
+	189, // 494: user.v1.UserService.GetPokerSettings:output_type -> user.v1.GetPokerSettingsResponse
+	348, // 495: user.v1.UserService.SetPokerSettings:output_type -> google.protobuf.Empty
+	295, // 496: user.v1.UserService.ListHoldemTables:output_type -> user.v1.ListHoldemTablesResponse
+	302, // 497: user.v1.UserService.CreateHoldemTable:output_type -> user.v1.HoldemTableResponse
+	302, // 498: user.v1.UserService.QuickHoldem:output_type -> user.v1.HoldemTableResponse
+	304, // 499: user.v1.UserService.GetHoldemTable:output_type -> user.v1.HoldemTable
+	302, // 500: user.v1.UserService.SitHoldemTable:output_type -> user.v1.HoldemTableResponse
+	302, // 501: user.v1.UserService.LeaveHoldemTable:output_type -> user.v1.HoldemTableResponse
+	304, // 502: user.v1.UserService.ActHoldemTable:output_type -> user.v1.HoldemTable
+	304, // 503: user.v1.UserService.BackHoldemTable:output_type -> user.v1.HoldemTable
+	304, // 504: user.v1.UserService.InviteHoldemTable:output_type -> user.v1.HoldemTable
+	348, // 505: user.v1.UserService.SetVerified:output_type -> google.protobuf.Empty
+	348, // 506: user.v1.UserService.SetAlert:output_type -> google.protobuf.Empty
+	212, // 507: user.v1.UserService.ListAds:output_type -> user.v1.ListAdsResponse
+	214, // 508: user.v1.UserService.CreateAd:output_type -> user.v1.CreateAdResponse
+	216, // 509: user.v1.UserService.EditAd:output_type -> user.v1.EditAdResponse
+	218, // 510: user.v1.UserService.DeleteAd:output_type -> user.v1.DeleteAdResponse
+	220, // 511: user.v1.UserService.ViewAd:output_type -> user.v1.ViewAdResponse
+	222, // 512: user.v1.UserService.ClickAd:output_type -> user.v1.ClickAdResponse
+	348, // 513: user.v1.UserService.BanUser:output_type -> google.protobuf.Empty
+	348, // 514: user.v1.UserService.UnbanUser:output_type -> google.protobuf.Empty
+	94,  // 515: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
+	96,  // 516: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
+	98,  // 517: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
+	245, // 518: user.v1.UserService.GetMine:output_type -> user.v1.MineState
+	247, // 519: user.v1.UserService.DigOre:output_type -> user.v1.DigOreResponse
+	249, // 520: user.v1.UserService.SellOre:output_type -> user.v1.SellOreResponse
+	251, // 521: user.v1.UserService.GetMineSettings:output_type -> user.v1.GetMineSettingsResponse
+	348, // 522: user.v1.UserService.SetMine:output_type -> google.protobuf.Empty
+	268, // 523: user.v1.UserService.GetFirms:output_type -> user.v1.FirmsState
+	271, // 524: user.v1.UserService.RunFirms:output_type -> user.v1.RunFirmsResponse
+	336, // 525: user.v1.UserService.GetUserFirms:output_type -> user.v1.GetUserFirmsResponse
+	283, // 526: user.v1.UserService.GetFirmSettings:output_type -> user.v1.GetFirmSettingsResponse
+	348, // 527: user.v1.UserService.SetFirmSettings:output_type -> google.protobuf.Empty
+	279, // 528: user.v1.UserService.GetStocks:output_type -> user.v1.StocksState
+	281, // 529: user.v1.UserService.RunStocks:output_type -> user.v1.RunStocksResponse
+	288, // 530: user.v1.UserService.GetBank:output_type -> user.v1.BankState
+	290, // 531: user.v1.UserService.PutDeposit:output_type -> user.v1.BankMoveResponse
+	290, // 532: user.v1.UserService.TakeDeposit:output_type -> user.v1.BankMoveResponse
+	290, // 533: user.v1.UserService.TakeLoan:output_type -> user.v1.BankMoveResponse
+	290, // 534: user.v1.UserService.RepayLoan:output_type -> user.v1.BankMoveResponse
+	292, // 535: user.v1.UserService.GetBankSettings:output_type -> user.v1.GetBankSettingsResponse
+	348, // 536: user.v1.UserService.SetBankSettings:output_type -> google.protobuf.Empty
+	348, // 537: user.v1.UserService.VisitPage:output_type -> google.protobuf.Empty
+	308, // 538: user.v1.UserService.ListGuests:output_type -> user.v1.ListGuestsResponse
+	311, // 539: user.v1.UserService.ListTop:output_type -> user.v1.ListTopResponse
+	315, // 540: user.v1.UserService.GetPet:output_type -> user.v1.PetState
+	317, // 541: user.v1.UserService.GetUserPet:output_type -> user.v1.GetUserPetResponse
+	323, // 542: user.v1.UserService.AdoptPet:output_type -> user.v1.PetCareResponse
+	323, // 543: user.v1.UserService.FeedPet:output_type -> user.v1.PetCareResponse
+	323, // 544: user.v1.UserService.PlayPet:output_type -> user.v1.PetCareResponse
+	323, // 545: user.v1.UserService.RenamePet:output_type -> user.v1.PetCareResponse
+	348, // 546: user.v1.UserService.ReleasePet:output_type -> google.protobuf.Empty
+	328, // 547: user.v1.UserService.FightPet:output_type -> user.v1.FightPetResponse
+	330, // 548: user.v1.UserService.ListPetFights:output_type -> user.v1.ListPetFightsResponse
+	332, // 549: user.v1.UserService.GetPetSettings:output_type -> user.v1.GetPetSettingsResponse
+	348, // 550: user.v1.UserService.SetPetSettings:output_type -> google.protobuf.Empty
+	339, // 551: user.v1.UserService.GetUserTitles:output_type -> user.v1.GetUserTitlesResponse
+	341, // 552: user.v1.UserService.GrantTitle:output_type -> user.v1.GrantTitleResponse
+	348, // 553: user.v1.UserService.RevokeTitle:output_type -> google.protobuf.Empty
+	385, // [385:554] is the sub-list for method output_type
+	216, // [216:385] is the sub-list for method input_type
+	216, // [216:216] is the sub-list for extension type_name
+	216, // [216:216] is the sub-list for extension extendee
+	0,   // [0:216] is the sub-list for field type_name
 }
 
 func init() { file_api_user_v1_user_proto_init() }
