@@ -48,7 +48,7 @@ func newFirmsView(rules user.FirmRules, city *user.City, now time.Time) FirmsVie
 // and Wage the staff, Votes a deposit, dividends or money of the broker
 // account, Shares the shares issued, Stock an order of shares,
 // Improvement what is improved, ContractID the order of the city taken or
-// delivered, OrderID what is cancelled.
+// delivered, OrderID what is cancelled or the offer sold to.
 type FirmAct struct {
 	Action      user.FirmAction
 	FirmID      uuid.UUID
@@ -98,10 +98,11 @@ type FirmSettings struct {
 
 // FirmService is "Бизнес" and "Акции": the economy of the enterprises.
 // People found enterprises for votes into the treasury, the enterprises
-// make and trade goods hour by hour with each other on the exchange and
-// with the state and the city, take its orders, and pay their
-// shareholders dividends; shares change hands on the stock exchange, paid
-// of the broker accounts.
+// hire the people of the city, make and trade goods hour by hour with
+// each other on the exchange and with the state and the city, take its
+// orders, and pay their shareholders dividends; shares change hands on
+// the stock exchange, paid of the broker accounts, and offers buy out the
+// shareholders.
 type FirmService struct {
 	userRepo UserRepository
 	firms    FirmRepository
@@ -301,7 +302,7 @@ func (r firmRun) do(ctx context.Context) error {
 		_, err := c.Upgrade(r.rules, r.userID, a.FirmID)
 		return errs.Wrap("c.Upgrade", err)
 	case user.FirmStaff:
-		return errs.Wrap("c.Staff", c.Staff(r.rules, r.userID, a.FirmID, a.Workers, a.Wage))
+		return errs.Wrap("c.Staff", c.Staff(r.rules, r.userID, a.FirmID, a.Workers, a.Wage, r.now))
 	case user.FirmDeposit:
 		if err := c.Deposit(r.userID, a.FirmID, a.Votes); err != nil {
 			return errs.Wrap("c.Deposit", err)
@@ -362,6 +363,15 @@ func (r firmRun) do(ctx context.Context) error {
 		return errs.Wrap("c.PlaceStock", err)
 	case user.FirmStockCancel:
 		return errs.Wrap("c.CancelStock", c.CancelStock(r.userID, a.OrderID))
+	case user.FirmTender:
+		_, err := c.Tender(r.userID, a.Stock.FirmID, a.Stock.Shares, a.Stock.Price, r.now)
+		return errs.Wrap("c.Tender", err)
+	case user.FirmTenderSell:
+		fill, err := c.SellToTender(r.rules, r.userID, a.OrderID, a.Stock.Shares, r.now)
+		r.done.Fill = fill
+		return errs.Wrap("c.SellToTender", err)
+	case user.FirmTenderClose:
+		return errs.Wrap("c.CancelTender", c.CancelTender(r.userID, a.OrderID))
 	}
 
 	return user.ErrUnknownFirmAction

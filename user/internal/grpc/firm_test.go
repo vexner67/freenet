@@ -23,7 +23,8 @@ func TestFirms(t *testing.T) {
 
 	got, err := s.client.GetFirms(ann, &userv1.GetFirmsRequest{})
 	if err != nil || len(got.GetSettings().GetPlans()) != len(user.FirmKinds) || len(got.GetFirms()) != 0 ||
-		len(got.GetCatalog()) != len(user.FirmKinds) || len(got.GetQuotes()) != len(user.Goods) {
+		len(got.GetCatalog()) != len(user.FirmKinds) || len(got.GetQuotes()) != len(user.Goods) ||
+		got.GetLabour() == nil || got.GetLabour().GetWage() != 50 || got.GetLabour().GetPeople() != 0 {
 		t.Fatalf("GetFirms = %v, %v", got, err)
 	}
 
@@ -109,6 +110,9 @@ func TestStocks(t *testing.T) {
 		{"no votes", &userv1.RunStocksRequest{Action: "account_deposit", Votes: 10}, codes.FailedPrecondition},
 		{"no money", &userv1.RunStocksRequest{Action: "account_withdraw", Votes: 10}, codes.FailedPrecondition},
 		{"no order", &userv1.RunStocksRequest{Action: "stock_cancel", OrderId: "0192f0a0-0000-7000-8000-000000000000"}, codes.NotFound},
+		{"an offer for no company", &userv1.RunStocksRequest{Action: "tender", FirmId: "0192f0a0-0000-7000-8000-000000000000", Shares: 1, Price: 1}, codes.NotFound},
+		{"no offer to sell to", &userv1.RunStocksRequest{Action: "tender_sell", OrderId: "0192f0a0-0000-7000-8000-000000000000", Shares: 1}, codes.NotFound},
+		{"no offer to take back", &userv1.RunStocksRequest{Action: "tender_cancel", OrderId: "0192f0a0-0000-7000-8000-000000000000"}, codes.NotFound},
 	} {
 		if _, err = s.client.RunStocks(ann, tc.req); status.Code(err) != tc.code {
 			t.Errorf("%s: %v, want %v", tc.name, err, tc.code)

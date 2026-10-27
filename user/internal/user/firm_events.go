@@ -30,7 +30,8 @@ func HashLuck(at time.Time, what uint64, id uuid.UUID) float64 {
 	return float64(v>>11) / float64(1<<53)
 }
 
-// CalmLuck is luck with nothing happening: no events, no noise.
+// CalmLuck is luck with nothing happening: no events, no noise; only the
+// city, ordering more often than not, orders every hour.
 func CalmLuck(time.Time, uint64, uuid.UUID) float64 {
 	return 0.5
 }
@@ -72,6 +73,8 @@ const (
 	EventInspection EventKind = "inspection"
 	EventAward      EventKind = "award"
 	EventStrike     EventKind = "strike"
+	EventTender     EventKind = "tender"
+	EventTakeover   EventKind = "takeover"
 )
 
 // eventSpec is what an event does: for its hours the enterprises of kinds
@@ -114,6 +117,14 @@ var firmEvents = []eventSpec{
 
 var strikeEvent = eventSpec{kind: EventStrike, output: 1, city: 1, mood: -0.1, hours: 4, idle: true}
 
+// tenderEvent is an offer to buy out the shareholders of an enterprise,
+// news that lifts its shares; takeoverEvent — the one who made it came to
+// direct it.
+var (
+	tenderEvent   = eventSpec{kind: EventTender, output: 1, city: 1, mood: 0.05}
+	takeoverEvent = eventSpec{kind: EventTakeover, output: 1, city: 1}
+)
+
 const (
 	// sectorChance is the chance of an event of a kind in an hour, while
 	// fewer than maxSectorEvents go on.
@@ -139,7 +150,7 @@ type Event struct {
 }
 
 func eventOf(kind EventKind) (eventSpec, bool) {
-	for _, list := range [][]eventSpec{sectorEvents, firmEvents, {strikeEvent}} {
+	for _, list := range [][]eventSpec{sectorEvents, firmEvents, {strikeEvent, tenderEvent, takeoverEvent}} {
 		if i := slices.IndexFunc(list, func(e eventSpec) bool { return e.kind == kind }); i >= 0 {
 			return list[i], true
 		}

@@ -3068,4 +3068,13 @@ export default {
   'Сейчас': 'Now',
   ' за этот час': ' this hour',
   '{0}, идёт': '{0}, going on',
+  'Предложение о выкупе': 'Tender offer',
+  'Кто-то хочет купить акции предприятия дороже рынка.': 'Someone wants to buy shares of the enterprise above the market.',
+  'Поглощение': 'Takeover',
+  'Предприятие перешло к новому директору: он собрал больше всех акций.': 'The enterprise passed to a new director who gathered the most shares.',
+  'Выкупить можно от 1 акции из тех, что у других, не дешевле нынешней цены.': 'An offer is for 1 share or more of those others hold, at no less than the price now.',
+  'Такого предложения о выкупе нет.': 'There is no such tender offer.',
+  'Вы уже предлагаете выкупить акции этого предприятия.': 'You already have an offer for this enterprise.',
+  'Предложений о выкупе может быть не больше 5 сразу.': 'You may have at most 5 offers at a time.',
+  'Нельзя продать акции своему же предложению.': 'You cannot sell to your own offer.',
 };

@@ -81,6 +81,8 @@ type storedFirmHour struct {
 	Wages     int64     `json:"wages"`
 	Upkeep    int64     `json:"upkeep"`
 	Fees      int64     `json:"fees"`
+	Hired     int64     `json:"hired,omitempty"`
+	Left      int64     `json:"left,omitempty"`
 }
 
 type storedFirm struct {
@@ -91,6 +93,7 @@ type storedFirm struct {
 	FoundedAt  time.Time                `json:"foundedAt"`
 	Level      int                      `json:"level"`
 	Workers    int                      `json:"workers"`
+	Wanted     int                      `json:"wanted,omitempty"`
 	Wage       int64                    `json:"wage"`
 	Cash       int64                    `json:"cash"`
 	Stock      map[user.Good]int64      `json:"stock"`
@@ -187,6 +190,16 @@ type storedContract struct {
 	Delivered int64     `json:"delivered"`
 }
 
+type storedTender struct {
+	ID       uuid.UUID `json:"id"`
+	FirmID   uuid.UUID `json:"firmId"`
+	UserID   uuid.UUID `json:"userId"`
+	Price    int64     `json:"price"`
+	Shares   int64     `json:"shares"`
+	PlacedAt time.Time `json:"placedAt"`
+	Until    time.Time `json:"until"`
+}
+
 type storedMarketHour struct {
 	Hour        time.Time `json:"hour"`
 	Good        user.Good `json:"good"`
@@ -204,9 +217,11 @@ type storedCityStats struct {
 }
 
 // storedCity keeps Offers, the offers of shares before the stock
-// exchange, only to read them: the city turns them into its orders.
+// exchange, only to read them: the city turns them into its orders. A city
+// kept before the labour market has no People: it gets those it employs.
 type storedCity struct {
 	Hour        time.Time             `json:"hour"`
+	People      int                   `json:"people,omitempty"`
 	Firms       []storedFirm          `json:"firms"`
 	Holdings    []storedHolding       `json:"holdings"`
 	Orders      []storedExchangeOrder `json:"orders"`
@@ -220,6 +235,7 @@ type storedCity struct {
 	Index       []storedIndexPoint    `json:"index"`
 	Events      []storedEvent         `json:"events"`
 	Contracts   []storedContract      `json:"contracts"`
+	Tenders     []storedTender        `json:"tenders,omitempty"`
 }
 
 func convert[From, To any](from []From, to func(From) To) []To {
@@ -239,7 +255,7 @@ func storeFirm(f user.FirmState) storedFirm {
 
 	return storedFirm{
 		ID: f.ID, Kind: f.Kind, Name: f.Name, DirectorID: f.DirectorID, FoundedAt: f.FoundedAt, Level: f.Level,
-		Workers: f.Workers, Wage: f.Wage, Cash: f.Cash, Stock: f.Stock, Carry: f.Carry, Auto: auto,
+		Workers: f.Workers, Wanted: f.Wanted, Wage: f.Wage, Cash: f.Cash, Stock: f.Stock, Carry: f.Carry, Auto: auto,
 		Hours: convert(f.Hours, func(h user.FirmHour) storedFirmHour { return storedFirmHour(h) }),
 		Wear:  f.Wear, Ranks: f.Ranks, Improved: f.Improved, IdleUntil: f.IdleUntil, Mood: f.Mood, Price: f.Price,
 		Float: f.Float, Candles: convert(f.Candles, func(c user.Candle) storedCandle { return storedCandle(c) }),
@@ -254,7 +270,7 @@ func restoreFirm(f storedFirm) user.FirmState {
 
 	return user.FirmState{
 		ID: f.ID, Kind: f.Kind, Name: f.Name, DirectorID: f.DirectorID, FoundedAt: f.FoundedAt, Level: f.Level,
-		Workers: f.Workers, Wage: f.Wage, Cash: f.Cash, Stock: f.Stock, Carry: f.Carry, Auto: auto,
+		Workers: f.Workers, Wanted: f.Wanted, Wage: f.Wage, Cash: f.Cash, Stock: f.Stock, Carry: f.Carry, Auto: auto,
 		Hours: convert(f.Hours, func(h storedFirmHour) user.FirmHour { return user.FirmHour(h) }),
 		Wear:  f.Wear, Ranks: f.Ranks, Improved: f.Improved, IdleUntil: f.IdleUntil, Mood: f.Mood, Price: f.Price,
 		Float: f.Float, Candles: convert(f.Candles, func(c storedCandle) user.Candle { return user.Candle(c) }),
@@ -265,6 +281,7 @@ func storeCity(c *user.City) ([]byte, error) {
 	s := c.State()
 	data, err := json.Marshal(storedCity{
 		Hour:        s.Hour,
+		People:      s.People,
 		Firms:       convert(s.Firms, storeFirm),
 		Holdings:    convert(s.Holdings, func(h user.Holding) storedHolding { return storedHolding(h) }),
 		Orders:      convert(s.Orders, func(o user.ExchangeOrder) storedExchangeOrder { return storedExchangeOrder(o) }),
@@ -277,6 +294,7 @@ func storeCity(c *user.City) ([]byte, error) {
 		Index:       convert(s.Index, func(p user.IndexPoint) storedIndexPoint { return storedIndexPoint(p) }),
 		Events:      convert(s.Events, func(e user.Event) storedEvent { return storedEvent(e) }),
 		Contracts:   convert(s.Contracts, func(k user.Contract) storedContract { return storedContract(k) }),
+		Tenders:     convert(s.Tenders, func(t user.Tender) storedTender { return storedTender(t) }),
 	})
 
 	return data, errs.Wrap("json.Marshal", err)
@@ -285,6 +303,7 @@ func storeCity(c *user.City) ([]byte, error) {
 func restoreCity(s storedCity) *user.City {
 	return user.RestoreCity(user.CityState{
 		Hour:        s.Hour,
+		People:      s.People,
 		Firms:       convert(s.Firms, restoreFirm),
 		Holdings:    convert(s.Holdings, func(h storedHolding) user.Holding { return user.Holding(h) }),
 		Orders:      convert(s.Orders, func(o storedExchangeOrder) user.ExchangeOrder { return user.ExchangeOrder(o) }),
@@ -298,6 +317,7 @@ func restoreCity(s storedCity) *user.City {
 		Index:       convert(s.Index, func(p storedIndexPoint) user.IndexPoint { return user.IndexPoint(p) }),
 		Events:      convert(s.Events, func(e storedEvent) user.Event { return user.Event(e) }),
 		Contracts:   convert(s.Contracts, func(k storedContract) user.Contract { return user.Contract(k) }),
+		Tenders:     convert(s.Tenders, func(t storedTender) user.Tender { return user.Tender(t) }),
 	})
 }
 

@@ -2506,7 +2506,8 @@ message FirmStock {
   int64 sell_min = 8;
 }
 
-// FirmHour is an hour of an enterprise: units and hundredths of a vote.
+// FirmHour is an hour of an enterprise: units and hundredths of a vote,
+// the workers hired and those who left for better pay.
 message FirmHour {
   google.protobuf.Timestamp hour = 1;
   int64 made = 2;
@@ -2517,6 +2518,8 @@ message FirmHour {
   int64 wages = 7;
   int64 upkeep = 8;
   int64 fees = 9;
+  int64 hired = 10;
+  int64 left = 11;
 }
 
 message FirmHolder {
@@ -2572,6 +2575,30 @@ message Firm {
   // forecast_cash the cash then; none while ended hours wait to be counted.
   FirmHour forecast = 28;
   int64 forecast_cash = 29;
+  // wanted is the workers the enterprise seeks: workers and the vacancies.
+  int32 wanted = 30;
+}
+
+// FirmLabour is the labour market of the city: its people, those working,
+// the workers the enterprises seek and the wage they pay on average in
+// hundredths an hour.
+message FirmLabour {
+  int32 people = 1;
+  int32 employed = 2;
+  int32 jobs = 3;
+  int64 wage = 4;
+}
+
+// StockTender is an offer of user_id to buy shares of firm_id from their
+// holders at price hundredths a share till until.
+message StockTender {
+  string id = 1;
+  string firm_id = 2;
+  string user_id = 3;
+  int64 price = 4;
+  int64 shares = 5;
+  google.protobuf.Timestamp placed_at = 6;
+  google.protobuf.Timestamp until = 7;
 }
 
 message ExchangeOrder {
@@ -2623,6 +2650,8 @@ message FirmsState {
   google.protobuf.Timestamp next_hour = 7;
   repeated FirmContract contracts = 8;
   repeated FirmEvent news = 9;
+  FirmLabour labour = 10;
+  repeated StockTender tenders = 11;
 }
 
 message RunFirmsRequest {
@@ -2749,7 +2778,8 @@ message StockHolding {
 // StocksState is the stock exchange: the companies, the index, the news
 // of the city, the fee of a sale in percent, and for the caller its broker
 // account in hundredths, shares and orders; bids and asks are the order
-// book of firm_id, the better first.
+// book of firm_id, the better first; tenders are the offers to buy out
+// shareholders.
 message StocksState {
   repeated StockCompany companies = 1;
   repeated StockIndexPoint index = 2;
@@ -2762,8 +2792,11 @@ message StocksState {
   repeated StockLevel bids = 9;
   repeated StockLevel asks = 10;
   google.protobuf.Timestamp next_hour = 11;
+  repeated StockTender tenders = 12;
 }
 
+// RunStocksRequest is an action on the stock exchange: order_id is the
+// order cancelled or the offer sold to or taken back.
 message RunStocksRequest {
   string action = 1;
   string firm_id = 2;

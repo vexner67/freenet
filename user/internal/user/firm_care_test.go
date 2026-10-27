@@ -159,7 +159,7 @@ func TestStrike(t *testing.T) {
 	c.SetLuck(unlucky)
 	owner := uuid.New()
 	f := found(t, c, rules, owner, user.FirmFarm)
-	if err := c.Staff(rules, owner, f.ID(), 10, rules.Wage/2); err != nil {
+	if err := c.Staff(rules, owner, f.ID(), 10, rules.Wage/2, cityStart); err != nil {
 		t.Fatal(err)
 	}
 
@@ -229,8 +229,10 @@ func TestContracts(t *testing.T) {
 	cash = farm.Cash()
 	left := k.Units - units
 	c.Tick(rules, now.Add(25*time.Hour))
-	if len(c.Contracts()) != 0 {
-		t.Fatalf("the order stays after its term")
+	for _, other := range c.Contracts() {
+		if other.ID == k.ID {
+			t.Fatalf("the order stays after its term")
+		}
 	}
 	if fine := left * k.Price / 10; farm.Cash() > cash-fine+farm.Profit()+fine {
 		t.Errorf("no fine: cash %d, was %d", farm.Cash(), cash)

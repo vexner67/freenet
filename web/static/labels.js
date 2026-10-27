@@ -1888,6 +1888,8 @@ const firmEvents = {
   inspection: [tr('Проверка'), tr('Предприятие оштрафовано на 5 % кассы.'), false],
   award: [tr('Награда'), tr('Предприятие отмечено городом, его акции в цене.'), true],
   strike: [tr('Забастовка'), tr('Рабочие бастуют 4 часа: зарплата ниже нормы.'), false],
+  tender: [tr('Предложение о выкупе'), tr('Кто-то хочет купить акции предприятия дороже рынка.'), true],
+  takeover: [tr('Поглощение'), tr('Предприятие перешло к новому директору: он собрал больше всех акций.'), true],
 };
 
 // firmEventName is what happened: "Засуха".
@@ -2558,7 +2560,7 @@ const errorTexts = {
   'you direct too many enterprises': tr('Вы уже директор стольких предприятий, скольких можно.'),
   'the enterprise is at its top level': tr('Предприятие уже на высшем уровне.'),
   'the enterprise has not enough money': tr('В кассе предприятия не хватает денег.'),
-  'the workers must be from 0 to the seats of the level, the wage from half to three times the standard': tr('Рабочих — от 0 до числа мест уровня, зарплата — от половины до тройной нормы.'),
+  'the workers sought must be from 0 to the seats of the level, the wage from half to three times the standard': tr('Рабочих — от 0 до числа мест уровня, зарплата — от половины до тройной нормы.'),
   'the enterprise does not deal in this good': tr('Предприятие не работает с этим товаром.'),
   'there is not so much of the good in the storage': tr('На складе нет столько товара.'),
   'the storage will not hold it': tr('Столько не поместится на складе.'),
@@ -2582,6 +2584,11 @@ const errorTexts = {
   'the enterprise has an order of its own the other way at this price: cancel it first': tr('У предприятия есть встречная заявка по такой цене — сначала снимите её.'),
   'an enterprise keeps at most 10 orders on the exchange': tr('У предприятия может быть не больше 10 заявок на бирже.'),
   'there is no such order': tr('Такой заявки нет.'),
+  'an offer must be for 1 share or more of those others hold, at no less than a share goes for now': tr('Выкупить можно от 1 акции из тех, что у других, не дешевле нынешней цены.'),
+  'there is no such offer': tr('Такого предложения о выкупе нет.'),
+  'you make an offer for this enterprise already': tr('Вы уже предлагаете выкупить акции этого предприятия.'),
+  'a page makes at most 5 offers at a time': tr('Предложений о выкупе может быть не больше 5 сразу.'),
+  'you cannot sell to your own offer': tr('Нельзя продать акции своему же предложению.'),
   'an offer must be of 1 share or more you hold, at a price from 1 vote': tr('Продать можно от 1 своей акции по цене от 1 голоса.'),
   'buy from 1 share to as many as the offer has': tr('Купить можно от 1 акции до числа акций в предложении.'),
   'there is no such offer of shares': tr('Такого предложения акций нет.'),

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/user/internal/postgres"
 	"github.com/vexner67/freenet/user/internal/user"
@@ -69,6 +70,16 @@ func TestFirmRepository(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err = city.Issue(tuned, ann.ID(), mill.ID(), 10); err != nil {
+		t.Fatal(err)
+	}
+	bidder := uuid.New()
+	if err = city.Fund(bidder, 100_000); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = city.Tender(bidder, mill.ID(), 1, mill.Price(), now); err != nil {
+		t.Fatal(err)
+	}
+	if err = city.Staff(tuned, ann.ID(), mill.ID(), 5, tuned.Wage, now); err != nil {
 		t.Fatal(err)
 	}
 	city.Tick(tuned, now.Add(2*time.Hour))

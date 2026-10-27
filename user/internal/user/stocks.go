@@ -676,7 +676,8 @@ func (c *City) CancelStock(userID, orderID uuid.UUID) error {
 
 // exchange is the end of the hour at on the exchange: the mood of every
 // enterprise drifts, the waiting orders meet the new prices of the
-// exchange, the hour of the price closes and the index with it.
+// exchange, the offers past their day close, the hour of the price closes
+// and the index with it.
 func (c *City) exchange(rules FirmRules, at time.Time) {
 	for _, f := range c.firms {
 		noise := (c.luck(at, drawMood, f.id)+c.luck(at, drawMoodTwice, f.id)+c.luck(at, drawMoodThrice, f.id))/1.5 - 1
@@ -684,6 +685,7 @@ func (c *City) exchange(rules FirmRules, at time.Time) {
 	}
 
 	c.meet(rules, at)
+	c.closeTenders(at.Add(time.Hour))
 
 	for _, f := range c.firms {
 		price := c.marketOf(rules, f, at).price()

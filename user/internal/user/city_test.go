@@ -195,14 +195,18 @@ func TestUpgradeAndStaff(t *testing.T) {
 	if cost, err := c.Upgrade(rules, owner, f.ID()); err != nil || cost != 80_000 || f.Level() != 2 {
 		t.Fatalf("upgrade: %d, %v, level %d", cost, err, f.Level())
 	}
-	if err := c.Staff(rules, owner, f.ID(), 21, 50); !errors.Is(err, user.ErrFirmStaff) {
+	if err := c.Staff(rules, owner, f.ID(), 21, 50, cityStart); !errors.Is(err, user.ErrFirmStaff) {
 		t.Errorf("21 seats at level 2: %v", err)
 	}
-	if err := c.Staff(rules, owner, f.ID(), 20, 10); !errors.Is(err, user.ErrFirmStaff) {
+	if err := c.Staff(rules, owner, f.ID(), 20, 10, cityStart); !errors.Is(err, user.ErrFirmStaff) {
 		t.Errorf("a wage below half: %v", err)
 	}
-	if err := c.Staff(rules, owner, f.ID(), 20, 100); err != nil || f.Workers() != 20 || f.Wage() != 100 {
-		t.Errorf("staff: %v", err)
+	// Nobody is out of work: the vacancies wait for people to come.
+	if err := c.Staff(rules, owner, f.ID(), 20, 100, cityStart); err != nil || f.Wanted() != 20 || f.Workers() != 10 || f.Wage() != 100 {
+		t.Errorf("staff: %v, %d of %d", err, f.Workers(), f.Wanted())
+	}
+	if err := c.Staff(rules, owner, f.ID(), 4, 100, cityStart); err != nil || f.Workers() != 4 {
+		t.Errorf("letting go: %v, %d", err, f.Workers())
 	}
 }
 

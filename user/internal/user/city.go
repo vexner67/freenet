@@ -101,10 +101,12 @@ type CityStats struct {
 // founding, their shareholders, the orders of the exchange of goods and
 // what changed hands lately, the stock exchange — the accounts, the
 // orders of shares, what the exchange dealt lately and its index — the
-// events and the orders of the city. It counts the hours from hour on,
-// the hour going on counted at its end, what happens drawn by its luck.
+// events and the orders of the city, its people, and the offers to buy
+// out shareholders. It counts the hours from hour on, the hour going on
+// counted at its end, what happens drawn by its luck.
 type City struct {
 	hour        time.Time
+	people      int
 	firms       []*Firm
 	holdings    []Holding
 	orders      []ExchangeOrder
@@ -117,6 +119,7 @@ type City struct {
 	index       []IndexPoint
 	events      []Event
 	contracts   []Contract
+	tenders     []Tender
 	luck        Luck
 }
 
@@ -124,6 +127,7 @@ type City struct {
 // stock exchange, read and never written.
 type CityState struct {
 	Hour        time.Time
+	People      int
 	Firms       []FirmState
 	Holdings    []Holding
 	Orders      []ExchangeOrder
@@ -137,6 +141,7 @@ type CityState struct {
 	Index       []IndexPoint
 	Events      []Event
 	Contracts   []Contract
+	Tenders     []Tender
 }
 
 // NewCity is a city with no enterprises yet, counting from the hour of
@@ -152,13 +157,16 @@ func RestoreCity(s CityState) *City {
 		last: map[Good]int64{}, stats: s.Stats, accounts: append([]Account(nil), s.Accounts...),
 		stockOrders: append([]StockOrder(nil), s.StockOrders...), stockMarket: append([]StockHour(nil), s.StockMarket...),
 		index: append([]IndexPoint(nil), s.Index...), events: append([]Event(nil), s.Events...),
-		contracts: append([]Contract(nil), s.Contracts...), luck: HashLuck,
+		contracts: append([]Contract(nil), s.Contracts...), tenders: append([]Tender(nil), s.Tenders...), luck: HashLuck,
+		people: max(s.People, 0),
 	}
 	for _, f := range s.Firms {
 		if _, err := FirmCatalog(f.Kind); err == nil {
 			c.firms = append(c.firms, restoreFirm(f))
 		}
 	}
+	// A city kept before the labour market had the people it employed.
+	c.people = c.Labour(FirmRules{}).People
 	for g, p := range s.Last {
 		c.last[g] = p
 	}
@@ -197,11 +205,12 @@ func (c *City) SetLuck(luck Luck) {
 
 func (c *City) State() CityState {
 	s := CityState{
-		Hour: c.hour, Holdings: append([]Holding(nil), c.holdings...), Orders: append([]ExchangeOrder(nil), c.orders...),
+		Hour: c.hour, People: c.people, Holdings: append([]Holding(nil), c.holdings...), Orders: append([]ExchangeOrder(nil), c.orders...),
 		Market: append([]MarketHour(nil), c.market...), Last: map[Good]int64{}, Stats: c.stats,
 		Accounts: append([]Account(nil), c.accounts...), StockOrders: append([]StockOrder(nil), c.stockOrders...),
 		StockMarket: append([]StockHour(nil), c.stockMarket...), Index: append([]IndexPoint(nil), c.index...),
 		Events: append([]Event(nil), c.events...), Contracts: append([]Contract(nil), c.contracts...),
+		Tenders: append([]Tender(nil), c.tenders...),
 	}
 	for _, f := range c.firms {
 		s.Firms = append(s.Firms, f.state())
@@ -264,8 +273,8 @@ func (c *City) HoldingsOf(userID uuid.UUID) []Holding {
 	return out
 }
 
-// Holders are all pages that hold shares or keep money or orders on the
-// stock exchange.
+// Holders are all pages that hold shares or keep money, orders or offers
+// on the stock exchange.
 func (c *City) Holders() []uuid.UUID {
 	var ids []uuid.UUID
 	add := func(id uuid.UUID) {
@@ -281,6 +290,9 @@ func (c *City) Holders() []uuid.UUID {
 	}
 	for _, o := range c.stockOrders {
 		add(o.UserID)
+	}
+	for _, t := range c.tenders {
+		add(t.UserID)
 	}
 
 	return ids
@@ -334,7 +346,9 @@ func (c *City) directed(userID, firmID uuid.UUID) (*Firm, error) {
 }
 
 // Found founds an enterprise of kind named name for userID, who holds all
-// its shares; the price is paid apart. ErrTooManyFirms, ErrUnknownFirm.
+// its shares; the price is paid apart. It hires a level of workers of
+// those out of work, and the rest come to the city for its jobs.
+// ErrTooManyFirms, ErrUnknownFirm.
 func (c *City) Found(rules FirmRules, userID uuid.UUID, kind FirmKind, name FirmName, now time.Time) (*Firm, error) {
 	plan, err := rules.Plan(kind)
 	if err != nil {
@@ -359,12 +373,14 @@ func (c *City) Found(rules FirmRules, userID uuid.UUID, kind FirmKind, name Firm
 	spec, _ := FirmCatalog(kind) // the plan is of a known kind
 	f := &Firm{
 		id: id, kind: kind, name: name, directorID: userID, foundedAt: now.UTC(), level: 1,
-		workers: plan.Staff, wage: rules.Wage, cash: plan.Price * int64(rules.Capital),
+		workers: plan.Staff, wanted: plan.Staff, wage: rules.Wage, cash: plan.Price * int64(rules.Capital),
 		stock: map[Good]int64{}, carry: map[Good]float64{}, auto: defaultAuto(spec, rules),
 		ranks: map[Improvement]int{}, float: rules.Float,
 	}
 
+	c.people += max(plan.Staff-c.Labour(rules).Unemployed(), 0)
 	c.firms = append(c.firms, f)
+	f.hour(now).Hired += int64(plan.Staff)
 	c.holdings = append(c.holdings, Holding{FirmID: id, UserID: userID, Shares: rules.Founding})
 	f.price = c.marketOf(rules, f, now).price()
 
@@ -411,8 +427,10 @@ func (c *City) Upgrade(rules FirmRules, userID, firmID uuid.UUID) (int64, error)
 	return cost, nil
 }
 
-// Staff sets how many work and for what wage; ErrFirmStaff.
-func (c *City) Staff(rules FirmRules, userID, firmID uuid.UUID, workers int, wage int64) error {
+// Staff sets how many workers the enterprise seeks and for what wage:
+// those past them are let go at once, and the vacancies are filled of
+// the people out of work, those paying the most first; ErrFirmStaff.
+func (c *City) Staff(rules FirmRules, userID, firmID uuid.UUID, workers int, wage int64, now time.Time) error {
 	f, err := c.directed(userID, firmID)
 	if err != nil {
 		return err
@@ -428,7 +446,9 @@ func (c *City) Staff(rules FirmRules, userID, firmID uuid.UUID, workers int, wag
 		return ErrFirmStaff
 	}
 
-	f.workers, f.wage = workers, wage
+	f.wanted, f.wage = workers, wage
+	f.workers = min(f.workers, workers)
+	c.hire(now)
 
 	return nil
 }
@@ -564,8 +584,8 @@ func (c *City) Liquidate(rules FirmRules, userID, firmID uuid.UUID) ([]Payout, e
 }
 
 // remove takes the enterprise out with its shares, orders and orders of
-// shares — the buying ones give their money back — and the orders of the
-// city it took.
+// shares — the buying ones give their money back, as do the offers to buy
+// it out — and the orders of the city it took.
 func (c *City) remove(firmID uuid.UUID) {
 	c.firms = slices.DeleteFunc(c.firms, func(f *Firm) bool { return f.id == firmID })
 	c.holdings = slices.DeleteFunc(c.holdings, func(h Holding) bool { return h.FirmID == firmID })
@@ -582,10 +602,15 @@ func (c *City) remove(firmID uuid.UUID) {
 
 		return true
 	})
+	for i := len(c.tenders) - 1; i >= 0; i-- {
+		if c.tenders[i].FirmID == firmID {
+			c.closeTender(i)
+		}
+	}
 }
 
-// DropHolders forgets pages gone for good: their shares, accounts and
-// orders of shares. An enterprise no person holds any more closes; one
+// DropHolders forgets pages gone for good: their shares, accounts, orders
+// of shares and offers. An enterprise no person holds any more closes; one
 // that lost its director gets the next largest shareholder.
 func (c *City) DropHolders(gone []uuid.UUID) {
 	if len(gone) == 0 {
@@ -595,6 +620,7 @@ func (c *City) DropHolders(gone []uuid.UUID) {
 	c.holdings = slices.DeleteFunc(c.holdings, func(h Holding) bool { return slices.Contains(gone, h.UserID) })
 	c.accounts = slices.DeleteFunc(c.accounts, func(a Account) bool { return slices.Contains(gone, a.UserID) })
 	c.stockOrders = slices.DeleteFunc(c.stockOrders, func(o StockOrder) bool { return slices.Contains(gone, o.UserID) })
+	c.tenders = slices.DeleteFunc(c.tenders, func(t Tender) bool { return slices.Contains(gone, t.UserID) })
 
 	for _, f := range c.Firms() {
 		c.afterDeal(f)
@@ -1074,13 +1100,15 @@ func (c *City) Forecast(rules FirmRules) map[uuid.UUID]FirmForecast {
 }
 
 // count is the hour at: the orders of the city that ended close, what
-// happens is drawn and the city orders goods, every enterprise works it —
+// happens is drawn and the city orders goods, workers are hired and leave
+// for better pay, every enterprise works it —
 // each hour another one first, as the first to sell gets the best prices
 // — and the exchange closes it.
 func (c *City) count(rules FirmRules, at time.Time) {
 	c.expire(at.Add(time.Hour))
 	c.happen(rules, at)
 	c.order(rules, at)
+	c.labour(rules, at)
 
 	if n := len(c.firms); n > 0 {
 		first := int(at.Unix()/3600) % n

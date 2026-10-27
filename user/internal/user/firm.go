@@ -32,7 +32,7 @@ var (
 	ErrTooManyFirms  = errors.New("you direct too many enterprises")
 	ErrFirmTopLevel  = errors.New("the enterprise is at its top level")
 	ErrFirmCash      = errors.New("the enterprise has not enough money")
-	ErrFirmStaff     = errors.New("the workers must be from 0 to the seats of the level, the wage from half to three times the standard")
+	ErrFirmStaff     = errors.New("the workers sought must be from 0 to the seats of the level, the wage from half to three times the standard")
 	ErrFirmGood      = errors.New("the enterprise does not deal in this good")
 	ErrFirmStock     = errors.New("there is not so much of the good in the storage")
 	ErrFirmStorage   = errors.New("the storage will not hold it")
@@ -81,7 +81,8 @@ type Auto struct {
 
 // FirmHour is an hour of an enterprise: the units it made, bought and
 // sold, and its money in hundredths — what it got for sales, paid for
-// goods, in wages, in upkeep and in fees of the exchange.
+// goods, in wages, in upkeep and in fees of the exchange; the workers it
+// hired and those who left it for better pay.
 type FirmHour struct {
 	Hour      time.Time
 	Made      int64
@@ -92,6 +93,8 @@ type FirmHour struct {
 	Wages     int64
 	Upkeep    int64
 	Fees      int64
+	Hired     int64
+	Left      int64
 }
 
 // Profit is what the hour earned.
@@ -100,6 +103,7 @@ func (h FirmHour) Profit() int64 {
 }
 
 // Firm is an enterprise: a company of shareholders run by its director.
+// It seeks wanted workers and has those the people of the city gave it.
 // Its cash is in hundredths of a vote and never below zero; the units of
 // goods in its storage are whole, and so is what is made of them, the
 // fractions of an hour carried to the next. Its machines wear out as it
@@ -114,6 +118,7 @@ type Firm struct {
 	foundedAt  time.Time
 	level      int
 	workers    int
+	wanted     int
 	wage       int64
 	cash       int64
 	stock      map[Good]int64
@@ -139,6 +144,7 @@ type FirmState struct {
 	FoundedAt  time.Time
 	Level      int
 	Workers    int
+	Wanted     int
 	Wage       int64
 	Cash       int64
 	Stock      map[Good]int64
@@ -158,12 +164,15 @@ type FirmState struct {
 func restoreFirm(s FirmState) *Firm {
 	f := &Firm{
 		id: s.ID, kind: s.Kind, name: s.Name, directorID: s.DirectorID, foundedAt: s.FoundedAt.UTC(),
-		level: max(s.Level, 1), workers: max(s.Workers, 0), wage: s.Wage, cash: max(s.Cash, 0),
+		level: max(s.Level, 1), workers: max(s.Workers, 0), wanted: max(s.Wanted, 0), wage: s.Wage, cash: max(s.Cash, 0),
 		stock: map[Good]int64{}, carry: map[Good]float64{}, auto: map[Good]Auto{},
 		hours: append([]FirmHour(nil), s.Hours...), wear: min(max(s.Wear, 0), 100), ranks: map[Improvement]int{},
 		improved: max(s.Improved, 0), idleUntil: s.IdleUntil.UTC(), mood: min(max(s.Mood, -maxMood), maxMood),
 		price: max(s.Price, 0), float: max(s.Float, 0), candles: append([]Candle(nil), s.Candles...),
 	}
+	// Kept before the labour market, an enterprise sought the workers it
+	// had.
+	f.wanted = max(f.wanted, f.workers)
 	for _, imp := range Improvements {
 		if r := s.Ranks[imp]; r > 0 {
 			f.ranks[imp] = min(r, MaxRank)
@@ -189,7 +198,7 @@ func restoreFirm(s FirmState) *Firm {
 func (f *Firm) state() FirmState {
 	s := FirmState{
 		ID: f.id, Kind: f.kind, Name: f.name, DirectorID: f.directorID, FoundedAt: f.foundedAt,
-		Level: f.level, Workers: f.workers, Wage: f.wage, Cash: f.cash,
+		Level: f.level, Workers: f.workers, Wanted: f.wanted, Wage: f.wage, Cash: f.cash,
 		Stock: map[Good]int64{}, Carry: map[Good]float64{}, Auto: map[Good]Auto{},
 		Hours: append([]FirmHour(nil), f.hours...), Wear: f.wear, Ranks: map[Improvement]int{}, Improved: f.improved,
 		IdleUntil: f.idleUntil, Mood: f.mood, Price: f.price, Float: f.float, Candles: append([]Candle(nil), f.candles...),
@@ -223,7 +232,11 @@ func (f *Firm) DirectorID() uuid.UUID { return f.directorID }
 func (f *Firm) FoundedAt() time.Time  { return f.foundedAt }
 func (f *Firm) Level() int            { return f.level }
 func (f *Firm) Workers() int          { return f.workers }
-func (f *Firm) Wage() int64           { return f.wage }
+
+// Wanted is how many workers the enterprise seeks: those it has and the
+// vacancies.
+func (f *Firm) Wanted() int { return f.wanted }
+func (f *Firm) Wage() int64 { return f.wage }
 
 // Cash is the money of the enterprise in hundredths of a vote, without
 // what its buying orders keep.
@@ -351,12 +364,15 @@ const (
 	FirmWithdraw    FirmAction = "account_withdraw"
 	FirmStockOrder  FirmAction = "stock_order"
 	FirmStockCancel FirmAction = "stock_cancel"
+	FirmTender      FirmAction = "tender"
+	FirmTenderSell  FirmAction = "tender_sell"
+	FirmTenderClose FirmAction = "tender_cancel"
 )
 
 var firmActions = []FirmAction{
 	FirmFound, FirmRename, FirmUpgrade, FirmStaff, FirmDeposit, FirmDividend, FirmLiquidate, FirmAutomate,
 	FirmOrder, FirmCancel, FirmStateBuy, FirmStateSell, FirmIssue, FirmRepair, FirmImprove, FirmTake, FirmDeliver,
-	FirmFund, FirmWithdraw, FirmStockOrder, FirmStockCancel,
+	FirmFund, FirmWithdraw, FirmStockOrder, FirmStockCancel, FirmTender, FirmTenderSell, FirmTenderClose,
 }
 
 var ErrUnknownFirmAction = errors.New("unknown action with an enterprise")

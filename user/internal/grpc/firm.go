@@ -92,7 +92,7 @@ func toProtoFirmCatalog() []*userv1.FirmSpec {
 func toProtoFirmHour(h user.FirmHour) *userv1.FirmHour {
 	return &userv1.FirmHour{
 		Hour: timestamppb.New(h.Hour), Made: h.Made, Bought: h.Bought, Sold: h.Sold, Income: h.Income,
-		Purchases: h.Purchases, Wages: h.Wages, Upkeep: h.Upkeep, Fees: h.Fees,
+		Purchases: h.Purchases, Wages: h.Wages, Upkeep: h.Upkeep, Fees: h.Fees, Hired: h.Hired, Left: h.Left,
 	}
 }
 
@@ -107,7 +107,7 @@ func toProtoFirm(v service.FirmsView, f *user.Firm) *userv1.Firm {
 		Wage: f.Wage(), Cash: f.Cash(), Escrow: c.Escrow(f.ID()), Productivity: v.Rules.Productivity(f.Wage()),
 		Seats: int32(plan.Staff * f.Level()), Upkeep: plan.Upkeep * int64(f.Level()), Profit: f.Profit(), //nolint:gosec // as above
 		Shares: c.Shares(f.ID()), Worth: c.Worth(v.Rules, f), Wear: f.Wear(), RepairCost: user.RepairCost(plan, f),
-		Price: f.Price(), Float: f.Float(),
+		Price: f.Price(), Float: f.Float(), Wanted: int32(f.Wanted()), //nolint:gosec // at most the seats
 	}
 	if f.Level() < plan.Levels {
 		pb.UpgradeCost = plan.UpgradeCost(f.Level())
@@ -177,8 +177,26 @@ func toProtoFirms(v service.FirmsView) *userv1.FirmsState {
 		state.Contracts = append(state.Contracts, contract)
 	}
 	state.News = toProtoNews(c.News())
+	state.Tenders = toProtoTenders(c.Tenders())
+
+	l := c.Labour(v.Rules)
+	state.Labour = &userv1.FirmLabour{
+		People: int32(l.People), Employed: int32(l.Employed), Jobs: int32(l.Jobs), Wage: l.Wage, //nolint:gosec // at most the seats of the city
+	}
 
 	return state
+}
+
+func toProtoTenders(tenders []user.Tender) []*userv1.StockTender {
+	out := make([]*userv1.StockTender, len(tenders))
+	for i, t := range tenders {
+		out[i] = &userv1.StockTender{
+			Id: t.ID.String(), FirmId: t.FirmID.String(), UserId: t.UserID.String(), Price: t.Price, Shares: t.Shares,
+			PlacedAt: timestamppb.New(t.PlacedAt), Until: timestamppb.New(t.Until),
+		}
+	}
+
+	return out
 }
 
 func toProtoNews(news []user.Event) []*userv1.FirmEvent {

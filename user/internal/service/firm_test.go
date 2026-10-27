@@ -134,3 +134,49 @@ func TestFirmPayoutsWaitForAWeek(t *testing.T) {
 		t.Fatalf("dividends of a new page: %v", err)
 	}
 }
+
+// TestFirmTakeover: bob offers to buy ann's shares, ann sells him most of
+// them and he comes to direct the farm.
+func TestFirmTakeover(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	w := newWalletWorld(t)
+	ann, bob := w.person(t, "ann"), w.person(t, "bob")
+	now := time.Now()
+	firms := service.NewFirmService(w.users, inmem.NewFirmRepository(), w.users, inmem.TxManager{}, user.Admins{})
+
+	for _, id := range []uuid.UUID{ann, bob} {
+		if _, err := w.users.Credit(ctx, id, 2000, 0, user.Entry(user.VoteVoucher, uuid.Nil, "")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	done, err := firms.Act(ctx, ann, service.FirmAct{Action: user.FirmFound, Kind: user.FirmFarm, Name: "Колхоз"}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := done.FirmID
+	if _, err = firms.Act(ctx, bob, service.FirmAct{Action: user.FirmFund, Votes: 1000}, now); err != nil {
+		t.Fatal(err)
+	}
+
+	f, _ := done.View.City.Firm(id)
+	offer := service.FirmAct{Action: user.FirmTender, Stock: user.StockOrder{FirmID: id, Shares: 60, Price: f.Price() + 100}}
+	if done, err = firms.Act(ctx, bob, offer, now); err != nil || len(done.View.City.Tenders()) != 1 {
+		t.Fatalf("tender = %v", err)
+	}
+	tenderID := done.View.City.Tenders()[0].ID
+
+	sell := service.FirmAct{Action: user.FirmTenderSell, OrderID: tenderID, Stock: user.StockOrder{Shares: 60}}
+	if done, err = firms.Act(ctx, ann, sell, now); err != nil || done.Fill.Shares != 60 {
+		t.Fatalf("selling to the offer = %+v, %v", done.Fill, err)
+	}
+	if f, _ = done.View.City.Firm(id); f.DirectorID() != bob {
+		t.Errorf("bob holds 60 of 100 and does not direct")
+	}
+
+	closing := service.FirmAct{Action: user.FirmTenderClose, OrderID: tenderID}
+	if _, err = firms.Act(ctx, bob, closing, now); !errors.Is(err, user.ErrTenderNotFound) {
+		t.Errorf("closing an offer done: %v", err)
+	}
+}

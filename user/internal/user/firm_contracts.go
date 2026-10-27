@@ -11,9 +11,9 @@ import (
 
 const (
 	// maxOpenContracts are the most orders of the city nobody took yet.
-	maxOpenContracts = 4
+	maxOpenContracts = 8
 	// contractChance is the chance the city orders a good in an hour.
-	contractChance = 0.35
+	contractChance = 0.6
 	// contractOpen is how long an order waits to be taken, contractTerm
 	// how long a taker has to deliver it.
 	contractOpen = 12 * time.Hour
@@ -143,8 +143,9 @@ func (c *City) Deliver(userID, contractID uuid.UUID, units int64, now time.Time)
 }
 
 // order posts an order of the city in the hour at, now and then: a good
-// at a third to a half above its price, as much as a first level makes
-// of it in 8 to 24 hours.
+// the enterprises of the city make — the more of them make it, the more
+// often — at a third to a half above its price, as much as a first level
+// makes of it in 8 to 24 hours. Nobody makes anything — no order.
 func (c *City) order(rules FirmRules, at time.Time) {
 	open := 0
 	for _, k := range c.contracts {
@@ -156,24 +157,24 @@ func (c *City) order(rules FirmRules, at time.Time) {
 		return
 	}
 
-	g := Goods[int(c.luck(at, drawContractGood, uuid.Nil)*float64(len(Goods)))%len(Goods)]
-	plan, err := rules.Good(g)
-	if err != nil {
+	var made []FirmSpec
+	for _, f := range c.firms {
+		if spec := f.spec(); spec.Output != "" {
+			made = append(made, spec)
+		}
+	}
+	if len(made) == 0 {
 		return
 	}
 
-	var rate float64
-	var staff int
-	for _, spec := range firmSpecs {
-		if spec.Output == g {
-			p, err := rules.Plan(spec.Kind)
-			if err != nil {
-				return
-			}
-			rate, staff = spec.Rate[g], p.Staff
-		}
+	spec := made[int(c.luck(at, drawContractGood, uuid.Nil)*float64(len(made)))%len(made)]
+	g := spec.Output
+	good, err := rules.Good(g)
+	if err != nil {
+		return
 	}
-	if rate == 0 {
+	plan, err := rules.Plan(spec.Kind)
+	if err != nil {
 		return
 	}
 
@@ -186,8 +187,8 @@ func (c *City) order(rules FirmRules, at time.Time) {
 	}
 
 	c.contracts = append(c.contracts, Contract{
-		ID: id, Good: g, Units: max(int64(math.Ceil(rate*float64(staff)*hours)), 1),
-		Price: max(int64(float64(plan.Base)*percent/100), 1), Posted: at, Deadline: at.Add(contractOpen),
+		ID: id, Good: g, Units: max(int64(math.Ceil(spec.Rate[g]*float64(plan.Staff)*hours)), 1),
+		Price: max(int64(float64(good.Base)*percent/100), 1), Posted: at, Deadline: at.Add(contractOpen),
 	})
 }
 

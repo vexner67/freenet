@@ -91,7 +91,7 @@ func toProtoStocks(v service.FirmsView, userID, firmID uuid.UUID) *userv1.Stocks
 	c := v.City
 	state := &userv1.StocksState{
 		News: toProtoNews(c.News()), Fee: int32(v.Rules.Fee), Account: c.Account(userID), //nolint:gosec // at most user.MaxFirmFee
-		NextHour: timestamppb.New(c.Hour().Add(time.Hour)),
+		NextHour: timestamppb.New(c.Hour().Add(time.Hour)), Tenders: toProtoTenders(c.Tenders()),
 	}
 
 	for _, f := range c.Firms() {
@@ -153,7 +153,10 @@ func (h *UserHandler) GetStocks(ctx context.Context, req *userv1.GetStocksReques
 }
 
 // stockActions are the actions RunStocks does.
-var stockActions = []user.FirmAction{user.FirmFund, user.FirmWithdraw, user.FirmStockOrder, user.FirmStockCancel}
+var stockActions = []user.FirmAction{
+	user.FirmFund, user.FirmWithdraw, user.FirmStockOrder, user.FirmStockCancel, user.FirmTender, user.FirmTenderSell,
+	user.FirmTenderClose,
+}
 
 func fromProtoStocksAct(req *userv1.RunStocksRequest) (service.FirmAct, error) {
 	action, err := user.NewFirmAction(req.GetAction())
