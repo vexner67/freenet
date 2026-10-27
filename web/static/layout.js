@@ -414,6 +414,12 @@ const pageShown = typeof document === 'undefined' ? Promise.resolve() : idle().t
 });
 if (typeof document !== 'undefined') document.addEventListener('click', keepPlace);
 
+// keepFocus stops a button from taking the focus off the field it sends:
+// on a phone the keyboard would close with every message sent.
+export function keepFocus(button) {
+  button.addEventListener('mousedown', (event) => event.preventDefault());
+}
+
 // whenShown resolves once the page is drawn and shown: what is hidden
 // cannot take the focus before.
 export function whenShown() {

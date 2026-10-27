@@ -1326,7 +1326,6 @@ export default {
   'Здесь пока нет сообщений.': 'There are no messages here yet.',
   'Редактирование сообщения': 'Editing the message',
   'Ответ на сообщение': 'Reply to the message',
-  'Введите сообщение': 'Enter a message',
   'Сообщение...': 'Message...',
   'Не редактировать': 'Do not edit',
   'Не отвечать': 'Do not reply',

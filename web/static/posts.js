@@ -121,12 +121,11 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       ? el('a', { textContent: post.commentsClosed ? tr('Открыть комментарии') : tr('Закрыть комментарии'), onclick: toggleComments })
       : null;
 
+    // The heart, the comments and "Поделиться" are marks of the bar.
     if (!microblog) {
       return [
         ...changes().map((c) => el('a', { textContent: c.text, onclick: c.run })),
         closing,
-        withCommentsLink ? el('a', { href: postPath(post) }, ...counted(tr('Комментарии'), post.comments)) : null,
-        shareButton(post, canLike),
         copyLink(post),
       ].filter(Boolean);
     }
@@ -148,16 +147,18 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     return items;
   }
 
-  // phoneBar is the bar under a post on a phone, as its apps have it: the
-  // heart, the comments and "Поделиться" with their numbers, and "⋯" for
-  // the rest.
-  function phoneBar() {
+  // bar is the bar under a post, as the apps of phones have it: the
+  // heart, the comments and "Поделиться" with their numbers, then on a
+  // phone "⋯" for the rest and on a computer the words of the menu.
+  function bar() {
     return el('div', { className: 'post-menu post-bar' },
       likeButton(post, { canLike, onError }),
       withCommentsLink ? el('a', { className: 'like post-comments-link', href: postPath(post), title: tr('Комментарии') },
         bubble(), el('span', { className: 'like-count', textContent: post.comments > 0 ? String(post.comments) : '' })) : null,
-      shareButton(post, canLike, { icon: true }),
-      el('a', { className: 'like post-more', title: tr('Действия'), onclick: () => openSheet(sheetItems()) }, dots()),
+      shareButton(post, canLike),
+      phone
+        ? el('a', { className: 'like post-more', title: tr('Действия'), onclick: () => openSheet(sheetItems()) }, dots())
+        : el('span', { className: 'post-bar-links' }, menu),
     );
   }
 
@@ -264,10 +265,10 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       content,
       post.repost ? sharedNode(post.repost, { canVote: canLike, onError }) : null,
       post.sharedPhoto ? sharedPhotoNode(post.sharedPhoto) : null,
-      phone ? phoneBar() : el('div', { className: 'post-menu' },
-        el('span', {}, microblog ? date : null, menu),
+      phone || !microblog ? bar() : el('div', { className: 'post-menu' },
+        el('span', {}, date, menu),
         el('span', { className: 'post-buttons' },
-          microblog ? shareButton(post, canLike, { icon: true }) : null,
+          shareButton(post, canLike),
           likeButton(post, { canLike, onError }),
         ),
       ),
@@ -477,18 +478,15 @@ function showLink(url) {
   field.select();
 }
 
-// shareButton is "Поделиться (N)"; it changes post.reposts, as likeButton
-// changes the likes.
-// With icon it is the arrow and the number of openvk's "Микроблог".
-function shareButton(post, canShare, { icon = false } = {}) {
+// shareButton is "Поделиться": the arrow and the number, as openvk's
+// "Микроблог" has it; it changes post.reposts, as likeButton changes the
+// likes.
+function shareButton(post, canShare) {
   const count = el('span', { className: 'like-count' });
-  const button = icon
-    ? el(canShare ? 'a' : 'span', { className: 'like share-icon', title: tr('Поделиться') }, arrow(), count)
-    : el(canShare ? 'a' : 'span', {});
+  const button = el(canShare ? 'a' : 'span', { className: 'like share-icon', title: tr('Поделиться') }, arrow(), count);
 
   function render() {
-    if (icon) count.textContent = post.reposts > 0 ? String(post.reposts) : '';
-    else button.replaceChildren(...counted(tr('Поделиться'), post.reposts));
+    count.textContent = post.reposts > 0 ? String(post.reposts) : '';
   }
 
   if (canShare) {
@@ -566,12 +564,6 @@ export function photosNode(photos) {
         openViewer(photos, i);
       },
     }, el('img', { src: photo.small, alt: '', loading: 'lazy' }))));
-}
-
-// counted is a word of the menu with how many there are, bold, as on
-// openvk: "Комментарии (2)".
-function counted(word, n) {
-  return n > 0 ? [word + ' (', el('b', { textContent: String(n) }), ')'] : [word];
 }
 
 // separated puts " | " between links, as in the menus of openvk.

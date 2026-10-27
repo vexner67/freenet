@@ -294,7 +294,15 @@ b, strong { font-weight: bold; }
   background: url("/static/newyear/bauble.svg") no-repeat;
   pointer-events: none;
 }
-.festive .button { background-image: url("/static/newyear/snowcap.svg"); background-repeat: repeat-x; background-position: 0 0; }
+/* The buttons are red and gold, as those of the casino. */
+.festive .button {
+  border: 1px solid var(--line-e2b24a);
+  background: linear-gradient(var(--back-d23a32), var(--back-a01e28));
+  color: var(--text-fff3c4);
+  text-shadow: 0 1px 1px var(--back-7a0f1d);
+}
+.festive .button:hover { color: var(--text-fff); }
+.festive .button:active { background: var(--back-a01e28); }
 /* The unread counter is a red bauble. */
 .festive .menu .counter { background: var(--back-d23a32); border-radius: 8px; color: var(--text-fff); }
 /* Snowdrifts at the bottom of the column. */
@@ -2661,6 +2669,9 @@ body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
 .about-block > summary::after { content: "▾"; margin-left: auto; color: var(--text-8b8b8b); }
 .about-block[open] > summary::after { content: "▴"; }
 .about-block[open] > summary { margin-bottom: 0; }
+/* Blocks of the wide column stand apart like the others, though their
+   title is their first child. */
+#about-block > .section-title, #gifts-block > .section-title:first-child { margin-top: 22px; }
 .about { padding: 8px 0 4px; }
 .about > div:not([hidden]) ~ div { margin-top: 12px; }
 .about-title { margin-bottom: 4px; color: var(--text-45688e); font-size: 13px; }
@@ -2965,7 +2976,7 @@ img.name-prime.name-prime { display: inline; width: 12px; height: 12px; margin: 
 .prime-sparkles { display: none; }
 .prime-frame-glitter .prime-sparkles {
   position: absolute;
-  inset: -10px;
+  inset: calc(-12px - 12%);
   display: block;
   background: url("/static/prime/sparkles.svg") 0 0 / 100% 100% no-repeat;
   pointer-events: none;

@@ -22,7 +22,7 @@ import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, o
 import { isLive, onEvent } from './events.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
 import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, messagesCount, primeDress, primeNameClass, selectedCount, votesCount } from './labels.js';
-import { $, avatarURL, el, fullName, isPhone, whenShown, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
+import { $, avatarURL, el, fullName, isPhone, keepFocus, whenShown, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
 import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
@@ -666,6 +666,7 @@ async function setUpInput({ canWrite, primeOnly, messagePrice: price = 0 }) {
   documents = initDocuments({ link: $('doc'), list: $('documents') });
   initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
   $('form').addEventListener('submit', send);
+  keepFocus($('send'));
   $('editing-cancel').addEventListener('click', cancelEdit);
   replies = replyBar();
   // The messages shown already get "Ответить".

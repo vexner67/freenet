@@ -24,7 +24,7 @@ import { isLive, onEvent } from './events.js';
 import { openAvatarDialog } from './avatar.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
 import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, photoChanges, primeDress, primeNameClass, selectedCount, snippet } from './labels.js';
-import { $, avatarURL, chatPhotoURL, el, fullName, isPhone, whenShown, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
+import { $, avatarURL, chatPhotoURL, el, fullName, isPhone, keepFocus, whenShown, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
 import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
@@ -727,8 +727,10 @@ function show(now) {
   chat = now;
 
   const active = chat.state === 'active';
-  const link = ([text, run]) => (typeof run === 'string' ? el('a', { href: run, textContent: text }) : el('a', { textContent: text, onclick: run }));
-  // A phone has them in "О чате", with their marks.
+  const link = ([text, run, mark]) => (typeof run === 'string'
+    ? el('a', { className: `chat-bar-action ${mark}`, href: run, textContent: text })
+    : el('a', { className: `chat-bar-action ${mark}`, textContent: text, onclick: run }));
+  // A phone has them in "О чате", in rows.
   const links = isPhone() && active ? [] : chatActions(active).map(link);
 
   document.title = tr('{0} | Сообщения', chatTitle(chat));
@@ -736,7 +738,7 @@ function show(now) {
   $('members').textContent = chatMembers(chat.memberCount);
   $('chat-avatar').src = chatPhotoURL(chat, 'small');
   showPinned();
-  $('actions').replaceChildren(...links.flatMap((node, i) => (i ? [' | ', node] : [node])));
+  $('actions').replaceChildren(...links);
   $('about').hidden = !active;
 
   const canWrite = active && me.profileCompleted;
@@ -786,6 +788,7 @@ function setUpInput() {
   documents = initDocuments({ link: $('doc'), list: $('documents') });
   initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
   $('form').addEventListener('submit', send);
+  keepFocus($('send'));
   $('editing-cancel').addEventListener('click', cancelEdit);
   replies = replyBar();
   // The messages shown already get "Ответить".
