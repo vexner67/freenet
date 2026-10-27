@@ -22,6 +22,19 @@ type ArticleRepository interface {
 	Count(ctx context.Context, authorID uuid.UUID) (int, error)
 }
 
+// WallPosts finds the posts of a wall, as PostRepository.ListByWall.
+type WallPosts interface {
+	ListByWall(ctx context.Context, wallID uuid.UUID, pick WallPick, before uuid.UUID, limit int) ([]*post.Post, error)
+}
+
+// PostDeleter deletes a post as requesterID would, as PostService.Delete.
+type PostDeleter interface {
+	Delete(ctx context.Context, requesterID, postID uuid.UUID) error
+}
+
+// maxLinkingPosts bounds the posts an article takes away with it.
+const maxLinkingPosts = 20
+
 // ArticlePage is one screen of the articles of a person; NextCursor is
 // uuid.Nil on the last, Total counts them on all pages.
 type ArticlePage struct {
@@ -39,12 +52,24 @@ type ArticleService struct {
 	tx       TxManager
 	photos   PhotoKeeper
 	pages    Pages
+	posts    WallPosts
+	eraser   PostDeleter
 	now      func() time.Time
 }
 
-// NewArticleService: pages may be nil, when no page is ever deleted.
-func NewArticleService(articles ArticleRepository, tx TxManager, photos PhotoKeeper, pages Pages) *ArticleService {
-	return &ArticleService{articles: articles, tx: tx, photos: photos, pages: pages, now: time.Now}
+// ArticleDeps are what ArticleService works with; Pages may be nil, when
+// no page is ever deleted.
+type ArticleDeps struct {
+	Articles ArticleRepository
+	Tx       TxManager
+	Photos   PhotoKeeper
+	Pages    Pages
+	Posts    WallPosts
+	Eraser   PostDeleter
+}
+
+func NewArticleService(d ArticleDeps) *ArticleService {
+	return &ArticleService{articles: d.Articles, tx: d.Tx, photos: d.Photos, pages: d.Pages, posts: d.Posts, eraser: d.Eraser, now: time.Now}
 }
 
 // Create writes an article of authorID. The caller has checked that the
@@ -102,8 +127,9 @@ func (s *ArticleService) Edit(ctx context.Context, requesterID, id uuid.UUID, d 
 	return edited, nil
 }
 
-// Delete deletes an article of its author with its photos; the posts that
-// link to it show the link alone.
+// Delete deletes an article of its author with its photos and the posts
+// of the author's wall that are its link alone; other posts that link to
+// it say it is deleted.
 func (s *ArticleService) Delete(ctx context.Context, requesterID, id uuid.UUID) error {
 	a, err := s.articles.Get(ctx, id)
 	if err != nil {
@@ -117,6 +143,10 @@ func (s *ArticleService) Delete(ctx context.Context, requesterID, id uuid.UUID) 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.articles.Delete(ctx, id); err != nil {
 			return errs.Wrap("s.articles.Delete", err)
+		}
+
+		if err := s.dropPosts(ctx, a); err != nil {
+			return errs.Wrap("s.dropPosts", err)
 		}
 
 		return errs.Wrap("s.drop", s.drop(ctx, a.AuthorID(), a.Photos()))
@@ -177,6 +207,34 @@ func (s *ArticleService) List(ctx context.Context, authorID, cursor uuid.UUID, s
 	}
 
 	return page, nil
+}
+
+// dropPosts deletes the posts of the author's wall, archived or not, that
+// are the link to a alone.
+func (s *ArticleService) dropPosts(ctx context.Context, a *post.Article) error {
+	query, err := post.NewWallQuery("/article/" + a.ID().String())
+	if err != nil {
+		return errs.Wrap("post.NewWallQuery", err)
+	}
+
+	for _, filter := range []post.WallFilter{post.WallOwner, post.WallArchive} {
+		found, err := s.posts.ListByWall(ctx, a.AuthorID(), WallPick{Filter: filter, Query: query}, uuid.Nil, maxLinkingPosts)
+		if err != nil {
+			return errs.Wrap("s.posts.ListByWall", err)
+		}
+
+		for _, p := range found {
+			if !a.LinkedAlone(p) {
+				continue
+			}
+
+			if err := s.eraser.Delete(ctx, a.AuthorID(), p.ID()); err != nil {
+				return errs.Wrap("s.eraser.Delete", err)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (s *ArticleService) publish(ctx context.Context, ownerID uuid.UUID, photos []uuid.UUID) error {

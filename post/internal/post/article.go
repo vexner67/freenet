@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
@@ -314,6 +315,19 @@ func RestoreArticle(s StoredArticle) *Article {
 		id: s.ID, authorID: s.AuthorID, title: s.Title, coverID: s.CoverID, blocks: s.Blocks,
 		createdAt: s.CreatedAt, editedAt: s.EditedAt,
 	}
+}
+
+// LinkedAlone tells a post of the author on their own wall that says only
+// the address of a — the post "Опубликовать на моей стене" wrote for it,
+// which goes with it, as it would show nothing.
+func (a *Article) LinkedAlone(p *Post) bool {
+	c := p.Content()
+	text := strings.TrimSpace(c.Text().String())
+	if p.AuthorID() != a.authorID || !p.OnOwnWall() || c.RepostOf() != uuid.Nil || c.hasMedia() || c.Polled() || c.SharedPhoto() != uuid.Nil {
+		return false
+	}
+
+	return !strings.ContainsFunc(text, unicode.IsSpace) && webLink(text) && strings.HasSuffix(strings.ToLower(text), "/article/"+a.id.String())
 }
 
 // CanBeChangedBy: only the author edits or deletes an article.

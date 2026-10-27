@@ -83,7 +83,9 @@ func newServer(t *testing.T) testServer {
 			Posts: store.Posts(), Comments: store.Comments(), Photos: albums.Photos(), Albums: albums, Walls: store.Sources(),
 		}),
 		Documents: service.NewDocumentService(documents, inmem.TxManager{}, mediaclient.Nop{}),
-		Articles:  service.NewArticleService(inmem.NewArticleRepository(), inmem.TxManager{}, mediaclient.Nop{}, nil),
+		Articles: service.NewArticleService(service.ArticleDeps{
+			Articles: inmem.NewArticleRepository(), Tx: inmem.TxManager{}, Photos: mediaclient.Nop{}, Posts: store.Posts(), Eraser: posts,
+		}),
 		Stories: service.NewStoryService(service.StoryDeps{
 			Stories: store.Stories(), Views: store.StoryViews(), Likes: store.StoryLikes(), Comments: store.StoryComments(),
 			Tx: inmem.TxManager{}, Photos: mediaclient.Nop{}, Notifier: notifyclient.Nop{},

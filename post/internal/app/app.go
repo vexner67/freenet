@@ -195,8 +195,10 @@ func (a *App) build(cfg config.Config) error {
 			Albums:    albums,
 			Polls:     service.NewPollService(service.PollDeps{Polls: repos.polls, Posts: repos.posts, Moderators: moderators, Walls: repos.sources, Tx: repos.tx}),
 			Documents: service.NewDocumentService(repos.documents, repos.tx, photos),
-			Articles:  service.NewArticleService(repos.articles, repos.tx, photos, repos.pages),
-			Stories:   a.stories,
+			Articles: service.NewArticleService(service.ArticleDeps{
+				Articles: repos.articles, Tx: repos.tx, Photos: photos, Pages: repos.pages, Posts: repos.posts, Eraser: posts,
+			}),
+			Stories: a.stories,
 			Faves: service.NewFaveService(service.FaveDeps{
 				PostLikes: repos.likes, CommentLikes: repos.commentLikes, PhotoLikes: repos.photoLikes,
 				Posts: repos.posts, Comments: repos.comments, Photos: repos.albumPhotos, Albums: repos.albums, Walls: repos.sources,

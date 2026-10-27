@@ -147,3 +147,40 @@ func TestArticlePhotosExcerptMinutes(t *testing.T) {
 		t.Fatalf("Minutes = %d, want 3", a.Minutes())
 	}
 }
+
+func TestArticleLinkedAlone(t *testing.T) {
+	t.Parallel()
+
+	author := uuid.New()
+	a, err := post.NewArticle(author, post.ArticleDraft{Title: "Т", Blocks: []post.Block{paragraph(plain("текст"))}}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	link := "https://freenet19.fun/article/" + a.ID().String()
+
+	for _, tt := range []struct {
+		name         string
+		wall, writer uuid.UUID
+		text         string
+		want         bool
+	}{
+		{name: "the link alone", wall: author, writer: author, text: " " + link + "\n", want: true},
+		{name: "with words", wall: author, writer: author, text: "Читайте: " + link},
+		{name: "another article", wall: author, writer: author, text: "https://freenet19.fun/article/" + uuid.NewString()},
+		{name: "on another wall", wall: uuid.New(), writer: author, text: link},
+		{name: "by another", wall: author, writer: uuid.New(), text: link},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			p, err := post.New(tt.wall, tt.writer, post.RestoreContent(post.Text(tt.text), nil, uuid.Nil), time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if got := a.LinkedAlone(p); got != tt.want {
+				t.Fatalf("LinkedAlone = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

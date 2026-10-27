@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/post/internal/inmem"
@@ -27,7 +28,13 @@ func TestArticleService(t *testing.T) {
 	ctx := context.Background()
 	photos := &fakePhotos{}
 	store := inmem.NewStore()
-	svc := service.NewArticleService(inmem.NewArticleRepository(), fakeTx{}, photos, store.Holds())
+	posts := service.NewPostService(service.PostDeps{
+		Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{},
+		Notifier: &fakeNotifier{}, Photos: &fakePhotos{}, Moderators: fakeModerators{}, Switches: store.Posts(),
+	})
+	svc := service.NewArticleService(service.ArticleDeps{
+		Articles: inmem.NewArticleRepository(), Tx: fakeTx{}, Photos: photos, Pages: store.Holds(), Posts: store.Posts(), Eraser: posts,
+	})
 	ann, bob := uuid.New(), uuid.New()
 	cover, first, second := uuid.New(), uuid.New(), uuid.New()
 
@@ -89,8 +96,20 @@ func TestArticleService(t *testing.T) {
 	if err = svc.Delete(ctx, bob, a.ID()); !errors.Is(err, post.ErrCannotChangeArticle) {
 		t.Fatalf("Delete by another: %v", err)
 	}
+	// The post "Опубликовать на моей стене" wrote goes with the article;
+	// one with words of its own stays.
+	link := "https://freenet19.fun/article/" + a.ID().String()
+	alone := wallPost(t, store, ann, link)
+	worded := wallPost(t, store, ann, "Читайте: "+link)
+
 	if err = svc.Delete(ctx, ann, a.ID()); err != nil {
 		t.Fatal(err)
+	}
+	if _, err = store.Posts().Get(ctx, alone); !errors.Is(err, post.ErrNotFound) {
+		t.Fatalf("the post of the link alone: %v", err)
+	}
+	if _, err = store.Posts().Get(ctx, worded); err != nil {
+		t.Fatalf("the post with words: %v", err)
 	}
 	if got := photos.deleted[len(photos.deleted)-1]; !reflect.DeepEqual(got, photoCall{ann, []uuid.UUID{cover, second}}) {
 		t.Fatalf("deleted with the article = %v", got)
@@ -101,4 +120,18 @@ func TestArticleService(t *testing.T) {
 	if photos.outsideTx != 0 {
 		t.Fatalf("%d calls to media outside a transaction", photos.outsideTx)
 	}
+}
+
+func wallPost(t *testing.T, store *inmem.Store, author uuid.UUID, text string) uuid.UUID {
+	t.Helper()
+
+	p, err := post.New(author, author, post.RestoreContent(post.Text(text), nil, uuid.Nil), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = store.Posts().Save(context.Background(), p); err != nil {
+		t.Fatal(err)
+	}
+
+	return p.ID()
 }
