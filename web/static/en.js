@@ -3065,4 +3065,7 @@ export default {
   'В статье есть блок, который не получилось сохранить.': 'The article has a block that could not be saved.',
   'Ссылка в статье должна вести на сайт: http:// или https://.': 'A link in an article must lead to a website: http:// or https://.',
   'Статья удалена.': 'The article was deleted.',
+  'Сейчас': 'Now',
+  ' за этот час': ' this hour',
+  '{0}, идёт': '{0}, going on',
 };

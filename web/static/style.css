@@ -2020,6 +2020,8 @@ a.poll-result-name { cursor: pointer; }
 /* The pixel pictures of the enterprises and the goods stay sharp at any size. */
 .firm-icon { display: inline-block; flex: none; vertical-align: middle; image-rendering: pixelated; }
 .firm-up { color: var(--text-43a047); font-weight: bold; }
+/* The hour going on in the report: it grows every second. */
+.firm-now { color: var(--text-808080); font-style: italic; }
 .firm-down { color: var(--text-c33); font-weight: bold; }
 .firm-hint { margin: 4px 0 10px; }
 .firm-back { margin: 0 0 8px; }

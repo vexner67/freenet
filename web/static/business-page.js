@@ -279,6 +279,65 @@ function blink() {
   }
 }
 
+// The hour going on comes minute by minute: the city counts it only when
+// it ends, but forecast tells how it ends if nothing changes, and the page
+// shows that share of it which has passed. lives are the numbers drawn so,
+// redrawn every second.
+const lives = new Set();
+
+// passed is the share of the hour going on that has passed, 0 to 1.
+function passed() {
+  if (!state?.nextHour) return 0;
+  return Math.min(Math.max(1 - (Date.parse(state.nextHour) - Date.now()) / hourLength, 0), 1);
+}
+
+const hourStart = () => Date.parse(state.nextHour) - hourLength;
+
+// sofar is what of the hour going on the report has already: the deals of
+// the exchange made in it.
+const sofar = (f) => f.hours.find((h) => Date.parse(h.hour) >= hourStart());
+
+// coming is the hour going on of f as far as it has passed — each number
+// of its report, and the cash — or null without a forecast.
+function coming(f) {
+  if (!f.forecast) return null;
+  const share = passed();
+  const before = sofar(f) ?? {};
+  const part = (name) => Math.round((before[name] ?? 0) + ((f.forecast[name] ?? 0) - (before[name] ?? 0)) * share);
+  const hour = {};
+  for (const name of ['made', 'bought', 'sold', 'income', 'purchases', 'wages', 'upkeep', 'fees']) hour[name] = part(name);
+  return { hour, cash: Math.round(f.cash + (f.forecastCash - f.cash) * share) };
+}
+
+// live is a node draw fills now and every second after.
+function live(draw, tag = 'span') {
+  const node = el(tag);
+  const entry = { node, draw };
+  lives.add(entry);
+  node.replaceChildren(...[draw()].flat());
+  return node;
+}
+
+function redraw() {
+  for (const entry of lives) {
+    if (entry.node.isConnected) entry.node.replaceChildren(...[entry.draw()].flat());
+    else lives.delete(entry);
+  }
+}
+
+// cashNow is the cash of f now, growing as the hour goes on.
+const cashNow = (f) => live(() => money(coming(f)?.cash ?? f.cash));
+
+// hourProfit is "+12 гол. за этот час" as it has come so far.
+function hourProfit(f) {
+  return live(() => {
+    const now = coming(f);
+    if (!now) return [];
+    const h = now.hour;
+    return [signed(h.income - h.purchases - h.wages - h.upkeep - h.fees), tr(' за этот час')];
+  });
+}
+
 // --- "Мои предприятия" ---
 
 function myFirms() {
@@ -318,7 +377,8 @@ function tile(f) {
       el('b', { textContent: f.name }),
       el('span', { className: 'firm-tile-kind', textContent: `${firmKindName(f.kind)} · ${tr('{0} ур.', f.level)}${directs(f) ? ` · ${tr('директор')}` : ''}` }),
       el('table', { className: 'firm-tile-facts' },
-        fact(tr('Касса'), watched(`${f.id}:cash`, el('span', { textContent: money(f.cash) }))),
+        fact(tr('Касса'), watched(`${f.id}:cash`, cashNow(f))),
+        f.forecast ? fact(tr('Сейчас'), hourProfit(f)) : null,
         fact(tr('За сутки'), watched(`${f.id}:profit`, el('span', {}, signed(f.profit)))),
         fact(tr('Акции'), `${held(f)} (${sharePercent(held(f), f.shares)})`),
         fact(tr('Станки'), idle(f) ? el('span', { className: 'firm-down', textContent: tr('забастовка') }) : meter(100 - f.wear, 100, tr('{0} %', Math.round(100 - f.wear)), wearTone(f.wear))))));
@@ -494,7 +554,7 @@ function plaque(name, value, sub, onclick = null, key = '') {
 function stats(f, plan) {
   const own = directs(f);
   return el('div', { className: 'firm-stats' },
-    plaque(tr('Касса'), money(f.cash), f.escrow > 0 ? tr('и {0} в заявках', money(f.escrow)) : tr('расходы {0} в час', money(f.upkeep + f.workers * f.wage)), own ? (a) => cashBox(a, f) : null, `${f.id}:cash`),
+    plaque(tr('Касса'), cashNow(f), f.forecast ? hourProfit(f) : f.escrow > 0 ? tr('и {0} в заявках', money(f.escrow)) : tr('расходы {0} в час', money(f.upkeep + f.workers * f.wage)), own ? (a) => cashBox(a, f) : null, `${f.id}:cash`),
     plaque(tr('За сутки'), el('span', { className: 'firm-stat-trend' }, signed(f.profit), trend(f, 64)), tr('прибыль за {0} ч.', f.hours.length), null, `${f.id}:profit`),
     plaque(tr('Рабочие'), `${f.workers} / ${f.seats}`, tr('выработка {0} %', Math.round(f.productivity * 100)), own ? (a) => staffBox(a, f) : null, `${f.id}:workers`),
     plaque(tr('Уровень'), `${f.level} / ${plan.levels}`, f.upgradeCost ? tr('следующий — {0}', money(f.upgradeCost * 100)) : tr('высший'), own ? (a) => levelBox(a, f, plan) : null),
@@ -939,9 +999,11 @@ function orders(f) {
 }
 
 function report(f) {
-  if (!f.hours.length) return hint(tr('Предприятие ещё не отработало ни часа.'));
+  // The hour going on is the live row on top, not one of those ended.
+  const ended = f.forecast ? f.hours.filter((h) => Date.parse(h.hour) < hourStart()) : f.hours;
+  if (!ended.length && !f.forecast) return hint(tr('Предприятие ещё не отработало ни часа.'));
 
-  const hours = [...f.hours].reverse();
+  const hours = [...ended].reverse();
   const costs = (h) => h.purchases + h.wages + h.upkeep + h.fees;
   const sum = (pick) => hours.reduce((n, h) => n + pick(h), 0);
   const profit = (h) => h.income - costs(h);
@@ -952,9 +1014,26 @@ function report(f) {
     points.length > 1 ? lineChart(points, { height: 150, format: (n) => (n > 0 ? '+' : '') + hundredths(n), when: firmHour, tick: firmHour }) : null,
     table(
     [[tr('Час'), 0], [tr('Сделано'), 66, true], [tr('Куплено'), 66, true], [tr('Продано'), 66, true], [tr('Выручка'), 76, true], [tr('Расходы'), 76, true], [tr('Прибыль'), 90, true]],
-    hours.map((h) => [firmHour(h.hour), h.made, h.bought, h.sold, hundredths(h.income), hundredths(costs(h)), signed(profit(h))]),
+    [
+      ...(f.forecast ? [comingRow(f, costs, profit)] : []),
+      ...hours.map((h) => [firmHour(h.hour), h.made, h.bought, h.sold, hundredths(h.income), hundredths(costs(h)), signed(profit(h))]),
+    ],
     [tr('Итого'), sum((h) => h.made), sum((h) => h.bought), sum((h) => h.sold), hundredths(sum((h) => h.income)), hundredths(sum(costs)), signed(sum(profit))],
   ));
+}
+
+// comingRow is the row of the hour going on in the report, growing every
+// second.
+function comingRow(f, costs, profit) {
+  const cell = (pick) => live(() => {
+    const h = coming(f)?.hour;
+    return h ? pick(h) : '';
+  });
+  return [
+    el('span', { className: 'firm-now', textContent: tr('{0}, идёт', firmHour(new Date(hourStart()).toISOString())) }),
+    cell((h) => String(h.made)), cell((h) => String(h.bought)), cell((h) => String(h.sold)),
+    cell((h) => hundredths(h.income)), cell((h) => hundredths(costs(h))), cell((h) => signed(profit(h))),
+  ];
 }
 
 function holders(f) {
@@ -1098,6 +1177,7 @@ function show() {
 // being typed or a dialog is open; the clocks go on every second.
 function refresh() {
   for (const node of document.querySelectorAll('.firm-clock')) tick(node);
+  redraw();
   if (!state?.nextHour || Date.now() < Date.parse(state.nextHour) + 5000 || busy || Date.now() - asked < 30000) return;
   const typing = document.activeElement?.closest?.('#firm-view') && document.activeElement.matches('input, select');
   if (typing || document.querySelector('.modal') || isOpen() || document.hidden) return;
