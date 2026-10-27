@@ -13,6 +13,7 @@ import { lastComments } from './postcomments.js';
 import { pollNode } from './poll.js';
 import { button, openMenu, openModal, openSheet, toast } from './modal.js';
 import { documentsNode } from './docs.js';
+import { articleCardNode, articleIn } from './articles.js';
 import { tr } from './i18n.js';
 
 // nameClass is the class of the name of an author by a post, a comment or
@@ -75,10 +76,13 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       post.archived ? tr(', в архиве') : '',
       post.commentsClosed ? tr(', комментарии закрыты') : '',
     );
+    const article = articleIn(post.text);
     content.replaceChildren(
-      // Whole on the page of the post, which has no link to open it.
-      post.text ? textNode(post.text, { whole: !withCommentsLink, rest: post.textCut ? () => wholeText(post) : null, found }) : '',
+      // Whole on the page of the post, which has no link to open it. A
+      // post that is the link to an article alone shows the card alone.
+      post.text && post.text.trim() !== article?.url ? textNode(post.text, { whole: !withCommentsLink, rest: post.textCut ? () => wholeText(post) : null, found }) : '',
       photosNode(post.photos ?? []) ?? '',
+      article ? articleCardNode(article) : '',
       linkCardNode(post.link) ?? '',
       documentsNode(post.documents) ?? '',
       paidNode(post, { canBuy: canLike, onBought: render }) ?? '',

@@ -266,6 +266,9 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
     });
     // A suggested post attaches no documents.
     if (suggest) $('post-doc').hidden = true;
+    // "Статья" opens the editor of an article for one's own wall: the
+    // article comes back to it as a post that links to it.
+    $('post-article').hidden = !(isOwner && !owner.club && !suggest);
 
     poll = initPollDraft({
       link: $('post-poll'),

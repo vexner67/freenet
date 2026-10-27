@@ -130,6 +130,9 @@ function initForm(me) {
   });
   initGraffiti({ link: $('post-graffiti'), attachments });
 
+  // "Статья" opens the editor of an article, which comes back as a post.
+  $('post-article').hidden = false;
+
   const documents = initDocuments({
     link: $('post-doc'),
     list: $('post-documents'),

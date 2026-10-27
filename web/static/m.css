@@ -2446,6 +2446,7 @@ label { cursor: pointer; }
 .attach-photo::before { background-image: url("/static/icons/photo.svg"); }
 .attach-graffiti::before { background-image: url("/static/icons/graffiti.svg"); }
 .attach-document::before { background-image: url("/static/icons/document.svg"); }
+.attach-article::before { background-image: url("/static/icons/article.svg"); }
 .attach-poll::before { background-image: url("/static/icons/poll.svg"); }
 .attach-timer::before { background-image: url("/static/icons/timer.svg"); }
 .action-reply::before { background-image: url("/static/icons/reply.svg"); }
@@ -3165,3 +3166,104 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 }
 
 
+
+/* The card of an article in a post that links to it, as VK's: its cover
+   darkened under the title, or a grey card without one (articles.js). */
+.article-card { --article-cover: none; position: relative; display: block; overflow: hidden; margin: 6px 4px; border: 1px solid var(--line-dae1e8); background: var(--back-f2f5f8); color: var(--text-333); }
+.article-card:hover { text-decoration: none; border-color: var(--line-c0cad5); }
+.article-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.article-list .article-card { margin: 0; }
+.article-card.loading { height: 60px; }
+.article-card.with-cover { min-height: 170px; background: var(--back-3e3e3e) var(--article-cover) center / cover no-repeat; color: var(--text-fff); }
+.article-card-shade { position: absolute; inset: 0; }
+.article-card.with-cover .article-card-shade { background: linear-gradient(rgba(0, 0, 0, .15), rgba(0, 0, 0, .7)); }
+.article-card-text { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; }
+.article-card.with-cover .article-card-text { justify-content: flex-end; min-height: 170px; box-sizing: border-box; }
+.article-card-label { display: flex; align-items: center; gap: 5px; color: var(--text-808080); text-transform: uppercase; font-size: 10px; letter-spacing: .5px; }
+.article-card-label::before { content: ''; width: 16px; height: 16px; background: url("/static/icons/article.svg") center no-repeat; }
+.article-card.with-cover .article-card-label { color: var(--text-e8e8e8); }
+.article-card-title { font-size: 15px; color: var(--text-2b587a); overflow-wrap: anywhere; }
+.article-card.with-cover .article-card-title { color: var(--text-fff); font-size: 17px; }
+.article-card-excerpt { overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.article-card-meta { color: var(--text-808080); }
+.article-card.with-cover .article-card-meta { color: var(--text-e8e8e8); }
+.article-card-read { align-self: flex-start; margin-top: 4px; padding: 3px 10px; border-radius: 2px; background: var(--back-595959); color: var(--text-fff); }
+.article-card:hover .article-card-read { background: var(--back-707070); }
+
+/* The page of an article: the cover, the title and who wrote it, then the
+   text written as a long read (article-page.js). */
+.article { max-width: 600px; margin: 0 auto; padding: 4px 0 10px; }
+.article-cover { overflow: hidden; margin-bottom: 14px; background: var(--back-f2f5f8); }
+.article-cover img { display: block; width: 100%; max-height: 340px; object-fit: cover; }
+.article-title { margin: 0 0 10px; font-size: 22px; font-weight: bold; line-height: 1.25; color: var(--text-333); overflow-wrap: anywhere; }
+.article-byline { display: flex; align-items: center; gap: 8px; padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid var(--line-e8ebee); }
+.article-avatar { display: block; width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+.article-byline-text { display: flex; flex-direction: column; gap: 2px; }
+.article-author { font-weight: bold; }
+.article-meta { color: var(--text-808080); }
+.article-text { font-size: 13px; line-height: 1.6; color: var(--text-000); overflow-wrap: anywhere; }
+.article-text p { margin: 0 0 12px; }
+.article-text h2 { margin: 22px 0 10px; font-size: 18px; line-height: 1.3; color: var(--text-333); }
+.article-text h3 { margin: 18px 0 8px; font-size: 15px; line-height: 1.3; color: var(--text-333); }
+.article-text blockquote { margin: 0 0 12px; padding: 6px 12px; border-left: 3px solid var(--line-5b7aa1); background: var(--back-f2f5f8); font-style: italic; color: var(--text-333); }
+.article-text ul, .article-text ol { margin: 0 0 12px; padding-left: 24px; }
+.article-text li { margin-bottom: 4px; }
+.article-text pre { margin: 0 0 12px; padding: 8px 10px; overflow-x: auto; border: 1px solid var(--line-e0e6ec); background: var(--back-f7f7f7); font: 12px/1.5 Consolas, "Courier New", monospace; white-space: pre-wrap; }
+.article-text hr { width: 30%; margin: 20px auto; border: 0; border-top: 1px solid var(--line-c5d0db); }
+.article-text a { color: var(--text-2b587a); text-decoration: underline; }
+.article-photo { margin: 0 0 14px; }
+.article-photo img { display: block; max-width: 100%; max-height: 600px; margin: 0 auto; }
+.article-photo figcaption { margin-top: 5px; text-align: center; color: var(--text-808080); }
+.article-tools { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--line-e8ebee); }
+.article-tools a { cursor: pointer; }
+
+/* The editor of an article (article-edit.js): the cover to add, the title
+   in large letters, the bar of tools stuck over the text, and the text as
+   it will be read. */
+.article-editor { max-width: 600px; margin: 0 auto; }
+.article-cover.editing { position: relative; display: flex; align-items: center; justify-content: center; min-height: 90px; border: 1px dashed var(--line-c0cad5); }
+.article-cover.editing.with-cover { border-style: solid; }
+.article-cover.editing img { max-height: 260px; }
+.article-cover-add { position: absolute; padding: 4px 10px; background: var(--back-fff); border: 1px solid var(--line-c0cad5); cursor: pointer; }
+.article-cover.with-cover .article-cover-add { right: 8px; bottom: 8px; }
+.article-cover-remove { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: rgba(0, 0, 0, .55); color: var(--text-fff); font-size: 16px; line-height: 24px; cursor: pointer; }
+.article-title-input { display: block; width: 100%; box-sizing: border-box; min-height: 0; margin: 0 0 8px; padding: 4px 0; border: 0; resize: none; background: transparent; font: bold 22px/1.25 Tahoma, Verdana, sans-serif; color: var(--text-333); }
+.article-title-input:focus { outline: none; }
+.article-toolbar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 2px; padding: 4px; border: 1px solid var(--line-dae1e8); background: var(--back-f7f7f7); }
+.article-tool { width: 28px; height: 28px; flex: none; padding: 0; border: 1px solid transparent; border-radius: 2px; background: transparent center no-repeat; cursor: pointer; }
+.article-tool:hover { background-color: var(--back-e9edf1); }
+.article-tool.active { background-color: var(--back-dae1e8); border-color: var(--line-c5d0db); }
+.article-tool-gap { flex: none; width: 1px; height: 18px; margin: 0 4px; background: var(--back-d4d4d4); }
+.tool-bold { background-image: url("/static/icons/editor-bold.svg"); }
+.tool-italic { background-image: url("/static/icons/editor-italic.svg"); }
+.tool-strike { background-image: url("/static/icons/editor-strike.svg"); }
+.tool-link { background-image: url("/static/icons/editor-link.svg"); }
+.tool-heading { background-image: url("/static/icons/editor-heading.svg"); }
+.tool-subheading { background-image: url("/static/icons/editor-subheading.svg"); }
+.tool-quote { background-image: url("/static/icons/editor-quote.svg"); }
+.tool-code { background-image: url("/static/icons/editor-code.svg"); }
+.tool-bullets { background-image: url("/static/icons/editor-bullets.svg"); }
+.tool-numbers { background-image: url("/static/icons/editor-numbers.svg"); }
+.tool-divider { background-image: url("/static/icons/editor-divider.svg"); }
+.tool-photo { background-image: url("/static/icons/editor-photo.svg"); }
+.article-body-input { min-height: 320px; padding: 12px 10px; border: 1px solid var(--line-dae1e8); border-top: 0; background: var(--back-fff); }
+.article-body-input:focus { outline: none; }
+.article-body-input .article-photo { position: relative; padding: 4px; border: 1px solid transparent; }
+.article-body-input .article-photo:hover { border-color: var(--line-dae1e8); }
+.article-caption { display: block; width: 100%; box-sizing: border-box; margin-top: 5px; border: 0; border-bottom: 1px solid var(--line-e8ebee); background: transparent; text-align: center; color: var(--text-808080); }
+.article-photo-remove { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: rgba(0, 0, 0, .55); color: var(--text-fff); font-size: 16px; line-height: 24px; cursor: pointer; }
+.article-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 10px; }
+.article-cancel { cursor: pointer; }
+.article-to-wall { display: flex; align-items: center; gap: 4px; }
+.article-counter { margin-left: auto; color: var(--text-808080); }
+.article-counter.over { color: var(--text-c00); }
+/* The editor of an article on a phone: the bar under the header, scrolled
+   sideways in itself, and buttons for a finger. */
+.m .article-toolbar { top: 44px; overflow-x: auto; scrollbar-width: none; }
+.m .article-tool { width: 36px; height: 36px; }
+.m .article-title { font-size: 20px; }
+.m .article-title-input { font-size: 20px; }
+.m .article-text { font-size: 15px; }
+.m .article-caption { font-size: 16px; }
+.m .article-body-input { min-height: 240px; font-size: 16px; }
+.m .article-card.with-cover, .m .article-card.with-cover .article-card-text { min-height: 150px; }

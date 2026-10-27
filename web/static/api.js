@@ -379,6 +379,13 @@ export const api = {
   uploadDocument: (file) => authorized('POST', '/api/v1/me/documents?name=' + encodeURIComponent(file.name), file),
   renameDocument: (id, name) => authorized('PATCH', `/api/v1/documents/${encodeURIComponent(id)}`, { name }),
   deleteDocument: (id) => authorized('DELETE', `/api/v1/documents/${encodeURIComponent(id)}`),
+  // Articles of the editor: anybody reads one, brief without its blocks
+  // (for the card of a post); article is { title, cover, blocks }.
+  article: (id, brief = false) => optional('GET', withQuery('/api/v1/articles/' + encodeURIComponent(id), brief ? 'brief=true' : '')),
+  articles: (nickname, cursor = '') => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/articles`, cursor, 0)),
+  createArticle: (article) => authorized('POST', '/api/v1/articles', article),
+  editArticle: (id, article) => authorized('PUT', '/api/v1/articles/' + encodeURIComponent(id), article),
+  deleteArticle: (id) => authorized('DELETE', '/api/v1/articles/' + encodeURIComponent(id)),
   // Shares a post on your wall, with a comment that may be empty.
   // to is { club, fromClub, signed } to share it in a community ("в группу").
   // to: the community and how to sign, and the photos added to the words.
