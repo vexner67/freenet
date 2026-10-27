@@ -102,6 +102,10 @@ func registerPages(mux *http.ServeMux, dir string) {
 	mux.Handle("GET /shop", site.page(dir, "stickers.html"))
 	mux.Handle("GET /stickers", site.page(dir, "stickers.html"))
 	mux.Handle("GET /docs", site.page(dir, "docs.html"))
+	mux.Handle("GET /articles", site.page(dir, "articles.html"))
+	mux.Handle("GET /article/new", site.page(dir, "article-edit.html"))
+	mux.Handle("GET /article/{id}", site.page(dir, "article.html"))
+	mux.Handle("GET /article/{id}/edit", site.page(dir, "article-edit.html"))
 	mux.Handle("GET /casino", site.page(dir, "casino.html"))
 	mux.Handle("GET /mine", site.page(dir, "mine.html"))
 	// The guests are shown among the notifications now.

@@ -1144,6 +1144,97 @@ paths:
         "403": { description: "Not your document", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/articles:
+    post:
+      summary: Write an article (the editor, "Статьи" of VK)
+      description: |
+        A long read of blocks: paragraphs, headings, quotes, list items, code,
+        photos with captions and dividers; the text of a block is spans written
+        bold, italic, struck out or as links (http and https only). Up to 100 000
+        characters, 500 blocks and 30 photos (yours, from `POST /api/v1/me/photos`,
+        with the cover). Anybody with its link reads it at `/article/{id}`; a post
+        that links there shows its card.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ArticleRequest" }
+      responses:
+        "201":
+          description: Written
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Article" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/articles/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Read an article
+      description: Public. `brief=true` leaves out the blocks, for the card of a post.
+      parameters:
+        - { name: brief, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: The article
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Article" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      summary: Write your article anew
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ArticleRequest" }
+      responses:
+        "200":
+          description: Edited
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Article" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "Not your article", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Delete your article
+      description: Its photos go with it; the posts that link to it keep the link alone.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "Not your article", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/users/{nickname}/articles:
+    get:
+      summary: The articles of a person, newest first, brief
+      parameters:
+        - { name: nickname, in: path, required: true, schema: { type: string } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50 } }
+      responses:
+        "200":
+          description: A page of articles
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [articles, nextCursor, total]
+                properties:
+                  articles: { type: array, items: { $ref: "#/components/schemas/Article" } }
+                  nextCursor: { type: string, description: "Empty on the last page" }
+                  total: { type: integer }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/stories:
     get:
       summary: The stories above your news ("истории" of VK)
@@ -9032,6 +9123,59 @@ components:
                 type: array
                 items: { $ref: "#/components/schemas/Story" }
               viewed: { type: boolean, description: "You viewed them all" }
+
+    ArticleSpan:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string }
+        bold: { type: boolean }
+        italic: { type: boolean }
+        strike: { type: boolean }
+        link: { type: string, description: "An http or https address" }
+
+    ArticleRequest:
+      type: object
+      required: [title, blocks]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 256 }
+        cover: { type: string, description: "The ID of a photo of yours over the title" }
+        blocks:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            required: [kind]
+            properties:
+              kind: { type: string, enum: [paragraph, heading, subheading, quote, bullet, number, code, photo, divider] }
+              spans: { type: array, items: { $ref: "#/components/schemas/ArticleSpan" }, description: "Of the text kinds; code is plain" }
+              photo: { type: string, description: "Of a photo block: the ID of a photo of yours" }
+              caption: { type: string, maxLength: 256, description: "Of a photo block" }
+
+    Article:
+      type: object
+      description: An article of the editor
+      required: [id, title, cover, author, blocks, excerpt, minutes, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        cover: { nullable: true, allOf: [{ $ref: "#/components/schemas/Photo" }] }
+        author: { $ref: "#/components/schemas/Author" }
+        blocks:
+          type: array
+          description: Empty in a brief article; list items next to each other are one list
+          items:
+            type: object
+            required: [kind]
+            properties:
+              kind: { type: string, enum: [paragraph, heading, subheading, quote, bullet, number, code, photo, divider] }
+              spans: { type: array, items: { $ref: "#/components/schemas/ArticleSpan" } }
+              photo: { $ref: "#/components/schemas/Photo" }
+              caption: { type: string }
+        excerpt: { type: string, description: "The start of the text, up to 300 characters" }
+        minutes: { type: integer, description: "How long it is read" }
+        createdAt: { type: string, format: date-time }
+        editedAt: { type: string, format: date-time }
 
     Document:
       type: object

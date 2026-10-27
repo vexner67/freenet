@@ -2,6 +2,8 @@ package rest
 
 import (
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/vexner67/freenet/gateway/internal/model"
 )
@@ -13,7 +15,7 @@ import (
 // on without it, or without its picture.
 func (a *api) linkCard(r *http.Request, token, authorID, text string) *model.Link {
 	address := model.FirstLink(text)
-	if a.previews == nil || address == "" {
+	if a.previews == nil || address == "" || ownArticle(r, address) {
 		return nil
 	}
 
@@ -44,6 +46,14 @@ func (a *api) linkCard(r *http.Request, token, authorID, text string) *model.Lin
 	link.PhotoID = photoID
 
 	return link
+}
+
+// ownArticle tells a link to an article of this site, whose card the site
+// draws itself from the article.
+func ownArticle(r *http.Request, address string) bool {
+	u, err := url.Parse(address)
+
+	return err == nil && strings.EqualFold(u.Host, r.Host) && strings.HasPrefix(u.Path, "/article/")
 }
 
 // dropCard deletes the picture of a card whose post was not written.

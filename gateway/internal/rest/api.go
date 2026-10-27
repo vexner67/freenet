@@ -565,6 +565,7 @@ type Backends struct {
 	Holdem        Holdem
 	Bets          Bets
 	Documents     Documents
+	Articles      Articles
 	Stories       Stories
 	// Previews reads the cards of the pages posts link to; nil makes
 	// posts without cards.
@@ -605,6 +606,7 @@ type api struct {
 	holdems           Holdem
 	bets              Bets
 	documents         Documents
+	articles          Articles
 	stories           Stories
 	previews          Previews
 	logger            *slog.Logger
@@ -867,6 +869,12 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/me/documents", a.uploadDocument)
 	mux.HandleFunc("PATCH /api/v1/documents/{id}", a.renameDocument)
 	mux.HandleFunc("DELETE /api/v1/documents/{id}", a.deleteDocument)
+
+	mux.HandleFunc("POST /api/v1/articles", a.createArticle)
+	mux.HandleFunc("GET /api/v1/articles/{id}", a.getArticle)
+	mux.HandleFunc("PUT /api/v1/articles/{id}", a.editArticle)
+	mux.HandleFunc("DELETE /api/v1/articles/{id}", a.deleteArticle)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/articles", a.listArticles)
 	mux.HandleFunc("GET /api/v1/stories", a.listFeedStories)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/stories", a.listUserStories)
 	mux.HandleFunc("POST /api/v1/me/stories", a.tellStory)

@@ -1584,6 +1584,7 @@ type harness struct {
 	holdem        *fakeHoldem
 	bets          *fakeBets
 	documents     *fakeDocuments
+	articles      *fakeArticles
 	stories       *fakeStories
 	previews      *fakePreviews
 }
@@ -1621,6 +1622,7 @@ func newHarness(cfg rest.Config) harness {
 		bets:          &fakeBets{},
 		faves:         &fakeFaves{},
 		documents:     &fakeDocuments{},
+		articles:      &fakeArticles{},
 		stories:       &fakeStories{},
 		previews:      &fakePreviews{},
 	}
@@ -1653,6 +1655,7 @@ func newHarness(cfg rest.Config) harness {
 		Bets:          h.bets,
 		Faves:         h.faves,
 		Documents:     h.documents,
+		Articles:      h.articles,
 		Stories:       h.stories,
 		Previews:      h.previews,
 	}, h.metrics).Handler()
