@@ -2263,6 +2263,13 @@ button.stock-plaque:hover { background: var(--back-f2f5f8); border-color: var(--
 .stock-head .stock-head-price { display: flex; flex-direction: column; align-items: flex-end; }
 .stock-big { color: var(--text-000); font-size: 24px; font-weight: bold; line-height: 28px; }
 .stock-facts { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); margin: 0 0 8px; background: var(--back-f7f7f7); border: 1px solid var(--line-e0e0e0); }
+.stock-tenders { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; }
+.stock-tender { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px; background: var(--back-f9f9f9); border: 1px solid var(--line-e8e8e8); }
+.stock-tender.own { background: var(--back-f2f5f8); border-color: var(--line-c5d0db); }
+.stock-tender-text { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
+.stock-tender .error { flex-basis: 100%; }
+.tender-sell { display: flex; gap: 4px; align-items: center; }
+.stock-tender-form { max-width: 360px; }
 .stock-fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 5px 6px; border-right: 1px solid var(--line-e0e0e0); }
 .stock-fact:last-child { border-right: 0; }
 .stock-fact span:first-child { overflow: hidden; color: var(--text-808080); text-overflow: ellipsis; white-space: nowrap; }
@@ -2332,6 +2339,11 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .firm-contracts, .firm-news { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 10px; }
 .firm-contract { display: flex; gap: 8px; align-items: center; padding: 6px; background: var(--back-f9f6e7); border: 1px solid var(--line-d7cf9e); }
 .firm-contract.mine { background: var(--back-f2f5f8); border-color: var(--line-c5d0db); }
+.firm-contract.unfit { background: var(--back-f7f7f7); border-color: var(--line-e0e0e0); color: var(--text-808080); }
+.firm-contract.unfit .firm-icon { opacity: 0.5; }
+.firm-contract-need { color: var(--text-808080); white-space: nowrap; }
+.firm-tenders { display: flex; flex-direction: column; gap: 4px; margin: 4px 0; }
+.firm-labour { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .firm-contract-text { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
 .firm-contract-actions { display: flex; gap: 4px; }
 .firm-pick { display: flex; gap: 6px; align-items: center; width: 100%; padding: 4px 6px; background: linear-gradient(var(--back-fff), var(--back-ededed)); border: 1px solid var(--line-c0cad5); color: var(--text-000); font: 11px tahoma, verdana, sans-serif; text-align: left; cursor: pointer; }

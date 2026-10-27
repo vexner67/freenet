@@ -348,9 +348,26 @@ function myFirms() {
   } else {
     nodes.push(title(tr('Мои предприятия')), el('div', { className: 'firm-tiles' }, ...mine.map(tile)), clock());
   }
+  nodes.push(title(tr('Рынок труда')), ...labour());
   if (state.news.length) nodes.push(title(tr('Новости города')), news(state.news.slice(0, 6)));
   nodes.push(title(tr('Основать предприятие')), ...founding());
   return nodes;
+}
+
+// labour is the labour market of the city: its people, those out of work
+// and the wage the enterprises pay on average.
+function labour() {
+  const l = state.labour;
+  const fact = (name, value) => el('div', { className: 'stock-fact' }, el('span', { textContent: name }), el('b', { textContent: value }));
+  return [
+    el('div', { className: 'stock-facts firm-labour' },
+      fact(tr('Горожан'), groupedVotes(l.people)),
+      fact(tr('Работают'), groupedVotes(l.employed)),
+      fact(tr('Без работы'), groupedVotes(l.people - l.employed)),
+      fact(tr('Вакансий'), groupedVotes(Math.max(l.jobs - l.employed, 0))),
+      fact(tr('Средняя зарплата'), money(l.wage))),
+    hint(tr('Люди приезжают в город за работой, но всех вакансий не закрывают. Безработные идут к тем, кто платит больше, а платящие меньше средней теряют рабочих.')),
+  ];
 }
 
 function steps() {
@@ -360,7 +377,7 @@ function steps() {
     el('p', { textContent: text }));
 
   return el('div', { className: 'firm-steps' },
-    step(1, '/static/firms/farm.svg', tr('Основайте предприятие'), tr('Проще всего начать с фермы, рудника, нефтевышки или лесхоза: им не нужно сырьё. Рабочие нанимаются сразу.')),
+    step(1, '/static/firms/farm.svg', tr('Основайте предприятие'), tr('Проще всего начать с фермы, рудника, нефтевышки или лесхоза: им не нужно сырьё. Рабочих для нового предприятия город найдёт сразу.')),
     step(2, '/static/goods/grain.svg', tr('Оно работает само'), tr('Каждый час рабочие делают продукцию, а склад продаёт её государству. Выручка копится в кассе предприятия.')),
     step(3, '/static/firms/dividends.svg', tr('Забирайте прибыль'), tr('Выплатите дивиденды — голоса из кассы придут на ваш счёт. Получать их могут страницы старше недели с заполненной анкетой.')),
   );
@@ -556,7 +573,7 @@ function stats(f, plan) {
   return el('div', { className: 'firm-stats' },
     plaque(tr('Касса'), cashNow(f), f.forecast ? hourProfit(f) : f.escrow > 0 ? tr('и {0} в заявках', money(f.escrow)) : tr('расходы {0} в час', money(f.upkeep + f.workers * f.wage)), own ? (a) => cashBox(a, f) : null, `${f.id}:cash`),
     plaque(tr('За сутки'), el('span', { className: 'firm-stat-trend' }, signed(f.profit), trend(f, 64)), tr('прибыль за {0} ч.', f.hours.length), null, `${f.id}:profit`),
-    plaque(tr('Рабочие'), `${f.workers} / ${f.seats}`, tr('выработка {0} %', Math.round(f.productivity * 100)), own ? (a) => staffBox(a, f) : null, `${f.id}:workers`),
+    plaque(tr('Рабочие'), `${f.workers} / ${f.wanted}`, f.wanted > f.workers ? tr('ищет ещё {0}, выработка {1} %', f.wanted - f.workers, Math.round(f.productivity * 100)) : tr('выработка {0} %', Math.round(f.productivity * 100)), own ? (a) => staffBox(a, f) : null, `${f.id}:workers`),
     plaque(tr('Уровень'), `${f.level} / ${plan.levels}`, f.upgradeCost ? tr('следующий — {0}', money(f.upgradeCost * 100)) : tr('высший'), own ? (a) => levelBox(a, f, plan) : null),
     plaque(tr('Станки'), meter(100 - f.wear, 100, tr('{0} %', Math.round(100 - f.wear)), wearTone(f.wear)), f.wear >= 30 ? tr('изношены — делают меньше') : tr('в порядке'), own ? (a) => repairBox(a, f) : null),
     plaque(tr('Акция'), money(shareOf(f)), f.float > 0 ? tr('{0} новых на бирже', groupedVotes(f.float)) : tr('торгуется в «Акциях»'), (a) => shareBox(a, f)),
@@ -616,26 +633,34 @@ function staffBox(anchor, f) {
   if (!pop) return;
   const norm = state.settings.wage;
 
-  const workers = stepper({ value: f.workers, min: 0, max: f.seats, onchange: () => recount() });
+  const workers = stepper({ value: f.wanted, min: 0, max: f.seats, onchange: () => recount() });
   const wage = slider({ value: f.wage, min: Math.ceil(norm / 2), max: norm * 3, onchange: () => recount() });
   const wageText = el('b', {});
   const note = popNote('');
   const warn = el('div', { className: 'pop-note firm-down' });
-  const go = el('button', { type: 'button', className: 'button', textContent: tr('Сохранить'), onclick: () => popAct(pop, 'staff', { firm: f.id, workers: workers.get(), wage: wage.get() }, tr('Рабочие и зарплата изменены.')) });
+  const go = el('button', { type: 'button', className: 'button', textContent: tr('Сохранить'), onclick: () => popAct(pop, 'staff', { firm: f.id, workers: workers.get(), wage: wage.get() }, tr('Набор рабочих и зарплата изменены.')) });
+  const market = state.labour;
+  const [hired, gone] = f.hours.reduce(([h, l], x) => [h + x.hired, l + x.left], [0, 0]);
 
   function recount() {
     const w = wage.get();
     wageText.textContent = tr('{0} в час', money(w));
-    note.textContent = tr('Выработка {0} %, зарплаты {1} в час. Норма — {2}.', Math.round(productivity(w) * 100), money(workers.get() * w), money(norm));
-    warn.textContent = w < norm ? tr('Ниже нормы рабочие могут забастовать.') : '';
+    note.textContent = tr('Выработка {0} %, зарплаты {1} в час. Норма — {2}, в среднем по городу — {3}.', Math.round(productivity(w) * 100), money(Math.min(workers.get(), f.workers) * w), money(norm), money(market.wage));
+    warn.textContent = [
+      w < norm ? tr('Ниже нормы рабочие могут забастовать.') : '',
+      w < market.wage ? tr('Ниже средней по городу рабочие уходят к тем, кто платит больше.') : '',
+    ].filter(Boolean).join(' ');
   }
 
   pop.body.append(
-    row(el('span', { className: 'pop-label', textContent: tr('Рабочих') }), workers.node, chips([[tr('все места'), () => workers.set(f.seats)]])),
+    popNote(tr('Сейчас работают {0} из {1}. За сутки наняты {2}, ушли {3}.', f.workers, f.wanted, hired, gone)),
+    row(el('span', { className: 'pop-label', textContent: tr('Нужно рабочих') }), workers.node, chips([[tr('все места'), () => workers.set(f.seats)]])),
     row(el('span', { className: 'pop-label', textContent: tr('Зарплата') }), wageText),
     row(wage.node),
     row(chips([[tr('½ нормы'), () => wage.set(Math.ceil(norm / 2))], [tr('норма'), () => wage.set(norm)], [tr('×2'), () => wage.set(norm * 2)], [tr('×3'), () => wage.set(norm * 3)]])),
-    note, warn, popActions(go));
+    note, warn,
+    popNote(tr('Лишних рабочих увольняют сразу, а вакансии занимают безработные горожане — сначала у тех, кто платит больше. Без работы сейчас {0}; если людей не хватает, новые приезжают в город за несколько часов.', market.people - market.employed)),
+    popActions(go));
   recount();
   pop.place();
 }
@@ -840,12 +865,14 @@ const left = (iso) => {
 function contractCard(k, f = null) {
   const taker = k.firm ? firmOf(k.firm) : null;
   const mine = taker && directs(taker);
+  const unfit = !k.firm && !f && !fits(k);
   const rest = k.units - k.delivered;
   const actions = [];
-  if (!k.firm) actions.push(button(tr('Взять'), (e) => takeBox(e.currentTarget, k, f)));
+  if (!k.firm && !unfit) actions.push(button(tr('Взять'), (e) => takeBox(e.currentTarget, k, f)));
   if (mine) actions.push(button(tr('Сдать'), (e) => deliverBox(e.currentTarget, k, taker)));
+  if (unfit) actions.push(el('span', { className: 'firm-contract-need', textContent: tr('нужно: {0}', makers(k.good)) }));
 
-  return el('div', { className: mine ? 'firm-contract mine' : 'firm-contract' },
+  return el('div', { className: mine ? 'firm-contract mine' : unfit ? 'firm-contract unfit' : 'firm-contract' },
     goodIcon(k.good, 32),
     el('div', { className: 'firm-contract-text' },
       el('b', { textContent: tr('{0}: {1} шт. по {2}', goodName(k.good), groupedVotes(k.units), money(k.price)) }),
@@ -904,12 +931,22 @@ function firmContracts(f) {
   ];
 }
 
+// fits is whether an enterprise the caller directs keeps the good of the
+// order: it can take it.
+const fits = (k) => state.firms.some((x) => directs(x) && x.stock.some((s) => s.good === k.good));
+
+// makers are the enterprises that make a good: "мельница".
+const makers = (good) => state.catalog.filter((s) => s.output === good).map((s) => firmKindName(s.kind).toLowerCase()).join(', ');
+
+// contracts are the orders of the city: those of the caller's enterprises
+// first, then those they can take, and the rest grey with what they need.
 function contracts() {
-  const list = state.contracts;
+  const rank = (k) => (k.firm ? (directs(firmOf(k.firm) ?? {}) ? 0 : 3) : fits(k) ? 1 : 2);
+  const list = [...state.contracts].sort((a, b) => rank(a) - rank(b));
   return [
     title(tr('Заказы города')),
-    list.length ? el('div', { className: 'firm-contracts' }, ...list.map((k) => contractCard(k))) : hint(tr('Сейчас город ничего не заказывает. Новые заказы появляются каждые несколько часов.')),
-    hint(tr('Город заказывает товары на треть-половину дороже обычной цены. Взятый заказ нужно сдать за сутки со склада предприятия, а за несданное — штраф: десятая часть его цены.')),
+    list.length ? el('div', { className: 'firm-contracts' }, ...list.map((k) => contractCard(k))) : hint(tr('Сейчас город ничего не заказывает. Новые заказы появляются почти каждый час.')),
+    hint(tr('Город заказывает то, что делают его предприятия, на треть-половину дороже обычной цены: до 8 заказов сразу, новый — в шести часах из десяти. Взятый заказ нужно сдать за сутки со склада предприятия, а за несданное — штраф: десятая часть его цены. Серые заказы ваши предприятия взять не могут.')),
   ];
 }
 
@@ -1037,11 +1074,16 @@ function comingRow(f, costs, profit) {
 }
 
 function holders(f) {
+  const offers = state.tenders.filter((t) => t.firm === f.id);
   return [
     table([[tr('Акционер'), 0], [tr('Акций'), 70, true], [tr('Доля'), 150]], f.holders.map((h) => [
       person(h.user), groupedVotes(h.shares), el('span', { className: 'firm-share' }, bar(h.shares, f.shares), sharePercent(h.shares, f.shares)),
     ])),
-    hint(tr('Директор — тот, у кого больше всех акций: продав много, можно потерять управление. Акции покупают и продают в «Акциях».')),
+    offers.length ? el('div', { className: 'firm-tenders' }, ...offers.map((t) => el('div', { className: 'firm-contract' },
+      el('div', { className: 'firm-contract-text' },
+        el('span', {}, person(t.user), ' ', tr('предлагает выкупить {0} акц. по {1}', groupedVotes(t.shares), money(t.price))),
+        el('span', { className: 'hint', textContent: tr('до {0}', firmHour(t.until)) }))))) : null,
+    hint(tr('Директор — тот, у кого больше всех акций: продав много, можно потерять управление, а собрав больше директора — получить его. Акции покупают, продают и предлагают выкупить в «Акциях».')),
     el('p', {}, el('a', { href: `/stocks?firm=${encodeURIComponent(f.id)}`, textContent: tr('Акции предприятия на бирже »') })),
   ];
 }

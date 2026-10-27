@@ -339,9 +339,76 @@ function companyView(c) {
         h.shares ? el('p', { className: 'stock-mine' }, tr('У вас {0} акц. на {1} — {2} от всех', groupedVotes(h.shares), money(h.shares * c.price), sharePercent(h.shares, c.shares))) : null,
         ordersOf(c.firm).length ? myOrders(ordersOf(c.firm), false) : null)
       : hint(tr('У вас нет акций этой компании.')),
+    title(tr('Выкуп акций')),
+    tenders(c, h),
     title(tr('Новости')),
     news(about.slice(0, 8)),
   ];
+}
+
+// tenders are the offers to buy the shares of the company out: each
+// shareholder sells to one as much as it likes, and who comes to hold the
+// most directs the enterprise. Below — the form of an offer of one's own.
+function tenders(c, h) {
+  const offers = state.tenders.filter((t) => t.firm === c.firm);
+  const mine = offers.find((t) => t.user.id === me.id);
+  const rows = offers.map((t) => {
+    const own = t.user.id === me.id;
+    const error = el('div', { className: 'error', hidden: true });
+    const shares = stepper({ value: Math.max(1, Math.min(h.free, t.shares)), min: 1, max: Math.max(1, Math.min(h.free, t.shares)) });
+    const action = own
+      ? el('button', { type: 'button', className: 'button', textContent: tr('Отозвать'), onclick: () => act('tender_cancel', { firm: c.firm, order: t.id }, tr('Предложение отозвано, деньги вернулись на счёт.'), error) })
+      : h.free > 0
+        ? el('span', { className: 'tender-sell' }, shares.node, el('button', {
+          type: 'button', className: 'button', textContent: tr('Продать'),
+          onclick: () => act('tender_sell', { firm: c.firm, order: t.id, shares: shares.get() }, (d) => tr('Продано {0} акц. за {1}.', groupedVotes(d.shares), money(d.money)), error),
+        }))
+        : null;
+    return el('div', { className: `stock-tender ${own ? 'own' : ''}`.trim() },
+      el('div', { className: 'stock-tender-text' },
+        el('div', {}, person(t.user), ' ', tr('покупает {0} акц. по {1}', groupedVotes(t.shares), hundredths(t.price))),
+        el('div', { className: 'hint', textContent: tr('{0} к цене, до {1}', priceChange(t.price, c.price), stockHour(t.until)) })),
+      action, error);
+  });
+
+  return el('div', { className: 'stock-tenders' },
+    offers.length ? el('div', {}, ...rows) : hint(tr('Никто не предлагает выкупить акции этой компании.')),
+    mine ? null : tenderForm(c, h));
+}
+
+// tenderForm offers to buy shares of the company of their holders at a
+// price no lower than a share goes for now; the money is kept on the
+// account for a day.
+function tenderForm(c, h) {
+  const others = Math.max(0, c.shares - c.pool - c.float - h.shares);
+  if (!others) return null;
+
+  const error = el('div', { className: 'error', hidden: true });
+  const plain = (n) => hundredths(n).replace(/\u00a0/g, '');
+  const shares = stepper({ value: Math.min(others, Math.ceil(c.shares / 2)), min: 1, max: others, onchange: () => recount(), wide: true });
+  const priceInput = el('input', { type: 'text', inputMode: 'decimal', className: 'step-value wide', value: plain(Math.round(c.price * 1.2)) });
+  const sum = el('div', { className: 'deal-summary' });
+  const go = el('button', { type: 'button', className: 'button deal-go', textContent: tr('Предложить выкуп') });
+  const price = () => hundredthsOf(priceInput.value);
+
+  function recount() {
+    const total = shares.get() * price();
+    sum.replaceChildren(
+      el('div', {}, el('span', { textContent: tr('Будет удержано') }), el('b', { textContent: money(total) })),
+      el('div', {}, el('span', { textContent: tr('На счету останется') }), el('b', { textContent: money(state.account - total) })));
+    go.disabled = price() < c.price || total > state.account;
+  }
+  priceInput.addEventListener('input', recount);
+  go.addEventListener('click', () => act('tender', { firm: c.firm, shares: shares.get(), price: price() }, tr('Предложение отправлено акционерам.'), error));
+  recount();
+
+  return el('div', { className: 'deal buy stock-tender-form' },
+    error,
+    el('div', { className: 'deal-row' }, el('span', { className: 'deal-label', textContent: tr('Акций') }), shares.node),
+    el('div', { className: 'deal-row' }, el('span', { className: 'deal-label', textContent: tr('Цена') }), el('span', { className: 'stepper' }, priceInput)),
+    sum,
+    go,
+    el('p', { className: 'hint', textContent: tr('Предложите акционерам продать вам акции не дешевле {0} за штуку. Деньги удерживаются со счёта на сутки, непотраченное вернётся. Кто соберёт больше акций, чем у директора, сам станет директором.', hundredths(c.price)) }));
 }
 
 function facts(c) {
