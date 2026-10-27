@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="ru" class="m">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Азартные игры | Freenet</title>
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#3e3e3e">
+  <link rel="stylesheet" href="/static/palette.css">
+  <link rel="stylesheet" href="/static/m.css">
+  <script src="/static/theme.js"></script>
+  <script type="module" src="/static/casino.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/" aria-label="Freenet"><svg class="logo-mark" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="6"/><path d="M19.4 6.6h-1.8a4 4 0 0 0-4 4V23" stroke-width="4"/><path d="M8.4 13.5h10.6" stroke-width="3.6"/></svg><svg class="logo-word" viewBox="28 0 87 28" aria-hidden="true"><path d="M32.5 23v-7.6a4 4 0 0 1 4-4h1.8M52.9 16.25a4.85 4.85 0 1 0-1.25 3.25M69 16.25a4.85 4.85 0 1 0-1.25 3.25M75.4 9.5V23m0-6.75a4.85 4.85 0 0 1 9.7 0V23M101.2 16.25a4.85 4.85 0 1 0-1.25 3.25M107.6 6.6v10.5a4 4 0 0 0 4 4h1.8" stroke-width="3.8"/><path d="M41.3 16.25h13.5M57.4 16.25h13.5M89.6 16.25h13.5M104.1 11.2h9.3" stroke-width="3.4"/></svg></a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span>Азартные игры</span></div>
+      <div class="page-body">
+        <div class="error" id="error" hidden></div>
+        <div class="casino-festive" aria-hidden="true"><span class="casino-festive-text">Новогоднее казино — удача в подарок!</span></div>
+        <div class="tabs casino-tabs" id="casino-tabs" hidden>
+          <a id="tab-wheel" href="/casino">Огонёк</a>
+          <a id="tab-aim" href="/casino?game=aim" hidden>Прицел</a>
+          <a id="tab-rocket" href="/casino?game=rocket" hidden>Ракетка</a>
+          <a id="tab-poker" href="/casino?game=poker" hidden>Покер</a>
+          <a id="tab-events" href="/casino?game=events">Ставки</a>
+        </div>
+        <div class="casino" id="casino" hidden>
+          <div class="casino-game" id="wheel-game" hidden>
+            <p class="casino-lead">Огонёк обежит призы и остановится на одном из них — он ваш. Прокрутка стоит <b id="price"></b>.</p>
+            <div class="casino-board" id="board"></div>
+            <div class="casino-controls">
+              <button class="button" id="spin" type="button" hidden></button>
+              <span class="hint" id="guest" hidden>Играть могут только вошедшие на сайт.</span>
+            </div>
+            <div class="casino-auto" id="wheel-auto" hidden>
+              <label class="casino-label" for="wheel-auto-count">Автоигра:</label>
+              <select id="wheel-auto-count"><option value="10">10 раз</option><option value="25">25 раз</option><option value="50">50 раз</option><option value="100">100 раз</option><option value="0">пока есть голоса</option></select>
+              <button class="button" type="button" id="wheel-auto-start">Запустить</button>
+            </div>
+            <p class="hint casino-session" id="wheel-auto-state" hidden></p>
+            <div class="casino-result" id="result" hidden></div>
+            <p class="hint casino-session" id="session" hidden></p>
+          </div>
+          <div class="casino-game" id="aim-game" hidden>
+            <p class="casino-lead">Поставьте голоса на множитель. Отметка попадёт в зелёное поле — ставка вернётся умноженной на него, мимо — пропадёт. Чем больше множитель, тем уже поле.</p>
+            <form class="casino-bet" id="bet-form">
+              <div class="casino-stake">
+                <label class="casino-label" for="bet-amount">Ставка:</label>
+                <input class="casino-amount" id="bet-amount" type="number" inputmode="numeric" required>
+                <span class="casino-quick">
+                  <button class="button" type="button" data-quick="least">мин.</button>
+                  <button class="button" type="button" data-quick="half">½</button>
+                  <button class="button" type="button" data-quick="double">×2</button>
+                  <button class="button" type="button" data-quick="most">макс.</button>
+                </span>
+              </div>
+              <p class="hint casino-limits" id="bet-limits"></p>
+              <div class="casino-label">Множитель:</div>
+              <div class="casino-multipliers" id="multipliers" role="radiogroup" aria-label="Множитель"></div>
+              <div class="casino-dice" id="dice" aria-hidden="true">
+                <div class="casino-dice-win" id="dice-win"></div>
+                <div class="casino-dice-mark" id="dice-mark" hidden><span id="dice-roll"></span></div>
+              </div>
+              <div class="casino-dice-scale" aria-hidden="true"><span>0</span><span>100</span></div>
+              <p class="casino-sum" id="bet-sum"></p>
+              <div class="casino-controls">
+                <button class="button" id="bet" type="submit" hidden></button>
+                <span class="hint" id="bet-guest" hidden>Играть могут только вошедшие на сайт.</span>
+              </div>
+            </form>
+            <div class="casino-auto" id="aim-auto" hidden>
+              <label class="casino-label" for="aim-auto-count">Автоигра:</label>
+              <select id="aim-auto-count"><option value="10">10 раз</option><option value="25">25 раз</option><option value="50">50 раз</option><option value="100">100 раз</option><option value="0">пока есть голоса</option></select>
+              <button class="button" type="button" id="aim-auto-start">Запустить</button>
+            </div>
+            <p class="hint casino-session" id="aim-auto-state" hidden></p>
+            <div class="casino-result" id="bet-result" hidden></div>
+            <p class="hint casino-session" id="bet-session" hidden></p>
+          </div>
+          <div class="casino-game" id="rocket-game" hidden>
+            <p class="casino-lead">Ракета взлетает, и множитель растёт от ×1. Заберите ставку, пока она не взорвалась, — ставка вернётся умноженной на то, что показывает ракета. Не успели — ставка пропала. Где ракета взорвётся, решается при взлёте.</p>
+            <form class="casino-bet" id="rocket-form">
+              <div class="casino-stake">
+                <label class="casino-label" for="rocket-amount">Ставка:</label>
+                <input class="casino-amount" id="rocket-amount" type="number" inputmode="numeric" required>
+                <span class="casino-quick">
+                  <button class="button" type="button" data-quick="least">мин.</button>
+                  <button class="button" type="button" data-quick="half">½</button>
+                  <button class="button" type="button" data-quick="double">×2</button>
+                  <button class="button" type="button" data-quick="most">макс.</button>
+                </span>
+              </div>
+              <p class="hint casino-limits" id="rocket-limits"></p>
+              <div class="casino-stake rocket-target">
+                <label class="casino-label" for="rocket-target">Забрать само на ×</label>
+                <input class="casino-amount" id="rocket-target" type="text" inputmode="decimal" placeholder="вручную">
+              </div>
+              <div class="rocket-sky" id="rocket-sky" aria-hidden="true">
+                <canvas class="rocket-trail" id="rocket-trail"></canvas>
+                <div class="rocket-ship" id="rocket-ship"></div>
+                <div class="rocket-boom" id="rocket-boom" hidden></div>
+                <div class="rocket-multiplier" id="rocket-multiplier">×1,00</div>
+              </div>
+              <p class="casino-sum" id="rocket-sum"></p>
+              <div class="casino-controls">
+                <button class="button" id="rocket-launch" type="submit" hidden></button>
+                <button class="button rocket-cash" id="rocket-cash" type="button" hidden></button>
+                <span class="hint" id="rocket-guest" hidden>Играть могут только вошедшие на сайт.</span>
+              </div>
+            </form>
+            <div class="casino-auto" id="rocket-auto" hidden>
+              <label class="casino-label" for="rocket-auto-count">Автоигра:</label>
+              <select id="rocket-auto-count"><option value="10">10 раз</option><option value="25">25 раз</option><option value="50">50 раз</option><option value="100">100 раз</option><option value="0">пока есть голоса</option></select>
+              <button class="button" type="button" id="rocket-auto-start">Запустить</button>
+            </div>
+            <p class="hint casino-session" id="rocket-auto-state" hidden></p>
+            <div class="casino-result" id="rocket-result" hidden></div>
+            <p class="hint casino-session" id="rocket-session" hidden></p>
+          </div>
+          <div class="casino-game" id="poker-game" hidden>
+            <div class="mb-tabs casino-sections">
+              <div class="mb-tab-row">
+                <a class="mb-tab" id="poker-mode-tables" href="/casino?game=poker">Столы</a>
+                <a class="mb-tab" id="poker-mode-dealer" href="/casino?game=poker&amp;mode=dealer">Против дилера</a>
+              </div>
+            </div>
+            <div id="holdem-lobby" hidden>
+              <p class="casino-lead">Техасский холдем без лимита с живыми людьми: фишки, блайнды, четыре круга торговли и вскрытие. Садясь за стол, вы покупаете фишки за голоса, встаёте — фишки снова становятся голосами. На ход — 30 секунд.</p>
+              <div class="holdem-forms" id="holdem-forms">
+                <form class="holdem-form" id="holdem-quick">
+                  <h4>Быстрая игра</h4>
+                  <p class="hint">Сайт посадит вас за открытый стол с этими блайндами, где больше всего игроков, или откроет новый.</p>
+                  <label class="casino-label" for="holdem-stake">Ставки:</label>
+                  <select id="holdem-stake"></select>
+                  <label class="casino-label" for="holdem-quick-buyin">Фишек на голоса:</label>
+                  <input class="casino-amount" id="holdem-quick-buyin" type="number" inputmode="numeric" required>
+                  <div class="holdem-submit"><button class="button" type="submit">Найти стол</button></div>
+                </form>
+                <form class="holdem-form" id="holdem-create">
+                  <h4>Свой стол</h4>
+                  <label class="casino-label" for="holdem-name">Название:</label>
+                  <input id="holdem-name" type="text" maxlength="40" placeholder="Пятничный покер">
+                  <div class="holdem-pair">
+                    <span>
+                      <label class="casino-label" for="holdem-blind">Большой блайнд:</label>
+                      <input class="casino-amount" id="holdem-blind" type="number" inputmode="numeric" min="2" value="10" required>
+                    </span>
+                    <span>
+                      <label class="casino-label" for="holdem-seats">Мест:</label>
+                      <select id="holdem-seats"></select>
+                    </span>
+                  </div>
+                  <label class="casino-label" for="holdem-own-buyin">Фишек на голоса:</label>
+                  <input class="casino-amount" id="holdem-own-buyin" type="number" inputmode="numeric" required>
+                  <label class="holdem-check"><input id="holdem-private" type="checkbox"> Закрытый стол — только для приглашённых</label>
+                  <div class="holdem-submit"><button class="button" type="submit">Создать стол</button></div>
+                </form>
+              </div>
+              <p class="hint" id="holdem-guest" hidden>Играть могут только вошедшие на сайт.</p>
+              <div class="holdem-list" id="holdem-mine" hidden>
+                <h4>Мои столы <span class="hint" id="holdem-mine-count"></span></h4>
+                <div id="holdem-mine-rows"></div>
+              </div>
+              <div class="holdem-list" id="holdem-invited" hidden>
+                <h4>Приглашения <span class="hint" id="holdem-invited-count"></span></h4>
+                <div id="holdem-invited-rows"></div>
+              </div>
+              <div class="holdem-list" id="holdem-public">
+                <h4>Открытые столы <span class="hint" id="holdem-public-count"></span></h4>
+                <div id="holdem-public-rows"></div>
+                <p class="hint" id="holdem-public-empty" hidden>Открытых столов пока нет — начните быструю игру или создайте свой.</p>
+              </div>
+            </div>
+            <div id="holdem-table" hidden>
+              <div class="holdem-head">
+                <a id="holdem-to-lobby" href="/casino?game=poker">« К столам</a>
+                <b id="holdem-title"></b>
+                <span class="hint" id="holdem-info"></span>
+              </div>
+              <p class="hint holdem-street" id="holdem-street"></p>
+              <div class="holdem-felt" id="holdem-felt"></div>
+              <div class="holdem-controls" id="holdem-controls" hidden>
+                <div class="holdem-actions" id="holdem-actions" hidden>
+                  <button class="button" id="holdem-fold" type="button">Фолд</button>
+                  <button class="button" id="holdem-check" type="button">Чек</button>
+                  <button class="button" id="holdem-call" type="button"></button>
+                  <span class="holdem-raise-box" id="holdem-raise-box">
+                    <input id="holdem-raise-range" type="range" aria-label="Размер ставки">
+                    <input class="casino-amount" id="holdem-raise-amount" type="number" inputmode="numeric" aria-label="Размер ставки">
+                    <button class="button" type="button" data-pot="0.5">½ банка</button>
+                    <button class="button" type="button" data-pot="1">Банк</button>
+                    <button class="button" id="holdem-raise" type="button"></button>
+                  </span>
+                  <button class="button" id="holdem-allin" type="button">Ва-банк</button>
+                </div>
+                <p class="hint" id="holdem-wait"></p>
+                <div class="holdem-own">
+                  <button class="button" id="holdem-back" type="button" hidden>Я вернулся</button>
+                  <button class="button" id="holdem-leave" type="button">Встать из-за стола</button>
+                </div>
+              </div>
+              <div class="holdem-sit" id="holdem-sit" hidden>
+                <label class="casino-label" for="holdem-buyin">Фишек на голоса:</label>
+                <input class="casino-amount" id="holdem-buyin" type="number" inputmode="numeric">
+                <p class="hint" id="holdem-sit-hint"></p>
+              </div>
+              <form class="holdem-invite" id="holdem-invite" hidden>
+                <label class="casino-label" for="holdem-nicknames">Пригласить за стол:</label>
+                <input id="holdem-nicknames" type="text" placeholder="Никнеймы через запятую">
+                <button class="button" type="submit">Пригласить</button>
+                <span class="hint" id="holdem-invited" hidden>Приглашение отправлено: стол появится у них в «Приглашениях».</span>
+              </form>
+            </div>
+            <div id="poker-against" hidden>
+              <p class="casino-lead">Покер против дилера. Поставьте анте — вам придут две карты, на стол лягут три. Нравятся карты — колл, он вдвое больше анте, и откроются ещё две карты и карты дилера; нет — фолд, и анте пропадёт. Побеждает лучшая комбинация из пяти карт.</p>
+              <form class="casino-bet" id="poker-form">
+                <div class="casino-stake">
+                  <label class="casino-label" for="poker-amount">Анте:</label>
+                  <input class="casino-amount" id="poker-amount" type="number" inputmode="numeric" required>
+                  <span class="casino-quick">
+                    <button class="button" type="button" data-quick="least">мин.</button>
+                    <button class="button" type="button" data-quick="half">½</button>
+                    <button class="button" type="button" data-quick="double">×2</button>
+                    <button class="button" type="button" data-quick="most">макс.</button>
+                  </span>
+                </div>
+                <p class="hint casino-limits" id="poker-limits"></p>
+              </form>
+              <div class="poker-table" id="poker-table">
+                <div class="poker-row">
+                  <span class="poker-label">Дилер</span>
+                  <div class="poker-cards" id="poker-dealer"></div>
+                  <span class="poker-hand" id="poker-dealer-hand"></span>
+                </div>
+                <div class="poker-row">
+                  <span class="poker-label">Стол</span>
+                  <div class="poker-cards" id="poker-board"></div>
+                  <span class="poker-bets" id="poker-bets"></span>
+                </div>
+                <div class="poker-row">
+                  <span class="poker-label">Вы</span>
+                  <div class="poker-cards" id="poker-player"></div>
+                  <span class="poker-hand" id="poker-player-hand"></span>
+                </div>
+              </div>
+              <div class="casino-controls poker-controls">
+                <button class="button" id="poker-deal" type="button" hidden></button>
+                <button class="button" id="poker-call" type="button" hidden></button>
+                <button class="button" id="poker-fold" type="button" hidden>Фолд</button>
+                <span class="hint" id="poker-guest" hidden>Играть могут только вошедшие на сайт.</span>
+              </div>
+              <div class="casino-result" id="poker-result" hidden></div>
+              <p class="hint casino-session" id="poker-session" hidden></p>
+              <table class="poker-pays" id="poker-pays">
+                <caption>Выплаты по анте</caption>
+                <tbody id="poker-pays-rows"></tbody>
+              </table>
+              <p class="hint poker-rules">Дилер играет с парой четвёрок или лучше. Не играет — анте оплачивается по таблице, а колл возвращается. Играет и проигрывает — анте по таблице, колл 1 к 1. Ничья — ставки возвращаются.</p>
+            </div>
+          </div>
+          <div class="casino-game" id="events-game" hidden>
+            <p class="casino-lead">Угадайте, чем кончится событие, и поставьте на исход сколько хотите голосов. У каждого исхода свой коэффициент: если исход сбудется, ставка вернётся умноженной на коэффициент, с которым её сделали.</p>
+            <div class="mb-tabs casino-sections">
+              <div class="mb-tab-row">
+                <a class="mb-tab" id="section-all" href="/casino?game=events">Все</a>
+                <a class="mb-tab" id="section-popular" href="/casino?game=events&amp;section=popular">Популярное</a>
+              </div>
+            </div>
+            <div class="bet-events" id="events"></div>
+            <p class="hint" id="events-empty" hidden>Здесь пока нет событий.</p>
+            <p class="hint" id="events-guest" hidden>Ставить могут только вошедшие на сайт.</p>
+          </div>
+          <div class="finance-balance casino-balance" id="balance" hidden>
+            на вашем счету
+            <div class="finance-votes" id="votes"></div>
+            <span id="votes-word"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p class="footer-languages"><a class="footer-language" href="/language?lg=ru" title="Русский"><img src="/static/flags/ru.gif" alt="Русский"></a><a class="footer-language" href="/language?lg=en" title="English"><img src="/static/flags/gb.gif" alt="English"></a><a href="/language">all languages &raquo;</a></p>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

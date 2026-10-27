@@ -172,9 +172,11 @@ export function showUnread(n) {
   navigator.serviceWorker?.controller?.postMessage({ unread: n });
 }
 
-// onPhone is a narrow screen or the site opened from the home screen.
+// onPhone is a page of a phone (web/m/), a narrow screen or the site
+// opened from the home screen.
 export function onPhone() {
-  return matchMedia('(max-width: 800px)').matches || matchMedia('(display-mode: standalone)').matches ||
+  return document.documentElement.classList.contains('m') || matchMedia('(max-width: 800px)').matches ||
+    matchMedia('(display-mode: standalone)').matches ||
     navigator.standalone === true;
 }
 

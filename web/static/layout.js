@@ -536,7 +536,7 @@ export function renderChrome(me) {
   addHeaderSearch();
   addVersionSwitch();
   // A phone has the links of a signed-in user in the bar of sections and
-  // the menu, not in its header (mobile.css).
+  // the menu, not in its header (m.css).
   links.classList.toggle('signed-in', Boolean(me) && !me.deactivated && !me.ban);
   // A guest is not shown what is blurred as adult (posts.js).
   document.body.classList.toggle('guest', !me);
@@ -616,7 +616,7 @@ async function offerPush(me) {
   body.prepend(bar);
 }
 
-// The sections of the bar at the bottom of a phone (mobile.css), as the
+// The sections of the bar at the bottom of a phone (m.css), as the
 // first apps had them: the page, the news, the messages and the
 // notifications with their counters, and the whole menu.
 function tabSections(me) {

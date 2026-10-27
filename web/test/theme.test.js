@@ -108,7 +108,7 @@ test('every page runs the script right after its stylesheets, before its modules
 
     assert.match(
       html,
-      /<link rel="stylesheet" href="\/static\/palette\.css">\n\s*<link rel="stylesheet" href="\/static\/style\.css">\n\s*<link rel="stylesheet" href="\/static\/mobile\.css" media="\(max-width: 800px\)">\n\s*<script src="\/static\/theme\.js"><\/script>\n\s*<script type="module"/,
+      /<link rel="stylesheet" href="\/static\/palette\.css">\n\s*<link rel="stylesheet" href="\/static\/style\.css">\n\s*<script src="\/static\/theme\.js"><\/script>\n\s*<script type="module"/,
       name,
     );
   }

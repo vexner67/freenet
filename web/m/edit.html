@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="ru" class="m">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Редактировать страницу | Freenet</title>
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#3e3e3e">
+  <link rel="stylesheet" href="/static/palette.css">
+  <link rel="stylesheet" href="/static/m.css">
+  <script src="/static/theme.js"></script>
+  <script type="module" src="/static/edit.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/" aria-label="Freenet"><svg class="logo-mark" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="6"/><path d="M19.4 6.6h-1.8a4 4 0 0 0-4 4V23" stroke-width="4"/><path d="M8.4 13.5h10.6" stroke-width="3.6"/></svg><svg class="logo-word" viewBox="28 0 87 28" aria-hidden="true"><path d="M32.5 23v-7.6a4 4 0 0 1 4-4h1.8M52.9 16.25a4.85 4.85 0 1 0-1.25 3.25M69 16.25a4.85 4.85 0 1 0-1.25 3.25M75.4 9.5V23m0-6.75a4.85 4.85 0 0 1 9.7 0V23M101.2 16.25a4.85 4.85 0 1 0-1.25 3.25M107.6 6.6v10.5a4 4 0 0 0 4 4h1.8" stroke-width="3.8"/><path d="M41.3 16.25h13.5M57.4 16.25h13.5M89.6 16.25h13.5M104.1 11.2h9.3" stroke-width="3.4"/></svg></a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title">Редактировать страницу</div>
+      <div class="page-body">
+        <div class="tabs">
+          <a id="tab-main" href="/edit">Основное</a>
+          <a id="tab-contacts" href="/edit?act=contacts">Контакты</a>
+          <a id="tab-interests" href="/edit?act=interests">Интересы</a>
+          <a id="tab-additional" href="/edit?act=additional">Дополнительно</a>
+          <a id="tab-avatar" href="/edit?act=avatar">Аватар</a>
+          <a id="tab-backdrop" href="/edit?act=backdrop">Фон</a>
+        </div>
+        <div class="container-gray">
+        <p id="loading">Загрузка…</p>
+        <div class="error" id="error" hidden></div>
+        <div class="notice" id="notice" hidden></div>
+
+        <form id="main" hidden>
+          <div class="notice" id="welcome" hidden>
+            <b>Добро пожаловать в Freenet!</b> Расскажите немного о себе.
+            Обязательны только имя и никнейм — по никнейму вас найдут друзья.
+          </div>
+
+          <h4>Основная информация</h4>
+          <table class="form">
+            <tr>
+              <th><label class="required" for="name">Имя:</label></th>
+              <td class="control"><input type="text" id="name" maxlength="100" autocomplete="given-name"></td>
+            </tr>
+            <tr>
+              <th><label for="surname">Фамилия:</label></th>
+              <td class="control"><input type="text" id="surname" maxlength="100" autocomplete="family-name"></td>
+            </tr>
+            <tr>
+              <th><label class="required" for="nickname">Никнейм:</label></th>
+              <td class="control">
+                <input type="text" id="nickname" maxlength="32" autocomplete="username" spellcheck="false">
+                <div class="hint">Адрес страницы: <span id="url-preview"></span></div>
+              </td>
+            </tr>
+            <tr>
+              <th><label for="status">Статус:</label></th>
+              <td class="control"><input type="text" id="status" maxlength="200"></td>
+            </tr>
+            <tr>
+              <th><label for="hometown">Родной город:</label></th>
+              <td class="control"><input type="text" id="hometown" maxlength="64"></td>
+            </tr>
+            <tr>
+              <th><label for="relationship">Семейное положение:</label></th>
+              <td class="control">
+                <select id="relationship"></select>
+                <input type="text" id="partner" maxlength="32" placeholder="Никнейм" spellcheck="false" aria-label="С кем" hidden>
+              </td>
+            </tr>
+            <tr>
+              <th><label for="political-views">Полит. взгляды:</label></th>
+              <td class="control"><select id="political-views"></select></td>
+            </tr>
+            <tr>
+              <th><label for="worldview">Мировоззрение:</label></th>
+              <td class="control"><select id="worldview"></select></td>
+            </tr>
+            <tr>
+              <th><label for="gender">Пол:</label></th>
+              <td class="control"><select id="gender"></select></td>
+            </tr>
+            <tr>
+              <th><label for="birth-day">День рождения:</label></th>
+              <td class="control">
+                <div class="date">
+                  <select id="birth-day" aria-label="День"></select>
+                  <select id="birth-month" aria-label="Месяц"></select>
+                  <select id="birth-year" aria-label="Год"></select>
+                </div>
+                <select id="birth-year-shown" aria-label="Как показывать дату рождения">
+                  <option value="">показывать дату рождения</option>
+                  <option value="hide">показывать только день и месяц</option>
+                </select>
+              </td>
+            </tr>
+          </table>
+
+          <div class="actions">
+            <button class="button" type="submit" id="save">Сохранить</button>
+            <a class="button secondary" id="cancel" href="/">Отмена</a>
+          </div>
+        </form>
+
+        <form id="contacts" hidden>
+          <h4>Контактная информация</h4>
+          <table class="form">
+            <tr>
+              <th><label for="contact-email">Электронная почта:</label></th>
+              <td class="control"><input type="email" id="contact-email" maxlength="254"></td>
+            </tr>
+            <tr>
+              <th><label for="telegram">Telegram:</label></th>
+              <td class="control"><input type="text" id="telegram" maxlength="64" spellcheck="false"></td>
+            </tr>
+            <tr>
+              <th><label for="website">Личный сайт:</label></th>
+              <td class="control"><input type="text" id="website" maxlength="256" spellcheck="false"></td>
+            </tr>
+            <tr>
+              <th><label for="city">Город:</label></th>
+              <td class="control"><input type="text" id="city" maxlength="64"></td>
+            </tr>
+            <tr>
+              <th><label for="address">Адрес:</label></th>
+              <td class="control"><input type="text" id="address" maxlength="255"></td>
+            </tr>
+          </table>
+          <div class="actions"><button class="button" type="submit">Сохранить</button></div>
+        </form>
+
+        <form id="interests" hidden>
+          <h4>Личная информация</h4>
+          <table class="form">
+            <tr>
+              <th><label for="interests-text">Интересы:</label></th>
+              <td class="control"><textarea id="interests-text" maxlength="1000"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="music">Любимая музыка:</label></th>
+              <td class="control"><textarea id="music" maxlength="1000"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="films">Любимые фильмы:</label></th>
+              <td class="control"><textarea id="films" maxlength="1000"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="shows">Любимые ТВ-шоу:</label></th>
+              <td class="control"><textarea id="shows" maxlength="1000"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="books">Любимые книги:</label></th>
+              <td class="control"><textarea id="books" maxlength="1000"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="quotes">Любимые цитаты:</label></th>
+              <td class="control"><textarea id="quotes" maxlength="1000"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="games">Любимые игры:</label></th>
+              <td class="control"><textarea id="games" maxlength="1000"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="about">О себе:</label></th>
+              <td class="control"><textarea id="about" maxlength="1000"></textarea></td>
+            </tr>
+          </table>
+          <div class="actions"><button class="button" type="submit">Сохранить</button></div>
+        </form>
+
+        <form id="additional" hidden>
+          <h4>Дополнительная информация</h4>
+          <p>Здесь вы можете указать дополнительную информацию о себе: другие интересы, ссылки на другие социальные сети. Максимум можно добавить до 7 таких полей.</p>
+          <div id="fields"></div>
+          <div class="column-actions">
+            <button class="button" type="button" id="field-add">Добавить</button>
+            <button class="button" type="submit">Сохранить</button>
+          </div>
+        </form>
+
+        <div id="backdrop-tab" hidden>
+          <form class="backdrop-form" id="form">
+            <h4>Фон страницы</h4>
+            <p>Вы можете установить два изображения в качестве фона вашей страницы. Они будут отображаться по бокам у тех, кто зайдёт на вашу страницу. С помощью этой возможности вы можете добавить своему профилю больше индивидуальности.</p>
+
+            <div class="backdrop-editor">
+              <div class="backdrop-side">
+                <img id="left-preview" alt="" hidden>
+                <button class="button" type="button" id="left-browse">Обзор</button>
+                <input type="file" id="left-file" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+              </div>
+              <div class="backdrop-page"></div>
+              <div class="backdrop-side">
+                <img id="right-preview" alt="" hidden>
+                <button class="button" type="button" id="right-browse">Обзор</button>
+                <input type="file" id="right-file" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+              </div>
+            </div>
+
+            <p class="hint">Изображения будут расположены так, как на схеме выше. Их высота будет автоматически увеличена, чтобы они занимали 100% высоты экрана, посередине будет размытие. Заменить фон основного интерфейса Freenet нельзя. Фон будет виден только на широких мониторах.</p>
+            <p class="hint">Вы можете установить только 1 изображение (но будет некрасиво), а так же заменить только одно: если у вас уже стоит два, а вы хотите заменить второе — то загружайте только второе, первое сохранится, а чтобы удалить, надо нажать на соответствующую кнопку внизу, удалять по одной нельзя.</p>
+
+            <div class="center">
+              <button class="button" type="submit" id="save">Сохранить фон</button>
+              <button class="button" type="button" id="remove">Удалить фон</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="avatar-tab" hidden>
+          <h4>Изображение страницы</h4>
+          <table class="form">
+            <tr>
+              <th>Изображение:</th>
+              <td class="control">
+                <img class="edit-avatar" id="avatar" src="/static/avatar.svg" alt="">
+                <button class="button" type="button" id="avatar-upload">Обзор</button>
+              </td>
+            </tr>
+          </table>
+        </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p class="footer-languages"><a class="footer-language" href="/language?lg=ru" title="Русский"><img src="/static/flags/ru.gif" alt="Русский"></a><a class="footer-language" href="/language?lg=en" title="English"><img src="/static/flags/gb.gif" alt="English"></a><a href="/language">all languages &raquo;</a></p>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

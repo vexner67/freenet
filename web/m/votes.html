@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ru" class="m">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Мои Голоса | Freenet</title>
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#3e3e3e">
+  <link rel="stylesheet" href="/static/palette.css">
+  <link rel="stylesheet" href="/static/m.css">
+  <script src="/static/theme.js"></script>
+  <script type="module" src="/static/votes.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/" aria-label="Freenet"><svg class="logo-mark" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="6"/><path d="M19.4 6.6h-1.8a4 4 0 0 0-4 4V23" stroke-width="4"/><path d="M8.4 13.5h10.6" stroke-width="3.6"/></svg><svg class="logo-word" viewBox="28 0 87 28" aria-hidden="true"><path d="M32.5 23v-7.6a4 4 0 0 1 4-4h1.8M52.9 16.25a4.85 4.85 0 1 0-1.25 3.25M69 16.25a4.85 4.85 0 1 0-1.25 3.25M75.4 9.5V23m0-6.75a4.85 4.85 0 0 1 9.7 0V23M101.2 16.25a4.85 4.85 0 1 0-1.25 3.25M107.6 6.6v10.5a4 4 0 0 0 4 4h1.8" stroke-width="3.8"/><path d="M41.3 16.25h13.5M57.4 16.25h13.5M89.6 16.25h13.5M104.1 11.2h9.3" stroke-width="3.4"/></svg></a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title">Мои Голоса</div>
+      <div class="page-body">
+        <div class="tabs">
+          <a id="tab-account" href="/votes">Счёт</a>
+          <a id="tab-transfer" href="/votes?act=transfer">Перевести</a>
+          <a id="tab-top-up" href="/votes?act=top-up">Пополнить</a>
+          <a id="tab-receive" href="/votes?act=receive">Получить</a>
+          <a id="tab-rating" href="/votes?act=rating">Рейтинг</a>
+          <a id="tab-deposit" href="/votes?act=deposit">Вклад</a>
+          <a id="tab-loan" href="/votes?act=loan">Кредит</a>
+        </div>
+        <div class="container-gray">
+        <p id="loading">Загрузка…</p>
+        <div class="error" id="error" hidden></div>
+        <div class="notice" id="notice" hidden></div>
+
+        <div id="account" hidden>
+          <div class="finance">
+            <div class="finance-about">
+              <p>Голоса — валюта Freenet: ими оплачиваются платные подарки и наборы стикеров. Получить их можно ежедневным бонусом, активировав ваучер, или от другого человека.</p>
+              <p>Рейтинг прибавляется к заполненности страницы: его дают ваучеры, а ещё его можно <a href="/votes?act=rating">повысить за голоса</a>.</p>
+              <p class="finance-rate" id="vote-rate" hidden></p>
+              <p>Испытать удачу и выиграть голоса можно в <a href="/casino">Азартных играх</a>.</p>
+            </div>
+            <div class="finance-balance">
+              на вашем счету
+              <div class="finance-votes" id="votes"></div>
+              <span id="votes-word"></span><br>
+              <span class="finance-rubles" id="votes-rubles"></span>
+            </div>
+          </div>
+          <div class="bank-actions">
+            <a class="button" href="/votes?act=transfer">Перевести</a>
+            <a class="button" href="/votes?act=top-up">Пополнить</a>
+            <a class="button" href="/votes?act=receive">Получить</a>
+            <a class="button" href="/votes?act=rating">Повысить рейтинг</a>
+          </div>
+          <div class="bank-bonus" id="bonus" hidden>
+            <div><b>Ежедневный бонус</b><br><span id="bonus-text"></span></div>
+            <button class="button" type="button" id="bonus-claim" hidden></button>
+          </div>
+          <div class="bank-totals">
+            <div><span>Поступило за 30 дней</span><b class="bank-in" id="income"></b></div>
+            <div><span>Списано за 30 дней</span><b class="bank-out" id="expense"></b></div>
+          </div>
+
+          <h4>История операций</h4>
+          <div class="mb-tabs bank-flows">
+            <a class="mb-tab" id="flow-all" href="/votes">Все операции</a>
+            <a class="mb-tab" id="flow-in" href="/votes?flow=in">Поступления</a>
+            <a class="mb-tab" id="flow-out" href="/votes?flow=out">Списания</a>
+          </div>
+          <div class="bank-operations" id="operations"></div>
+          <p class="bank-empty" id="operations-empty" hidden>Операций пока нет.</p>
+          <div class="actions"><button class="button" type="button" id="more" hidden>Показать ещё</button></div>
+        </div>
+
+        <form id="transfer" hidden>
+          <p>Вы можете отправить в подарок или передать часть голосов другому человеку. Голоса приходят сразу, вернуть их нельзя. Комиссия — процент от суммы, не меньше 1 голоса: она списывается сверх перевода, а сколько она, форма скажет, пока вы печатаете.</p>
+          <table class="form">
+            <tr>
+              <th>Ваш баланс:</th>
+              <td class="control"><b id="transfer-balance"></b></td>
+            </tr>
+            <tr>
+              <th><label for="transfer-to">Получатель:</label></th>
+              <td class="control">
+                <input type="text" id="transfer-to" maxlength="200" required spellcheck="false" autocomplete="off" placeholder="имя, никнейм или ссылка на страницу">
+                <div class="bank-people" id="transfer-people" hidden></div>
+                <p class="hint bank-recipient" id="transfer-recipient" hidden></p>
+              </td>
+            </tr>
+            <tr>
+              <th><label for="transfer-votes">Количество голосов:</label></th>
+              <td class="control">
+                <input type="text" id="transfer-votes" inputmode="numeric" pattern="[0-9]{1,9}" maxlength="9" required autocomplete="off">
+                <p class="hint" id="transfer-fee" hidden></p>
+              </td>
+            </tr>
+            <tr>
+              <th><label for="transfer-note">Сообщение:</label></th>
+              <td class="control"><input type="text" id="transfer-note" maxlength="140" autocomplete="off" placeholder="необязательно"></td>
+            </tr>
+          </table>
+          <div class="actions"><button class="button" type="submit">Перевести голоса</button></div>
+        </form>
+
+        <div id="top-up" hidden>
+          <p>Введите серийный номер ваучера. Обычно он указан в чеке или в сообщении. Обратите внимание, что ваучеры могут истекать и воспользоваться ими можно только один раз.</p>
+          <form id="voucher-form">
+            <div class="voucher-keys">
+              <input type="text" class="voucher-key" maxlength="6" size="6" placeholder="123456" autocomplete="off" spellcheck="false" required aria-label="Код ваучера, часть 1"> -
+              <input type="text" class="voucher-key" maxlength="6" size="6" placeholder="789012" autocomplete="off" spellcheck="false" required aria-label="Код ваучера, часть 2"> -
+              <input type="text" class="voucher-key" maxlength="6" size="6" placeholder="345678" autocomplete="off" spellcheck="false" required aria-label="Код ваучера, часть 3"> -
+              <input type="text" class="voucher-key" maxlength="6" size="6" placeholder="90ABCD" autocomplete="off" spellcheck="false" required aria-label="Код ваучера, часть 4">
+            </div>
+            <div class="actions"><button class="button" type="submit">Активировать ваучер</button></div>
+          </form>
+        </div>
+
+        <form id="rating" hidden>
+          <p>Рейтинг прибавляется к заполненности страницы: страница с рейтингом может быть заполнена больше чем на 100 %, и тогда шкала становится золотой. Один процент рейтинга стоит 3 голоса. Рейтинг вместе с заполненностью — не больше 1000 %.</p>
+          <div id="rating-form">
+          <table class="form">
+            <tr>
+              <th>Ваш баланс:</th>
+              <td class="control"><b id="rating-balance"></b></td>
+            </tr>
+            <tr>
+              <th><label for="rating-percent">Повысить на, %:</label></th>
+              <td class="control">
+                <input type="text" id="rating-percent" inputmode="numeric" pattern="[0-9]{1,4}" maxlength="4" required autocomplete="off">
+                <p class="hint" id="rating-cost" hidden></p>
+              </td>
+            </tr>
+          </table>
+          <div class="actions"><button class="button" type="submit">Повысить рейтинг</button></div>
+          </div>
+        </form>
+
+        <div id="deposit" hidden>
+          <p>Голоса на вкладе каждый день растут на процент. Проценты начисляются на сумму до предела вклада, а всё, что они принесли сверх него, копится на вкладе дальше и не сгорает.</p>
+          <p class="bank-balance">Ваш баланс: <b class="bank-balance-votes"></b></p>
+          <div class="bank-box">
+            <p id="deposit-state"></p>
+            <p class="hint" id="deposit-terms"></p>
+            <form class="bank-form" id="deposit-form">
+              <input type="text" id="deposit-amount" inputmode="numeric" pattern="[0-9]{0,13}" maxlength="13" autocomplete="off" placeholder="сколько голосов" aria-label="Сколько голосов">
+              <button class="button" type="submit" id="deposit-put">Положить</button>
+              <button class="button" type="button" id="deposit-take">Снять</button>
+            </form>
+            <p class="hint">Пустое поле у «Снять» — снять все целые голоса.</p>
+          </div>
+        </div>
+
+        <div id="loan" hidden>
+          <p>Кредит выручит, когда голосов не хватает: его возвращают с процентами до срока, а после срока процент больше, и банк сам забирает долг с баланса, а потом со вклада.</p>
+          <p class="bank-balance">Ваш баланс: <b class="bank-balance-votes"></b></p>
+          <div class="bank-box">
+            <p id="loan-state"></p>
+            <p class="hint" id="loan-terms"></p>
+            <form class="bank-form" id="loan-form">
+              <input type="text" id="loan-amount" inputmode="numeric" pattern="[0-9]{0,13}" maxlength="13" autocomplete="off" placeholder="сколько голосов" aria-label="Сколько голосов">
+              <button class="button" type="submit" id="loan-go"></button>
+            </form>
+            <p class="hint" id="loan-hint"></p>
+          </div>
+        </div>
+
+        <div id="receive" hidden>
+          <p>Чтобы вам перевели голоса, отправьте эту ссылку: по ней откроется перевод, где получатель — вы.</p>
+          <div class="bank-link">
+            <input type="text" id="receive-link" readonly aria-label="Ссылка для перевода">
+            <button class="button" type="button" id="receive-copy">Скопировать</button>
+          </div>
+          <p>Или назовите свой адрес: <b id="receive-nickname"></b>.</p>
+          <p>Ещё голоса можно получить, <a href="/votes?act=top-up">активировав ваучер</a>, выиграть в <a href="/casino">Азартных играх</a> или продавая свои <a href="/stickers?act=author">наборы стикеров</a>.</p>
+        </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p class="footer-languages"><a class="footer-language" href="/language?lg=ru" title="Русский"><img src="/static/flags/ru.gif" alt="Русский"></a><a class="footer-language" href="/language?lg=en" title="English"><img src="/static/flags/gb.gif" alt="English"></a><a href="/language">all languages &raquo;</a></p>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

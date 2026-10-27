@@ -10,11 +10,10 @@ function palette(css) {
   return new Map([...root.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
 }
 
-// The palette is palette.css's; the pages of a computer (style.css, and
-// mobile.css over it on a narrow screen) and those of a phone (m.css)
-// write in it.
+// The palette is palette.css's; the pages of a computer (style.css) and
+// those of a phone (m.css) write in it.
 const plain = palette(read('palette.css'));
-const style = read('style.css') + read('mobile.css') + read('m.css');
+const style = read('style.css') + read('m.css');
 
 test('the stylesheet writes colours only as variables', () => {
   const rules = style;

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ru" class="m">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Питомцы | Freenet</title>
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#3e3e3e">
+  <link rel="stylesheet" href="/static/palette.css">
+  <link rel="stylesheet" href="/static/m.css">
+  <script src="/static/theme.js"></script>
+  <script type="module" src="/static/pet-page.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/" aria-label="Freenet"><svg class="logo-mark" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="6"/><path d="M19.4 6.6h-1.8a4 4 0 0 0-4 4V23" stroke-width="4"/><path d="M8.4 13.5h10.6" stroke-width="3.6"/></svg><svg class="logo-word" viewBox="28 0 87 28" aria-hidden="true"><path d="M32.5 23v-7.6a4 4 0 0 1 4-4h1.8M52.9 16.25a4.85 4.85 0 1 0-1.25 3.25M69 16.25a4.85 4.85 0 1 0-1.25 3.25M75.4 9.5V23m0-6.75a4.85 4.85 0 0 1 9.7 0V23M101.2 16.25a4.85 4.85 0 1 0-1.25 3.25M107.6 6.6v10.5a4 4 0 0 0 4 4h1.8" stroke-width="3.8"/><path d="M41.3 16.25h13.5M57.4 16.25h13.5M89.6 16.25h13.5M104.1 11.2h9.3" stroke-width="3.4"/></svg></a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span>Питомцы</span></div>
+      <div class="page-body">
+        <div class="error" id="error" hidden></div>
+        <div class="mine pet-page" id="pet-page" hidden>
+          <div class="mine-main">
+            <div class="pet-tabs" id="pet-tabs" hidden></div>
+            <div id="shop" hidden>
+              <p class="casino-lead">Заведите питомцев — как тамагочи из детства, до десяти сразу. Кормите их и играйте с ними, иначе они загрустят. С каждым уходом и боем питомец набирается опыта, растёт в уровне и становится сильнее. Вызывайте на бой питомцев других людей: победа приносит голоса и рейтинг.</p>
+              <div class="section-title">Зоомагазин</div>
+              <p class="hint" id="pets-count"></p>
+              <div class="pet-shop" id="kinds"></div>
+              <form class="pet-adopt" id="adopt" hidden>
+                <label for="adopt-name">Имя питомца:</label>
+                <input type="text" id="adopt-name" maxlength="20" required>
+                <button class="button" type="submit" id="adopt-button">Завести</button>
+              </form>
+            </div>
+
+            <div id="home" hidden>
+              <div class="pet-card">
+                <div class="pet-stage" id="stage"></div>
+                <div class="pet-info">
+                  <div class="pet-name"><b id="name"></b> <span class="hint" id="kind"></span></div>
+                  <div class="pet-mood" id="mood"></div>
+                  <table class="pet-bars">
+                    <tr><td class="pet-bar-label">Сытость:</td><td><div class="pet-bar" aria-hidden="true"><div class="pet-bar-fill pet-satiety" id="satiety-bar"></div></div></td><td class="pet-bar-value" id="satiety"></td></tr>
+                    <tr><td class="pet-bar-label">Настроение:</td><td><div class="pet-bar" aria-hidden="true"><div class="pet-bar-fill pet-joy" id="joy-bar"></div></div></td><td class="pet-bar-value" id="joy"></td></tr>
+                    <tr><td class="pet-bar-label">Уровень <span id="level"></span>:</td><td><div class="pet-bar" aria-hidden="true"><div class="pet-bar-fill pet-experience" id="experience-bar"></div></div></td><td class="pet-bar-value" id="experience"></td></tr>
+                  </table>
+                  <div class="pet-actions">
+                    <button class="button" type="button" id="feed"></button>
+                    <button class="button" type="button" id="play">Поиграть</button>
+                    <span class="hint" id="play-wait"></span>
+                  </div>
+                </div>
+              </div>
+
+              <table class="info pet-stats" id="stats"></table>
+
+              <div class="section-title">Бой</div>
+              <div class="pet-fight-box">
+                <p class="hint" id="fights-left"></p>
+                <form class="pet-challenge" id="challenge">
+                  <button class="button" type="button" id="find">Найти соперника</button>
+                  <span class="hint">или вызвать по никнейму:</span>
+                  <input type="text" id="rival" placeholder="никнейм">
+                  <button class="button" type="submit" id="call">Вызвать</button>
+                </form>
+                <div class="pet-arena" id="arena" hidden></div>
+              </div>
+
+              <div class="section-title">Последние бои</div>
+              <div class="pet-fights" id="fights"></div>
+              <p class="hint" id="no-fights" hidden>Боёв ещё не было.</p>
+
+              <p class="pet-links"><a id="rename">Переименовать</a> | <a id="release">Отпустить питомца</a> | <a href="/top?board=pets">Рейтинг питомцев</a></p>
+            </div>
+            <p class="hint" id="guest" hidden>Заводить питомцев могут только вошедшие на сайт.</p>
+          </div>
+          <div class="finance-balance casino-balance" id="balance" hidden>
+            на вашем счету
+            <div class="finance-votes" id="votes"></div>
+            <span id="votes-word"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p class="footer-languages"><a class="footer-language" href="/language?lg=ru" title="Русский"><img src="/static/flags/ru.gif" alt="Русский"></a><a class="footer-language" href="/language?lg=en" title="English"><img src="/static/flags/gb.gif" alt="English"></a><a href="/language">all languages &raquo;</a></p>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

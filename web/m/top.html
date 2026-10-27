@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru" class="m">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Рейтинги | Freenet</title>
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#3e3e3e">
+  <link rel="stylesheet" href="/static/palette.css">
+  <link rel="stylesheet" href="/static/m.css">
+  <script src="/static/theme.js"></script>
+  <script type="module" src="/static/top-page.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/" aria-label="Freenet"><svg class="logo-mark" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="6"/><path d="M19.4 6.6h-1.8a4 4 0 0 0-4 4V23" stroke-width="4"/><path d="M8.4 13.5h10.6" stroke-width="3.6"/></svg><svg class="logo-word" viewBox="28 0 87 28" aria-hidden="true"><path d="M32.5 23v-7.6a4 4 0 0 1 4-4h1.8M52.9 16.25a4.85 4.85 0 1 0-1.25 3.25M69 16.25a4.85 4.85 0 1 0-1.25 3.25M75.4 9.5V23m0-6.75a4.85 4.85 0 0 1 9.7 0V23M101.2 16.25a4.85 4.85 0 1 0-1.25 3.25M107.6 6.6v10.5a4 4 0 0 0 4 4h1.8" stroke-width="3.8"/><path d="M41.3 16.25h13.5M57.4 16.25h13.5M89.6 16.25h13.5M104.1 11.2h9.3" stroke-width="3.4"/></svg></a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span>Рейтинги</span></div>
+      <div class="page-body">
+        <div class="tabs casino-tabs" id="tabs"></div>
+        <div class="error" id="error" hidden></div>
+        <div class="top" id="top" hidden>
+          <p class="casino-lead" id="about"></p>
+          <table class="top-table" id="table">
+            <thead><tr><th class="top-place">Место</th><th>Участник</th><th class="top-value">Счёт</th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <p class="hint" id="empty" hidden>В этом рейтинге пока никого нет.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p class="footer-languages"><a class="footer-language" href="/language?lg=ru" title="Русский"><img src="/static/flags/ru.gif" alt="Русский"></a><a class="footer-language" href="/language?lg=en" title="English"><img src="/static/flags/gb.gif" alt="English"></a><a href="/language">all languages &raquo;</a></p>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ru" class="m">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Freenet — социальная сеть</title>
+  <meta name="description" content="Freenet — социальная сеть для общения с друзьями: своя страница и стена, личные сообщения, группы, фотографии, истории и новости друзей. Вход по коду на почту, без паролей.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Freenet">
+  <meta property="og:title" content="Freenet — социальная сеть">
+  <meta property="og:description" content="Freenet — социальная сеть для общения с друзьями: своя страница и стена, личные сообщения, группы, фотографии, истории и новости друзей. Вход по коду на почту, без паролей.">
+  <meta property="og:locale" content="ru_RU">
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#3e3e3e">
+  <link rel="stylesheet" href="/static/palette.css">
+  <link rel="stylesheet" href="/static/m.css">
+  <script src="/static/theme.js"></script>
+  <script type="module" src="/static/login.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/" aria-label="Freenet"><svg class="logo-mark" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="6"/><path d="M19.4 6.6h-1.8a4 4 0 0 0-4 4V23" stroke-width="4"/><path d="M8.4 13.5h10.6" stroke-width="3.6"/></svg><svg class="logo-word" viewBox="28 0 87 28" aria-hidden="true"><path d="M32.5 23v-7.6a4 4 0 0 1 4-4h1.8M52.9 16.25a4.85 4.85 0 1 0-1.25 3.25M69 16.25a4.85 4.85 0 1 0-1.25 3.25M75.4 9.5V23m0-6.75a4.85 4.85 0 0 1 9.7 0V23M101.2 16.25a4.85 4.85 0 1 0-1.25 3.25M107.6 6.6v10.5a4 4 0 0 0 4 4h1.8" stroke-width="3.8"/><path d="M41.3 16.25h13.5M57.4 16.25h13.5M89.6 16.25h13.5M104.1 11.2h9.3" stroke-width="3.4"/></svg></a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <form class="sidebar-form" id="email-form">
+        <label for="email">Электронная почта:</label>
+        <input type="email" id="email" autocomplete="email" required>
+        <button class="button" type="submit" id="email-submit">Получить код</button>
+        <p class="hint">Паролей нет: мы пришлём код на почту. Аккаунт создастся сам при первом входе.</p>
+      </form>
+
+      <form class="sidebar-form" id="code-form" hidden>
+        <p>Код отправлен на <b id="sent-to"></b></p>
+        <label for="code">Код из письма:</label>
+        <input type="text" id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
+        <button class="button" type="submit" id="code-submit">Войти</button>
+        <p class="hint"><a id="change-email">Другая почта</a> · <a id="resend">Прислать снова</a></p>
+      </form>
+
+      <form class="sidebar-form" id="two-factor-form" hidden>
+        <p>У вас включена двухфакторная аутентификация. Для входа введите код, полученный в приложении.</p>
+        <label for="two-factor-code">Код 2FA:</label>
+        <input type="text" id="two-factor-code" autocomplete="one-time-code" maxlength="11" spellcheck="false" required>
+        <button class="button" type="submit" id="two-factor-submit">Войти</button>
+        <p class="hint">Телефона нет под рукой — введите один из резервных кодов.</p>
+        <p class="hint"><a id="two-factor-back">Другая почта</a></p>
+      </form>
+
+      <div class="error" id="error" hidden></div>
+
+      <div class="sidebar-form" id="accounts" hidden>
+        <p>Войти как:</p>
+        <nav class="menu" id="accounts-list"></nav>
+      </div>
+    </div>
+
+    <div class="page">
+      <h1 class="page-title">Добро пожаловать во Freenet</h1>
+      <div class="page-body">
+        <div class="notice invited" id="invited" hidden></div>
+        <p><b>Freenet — социальная сеть для общения с друзьями.</b></p>
+        <p>Мы хотим, чтобы друзья, однокурсники, одноклассники, соседи и коллеги всегда оставались на связи.</p>
+        <p>С помощью этого сайта вы можете:</p>
+        <ul class="bullets">
+          <li>Рассказать о себе на своей странице.</li>
+          <li>Найти людей по никнейму и узнать о них больше.</li>
+          <li>Писать друзьям личные сообщения — они шифруются, и прочесть их можете только вы и ваш собеседник.</li>
+          <li>Делиться записями, фотографиями и историями и читать новости друзей.</li>
+          <li>Вступать в группы и обсуждать темы.</li>
+          <li>Самим решать, кто что видит: дата рождения и взгляды скрыты, пока вы их не откроете.</li>
+        </ul>
+        <div class="notice center">
+          <b>Как войти впервые?</b><br>
+          Введите почту в форме входа, получите код и войдите: страница создастся сама — останется её заполнить.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p class="footer-languages"><a class="footer-language" href="/language?lg=ru" title="Русский"><img src="/static/flags/ru.gif" alt="Русский"></a><a class="footer-language" href="/language?lg=en" title="English"><img src="/static/flags/gb.gif" alt="English"></a><a href="/language">all languages &raquo;</a></p>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

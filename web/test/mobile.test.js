@@ -6,11 +6,12 @@ import { activeSection } from '../static/labels.js';
 const web = new URL('../', import.meta.url);
 const pages = readdirSync(web).filter((name) => name.endsWith('.html'));
 
-test('every page is laid out for the width of a phone and names the app manifest', () => {
-  for (const page of pages) {
+test('every page names the app manifest and lets a tablet see it whole', () => {
+  for (const page of pages.filter((name) => name !== 'admin.html')) {
     const html = readFileSync(new URL(page, web), 'utf8');
 
-    assert.match(html, /<meta name="viewport" content="width=device-width, initial-scale=1">/, page);
+    // A page of a computer is 791px wide: a tablet shows it all, scaled.
+    assert.match(html, /<meta name="viewport" content="width=820">/, page);
     assert.match(html, /<link rel="manifest" href="\/static\/manifest\.json">/, page);
   }
 });
@@ -25,18 +26,16 @@ test('the icons of the app manifest are files of the site', () => {
   }
 });
 
-test('every page of the site loads the interface of a phone, for a narrow screen only', () => {
+test('every page but the admin panel has its page of a phone', () => {
   for (const page of pages.filter((name) => name !== 'admin.html')) {
-    const html = readFileSync(new URL(page, web), 'utf8');
-
-    assert.match(html, /<link rel="stylesheet" href="\/static\/palette\.css">\n\s*<link rel="stylesheet" href="\/static\/style\.css">\n\s*<link rel="stylesheet" href="\/static\/mobile\.css" media="\(max-width: 800px\)">/, page);
+    assert.ok(existsSync(new URL(`m/${page}`, web)), page);
   }
 });
 
 test('the interface of a phone keeps to its stylesheet', () => {
   const style = readFileSync(new URL('static/style.css', web), 'utf8');
 
-  assert.doesNotMatch(style, /@media \(max-width: 800px\)/, 'a rule of the phone belongs in mobile.css');
+  assert.doesNotMatch(style, /@media \(max-width: 800px\)/, 'a rule of the phone belongs in m.css');
   assert.match(style, /\.tabbar, \.header-search \{ display: none; \}/, 'the bar of sections is the phone\'s only');
 });
 

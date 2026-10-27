@@ -2847,9 +2847,8 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .doc-attached { margin-top: 6px; }
 .doc-attached .doc-item { padding: 4px; }
 
-/* Phones have an interface of their own, laid out by mobile.css, which
-   the pages load for a narrow screen: the bar of sections at the bottom
-   and the search in the header are only theirs. */
+/* Phones have pages of their own (web/m/, m.css): the bar of sections
+   at the bottom and the search in the header are only theirs. */
 .tabbar, .header-search { display: none; }
 
 /* Stories, VK's: circles above the news and the stories over the screen. */

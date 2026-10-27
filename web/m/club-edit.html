@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ru" class="m">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Редактировать группу | Freenet</title>
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#3e3e3e">
+  <link rel="stylesheet" href="/static/palette.css">
+  <link rel="stylesheet" href="/static/m.css">
+  <script src="/static/theme.js"></script>
+  <script type="module" src="/static/club-edit.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/" aria-label="Freenet"><svg class="logo-mark" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="6"/><path d="M19.4 6.6h-1.8a4 4 0 0 0-4 4V23" stroke-width="4"/><path d="M8.4 13.5h10.6" stroke-width="3.6"/></svg><svg class="logo-word" viewBox="28 0 87 28" aria-hidden="true"><path d="M32.5 23v-7.6a4 4 0 0 1 4-4h1.8M52.9 16.25a4.85 4.85 0 1 0-1.25 3.25M69 16.25a4.85 4.85 0 1 0-1.25 3.25M75.4 9.5V23m0-6.75a4.85 4.85 0 0 1 9.7 0V23M101.2 16.25a4.85 4.85 0 1 0-1.25 3.25M107.6 6.6v10.5a4 4 0 0 0 4 4h1.8" stroke-width="3.8"/><path d="M41.3 16.25h13.5M57.4 16.25h13.5M89.6 16.25h13.5M104.1 11.2h9.3" stroke-width="3.4"/></svg></a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Загрузка…</span></div>
+      <div class="page-body">
+        <div class="tabs" id="tabs" hidden>
+          <a class="active" id="tab-main">Основное</a>
+          <a id="tab-backdrop">Фон</a>
+          <a id="tab-members">Участники</a>
+        </div>
+        <form class="container-gray" id="form" hidden>
+          <div class="error" id="error" hidden></div>
+          <div class="notice" id="saved" hidden>Изменения сохранены.</div>
+          <h4>Основная информация</h4>
+          <table class="form">
+            <tr>
+              <th><label class="required" for="name">Название:</label></th>
+              <td class="control"><input type="text" id="name" maxlength="64" required></td>
+            </tr>
+            <tr>
+              <th><label for="description">Описание:</label></th>
+              <td class="control"><textarea id="description" maxlength="1000" rows="5"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="address">Адрес страницы:</label></th>
+              <td class="control">
+                <input type="text" id="address" maxlength="32" spellcheck="false">
+                <div class="hint">Адрес страницы: <span id="url-preview"></span></div>
+              </td>
+            </tr>
+            <tr>
+              <th><label for="website">Сайт:</label></th>
+              <td class="control"><input type="text" id="website" maxlength="256" spellcheck="false" placeholder="example.com"></td>
+            </tr>
+            <tr>
+              <th><label for="type">Тип группы:</label></th>
+              <td class="control">
+                <select id="type"></select>
+                <div class="hint">В закрытую группу вступают по заявке, а её стену, участников, обсуждения и альбомы видят только участники.</div>
+              </td>
+            </tr>
+            <tr>
+              <th><label for="wall">Стена:</label></th>
+              <td class="control">
+                <select id="wall">
+                  <option value="open">открытая</option>
+                  <option value="suggest">предложка</option>
+                  <option value="closed">закрытая</option>
+                </select>
+                <div class="hint">Открытая — писать может любой, предложка — пишут администраторы, остальные предлагают записи, закрытая — только администраторы.</div>
+              </td>
+            </tr>
+            <tr>
+              <th>Обсуждения:</th>
+              <td class="checks">
+                <label><input type="checkbox" id="open-topics"> Все могут создавать темы</label>
+                <label><input type="checkbox" id="topics-above-wall"> Отображать список тем над стеной</label>
+              </td>
+            </tr>
+            <tr>
+              <th>Список админов:</th>
+              <td class="checks" id="admins-display"></td>
+            </tr>
+            <tr>
+              <th></th>
+              <td class="control"><button class="button" type="submit" id="submit">Сохранить</button></td>
+            </tr>
+          </table>
+          <div class="settings-delete" id="delete-club" hidden>Вы также можете <a id="delete">удалить группу</a>.</div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p class="footer-languages"><a class="footer-language" href="/language?lg=ru" title="Русский"><img src="/static/flags/ru.gif" alt="Русский"></a><a class="footer-language" href="/language?lg=en" title="English"><img src="/static/flags/gb.gif" alt="English"></a><a href="/language">all languages &raquo;</a></p>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

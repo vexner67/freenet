@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ru" class="m">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Стикеры | Freenet</title>
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#3e3e3e">
+  <link rel="stylesheet" href="/static/palette.css">
+  <link rel="stylesheet" href="/static/m.css">
+  <script src="/static/theme.js"></script>
+  <script type="module" src="/static/stickers-page.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/" aria-label="Freenet"><svg class="logo-mark" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="6"/><path d="M19.4 6.6h-1.8a4 4 0 0 0-4 4V23" stroke-width="4"/><path d="M8.4 13.5h10.6" stroke-width="3.6"/></svg><svg class="logo-word" viewBox="28 0 87 28" aria-hidden="true"><path d="M32.5 23v-7.6a4 4 0 0 1 4-4h1.8M52.9 16.25a4.85 4.85 0 1 0-1.25 3.25M69 16.25a4.85 4.85 0 1 0-1.25 3.25M75.4 9.5V23m0-6.75a4.85 4.85 0 0 1 9.7 0V23M101.2 16.25a4.85 4.85 0 1 0-1.25 3.25M107.6 6.6v10.5a4 4 0 0 0 4 4h1.8" stroke-width="3.8"/><path d="M41.3 16.25h13.5M57.4 16.25h13.5M89.6 16.25h13.5M104.1 11.2h9.3" stroke-width="3.4"/></svg></a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Стикеры</span></div>
+      <div class="page-body">
+        <div class="tabs" id="tabs">
+          <a id="tab-shop" href="/stickers">Магазин стикеров</a>
+          <a id="tab-settings" href="/stickers?act=settings" hidden>Установленные наборы</a>
+          <a id="tab-author" href="/stickers?act=author" hidden>Студия стикеров</a>
+          <a class="tabs-side" id="tab-dialogs" href="/im" hidden>Диалоги</a>
+        </div>
+        <div class="mb-tabs" id="sections" hidden>
+          <div class="mb-tab-row">
+            <a class="mb-tab" id="section-popular" href="/stickers?section=popular">Популярные</a>
+            <a class="mb-tab" id="section-free" href="/stickers?section=free">Бесплатные</a>
+            <a class="mb-tab" id="section-all" href="/stickers?section=all">Все</a>
+          </div>
+          <form action="/stickers" method="get" id="search">
+            <input type="hidden" name="section" id="search-section">
+            <input type="search" name="q" id="search-query" placeholder="Поиск по наборам стикеров">
+          </form>
+        </div>
+        <div class="summary-bar sticker-summary" id="summary" hidden>
+          <span id="summary-text"></span>
+          <a class="button" id="create" href="/stickers?act=new" hidden>+ Создать набор</a>
+        </div>
+        <div class="error" id="error" hidden></div>
+        <div class="gray-box" id="studio" hidden>
+          <h4 class="gray-box-title" id="studio-title">Новый набор стикеров</h4>
+          <form id="studio-form">
+            <table class="form sticker-pack-form">
+              <tr>
+                <th><label for="pack-name">Название набора:</label></th>
+                <td class="control"><input type="text" id="pack-name" maxlength="64" required></td>
+              </tr>
+              <tr>
+                <th><label for="pack-about">Описание:</label></th>
+                <td class="control"><textarea id="pack-about" maxlength="500" rows="3"></textarea></td>
+              </tr>
+              <tr>
+                <th><label for="pack-price">Стоимость:</label></th>
+                <td class="control"><input type="number" id="pack-price" min="0" max="1000" value="0" required></td>
+                <td class="note hint" id="pack-income">в голосах, 0 — бесплатно</td>
+              </tr>
+              <tr>
+                <th></th>
+                <td class="control"><label><input type="checkbox" id="pack-published"> Опубликовать в магазине</label></td>
+              </tr>
+              <tr>
+                <th>Стикеры:</th>
+                <td class="control" colspan="2">
+                  <div class="sticker-grid sticker-studio-grid" id="pack-stickers"></div>
+                  <p class="hint">Стикер — ваша фотография, лучше квадратная и на белом фоне. Не больше 40 стикеров в наборе.</p>
+                  <a class="profile-link" id="pack-add">Добавить стикеры</a>
+                  <input type="file" id="pack-files" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
+                </td>
+              </tr>
+              <tr>
+                <th></th>
+                <td class="control">
+                  <button class="button" type="submit" id="pack-save">Сохранить набор</button>
+                  <a class="button secondary" href="/stickers?act=author">Отмена</a>
+                </td>
+              </tr>
+            </table>
+          </form>
+          <p class="hint" id="pack-delete-line" hidden>Вы также можете <a id="pack-delete">удалить набор</a>.</p>
+        </div>
+        <div class="stickers-grid" id="packs"></div>
+        <p class="hint" id="empty" hidden>Тут ничего нет... Пока...</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p class="footer-languages"><a class="footer-language" href="/language?lg=ru" title="Русский"><img src="/static/flags/ru.gif" alt="Русский"></a><a class="footer-language" href="/language?lg=en" title="English"><img src="/static/flags/gb.gif" alt="English"></a><a href="/language">all languages &raquo;</a></p>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

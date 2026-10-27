@@ -200,10 +200,135 @@ b, strong { font-weight: bold; }
 .footer .footer-language { padding: 6px 4px; line-height: 0; }
 .version-switch { font-weight: bold; }
 
-/* What is drawn alike at any width, as on a computer: the parts of
-   pages that style.css draws too. The rules after them, made for a
-   phone, win where both speak. */
+/* The parts of pages, as the pages of a computer draw them (style.css). */
 
+/* The New Year decoration (newyear.js): a garland under the header, a
+   hat on the "f" of the logo, a fir tree with a greeting under the menu
+   and a few flakes of snow, the colour of which is the canvas's. */
+.festive .header { position: relative; }
+.festive .header::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 6px;
+  right: 6px;
+  height: 18px;
+  background: url("/static/newyear/garland.svg") repeat-x;
+  pointer-events: none;
+  z-index: 2;
+}
+.festive .columns { margin-top: 18px; }
+.festive .logo { position: relative; }
+.festive .logo::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -7px;
+  width: 25px;
+  height: 20px;
+  background: url("/static/newyear/hat.svg") center / contain no-repeat;
+  transform: rotate(-18deg);
+  pointer-events: none;
+}
+/* The page stands as a white column on a pale winter sky with flakes,
+   as the holiday skins of the late 2000s did. */
+.festive body { background: var(--back-f2f5f8) url("/static/newyear/flakes.svg"); }
+.festive .layout { position: relative; min-height: 100vh; }
+.festive .layout::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -10px;
+  right: -10px;
+  background: var(--back-fff);
+  box-shadow: 0 0 12px rgba(80, 110, 140, 0.18);
+  z-index: -1;
+}
+/* A snowflake before the title of the page. */
+.festive .page-title {
+  padding-left: 26px;
+  background: var(--back-eee5b8) url("/static/newyear/snowflake.svg") no-repeat 8px 50%;
+}
+/* The bar over a block gets a candy-cane edge and, where nothing stands
+   at its right, a sprig of holly. */
+.festive .section-title::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: repeating-linear-gradient(-45deg, var(--back-d23a32) 0 4px, var(--back-fff) 4px 8px);
+}
+.festive .section-title:not(:has(.title-link))::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 6px;
+  width: 22px;
+  height: 14px;
+  background: url("/static/newyear/holly.svg") no-repeat;
+}
+/* Snow lies on the photos of the authors and on the buttons. */
+.festive .post > .post-avatar { position: relative; }
+.festive .post > .post-avatar::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: -3px;
+  width: 56px;
+  height: 14px;
+  background: url("/static/newyear/cap.svg") no-repeat;
+  pointer-events: none;
+}
+/* A bauble hangs at the right of the bar over a post. */
+.festive .post-author { position: relative; }
+.festive body:not(.posts-microblog) .post > .post-main > .post-author::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: 10px;
+  width: 12px;
+  height: 20px;
+  background: url("/static/newyear/bauble.svg") no-repeat;
+  pointer-events: none;
+}
+.festive .button { background-image: url("/static/newyear/snowcap.svg"); background-repeat: repeat-x; background-position: 0 0; }
+/* The unread counter is a red bauble. */
+.festive .menu .counter { background: var(--back-d23a32); border-radius: 8px; color: var(--text-fff); }
+/* Snowdrifts at the bottom of the column. */
+.festive .layout { padding-bottom: 26px; }
+.festive .layout::after {
+  content: "";
+  position: absolute;
+  left: -10px;
+  right: -10px;
+  bottom: 0;
+  height: 26px;
+  background: url("/static/newyear/drift.svg") repeat-x 0 100%;
+  pointer-events: none;
+}
+.newyear { margin-top: 16px; text-align: center; }
+.newyear-greeting { color: var(--text-c33); font-weight: bold; }
+.newyear-snow { display: inline-block; margin-top: 3px; color: var(--text-808080); }
+/* The unread counter next to "Мои Ответы", as on openvk. */
+.menu .counter {
+  float: right;
+  margin-top: -1px;
+  padding: 1px 7px;
+  background: var(--back-e6e6e6);
+  border-radius: 2px;
+  color: var(--text-2b587a);
+  font-weight: bold;
+}
+.sidebar-form label { display: block; margin: 6px 0 2px; }
+.sidebar-form .button { width: 100%; margin-top: 6px; }
+.sidebar-form .hint { margin-top: 6px; }
+/* Who invites, over the main page (login.js), and the link of
+   "Пригласить" (invite-page.js). */
+.invited { display: flex; align-items: center; gap: 8px; }
+.invited-photo { width: 30px; height: 30px; object-fit: cover; }
 .invite-link { display: flex; justify-content: center; gap: 6px; margin: 12px 0; }
 .invite-link input { flex: 0 1 360px; min-width: 0; }
 /* What is copied by selecting it, out of sight. */
@@ -211,11 +336,111 @@ b, strong { font-weight: bold; }
 /* The offer of pushes over the page of a phone (layout.js offerPush). */
 .push-offer p { margin: 0 0 8px; }
 .push-offer-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.form td.control { width: 260px; }
+.form td.note { padding-left: 10px; }
+/* A date and a time side by side, as openvk's "Начало" of an event. */
+.form input.half { width: 49%; box-sizing: border-box; }
+.required::after { content: " *"; color: var(--text-c33); }
+.date { display: flex; gap: 4px; }
+.date select:first-child { width: 60px; }
+.date select:nth-child(2) { width: 110px; }
+.date select:last-child { width: 64px; }
+.key-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+/* openvk's pages of settings and of "Редактировать страницу": a gray box
+   under the tabs, blue heads, forms of a table in the middle with gray
+   labels, and the buttons under the fields. */
+.container-gray { margin: -10px; padding: 12px; background: var(--back-f6f6f6); }
+.container-gray h4 {
+  margin: 14px 0 4px;
+  border-bottom: 1px solid var(--line-e8ebee);
+  color: var(--text-45688e);
+  font: bold 12px verdana, arial, sans-serif;
+}
+.container-gray > form > h4:first-child, .container-gray > div > h4:first-child, .container-gray > h4:first-child { margin-top: 0; }
+.container-gray .form { width: 60%; margin: 0 auto; border-collapse: separate; border-spacing: 7px; table-layout: fixed; }
+.container-gray .form th { width: 120px; padding: 0; color: var(--text-808080); text-align: left; line-height: normal; }
+.container-gray .form td { padding: 0; }
+.container-gray .form td.control { width: auto; }
+.container-gray .form .check-cell { text-align: right; }
+.container-gray .form .check-cell input { margin: 0; }
+.container-gray .actions { box-sizing: border-box; width: 60%; margin: 0 auto 4px; padding-left: 134px; }
+/* openvk's bold titles over the tables of "Приватность". */
+.container-gray .subhead { display: block; box-sizing: border-box; width: 60%; margin: 8px auto 0; padding: 0 7px; }
+/* Words and buttons in the middle, as openvk's sessions. */
+.settings-block { width: 60%; margin: 7px auto; }
+.settings-block .key-actions { justify-content: center; }
+.accent-box { margin: 5px; padding: 10px; background: var(--back-fff); border: 1px solid var(--line-c0cad5); }
+.accent-box p { margin: 0 0 6px; }
+.accent-box p:last-child { margin-bottom: 0; }
+/* What is under the settings: white, in the middle, to the end of the box. */
+.container-gray .settings-delete { margin: 12px -12px -12px; padding: 12px; background: var(--back-fff); text-align: center; }
+/* openvk's additional fields: a table each, under a line. */
+.container-gray .extra-field { width: 80%; margin: 0 auto 10px; }
+.container-gray .extra-field th { text-align: right; }
+.container-gray .extra-field td:not(.control) { width: 20px; }
+.column-actions { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-top: 8px; }
+/* openvk's "Выбрать язык": languages in five columns, the flag over the name. */
+.languages { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 4px; }
+.languages .language {
+  padding: 20px 10px 5px;
+  border-top: 1px solid var(--line-fff);
+  color: var(--text-000);
+  text-align: center;
+  text-decoration: none;
+}
+.languages .language:hover { background: var(--back-e4e4e4); border-top-color: var(--line-ccc); }
+.club-main .wall-form:not(.comment-form, .post-edit) { margin-left: 0; margin-right: 0; }
+/* Blue links of the old post, gray ones of "Микроблог", as on openvk. */
+.posts-microblog .post-menu a { color: var(--text-999); }
+.prime-mood { width: 32px; height: 32px; }
+.account-info .prime-mood { float: right; margin: 0 2px 6px 8px; }
+.prime-preview .prime-mood { margin-left: auto; align-self: flex-start; }
+/* The choices of "Оформление страницы" on /prime: swatches in a row, the
+   chosen one framed. */
+.prime-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.prime-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  width: 78px;
+  padding: 6px 2px;
+  border: 1px solid var(--line-ccc);
+  background: var(--back-fff);
+  cursor: pointer;
+  text-align: center;
+}
+.prime-swatch:hover { background: var(--back-f7f7f7); }
+.prime-swatch input { position: absolute; opacity: 0; pointer-events: none; }
+.prime-swatch:has(input:checked) { border-color: var(--text-6b3fb8); outline: 1px solid var(--text-6b3fb8); background: var(--back-f2f5f8); }
+.prime-swatch:has(input:focus-visible) { outline: 2px solid var(--text-6b3fb8); }
+.prime-swatch-sample { display: block; width: 40px; height: 40px; box-sizing: border-box; background-color: var(--back-f2f2f2); }
+.prime-swatch-bg { border: 1px solid var(--line-ccc); background: var(--back-f2f5f8) var(--prime-pattern, none); }
+.prime-swatch-none { display: block; width: 16px; height: 16px; color: var(--text-808080); }
+.prime-style-label { margin: 10px 0 4px; font-weight: bold; }
+.prime-preview { display: flex; gap: 10px; align-items: center; margin: 8px 0; padding: 10px; border: 1px solid var(--line-ccc); }
+.prime-preview .avatar { width: 60px; height: 60px; }
 /* Search */
 .search-form { display: flex; gap: 6px; margin-bottom: 10px; }
 .search-form input { flex: 1; }
+.search-count { margin-bottom: 4px; color: var(--text-808080); }
 .message-actions { display: block; margin: 3px 0 0; }
+.message-actions .attach-list { left: auto; right: 0; min-width: 100px; font-size: 11px; text-align: left; }
+.im-selection { display: flex; justify-content: space-between; padding: 6px 20px; background: var(--back-f7f7f7); border-bottom: 1px solid var(--line-d6d6d6); }
+.im-selection a { cursor: pointer; }
 .safety-code { margin: 8px 0; font: bold 16px monospace; letter-spacing: 1px; text-align: center; }
+/* "Двухфакторная аутентификация" (twofactor.js): the QR code at its own
+   pixels in a white frame, the key under it, the code in a form row and
+   the recovery codes in two columns of a dashed slip, as openvk's list. */
+.qr-box { align-self: center; padding: 5px; background: var(--back-fff); border: 1px solid var(--line-c0cad5); box-shadow: inset 1px 1px 0 var(--back-e4e4e4); }
+.qr-code { display: block; image-rendering: pixelated; }
+.secret-key { margin: 0; font-size: 13px; word-spacing: 3px; }
+.two-factor-form { width: 100%; margin-top: 4px; border-spacing: 0; }
+.two-factor-form th { width: 50px; padding-right: 8px; color: var(--text-808080); font-weight: normal; text-align: right; }
+.modal-body .two-factor-form input[type="text"] { width: 100%; box-sizing: border-box; font: bold 14px monospace; letter-spacing: 2px; }
+.recovery-codes { columns: 2; margin: 4px 0; padding: 8px 8px 8px 34px; background: var(--back-f7f7f7); border: 1px dashed var(--line-c0cad5); font: bold 13px/20px monospace; }
+.im-message-text.unreadable { color: var(--text-777); font-style: italic; }
 .found-words { background: var(--back-ffe58a); }
 .im-forwarded { margin: 4px 0; padding-left: 8px; border-left: 2px solid var(--line-dae1e8); }
 .im-forwarded-message { margin-bottom: 6px; }
@@ -237,6 +462,12 @@ b, strong { font-weight: bold; }
 .im-reaction-picker .im-reaction.mine { background: var(--back-dae1e8); }
 .forward-list { max-height: 120px; margin: 4px 0 8px; padding-left: 8px; overflow-y: auto; border-left: 2px solid var(--line-dae1e8); color: var(--text-777); }
 .forward-list div { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* Chats of several people: the line of what happened between the
+   messages, and the people to tick in "Новая беседа". */
+.chat-bar a { cursor: pointer; }
+.chat-action { margin: 6px 0; color: var(--text-777); text-align: center; }
+/* The message pinned above a chat, as VK's: a line under the bar. */
+.chat-pinned { display: flex; align-items: center; gap: 8px; padding: 6px 20px; background: var(--back-f7f7f7); border-bottom: 1px solid var(--line-d6d6d6); }
 .chat-pinned-body { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
 .chat-pinned-head { display: block; color: var(--text-808080); }
 .chat-pinned-remove { color: var(--text-808080); font-size: 14px; cursor: pointer; }
@@ -244,16 +475,22 @@ b, strong { font-weight: bold; }
 .chat-about-links { margin-bottom: 8px; text-align: center; }
 .chat-about-links a { cursor: pointer; }
 .chat-action-date { margin-left: 8px; font-size: 9px; }
+.modal-box.chat-dialog { width: 440px; }
 .chat-people { max-height: 200px; overflow-y: auto; border: 1px solid var(--line-dae1e8); }
 .chat-people.tall { max-height: 300px; }
+.chat-people > .hint { margin: 10px; text-align: center; }
 .chat-person { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-bottom: 1px solid var(--line-eef1f4); cursor: default; }
 label.chat-person { cursor: pointer; }
 .chat-person:last-child { border-bottom: 0; }
 .chat-person > img { width: 30px; height: 30px; object-fit: cover; border-radius: 3px; }
 .chat-kick { display: block; font-size: 10px; cursor: pointer; }
-.reply-cancel:hover { color: var(--text-555); text-decoration: none; }
-.attachment-remove:hover { background: rgba(0, 0, 0, .8); text-decoration: none; }
-.viewer-nav:hover { background: rgba(0, 0, 0, .6); text-decoration: none; }
+.action-reply::before { background-image: url("/static/icons/reply.svg"); }
+.action-reaction::before { background-image: url("/static/icons/reaction.svg"); }
+.action-edit::before { background-image: url("/static/icons/edit.svg"); }
+.action-pin::before { background-image: url("/static/icons/pin.svg"); }
+.action-unpin::before { background-image: url("/static/icons/unpin.svg"); }
+.action-forward::before { background-image: url("/static/icons/forward.svg"); }
+.action-delete::before { background-image: url("/static/icons/delete.svg"); }
 /* A shared post inside its repost, compact as on openvk. */
 .text-link { overflow-wrap: anywhere; }
 .link-card { display: flex; gap: 10px; margin: 6px 4px; padding: 6px; border: 1px solid var(--line-dae1e8); background: var(--back-f7f7f7); color: inherit; }
@@ -263,7 +500,11 @@ label.chat-person { cursor: pointer; }
 .link-card-title { color: var(--text-2b587a); overflow-wrap: anywhere; }
 .link-card-site { color: var(--text-808080); }
 .link-card-description { color: var(--text-333); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* openvk's "Загрузка новой фотографии" (avatar.js). */
+.modal-box.avatar-dialog { width: 487px; }
 .avatar-crop { display: block; max-width: 100%; height: auto; margin: 4px auto; cursor: move; touch-action: none; }
+/* openvk's "Граффити": a white sheet and the tools under it. */
+.modal-box.graffiti-dialog { width: 600px; max-width: calc(100vw - 32px); }
 .graffiti-canvas { display: block; width: 100%; border: 1px solid var(--line-c0cad5); cursor: crosshair; touch-action: none; }
 .graffiti-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 8px; }
 .graffiti-tools a { cursor: pointer; }
@@ -274,24 +515,146 @@ label.chat-person { cursor: pointer; }
 .graffiti-swatch.picked { outline: 2px solid var(--text-2b587a); outline-offset: 1px; }
 .graffiti-colors input[type="color"] { width: 26px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
 .avatar-turn { display: flex; justify-content: center; gap: 6px; }
+/* The blacklist page: people with "Удалить из чёрного списка". */
+.blacklist-row { display: flex; justify-content: space-between; align-items: center; }
+.blacklist-row .person { flex: 1; }
+/* "Безопасность" of the settings: the sessions with "Завершить". */
+.session-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line-ececec); }
+.session-device { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+/* The page of a community, as openvk's: the information, members and
+   wall on the left, the photo and links in a narrow column on the right
+   (a person's page is the other way round). */
+.club { display: flex; gap: 10px; }
+.club-main { flex: 1; min-width: 0; }
+.club-main .section-title { margin-left: 0; margin-right: 0; }
+/* Blocks that may be hidden open with their title: not the page's first. */
+.club-main > div > .section-title:first-child { margin-top: 12px; }
+.club-side { width: 200px; flex-shrink: 0; }
+.club-side .section-title, .club-side > div > .section-title:first-child { margin: 10px 0 0; }
+.people-grid.wide { grid-template-columns: repeat(6, 1fr); }
+/* "Таймер": when a postponed post comes out, under the form and in the
+   box that edits it. */
+.postponed-time { margin-top: 4px; color: var(--text-555); }
+.postponed-time input { margin: 0 2px; font: inherit; }
 .timer-remove { margin-left: 4px; color: var(--text-999); }
+.post-options .price-input { width: 70px; margin: 0 3px; }
+.club-role { color: var(--text-808080); }
+/* The pages of text: "о сайте", "правила" and openvk's FAQ of "помощь". */
+.plain-list { margin: 6px 0; padding-left: 28px; }
+.plain-list li { margin: 3px 0; }
+.faq-head { margin: 0 5px; padding: 5px; background: var(--back-fbf3c3); border: 1px solid var(--line-d7cf9e); border-bottom: 0; font-weight: bold; }
+.faq-content { margin: 0 5px 10px; padding: 5px 5px 5px 10px; background: var(--back-fafafa); border: 1px solid var(--line-ddd); }
+.club-row { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line-ececec); }
+.club-row img { width: 50px; height: 50px; object-fit: cover; }
 /* The other accounts of the browser, in the box "Аккаунты": a small photo
    before the name. */
 .account-list { min-width: 220px; }
+/* openvk's lists ("Мои Группы", search): the photo, the information and
+   the links on the right. */
+.list-row { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line-ececec); }
+.list-cover img { display: block; width: 75px; height: 75px; object-fit: cover; }
+.list-info { flex: 1; min-width: 0; }
+.list-info .info th { width: 70px; }
+.list-description { padding-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.list-actions { width: 200px; flex-shrink: 0; }
+.list-actions .profile-link { margin-top: 0; margin-bottom: 2px; }
+/* The grey bar of "Мои Группы": search and "Создать группу". */
+.gray-bar { display: flex; gap: 8px; margin: -10px -10px 0; padding: 12px; background: var(--back-f6f6f6); }
+.gray-bar-search { flex: 1; }
 .summary-bar { margin: 0 -10px; padding: 11px 10px; border-bottom: 1px solid var(--line-dedede); color: var(--text-45688e); font-weight: bold; }
 /* "Предложка": the link above the wall, the head of the suggestions and
    the buttons of an admin under each, as on openvk. */
 .sugglist { margin: 5px 0 -5px; padding: 5px 9px; border-top: 1px solid var(--line-808080); background: var(--back-e6e6e6); }
 .sugglist a { color: var(--text-626262); }
+.suggested-count { margin: 0 0 7px; border-bottom: 1px solid var(--line-e8ebee); color: var(--text-45688e); font-size: 12px; font-weight: bold; }
+.suggestion-controls { margin: 4px 0 7px; text-align: center; }
+.suggestion-controls .button { margin: 0 2px; }
+.publish-signed { display: block; margin-top: 4px; }
 .publish-signed input { vertical-align: middle; margin: 0 3px 0 0; }
+/* openvk's "Обсуждения": the list of topics (board.js), the head of a
+   topic and the block on the page of a club. */
+.board-search { display: flex; gap: 6px; margin-bottom: 8px; }
+.board-search input { flex: 1; padding: 3px 4px; border: 1px solid var(--line-c0cad5); font: inherit; }
+.board-count { margin: 0 0 8px; }
+.topic-item { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; padding: 8px 10px; border: 1px solid var(--line-dae1e8); }
+.topic-name { font-weight: bold; }
+.topic-last { display: flex; gap: 6px; align-items: flex-start; min-width: 170px; }
+.topic-last img { width: 30px; height: 30px; object-fit: cover; }
+.topic-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; padding: 10px; background: var(--back-f2f2f2); }
+.topic-short { padding: 4px 0; }
+.page-title .title-links { font-weight: bold; }
+.topic-form textarea { width: 100%; height: 80px; }
+/* openvk's photo albums: the list (a grey box of white items with their
+   covers), the head and the photos of an album, the upload with its white
+   box of limits, the page of a photo and the block on a page. */
+.gray-box { padding: 12px; background: var(--back-f6f6f6); }
+.gray-box-title { margin: 0 0 10px; font-size: 11px; }
+.summary-bar .summary-links { font-weight: normal; }
+.album-list .hint { margin: 0; }
+.album-item { display: flex; gap: 10px; margin-bottom: 6px; padding: 4px; background: var(--back-fff); border: 1px solid var(--line-dedede); }
+.album-item:last-child { margin-bottom: 0; }
+.album-cover img { display: block; width: 170px; height: 130px; object-fit: cover; }
+.album-info { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.album-form input, .album-form textarea { width: 100%; }
 .album-delete { text-align: center; }
+.album-head { margin-bottom: 12px; }
+.album-grid { display: flex; flex-wrap: wrap; }
+.album-photo { position: relative; width: 25%; margin-bottom: 8px; text-align: center; }
+.album-photo img { max-width: 83%; max-height: 120px; padding: 8px; border: 1px solid var(--line-ccc); background: var(--back-fff); vertical-align: top; }
+.album-photo-delete {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 4px;
+  padding: 1px 6px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-fff);
+  opacity: 0;
+  transition: opacity 0.1s ease-out;
+}
+.album-photo-delete:hover { text-decoration: none; }
+.album-photo:hover .album-photo-delete { opacity: 1; }
+.upload-box { min-height: 344px; }
+.white-box { width: 421px; max-width: 100%; margin: 7% auto 0; background: var(--back-fff); border: 1px solid var(--line-e8e8e8); }
+.white-box h4 { margin: 24px 38px 0; font-size: 11px; }
+.upload-limits { margin: 17px 38px 24px; }
+.upload-limits > b { color: var(--text-45688e); }
+.upload-limits ul { margin: 6px 0 0; padding-left: 18px; }
+.upload-button { padding-top: 4px; text-align: center; }
+.upload-tip { margin: 19px 0 0; line-height: 15px; }
+.upload-again { text-align: center; }
+.uploaded-photo { display: flex; justify-content: space-between; gap: 10px; margin-top: 9px; padding-bottom: 9px; border-bottom: 1px solid var(--line-e8e8e8); }
+.uploaded-description { display: flex; flex: 1; gap: 6px; color: var(--text-464646); }
+.uploaded-description textarea { flex: 1; height: 86px; resize: none; }
+.uploaded-image { display: flex; flex-direction: column; width: 125px; }
+.uploaded-image img { width: 125px; }
+.upload-finish { display: block; margin: 12px auto 0; }
+.photo-page-image { margin-bottom: 8pt; text-align: center; }
+.photo-page-image img { max-width: 85%; max-height: 60vh; }
+.photo-page-description { padding: 5px 30px; }
+.photo-page-description .hint { font-size: 10px; }
+.photo-page-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.photo-page-columns { display: flex; justify-content: space-between; gap: 10px; min-height: 100px; }
+.photo-page-main { width: 68%; }
+.photo-page-actions { width: 30%; }
+.photo-page-author { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.photo-page-author img { width: 30px; height: 30px; object-fit: cover; }
 .side-albums { padding: 5px 0; }
 .side-album { display: flex; gap: 6px; margin-bottom: 8px; overflow-wrap: anywhere; }
 .side-album img { width: 80px; max-height: 72px; object-fit: cover; }
+.about-title .edit-link { margin-left: 4px; color: var(--text-808080); font-weight: normal; }
 .about-text { white-space: pre-line; overflow-wrap: anywhere; }
-/* The status edited on the page, as openvk's box under the name. */
-.status-editable { cursor: pointer; }
+.extra-field { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line-ececec); }
+.extra-field textarea { width: 100%; height: 60px; }
+.field-remove { padding: 0 6px; color: var(--text-808080); font-size: 14px; }
+.field-remove:hover { color: var(--text-c00); text-decoration: none; }
+.edit-avatar { display: block; width: 200px; margin-bottom: 6px; }
+.search-filter { margin: 0 0 8px; }
+.hint-interests::before { background-image: url("/static/icons/info.svg"); }
+.hint-email::before, .hint-telegram::before { background-image: url("/static/icons/document.svg"); }
+.hint-status::before { background-image: url("/static/icons/status.svg"); }
 .share-signs label { display: block; margin-top: 4px; }
+.photo-page-meta .like { display: inline-flex; margin-left: 4px; }
 /* "Это архив записей" over the archive of a wall, as on openvk. */
 .archive-banner { margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--line-d5ddb6); background: var(--back-f9f6e7); }
 .archive-banner b { display: block; margin-bottom: 2px; }
@@ -311,6 +674,21 @@ label.chat-person { cursor: pointer; }
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 .archive-years { display: flex; align-items: stretch; min-width: 0; }
+.archive-year, .archive-all, .archive-manager summary {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: 36px;
+  padding: 0 10px;
+  color: var(--text-555);
+  cursor: pointer;
+}
+.archive-year:hover, .archive-all:hover { text-decoration: none; }
+.archive-year { border-bottom: 2px solid transparent; }
+.archive-year.current { border-bottom-color: var(--line-7e7e7e); color: var(--text-000); font-weight: bold; }
+.archive-all { margin-right: 2px; border-right: 1px solid var(--line-ddd); }
+.archive-all.active { background: var(--back-e9e9e9); color: var(--text-333); }
+.archive-more, .archive-actions { position: relative; }
 .archive-actions { flex: 0 0 auto; margin-left: auto; border-left: 1px solid var(--line-ddd); }
 .archive-manager summary { list-style: none; }
 .archive-manager summary::-webkit-details-marker { display: none; }
@@ -331,6 +709,8 @@ label.chat-person { cursor: pointer; }
   background: var(--back-fff);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
+.archive-menu .archive-year { min-height: 30px; border-bottom: 0; }
+.archive-menu .archive-year:hover { background: var(--back-e9edf1); }
 .archive-actions .archive-menu { right: 0; left: auto; width: 230px; }
 .archive-menu button {
   display: block;
@@ -345,9 +725,40 @@ label.chat-person { cursor: pointer; }
   cursor: pointer;
 }
 .archive-menu button:hover { background: var(--back-8b8b8b); color: var(--text-fff); }
+.archive-divider { height: 1px; margin: 4px 0; background: var(--back-ddd); }
+/* "Содержит NSFW-контент": the content of a post marked as adult is
+   blurred until clicked, as on openvk; whoever chose "Показывать" in the
+   settings sees it as any other. */
+body:not(.nsfw-shown) .shared-nsfw .shared-content { position: relative; overflow: hidden; min-height: 40px; cursor: pointer; }
+body:not(.nsfw-shown) .shared-nsfw .shared-content > * { filter: saturate(.8) blur(28px); pointer-events: none; }
+body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
+  content: "Данный пост может содержать 18+ контент";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsla(0, 0%, 0%, .7);
+  color: var(--text-fff);
+  text-align: center;
+}
 /* A photo that came from an adult post: in the album, on its page, as a
    cover and in the viewer. clip-path keeps the blur inside the photo. */
 body:not(.nsfw-shown) img.photo-nsfw { filter: saturate(.8) blur(24px); clip-path: inset(0); cursor: pointer; }
+/* "Рейтинг" of the settings: no gauge on the pages its owner reads. */
+.rating-hidden .profile-hints { display: none; }
+.posts-microblog .post { margin-bottom: 0; padding: 5px 0; border-bottom: 1px solid var(--line-ddd); }
+.posts-microblog .post-shared { border-bottom: 0; }
+.posts-microblog .post-author { padding: 0 3px 3px; background: transparent; border: 0; }
+.posts-microblog .post-text, .posts-microblog .post-photos { padding-top: 0; border-bottom: 0; }
+.posts-microblog .post-menu { font-size: 10px; }
+.posts-microblog .post-menu .post-date { display: inline; margin-right: 8px; color: var(--text-808080); font-size: 10px; }
+.posts-microblog .post-menu .post-date a { color: var(--text-808080); }
+.posts-microblog .post-buttons .like { padding: 2px 4px; border-radius: 2px; transition: background-color .2s; }
+.posts-microblog .post-buttons a.like:hover { background: var(--back-f0f0f0); }
+.posts-microblog .comment { padding: 5px 0 0; border-top: 1px solid var(--line-ddd); border-bottom: 0; }
+.post-action.on svg { opacity: .9; }
 /* openvk's polls (poll.js): the block under the words of a post, with the
    options to choose from or the results as bars. */
 .poll { margin: 6px 4px; padding: 8px; border: 1px solid var(--line-e3e3e3); }
@@ -355,11 +766,12 @@ body:not(.nsfw-shown) img.photo-nsfw { filter: saturate(.8) blur(24px); clip-pat
 .poll-option { padding: 2px 0; }
 .poll-option label { cursor: pointer; overflow-wrap: anywhere; }
 .poll-option input { margin: 0 3px 0 0; vertical-align: middle; }
-.poll-option input:disabled + * , .poll-option input:disabled { cursor: default; }
+.poll-option input:disabled + *, .poll-option input:disabled { cursor: default; }
 .poll-cast { margin-top: 8px; }
 .poll-retract { float: right; margin-left: 8px; }
 .poll-result { margin-bottom: 5px; }
 .poll-result-name { overflow-wrap: anywhere; }
+.poll-result-name.chosen { font-weight: bold; }
 a.poll-result-name { cursor: pointer; }
 .poll-result-row { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
 .poll-result-bar { position: relative; flex: 1; height: 13pt; background: var(--back-f7f7f7); }
@@ -392,6 +804,9 @@ a.poll-result-name { cursor: pointer; }
    is a row a collection, its gifts in a grid, the price showing on the
    gift pointed at ("Бесплатно" always). */
 .gift-pic { display: block; width: 96px; height: 96px; }
+.user-gift { padding: 15px; text-align: center; }
+.user-gift .gift-pic { width: 195px; height: auto; margin: 0 auto; }
+.user-gift .gift-comment { margin-top: 15px; overflow-wrap: anywhere; white-space: pre-wrap; }
 .gift-cat-row { padding: 10px 0; }
 .gift-cat-row:first-child { padding-top: 5px; }
 .gift-cat-row:not(:last-child) { border-bottom: 1px solid var(--line-ddd); }
@@ -405,22 +820,62 @@ a.poll-result-name { cursor: pointer; }
 .gift-sel:hover .gift-pic { opacity: .8; }
 .gift-sel .gift-price { position: absolute; bottom: 0; left: 0; box-sizing: border-box; width: 102px; margin: 0 10px; padding: 3px 4px 4px; border-radius: 3px; background: var(--back-f0f0f0); color: var(--text-333); visibility: hidden; }
 .gift-sel:hover .gift-price, .gift-sel .gift-price.free { visibility: visible; }
+.gift-send .modal-body { gap: 0; }
+.gift-send-top { margin: 0 0 12px; text-align: center; }
+.gift-send-top .gift-pic { width: auto; height: auto; max-width: 256px; max-height: 200px; min-height: 100px; margin: 0 auto 8px; }
+.gift-send-cost { color: var(--text-555); font-size: 12px; }
+.gift-send-cost b { color: var(--text-333); }
+.gift-send-balance { margin-top: 2px; color: var(--text-777); }
+.gift-send-field { margin: 0 0 12px; }
+.gift-send-field > b { display: block; margin: 0 0 5px; }
+.gift-send-field textarea { width: 100%; height: 60px; resize: vertical; }
+.gift-recipient { display: flex; flex-wrap: wrap; gap: 3px; min-height: 24px; padding: 2px; box-sizing: border-box; border: 1px solid var(--line-c0cad5); background: var(--back-fff); }
+.gift-recipient span { padding: 1px 5px 2px; border-radius: 2px; background: var(--back-5b7aa1); color: var(--text-fff); font-weight: bold; line-height: 15px; }
 /* The block of a page: five of the newest, as wide as the column. */
 .gift-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 8px 5px; }
 .gift-row .gift-pic { width: 100%; height: auto; aspect-ratio: 1; }
+.collectible.thumb { width: 100%; height: auto; aspect-ratio: 1; border-radius: 8px; }
+.collectible.thumb .collectible-pattern { font-size: 11px; }
+.collectible.thumb .collectible-number { right: 3px; bottom: 3px; padding: 0 3px; font-size: 8px; }
 /* Collectible gifts: a card of the gift's own colours (painted by the
    script), its symbol scattered over the backdrop and the model on top. */
 .collectible { position: relative; overflow: hidden; width: 120px; height: 120px; border-radius: 10px; margin: 0 auto; }
+.collectible.large { width: 240px; height: 240px; border-radius: 16px; }
 .collectible-pattern { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; justify-items: center; font-size: 16px; line-height: 1; transform: rotate(-12deg) scale(1.2); user-select: none; }
+.collectible.large .collectible-pattern { font-size: 30px; }
 .collectible-pattern span:nth-child(odd) { transform: translateY(40%); }
 .collectible-model { position: absolute; left: 12%; top: 10%; width: 76%; height: 76%; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .35)); }
 .collectible-number { position: absolute; right: 6px; bottom: 5px; padding: 1px 5px; border-radius: 8px; background: rgba(0, 0, 0, .35); color: var(--back-fff); font-size: 9px; font-weight: bold; }
+.collectible.large .collectible-number { right: 10px; bottom: 9px; font-size: 12px; padding: 2px 8px; }
+.collectible-caption { margin-top: 8px; }
+.collectible-done { text-align: center; }
+.collectible-lead { margin: 8px 0; color: var(--text-808080); }
+.collectible-page { display: flex; gap: 20px; padding: 10px 0; }
+.collectible-side { flex: none; }
+.collectible-info { flex: 1; min-width: 0; }
+.collectible-title { margin: 0 0 8px; font-size: 14px; color: var(--text-45688e); }
+.collectible-traits { border-collapse: collapse; margin: 0 0 8px; }
+.collectible-traits th { width: 120px; padding: 3px 8px 3px 0; color: var(--text-808080); font-weight: normal; text-align: left; vertical-align: top; }
+.collectible-traits td { padding: 3px 0; }
+.collectible-info .section-title { margin: 12px 0 8px; }
+.collectible-sale { margin: 8px 0; font-size: 13px; }
+.collectible-form { margin: 8px 0; }
+.collectible-form h4 { margin: 0 0 6px; }
+.collectible-form label { display: inline-block; margin: 0 6px 6px 0; }
+.collectible-form input[type=number] { width: 90px; }
+.collectible-form .hint { margin-top: 4px; }
+.collectible-actions .collectible-form:not(:last-child) { padding-bottom: 10px; border-bottom: 1px solid var(--line-ddd); }
+.collectible-history { padding: 6px 0; border-bottom: 1px solid var(--line-ddd); }
+.collectible-history .post-date { margin-right: 8px; }
+.collectible-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 10px 0; }
 .collectible-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border-radius: 4px; text-align: center; }
 .collectible-tile:hover { background: var(--back-f7f7f7); text-decoration: none; }
 .collectible-name { color: var(--text-45688e); font-weight: bold; }
+.market-filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
 /* A sticker keeps its shape: one of the studio, a photo of any shape,
    is fitted into the square, not stretched over it. */
 .sticker { display: block; width: 160px; height: 160px; margin: 2px 0; object-fit: contain; }
+.im-message img.sticker { width: 160px; height: 160px; object-fit: contain; border-radius: 0; }
 .sticker-panel { margin: 8px 0 0; padding: 8px; max-height: 260px; overflow-y: auto; border: 1px solid var(--line-dedede); background: var(--back-fff); }
 .sticker-pack { margin: 0 0 8px; }
 .sticker-pack-title { display: block; margin: 0 0 4px; color: var(--text-45688e); }
@@ -430,6 +885,936 @@ a.poll-result-name { cursor: pointer; }
 .sticker-panel.sending .sticker-pick { opacity: .5; cursor: progress; }
 .sticker-pick:hover { background: var(--back-f6f6f6); }
 .sticker-store { display: block; padding: 4px 0 0; border-top: 1px solid var(--line-dedede); }
+/* The shop, as openvk's: a grey bar of sections with the search under the
+   tabs, then the packs as cards four a row; a card opens the box of its
+   pack. */
+.mb-tabs { margin: -10px -10px 0; padding: 10px; border-bottom: 1px solid var(--line-dedede); background: var(--back-f6f6f6); }
+.mb-tab-row { margin: 0 0 8px; }
+.mb-tab { display: inline-block; margin-right: 10px; padding: 5px 9px; border-radius: 2px; font-weight: bold; }
+.mb-tab:hover { background: var(--back-e4e4e4); text-decoration: none; }
+.mb-tab.active, .mb-tab.active:hover { background: var(--back-707070); color: var(--text-fff); }
+.mb-tabs input[type="search"] { box-sizing: border-box; width: 100%; padding: 3px 4px; border: 1px solid var(--line-c0cad5); font: inherit; }
+.sticker-summary { display: flex; justify-content: space-between; align-items: center; margin-top: -10px; }
+.sticker-summary .button { font-weight: normal; }
+.stickers-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.stickers-pack-card { display: flex; flex-direction: column; flex: 0 0 calc((100% - 24px) / 4); max-width: calc((100% - 24px) / 4); box-sizing: border-box; padding: 8px; border: 1px solid var(--line-c0cad5); border-radius: 2px; background: var(--back-fff); transition: border-color .15s ease, box-shadow .15s ease; }
+.stickers-pack-card:hover { border-color: var(--line-8fa7c2); box-shadow: 0 1px 4px rgba(0, 0, 0, .08); }
+.stickers-pack-thumb { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; margin-bottom: 6px; overflow: hidden; border-radius: 2px; background: var(--back-f7f7f7); }
+.stickers-pack-thumb img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.stickers-pack-thumb-empty { width: 100%; height: 100%; background: var(--back-f0f0f0); }
+.stickers-pack-name { overflow: hidden; font-size: 12px; font-weight: bold; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.stickers-pack-author { margin-top: 2px; overflow: hidden; color: var(--text-777); text-overflow: ellipsis; white-space: nowrap; }
+.stickers-pack-author a { color: var(--text-777); text-decoration: underline; }
+.stickers-pack-desc { display: -webkit-box; height: 42px; margin-top: 3px; overflow: hidden; color: var(--text-555); line-height: 1.25; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.stickers-pack-footer { margin-top: auto; padding-top: 8px; }
+.stickers-pack-price { font-weight: bold; }
+.stickers-pack-price:hover { text-decoration: none; }
+.stickers-pack-price.free { color: var(--text-43a047); }
+.stickers-pack-price.purchased { color: var(--text-777); }
+.stickers-pack-installs { margin-top: 4px; color: var(--text-555); font-size: 10px; }
+.stickers-pack-footer .button { box-sizing: border-box; width: 100%; margin-top: 6px; padding: 2px 4px; font-size: 10px; }
+/* The box "Информация о наборе": the cover by what the pack is, how many
+   stickers and the link, then the stickers five a row. */
+.modal-box.stickers-pack-modal { width: 540px; max-width: 95vw; }
+.stickers-pack-modal .modal-body { gap: 12px; }
+.stickers-modal-header { display: flex; gap: 14px; align-items: flex-start; }
+.stickers-modal-cover { display: flex; align-items: center; justify-content: center; flex: none; box-sizing: border-box; width: 108px; height: 108px; padding: 4px; overflow: hidden; border: 1px solid var(--line-e0e6ec); border-radius: 4px; background: var(--back-fafafa); }
+.stickers-modal-cover img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.stickers-modal-info { display: flex; flex-direction: column; flex: 1; gap: 4px; min-width: 0; align-self: stretch; }
+.stickers-modal-title { color: var(--text-333); font-size: 16px; font-weight: bold; line-height: 1.25; overflow-wrap: anywhere; }
+.stickers-modal-author, .stickers-modal-author a { color: var(--text-777); }
+.stickers-modal-desc { margin-bottom: 6px; color: var(--text-464646); font-size: 12px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.stickers-modal-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: auto; }
+.stickers-modal-subbar { display: flex; justify-content: space-between; align-items: center; margin: 4px 0 -4px; }
+.stickers-modal-count { color: var(--text-777); }
+.stickers-modal-copy { cursor: pointer; }
+.stickers-modal-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-height: 290px; padding: 4px 0; overflow-y: auto; }
+.stickers-modal-item { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; box-sizing: border-box; padding: 4px; border: 1px solid transparent; border-radius: 4px; }
+.stickers-modal-item:hover { border-color: var(--line-c3cad2); }
+.stickers-modal-item .sticker { width: 100%; height: 100%; margin: 0; }
+.sticker-pack-form input[type="text"], .sticker-pack-form textarea { width: 100%; }
+.sticker-pack-form input[type="number"] { width: 80px; }
+.sticker-pack-form .button.secondary { margin-left: 6px; }
+.sticker-studio-grid { margin: 0 0 6px; }
+.sticker-studio-item { display: flex; flex-direction: column; align-items: center; width: 72px; }
+.sticker-studio-item img, .sticker-studio-item .attachment-loading { width: 64px; height: 64px; object-fit: contain; background: var(--back-fff); }
+/* "Prime" (/prime): the badge with the term, the perks and the
+   three periods side by side. */
+.prime-hero { display: flex; gap: 12px; align-items: center; margin: 0 0 8px; }
+.prime-hero-title { color: var(--text-6b3fb8); font-size: 16px; }
+.prime-state { margin: 4px 0 0; }
+.prime-perks { margin: 0 0 8px; padding-left: 20px; }
+.prime-perks li { margin: 0 0 4px; }
+.prime-plans { display: flex; gap: 10px; margin: 0 0 8px; }
+.prime-plan {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--back-c7b2ee);
+  background: var(--back-fff);
+  text-align: center;
+}
+.prime-plan-name { display: block; margin-bottom: 6px; color: var(--text-6b3fb8); font-size: 13px; }
+.prime-plan-price { font-size: 16px; }
+.prime-plan-saving { margin: 2px 0 8px; color: var(--text-808080); }
+.finance { display: flex; gap: 20px; align-items: flex-start; }
+.finance-about { flex: 1; }
+.finance-about p { margin: 0 0 8px; }
+.finance-transfer { text-align: center; }
+.finance-balance { width: 140px; font-weight: bold; text-align: center; }
+.finance-votes { height: 60px; overflow: hidden; font-size: 48px; font-weight: normal; line-height: 60px; white-space: nowrap; }
+.finance-rate { font-weight: bold; }
+.finance-rubles { color: var(--text-808080); font-weight: normal; }
+/* "Шахта": the energy and experience over the ores, a row a ore with
+   its icon and "Копать", the log of digs and the backpack; the balance at
+   the right, as in the casino. */
+.mine { display: flex; gap: 20px; align-items: flex-start; }
+.mine-main { flex: 1; min-width: 0; }
+.mine-status { display: flex; flex-wrap: wrap; gap: 6px 24px; align-items: center; margin: 0 0 10px; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.mine-energy { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mine-stat-label { color: var(--text-808080); }
+.mine-bar { width: 120px; height: 8px; background: var(--back-e6e6e6); border: 1px solid var(--line-ccc); }
+.mine-bar-fill { height: 100%; background: var(--back-43a047); transition: width 0.3s; }
+.mine-ores, .mine-backpack { margin: 0 0 10px; }
+.mine-ore, .mine-item { display: flex; gap: 8px; align-items: center; padding: 6px 4px; border-bottom: 1px solid var(--line-e8ebee); }
+.mine-ore-text { flex: 1; min-width: 0; }
+.mine-locked { opacity: 0.55; }
+.mine-opens { white-space: nowrap; }
+.mine-icon { flex: none; width: 24px; height: 24px; background: center / contain no-repeat; }
+.mine-icon-stone { background-image: url("/static/icons/ore-stone.svg"); }
+.mine-icon-coal { background-image: url("/static/icons/ore-coal.svg"); }
+.mine-icon-iron { background-image: url("/static/icons/ore-iron.svg"); }
+.mine-icon-gold { background-image: url("/static/icons/ore-gold.svg"); }
+.mine-icon-diamond { background-image: url("/static/icons/ore-diamond.svg"); }
+.mine-icon-crystal { background-image: url("/static/icons/ore-crystal.svg"); }
+.mine-item-name { flex: 1; min-width: 0; }
+.mine-item-units { font-weight: bold; white-space: nowrap; }
+.mine-item-worth { min-width: 110px; text-align: right; white-space: nowrap; }
+.mine-log { margin: 0 0 10px; padding: 6px 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.mine-line { margin: 2px 0; color: var(--text-808080); }
+.mine-line:first-child { color: var(--text-000); font-weight: bold; }
+.mine-line.mine-win:first-child { color: var(--text-58462a); }
+.mine-sell-all { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin: 0 0 6px; }
+.mine-totals { margin: 0; text-align: right; }
+/* "Бизнес": the economy of the enterprises in tables, as the browser
+   games of the 2000s had it — the balance a line over the tabs, grey
+   heads of columns, numbers at the right, forms in a line. */
+.firm-balance { margin: 0 0 8px; text-align: right; }
+.firm-balance b { color: var(--text-45688e); font-size: 13px; }
+.business-done { margin: 0 0 10px; padding: 8px; background: var(--back-eee5b8); border: 1px solid var(--line-d7cf9e); color: var(--text-58462a); font-weight: bold; }
+.firm-tabs { margin-bottom: 10px; }
+/* The pixel pictures of the enterprises and the goods stay sharp at any size. */
+.firm-icon { display: inline-block; flex: none; vertical-align: middle; image-rendering: pixelated; }
+.firm-up { color: var(--text-43a047); font-weight: bold; }
+.firm-down { color: var(--text-c33); font-weight: bold; }
+.firm-hint { margin: 4px 0 10px; }
+.firm-back { margin: 0 0 8px; }
+.firm-good { display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
+.firm-recipe { line-height: 20px; }
+.firm-recipe .firm-icon { margin: -2px 0 0; }
+.firm-clock { text-align: right; }
+.biz-subtitle { margin: 12px 0 6px; padding: 0 0 2px; border-bottom: 1px solid var(--line-e8ebee); color: var(--text-45688e); font-weight: bold; }
+/* A strip filled in part: the level, the storage, a share. */
+.firm-bar { display: inline-block; width: 70px; height: 9px; vertical-align: middle; background: var(--back-fff); border: 1px solid var(--line-aaa); box-shadow: inset 0 1px 0 var(--line-e3e3e3); }
+.firm-bar-fill { display: block; height: 100%; background: var(--back-5b7aa1); }
+.firm-share { display: inline-flex; gap: 6px; align-items: center; }
+/* Tables of fixed columns: the numbers at the right, of one width. */
+.firm-scroll { max-width: 100%; overflow-x: auto; }
+.firm-table { table-layout: fixed; margin: 4px 0 10px; }
+.firm-table th, .firm-table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.firm-table .firm-num { text-align: right; font-variant-numeric: tabular-nums; }
+.firm-table tbody tr:hover td { background: var(--back-f2f5f8); }
+.firm-table tfoot td { border-bottom: 0; background: var(--back-f6f6f6); font-weight: bold; }
+/* Forms: a grey label of one width at the left, the fields at the right. */
+.firm-grid { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 6px 10px; align-items: center; margin: 8px 0; }
+.firm-label { color: var(--text-808080); text-align: right; white-space: nowrap; }
+.firm-control { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 26px; }
+.firm-grid input.firm-number { width: 90px; }
+.firm-grid input.firm-name { width: 220px; }
+.firm-grid select.firm-select { width: 150px; }
+.firm-unit, .firm-note { color: var(--text-808080); }
+.firm-note a { white-space: nowrap; }
+.firm-check { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+/* "Мои предприятия": tiles of the enterprises. */
+.firm-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+a.firm-tile { display: flex; gap: 10px; padding: 8px; background: var(--back-f9f9f9); border: 1px solid var(--line-dae1e8); color: var(--text-000); text-decoration: none; }
+a.firm-tile:hover { background: var(--back-f2f5f8); border-color: var(--line-8fa7c2); text-decoration: none; }
+.firm-tile-icon, .firm-header-icon, .firm-chosen-icon { flex: none; align-self: flex-start; padding: 3px; background: var(--back-fff); border: 1px solid var(--line-c5d0db); }
+.firm-tile-icon .firm-icon, .firm-header-icon .firm-icon, .firm-chosen-icon .firm-icon { display: block; }
+.firm-tile-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.firm-tile-text b { overflow: hidden; color: var(--text-45688e); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.firm-tile-kind { color: var(--text-808080); }
+.firm-tile-facts { margin-top: 3px; border-collapse: collapse; }
+.firm-tile-facts td { padding: 1px 8px 1px 0; white-space: nowrap; }
+.firm-tile-label { width: 60px; color: var(--text-808080); }
+/* "Как начать": three numbered steps with pictures. */
+.firm-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0 12px; }
+.firm-step { padding: 8px; background: var(--back-f9f6e7); border: 1px solid var(--line-d7cf9e); }
+.firm-step p { margin: 4px 0 0; color: var(--text-555); }
+.firm-step-head { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.firm-step-number { display: inline-block; width: 22px; height: 22px; background: var(--back-595959); border-radius: 11px; color: var(--text-fff); font-size: 12px; font-weight: bold; line-height: 22px; text-align: center; }
+/* Founding: the kinds by tiers as picture buttons, and what the chosen does. */
+.firm-kinds { margin: 8px 0; }
+.firm-kinds-group { margin: 0 0 8px; }
+.firm-kinds-title { margin: 0 0 4px; color: var(--text-808080); }
+.firm-kinds-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+button.firm-kind { display: flex; flex-direction: column; gap: 2px; align-items: center; min-width: 0; padding: 6px 4px; background: linear-gradient(var(--back-fff), var(--back-ededed)); border: 1px solid var(--line-c0cad5); border-radius: 2px; color: var(--text-000); font: inherit; cursor: pointer; }
+button.firm-kind:hover { border-color: var(--line-8fa7c2); background: var(--back-f2f5f8); }
+button.firm-kind.chosen { background: var(--back-dae1e8); border-color: var(--line-5b7aa1); box-shadow: inset 0 1px 2px var(--line-8fa7c2); }
+.firm-kind-name { max-width: 100%; overflow: hidden; font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
+.firm-kind-price { color: var(--text-808080); }
+.firm-chosen { display: flex; gap: 10px; padding: 8px; background: var(--back-f9f9f9); border: 1px solid var(--line-dae1e8); }
+.firm-chosen-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.firm-chosen-text b { color: var(--text-45688e); font-size: 12px; }
+/* The card of an enterprise and of a good: the picture, the name, the level. */
+.firm-header { display: flex; gap: 12px; margin: 0 0 10px; padding: 0 0 10px; border-bottom: 1px solid var(--line-dae1e8); }
+.firm-header-text { display: flex; flex: 1; flex-direction: column; gap: 4px; min-width: 0; }
+.firm-header-name { color: var(--text-45688e); font-size: 14px; font-weight: bold; overflow-wrap: anywhere; }
+.firm-header-kind { color: var(--text-808080); }
+.firm-header-level { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; width: 120px; }
+.firm-header-level .meter { width: 120px; }
+.firm-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 4px; }
+.firm-stat { padding: 6px 8px; background: var(--back-f7f7f7); border: 1px solid var(--line-e0e0e0); border-top: 2px solid var(--line-5b7aa1); }
+.firm-stat-name { color: var(--text-808080); }
+.firm-stat-value { margin: 2px 0; font-size: 13px; font-weight: bold; white-space: nowrap; }
+.firm-stat-sub { overflow: hidden; color: var(--text-808080); text-overflow: ellipsis; white-space: nowrap; }
+.firm-subtabs { margin: 4px 0 10px; }
+.firm-dialog { max-width: 520px; }
+.firm-dialog .firm-grid { grid-template-columns: 110px minmax(0, 1fr); }
+/* A hint under a form stands under its fields. */
+.firm-grid + .firm-hint { margin-left: 140px; }
+.firm-dialog .firm-grid + .firm-hint { margin-left: 120px; }
+/* The orders of a good: buying and selling side by side. */
+.firm-book { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+/* "Справочник": the chains of pictures from the raw materials to the city. */
+.firm-chains { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.firm-chain { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; padding: 6px; background: var(--back-f9f9f9); border: 1px solid var(--line-e8e8e8); }
+a.firm-chain-firm { display: flex; flex-direction: column; gap: 2px; align-items: center; width: 62px; padding: 3px 0; background: var(--back-fff); border: 1px solid var(--line-c5d0db); font-size: 10px; line-height: 11px; text-align: center; }
+a.firm-chain-firm:hover { border-color: var(--line-5b7aa1); background: var(--back-f2f5f8); text-decoration: none; }
+.firm-chain-good { display: flex; flex-direction: column; gap: 2px; align-items: center; width: 50px; color: var(--text-555); font-size: 10px; line-height: 11px; text-align: center; }
+.firm-chain-arrow { width: 10px; color: var(--text-999); font-weight: bold; text-align: center; }
+/* The controls of "Бизнес" and "Акции" (controls.js): a mini window under
+   what was clicked, numbers with "−" and "+", quick amounts, a slider, a
+   switch of choices and a strip filled to a part — glossy, as the browser
+   games of the 2000s drew them. */
+.pop { position: absolute; z-index: 60; width: 300px; max-width: calc(100vw - 16px); background: var(--back-fff); border: 1px solid var(--line-707070); box-shadow: 2px 3px 0 var(--line-aaa); }
+.pop-head { display: flex; justify-content: space-between; align-items: center; padding: 4px 6px 4px 8px; background: linear-gradient(var(--back-707070), var(--back-595959)); color: var(--text-fff); font-weight: bold; text-shadow: 0 1px 0 var(--text-333); }
+.pop-close { padding: 0 4px; background: none; border: 0; color: var(--text-fff); font: bold 14px tahoma, verdana, sans-serif; line-height: 14px; cursor: pointer; }
+.pop-close:hover { color: var(--text-e8e8e8); }
+.pop .error { margin: 6px 8px 0; }
+.pop-body { display: flex; flex-direction: column; gap: 6px; padding: 8px; }
+.pop-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pop-label { width: 70px; color: var(--text-808080); }
+.pop-note { color: var(--text-555); line-height: 15px; }
+.pop-note:empty { display: none; }
+.pop-actions { display: flex; gap: 6px; justify-content: flex-end; padding: 6px 8px; margin: 2px -8px -8px; background: var(--back-f2f2f2); border-top: 1px solid var(--line-ddd); }
+.pop .biz-subtitle { margin: 4px 0 0; }
+.pop-anchor { outline: 1px solid var(--line-5b7aa1); }
+.stepper { display: inline-flex; align-items: stretch; height: 24px; }
+.step-button { width: 24px; padding: 0; background: linear-gradient(var(--back-fff), var(--back-e4e4e4)); border: 1px solid var(--line-aaa); color: var(--text-333); font: bold 13px tahoma, verdana, sans-serif; cursor: pointer; }
+.step-button:first-child { border-radius: 2px 0 0 2px; }
+.step-button:last-child { border-radius: 0 2px 2px 0; }
+.step-button:hover { background: linear-gradient(var(--back-fff), var(--back-dae1e8)); }
+.step-button:active { background: var(--back-dae1e8); box-shadow: inset 0 1px 2px var(--line-8b8b8b); }
+input.step-value { width: 48px; margin: 0 -1px; border-color: var(--line-aaa); font-weight: bold; text-align: center; }
+input.step-value.wide { width: 80px; }
+.chips { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.chip { padding: 2px 7px; background: linear-gradient(var(--back-fff), var(--back-ededed)); border: 1px solid var(--line-c0cad5); border-radius: 9px; color: var(--text-2b587a); font: 11px tahoma, verdana, sans-serif; cursor: pointer; }
+.chip:hover { border-color: var(--line-8fa7c2); background: var(--back-f2f5f8); }
+.chip:active { background: var(--back-dae1e8); }
+.slider { width: 100%; margin: 2px 0; accent-color: var(--back-5b7aa1); }
+.segmented { display: inline-flex; }
+.segment { padding: 4px 10px; background: linear-gradient(var(--back-fff), var(--back-e4e4e4)); border: 1px solid var(--line-aaa); color: var(--text-333); font: 11px tahoma, verdana, sans-serif; cursor: pointer; }
+.segment + .segment { border-left: 0; }
+.segment:first-child { border-radius: 2px 0 0 2px; }
+.segment:last-child { border-radius: 0 2px 2px 0; }
+.segment.active { background: linear-gradient(var(--back-707070), var(--back-595959)); border-color: var(--line-595959); color: var(--text-fff); font-weight: bold; text-shadow: 0 1px 0 var(--text-333); }
+.segment.buy.active { background: var(--back-3f8f35); border-color: var(--back-3f8f35); }
+.segment.sell.active { background: var(--back-d23a32); border-color: var(--back-d23a32); }
+.meter { position: relative; display: inline-block; width: 100%; min-width: 60px; height: 14px; overflow: hidden; vertical-align: middle; background: var(--back-fff); border: 1px solid var(--line-aaa); box-shadow: inset 0 1px 0 var(--line-e3e3e3); }
+.meter-fill { position: absolute; top: 0; bottom: 0; left: 0; background: linear-gradient(var(--back-8b8b8b), var(--back-5b7aa1)); }
+.meter-fill.good { background: var(--back-3f8f35); }
+.meter-fill.warn { background: var(--back-f0d878); }
+.meter-fill.bad { background: var(--back-d23a32); }
+.meter-text { position: relative; display: block; color: var(--text-000); font-size: 10px; font-weight: bold; line-height: 14px; text-align: center; text-shadow: 0 0 2px var(--back-fff); }
+/* The charts (charts.js): a canvas in a white frame and the box of the
+   prices of the hour under the pointer. */
+.chart-box { position: relative; margin: 4px 0 12px; padding: 4px; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
+.chart { display: block; width: 100%; cursor: crosshair; touch-action: pan-y; }
+.chart-tip { position: absolute; top: 8px; padding: 4px 6px; background: var(--back-fff); border: 1px solid var(--line-707070); box-shadow: 1px 2px 0 var(--line-ccc); font-size: 10px; line-height: 13px; white-space: pre; pointer-events: none; }
+.spark { display: block; height: 26px; }
+/* "Акции": the stock exchange. */
+.stock-up { color: var(--text-43a047); font-weight: bold; white-space: nowrap; }
+.stock-down { color: var(--text-d94c4c); font-weight: bold; white-space: nowrap; }
+.stock-flat { color: var(--text-808080); white-space: nowrap; }
+.stock-plaques { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0 0 8px; }
+.stock-plaque { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 6px 8px; background: linear-gradient(var(--back-fff), var(--back-f2f2f2)); border: 1px solid var(--line-d0d0d0); border-top: 2px solid var(--line-5b7aa1); color: var(--text-000); font: 11px tahoma, verdana, sans-serif; text-align: left; }
+button.stock-plaque { cursor: pointer; }
+button.stock-plaque:hover { background: var(--back-f2f5f8); border-color: var(--line-8fa7c2); border-top-color: var(--line-5b7aa1); }
+.stock-plaque-name { color: var(--text-808080); }
+.stock-plaque-value { overflow: hidden; font-size: 14px; font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
+.stock-plaque-sub { overflow: hidden; color: var(--text-808080); text-overflow: ellipsis; white-space: nowrap; }
+.stock-link { color: var(--text-2b587a); }
+/* The running tape of prices, dark as the screens of an exchange. */
+.ticker { overflow: hidden; margin: 0 0 10px; padding: 4px 0; background: linear-gradient(var(--back-444), var(--back-3e3e3e)); border: 1px solid var(--line-2f2f2f); }
+.ticker-track { display: inline-flex; gap: 22px; padding-right: 22px; white-space: nowrap; animation: ticker linear infinite; }
+.ticker:hover .ticker-track { animation-play-state: paused; }
+.ticker-item { display: inline-flex; gap: 5px; align-items: center; color: var(--text-fff); }
+.ticker-item:hover { text-decoration: none; }
+.ticker-item b { color: var(--text-ccc); }
+.ticker .stock-up { color: var(--text-43a047); }
+.ticker .stock-down { color: var(--text-d94c4c); }
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track { animation: none; }
+}
+.stock-table { width: 100%; margin: 4px 0 12px; }
+.stock-table th, .stock-table td { vertical-align: middle; }
+.stock-table .firm-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stock-row { cursor: pointer; }
+.stock-row:hover td { background: var(--back-f2f5f8); }
+.stock-price { font-size: 12px; font-weight: bold; }
+.stock-spark { width: 96px; }
+.stock-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.stock-holdings, .stock-news, .stock-orders { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 10px; }
+.stock-holding { display: flex; gap: 8px; align-items: center; padding: 5px 6px; background: var(--back-f9f9f9); border: 1px solid var(--line-e8e8e8); color: var(--text-000); }
+.stock-holding:hover { background: var(--back-f2f5f8); border-color: var(--line-c5d0db); text-decoration: none; }
+.stock-holding-name { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.stock-holding-name b { overflow: hidden; color: var(--text-45688e); text-overflow: ellipsis; white-space: nowrap; }
+.stock-holding-worth { display: flex; flex-direction: column; align-items: flex-end; }
+.stock-news-item, .firm-news-item { display: flex; gap: 8px; align-items: flex-start; padding: 5px 6px; background: var(--back-f9f9f9); border: 1px solid var(--line-e8e8e8); border-left: 3px solid var(--line-aaa); }
+.stock-news-item.good, .firm-news-item.good { border-left-color: var(--text-43a047); }
+.stock-news-item.bad, .firm-news-item.bad { border-left-color: var(--text-d94c4c); }
+.stock-order { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 4px 6px; background: var(--back-f9f9f9); border: 1px solid var(--line-e8e8e8); }
+.stock-order-side { padding: 0 5px; border-radius: 2px; color: var(--text-fff); font-weight: bold; }
+.stock-order.buy .stock-order-side { background: var(--back-3f8f35); }
+.stock-order.sell .stock-order-side { background: var(--back-d23a32); }
+.stock-order .chip { margin-left: auto; }
+.stock-head { display: flex; gap: 12px; margin: 0 0 8px; padding: 0 0 8px; border-bottom: 1px solid var(--line-dae1e8); }
+.stock-head .stock-head-price { display: flex; flex-direction: column; align-items: flex-end; }
+.stock-big { color: var(--text-000); font-size: 24px; font-weight: bold; line-height: 28px; }
+.stock-facts { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); margin: 0 0 8px; background: var(--back-f7f7f7); border: 1px solid var(--line-e0e0e0); }
+.stock-fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 5px 6px; border-right: 1px solid var(--line-e0e0e0); }
+.stock-fact:last-child { border-right: 0; }
+.stock-fact span:first-child { overflow: hidden; color: var(--text-808080); text-overflow: ellipsis; white-space: nowrap; }
+.stock-fact b { white-space: nowrap; }
+.stock-chart-head { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.stock-chart-head .section-title { flex: 1; }
+.stock-trade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.stock-mine { margin: 4px 0; }
+/* The order book: who sells above, who buys below, a strip of the shares
+   behind each price. */
+.book { margin: 4px 0 10px; border: 1px solid var(--line-dae1e8); }
+.book-head, .book-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding: 3px 8px; }
+.book-head { background: var(--back-f2f2f2); color: var(--text-808080); }
+.book-row { position: relative; width: 100%; background: var(--back-fff); border: 0; border-top: 1px solid var(--line-eee); font: 11px tahoma, verdana, sans-serif; text-align: left; cursor: pointer; }
+.book-row:hover { background: var(--back-f2f5f8); }
+.book-row > span { position: relative; }
+.book-fill { position: absolute !important; top: 0; right: 0; bottom: 0; }
+.book-row.ask .book-fill { background: var(--back-ffefe8); }
+.book-row.bid .book-fill { background: var(--back-dcefd9); }
+.book-row.ask .book-price { color: var(--text-d94c4c); font-weight: bold; }
+.book-row.bid .book-price { color: var(--text-43a047); font-weight: bold; }
+.book-who { color: var(--text-808080); }
+.book-spread { padding: 4px 8px; background: var(--back-f9f6e7); border-top: 1px solid var(--line-d7cf9e); border-bottom: 1px solid var(--line-d7cf9e); color: var(--text-58462a); font-weight: bold; text-align: center; }
+.book .hint { margin: 0; padding: 4px 8px; border-top: 1px solid var(--line-eee); }
+/* The panel of a deal: green to buy, red to sell. */
+.deal, .firm-order { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; padding: 8px; background: var(--back-f9f9f9); border: 1px solid var(--line-dae1e8); border-top: 3px solid var(--back-3f8f35); }
+.deal.sell { border-top-color: var(--back-d23a32); }
+.deal-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.deal-label { width: 50px; color: var(--text-808080); }
+.deal-summary { display: flex; flex-direction: column; gap: 2px; padding: 6px; background: var(--back-fff); border: 1px dashed var(--line-ccc); }
+.deal-summary div { display: flex; justify-content: space-between; }
+.deal-go, .deal.buy .deal-go, .deal-go.buy { padding: 6px 10px; background: var(--back-3f8f35); border-color: var(--back-3f8f35); font-size: 12px; font-weight: bold; }
+.deal.sell .deal-go, .deal-go.sell { background: var(--back-d23a32); border-color: var(--back-d23a32); }
+/* The card of an enterprise: plaques that open mini windows, tiles of the
+   storage, cards of the improvements and of the orders of the city. */
+button.firm-stat { min-width: 0; color: var(--text-000); font: 11px tahoma, verdana, sans-serif; text-align: left; cursor: pointer; }
+button.firm-stat:hover { background: var(--back-f2f5f8); border-color: var(--line-8fa7c2); border-top-color: var(--line-5b7aa1); }
+.firm-stat-name { display: flex; justify-content: space-between; }
+.firm-stat-more { color: var(--text-2b587a); }
+.firm-stat-value .meter { margin: 2px 0 1px; }
+.firm-header-name { display: flex; gap: 6px; align-items: center; }
+.firm-rename { padding: 0 3px; background: none; border: 1px solid transparent; color: var(--text-808080); font-size: 12px; cursor: pointer; }
+.firm-rename:hover { border-color: var(--line-c0cad5); color: var(--text-2b587a); }
+input.firm-name-edit { width: 220px; }
+.firm-alarm { margin: 0 0 8px; padding: 6px 8px; background: var(--back-ffefe8); border: 1px solid var(--line-e89b88); color: var(--text-b3122e); font-weight: bold; }
+.firm-close { margin: 16px 0 0; padding: 6px 0 0; border-top: 1px solid var(--line-eee); text-align: right; }
+.firm-close a { color: var(--text-999); }
+.firm-work { display: flex; flex-wrap: wrap; gap: 4px 16px; justify-content: space-between; margin: 0 0 6px; }
+.firm-goods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 4px 0 8px; }
+.firm-good-tile { display: flex; gap: 8px; align-items: flex-start; min-width: 0; padding: 6px; background: linear-gradient(var(--back-fff), var(--back-f6f6f6)); border: 1px solid var(--line-d0d0d0); color: var(--text-000); font: 11px tahoma, verdana, sans-serif; text-align: left; }
+button.firm-good-tile { cursor: pointer; }
+button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(--line-8fa7c2); }
+.firm-good-text { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
+.firm-badges { display: flex; flex-wrap: wrap; gap: 3px; }
+.firm-badge { padding: 0 4px; background: var(--back-f2f2f2); border: 1px solid var(--line-ddd); color: var(--text-808080); font-size: 10px; }
+.firm-badge.on { background: var(--back-dcefd9); border-color: var(--line-d5ddb6); color: var(--text-0c7a3c); }
+.firm-upgrades { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 4px 0 8px; }
+.firm-upgrade { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; padding: 8px; background: var(--back-f9f9f9); border: 1px solid var(--line-e0e0e0); border-top: 2px solid var(--line-aaa); }
+.firm-upgrade.done { border-top-color: var(--line-5b7aa1); }
+.firm-upgrade b { color: var(--text-45688e); font-size: 12px; }
+.firm-pips { display: inline-flex; gap: 3px; }
+.firm-pip { width: 14px; height: 8px; background: var(--back-fff); border: 1px solid var(--line-aaa); }
+.firm-pip.on { background: linear-gradient(var(--back-8b8b8b), var(--back-5b7aa1)); border-color: var(--line-5b7aa1); }
+.firm-contracts, .firm-news { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 10px; }
+.firm-contract { display: flex; gap: 8px; align-items: center; padding: 6px; background: var(--back-f9f6e7); border: 1px solid var(--line-d7cf9e); }
+.firm-contract.mine { background: var(--back-f2f5f8); border-color: var(--line-c5d0db); }
+.firm-contract-text { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
+.firm-contract-actions { display: flex; gap: 4px; }
+.firm-pick { display: flex; gap: 6px; align-items: center; width: 100%; padding: 4px 6px; background: linear-gradient(var(--back-fff), var(--back-ededed)); border: 1px solid var(--line-c0cad5); color: var(--text-000); font: 11px tahoma, verdana, sans-serif; text-align: left; cursor: pointer; }
+.firm-pick:hover { background: var(--back-f2f5f8); border-color: var(--line-8fa7c2); }
+.firm-pick .hint { margin-left: auto; }
+.firm-order { border-top-color: var(--line-5b7aa1); }
+.firm-good-pick { display: flex; flex-wrap: wrap; gap: 4px; }
+.firm-good-chip { display: inline-flex; gap: 4px; align-items: center; padding: 2px 6px 2px 2px; background: linear-gradient(var(--back-fff), var(--back-ededed)); border: 1px solid var(--line-c0cad5); color: var(--text-000); font: 11px tahoma, verdana, sans-serif; cursor: pointer; }
+.firm-good-chip.active { background: var(--back-dae1e8); border-color: var(--line-5b7aa1); box-shadow: inset 0 1px 2px var(--line-8fa7c2); font-weight: bold; }
+/* "Казино": the prizes in cells and a light running over them; the
+   balance at the right, as in "Голоса". */
+.casino { display: flex; gap: 20px; align-items: flex-start; }
+.casino-game { flex: 1; min-width: 0; }
+.casino-lead { margin: 0 0 10px; }
+.casino-board { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.casino-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 58px; background: var(--back-fff); border: 1px solid var(--line-ccc); }
+.casino-cell { min-width: 0; padding: 0 5px; overflow: hidden; }
+.casino-votes { max-width: 100%; color: var(--text-45688e); font-size: 20px; font-weight: bold; line-height: 24px; white-space: nowrap; }
+.casino-unit { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.casino-unit { color: var(--text-808080); }
+.casino-empty .casino-votes { color: var(--text-aaa); }
+.casino-cell.lit { background: var(--back-eee5b8); border-color: var(--line-c3a476); }
+.casino-cell.won { animation: casino-won 0.5s steps(2) 4; }
+.casino-controls { margin: 10px 0; text-align: center; }
+.casino-controls .button { padding: 6px 20px; }
+.casino-result { padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); font-weight: bold; text-align: center; }
+.casino-win { background: var(--back-eee5b8); border-color: var(--line-d7cf9e); color: var(--text-58462a); }
+.casino-session { text-align: center; }
+/* "Автоигра": how many rounds to play by themselves, under the button. */
+.casino-auto { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; margin: 0 0 10px; }
+.casino-auto .casino-label { margin: 0; }
+.casino-auto select { width: auto; }
+/* "Ставка": the amount with quick buttons, the multipliers as cells and
+   a strip of 0 to 100 — green below the chance, where a roll wins. */
+.casino-tabs { margin-bottom: 10px; }
+/* While a spin or a bet is under way the game stays the same. */
+.casino-tabs a[aria-disabled="true"] { cursor: default; opacity: 0.5; }
+.casino-stake { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.casino-label { display: block; margin: 10px 0 4px; font-weight: bold; }
+.casino-stake .casino-label { margin: 0; }
+.casino-amount { width: 90px; }
+.casino-quick { display: flex; gap: 3px; }
+.casino-quick .button { padding: 2px 7px; }
+.casino-limits { margin: 4px 0 0; }
+.casino-multipliers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.casino-multiplier { padding: 0; color: inherit; font: inherit; cursor: pointer; }
+.casino-multiplier:hover { border-color: var(--line-c3a476); }
+.casino-multiplier:disabled { cursor: default; }
+.casino-dice { position: relative; height: 20px; margin: 24px 0 2px; background: var(--back-ffefe8); border: 1px solid var(--line-ccc); }
+.casino-dice-win { position: absolute; top: 0; bottom: 0; left: 50%; width: 0; min-width: 4px; background: var(--back-dcefd9); transform: translateX(-50%); }
+/* A field under 2 % is a few pixels wide: dark green, to be seen. */
+.casino-dice-win.narrow { background: var(--back-43a047); }
+.casino-dice-mark { position: absolute; top: -5px; bottom: -5px; left: 0; width: 3px; margin-left: -1px; background: var(--text-333); transition: left 1.1s cubic-bezier(0.2, 0.8, 0.3, 1); }
+.casino-dice-mark.rolling { transition: none; }
+.casino-dice-mark span { position: absolute; bottom: 100%; left: 50%; font-weight: bold; white-space: nowrap; transform: translateX(-50%); }
+.casino-dice-mark.near-start span { transform: none; }
+.casino-dice-mark.near-end span { transform: translateX(-100%); }
+.casino-dice-mark.won span { color: var(--text-43a047); }
+.casino-dice-mark.lost span { color: var(--text-c33); }
+.casino-dice-scale { display: flex; justify-content: space-between; color: var(--text-808080); }
+.casino-sum { margin: 8px 0 0; text-align: center; }
+.casino-sections { margin: 0 0 10px; border: 1px solid var(--line-dedede); }
+.casino-sections .mb-tab-row { margin: 0; }
+/* "Ракетка": a sky in a grid, the trail of the flight drawn on a canvas in
+   its colour, the rocket at its end and the multiplier big over it; green
+   once cashed, red with a burst once it explodes. */
+.rocket-target { margin-top: 8px; }
+.rocket-target .casino-label { margin: 0; }
+.rocket-target .casino-amount { width: 90px; }
+.rocket-sky {
+  position: relative;
+  height: 220px;
+  margin: 12px 0 2px;
+  overflow: hidden;
+  border: 1px solid var(--line-c5d0db);
+  background:
+    repeating-linear-gradient(0deg, var(--line-e0e6ec) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(90deg, var(--line-e0e6ec) 0 1px, transparent 1px 40px),
+    linear-gradient(var(--back-e9edf1), var(--back-fff));
+}
+.rocket-trail { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--back-2e7dd7); }
+.rocket-ship { position: absolute; top: 0; left: 0; width: 48px; height: 24px; background: url("/static/rocket.svg") center / contain no-repeat; }
+.rocket-sky.crashed .rocket-ship { visibility: hidden; }
+.rocket-boom { position: absolute; width: 80px; height: 80px; margin: -40px 0 0 -40px; background: url("/static/rocket-boom.svg") center / contain no-repeat; animation: rocket-boom 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
+.rocket-multiplier { position: absolute; top: 14px; left: 0; right: 0; color: var(--text-45688e); font-size: 34px; font-weight: bold; line-height: 40px; text-align: center; text-shadow: 0 1px 0 var(--back-fff); pointer-events: none; }
+.rocket-sky.cashed .rocket-multiplier { color: var(--text-43a047); }
+.rocket-sky.crashed .rocket-multiplier { color: var(--text-c33); }
+/* "Покер": a card table of an online casino of the 2000s — green felt in a
+   wooden rail, the dealer at the top, the board in the middle, the player
+   at the bottom; white cards with the rank and suit in the corners and a
+   big suit in the middle, a blue back for the cards of the dealer until
+   the call. The five cards of a hand are lifted once it is over. */
+.poker-table {
+  margin: 12px 0 2px;
+  padding: 8px 12px;
+  border: 6px solid var(--line-6b4423);
+  border-radius: 16px;
+  background: radial-gradient(ellipse at center, var(--back-2f7a4b), var(--back-1e5c36));
+  box-shadow: inset 0 0 0 1px var(--back-8a5a2e), inset 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+.poker-row { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 6px 0; }
+.poker-row + .poker-row { border-top: 1px dashed rgba(255, 255, 255, 0.2); }
+.poker-label { color: var(--text-ffd54a); font-size: 10px; font-weight: bold; letter-spacing: 1px; line-height: 12px; text-transform: uppercase; }
+.poker-cards { display: flex; gap: 6px; justify-content: center; }
+.poker-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 74px;
+  border: 1px solid var(--line-b8b8a8);
+  border-radius: 4px;
+  background: var(--back-fdfdf8);
+  color: var(--text-1a1a1a);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  font-family: georgia, "times new roman", serif;
+  transition: transform 0.2s, opacity 0.2s;
+}
+.poker-card.poker-red { color: var(--text-c8102e); }
+.poker-corner { position: absolute; top: 3px; left: 4px; font-size: 13px; font-weight: bold; line-height: 13px; text-align: center; }
+.poker-corner.flip { top: auto; left: auto; right: 4px; bottom: 3px; transform: rotate(180deg); }
+.poker-pip { font-size: 28px; line-height: 28px; }
+.poker-card.back { border: 3px solid var(--back-fdfdf8); background: repeating-linear-gradient(45deg, var(--back-34568b) 0 4px, var(--back-5b7aa1) 4px 8px); }
+.poker-card.slot { border: 1px dashed rgba(255, 255, 255, 0.35); background: transparent; box-shadow: none; }
+.poker-card.dealt { animation: poker-deal 0.25s ease-out both; }
+.poker-cards.judged .poker-card { opacity: 0.55; }
+.poker-cards.judged .poker-card.best { opacity: 1; transform: translateY(-4px); box-shadow: 0 0 0 2px var(--line-e2b24a), 0 3px 4px rgba(0, 0, 0, 0.45); }
+.poker-hand { min-height: 17px; padding: 1px 9px; border-radius: 9px; background: rgba(0, 0, 0, 0.35); color: var(--text-fff); font-weight: bold; line-height: 15px; }
+.poker-hand:empty { visibility: hidden; }
+.poker-bets { color: var(--text-fff3c4); line-height: 14px; }
+.poker-controls .button + .button { margin-left: 6px; }
+.poker-pays { width: 100%; margin: 10px 0 0; border-collapse: collapse; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.poker-pays caption { padding: 0 0 4px; font-weight: bold; text-align: left; }
+.poker-pays td { padding: 3px 8px; border-top: 1px solid var(--line-e8e8e8); }
+.poker-pays td:last-child { color: var(--text-45688e); font-weight: bold; text-align: right; white-space: nowrap; }
+.poker-pays tr.lit td { background: var(--back-eee5b8); color: var(--text-58462a); }
+.poker-rules { margin: 6px 0 0; }
+/* "Столы" of "Покер": no-limit hold'em with people — an oval of felt in a
+   wooden rail, the seats around it with a photo, a name and the chips
+   left, the viewer at the bottom; the cards over each seat, the chips of
+   the bets before it, the board and the pot in the middle; a gold ring
+   round the seat whose turn it is, with its clock under it. */
+.holdem-forms { display: flex; gap: 10px; margin: 0 0 10px; }
+.holdem-form { flex: 1; min-width: 0; padding: 8px 10px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.holdem-form h4, .holdem-list h4 { margin: 0 0 4px; color: var(--text-45688e); }
+.holdem-form .hint { margin: 0 0 4px; }
+.holdem-form select, .holdem-form input[type="text"] { width: 100%; box-sizing: border-box; }
+.holdem-pair { display: flex; gap: 8px; }
+.holdem-pair > span { flex: 1; min-width: 0; }
+.holdem-pair select { width: 100%; }
+.holdem-check { display: block; margin: 8px 0 0; }
+.holdem-submit { margin: 8px 0 0; }
+.holdem-list { margin: 10px 0 0; }
+.holdem-row { padding: 5px 0; border-top: 1px solid var(--line-e8e8e8); }
+.holdem-row-name a { font-weight: bold; }
+.holdem-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.holdem-street { margin: 4px 0 0; }
+.holdem-felt {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  margin: 70px 56px 80px;
+  border: 10px solid var(--line-6b4423);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, var(--back-2f7a4b), var(--back-1e5c36));
+  box-shadow: inset 0 0 0 2px var(--back-8a5a2e), inset 0 4px 16px rgba(0, 0, 0, 0.5), 0 3px 8px rgba(0, 0, 0, 0.35);
+}
+.holdem-middle { position: absolute; top: 46%; left: 50%; display: flex; flex-direction: column; align-items: center; gap: 4px; transform: translate(-50%, -50%); }
+.holdem-board .poker-card { width: 34px; height: 48px; }
+.holdem-board .poker-pip { font-size: 18px; line-height: 18px; }
+.holdem-board { gap: 3px; }
+.holdem-board .poker-corner { font-size: 11px; line-height: 11px; }
+.holdem-pot-total { color: var(--text-fff3c4); font-weight: bold; }
+.holdem-pot.empty { height: 16px; }
+.holdem-pot, .holdem-bet { display: inline-flex; gap: 4px; align-items: center; }
+.holdem-bet { position: absolute; transform: translate(-50%, -50%); }
+.holdem-chips { display: inline-flex; flex-direction: column-reverse; }
+.holdem-chip {
+  display: block;
+  width: 16px;
+  height: 5px;
+  margin-top: -2px;
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  border-radius: 50%;
+  background: var(--back-fdfdf8);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+.holdem-chip.chip-5 { background: var(--back-d23a32); }
+.holdem-chip.chip-25 { background: var(--back-43a047); }
+.holdem-chip.chip-100 { background: var(--back-3e3e3e); }
+.holdem-chip.chip-1000 { background: var(--back-6a3fd8); }
+.holdem-amount { padding: 0 5px; border-radius: 8px; background: rgba(0, 0, 0, 0.45); color: var(--text-fff); font-size: 10px; font-weight: bold; line-height: 14px; white-space: nowrap; }
+.holdem-seat { position: absolute; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100px; transform: translate(-50%, -50%); }
+.holdem-cards { display: flex; gap: 2px; height: 40px; margin-bottom: -10px; }
+.holdem-cards .poker-card { width: 28px; height: 40px; }
+.holdem-cards .poker-pip { font-size: 14px; line-height: 14px; }
+.holdem-cards .poker-corner { top: 1px; left: 2px; font-size: 9px; line-height: 9px; }
+.holdem-cards .poker-corner.flip { display: none; }
+.holdem-cards.judged .poker-card { opacity: 0.55; }
+.holdem-cards.judged .poker-card.best { opacity: 1; box-shadow: 0 0 0 2px var(--line-e2b24a); }
+.holdem-plate { position: relative; display: flex; gap: 5px; align-items: center; width: 100%; box-sizing: border-box; padding: 4px; border: 1px solid var(--line-ccc); border-radius: 6px; background: var(--back-fff); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35); }
+.holdem-avatar { width: 28px; height: 28px; flex: none; }
+.holdem-who { min-width: 0; line-height: 13px; }
+.holdem-name { display: block; overflow: hidden; font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
+.holdem-stack { color: var(--text-808080); font-size: 10px; white-space: nowrap; }
+.holdem-status { margin-top: 2px; padding: 0 6px; border-radius: 7px; background: rgba(0, 0, 0, 0.6); color: var(--text-fff3c4); font-size: 10px; font-weight: bold; line-height: 14px; white-space: nowrap; }
+.holdem-status:empty { display: none; }
+.holdem-seat .poker-hand { font-size: 10px; }
+.holdem-seat.turn .holdem-plate { border-color: var(--line-e2b24a); box-shadow: 0 0 0 2px var(--line-e2b24a), 0 0 10px var(--back-ffd54a); }
+.holdem-seat.folded .holdem-plate, .holdem-seat.away .holdem-plate { opacity: 0.55; }
+.holdem-seat.folded .holdem-cards { opacity: 0.35; }
+.holdem-seat.winner .holdem-plate { background: var(--back-eee5b8); border-color: var(--line-c3a476); }
+.holdem-seat.mine .holdem-cards { height: 52px; }
+.holdem-seat.mine .holdem-cards .poker-card { width: 36px; height: 52px; }
+.holdem-seat.empty { width: auto; }
+.holdem-free { padding: 4px 8px; border: 1px dashed rgba(255, 255, 255, 0.4); border-radius: 6px; color: var(--text-fff3c4); font-size: 10px; }
+.holdem-clock { width: 100%; height: 4px; margin-top: 2px; background: rgba(0, 0, 0, 0.35); }
+.holdem-clock-bar { display: block; height: 100%; background: var(--back-43a047); transition: width 0.25s linear; }
+.holdem-clock-bar.late { background: var(--back-d23a32); }
+.holdem-dealer { position: absolute; right: -6px; bottom: 14px; width: 18px; height: 18px; border: 1px solid var(--line-b8b8a8); border-radius: 50%; background: var(--back-fdfdf8); color: var(--text-1a1a1a); font-size: 10px; font-weight: bold; line-height: 18px; text-align: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45); }
+.holdem-controls, .holdem-sit, .holdem-invite { margin: 8px 0 0; text-align: center; }
+.holdem-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; }
+.holdem-raise-box { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.holdem-raise-box input[type="range"] { width: 120px; }
+.holdem-own { margin: 6px 0 0; }
+.holdem-own .button + .button { margin-left: 6px; }
+.holdem-invite input[type="text"] { width: 220px; }
+@media (prefers-reduced-motion: reduce) {
+  .poker-card { transition: none; }
+  .poker-card.dealt { animation: none; }
+}
+.bet-event { margin: 0 0 10px; padding: 8px 10px; border: 1px solid var(--line-dae1e8); background: var(--back-fff); }
+.bet-event-question { color: var(--text-45688e); font-size: 13px; font-weight: bold; }
+.bet-event-meta { margin: 2px 0 6px; color: var(--text-808080); }
+.bet-event-stake { margin: 0 0 6px; }
+.bet-outcome { padding: 5px 0; border-top: 1px solid var(--line-e8e8e8); }
+.bet-outcome-head { display: flex; gap: 8px; align-items: center; }
+.bet-outcome-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.bet-outcome-sum { color: var(--text-808080); white-space: nowrap; }
+.bet-outcome-odds { padding: 1px 6px; background: var(--back-dae1e8); color: var(--text-2b587a); font-weight: bold; white-space: nowrap; }
+.bet-outcome.won .bet-outcome-odds { background: var(--text-43a047); color: var(--back-fff); }
+.bet-outcome-head .button { padding: 2px 8px; }
+.bet-outcome-track { height: 6px; margin: 4px 0 0; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.bet-outcome-bar { height: 100%; background: var(--back-dcefd9); }
+.bet-outcome.won .bet-outcome-name { color: var(--text-43a047); }
+.bet-outcome.won .bet-outcome-bar { background: var(--text-43a047); }
+.bet-outcome-mine { margin: 2px 0 0; color: var(--text-58462a); }
+.bet-event-mine { margin: 6px 0 0; padding: 4px 6px; background: var(--back-eee5b8); color: var(--text-58462a); font-weight: bold; }
+/* The New Year casino (html.festive): a hall of a slot machine of the
+   2000s on a holiday night — a gold banner, a board of red velvet with a
+   frame of running lights, gold cells, a light that glows, a button that
+   shines, confetti and a jumping balance on a win (casino.js). */
+.casino-festive, .casino-confetti { display: none; }
+.festive .casino-festive {
+  display: block;
+  margin: 0 0 10px;
+  padding: 10px 8px;
+  border: 2px solid var(--line-e2b24a);
+  border-radius: 6px;
+  background: url("/static/newyear/flakes.svg"), linear-gradient(135deg, var(--back-7a0f1d), var(--back-d23a32) 50%, var(--back-7a0f1d));
+  box-shadow: 0 0 14px rgba(255, 196, 0, 0.45);
+  text-align: center;
+}
+.festive .casino-festive-text {
+  background: linear-gradient(90deg, var(--text-ffd54a), var(--text-fff3c4), var(--text-ffd54a), var(--text-fff3c4), var(--text-ffd54a));
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 16px;
+  font-weight: bold;
+  animation: casino-shimmer 2.5s linear infinite;
+}
+.festive .casino-festive-text::before, .festive .casino-festive-text::after { display: inline-block; color: var(--text-fff); animation: casino-wiggle 1.2s ease-in-out infinite; }
+.festive .casino-festive-text::before { content: "🎄"; margin-right: 8px; }
+.festive .casino-festive-text::after { content: "🎁"; margin-left: 8px; animation-delay: 0.6s; }
+.festive .casino-lead { padding: 6px 8px 6px 30px; border-left: 3px solid var(--back-d23a32); background: var(--back-fff3c4) url("/static/newyear/snowflake.svg") no-repeat 8px 50%; }
+.festive .casino-board, .festive .casino-multipliers, .festive .rocket-sky {
+  position: relative;
+  padding: 16px;
+  border: 3px solid var(--line-e2b24a);
+  border-radius: 8px;
+  background: radial-gradient(circle at 50% 30%, var(--back-d23a32), var(--back-7a0f1d) 75%);
+  box-shadow: 0 0 18px rgba(255, 196, 0, 0.5), inset 0 0 20px rgba(0, 0, 0, 0.45);
+}
+/* The frame of running lights: gold and red bulbs that blink in turn. */
+.festive .casino-board::before, .festive .casino-board::after, .festive .casino-multipliers::before, .festive .casino-multipliers::after, .festive .rocket-sky::before, .festive .rocket-sky::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle, var(--back-ffd54a) 2px, transparent 3px) 0 0 / 14px 10px repeat-x,
+    radial-gradient(circle, var(--back-ffd54a) 2px, transparent 3px) 0 100% / 14px 10px repeat-x,
+    radial-gradient(circle, var(--back-ffd54a) 2px, transparent 3px) 0 0 / 10px 14px repeat-y,
+    radial-gradient(circle, var(--back-ffd54a) 2px, transparent 3px) 100% 0 / 10px 14px repeat-y;
+  filter: drop-shadow(0 0 3px var(--back-ffd54a));
+  animation: casino-bulbs 0.9s steps(1) infinite;
+}
+.festive .casino-board::after, .festive .casino-multipliers::after, .festive .rocket-sky::after {
+  background:
+    radial-gradient(circle, var(--text-fff3c4) 2px, transparent 3px) 7px 0 / 14px 10px repeat-x,
+    radial-gradient(circle, var(--text-fff3c4) 2px, transparent 3px) 7px 100% / 14px 10px repeat-x,
+    radial-gradient(circle, var(--text-fff3c4) 2px, transparent 3px) 0 7px / 10px 14px repeat-y,
+    radial-gradient(circle, var(--text-fff3c4) 2px, transparent 3px) 100% 7px / 10px 14px repeat-y;
+  filter: drop-shadow(0 0 3px var(--back-d23a32));
+  animation-delay: 0.45s;
+}
+.festive .casino-cell {
+  position: relative;
+  border: 1px solid var(--line-e2b24a);
+  border-radius: 6px;
+  background: linear-gradient(var(--back-fff), var(--back-fff3c4));
+  box-shadow: inset 0 -3px 0 rgba(122, 15, 29, 0.15);
+  transition: transform 0.08s;
+}
+.festive .casino-votes { color: var(--text-7a0f1d); text-shadow: 0 1px 0 var(--back-ffd54a); }
+.festive .casino-empty .casino-votes { color: var(--text-aaa); text-shadow: none; }
+/* The lit cell glows softly around, not over its number: the number
+   stays easy to read. */
+.festive .casino-cell.lit {
+  z-index: 1;
+  border-color: var(--line-e2b24a);
+  background: var(--back-fff);
+  box-shadow: 0 0 0 2px var(--back-ffd54a), 0 0 10px 2px var(--back-ffd54a);
+  transform: scale(1.06);
+}
+.festive .casino-cell.lit .casino-votes { text-shadow: none; }
+.festive .casino-cell.won { animation: casino-jackpot 0.35s ease-in-out 8 alternate; }
+.festive .casino-multiplier:hover { box-shadow: 0 0 10px var(--back-ffd54a); }
+/* The buttons of the games: red and gold, with a gleam running over. */
+.festive .casino-controls .button, .festive .casino-auto .button {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line-e2b24a);
+  border-radius: 4px;
+  background: linear-gradient(var(--back-d23a32), var(--back-a01e28));
+  color: var(--text-fff3c4);
+  font-weight: bold;
+  text-shadow: 0 1px 1px var(--back-7a0f1d);
+}
+.festive .casino-controls .button { padding: 8px 26px; font-size: 13px; animation: casino-glow 1.6s ease-in-out infinite; }
+.festive .casino-controls .button::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  animation: casino-gleam 2.4s ease-in-out infinite;
+}
+.festive .casino-controls .button:disabled { animation: none; opacity: 0.7; }
+.festive .casino-controls .button:disabled::after { animation: none; }
+/* A win: a gold plaque that bounces in, with a tree and a gift. */
+.festive .casino-result { border-radius: 6px; }
+.festive .casino-win {
+  border: 2px solid var(--line-e2b24a);
+  background: linear-gradient(135deg, var(--back-ffd54a), var(--text-fff3c4) 50%, var(--back-ffd54a));
+  color: var(--text-6b0d19);
+  font-size: 15px;
+  box-shadow: 0 0 20px rgba(255, 196, 0, 0.7);
+  animation: casino-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+.festive .casino-win::before { content: "🎉 "; }
+.festive .casino-win::after { content: " 🎉"; }
+.festive .casino-win.casino-big { font-size: 20px; text-transform: uppercase; animation: casino-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1), casino-glow 0.8s ease-in-out 0.5s infinite; }
+/* The balance is gold and jumps when it grows. */
+.festive .casino-balance .finance-votes {
+  background: linear-gradient(var(--back-ffd54a), var(--back-d23a32));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: bold;
+}
+.casino-balance .finance-votes.bump { animation: casino-bump 0.6s cubic-bezier(0.2, 1.8, 0.4, 1); }
+/* The aim: a strip of candy cane, a zone of gold tinsel, a star marker. */
+.festive .casino-dice { height: 22px; border: 2px solid var(--line-e2b24a); border-radius: 11px; background: repeating-linear-gradient(-45deg, var(--back-d23a32) 0 8px, var(--back-fff) 8px 16px); }
+.festive .casino-dice-win { background: repeating-linear-gradient(90deg, var(--back-43a047) 0 6px, var(--back-ffd54a) 6px 8px); box-shadow: 0 0 10px var(--back-ffd54a); }
+.festive .casino-dice-win.narrow { background: var(--back-43a047); }
+.festive .casino-dice-mark { background: var(--back-ffd54a); box-shadow: 0 0 8px 2px var(--back-ffd54a); }
+/* The New Year rocket: a night sky with snow in the frame of lights, a
+   candy-striped rocket with a golden trail of sparks and a firework. */
+.festive .rocket-sky { padding: 0; background: url("/static/newyear/flakes.svg"), radial-gradient(circle at 50% 130%, var(--back-0b3d2e), var(--back-2b1055) 80%); }
+.festive .rocket-trail { color: var(--back-ffd54a); }
+.festive .rocket-ship { background-image: url("/static/newyear/rocket.svg"); filter: drop-shadow(0 0 4px var(--back-ffd54a)); }
+.festive .rocket-boom { width: 110px; height: 110px; margin: -55px 0 0 -55px; background-image: url("/static/newyear/firework.svg"); }
+.festive .rocket-multiplier { color: var(--text-ffd54a); text-shadow: 0 0 8px var(--back-d23a32), 0 2px 0 var(--back-7a0f1d); }
+.festive .rocket-sky.cashed .rocket-multiplier { color: var(--text-fff3c4); text-shadow: 0 0 10px var(--back-43a047), 0 2px 0 var(--back-0b3d2e); }
+.festive .rocket-sky.crashed .rocket-multiplier { color: var(--text-fff); text-shadow: 0 0 10px var(--back-d23a32), 0 2px 0 var(--back-7a0f1d); }
+.festive .casino-dice-mark::before { content: "★"; position: absolute; top: 100%; left: 50%; color: var(--text-ffd54a); font-size: 16px; line-height: 16px; text-shadow: 0 0 4px var(--back-d23a32); transform: translateX(-50%); }
+/* Confetti of a win: pieces cast from the top of the screen. */
+.festive .casino-confetti { display: block; position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 100; }
+.casino-piece {
+  position: absolute;
+  top: -20px;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  animation: casino-fall var(--fall, 2.4s) cubic-bezier(0.3, 0.6, 0.6, 1) forwards;
+}
+.casino-piece:nth-child(5n) { background: var(--back-ffd54a); }
+.casino-piece:nth-child(5n + 1) { background: var(--back-d23a32); }
+.casino-piece:nth-child(5n + 2) { background: var(--back-43a047); }
+.casino-piece:nth-child(5n + 3) { background: var(--back-2e7dd7); border-radius: 50%; width: 9px; height: 9px; }
+.casino-piece:nth-child(5n + 4) { background: var(--text-fff3c4); }
+/* The jackpot (jackpot.js): a win of a million over the whole screen —
+   a flash, turning rays, fireworks, a rain of coins and a gold card with
+   the number counting up. The New Year (html.festive) is red and green,
+   with gifts and snow in the rain. */
+.jackpot {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: radial-gradient(circle, var(--back-6a3fd8), var(--back-2b1055) 70%);
+  animation: jackpot-in 0.4s ease-out;
+}
+.jackpot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--back-fff);
+  opacity: 0;
+  animation: jackpot-flash 0.9s ease-out;
+  pointer-events: none;
+}
+.jackpot-rays {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 260vmax;
+  height: 260vmax;
+  margin: -130vmax 0 0 -130vmax;
+  background: repeating-conic-gradient(var(--back-ffd54a) 0 9deg, transparent 9deg 18deg);
+  opacity: 0.22;
+  animation: jackpot-spin 14s linear infinite;
+}
+.jackpot-card {
+  position: relative;
+  z-index: 4;
+  width: min(380px, calc(100vw - 32px));
+  padding: 22px 18px 18px;
+  border: 4px solid var(--line-e2b24a);
+  border-radius: 14px;
+  background: linear-gradient(160deg, var(--back-fff3c4), var(--back-ffd54a));
+  box-shadow: 0 0 40px 10px rgba(255, 213, 74, 0.7), 0 10px 30px rgba(0, 0, 0, 0.4);
+  color: var(--text-6b0d19);
+  text-align: center;
+  animation: jackpot-pop 0.8s cubic-bezier(0.2, 1.7, 0.4, 1) both, jackpot-float 2.4s ease-in-out 0.8s infinite;
+}
+.jackpot-kicker { font-size: 13px; font-weight: bold; letter-spacing: 4px; text-transform: uppercase; }
+.jackpot-title {
+  margin: 4px 0 8px;
+  background: linear-gradient(90deg, var(--back-d23a32), var(--back-6a3fd8), var(--back-d23a32), var(--back-6a3fd8));
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 40px;
+  font-weight: bold;
+  line-height: 46px;
+  text-transform: uppercase;
+  animation: casino-shimmer 1.6s linear infinite, jackpot-shake 0.5s ease-in-out 0.8s 3;
+}
+.jackpot-sum { font-size: 44px; font-weight: bold; line-height: 50px; font-variant-numeric: tabular-nums; }
+.jackpot-sum.jackpot-done { animation: jackpot-bump 0.7s cubic-bezier(0.2, 1.8, 0.4, 1); }
+.jackpot-unit { font-size: 15px; font-weight: bold; }
+.jackpot-note { margin: 10px 0 14px; font-size: 13px; }
+.jackpot .jackpot-take { padding: 9px 30px; border: 1px solid var(--line-e2b24a); border-radius: 4px; background: linear-gradient(var(--back-d23a32), var(--back-a01e28)); color: var(--text-fff3c4); font-size: 14px; font-weight: bold; animation: casino-glow 1.2s ease-in-out infinite; }
+.jackpot-rain, .jackpot-fireworks { position: absolute; inset: 0; pointer-events: none; }
+.jackpot-rain { z-index: 3; }
+.jackpot-piece { position: absolute; top: -60px; animation: jackpot-fall var(--fall, 3s) linear infinite; }
+.jackpot-burst { position: absolute; width: 0; height: 0; }
+.jackpot-spark {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: -3px;
+  border-radius: 50%;
+  background: var(--back-ffd54a);
+  box-shadow: 0 0 6px 2px var(--back-ffd54a);
+  opacity: 0;
+  animation: jackpot-spark 1.4s ease-out infinite;
+}
+.jackpot-spark:nth-child(3n) { background: var(--back-d23a32); box-shadow: 0 0 6px 2px var(--back-d23a32); }
+.jackpot-spark:nth-child(3n + 1) { background: var(--back-2e7dd7); box-shadow: 0 0 6px 2px var(--back-2e7dd7); }
+/* The New Year jackpot: a night of red and green with gold rays, the
+   card a gift with a ribbon, a rain of gifts, trees and snowflakes. */
+.jackpot-festive { background: url("/static/newyear/flakes.svg"), radial-gradient(circle, var(--back-d23a32), var(--back-7a0f1d) 55%, var(--back-0b3d2e)); }
+.jackpot-festive .jackpot-rays { background: repeating-conic-gradient(var(--back-ffd54a) 0 7deg, transparent 7deg 15deg, var(--back-43a047) 15deg 22deg, transparent 22deg 30deg); opacity: 0.25; }
+.jackpot-festive .jackpot-card {
+  padding-top: 30px;
+  border: 6px solid transparent;
+  background:
+    linear-gradient(160deg, var(--back-fff), var(--text-fff3c4)) padding-box,
+    repeating-linear-gradient(-45deg, var(--back-d23a32) 0 10px, var(--back-fff) 10px 20px, var(--back-43a047) 20px 30px, var(--back-fff) 30px 40px) border-box;
+}
+.jackpot-festive .jackpot-card::before { content: "🎄 🎅 🎄"; position: absolute; top: -30px; left: 0; right: 0; font-size: 30px; animation: casino-wiggle 1s ease-in-out infinite; }
+.jackpot-festive .jackpot-title { background-image: linear-gradient(90deg, var(--back-d23a32), var(--back-43a047), var(--back-d23a32), var(--back-43a047)); font-size: 30px; line-height: 36px; }
+@media (prefers-reduced-motion: reduce) {
+  .jackpot, .jackpot::before, .jackpot-rays, .jackpot-card, .jackpot-title, .jackpot-sum.jackpot-done, .jackpot .jackpot-take, .jackpot-festive .jackpot-card::before { animation: none; }
+  .casino-cell.won, .festive .casino-cell.won, .festive .casino-festive-text, .festive .casino-festive-text::before, .festive .casino-festive-text::after, .festive .casino-board::before, .festive .casino-board::after, .festive .casino-multipliers::before, .festive .casino-multipliers::after, .festive .rocket-sky::before, .festive .rocket-sky::after, .rocket-boom, .festive .casino-controls .button, .festive .casino-controls .button::after, .festive .casino-win, .casino-balance .finance-votes.bump { animation: none; }
+  .casino-dice-mark { transition: none; }
+  .festive .casino-confetti { display: none; }
+}
+/* "Мои Голоса", a small bank: the balance as in openvk's "Голоса", the
+   buttons of what can be done, the totals of 30 days and the statement —
+   a line per operation, what it brought green, what it took red. */
+.bank-actions { display: flex; gap: 8px; margin: 12px 0; }
+.bank-bonus { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 8px 10px; border: 1px solid var(--line-dedede); background: var(--back-fff); }
+.bank-bonus > div { flex: 1; }
+.bank-bonus span { color: var(--text-808080); }
+.bank-balance { margin: 8px 0 12px; }
+.bank-box { margin: 0 0 14px; padding: 6px 8px; }
+.bank-box p { margin: 4px 0; }
+.bank-form { display: flex; align-items: center; gap: 6px; margin: 8px 0 4px; }
+.bank-form input { width: 140px; }
+.bank-totals { display: flex; gap: 10px; margin: 0 0 12px; }
+.bank-totals > div { flex: 1; padding: 8px 10px; border: 1px solid var(--line-dedede); background: var(--back-fff); }
+.bank-totals span { display: block; color: var(--text-808080); }
+.bank-totals b { font-size: 16px; }
+.bank-in { color: var(--text-43a047); }
+.bank-out { color: var(--text-d94c4c); }
+.bank-flows { margin: 0 0 8px; padding: 6px; }
+.bank-operations { background: var(--back-fff); }
+.bank-op { display: flex; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line-dedede); }
+.bank-op:last-child { border-bottom: 0; }
+.bank-op-about { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.bank-op-title { font-weight: bold; }
+.bank-op-note { font-style: italic; }
+.bank-op-date, .bank-op-balance { color: var(--text-808080); }
+.bank-op-sum { flex: none; text-align: right; }
+.bank-op-sum b { font-size: 13px; }
+.bank-empty { color: var(--text-808080); text-align: center; }
+.bank-recipient { margin: 3px 0 0; }
+/* Whom to send votes to, as the field is typed in: a list under it, like
+   the people of the search. */
+.bank-people { max-height: 260px; overflow-y: auto; border: 1px solid var(--line-c0cad5); border-top: 0; background: var(--back-fff); }
+.bank-people-title { padding: 3px 6px; background: var(--back-f2f2f2); color: var(--text-808080); }
+.bank-person { display: flex; gap: 6px; align-items: center; padding: 3px 6px; border-top: 1px solid var(--line-e8e8e8); color: inherit; }
+.bank-person:hover { background: var(--back-ededed); text-decoration: none; }
+.bank-person img { flex: none; width: 30px; height: 30px; object-fit: cover; }
+.bank-person b { color: var(--text-2b587a); }
+.bank-link { display: flex; gap: 6px; margin: 10px 0; }
+.bank-link input { flex: 1; min-width: 0; }
+.voucher-keys { margin: 10px 0; }
+.voucher-keys input.voucher-key { width: 60px; text-align: center; text-transform: uppercase; }
+.voucher-code { font-family: "Courier New", monospace; white-space: nowrap; }
+.votes-transfer .modal-body p { margin: 0; }
+.votes-transfer .modal-body label { display: flex; flex-direction: column; gap: 3px; }
+.list-table { width: 100%; margin-bottom: 10px; border-collapse: collapse; }
+.list-table th { padding: 4px 6px; background: var(--back-e6e6e6); color: var(--text-555); font-weight: normal; text-align: left; vertical-align: bottom; }
+.list-table td { padding: 5px 6px; border-bottom: 1px solid var(--line-ececec); }
 /* Documents ("Мои Документы" openvk): a row with the format in a grey
    box, the name and "date, size". */
 .doc-list { padding: 4px 0; }
@@ -456,8 +1841,6 @@ a.poll-result-name { cursor: pointer; }
 .doc-picker { max-height: 360px; overflow-y: auto; }
 .doc-attached { margin-top: 6px; }
 .doc-attached .doc-item { padding: 4px; }
-/* Stories, VK's: circles above the news and the stories over the screen. */
-.story-bar { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line-e8ebee); }
 .story-circle { flex: none; width: 62px; color: var(--text-333); text-align: center; cursor: pointer; }
 .story-circle:hover { text-decoration: none; }
 .story-circle img { display: block; width: 48px; height: 48px; margin: 0 auto 3px; padding: 2px; border: 2px solid var(--line-ccc); border-radius: 50%; object-fit: cover; }
@@ -518,6 +1901,8 @@ a.poll-result-name { cursor: pointer; }
   border-top: 1px solid var(--line-dae1e8);
 }
 .story-foot a { cursor: pointer; }
+.story-foot .like svg { width: 13px; height: 12px; }
+.story-foot .like-count { font-size: 11px; }
 .story-comments {
   display: flex;
   flex-direction: column;
@@ -527,13 +1912,99 @@ a.poll-result-name { cursor: pointer; }
   overflow-y: auto;
 }
 .story-comments-more { display: block; padding: 6px 0 0; text-align: center; cursor: pointer; }
+.story-comments .post-comment-form { flex: none; padding: 6px 0 0; }
 .story-comments-empty { margin: 6px 0 0; color: var(--text-808080); text-align: center; }
 .story-form textarea { width: 100%; height: 50px; margin-top: 6px; }
 .story-preview { display: block; width: auto; max-width: 100%; height: auto; max-height: 240px; margin: 6px auto 0; }
+/* Where nothing points, what shows on pointing is always there. */
+@media (hover: none) {
+  .album-photo-delete { opacity: 1; }
+}
 /* On the black of the story viewer, as in the dark theme. */
 .story-head img.name-checkmark.name-checkmark { filter: brightness(2.4); }
+.guest-row-new { background: var(--back-f2f5f8); }
+.guest-visit { margin-top: 3px; }
+.guest-new { margin-right: 6px; color: var(--text-43a047); }
+/* "Рейтинги" (/top): a board of the forums of the 2000s, the first three
+   places in medals. */
+.top-table { width: 100%; border-collapse: collapse; margin: 0 0 10px; }
+.top-table th { padding: 4px 6px; background: var(--back-e6e6e6); border-bottom: 1px solid var(--line-ccc); color: var(--text-555); font-weight: bold; text-align: left; }
+.top-table td { padding: 6px; border-bottom: 1px solid var(--line-e8ebee); vertical-align: middle; }
+.top-table th.top-place, .top-table td.top-place { width: 44px; text-align: center; }
+.top-table th.top-value, .top-table td.top-value { width: 150px; text-align: right; white-space: nowrap; font-weight: bold; }
+.top-place span { display: inline-block; min-width: 24px; line-height: 24px; color: var(--text-808080); font-weight: bold; }
+.top-medal img { display: block; margin: 0 auto; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 25%)); }
+.top-row-medal td { background: var(--back-f9f6e7); }
+.top-person { display: flex; gap: 8px; align-items: center; }
+.top-avatar { display: block; width: 36px; height: 36px; object-fit: cover; }
+.top-who { min-width: 0; }
+.top-pet { display: flex; gap: 4px; align-items: center; margin-top: 2px; color: var(--text-555); }
 /* "Питомец" (/pet): pixel pets, drawn 16×16 and shown in whole steps. */
 .pet-picture { display: block; image-rendering: pixelated; }
+.pet-shop { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0 10px; }
+.pet-kind { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); text-align: center; }
+.pet-kind-chosen { background: var(--back-f9f6e7); border-color: var(--line-c3a476); }
+.pet-kind-picture { padding: 4px; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
+.pet-kind-name { font-weight: bold; }
+.pet-kind-about { flex: 1; color: var(--text-808080); }
+.pet-kind-price { font-weight: bold; color: var(--text-45688e); }
+/* The tabs of one's pets above the page, with "+" for the shop. */
+.pet-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 10px; padding: 0 0 6px; border-bottom: 1px solid var(--line-dae1e8); }
+.pet-tab { display: flex; align-items: center; gap: 4px; max-width: 140px; padding: 2px 8px 2px 2px; font: inherit; color: var(--text-2b587a); cursor: pointer; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.pet-tab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-tab:hover { background: var(--back-e9edf1); }
+.pet-tab-chosen, .pet-tab-chosen:hover { color: var(--text-fff); background: var(--back-595959); border-color: var(--line-595959); }
+.pet-tab-more b { display: inline-block; width: 32px; font-size: 18px; text-align: center; }
+.pet-adopt { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.pet-adopt input { width: 160px; }
+.pet-card { display: flex; gap: 14px; align-items: flex-start; margin: 0 0 10px; padding: 10px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.pet-stage { flex: none; display: flex; align-items: flex-end; justify-content: center; width: 120px; height: 120px; background: var(--back-fff) linear-gradient(to top, var(--back-dcefd9) 22px, transparent 22px); border: 1px solid var(--line-c3cad2); }
+.pet-stage .pet-picture { margin-bottom: 8px; }
+.pet-happy .pet-picture { animation: pet-hop 1.6s steps(2) infinite; }
+.pet-sad .pet-picture { filter: grayscale(0.7); }
+.pet-info { flex: 1; min-width: 0; }
+.pet-name { font-size: 13px; }
+.pet-mood { margin: 2px 0 6px; color: var(--text-808080); }
+.pet-bars { border-collapse: collapse; margin: 0 0 8px; }
+.pet-bars td { padding: 2px 6px 2px 0; }
+.pet-bar-label { width: 90px; color: var(--text-808080); white-space: nowrap; }
+.pet-bar-value { min-width: 60px; white-space: nowrap; }
+.pet-bar { width: 150px; height: 10px; background: var(--back-e6e6e6); border: 1px solid var(--line-ccc); }
+.pet-bar-fill { height: 100%; transition: width 0.3s; }
+.pet-satiety { background: var(--back-43a047); }
+.pet-joy { background: var(--back-2e7dd7); }
+.pet-experience { background: var(--back-ffd54a); }
+.pet-health { width: 100%; background: var(--back-d23a32); }
+.pet-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pet-stats { margin: 0 0 10px; }
+.pet-stats td.label { width: 140px; color: var(--text-808080); }
+.pet-fight-box { margin: 6px 0 10px; }
+.pet-challenge { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pet-challenge input { width: 140px; }
+.pet-arena { margin-top: 10px; padding: 10px; background: var(--back-f9f6e7); border: 1px solid var(--line-d7cf9e); }
+.pet-arena-ring { display: flex; align-items: center; justify-content: space-around; gap: 10px; }
+.pet-arena-side { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 170px; text-align: center; }
+.pet-arena-side .pet-bar { width: 140px; }
+.pet-arena-picture { padding: 4px; background: var(--back-fff); border: 1px solid var(--line-d7cf9e); }
+.pet-arena-hp { color: var(--text-555); }
+.pet-arena-vs { color: var(--text-c33); font-size: 18px; font-weight: bold; }
+.pet-hurt .pet-arena-picture { animation: pet-shake 0.3s; }
+.pet-log { max-height: 160px; margin-top: 8px; padding: 4px 6px; overflow-y: auto; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
+.pet-log-line { margin: 2px 0; color: var(--text-555); }
+.pet-log-crit { color: var(--text-c33); font-weight: bold; }
+.pet-arena-result { margin-top: 8px; font-size: 13px; font-weight: bold; text-align: center; }
+.pet-won { color: var(--text-43a047); }
+.pet-lost { color: var(--text-c33); }
+.pet-fights { margin: 0 0 10px; }
+.pet-fight { display: grid; grid-template-columns: 1fr 110px 1fr; gap: 8px; align-items: center; padding: 6px 4px; border-bottom: 1px solid var(--line-e8ebee); }
+.pet-fight-side { display: flex; gap: 6px; align-items: center; min-width: 0; }
+.pet-fight-side:last-child { flex-direction: row-reverse; text-align: right; }
+.pet-fight-name { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.pet-result { text-align: center; }
+.pet-links { margin: 10px 0 0; color: var(--text-808080); }
+@media (prefers-reduced-motion: reduce) {
+  .pet-happy .pet-picture, .pet-hurt .pet-arena-picture { animation: none; }
+}
 /* The pet on the profile, under the clubs. */
 .pet-side { padding: 2px 0; }
 .pet-side-row { display: flex; gap: 8px; align-items: center; padding: 2px 0; }
@@ -546,6 +2017,187 @@ a.poll-result-name { cursor: pointer; }
 .title-badge { flex: none; width: 36px; height: 36px; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 25%)); }
 .title-side-text { min-width: 0; line-height: 1.3; overflow-wrap: anywhere; }
 .title-times { color: var(--text-808080); font-weight: bold; }
+@keyframes ticker { to { transform: translateX(-50%); } }
+@keyframes casino-won { 50% { background: var(--back-fff); } }
+@keyframes rocket-boom { from { transform: scale(0.2); opacity: 0; } }
+@keyframes poker-deal { from { transform: translateY(-16px); opacity: 0; } }
+@keyframes casino-shimmer { to { background-position: -200% 0; } }
+@keyframes casino-wiggle { 50% { transform: rotate(-12deg) scale(1.2); } }
+@keyframes casino-bulbs { 50% { opacity: 0.15; } }
+@keyframes casino-jackpot {
+  from { box-shadow: 0 0 0 2px var(--back-ffd54a), 0 0 6px 2px var(--back-ffd54a); transform: scale(1.04); }
+  to { box-shadow: 0 0 0 2px var(--back-d23a32), 0 0 16px 5px var(--back-ffd54a); transform: scale(1.1); }
+}
+@keyframes casino-glow { 50% { box-shadow: 0 0 16px 3px var(--back-ffd54a); } }
+@keyframes casino-gleam { 60%, 100% { left: 130%; } }
+@keyframes casino-pop { from { transform: scale(0.4); opacity: 0; } }
+@keyframes casino-bump { 40% { transform: scale(1.3); } }
+@keyframes casino-fall {
+  to { transform: translate(var(--dx, 0), 110vh) rotate(var(--turn, 720deg)); }
+}
+@keyframes jackpot-fall { to { transform: translate(var(--dx, 0), 115vh) rotate(var(--turn, 360deg)); } }
+@keyframes jackpot-spark {
+  0% { opacity: 1; transform: translate(0, 0) scale(1.4); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--x, 0px), calc(var(--y, 0px) + 30px)) scale(0.4); }
+}
+@keyframes jackpot-in { from { opacity: 0; } }
+@keyframes jackpot-flash { 0% { opacity: 0.95; } 100% { opacity: 0; } }
+@keyframes jackpot-spin { to { transform: rotate(360deg); } }
+@keyframes jackpot-pop { 0% { transform: scale(0.1) rotate(-20deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes jackpot-float { 50% { transform: translateY(-8px) scale(1.02); } }
+@keyframes jackpot-shake { 25% { transform: rotate(-4deg) scale(1.08); } 75% { transform: rotate(4deg) scale(1.08); } }
+@keyframes jackpot-bump { 40% { transform: scale(1.35); } }
+@keyframes pet-hop { 50% { transform: translateY(-6px); } }
+@keyframes pet-shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+
+/* The same parts, laid out for a narrow screen. */
+
+.languages { grid-template-columns: repeat(3, 1fr); }
+.festive .tabbar-count { background: var(--back-d23a32); color: var(--text-fff); }
+.menu .counter { margin: 0 0 0 auto; padding: 2px 8px; }
+.sidebar-form { padding: 10px; }
+/* Under the menu of a phone, the greeting without the tree. */
+.festive .layout::before, .festive .layout::after { left: 0; right: 0; box-shadow: none; }
+.festive .header::after { left: 0; right: 0; }
+.newyear { margin: 6px 0 8px; }
+.form td.control { width: auto; }
+.form td.note { padding-left: 0; }
+.settings-delete { padding-left: 0; }
+.container-gray .form, .container-gray .extra-field, .container-gray .subhead, .container-gray .actions, .settings-block { width: auto; }
+.container-gray .form { border-spacing: 0; }
+.container-gray .form th { width: auto; }
+.container-gray .actions { margin-top: 10px; padding-left: 0; }
+.container-gray .subhead { margin-top: 12px; padding: 0; }
+.container-gray .form tr:has(.check-cell) { display: flex; gap: 6px; padding: 5px 0; }
+.container-gray .form .check-cell { padding: 0; }
+/* A community's: its photo and links first, the photo smaller. */
+.club { flex-direction: column; }
+.club-side { order: -1; width: auto; }
+.club-side .avatar-box { width: 140px; max-width: 100%; margin: 0 auto; }
+.club-side .avatar { width: 100%; height: auto; aspect-ratio: 1; }
+.people-grid.wide { grid-template-columns: repeat(4, 1fr); }
+.link-card-photo { width: 90px; height: 68px; }
+/* The small print of posts and messages, large enough for a finger. */
+.im-forwarded-date, .chat-action-date { font-size: 11px; }
+.posts-microblog .post-menu, .posts-microblog .post-menu .post-date, .chat-kick { font-size: 12px; }
+/* Lists — people, groups, dialogs, notifications — are rows from edge to
+   edge of the screen. */
+.list-row { margin: 0 -10px; padding: 10px; }
+.list-row { flex-wrap: wrap; }
+.list-actions { width: 100%; }
+.list-actions .profile-link { display: flex; align-items: center; min-height: 36px; }
+.message-actions { display: inline-block; margin: 0 0 0 14px; }
+.message-actions .attach-list { left: 0; right: auto; }
+.im-selection, .chat-pinned { flex-wrap: wrap; gap: 4px; padding: 6px 10px; }
+/* Photos and albums */
+.album-cover img { width: 100px; height: 80px; }
+.album-photo { width: 33.33%; }
+.photo-page-columns { flex-direction: column; }
+.photo-page-main, .photo-page-actions { width: auto; }
+.photo-page-image img { max-width: 100%; }
+.photo-page-description { padding: 5px 0; }
+.uploaded-photo { flex-direction: column; }
+.white-box h4 { margin: 20px 16px 0; }
+.upload-limits { margin: 14px 16px 20px; }
+/* Stories over the whole screen. */
+.story-viewer { background: rgba(0, 0, 0, 1); }
+.story-viewer .viewer-nav { display: none; }
+/* The casino: the balance over the games, three cells in a row, the
+   amount of a bet over its quick buttons, both the whole width. */
+.casino { flex-direction: column-reverse; align-items: stretch; }
+/* The mine: the balance over it, the bar as wide as it can be. */
+.mine { flex-direction: column-reverse; align-items: stretch; }
+.mine-bar { flex: 1; min-width: 80px; }
+.mine-item { flex-wrap: wrap; }
+.mine-item-worth { min-width: 0; }
+.mine-ore .button, .mine-item .button { min-height: 32px; }
+/* The enterprises: the buttons big enough for a finger, the name and the
+   choices as wide as the line; a wide table scrolls inside itself. */
+.business .button { min-height: 32px; }
+.firm-grid, .firm-dialog .firm-grid { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.firm-label { margin-top: 6px; text-align: left; }
+.firm-label:empty { display: none; }
+.firm-grid input.firm-name, .firm-grid select.firm-select { flex: 1 1 100%; width: auto; min-width: 0; }
+.firm-tiles, .firm-steps, .firm-book { grid-template-columns: minmax(0, 1fr); }
+.firm-kinds-row, .firm-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.firm-clock { text-align: left; }
+.firm-step-head .firm-icon { width: 32px; height: 32px; }
+.firm-grid + .firm-hint, .firm-dialog .firm-grid + .firm-hint { margin-left: 0; }
+.firm-goods, .firm-upgrades, .stock-columns, .stock-trade { grid-template-columns: minmax(0, 1fr); }
+.firm-header { flex-wrap: wrap; }
+.firm-header-level { align-items: flex-start; width: 100%; }
+.firm-header-level .meter { width: 100%; }
+.firm-contract { flex-wrap: wrap; }
+.stock-plaques { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.stock-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.stock-fact { border-bottom: 1px solid var(--line-e0e0e0); }
+.stock-head { flex-wrap: wrap; }
+.stock-head-price { align-items: flex-start; width: 100%; }
+.stock-wide { display: none; }
+.stock-spark { width: 70px; }
+@media (max-width: 360px) {
+  .stock-table .stock-spark { display: none; }
+  .stock-table .firm-num, .stock-table .firm-num span { white-space: normal; }
+}
+.step-button, .segment, .chip { min-height: 32px; }
+.stepper { height: 32px; }
+input.step-value { font-size: 16px; }
+.pop { width: calc(100vw - 16px); }
+.casino-balance { width: auto; }
+.casino-board, .casino-multipliers { grid-template-columns: repeat(3, 1fr); }
+.casino-controls .button { width: 100%; }
+.casino-auto select { flex: 1; min-width: 0; }
+.casino-amount { flex: 1; min-width: 0; }
+.casino-quick { width: 100%; }
+.casino-quick .button { flex: 1; min-height: 32px; }
+.casino-multiplier { min-height: 58px; }
+.poker-table { padding: 6px; }
+.poker-cards { gap: 4px; }
+.poker-card { width: 44px; height: 62px; }
+.poker-pip { font-size: 22px; line-height: 22px; }
+.poker-corner { font-size: 12px; line-height: 12px; }
+.poker-controls .button + .button { margin: 6px 0 0; }
+.holdem-forms { flex-direction: column; }
+.holdem-felt { aspect-ratio: 3 / 4; margin: 40px 34px 50px; border-width: 7px; }
+.holdem-seat { width: 84px; }
+.holdem-avatar { display: none; }
+.holdem-board .poker-card { width: 30px; height: 43px; }
+.holdem-board .poker-pip { font-size: 15px; line-height: 15px; }
+.holdem-raise-box input[type="range"] { width: 100%; }
+.holdem-actions .button { min-height: 32px; }
+.holdem-invite input[type="text"] { width: 100%; }
+.rocket-sky { height: 180px; }
+.rocket-multiplier { font-size: 28px; }
+.bet-outcome-head { flex-wrap: wrap; }
+.bet-outcome-head .button { min-height: 32px; }
+/* "Мои Голоса": the balance over what it says, the buttons and the totals
+   in a column of their own. */
+.finance { flex-direction: column-reverse; align-items: stretch; }
+.finance-balance { width: auto; }
+.prime-plans { flex-direction: column; }
+.bank-actions { flex-wrap: wrap; }
+.bank-actions .button { flex: 1; text-align: center; }
+.bank-totals { flex-direction: column; }
+.bank-bonus { flex-direction: column; align-items: stretch; }
+.bank-form { flex-wrap: wrap; }
+.bank-form input { flex: 1 1 100%; width: auto; }
+.collectible-page { flex-direction: column; align-items: center; }
+.collectible-info { width: 100%; }
+.collectible-grid { grid-template-columns: repeat(2, 1fr); }
+.market-filters select { flex: 1 1 45%; }
+/* "Питомец" and "Рейтинги" on a phone. */
+.pet-shop { grid-template-columns: repeat(2, 1fr); }
+.pet-card { flex-direction: column; align-items: center; }
+.pet-info { width: 100%; }
+.pet-bar { width: 110px; }
+.pet-arena-side { width: 120px; }
+.pet-arena-side .pet-bar { width: 100px; }
+.pet-fight { grid-template-columns: 1fr 84px 1fr; gap: 4px; }
+.pet-adopt input, .pet-challenge input { flex: 1; width: auto; min-width: 0; }
+.pet-challenge #find, .pet-challenge .hint { flex-basis: 100%; }
+.top-table th.top-value, .top-table td.top-value { width: auto; }
+.top-table th.top-place, .top-table td.top-place { width: 32px; }
 
 /* Blocks */
 
@@ -1140,7 +2792,8 @@ body:has(#peer-avatar) .im-message .name-checkmark,
   background: rgba(0, 0, 0, 0.6);
 }
 .modal-box { width: 100%; max-width: 480px; margin: auto; background: var(--back-fff); border: 1px solid var(--line-555); border-radius: 4px; overflow: hidden; }
-.modal-box.feed-settings-box, .modal-box.likers-box, .modal-box.chat-dialog, .modal-box.avatar-dialog, .modal-box.graffiti-dialog { width: 100%; }
+/* A box of any kind is as wide as the screen lets it be. */
+.modal .modal-box { width: 100%; }
 .modal-header { padding: 12px 14px; background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); color: var(--text-fff); font-size: 15px; font-weight: bold; }
 .modal-body { display: flex; flex-direction: column; gap: 8px; padding: 14px; overflow-wrap: anywhere; }
 .modal-body textarea { height: 90px; }
