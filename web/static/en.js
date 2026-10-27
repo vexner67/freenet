@@ -3064,4 +3064,5 @@ export default {
   'Статья слишком длинная: не больше 100 000 символов и 500 блоков.': 'The article is too long: at most 100,000 characters and 500 blocks.',
   'В статье есть блок, который не получилось сохранить.': 'The article has a block that could not be saved.',
   'Ссылка в статье должна вести на сайт: http:// или https://.': 'A link in an article must lead to a website: http:// or https://.',
+  'Статья удалена.': 'The article was deleted.',
 };

@@ -221,14 +221,15 @@ export function articleCard(article) {
 }
 
 // articleCardNode is the card of the article a post links to: it comes
-// when the article is read, and is gone when it is not found.
+// when the article is read.
 export function articleCardNode(found) {
   const card = el('a', { className: 'article-card loading', href: articlePath(found.id) },
     el('span', { className: 'article-card-label', textContent: tr('Статья') }));
 
+  // A deleted article leaves its post saying so, not empty.
   brief(found.id).then((article) => {
     if (article) cardParts(card, article);
-    else card.remove();
+    else card.replaceWith(el('div', { className: 'post-shared deleted', textContent: tr('Статья удалена.') }));
   });
 
   return card;
