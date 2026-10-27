@@ -100,6 +100,8 @@ type firmHourJSON struct {
 	Wages     int64  `json:"wages"`
 	Upkeep    int64  `json:"upkeep"`
 	Fees      int64  `json:"fees"`
+	Hired     int64  `json:"hired"`
+	Left      int64  `json:"left"`
 }
 
 type firmHolderJSON struct {
@@ -136,6 +138,39 @@ type firmJSON struct {
 	Float        int64                  `json:"float"`
 	Forecast     *firmHourJSON          `json:"forecast"`
 	ForecastCash int64                  `json:"forecastCash"`
+	Wanted       int                    `json:"wanted"`
+}
+
+type firmLabourJSON struct {
+	People   int   `json:"people"`
+	Employed int   `json:"employed"`
+	Jobs     int   `json:"jobs"`
+	Wage     int64 `json:"wage"`
+}
+
+type stockTenderJSON struct {
+	ID       string                 `json:"id"`
+	Firm     string                 `json:"firm"`
+	User     *publicProfileResponse `json:"user"`
+	Price    int64                  `json:"price"`
+	Shares   int64                  `json:"shares"`
+	PlacedAt string                 `json:"placedAt"`
+	Until    string                 `json:"until"`
+}
+
+// toTendersJSON are the offers of the pages there to show.
+func toTendersJSON(tenders []model.StockTender, people map[string]model.PublicProfile) []stockTenderJSON {
+	out := []stockTenderJSON{}
+	for _, t := range tenders {
+		if p := person(people, t.UserID); p != nil {
+			out = append(out, stockTenderJSON{
+				ID: t.ID, Firm: t.FirmID, User: p, Price: t.Price, Shares: t.Shares,
+				PlacedAt: timeString(t.PlacedAt), Until: timeString(t.Until),
+			})
+		}
+	}
+
+	return out
 }
 
 type firmImprovementJSON struct {
@@ -192,6 +227,8 @@ type firmsJSON struct {
 	Contracts []firmContractJSON  `json:"contracts"`
 	News      []firmEventJSON     `json:"news"`
 	NextHour  string              `json:"nextHour"`
+	Labour    firmLabourJSON      `json:"labour"`
+	Tenders   []stockTenderJSON   `json:"tenders"`
 }
 
 func toFirmSettingsJSON(s model.FirmSettings) firmSettingsJSON {
@@ -243,6 +280,9 @@ func (a *api) firmsResponse(r *http.Request, f model.Firms) (firmsJSON, error) {
 			ids = append(ids, h.UserID)
 		}
 	}
+	for _, t := range f.Tenders {
+		ids = append(ids, t.UserID)
+	}
 
 	people, err := a.profiles(r, ids)
 	if err != nil {
@@ -272,6 +312,8 @@ func (a *api) firmsResponse(r *http.Request, f model.Firms) (firmsJSON, error) {
 		}),
 		News:     toFirmEventsJSON(f.News),
 		NextHour: timeString(f.NextHour),
+		Labour:   firmLabourJSON(f.Labour),
+		Tenders:  toTendersJSON(f.Tenders, people),
 	}, nil
 }
 
@@ -286,6 +328,7 @@ func toFirmJSON(f model.Firm, people map[string]model.PublicProfile) firmJSON {
 		Stock:        listJSON(f.Stock, func(s model.FirmStock) firmStockJSON { return firmStockJSON(s) }),
 		Hours:        listJSON(f.Hours, toFirmHourJSON),
 		ForecastCash: f.ForecastCash,
+		Wanted:       f.Wanted,
 		Holders:      []firmHolderJSON{},
 	}
 	if f.Forecast != nil {
@@ -477,6 +520,6 @@ func (a *api) getUserFirms(w http.ResponseWriter, r *http.Request) {
 func toFirmHourJSON(h model.FirmHour) firmHourJSON {
 	return firmHourJSON{
 		Hour: timeString(h.Hour), Made: h.Made, Bought: h.Bought, Sold: h.Sold, Income: h.Income,
-		Purchases: h.Purchases, Wages: h.Wages, Upkeep: h.Upkeep, Fees: h.Fees,
+		Purchases: h.Purchases, Wages: h.Wages, Upkeep: h.Upkeep, Fees: h.Fees, Hired: h.Hired, Left: h.Left,
 	}
 }

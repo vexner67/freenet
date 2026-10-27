@@ -5659,7 +5659,7 @@ paths:
   /api/v1/firms:
     get:
       summary: The economy of the enterprises
-      description: '"Бизнес": the settings and what each enterprise does, the quotes of the goods, every enterprise with its storage, last hours and shareholders, the orders of the exchange, the orders of the city (`contracts`) and its news. The city counts itself hour by hour at `nextHour`: each enterprise pays wages and upkeep from its cash (working as much less as it lacks), buys what it works with from the state and sells what it makes to the state — a shop to the city — as its `stock` says; its machines wear and make less past 30%, and things happen — droughts, finds, breakdowns, inspections, strikes of workers paid below the standard. Money of the enterprises is in hundredths of a vote, of people (deposits, dividends) in votes.'
+      description: '"Бизнес": the settings and what each enterprise does, the quotes of the goods, every enterprise with its storage, last hours and shareholders, the orders of the exchange, the orders of the city (`contracts`, of the goods its enterprises make), its news, its labour market (`labour`) and the offers to buy out shareholders (`tenders`). The city counts itself hour by hour at `nextHour`: workers out of work are hired by those paying the most and workers paid below the average leave for those paying more with vacancies, people come to the city for its jobs and go when there are fewer; each enterprise pays wages and upkeep from its cash (working as much less as it lacks), buys what it works with from the state and sells what it makes to the state — a shop to the city — as its `stock` says; its machines wear and make less past 30%, and things happen — droughts, finds, breakdowns, inspections, strikes of workers paid below the standard. Money of the enterprises is in hundredths of a vote, of people (deposits, dividends) in votes.'
       security: [{ bearer: [] }]
       responses:
         "200":
@@ -5672,7 +5672,7 @@ paths:
   /api/v1/firms/{action}:
     post:
       summary: Act in the economy
-      description: '`found` founds an enterprise of `kind` named `name` (1–40 characters) for its price, into the treasury: you hold its 100 shares and direct it; at most 10 directed. For the director of `firm`: `rename` (`name`), `upgrade` (paid from its cash), `staff` (`workers` up to the seats, `wage` in hundredths from half to three times the standard), `deposit` (`votes` into its cash), `dividend` (`votes` of its cash to the shareholders by their shares), `liquidate` (its worth to the shareholders; its goods are lost), `auto` (for `good`: `autoBuy` from the state paying at most `buyMax`, `autoSell` taking at least `sellMin`), `order` (`good`, `buy`, `price` in hundredths, `units` — on the exchange; what meets other orders changes hands at their price at once, the seller paying the fee), `cancel` (`order`), `state_buy` and `state_sell` (`good`, `units` — with the state at once), `issue` (`shares` new put up on the stock exchange in place of those put up before, 0 — none; sold, they pay into its cash), `repair` (its machines, from its cash), `improve` (`improvement`: `machines` make more, `storage` holds more, `sales` sell dearer; three ranks), `take_contract` (`contract` of the city its storage keeps the good of; at most 2 at once, a day to deliver, a tenth of what is left undelivered fined) and `deliver` (`contract`, `units` from its storage, paid at once). The largest shareholder directs. Taking votes out (`dividend`, `liquidate`) is for pages a week old with a filled profile. Rate limited.'
+      description: '`found` founds an enterprise of `kind` named `name` (1–40 characters) for its price, into the treasury: you hold its 100 shares and direct it; at most 10 directed. For the director of `firm`: `rename` (`name`), `upgrade` (paid from its cash), `staff` (`workers` sought up to the seats — those past them are let go, the vacancies filled of the people out of work as the labour market goes — `wage` in hundredths from half to three times the standard), `deposit` (`votes` into its cash), `dividend` (`votes` of its cash to the shareholders by their shares), `liquidate` (its worth to the shareholders; its goods are lost), `auto` (for `good`: `autoBuy` from the state paying at most `buyMax`, `autoSell` taking at least `sellMin`), `order` (`good`, `buy`, `price` in hundredths, `units` — on the exchange; what meets other orders changes hands at their price at once, the seller paying the fee), `cancel` (`order`), `state_buy` and `state_sell` (`good`, `units` — with the state at once), `issue` (`shares` new put up on the stock exchange in place of those put up before, 0 — none; sold, they pay into its cash), `repair` (its machines, from its cash), `improve` (`improvement`: `machines` make more, `storage` holds more, `sales` sell dearer; three ranks), `take_contract` (`contract` of the city its storage keeps the good of; at most 2 at once, a day to deliver, a tenth of what is left undelivered fined) and `deliver` (`contract`, `units` from its storage, paid at once). The largest shareholder directs. Taking votes out (`dividend`, `liquidate`) is for pages a week old with a filled profile. Rate limited.'
       security: [{ bearer: [] }]
       parameters:
         - { name: action, in: path, required: true, schema: { type: string, enum: [found, rename, upgrade, staff, deposit, dividend, liquidate, auto, order, cancel, state_buy, state_sell, issue, repair, improve, take_contract, deliver] } }
@@ -5731,10 +5731,10 @@ paths:
   /api/v1/stocks/{action}:
     post:
       summary: Act on the stock exchange
-      description: '`account_deposit` and `account_withdraw` move `votes` between your balance and your broker account (withdrawing is for pages a week old with a filled profile). `stock_order` buys or sells (`buy`) `shares` of `firm` at `price` hundredths a share or better — what meets the orders of others or the prices of the exchange deals at once, the rest waits (at most 20 orders); `price` 0 deals what it can at once at any price. Buying pays of the account; the seller pays the fee. `stock_cancel` cancels your `order`, giving back the money it keeps. Rate limited.'
+      description: '`account_deposit` and `account_withdraw` move `votes` between your balance and your broker account (withdrawing is for pages a week old with a filled profile). `stock_order` buys or sells (`buy`) `shares` of `firm` at `price` hundredths a share or better — what meets the orders of others or the prices of the exchange deals at once, the rest waits (at most 20 orders); `price` 0 deals what it can at once at any price. Buying pays of the account; the seller pays the fee. `stock_cancel` cancels your `order`, giving back the money it keeps. `tender` offers the holders of `firm` to buy `shares` of theirs at `price` hundredths a share, no less than a share goes for now, for a day (at most 5 offers; the money is kept of your account); `tender_sell` sells up to `shares` of yours to the offer `order` at its price, the fee yours; `tender_cancel` takes your offer `order` back with the money it did not spend. Whoever holds the most shares directs the company. Rate limited.'
       security: [{ bearer: [] }]
       parameters:
-        - { name: action, in: path, required: true, schema: { type: string, enum: [account_deposit, account_withdraw, stock_order, stock_cancel] } }
+        - { name: action, in: path, required: true, schema: { type: string, enum: [account_deposit, account_withdraw, stock_order, stock_cancel, tender, tender_sell, tender_cancel] } }
       requestBody:
         content:
           application/json:
@@ -5746,7 +5746,7 @@ paths:
                 price: { type: integer, format: int64, description: Hundredths of a vote a share; 0 — at any }
                 shares: { type: integer, format: int64 }
                 votes: { type: integer, format: int64 }
-                order: { type: string, description: The ID of an order of shares }
+                order: { type: string, description: The ID of an order of shares or of an offer }
       responses:
         "200":
           description: What the action did
@@ -10177,7 +10177,8 @@ components:
         director: { allOf: [{ $ref: "#/components/schemas/PublicProfile" }], nullable: true }
         foundedAt: { type: string, format: date-time }
         level: { type: integer }
-        workers: { type: integer }
+        workers: { type: integer, description: The workers it has }
+        wanted: { type: integer, description: The workers it seeks — those it has and the vacancies }
         wage: { type: integer, format: int64 }
         cash: { type: integer, format: int64, description: Hundredths of a vote }
         escrow: { type: integer, format: int64, description: Hundredths its buying orders keep }
@@ -10228,6 +10229,8 @@ components:
               wages: { type: integer, format: int64 }
               upkeep: { type: integer, format: int64 }
               fees: { type: integer, format: int64 }
+              hired: { type: integer, format: int64, description: Workers hired }
+              left: { type: integer, format: int64, description: Workers who left for better pay }
         holders:
           type: array
           items:
@@ -10249,6 +10252,8 @@ components:
             wages: { type: integer, format: int64 }
             upkeep: { type: integer, format: int64 }
             fees: { type: integer, format: int64 }
+            hired: { type: integer, format: int64 }
+            left: { type: integer, format: int64 }
         forecastCash:
           description: The cash at the end of the hour going on, in hundredths.
           type: integer
@@ -10316,11 +10321,31 @@ components:
               delivered: { type: integer, format: int64 }
         news: { type: array, items: { $ref: "#/components/schemas/FirmEvent" } }
         nextHour: { type: string, format: date-time }
+        labour:
+          type: object
+          description: The labour market of the city
+          properties:
+            people: { type: integer }
+            employed: { type: integer }
+            jobs: { type: integer, description: The workers the enterprises seek in all }
+            wage: { type: integer, format: int64, description: The average wage, hundredths an hour }
+        tenders: { type: array, items: { $ref: "#/components/schemas/StockTender" } }
+    StockTender:
+      type: object
+      description: An offer to buy shares of a company from their holders
+      properties:
+        id: { type: string }
+        firm: { type: string }
+        user: { $ref: "#/components/schemas/PublicProfile" }
+        price: { type: integer, format: int64, description: Hundredths a share }
+        shares: { type: integer, format: int64, description: Shares it still buys }
+        placedAt: { type: string, format: date-time }
+        until: { type: string, format: date-time }
     FirmEvent:
       type: object
       properties:
         id: { type: string }
-        kind: { type: string, enum: [drought, harvest, vein, collapse, gusher, storm, wildfire, blackout, invention, fair, crisis, boom, breakdown, inspection, award, strike] }
+        kind: { type: string, enum: [drought, harvest, vein, collapse, gusher, storm, wildfire, blackout, invention, fair, crisis, boom, breakdown, inspection, award, strike, tender, takeover] }
         firm: { type: string, description: The enterprise it happened to; empty — to all of kinds }
         kinds: { type: array, items: { type: string }, description: The enterprises it touches; empty — all }
         start: { type: string, format: date-time }
@@ -10397,6 +10422,7 @@ components:
         bids: { type: array, items: { $ref: "#/components/schemas/StockLevel" } }
         asks: { type: array, items: { $ref: "#/components/schemas/StockLevel" } }
         nextHour: { type: string, format: date-time }
+        tenders: { type: array, items: { $ref: "#/components/schemas/StockTender" } }
     StockLevel:
       type: object
       properties:

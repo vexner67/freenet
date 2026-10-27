@@ -134,6 +134,21 @@ func fromProtoFirms(s *userv1.FirmsState) model.Firms {
 		})
 	}
 	out.News = fromProtoNews(s.GetNews())
+	out.Tenders = fromProtoTenders(s.GetTenders())
+	l := s.GetLabour()
+	out.Labour = model.FirmLabour{People: int(l.GetPeople()), Employed: int(l.GetEmployed()), Jobs: int(l.GetJobs()), Wage: l.GetWage()}
+
+	return out
+}
+
+func fromProtoTenders(tenders []*userv1.StockTender) []model.StockTender {
+	out := make([]model.StockTender, 0, len(tenders))
+	for _, t := range tenders {
+		out = append(out, model.StockTender{
+			ID: t.GetId(), FirmID: t.GetFirmId(), UserID: t.GetUserId(), Price: t.GetPrice(), Shares: t.GetShares(),
+			PlacedAt: timeOf(t.GetPlacedAt()), Until: timeOf(t.GetUntil()),
+		})
+	}
 
 	return out
 }
@@ -144,7 +159,7 @@ func fromProtoFirm(f *userv1.Firm) model.Firm {
 		Level: int(f.GetLevel()), Workers: int(f.GetWorkers()), Wage: f.GetWage(), Cash: f.GetCash(), Escrow: f.GetEscrow(),
 		Productivity: f.GetProductivity(), Seats: int(f.GetSeats()), UpgradeCost: f.GetUpgradeCost(), Upkeep: f.GetUpkeep(),
 		Profit: f.GetProfit(), Shares: f.GetShares(), Worth: f.GetWorth(), Wear: f.GetWear(), RepairCost: f.GetRepairCost(),
-		IdleUntil: timeOf(f.GetIdleUntil()), Price: f.GetPrice(), Float: f.GetFloat(),
+		IdleUntil: timeOf(f.GetIdleUntil()), Price: f.GetPrice(), Float: f.GetFloat(), Wanted: int(f.GetWanted()),
 	}
 	for _, i := range f.GetImprovements() {
 		out.Improvements = append(out.Improvements, model.FirmImprovement{Kind: i.GetKind(), Rank: int(i.GetRank()), Cost: i.GetCost()})
@@ -250,5 +265,6 @@ func firmHourOf(h *userv1.FirmHour) model.FirmHour {
 	return model.FirmHour{
 		Hour: timeOf(h.GetHour()), Made: h.GetMade(), Bought: h.GetBought(), Sold: h.GetSold(), Income: h.GetIncome(),
 		Purchases: h.GetPurchases(), Wages: h.GetWages(), Upkeep: h.GetUpkeep(), Fees: h.GetFees(),
+		Hired: h.GetHired(), Left: h.GetLeft(),
 	}
 }

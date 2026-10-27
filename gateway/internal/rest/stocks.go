@@ -76,14 +76,18 @@ type stocksJSON struct {
 	Bids      []stockLevelJSON   `json:"bids"`
 	Asks      []stockLevelJSON   `json:"asks"`
 	NextHour  string             `json:"nextHour"`
+	Tenders   []stockTenderJSON  `json:"tenders"`
 }
 
 // stocksResponse is the stock exchange in JSON with the directors of the
-// companies.
+// companies and the pages making offers.
 func (a *api) stocksResponse(r *http.Request, s model.Stocks) (stocksJSON, error) {
 	ids := make([]string, 0, len(s.Companies))
 	for _, c := range s.Companies {
 		ids = append(ids, c.DirectorID)
+	}
+	for _, t := range s.Tenders {
+		ids = append(ids, t.UserID)
 	}
 
 	people, err := a.profiles(r, ids)
@@ -125,6 +129,7 @@ func (a *api) stocksResponse(r *http.Request, s model.Stocks) (stocksJSON, error
 		Bids:     listJSON(s.Bids, level),
 		Asks:     listJSON(s.Asks, level),
 		NextHour: timeString(s.NextHour),
+		Tenders:  toTendersJSON(s.Tenders, people),
 	}, nil
 }
 

@@ -96,7 +96,8 @@ type FirmStock struct {
 	SellMin  int64
 }
 
-// FirmHour is an hour of an enterprise: units and hundredths.
+// FirmHour is an hour of an enterprise: units and hundredths, the
+// workers hired and those who left for better pay.
 type FirmHour struct {
 	Hour      time.Time
 	Made      int64
@@ -107,6 +108,8 @@ type FirmHour struct {
 	Wages     int64
 	Upkeep    int64
 	Fees      int64
+	Hired     int64
+	Left      int64
 }
 
 // FirmHolder is the shares a page holds.
@@ -158,6 +161,29 @@ type Firm struct {
 	// ForecastCash the cash then; nil while ended hours wait to be counted.
 	Forecast     *FirmHour
 	ForecastCash int64
+	// Wanted is the workers it seeks: Workers and the vacancies.
+	Wanted int
+}
+
+// FirmLabour is the labour market of the city: its people, those working,
+// the workers the enterprises seek and their average wage in hundredths.
+type FirmLabour struct {
+	People   int
+	Employed int
+	Jobs     int
+	Wage     int64
+}
+
+// StockTender is an offer of UserID to buy Shares of FirmID from their
+// holders at Price hundredths a share till Until.
+type StockTender struct {
+	ID       string
+	FirmID   string
+	UserID   string
+	Price    int64
+	Shares   int64
+	PlacedAt time.Time
+	Until    time.Time
 }
 
 // ExchangeOrder is an order of the exchange: Price in hundredths a unit.
@@ -205,6 +231,8 @@ type Firms struct {
 	Contracts []FirmContract
 	News      []FirmEvent
 	NextHour  time.Time
+	Labour    FirmLabour
+	Tenders   []StockTender
 }
 
 // FirmAct is an action with the enterprises.
@@ -340,9 +368,11 @@ type Stocks struct {
 	Bids      []StockLevel
 	Asks      []StockLevel
 	NextHour  time.Time
+	Tenders   []StockTender
 }
 
-// StockAct is an action on the stock exchange.
+// StockAct is an action on the stock exchange; OrderID is the order
+// cancelled or the offer sold to or taken back.
 type StockAct struct {
 	Action  string
 	FirmID  string

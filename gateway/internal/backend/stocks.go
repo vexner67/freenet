@@ -47,6 +47,7 @@ func fromProtoStocks(s *userv1.StocksState) model.Stocks {
 	out := model.Stocks{
 		News: fromProtoNews(s.GetNews()), Fee: int(s.GetFee()), Account: s.GetAccount(), FirmID: s.GetFirmId(),
 		Bids: fromProtoLevels(s.GetBids()), Asks: fromProtoLevels(s.GetAsks()), NextHour: timeOf(s.GetNextHour()),
+		Tenders: fromProtoTenders(s.GetTenders()),
 	}
 	for _, c := range s.GetCompanies() {
 		company := model.StockCompany{

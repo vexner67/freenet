@@ -32,11 +32,22 @@ func (f *fakeFirms) city() model.Firms {
 			Stock:     []model.FirmStock{{Good: "grain", Units: 40, Capacity: 7200, AutoSell: true}},
 			Holders:   []model.FirmHolder{{UserID: "u1", Shares: 60}, {UserID: "u2", Shares: 40}, {UserID: "u3", Shares: 1}},
 			Wear:      12.5, RepairCost: 1250, Improvements: []model.FirmImprovement{{Kind: "machines", Rank: 1, Cost: 100000}},
+			Workers: 9, Wanted: 12, Hours: []model.FirmHour{{Hired: 2, Left: 1}},
 		}},
+		Labour:    model.FirmLabour{People: 30, Employed: 25, Jobs: 28, Wage: 55},
+		Tenders:   tenders(),
 		Orders:    []model.ExchangeOrder{{ID: "o1", FirmID: "f1", Good: "grain", Price: 22, Units: 100}},
 		Contracts: []model.FirmContract{{ID: "k1", Good: "grain", Units: 800, Price: 32, FirmID: "f1"}},
 		News:      []model.FirmEvent{{ID: "e1", Kind: "drought", Kinds: []string{"farm"}, Start: time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC)}},
 		NextHour:  time.Date(2026, 10, 25, 13, 0, 0, 0, time.UTC),
+	}
+}
+
+// tenders are an offer of u2 and one of a page not there to show.
+func tenders() []model.StockTender {
+	return []model.StockTender{
+		{ID: "t1", FirmID: "f1", UserID: "u2", Price: 1500, Shares: 20, Until: time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)},
+		{ID: "t2", FirmID: "f1", UserID: "u3", Price: 1600, Shares: 5},
 	}
 }
 
@@ -68,6 +79,7 @@ func (f *fakeFirms) exchange() model.Stocks {
 		Orders:   []model.StockOrder{{ID: "o1", FirmID: "f1", Price: 1200, Shares: 6}},
 		FirmID:   f.firmID,
 		Asks:     []model.StockLevel{{Price: 1200, Shares: 6, Orders: 1}},
+		Tenders:  tenders(),
 	}
 }
 
@@ -106,7 +118,7 @@ func TestFirms(t *testing.T) {
 	news := got["news"].([]any)[0].(map[string]any)
 	if w.Code != http.StatusOK || h.firms.token != "tok" || firm["cash"] != 12345.0 || firm["name"] != "Колхоз" ||
 		firm["director"].(map[string]any)["nickname"] != "ann" || len(firm["holders"].([]any)) != 2 ||
-		firm["foundedAt"] != "2026-10-25T12:00:00Z" || len(firm["hours"].([]any)) != 0 ||
+		firm["foundedAt"] != "2026-10-25T12:00:00Z" || len(firm["hours"].([]any)) != 1 ||
 		firm["forecastCash"] != 12500.0 || firm["forecast"].(map[string]any)["made"] != 40.0 ||
 		firm["wear"] != 12.5 || firm["repairCost"] != 1250.0 || firm["idleUntil"] != "" ||
 		firm["improvements"].([]any)[0].(map[string]any)["cost"] != 100000.0 ||
@@ -114,6 +126,14 @@ func TestFirms(t *testing.T) {
 		got["settings"].(map[string]any)["fee"] != 2.0 || got["nextHour"] != "2026-10-25T13:00:00Z" ||
 		got["catalog"].([]any)[0].(map[string]any)["inputs"].([]any)[0].(map[string]any)["units"] != 2.0 {
 		t.Fatalf("firms: %d %v", w.Code, got)
+	}
+	labour := got["labour"].(map[string]any)
+	tender := got["tenders"].([]any)
+	hour := firm["hours"].([]any)
+	if firm["wanted"] != 12.0 || firm["workers"] != 9.0 || labour["people"] != 30.0 || labour["wage"] != 55.0 ||
+		len(tender) != 1 || tender[0].(map[string]any)["user"].(map[string]any)["nickname"] != "bob" ||
+		tender[0].(map[string]any)["until"] != "2026-10-26T12:00:00Z" || hour[0].(map[string]any)["hired"] != 2.0 {
+		t.Fatalf("labour and offers: %v %v %v", labour, tender, firm)
 	}
 
 	w = h.do("POST", "/api/v1/firms/order", `{"firm":"f1","good":"grain","buy":true,"price":22,"units":5}`, "Authorization", "Bearer tok")
@@ -169,6 +189,14 @@ func TestStocks(t *testing.T) {
 		h.firms.stockAct != (model.StockAct{Action: "stock_order", FirmID: "f1", Buy: true, Price: 1100, Shares: 3}) ||
 		got["shares"] != 3.0 || got["money"] != 3150.0 || got["stocks"].(map[string]any)["firm"] != "f1" {
 		t.Fatalf("order: %d %v %+v", w.Code, got, h.firms.stockAct)
+	}
+
+	if tender := got["tenders"].([]any); len(tender) != 1 || tender[0].(map[string]any)["price"] != 1500.0 {
+		t.Fatalf("offers: %v", tender)
+	}
+	w = h.do("POST", "/api/v1/stocks/tender_sell", `{"order":"t1","shares":5}`, "Authorization", "Bearer tok")
+	if w.Code != http.StatusOK || h.firms.stockAct != (model.StockAct{Action: "tender_sell", Shares: 5, OrderID: "t1"}) {
+		t.Fatalf("selling to an offer: %d %+v", w.Code, h.firms.stockAct)
 	}
 
 	h.firms.err = failure.New(failure.Conflict, "there is not so much money on your account")
