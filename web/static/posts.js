@@ -11,7 +11,7 @@ import { openShare } from './share.js';
 import { openViewer } from './viewer.js';
 import { lastComments } from './postcomments.js';
 import { pollNode } from './poll.js';
-import { button, openModal, openSheet, toast } from './modal.js';
+import { button, openMenu, openModal, openSheet, toast } from './modal.js';
 import { documentsNode } from './docs.js';
 import { tr } from './i18n.js';
 
@@ -85,7 +85,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       post.poll ? pollNode(post, { canVote: canLike, onError }) : '',
       signatureNode(post.signer) ?? '',
     );
-    if (!phone) menu.replaceChildren(...separated(menuLinks()));
+    if (microblog && !phone) menu.replaceChildren(...separated(menuLinks()));
     actions.replaceChildren(...(microblog ? actionMarks() : []));
     comments?.render();
     node.classList.toggle('pinned', Boolean(post.pinned));
@@ -113,24 +113,14 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     return order.map((name) => found[name]).filter(Boolean);
   }
 
-  // menuLinks are the words under the post. On openvk the old post says
-  // what may be done to it, then "Комментарии" and "Поделиться"; closing
-  // the comments, which openvk has not, goes with what may be done.
+  // menuLinks are the words under a post of "Микроблог": the comments
+  // are under the post, and with none the field opens; closing them,
+  // which openvk has not, goes next.
   function menuLinks() {
     const closing = ownsWall()
       ? el('a', { textContent: post.commentsClosed ? tr('Открыть комментарии') : tr('Закрыть комментарии'), onclick: toggleComments })
       : null;
 
-    // The heart, the comments and "Поделиться" are marks of the bar.
-    if (!microblog) {
-      return [
-        ...changes().map((c) => el('a', { textContent: c.text, onclick: c.run })),
-        closing,
-        copyLink(post),
-      ].filter(Boolean);
-    }
-
-    // The comments are under the post; with none, the field opens.
     const links = [];
     if (comments && post.comments === 0 && comments.canOpen()) links.push(el('a', { textContent: tr('Комментировать'), onclick: openComments }));
     if (closing) links.push(closing);
@@ -138,8 +128,8 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     return links;
   }
 
-  // sheetItems are what the viewer may do to the post on a phone: the
-  // words of the menu, in a list over the bottom of the screen.
+  // sheetItems are what the viewer may do to the post: the words of the
+  // menu, in the list of "⋯".
   function sheetItems() {
     const items = changes().map((c) => ({ text: c.text, run: c.run, danger: c.mark === cross }));
     if (ownsWall()) items.push({ text: post.commentsClosed ? tr('Открыть комментарии') : tr('Закрыть комментарии'), run: toggleComments });
@@ -148,17 +138,19 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   }
 
   // bar is the bar under a post, as the apps of phones have it: the
-  // heart, the comments and "Поделиться" with their numbers, then on a
-  // phone "⋯" for the rest and on a computer the words of the menu.
+  // heart, the comments and "Поделиться" with their numbers, and "⋯" for
+  // the rest — a list over the bottom of a phone, under "⋯" on a
+  // computer.
   function bar() {
+    const more = el('a', { className: 'like post-more', title: tr('Действия') }, dots());
+    more.addEventListener('click', () => (phone ? openSheet(sheetItems()) : openMenu(more, sheetItems())));
+
     return el('div', { className: 'post-menu post-bar' },
       likeButton(post, { canLike, onError }),
       withCommentsLink ? el('a', { className: 'like post-comments-link', href: postPath(post), title: tr('Комментарии') },
         bubble(), el('span', { className: 'like-count', textContent: post.comments > 0 ? String(post.comments) : '' })) : null,
       shareButton(post, canLike),
-      phone
-        ? el('a', { className: 'like post-more', title: tr('Действия'), onclick: () => openSheet(sheetItems()) }, dots())
-        : el('span', { className: 'post-bar-links' }, menu),
+      more,
     );
   }
 

@@ -72,6 +72,54 @@ export function openSheet(items) {
 
 // toast says in a word over the bottom of the screen what was done, and
 // goes by itself.
+// openMenu is the list of actions of a computer: under anchor, aligned
+// to its right edge; it closes on a choice, a click aside, Esc and a
+// second click on anchor.
+let openedMenu = null;
+
+export function openMenu(anchor, items) {
+  const again = openedMenu?.anchor === anchor;
+  openedMenu?.close();
+  if (again) return;
+
+  const list = el('div', { className: 'drop-menu', role: 'menu' }, ...items.map(({ text, run, danger = false }) => el('button', {
+    type: 'button',
+    className: danger ? 'drop-item danger' : 'drop-item',
+    role: 'menuitem',
+    textContent: text,
+    onclick: () => {
+      close();
+      run();
+    },
+  })));
+
+  function onKey(event) {
+    if (event.key === 'Escape') close();
+  }
+
+  function onClick(event) {
+    if (!list.contains(event.target) && !anchor.contains(event.target)) close();
+  }
+
+  function close() {
+    list.remove();
+    anchor.classList.remove('drop-anchor');
+    document.removeEventListener('keydown', onKey);
+    document.removeEventListener('click', onClick, true);
+    if (openedMenu?.anchor === anchor) openedMenu = null;
+  }
+
+  document.body.append(list);
+  anchor.classList.add('drop-anchor');
+  const r = anchor.getBoundingClientRect();
+  const left = Math.max(8, Math.min(r.right - list.offsetWidth, document.documentElement.clientWidth - list.offsetWidth - 8));
+  list.style.left = `${left + window.scrollX}px`;
+  list.style.top = `${r.bottom + window.scrollY + 4}px`;
+  document.addEventListener('keydown', onKey);
+  document.addEventListener('click', onClick, true);
+  openedMenu = { anchor, close };
+}
+
 export function toast(text) {
   document.querySelector('.toast')?.remove();
 

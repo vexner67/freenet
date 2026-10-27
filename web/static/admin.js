@@ -63,6 +63,18 @@ $('sidebar-toggle').addEventListener('click', () => {
 });
 if (root.classList.contains('aui-collapsed')) $('sidebar-toggle').title = tr('Развернуть боковую панель');
 
+// On a phone the sidebar slides over the page from the menu button of the
+// header; the blanket behind it and Esc close it.
+const showNav = (shown) => {
+  root.classList.toggle('aui-nav-open', shown);
+  $('nav-open').setAttribute('aria-expanded', String(shown));
+};
+$('nav-open').addEventListener('click', () => showNav(!root.classList.contains('aui-nav-open')));
+$('nav-blanket').addEventListener('click', () => showNav(false));
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') showNav(false);
+});
+
 // The link of the page is the active one; the form of a voucher is under
 // "Ваучеры".
 for (const link of document.querySelectorAll('.aui-nav-item')) {
@@ -1026,7 +1038,7 @@ async function bankSettings(answered) {
 // columns of their tables, and the settings of the whole economy.
 const firmPlanFields = ['price', 'upgrade', 'levels', 'staff', 'upkeep'];
 const goodPlanFields = ['base', 'norm'];
-const firmGlobals = ['wage', 'fee', 'floor', 'ceiling', 'retail', 'storage', 'capital'];
+const firmGlobals = ['wage', 'fee', 'floor', 'ceiling', 'retail', 'storage', 'capital', 'maxFirms', 'foundingShares', 'floatShares', 'maxShares'];
 
 // settingsRows fills a table with a row of number fields for each item:
 // its name, then a field for each setting; it returns the fields.

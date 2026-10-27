@@ -626,9 +626,9 @@ a.like:hover svg { opacity: .7; }
 .like-count { color: var(--text-000); font-size: 9px; }
 
 /* The bar under a post, as on a phone, smaller: the heart, the comments
-   and "Поделиться" are pills with their numbers, the words of the menu
-   after them on the right. */
-.post-bar { flex-wrap: wrap; justify-content: flex-start; gap: 5px; margin-top: 6px; padding: 6px 0 2px; border-top: 1px solid var(--line-ececec); }
+   and "Поделиться" are pills with their numbers, "⋯" on the right opens
+   the actions. */
+.post-bar { justify-content: flex-start; gap: 5px; margin-top: 6px; padding: 2px 0; }
 .post-bar .like {
   gap: 5px;
   min-width: 34px;
@@ -643,7 +643,48 @@ a.like:hover svg { opacity: .7; }
 .post-bar .like.liked svg { opacity: 1; }
 .post-bar .like-count { color: var(--text-555); font-size: 11px; }
 .post-bar .like-count:empty { display: none; }
-.post-bar-links { margin-left: auto; white-space: nowrap; }
+.post-bar .post-more { margin-left: auto; justify-content: center; min-width: 0; background: none; }
+.post-bar .post-more svg { opacity: .6; }
+.post-bar .post-more.drop-anchor { background: var(--back-f2f5f8); }
+
+/* The list of "⋯": the actions of a post under it. */
+.drop-menu {
+  position: absolute;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  min-width: 170px;
+  padding: 4px 0;
+  background: var(--back-fff);
+  border: 1px solid var(--line-c0cad5);
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .15);
+}
+.drop-item {
+  padding: 6px 14px;
+  border: 0;
+  background: none;
+  color: var(--text-2b587a);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.drop-item:hover { background: var(--back-f2f5f8); }
+.drop-item.danger { color: var(--text-c33); }
+
+/* What an action says, for a moment, at the bottom of the screen. */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 130;
+  padding: 8px 16px;
+  background: var(--back-3e3e3e);
+  border-radius: 4px;
+  color: var(--text-fff);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
 
 /* Comments: a post with a small avatar. */
 .comment .post-avatar img { width: 30px; height: 30px; }
@@ -1984,7 +2025,41 @@ a.poll-result-name { cursor: pointer; }
 .firm-good { display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
 .firm-recipe { line-height: 20px; }
 .firm-recipe .firm-icon { margin: -2px 0 0; }
-.firm-clock { text-align: right; }
+.firm-clock { display: flex; gap: 8px; align-items: center; margin: 4px 0 8px; }
+.firm-clock .hint { flex: none; }
+.firm-clock .meter { flex: 1; }
+a.firm-tile { transition: transform 0.15s, box-shadow 0.15s; }
+a.firm-tile:hover { box-shadow: 0 2px 6px var(--line-c5d0db); transform: translateY(-2px); }
+a.firm-tile.working .firm-tile-icon .firm-icon { animation: firm-work 1.6s ease-in-out infinite; }
+.firm-tile-side { display: flex; flex: none; flex-direction: column; gap: 4px; align-items: center; }
+.firm-stat-trend { display: flex; gap: 6px; align-items: center; }
+.firm-changed { animation: firm-changed 1.4s ease-out; }
+.firm-line { display: flex; gap: 6px; align-items: center; margin: 2px 0 8px; padding: 10px; overflow: hidden; background: linear-gradient(var(--back-f2f5f8), var(--back-fff)); border: 1px solid var(--line-dae1e8); }
+.firm-line-goods { display: flex; flex: none; gap: 2px; }
+.firm-line-source { flex: none; color: var(--text-808080); font-style: italic; }
+.firm-belt { position: relative; flex: 1; min-width: 40px; height: 24px; border-bottom: 3px dashed var(--line-8fa7c2); }
+.firm-belt-item { position: absolute; bottom: 1px; left: 0; animation: firm-belt var(--belt-time, 4s) linear infinite; }
+.firm-belt-item .firm-icon { display: block; }
+.firm-belt-item.n1 { animation-delay: calc(var(--belt-time, 4s) / -3); }
+.firm-belt-item.n2 { animation-delay: calc(var(--belt-time, 4s) / -1.5); }
+.firm-line-plant { position: relative; flex: none; padding: 3px; background: var(--back-fff); border: 1px solid var(--line-c5d0db); }
+.firm-line-plant .firm-icon { display: block; animation: firm-work 1.6s ease-in-out infinite; }
+.firm-line-smoke { position: absolute; top: -2px; right: 6px; width: 8px; height: 8px; background: var(--back-d9e1ea); border-radius: 50%; animation: firm-smoke 2.4s ease-out infinite; }
+.firm-line-out { display: flex; flex: none; flex-direction: column; gap: 2px; align-items: center; min-width: 64px; text-align: center; }
+.firm-line-out b { color: var(--text-43a047); }
+.firm-line.stopped .firm-belt-item, .firm-line.stopped .firm-line-plant .firm-icon, .firm-line.stopped .firm-line-smoke { animation: none; }
+.firm-line.stopped .firm-line-smoke { display: none; }
+.firm-line.stopped .firm-belt-item.n1, .firm-line.stopped .firm-belt-item.n2 { display: none; }
+.firm-line.stopped .firm-line-plant, .firm-line.stopped .firm-line-goods { filter: grayscale(1); opacity: 0.6; }
+.firm-line.stopped .firm-line-out b { color: var(--text-c33); }
+@keyframes firm-belt { from { left: 0; opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } to { left: calc(100% - 20px); opacity: 0; } }
+@keyframes firm-work { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@keyframes firm-smoke { from { opacity: 0.9; transform: translateY(0) scale(0.6); } to { opacity: 0; transform: translateY(-14px) scale(1.6); } }
+@keyframes firm-changed { from { background: var(--back-eee5b8); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) {
+  .firm-belt-item, .firm-line-plant .firm-icon, .firm-line-smoke, a.firm-tile.working .firm-tile-icon .firm-icon, .firm-changed { animation: none; }
+  a.firm-tile:hover { transform: none; }
+}
 .biz-subtitle { margin: 12px 0 6px; padding: 0 0 2px; border-bottom: 1px solid var(--line-e8ebee); color: var(--text-45688e); font-weight: bold; }
 
 /* A strip filled in part: the level, the storage, a share. */

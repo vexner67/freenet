@@ -1,72 +1,84 @@
-/* "Админ-панель", laid out as openvk's: the Atlassian AUI of its
-   AdminPresenter — a blue header, a grey sidebar of grouped links that
-   folds to icons, a white panel with a big heading, AUI tables, buttons,
-   lozenges and forms. Its own page and stylesheet: the site's look and
-   themes are not its. Every colour is a variable of the palette below;
-   the dark one is AUI's dark mode, the toggle in the header. */
+/* "Админ-панель": its own page and stylesheet, the site's look and themes
+   are not its. Laid out as openvk's AdminPresenter — a header, a sidebar
+   of grouped links that folds to icons, a page with a big heading, tables,
+   buttons, lozenges and forms — in a newer dress at the owner's wish:
+   white cards with soft shadows on a grey field, an indigo header and
+   rounded controls; on a phone the sidebar slides over the page. Every
+   colour is a variable of the palettes below; the dark one is the toggle
+   in the header. */
 
 html.aui {
-  --aui-header: #0747a6;
+  --aui-header: #1e1b4b;
+  --aui-header-end: #4338ca;
   --aui-header-text: #ffffff;
-  --aui-body: #f4f5f7;
+  --aui-header-subtle: #c7c9f9;
+  --aui-body: #f3f4f8;
   --aui-panel: #ffffff;
-  --aui-sidebar: #f4f5f7;
-  --aui-line: #dfe1e6;
-  --aui-rule: #8993a4;
-  --aui-text: #172b4d;
-  --aui-subtle: #6b778c;
-  --aui-icon: #42526e;
-  --aui-link: #0052cc;
-  --aui-hover: #ebecf0;
-  --aui-active: #dfe1e6;
-  --aui-primary: #0052cc;
-  --aui-primary-hover: #0065ff;
+  --aui-sidebar: #ffffff;
+  --aui-line: #e4e6ef;
+  --aui-rule: #d5d8e3;
+  --aui-text: #1f2335;
+  --aui-subtle: #6b7085;
+  --aui-icon: #5b6178;
+  --aui-link: #4f46e5;
+  --aui-hover: #f1f2f8;
+  --aui-active: #eef0ff;
+  --aui-primary: #4f46e5;
+  --aui-primary-end: #7c3aed;
+  --aui-primary-hover: #4338ca;
   --aui-primary-text: #ffffff;
-  --aui-button: #f4f5f7;
-  --aui-button-hover: #ebecf0;
-  --aui-button-text: #42526e;
-  --aui-input: #fafbfc;
-  --aui-input-focus: #4c9aff;
-  --aui-added: #006644;
-  --aui-added-back: #e3fcef;
-  --aui-removed: #bf2600;
-  --aui-removed-back: #ffebe6;
-  --aui-toggle-off: #6b778c;
-  --aui-toggle-on: #36b37e;
+  --aui-button: #f1f2f8;
+  --aui-button-hover: #e4e6f1;
+  --aui-button-text: #2f3450;
+  --aui-input: #ffffff;
+  --aui-input-focus: #6366f1;
+  --aui-ring: rgba(99, 102, 241, 0.22);
+  --aui-shadow: rgba(30, 35, 90, 0.08);
+  --aui-added: #0f7b53;
+  --aui-added-back: #e3f8ee;
+  --aui-removed: #c2331b;
+  --aui-removed-back: #fdecea;
+  --aui-toggle-off: #6b6fb0;
+  --aui-toggle-on: #22c55e;
   --aui-knob: #ffffff;
-  --aui-blanket: rgba(9, 30, 66, 0.54);
+  --aui-blanket: rgba(17, 19, 40, 0.5);
 }
 
 html.aui.aui-theme-dark {
-  --aui-header: #0c3e8c;
-  --aui-header-text: #e6edf6;
-  --aui-body: #1d2125;
-  --aui-panel: #22272b;
-  --aui-sidebar: #1d2125;
-  --aui-line: #38414a;
-  --aui-rule: #596773;
-  --aui-text: #c7d1db;
-  --aui-subtle: #8c9bab;
-  --aui-icon: #9fadbc;
-  --aui-link: #579dff;
-  --aui-hover: #2c333a;
-  --aui-active: #333c43;
-  --aui-primary: #579dff;
-  --aui-primary-hover: #85b8ff;
-  --aui-primary-text: #1d2125;
-  --aui-button: #2c333a;
-  --aui-button-hover: #38414a;
-  --aui-button-text: #b6c2cf;
-  --aui-input: #22272b;
-  --aui-input-focus: #85b8ff;
-  --aui-added: #7ee2b8;
-  --aui-added-back: #1c3329;
-  --aui-removed: #fd9891;
-  --aui-removed-back: #42221f;
-  --aui-toggle-off: #596773;
-  --aui-toggle-on: #4bce97;
-  --aui-knob: #1d2125;
-  --aui-blanket: rgba(3, 4, 4, 0.64);
+  --aui-header: #0f0d2e;
+  --aui-header-end: #312e81;
+  --aui-header-text: #eef0ff;
+  --aui-header-subtle: #a5a8e6;
+  --aui-body: #13151c;
+  --aui-panel: #1c1f2a;
+  --aui-sidebar: #181a23;
+  --aui-line: #2c3040;
+  --aui-rule: #353a4d;
+  --aui-text: #dfe2ee;
+  --aui-subtle: #9298b0;
+  --aui-icon: #a3a9c2;
+  --aui-link: #a5b4fc;
+  --aui-hover: #242836;
+  --aui-active: #2a2d4a;
+  --aui-primary: #6366f1;
+  --aui-primary-end: #8b5cf6;
+  --aui-primary-hover: #818cf8;
+  --aui-primary-text: #ffffff;
+  --aui-button: #262a38;
+  --aui-button-hover: #30354a;
+  --aui-button-text: #d3d7e6;
+  --aui-input: #151821;
+  --aui-input-focus: #818cf8;
+  --aui-ring: rgba(129, 140, 248, 0.28);
+  --aui-shadow: rgba(0, 0, 0, 0.35);
+  --aui-added: #6ee7b7;
+  --aui-added-back: #123326;
+  --aui-removed: #fca5a5;
+  --aui-removed-back: #3d1a1a;
+  --aui-toggle-off: #4b4f6b;
+  --aui-toggle-on: #22c55e;
+  --aui-knob: #ffffff;
+  --aui-blanket: rgba(0, 0, 0, 0.6);
   color-scheme: dark;
 }
 
@@ -81,6 +93,7 @@ body {
   background: var(--aui-body);
   color: var(--aui-text);
   font: 14px/20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 a { color: var(--aui-link); text-decoration: none; }
@@ -89,43 +102,107 @@ a:hover { text-decoration: underline; }
 /* The panel stays empty until the page is drawn, as the site's do. */
 .pending .aui-page-panel > * { visibility: hidden; }
 
-/* The header: the name of the site and the dark mode toggle. */
+/* The header: the menu button of a phone, the mark and the name of the
+   site, the dark mode toggle. It stays at the top. */
 .aui-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 55px;
-  padding: 0 10px 0 20px;
-  background: var(--aui-header);
+  gap: 12px;
+  height: 56px;
+  padding: 0 16px 0 20px;
+  background: linear-gradient(100deg, var(--aui-header), var(--aui-header-end));
   color: var(--aui-header-text);
+  box-shadow: 0 2px 10px var(--aui-shadow);
 }
 
 .aui-header-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: auto;
   color: var(--aui-header-text);
-  font-size: 24px;
-  line-height: 30px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
 }
 
 .aui-header-logo:hover { text-decoration: none; }
 
+.aui-header-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--aui-primary), var(--aui-primary-end));
+  color: var(--aui-primary-text);
+  font-size: 20px;
+  font-weight: 800;
+  box-shadow: inset 0 0 0 1px var(--aui-ring);
+}
+
+.aui-header-sub {
+  padding-left: 10px;
+  border-left: 1px solid var(--aui-header-subtle);
+  color: var(--aui-header-subtle);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Three lines that open the sidebar; only a phone has it. */
+.aui-header-menu {
+  display: none;
+  position: relative;
+  width: 40px;
+  height: 40px;
+  margin-left: -8px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.aui-header-menu span,
+.aui-header-menu::before,
+.aui-header-menu::after {
+  content: "";
+  position: absolute;
+  left: 11px;
+  width: 18px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--aui-header-text);
+}
+
+.aui-header-menu::before { top: 13px; }
+.aui-header-menu span { top: 19px; }
+.aui-header-menu::after { top: 25px; }
+
 .aui-toggle {
   position: relative;
-  width: 60px;
+  flex: none;
+  width: 56px;
   height: 28px;
   padding: 0;
   border: 0;
   border-radius: 14px;
   background: var(--aui-toggle-off);
   cursor: pointer;
+  transition: background-color 0.2s;
 }
 
 .aui-toggle::after {
-  content: "✕";
+  content: "☀";
   position: absolute;
-  right: 11px;
+  right: 9px;
   top: 4px;
   color: var(--aui-knob);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 20px;
 }
 
@@ -137,59 +214,80 @@ a:hover { text-decoration: underline; }
   height: 22px;
   border-radius: 50%;
   background: var(--aui-knob);
+  box-shadow: 0 1px 3px var(--aui-shadow);
   transition: left 0.2s;
 }
 
 .aui-toggle[aria-checked="true"] { background: var(--aui-toggle-on); }
-.aui-toggle[aria-checked="true"]::after { content: "✓"; left: 11px; right: auto; }
-.aui-toggle[aria-checked="true"] .aui-toggle-knob { left: 35px; }
+.aui-toggle[aria-checked="true"]::after { content: "☾"; left: 9px; right: auto; }
+.aui-toggle[aria-checked="true"] .aui-toggle-knob { left: 31px; }
 
-/* The sidebar: groups under grey headings, folded to icons. */
+/* The sidebar: groups under small headings, the page's link lit; it
+   stays in sight as the page scrolls and folds to icons. */
 .aui-content {
   flex: 1;
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
 }
 
 .aui-sidebar {
-  flex: 0 0 240px;
+  position: sticky;
+  top: 56px;
+  flex: 0 0 248px;
   min-width: 0;
+  height: calc(100vh - 56px);
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
   background: var(--aui-sidebar);
   border-right: 1px solid var(--aui-line);
 }
 
-.aui-sidebar-body { flex: 1; padding: 10px; }
-.aui-sidebar-group + .aui-sidebar-group { margin-top: 15px; }
+.aui-sidebar-body { flex: 1; padding: 14px 12px; }
+.aui-sidebar-group + .aui-sidebar-group { margin-top: 18px; }
 
 .aui-nav-heading {
-  padding: 0 10px;
+  padding: 0 12px 4px;
   color: var(--aui-subtle);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 18px;
   text-transform: uppercase;
 }
 
 .aui-nav-item {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin-top: 2px;
-  padding: 7px 10px;
-  border-radius: 3px;
+  padding: 8px 12px;
+  border-radius: 10px;
   color: var(--aui-text);
+  font-weight: 500;
+  transition: background-color 0.15s;
 }
 
 .aui-nav-item:hover { background: var(--aui-hover); text-decoration: none; }
 .aui-nav-item.active { background: var(--aui-active); color: var(--aui-link); font-weight: 600; }
 
+.aui-nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(var(--aui-primary), var(--aui-primary-end));
+}
+
 .aui-icon {
   flex: none;
   display: inline-block;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   background: var(--aui-icon);
   -webkit-mask: var(--icon) center / contain no-repeat;
   mask: var(--icon) center / contain no-repeat;
@@ -215,18 +313,20 @@ a:hover { text-decoration: underline; }
 .aui-icon-rules { --icon: url("/static/icons/admin-rules.svg"); }
 .aui-icon-collapse { --icon: url("/static/icons/admin-collapse.svg"); }
 
-.aui-sidebar-footer { padding: 10px; text-align: right; }
+.aui-sidebar-footer { padding: 10px 12px; border-top: 1px solid var(--aui-line); text-align: right; }
 
-.aui-collapsed .aui-sidebar { flex-basis: 56px; }
+.aui-collapsed .aui-sidebar { flex-basis: 64px; }
+.aui-collapsed .aui-sidebar-body { padding: 14px 8px; }
 .aui-collapsed .aui-sidebar-footer { text-align: center; }
 .aui-collapsed .aui-icon-collapse { transform: scaleX(-1); }
 .aui-collapsed .aui-nav-item-label { display: none; }
-.aui-collapsed .aui-nav-item { justify-content: center; padding: 8px 0; }
+.aui-collapsed .aui-nav-item { justify-content: center; padding: 10px 0; }
+.aui-collapsed .aui-nav-item.active::before { left: -8px; }
 
 /* Folded, a heading is the line between the groups. */
 .aui-collapsed .aui-nav-heading {
   height: 1px;
-  margin: 0 0 13px;
+  margin: 0 6px 14px;
   padding: 0;
   overflow: hidden;
   background: var(--aui-line);
@@ -235,37 +335,53 @@ a:hover { text-decoration: underline; }
 
 .aui-collapsed .aui-sidebar-group:first-child .aui-nav-heading { display: none; }
 
-/* The page. */
+.aui-nav-blanket { display: none; }
+
+/* The page: each section a white card on the grey field. */
 .aui-page-panel {
   flex: 1;
   min-width: 0;
-  align-self: flex-start;
-  padding: 20px;
-  background: var(--aui-panel);
-  border-bottom: 1px solid var(--aui-line);
+  padding: 28px 32px 40px;
 }
 
-.aui-page-panel > section { max-width: 1200px; }
+.aui-page-panel > section {
+  max-width: 1200px;
+  padding: 24px 28px 28px;
+  background: var(--aui-panel);
+  border: 1px solid var(--aui-line);
+  border-radius: 16px;
+  box-shadow: 0 6px 24px var(--aui-shadow);
+}
 
 h1 {
-  margin: 0 0 10px;
+  margin: 22px 0 12px;
   color: var(--aui-text);
-  font-size: 24px;
-  font-weight: 400;
-  line-height: 28px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+h1.aui-page-heading {
+  margin: 0 0 6px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 32px;
 }
 
 h2 {
-  margin: 20px 0 10px;
+  margin: 28px 0 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--aui-line);
   color: var(--aui-text);
   font-size: 16px;
-  font-weight: 600;
-  line-height: 20px;
+  font-weight: 700;
+  line-height: 22px;
 }
 
 hr {
   height: 1px;
-  margin: 10px 0 20px;
+  margin: 12px 0 8px;
   border: 0;
   background: var(--aui-rule);
 }
@@ -273,36 +389,64 @@ hr {
 .aui-page-header { display: flow-root; }
 .aui-page-header .aui-button { float: right; }
 
-/* "Сводка": the cards with the big numbers. */
+/* "Сводка": tiles with the big numbers, a coloured stripe at the top. */
 .admin-cards {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 32px;
-  margin-bottom: 30px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 8px;
 }
 
 .admin-card {
-  width: 400px;
-  max-width: 100%;
-  min-height: 100px;
-  padding: 10px;
+  position: relative;
+  min-height: 110px;
+  padding: 20px 20px 16px;
+  overflow: hidden;
+  background: var(--aui-panel);
   border: 1px solid var(--aui-line);
-  border-radius: 10px;
+  border-radius: 14px;
+  color: var(--aui-subtle);
+  overflow-wrap: anywhere;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 
+.admin-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--aui-primary), var(--aui-primary-end));
+}
+
+.admin-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px var(--aui-shadow); }
 .admin-card-centered { display: flex; flex-direction: column; justify-content: center; }
 
 .admin-card-digit {
-  font-size: 48px;
-  line-height: 60px;
+  margin-bottom: 2px;
+  background: linear-gradient(90deg, var(--aui-primary), var(--aui-primary-end));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 48px;
   word-break: break-all;
 }
 
-.admin-card ul { margin: 10px 0 0; padding-left: 40px; }
+.admin-card ul { margin: 10px 0 0; padding-left: 18px; color: var(--aui-text); }
 .admin-online { color: var(--aui-added); }
 
-/* Tables. */
-.aui-table-wrap { overflow-x: auto; }
+/* Tables: in a frame of their own, a header row on grey, the row under
+   the pointer lit. */
+.aui-table-wrap {
+  margin: 8px 0;
+  overflow-x: auto;
+  border: 1px solid var(--aui-line);
+  border-radius: 12px;
+}
 
 table.aui {
   width: 100%;
@@ -310,21 +454,25 @@ table.aui {
 }
 
 table.aui th {
-  padding: 7px 10px;
-  border-bottom: 2px solid var(--aui-line);
+  padding: 10px 14px;
+  background: var(--aui-hover);
+  border-bottom: 1px solid var(--aui-line);
   color: var(--aui-subtle);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   text-align: left;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 table.aui td {
-  padding: 7px 10px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--aui-line);
   vertical-align: middle;
 }
 
+table.aui tbody tr:last-child td { border-bottom: 0; }
 table.aui tbody tr:hover { background: var(--aui-hover); }
 
 .admin-code {
@@ -335,159 +483,181 @@ table.aui tbody tr:hover { background: var(--aui-hover); }
 
 /* "Пользователи": the search above the table, the people in it with
    their photos and checkmarks. */
-.admin-search { display: flex; gap: 10px; max-width: 500px; }
+.admin-search { display: flex; gap: 10px; max-width: 520px; }
 .admin-search .text { flex: 1; min-width: 0; }
 
-.admin-person { display: flex; align-items: center; gap: 8px; }
-.admin-person img.admin-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
-.admin-person img.admin-avatar.admin-club { border-radius: 3px; }
+.admin-person { display: flex; align-items: center; gap: 10px; }
+.admin-person img.admin-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+.admin-person img.admin-avatar.admin-club { border-radius: 8px; }
 .name-checkmark { margin-left: 2pt; }
 .aui-theme-dark .name-checkmark { filter: brightness(2.4); }
 
 .aui-empty { color: var(--aui-subtle); }
 
 /* "Подарки": each gift with its picture and the field of its price. */
-.admin-lead { color: var(--aui-subtle); }
-.admin-gift { display: flex; align-items: center; gap: 10px; }
-.admin-gift img { width: 40px; height: 40px; }
-form.aui.admin-price { display: flex; gap: 8px; align-items: center; }
-form.aui.admin-price .text { width: 110px; }
+.admin-lead { max-width: 900px; color: var(--aui-subtle); line-height: 22px; }
+.admin-gift { display: flex; align-items: center; gap: 12px; }
+.admin-gift img { width: 44px; height: 44px; }
+form.aui.admin-price { display: flex; gap: 8px; align-items: center; margin: 0; }
+form.aui.admin-price .text { width: 120px; }
 .admin-decor-now { color: var(--aui-subtle); }
-form.aui .admin-casino-field { width: 120px; }
-.admin-casino-stats { font-weight: bold; }
-.admin-casino-add { display: flex; gap: 12px; align-items: center; margin: 12px 0; }
+form.aui .admin-casino-field { width: 140px; }
+.admin-casino-stats { padding: 12px 16px; background: var(--aui-active); border-radius: 12px; color: var(--aui-text); font-weight: 600; }
+.admin-casino-add { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 12px 0; }
 
 form.aui.admin-rate { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
-form.aui.admin-rate label { font-weight: bold; }
-form.aui.admin-rate .text { width: 110px; }
+form.aui.admin-rate label { font-weight: 600; }
+form.aui.admin-rate .text { width: 120px; }
 form.aui.admin-rate .description { flex-basis: 100%; max-width: none; margin-top: 0; }
-.aui-pager { margin-top: 15px; text-align: right; }
+.aui-pager { margin-top: 16px; text-align: right; }
 
 /* "Реклама": each ad with its cover and site, the form's cover. */
-.admin-ad { display: flex; align-items: center; gap: 10px; }
-.admin-ad-cover { width: 64px; height: 40px; border-radius: 3px; object-fit: cover; }
+.admin-ad { display: flex; align-items: center; gap: 12px; }
+.admin-ad-cover { width: 72px; height: 44px; border-radius: 8px; object-fit: cover; }
 .admin-ad-site { color: var(--aui-subtle); font-size: 12px; }
 .admin-ad-text { min-width: 140px; max-width: 320px; color: var(--aui-subtle); white-space: pre-wrap; overflow-wrap: break-word; }
 .admin-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .admin-bet-outcome { display: flex; gap: 6px; margin: 0 0 6px; }
 .admin-bet-outcome .text { flex: 1; max-width: 250px; }
 .admin-times { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
-form.aui .admin-bet-odds, .admin-bet-outcome .admin-bet-odds { flex: none; width: 70px; }
+form.aui .admin-bet-odds, .admin-bet-outcome .admin-bet-odds { flex: none; width: 76px; }
 form.aui.admin-bet-odds-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
 .admin-stat { white-space: nowrap; }
 .admin-cover { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 8px; }
-.admin-cover img { max-width: 240px; max-height: 120px; border-radius: 3px; object-fit: cover; }
+.admin-cover img { max-width: 240px; max-height: 120px; border-radius: 10px; object-fit: cover; }
 
-/* Lozenges: the state of a voucher. */
+/* Lozenges: the state of a voucher, a ban. */
 .aui-lozenge {
   display: inline-block;
-  padding: 2px 4px 3px;
-  border-radius: 3px;
+  padding: 3px 8px;
+  border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  line-height: 11px;
+  letter-spacing: 0.03em;
+  line-height: 14px;
   text-transform: uppercase;
 }
 
 .aui-lozenge-success { background: var(--aui-added-back); color: var(--aui-added); }
 .aui-lozenge-removed { background: var(--aui-removed-back); color: var(--aui-removed); }
 
-/* Buttons. */
+/* Buttons: rounded, the main one a gradient. */
 .aui-button {
-  display: inline-block;
-  height: 32px;
-  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
   border: 0;
-  border-radius: 3px;
+  border-radius: 10px;
   background: var(--aui-button);
   color: var(--aui-button-text);
   font: inherit;
-  font-weight: 500;
-  line-height: 32px;
+  font-weight: 600;
+  line-height: 36px;
   cursor: pointer;
   white-space: nowrap;
+  transition: background-color 0.15s, box-shadow 0.15s, transform 0.1s;
 }
 
 .aui-button:hover { background: var(--aui-button-hover); text-decoration: none; }
-.aui-button:disabled { opacity: 0.5; cursor: default; }
-.aui-button-primary { background: var(--aui-primary); color: var(--aui-primary-text); }
+.aui-button:active { transform: translateY(1px); }
+.aui-button:focus-visible { outline: 0; box-shadow: 0 0 0 3px var(--aui-ring); }
+.aui-button:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+.aui-button-primary {
+  background: linear-gradient(135deg, var(--aui-primary), var(--aui-primary-end));
+  color: var(--aui-primary-text);
+  box-shadow: 0 4px 12px var(--aui-ring);
+}
+
 .aui-button-primary:hover { background: var(--aui-primary-hover); }
 .aui-button-subtle { background: transparent; }
 .aui-button-link { background: transparent; color: var(--aui-link); }
 .aui-button-link:hover { background: transparent; text-decoration: underline; }
-.aui-button-compact { height: 24px; line-height: 24px; }
+.aui-button-compact { height: 28px; padding: 0 10px; border-radius: 8px; font-size: 13px; line-height: 28px; }
 
 /* Messages over the page. */
 .aui-message {
-  margin-bottom: 15px;
-  padding: 15px 20px;
-  border-radius: 3px;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  border-radius: 12px;
 }
 
 .aui-message p { margin: 0; }
-.aui-message .title { margin-bottom: 5px; font-weight: 600; }
-.aui-message-error { background: var(--aui-removed-back); }
-.aui-message-success { background: var(--aui-added-back); }
+.aui-message .title { margin-bottom: 5px; font-weight: 700; }
+.aui-message-error { background: var(--aui-removed-back); color: var(--aui-removed); }
+.aui-message-success { background: var(--aui-added-back); color: var(--aui-added); }
 
 /* Forms: the label at the left of the field, the description under it. */
-form.aui { margin-top: 10px; }
+form.aui { margin-top: 12px; }
 
 form.aui .field-group {
   position: relative;
-  padding: 4px 0 4px 250px;
-  min-height: 40px;
+  padding: 6px 0 6px 260px;
+  min-height: 48px;
 }
 
 form.aui .field-group > label {
   float: left;
-  width: 235px;
-  margin-left: -250px;
-  padding: 6px 0;
+  width: 240px;
+  margin-left: -260px;
+  padding: 9px 0;
   color: var(--aui-subtle);
+  font-weight: 500;
   text-align: right;
 }
 
-form.aui .text {
-  width: 100%;
-  max-width: 500px;
-  height: 36px;
-  padding: 4px 8px;
-  border: 2px solid var(--aui-line);
-  border-radius: 3px;
+form.aui .text,
+form.aui .select {
+  height: 40px;
+  padding: 6px 12px;
+  border: 1px solid var(--aui-rule);
+  border-radius: 10px;
   background: var(--aui-input);
   color: var(--aui-text);
   font: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
+
+form.aui .text { width: 100%; max-width: 500px; }
 
 form.aui .textarea {
   display: block;
   width: 100%;
   max-width: 500px;
-  padding: 6px 8px;
-  border: 2px solid var(--aui-line);
-  border-radius: 3px;
+  padding: 8px 12px;
+  border: 1px solid var(--aui-rule);
+  border-radius: 10px;
   background: var(--aui-input);
   color: var(--aui-text);
   font: inherit;
   resize: vertical;
 }
 
-form.aui .file { padding: 6px 0; color: var(--aui-text); font: inherit; }
-form.aui div.checkbox { display: flex; align-items: center; gap: 6px; padding: 6px 0; }
+form.aui .file { padding: 8px 0; color: var(--aui-text); font: inherit; }
+form.aui div.checkbox { display: flex; align-items: center; gap: 8px; padding: 9px 0; }
 form.aui div.checkbox label { color: var(--aui-text); }
+form.aui input[type="checkbox"], form.aui input[type="radio"] { accent-color: var(--aui-primary); }
 
 form.aui .text:focus,
 form.aui .textarea:focus,
-form.aui .select:focus { outline: 0; border-color: var(--aui-input-focus); background: var(--aui-panel); }
+form.aui .select:focus { outline: 0; border-color: var(--aui-input-focus); box-shadow: 0 0 0 3px var(--aui-ring); }
 
-form.aui .select {
-  height: 36px;
-  padding: 4px 8px;
-  border: 2px solid var(--aui-line);
-  border-radius: 3px;
-  background: var(--aui-input);
-  color: var(--aui-text);
-  font: inherit;
+form.aui .description {
+  margin-top: 6px;
+  max-width: 500px;
+  color: var(--aui-subtle);
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.buttons-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px 0 0 260px;
 }
 
 /* A block of a page: the lozenge, until when and the button to lift it. */
@@ -502,18 +672,19 @@ form.aui .select {
 .admin-alert-text { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-alert-text.empty { color: var(--aui-subtle); }
 .admin-ban-until { color: var(--aui-subtle); font-size: 12px; }
+
 /* "Титулы": the titles a person holds, each with "Убрать", and the badges
    to choose from for a new one. */
 .admin-titles { margin: 0 0 12px; padding: 0; list-style: none; }
-.admin-titles li { display: flex; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--aui-line); }
+.admin-titles li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--aui-line); }
 .admin-titles li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .admin-titles img { flex: none; }
 .admin-title-icons { display: flex; flex-wrap: wrap; gap: 6px; }
-.admin-title-icons label { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px; border: 1px solid transparent; border-radius: 3px; cursor: pointer; font-size: 12px; }
-.admin-title-icons label:has(input:checked) { border-color: var(--aui-link); background: var(--aui-hover); }
+.admin-title-icons label { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; border: 1px solid transparent; border-radius: 10px; cursor: pointer; font-size: 12px; }
+.admin-title-icons label:has(input:checked) { border-color: var(--aui-link); background: var(--aui-active); }
 .admin-title-icons input { position: absolute; opacity: 0; pointer-events: none; }
 
-/* AUI's dialog over a blanket: "Заблокировать пользователя". */
+/* A dialog over a blanket: "Заблокировать пользователя". */
 .aui-blanket {
   position: fixed;
   inset: 0;
@@ -523,55 +694,70 @@ form.aui .select {
   justify-content: center;
   padding: 80px 16px 16px;
   background: var(--aui-blanket);
+  backdrop-filter: blur(2px);
 }
 
 .aui-dialog {
   width: 600px;
   max-width: 100%;
-  border-radius: 3px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  border-radius: 16px;
   background: var(--aui-panel);
-  box-shadow: 0 8px 16px -4px var(--aui-blanket);
+  box-shadow: 0 20px 48px var(--aui-shadow);
 }
 
-.aui-dialog-header { padding: 16px 20px 0; }
-.aui-dialog-header h2 { margin: 0; font-size: 20px; font-weight: 500; }
-form.aui.aui-dialog-content { margin: 0; padding: 10px 20px 20px; }
+.aui-dialog-header { padding: 20px 24px 0; }
+.aui-dialog-header h2 { margin: 0; padding: 0; border: 0; font-size: 20px; font-weight: 700; }
+form.aui.aui-dialog-content { margin: 0; padding: 12px 24px 24px; }
 .aui-dialog .field-group { padding-left: 170px; }
 .aui-dialog .field-group > label { width: 155px; margin-left: -170px; }
 .aui-dialog .buttons-container { padding-left: 170px; }
 
-form.aui .description {
-  margin-top: 5px;
-  max-width: 500px;
-  color: var(--aui-subtle);
-  font-size: 12px;
-  line-height: 16px;
-}
-
-.buttons-container {
-  display: flex;
-  gap: 10px;
-  padding: 10px 0 0 250px;
-}
-
-/* A phone: the sidebar folded to icons, labels over the fields. */
+/* A phone: the sidebar slides over the page from the menu button, the
+   sections lose their margins, labels stand over the fields. */
 @media (max-width: 800px) {
-  .aui-sidebar { flex-basis: 56px; }
-  .aui-sidebar-footer { display: none; }
-  .aui-nav-item-label { display: none; }
-  .aui-nav-item { justify-content: center; padding: 8px 0; }
+  .aui-header { gap: 8px; padding: 0 12px; }
+  .aui-header-menu { display: block; }
+  .aui-header-sub { display: none; }
 
-  .aui-nav-heading {
-    height: 1px;
-    margin: 0 0 13px;
-    padding: 0;
-    overflow: hidden;
-    background: var(--aui-line);
-    font-size: 0;
+  .aui-sidebar,
+  .aui-collapsed .aui-sidebar {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    bottom: 0;
+    z-index: 60;
+    width: min(290px, 85vw);
+    height: auto;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 8px 0 24px var(--aui-shadow);
   }
 
-  .aui-sidebar-group:first-child .aui-nav-heading { display: none; }
-  .aui-page-panel { padding: 16px; }
+  .aui-nav-open .aui-sidebar { transform: none; }
+  .aui-sidebar-footer { display: none; }
+  .aui-collapsed .aui-sidebar-body { padding: 14px 12px; }
+  .aui-collapsed .aui-nav-item-label { display: inline; }
+  .aui-collapsed .aui-nav-item { justify-content: flex-start; padding: 8px 12px; }
+  .aui-collapsed .aui-nav-heading { height: auto; margin: 0; padding: 0 12px 4px; overflow: visible; background: none; font-size: 11px; }
+  .aui-collapsed .aui-sidebar-group:first-child .aui-nav-heading { display: block; }
+  .aui-nav-item { padding: 11px 12px; font-size: 15px; }
+
+  .aui-nav-open .aui-nav-blanket {
+    position: fixed;
+    inset: 56px 0 0;
+    z-index: 55;
+    display: block;
+    background: var(--aui-blanket);
+  }
+
+  .aui-page-panel { padding: 12px 10px 24px; }
+  .aui-page-panel > section { padding: 18px 14px 20px; border-radius: 14px; }
+  h1.aui-page-heading { font-size: 22px; line-height: 28px; }
+  .admin-cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .admin-card { min-height: 0; padding: 16px 14px 12px; }
+  .admin-card-digit { font-size: 30px; line-height: 38px; }
 
   form.aui .field-group { padding-left: 0; }
 
@@ -580,16 +766,20 @@ form.aui .description {
     display: block;
     width: auto;
     margin-left: 0;
-    padding: 5px 0;
+    padding: 4px 0;
     text-align: left;
   }
 
   form.aui .text,
   form.aui .textarea,
   form.aui .select { font-size: 16px; }
+  form.aui .text, form.aui .textarea { max-width: none; }
   .buttons-container,
   .aui-dialog .buttons-container,
   .aui-dialog .field-group { padding-left: 0; }
+  .buttons-container .aui-button { flex: 1; }
   .aui-dialog .field-group > label { margin-left: 0; }
   .aui-blanket { padding-top: 16px; }
+  .aui-dialog { max-height: calc(100vh - 32px); }
+  table.aui th, table.aui td { padding: 9px 10px; }
 }

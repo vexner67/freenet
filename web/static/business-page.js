@@ -21,6 +21,7 @@ import {
 } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
+import { lineChart, sparkline } from './charts.js';
 import { chips, isOpen, meter, popover, segmented, slider, stepper } from './controls.js';
 import { tr } from './i18n.js';
 
@@ -30,6 +31,7 @@ let state = null;
 let me = null;
 let balance = 0;
 let busy = false;
+let asked = 0; // when refresh last asked for the city
 // The kind chosen to found, kept while the page is redrawn.
 let chosen = '';
 
@@ -233,18 +235,48 @@ function rate(spec) {
   return tr('в час на рабочего: {0}', spec.sells.map((g) => `${goodName(g).toLowerCase()} — ${decimal(spec.rate[g])}`).join(', '));
 }
 
-// clock says when the hour of the enterprises ends; the page keeps it
-// going.
+// clock says when the hour of the enterprises ends: a bar of the hour
+// filling up and the minutes and seconds left; the page ticks it every
+// second.
 function clock() {
-  const node = el('p', { className: 'hint firm-hint firm-clock' });
+  const node = el('div', { className: 'firm-clock' });
   tick(node);
   return node;
 }
 
+const hourLength = 3600000;
+
 function tick(node) {
   if (!state?.nextHour) return;
-  const left = Math.max(0, Math.ceil((Date.parse(state.nextHour) - Date.now()) / 60000));
-  node.textContent = tr('Следующий рабочий час закончится в {0} — через {1} мин.', firmHour(state.nextHour), left);
+  const left = Math.max(0, Date.parse(state.nextHour) - Date.now());
+  const seconds = Math.ceil(left / 1000);
+  const countdown = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  node.replaceChildren(
+    el('span', { className: 'hint', textContent: tr('Рабочий час закончится в {0}', firmHour(state.nextHour)) }),
+    meter(hourLength - Math.min(left, hourLength), hourLength, left ? countdown : tr('считаем…')));
+}
+
+// profits are the profits of the hours of an enterprise, oldest first.
+const profits = (f) => [...f.hours].sort((a, b) => a.hour.localeCompare(b.hour))
+  .map((h) => h.income - h.purchases - h.wages - h.upkeep - h.fees);
+
+// trend is a sparkline of the profits of the last hours.
+const trend = (f, width) => (f.hours.length > 1 ? sparkline(profits(f), { width, height: 22 }) : null);
+
+// watched marks a number the page compares with what it showed before:
+// one that changed blinks once.
+const watched = (key, node) => {
+  node.dataset.watch = key;
+  return node;
+};
+const seen = new Map();
+
+function blink() {
+  for (const node of document.querySelectorAll('[data-watch]')) {
+    const before = seen.get(node.dataset.watch);
+    if (before !== undefined && before !== node.textContent) node.classList.add('firm-changed');
+    seen.set(node.dataset.watch, node.textContent);
+  }
 }
 
 // --- "Мои предприятия" ---
@@ -277,14 +309,17 @@ function steps() {
 
 function tile(f) {
   const fact = (name, value) => el('tr', {}, el('td', { className: 'firm-tile-label', textContent: name }), value instanceof Node ? el('td', {}, value) : el('td', { textContent: value }));
-  return el('a', { className: 'firm-tile', href: firmPath(f), onclick: follow },
-    el('span', { className: 'firm-tile-icon' }, firmIcon(f.kind, 48)),
+  const working = !idle(f) && f.workers > 0;
+  return el('a', { className: working ? 'firm-tile working' : 'firm-tile', href: firmPath(f), onclick: follow },
+    el('span', { className: 'firm-tile-side' },
+      el('span', { className: 'firm-tile-icon' }, firmIcon(f.kind, 48)),
+      trend(f, 56)),
     el('span', { className: 'firm-tile-text' },
       el('b', { textContent: f.name }),
       el('span', { className: 'firm-tile-kind', textContent: `${firmKindName(f.kind)} · ${tr('{0} ур.', f.level)}${directs(f) ? ` · ${tr('директор')}` : ''}` }),
       el('table', { className: 'firm-tile-facts' },
-        fact(tr('Касса'), money(f.cash)),
-        fact(tr('За сутки'), signed(f.profit)),
+        fact(tr('Касса'), watched(`${f.id}:cash`, el('span', { textContent: money(f.cash) }))),
+        fact(tr('За сутки'), watched(`${f.id}:profit`, el('span', {}, signed(f.profit)))),
         fact(tr('Акции'), `${held(f)} (${sharePercent(held(f), f.shares)})`),
         fact(tr('Станки'), idle(f) ? el('span', { className: 'firm-down', textContent: tr('забастовка') }) : meter(100 - f.wear, 100, tr('{0} %', Math.round(100 - f.wear)), wearTone(f.wear))))));
 }
@@ -443,10 +478,11 @@ function header(f, plan) {
 }
 
 // plaque is a plaque of the card; onclick opens its mini window.
-function plaque(name, value, sub, onclick = null) {
+function plaque(name, value, sub, onclick = null, key = '') {
+  const shown = el('div', { className: 'firm-stat-value' }, value);
   const node = el(onclick ? 'button' : 'div', { className: onclick ? 'firm-stat clickable' : 'firm-stat' },
     el('div', { className: 'firm-stat-name' }, name, onclick ? el('span', { className: 'firm-stat-more', textContent: '▾' }) : null),
-    el('div', { className: 'firm-stat-value' }, value),
+    key ? watched(key, shown) : shown,
     el('div', { className: 'firm-stat-sub' }, sub));
   if (onclick) {
     node.type = 'button';
@@ -458,9 +494,9 @@ function plaque(name, value, sub, onclick = null) {
 function stats(f, plan) {
   const own = directs(f);
   return el('div', { className: 'firm-stats' },
-    plaque(tr('Касса'), money(f.cash), f.escrow > 0 ? tr('и {0} в заявках', money(f.escrow)) : tr('расходы {0} в час', money(f.upkeep + f.workers * f.wage)), own ? (a) => cashBox(a, f) : null),
-    plaque(tr('За сутки'), signed(f.profit), tr('прибыль за {0} ч.', f.hours.length)),
-    plaque(tr('Рабочие'), `${f.workers} / ${f.seats}`, tr('выработка {0} %', Math.round(f.productivity * 100)), own ? (a) => staffBox(a, f) : null),
+    plaque(tr('Касса'), money(f.cash), f.escrow > 0 ? tr('и {0} в заявках', money(f.escrow)) : tr('расходы {0} в час', money(f.upkeep + f.workers * f.wage)), own ? (a) => cashBox(a, f) : null, `${f.id}:cash`),
+    plaque(tr('За сутки'), el('span', { className: 'firm-stat-trend' }, signed(f.profit), trend(f, 64)), tr('прибыль за {0} ч.', f.hours.length), null, `${f.id}:profit`),
+    plaque(tr('Рабочие'), `${f.workers} / ${f.seats}`, tr('выработка {0} %', Math.round(f.productivity * 100)), own ? (a) => staffBox(a, f) : null, `${f.id}:workers`),
     plaque(tr('Уровень'), `${f.level} / ${plan.levels}`, f.upgradeCost ? tr('следующий — {0}', money(f.upgradeCost * 100)) : tr('высший'), own ? (a) => levelBox(a, f, plan) : null),
     plaque(tr('Станки'), meter(100 - f.wear, 100, tr('{0} %', Math.round(100 - f.wear)), wearTone(f.wear)), f.wear >= 30 ? tr('изношены — делают меньше') : tr('в порядке'), own ? (a) => repairBox(a, f) : null),
     plaque(tr('Акция'), money(shareOf(f)), f.float > 0 ? tr('{0} новых на бирже', groupedVotes(f.float)) : tr('торгуется в «Акциях»'), (a) => shareBox(a, f)),
@@ -613,6 +649,7 @@ function production(f) {
     : tr('{0} шт.', decimal(workers * spec.rate[spec.output]));
 
   return [
+    workshop(f, spec, workers),
     el('div', { className: 'firm-work' },
       el('span', { textContent: rate(spec) }),
       el('b', { textContent: tr('Сейчас в час: {0}', now) })),
@@ -622,6 +659,36 @@ function production(f) {
       ? tr('Нажмите на товар, чтобы продать его государству, купить или настроить склад: он сам закупает сырьё и продаёт продукцию по ценам не хуже заданных.')
       : tr('Склад сам закупает сырьё и продаёт продукцию государству.')),
   ];
+}
+
+// workshop is the enterprise at work: its raw materials ride a belt into
+// it and its goods come out, the faster the more workers it has; when no
+// one works, everything stands still.
+function workshop(f, spec, workers) {
+  const inputs = spec.sells.length ? spec.sells : spec.inputs.map((i) => i.good);
+  const made = spec.sells.length ? [] : [spec.output];
+  const empty = (g) => !f.stock.some((s) => s.good === g && s.units > 0);
+  const short = spec.sells.length ? inputs.every(empty) : inputs.some(empty);
+  const stopped = workers <= 0 || short;
+  const item = (good, i) => el('span', { className: `firm-belt-item n${i}` }, goodIcon(good, 20));
+  const belt = (goods) => el('span', { className: 'firm-belt' }, ...[0, 1, 2].map((i) => item(goods[i % goods.length], i)));
+  const each = (goods) => el('span', { className: 'firm-line-goods' }, ...goods.map((g) => goodIcon(g, 28)));
+  const output = spec.sells.length
+    ? el('img', { className: 'firm-icon', src: '/static/firms/dividends.svg', alt: '', width: 28, height: 28 })
+    : each(made);
+  const amount = spec.sells.length ? tr('выручка') : tr('+{0} в час', decimal(workers * spec.rate[spec.output]));
+
+  const node = el('div', { className: stopped ? 'firm-line stopped' : 'firm-line' },
+    inputs.length ? each(inputs) : el('span', { className: 'firm-line-source', textContent: tr('недра') }),
+    inputs.length ? belt(inputs) : belt(made),
+    el('span', { className: 'firm-line-plant' }, firmIcon(f.kind, 48), el('span', { className: 'firm-line-smoke' })),
+    belt(spec.sells.length ? inputs : made),
+    el('span', { className: 'firm-line-out' }, output, el('b', { textContent: idle(f) ? tr('забастовка') : workers <= 0 ? tr('нет рабочих') : short ? (spec.sells.length ? tr('нет товара') : tr('нет сырья')) : amount })));
+  // The belt runs from 6 s a parcel with one worker in ten seats to 1.5 s
+  // with all of them.
+  const load = Math.min(1, workers / Math.max(1, f.seats));
+  node.style.setProperty('--belt-time', `${(6 - 4.5 * load).toFixed(2)}s`);
+  return node;
 }
 
 function goodTile(f, spec, s) {
@@ -878,11 +945,16 @@ function report(f) {
   const costs = (h) => h.purchases + h.wages + h.upkeep + h.fees;
   const sum = (pick) => hours.reduce((n, h) => n + pick(h), 0);
   const profit = (h) => h.income - costs(h);
-  return table(
+  let total = 0;
+  const points = [...hours].reverse().map((h) => ({ time: h.hour, value: (total += profit(h)) }));
+  return el('div', {},
+    points.length > 1 ? el('div', { className: 'biz-subtitle', textContent: tr('Прибыль с начала суток') }) : null,
+    points.length > 1 ? lineChart(points, { height: 150, format: (n) => (n > 0 ? '+' : '') + hundredths(n), when: firmHour, tick: firmHour }) : null,
+    table(
     [[tr('Час'), 0], [tr('Сделано'), 66, true], [tr('Куплено'), 66, true], [tr('Продано'), 66, true], [tr('Выручка'), 76, true], [tr('Расходы'), 76, true], [tr('Прибыль'), 90, true]],
     hours.map((h) => [firmHour(h.hour), h.made, h.bought, h.sold, hundredths(h.income), hundredths(costs(h)), signed(profit(h))]),
     [tr('Итого'), sum((h) => h.made), sum((h) => h.bought), sum((h) => h.sold), hundredths(sum((h) => h.income)), hundredths(sum(costs)), signed(sum(profit))],
-  );
+  ));
 }
 
 function holders(f) {
@@ -1019,17 +1091,19 @@ function show() {
   else if (tab === 'guide') nodes = guide();
   else nodes = myFirms();
   $('firm-view').replaceChildren(...nodes.filter(Boolean));
+  blink();
 }
 
 // refresh asks for the city again once its hour ends, unless something is
-// being typed or a dialog is open; the clocks go on every half minute.
+// being typed or a dialog is open; the clocks go on every second.
 function refresh() {
   for (const node of document.querySelectorAll('.firm-clock')) tick(node);
-  if (!state?.nextHour || Date.now() < Date.parse(state.nextHour) + 5000 || busy) return;
+  if (!state?.nextHour || Date.now() < Date.parse(state.nextHour) + 5000 || busy || Date.now() - asked < 30000) return;
   const typing = document.activeElement?.closest?.('#firm-view') && document.activeElement.matches('input, select');
   if (typing || document.querySelector('.modal') || isOpen() || document.hidden) return;
 
   busy = true;
+  asked = Date.now();
   api.firms()
     .then((city) => {
       state = city;
@@ -1059,7 +1133,7 @@ if (!me || !answered) {
   try {
     state = await answered;
     show();
-    setInterval(refresh, 30000);
+    setInterval(refresh, 1000);
   } catch (e) {
     showError($('error'), e);
   }

@@ -16,11 +16,13 @@
 </head>
 <body>
 <header class="aui-header">
-  <a class="aui-header-logo" href="/">Freenet</a>
+  <button class="aui-header-menu" id="nav-open" type="button" title="Меню" aria-controls="sidebar" aria-expanded="false"><span></span></button>
+  <a class="aui-header-logo" href="/"><span class="aui-header-mark">f</span><span class="aui-header-name">Freenet</span><span class="aui-header-sub">Админ-панель</span></a>
   <button class="aui-toggle" id="switch-theme" type="button" role="switch" aria-checked="false" title="Тёмная тема"><span class="aui-toggle-knob"></span></button>
 </header>
 
 <div class="aui-content">
+  <div class="aui-nav-blanket" id="nav-blanket"></div>
   <nav class="aui-sidebar" id="sidebar" aria-label="Админ-панель">
     <div class="aui-sidebar-body">
       <div class="aui-sidebar-group">
@@ -619,7 +621,7 @@
 
     <section id="business" hidden>
       <h1 class="aui-page-heading">Бизнес</h1>
-      <p class="admin-lead">Люди основывают предприятия за голоса: добывающие (ферма, рудник, нефтевышка, лесхоз) делают сырьё, перерабатывающие делают из него материалы, фабрики — товары, а магазины продают товары городу. Сырьё и материалы продаются на общей бирже заявками людей или государству, которое покупает дешевле нормы и продаёт дороже: чем больше с ним торгуют за сутки, тем хуже его цены. Зарплаты и содержание идут из кассы предприятия каждый час. У каждого предприятия 100 акций: их продают и выпускают за голоса, директор — тот, у кого их больше всех, а дивиденды и ликвидация делятся по акциям. Голоса за основание, вклады и акции уходят в Казну, дивиденды и ликвидация — из неё. Новые настройки действуют с ближайшего часа.</p>
+      <p class="admin-lead">Люди основывают предприятия за голоса: добывающие (ферма, рудник, нефтевышка, лесхоз) делают сырьё, перерабатывающие делают из него материалы, фабрики — товары, а магазины продают товары городу. Сырьё и материалы продаются на общей бирже заявками людей или государству, которое покупает дешевле нормы и продаёт дороже: чем больше с ним торгуют за сутки, тем хуже его цены. Зарплаты и содержание идут из кассы предприятия каждый час. У основателя — 100 акций, ещё 20 продаёт биржа (числа задаются ниже); акции продают и выпускают за голоса, директор — тот, у кого их больше всех, а дивиденды и ликвидация делятся по акциям. Голоса за основание, вклады и акции уходят в Казну, дивиденды и ликвидация — из неё. Новые настройки действуют с ближайшего часа.</p>
       <p class="admin-casino-stats" id="business-stats"></p>
       <div class="aui-message aui-message-success" id="business-saved" hidden></div>
       <form class="aui" id="business-form">
@@ -665,6 +667,27 @@
         <div class="field-group">
           <label for="business-capital">Стартовый капитал, % цены</label>
           <input class="text admin-casino-field" id="business-capital" type="number" min="0" max="100" required>
+        </div>
+        <h2>Предприятия и акции</h2>
+        <div class="field-group">
+          <label for="business-maxFirms">Предприятий у человека</label>
+          <input class="text admin-casino-field" id="business-maxFirms" type="number" min="1" max="1000" required>
+          <div class="description">Сколько предприятий один человек может возглавлять, от 1 до 1000.</div>
+        </div>
+        <div class="field-group">
+          <label for="business-foundingShares">Акций у основателя</label>
+          <input class="text admin-casino-field" id="business-foundingShares" type="number" min="1" max="1000000" required>
+          <div class="description">Столько акций получает основатель нового предприятия.</div>
+        </div>
+        <div class="field-group">
+          <label for="business-floatShares">Акций в продаже при основании</label>
+          <input class="text admin-casino-field" id="business-floatShares" type="number" min="0" max="1000000" required>
+          <div class="description">Столько новых акций биржа продаёт, когда предприятие основано; 0 — ни одной.</div>
+        </div>
+        <div class="field-group">
+          <label for="business-maxShares">Наибольшее число акций</label>
+          <input class="text admin-casino-field" id="business-maxShares" type="number" min="1" max="1000000" required>
+          <div class="description">Больше акций у предприятия не будет: выпуск сверх него не пройдёт. До 1 000 000.</div>
         </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
