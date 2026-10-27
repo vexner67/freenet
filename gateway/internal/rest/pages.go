@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/vexner67/freenet/pkg/errs"
 )
 
 // pageCSP allows only our own scripts and styles and no inline code, so
@@ -156,12 +160,50 @@ func (a *assets) worker() http.Handler {
 	})
 }
 
-// page serves a page with the paths of its assets naming their versions.
+// The pages of a phone (web/m/) are those of a computer laid out anew
+// for a narrow screen, as m.vk.com was: the same addresses, scripts and
+// API. A phone gets one where there is one, the computer's elsewhere; the
+// cookie "site" keeps what the person chose at the bottom of a page —
+// "full" or "m" — over what the browser says it is.
+const (
+	phoneDir   = "m"
+	siteCookie = "site"
+	siteFull   = "full"
+	sitePhone  = "m"
+)
+
+// phoneAgent is what the browsers of phones say they are. A tablet is
+// wide enough for the pages of a computer: an Android one does not say
+// "Mobile", an iPad does and is told apart.
+var phoneAgent = regexp.MustCompile(`Mobi|iPhone|iPod|Opera Mini`)
+
+// wantsPhone is whether the request asks for the pages of a phone.
+func wantsPhone(r *http.Request) bool {
+	if c, err := r.Cookie(siteCookie); err == nil {
+		switch c.Value {
+		case siteFull:
+			return false
+		case sitePhone:
+			return true
+		}
+	}
+
+	agent := r.UserAgent()
+
+	return phoneAgent.MatchString(agent) && !strings.Contains(agent, "iPad")
+}
+
+// page serves a page with the paths of its assets naming their versions:
+// a phone's own one when it asks for it and there is one.
 func (a *assets) page(dir, name string) http.Handler {
 	path := filepath.Join(dir, name)
+	phone := filepath.Join(dir, phoneDir, name)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		html, err := os.ReadFile(path) //nolint:gosec // a fixed file of the website
+		// The same address is another page for a phone.
+		w.Header().Add("Vary", "Cookie, User-Agent")
+
+		html, err := readPage(path, phone, wantsPhone(r))
 		if err != nil {
 			http.NotFound(w, r)
 			return
@@ -177,6 +219,27 @@ func (a *assets) page(dir, name string) http.Handler {
 		w.Header().Set("ETag", `"`+digestOf(html)+`"`)
 		http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(html))
 	})
+}
+
+// readPage reads the page of a phone when asked and there is one, the
+// page of a computer otherwise.
+func readPage(path, phone string, isPhone bool) ([]byte, error) {
+	if isPhone {
+		html, err := os.ReadFile(phone) //nolint:gosec // a fixed file of the website
+		if err == nil {
+			return html, nil
+		}
+		if !errors.Is(err, fs.ErrNotExist) {
+			return nil, errs.Wrap("os.ReadFile", err)
+		}
+	}
+
+	html, err := os.ReadFile(path) //nolint:gosec // a fixed file of the website
+	if err != nil {
+		return nil, errs.Wrap("os.ReadFile", err)
+	}
+
+	return html, nil
 }
 
 // moduleScript is how a page loads its script.

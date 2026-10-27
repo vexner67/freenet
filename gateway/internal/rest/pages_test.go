@@ -49,6 +49,8 @@ func webDir(t *testing.T) string {
 		"prime.html":          "PRIME",
 		"admin.html":          "ADMIN",
 		"fave.html":           "FAVE",
+		"feed.html":           "FEED",
+		"m/feed.html":         "PHONE_FEED",
 		"static/style.css":    "body{}",
 		"static/favicon.png":  "ICON",
 		"static/sw.js":        `icon: "/static/favicon.png"`,
@@ -254,6 +256,64 @@ func TestPages(t *testing.T) {
 			t.Fatalf("status = %d", w.Code)
 		}
 	})
+}
+
+func TestPhonePages(t *testing.T) {
+	t.Parallel()
+
+	handler := mustServer(
+		rest.Config{RequestTimeout: time.Second, WebDir: webDir(t)},
+		rest.Backends{Auth: &fakeAuth{}, Users: &fakeUsers{}, Posts: &fakePosts{}, Media: &fakeMedia{}, Notifications: &fakeNotifications{}, Messages: &fakeMessages{}, Clubs: &fakeClubs{}},
+		prometheus.NewRegistry(),
+	).Handler()
+
+	const (
+		iPhone  = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
+		android = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36"
+		tablet  = "Mozilla/5.0 (Linux; Android 14; SM-X710) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+		iPad    = "Mozilla/5.0 (iPad; CPU OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
+		desktop = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15"
+	)
+
+	tests := []struct {
+		name   string
+		path   string
+		agent  string
+		cookie string
+		body   string
+	}{
+		{"an iPhone gets the page of a phone", "/feed", iPhone, "", "PHONE_FEED"},
+		{"an Android phone too", "/feed", android, "", "PHONE_FEED"},
+		{"a computer gets its own", "/feed", desktop, "", "FEED"},
+		{"an Android tablet is a computer", "/feed", tablet, "", "FEED"},
+		{"an iPad is a computer", "/feed", iPad, "", "FEED"},
+		{"the full version chosen on a phone", "/feed", iPhone, "full", "FEED"},
+		{"the version of a phone chosen on a computer", "/feed", desktop, "m", "PHONE_FEED"},
+		{"an unknown choice is no choice", "/feed", iPhone, "other", "PHONE_FEED"},
+		{"a page a phone has no own of", "/edit", iPhone, "", "EDIT"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			r := httptest.NewRequest("GET", tt.path, nil)
+			r.Header.Set("User-Agent", tt.agent)
+			if tt.cookie != "" {
+				r.AddCookie(&http.Cookie{Name: "site", Value: tt.cookie})
+			}
+
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, r)
+
+			if w.Code != http.StatusOK || strings.TrimSpace(w.Body.String()) != tt.body {
+				t.Fatalf("%d %q, want %q", w.Code, w.Body.String(), tt.body)
+			}
+			if vary := w.Header().Get("Vary"); !strings.Contains(vary, "User-Agent") || !strings.Contains(vary, "Cookie") {
+				t.Fatalf("Vary = %q", vary)
+			}
+		})
+	}
 }
 
 func TestSearchEngines(t *testing.T) {
