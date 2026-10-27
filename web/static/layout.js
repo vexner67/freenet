@@ -410,9 +410,39 @@ if (typeof document !== 'undefined') applyLook(storedLook());
 // while, for a slow server.
 if (typeof document !== 'undefined') idle().then(() => document.documentElement.classList.remove('pending'));
 
-// isMicroblog: posts are laid out as openvk's "Микроблог".
+// isMicroblog: posts are laid out as openvk's "Микроблог". A phone lays
+// them out its own way.
 export function isMicroblog() {
-  return document.body.classList.contains('posts-microblog');
+  return !isPhone() && document.body.classList.contains('posts-microblog');
+}
+
+// isPhone is whether the page is one of a phone (web/m/, laid out by
+// m.css): the scripts draw some things there as the apps of a phone do.
+export function isPhone() {
+  return document.documentElement.classList.contains('m');
+}
+
+// The cookie that keeps the version of the site chosen under a page
+// (gateway, pages.go): "full" for the pages of a computer on a phone.
+const fullSite = /(?:^|; )site=full(?:;|$)/;
+
+// addVersionSwitch puts "Полная версия" under a page of a phone, and
+// "Мобильная версия" under a page of a computer on a phone whose owner
+// chose the full one, as m.vk.com did.
+function addVersionSwitch() {
+  const footer = document.querySelector('.footer');
+  const phone = isPhone();
+  if (!footer || footer.querySelector('.version-switch') || (!phone && !fullSite.test(document.cookie))) return;
+
+  footer.append(el('p', {}, el('a', {
+    className: 'version-switch',
+    textContent: phone ? tr('Полная версия') : tr('Мобильная версия'),
+    onclick: () => {
+      const tail = '; path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+      document.cookie = phone ? 'site=full; max-age=31536000' + tail : 'site=; max-age=0' + tail;
+      location.reload();
+    },
+  })));
 }
 
 // adult marks node, a photo that came from a post marked as adult or
@@ -504,6 +534,7 @@ export function renderChrome(me) {
   const menu = $('menu');
 
   addHeaderSearch();
+  addVersionSwitch();
   // A phone has the links of a signed-in user in the bar of sections and
   // the menu, not in its header (mobile.css).
   links.classList.toggle('signed-in', Boolean(me) && !me.deactivated && !me.ban);

@@ -91,7 +91,7 @@ test('the admin panel wears its own dark mode and no theme of the site', () => {
   assert.ok(!admin({ 'freenet.adminsidebar': 'open' }).classes.has('aui-collapsed'));
 });
 
-test('every page runs the script right after style.css and mobile.css, before its modules', () => {
+test('every page runs the script right after its stylesheets, before its modules', () => {
   const dir = new URL('../', import.meta.url);
   const pages = readdirSync(dir).filter((name) => name.endsWith('.html'));
 
@@ -108,7 +108,7 @@ test('every page runs the script right after style.css and mobile.css, before it
 
     assert.match(
       html,
-      /<link rel="stylesheet" href="\/static\/style\.css">\n\s*<link rel="stylesheet" href="\/static\/mobile\.css" media="\(max-width: 800px\)">\n\s*<script src="\/static\/theme\.js"><\/script>\n\s*<script type="module"/,
+      /<link rel="stylesheet" href="\/static\/palette\.css">\n\s*<link rel="stylesheet" href="\/static\/style\.css">\n\s*<link rel="stylesheet" href="\/static\/mobile\.css" media="\(max-width: 800px\)">\n\s*<script src="\/static\/theme\.js"><\/script>\n\s*<script type="module"/,
       name,
     );
   }

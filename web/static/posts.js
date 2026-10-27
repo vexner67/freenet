@@ -5,13 +5,13 @@
 import { api } from './api.js';
 import { attachLikers } from './likers.js';
 import { documentsCount, errorText, formatPostDate, genitiveName, photosCount, primeDress, primeNameClass, sharedBy, votesCount, wrote } from './labels.js';
-import { adult, avatarURL, el, externalLink, fullName, isMicroblog, pagePath, textNode, verifiedMark } from './layout.js';
+import { adult, avatarURL, el, externalLink, fullName, isMicroblog, isPhone, pagePath, textNode, verifiedMark } from './layout.js';
 import { editPost } from './postedit.js';
 import { openShare } from './share.js';
 import { openViewer } from './viewer.js';
 import { lastComments } from './postcomments.js';
 import { pollNode } from './poll.js';
-import { button, openModal } from './modal.js';
+import { button, openModal, openSheet, toast } from './modal.js';
 import { documentsNode } from './docs.js';
 import { tr } from './i18n.js';
 
@@ -54,6 +54,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   // for what the words of the menu do, and under a post of a wall its
   // newest comments.
   const microblog = isMicroblog();
+  const phone = isPhone();
   const actions = el('span', { className: 'post-actions' });
   const comments = microblog && withCommentsLink
     ? lastComments(post, {
@@ -84,7 +85,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       post.poll ? pollNode(post, { canVote: canLike, onError }) : '',
       signatureNode(post.signer) ?? '',
     );
-    menu.replaceChildren(...separated(menuLinks()));
+    if (!phone) menu.replaceChildren(...separated(menuLinks()));
     actions.replaceChildren(...(microblog ? actionMarks() : []));
     comments?.render();
     node.classList.toggle('pinned', Boolean(post.pinned));
@@ -136,6 +137,28 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     if (closing) links.push(closing);
     links.push(copyLink(post));
     return links;
+  }
+
+  // sheetItems are what the viewer may do to the post on a phone: the
+  // words of the menu, in a list over the bottom of the screen.
+  function sheetItems() {
+    const items = changes().map((c) => ({ text: c.text, run: c.run, danger: c.mark === cross }));
+    if (ownsWall()) items.push({ text: post.commentsClosed ? tr('Открыть комментарии') : tr('Закрыть комментарии'), run: toggleComments });
+    items.push({ text: tr('Скопировать ссылку'), run: () => copyToast(post) });
+    return items;
+  }
+
+  // phoneBar is the bar under a post on a phone, as its apps have it: the
+  // heart, the comments and "Поделиться" with their numbers, and "⋯" for
+  // the rest.
+  function phoneBar() {
+    return el('div', { className: 'post-menu post-bar' },
+      likeButton(post, { canLike, onError }),
+      withCommentsLink ? el('a', { className: 'like post-comments-link', href: postPath(post), title: tr('Комментарии') },
+        bubble(), el('span', { className: 'like-count', textContent: post.comments > 0 ? String(post.comments) : '' })) : null,
+      shareButton(post, canLike, { icon: true }),
+      el('a', { className: 'like post-more', title: tr('Действия'), onclick: () => openSheet(sheetItems()) }, dots()),
+    );
   }
 
   // actionMarks are openvk's marks of "Микроблог" by the name of the
@@ -241,7 +264,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       content,
       post.repost ? sharedNode(post.repost, { canVote: canLike, onError }) : null,
       post.sharedPhoto ? sharedPhotoNode(post.sharedPhoto) : null,
-      el('div', { className: 'post-menu' },
+      phone ? phoneBar() : el('div', { className: 'post-menu' },
         el('span', {}, microblog ? date : null, menu),
         el('span', { className: 'post-buttons' },
           microblog ? shareButton(post, canLike, { icon: true }) : null,
@@ -400,17 +423,28 @@ function copyLink(post) {
   const link = el('a', { className: 'post-copy-link', textContent: tr('Скопировать ссылку') });
 
   link.addEventListener('click', async () => {
-    const url = location.origin + postPath(post);
-    if (!await copied(url)) {
-      showLink(url);
-      return;
-    }
+    if (!await copyAddress(post)) return;
 
     link.textContent = tr('Ссылка скопирована!');
     setTimeout(() => { link.textContent = tr('Скопировать ссылку'); }, 2000);
   });
 
   return link;
+}
+
+// copyToast copies the address of the post on a phone and says so.
+async function copyToast(post) {
+  if (await copyAddress(post)) toast(tr('Ссылка скопирована!'));
+}
+
+// copyAddress puts the address of the post in the clipboard, or shows it
+// to be copied by hand; it tells whether it was copied.
+async function copyAddress(post) {
+  const url = location.origin + postPath(post);
+  if (await copied(url)) return true;
+
+  showLink(url);
+  return false;
 }
 
 // copied tells whether the text went to the clipboard: by the clipboard
@@ -591,6 +625,16 @@ function heart() {
 // arrow is the mark of a repost: an arrow turning to the right.
 function arrow() {
   return icon('M6.5 0 11 4 6.5 8V5.5C3.5 5.5 1.5 6.6 0 9.5 0 5.5 2.5 2.7 6.5 2.5Z');
+}
+
+// bubble is the mark of the comments, dots of what else may be done: on
+// the bar of a phone.
+function bubble() {
+  return icon('M1 0h9a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1H5L2.5 10V7.5H1a1 1 0 0 1-1-1V1a1 1 0 0 1 1-1Z');
+}
+
+function dots() {
+  return icon('M1.3 3.7a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6Zm4.2 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6Zm4.2 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6Z');
 }
 
 // The marks of "Микроблог": a pencil edits, a cross deletes, a pin pins

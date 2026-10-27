@@ -6,8 +6,8 @@
 import { api } from './api.js';
 import { sendSealed } from './e2ee.js';
 import { chatTitle, conversationOf, conversationPath, conversationValue, formatPostDate, forwardTree, messagePreview, snippet } from './labels.js';
-import { el, fullName, showError, hideError } from './layout.js';
-import { button, openModal } from './modal.js';
+import { el, fullName, isPhone, showError, hideError } from './layout.js';
+import { button, openModal, openSheet } from './modal.js';
 import { photosNode, sharedNode, sharedPhotoNode } from './posts.js';
 import { stickerNode } from './stickers.js';
 import { documentsNode } from './docs.js';
@@ -70,6 +70,15 @@ const actionIcons = {
 export function actionsNode(actions) {
   const shown = actions.filter(Boolean);
   if (!shown.length) return null;
+
+  // A phone lists them over the bottom of the screen, as its apps do.
+  if (isPhone()) {
+    return el('a', {
+      className: 'im-message-action message-actions',
+      textContent: tr('Действия'),
+      onclick: () => openSheet(shown.map(([name, run]) => ({ text: name, run, danger: name === tr('Удалить') }))),
+    });
+  }
 
   return el('span', { className: 'attach-menu attach-auto message-actions' },
     el('a', { className: 'attach-toggle im-message-action', textContent: tr('Действия') }),

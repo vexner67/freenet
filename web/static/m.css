@@ -1,0 +1,1316 @@
+/* Freenet on a phone: the pages of web/m/, which the gateway gives a
+   phone (pages.go), as m.vk.com and the first apps were. It is written
+   for a narrow screen and a finger from the start, not over the pages of
+   a computer: one column, a dark header that stays at the top, the yellow
+   plate of the page, grey bars over blocks, rows a finger hits, a bar of
+   sections at the bottom (layout.js, addTabBar) and the whole menu over
+   the screen. The colours are the variables of palette.css, so the
+   themes paint it too; the pages of a computer keep style.css.
+
+   It is light on purpose: nothing is animated but what was asked to move,
+   no filter runs over a large area, and the patterns of Prime stand
+   still — a phone scrolls a page smoothly only when it repaints little. */
+
+/* The page */
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--back-fff);
+  color: var(--text-000);
+  font: 14px/1.4 tahoma, verdana, arial, sans-serif;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.08);
+}
+/* The bar of sections covers the bottom of the page. */
+body:has(.tabbar) { padding-bottom: calc(52px + env(safe-area-inset-bottom)); }
+
+a { color: var(--text-2b587a); text-decoration: none; cursor: pointer; }
+h1, h2, h3, h4, p, ul { margin: 0; }
+img { max-width: 100%; }
+b, strong { font-weight: bold; }
+
+.layout { min-height: 100vh; }
+/* Until the page is drawn whole (theme.js, layout.js). */
+.pending .columns,
+.pending .footer { visibility: hidden; }
+
+/* The header: a dark bar that stays at the top, the logo on the left and
+   the search on the right — and, for a guest, "вход". The links of one
+   signed in are the bar of sections. */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: stretch;
+  height: 44px;
+  padding-left: 10px;
+  background: linear-gradient(var(--back-636363), var(--back-3e3e3e));
+  border-bottom: 1px solid var(--line-333);
+}
+.logo { display: flex; align-items: center; margin-right: auto; color: var(--text-fff); }
+.logo-mark { display: block; width: 26px; height: 26px; }
+.logo-mark rect { fill: var(--back-fff); }
+.logo-mark path { fill: none; stroke: var(--text-3e3e3e); }
+.logo-word { display: block; width: 81px; height: 26px; fill: none; stroke: currentColor; }
+
+.header-links { display: flex; }
+.header-links.signed-in { display: none; }
+.header-links a {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  color: var(--text-fff);
+  font-weight: bold;
+  white-space: nowrap;
+  border-left: 1px solid var(--line-2f2f2f);
+  box-shadow: inset 1px 0 var(--line-6f6f6f);
+}
+.header-search {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  border-left: 1px solid var(--line-2f2f2f);
+  box-shadow: inset 1px 0 var(--line-6f6f6f);
+}
+.header-search img { display: block; width: 22px; height: 22px; opacity: 0.85; }
+.header-search:active, .header-links a:active { background: rgba(255, 255, 255, 0.1); }
+
+/* The bar of sections at the bottom, as the first apps had: an icon over
+   its word, the counter of the unread on the icon, the section the page
+   is in lit; the gradient of the header, upside down. */
+
+.tabbar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 40;
+  display: flex;
+  height: calc(52px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: linear-gradient(var(--back-3e3e3e), var(--back-636363));
+  border-top: 1px solid var(--line-333);
+}
+.tabbar-item {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  color: var(--text-fff);
+  font-size: 10px;
+  opacity: 0.7;
+}
+.tabbar-item img { display: block; width: 22px; height: 22px; }
+.tabbar-item span:not(.tabbar-count) { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tabbar-item.active { background: rgba(255, 255, 255, 0.1); opacity: 1; font-weight: bold; }
+/* While the menu is open, it is the section lit. */
+.menu-open .tabbar-item.active:not(.tabbar-menu) { background: none; opacity: 0.7; font-weight: normal; }
+.tabbar-count {
+  position: absolute;
+  top: 4px;
+  left: calc(50% + 6px);
+  min-width: 17px;
+  padding: 1px 4px;
+  background: var(--back-e6e6e6);
+  border-radius: 8px;
+  color: var(--text-2b587a);
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 13px;
+  text-align: center;
+}
+
+/* "Меню": the whole left menu over the screen, between the header and
+   the bar, in rows a finger hits. */
+
+.columns { display: block; }
+.sidebar:has(> .menu) { display: none; }
+.menu-open { overflow: hidden; }
+.menu-open .sidebar:has(> .menu) {
+  position: fixed;
+  top: 44px;
+  right: 0;
+  bottom: calc(52px + env(safe-area-inset-bottom));
+  left: 0;
+  z-index: 30;
+  display: block;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--back-fff);
+}
+.menu { position: relative; }
+.menu a {
+  display: flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line-ececec);
+  color: var(--text-000);
+  font-size: 15px;
+}
+.menu a:active { background: var(--back-e4e4e4); }
+.menu .menu-edit { position: absolute; top: 0; right: 0; border-bottom: 0; color: var(--text-808080); font-size: 13px; }
+.menu .menu-divider { height: 8px; background: var(--back-f0f0f0); border-bottom: 1px solid var(--line-ececec); }
+.menu .counter {
+  margin-left: auto;
+  padding: 2px 8px;
+  background: var(--back-e6e6e6);
+  border-radius: 10px;
+  color: var(--text-2b587a);
+  font-size: 13px;
+  font-weight: bold;
+}
+.menu-account img { width: 22px; height: 22px; margin-right: 8px; object-fit: cover; }
+.avatars-round .menu-account img { border-radius: 50%; }
+
+/* The plate of the page and its body. */
+
+.page-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px 10px;
+  min-height: 38px;
+  padding: 6px 12px;
+  background: var(--back-eee5b8);
+  border-bottom: 1px solid var(--line-d7cf9e);
+  font-size: 15px;
+  font-weight: bold;
+}
+.page-title > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.page-title .aside { color: var(--text-9c9670); font-size: 13px; font-weight: normal; }
+.page-title .aside a { color: inherit; }
+.page-body { padding: 10px; }
+
+.footer { padding: 14px 10px 18px; color: var(--text-808080); font-size: 12px; text-align: center; }
+.footer a { display: inline-block; padding: 6px 8px; }
+.footer p { margin-top: 4px; }
+.footer .footer-language { padding: 6px 4px; line-height: 0; }
+.version-switch { font-weight: bold; }
+
+/* What is drawn alike at any width, as on a computer: the parts of
+   pages that style.css draws too. The rules after them, made for a
+   phone, win where both speak. */
+
+.invite-link { display: flex; justify-content: center; gap: 6px; margin: 12px 0; }
+.invite-link input { flex: 0 1 360px; min-width: 0; }
+/* What is copied by selecting it, out of sight. */
+.copy-field { position: fixed; top: 0; left: -9999px; opacity: 0; }
+/* The offer of pushes over the page of a phone (layout.js offerPush). */
+.push-offer p { margin: 0 0 8px; }
+.push-offer-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Search */
+.search-form { display: flex; gap: 6px; margin-bottom: 10px; }
+.search-form input { flex: 1; }
+.message-actions { display: block; margin: 3px 0 0; }
+.safety-code { margin: 8px 0; font: bold 16px monospace; letter-spacing: 1px; text-align: center; }
+.found-words { background: var(--back-ffe58a); }
+.im-forwarded { margin: 4px 0; padding-left: 8px; border-left: 2px solid var(--line-dae1e8); }
+.im-forwarded-message { margin-bottom: 6px; }
+.im-forwarded-message:last-child { margin-bottom: 0; }
+.im-forwarded .im-forwarded { margin-bottom: 0; }
+.im-forwarded-date { margin-left: 6px; color: var(--text-777); font-size: 9px; }
+.im-forwarded-hint { color: var(--text-777); }
+/* An answer shows the message it answers over its words, as on VK; a
+   click leads to it. */
+.im-quote { display: block; margin: 2px 0 4px; padding-left: 8px; border-left: 2px solid var(--line-dae1e8); cursor: pointer; }
+.im-quote:hover { background: var(--back-f7f7f7); text-decoration: none; }
+.im-quote-name { display: block; font-weight: bold; }
+.im-quote-text { display: block; overflow: hidden; color: var(--text-777); white-space: nowrap; text-overflow: ellipsis; }
+/* Reactions under a message: one a person, as on VK. */
+.im-reactions, .im-reaction-picker { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.im-reaction { padding: 1px 6px; border: 1px solid var(--line-d6d6d6); border-radius: 10px; background: var(--back-f7f7f7); color: inherit; font: inherit; line-height: 16px; cursor: pointer; }
+.im-reaction.mine { border-color: var(--line-dae1e8); background: var(--back-dae1e8); }
+.im-reaction-picker .im-reaction { padding: 0 2px; border-color: transparent; background: none; font-size: 18px; line-height: 22px; }
+.im-reaction-picker .im-reaction.mine { background: var(--back-dae1e8); }
+.forward-list { max-height: 120px; margin: 4px 0 8px; padding-left: 8px; overflow-y: auto; border-left: 2px solid var(--line-dae1e8); color: var(--text-777); }
+.forward-list div { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.chat-pinned-body { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
+.chat-pinned-head { display: block; color: var(--text-808080); }
+.chat-pinned-remove { color: var(--text-808080); font-size: 14px; cursor: pointer; }
+.chat-about-photo { display: block; width: 100px; height: 100px; margin: 0 auto 4px; object-fit: cover; border-radius: 3px; }
+.chat-about-links { margin-bottom: 8px; text-align: center; }
+.chat-about-links a { cursor: pointer; }
+.chat-action-date { margin-left: 8px; font-size: 9px; }
+.chat-people { max-height: 200px; overflow-y: auto; border: 1px solid var(--line-dae1e8); }
+.chat-people.tall { max-height: 300px; }
+.chat-person { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-bottom: 1px solid var(--line-eef1f4); cursor: default; }
+label.chat-person { cursor: pointer; }
+.chat-person:last-child { border-bottom: 0; }
+.chat-person > img { width: 30px; height: 30px; object-fit: cover; border-radius: 3px; }
+.chat-kick { display: block; font-size: 10px; cursor: pointer; }
+.reply-cancel:hover { color: var(--text-555); text-decoration: none; }
+.attachment-remove:hover { background: rgba(0, 0, 0, .8); text-decoration: none; }
+.viewer-nav:hover { background: rgba(0, 0, 0, .6); text-decoration: none; }
+/* A shared post inside its repost, compact as on openvk. */
+.text-link { overflow-wrap: anywhere; }
+.link-card { display: flex; gap: 10px; margin: 6px 4px; padding: 6px; border: 1px solid var(--line-dae1e8); background: var(--back-f7f7f7); color: inherit; }
+.link-card:hover { background: var(--back-f2f5f8); text-decoration: none; }
+.link-card-photo { flex: none; width: 120px; height: 90px; object-fit: cover; }
+.link-card-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.link-card-title { color: var(--text-2b587a); overflow-wrap: anywhere; }
+.link-card-site { color: var(--text-808080); }
+.link-card-description { color: var(--text-333); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.avatar-crop { display: block; max-width: 100%; height: auto; margin: 4px auto; cursor: move; touch-action: none; }
+.graffiti-canvas { display: block; width: 100%; border: 1px solid var(--line-c0cad5); cursor: crosshair; touch-action: none; }
+.graffiti-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 8px; }
+.graffiti-tools a { cursor: pointer; }
+.graffiti-tools label { display: flex; align-items: center; gap: 4px; }
+.graffiti-tools input[type="range"] { width: 80px; }
+.graffiti-colors { display: flex; align-items: center; gap: 3px; width: 100%; }
+.graffiti-swatch { width: 18px; height: 18px; border: 1px solid var(--line-c0cad5); cursor: pointer; }
+.graffiti-swatch.picked { outline: 2px solid var(--text-2b587a); outline-offset: 1px; }
+.graffiti-colors input[type="color"] { width: 26px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
+.avatar-turn { display: flex; justify-content: center; gap: 6px; }
+.timer-remove { margin-left: 4px; color: var(--text-999); }
+/* The other accounts of the browser, in the box "Аккаунты": a small photo
+   before the name. */
+.account-list { min-width: 220px; }
+.summary-bar { margin: 0 -10px; padding: 11px 10px; border-bottom: 1px solid var(--line-dedede); color: var(--text-45688e); font-weight: bold; }
+/* "Предложка": the link above the wall, the head of the suggestions and
+   the buttons of an admin under each, as on openvk. */
+.sugglist { margin: 5px 0 -5px; padding: 5px 9px; border-top: 1px solid var(--line-808080); background: var(--back-e6e6e6); }
+.sugglist a { color: var(--text-626262); }
+.publish-signed input { vertical-align: middle; margin: 0 3px 0 0; }
+.album-delete { text-align: center; }
+.side-albums { padding: 5px 0; }
+.side-album { display: flex; gap: 6px; margin-bottom: 8px; overflow-wrap: anywhere; }
+.side-album img { width: 80px; max-height: 72px; object-fit: cover; }
+.about-text { white-space: pre-line; overflow-wrap: anywhere; }
+/* The status edited on the page, as openvk's box under the name. */
+.status-editable { cursor: pointer; }
+.share-signs label { display: block; margin-top: 4px; }
+/* "Это архив записей" over the archive of a wall, as on openvk. */
+.archive-banner { margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--line-d5ddb6); background: var(--back-f9f6e7); }
+.archive-banner b { display: block; margin-bottom: 2px; }
+/* openvk's bar of the archive: "Все годы", the years of the wall and
+   "Действия" on the right; it stays on top while the archive scrolls. */
+.archive-manager {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  min-height: 36px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--line-ccc);
+  background: var(--back-f7f7f7);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.archive-years { display: flex; align-items: stretch; min-width: 0; }
+.archive-actions { flex: 0 0 auto; margin-left: auto; border-left: 1px solid var(--line-ddd); }
+.archive-manager summary { list-style: none; }
+.archive-manager summary::-webkit-details-marker { display: none; }
+.archive-manager summary::after {
+  content: "";
+  margin-left: 5px;
+  border: 4px solid transparent;
+  border-top-color: var(--line-777);
+  transform: translateY(2px);
+}
+.archive-menu {
+  position: absolute;
+  top: calc(100% - 1px);
+  left: 0;
+  z-index: 20;
+  min-width: 80px;
+  border: 1px solid var(--line-aaa);
+  background: var(--back-fff);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+.archive-actions .archive-menu { right: 0; left: auto; width: 230px; }
+.archive-menu button {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 5px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text-5c5c5c);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.archive-menu button:hover { background: var(--back-8b8b8b); color: var(--text-fff); }
+/* A photo that came from an adult post: in the album, on its page, as a
+   cover and in the viewer. clip-path keeps the blur inside the photo. */
+body:not(.nsfw-shown) img.photo-nsfw { filter: saturate(.8) blur(24px); clip-path: inset(0); cursor: pointer; }
+/* openvk's polls (poll.js): the block under the words of a post, with the
+   options to choose from or the results as bars. */
+.poll { margin: 6px 4px; padding: 8px; border: 1px solid var(--line-e3e3e3); }
+.poll h4 { margin: 0 0 6px; font-size: 11px; color: var(--text-45688e); overflow-wrap: anywhere; }
+.poll-option { padding: 2px 0; }
+.poll-option label { cursor: pointer; overflow-wrap: anywhere; }
+.poll-option input { margin: 0 3px 0 0; vertical-align: middle; }
+.poll-option input:disabled + * , .poll-option input:disabled { cursor: default; }
+.poll-cast { margin-top: 8px; }
+.poll-retract { float: right; margin-left: 8px; }
+.poll-result { margin-bottom: 5px; }
+.poll-result-name { overflow-wrap: anywhere; }
+a.poll-result-name { cursor: pointer; }
+.poll-result-row { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.poll-result-bar { position: relative; flex: 1; height: 13pt; background: var(--back-f7f7f7); }
+.poll-result-fill { height: 100%; background: var(--back-d9e1ea); }
+.poll-result-count { position: absolute; inset: 0; line-height: 13pt; text-align: center; color: var(--text-7d96af); }
+.poll-result-percent { width: 32px; text-align: right; }
+.poll-meta { margin-top: 8px; color: var(--text-555); }
+.poll-kind { color: var(--text-808080); font-style: oblique; }
+.poll-remove { margin-left: 4px; color: var(--text-999); font-weight: bold; cursor: pointer; }
+.poll-remove:hover { color: var(--text-555); text-decoration: none; }
+.poll-editor input[type="text"] { display: block; width: 100%; box-sizing: border-box; }
+.poll-editor-options { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+.poll-editor-adder { color: var(--text-808080); }
+.poll-editor label input { margin: 0 3px 0 0; vertical-align: middle; }
+.poll-editor .poll-editor-expires select { display: inline-block; width: auto; margin: 0; }
+/* "Настройки ленты": the box with its two tabs and the ignored sources. */
+.feed-settings-box { width: 440px; }
+.feed-settings { display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
+.feed-settings-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.feed-settings-row select { display: inline-block; width: 70px; margin: 0; }
+.feed-settings-row select.feed-order { width: 150px; }
+.ignored-list { max-height: 260px; overflow-y: auto; }
+.ignored-row { display: flex; align-items: center; gap: 8px; padding: 4px 2px; border-bottom: 1px solid var(--line-eee); cursor: pointer; }
+.ignored-row:last-child { border-bottom: 0; }
+.ignored-row img { width: 30px; height: 30px; object-fit: cover; }
+.ignored-row a { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: bold; }
+.avatars-round .ignored-row img { border-radius: 50%; }
+/* "Подарки", as openvk's: a gift is laid out as a post — who sent it, the
+   picture in the middle with what was written under it; "Выбрать подарок"
+   is a row a collection, its gifts in a grid, the price showing on the
+   gift pointed at ("Бесплатно" always). */
+.gift-pic { display: block; width: 96px; height: 96px; }
+.gift-cat-row { padding: 10px 0; }
+.gift-cat-row:first-child { padding-top: 5px; }
+.gift-cat-row:not(:last-child) { border-bottom: 1px solid var(--line-ddd); }
+.gift-cat-info { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; min-height: 23px; margin: 0 0 4px; }
+.gift-cat-header { margin: 0; padding: 4px 0 3px; color: var(--text-45688e); font-size: 11px; }
+.gift-cat-prime { margin-right: auto; padding: 4px 0 3px; color: var(--text-6b3fb8); font-weight: bold; }
+.gift-grid { display: flex; flex-wrap: wrap; width: calc(100% + 16px); margin: 0 -8px; }
+.gift-sel { position: relative; box-sizing: border-box; width: 122px; padding: 8px 10px; border-radius: 3px; text-align: center; cursor: pointer; }
+.gift-sel:hover { text-decoration: none; }
+.gift-sel .gift-pic { width: 102px; height: 102px; object-fit: contain; border-radius: 3px; transition: .2s; }
+.gift-sel:hover .gift-pic { opacity: .8; }
+.gift-sel .gift-price { position: absolute; bottom: 0; left: 0; box-sizing: border-box; width: 102px; margin: 0 10px; padding: 3px 4px 4px; border-radius: 3px; background: var(--back-f0f0f0); color: var(--text-333); visibility: hidden; }
+.gift-sel:hover .gift-price, .gift-sel .gift-price.free { visibility: visible; }
+/* The block of a page: five of the newest, as wide as the column. */
+.gift-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 8px 5px; }
+.gift-row .gift-pic { width: 100%; height: auto; aspect-ratio: 1; }
+/* Collectible gifts: a card of the gift's own colours (painted by the
+   script), its symbol scattered over the backdrop and the model on top. */
+.collectible { position: relative; overflow: hidden; width: 120px; height: 120px; border-radius: 10px; margin: 0 auto; }
+.collectible-pattern { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; justify-items: center; font-size: 16px; line-height: 1; transform: rotate(-12deg) scale(1.2); user-select: none; }
+.collectible-pattern span:nth-child(odd) { transform: translateY(40%); }
+.collectible-model { position: absolute; left: 12%; top: 10%; width: 76%; height: 76%; object-fit: contain; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, .35)); }
+.collectible-number { position: absolute; right: 6px; bottom: 5px; padding: 1px 5px; border-radius: 8px; background: rgba(0, 0, 0, .35); color: var(--back-fff); font-size: 9px; font-weight: bold; }
+.collectible-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border-radius: 4px; text-align: center; }
+.collectible-tile:hover { background: var(--back-f7f7f7); text-decoration: none; }
+.collectible-name { color: var(--text-45688e); font-weight: bold; }
+/* A sticker keeps its shape: one of the studio, a photo of any shape,
+   is fitted into the square, not stretched over it. */
+.sticker { display: block; width: 160px; height: 160px; margin: 2px 0; object-fit: contain; }
+.sticker-panel { margin: 8px 0 0; padding: 8px; max-height: 260px; overflow-y: auto; border: 1px solid var(--line-dedede); background: var(--back-fff); }
+.sticker-pack { margin: 0 0 8px; }
+.sticker-pack-title { display: block; margin: 0 0 4px; color: var(--text-45688e); }
+.sticker-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+.sticker-grid .sticker { width: 72px; height: 72px; margin: 0; }
+.sticker-pick { display: block; padding: 2px; cursor: pointer; }
+.sticker-panel.sending .sticker-pick { opacity: .5; cursor: progress; }
+.sticker-pick:hover { background: var(--back-f6f6f6); }
+.sticker-store { display: block; padding: 4px 0 0; border-top: 1px solid var(--line-dedede); }
+/* Documents ("Мои Документы" openvk): a row with the format in a grey
+   box, the name and "date, size". */
+.doc-list { padding: 4px 0; }
+.doc-item { display: flex; align-items: center; gap: 10px; padding: 7px; border-bottom: 1px solid var(--line-eee); }
+.doc-item:last-child { border-bottom: none; }
+.doc-item:hover { background: var(--back-f7f7f7); }
+.doc-icon {
+  flex: none;
+  width: 50px;
+  padding: 3px 0;
+  background: var(--back-e6e6e6);
+  border-radius: 2px;
+  color: var(--text-626262);
+  font-weight: bold;
+  text-align: center;
+  text-transform: lowercase;
+}
+.doc-icon:hover { text-decoration: none; }
+.doc-content { flex: 1; min-width: 0; }
+.doc-name { display: block; overflow: hidden; color: var(--text-000); font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
+.doc-info { color: var(--text-777); }
+.doc-tools { display: flex; gap: 8px; }
+.doc-remove { font-size: 14px; color: var(--text-999); }
+.doc-picker { max-height: 360px; overflow-y: auto; }
+.doc-attached { margin-top: 6px; }
+.doc-attached .doc-item { padding: 4px; }
+/* Stories, VK's: circles above the news and the stories over the screen. */
+.story-bar { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line-e8ebee); }
+.story-circle { flex: none; width: 62px; color: var(--text-333); text-align: center; cursor: pointer; }
+.story-circle:hover { text-decoration: none; }
+.story-circle img { display: block; width: 48px; height: 48px; margin: 0 auto 3px; padding: 2px; border: 2px solid var(--line-ccc); border-radius: 50%; object-fit: cover; }
+.story-fresh img { border-color: var(--line-5b7aa1); }
+.story-circle span { display: block; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.story-add img { border-style: dashed; }
+.story-add span { white-space: normal; }
+.story-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, .94);
+}
+.story-box { display: flex; flex-direction: column; width: min(420px, 100vw); height: min(100dvh, 780px); color: rgba(255, 255, 255, .95); }
+.story-progress { display: flex; gap: 3px; padding: 8px 8px 0; }
+.story-segment { flex: 1; height: 3px; overflow: hidden; background: rgba(255, 255, 255, .3); border-radius: 2px; }
+.story-fill { width: 0; height: 100%; background: rgba(255, 255, 255, .95); }
+.story-filled { width: 100%; }
+.story-head { display: flex; align-items: center; gap: 8px; padding: 8px; }
+.story-head img { display: block; width: 30px; height: 30px; border-radius: 50%; object-fit: cover; }
+.story-head a { color: rgba(255, 255, 255, .95); font-weight: bold; }
+.story-age { color: rgba(255, 255, 255, .6); }
+.story-head .story-close { margin-left: auto; font-size: 20px; font-weight: normal; line-height: 1; cursor: pointer; }
+.story-stage { position: relative; display: flex; flex: 1; align-items: center; justify-content: center; min-height: 0; }
+.story-photo { display: block; width: 100%; height: 100%; object-fit: contain; }
+.story-text {
+  position: absolute;
+  right: 10px;
+  bottom: 12px;
+  left: 10px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, .55);
+  font-size: 13px;
+  text-align: center;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.story-zone { position: absolute; top: 0; bottom: 0; cursor: pointer; }
+.story-zone-prev { left: 0; width: 35%; }
+.story-zone-next { right: 0; width: 65%; }
+.story-panel {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  max-height: 55%;
+  background: var(--back-fff);
+  color: var(--text-000);
+}
+.story-foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  border-top: 1px solid var(--line-dae1e8);
+}
+.story-foot a { cursor: pointer; }
+.story-comments {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 10px 8px;
+  border-top: 1px solid var(--line-dae1e8);
+  overflow-y: auto;
+}
+.story-comments-more { display: block; padding: 6px 0 0; text-align: center; cursor: pointer; }
+.story-comments-empty { margin: 6px 0 0; color: var(--text-808080); text-align: center; }
+.story-form textarea { width: 100%; height: 50px; margin-top: 6px; }
+.story-preview { display: block; width: auto; max-width: 100%; height: auto; max-height: 240px; margin: 6px auto 0; }
+/* On the black of the story viewer, as in the dark theme. */
+.story-head img.name-checkmark.name-checkmark { filter: brightness(2.4); }
+/* "Питомец" (/pet): pixel pets, drawn 16×16 and shown in whole steps. */
+.pet-picture { display: block; image-rendering: pixelated; }
+/* The pet on the profile, under the clubs. */
+.pet-side { padding: 2px 0; }
+.pet-side-row { display: flex; gap: 8px; align-items: center; padding: 2px 0; }
+.pet-side .pet-picture { padding: 2px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.pet-side-text { min-width: 0; line-height: 1.5; }
+/* "Титулы": each award a glossy badge with its name, as the forums of the
+   2000s hung them under the avatar; one given more than once says ×N. */
+.title-side { padding: 2px 0; }
+.title-side-row { display: flex; gap: 8px; align-items: center; padding: 3px 0; }
+.title-badge { flex: none; width: 36px; height: 36px; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 25%)); }
+.title-side-text { min-width: 0; line-height: 1.3; overflow-wrap: anywhere; }
+.title-times { color: var(--text-808080); font-weight: bold; }
+
+/* Blocks */
+
+/* openvk's grey bar over a block, its arrow and a count beside it; the
+   line under it (.subtitle) touches it. */
+.section-title {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px -10px 8px;
+  padding: 6px 12px 6px 26px;
+  background: var(--back-e6e6e6) url("/static/icons/block-arrow.svg") no-repeat 2px 50%;
+  border-top: 1px solid var(--line-8b8b8b);
+  color: var(--text-626262);
+  font-size: 13px;
+  font-weight: bold;
+}
+.section-title:first-child { margin-top: -10px; }
+.section-title:has(+ .subtitle) { margin-bottom: 0; }
+.section-title .count { color: var(--text-8b8b8b); font-weight: normal; }
+.section-title .title-link { margin-left: auto; font-weight: normal; }
+.subtitle {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 -10px;
+  padding: 6px 12px;
+  background: var(--back-f0f0f0);
+  border-top: 1px solid var(--line-ccc);
+  border-bottom: 1px solid var(--line-eee);
+  color: var(--text-777);
+  font-size: 13px;
+}
+
+.notice, .error {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: var(--back-f7f1d6);
+  border: 1px solid var(--line-ddd09a);
+  overflow-wrap: anywhere;
+}
+.error { background: var(--back-ffefe8); border-color: var(--line-e89b88); }
+.notice p + p { margin-top: 6px; }
+.hint { color: var(--text-808080); }
+.center { text-align: center; }
+.page-body > .hint { margin: 10px 0; }
+.bullets { margin: 8px 0; padding: 0; }
+.bullets li { position: relative; padding: 3px 0 3px 14px; list-style: none; }
+.bullets li::before { content: ""; position: absolute; top: 10px; left: 3px; width: 4px; height: 4px; background: var(--back-5b7aa1); }
+
+/* openvk's tabs: a dark line under them, the open one dark; they scroll
+   aside when they do not fit. */
+.tabs {
+  display: flex;
+  margin: 0 -10px 10px;
+  padding: 0 6px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line-707070);
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tabs a { flex: none; margin-right: 2px; padding: 9px 12px; border-radius: 3px 3px 0 0; font-size: 13px; }
+.tabs a.active { background: var(--back-707070); color: var(--text-fff); }
+.tabs .tabs-side { margin-left: auto; }
+
+/* Controls */
+
+/* openvk's button: dark grey, white words with a shadow; a finger's size. */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 16px;
+  background: var(--back-595959);
+  border: 1px solid var(--line-595959);
+  border-radius: 3px;
+  color: var(--text-fff);
+  font: bold 14px tahoma, verdana, arial, sans-serif;
+  text-shadow: 0 1px 0 var(--text-686868);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.button:active { background: var(--back-444); }
+.button:disabled { opacity: 0.5; }
+
+/* Fields are 16px: smaller, iOS zooms the page in on them. */
+input[type="text"], input[type="email"], input[type="number"], input[type="search"], input[type="url"],
+input[type="tel"], input[type="password"], input[type="date"], input[type="time"], input[type="datetime-local"],
+input:not([type]), select, textarea {
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 8px;
+  background: var(--back-fff);
+  border: 1px solid var(--line-c0cad5);
+  border-radius: 3px;
+  box-shadow: none;
+  color: var(--text-000);
+  font: 16px tahoma, verdana, arial, sans-serif;
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type="number"].price-input { display: inline-block; width: 90px; min-height: 32px; padding: 4px 6px; }
+select { padding-right: 24px; background: var(--back-fff) url("/static/icons/block-arrow.svg") no-repeat right 4px center; }
+input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--line-8fa7c2); box-shadow: 0 0 0 2px var(--back-dae1e8); }
+input[type="checkbox"], input[type="radio"] { width: 18px; height: 18px; margin: 0 6px 0 0; vertical-align: -4px; }
+textarea { resize: none; }
+label { cursor: pointer; }
+
+/* Forms of two columns: the label over its field. */
+.form, .form tbody, .form tr, .form th, .form td { display: block; width: auto; }
+.form th { padding: 10px 0 4px; color: var(--text-555); font-weight: normal; text-align: left; }
+.form td { padding: 0; }
+.checks label { display: block; padding: 6px 0; }
+.actions, .key-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+/* The form of a post and of a comment: openvk's #write — a low field
+   that opens at a tap (layout.js), and only then the options and the
+   row of "Отправить" and "Прикрепить". On a wall and over the news it
+   lies in a grey box under its title. */
+
+.wall-form { display: flex; flex-direction: column; margin-bottom: 10px; }
+.wall-form:not(.comment-form, .post-edit) {
+  margin: 0 -10px 10px;
+  padding: 8px 10px;
+  background: var(--back-f0f0f0);
+  border-top: 1px solid var(--line-ccc);
+  border-bottom: 1px solid var(--line-eee);
+}
+.section-title:has(+ .wall-form:not([hidden], .comment-form)) { margin-bottom: 0; }
+.wall-form textarea { height: 40px; min-height: 40px; }
+.wall-form.expanded textarea { height: 88px; min-height: 88px; }
+.wall-form:not(.expanded) > .row,
+.wall-form:not(.expanded) > .post-options { display: none; }
+.wall-form > .row { order: 1; }
+.wall-form .row { display: flex; flex-direction: row-reverse; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.wall-form .row > span { display: inline-flex; flex-direction: row-reverse; align-items: center; gap: 10px; min-width: 0; }
+.wall-form .row .hint { font-size: 12px; }
+.post-options { margin-top: 6px; }
+.wall-form > .post-options { margin-top: 8px; }
+.post-options label { display: block; padding: 4px 0; color: var(--text-555); font-size: 13px; }
+.post-timer, .postponed-time { margin-top: 6px; color: var(--text-555); }
+.post-timer input, .postponed-time input { width: auto; min-height: 32px; margin: 0 2px; font-size: 16px; }
+.post-has-poll { margin-top: 6px; padding: 6px 8px; background: var(--back-f7f7f7); border: 1px solid var(--line-e3e3e3); overflow-wrap: anywhere; }
+.publish-signed { display: block; margin-top: 6px; }
+
+/* "Прикрепить" and "Действия": a link that opens a list. On a phone the
+   list rises over the bottom of the screen, rows a finger hits, the page
+   dimmed behind it; a tap beside it closes it (layout.js). With nothing
+   to attach, there is no link. */
+.attach-menu { position: relative; display: inline-block; }
+.attach-menu:not(:has(.attach-list .attach-link:not([hidden]))) { display: none; }
+.attach-toggle { padding: 6px 0; white-space: nowrap; }
+.attach-list { display: none; }
+.attach-menu.open .attach-list {
+  position: fixed;
+  right: 8px;
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  left: 8px;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--back-fff);
+  border-radius: 10px;
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45);
+  user-select: none;
+}
+.attach-list .attach-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line-ececec);
+  color: var(--text-2b587a);
+  font-size: 16px;
+  white-space: nowrap;
+}
+.attach-list .attach-link:last-child { border-bottom: 0; }
+.attach-list .attach-link:active { background: var(--back-f0f0f0); }
+.attach-list .attach-link::before { content: ""; flex-shrink: 0; width: 20px; height: 20px; background: no-repeat center / 20px; }
+.attach-photo::before { background-image: url("/static/icons/photo.svg"); }
+.attach-graffiti::before { background-image: url("/static/icons/graffiti.svg"); }
+.attach-document::before { background-image: url("/static/icons/document.svg"); }
+.attach-poll::before { background-image: url("/static/icons/poll.svg"); }
+.attach-timer::before { background-image: url("/static/icons/timer.svg"); }
+.action-reply::before { background-image: url("/static/icons/reply.svg"); }
+.action-reaction::before { background-image: url("/static/icons/reaction.svg"); }
+.action-edit::before { background-image: url("/static/icons/edit.svg"); }
+.action-pin::before { background-image: url("/static/icons/pin.svg"); }
+.action-unpin::before { background-image: url("/static/icons/unpin.svg"); }
+.action-forward::before { background-image: url("/static/icons/forward.svg"); }
+.action-delete::before { background-image: url("/static/icons/delete.svg"); }
+
+.attachments { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.attachment { position: relative; }
+.attachment img { display: block; width: 72px; height: 72px; object-fit: cover; border: 1px solid var(--line-ccc); }
+.attachment-loading { display: flex; align-items: center; justify-content: center; width: 72px; height: 72px; background: var(--back-f6f6f6); border: 1px solid var(--line-ccc); color: var(--text-808080); }
+.attachment-remove { position: absolute; top: 0; right: 0; width: 26px; height: 26px; background: rgba(0, 0, 0, 0.55); color: var(--text-fff); font-weight: bold; line-height: 26px; text-align: center; }
+
+/* Posts: the photo of the author beside the name and the date, all the
+   rest the whole width under them, and the bar of the heart, the
+   comments, "Поделиться" and "⋯" at the bottom (posts.js). A grey band
+   parts one post from the next, as the apps of a phone did. */
+
+.post:not(.comment, .notification, .gift) {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 0 10px;
+  margin: 0 -10px;
+  padding: 12px 10px 0;
+  border-bottom: 8px solid var(--back-f0f0f0);
+}
+.post:not(.comment, .notification, .gift) > .post-main { display: contents; }
+.post:not(.comment, .notification, .gift) > .post-main > * { grid-column: 1 / -1; min-width: 0; }
+.post:not(.comment, .notification, .gift) > .post-main > .post-author { grid-row: 1; grid-column: 2; align-self: center; }
+.post:not(.comment, .notification, .gift) > .post-avatar { grid-row: 1; grid-column: 1; }
+.post-avatar img { display: block; width: 44px; height: 44px; object-fit: cover; }
+.post-online { display: none; }
+.post.pinned { background: var(--back-fafafa); }
+
+.post-author { min-width: 0; padding: 0; background: none; border: 0; line-height: 1.35; overflow-wrap: anywhere; }
+.post-author .post-name, .post-author > a:first-child { font-weight: bold; }
+.post-wall { font-weight: bold; }
+.post-date, .post-date a { color: var(--text-808080); font-size: 12px; }
+.post-author .post-date { display: block; margin-top: 1px; }
+.post-edited { color: var(--text-808080); }
+
+.post-content { margin-top: 8px; }
+.post-text { line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.post-text.collapsed { max-height: 190px; overflow: hidden; }
+.post-text-more { display: inline-block; margin-top: 4px; padding: 4px 0; font-weight: bold; }
+.post-photos { display: grid; gap: 3px; margin: 8px 0 0; }
+.post-photos img { display: block; width: 100%; object-fit: cover; }
+.post-photos.single img { width: auto; max-width: 100%; max-height: 70vh; object-fit: contain; }
+.post-photos.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.post-photos.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.post-photos.grid-2 img, .post-photos.grid-3 img { aspect-ratio: 1; }
+.post-signature { margin-top: 6px; }
+.post-signature span { color: var(--text-808080); }
+.post-signature a { font-weight: bold; }
+.post-shared { display: flex; gap: 8px; margin: 8px 0 0; padding-left: 10px; border-left: 2px solid var(--line-dae1e8); }
+.post-shared .post-avatar img { width: 32px; height: 32px; }
+.post-shared .post-main { flex: 1; min-width: 0; }
+.post-shared .post-content { margin-top: 4px; }
+.post-shared.deleted { padding: 8px; color: var(--text-777); }
+.post-shared-link { display: inline-block; padding: 4px 0; }
+.post-paid { margin: 8px 0 0; padding: 12px; background: var(--back-f9f9f9); border: 1px solid var(--line-d6d6d6); text-align: center; }
+.post-paid-title { margin-bottom: 8px; color: var(--text-555); }
+.post-paid-note { margin: 6px 0; color: var(--text-808080); }
+.post-deleted { margin: 0 -10px; padding: 12px 10px; background: var(--back-f6f6f6); color: var(--text-808080); }
+.post-ad .post-author .post-date { color: var(--text-808080); }
+.post-ad-cover { display: block; margin-top: 8px; }
+.post-ad-cover img { display: block; width: 100%; max-height: 50vh; object-fit: cover; }
+.post-ad-site { color: var(--text-808080); }
+
+/* Editing in place: the form takes the place of the text (postedit.js). */
+.post.editing .post-content { display: none; }
+.post-edit { margin: 8px 0 4px; }
+.post-edit-buttons { display: flex; gap: 8px; margin-top: 8px; }
+
+/* The bar under a post on a phone, and the heart of a comment: each a
+   pill with its mark and number, big enough for a finger. */
+.post-bar { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding: 8px 0 10px; border-top: 1px solid var(--line-ececec); }
+.post-bar .like {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 44px;
+  height: 34px;
+  padding: 0 12px;
+  background: var(--back-f2f5f8);
+  border-radius: 17px;
+  color: var(--text-2b587a);
+}
+.post-bar .like:active { background: var(--back-dae1e8); }
+.post-bar .post-more { margin-left: auto; justify-content: center; padding: 0 10px; background: none; }
+.like { display: inline-flex; align-items: center; gap: 4px; color: var(--text-2b587a); }
+.like svg { width: 18px; height: 17px; fill: var(--text-2b587a); opacity: 0.45; }
+.post-bar .post-more svg { opacity: 0.7; }
+.like.liked svg { fill: var(--text-d94c4c); opacity: 1; }
+.like-count { color: var(--text-555); font-size: 13px; }
+.like-count:empty { display: none; }
+.like.disabled { opacity: 0.7; }
+
+/* "Содержит NSFW-контент": blurred until tapped; whoever chose to see it
+   sees it. */
+body:not(.nsfw-shown) .post-nsfw > .post-main > .post-content,
+body:not(.nsfw-shown) .shared-nsfw .shared-content { position: relative; min-height: 60px; overflow: hidden; }
+body:not(.nsfw-shown) .post-nsfw > .post-main > .post-content > *,
+body:not(.nsfw-shown) .shared-nsfw .shared-content > * { filter: blur(20px); pointer-events: none; }
+body:not(.nsfw-shown) .post-nsfw > .post-main > .post-content::after,
+body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
+  content: "Данный пост может содержать 18+ контент";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  background: hsla(0, 0%, 0%, 0.7);
+  color: var(--text-fff);
+  text-align: center;
+}
+
+.wall-more {
+  display: block;
+  margin: 0 -10px;
+  padding: 14px 10px;
+  background: var(--back-f0f0f0);
+  border-top: 1px solid var(--line-ccc);
+  color: var(--text-555);
+  font-weight: bold;
+  text-align: center;
+}
+.wall-more:active { background: var(--back-e9e9e9); }
+
+/* Comments: a smaller photo, the name, the words and a line of small
+   links with the heart at its end. */
+.comment { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line-ececec); }
+.comment .post-avatar img { width: 34px; height: 34px; }
+.comment .post-main { flex: 1; min-width: 0; }
+.comment .post-author { font-size: 13px; }
+.comment .post-text { margin-top: 2px; }
+.comment .post-photos { max-width: 260px; }
+.comment .post-menu { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; font-size: 12px; }
+.comment .post-menu > span:first-child { display: flex; flex-wrap: wrap; align-items: center; gap: 0 2px; }
+.comment .post-menu a { padding: 4px 0; }
+.separator { margin: 0 5px; color: var(--text-ccc); }
+.comment-hint { margin-top: 10px; }
+.comment-form { margin-top: 8px; }
+.reply-to { margin-top: 6px; color: var(--text-777); }
+.reply-cancel { display: inline-block; margin-left: 6px; padding: 0 6px; color: var(--text-999); font-weight: bold; }
+.post-comments { margin-top: 4px; }
+.post-comments-more { display: block; padding: 8px; background: var(--back-f0f0f0); font-size: 13px; text-align: center; }
+
+/* A person's page: a card of the photo with the name and the status, the
+   buttons under it — "Отправить сообщение" and "Подписаться" the main
+   ones — the people and the groups in short rows, the information folded,
+   and the wall. */
+
+.profile-card { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; }
+.profile-card .avatar-box { flex: none; width: 96px; }
+.avatar { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; border: 1px solid var(--line-e0e0e0); }
+.account-info { flex: 1; min-width: 0; }
+.name { color: var(--text-45688e); font-size: 17px; font-weight: bold; overflow-wrap: anywhere; }
+.status { margin-top: 4px; color: var(--text-333); font-size: 13px; overflow-wrap: anywhere; }
+.status.empty { color: var(--text-999); }
+.status-edit { display: flex; gap: 6px; }
+.status-edit input { flex: 1; min-width: 0; }
+.account-info .prime-mood { float: right; margin: 0 0 4px 8px; }
+.prime-mood { width: 32px; height: 32px; }
+.user-alert { margin-bottom: 10px; padding: 8px; background: var(--back-f3ddbd); border: 1px solid var(--line-c3a476); color: var(--text-58462a); font-weight: bold; white-space: pre-line; }
+
+/* The photo of whoever may change it: "Поставить изображение" on a band
+   along its bottom and "×" in its corner, always shown to a finger. */
+.avatar-box { position: relative; }
+.avatar-controls { position: absolute; inset: 0; pointer-events: none; }
+.avatar-controls a { position: absolute; background: rgb(0 0 0 / 65%); color: var(--text-fff); pointer-events: auto; }
+.avatar-upload { right: 1px; bottom: 1px; left: 1px; padding: 4px; font-size: 11px; line-height: 1.2; text-align: center; }
+.avatar-delete { top: 1px; right: 1px; width: 26px; height: 26px; font-size: 16px; line-height: 26px; text-align: center; }
+
+.profile-links { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.profile-link {
+  display: inline-flex;
+  flex: 1 1 calc(50% - 4px);
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 4px 10px;
+  background: var(--back-f2f2f2);
+  border: 1px solid var(--line-dedede);
+  border-radius: 3px;
+  color: var(--text-2b587a);
+  font: 13px tahoma, verdana, arial, sans-serif;
+  text-align: center;
+  cursor: pointer;
+}
+.profile-link:active { background: var(--back-e6e6e6); }
+.profile-link:disabled { color: var(--text-808080); }
+/* The main ones are the buttons of the site, before the rest. */
+#write, #follow, #edit {
+  order: -1;
+  flex-basis: calc(50% - 4px);
+  background: var(--back-595959);
+  border-color: var(--line-595959);
+  color: var(--text-fff);
+  font-weight: bold;
+  text-shadow: 0 1px 0 var(--text-686868);
+}
+#write:active, #follow:active, #edit:active { background: var(--back-444); }
+
+.profile-hints { margin-bottom: 12px; }
+.completeness-gauge { position: relative; height: 18px; background: var(--back-e6e6e6); border-top: 1px solid var(--line-bbb); }
+.completeness-gauge > div { height: 100%; background: var(--back-d4d4d4); }
+.completeness-gauge > span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+.completeness-gauge-gold { background: var(--back-f6ebbb); border-top-color: var(--line-b9b597); }
+.completeness-gauge-gold > div { background: var(--back-e1d7a2); }
+.completeness-hints { margin-top: 8px; }
+.completeness-hints a { display: flex; align-items: center; gap: 6px; padding: 6px 0; }
+.completeness-hint::before { content: ""; flex-shrink: 0; width: 16px; height: 16px; background: no-repeat center; }
+.hint-interests::before { background-image: url("/static/icons/info.svg"); }
+.hint-email::before, .hint-telegram::before { background-image: url("/static/icons/document.svg"); }
+.hint-status::before { background-image: url("/static/icons/status.svg"); }
+.profile-links.completeness-raise { margin: 8px 0 0; }
+.rating-hidden .profile-hints { display: none; }
+
+/* The blocks of the narrow column of a computer, short: the people in a
+   row that scrolls aside, the groups and the rest as lines. */
+.side-block { margin-bottom: 4px; }
+.side-block .section-title { margin-top: 0; }
+.people-grid { display: flex; gap: 6px; margin: 0 -10px; padding: 10px; overflow-x: auto; scrollbar-width: none; }
+.people-grid::-webkit-scrollbar { display: none; }
+.person-cell { flex: none; width: 68px; min-width: 0; font-size: 12px; text-align: center; overflow-wrap: anywhere; }
+.person-cell img { display: block; width: 54px; height: 54px; margin: 0 auto 4px; object-fit: cover; }
+.person-cell .person-name { display: flex; flex-direction: column; }
+.person-cell .person-surname { font-size: 11px; }
+.side-text { padding: 8px 0; }
+.side-text a { display: inline-block; padding: 3px 0; }
+
+.info { width: 100%; border-collapse: collapse; }
+.info th { width: 40%; padding: 4px 8px 4px 0; color: var(--text-808080); font-weight: normal; text-align: left; vertical-align: top; }
+.info td { padding: 4px 0; overflow-wrap: anywhere; }
+.basic-info { margin-bottom: 4px; }
+.private-mark { color: var(--text-a0a0a0); }
+.pre-wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* "Информация" folds: its title opens it. */
+.about-block > summary { list-style: none; cursor: pointer; }
+.about-block > summary::-webkit-details-marker { display: none; }
+.about-block > summary::after { content: "▾"; margin-left: auto; color: var(--text-8b8b8b); }
+.about-block[open] > summary::after { content: "▴"; }
+.about-block[open] > summary { margin-bottom: 0; }
+.about { padding: 8px 0 4px; }
+.about > div:not([hidden]) ~ div { margin-top: 12px; }
+.about-title { margin-bottom: 4px; color: var(--text-45688e); font-size: 13px; }
+.about-title .edit-link { margin-left: 4px; color: var(--text-808080); font-weight: normal; }
+.deleted-info { margin: 40px 0; color: var(--text-aaa); font-size: 15px; text-align: center; }
+.banned-info { margin: 30px 10px; line-height: 1.6; text-align: center; }
+
+/* Lists of people. */
+.person { display: flex; align-items: center; gap: 12px; margin: 0 -10px; padding: 10px; border-bottom: 1px solid var(--line-ececec); }
+.person img { display: block; width: 50px; height: 50px; object-fit: cover; }
+.person-status { margin-top: 2px; color: var(--text-555); font-size: 13px; }
+.person-online { margin-left: 6px; color: var(--text-808080); font-size: 12px; }
+.avatar-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.avatar-item img { width: 36px; height: 36px; object-fit: cover; }
+
+/* Notifications: a row with the photo of who did it, the sentence of
+   openvk and the date. */
+.notification { display: flex; gap: 10px; margin: 0 -10px; padding: 10px; border-bottom: 1px solid var(--line-ececec); }
+.notification .post-avatar img { width: 44px; height: 44px; }
+.notification .post-main { flex: 1; min-width: 0; }
+.notification-text { line-height: 1.45; overflow-wrap: anywhere; }
+.notification-text .post-name { font-weight: bold; }
+.notification .post-date { margin-top: 2px; }
+.guest-row-new { background: var(--back-f2f5f8); }
+
+/* Messages: the dialogs as rows, the photo, the name with the date at its
+   right and what was said last under them. */
+.dialogs { margin: 0 -10px; border-top: 1px solid var(--line-d6d6d6); }
+.dialog {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 2px 12px;
+  align-items: center;
+  min-height: 72px;
+  padding: 10px;
+  border-bottom: 1px solid var(--line-ececec);
+  color: var(--text-000);
+}
+.dialog:active { background: var(--back-f9f9f9); }
+.dialog-avatar { grid-row: span 2; width: 52px; height: 52px; object-fit: cover; border-radius: 3px; }
+.dialog-info { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+.dialog-name { min-width: 0; overflow: hidden; color: var(--text-2b587a); text-overflow: ellipsis; white-space: nowrap; }
+.dialog-date { flex: none; color: var(--text-808080); font-size: 12px; }
+.dialog-message { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 2px 4px; border-radius: 3px; }
+.dialog-message.unread { background: var(--back-e6e6e6); }
+.dialog-message img { width: 22px; height: 22px; object-fit: cover; border-radius: 3px; }
+.dialog-text { display: -webkit-box; min-width: 0; overflow: hidden; color: var(--text-404036); font-size: 13px; overflow-wrap: anywhere; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.dialog-text.dialog-typing, .dialog-forwarded { color: var(--text-808080); }
+
+/* A dialog fills the screen: the messages scroll between its plate and
+   the form, which stays at the bottom; the bar of sections and the foot
+   make way for it, as in a messenger. */
+body:has(.messenger:not([hidden])) { padding-bottom: 0; }
+body:has(.messenger:not([hidden])) .tabbar,
+body:has(.messenger:not([hidden])) .footer { display: none; }
+body:has(.messenger:not([hidden])) .layout { display: flex; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0; }
+body:has(.messenger:not([hidden])) .columns,
+body:has(.messenger:not([hidden])) .page,
+body:has(.messenger:not([hidden])) .page-body { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+body:has(.messenger:not([hidden])) .page-body { padding: 0; }
+.messenger { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.messenger-messages { flex: 1; min-height: 0; padding: 10px; overflow-y: auto; overscroll-behavior: contain; background: var(--back-fafafa); }
+.messenger-typing { height: 18px; padding: 0 12px; background: var(--back-fafafa); color: var(--text-808080); font-size: 12px; line-height: 18px; }
+.messenger-price, .messenger-blocked { margin: 0; padding: 10px 12px; background: var(--back-f9f9f9); border-top: 1px solid var(--line-d6d6d6); color: var(--text-555); text-align: center; }
+.messenger-blocked { padding: 16px 12px calc(16px + env(safe-area-inset-bottom)); font-weight: bold; }
+.messenger-blocked a { cursor: pointer; }
+.im-selection, .chat-pinned { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; padding: 8px 12px; background: var(--back-f7f7f7); border-bottom: 1px solid var(--line-d6d6d6); font-size: 13px; }
+.im-selection a { display: inline-block; padding: 4px 0; }
+
+/* A message is a bubble: those of the other at the left with their
+   photo, yours at the right without it; the date and "Действия" under the
+   words; an unread one with a blue stripe at its edge. */
+.im-message {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  width: fit-content;
+  max-width: 88%;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  background: var(--back-fff);
+  border: 1px solid var(--line-e0e6ec);
+  border-radius: 10px 10px 10px 2px;
+  touch-action: manipulation;
+}
+.im-message.out { margin-left: auto; background: var(--back-dae1e8); border-color: var(--line-c5d0db); border-radius: 10px 10px 2px 10px; }
+.im-message > a:first-child img { display: block; width: 32px; height: 32px; object-fit: cover; border-radius: 50%; }
+.im-message.out > a:first-child { display: none; }
+.im-message-content { flex: 1; min-width: 0; line-height: 1.4; }
+.im-message .post-name { font-size: 13px; font-weight: bold; }
+/* In a dialog of two the names say nothing: the side tells who wrote. */
+body:has(#peer-avatar) .im-message > a:first-child,
+body:has(#peer-avatar) .im-message .post-name,
+body:has(#peer-avatar) .im-message .name-checkmark,
+.im-message.out .post-name, .im-message.out .im-message-content > .name-checkmark { display: none; }
+.im-message-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.im-message-text.collapsed { max-height: 190px; overflow: hidden; }
+.im-message-date { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0 10px; width: 100%; color: var(--text-808080); font-size: 11px; }
+.im-message-action { padding: 4px 0; color: var(--text-2b587a); font-size: 12px; }
+.im-message.unread::after { content: ""; position: absolute; top: 6px; bottom: 6px; left: -6px; width: 3px; border-radius: 2px; background: var(--back-5b7aa1); }
+.im-message.out.unread::after { right: -6px; left: auto; }
+.im-message.selected { background: var(--back-f6f0d2); border-color: var(--line-d7cf9e); }
+.im-message.found { background: var(--back-f6f0d2); }
+.im-message.deleted .im-message-text, .im-message-text.unreadable { color: var(--text-777); font-style: italic; }
+.im-message .post-photos { max-width: 240px; margin-top: 4px; }
+.im-message .post-photos.single img { max-height: 280px; }
+.chat-action { margin: 8px 0; color: var(--text-777); font-size: 12px; text-align: center; }
+.chat-bar { cursor: default; }
+
+/* The form at the bottom: "Прикрепить" and the stickers as marks, the
+   field growing with its words, "Отправить"; the photos of the people
+   make way. */
+.messenger-input {
+  display: flex;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  background: var(--back-f9f9f9);
+  border-top: 1px solid var(--line-d6d6d6);
+}
+.messenger-avatar { display: none; }
+.messenger-box { display: flex; flex: 1; flex-wrap: wrap; align-items: flex-end; gap: 6px; min-width: 0; }
+.messenger-box > * { flex: 1 1 100%; min-width: 0; }
+.messenger-box textarea { order: 2; flex: 1 1 0; height: 40px; min-height: 40px; max-height: 140px; border-radius: 18px; padding: 9px 12px; line-height: 20px; }
+.messenger-buttons { display: contents; }
+.messenger-buttons #send { order: 3; flex: none; min-height: 40px; border-radius: 18px; }
+.messenger-buttons .attach-menu, .messenger-buttons #stickers-link { order: 1; flex: none; }
+.messenger-buttons .attach-toggle,
+.messenger-buttons #stickers-link {
+  display: block;
+  width: 36px;
+  height: 40px;
+  overflow: hidden;
+  background: no-repeat center / 22px;
+  color: transparent;
+  font-size: 0;
+}
+.messenger-buttons .attach-toggle { background-image: url("/static/icons/attach.svg"); }
+.messenger-buttons #stickers-link { background-image: url("/static/icons/sticker.svg"); }
+.messenger-box .reply-to { margin: 0; font-size: 13px; }
+.messenger-box #replying { display: flex; gap: 4px; white-space: nowrap; }
+.messenger-box #replying-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.messenger-box .attachments, .messenger-box .doc-attached { margin: 0; }
+.messenger-box .sticker-panel { order: 4; margin: 0; }
+
+/* Windows: a box over the dimmed page, from the top, scrolled when taller
+   than the screen; its buttons on a grey band, the size of a finger. */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  padding: 10px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.6);
+}
+.modal-box { width: 100%; max-width: 480px; margin: auto; background: var(--back-fff); border: 1px solid var(--line-555); border-radius: 4px; overflow: hidden; }
+.modal-box.feed-settings-box, .modal-box.likers-box, .modal-box.chat-dialog, .modal-box.avatar-dialog, .modal-box.graffiti-dialog { width: 100%; }
+.modal-header { padding: 12px 14px; background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); color: var(--text-fff); font-size: 15px; font-weight: bold; }
+.modal-body { display: flex; flex-direction: column; gap: 8px; padding: 14px; overflow-wrap: anywhere; }
+.modal-body textarea { height: 90px; }
+.modal-body .error { margin-bottom: 0; }
+.modal-body select { display: block; margin: 2px 0 6px; }
+.modal-option { display: flex; align-items: center; padding: 6px 0; }
+.modal-input { width: 100%; }
+.modal-tabs { margin: -14px -14px 8px; padding-top: 6px; }
+.modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 10px; background: var(--back-d4d4d4); }
+
+/* A list of what may be done over the bottom of the screen (modal.js,
+   openSheet), and a word of what was done (toast). */
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  align-items: flex-end;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  background: rgba(0, 0, 0, 0.45);
+}
+.sheet-box { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.sheet-list { display: flex; flex-direction: column; max-height: 70vh; overflow-y: auto; background: var(--back-fff); border-radius: 10px; }
+.sheet-item {
+  min-height: 52px;
+  padding: 0 16px;
+  background: var(--back-fff);
+  border: 0;
+  border-bottom: 1px solid var(--line-ececec);
+  color: var(--text-2b587a);
+  font: 16px tahoma, verdana, arial, sans-serif;
+  text-align: center;
+  cursor: pointer;
+}
+.sheet-item:last-child { border-bottom: 0; }
+.sheet-item:active { background: var(--back-f0f0f0); }
+.sheet-item.danger { color: var(--text-c33); }
+.sheet-cancel { border-radius: 10px; font-weight: bold; }
+.toast {
+  position: fixed;
+  right: 16px;
+  bottom: calc(68px + env(safe-area-inset-bottom));
+  left: 16px;
+  z-index: 130;
+  padding: 12px 14px;
+  background: var(--back-3e3e3e);
+  border-radius: 6px;
+  color: var(--text-fff);
+  text-align: center;
+  pointer-events: none;
+}
+
+/* The photo viewer over the whole screen, black, the photo as large as
+   it fits. */
+.viewer { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; background: rgba(0, 0, 0, 0.94); }
+.viewer-box { display: flex; flex: 1; flex-direction: column; min-height: 0; width: 100%; background: none; border: 0; }
+.viewer-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 0 14px; background: none; color: var(--text-fff); font-weight: bold; }
+.viewer-close { padding: 10px 0 10px 16px; color: var(--text-fff); font-size: 15px; }
+.viewer-body { position: relative; display: flex; flex: 1; align-items: center; justify-content: center; min-height: 0; padding: 0; }
+.viewer-photo { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+.viewer-nav {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 64px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text-fff);
+  font-size: 30px;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+.viewer-prev { left: 0; }
+.viewer-next { right: 0; }
+.viewer-details { max-height: 40vh; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); overflow-y: auto; background: var(--back-fff); }
+.viewer-description { margin: 0 0 6px; white-space: pre-wrap; }
+.viewer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+
+/* Who likes it: a box of photos. */
+.likers-tooltip { display: none; }
+.likers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 10px; max-height: 60vh; overflow-y: auto; }
+.likers-item { font-size: 12px; text-align: center; overflow-wrap: anywhere; }
+.likers-item img { display: block; width: 56px; height: 56px; margin: 0 auto 4px; object-fit: cover; }
+
+/* Names: openvk's checkmark and the badge of Prime after them, and the
+   colours of Prime. */
+img.name-checkmark.name-checkmark { display: inline; width: 13px; height: 11px; margin: 0 0 0 3px; padding: 0; border: 0; border-radius: 0; vertical-align: baseline; }
+img.name-prime.name-prime { display: inline; width: 12px; height: 12px; margin: 0 0 0 3px; padding: 0; border: 0; border-radius: 0; vertical-align: -1px; }
+.prime-name { color: var(--text-6b3fb8); font-weight: bold; }
+.prime-name.prime-name-ruby { color: var(--text-b3122e); }
+.prime-name.prime-name-emerald { color: var(--text-0c7a3c); }
+.prime-name.prime-name-sapphire { color: var(--text-1d4fb5); }
+.prime-name.prime-name-gold { color: var(--text-a87a00); }
+/* The rainbow name keeps its colours, still: a gradient that runs over
+   every name of a list repaints the list without end. */
+.prime-name.prime-name-rainbow {
+  background: linear-gradient(90deg, var(--text-b3122e), var(--text-e0650a), var(--text-a87a00), var(--text-0c7a3c), var(--text-1d4fb5), var(--text-6b3fb8));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* "Оформление страницы" of Prime, still: the frame of the photo and the
+   pattern behind the page and the posts of the person. */
+.prime-page .avatar { border: 3px solid var(--back-c7b2ee); outline: 1px solid var(--text-6b3fb8); }
+.prime-page.prime-frame-gold .avatar { border-color: var(--back-f0d878); outline-color: var(--line-a8800f); }
+.prime-page.prime-frame-silver .avatar { border-color: var(--back-dfe3e8); outline-color: var(--line-7d8792); }
+.prime-page.prime-frame-glitter .avatar,
+.prime-page.prime-frame-hearts .avatar,
+.prime-page.prime-frame-stars .avatar { border-width: 5px; outline: none; border-image: url("/static/prime/frame-glitter.svg") 8 round; }
+.prime-page.prime-frame-hearts .avatar { border-image-source: url("/static/prime/frame-hearts.svg"); }
+.prime-page.prime-frame-stars .avatar { border-image-source: url("/static/prime/frame-stars.svg"); }
+.prime-sparkles { display: none; }
+.prime-bg-stars { --prime-pattern: url("/static/prime/bg-stars.svg"); }
+.prime-bg-hearts { --prime-pattern: url("/static/prime/bg-hearts.svg"); }
+.prime-bg-checks { --prime-pattern: url("/static/prime/bg-checks.svg"); }
+.prime-bg-clouds { --prime-pattern: url("/static/prime/bg-clouds.svg"); }
+.prime-bg-flowers { --prime-pattern: url("/static/prime/bg-flowers.svg"); }
+.prime-bg-sparkles { --prime-pattern: url("/static/prime/bg-sparkles.svg"); }
+.prime-bg-trip { --prime-pattern: url("/static/prime/bg-trip.svg"); }
+/* The pattern of the page lies under its plate, a band the column of a
+   computer would leave; the page itself stays white to be read. */
+body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb, var(--back-eee5b8) 70%, transparent), color-mix(in srgb, var(--back-eee5b8) 70%, transparent)), var(--prime-pattern); }
+.prime-dressed { position: relative; isolation: isolate; }
+.prime-dressed::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--back-f2f5f8) var(--prime-pattern);
+  opacity: 0.6;
+  pointer-events: none;
+}
+.im-message.prime-dressed::before { border-radius: inherit; }
+.prime-dressed:has(.attach-menu.open) { z-index: 40; }
+
+/* The New Year: the garland under the header and the red counters, no
+   snow falling over the page. */
+.festive .header { position: sticky; }
+.festive .header::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: 14px;
+  background: url("/static/newyear/garland.svg") repeat-x 0 0 / auto 14px;
+  pointer-events: none;
+}
+.festive .tabbar-count, .festive .menu .counter { background: var(--back-d23a32); color: var(--text-fff); }
+.snow, .newyear-tree { display: none; }
+.newyear { margin: 6px 0 8px; text-align: center; }
+.newyear-greeting { color: var(--text-c33); font-weight: bold; }
+
+/* The backdrop of a page has no room beside a page as wide as the
+   screen. */
+.backdrop { display: none; }
+
+/* The narrowest phones: the word of the logo gives way to a guest's
+   links, the card a smaller photo. */
+@media (max-width: 400px) {
+  .guest .logo-word { display: none; }
+}
+@media (max-width: 340px) {
+  .tabbar-item { font-size: 9px; }
+  .profile-card .avatar-box { width: 80px; }
+  .post:not(.comment, .notification, .gift) { grid-template-columns: 40px minmax(0, 1fr); }
+  .post-avatar img { width: 40px; height: 40px; }
+}
+
+

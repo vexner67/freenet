@@ -8,7 +8,10 @@ const web = new URL('../', import.meta.url);
 const statics = new URL('../static/', import.meta.url);
 
 const scripts = readdirSync(statics).filter((name) => name.endsWith('.js'));
-const pages = readdirSync(web).filter((name) => name.endsWith('.html'));
+const pages = [
+  ...readdirSync(web).filter((name) => name.endsWith('.html')),
+  ...readdirSync(new URL('m/', web)).filter((name) => name.endsWith('.html')).map((name) => `m/${name}`),
+];
 
 // What turns a string into markup or code. Everything a person wrote is
 // put on a page with textContent and el(); theme.js alone writes markup,

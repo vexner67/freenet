@@ -1,9 +1,10 @@
 // The theme of "Стиль", put on before the page is first painted. This is
 // the one script of the site that is not a module: a module runs after
 // the page is parsed, and a dark page would flash light until then. It
-// runs where the parser meets it, right after style.css, and writes the
-// stylesheet of the theme into the document there, so the browser waits
-// for it as it waits for style.css. layout.js keeps the same link once
+// runs where the parser meets it, right after the stylesheet of the page
+// (style.css, or m.css on a phone), and writes the stylesheet of the theme
+// into the document there, so the browser waits for it as it waits for
+// the page's. layout.js keeps the same link once
 // the settings are known; the keys and the themes are the ones it names.
 // The stylesheets are named whole: the server puts their versions into
 // the paths, the same ones layout.js gets.

@@ -1181,6 +1181,8 @@ export default {
   'в магазине': 'in the shop',
   'не опубликован': 'not published',
   'Скопировать ссылку': 'Copy the link',
+  'Полная версия': 'Full version',
+  'Мобильная версия': 'Mobile version',
   'Ссылка на запись': 'Link to the post',
   'Ссылка скопирована!': 'Link copied!',
   'Предупреждение': 'Warning',

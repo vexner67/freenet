@@ -29,7 +29,7 @@ test('every page of the site loads the interface of a phone, for a narrow screen
   for (const page of pages.filter((name) => name !== 'admin.html')) {
     const html = readFileSync(new URL(page, web), 'utf8');
 
-    assert.match(html, /<link rel="stylesheet" href="\/static\/style\.css">\n\s*<link rel="stylesheet" href="\/static\/mobile\.css" media="\(max-width: 800px\)">/, page);
+    assert.match(html, /<link rel="stylesheet" href="\/static\/palette\.css">\n\s*<link rel="stylesheet" href="\/static\/style\.css">\n\s*<link rel="stylesheet" href="\/static\/mobile\.css" media="\(max-width: 800px\)">/, page);
   }
 });
 
@@ -58,4 +58,35 @@ test('the bar of sections lights the section the page is in', () => {
   assert.equal(activeSection('/imogen', '/ann'), '');
   assert.equal(activeSection('/feedback', '/ann'), '');
   assert.equal(activeSection('/ann', ''), '');
+});
+
+// The pages of a phone (web/m/), which the gateway gives a phone instead
+// of the page of the same name: their own markup over the same scripts.
+const phone = new URL('m/', web);
+const phonePages = readdirSync(phone).filter((name) => name.endsWith('.html'));
+const ids = (html) => [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]).sort();
+const modules = (html) => [...html.matchAll(/<script type="module" src="([^"]+)"/g)].map((m) => m[1]);
+
+test('every page of a phone has a page of a computer and wears m.css alone', () => {
+  assert.ok(phonePages.length > 0);
+  for (const page of phonePages) {
+    const html = readFileSync(new URL(page, phone), 'utf8');
+
+    assert.ok(pages.includes(page), page);
+    assert.match(html, /<html lang="ru" class="m">/, page);
+    assert.match(html, /<meta name="viewport" content="width=device-width, initial-scale=1">/, page);
+    assert.match(html, /<link rel="manifest" href="\/static\/manifest\.json">/, page);
+    assert.match(html, /<link rel="stylesheet" href="\/static\/palette\.css">\n\s*<link rel="stylesheet" href="\/static\/m\.css">\n\s*<script src="\/static\/theme\.js"><\/script>\n\s*<script type="module"/, page);
+    assert.doesNotMatch(html, /style\.css|mobile\.css/, page);
+  }
+});
+
+test('a page of a phone has the elements of its page of a computer, for the same scripts', () => {
+  for (const page of phonePages) {
+    const html = readFileSync(new URL(page, phone), 'utf8');
+    const desktop = readFileSync(new URL(page, web), 'utf8');
+
+    assert.deepEqual(ids(html), ids(desktop), page);
+    assert.deepEqual(modules(html), modules(desktop), page);
+  }
 });

@@ -10,20 +10,22 @@ function palette(css) {
   return new Map([...root.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
 }
 
-// The interface of a phone (mobile.css) writes in the same palette.
-const style = read('style.css') + read('mobile.css');
-const plain = palette(style);
+// The palette is palette.css's; the pages of a computer (style.css, and
+// mobile.css over it on a narrow screen) and those of a phone (m.css)
+// write in it.
+const plain = palette(read('palette.css'));
+const style = read('style.css') + read('mobile.css') + read('m.css');
 
 test('the stylesheet writes colours only as variables', () => {
-  const rules = style.replace(/:root\s*\{[^}]*\}/, '');
+  const rules = style;
   const written = rules.match(/#[0-9a-f]{3,8}\b|(?<![-\w])(?:white|black|gr[ae]y|red|silver)(?![-\w(])/gi) ?? [];
 
-  assert.deepEqual(written, [], 'a colour of style.css is a variable of its :root, so that a theme can change it');
+  assert.deepEqual(written, [], 'a colour of the stylesheets is a variable of palette.css, so that a theme can change it');
 });
 
 test('every variable the stylesheet uses is in its palette', () => {
   // A variable a rule gives (--prime-pattern: a picture) is no colour.
-  const given = new Set([...style.replace(/:root\s*\{[^}]*\}/, '').matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
+  const given = new Set([...style.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]));
   const used = new Set([...style.matchAll(/var\((--[\w-]+)\)/g)].map((m) => m[1]).filter((name) => !given.has(name)));
 
   assert.deepEqual([...used].filter((name) => !plain.has(name)), []);

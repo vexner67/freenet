@@ -88,7 +88,7 @@ function messageNode(m) {
 
   const content = el('div', { className: 'im-message-body' });
   const date = el('div', { className: 'im-message-date' });
-  const node = el('div', { className: ['im-message', ...(m.unread ? ['unread'] : []), ...primeDress(m.author)].join(' ') },
+  const node = el('div', { className: ['im-message', ...(m.author.id === me.id ? ['out'] : []), ...(m.unread ? ['unread'] : []), ...primeDress(m.author)].join(' ') },
     el('a', { href: '/' + m.author.nickname }, el('img', { src: avatarURL(m.author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
       el('a', { className: ['post-name', primeNameClass(m.author)].filter(Boolean).join(' '), href: '/' + m.author.nickname, textContent: fullName(m.author) }),

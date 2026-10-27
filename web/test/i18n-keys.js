@@ -182,7 +182,11 @@ export function pageTexts(html) {
 
 // SCRIPTS are the modules of the site that translate with tr().
 export const SCRIPTS = readdirSync(STATIC).filter((f) => f.endsWith('.js') && !['en.js', 'theme.js', 'sw.js'].includes(f));
-export const PAGES = readdirSync(WEB).filter((f) => f.endsWith('.html'));
+// PAGES are the pages of a computer and those of a phone (m/).
+export const PAGES = [
+  ...readdirSync(WEB).filter((f) => f.endsWith('.html')),
+  ...readdirSync(new URL('m/', WEB)).filter((f) => f.endsWith('.html')).map((f) => `m/${f}`),
+];
 
 // allTexts are every text of the site that en.js must have.
 export function allTexts() {
