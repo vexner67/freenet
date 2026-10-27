@@ -57,6 +57,12 @@ type DocumentEraser interface {
 	DeleteByUser(ctx context.Context, userID uuid.UUID) error
 }
 
+// ArticleEraser deletes the articles a user wrote; media erases their
+// photos with the rest of the user.
+type ArticleEraser interface {
+	DeleteByUser(ctx context.Context, userID uuid.UUID) error
+}
+
 // StoryEraser deletes the stories a user told and their views of others';
 // media erases the photos with the rest of the user.
 type StoryEraser interface {
@@ -76,6 +82,7 @@ type PurgeService struct {
 	topics       TopicEraser
 	albums       AlbumEraser
 	documents    DocumentEraser
+	articles     ArticleEraser
 	stories      StoryEraser
 	held         []ReactionHolder
 	sources      SourceRepository
@@ -98,6 +105,8 @@ type PurgeDeps struct {
 	Albums      AlbumEraser
 	// Documents are the files of people; nil: none kept.
 	Documents DocumentEraser
+	// Articles are what people write in the editor; nil: none kept.
+	Articles ArticleEraser
 	// Stories are what people show for a day; nil: none kept.
 	Stories StoryEraser
 	// Held keep the likes and votes of a deleted page aside.
@@ -121,6 +130,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 		topics:       d.Topics,
 		albums:       d.Albums,
 		documents:    d.Documents,
+		articles:     d.Articles,
 		stories:      d.Stories,
 		held:         d.Held,
 		sources:      d.Sources,
@@ -133,7 +143,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 // PurgeUser deletes, in one transaction, the user's likes and comments on
 // others' posts, their votes in polls, what they suggested and postponed, their topics and the messages they
 // wrote in topics, their albums and the photos they put in others', their
-// documents, their
+// documents and articles, their
 // stories and their views of others', the posts they wrote and those on their wall (others' on it included, as a
 // deleted post takes its comments). The notifications
 // about the deleted posts and suggestions and the photos of the posts go
@@ -202,6 +212,12 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 		if s.documents != nil {
 			if err = s.documents.DeleteByUser(ctx, userID); err != nil {
 				return errs.Wrap("s.documents.DeleteByUser", err)
+			}
+		}
+
+		if s.articles != nil {
+			if err = s.articles.DeleteByUser(ctx, userID); err != nil {
+				return errs.Wrap("s.articles.DeleteByUser", err)
 			}
 		}
 

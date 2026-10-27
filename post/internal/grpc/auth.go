@@ -57,6 +57,8 @@ func PublicMethods() []string {
 		postv1.PostService_GetPhotoComments_FullMethodName,
 		postv1.PostService_ListPhotoCommentLikers_FullMethodName,
 		postv1.PostService_GetDocuments_FullMethodName,
+		postv1.PostService_GetArticle_FullMethodName,
+		postv1.PostService_ListArticles_FullMethodName,
 		postv1.PostService_PurgeUser_FullMethodName,
 		postv1.PostService_PurgeClub_FullMethodName,
 		postv1.PostService_HoldUserReactions_FullMethodName,

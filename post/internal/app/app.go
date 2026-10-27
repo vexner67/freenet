@@ -195,6 +195,7 @@ func (a *App) build(cfg config.Config) error {
 			Albums:    albums,
 			Polls:     service.NewPollService(service.PollDeps{Polls: repos.polls, Posts: repos.posts, Moderators: moderators, Walls: repos.sources, Tx: repos.tx}),
 			Documents: service.NewDocumentService(repos.documents, repos.tx, photos),
+			Articles:  service.NewArticleService(repos.articles, repos.tx, photos, repos.pages),
 			Stories:   a.stories,
 			Faves: service.NewFaveService(service.FaveDeps{
 				PostLikes: repos.likes, CommentLikes: repos.commentLikes, PhotoLikes: repos.photoLikes,
@@ -205,7 +206,7 @@ func (a *App) build(cfg config.Config) error {
 				Votes:  repos.polls,
 				Topics: repos.topics, Albums: repos.albums, Tx: repos.tx, Notifier: notifier, Photos: photos,
 				Held: repos.held, Sources: repos.sources, Postponed: repos.postponed, Documents: repos.documents,
-				Stories: repos.stories,
+				Stories: repos.stories, Articles: repos.articles,
 			}),
 			ClubPurge: service.NewClubPurgeService(service.ClubPurgeDeps{
 				Posts: repos.posts, Comments: repos.comments, Suggestions: repos.suggestions, Postponed: repos.postponed,
@@ -287,6 +288,9 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		// A document is added after every upload, which media counts too.
 		postv1.PostService_AddDocument_FullMethodName:    cfg.PostLimits,
 		postv1.PostService_RenameDocument_FullMethodName: cfg.EditLimits,
+		// An article is a long post.
+		postv1.PostService_CreateArticle_FullMethodName: cfg.PostLimits,
+		postv1.PostService_EditArticle_FullMethodName:   cfg.EditLimits,
 		// A story is told, liked and commented as a post.
 		postv1.PostService_CreateStory_FullMethodName:        cfg.PostLimits,
 		postv1.PostService_LikeStory_FullMethodName:          cfg.LikeLimits,
@@ -472,6 +476,10 @@ type repositories struct {
 		service.DocumentRepository
 		service.DocumentEraser
 	}
+	articles interface {
+		service.ArticleRepository
+		service.ArticleEraser
+	}
 	stories interface {
 		service.StoryRepository
 		service.StoryEraser
@@ -524,6 +532,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			photoLikes:    albums.PhotoLikes(),
 			photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
 			documents: inmem.NewDocumentRepository(),
+			articles:  inmem.NewArticleRepository(),
 			stories:   store.Stories(), storyViews: store.StoryViews(),
 			storyLikes: store.StoryLikes(), storyComments: store.StoryComments(),
 			held: []service.ReactionHolder{store.Holds(), topics, albums},
@@ -579,6 +588,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		photoLikes:    albums.PhotoLikes(),
 		photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
 		documents: postgres.NewDocumentRepository(a.pool),
+		articles:  postgres.NewArticleRepository(a.pool),
 		stories:   postgres.NewStoryRepository(a.pool), storyViews: postgres.NewStoryViewRepository(a.pool),
 		storyLikes: postgres.NewStoryLikeRepository(a.pool), storyComments: postgres.NewStoryCommentRepository(a.pool),
 		held:    []service.ReactionHolder{held},

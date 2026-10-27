@@ -123,6 +123,11 @@ const (
 	PostService_GetDocuments_FullMethodName           = "/post.v1.PostService/GetDocuments"
 	PostService_RenameDocument_FullMethodName         = "/post.v1.PostService/RenameDocument"
 	PostService_DeleteDocument_FullMethodName         = "/post.v1.PostService/DeleteDocument"
+	PostService_CreateArticle_FullMethodName          = "/post.v1.PostService/CreateArticle"
+	PostService_EditArticle_FullMethodName            = "/post.v1.PostService/EditArticle"
+	PostService_DeleteArticle_FullMethodName          = "/post.v1.PostService/DeleteArticle"
+	PostService_GetArticle_FullMethodName             = "/post.v1.PostService/GetArticle"
+	PostService_ListArticles_FullMethodName           = "/post.v1.PostService/ListArticles"
 	PostService_PurgeUser_FullMethodName              = "/post.v1.PostService/PurgeUser"
 	PostService_PurgeClub_FullMethodName              = "/post.v1.PostService/PurgeClub"
 	PostService_HoldUserReactions_FullMethodName      = "/post.v1.PostService/HoldUserReactions"
@@ -418,6 +423,18 @@ type PostServiceClient interface {
 	// The media service deletes the bytes after; what attached the
 	// document loses it.
 	DeleteDocument(ctx context.Context, in *DeleteDocumentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Articles: long reads with headings, quotes, lists and photos, written
+	// in the editor, as "Статьи" of VK. The photos are the author's, as the
+	// caller has checked; media keeps them while the article shows them.
+	CreateArticle(ctx context.Context, in *CreateArticleRequest, opts ...grpc.CallOption) (*CreateArticleResponse, error)
+	// Only the author edits and deletes an article.
+	EditArticle(ctx context.Context, in *EditArticleRequest, opts ...grpc.CallOption) (*EditArticleResponse, error)
+	DeleteArticle(ctx context.Context, in *DeleteArticleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Public: anybody with the link reads an article. brief leaves out the
+	// blocks, for the card of a post that links to it.
+	GetArticle(ctx context.Context, in *GetArticleRequest, opts ...grpc.CallOption) (*GetArticleResponse, error)
+	// Public: the articles of a person, newest first, brief.
+	ListArticles(ctx context.Context, in *ListArticlesRequest, opts ...grpc.CallOption) (*ListArticlesResponse, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -1495,6 +1512,56 @@ func (c *postServiceClient) DeleteDocument(ctx context.Context, in *DeleteDocume
 	return out, nil
 }
 
+func (c *postServiceClient) CreateArticle(ctx context.Context, in *CreateArticleRequest, opts ...grpc.CallOption) (*CreateArticleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateArticleResponse)
+	err := c.cc.Invoke(ctx, PostService_CreateArticle_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) EditArticle(ctx context.Context, in *EditArticleRequest, opts ...grpc.CallOption) (*EditArticleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EditArticleResponse)
+	err := c.cc.Invoke(ctx, PostService_EditArticle_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) DeleteArticle(ctx context.Context, in *DeleteArticleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_DeleteArticle_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetArticle(ctx context.Context, in *GetArticleRequest, opts ...grpc.CallOption) (*GetArticleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetArticleResponse)
+	err := c.cc.Invoke(ctx, PostService_GetArticle_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListArticles(ctx context.Context, in *ListArticlesRequest, opts ...grpc.CallOption) (*ListArticlesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListArticlesResponse)
+	err := c.cc.Invoke(ctx, PostService_ListArticles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -1869,6 +1936,18 @@ type PostServiceServer interface {
 	// The media service deletes the bytes after; what attached the
 	// document loses it.
 	DeleteDocument(context.Context, *DeleteDocumentRequest) (*emptypb.Empty, error)
+	// Articles: long reads with headings, quotes, lists and photos, written
+	// in the editor, as "Статьи" of VK. The photos are the author's, as the
+	// caller has checked; media keeps them while the article shows them.
+	CreateArticle(context.Context, *CreateArticleRequest) (*CreateArticleResponse, error)
+	// Only the author edits and deletes an article.
+	EditArticle(context.Context, *EditArticleRequest) (*EditArticleResponse, error)
+	DeleteArticle(context.Context, *DeleteArticleRequest) (*emptypb.Empty, error)
+	// Public: anybody with the link reads an article. brief leaves out the
+	// blocks, for the card of a post that links to it.
+	GetArticle(context.Context, *GetArticleRequest) (*GetArticleResponse, error)
+	// Public: the articles of a person, newest first, brief.
+	ListArticles(context.Context, *ListArticlesRequest) (*ListArticlesResponse, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -2224,6 +2303,21 @@ func (UnimplementedPostServiceServer) RenameDocument(context.Context, *RenameDoc
 }
 func (UnimplementedPostServiceServer) DeleteDocument(context.Context, *DeleteDocumentRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteDocument not implemented")
+}
+func (UnimplementedPostServiceServer) CreateArticle(context.Context, *CreateArticleRequest) (*CreateArticleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateArticle not implemented")
+}
+func (UnimplementedPostServiceServer) EditArticle(context.Context, *EditArticleRequest) (*EditArticleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EditArticle not implemented")
+}
+func (UnimplementedPostServiceServer) DeleteArticle(context.Context, *DeleteArticleRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteArticle not implemented")
+}
+func (UnimplementedPostServiceServer) GetArticle(context.Context, *GetArticleRequest) (*GetArticleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetArticle not implemented")
+}
+func (UnimplementedPostServiceServer) ListArticles(context.Context, *ListArticlesRequest) (*ListArticlesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListArticles not implemented")
 }
 func (UnimplementedPostServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
@@ -4127,6 +4221,96 @@ func _PostService_DeleteDocument_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_CreateArticle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateArticleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).CreateArticle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_CreateArticle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).CreateArticle(ctx, req.(*CreateArticleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_EditArticle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EditArticleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).EditArticle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_EditArticle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).EditArticle(ctx, req.(*EditArticleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_DeleteArticle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteArticleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).DeleteArticle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_DeleteArticle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).DeleteArticle(ctx, req.(*DeleteArticleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetArticle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetArticleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetArticle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetArticle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetArticle(ctx, req.(*GetArticleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListArticles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListArticlesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListArticles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListArticles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListArticles(ctx, req.(*ListArticlesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PurgeUserRequest)
 	if err := dec(in); err != nil {
@@ -4707,6 +4891,26 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteDocument",
 			Handler:    _PostService_DeleteDocument_Handler,
+		},
+		{
+			MethodName: "CreateArticle",
+			Handler:    _PostService_CreateArticle_Handler,
+		},
+		{
+			MethodName: "EditArticle",
+			Handler:    _PostService_EditArticle_Handler,
+		},
+		{
+			MethodName: "DeleteArticle",
+			Handler:    _PostService_DeleteArticle_Handler,
+		},
+		{
+			MethodName: "GetArticle",
+			Handler:    _PostService_GetArticle_Handler,
+		},
+		{
+			MethodName: "ListArticles",
+			Handler:    _PostService_ListArticles_Handler,
 		},
 		{
 			MethodName: "PurgeUser",

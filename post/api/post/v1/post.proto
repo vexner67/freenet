@@ -300,6 +300,19 @@ service PostService {
   // document loses it.
   rpc DeleteDocument(DeleteDocumentRequest) returns (google.protobuf.Empty);
 
+  // Articles: long reads with headings, quotes, lists and photos, written
+  // in the editor, as "Статьи" of VK. The photos are the author's, as the
+  // caller has checked; media keeps them while the article shows them.
+  rpc CreateArticle(CreateArticleRequest) returns (CreateArticleResponse);
+  // Only the author edits and deletes an article.
+  rpc EditArticle(EditArticleRequest) returns (EditArticleResponse);
+  rpc DeleteArticle(DeleteArticleRequest) returns (google.protobuf.Empty);
+  // Public: anybody with the link reads an article. brief leaves out the
+  // blocks, for the card of a post that links to it.
+  rpc GetArticle(GetArticleRequest) returns (GetArticleResponse);
+  // Public: the articles of a person, newest first, brief.
+  rpc ListArticles(ListArticlesRequest) returns (ListArticlesResponse);
+
   // Internal, for user: the user's page was deleted and not restored in
   // time. Their posts and the posts on their wall go, with all their likes
   // and comments, and their likes and comments on others' posts. Idempotent.
@@ -1900,4 +1913,104 @@ message ListStoryCommentsResponse {
 
 message DeleteStoryCommentRequest {
   string id = 1;
+}
+
+// What a block of an article is.
+enum ArticleBlockKind {
+  ARTICLE_BLOCK_KIND_UNSPECIFIED = 0;
+  ARTICLE_BLOCK_KIND_PARAGRAPH = 1;
+  ARTICLE_BLOCK_KIND_HEADING = 2;
+  ARTICLE_BLOCK_KIND_SUBHEADING = 3;
+  ARTICLE_BLOCK_KIND_QUOTE = 4;
+  // An item of a bulleted list; the items next to each other are one list.
+  ARTICLE_BLOCK_KIND_BULLET = 5;
+  // An item of a numbered list.
+  ARTICLE_BLOCK_KIND_NUMBER = 6;
+  ARTICLE_BLOCK_KIND_CODE = 7;
+  ARTICLE_BLOCK_KIND_PHOTO = 8;
+  ARTICLE_BLOCK_KIND_DIVIDER = 9;
+}
+
+// A piece of the text of a block written one way.
+message ArticleSpan {
+  string text = 1;
+  bool bold = 2;
+  bool italic = 3;
+  bool strike = 4;
+  // An http or https address the piece links to; empty for none.
+  string link = 5;
+}
+
+// A block of an article: spans of text, a photo with its caption or a
+// divider.
+message ArticleBlock {
+  ArticleBlockKind kind = 1;
+  repeated ArticleSpan spans = 2;
+  string photo_id = 3;
+  string caption = 4;
+}
+
+message Article {
+  string id = 1;
+  string author_id = 2;
+  string title = 3;
+  // The photo over the title; empty for none.
+  string cover_id = 4;
+  // Empty in a brief article.
+  repeated ArticleBlock blocks = 5;
+  // The start of the text, up to 300 characters.
+  string excerpt = 6;
+  // How many minutes it is read.
+  int32 minutes = 7;
+  google.protobuf.Timestamp created_at = 8;
+  // Unset when never edited.
+  google.protobuf.Timestamp edited_at = 9;
+}
+
+message CreateArticleRequest {
+  string title = 1;
+  string cover_id = 2;
+  repeated ArticleBlock blocks = 3;
+}
+
+message CreateArticleResponse {
+  Article article = 1;
+}
+
+message EditArticleRequest {
+  string id = 1;
+  string title = 2;
+  string cover_id = 3;
+  repeated ArticleBlock blocks = 4;
+}
+
+message EditArticleResponse {
+  Article article = 1;
+}
+
+message DeleteArticleRequest {
+  string id = 1;
+}
+
+message GetArticleRequest {
+  string id = 1;
+  bool brief = 2;
+}
+
+message GetArticleResponse {
+  Article article = 1;
+}
+
+message ListArticlesRequest {
+  string author_id = 1;
+  // Empty for the newest, else next_cursor of the previous page.
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message ListArticlesResponse {
+  repeated Article articles = 1;
+  string next_cursor = 2;
+  // The articles of the person on all pages.
+  int32 total = 3;
 }
