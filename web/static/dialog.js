@@ -22,7 +22,7 @@ import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, o
 import { isLive, onEvent } from './events.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
 import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, messagesCount, primeDress, primeNameClass, selectedCount, votesCount } from './labels.js';
-import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
+import { $, avatarURL, el, fullName, isPhone, whenShown, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
 import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
@@ -680,6 +680,8 @@ async function setUpInput({ canWrite, primeOnly, messagePrice: price = 0 }) {
       $('form').requestSubmit();
     }
   });
+  // A phone opens a dialog to write in it, as its messengers do.
+  if (isPhone()) whenShown().then(() => $('text').focus({ preventScroll: true }));
   // Editing a message is not writing one; nobody reads «Избранное» but
   // the one who writes.
   if (saved()) return;

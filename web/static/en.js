@@ -1327,6 +1327,7 @@ export default {
   'Редактирование сообщения': 'Editing the message',
   'Ответ на сообщение': 'Reply to the message',
   'Введите сообщение': 'Enter a message',
+  'Сообщение...': 'Message...',
   'Не редактировать': 'Do not edit',
   'Не отвечать': 'Do not reply',
   'Фон страницы': 'Page background',

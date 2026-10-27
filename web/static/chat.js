@@ -24,7 +24,7 @@ import { isLive, onEvent } from './events.js';
 import { openAvatarDialog } from './avatar.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
 import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, photoChanges, primeDress, primeNameClass, selectedCount, snippet } from './labels.js';
-import { $, avatarURL, chatPhotoURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
+import { $, avatarURL, chatPhotoURL, el, fullName, isPhone, whenShown, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
 import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
@@ -645,6 +645,28 @@ function openPhoto() {
   });
 }
 
+// chatActions are what may be done with the chat, each [text, the address
+// or what it does, the class of its mark].
+function chatActions(active) {
+  const search = [tr('Поиск по переписке'), '/im?chat=' + encodeURIComponent(chatID), 'chat-action-search'];
+  if (!active) return [search];
+
+  return [
+    search,
+    [tr('Добавить участников'), () => openAddMembers(me, chat, (changed) => { show(changed); catchUp(); }), 'chat-action-add'],
+    [tr('Обновить название'), openRename, 'chat-action-rename'],
+    [tr('Покинуть чат'), confirmLeave, 'chat-action-leave'],
+  ];
+}
+
+// aboutActions are the actions of the chat as rows with their marks, at
+// the top of "О чате" on a phone; a row closes the window first.
+function aboutActions(modal) {
+  return el('div', { className: 'chat-about-actions' }, ...chatActions(true).map(([text, run, mark]) => (typeof run === 'string'
+    ? el('a', { className: `chat-about-action ${mark}`, href: run, textContent: text })
+    : el('a', { className: `chat-about-action ${mark}`, textContent: text, onclick: () => { modal.close(); run(); } }))));
+}
+
 // openAbout is "О чате": its photo, who is in it, its creator marked;
 // anyone in it changes the photo, the creator removes the others here.
 function openAbout() {
@@ -691,6 +713,7 @@ function openAbout() {
     chat.state === 'active' ? photoLinks : '',
     el('b', { textContent: chatTitle(chat) }),
     el('div', { className: 'hint', textContent: chatMembers(chat.memberCount) }),
+    isPhone() && chat.state === 'active' ? aboutActions(modal) : '',
     people,
     chat.ownerId === me.id && chat.state === 'active' && el('p', { className: 'album-delete' },
       tr('Вы также можете '), el('a', { textContent: tr('удалить беседу'), onclick: () => { modal.close(); confirmDeleteChat(); } }), '.'),
@@ -704,11 +727,9 @@ function show(now) {
   chat = now;
 
   const active = chat.state === 'active';
-  const link = (text, onclick) => el('a', { textContent: text, onclick });
-  const search = el('a', { href: '/im?chat=' + encodeURIComponent(chatID), textContent: tr('Поиск по переписке') });
-  const links = active
-    ? [search, link(tr('Добавить участников'), () => openAddMembers(me, chat, (changed) => { show(changed); catchUp(); })), link(tr('Обновить название'), openRename), link(tr('Покинуть чат'), confirmLeave)]
-    : [search];
+  const link = ([text, run]) => (typeof run === 'string' ? el('a', { href: run, textContent: text }) : el('a', { textContent: text, onclick: run }));
+  // A phone has them in "О чате", with their marks.
+  const links = isPhone() && active ? [] : chatActions(active).map(link);
 
   document.title = tr('{0} | Сообщения', chatTitle(chat));
   $('title').replaceChildren(el('a', { href: '/im', textContent: tr('Мои Сообщения') }), ' » ', chatTitle(chat));
@@ -803,6 +824,8 @@ if (!me) {
     $('about').addEventListener('click', openAbout);
     $('messenger').hidden = false;
     show(found);
+    // A phone opens a chat to write in it, as its messengers do.
+    if (isPhone() && !$('form').hidden) whenShown().then(() => $('text').focus({ preventScroll: true }));
     add(page.messages, false);
     olderCursor = page.nextCursor;
     // At the end, and kept there while the messages take their height.

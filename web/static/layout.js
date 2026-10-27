@@ -408,7 +408,51 @@ if (typeof document !== 'undefined') applyLook(storedLook());
 // makes are answered, the answers that bring more reads included, so it
 // does not come up block by block. theme.js shows it anyway after a
 // while, for a slow server.
-if (typeof document !== 'undefined') idle().then(() => document.documentElement.classList.remove('pending'));
+const pageShown = typeof document === 'undefined' ? Promise.resolve() : idle().then(() => {
+  returnToPlace();
+  document.documentElement.classList.remove('pending');
+});
+if (typeof document !== 'undefined') document.addEventListener('click', keepPlace);
+
+// whenShown resolves once the page is drawn and shown: what is hidden
+// cannot take the focus before.
+export function whenShown() {
+  return pageShown;
+}
+
+// A tab opens another page, drawn anew: it comes up scrolled where the
+// tab was pressed, not at its top, and with the row of tabs scrolled as
+// it was, so only what is under the tabs changes.
+const placeKey = 'freenet.place';
+const tabLinks = '.tabs a[href], .mb-tabs a[href], .pet-tabs a[href]';
+
+function keepPlace(event) {
+  const link = event.target instanceof Element ? event.target.closest(tabLinks) : null;
+  if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || link.target) return;
+  const to = new URL(link.href, location.href);
+  if (to.origin !== location.origin) return;
+  const row = link.closest('.tabs, .mb-tabs, .pet-tabs');
+  try {
+    sessionStorage.setItem(placeKey, JSON.stringify({
+      to: to.pathname + to.search, y: scrollY, row: row?.scrollLeft ?? 0, at: Date.now(),
+    }));
+  } catch {
+    // Without storage the page opens at its top.
+  }
+}
+
+function returnToPlace() {
+  let place = null;
+  try {
+    place = JSON.parse(sessionStorage.getItem(placeKey));
+    sessionStorage.removeItem(placeKey);
+  } catch {
+    return;
+  }
+  if (!place || place.to !== location.pathname + location.search || Date.now() - place.at > 30000) return;
+  for (const row of document.querySelectorAll('.tabs, .mb-tabs, .pet-tabs')) row.scrollLeft = place.row;
+  scrollTo(0, Math.min(place.y, document.documentElement.scrollHeight - innerHeight));
+}
 
 // isMicroblog: posts are laid out as openvk's "Микроблог". A phone lays
 // them out its own way.

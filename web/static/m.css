@@ -2201,6 +2201,22 @@ input.step-value { font-size: 16px; }
 
 /* Blocks */
 
+/* The stories over the news: yours to add first, at the left, the
+   others after it, in a row that scrolls aside. */
+.story-bar {
+  display: flex;
+  gap: 4px;
+  margin: -10px -10px 10px;
+  padding: 10px 6px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line-e8ebee);
+  scrollbar-width: none;
+}
+.story-bar::-webkit-scrollbar { display: none; }
+.story-bar .story-circle { width: 68px; }
+.story-bar .story-circle img { width: 54px; height: 54px; }
+.story-bar .story-circle span { font-size: 11px; }
+
 /* openvk's grey bar over a block, its arrow and a count beside it; the
    line under it (.subtitle) touches it. */
 .section-title {
@@ -2208,8 +2224,8 @@ input.step-value { font-size: 16px; }
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 14px -10px 8px;
-  padding: 6px 12px 6px 26px;
+  margin: 22px -10px 10px;
+  padding: 7px 12px 7px 26px;
   background: var(--back-e6e6e6) url("/static/icons/block-arrow.svg") no-repeat 2px 50%;
   border-top: 1px solid var(--line-8b8b8b);
   color: var(--text-626262);
@@ -2611,7 +2627,8 @@ body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
 
 /* The blocks of the narrow column of a computer, short: the people in a
    row that scrolls aside, the groups and the rest as lines. */
-.side-block { margin-bottom: 4px; }
+.side-block { margin-bottom: 18px; }
+.side-block + .side-block .section-title { margin-top: 0; }
 .side-block .section-title { margin-top: 0; }
 .people-grid { display: flex; gap: 6px; margin: 0 -10px; padding: 10px; overflow-x: auto; scrollbar-width: none; }
 .people-grid::-webkit-scrollbar { display: none; }
@@ -2621,6 +2638,15 @@ body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
 .person-cell .person-surname { font-size: 11px; }
 .side-text { padding: 8px 0; }
 .side-text a { display: inline-block; padding: 3px 0; }
+
+/* The ratings: the place, the person and the sum, which wraps rather
+   than leaves the screen. */
+.top-table { table-layout: fixed; }
+.top-table th.top-place, .top-table td.top-place { width: 46px; padding: 6px 2px; }
+.top-table th.top-value, .top-table td.top-value { width: 34%; white-space: normal; overflow-wrap: anywhere; }
+.top-person { gap: 8px; min-width: 0; }
+.top-avatar { flex: none; }
+.top-who { overflow-wrap: anywhere; }
 
 .info { width: 100%; border-collapse: collapse; }
 .info th { width: 40%; padding: 4px 8px 4px 0; color: var(--text-808080); font-weight: normal; text-align: left; vertical-align: top; }
@@ -2779,6 +2805,29 @@ body:has(#peer-avatar) .im-message .name-checkmark,
 .messenger-box .attachments, .messenger-box .doc-attached { margin: 0; }
 .messenger-box .sticker-panel { order: 4; margin: 0; }
 
+/* "О чате" of a phone: what may be done with the chat, rows with their
+   marks, as the actions of a post; leaving is red. */
+.chat-about-actions { margin: 4px -14px; border-top: 1px solid var(--line-ececec); }
+.chat-about-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line-ececec);
+  color: var(--text-2b587a);
+  font-size: 15px;
+}
+.chat-about-action:active { background: var(--back-f0f0f0); }
+.chat-about-action::before { content: ""; flex-shrink: 0; width: 20px; height: 20px; background: no-repeat center / 20px; }
+.chat-action-search::before { background-image: url("/static/icons/chat-search.svg"); }
+.chat-action-add::before { background-image: url("/static/icons/chat-add.svg"); }
+.chat-action-rename::before { background-image: url("/static/icons/edit.svg"); }
+.chat-action-leave::before { background-image: url("/static/icons/chat-leave.svg"); }
+.chat-action-leave { color: var(--text-c33); }
+/* The bar under the plate tells only how many are in the chat. */
+.chat-bar #actions:empty { display: none; }
+
 /* Windows: a box over the dimmed page, from the top, scrolled when taller
    than the screen; its buttons on a grey band, the size of a finger. */
 .modal {
@@ -2905,10 +2954,39 @@ img.name-prime.name-prime { display: inline; width: 12px; height: 12px; margin: 
 .prime-page.prime-frame-silver .avatar { border-color: var(--back-dfe3e8); outline-color: var(--line-7d8792); }
 .prime-page.prime-frame-glitter .avatar,
 .prime-page.prime-frame-hearts .avatar,
-.prime-page.prime-frame-stars .avatar { border-width: 5px; outline: none; border-image: url("/static/prime/frame-glitter.svg") 8 round; }
+.prime-page.prime-frame-stars .avatar { border-width: 6px; outline: none; border-image: url("/static/prime/frame-glitter.svg") 8 round; }
 .prime-page.prime-frame-hearts .avatar { border-image-source: url("/static/prime/frame-hearts.svg"); }
 .prime-page.prime-frame-stars .avatar { border-image-source: url("/static/prime/frame-stars.svg"); }
+/* The glitter frame shines as on a computer: one photo is little to
+   repaint. */
+.prime-page.prime-frame-glitter .avatar { animation: prime-glow 1.6s ease-in-out infinite alternate, prime-shimmer 4s linear infinite; }
+.prime-frame-glitter .avatar-box, .prime-sparkle-box { position: relative; }
+.prime-sparkle-box { display: block; line-height: 0; }
 .prime-sparkles { display: none; }
+.prime-frame-glitter .prime-sparkles {
+  position: absolute;
+  inset: -10px;
+  display: block;
+  background: url("/static/prime/sparkles.svg") 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+  animation: prime-twinkle 0.9s steps(2, jump-none) infinite;
+}
+.prime-frame-glitter .prime-sparkles.late { transform: rotate(180deg); animation-delay: 0.45s; }
+@keyframes prime-glow {
+  from { box-shadow: 0 0 4px 1px var(--back-f0d878), 0 0 0 0 var(--back-c7b2ee); }
+  to { box-shadow: 0 0 14px 4px var(--back-f0d878), 0 0 24px 8px var(--back-c7b2ee); }
+}
+@keyframes prime-shimmer {
+  from { filter: hue-rotate(0deg) saturate(1.3) brightness(1.05); }
+  to { filter: hue-rotate(360deg) saturate(1.3) brightness(1.05); }
+}
+@keyframes prime-twinkle {
+  from { opacity: 1; }
+  to { opacity: 0.15; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prime-page.prime-frame-glitter .avatar, .prime-frame-glitter .prime-sparkles { animation: none; }
+}
 .prime-bg-stars { --prime-pattern: url("/static/prime/bg-stars.svg"); }
 .prime-bg-hearts { --prime-pattern: url("/static/prime/bg-hearts.svg"); }
 .prime-bg-checks { --prime-pattern: url("/static/prime/bg-checks.svg"); }
@@ -2931,6 +3009,15 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 }
 .im-message.prime-dressed::before { border-radius: inherit; }
 .prime-dressed:has(.attach-menu.open) { z-index: 40; }
+/* A row of the ratings is no box of its own: a ::before there would be
+   taken for a cell and push the row aside, so the pattern lies on its
+   cells. */
+.top-row.prime-dressed { position: static; isolation: auto; }
+.top-row.prime-dressed::before { content: none; }
+.top-row.prime-dressed td {
+  background: linear-gradient(color-mix(in srgb, var(--back-f2f5f8) 40%, transparent), color-mix(in srgb, var(--back-f2f5f8) 40%, transparent)),
+    var(--prime-pattern);
+}
 
 /* The New Year: the garland under the header and the red counters, no
    snow falling over the page. */
@@ -2953,6 +3040,69 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 /* The backdrop of a page has no room beside a page as wide as the
    screen. */
 .backdrop { display: none; }
+
+/* Room to breathe: the forms, settings and lists of a computer are
+   packed for a mouse; on a phone their words stand apart. The class of
+   the page (.m) makes these win over the rules taken from style.css. */
+.m .page-body p { line-height: 1.45; }
+.m .page-body p + p { margin-top: 8px; }
+.m .container-gray { padding: 14px 12px; }
+.m .container-gray h4,
+.m .page-body > h4 {
+  margin: 26px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line-dae1e8);
+  color: var(--text-45688e);
+  font-size: 15px;
+}
+.m .container-gray > form > h4:first-child, .m .container-gray > div > h4:first-child, .m .container-gray > h4:first-child,
+.m .page-body > h4:first-child { margin-top: 4px; }
+.m .container-gray .subhead { margin: 18px 0 8px; font-size: 14px; }
+.m .form tr { margin-bottom: 16px; }
+.m .form tr:last-child { margin-bottom: 0; }
+.m .container-gray .form th, .m .form th { padding: 0 0 6px; color: var(--text-555); font-size: 13px; line-height: 1.35; }
+.m .form .hint, .m .form td.note { display: block; margin-top: 6px; font-size: 13px; line-height: 1.45; }
+.m .container-gray .form tr:has(.check-cell) { gap: 10px; padding: 8px 0; margin-bottom: 4px; }
+.m .form .control label, .m .checks label { display: flex; align-items: center; gap: 8px; padding: 7px 0; }
+.m .container-gray .actions, .m .actions { margin-top: 18px; }
+.m .settings-block { margin: 12px 0 24px; }
+.m .accent-box { margin: 12px 0; padding: 14px; line-height: 1.45; }
+.m .accent-box p { margin: 0 0 10px; }
+.m .container-gray .settings-delete { margin: 20px -12px -14px; padding: 16px 12px; }
+
+/* "Prime": the perks, the plans and the styles apart. */
+.m .prime-hero { gap: 14px; margin: 0 0 18px; }
+.m .prime-perks { margin: 0 0 16px; padding-left: 20px; }
+.m .prime-perks li { margin: 0 0 10px; line-height: 1.45; }
+.m .prime-plans { gap: 12px; margin: 0 0 16px; }
+.m .prime-plan { padding: 16px 12px; }
+.m .prime-plan-name { margin-bottom: 8px; font-size: 15px; }
+.m .prime-plan-saving { margin: 6px 0 12px; }
+.m .prime-style-label { display: block; margin: 18px 0 8px; }
+.m .prime-swatches { gap: 8px; }
+.m .prime-state { margin-bottom: 12px; line-height: 1.45; }
+
+/* Lists of groups and the like: a row for each, with room between the
+   photo, the words and the buttons, which stand side by side. */
+.m .summary-bar { padding: 14px 10px; font-size: 14px; }
+.m .list-row { gap: 12px; padding: 16px 10px; border-bottom: 8px solid var(--back-f0f0f0); }
+.m .list-info .info th, .m .list-info .info td { padding: 4px 8px 4px 0; line-height: 1.35; }
+.m .list-info .info th { width: 80px; }
+.m .list-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.m .list-actions .profile-link { flex: 1 1 calc(50% - 4px); margin: 0; }
+
+/* The shop of stickers: two packs in a row, their words whole. */
+.m .stickers-grid { gap: 10px; }
+.m .stickers-pack-card { flex: 0 0 calc((100% - 10px) / 2); max-width: calc((100% - 10px) / 2); padding: 10px; }
+.m .stickers-pack-name { font-size: 14px; white-space: normal; overflow-wrap: anywhere; }
+.m .stickers-pack-author { margin-top: 4px; font-size: 12px; white-space: normal; }
+.m .stickers-pack-desc { height: auto; max-height: 5.8em; margin-top: 6px; font-size: 13px; line-height: 1.4; -webkit-line-clamp: 4; }
+.m .stickers-pack-installs { font-size: 12px; }
+.m .stickers-pack-footer .button { min-height: 34px; padding: 0 8px; font-size: 13px; }
+.m .stickers-modal-grid { grid-template-columns: repeat(4, 1fr); }
+.m .stickers-modal-header { gap: 12px; }
+.m .stickers-modal-cover { width: 88px; height: 88px; }
+.m .sticker-studio-item { padding: 10px 0; }
 
 /* The narrowest phones: the word of the logo gives way to a guest's
    links, the card a smaller photo. */
