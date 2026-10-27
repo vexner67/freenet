@@ -25,17 +25,24 @@ type GoodPlan struct {
 // FirmSettings are the enterprises and the goods in order, the standard
 // wage in hundredths an hour, the fee of the exchange, what the state
 // pays and asks and the city pays in percent of the base, the hours the
-// storage holds and the percent of the price a new enterprise has.
+// storage holds, the percent of the price a new enterprise has, how many
+// enterprises a page may direct and the shares of an enterprise: the
+// founder's, those the exchange sells when it is founded and the most it
+// may have.
 type FirmSettings struct {
-	Plans   []FirmPlan
-	Goods   []GoodPlan
-	Wage    int64
-	Fee     int
-	Floor   int
-	Ceiling int
-	Retail  int
-	Storage int
-	Capital int
+	Plans          []FirmPlan
+	Goods          []GoodPlan
+	Wage           int64
+	Fee            int
+	Floor          int
+	Ceiling        int
+	Retail         int
+	Storage        int
+	Capital        int
+	MaxFirms       int
+	FoundingShares int64
+	FloatShares    int64
+	MaxShares      int64
 }
 
 // FirmStats are how the enterprises do: how many there are, the votes

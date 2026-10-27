@@ -184,6 +184,7 @@ func fromProtoFirmSettings(s *userv1.FirmSettings) model.FirmSettings {
 	out := model.FirmSettings{
 		Wage: s.GetWage(), Fee: int(s.GetFee()), Floor: int(s.GetFloor()), Ceiling: int(s.GetCeiling()),
 		Retail: int(s.GetRetail()), Storage: int(s.GetStorage()), Capital: int(s.GetCapital()),
+		MaxFirms: int(s.GetMaxFirms()), FoundingShares: s.GetFoundingShares(), FloatShares: s.GetFloatShares(), MaxShares: s.GetMaxShares(),
 	}
 	for _, p := range s.GetPlans() {
 		out.Plans = append(out.Plans, model.FirmPlan{
@@ -199,7 +200,7 @@ func fromProtoFirmSettings(s *userv1.FirmSettings) model.FirmSettings {
 }
 
 func toProtoFirmSettings(s model.FirmSettings) (*userv1.FirmSettings, error) {
-	out := &userv1.FirmSettings{Wage: s.Wage}
+	out := &userv1.FirmSettings{Wage: s.Wage, FoundingShares: s.FoundingShares, FloatShares: s.FloatShares, MaxShares: s.MaxShares}
 	ints := []struct {
 		n    int
 		what string
@@ -211,6 +212,7 @@ func toProtoFirmSettings(s model.FirmSettings) (*userv1.FirmSettings, error) {
 		{s.Retail, "the price the city pays", &out.Retail},
 		{s.Storage, "the storage", &out.Storage},
 		{s.Capital, "the capital", &out.Capital},
+		{s.MaxFirms, "the enterprises of a page", &out.MaxFirms},
 	}
 	for _, i := range ints {
 		n, err := int32Of(i.n, i.what)

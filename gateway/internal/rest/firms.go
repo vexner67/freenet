@@ -46,6 +46,12 @@ type firmSettingsJSON struct {
 	Retail  int            `json:"retail"`
 	Storage int            `json:"storage"`
 	Capital int            `json:"capital"`
+	// MaxFirms is how many enterprises a page may direct; the shares are
+	// the founder's, those sold at founding and the most an enterprise has.
+	MaxFirms       int   `json:"maxFirms"`
+	FoundingShares int64 `json:"foundingShares"`
+	FloatShares    int64 `json:"floatShares"`
+	MaxShares      int64 `json:"maxShares"`
 }
 
 type firmInputJSON struct {
@@ -188,15 +194,19 @@ type firmsJSON struct {
 
 func toFirmSettingsJSON(s model.FirmSettings) firmSettingsJSON {
 	return firmSettingsJSON{
-		Plans:   listJSON(s.Plans, func(p model.FirmPlan) firmPlanJSON { return firmPlanJSON(p) }),
-		Goods:   listJSON(s.Goods, func(g model.GoodPlan) goodPlanJSON { return goodPlanJSON(g) }),
-		Wage:    s.Wage,
-		Fee:     s.Fee,
-		Floor:   s.Floor,
-		Ceiling: s.Ceiling,
-		Retail:  s.Retail,
-		Storage: s.Storage,
-		Capital: s.Capital,
+		Plans:          listJSON(s.Plans, func(p model.FirmPlan) firmPlanJSON { return firmPlanJSON(p) }),
+		Goods:          listJSON(s.Goods, func(g model.GoodPlan) goodPlanJSON { return goodPlanJSON(g) }),
+		Wage:           s.Wage,
+		Fee:            s.Fee,
+		Floor:          s.Floor,
+		Ceiling:        s.Ceiling,
+		Retail:         s.Retail,
+		Storage:        s.Storage,
+		Capital:        s.Capital,
+		MaxFirms:       s.MaxFirms,
+		FoundingShares: s.FoundingShares,
+		FloatShares:    s.FloatShares,
+		MaxShares:      s.MaxShares,
 	}
 }
 
@@ -421,6 +431,7 @@ func (a *api) setFirmSettings(w http.ResponseWriter, r *http.Request) {
 		Goods: listJSON(req.Goods, func(g goodPlanJSON) model.GoodPlan { return model.GoodPlan(g) }),
 		Wage:  req.Wage, Fee: req.Fee, Floor: req.Floor, Ceiling: req.Ceiling, Retail: req.Retail,
 		Storage: req.Storage, Capital: req.Capital,
+		MaxFirms: req.MaxFirms, FoundingShares: req.FoundingShares, FloatShares: req.FloatShares, MaxShares: req.MaxShares,
 	}
 
 	if err = a.firmsBackend.Set(r.Context(), token, settings); err != nil {

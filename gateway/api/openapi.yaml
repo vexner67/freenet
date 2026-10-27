@@ -10020,6 +10020,10 @@ components:
         retail: { type: integer, description: What the city pays the shops, percent of the base }
         storage: { type: integer, description: The hours of full work the storage holds }
         capital: { type: integer, description: The percent of its price a new enterprise has in cash }
+        maxFirms: { type: integer, description: How many enterprises a page may direct, from 1 to 1000 }
+        foundingShares: { type: integer, format: int64, description: The shares an enterprise is founded with, all the founder's }
+        floatShares: { type: integer, format: int64, description: The new shares the exchange sells when an enterprise is founded }
+        maxShares: { type: integer, format: int64, description: The most shares an enterprise may have, up to a million }
     Firm:
       type: object
       properties:

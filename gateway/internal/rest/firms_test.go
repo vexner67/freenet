@@ -132,8 +132,9 @@ func TestFirms(t *testing.T) {
 		t.Fatalf("settings: %d %v", w.Code, got)
 	}
 
-	w = h.do("PUT", "/api/v1/firm/settings", `{"plans":[{"kind":"farm","price":7,"staff":12}],"goods":[{"good":"grain","base":30,"norm":100}],"fee":3,"floor":70}`, "Authorization", "Bearer tok")
-	if w.Code != http.StatusNoContent || h.firms.set.Fee != 3 || h.firms.set.Floor != 70 || h.firms.set.Plans[0].Staff != 12 || h.firms.set.Goods[0].Norm != 100 {
+	w = h.do("PUT", "/api/v1/firm/settings", `{"plans":[{"kind":"farm","price":7,"staff":12}],"goods":[{"good":"grain","base":30,"norm":100}],"fee":3,"floor":70,"maxFirms":4,"foundingShares":200,"floatShares":0,"maxShares":5000}`, "Authorization", "Bearer tok")
+	if w.Code != http.StatusNoContent || h.firms.set.Fee != 3 || h.firms.set.Floor != 70 || h.firms.set.Plans[0].Staff != 12 || h.firms.set.Goods[0].Norm != 100 ||
+		h.firms.set.MaxFirms != 4 || h.firms.set.FoundingShares != 200 || h.firms.set.MaxShares != 5000 {
 		t.Fatalf("set: %d %+v", w.Code, h.firms.set)
 	}
 
