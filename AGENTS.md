@@ -93,6 +93,7 @@ freenet/
 | `docs/features/media.md` | Фото, хранилище `media` и документы |
 | `docs/features/wall.md` | Записи, стена, лента, лайки, комментарии, упоминания, хэштеги, ссылки, закладки |
 | `docs/features/stories.md` | Истории |
+| `docs/features/articles.md` | Статьи: редактор, страница статьи, карточка в записи |
 | `docs/features/clubs.md` | Сообщества и обсуждения |
 | `docs/features/albums.md` | Фотоальбомы |
 | `docs/features/gifts-stickers.md` | Подарки, коллекционные подарки и стикеры |
