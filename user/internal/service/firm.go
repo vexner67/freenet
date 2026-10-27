@@ -322,7 +322,7 @@ func (r firmRun) do(ctx context.Context) error {
 		_, err := c.SellToState(r.rules, r.userID, a.FirmID, a.Order.Good, a.Order.Units, r.now)
 		return errs.Wrap("c.SellToState", err)
 	case user.FirmIssue:
-		return errs.Wrap("c.Issue", c.Issue(r.userID, a.FirmID, a.Shares))
+		return errs.Wrap("c.Issue", c.Issue(r.rules, r.userID, a.FirmID, a.Shares))
 	case user.FirmRepair:
 		_, err := c.Repair(r.rules, r.userID, a.FirmID)
 		return errs.Wrap("c.Repair", err)

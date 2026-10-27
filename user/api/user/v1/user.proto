@@ -2452,6 +2452,14 @@ message FirmSettings {
   int32 retail = 7;
   int32 storage = 8;
   int32 capital = 9;
+  // How many enterprises a page may direct.
+  int32 max_firms = 10;
+  // The shares an enterprise is founded with, the founder's.
+  int64 founding_shares = 11;
+  // The shares the exchange sells when an enterprise is founded.
+  int64 float_shares = 12;
+  // The most shares an enterprise may have.
+  int64 max_shares = 13;
 }
 
 // FirmSpec is what an enterprise does: makes rate units of output a

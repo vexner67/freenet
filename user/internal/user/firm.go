@@ -11,14 +11,12 @@ import (
 )
 
 const (
-	// FoundingShares are the shares an enterprise is founded with, all of
-	// the founder's.
-	FoundingShares = 100
-	// MaxFirmShares is the most shares an enterprise may have.
+	// MaxFirmShares is the most shares the administrators may let an
+	// enterprise have: a payout times it stays within int64.
 	MaxFirmShares = 1_000_000
-	// MaxFirmsFounded is the most enterprises a page may direct and found
-	// more.
-	MaxFirmsFounded = 10
+	// MaxFirmsDirected is the most enterprises the administrators may let
+	// a page direct.
+	MaxFirmsDirected = 1_000
 	// FirmHours are the hours an enterprise reports.
 	FirmHours = 24
 	// maxFirmNameLen is the longest name of an enterprise.

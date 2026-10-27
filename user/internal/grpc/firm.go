@@ -24,13 +24,17 @@ type FirmService interface {
 
 func toProtoFirmSettings(r user.FirmRules) *userv1.FirmSettings {
 	s := &userv1.FirmSettings{
-		Wage:    r.Wage,
-		Fee:     int32(r.Fee),     //nolint:gosec // at most user.MaxFirmFee
-		Floor:   int32(r.Floor),   //nolint:gosec // at most user.MaxFirmPercent
-		Ceiling: int32(r.Ceiling), //nolint:gosec // at most user.MaxFirmPercent
-		Retail:  int32(r.Retail),  //nolint:gosec // at most user.MaxFirmPercent
-		Storage: int32(r.Storage), //nolint:gosec // at most user.MaxFirmStorage
-		Capital: int32(r.Capital), //nolint:gosec // at most 100
+		Wage:           r.Wage,
+		Fee:            int32(r.Fee),      //nolint:gosec // at most user.MaxFirmFee
+		Floor:          int32(r.Floor),    //nolint:gosec // at most user.MaxFirmPercent
+		Ceiling:        int32(r.Ceiling),  //nolint:gosec // at most user.MaxFirmPercent
+		Retail:         int32(r.Retail),   //nolint:gosec // at most user.MaxFirmPercent
+		Storage:        int32(r.Storage),  //nolint:gosec // at most user.MaxFirmStorage
+		Capital:        int32(r.Capital),  //nolint:gosec // at most 100
+		MaxFirms:       int32(r.MaxFirms), //nolint:gosec // at most user.MaxFirmsDirected
+		FoundingShares: r.Founding,
+		FloatShares:    r.Float,
+		MaxShares:      r.MaxShares,
 	}
 	for _, p := range r.Plans {
 		s.Plans = append(s.Plans, &userv1.FirmPlan{
@@ -49,6 +53,7 @@ func fromProtoFirmSettings(s *userv1.FirmSettings) (user.FirmRules, error) {
 	r := user.FirmRules{
 		Wage: s.GetWage(), Fee: int(s.GetFee()), Floor: int(s.GetFloor()), Ceiling: int(s.GetCeiling()),
 		Retail: int(s.GetRetail()), Storage: int(s.GetStorage()), Capital: int(s.GetCapital()),
+		MaxFirms: int(s.GetMaxFirms()), Founding: s.GetFoundingShares(), Float: s.GetFloatShares(), MaxShares: s.GetMaxShares(),
 	}
 	for _, p := range s.GetPlans() {
 		r.Plans = append(r.Plans, user.FirmPlan{

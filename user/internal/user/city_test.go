@@ -93,6 +93,21 @@ func TestFirmRules(t *testing.T) {
 	if _, err := user.NewFirmRules(bad); !errors.Is(err, user.ErrGoodPlan) {
 		t.Errorf("no norm: %v", err)
 	}
+
+	for name, spoil := range map[string]func(*user.FirmRules){
+		"no enterprises":       func(r *user.FirmRules) { r.MaxFirms = 0 },
+		"too many enterprises": func(r *user.FirmRules) { r.MaxFirms = user.MaxFirmsDirected + 1 },
+		"no founder's shares":  func(r *user.FirmRules) { r.Founding = 0 },
+		"negative float":       func(r *user.FirmRules) { r.Float = -1 },
+		"more than the most":   func(r *user.FirmRules) { r.MaxShares = r.Founding + r.Float - 1 },
+		"past a million":       func(r *user.FirmRules) { r.MaxShares = user.MaxFirmShares + 1 },
+	} {
+		bad = user.DefaultFirmRules()
+		spoil(&bad)
+		if _, err := user.NewFirmRules(bad); !errors.Is(err, user.ErrFirmLimits) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
 }
 
 // TestPayback runs every enterprise alone a day with the state as its
@@ -194,13 +209,39 @@ func TestFoundLimit(t *testing.T) {
 	t.Parallel()
 
 	rules := user.DefaultFirmRules()
+	rules.MaxFirms = 2
 	c := newCity()
 	owner := uuid.New()
-	for range user.MaxFirmsFounded {
+	for range rules.MaxFirms {
 		found(t, c, rules, owner, user.FirmFarm)
 	}
 	if _, err := c.Found(rules, owner, user.FirmMine, "Ещё", cityStart); !errors.Is(err, user.ErrTooManyFirms) {
 		t.Errorf("one too many: %v", err)
+	}
+
+	rules.MaxFirms = 3
+	if _, err := c.Found(rules, owner, user.FirmMine, "Ещё", cityStart); err != nil {
+		t.Errorf("a limit raised: %v", err)
+	}
+}
+
+func TestFoundShares(t *testing.T) {
+	t.Parallel()
+
+	rules := user.DefaultFirmRules()
+	rules.Founding, rules.Float, rules.MaxShares = 1_000, 300, 1_500
+	c := newCity()
+	owner := uuid.New()
+	f := found(t, c, rules, owner, user.FirmFarm)
+	if c.Shares(f.ID()) != 1_000 || f.Float() != 300 {
+		t.Fatalf("shares %d, float %d", c.Shares(f.ID()), f.Float())
+	}
+
+	if err := c.Issue(rules, owner, f.ID(), 501); !errors.Is(err, user.ErrIssue) {
+		t.Errorf("past the most shares: %v", err)
+	}
+	if err := c.Issue(rules, owner, f.ID(), 500); err != nil {
+		t.Errorf("up to the most shares: %v", err)
 	}
 }
 

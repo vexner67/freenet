@@ -347,7 +347,7 @@ func (c *City) Found(rules FirmRules, userID uuid.UUID, kind FirmKind, name Firm
 			directed++
 		}
 	}
-	if directed >= MaxFirmsFounded {
+	if directed >= rules.MaxFirms {
 		return nil, ErrTooManyFirms
 	}
 
@@ -361,11 +361,11 @@ func (c *City) Found(rules FirmRules, userID uuid.UUID, kind FirmKind, name Firm
 		id: id, kind: kind, name: name, directorID: userID, foundedAt: now.UTC(), level: 1,
 		workers: plan.Staff, wage: rules.Wage, cash: plan.Price * int64(rules.Capital),
 		stock: map[Good]int64{}, carry: map[Good]float64{}, auto: defaultAuto(spec, rules),
-		ranks: map[Improvement]int{}, float: FloatShares,
+		ranks: map[Improvement]int{}, float: rules.Float,
 	}
 
 	c.firms = append(c.firms, f)
-	c.holdings = append(c.holdings, Holding{FirmID: id, UserID: userID, Shares: FoundingShares})
+	c.holdings = append(c.holdings, Holding{FirmID: id, UserID: userID, Shares: rules.Founding})
 	f.price = c.marketOf(rules, f, now).price()
 
 	return f, nil

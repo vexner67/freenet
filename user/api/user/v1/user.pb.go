@@ -15240,16 +15240,24 @@ func (x *GoodPlan) GetNorm() int64 {
 // percent of the base, the hours of work the storage holds and the
 // percent of the price a new enterprise has in its cash.
 type FirmSettings struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Plans         []*FirmPlan            `protobuf:"bytes,1,rep,name=plans,proto3" json:"plans,omitempty"`
-	Goods         []*GoodPlan            `protobuf:"bytes,2,rep,name=goods,proto3" json:"goods,omitempty"`
-	Wage          int64                  `protobuf:"varint,3,opt,name=wage,proto3" json:"wage,omitempty"`
-	Fee           int32                  `protobuf:"varint,4,opt,name=fee,proto3" json:"fee,omitempty"`
-	Floor         int32                  `protobuf:"varint,5,opt,name=floor,proto3" json:"floor,omitempty"`
-	Ceiling       int32                  `protobuf:"varint,6,opt,name=ceiling,proto3" json:"ceiling,omitempty"`
-	Retail        int32                  `protobuf:"varint,7,opt,name=retail,proto3" json:"retail,omitempty"`
-	Storage       int32                  `protobuf:"varint,8,opt,name=storage,proto3" json:"storage,omitempty"`
-	Capital       int32                  `protobuf:"varint,9,opt,name=capital,proto3" json:"capital,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Plans   []*FirmPlan            `protobuf:"bytes,1,rep,name=plans,proto3" json:"plans,omitempty"`
+	Goods   []*GoodPlan            `protobuf:"bytes,2,rep,name=goods,proto3" json:"goods,omitempty"`
+	Wage    int64                  `protobuf:"varint,3,opt,name=wage,proto3" json:"wage,omitempty"`
+	Fee     int32                  `protobuf:"varint,4,opt,name=fee,proto3" json:"fee,omitempty"`
+	Floor   int32                  `protobuf:"varint,5,opt,name=floor,proto3" json:"floor,omitempty"`
+	Ceiling int32                  `protobuf:"varint,6,opt,name=ceiling,proto3" json:"ceiling,omitempty"`
+	Retail  int32                  `protobuf:"varint,7,opt,name=retail,proto3" json:"retail,omitempty"`
+	Storage int32                  `protobuf:"varint,8,opt,name=storage,proto3" json:"storage,omitempty"`
+	Capital int32                  `protobuf:"varint,9,opt,name=capital,proto3" json:"capital,omitempty"`
+	// How many enterprises a page may direct.
+	MaxFirms int32 `protobuf:"varint,10,opt,name=max_firms,json=maxFirms,proto3" json:"max_firms,omitempty"`
+	// The shares an enterprise is founded with, the founder's.
+	FoundingShares int64 `protobuf:"varint,11,opt,name=founding_shares,json=foundingShares,proto3" json:"founding_shares,omitempty"`
+	// The shares the exchange sells when an enterprise is founded.
+	FloatShares int64 `protobuf:"varint,12,opt,name=float_shares,json=floatShares,proto3" json:"float_shares,omitempty"`
+	// The most shares an enterprise may have.
+	MaxShares     int64 `protobuf:"varint,13,opt,name=max_shares,json=maxShares,proto3" json:"max_shares,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -15343,6 +15351,34 @@ func (x *FirmSettings) GetStorage() int32 {
 func (x *FirmSettings) GetCapital() int32 {
 	if x != nil {
 		return x.Capital
+	}
+	return 0
+}
+
+func (x *FirmSettings) GetMaxFirms() int32 {
+	if x != nil {
+		return x.MaxFirms
+	}
+	return 0
+}
+
+func (x *FirmSettings) GetFoundingShares() int64 {
+	if x != nil {
+		return x.FoundingShares
+	}
+	return 0
+}
+
+func (x *FirmSettings) GetFloatShares() int64 {
+	if x != nil {
+		return x.FloatShares
+	}
+	return 0
+}
+
+func (x *FirmSettings) GetMaxShares() int64 {
+	if x != nil {
+		return x.MaxShares
 	}
 	return 0
 }
@@ -22582,7 +22618,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\bGoodPlan\x12\x12\n" +
 	"\x04good\x18\x01 \x01(\tR\x04good\x12\x12\n" +
 	"\x04base\x18\x02 \x01(\x03R\x04base\x12\x12\n" +
-	"\x04norm\x18\x03 \x01(\x03R\x04norm\"\x82\x02\n" +
+	"\x04norm\x18\x03 \x01(\x03R\x04norm\"\x8a\x03\n" +
 	"\fFirmSettings\x12'\n" +
 	"\x05plans\x18\x01 \x03(\v2\x11.user.v1.FirmPlanR\x05plans\x12'\n" +
 	"\x05goods\x18\x02 \x03(\v2\x11.user.v1.GoodPlanR\x05goods\x12\x12\n" +
@@ -22592,7 +22628,13 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\aceiling\x18\x06 \x01(\x05R\aceiling\x12\x16\n" +
 	"\x06retail\x18\a \x01(\x05R\x06retail\x12\x18\n" +
 	"\astorage\x18\b \x01(\x05R\astorage\x12\x18\n" +
-	"\acapital\x18\t \x01(\x05R\acapital\"\xf6\x01\n" +
+	"\acapital\x18\t \x01(\x05R\acapital\x12\x1b\n" +
+	"\tmax_firms\x18\n" +
+	" \x01(\x05R\bmaxFirms\x12'\n" +
+	"\x0ffounding_shares\x18\v \x01(\x03R\x0efoundingShares\x12!\n" +
+	"\ffloat_shares\x18\f \x01(\x03R\vfloatShares\x12\x1d\n" +
+	"\n" +
+	"max_shares\x18\r \x01(\x03R\tmaxShares\"\xf6\x01\n" +
 	"\bFirmSpec\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04tier\x18\x02 \x01(\x05R\x04tier\x12\x16\n" +

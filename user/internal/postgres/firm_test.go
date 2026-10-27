@@ -33,6 +33,7 @@ func TestFirmRepository(t *testing.T) {
 	tuned.Plans[1].Price = 4321
 	tuned.Goods[2].Norm = 77
 	tuned.Fee = 5
+	tuned.MaxFirms, tuned.Founding, tuned.Float, tuned.MaxShares = 3, 500, 0, 2_000
 	if err := firms.SetRules(ctx, tuned); err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +68,7 @@ func TestFirmRepository(t *testing.T) {
 	if _, err = city.PlaceStock(tuned, ann.ID(), order, now); err != nil {
 		t.Fatal(err)
 	}
-	if err = city.Issue(ann.ID(), mill.ID(), 10); err != nil {
+	if err = city.Issue(tuned, ann.ID(), mill.ID(), 10); err != nil {
 		t.Fatal(err)
 	}
 	city.Tick(tuned, now.Add(2*time.Hour))

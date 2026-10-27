@@ -309,7 +309,7 @@ var (
 	firmInvalid = []error{
 		user.ErrUnknownFirm, user.ErrUnknownGood, user.ErrUnknownFirmAction, user.ErrFirmName, user.ErrFirmStaff,
 		user.ErrFirmGood, user.ErrFirmUnits, user.ErrFirmVotes, user.ErrFirmAuto, user.ErrOrder, user.ErrStockOrder,
-		user.ErrIssue, user.ErrDeliver, user.ErrFirmPlans, user.ErrFirmPlan, user.ErrGoodPlan, user.ErrFirmPercents, user.ErrFirmCapital,
+		user.ErrIssue, user.ErrDeliver, user.ErrFirmPlans, user.ErrFirmPlan, user.ErrGoodPlan, user.ErrFirmPercents, user.ErrFirmCapital, user.ErrFirmLimits,
 	}
 	firmMissing = []error{
 		user.ErrFirmNotFound, user.ErrOrderNotFound, user.ErrStockOrderNotFound, user.ErrContractNotFound,

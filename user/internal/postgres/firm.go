@@ -56,6 +56,12 @@ type storedFirmRules struct {
 	Retail  int              `json:"retail"`
 	Storage int              `json:"storage"`
 	Capital int              `json:"capital"`
+	// Rules stored before the administrators could set these have none of
+	// them: they get the default ones.
+	MaxFirms  *int   `json:"maxFirms,omitempty"`
+	Founding  *int64 `json:"founding,omitempty"`
+	Float     *int64 `json:"float,omitempty"`
+	MaxShares *int64 `json:"maxShares,omitempty"`
 }
 
 type storedAuto struct {
@@ -310,16 +316,21 @@ func (r *FirmRepository) Rules(ctx context.Context) (user.FirmRules, error) {
 		return user.DefaultFirmRules(), nil
 	}
 
+	defaults := user.DefaultFirmRules()
 	rules, err := user.NewFirmRules(user.FirmRules{
-		Plans:   convert(stored.Plans, func(p storedFirmPlan) user.FirmPlan { return user.FirmPlan(p) }),
-		Goods:   convert(stored.Goods, func(g storedGoodPlan) user.GoodPlan { return user.GoodPlan(g) }),
-		Wage:    stored.Wage,
-		Fee:     stored.Fee,
-		Floor:   stored.Floor,
-		Ceiling: stored.Ceiling,
-		Retail:  stored.Retail,
-		Storage: stored.Storage,
-		Capital: stored.Capital,
+		Plans:     convert(stored.Plans, func(p storedFirmPlan) user.FirmPlan { return user.FirmPlan(p) }),
+		Goods:     convert(stored.Goods, func(g storedGoodPlan) user.GoodPlan { return user.GoodPlan(g) }),
+		Wage:      stored.Wage,
+		Fee:       stored.Fee,
+		Floor:     stored.Floor,
+		Ceiling:   stored.Ceiling,
+		Retail:    stored.Retail,
+		Storage:   stored.Storage,
+		Capital:   stored.Capital,
+		MaxFirms:  orDefault(stored.MaxFirms, defaults.MaxFirms),
+		Founding:  orDefault(stored.Founding, defaults.Founding),
+		Float:     orDefault(stored.Float, defaults.Float),
+		MaxShares: orDefault(stored.MaxShares, defaults.MaxShares),
 	})
 
 	return rules, errs.Wrap("user.NewFirmRules", err)
@@ -332,15 +343,19 @@ const setFirmRulesQuery = `
 
 func (r *FirmRepository) SetRules(ctx context.Context, rules user.FirmRules) error {
 	data, err := json.Marshal(storedFirmRules{
-		Plans:   convert(rules.Plans, func(p user.FirmPlan) storedFirmPlan { return storedFirmPlan(p) }),
-		Goods:   convert(rules.Goods, func(g user.GoodPlan) storedGoodPlan { return storedGoodPlan(g) }),
-		Wage:    rules.Wage,
-		Fee:     rules.Fee,
-		Floor:   rules.Floor,
-		Ceiling: rules.Ceiling,
-		Retail:  rules.Retail,
-		Storage: rules.Storage,
-		Capital: rules.Capital,
+		Plans:     convert(rules.Plans, func(p user.FirmPlan) storedFirmPlan { return storedFirmPlan(p) }),
+		Goods:     convert(rules.Goods, func(g user.GoodPlan) storedGoodPlan { return storedGoodPlan(g) }),
+		Wage:      rules.Wage,
+		Fee:       rules.Fee,
+		Floor:     rules.Floor,
+		Ceiling:   rules.Ceiling,
+		Retail:    rules.Retail,
+		Storage:   rules.Storage,
+		Capital:   rules.Capital,
+		MaxFirms:  &rules.MaxFirms,
+		Founding:  &rules.Founding,
+		Float:     &rules.Float,
+		MaxShares: &rules.MaxShares,
 	})
 	if err != nil {
 		return errs.Wrap("json.Marshal", err)
@@ -390,4 +405,14 @@ func (r *FirmRepository) SaveCity(ctx context.Context, c *user.City) error {
 	_, err = r.conn(ctx).Exec(ctx, saveCityQuery, data)
 
 	return errs.Wrap("r.conn.Exec", err)
+}
+
+// orDefault is the stored value, or fallback when the rules were stored
+// without it.
+func orDefault[T any](stored *T, fallback T) T {
+	if stored == nil {
+		return fallback
+	}
+
+	return *stored
 }

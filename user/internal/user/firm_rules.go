@@ -23,6 +23,7 @@ var (
 	ErrGoodPlan     = errors.New("a good must cost from 1 hundredth and the state must buy from 1 unit a day")
 	ErrFirmPercents = errors.New("the wage must be from 1 hundredth, the fee from 0 to 50 percent, the prices of the state and the city from 1 to 1000 percent, the state buying below what it sells")
 	ErrFirmCapital  = errors.New("the storage must hold from 1 hour to 30 days, the capital from 0 to 100 percent")
+	ErrFirmLimits   = errors.New("a page must direct from 1 to 1000 enterprises; an enterprise is founded with from 1 share and puts up from 0, and may have up to a million shares, no fewer than it is founded with")
 )
 
 // FirmPlan is what an enterprise costs, as the administrators set it:
@@ -81,22 +82,28 @@ func (p GoodPlan) check() error {
 // the fee in percent the exchange takes of a sale of goods and of shares;
 // the percents of the base price the state buys (Floor) and sells
 // (Ceiling) at and the city pays (Retail); the hours of full work the
-// storage holds; and the percent of the price an enterprise starts with
-// in its cash.
+// storage holds; the percent of the price an enterprise starts with in
+// its cash; how many enterprises a page may direct; and the shares of an
+// enterprise: the founder's (Founding), those the exchange sells when it
+// is founded (Float) and the most it may have (MaxShares).
 type FirmRules struct {
-	Plans   []FirmPlan
-	Goods   []GoodPlan
-	Wage    int64
-	Fee     int
-	Floor   int
-	Ceiling int
-	Retail  int
-	Storage int
-	Capital int
+	Plans     []FirmPlan
+	Goods     []GoodPlan
+	Wage      int64
+	Fee       int
+	Floor     int
+	Ceiling   int
+	Retail    int
+	Storage   int
+	Capital   int
+	MaxFirms  int
+	Founding  int64
+	Float     int64
+	MaxShares int64
 }
 
 // NewFirmRules checks rules; ErrFirmPlans, ErrFirmPlan, ErrGoodPlan,
-// ErrFirmPercents, ErrFirmCapital.
+// ErrFirmPercents, ErrFirmCapital, ErrFirmLimits.
 func NewFirmRules(r FirmRules) (FirmRules, error) {
 	if len(r.Plans) != len(FirmKinds) || len(r.Goods) != len(Goods) {
 		return FirmRules{}, ErrFirmPlans
@@ -130,6 +137,11 @@ func NewFirmRules(r FirmRules) (FirmRules, error) {
 		return FirmRules{}, ErrFirmCapital
 	}
 
+	if r.MaxFirms < 1 || r.MaxFirms > MaxFirmsDirected || r.Founding < 1 || r.Float < 0 ||
+		r.MaxShares > MaxFirmShares || r.Founding+r.Float > r.MaxShares {
+		return FirmRules{}, ErrFirmLimits
+	}
+
 	r.Plans = append([]FirmPlan(nil), r.Plans...)
 	r.Goods = append([]GoodPlan(nil), r.Goods...)
 
@@ -158,6 +170,7 @@ func DefaultFirmRules() FirmRules {
 			{GoodBread, 1_000, 6_000}, {GoodFurniture, 2_400, 2_400}, {GoodElectronics, 3_800, 1_920},
 		},
 		Wage: 50, Fee: 2, Floor: 80, Ceiling: 120, Retail: 150, Storage: 48, Capital: 20,
+		MaxFirms: 10, Founding: 100, Float: 20, MaxShares: MaxFirmShares,
 	}
 }
 

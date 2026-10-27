@@ -49,7 +49,7 @@ func TestBuyNewShares(t *testing.T) {
 	f := found(t, c, rules, founder, user.FirmFarm)
 
 	q := c.Quote(rules, f, cityStart)
-	if q.Float != user.FloatShares || q.Ask <= q.Book || q.Bid >= q.Book || q.Price < q.Bid || q.Price > q.Ask {
+	if q.Float != rules.Float || q.Ask <= q.Book || q.Bid >= q.Book || q.Price < q.Bid || q.Price > q.Ask {
 		t.Fatalf("quote of a new enterprise: %+v", q)
 	}
 
@@ -65,7 +65,7 @@ func TestBuyNewShares(t *testing.T) {
 	if err != nil || fill.Shares != 10 || fill.Money < 10*q.Ask {
 		t.Fatalf("buying 10 at any price: %+v, %v", fill, err)
 	}
-	if f.Cash() != cash+fill.Money || f.Float() != user.FloatShares-10 || held(c, f.ID(), investor) != 10 {
+	if f.Cash() != cash+fill.Money || f.Float() != rules.Float-10 || held(c, f.ID(), investor) != 10 {
 		t.Errorf("cash %d (+%d), float %d, held %d", f.Cash(), fill.Money, f.Float(), held(c, f.ID(), investor))
 	}
 	if c.Account(investor) != 100_000-fill.Money {
@@ -78,10 +78,10 @@ func TestBuyNewShares(t *testing.T) {
 	}
 
 	// No new shares left, none bought back: the exchange has none to sell.
-	if err = c.Issue(investor, f.ID(), 5); !errors.Is(err, user.ErrNotDirector) {
+	if err = c.Issue(rules, investor, f.ID(), 5); !errors.Is(err, user.ErrNotDirector) {
 		t.Errorf("issue by an investor: %v", err)
 	}
-	if err = c.Issue(founder, f.ID(), 0); err != nil {
+	if err = c.Issue(rules, founder, f.ID(), 0); err != nil {
 		t.Fatal(err)
 	}
 	if q = c.Quote(rules, f, cityStart); q.Ask != 0 {
@@ -101,7 +101,7 @@ func TestSellToTheExchange(t *testing.T) {
 	c := newCity()
 	founder, investor := uuid.New(), uuid.New()
 	f := found(t, c, rules, founder, user.FirmFarm)
-	if err := c.Issue(founder, f.ID(), 0); err != nil {
+	if err := c.Issue(rules, founder, f.ID(), 0); err != nil {
 		t.Fatal(err)
 	}
 
@@ -287,7 +287,7 @@ func TestRestoreOldOffers(t *testing.T) {
 	if len(orders) != 1 || orders[0].Price != 1_200 || orders[0].Shares != 30 || orders[0].Buy {
 		t.Errorf("orders %+v", orders)
 	}
-	if g, _ := again.Firm(f.ID()); g.Float() != user.FloatShares+10 {
+	if g, _ := again.Firm(f.ID()); g.Float() != rules.Float+10 {
 		t.Errorf("float %d", g.Float())
 	}
 	if len(again.State().Offers) != 0 {

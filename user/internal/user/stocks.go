@@ -27,8 +27,6 @@ var MarketID = uuid.Nil
 const (
 	// CandleHours are the hours of the price an enterprise keeps.
 	CandleHours = 7 * 24
-	// FloatShares are the new shares an enterprise puts up when founded.
-	FloatShares = 20
 	// MaxStockOrders are the most orders a page keeps on the exchange.
 	MaxStockOrders = 20
 	// maxMood is how far the mood of the market moves a price.
@@ -46,7 +44,7 @@ var (
 	ErrOwnStockOrder      = errors.New("you have an order of your own the other way at this price: cancel it first")
 	ErrTooManyStockOrders = errors.New("a page keeps at most 20 orders on the exchange")
 	ErrStockOrderNotFound = errors.New("there is no such order of shares")
-	ErrIssue              = errors.New("an enterprise may put up from 0 new shares, a million shares in all")
+	ErrIssue              = errors.New("an enterprise may put up from 0 new shares, no more than the site lets it have in all")
 )
 
 // Account is the money a page keeps on the exchange, in hundredths.
@@ -200,14 +198,15 @@ func (c *City) Free(firmID, userID uuid.UUID) int64 {
 }
 
 // Issue puts up shares new shares of the enterprise for the exchange to
-// sell, in place of those it put up before; 0 takes them off. ErrIssue.
-func (c *City) Issue(userID, firmID uuid.UUID, shares int64) error {
+// sell, in place of those it put up before, up to the most shares the
+// rules let it have; 0 takes them off. ErrIssue.
+func (c *City) Issue(rules FirmRules, userID, firmID uuid.UUID, shares int64) error {
 	f, err := c.directed(userID, firmID)
 	if err != nil {
 		return err
 	}
 
-	if shares < 0 || c.Shares(firmID)+shares > MaxFirmShares {
+	if shares < 0 || c.Shares(firmID)+shares > rules.MaxShares {
 		return ErrIssue
 	}
 

@@ -58,6 +58,7 @@ func TestFirms(t *testing.T) {
 	tuned := settings.GetSettings()
 	tuned.Fee = 3
 	tuned.Plans[0].Price = 1
+	tuned.MaxFirms, tuned.FoundingShares, tuned.FloatShares, tuned.MaxShares = 4, 200, 10, 5_000
 	if _, err = s.client.SetFirmSettings(admin, &userv1.SetFirmSettingsRequest{Settings: tuned}); err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +68,8 @@ func TestFirms(t *testing.T) {
 	}
 
 	got, err = s.client.GetFirms(ann, &userv1.GetFirmsRequest{})
-	if err != nil || got.GetSettings().GetFee() != 3 || got.GetSettings().GetPlans()[0].GetPrice() != 1 {
+	if err != nil || got.GetSettings().GetFee() != 3 || got.GetSettings().GetPlans()[0].GetPrice() != 1 ||
+		got.GetSettings().GetMaxFirms() != 4 || got.GetSettings().GetFoundingShares() != 200 || got.GetSettings().GetMaxShares() != 5_000 {
 		t.Fatalf("GetFirms after the settings = %v, %v", got, err)
 	}
 
