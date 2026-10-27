@@ -156,10 +156,11 @@ func fromProtoFirm(f *userv1.Firm) model.Firm {
 		})
 	}
 	for _, h := range f.GetHours() {
-		out.Hours = append(out.Hours, model.FirmHour{
-			Hour: timeOf(h.GetHour()), Made: h.GetMade(), Bought: h.GetBought(), Sold: h.GetSold(), Income: h.GetIncome(),
-			Purchases: h.GetPurchases(), Wages: h.GetWages(), Upkeep: h.GetUpkeep(), Fees: h.GetFees(),
-		})
+		out.Hours = append(out.Hours, firmHourOf(h))
+	}
+	if h := f.GetForecast(); h != nil {
+		forecast := firmHourOf(h)
+		out.Forecast, out.ForecastCash = &forecast, f.GetForecastCash()
 	}
 	for _, h := range f.GetHolders() {
 		out.Holders = append(out.Holders, model.FirmHolder{UserID: h.GetUserId(), Shares: h.GetShares()})
@@ -243,4 +244,11 @@ func toProtoFirmSettings(s model.FirmSettings) (*userv1.FirmSettings, error) {
 	}
 
 	return out, nil
+}
+
+func firmHourOf(h *userv1.FirmHour) model.FirmHour {
+	return model.FirmHour{
+		Hour: timeOf(h.GetHour()), Made: h.GetMade(), Bought: h.GetBought(), Sold: h.GetSold(), Income: h.GetIncome(),
+		Purchases: h.GetPurchases(), Wages: h.GetWages(), Upkeep: h.GetUpkeep(), Fees: h.GetFees(),
+	}
 }

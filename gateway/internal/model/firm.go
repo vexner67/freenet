@@ -154,6 +154,10 @@ type Firm struct {
 	Improvements []FirmImprovement
 	Price        int64
 	Float        int64
+	// Forecast is the hour going on as it ends if nothing changes and
+	// ForecastCash the cash then; nil while ended hours wait to be counted.
+	Forecast     *FirmHour
+	ForecastCash int64
 }
 
 // ExchangeOrder is an order of the exchange: Price in hundredths a unit.

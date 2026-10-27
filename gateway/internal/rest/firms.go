@@ -134,6 +134,8 @@ type firmJSON struct {
 	Improvements []firmImprovementJSON  `json:"improvements"`
 	Price        int64                  `json:"price"`
 	Float        int64                  `json:"float"`
+	Forecast     *firmHourJSON          `json:"forecast"`
+	ForecastCash int64                  `json:"forecastCash"`
 }
 
 type firmImprovementJSON struct {
@@ -281,14 +283,14 @@ func toFirmJSON(f model.Firm, people map[string]model.PublicProfile) firmJSON {
 		Worth: f.Worth, Wear: f.Wear, RepairCost: f.RepairCost, IdleUntil: timeString(f.IdleUntil),
 		Improvements: listJSON(f.Improvements, func(i model.FirmImprovement) firmImprovementJSON { return firmImprovementJSON(i) }),
 		Price:        f.Price, Float: f.Float,
-		Stock: listJSON(f.Stock, func(s model.FirmStock) firmStockJSON { return firmStockJSON(s) }),
-		Hours: listJSON(f.Hours, func(h model.FirmHour) firmHourJSON {
-			return firmHourJSON{
-				Hour: timeString(h.Hour), Made: h.Made, Bought: h.Bought, Sold: h.Sold, Income: h.Income,
-				Purchases: h.Purchases, Wages: h.Wages, Upkeep: h.Upkeep, Fees: h.Fees,
-			}
-		}),
-		Holders: []firmHolderJSON{},
+		Stock:        listJSON(f.Stock, func(s model.FirmStock) firmStockJSON { return firmStockJSON(s) }),
+		Hours:        listJSON(f.Hours, toFirmHourJSON),
+		ForecastCash: f.ForecastCash,
+		Holders:      []firmHolderJSON{},
+	}
+	if f.Forecast != nil {
+		forecast := toFirmHourJSON(*f.Forecast)
+		out.Forecast = &forecast
 	}
 	for _, h := range f.Holders {
 		if p := person(people, h.UserID); p != nil {
@@ -470,4 +472,11 @@ func (a *api) getUserFirms(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, struct {
 		Firms []userFirmJSON `json:"firms"`
 	}{listJSON(held, func(f model.UserFirm) userFirmJSON { return userFirmJSON(f) })})
+}
+
+func toFirmHourJSON(h model.FirmHour) firmHourJSON {
+	return firmHourJSON{
+		Hour: timeString(h.Hour), Made: h.Made, Bought: h.Bought, Sold: h.Sold, Income: h.Income,
+		Purchases: h.Purchases, Wages: h.Wages, Upkeep: h.Upkeep, Fees: h.Fees,
+	}
 }

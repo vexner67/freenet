@@ -10235,6 +10235,24 @@ components:
             properties:
               user: { $ref: "#/components/schemas/PublicProfile" }
               shares: { type: integer, format: int64 }
+        forecast:
+          description: The hour going on as it ends if nothing changes (as an item of hours); null while ended hours wait to be counted.
+          type: object
+          nullable: true
+          properties:
+            hour: { type: string, format: date-time }
+            made: { type: integer, format: int64 }
+            bought: { type: integer, format: int64 }
+            sold: { type: integer, format: int64 }
+            income: { type: integer, format: int64 }
+            purchases: { type: integer, format: int64 }
+            wages: { type: integer, format: int64 }
+            upkeep: { type: integer, format: int64 }
+            fees: { type: integer, format: int64 }
+        forecastCash:
+          description: The cash at the end of the hour going on, in hundredths.
+          type: integer
+          format: int64
     Firms:
       type: object
       properties:

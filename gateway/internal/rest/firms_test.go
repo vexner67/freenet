@@ -27,7 +27,7 @@ func (f *fakeFirms) city() model.Firms {
 		Catalog:  []model.FirmSpec{{Kind: "mill", Tier: 2, Output: "flour", Inputs: []model.FirmInput{{Good: "grain", Units: 2}}, Rate: map[string]float64{"flour": 5}}},
 		Quotes:   []model.GoodQuote{{Good: "grain", StateBid: 20, StateAsk: 30}},
 		Firms: []model.Firm{{
-			ID: "f1", Kind: "farm", Name: "Колхоз", DirectorID: "u1", Level: 2, Cash: 12345,
+			ID: "f1", Kind: "farm", Name: "Колхоз", DirectorID: "u1", Level: 2, Cash: 12345, ForecastCash: 12500, Forecast: &model.FirmHour{Made: 40},
 			FoundedAt: time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC),
 			Stock:     []model.FirmStock{{Good: "grain", Units: 40, Capacity: 7200, AutoSell: true}},
 			Holders:   []model.FirmHolder{{UserID: "u1", Shares: 60}, {UserID: "u2", Shares: 40}, {UserID: "u3", Shares: 1}},
@@ -107,6 +107,7 @@ func TestFirms(t *testing.T) {
 	if w.Code != http.StatusOK || h.firms.token != "tok" || firm["cash"] != 12345.0 || firm["name"] != "Колхоз" ||
 		firm["director"].(map[string]any)["nickname"] != "ann" || len(firm["holders"].([]any)) != 2 ||
 		firm["foundedAt"] != "2026-10-25T12:00:00Z" || len(firm["hours"].([]any)) != 0 ||
+		firm["forecastCash"] != 12500.0 || firm["forecast"].(map[string]any)["made"] != 40.0 ||
 		firm["wear"] != 12.5 || firm["repairCost"] != 1250.0 || firm["idleUntil"] != "" ||
 		firm["improvements"].([]any)[0].(map[string]any)["cost"] != 100000.0 ||
 		contract["firm"] != "f1" || contract["units"] != 800.0 || news["kind"] != "drought" || news["kinds"].([]any)[0] != "farm" ||
