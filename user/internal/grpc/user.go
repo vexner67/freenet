@@ -56,6 +56,7 @@ type UserHandler struct {
 	firms             FirmService
 	banks             BankService
 	paid              PaidService
+	world             WorldService
 	guests            GuestService
 	tops              TopService
 	pets              PetService
@@ -106,6 +107,8 @@ type Services struct {
 	Banks BankService
 	// Paid sells paid posts and messages.
 	Paid PaidService
+	// World takes and pays the votes of «Мир».
+	World WorldService
 	// Guests are who visited the pages.
 	Guests GuestService
 	// Tops are the boards of "Рейтинги".
@@ -144,6 +147,7 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		firms:             s.Firms,
 		banks:             s.Banks,
 		paid:              s.Paid,
+		world:             s.World,
 		guests:            s.Guests,
 		tops:              s.Tops,
 		pets:              s.Pets,

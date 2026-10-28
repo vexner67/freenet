@@ -364,6 +364,14 @@ service UserService {
   // Internal (auth): whether the page is deleted, for the access tokens
   // it issues; NotFound once its data is erased.
   rpc GetAccountState(GetAccountStateRequest) returns (GetAccountStateResponse);
+  // Internal (world): votes paid to a state of «Мир» — they go to the
+  // treasury — and votes paid out of one. op_id makes an operation happen
+  // once: a repeat changes nothing and answers the votes the page has.
+  // ChargeVotes: FailedPrecondition "not enough votes", PermissionDenied
+  // for a page deleted or blocked, FailedPrecondition for one not yet
+  // settled when settled is asked.
+  rpc ChargeVotes(ChargeVotesRequest) returns (ChargeVotesResponse);
+  rpc PayVotes(PayVotesRequest) returns (PayVotesResponse);
 
   // Require an access token: the mine of the site. A dig of an ore takes
   // energy, which comes back with time, and gives ore and experience;
@@ -1268,6 +1276,33 @@ message GetAccountStateRequest {
 message GetAccountStateResponse {
   bool deactivated = 1;
   bool banned = 2;
+}
+
+message ChargeVotesRequest {
+  string op_id = 1;
+  string user_id = 2;
+  int64 votes = 3;
+  // What for: "found_state", "donate".
+  string note = 4;
+  // The page has to be older than a week, with a profile, as the owner
+  // of an enterprise.
+  bool settled = 5;
+}
+
+message ChargeVotesResponse {
+  // The votes left.
+  int64 votes = 1;
+}
+
+message PayVotesRequest {
+  string op_id = 1;
+  string user_id = 2;
+  int64 votes = 3;
+  string note = 4;
+}
+
+message PayVotesResponse {
+  int64 votes = 1;
 }
 
 message GetGiftCatalogRequest {}
