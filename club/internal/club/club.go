@@ -86,6 +86,13 @@ func New(name Name, description Description, now time.Time) (*Club, error) {
 		return nil, err
 	}
 
+	return NewWithID(id, name, description, now), nil
+}
+
+// NewWithID is a new club with the ID another service chose: the group of
+// a state of «Мир» has the ID of the state, so that asking twice makes
+// one group.
+func NewWithID(id uuid.UUID, name Name, description Description, now time.Time) *Club {
 	return &Club{
 		id:            id,
 		name:          name,
@@ -94,7 +101,7 @@ func New(name Name, description Description, now time.Time) (*Club, error) {
 		adminsDisplay: AdminsDisplayCreator,
 		// PostgreSQL keeps microseconds; trim now so a club reads back equal.
 		createdAt: now.UTC().Truncate(time.Microsecond),
-	}, nil
+	}
 }
 
 // Stored is a club as storage keeps it.

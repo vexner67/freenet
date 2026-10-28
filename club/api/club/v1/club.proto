@@ -101,6 +101,9 @@ service ClubService {
   // Whether the caller is one of them the gateway asks the user service
   // first.
   rpc SetClubVerified(SetClubVerifiedRequest) returns (google.protobuf.Empty);
+  // Internal (world): the group of a state of «Мир», owned by its ruler;
+  // its ID is the ID of the state, so asking again makes nothing new.
+  rpc CreateStateClub(CreateStateClubRequest) returns (CreateStateClubResponse);
 }
 
 // Who may write on the wall: everyone, only the admins, or only the
@@ -498,6 +501,17 @@ message PurgeUserRequest {
 message SetClubVerifiedRequest {
   string club_id = 1;
   bool verified = 2;
+}
+
+message CreateStateClubRequest {
+  string state_id = 1;
+  string owner_id = 2;
+  string name = 3;
+  string description = 4;
+}
+
+message CreateStateClubResponse {
+  string club_id = 1;
 }
 
 message CountClubsRequest {}

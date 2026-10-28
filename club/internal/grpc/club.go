@@ -40,6 +40,7 @@ type ClubService interface {
 	WallModerators(ctx context.Context, wallID uuid.UUID) ([]uuid.UUID, error)
 	PurgeUser(ctx context.Context, userID uuid.UUID) error
 	SetVerified(ctx context.Context, clubID uuid.UUID, verified bool) error
+	CreateStateClub(ctx context.Context, stateID, ownerID uuid.UUID, name club.Name, description club.Description) (uuid.UUID, error)
 	Requests(ctx context.Context, viewerID, clubID, cursor uuid.UUID, size int) (service.RequestPage, error)
 	Accept(ctx context.Context, requesterID, clubID, userID uuid.UUID) error
 	Reject(ctx context.Context, requesterID, clubID, userID uuid.UUID) error
@@ -720,6 +721,36 @@ func (h *ClubHandler) SetClubVerified(ctx context.Context, req *clubv1.SetClubVe
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+// CreateStateClub is for the world service only.
+func (h *ClubHandler) CreateStateClub(ctx context.Context, req *clubv1.CreateStateClubRequest) (*clubv1.CreateStateClubResponse, error) {
+	stateID, err := parseID(req.GetStateId(), "invalid state id")
+	if err != nil {
+		return nil, err
+	}
+
+	ownerID, err := parseID(req.GetOwnerId(), "invalid owner id")
+	if err != nil {
+		return nil, err
+	}
+
+	name, err := club.NewName(req.GetName())
+	if err != nil {
+		return nil, err
+	}
+
+	description, err := club.NewDescription(req.GetDescription())
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := h.clubService.CreateStateClub(ctx, stateID, ownerID, name, description)
+	if err != nil {
+		return nil, err
+	}
+
+	return &clubv1.CreateStateClubResponse{ClubId: id.String()}, nil
 }
 
 func parseID(s, invalid string) (uuid.UUID, error) {
