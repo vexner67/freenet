@@ -24,6 +24,7 @@ import (
 	"github.com/vexner67/freenet/pkg/tracing"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
+	worldv1 "github.com/vexner67/freenet/world/api/world/v1"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -39,6 +40,7 @@ type App struct {
 	notificationConn *grpc.ClientConn
 	messageConn      *grpc.ClientConn
 	clubConn         *grpc.ClientConn
+	worldConn        *grpc.ClientConn
 	server           *rest.Server
 	metrics          *metrics.Server
 }
@@ -117,6 +119,11 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("a.dial", err)
 	}
 
+	a.worldConn, err = a.dial(cfg.WorldServiceAddr, creds)
+	if err != nil {
+		return errs.Wrap("a.dial", err)
+	}
+
 	reg := metrics.NewRegistry()
 
 	a.server, err = rest.NewServer(
@@ -159,6 +166,7 @@ func (a *App) build(cfg config.Config) error {
 			Pets:          backend.NewPets(userv1.NewUserServiceClient(a.userConn)),
 			Bets:          backend.NewBets(userv1.NewUserServiceClient(a.userConn)),
 			Faves:         backend.NewFaves(postv1.NewPostServiceClient(a.postConn)),
+			World:         backend.NewWorld(worldv1.NewWorldServiceClient(a.worldConn)),
 			Previews:      previews(cfg.LinkPreviewTimeout),
 		},
 		a.logger,
@@ -244,6 +252,7 @@ func (a *App) Close() {
 		"notification": a.notificationConn,
 		"message":      a.messageConn,
 		"club":         a.clubConn,
+		"world":        a.worldConn,
 	}
 
 	for name, conn := range conns {

@@ -567,6 +567,7 @@ type Backends struct {
 	Documents     Documents
 	Articles      Articles
 	Stories       Stories
+	World         World
 	// Previews reads the cards of the pages posts link to; nil makes
 	// posts without cards.
 	Previews Previews
@@ -608,6 +609,7 @@ type api struct {
 	documents         Documents
 	articles          Articles
 	stories           Stories
+	worlds            World
 	previews          Previews
 	logger            *slog.Logger
 	trustForwardedFor bool
@@ -997,6 +999,31 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/ban", a.unban)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/verification", a.verifyClub)
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/verification", a.verifyClub)
+
+	mux.HandleFunc("GET /api/v1/world", a.world)
+	mux.HandleFunc("GET /api/v1/world/events", a.worldEvents)
+	mux.HandleFunc("GET /api/v1/world/states/{id}", a.worldState)
+	mux.HandleFunc("POST /api/v1/world/states", a.foundState)
+	mux.HandleFunc("PUT /api/v1/world/state", a.editState)
+	mux.HandleFunc("POST /api/v1/world/states/{id}/applications", a.applyCitizenship)
+	mux.HandleFunc("DELETE /api/v1/world/application", a.withdrawApplication)
+	mux.HandleFunc("PUT /api/v1/world/applications/{user}", a.answerApplication)
+	mux.HandleFunc("DELETE /api/v1/world/applications/{user}", a.answerApplication)
+	mux.HandleFunc("DELETE /api/v1/world/citizenship", a.leaveState)
+	mux.HandleFunc("DELETE /api/v1/world/citizens/{user}", a.expelCitizen)
+	mux.HandleFunc("PUT /api/v1/world/citizens/{user}/role", a.appointCitizen)
+	mux.HandleFunc("POST /api/v1/world/abdication", a.abdicate)
+	mux.HandleFunc("POST /api/v1/world/colonies", a.colonize)
+	mux.HandleFunc("POST /api/v1/world/donations", a.donateToState)
+	mux.HandleFunc("GET /api/v1/world/worlds", a.listWorlds)
+	mux.HandleFunc("POST /api/v1/world/worlds", a.createWorld)
+	mux.HandleFunc("POST /api/v1/world/worlds/{id}/open", a.openWorld)
+	mux.HandleFunc("POST /api/v1/world/end", a.endWorld)
+	mux.HandleFunc("PUT /api/v1/world/rules", a.setWorldRules)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/world", a.userCitizenship)
+	mux.HandleFunc("GET /media/world/{world}/atlas", a.worldAtlas)
+	mux.HandleFunc("GET /media/world/{world}/raster", a.worldRaster)
+	mux.HandleFunc("GET /media/world/{world}/tiles/{z}/{x}/{y}", a.worldTile)
 
 	mux.HandleFunc("PUT /api/v1/me/avatar", a.uploadAvatar)
 	mux.HandleFunc("DELETE /api/v1/me/avatar", a.deleteAvatar)
