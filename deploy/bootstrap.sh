@@ -139,7 +139,7 @@ if [ ! -f "$app_dir/.env" ]; then
 		echo "# www.<domain>, redirected to SITE_ADDRESS; an unused port without a domain."
 		echo "REDIRECT_ADDRESS=:8081"
 		port=5433
-		for db in AUTH USER POST NOTIFICATION MESSAGE CLUB; do
+		for db in AUTH USER POST NOTIFICATION MESSAGE CLUB WORLD; do
 			echo "${db}_POSTGRES_USER=freenet"
 			echo "${db}_POSTGRES_PASSWORD=$(secret 24)"
 			echo "${db}_POSTGRES_DB=freenet"

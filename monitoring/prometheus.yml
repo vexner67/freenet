@@ -34,6 +34,8 @@ scrape_configs:
         labels: { service: message }
       - targets: ["club:9057"]
         labels: { service: club }
+      - targets: ["world:9058"]
+        labels: { service: world }
 
   # The databases and Redis, through their exporters (compose.yaml).
   - job_name: postgres
@@ -50,6 +52,8 @@ scrape_configs:
         labels: { db: message }
       - targets: ["club-postgres-exporter:9187"]
         labels: { db: club }
+      - targets: ["world-postgres-exporter:9187"]
+        labels: { db: world }
 
   - job_name: redis
     static_configs:

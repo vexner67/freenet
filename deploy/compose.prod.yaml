@@ -12,7 +12,7 @@
 #   domain once there is one (Caddy then gets and renews its certificate
 #   itself), ":80" until then; REDIRECT_ADDRESS (www.<domain>) leads there.
 
-# Six databases share a small server: a few connections each (a service
+# Seven databases share a small server: a few connections each (a service
 # pools at most a handful) and small buffers.
 x-postgres: &postgres
   ports: !reset []
@@ -25,6 +25,7 @@ services:
   notification-postgres: *postgres
   message-postgres: *postgres
   club-postgres: *postgres
+  world-postgres: *postgres
   redis: { ports: !reset [] }
 
   notification:
@@ -35,6 +36,9 @@ services:
     build: !reset null
   club:
     image: ghcr.io/vexner67/freenet-club:${FREENET_TAG:?set FREENET_TAG}
+    build: !reset null
+  world:
+    image: ghcr.io/vexner67/freenet-world:${FREENET_TAG:?set FREENET_TAG}
     build: !reset null
   user:
     image: ghcr.io/vexner67/freenet-user:${FREENET_TAG:?set FREENET_TAG}

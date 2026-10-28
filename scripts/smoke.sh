@@ -31,7 +31,7 @@ alertmanager=${ALERTMANAGER_URL:-http://localhost:9093}
 grafana=${GRAFANA_URL:-http://localhost:3001}
 logs=${VICTORIALOGS_URL:-http://localhost:9428}
 jaeger=${JAEGER_URL:-http://localhost:16686}
-services=(gateway auth user post media notification message club)
+services=(gateway auth user post media notification message club world)
 email="smoke-$(date +%s)-$RANDOM@example.com"
 nickname="smoke$RANDOM$RANDOM"
 
@@ -275,7 +275,7 @@ done
 step "metrics: Prometheus scrapes every service"
 
 # Every database with a service of its own, and Redis.
-watched="auth club message notification post redis user"
+watched="auth club message notification post redis user world"
 stores=
 for _ in $(seq 1 60); do
 	stores=$(curl -sf "$prometheus/api/v1/query?query=pg_up%20or%20redis_up" |

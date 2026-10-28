@@ -22,6 +22,18 @@ sed -i "s/^FREENET_TAG=.*/FREENET_TAG=$tag/" .env
 # "admin" it is born with.
 grep -q '^GRAFANA_ADMIN_PASSWORD=.' .env || echo "GRAFANA_ADMIN_PASSWORD=$(openssl rand -hex 16)" >> .env
 
+# A database of a service added after the server was set up gets its
+# credentials here, once; the port is not published (compose.prod.yaml).
+for db in WORLD; do
+	grep -q "^${db}_POSTGRES_PASSWORD=." .env && continue
+	{
+		echo "${db}_POSTGRES_USER=freenet"
+		echo "${db}_POSTGRES_PASSWORD=$(openssl rand -hex 24)"
+		echo "${db}_POSTGRES_DB=freenet"
+		echo "${db}_POSTGRES_PORT=5439"
+	} >> .env
+done
+
 docker login ghcr.io --username "$user" --password-stdin >/dev/null
 trap 'docker logout ghcr.io >/dev/null' EXIT
 

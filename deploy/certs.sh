@@ -3,9 +3,9 @@
 #
 #   deploy/certs.sh [certs directory] [metrics file] [days]
 #
-# A service certificate with less than <days> (60) left is issued anew by
-# the CA of the directory (ca.pem, ca-key.pem), with a new key, the way
-# scripts/gen-certs.sh issued it. The services read their certificate again
+# A service certificate with less than <days> (60) left, or missing, is
+# issued anew by the CA of the directory (ca.pem, ca-key.pem), with a new
+# key, the way scripts/gen-certs.sh issued it. The services read their certificate again
 # as its files change (pkg/mtls), so nothing restarts. The CA itself and
 # the JWT keys are not touched: replacing the CA means running
 # scripts/gen-certs.sh and restarting everything. The key notification
@@ -64,6 +64,14 @@ if [ ! -f "$dir/push-key.pem" ]; then
 	mv "$dir/.push-key.pem" "$dir/push-key.pem"
 	echo "made push-key.pem"
 fi
+
+# A service added after the CA was made gets its certificate here.
+for name in auth user post media notification message club world gateway; do
+	[ -f "$dir/$name.pem" ] && continue
+	[ -f "$dir/ca-key.pem" ] || { echo "certs: $name.pem is missing and there is no ca-key.pem to issue it" >&2; exit 1; }
+	issue "$name"
+	echo "issued $name"
+done
 
 names=()
 for key in "$dir"/*-key.pem; do

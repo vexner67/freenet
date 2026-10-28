@@ -162,6 +162,25 @@ services:
       timeout: 5s
       retries: 5
 
+  world-postgres:
+    image: postgres:18
+    logging: *logging
+    environment:
+      POSTGRES_USER: ${WORLD_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${WORLD_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${WORLD_POSTGRES_DB}
+    ports:
+      - "${WORLD_POSTGRES_PORT}:5432"
+    volumes:
+      - world_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${WORLD_POSTGRES_USER} -d $${WORLD_POSTGRES_DB}"]
+      interval: 30s
+      start_period: 60s
+      start_interval: 1s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     logging: *logging
@@ -248,6 +267,27 @@ services:
       redis: { condition: service_healthy }
       notification: { condition: service_healthy }
 
+  world:
+    <<: *service
+    image: freenet-world
+    build: { context: ., args: { SERVICE: world } }
+    environment:
+      <<: *env
+      GRPC_PORT: 7058
+      METRICS_PORT: 9058
+      TLS_CERT_PATH: /certs/world.pem
+      TLS_KEY_PATH: /certs/world-key.pem
+      STORAGE: persistent
+      DATABASE_URL: postgres://${WORLD_POSTGRES_USER}:${WORLD_POSTGRES_PASSWORD}@world-postgres:5432/${WORLD_POSTGRES_DB}?sslmode=disable
+      REDIS_ADDR: redis:6379
+      USER_SERVICE_ADDR: user:7052
+      CLUB_SERVICE_ADDR: club:7057
+    depends_on:
+      world-postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      user: { condition: service_healthy }
+      club: { condition: service_healthy }
+
   user:
     <<: *service
     image: freenet-user
@@ -266,6 +306,9 @@ services:
       MEDIA_SERVICE_ADDR: media:7054
       MESSAGE_SERVICE_ADDR: message:7056
       CLUB_SERVICE_ADDR: club:7057
+      # Not in depends_on: world waits for user, and the purge retries
+      # until world is up.
+      WORLD_SERVICE_ADDR: world:7058
       # Shorter in tests: how long a deleted page can be restored.
       ACCOUNT_RETENTION: ${ACCOUNT_RETENTION:-5040h}
       # Who makes the vouchers ("Ваучеры"): emails, comma-separated.
@@ -372,6 +415,7 @@ services:
       NOTIFICATION_SERVICE_ADDR: notification:7055
       MESSAGE_SERVICE_ADDR: message:7056
       CLUB_SERVICE_ADDR: club:7057
+      WORLD_SERVICE_ADDR: world:7058
     ports:
       - "${GATEWAY_PORT:-8080}:8080"
     depends_on:
@@ -382,6 +426,7 @@ services:
       notification: { condition: service_healthy }
       message: { condition: service_healthy }
       club: { condition: service_healthy }
+      world: { condition: service_healthy }
 
   auth-postgres-exporter:
     <<: *postgres-exporter
@@ -436,6 +481,15 @@ services:
       DATA_SOURCE_PASS: ${CLUB_POSTGRES_PASSWORD}
     depends_on:
       club-postgres: { condition: service_healthy }
+
+  world-postgres-exporter:
+    <<: *postgres-exporter
+    environment:
+      DATA_SOURCE_URI: world-postgres:5432/${WORLD_POSTGRES_DB}?sslmode=disable
+      DATA_SOURCE_USER: ${WORLD_POSTGRES_USER}
+      DATA_SOURCE_PASS: ${WORLD_POSTGRES_PASSWORD}
+    depends_on:
+      world-postgres: { condition: service_healthy }
 
   redis-exporter:
     profiles: [app]
@@ -598,6 +652,7 @@ volumes:
   notification_postgres_data:
   message_postgres_data:
   club_postgres_data:
+  world_postgres_data:
   redis_data:
   alertmanager_data:
   victorialogs_data:
