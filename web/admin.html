@@ -45,6 +45,7 @@
         <a class="aui-nav-item" href="/admin/bets" title="Ставки"><span class="aui-icon aui-icon-bets"></span><span class="aui-nav-item-label">Ставки</span></a>
         <a class="aui-nav-item" href="/admin/mine" title="Шахта"><span class="aui-icon aui-icon-mine"></span><span class="aui-nav-item-label">Шахта</span></a>
         <a class="aui-nav-item" href="/admin/business" title="Бизнес"><span class="aui-icon aui-icon-business"></span><span class="aui-nav-item-label">Бизнес</span></a>
+        <a class="aui-nav-item" href="/admin/world" title="Мир"><span class="aui-icon aui-icon-world"></span><span class="aui-nav-item-label">Мир</span></a>
         <a class="aui-nav-item" href="/admin/bank" title="Банк"><span class="aui-icon aui-icon-bank"></span><span class="aui-nav-item-label">Банк</span></a>
         <a class="aui-nav-item" href="/admin/pets" title="Питомцы"><span class="aui-icon aui-icon-pet"></span><span class="aui-nav-item-label">Питомцы</span></a>
         <a class="aui-nav-item" href="/admin/ads" title="Реклама"><span class="aui-icon aui-icon-ad"></span><span class="aui-nav-item-label">Реклама</span></a>
@@ -688,6 +689,78 @@
           <label for="business-maxShares">Наибольшее число акций</label>
           <input class="text admin-casino-field" id="business-maxShares" type="number" min="1" max="1000000" required>
           <div class="description">Больше акций у предприятия не будет: выпуск сверх него не пройдёт. До 1 000 000.</div>
+        </div>
+        <div class="buttons-container">
+          <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="world" hidden>
+      <h1 class="aui-page-heading">Мир</h1>
+      <p class="admin-lead">Мир — карта, на которой люди основывают государства за голоса, принимают граждан и колонизируют ничьи земли. Карта создаётся по сиду в фоне за минуту-другую; готовую можно посмотреть и открыть. Открыт всегда один мир: открытие новой карты завершает прежний, и его государства исчезают. Голоса за основание уходят в Казну, взносы граждан — в казну государства.</p>
+      <div class="aui-message aui-message-success" id="world-saved" hidden></div>
+      <h2>Карты</h2>
+      <div class="aui-table-wrap">
+        <table class="aui">
+          <thead><tr><th>Карта</th><th>Создана</th><th>Сид</th><th>Сетка</th><th>Состояние</th><th></th></tr></thead>
+          <tbody id="world-maps"></tbody>
+        </table>
+      </div>
+      <form class="aui" id="world-create">
+        <div class="field-group">
+          <label for="world-seed">Сид</label>
+          <input class="text admin-casino-field" id="world-seed" type="text" inputmode="numeric" pattern="[0-9]*">
+          <div class="description">Одинаковый сид даёт одинаковую карту; пусто — случайный.</div>
+        </div>
+        <div class="field-group">
+          <label for="world-grid">Сетка</label>
+          <select class="select" id="world-grid"><option value="1024">1024 — маленькая</option><option value="2048" selected>2048 — обычная</option><option value="4096">4096 — подробная</option></select>
+          <div class="description">Ширина карты в клетках: подробная создаётся дольше.</div>
+        </div>
+        <div class="buttons-container">
+          <button class="aui-button aui-button-primary" type="submit">Создать карту</button>
+          <button class="aui-button" id="world-end" type="button">Завершить мир</button>
+        </div>
+      </form>
+      <h2>Правила</h2>
+      <form class="aui" id="world-rules">
+        <div class="field-group">
+          <label for="world-foundCost">Основание государства, голосов</label>
+          <input class="text admin-casino-field" id="world-foundCost" type="number" min="0" required>
+        </div>
+        <div class="field-group">
+          <label for="world-foundTreasury">Казна нового государства, голосов</label>
+          <input class="text admin-casino-field" id="world-foundTreasury" type="number" min="0" required>
+          <div class="description">Не больше цены основания: остальное уходит в Казну сайта.</div>
+        </div>
+        <div class="field-group">
+          <label for="world-foundLands">Провинций при основании</label>
+          <input class="text admin-casino-field" id="world-foundLands" type="number" min="0" required>
+          <div class="description">Сколько ничьих соседних провинций государство получает вместе со столицей.</div>
+        </div>
+        <div class="field-group">
+          <label for="world-capitalDistance">Расстояние между столицами</label>
+          <input class="text admin-casino-field" id="world-capitalDistance" type="number" min="1" required>
+          <div class="description">Наименьшее число шагов по суше от новой столицы до чужой.</div>
+        </div>
+        <div class="field-group">
+          <label for="world-protectionDays">Защита нового государства, дней</label>
+          <input class="text admin-casino-field" id="world-protectionDays" type="number" min="0" required>
+        </div>
+        <div class="field-group">
+          <label for="world-colonizeCost">Колония, голосов</label>
+          <input class="text admin-casino-field" id="world-colonizeCost" type="number" min="0" required>
+          <div class="description">Первая колония; каждая следующая дороже на десятую часть за провинцию государства.</div>
+        </div>
+        <div class="field-group">
+          <label for="world-colonizeHours">Колония обосновывается, часов</label>
+          <input class="text admin-casino-field" id="world-colonizeHours" type="number" min="1" required>
+        </div>
+        <div class="field-group">
+          <label for="world-income">Доход провинции</label>
+          <input class="text admin-casino-field" id="world-income" type="number" min="0" required>
+          <div class="description">Десятые сотой голоса в час с тысячи жителей: при 5 провинция в 20 тысяч жителей приносит 0,1 голоса в час.</div>
         </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>

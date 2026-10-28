@@ -2097,6 +2097,10 @@ export function voteOperation(op, myId) {
       return { title: out ? tr('Банк: погашение кредита') : tr('Банк: кредит'), role: '' };
     case 'business':
       return { title: tr('Бизнес: {0}', firmActionName(note)), role: '' };
+    case 'world':
+      if (note === 'found_state') return { title: tr('Мир: основание государства'), role: '' };
+      if (note === 'refund') return { title: tr('Мир: возврат за неосновавшееся государство'), role: '' };
+      return { title: tr('Мир: взнос в казну государства'), role: '' };
     case 'pet':
       if (note === 'adopt') return { title: tr('Питомец: покупка'), role: '' };
       if (note === 'feed') return { title: tr('Питомец: корм'), role: '' };
@@ -2554,6 +2558,38 @@ const errorTexts = {
   'the bid is too low': tr('Ставка слишком мала.'),
   'an auction with bids cannot be cancelled': tr('Аукцион, на котором уже есть ставки, отменить нельзя.'),
   'not enough votes': tr('У вас недостаточно голосов.'),
+  'province not found': tr('Такой провинции нет.'),
+  'invalid flag': tr('Флаг составлен неправильно.'),
+  'state not found': tr('Такого государства нет.'),
+  'invalid name of the state': tr('Название государства — от 1 до 40 символов.'),
+  'the name of the state is taken': tr('Государство с таким названием уже есть.'),
+  'invalid adjective of the state': tr('Прилагательное — не длиннее 40 символов.'),
+  'invalid motto of the state': tr('Девиз — не длиннее 80 символов.'),
+  'invalid color of the state': tr('Выберите цвет государства.'),
+  'invalid form of government': tr('Выберите форму правления.'),
+  'the province is not free': tr('Эта провинция уже занята.'),
+  'the province is too close to another capital': tr('Слишком близко к столице другого государства.'),
+  'the province does not border the state': tr('Провинция не граничит с государством.'),
+  'all colonists are busy': tr('Все колонисты уже в пути: дождитесь, пока они обоснуются.'),
+  'not enough votes in the treasury': tr('В казне недостаточно голосов.'),
+  'invalid donation': tr('Взнос — целое число голосов больше нуля.'),
+  'already a citizen of a state': tr('Вы уже гражданин государства.'),
+  'not a citizen of the state': tr('Этот человек не гражданин вашего государства.'),
+  'already applied to the state': tr('Вы уже подали заявку.'),
+  'application not found': tr('Заявки нет.'),
+  'the office does not allow it': tr('Ваша должность этого не позволяет.'),
+  'invalid office': tr('Такой должности нет.'),
+  'the ruler cannot leave the state': tr('Правитель не может покинуть государство: сначала передайте власть.'),
+  'not to oneself': tr('Это нельзя сделать с собой.'),
+  'not a province of land': tr('Это море, а не провинция.'),
+  'a free city belongs to nobody': tr('Вольный город не принадлежит никому.'),
+  'invalid rules of the world': tr('Правила мира заданы неправильно.'),
+  'world not found': tr('Такого мира нет.'),
+  'no world is open': tr('Мир ещё не открыт.'),
+  'invalid grid of the map': tr('Такого размера карты нет.'),
+  'the world is not ready': tr('Карта мира ещё не готова.'),
+  'the world is not open': tr('Мир закрыт.'),
+  'the page is too new to found a state': tr('Основать государство можно со страницы старше недели с заполненной анкетой.'),
   'the name of an enterprise must be 1 to 40 characters in one line': tr('Название предприятия — от 1 до 40 символов в одну строку.'),
   'there is no such enterprise': tr('Такого предприятия нет.'),
   'only the director runs the enterprise': tr('Управлять предприятием может только директор.'),
@@ -3431,4 +3467,133 @@ export function topValue(board, value) {
 // their name: " заходила на вашу страницу.".
 export function guestCame(guest) {
   return byGender(guest.user.gender, tr(' заходил на вашу страницу.'), tr(' заходила на вашу страницу.'));
+}
+
+// --- «Мир» ---
+
+// worldTerrains are the lands of the provinces (mapgen.Terrain).
+const worldTerrains = {
+  plains: tr('равнины'),
+  hills: tr('холмы'),
+  mountains: tr('горы'),
+  forest: tr('лес'),
+  desert: tr('пустыня'),
+  swamp: tr('болото'),
+  tundra: tr('тундра'),
+  sea: tr('море'),
+};
+
+export const worldTerrain = (t) => worldTerrains[t] ?? t;
+
+// worldResources are the riches of the provinces (mapgen.Resource), with
+// the sign the map puts on them.
+export const worldResources = {
+  grain: [tr('зерно'), '🌾'],
+  wood: [tr('лес'), '🌲'],
+  ore: [tr('руда'), '⛏'],
+  oil: [tr('нефть'), '🛢'],
+  gold: [tr('золото'), '💰'],
+  horses: [tr('лошади'), '🐎'],
+};
+
+export const worldResource = (r) => worldResources[r]?.[0] ?? r;
+
+// governments are the forms of government a founder chooses.
+export const governments = [
+  ['monarchy', tr('монархия')],
+  ['republic', tr('республика')],
+  ['dictatorship', tr('диктатура')],
+  ['federation', tr('федерация')],
+];
+
+export const governmentName = (g) => governments.find(([v]) => v === g)?.[1] ?? g;
+
+// worldRoles are the offices of a state; the ruler gives all but his
+// own.
+export const worldRoles = [
+  ['minister_economy', tr('министр экономики')],
+  ['minister_foreign', tr('министр иностранных дел')],
+  ['minister_defense', tr('министр обороны')],
+  ['minister_interior', tr('министр внутренних дел')],
+  ['general', tr('генерал')],
+  ['citizen', tr('гражданин')],
+];
+
+export const worldRole = (role) => (role === 'ruler' ? tr('правитель') : worldRoles.find(([v]) => v === role)?.[1] ?? role);
+
+// flagPatternNames and flagEmblemNames are what the builder of a flag
+// offers.
+export const flagPatternNames = {
+  plain: tr('одноцветный'),
+  bicolor_h: tr('две полосы'),
+  bicolor_v: tr('два столба'),
+  tricolor_h: tr('три полосы'),
+  tricolor_v: tr('три столба'),
+  cross: tr('крест'),
+  nordic: tr('скандинавский крест'),
+  diagonal: tr('диагональ'),
+  border: tr('кант'),
+  triangle: tr('треугольник у древка'),
+  circle: tr('круг'),
+};
+
+export const flagEmblemNames = {
+  '': tr('без эмблемы'),
+  star: tr('звезда'),
+  sun: tr('солнце'),
+  moon: tr('луна'),
+  crown: tr('корона'),
+  anchor: tr('якорь'),
+  tower: tr('башня'),
+  sword: tr('меч'),
+  tree: tr('дерево'),
+  wave: tr('волны'),
+  wheat: tr('колос'),
+  shield: tr('щит'),
+  hammer: tr('молот'),
+};
+
+// worldPopulation is a population in thousands: "12 тыс. чел.", "1,5
+// млн чел.".
+export function worldPopulation(thousands) {
+  if (thousands >= 1000) return tr('{0} млн чел.', String(Math.round(thousands / 100) / 10).replace('.', ','));
+
+  return tr('{0} тыс. чел.', groupedVotes(thousands));
+}
+
+// provincesCount is "3 провинции".
+export function provincesCount(n) {
+  return `${groupedVotes(n)} ${plural(n, ['провинция', 'провинции', 'провинций'])}`;
+}
+
+// citizensCount is "5 граждан".
+export function citizensCount(n) {
+  return `${groupedVotes(n)} ${plural(n, ['гражданин', 'гражданина', 'граждан'])}`;
+}
+
+// worldEventParts is a line of the news of the world as parts: strings
+// and { person } and { state } for the links; province names a province
+// by its number.
+export function worldEventParts(e, province = (n) => tr('провинция №{0}', n)) {
+  const person = e.user ? { person: e.user } : tr('Кто-то');
+  const state = { state: e.stateId, name: e.name };
+  const she = e.user?.gender === 'female';
+
+  switch (e.kind) {
+    case 'founded': return [person, she ? tr(' основала государство ') : tr(' основал государство '), state];
+    case 'joined': return [person, she ? tr(' стала гражданкой: ') : tr(' стал гражданином: '), state];
+    case 'left': return [person, she ? tr(' покинула государство ') : tr(' покинул государство '), state];
+    case 'expelled': return [person, she ? tr(' изгнана из государства ') : tr(' изгнан из государства '), state];
+    case 'appointed': return [person, she ? tr(' назначена: {0}, ', worldRole(e.role)) : tr(' назначен: {0}, ', worldRole(e.role)), state];
+    case 'succeeded': return [person, tr(' теперь правит: '), state];
+    case 'colonized': return [state, tr(' заселяет: {0}', province(e.province))];
+    case 'dissolved': return [tr('Государство '), state, tr(' распалось')];
+    default: return [state];
+  }
+}
+
+// worldRanking is the states by a measure, the largest first and those
+// equal by name: lands, population, citizens or income.
+export function worldRanking(states, measure) {
+  return [...states].sort((a, b) => (b[measure] - a[measure]) || a.name.localeCompare(b.name));
 }

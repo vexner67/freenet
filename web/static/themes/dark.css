@@ -145,6 +145,58 @@
   --text-c8102e: #c8102e;
   --line-b8b8a8: #8a8a7c;
   --back-34568b: #2a4670;
+
+  /* «Мир»: the palettes of flags and of states (flag.js), the same in
+     every theme — a flag is a flag. */
+  --back-ffffff: #ffffff;
+  --back-45708f: #45708f;
+  --back-1a1a1a: #1a1a1a;
+  --back-c8102e: #c8102e;
+  --back-8b1a1a: #8b1a1a;
+  --back-e8731a: #e8731a;
+  --back-f2c200: #f2c200;
+  --back-ffd83d: #ffd83d;
+  --back-7ab648: #7ab648;
+  --back-138a36: #138a36;
+  --back-0b5d2a: #0b5d2a;
+  --back-11807d: #11807d;
+  --back-5fa8dd: #5fa8dd;
+  --back-1f5fbf: #1f5fbf;
+  --back-13286b: #13286b;
+  --back-6a2c8f: #6a2c8f;
+  --back-9b59b6: #9b59b6;
+  --back-e86b9a: #e86b9a;
+  --back-6d1f3a: #6d1f3a;
+  --back-7a4a1e: #7a4a1e;
+  --back-c9a66b: #c9a66b;
+  --back-b8bcc2: #b8bcc2;
+  --back-6b7078: #6b7078;
+  --back-f3e9c6: #f3e9c6;
+  --back-29b6d1: #29b6d1;
+  --back-c0504d: #c0504d;
+  --back-4f81bd: #4f81bd;
+  --back-9bbb59: #9bbb59;
+  --back-8064a2: #8064a2;
+  --back-f79646: #f79646;
+  --back-4bacc6: #4bacc6;
+  --back-d4a017: #d4a017;
+  --back-7f6084: #7f6084;
+  --back-2e8b57: #2e8b57;
+  --back-b5651d: #b5651d;
+  --back-6a5acd: #6a5acd;
+  --back-cd5c5c: #cd5c5c;
+  --back-20b2aa: #20b2aa;
+  --back-da70d6: #da70d6;
+  --back-8fbc8f: #8fbc8f;
+  --back-b8860b: #b8860b;
+  --back-5f9ea0: #5f9ea0;
+  --back-bc8f8f: #bc8f8f;
+  --back-9370db: #9370db;
+  --back-3cb371: #3cb371;
+  --back-d2691e: #d2691e;
+  --back-4682b4: #4682b4;
+  --back-c71585: #c71585;
+  --back-808000: #808000;
 }
 
 /* The pictures shown for a missing photo are drawn light: in the dark they
