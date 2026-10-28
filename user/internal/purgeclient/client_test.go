@@ -12,6 +12,7 @@ import (
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/outbox"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
+	worldv1 "github.com/vexner67/freenet/world/api/world/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -129,6 +130,37 @@ func TestOutboxAndDelivery(t *testing.T) {
 	}
 	if api.purged != ann.String() || !api.deadline {
 		t.Fatalf("purged %q (deadline %v), want ann with a timeout", api.purged, api.deadline)
+	}
+}
+
+type fakeWorld struct {
+	worldv1.WorldServiceClient
+	purged string
+}
+
+func (f *fakeWorld) PurgeUser(_ context.Context, req *worldv1.PurgeUserRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.purged = req.GetUserId()
+	return &emptypb.Empty{}, nil
+}
+
+// An erased user leaves the states of the world.
+func TestWorld(t *testing.T) {
+	t.Parallel()
+
+	q := outbox.NewMemory()
+	ann := uuid.New()
+
+	if err := NewOutbox(q).UserErased(context.Background(), ann); err != nil {
+		t.Fatal(err)
+	}
+
+	head, _ := q.Head(context.Background(), 1)
+	api := &fakeWorld{}
+	if err := World(api, time.Second)(context.Background(), head[0]); err != nil {
+		t.Fatalf("deliver: %v", err)
+	}
+	if api.purged != ann.String() {
+		t.Fatalf("purged %q, want ann", api.purged)
 	}
 }
 

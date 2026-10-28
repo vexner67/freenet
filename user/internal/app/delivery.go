@@ -19,6 +19,7 @@ import (
 	"github.com/vexner67/freenet/user/internal/notifyclient"
 	"github.com/vexner67/freenet/user/internal/purgeclient"
 	"github.com/vexner67/freenet/user/internal/service"
+	worldv1 "github.com/vexner67/freenet/world/api/world/v1"
 	"google.golang.org/grpc"
 )
 
@@ -147,6 +148,9 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 		}},
 		{purgeclient.ClubStream, cfg.ClubServiceAddr, "CLUB_SERVICE_ADDR", func(c *grpc.ClientConn) outbox.Deliver {
 			return purgeclient.Club(clubv1.NewClubServiceClient(c), cfg.NotifyTimeout)
+		}},
+		{purgeclient.WorldStream, cfg.WorldServiceAddr, "WORLD_SERVICE_ADDR", func(c *grpc.ClientConn) outbox.Deliver {
+			return purgeclient.World(worldv1.NewWorldServiceClient(c), cfg.NotifyTimeout)
 		}},
 	} {
 		if s.addr == "" {
