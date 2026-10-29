@@ -160,6 +160,11 @@ func TestValueObjects(t *testing.T) {
 			t.Errorf("NewColor(%d) = %v", c, err)
 		}
 	}
+	for _, g := range []string{"monarchy", "republic", "dictatorship", "federation", "islamism"} {
+		if got, err := world.NewGovernment(g); err != nil || string(got) != g {
+			t.Errorf("NewGovernment(%q) = %q, %v", g, got, err)
+		}
+	}
 	if _, err := world.NewGovernment("anarchy"); !errors.Is(err, world.ErrGovernment) {
 		t.Errorf("NewGovernment: %v", err)
 	}

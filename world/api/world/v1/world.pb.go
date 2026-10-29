@@ -366,7 +366,7 @@ type State struct {
 	Motto     string                 `protobuf:"bytes,4,opt,name=motto,proto3" json:"motto,omitempty"`
 	Color     int32                  `protobuf:"varint,5,opt,name=color,proto3" json:"color,omitempty"`
 	Flag      *Flag                  `protobuf:"bytes,6,opt,name=flag,proto3" json:"flag,omitempty"`
-	// monarchy, republic, dictatorship, federation.
+	// monarchy, republic, dictatorship, federation, islamism.
 	Government     string                 `protobuf:"bytes,7,opt,name=government,proto3" json:"government,omitempty"`
 	RulerId        string                 `protobuf:"bytes,8,opt,name=ruler_id,json=rulerId,proto3" json:"ruler_id,omitempty"`
 	Capital        int32                  `protobuf:"varint,9,opt,name=capital,proto3" json:"capital,omitempty"`
@@ -1045,9 +1045,11 @@ func (x *Province) GetLinks() []*Link {
 type GetAtlasResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The grid of cells.
-	Width         int32       `protobuf:"varint,1,opt,name=width,proto3" json:"width,omitempty"`
-	Height        int32       `protobuf:"varint,2,opt,name=height,proto3" json:"height,omitempty"`
-	Provinces     []*Province `protobuf:"bytes,3,rep,name=provinces,proto3" json:"provinces,omitempty"`
+	Width     int32       `protobuf:"varint,1,opt,name=width,proto3" json:"width,omitempty"`
+	Height    int32       `protobuf:"varint,2,opt,name=height,proto3" json:"height,omitempty"`
+	Provinces []*Province `protobuf:"bytes,3,rep,name=provinces,proto3" json:"provinces,omitempty"`
+	// How many zooms of tiles there are, from 0.
+	Zooms         int32 `protobuf:"varint,4,opt,name=zooms,proto3" json:"zooms,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1101,6 +1103,13 @@ func (x *GetAtlasResponse) GetProvinces() []*Province {
 		return x.Provinces
 	}
 	return nil
+}
+
+func (x *GetAtlasResponse) GetZooms() int32 {
+	if x != nil {
+		return x.Zooms
+	}
+	return 0
 }
 
 type GetRasterRequest struct {
@@ -2796,11 +2805,12 @@ const file_api_world_v1_world_proto_rawDesc = "" +
 	"population\x18\f \x01(\x05R\n" +
 	"population\x12\x1b\n" +
 	"\tfree_city\x18\r \x01(\bR\bfreeCity\x12$\n" +
-	"\x05links\x18\x0e \x03(\v2\x0e.world.v1.LinkR\x05links\"r\n" +
+	"\x05links\x18\x0e \x03(\v2\x0e.world.v1.LinkR\x05links\"\x88\x01\n" +
 	"\x10GetAtlasResponse\x12\x14\n" +
 	"\x05width\x18\x01 \x01(\x05R\x05width\x12\x16\n" +
 	"\x06height\x18\x02 \x01(\x05R\x06height\x120\n" +
-	"\tprovinces\x18\x03 \x03(\v2\x12.world.v1.ProvinceR\tprovinces\"-\n" +
+	"\tprovinces\x18\x03 \x03(\v2\x12.world.v1.ProvinceR\tprovinces\x12\x14\n" +
+	"\x05zooms\x18\x04 \x01(\x05R\x05zooms\"-\n" +
 	"\x10GetRasterRequest\x12\x19\n" +
 	"\bworld_id\x18\x01 \x01(\tR\aworldId\"+\n" +
 	"\x11GetRasterResponse\x12\x16\n" +

@@ -119,7 +119,7 @@ func TestRepositories(t *testing.T) {
 	t.Run("the map reads back", func(t *testing.T) {
 		a, err := maps.Atlas(ctx, w.ID())
 		if err != nil || len(a.Provinces) != 5 || a.Provinces[1].Links[0] != (world.Link{To: 0, River: true}) ||
-			a.Provinces[2].Resources[0] != world.ResourceOre || !a.Provinces[4].FreeCity || a.Width != 64 || a.Provinces[3].Name != "Серые Холмы" {
+			a.Provinces[2].Resources[0] != world.ResourceOre || !a.Provinces[4].FreeCity || a.Width != 64 || a.Provinces[3].Name != "Серые Холмы" || a.Zooms != 2 {
 			t.Fatalf("Atlas = %+v, %v", a, err)
 		}
 		if r, err := maps.Raster(ctx, w.ID()); err != nil || len(r) != 3 {

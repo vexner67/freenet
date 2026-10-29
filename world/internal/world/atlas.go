@@ -64,6 +64,8 @@ type Atlas struct {
 	Width     int
 	Height    int
 	Provinces []Province
+	// Zooms is how many zooms of tiles the map is drawn at, from 0.
+	Zooms int
 }
 
 // Province is the province id; false for none.

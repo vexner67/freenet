@@ -134,7 +134,7 @@ func toProtoOverview(o service.Overview) *worldv1.GetWorldResponse {
 }
 
 func toProtoAtlas(a *world.Atlas) *worldv1.GetAtlasResponse {
-	resp := &worldv1.GetAtlasResponse{Width: int32(a.Width), Height: int32(a.Height), Provinces: make([]*worldv1.Province, len(a.Provinces))}
+	resp := &worldv1.GetAtlasResponse{Width: int32(a.Width), Height: int32(a.Height), Zooms: int32(a.Zooms), Provinces: make([]*worldv1.Province, len(a.Provinces))}
 	for i, p := range a.Provinces {
 		pp := &worldv1.Province{
 			Id: int32(p.ID), Sea: p.Sea, Name: p.Name, Terrain: string(p.Terrain), Biome: p.Biome,

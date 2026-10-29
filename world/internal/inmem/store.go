@@ -170,7 +170,15 @@ func (s *Store) Atlas(ctx context.Context, worldID uuid.UUID) (*world.Atlas, err
 		return nil, world.ErrNotFound
 	}
 
-	return a, nil
+	counted := *a
+	counted.Zooms = 0
+	for k := range s.tiles {
+		if k.world == worldID && k.z >= counted.Zooms {
+			counted.Zooms = k.z + 1
+		}
+	}
+
+	return &counted, nil
 }
 
 func (s *Store) Raster(ctx context.Context, worldID uuid.UUID) ([]byte, error) {

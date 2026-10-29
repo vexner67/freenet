@@ -110,11 +110,14 @@ const (
 	GovernmentRepublic     Government = "republic"
 	GovernmentDictatorship Government = "dictatorship"
 	GovernmentFederation   Government = "federation"
+	// GovernmentIslamism is a state ruled by sharia; its rules (the
+	// council of ministers, zakat, no interest) come with the laws.
+	GovernmentIslamism Government = "islamism"
 )
 
 func NewGovernment(s string) (Government, error) {
 	switch g := Government(s); g {
-	case GovernmentMonarchy, GovernmentRepublic, GovernmentDictatorship, GovernmentFederation:
+	case GovernmentMonarchy, GovernmentRepublic, GovernmentDictatorship, GovernmentFederation, GovernmentIslamism:
 		return g, nil
 	}
 

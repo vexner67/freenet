@@ -151,11 +151,21 @@ func (r *MapRepository) SaveMap(ctx context.Context, worldID uuid.UUID, m servic
 	return errs.Wrap("r.conn.Exec", err)
 }
 
-const atlasQuery = `SELECT atlas FROM world_maps WHERE world_id = $1`
+// The zooms are counted by the tiles, so that the maps made before the
+// atlas said them have them too.
+const atlasQuery = `
+SELECT
+    m.atlas,
+    (SELECT COALESCE(MAX(t.z) + 1, 0) FROM world_tiles t WHERE t.world_id = m.world_id)
+FROM world_maps m
+WHERE m.world_id = $1`
 
 func (r *MapRepository) Atlas(ctx context.Context, worldID uuid.UUID) (*world.Atlas, error) {
-	var s storedAtlas
-	err := r.conn(ctx).QueryRow(ctx, atlasQuery, worldID).Scan(&s)
+	var (
+		s     storedAtlas
+		zooms int
+	)
+	err := r.conn(ctx).QueryRow(ctx, atlasQuery, worldID).Scan(&s, &zooms)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, world.ErrNotFound
 	}
@@ -163,7 +173,10 @@ func (r *MapRepository) Atlas(ctx context.Context, worldID uuid.UUID) (*world.At
 		return nil, errs.Wrap("row.Scan", err)
 	}
 
-	return restoreAtlas(s), nil
+	a := restoreAtlas(s)
+	a.Zooms = zooms
+
+	return a, nil
 }
 
 const rasterQuery = `SELECT raster FROM world_maps WHERE world_id = $1`

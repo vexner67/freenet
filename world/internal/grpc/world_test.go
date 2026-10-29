@@ -227,7 +227,7 @@ func TestStates(t *testing.T) {
 	asAnn, asBob := s.as(t, ann), s.as(t, bob)
 	guest := context.Background()
 
-	if a, err := s.client.GetAtlas(guest, &worldv1.GetAtlasRequest{WorldId: id}); err != nil || len(a.GetProvinces()) != 10 || a.GetProvinces()[1].GetLinks()[0].GetTo() != 0 {
+	if a, err := s.client.GetAtlas(guest, &worldv1.GetAtlasRequest{WorldId: id}); err != nil || len(a.GetProvinces()) != 10 || a.GetProvinces()[1].GetLinks()[0].GetTo() != 0 || a.GetZooms() != 1 {
 		t.Fatalf("GetAtlas = %v, %v", a, err)
 	}
 	if r, err := s.client.GetRaster(guest, &worldv1.GetRasterRequest{WorldId: id}); err != nil || len(r.GetRaster()) != 2 {
