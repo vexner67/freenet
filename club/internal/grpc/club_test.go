@@ -438,35 +438,3 @@ func TestSetClubBackdrop(t *testing.T) {
 		t.Fatalf("no side: %v", err)
 	}
 }
-
-func TestCreateStateClub(t *testing.T) {
-	t.Parallel()
-
-	s := newServer(t)
-	state, ruler := uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())
-	req := &clubv1.CreateStateClubRequest{StateId: state.String(), OwnerId: ruler.String(), Name: "Бореалия", Description: "Группа государства"}
-
-	// Internal: the world service calls it without a token of a user, and
-	// asked twice, it makes one group.
-	for range 2 {
-		got, err := s.client.CreateStateClub(context.Background(), req)
-		if err != nil || got.GetClubId() != state.String() {
-			t.Fatalf("CreateStateClub = %v, %v", got, err)
-		}
-	}
-
-	got, err := s.client.GetClub(s.as(t, ruler), &clubv1.GetClubRequest{Ref: state.String()})
-	if err != nil || got.GetClub().GetClub().GetName() != "Бореалия" || got.GetClub().GetRole() != clubv1.Role_ROLE_OWNER {
-		t.Fatalf("GetClub = %v, %v", got, err)
-	}
-
-	for _, bad := range []*clubv1.CreateStateClubRequest{
-		{StateId: "x", OwnerId: ruler.String(), Name: "Бореалия"},
-		{StateId: state.String(), OwnerId: "x", Name: "Бореалия"},
-		{StateId: uuid.NewString(), OwnerId: ruler.String()},
-	} {
-		if _, err = s.client.CreateStateClub(context.Background(), bad); status.Code(err) != codes.InvalidArgument {
-			t.Errorf("CreateStateClub(%v) = %v", bad, err)
-		}
-	}
-}

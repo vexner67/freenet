@@ -233,25 +233,6 @@ func (s *ClubService) Create(ctx context.Context, ownerID uuid.UUID, name club.N
 	return s.view(ctx, ownerID, c.ID())
 }
 
-// CreateStateClub makes the group of a state of «Мир», owned by its
-// ruler, with the ID of the state, and returns its ID; asked again, it
-// makes nothing. The caller is the world service.
-func (s *ClubService) CreateStateClub(ctx context.Context, stateID, ownerID uuid.UUID, name club.Name, description club.Description) (uuid.UUID, error) {
-	_, err := s.clubs.Get(ctx, stateID)
-	if err == nil {
-		return stateID, nil
-	}
-	if !errors.Is(err, club.ErrNotFound) {
-		return uuid.Nil, errs.Wrap("s.clubs.Get", err)
-	}
-
-	if err = s.found(ctx, club.NewWithID(stateID, name, description, s.now()), ownerID); err != nil {
-		return uuid.Nil, errs.Wrap("s.found", err)
-	}
-
-	return stateID, nil
-}
-
 // found saves a new club with its owner, the first member the news are
 // told about.
 func (s *ClubService) found(ctx context.Context, c *club.Club, ownerID uuid.UUID) error {
