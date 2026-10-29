@@ -146,13 +146,19 @@ func (r *PetRepository) SaveTournament(ctx context.Context, t *user.PetTournamen
 	return r.ensure(ctx, savePetTournamentQuery, t.Week(), t.State())
 }
 
+// bestPetsQuery picks the pets in a subquery: joined with users, the bare
+// petColumns would be ambiguous ("id").
 const bestPetsQuery = `
-	SELECT p.user_id,` + petColumns + `
-	FROM pets AS p
-	JOIN users AS u ON u.id = p.user_id
-	WHERE ` + petShownAt + `
-	ORDER BY p.rating DESC, p.id
-	LIMIT $2
+	SELECT user_id,` + petColumns + `
+	FROM (
+		SELECT p.*
+		FROM pets AS p
+		JOIN users AS u ON u.id = p.user_id
+		WHERE ` + petShownAt + `
+		ORDER BY p.rating DESC, p.id
+		LIMIT $2
+	) AS pets
+	ORDER BY rating DESC, id
 `
 
 // petShownAt is petShownUser with now as $1.
@@ -356,13 +362,17 @@ func (r *PetRepository) Achieve(ctx context.Context, userID uuid.UUID, got []use
 }
 
 const listPetSalesQuery = `
-	SELECT p.user_id,` + petColumns + `
-	FROM pets AS p
-	JOIN users AS u ON u.id = p.user_id
-	WHERE p.sale_price > 0
-		AND ` + petShownAt + `
-	ORDER BY p.sale_price, p.id
-	LIMIT $2
+	SELECT user_id,` + petColumns + `
+	FROM (
+		SELECT p.*
+		FROM pets AS p
+		JOIN users AS u ON u.id = p.user_id
+		WHERE p.sale_price > 0
+			AND ` + petShownAt + `
+		ORDER BY p.sale_price, p.id
+		LIMIT $2
+	) AS pets
+	ORDER BY sale_price, id
 `
 
 func (r *PetRepository) Listings(ctx context.Context, now time.Time, limit int) ([]user.PetContender, error) {
