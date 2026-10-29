@@ -567,7 +567,6 @@ type Backends struct {
 	Documents     Documents
 	Articles      Articles
 	Stories       Stories
-	World         World
 	// Previews reads the cards of the pages posts link to; nil makes
 	// posts without cards.
 	Previews Previews
@@ -609,7 +608,6 @@ type api struct {
 	documents         Documents
 	articles          Articles
 	stories           Stories
-	worlds            World
 	previews          Previews
 	logger            *slog.Logger
 	trustForwardedFor bool
@@ -999,15 +997,6 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/ban", a.unban)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/verification", a.verifyClub)
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/verification", a.verifyClub)
-
-	mux.HandleFunc("GET /api/v1/world", a.world)
-	mux.HandleFunc("GET /api/v1/world/worlds", a.listWorlds)
-	mux.HandleFunc("POST /api/v1/world/worlds", a.createWorld)
-	mux.HandleFunc("POST /api/v1/world/worlds/{id}/open", a.openWorld)
-	mux.HandleFunc("POST /api/v1/world/end", a.endWorld)
-	mux.HandleFunc("GET /media/world/{world}/atlas", a.worldAtlas)
-	mux.HandleFunc("GET /media/world/{world}/raster", a.worldRaster)
-	mux.HandleFunc("GET /media/world/{world}/tiles/{z}/{x}/{y}", a.worldTile)
 
 	mux.HandleFunc("PUT /api/v1/me/avatar", a.uploadAvatar)
 	mux.HandleFunc("DELETE /api/v1/me/avatar", a.deleteAvatar)

@@ -24,5 +24,4 @@ use (
 	./pkg/tracing
 	./post
 	./user
-	./world
 )

@@ -71,7 +71,7 @@ jobs:
       - name: Configure the stack
         run: |
           port=5433
-          for db in AUTH USER POST NOTIFICATION MESSAGE CLUB WORLD; do
+          for db in AUTH USER POST NOTIFICATION MESSAGE CLUB; do
             echo "${db}_POSTGRES_USER=freenet"
             echo "${db}_POSTGRES_PASSWORD=$(openssl rand -hex 16)"
             echo "${db}_POSTGRES_DB=freenet"
@@ -106,7 +106,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        service: [auth, user, post, media, notification, message, club, world, gateway]
+        service: [auth, user, post, media, notification, message, club, gateway]
     steps:
       - uses: actions/checkout@v5
 

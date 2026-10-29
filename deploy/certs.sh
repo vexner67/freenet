@@ -66,7 +66,7 @@ if [ ! -f "$dir/push-key.pem" ]; then
 fi
 
 # A service added after the CA was made gets its certificate here.
-for name in auth user post media notification message club world gateway; do
+for name in auth user post media notification message club gateway; do
 	[ -f "$dir/$name.pem" ] && continue
 	[ -f "$dir/ca-key.pem" ] || { echo "certs: $name.pem is missing and there is no ca-key.pem to issue it" >&2; exit 1; }
 	issue "$name"

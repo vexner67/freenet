@@ -25,7 +25,6 @@ services:
   notification-postgres: *postgres
   message-postgres: *postgres
   club-postgres: *postgres
-  world-postgres: *postgres
   redis: { ports: !reset [] }
 
   notification:
@@ -36,9 +35,6 @@ services:
     build: !reset null
   club:
     image: ghcr.io/vexner67/freenet-club:${FREENET_TAG:?set FREENET_TAG}
-    build: !reset null
-  world:
-    image: ghcr.io/vexner67/freenet-world:${FREENET_TAG:?set FREENET_TAG}
     build: !reset null
   user:
     image: ghcr.io/vexner67/freenet-user:${FREENET_TAG:?set FREENET_TAG}

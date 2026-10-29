@@ -25,7 +25,6 @@ const (
 	Message      = "message"
 	Notification = "notification"
 	Club         = "club"
-	World        = "world"
 	Gateway      = "gateway"
 )
 

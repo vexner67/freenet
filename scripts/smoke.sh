@@ -31,7 +31,7 @@ alertmanager=${ALERTMANAGER_URL:-http://localhost:9093}
 grafana=${GRAFANA_URL:-http://localhost:3001}
 logs=${VICTORIALOGS_URL:-http://localhost:9428}
 jaeger=${JAEGER_URL:-http://localhost:16686}
-services=(gateway auth user post media notification message club world)
+services=(gateway auth user post media notification message club)
 email="smoke-$(date +%s)-$RANDOM@example.com"
 nickname="smoke$RANDOM$RANDOM"
 
@@ -242,9 +242,6 @@ token=$token2 call GET /api/v1/dialogs | jq -e --arg s "$sealed" '.dialogs[0].la
 expect=400 call POST "/api/v1/dialogs/$nickname2/messages" '{"text":"plain"}' | jq -e '.error.message == "messages are end-to-end encrypted"' >/dev/null
 step "message: dialogs sealed for the keys of both"
 
-# The world answers through the gateway: a new stack has no world open.
-expect=404 call GET /api/v1/world | jq -e '.error.message == "no world is open"' >/dev/null
-step "world: no world is open yet"
 
 # refresh replaces the tokens, as the website does after deleting and
 # restoring the page.
@@ -279,7 +276,7 @@ done
 step "metrics: Prometheus scrapes every service"
 
 # Every database with a service of its own, and Redis.
-watched="auth club message notification post redis user world"
+watched="auth club message notification post redis user"
 stores=
 for _ in $(seq 1 60); do
 	stores=$(curl -sf "$prometheus/api/v1/query?query=pg_up%20or%20redis_up" |
