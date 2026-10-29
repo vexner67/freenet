@@ -6016,7 +6016,7 @@ paths:
   /api/v1/me/pets:
     get:
       summary: Your pets
-      description: '"Питомцы": the shop and your pets, the oldest first.'
+      description: '"Питомцы": the shop and your pets, the oldest first, with the catalogue — the kinds (those not `inShop` fall out of cases), the cases and the clothes.'
       security: [{ bearer: [] }]
       responses:
         "200":
@@ -6028,6 +6028,32 @@ paths:
                 properties:
                   shop: { $ref: "#/components/schemas/PetShop" }
                   pets: { type: array, items: { $ref: "#/components/schemas/Pet" } }
+                  kinds:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind: { type: string }
+                        rarity: { type: string, enum: [common, rare, epic, legendary] }
+                        inShop: { type: boolean }
+                        stats: { $ref: "#/components/schemas/PetPower" }
+                        crit: { type: integer }
+                  cases:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, enum: [bronze, silver, gold] }
+                        odds: { type: array, items: { type: integer }, description: 'In a thousand: common, rare, epic, legendary' }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        slot: { type: string, enum: [head, eyes, neck, body] }
+                        price: { type: integer, format: int64 }
+                        bonus: { $ref: "#/components/schemas/PetPower" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
     post:
       summary: Adopt a pet
@@ -6065,6 +6091,77 @@ paths:
                 properties:
                   fights: { type: array, items: { $ref: "#/components/schemas/PetFight" } }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/pets/cases:
+    post:
+      summary: Open a case
+      description: 'Pays the price of the case into the treasury: a pet of a kind drawn by the odds of its rarity joins your pets, called `name`; up to 10 pets a person (409 past them). Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [case, name]
+              properties:
+                case: { type: string, enum: [bronze, silver, gold] }
+                name: { type: string, maxLength: 20 }
+      responses:
+        "201": { description: The pet that fell out, content: { application/json: { schema: { $ref: "#/components/schemas/PetCare" } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/pets/{id}/clothes:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Buy clothes for a pet
+      description: 'Pays the price of the thing into the treasury and puts it on, instead of what the pet wore in its slot; 409 when the pet has it already. Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [item]
+              properties:
+                item: { type: string }
+      responses:
+        "200": { description: The pet, content: { application/json: { schema: { $ref: "#/components/schemas/PetCare" } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/pets/{id}/outfit:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      summary: Dress a pet
+      description: 'Puts on (`wear`) or takes off clothes of the wardrobe of the pet; 409 for clothes not bought. Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [item]
+              properties:
+                item: { type: string }
+                wear: { type: boolean }
+      responses:
+        "200": { description: The pet, content: { application/json: { schema: { $ref: "#/components/schemas/PetCare" } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/me/pets/{id}:
     parameters:
@@ -10503,10 +10600,14 @@ components:
             drinkEnergy: { type: integer, description: The energy a drink gives back }
     PetShop:
       type: object
-      description: What pets cost — the price of each kind, a meal; the votes a won fight brings and the fights of a day.
+      description: What pets cost — the price of each kind the shop sells, of each case, a meal; the votes a won fight brings and the fights of a day.
       properties:
         prices:
           type: object
+          additionalProperties: { type: integer, format: int64 }
+        cases:
+          type: object
+          description: The prices of the cases; left out of a change, they stay as they are
           additionalProperties: { type: integer, format: int64 }
         meal: { type: integer, format: int64 }
         win: { type: integer, format: int64 }
@@ -10524,7 +10625,7 @@ components:
       description: 'A pet as it is now: satiety and joy from 0 to 100 (they fall by themselves), the level with the experience of it and of the next (0 at the last), how it fights.'
       properties:
         id: { type: string, format: uuid }
-        kind: { type: string, enum: [cat, dog, hamster, dragon] }
+        kind: { type: string, enum: [cat, dog, hamster, dragon, rabbit, turtle, fox, owl, wolf, panda, unicorn, phoenix] }
         name: { type: string }
         bornAt: { type: string, format: date-time }
         satiety: { type: integer }
@@ -10543,6 +10644,19 @@ components:
         health: { type: integer }
         speed: { type: integer, description: The chance in a hundred to dodge }
         crit: { type: integer, description: The chance in a hundred to hit twice as hard }
+        rarity: { type: string, enum: [common, rare, epic, legendary] }
+        wardrobe: { type: array, items: { type: string }, description: The clothes bought for it }
+        outfit: { type: array, items: { type: string }, description: The clothes it wears, one a slot }
+        breed: { allOf: [{ $ref: "#/components/schemas/PetPower" }], description: What its kind gives of the stats }
+        clothes: { allOf: [{ $ref: "#/components/schemas/PetPower" }], description: What its clothes give; the rest is levels }
+    PetPower:
+      type: object
+      description: The stats of a pet, or what something adds to them.
+      properties:
+        attack: { type: integer }
+        defense: { type: integer }
+        health: { type: integer }
+        speed: { type: integer }
     PetCare:
       type: object
       properties:
@@ -10556,6 +10670,7 @@ components:
         name: { type: string }
         level: { type: integer }
         health: { type: integer }
+        outfit: { type: array, items: { type: string }, description: The clothes it wore }
     PetFight:
       type: object
       description: 'A fight: the hits in turn and whether the attacker won, with the rating it won (above zero) or lost.'

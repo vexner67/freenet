@@ -29,6 +29,8 @@ type TopEntry struct {
 // brings and the fights of a day.
 type PetShop struct {
 	Prices map[string]int64
+	// Cases are what each case costs; nil leaves them as they are.
+	Cases  map[string]int64
 	Meal   int64
 	Win    int64
 	Fights int
@@ -59,12 +61,57 @@ type Pet struct {
 	Health              int
 	Speed               int
 	Crit                int
+	Rarity              string
+	// Wardrobe are the clothes bought for it, Outfit those it wears.
+	Wardrobe []string
+	Outfit   []string
+	// Breed and Clothes are what its kind and its clothes give of its
+	// stats; the rest is levels.
+	Breed   PetPower
+	Clothes PetPower
 }
 
-// PetState is the shop and the pets of the caller, the oldest first.
+// PetPower are the stats of a pet, or what something adds to them.
+type PetPower struct {
+	Attack  int
+	Defense int
+	Health  int
+	Speed   int
+}
+
+// PetKind is a kind of the catalogue: how rare it is, whether the shop
+// sells it, its stats at level 1 and its chance to hit twice as hard.
+type PetKind struct {
+	Kind   string
+	Rarity string
+	InShop bool
+	Stats  PetPower
+	Crit   int
+}
+
+// PetCase is a case: the odds in a thousand of each rarity, from the most
+// common.
+type PetCase struct {
+	ID   string
+	Odds []int
+}
+
+// PetItem is a thing of clothes: its slot, price and what it adds.
+type PetItem struct {
+	ID    string
+	Slot  string
+	Price int64
+	Bonus PetPower
+}
+
+// PetState is the shop and the pets of the caller, the oldest first, with
+// the catalogue.
 type PetState struct {
-	Shop PetShop
-	Pets []Pet
+	Shop  PetShop
+	Pets  []Pet
+	Kinds []PetKind
+	Cases []PetCase
+	Items []PetItem
 }
 
 // PetCare is a pet after it was adopted, fed, played with or renamed, and
@@ -80,6 +127,7 @@ type PetFighter struct {
 	Name   string
 	Level  int
 	Health int
+	Outfit []string
 }
 
 // PetHit is a turn of a fight: who hit, whether the other dodged or it

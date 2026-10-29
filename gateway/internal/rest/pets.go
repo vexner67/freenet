@@ -23,40 +23,81 @@ type Pets interface {
 	Release(ctx context.Context, accessToken, petID string) error
 	Fight(ctx context.Context, accessToken, petID, nickname string) (model.PetFought, error)
 	Fights(ctx context.Context, accessToken string) ([]model.PetFight, error)
+	OpenCase(ctx context.Context, accessToken, caseID, name string) (model.PetCare, error)
+	BuyItem(ctx context.Context, accessToken, petID, item string) (model.PetCare, error)
+	Dress(ctx context.Context, accessToken, petID, item string, wear bool) (model.PetCare, error)
 	Settings(ctx context.Context, accessToken string) (model.PetShop, model.PetStats, error)
 	Set(ctx context.Context, accessToken string, shop model.PetShop) error
 }
 
+// petShopJSON is the shop; cases left out of a change keep their prices.
 type petShopJSON struct {
 	Prices map[string]int64 `json:"prices"`
+	Cases  map[string]int64 `json:"cases"`
 	Meal   int64            `json:"meal"`
 	Win    int64            `json:"win"`
 	Fights int              `json:"fights"`
 }
 
+type petPowerJSON struct {
+	Attack  int `json:"attack"`
+	Defense int `json:"defense"`
+	Health  int `json:"health"`
+	Speed   int `json:"speed"`
+}
+
+// petKindJSON is a kind of the catalogue; inShop: the shop sells it, the
+// others fall out of cases.
+type petKindJSON struct {
+	Kind   string       `json:"kind"`
+	Rarity string       `json:"rarity"`
+	InShop bool         `json:"inShop"`
+	Stats  petPowerJSON `json:"stats"`
+	Crit   int          `json:"crit"`
+}
+
+// petCaseJSON is a case: the odds in a thousand of common, rare, epic and
+// legendary pets.
+type petCaseJSON struct {
+	ID   string `json:"id"`
+	Odds []int  `json:"odds"`
+}
+
+type petItemJSON struct {
+	ID    string       `json:"id"`
+	Slot  string       `json:"slot"`
+	Price int64        `json:"price"`
+	Bonus petPowerJSON `json:"bonus"`
+}
+
 // petJSON is a pet as it is now; playAt is when it may play again (null —
 // now), nextLevelExperience 0 at the last level.
 type petJSON struct {
-	ID                  string  `json:"id"`
-	Kind                string  `json:"kind"`
-	Name                string  `json:"name"`
-	BornAt              string  `json:"bornAt"`
-	Satiety             int     `json:"satiety"`
-	Joy                 int     `json:"joy"`
-	PlayAt              *string `json:"playAt"`
-	Experience          int64   `json:"experience"`
-	Level               int     `json:"level"`
-	LevelExperience     int64   `json:"levelExperience"`
-	NextLevelExperience int64   `json:"nextLevelExperience"`
-	Rating              int     `json:"rating"`
-	Wins                int     `json:"wins"`
-	Losses              int     `json:"losses"`
-	Fights              int     `json:"fights"`
-	Attack              int     `json:"attack"`
-	Defense             int     `json:"defense"`
-	Health              int     `json:"health"`
-	Speed               int     `json:"speed"`
-	Crit                int     `json:"crit"`
+	ID                  string       `json:"id"`
+	Kind                string       `json:"kind"`
+	Name                string       `json:"name"`
+	BornAt              string       `json:"bornAt"`
+	Satiety             int          `json:"satiety"`
+	Joy                 int          `json:"joy"`
+	PlayAt              *string      `json:"playAt"`
+	Experience          int64        `json:"experience"`
+	Level               int          `json:"level"`
+	LevelExperience     int64        `json:"levelExperience"`
+	NextLevelExperience int64        `json:"nextLevelExperience"`
+	Rating              int          `json:"rating"`
+	Wins                int          `json:"wins"`
+	Losses              int          `json:"losses"`
+	Fights              int          `json:"fights"`
+	Attack              int          `json:"attack"`
+	Defense             int          `json:"defense"`
+	Health              int          `json:"health"`
+	Speed               int          `json:"speed"`
+	Crit                int          `json:"crit"`
+	Rarity              string       `json:"rarity"`
+	Wardrobe            []string     `json:"wardrobe"`
+	Outfit              []string     `json:"outfit"`
+	Breed               petPowerJSON `json:"breed"`
+	Clothes             petPowerJSON `json:"clothes"`
 }
 
 // petFighterJSON is a pet as it came to a fight, with its owner — null
@@ -67,6 +108,7 @@ type petFighterJSON struct {
 	Name   string      `json:"name"`
 	Level  int         `json:"level"`
 	Health int         `json:"health"`
+	Outfit []string    `json:"outfit"`
 }
 
 type petHitJSON struct {
@@ -94,7 +136,21 @@ func toPetShopJSON(s model.PetShop) petShopJSON {
 		prices = map[string]int64{}
 	}
 
-	return petShopJSON{Prices: prices, Meal: s.Meal, Win: s.Win, Fights: s.Fights}
+	cases := s.Cases
+	if cases == nil {
+		cases = map[string]int64{}
+	}
+
+	return petShopJSON{Prices: prices, Cases: cases, Meal: s.Meal, Win: s.Win, Fights: s.Fights}
+}
+
+// names are list, [] for none.
+func names(list []string) []string {
+	if list == nil {
+		return []string{}
+	}
+
+	return list
 }
 
 func toPetJSON(p model.Pet) petJSON {
@@ -119,6 +175,11 @@ func toPetJSON(p model.Pet) petJSON {
 		Health:              p.Health,
 		Speed:               p.Speed,
 		Crit:                p.Crit,
+		Rarity:              p.Rarity,
+		Wardrobe:            names(p.Wardrobe),
+		Outfit:              names(p.Outfit),
+		Breed:               petPowerJSON(p.Breed),
+		Clothes:             petPowerJSON(p.Clothes),
 	}
 }
 
@@ -132,7 +193,7 @@ func toPetsJSON(pets []model.Pet) []petJSON {
 }
 
 func toPetFighterJSON(f model.PetFighter, owner string, people map[string]model.Author) petFighterJSON {
-	out := petFighterJSON{Kind: f.Kind, Name: f.Name, Level: f.Level, Health: f.Health}
+	out := petFighterJSON{Kind: f.Kind, Name: f.Name, Level: f.Level, Health: f.Health, Outfit: names(f.Outfit)}
 	if a, ok := people[owner]; ok && !a.Deactivated {
 		j := toAuthorJSON(a)
 		out.User = &j
@@ -334,10 +395,26 @@ func (a *api) getPets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	kinds := make([]petKindJSON, 0, len(state.Kinds))
+	for _, k := range state.Kinds {
+		kinds = append(kinds, petKindJSON{Kind: k.Kind, Rarity: k.Rarity, InShop: k.InShop, Stats: petPowerJSON(k.Stats), Crit: k.Crit})
+	}
+	cases := make([]petCaseJSON, 0, len(state.Cases))
+	for _, c := range state.Cases {
+		cases = append(cases, petCaseJSON(c))
+	}
+	items := make([]petItemJSON, 0, len(state.Items))
+	for _, item := range state.Items {
+		items = append(items, petItemJSON{ID: item.ID, Slot: item.Slot, Price: item.Price, Bonus: petPowerJSON(item.Bonus)})
+	}
+
 	writeJSON(w, http.StatusOK, struct {
-		Shop petShopJSON `json:"shop"`
-		Pets []petJSON   `json:"pets"`
-	}{toPetShopJSON(state.Shop), toPetsJSON(state.Pets)})
+		Shop  petShopJSON   `json:"shop"`
+		Pets  []petJSON     `json:"pets"`
+		Kinds []petKindJSON `json:"kinds"`
+		Cases []petCaseJSON `json:"cases"`
+		Items []petItemJSON `json:"items"`
+	}{toPetShopJSON(state.Shop), toPetsJSON(state.Pets), kinds, cases, items})
 }
 
 // getUserPets are the pets of a page, public as the page.
@@ -381,6 +458,67 @@ func (a *api) adoptPet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.writePetCare(w, r, func() (model.PetCare, error) { return a.pets.Adopt(r.Context(), token, req.Kind, req.Name) }, http.StatusCreated)
+}
+
+// openPetCase opens a case: the pet that fell out of it.
+func (a *api) openPetCase(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req struct {
+		Case string `json:"case"`
+		Name string `json:"name"`
+	}
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.writePetCare(w, r, func() (model.PetCare, error) { return a.pets.OpenCase(r.Context(), token, req.Case, req.Name) }, http.StatusCreated)
+}
+
+// buyPetItem buys clothes for a pet and puts them on.
+func (a *api) buyPetItem(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req struct {
+		Item string `json:"item"`
+	}
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.writePetCare(w, r, func() (model.PetCare, error) { return a.pets.BuyItem(r.Context(), token, r.PathValue("id"), req.Item) }, http.StatusOK)
+}
+
+// dressPet puts clothes of the wardrobe on a pet, or takes them off.
+func (a *api) dressPet(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req struct {
+		Item string `json:"item"`
+		Wear bool   `json:"wear"`
+	}
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.writePetCare(w, r, func() (model.PetCare, error) {
+		return a.pets.Dress(r.Context(), token, r.PathValue("id"), req.Item, req.Wear)
+	}, http.StatusOK)
 }
 
 func (a *api) feedPet(w http.ResponseWriter, r *http.Request) {

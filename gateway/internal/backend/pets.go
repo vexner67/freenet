@@ -62,7 +62,24 @@ func (p *Pets) Get(ctx context.Context, accessToken string) (model.PetState, err
 		return model.PetState{}, errs.Wrap("p.api.GetPet", fromStatus(err))
 	}
 
-	return model.PetState{Shop: fromProtoPetShop(resp.GetShop()), Pets: fromProtoPets(resp.GetPets())}, nil
+	state := model.PetState{Shop: fromProtoPetShop(resp.GetShop()), Pets: fromProtoPets(resp.GetPets())}
+	for _, k := range resp.GetKinds() {
+		state.Kinds = append(state.Kinds, model.PetKind{
+			Kind: k.GetKind(), Rarity: k.GetRarity(), InShop: k.GetInShop(), Stats: fromProtoPetPower(k.GetStats()), Crit: int(k.GetCrit()),
+		})
+	}
+	for _, c := range resp.GetCases() {
+		odds := make([]int, len(c.GetOdds()))
+		for i, o := range c.GetOdds() {
+			odds[i] = int(o)
+		}
+		state.Cases = append(state.Cases, model.PetCase{ID: c.GetId(), Odds: odds})
+	}
+	for _, item := range resp.GetItems() {
+		state.Items = append(state.Items, model.PetItem{ID: item.GetId(), Slot: item.GetSlot(), Price: item.GetPrice(), Bonus: fromProtoPetPower(item.GetBonus())})
+	}
+
+	return state, nil
 }
 
 // UserPets are the pets of a page, the oldest first, and whose page it is.
@@ -106,6 +123,35 @@ func (p *Pets) Rename(ctx context.Context, accessToken, petID, name string) (mod
 	resp, err := p.api.RenamePet(withToken(ctx, accessToken), &userv1.RenamePetRequest{PetId: petID, Name: name})
 	if err != nil {
 		return model.PetCare{}, errs.Wrap("p.api.RenamePet", fromStatus(err))
+	}
+
+	return fromProtoPetCare(resp), nil
+}
+
+// OpenCase opens the case caseID: a pet called name joins the pets.
+func (p *Pets) OpenCase(ctx context.Context, accessToken, caseID, name string) (model.PetCare, error) {
+	resp, err := p.api.OpenPetCase(withToken(ctx, accessToken), &userv1.OpenPetCaseRequest{CaseId: caseID, Name: name})
+	if err != nil {
+		return model.PetCare{}, errs.Wrap("p.api.OpenPetCase", fromStatus(err))
+	}
+
+	return fromProtoPetCare(resp), nil
+}
+
+func (p *Pets) BuyItem(ctx context.Context, accessToken, petID, item string) (model.PetCare, error) {
+	resp, err := p.api.BuyPetItem(withToken(ctx, accessToken), &userv1.BuyPetItemRequest{PetId: petID, Item: item})
+	if err != nil {
+		return model.PetCare{}, errs.Wrap("p.api.BuyPetItem", fromStatus(err))
+	}
+
+	return fromProtoPetCare(resp), nil
+}
+
+// Dress puts item on the pet, or takes it off.
+func (p *Pets) Dress(ctx context.Context, accessToken, petID, item string, wear bool) (model.PetCare, error) {
+	resp, err := p.api.DressPet(withToken(ctx, accessToken), &userv1.DressPetRequest{PetId: petID, Item: item, Wear: wear})
+	if err != nil {
+		return model.PetCare{}, errs.Wrap("p.api.DressPet", fromStatus(err))
 	}
 
 	return fromProtoPetCare(resp), nil
@@ -161,7 +207,7 @@ func (p *Pets) Set(ctx context.Context, accessToken string, shop model.PetShop) 
 		return err
 	}
 
-	req := &userv1.SetPetSettingsRequest{Shop: &userv1.PetShop{Prices: shop.Prices, Meal: shop.Meal, Win: shop.Win, Fights: fights}}
+	req := &userv1.SetPetSettingsRequest{Shop: &userv1.PetShop{Prices: shop.Prices, Cases: shop.Cases, Meal: shop.Meal, Win: shop.Win, Fights: fights}}
 	if _, err = p.api.SetPetSettings(withToken(ctx, accessToken), req); err != nil {
 		return errs.Wrap("p.api.SetPetSettings", fromStatus(err))
 	}
@@ -170,7 +216,11 @@ func (p *Pets) Set(ctx context.Context, accessToken string, shop model.PetShop) 
 }
 
 func fromProtoPetShop(s *userv1.PetShop) model.PetShop {
-	return model.PetShop{Prices: s.GetPrices(), Meal: s.GetMeal(), Win: s.GetWin(), Fights: int(s.GetFights())}
+	return model.PetShop{Prices: s.GetPrices(), Cases: s.GetCases(), Meal: s.GetMeal(), Win: s.GetWin(), Fights: int(s.GetFights())}
+}
+
+func fromProtoPetPower(s *userv1.PetStats) model.PetPower {
+	return model.PetPower{Attack: int(s.GetAttack()), Defense: int(s.GetDefense()), Health: int(s.GetHealth()), Speed: int(s.GetSpeed())}
 }
 
 func fromProtoPets(ps []*userv1.Pet) []model.Pet {
@@ -204,6 +254,11 @@ func fromProtoPet(p *userv1.Pet) model.Pet {
 		Health:              int(p.GetHealth()),
 		Speed:               int(p.GetSpeed()),
 		Crit:                int(p.GetCrit()),
+		Rarity:              p.GetRarity(),
+		Wardrobe:            p.GetWardrobe(),
+		Outfit:              p.GetOutfit(),
+		Breed:               fromProtoPetPower(p.GetBreed()),
+		Clothes:             fromProtoPetPower(p.GetClothes()),
 	}
 }
 
@@ -212,7 +267,7 @@ func fromProtoPetCare(resp *userv1.PetCareResponse) model.PetCare {
 }
 
 func fromProtoPetFighter(f *userv1.PetFighter) model.PetFighter {
-	return model.PetFighter{Kind: f.GetKind(), Name: f.GetName(), Level: int(f.GetLevel()), Health: int(f.GetHealth())}
+	return model.PetFighter{Kind: f.GetKind(), Name: f.GetName(), Level: int(f.GetLevel()), Health: int(f.GetHealth()), Outfit: f.GetOutfit()}
 }
 
 func fromProtoPetFight(f *userv1.PetFight) model.PetFight {

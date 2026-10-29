@@ -20,6 +20,8 @@ type fakePets struct {
 	board    string
 	kind     string
 	name     string
+	item     string
+	wear     bool
 	shop     model.PetShop
 	noPet    bool
 	err      error
@@ -60,7 +62,12 @@ func (f *fakePets) Top(_ context.Context, token, board string) ([]model.TopEntry
 
 func (f *fakePets) Get(_ context.Context, token string) (model.PetState, error) {
 	f.token = token
-	state := model.PetState{Shop: model.PetShop{Prices: map[string]int64{"cat": 100}, Meal: 5, Win: 3, Fights: 10}}
+	state := model.PetState{
+		Shop:  model.PetShop{Prices: map[string]int64{"cat": 100}, Cases: map[string]int64{"gold": 1200}, Meal: 5, Win: 3, Fights: 10},
+		Kinds: []model.PetKind{{Kind: "phoenix", Rarity: "legendary", Stats: model.PetPower{Attack: 12}, Crit: 14}},
+		Cases: []model.PetCase{{ID: "gold", Odds: []int{0, 550, 370, 80}}},
+		Items: []model.PetItem{{ID: "crown", Slot: "head", Price: 1500, Bonus: model.PetPower{Attack: 3, Defense: 3}}},
+	}
 	if !f.noPet {
 		state.Pets = []model.Pet{f.pet()}
 	}
@@ -107,6 +114,23 @@ func (f *fakePets) Fight(_ context.Context, token, petID, nickname string) (mode
 func (f *fakePets) Fights(_ context.Context, token string) ([]model.PetFight, error) {
 	f.token = token
 	return []model.PetFight{f.fight()}, f.err
+}
+
+func (f *fakePets) OpenCase(_ context.Context, token, caseID, name string) (model.PetCare, error) {
+	f.token, f.kind, f.name = token, caseID, name
+	return model.PetCare{Pet: f.pet(), Balance: 300}, f.err
+}
+
+func (f *fakePets) BuyItem(_ context.Context, token, petID, item string) (model.PetCare, error) {
+	f.token, f.petID, f.item = token, petID, item
+	pet := f.pet()
+	pet.Wardrobe, pet.Outfit, pet.Clothes = []string{item}, []string{item}, model.PetPower{Health: 12}
+	return model.PetCare{Pet: pet, Balance: 150}, f.err
+}
+
+func (f *fakePets) Dress(_ context.Context, token, petID, item string, wear bool) (model.PetCare, error) {
+	f.token, f.petID, f.item, f.wear = token, petID, item, wear
+	return model.PetCare{Pet: f.pet()}, f.err
 }
 
 func (f *fakePets) Settings(_ context.Context, token string) (model.PetShop, model.PetStats, error) {
@@ -230,9 +254,36 @@ func TestPet(t *testing.T) {
 	if got := decode[map[string]any](t, w); w.Code != http.StatusOK || got["spent"] != 155.0 || got["shop"].(map[string]any)["fights"] != 10.0 {
 		t.Fatalf("settings: %d %v", w.Code, got)
 	}
-	w = h.do("PUT", "/api/v1/pet/settings", `{"prices":{"cat":10,"dog":20,"hamster":5,"dragon":50},"meal":1,"win":2,"fights":3}`, auth...)
-	if w.Code != http.StatusNoContent || h.pets.shop.Prices["dragon"] != 50 || h.pets.shop.Fights != 3 {
+	w = h.do("PUT", "/api/v1/pet/settings", `{"prices":{"cat":10,"dog":20,"hamster":5,"dragon":50},"cases":{"bronze":1,"silver":2,"gold":3},"meal":1,"win":2,"fights":3}`, auth...)
+	if w.Code != http.StatusNoContent || h.pets.shop.Prices["dragon"] != 50 || h.pets.shop.Fights != 3 || h.pets.shop.Cases["gold"] != 3 {
 		t.Fatalf("set: %d %+v", w.Code, h.pets.shop)
+	}
+
+	// The catalogue, a case, clothes bought and taken off.
+	w = h.do("GET", "/api/v1/me/pets", "", auth...)
+	catalogue := decode[struct {
+		Shop  map[string]any   `json:"shop"`
+		Kinds []map[string]any `json:"kinds"`
+		Cases []map[string]any `json:"cases"`
+		Items []map[string]any `json:"items"`
+		Pets  []map[string]any `json:"pets"`
+	}](t, w)
+	if catalogue.Shop["cases"].(map[string]any)["gold"] != 1200.0 || catalogue.Kinds[0]["rarity"] != "legendary" ||
+		len(catalogue.Cases[0]["odds"].([]any)) != 4 || catalogue.Items[0]["bonus"].(map[string]any)["defense"] != 3.0 ||
+		len(catalogue.Pets[0]["outfit"].([]any)) != 0 {
+		t.Fatalf("catalogue: %+v", catalogue)
+	}
+	w = h.do("POST", "/api/v1/me/pets/cases", `{"case":"gold","name":"Находка"}`, auth...)
+	if got := decode[map[string]any](t, w); w.Code != http.StatusCreated || h.pets.kind != "gold" || h.pets.name != "Находка" || got["balance"] != 300.0 {
+		t.Fatalf("open a case: %d %v", w.Code, got)
+	}
+	w = h.do("POST", "/api/v1/me/pets/p1/clothes", `{"item":"scarf"}`, auth...)
+	if got := decode[map[string]any](t, w)["pet"].(map[string]any); w.Code != http.StatusOK || h.pets.item != "scarf" ||
+		got["outfit"].([]any)[0] != "scarf" || got["clothes"].(map[string]any)["health"] != 12.0 {
+		t.Fatalf("buy clothes: %d %v", w.Code, got)
+	}
+	if w = h.do("PUT", "/api/v1/me/pets/p1/outfit", `{"item":"scarf","wear":true}`, auth...); w.Code != http.StatusOK || !h.pets.wear || h.pets.petID != "p1" {
+		t.Fatalf("dress: %d", w.Code)
 	}
 
 	if w = h.do("DELETE", "/api/v1/me/pets/p1", "", auth...); w.Code != http.StatusNoContent || h.pets.petID != "p1" {
