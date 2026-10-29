@@ -148,6 +148,22 @@ groups:
           summary: "The gateway answers {{ $value | humanizePercentage }} of requests with 5xx"
           description: "More than 5% of HTTP requests failed on the server side over 5 minutes; the routes are on the Freenet dashboard."
 
+      # One route broken while the rest of the site works: its failures
+      # are too few against all requests to move the share above (photos
+      # failed to upload for a whole evening that way).
+      - alert: HTTPRouteFailing
+        expr: |
+          sum by (method, route) (increase(http_requests_total{code=~"5.."}[30m]))
+            / sum by (method, route) (increase(http_requests_total[30m]))
+            > 0.5
+            and
+          sum by (method, route) (increase(http_requests_total{code=~"5.."}[30m])) >= 3
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.method }} {{ $labels.route }} fails {{ $value | humanizePercentage }} of its requests"
+          description: "Most requests of one route ended in 5xx over 30 minutes, at least 3 of them; the gateway log has them with the error."
+
   - name: latency
     rules:
       - alert: HTTPSlow
