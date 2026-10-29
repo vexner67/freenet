@@ -1175,8 +1175,127 @@ func (c *City) work(rules FirmRules, f *Firm, at time.Time) {
 
 	if a := f.auto[spec.Output]; a.Sell {
 		if cv, err := rules.StateBuys(spec.Output); err == nil {
-			c.autoSell(cv.scaled(f.sales()), f, spec.Output, f.stock[spec.Output], a.SellMin, at, stateBought,
+			cv = cv.scaled(f.sales())
+			// Before the state, the enterprises that need it: the buying
+			// orders that pay more than the state, then whoever buys it
+			// by themselves.
+			least := max(a.SellMin, int64(cv.at(c.volume(spec.Output, at, stateBought))))
+			c.toExchange(rules, f, spec.Output, f.stock[spec.Output], least, at)
+			c.supplyOthers(rules, f, spec.Output, at)
+			c.autoSell(cv, f, spec.Output, f.stock[spec.Output], a.SellMin, at, stateBought,
 				func(m *MarketHour, u int64) { m.StateBought += u })
+		}
+	}
+}
+
+// fromExchange buys up to want units of g for the enterprise from the
+// selling orders of others, the cheapest first, at no more than most a
+// unit and as far as its cash goes; how many it bought.
+func (c *City) fromExchange(rules FirmRules, f *Firm, g Good, want, most int64, at time.Time) int64 {
+	var got int64
+	for want > 0 && most > 0 {
+		i := c.best(ExchangeOrder{FirmID: f.id, Good: g, Buy: true, Price: most})
+		if i < 0 {
+			break
+		}
+
+		o := &c.orders[i]
+		seller, err := c.Firm(o.FirmID)
+		if err != nil {
+			c.orders = slices.Delete(c.orders, i, i+1)
+			continue
+		}
+
+		units := min(want, o.Units, f.cash/o.Price)
+		if units <= 0 {
+			break
+		}
+
+		f.cash -= units * o.Price
+		c.settle(rules, f, seller, g, units, o.Price, at)
+		got += units
+		want -= units
+		if o.Units -= units; o.Units == 0 {
+			c.orders = slices.Delete(c.orders, i, i+1)
+		}
+	}
+
+	return got
+}
+
+// toExchange sells up to units of g of the enterprise to the buying
+// orders of others, the dearest first, at no less than least a unit.
+func (c *City) toExchange(rules FirmRules, f *Firm, g Good, units, least int64, at time.Time) {
+	for units > 0 {
+		i := c.best(ExchangeOrder{FirmID: f.id, Good: g, Buy: false, Price: max(least, 1)})
+		if i < 0 {
+			return
+		}
+
+		o := &c.orders[i]
+		buyer, err := c.Firm(o.FirmID)
+		if err != nil {
+			c.orders = slices.Delete(c.orders, i, i+1)
+			continue
+		}
+
+		n := min(units, o.Units)
+		f.stock[g] -= n
+		c.settle(rules, buyer, f, g, n, o.Price, at)
+		units -= n
+		if o.Units -= n; o.Units == 0 {
+			c.orders = slices.Delete(c.orders, i, i+1)
+		}
+	}
+}
+
+// supplyPrice is the price of a supply of g between two enterprises at
+// at: halfway between what the state pays and what it asks, so that both
+// do better than with the state; 0 when the state does not trade g.
+func (c *City) supplyPrice(rules FirmRules, g Good, at time.Time) int64 {
+	bid, err := rules.StateBuys(g)
+	if err != nil {
+		return 0
+	}
+	ask, err := rules.StateSells(g)
+	if err != nil {
+		return 0
+	}
+
+	return max(int64((bid.at(c.volume(g, at, stateBought))+ask.at(c.volume(g, at, stateSold)))/2), 1)
+}
+
+// supply hands up to want units of g from the storage of seller to buyer,
+// which both trade it by themselves, at the supply price, if it suits the
+// limits of both, as far as the storage and the cash of buyer go; how
+// many it handed.
+func (c *City) supply(rules FirmRules, buyer, seller *Firm, g Good, want int64, at time.Time) int64 {
+	b, s := buyer.auto[g], seller.auto[g]
+	price := c.supplyPrice(rules, g, at)
+	if buyer == seller || !b.Buy || !s.Sell || price == 0 || (b.BuyMax > 0 && price > b.BuyMax) || price < s.SellMin {
+		return 0
+	}
+
+	units := min(want, seller.stock[g], c.room(rules, buyer, g), buyer.cash/price)
+	if units <= 0 {
+		return 0
+	}
+
+	buyer.cash -= units * price
+	seller.stock[g] -= units
+	c.settle(rules, buyer, seller, g, units, price, at)
+
+	return units
+}
+
+// supplyOthers is the delivery of what the enterprise made to those that
+// buy it by themselves, each in its turn after it, until it has none.
+func (c *City) supplyOthers(rules FirmRules, f *Firm, g Good, at time.Time) {
+	self := slices.Index(c.firms, f)
+	for i := 1; i < len(c.firms) && f.stock[g] > 0; i++ {
+		b := c.firms[(self+i)%len(c.firms)]
+		if b.spec().IsInput(g) {
+			c.supply(rules, b, f, g, f.stock[g], at)
 		}
 	}
 }
@@ -1201,11 +1320,29 @@ func (f *Firm) Capacity(rules FirmRules, g Good) int64 {
 // storage, the cash and the price limit go.
 func (c *City) restock(rules FirmRules, f *Firm, g Good, want int64, at time.Time) {
 	ask, err := rules.StateSells(g)
-	if err != nil {
+	if err != nil || want <= 0 {
 		return
 	}
 
 	sold := c.volume(g, at, stateSold)
+
+	// Others supply before the state: the selling orders of the exchange
+	// no dearer than the state and the limit, then the storages of those
+	// that sell it by themselves.
+	most := int64(ask.at(sold))
+	if limit := f.auto[g].BuyMax; limit > 0 {
+		most = min(most, limit)
+	}
+	want -= c.fromExchange(rules, f, g, min(want, c.room(rules, f, g)), most, at)
+	for _, seller := range c.firms {
+		if want <= 0 {
+			return
+		}
+		if seller.spec().Output == g {
+			want -= c.supply(rules, f, seller, g, want, at)
+		}
+	}
+
 	units := min(want, c.room(rules, f, g), ask.within(sold, f.auto[g].BuyMax))
 	cost := func(u int64) int64 { return int64(math.Ceil(ask.sum(sold, u))) }
 

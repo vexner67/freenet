@@ -470,3 +470,61 @@ func TestForecastIsTheHourToCome(t *testing.T) {
 		t.Error("the forecast makes nothing")
 	}
 }
+
+// TestAutoSupply has the farm deliver its grain to the mill each hour by
+// itself, between the prices of the state, and the mill take a cheap
+// selling order of the exchange before it buys from the state.
+func TestAutoSupply(t *testing.T) {
+	t.Parallel()
+
+	rules := user.DefaultFirmRules()
+	c := newCity()
+	farmer, miller := uuid.New(), uuid.New()
+	farm := found(t, c, rules, farmer, user.FirmFarm)
+	mill := found(t, c, rules, miller, user.FirmMill)
+	c.Tick(rules, cityStart.Add(4*time.Hour))
+
+	grain := func() user.Quote {
+		for _, q := range c.Quotes(rules, cityStart.Add(4*time.Hour)) {
+			if q.Good == user.GoodGrain {
+				return q
+			}
+		}
+		t.Fatal("no grain")
+		return user.Quote{}
+	}
+
+	q := grain()
+	if q.Volume == 0 {
+		t.Fatalf("the farm supplied the mill none of its grain")
+	}
+	if q.Last <= q.StateBid || q.Last >= q.StateAsk {
+		t.Errorf("supplied at %d, not between the state's %d and %d", q.Last, q.StateBid, q.StateAsk)
+	}
+
+	// A selling order cheaper than the state goes to the mill that buys by
+	// itself; one above its limit stays.
+	if err := c.SetAuto(farmer, farm.ID(), user.GoodGrain, user.Auto{}); err != nil {
+		t.Fatal(err)
+	}
+	c.Tick(rules, cityStart.Add(5*time.Hour))
+	if farm.Stock(user.GoodGrain) < 20 {
+		t.Fatalf("the farm keeps %d grain", farm.Stock(user.GoodGrain))
+	}
+	cheap := user.ExchangeOrder{Good: user.GoodGrain, Price: 1, Units: 10}
+	dear := user.ExchangeOrder{Good: user.GoodGrain, Price: mill.Auto(user.GoodGrain).BuyMax + 1, Units: 10}
+	for _, o := range []user.ExchangeOrder{cheap, dear} {
+		if _, err := c.Place(rules, farmer, farm.ID(), o, cityStart.Add(5*time.Hour)); err != nil {
+			t.Fatalf("selling: %v", err)
+		}
+	}
+	c.Tick(rules, cityStart.Add(6*time.Hour))
+
+	orders := c.Orders()
+	if len(orders) != 1 || orders[0].Price != dear.Price {
+		t.Errorf("orders left: %+v", orders)
+	}
+	if grain().Last != 1 {
+		t.Errorf("last deal at %d, want the cheap order", grain().Last)
+	}
+}
