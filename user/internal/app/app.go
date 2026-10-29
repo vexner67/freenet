@@ -259,7 +259,7 @@ func (a *App) build(cfg config.Config) error {
 			Paid:        service.NewPaidService(store.users, store.wallets, store.purchases, store.economy, permissions, store.tx),
 			Guests:      service.NewGuestService(store.users, store.guests),
 			Tops:        service.NewTopService(store.tops),
-			Pets:        service.NewPetService(store.users, store.pets, store.wallets, store.tx, admins),
+			Pets:        service.NewPetService(store.users, service.PetStores{Pets: store.pets, Keepers: store.pets, Battles: store.pets}, store.wallets, store.tx, admins),
 			Titles:      service.NewTitleService(store.users, store.titles, admins),
 			Permissions: permissions,
 			Presence:    a.presence,
@@ -341,14 +341,19 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 
 		// Hunger and the fights of a day hold pets back; the limit is
 		// against scripts.
-		userv1.UserService_AdoptPet_FullMethodName:    cfg.PetLimits,
-		userv1.UserService_FeedPet_FullMethodName:     cfg.PetLimits,
-		userv1.UserService_PlayPet_FullMethodName:     cfg.PetLimits,
-		userv1.UserService_RenamePet_FullMethodName:   cfg.PetLimits,
-		userv1.UserService_FightPet_FullMethodName:    cfg.PetLimits,
-		userv1.UserService_OpenPetCase_FullMethodName: cfg.PetLimits,
-		userv1.UserService_BuyPetItem_FullMethodName:  cfg.PetLimits,
-		userv1.UserService_DressPet_FullMethodName:    cfg.PetLimits,
+		userv1.UserService_AdoptPet_FullMethodName:       cfg.PetLimits,
+		userv1.UserService_FeedPet_FullMethodName:        cfg.PetLimits,
+		userv1.UserService_PlayPet_FullMethodName:        cfg.PetLimits,
+		userv1.UserService_RenamePet_FullMethodName:      cfg.PetLimits,
+		userv1.UserService_FightPet_FullMethodName:       cfg.PetLimits,
+		userv1.UserService_OpenPetCase_FullMethodName:    cfg.PetLimits,
+		userv1.UserService_BuyPetItem_FullMethodName:     cfg.PetLimits,
+		userv1.UserService_DressPet_FullMethodName:       cfg.PetLimits,
+		userv1.UserService_TakePetDrop_FullMethodName:    cfg.PetLimits,
+		userv1.UserService_LeavePetDrop_FullMethodName:   cfg.PetLimits,
+		userv1.UserService_SetPetStance_FullMethodName:   cfg.PetLimits,
+		userv1.UserService_StartPetBattle_FullMethodName: cfg.PetLimits,
+		userv1.UserService_MovePetBattle_FullMethodName:  cfg.PetLimits,
 	}
 }
 
@@ -370,6 +375,14 @@ func (a *App) newLimiter(cfg config.Config) (ratelimit.Limiter, error) {
 	}
 
 	return a.limiter, nil
+}
+
+// petStore keeps the pets, the cases of people and the fights led a round
+// after another.
+type petStore interface {
+	service.PetRepository
+	service.PetKeeperRepository
+	service.PetBattleRepository
 }
 
 // storage is the set of repositories chosen by STORAGE.
@@ -437,8 +450,9 @@ type storage struct {
 	betEvents service.BetEventRepository
 	// guests are who visited whose page.
 	guests service.GuestRepository
-	// pets are the pets, their fights and the shop.
-	pets service.PetRepository
+	// pets are the pets, their fights and the shop, the cases of people
+	// and the fights led a round after another.
+	pets petStore
 	// tops are the boards of "Рейтинги".
 	tops service.TopRepository
 	// titles are the awards of the administrators.

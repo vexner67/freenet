@@ -17,15 +17,20 @@ import (
 type PetRepository struct {
 	users *UserRepository
 
-	mu     sync.Mutex
-	shop   user.PetShop
-	pets   map[uuid.UUID]owned
-	fights []user.PetFight
-	stats  user.PetShopStats
+	mu      sync.Mutex
+	shop    user.PetShop
+	pets    map[uuid.UUID]owned
+	keepers map[uuid.UUID]user.PetKeeperState
+	battles map[uuid.UUID]ownedBattle
+	fights  []user.PetFight
+	stats   user.PetShopStats
 }
 
 func NewPetRepository(users *UserRepository) *PetRepository {
-	r := &PetRepository{users: users, shop: user.DefaultPetShop(), pets: map[uuid.UUID]owned{}}
+	r := &PetRepository{
+		users: users, shop: user.DefaultPetShop(), pets: map[uuid.UUID]owned{},
+		keepers: map[uuid.UUID]user.PetKeeperState{}, battles: map[uuid.UUID]ownedBattle{},
+	}
 	users.onDelete(r.forget)
 
 	return r
@@ -36,6 +41,8 @@ func (r *PetRepository) forget(id uuid.UUID) {
 	defer r.mu.Unlock()
 
 	maps.DeleteFunc(r.pets, func(_ uuid.UUID, o owned) bool { return o.owner == id })
+	maps.DeleteFunc(r.battles, func(_ uuid.UUID, b ownedBattle) bool { return b.owner == id })
+	delete(r.keepers, id)
 	r.fights = slices.DeleteFunc(r.fights, func(f user.PetFight) bool { return f.AttackerID == id || f.DefenderID == id })
 }
 
@@ -161,6 +168,7 @@ func (r *PetRepository) DeletePet(ctx context.Context, userID, petID uuid.UUID) 
 		return user.ErrPetNotFound
 	}
 	delete(r.pets, petID)
+	delete(r.battles, petID)
 
 	return nil
 }
@@ -194,27 +202,129 @@ func (r *PetRepository) ranked(ctx context.Context, now time.Time) []owned {
 	return pets
 }
 
-// Opponent is the nearest in rating in memory: no randomness, for tests.
-func (r *PetRepository) Opponent(ctx context.Context, userID uuid.UUID, rating int, now time.Time) (owner, pet uuid.UUID, err error) {
-	if err = ctx.Err(); err != nil {
-		return uuid.Nil, uuid.Nil, errs.Wrap("ctx.Err", err)
+// Contenders are the nearest in rating in memory.
+func (r *PetRepository) Contenders(ctx context.Context, userID uuid.UUID, rating int, now time.Time, limit int) ([]user.PetContender, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
 	}
 
-	gap := -1
-	for _, o := range r.ranked(ctx, now) {
-		if o.owner == userID {
-			continue
+	pets := slices.DeleteFunc(r.ranked(ctx, now), func(o owned) bool { return o.owner == userID })
+	gap := func(o owned) int { return max(o.state.Rating-rating, rating-o.state.Rating) }
+	slices.SortStableFunc(pets, func(a, b owned) int { return gap(a) - gap(b) })
+
+	contenders := make([]user.PetContender, 0, min(len(pets), limit))
+	for _, o := range pets[:min(len(pets), limit)] {
+		contenders = append(contenders, user.PetContender{Owner: o.owner, Pet: user.RestorePet(o.state)})
+	}
+
+	return contenders, nil
+}
+
+func (r *PetRepository) Keeper(ctx context.Context, userID uuid.UUID) (*user.PetKeeper, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return user.RestorePetKeeper(r.keepers[userID]), nil
+}
+
+// LockKeeper is Keeper of an existing user: there are no transactions in
+// memory.
+func (r *PetRepository) LockKeeper(ctx context.Context, userID uuid.UUID) (*user.PetKeeper, error) {
+	if _, err := r.users.GetByID(ctx, userID); err != nil {
+		return nil, errs.Wrap("r.users.GetByID", err)
+	}
+
+	return r.Keeper(ctx, userID)
+}
+
+func (r *PetRepository) SaveKeeper(ctx context.Context, userID uuid.UUID, k *user.PetKeeper) error {
+	if _, err := r.users.GetByID(ctx, userID); err != nil {
+		return errs.Wrap("r.users.GetByID", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.keepers[userID] = k.State()
+
+	return nil
+}
+
+// ownedBattle is a battle with the owner of its pet.
+type ownedBattle struct {
+	owner uuid.UUID
+	state user.PetBattleState
+}
+
+func (r *PetRepository) Battles(ctx context.Context, userID uuid.UUID) ([]*user.PetBattle, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var battles []*user.PetBattle
+	for _, b := range r.battles {
+		if b.owner == userID {
+			battles = append(battles, user.RestorePetBattle(b.state))
 		}
-		if d := max(o.state.Rating-rating, rating-o.state.Rating); gap < 0 || d < gap {
-			owner, pet, gap = o.owner, o.state.ID, d
-		}
+	}
+	slices.SortFunc(battles, func(a, b *user.PetBattle) int { return compareUUID(a.PetID(), b.PetID()) })
+
+	return battles, nil
+}
+
+// LockBattle is the battle: there are no transactions in memory.
+func (r *PetRepository) LockBattle(ctx context.Context, userID, petID uuid.UUID) (*user.PetBattle, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
 	}
 
-	if gap < 0 {
-		return uuid.Nil, uuid.Nil, user.ErrNoPetOpponent
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	b, ok := r.battles[petID]
+	if !ok || b.owner != userID {
+		return nil, user.ErrNoPetBattle
 	}
 
-	return owner, pet, nil
+	return user.RestorePetBattle(b.state), nil
+}
+
+func (r *PetRepository) SaveBattle(ctx context.Context, userID uuid.UUID, b *user.PetBattle) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if o, ok := r.pets[b.PetID()]; !ok || o.owner != userID {
+		return user.ErrPetNotFound
+	}
+	r.battles[b.PetID()] = ownedBattle{owner: userID, state: b.State()}
+
+	return nil
+}
+
+func (r *PetRepository) DeleteBattle(ctx context.Context, userID, petID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if b, ok := r.battles[petID]; ok && b.owner == userID {
+		delete(r.battles, petID)
+	}
+
+	return nil
 }
 
 func (r *PetRepository) AddFight(ctx context.Context, f user.PetFight) error {

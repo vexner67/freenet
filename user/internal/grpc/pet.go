@@ -32,10 +32,17 @@ type PetService interface {
 	Feed(ctx context.Context, userID, petID uuid.UUID, now time.Time) (service.PetCare, error)
 	Play(ctx context.Context, userID, petID uuid.UUID, now time.Time) (*user.Pet, error)
 	Rename(ctx context.Context, userID, petID uuid.UUID, name user.PetName) (*user.Pet, error)
-	Release(ctx context.Context, userID, petID uuid.UUID) error
-	Fight(ctx context.Context, userID, petID uuid.UUID, nickname user.Nickname, now time.Time) (service.PetFought, error)
+	Release(ctx context.Context, userID, petID uuid.UUID) (*user.PetKeeper, error)
+	SetStance(ctx context.Context, userID, petID uuid.UUID, stance user.PetStance) (*user.Pet, error)
+	Fight(ctx context.Context, userID, petID uuid.UUID, nickname user.Nickname, stance user.PetStance, now time.Time) (service.PetFought, error)
 	Fights(ctx context.Context, userID uuid.UUID) ([]user.PetFight, error)
-	OpenCase(ctx context.Context, userID uuid.UUID, c user.PetCase, name user.PetName, now time.Time) (service.PetCare, error)
+	Battles(ctx context.Context, userID uuid.UUID) ([]*user.PetBattle, error)
+	StartBattle(ctx context.Context, userID, petID uuid.UUID, nickname user.Nickname, stance user.PetStance, now time.Time) (service.PetBattleTurn, error)
+	MoveBattle(ctx context.Context, userID, petID uuid.UUID, move user.PetMove, now time.Time) (service.PetBattleTurn, error)
+	Keeper(ctx context.Context, userID uuid.UUID) (*user.PetKeeper, error)
+	OpenCase(ctx context.Context, userID uuid.UUID, c user.PetCase, withShards bool, now time.Time) (service.PetDrop, error)
+	TakeDrop(ctx context.Context, userID uuid.UUID, name user.PetName, now time.Time) (*user.Pet, error)
+	LeaveDrop(ctx context.Context, userID uuid.UUID) (*user.PetKeeper, error)
 	BuyItem(ctx context.Context, userID, petID uuid.UUID, item user.PetItem) (service.PetCare, error)
 	Dress(ctx context.Context, userID, petID uuid.UUID, item user.PetItem, wear bool) (*user.Pet, error)
 	Settings(ctx context.Context, adminID uuid.UUID) (service.PetSettings, error)
@@ -185,10 +192,11 @@ func petCatalogue(state *userv1.PetState) *userv1.PetState {
 		breed := user.RestorePet(user.PetState{Kind: k})
 		state.Kinds = append(state.Kinds, &userv1.PetKind{
 			Kind: k.String(), Rarity: k.Rarity().String(), InShop: shop[k], Stats: toProtoPetStats(breed.BreedStats()), Crit: int32(breed.Crit()),
+			Element: k.Element().String(), Special: k.Special().String(), Shards: int32(k.Rarity().Shards()),
 		})
 	}
 	for _, c := range user.PetCases {
-		pc := &userv1.PetCase{Id: c.String()}
+		pc := &userv1.PetCase{Id: c.String(), Shards: int32(c.Shards())}
 		for _, odds := range c.Odds() {
 			pc.Odds = append(pc.Odds, int32(odds))
 		}
@@ -261,6 +269,9 @@ func toProtoPet(p *user.Pet, now time.Time) *userv1.Pet {
 		Outfit:          itemNames(p.Outfit()),
 		Breed:           toProtoPetStats(p.BreedStats()),
 		Clothes:         toProtoPetStats(p.ClothesStats()),
+		Stance:          p.Stance().String(),
+		Power:           int32(p.Power()),
+		Fatigue:         int32(p.FatigueAt(now)),
 	}
 	if level < user.MaxPetLevel {
 		pet.NextLevelExperience = user.PetLevelExperience(level + 1)
@@ -272,30 +283,77 @@ func toProtoPet(p *user.Pet, now time.Time) *userv1.Pet {
 	return pet
 }
 
-//nolint:gosec // the numbers of a fight are small: health, damage, levels and rating points
-func toProtoPetFight(f user.PetFight) *userv1.PetFight {
-	fighter := func(pf user.PetFighter) *userv1.PetFighter {
-		return &userv1.PetFighter{Kind: pf.Kind.String(), Name: pf.Name.String(), Level: int32(pf.Level), Health: int32(pf.Health), Outfit: itemNames(pf.Outfit)}
+//nolint:gosec // the numbers of a fight are small: health, damage, levels and power
+func toProtoPetFighter(f user.PetFighter) *userv1.PetFighter {
+	return &userv1.PetFighter{
+		Kind: f.Kind.String(), Name: f.Name.String(), Level: int32(f.Level), Health: int32(f.Health), Outfit: itemNames(f.Outfit),
+		Stance: f.Stance.String(), Power: int32(f.Power), Fatigue: int32(f.Fatigue),
+	}
+}
+
+//nolint:gosec // the numbers of a fight are small: health and damage
+func toProtoPetHits(hits []user.PetHit) []*userv1.PetHit {
+	out := make([]*userv1.PetHit, len(hits))
+	for i, h := range hits {
+		out[i] = &userv1.PetHit{
+			ByAttacker: h.ByAttacker, Dodged: h.Dodged, Crit: h.Crit, Damage: int32(h.Damage),
+			AttackerHealth: int32(h.AttackerHealth), DefenderHealth: int32(h.DefenderHealth),
+			Move: h.Move.String(), Heal: int32(h.Heal), Special: h.Special.String(), Answer: h.Answer.String(),
+		}
 	}
 
-	fight := &userv1.PetFight{
+	return out
+}
+
+//nolint:gosec // the numbers of a fight are small: rating points and a percent
+func toProtoPetFight(f user.PetFight) *userv1.PetFight {
+	return &userv1.PetFight{
 		Id:         f.ID.String(),
 		AttackerId: f.AttackerID.String(),
 		DefenderId: f.DefenderID.String(),
 		FoughtAt:   timestamppb.New(f.At),
-		Attacker:   fighter(f.Bout.Attacker),
-		Defender:   fighter(f.Bout.Defender),
+		Attacker:   toProtoPetFighter(f.Bout.Attacker),
+		Defender:   toProtoPetFighter(f.Bout.Defender),
+		Hits:       toProtoPetHits(f.Bout.Hits),
 		Won:        f.Bout.Won,
 		Rating:     int32(f.Bout.Rating),
+		Ratio:      int32(f.Bout.Ratio),
+		Reward:     f.Bout.Reward,
 	}
-	for _, h := range f.Bout.Hits {
-		fight.Hits = append(fight.Hits, &userv1.PetHit{
-			ByAttacker: h.ByAttacker, Dodged: h.Dodged, Crit: h.Crit, Damage: int32(h.Damage),
-			AttackerHealth: int32(h.AttackerHealth), DefenderHealth: int32(h.DefenderHealth),
-		})
+}
+
+//nolint:gosec // the numbers of a fight are small: rounds, health, rating points and a percent
+func toProtoPetBattle(b *user.PetBattle) *userv1.PetBattle {
+	if b == nil {
+		return nil
 	}
 
-	return fight
+	a, d := b.Attacker(), b.Defender()
+	win, loss := b.Rating()
+
+	return &userv1.PetBattle{
+		PetId:          b.PetID().String(),
+		DefenderId:     b.DefenderOwner().String(),
+		Attacker:       toProtoPetFighter(a.Fighter),
+		Defender:       toProtoPetFighter(d.Fighter),
+		Hits:           toProtoPetHits(b.Hits()),
+		Round:          int32(b.Round()),
+		Rounds:         user.MaxPetRounds,
+		AttackerHealth: int32(a.Health),
+		DefenderHealth: int32(d.Health),
+		Ratio:          int32(b.Ratio()),
+		Win:            int32(win),
+		Loss:           int32(loss),
+	}
+}
+
+//nolint:gosec // shards and cases are small
+func toProtoPetKeeper(k *user.PetKeeper, now time.Time) *userv1.PetKeeper {
+	return &userv1.PetKeeper{
+		Shards: int32(k.Shards()), Pity: int32(k.Pity()), PityLimit: user.PetPity,
+		Cases: int32(k.CasesAt(now)), CasesLimit: user.MaxPetCasesADay,
+		DropKind: k.Drop().String(), DropCase: k.DropCase().String(),
+	}
 }
 
 func (h *UserHandler) GetPet(ctx context.Context, _ *userv1.GetPetRequest) (*userv1.PetState, error) {
@@ -314,7 +372,23 @@ func (h *UserHandler) GetPet(ctx context.Context, _ *userv1.GetPetRequest) (*use
 		return nil, err
 	}
 
-	return petCatalogue(&userv1.PetState{Shop: toProtoPetShop(shop), Pets: toProtoPets(pets, time.Now())}), nil
+	keeper, err := h.pets.Keeper(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	battles, err := h.pets.Battles(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	state := &userv1.PetState{Shop: toProtoPetShop(shop), Pets: toProtoPets(pets, now), Keeper: toProtoPetKeeper(keeper, now)}
+	for _, b := range battles {
+		state.Battles = append(state.Battles, toProtoPetBattle(b))
+	}
+
+	return petCatalogue(state), nil
 }
 
 func (h *UserHandler) GetUserPet(ctx context.Context, req *userv1.GetUserPetRequest) (*userv1.GetUserPetResponse, error) {
@@ -415,11 +489,105 @@ func (h *UserHandler) ReleasePet(ctx context.Context, req *userv1.ReleasePetRequ
 		return nil, err
 	}
 
-	if err = h.pets.Release(ctx, userID, petID); err != nil {
+	if _, err = h.pets.Release(ctx, userID, petID); err != nil {
 		return nil, err
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func (h *UserHandler) SetPetStance(ctx context.Context, req *userv1.SetPetStanceRequest) (*userv1.PetCareResponse, error) {
+	userID, petID, err := petCaller(ctx, req.GetPetId())
+	if err != nil {
+		return nil, err
+	}
+
+	stance, err := user.NewPetStance(req.GetStance())
+	if err != nil {
+		return nil, err
+	}
+
+	p, err := h.pets.SetStance(ctx, userID, petID, stance)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.PetCareResponse{Pet: toProtoPet(p, time.Now())}, nil
+}
+
+// fightRequest is what a fight is asked with: the opponent, the nickname
+// of whose best pet or empty for any, and the stance, empty for the one
+// the pet defends in.
+func fightRequest(nickname, stance string) (user.Nickname, user.PetStance, error) {
+	var (
+		n   user.Nickname
+		st  user.PetStance
+		err error
+	)
+
+	if nickname != "" {
+		if n, err = pageOwner(nickname); err != nil {
+			return "", "", err
+		}
+	}
+	if stance != "" {
+		if st, err = user.NewPetStance(stance); err != nil {
+			return "", "", err
+		}
+	}
+
+	return n, st, nil
+}
+
+func (h *UserHandler) StartPetBattle(ctx context.Context, req *userv1.StartPetBattleRequest) (*userv1.PetBattleResponse, error) {
+	userID, petID, err := petCaller(ctx, req.GetPetId())
+	if err != nil {
+		return nil, err
+	}
+
+	nickname, stance, err := fightRequest(req.GetNickname(), req.GetStance())
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+
+	turn, err := h.pets.StartBattle(ctx, userID, petID, nickname, stance, now)
+	if err != nil {
+		return nil, err
+	}
+
+	return toProtoPetBattleResponse(turn, now), nil
+}
+
+func (h *UserHandler) MovePetBattle(ctx context.Context, req *userv1.MovePetBattleRequest) (*userv1.PetBattleResponse, error) {
+	userID, petID, err := petCaller(ctx, req.GetPetId())
+	if err != nil {
+		return nil, err
+	}
+
+	move, err := user.NewPetMove(req.GetMove())
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+
+	turn, err := h.pets.MoveBattle(ctx, userID, petID, move, now)
+	if err != nil {
+		return nil, err
+	}
+
+	return toProtoPetBattleResponse(turn, now), nil
+}
+
+func toProtoPetBattleResponse(turn service.PetBattleTurn, now time.Time) *userv1.PetBattleResponse {
+	resp := &userv1.PetBattleResponse{Battle: toProtoPetBattle(turn.Battle), Pet: toProtoPet(turn.Pet, now)}
+	if turn.Fought != nil {
+		resp.Fight, resp.Balance = toProtoPetFight(turn.Fought.Fight), turn.Fought.Balance
+	}
+
+	return resp
 }
 
 func (h *UserHandler) FightPet(ctx context.Context, req *userv1.FightPetRequest) (*userv1.FightPetResponse, error) {
@@ -428,16 +596,14 @@ func (h *UserHandler) FightPet(ctx context.Context, req *userv1.FightPetRequest)
 		return nil, err
 	}
 
-	var nickname user.Nickname
-	if req.GetNickname() != "" {
-		if nickname, err = pageOwner(req.GetNickname()); err != nil {
-			return nil, err
-		}
+	nickname, stance, err := fightRequest(req.GetNickname(), req.GetStance())
+	if err != nil {
+		return nil, err
 	}
 
 	now := time.Now()
 
-	fought, err := h.pets.Fight(ctx, userID, petID, nickname, now)
+	fought, err := h.pets.Fight(ctx, userID, petID, nickname, stance, now)
 	if err != nil {
 		return nil, err
 	}
@@ -445,7 +611,7 @@ func (h *UserHandler) FightPet(ctx context.Context, req *userv1.FightPetRequest)
 	return &userv1.FightPetResponse{Fight: toProtoPetFight(fought.Fight), Pet: toProtoPet(fought.Pet, now), Balance: fought.Balance}, nil
 }
 
-func (h *UserHandler) OpenPetCase(ctx context.Context, req *userv1.OpenPetCaseRequest) (*userv1.PetCareResponse, error) {
+func (h *UserHandler) OpenPetCase(ctx context.Context, req *userv1.OpenPetCaseRequest) (*userv1.OpenPetCaseResponse, error) {
 	userID, err := currentUserID(ctx)
 	if err != nil {
 		return nil, err
@@ -455,6 +621,23 @@ func (h *UserHandler) OpenPetCase(ctx context.Context, req *userv1.OpenPetCaseRe
 	if err != nil {
 		return nil, err
 	}
+
+	now := time.Now()
+
+	drop, err := h.pets.OpenCase(ctx, userID, c, req.GetShards(), now)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.OpenPetCaseResponse{Keeper: toProtoPetKeeper(drop.Keeper, now), Balance: drop.Balance}, nil
+}
+
+func (h *UserHandler) TakePetDrop(ctx context.Context, req *userv1.TakePetDropRequest) (*userv1.PetCareResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	name, err := user.NewPetName(req.GetName())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -462,12 +645,26 @@ func (h *UserHandler) OpenPetCase(ctx context.Context, req *userv1.OpenPetCaseRe
 
 	now := time.Now()
 
-	care, err := h.pets.OpenCase(ctx, userID, c, name, now)
+	p, err := h.pets.TakeDrop(ctx, userID, name, now)
 	if err != nil {
 		return nil, err
 	}
 
-	return &userv1.PetCareResponse{Pet: toProtoPet(care.Pet, now), Balance: care.Balance}, nil
+	return &userv1.PetCareResponse{Pet: toProtoPet(p, now)}, nil
+}
+
+func (h *UserHandler) LeavePetDrop(ctx context.Context, _ *userv1.LeavePetDropRequest) (*userv1.PetKeeperResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	k, err := h.pets.LeaveDrop(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.PetKeeperResponse{Keeper: toProtoPetKeeper(k, time.Now())}, nil
 }
 
 func (h *UserHandler) BuyPetItem(ctx context.Context, req *userv1.BuyPetItemRequest) (*userv1.PetCareResponse, error) {

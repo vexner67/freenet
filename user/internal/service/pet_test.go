@@ -35,12 +35,12 @@ func TestPetService(t *testing.T) {
 	}
 
 	repo := inmem.NewPetRepository(w.users)
-	pets := service.NewPetService(w.users, repo, w.users, inmem.TxManager{}, admins).
+	pets := service.NewPetService(w.users, service.PetStores{Pets: repo, Keepers: repo, Battles: repo}, w.users, inmem.TxManager{}, admins).
 		WithRoll(func(int64) (int64, error) { return 0, nil })
 
 	now := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
 
-	if _, err = pets.Fight(ctx, ann, uuid.New(), "", now); !errors.Is(err, user.ErrPetNotFound) {
+	if _, err = pets.Fight(ctx, ann, uuid.New(), "", "", now); !errors.Is(err, user.ErrPetNotFound) {
 		t.Fatalf("Fight without a pet: %v", err)
 	}
 
@@ -66,18 +66,18 @@ func TestPetService(t *testing.T) {
 	if _, err = pets.Feed(ctx, ann, hamsterID, now); !errors.Is(err, user.ErrPetNotFound) {
 		t.Fatalf("Feed of the pet of another: %v", err)
 	}
-	if _, err = pets.Fight(ctx, ann, dragon, "ann", now); !errors.Is(err, user.ErrPetFightSelf) {
+	if _, err = pets.Fight(ctx, ann, dragon, "ann", "", now); !errors.Is(err, user.ErrPetFightSelf) {
 		t.Fatalf("Fight of oneself: %v", err)
 	}
 
-	// Without a nickname the dragon fights the nearest pet — the hamster —
-	// wins and brings 3 votes.
-	fought, err := pets.Fight(ctx, ann, dragon, "", now)
-	if err != nil || !fought.Fight.Bout.Won || fought.Fight.DefenderID != bob || fought.Balance != 403 {
+	// Without a nickname the dragon fights the nearest pet — the hamster,
+	// weaker — wins and brings 2 votes of 3: the win follows the power.
+	fought, err := pets.Fight(ctx, ann, dragon, "", user.PetAttack, now)
+	if err != nil || !fought.Fight.Bout.Won || fought.Fight.DefenderID != bob || fought.Balance != 402 || fought.Fight.Bout.Reward != 2 {
 		t.Fatalf("Fight = %+v, %v", fought, err)
 	}
 	bobs, _, err := pets.UserPets(ctx, "bob", now)
-	if err != nil || len(bobs) != 1 || bobs[0].Losses() != 1 || bobs[0].Rating() != user.PetStartRating-16 {
+	if err != nil || len(bobs) != 1 || bobs[0].Losses() != 1 || bobs[0].Rating() != user.PetStartRating-fought.Fight.Bout.Rating {
 		t.Fatalf("the hamster after the fight: %+v, %v", bobs, err)
 	}
 	for _, id := range []uuid.UUID{ann, bob} {
@@ -87,7 +87,7 @@ func TestPetService(t *testing.T) {
 	}
 
 	// A meal costs 5 votes, a full pet takes none; a game is free.
-	if care, err = pets.Feed(ctx, ann, dragon, now); err != nil || care.Balance != 398 {
+	if care, err = pets.Feed(ctx, ann, dragon, now); err != nil || care.Balance != 397 {
 		t.Fatalf("Feed = %+v, %v", care, err)
 	}
 	if _, err = pets.Feed(ctx, ann, dragon, now); !errors.Is(err, user.ErrPetFull) {
@@ -109,10 +109,10 @@ func TestPetService(t *testing.T) {
 		t.Fatal(err)
 	}
 	settings, err := pets.Settings(ctx, admin)
-	if err != nil || settings.Stats.Pets != 3 || settings.Stats.Fights != 1 || settings.Stats.Spent != 655 || settings.Stats.Won != 3 {
+	if err != nil || settings.Stats.Pets != 3 || settings.Stats.Fights != 1 || settings.Stats.Spent != 655 || settings.Stats.Won != 2 {
 		t.Fatalf("Settings = %+v, %v", settings, err)
 	}
-	if _, err = pets.Fight(ctx, ann, dragon, "bob", now); !errors.Is(err, user.ErrPetFightsOver) {
+	if _, err = pets.Fight(ctx, ann, dragon, "bob", "", now); !errors.Is(err, user.ErrPetFightsOver) {
 		t.Fatalf("Fight past the fights of a day: %v", err)
 	}
 
@@ -143,16 +143,17 @@ func TestPetService(t *testing.T) {
 		t.Fatalf("an eleventh pet: %v", err)
 	}
 
-	if err = pets.Release(ctx, bob, hamsterID); err != nil {
-		t.Fatal(err)
+	// A released hamster leaves a shard.
+	if keeper, err := pets.Release(ctx, bob, hamsterID); err != nil || keeper.Shards() != 1 {
+		t.Fatalf("Release = %v, %v", keeper, err)
 	}
 	if bobs, _, err = pets.UserPets(ctx, "bob", now); err != nil || len(bobs) != 0 {
 		t.Fatalf("a released pet: %v, %v", bobs, err)
 	}
-	if err = pets.Release(ctx, bob, hamsterID); !errors.Is(err, user.ErrPetNotFound) {
+	if _, err = pets.Release(ctx, bob, hamsterID); !errors.Is(err, user.ErrPetNotFound) {
 		t.Fatalf("Release twice: %v", err)
 	}
-	if _, err = pets.Fight(ctx, ann, dragon, "bob", now.Add(24*time.Hour)); !errors.Is(err, user.ErrPetNotFound) {
+	if _, err = pets.Fight(ctx, ann, dragon, "bob", "", now.Add(24*time.Hour)); !errors.Is(err, user.ErrPetNotFound) {
 		t.Fatalf("Fight of a page without pets: %v", err)
 	}
 }
@@ -261,17 +262,40 @@ func TestPetCasesAndClothes(t *testing.T) {
 
 	repo := inmem.NewPetRepository(w.users)
 	// The rolls fall high: a legendary pet, the second of its kinds.
-	pets := service.NewPetService(w.users, repo, w.users, inmem.TxManager{}, user.Admins{}).
+	pets := service.NewPetService(w.users, service.PetStores{Pets: repo, Keepers: repo, Battles: repo}, w.users, inmem.TxManager{}, user.Admins{}).
 		WithRoll(func(n int64) (int64, error) { return n - 1, nil })
 	now := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
 
-	care, err := pets.OpenCase(ctx, ann, user.PetCaseBronze, "Находка", now)
-	if err != nil || care.Pet.Kind().Rarity() != user.PetLegendary || care.Balance != 1850 {
-		t.Fatalf("OpenCase = %+v, %v", care, err)
+	drop, err := pets.OpenCase(ctx, ann, user.PetCaseBronze, false, now)
+	if err != nil || drop.Keeper.Drop().Rarity() != user.PetLegendary || drop.Balance != 1850 {
+		t.Fatalf("OpenCase = %+v, %v", drop, err)
 	}
-	found := care.Pet.ID()
+	if _, err = pets.OpenCase(ctx, ann, user.PetCaseBronze, false, now); !errors.Is(err, user.ErrPetDropWaiting) {
+		t.Fatalf("a case with a pet waiting: %v", err)
+	}
 
-	if care, err = pets.BuyItem(ctx, ann, found, "crown"); err != nil || care.Balance != 350 || len(care.Pet.Outfit()) != 1 {
+	// The pet is left for 20 shards, and the next one taken.
+	keeper, err := pets.LeaveDrop(ctx, ann)
+	if err != nil || keeper.Shards() != 20 || keeper.Drop() != "" {
+		t.Fatalf("LeaveDrop = %+v, %v", keeper, err)
+	}
+	if _, err = pets.TakeDrop(ctx, ann, "Находка", now); !errors.Is(err, user.ErrNoPetDrop) {
+		t.Fatalf("TakeDrop without a pet: %v", err)
+	}
+	if drop, err = pets.OpenCase(ctx, ann, user.PetCaseBronze, true, now); err != nil || drop.Keeper.Shards() != 10 || drop.Balance != 0 {
+		t.Fatalf("OpenCase for shards = %+v, %v", drop, err)
+	}
+	taken, err := pets.TakeDrop(ctx, ann, "Находка", now)
+	if err != nil || taken.Kind() != drop.Keeper.Drop() {
+		t.Fatalf("TakeDrop = %v, %v", taken, err)
+	}
+	if keeper, err = pets.Keeper(ctx, ann); err != nil || keeper.Drop() != "" || keeper.CasesAt(now) != 2 {
+		t.Fatalf("Keeper = %+v, %v", keeper, err)
+	}
+	found := taken.ID()
+
+	care, err := pets.BuyItem(ctx, ann, found, "crown")
+	if err != nil || care.Balance != 350 || len(care.Pet.Outfit()) != 1 {
 		t.Fatalf("BuyItem = %+v, %v", care, err)
 	}
 	if _, err = pets.BuyItem(ctx, ann, found, "crown"); !errors.Is(err, user.ErrPetItemOwned) {
@@ -291,8 +315,86 @@ func TestPetCasesAndClothes(t *testing.T) {
 		t.Fatalf("Pets = %v, %v", kept, err)
 	}
 
-	// A case is not opened past the pets one keeps, nor without votes.
-	if _, err = pets.OpenCase(ctx, ann, user.PetCaseGold, "Ещё", now); !errors.Is(err, user.ErrNotEnoughVotes) {
+	// A case is not opened without votes.
+	if _, err = pets.OpenCase(ctx, ann, user.PetCaseGold, false, now); !errors.Is(err, user.ErrNotEnoughVotes) {
 		t.Fatalf("OpenCase without votes: %v", err)
+	}
+}
+
+func TestPetBattles(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	w := newWalletWorld(t)
+	ann, bob := w.person(t, "ann"), w.person(t, "bob")
+	for id, nick := range map[uuid.UUID]string{ann: "ann", bob: "bob"} {
+		if _, err := w.users.Credit(ctx, id, 1000, 0, user.VoteEntry{}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.userSvc.UpdateProfile(ctx, id, profile(t, nick), ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	repo := inmem.NewPetRepository(w.users)
+	pets := service.NewPetService(w.users, service.PetStores{Pets: repo, Keepers: repo, Battles: repo}, w.users, inmem.TxManager{}, user.Admins{}).
+		WithRoll(func(int64) (int64, error) { return 0, nil })
+	now := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
+
+	care, err := pets.Adopt(ctx, ann, user.PetDog, "Шарик", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dog := care.Pet.ID()
+	if care, err = pets.Adopt(ctx, bob, user.PetCat, "Мурка", now); err != nil {
+		t.Fatal(err)
+	}
+	cat := care.Pet.ID()
+
+	// Bob's cat defends in agility.
+	if p, err := pets.SetStance(ctx, bob, cat, user.PetAgility); err != nil || p.Stance() != user.PetAgility {
+		t.Fatalf("SetStance = %v, %v", p, err)
+	}
+
+	if _, err = pets.MoveBattle(ctx, ann, dog, user.PetStrike, now); !errors.Is(err, user.ErrNoPetBattle) {
+		t.Fatalf("a move without a fight: %v", err)
+	}
+
+	turn, err := pets.StartBattle(ctx, ann, dog, "bob", user.PetAttack, now)
+	if err != nil || turn.Battle.DefenderOwner() != bob || turn.Battle.Defender().Fighter.Stance != user.PetAgility || turn.Pet.Losses() != 1 {
+		t.Fatalf("StartBattle = %+v, %v", turn, err)
+	}
+	if _, err = pets.StartBattle(ctx, ann, dog, "bob", user.PetAttack, now); !errors.Is(err, user.ErrPetInBattle) {
+		t.Fatalf("a second fight: %v", err)
+	}
+	if _, err = pets.Fight(ctx, ann, dog, "bob", "", now); !errors.Is(err, user.ErrPetInBattle) {
+		t.Fatalf("a quick fight in a fight: %v", err)
+	}
+	if battles, err := pets.Battles(ctx, ann); err != nil || len(battles) != 1 {
+		t.Fatalf("Battles = %v, %v", battles, err)
+	}
+
+	if turn, err = pets.MoveBattle(ctx, ann, dog, user.PetGuard, now); err != nil || turn.Battle.Round() != 1 || turn.Fought != nil {
+		t.Fatalf("MoveBattle = %+v, %v", turn, err)
+	}
+	if turn, err = pets.MoveBattle(ctx, ann, dog, user.PetAuto, now); err != nil || turn.Fought == nil || !turn.Battle.Done() {
+		t.Fatalf("the rest of the fight = %+v, %v", turn, err)
+	}
+	if fights, err := pets.Fights(ctx, bob); err != nil || len(fights) != 1 || fights[0].Bout.Won != turn.Fought.Fight.Bout.Won {
+		t.Fatalf("Fights = %v, %v", fights, err)
+	}
+	if battles, err := pets.Battles(ctx, ann); err != nil || len(battles) != 0 {
+		t.Fatalf("Battles after the end = %v, %v", battles, err)
+	}
+
+	// A fight left halfway is lost, and a released pet takes its fight.
+	if _, err = pets.StartBattle(ctx, ann, dog, "bob", user.PetAttack, now); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pets.Release(ctx, ann, dog); err != nil {
+		t.Fatal(err)
+	}
+	if battles, err := pets.Battles(ctx, ann); err != nil || len(battles) != 0 {
+		t.Fatalf("the fight of a released pet = %v, %v", battles, err)
 	}
 }

@@ -67,12 +67,39 @@ func TestPet(t *testing.T) {
 		t.Fatalf("PlayPet again: %v", err)
 	}
 
-	fought, err := s.client.FightPet(ann, &userv1.FightPetRequest{Nickname: "bob", PetId: cat})
-	if err != nil || len(fought.GetFight().GetHits()) == 0 || fought.GetPet().GetFights() != 1 {
+	if _, err = s.client.FightPet(ann, &userv1.FightPetRequest{Nickname: "bob", PetId: cat, Stance: "rage"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("FightPet in an unknown stance: %v", err)
+	}
+	fought, err := s.client.FightPet(ann, &userv1.FightPetRequest{Nickname: "bob", PetId: cat, Stance: "agility"})
+	if err != nil || len(fought.GetFight().GetHits()) == 0 || fought.GetPet().GetFights() != 1 || fought.GetFight().GetAttacker().GetStance() != "agility" ||
+		fought.GetFight().GetRatio() == 0 || fought.GetPet().GetFatigue() != 1 {
 		t.Fatalf("FightPet = %v, %v", fought, err)
 	}
-	if fights, err := s.client.ListPetFights(bob, &userv1.ListPetFightsRequest{}); err != nil || len(fights.GetFights()) != 1 {
-		t.Fatalf("ListPetFights = %v, %v", fights, err)
+
+	// Ann leads a fight a round after another; it shows in her state.
+	stood, err := s.client.SetPetStance(bob, &userv1.SetPetStanceRequest{PetId: hamster.GetPet().GetId(), Stance: "attack"})
+	if err != nil || stood.GetPet().GetStance() != "attack" {
+		t.Fatalf("SetPetStance = %v, %v", stood, err)
+	}
+	if _, err = s.client.FeedPet(ann, &userv1.FeedPetRequest{PetId: cat}); err != nil {
+		t.Fatal(err)
+	}
+	started, err := s.client.StartPetBattle(ann, &userv1.StartPetBattleRequest{PetId: cat, Nickname: "bob", Stance: "defense"})
+	if err != nil || started.GetBattle().GetRounds() == 0 || started.GetBattle().GetDefender().GetStance() != "attack" || started.GetFight() != nil {
+		t.Fatalf("StartPetBattle = %v, %v", started, err)
+	}
+	if mine, err := s.client.GetPet(ann, &userv1.GetPetRequest{}); err != nil || len(mine.GetBattles()) != 1 || mine.GetKeeper().GetPityLimit() == 0 {
+		t.Fatalf("GetPet in a fight = %v, %v", mine, err)
+	}
+	if _, err = s.client.MovePetBattle(ann, &userv1.MovePetBattleRequest{PetId: cat, Move: "flee"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("an unknown move: %v", err)
+	}
+	moved, err := s.client.MovePetBattle(ann, &userv1.MovePetBattleRequest{PetId: cat, Move: "auto"})
+	if err != nil || moved.GetFight() == nil || moved.GetBattle().GetRound() == 0 {
+		t.Fatalf("MovePetBattle = %v, %v", moved, err)
+	}
+	if _, err = s.client.MovePetBattle(ann, &userv1.MovePetBattleRequest{PetId: cat, Move: "strike"}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("a move after the end: %v", err)
 	}
 
 	theirs, err := s.client.GetUserPet(context.Background(), &userv1.GetUserPetRequest{Nickname: "bob"})
@@ -95,7 +122,7 @@ func TestPet(t *testing.T) {
 		t.Fatalf("GetPetSettings by ann: %v", err)
 	}
 	settings, err := s.client.GetPetSettings(admin, &userv1.GetPetSettingsRequest{})
-	if err != nil || settings.GetPets() != 2 || settings.GetFights() != 1 {
+	if err != nil || settings.GetPets() != 2 || settings.GetFights() != 2 {
 		t.Fatalf("GetPetSettings = %v, %v", settings, err)
 	}
 	shop := settings.GetShop()
@@ -163,14 +190,27 @@ func TestPetCasesAndClothes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err = s.client.OpenPetCase(ann, &userv1.OpenPetCaseRequest{CaseId: "diamond", Name: "Находка"}); status.Code(err) != codes.InvalidArgument {
+	if _, err = s.client.OpenPetCase(ann, &userv1.OpenPetCaseRequest{CaseId: "diamond"}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("OpenPetCase of an unknown case: %v", err)
 	}
-	opened, err := s.client.OpenPetCase(ann, &userv1.OpenPetCaseRequest{CaseId: "bronze", Name: "Находка"})
-	if err != nil || opened.GetBalance() != 150 || opened.GetPet().GetRarity() == "" || opened.GetPet().GetBreed().GetHealth() == 0 {
+	if _, err = s.client.OpenPetCase(ann, &userv1.OpenPetCaseRequest{CaseId: "bronze", Shards: true}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("OpenPetCase without shards: %v", err)
+	}
+	opened, err := s.client.OpenPetCase(ann, &userv1.OpenPetCaseRequest{CaseId: "bronze"})
+	if err != nil || opened.GetBalance() != 150 || opened.GetKeeper().GetDropKind() == "" || opened.GetKeeper().GetPity() != 1 {
 		t.Fatalf("OpenPetCase = %v, %v", opened, err)
 	}
-	pet := opened.GetPet().GetId()
+	if _, err = s.client.TakePetDrop(ann, &userv1.TakePetDropRequest{Name: ""}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("TakePetDrop without a name: %v", err)
+	}
+	taken, err := s.client.TakePetDrop(ann, &userv1.TakePetDropRequest{Name: "Находка"})
+	if err != nil || taken.GetPet().GetKind() != opened.GetKeeper().GetDropKind() || taken.GetPet().GetBreed().GetHealth() == 0 {
+		t.Fatalf("TakePetDrop = %v, %v", taken, err)
+	}
+	if _, err = s.client.LeavePetDrop(ann, &userv1.LeavePetDropRequest{}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("LeavePetDrop without a pet: %v", err)
+	}
+	pet := taken.GetPet().GetId()
 
 	if _, err = s.client.BuyPetItem(ann, &userv1.BuyPetItemRequest{PetId: pet, Item: "tie"}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("BuyPetItem of an unknown thing: %v", err)

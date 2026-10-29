@@ -22,6 +22,9 @@ type fakePets struct {
 	name     string
 	item     string
 	wear     bool
+	stance   string
+	move     string
+	shards   bool
 	shop     model.PetShop
 	noPet    bool
 	err      error
@@ -63,13 +66,15 @@ func (f *fakePets) Top(_ context.Context, token, board string) ([]model.TopEntry
 func (f *fakePets) Get(_ context.Context, token string) (model.PetState, error) {
 	f.token = token
 	state := model.PetState{
-		Shop:  model.PetShop{Prices: map[string]int64{"cat": 100}, Cases: map[string]int64{"gold": 1200}, Meal: 5, Win: 3, Fights: 10},
-		Kinds: []model.PetKind{{Kind: "phoenix", Rarity: "legendary", Stats: model.PetPower{Attack: 12}, Crit: 14}},
-		Cases: []model.PetCase{{ID: "gold", Odds: []int{0, 550, 370, 80}}},
-		Items: []model.PetItem{{ID: "crown", Slot: "head", Price: 1500, Bonus: model.PetPower{Attack: 3, Defense: 3}}},
+		Shop:   model.PetShop{Prices: map[string]int64{"cat": 100}, Cases: map[string]int64{"gold": 1200}, Meal: 5, Win: 3, Fights: 10},
+		Kinds:  []model.PetKind{{Kind: "phoenix", Rarity: "legendary", Stats: model.PetPower{Attack: 12}, Crit: 14}},
+		Cases:  []model.PetCase{{ID: "gold", Odds: []int{0, 550, 370, 80}, Shards: 60}},
+		Keeper: model.PetKeeper{Shards: 5, PityLimit: 40, DropKind: "owl", DropCase: "gold"},
+		Items:  []model.PetItem{{ID: "crown", Slot: "head", Price: 1500, Bonus: model.PetPower{Attack: 3, Defense: 3}}},
 	}
 	if !f.noPet {
 		state.Pets = []model.Pet{f.pet()}
+		state.Battles = []model.PetBattle{f.battle()}
 	}
 	return state, f.err
 }
@@ -106,9 +111,35 @@ func (f *fakePets) Release(_ context.Context, token, petID string) error {
 	return f.err
 }
 
-func (f *fakePets) Fight(_ context.Context, token, petID, nickname string) (model.PetFought, error) {
-	f.token, f.petID, f.nickname = token, petID, nickname
+func (f *fakePets) Fight(_ context.Context, token, petID, nickname, stance string) (model.PetFought, error) {
+	f.token, f.petID, f.nickname, f.stance = token, petID, nickname, stance
 	return model.PetFought{Fight: f.fight(), Pet: f.pet(), Balance: 903}, f.err
+}
+
+func (f *fakePets) SetStance(_ context.Context, token, petID, stance string) (model.PetCare, error) {
+	f.token, f.petID, f.stance = token, petID, stance
+	pet := f.pet()
+	pet.Stance = stance
+	return model.PetCare{Pet: pet}, f.err
+}
+
+func (f *fakePets) battle() model.PetBattle {
+	return model.PetBattle{
+		PetID: "p1", DefenderID: "u2", Attacker: model.PetFighter{Kind: "cat", Stance: "attack"}, Defender: model.PetFighter{Kind: "dog", Stance: "defense"},
+		Hits: []model.PetHit{{ByAttacker: true, Move: "guard", Heal: 2, AttackerHealth: 40}}, Round: 1, Rounds: 8, AttackerHealth: 40, DefenderHealth: 46,
+		Ratio: 100, Win: 16, Loss: 16,
+	}
+}
+
+func (f *fakePets) StartBattle(_ context.Context, token, petID, nickname, stance string) (model.PetBattleTurn, error) {
+	f.token, f.petID, f.nickname, f.stance = token, petID, nickname, stance
+	return model.PetBattleTurn{Battle: f.battle(), Pet: f.pet()}, f.err
+}
+
+func (f *fakePets) MoveBattle(_ context.Context, token, petID, move string) (model.PetBattleTurn, error) {
+	f.token, f.petID, f.move = token, petID, move
+	fight := f.fight()
+	return model.PetBattleTurn{Battle: f.battle(), Pet: f.pet(), Fight: &fight, Balance: 905}, f.err
 }
 
 func (f *fakePets) Fights(_ context.Context, token string) ([]model.PetFight, error) {
@@ -116,9 +147,19 @@ func (f *fakePets) Fights(_ context.Context, token string) ([]model.PetFight, er
 	return []model.PetFight{f.fight()}, f.err
 }
 
-func (f *fakePets) OpenCase(_ context.Context, token, caseID, name string) (model.PetCare, error) {
-	f.token, f.kind, f.name = token, caseID, name
-	return model.PetCare{Pet: f.pet(), Balance: 300}, f.err
+func (f *fakePets) OpenCase(_ context.Context, token, caseID string, withShards bool) (model.PetDrop, error) {
+	f.token, f.kind, f.shards = token, caseID, withShards
+	return model.PetDrop{Keeper: model.PetKeeper{Pity: 1, PityLimit: 40, DropKind: "fox", DropCase: caseID}, Balance: 300}, f.err
+}
+
+func (f *fakePets) TakeDrop(_ context.Context, token, name string) (model.PetCare, error) {
+	f.token, f.name = token, name
+	return model.PetCare{Pet: f.pet()}, f.err
+}
+
+func (f *fakePets) LeaveDrop(_ context.Context, token string) (model.PetKeeper, error) {
+	f.token = token
+	return model.PetKeeper{Shards: 3, PityLimit: 40}, f.err
 }
 
 func (f *fakePets) BuyItem(_ context.Context, token, petID, item string) (model.PetCare, error) {
@@ -227,7 +268,7 @@ func TestPet(t *testing.T) {
 	}
 
 	// The defender's page is deleted: the fight shows no owner of it.
-	w = h.do("POST", "/api/v1/me/pets/p1/fights", `{"nickname":"cat"}`, auth...)
+	w = h.do("POST", "/api/v1/me/pets/p1/fights", `{"nickname":"cat","stance":"agility"}`, auth...)
 	fought := decode[struct {
 		Fight struct {
 			Attacker map[string]any   `json:"attacker"`
@@ -237,7 +278,7 @@ func TestPet(t *testing.T) {
 		} `json:"fight"`
 		Balance int64 `json:"balance"`
 	}](t, w)
-	if w.Code != http.StatusOK || h.pets.nickname != "cat" || fought.Balance != 903 || !fought.Fight.Won ||
+	if w.Code != http.StatusOK || h.pets.nickname != "cat" || h.pets.stance != "agility" || fought.Balance != 903 || !fought.Fight.Won ||
 		fought.Fight.Attacker["user"].(map[string]any)["nickname"] != "ann" || fought.Fight.Defender["user"] != nil ||
 		fought.Fight.Hits[0]["crit"] != true {
 		t.Fatalf("fight: %d %+v", w.Code, fought)
@@ -262,20 +303,48 @@ func TestPet(t *testing.T) {
 	// The catalogue, a case, clothes bought and taken off.
 	w = h.do("GET", "/api/v1/me/pets", "", auth...)
 	catalogue := decode[struct {
-		Shop  map[string]any   `json:"shop"`
-		Kinds []map[string]any `json:"kinds"`
-		Cases []map[string]any `json:"cases"`
-		Items []map[string]any `json:"items"`
-		Pets  []map[string]any `json:"pets"`
+		Shop    map[string]any   `json:"shop"`
+		Kinds   []map[string]any `json:"kinds"`
+		Cases   []map[string]any `json:"cases"`
+		Items   []map[string]any `json:"items"`
+		Pets    []map[string]any `json:"pets"`
+		Keeper  map[string]any   `json:"keeper"`
+		Battles []map[string]any `json:"battles"`
 	}](t, w)
+	if catalogue.Keeper["dropKind"] != "owl" || catalogue.Cases[0]["shards"] != 60.0 || len(catalogue.Battles) != 1 ||
+		catalogue.Battles[0]["defender"].(map[string]any)["user"].(map[string]any)["nickname"] != "bob" {
+		t.Fatalf("the keeper and the fights: %+v", catalogue)
+	}
 	if catalogue.Shop["cases"].(map[string]any)["gold"] != 1200.0 || catalogue.Kinds[0]["rarity"] != "legendary" ||
 		len(catalogue.Cases[0]["odds"].([]any)) != 4 || catalogue.Items[0]["bonus"].(map[string]any)["defense"] != 3.0 ||
 		len(catalogue.Pets[0]["outfit"].([]any)) != 0 {
 		t.Fatalf("catalogue: %+v", catalogue)
 	}
-	w = h.do("POST", "/api/v1/me/pets/cases", `{"case":"gold","name":"Находка"}`, auth...)
-	if got := decode[map[string]any](t, w); w.Code != http.StatusCreated || h.pets.kind != "gold" || h.pets.name != "Находка" || got["balance"] != 300.0 {
+	w = h.do("POST", "/api/v1/me/pets/cases", `{"case":"gold","shards":true}`, auth...)
+	if got := decode[map[string]any](t, w); w.Code != http.StatusOK || h.pets.kind != "gold" || !h.pets.shards || got["balance"] != 300.0 ||
+		got["keeper"].(map[string]any)["dropKind"] != "fox" {
 		t.Fatalf("open a case: %d %v", w.Code, got)
+	}
+	if w = h.do("POST", "/api/v1/me/pets/drop", `{"name":"Находка"}`, auth...); w.Code != http.StatusCreated || h.pets.name != "Находка" {
+		t.Fatalf("take the pet: %d", w.Code)
+	}
+	if w = h.do("DELETE", "/api/v1/me/pets/drop", "", auth...); w.Code != http.StatusOK || decode[map[string]any](t, w)["keeper"].(map[string]any)["shards"] != 3.0 {
+		t.Fatalf("leave the pet: %d", w.Code)
+	}
+
+	// Stances and a fight led a round after another.
+	if w = h.do("PUT", "/api/v1/me/pets/p1/stance", `{"stance":"agility"}`, auth...); w.Code != http.StatusOK ||
+		decode[map[string]any](t, w)["pet"].(map[string]any)["stance"] != "agility" {
+		t.Fatalf("stance: %d", w.Code)
+	}
+	w = h.do("POST", "/api/v1/me/pets/p1/battle", `{"nickname":"bob","stance":"attack"}`, auth...)
+	if got := decode[map[string]any](t, w); w.Code != http.StatusCreated || h.pets.stance != "attack" || got["fight"] != nil ||
+		got["battle"].(map[string]any)["hits"].([]any)[0].(map[string]any)["move"] != "guard" {
+		t.Fatalf("start a fight: %d %v", w.Code, got)
+	}
+	w = h.do("POST", "/api/v1/me/pets/p1/battle/moves", `{"move":"power"}`, auth...)
+	if got := decode[map[string]any](t, w); w.Code != http.StatusOK || h.pets.move != "power" || got["fight"] == nil || got["balance"] != 905.0 {
+		t.Fatalf("a move: %d %v", w.Code, got)
 	}
 	w = h.do("POST", "/api/v1/me/pets/p1/clothes", `{"item":"scarf"}`, auth...)
 	if got := decode[map[string]any](t, w)["pet"].(map[string]any); w.Code != http.StatusOK || h.pets.item != "scarf" ||

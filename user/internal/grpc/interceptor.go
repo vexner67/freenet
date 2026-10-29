@@ -62,6 +62,8 @@ var petErrors = []struct {
 	{user.ErrUnknownPetKind, codes.InvalidArgument},
 	{user.ErrUnknownPetCase, codes.InvalidArgument},
 	{user.ErrUnknownPetItem, codes.InvalidArgument},
+	{user.ErrUnknownPetStance, codes.InvalidArgument},
+	{user.ErrUnknownPetMove, codes.InvalidArgument},
 	{user.ErrNotInPetShop, codes.InvalidArgument},
 	{user.ErrPetNameEmpty, codes.InvalidArgument},
 	{user.ErrPetNameTooLong, codes.InvalidArgument},
@@ -80,6 +82,13 @@ var petErrors = []struct {
 	{user.ErrPetFightsOver, codes.FailedPrecondition},
 	{user.ErrPetFightSelf, codes.FailedPrecondition},
 	{user.ErrNoPetOpponent, codes.FailedPrecondition},
+	{user.ErrPetInBattle, codes.FailedPrecondition},
+	{user.ErrNoPetBattle, codes.FailedPrecondition},
+	{user.ErrPetBattleOver, codes.FailedPrecondition},
+	{user.ErrPetDropWaiting, codes.FailedPrecondition},
+	{user.ErrNoPetDrop, codes.FailedPrecondition},
+	{user.ErrPetCasesOver, codes.FailedPrecondition},
+	{user.ErrNotEnoughShards, codes.FailedPrecondition},
 }
 
 // bankInvalid are the amounts and settings the bank does not take.

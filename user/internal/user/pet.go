@@ -3,7 +3,6 @@ package user
 import (
 	"errors"
 	"maps"
-	"math"
 	"slices"
 	"strings"
 	"time"
@@ -103,11 +102,8 @@ const (
 	PetStartRating = 1000
 	// PetEloFactor is how far a fight moves the ratings.
 	PetEloFactor = 32
-	// MaxPetTurns is the most hits a fight lasts.
-	MaxPetTurns = 12
-	// PetDiceCount is the random numbers a fight may take.
-	PetDiceCount = MaxPetTurns * 3
-	// PetDiceRange is the range of each of them.
+	// PetDiceRange is the range of the random numbers of fights and
+	// cases.
 	PetDiceRange = 1 << 30
 	// MaxPetNameLength is in characters.
 	MaxPetNameLength = 20
@@ -195,28 +191,61 @@ func (s PetStats) Add(o PetStats) PetStats {
 	return PetStats{Attack: s.Attack + o.Attack, Defense: s.Defense + o.Defense, Health: s.Health + o.Health, Speed: s.Speed + o.Speed}
 }
 
-// breed is a kind: its stats at level 1, its chance in a hundred to hit
-// twice as hard and its rarity.
-type breed struct {
-	stats  PetStats
-	crit   int
-	rarity PetRarity
+// Power is the stats in one number, what matching opponents compares.
+func (s PetStats) Power() int {
+	return s.Attack*4 + s.Defense*3 + s.Health + s.Speed*2
 }
 
-// breeds are the kinds: the rarer, the stronger.
+// scaled is s with attack, defense and health at percent of them, at
+// least one each.
+func (s PetStats) scaled(percent int) PetStats {
+	return PetStats{
+		Attack:  max(s.Attack*percent/100, 1),
+		Defense: max(s.Defense*percent/100, 1),
+		Health:  max(s.Health*percent/100, 1),
+		Speed:   s.Speed,
+	}
+}
+
+// breed is a kind: its stats at level 1, its chance in a hundred to hit
+// twice as hard, its rarity, its element and its special.
+type breed struct {
+	stats   PetStats
+	crit    int
+	rarity  PetRarity
+	element PetElement
+	special PetSpecial
+}
+
+// breeds are the kinds: the rarer, the stronger at level 1.
 var breeds = map[PetKind]breed{
-	PetCat:     {PetStats{Attack: 6, Defense: 4, Health: 40, Speed: 14}, 5, PetCommon},
-	PetDog:     {PetStats{Attack: 7, Defense: 6, Health: 46, Speed: 6}, 5, PetCommon},
-	PetHamster: {PetStats{Attack: 5, Defense: 4, Health: 36, Speed: 10}, 20, PetCommon},
-	PetRabbit:  {PetStats{Attack: 5, Defense: 3, Health: 36, Speed: 18}, 5, PetCommon},
-	PetTurtle:  {PetStats{Attack: 4, Defense: 10, Health: 50, Speed: 2}, 5, PetCommon},
-	PetFox:     {PetStats{Attack: 7, Defense: 5, Health: 42, Speed: 16}, 8, PetRare},
-	PetOwl:     {PetStats{Attack: 7, Defense: 5, Health: 42, Speed: 12}, 18, PetRare},
-	PetDragon:  {PetStats{Attack: 8, Defense: 7, Health: 52, Speed: 8}, 5, PetEpic},
-	PetWolf:    {PetStats{Attack: 10, Defense: 6, Health: 50, Speed: 12}, 8, PetEpic},
-	PetPanda:   {PetStats{Attack: 8, Defense: 10, Health: 62, Speed: 5}, 6, PetEpic},
-	PetUnicorn: {PetStats{Attack: 11, Defense: 9, Health: 60, Speed: 14}, 10, PetLegendary},
-	PetPhoenix: {PetStats{Attack: 12, Defense: 8, Health: 58, Speed: 14}, 14, PetLegendary},
+	PetCat:     {PetStats{Attack: 6, Defense: 4, Health: 40, Speed: 14}, 5, PetCommon, PetFire, PetCounter},
+	PetDog:     {PetStats{Attack: 7, Defense: 6, Health: 46, Speed: 6}, 5, PetCommon, PetWater, PetRage},
+	PetHamster: {PetStats{Attack: 5, Defense: 4, Health: 36, Speed: 10}, 20, PetCommon, PetForest, PetCheeks},
+	PetRabbit:  {PetStats{Attack: 5, Defense: 3, Health: 36, Speed: 18}, 5, PetCommon, PetForest, PetLeap},
+	PetTurtle:  {PetStats{Attack: 4, Defense: 10, Health: 50, Speed: 2}, 5, PetCommon, PetWater, PetShell},
+	PetFox:     {PetStats{Attack: 7, Defense: 5, Health: 42, Speed: 16}, 8, PetRare, PetFire, PetTrick},
+	PetOwl:     {PetStats{Attack: 7, Defense: 5, Health: 42, Speed: 12}, 18, PetRare, PetWater, PetSight},
+	PetDragon:  {PetStats{Attack: 8, Defense: 7, Health: 52, Speed: 8}, 5, PetEpic, PetFire, PetFlame},
+	PetWolf:    {PetStats{Attack: 10, Defense: 6, Health: 50, Speed: 12}, 8, PetEpic, PetForest, PetHowl},
+	PetPanda:   {PetStats{Attack: 8, Defense: 10, Health: 62, Speed: 5}, 6, PetEpic, PetForest, PetHide},
+	PetUnicorn: {PetStats{Attack: 11, Defense: 9, Health: 60, Speed: 14}, 10, PetLegendary, PetWater, PetRainbow},
+	PetPhoenix: {PetStats{Attack: 12, Defense: 8, Health: 58, Speed: 14}, 14, PetLegendary, PetFire, PetRebirth},
+}
+
+// growth is the percent of the stats of a level a pet of each rarity
+// gains: the rarer pets start stronger and grow slower, so that levels
+// catch up with a rare kind.
+var growth = map[PetRarity]int{PetCommon: 100, PetRare: 90, PetEpic: 80, PetLegendary: 70}
+
+// Element is what the kind is of.
+func (k PetKind) Element() PetElement {
+	return breeds[k].element
+}
+
+// Special is the trick of the kind in a fight.
+func (k PetKind) Special() PetSpecial {
+	return breeds[k].special
 }
 
 // critOf is the chance in a hundred of a kind to hit twice as hard.
@@ -243,9 +272,9 @@ const PetCaseOdds = 1000
 
 // caseOdds are the odds of each rarity of PetRarities in a case.
 var caseOdds = map[PetCase][]int{
-	PetCaseBronze: {700, 250, 45, 5},
-	PetCaseSilver: {400, 420, 150, 30},
-	PetCaseGold:   {0, 550, 370, 80},
+	PetCaseBronze: {720, 240, 38, 2},
+	PetCaseSilver: {430, 420, 130, 20},
+	PetCaseGold:   {0, 600, 370, 30},
 }
 
 func NewPetCase(s string) (PetCase, error) {
@@ -491,6 +520,13 @@ type PetState struct {
 	// one a slot.
 	Wardrobe []PetItem
 	Outfit   []PetItem
+	// Stance is how it defends: how it fights those who set their pets
+	// on it.
+	Stance PetStance
+	// Streak are the fights in a row, the last at StreakAt, each within
+	// PetRest of the one before: they tire the pet.
+	Streak   int
+	StreakAt time.Time
 }
 
 // Pet is a pet of a person, a tamagotchi: it grows hungry and bored with
@@ -504,6 +540,7 @@ type Pet struct {
 func NewPet(kind PetKind, name PetName, now time.Time) *Pet {
 	return &Pet{s: PetState{
 		ID: uuid.Must(uuid.NewV7()), Kind: kind, Name: name, BornAt: now, Satiety: 80, Joy: 80, CountedAt: now, Rating: PetStartRating,
+		Stance: PetDefense,
 	}}
 }
 
@@ -533,6 +570,7 @@ func (p *Pet) Wins() int           { return p.s.Wins }
 func (p *Pet) Losses() int         { return p.s.Losses }
 func (p *Pet) PlayedAt() time.Time { return p.s.PlayedAt }
 func (p *Pet) Level() int          { return PetLevel(p.s.Experience) }
+func (p *Pet) Stance() PetStance   { return p.s.Stance }
 
 // felt is a feeling of at, which was value at CountedAt and loses a point
 // each loss.
@@ -586,11 +624,41 @@ func (p *Pet) BreedStats() PetStats {
 	return breeds[p.s.Kind].stats
 }
 
-// LevelStats are what its levels add.
+// LevelStats are what its levels add: less to the rarer kinds.
 func (p *Pet) LevelStats() PetStats {
 	grown := p.Level() - 1
+	pct := growth[p.s.Kind.Rarity()]
 
-	return PetStats{Attack: grown, Defense: grown, Health: 4 * grown, Speed: grown / 5}
+	return PetStats{Attack: 2 * grown * pct / 100, Defense: 2 * grown * pct / 100, Health: 6 * grown * pct / 100, Speed: grown / 5}
+}
+
+// Power is how strong the pet is in one number.
+func (p *Pet) Power() int {
+	return p.Stats().Power()
+}
+
+// FatigueAt are the fights in a row the pet had until now: each takes
+// PetFatigueStep percent of its attack, defense and health in the next.
+func (p *Pet) FatigueAt(now time.Time) int {
+	if p.s.StreakAt.IsZero() || now.Sub(p.s.StreakAt) >= PetRest {
+		return 0
+	}
+
+	return min(p.s.Streak, MaxPetFatigue)
+}
+
+// FightStatsAt are the stats the pet fights with at now, tired by its
+// fights in a row.
+func (p *Pet) FightStatsAt(now time.Time) PetStats {
+	return p.Stats().scaled(100 - PetFatigueStep*p.FatigueAt(now))
+}
+
+// Stood is the pet that defends in stance.
+func (p *Pet) Stood(stance PetStance) *Pet {
+	s := p.State()
+	s.Stance = stance
+
+	return &Pet{s: s}
 }
 
 // ClothesStats are what the clothes it wears add.
@@ -690,155 +758,6 @@ func (p *Pet) CheckFightAt(shop PetShop, now time.Time) error {
 	}
 
 	return nil
-}
-
-// PetDice are the random numbers a fight takes, each in [0, PetDiceRange);
-// a fight that runs out of them reads zeros.
-type PetDice []int64
-
-// next is the next number of the dice in [0, n).
-func (d *PetDice) next(n int) int {
-	if len(*d) == 0 || n <= 0 {
-		return 0
-	}
-
-	v := (*d)[0]
-	*d = (*d)[1:]
-
-	return int(v % int64(n))
-}
-
-// PetHit is a hit of a fight: who hit, whether the other dodged or it was
-// twice as hard, the damage and the health both are left with after it.
-type PetHit struct {
-	ByAttacker     bool
-	Dodged         bool
-	Crit           bool
-	Damage         int
-	AttackerHealth int
-	DefenderHealth int
-}
-
-// PetFighter is a pet as a fight remembers it, in the clothes it wore.
-type PetFighter struct {
-	Kind   PetKind
-	Name   PetName
-	Level  int
-	Health int
-	Outfit []PetItem
-}
-
-// PetBout is a fight: who fought, how it went and what it changed.
-type PetBout struct {
-	Attacker PetFighter
-	Defender PetFighter
-	Hits     []PetHit
-	Won      bool
-	// Rating is the points the attacker won (above zero) or lost; the
-	// defender changes by as much the other way.
-	Rating int
-}
-
-// strike is a hit of a with stats as against d with stats.
-func strike(as, ds PetStats, kind PetKind, dice *PetDice) (damage int, dodged, crit bool) {
-	// High numbers dodge and crit, so dice of zeros never do.
-	if dice.next(100) >= 100-ds.Speed {
-		return 0, true, false
-	}
-
-	damage = max(as.Attack*2-ds.Defense+dice.next(as.Attack+1), 1)
-	if dice.next(100) >= 100-critOf(kind) {
-		return damage * 2, false, true
-	}
-
-	return damage, false, false
-}
-
-// Fought is the fight of the pet against defender at now: the pet and
-// the defender after it and how it went. The faster pet hits first, then
-// they take turns until one falls or MaxPetTurns pass, when the one with
-// the greater share of its health left wins — the defender on a tie.
-func (p *Pet) Fought(defender *Pet, shop PetShop, now time.Time, dice PetDice) (*Pet, *Pet, PetBout, error) {
-	if err := p.CheckFightAt(shop, now); err != nil {
-		return nil, nil, PetBout{}, err
-	}
-
-	as, ds := p.Stats(), defender.Stats()
-	bout := PetBout{
-		Attacker: PetFighter{Kind: p.s.Kind, Name: p.s.Name, Level: p.Level(), Health: as.Health, Outfit: p.Outfit()},
-		Defender: PetFighter{Kind: defender.s.Kind, Name: defender.s.Name, Level: defender.Level(), Health: ds.Health, Outfit: defender.Outfit()},
-	}
-
-	ah, dh := as.Health, ds.Health
-	byAttacker := as.Speed >= ds.Speed
-	for turn := 0; turn < MaxPetTurns && ah > 0 && dh > 0; turn++ {
-		hit := PetHit{ByAttacker: byAttacker}
-		if byAttacker {
-			hit.Damage, hit.Dodged, hit.Crit = strike(as, ds, p.s.Kind, &dice)
-			dh = max(dh-hit.Damage, 0)
-		} else {
-			hit.Damage, hit.Dodged, hit.Crit = strike(ds, as, defender.s.Kind, &dice)
-			ah = max(ah-hit.Damage, 0)
-		}
-		hit.AttackerHealth, hit.DefenderHealth = ah, dh
-		bout.Hits = append(bout.Hits, hit)
-		byAttacker = !byAttacker
-	}
-
-	switch {
-	case dh == 0:
-		bout.Won = true
-	case ah == 0:
-		bout.Won = false
-	default:
-		bout.Won = ah*ds.Health > dh*as.Health
-	}
-
-	bout.Rating = eloChange(p.s.Rating, defender.s.Rating, bout.Won)
-
-	a := p.counted(now)
-	a.Satiety = max(a.Satiety-PetFightTakes, 0)
-	a.Joy = max(a.Joy-PetFightTakes, 0)
-	a.Fights = p.FightsAt(now) + 1
-	a.FoughtOn = BonusDay(now)
-	a.Rating += bout.Rating
-
-	d := defender.State()
-	d.Rating -= bout.Rating
-	d.Experience += PetDefendGain
-
-	if bout.Won {
-		a.Wins++
-		a.Experience += PetWinGain
-		d.Losses++
-	} else {
-		a.Losses++
-		a.Experience += PetLossGain
-		d.Wins++
-	}
-
-	return &Pet{s: a}, &Pet{s: d}, bout, nil
-}
-
-// eloChange is the points a pet of rating a wins or loses against one of
-// rating b: at least one either way.
-func eloChange(a, b int, won bool) int {
-	expected := 1 / (1 + math.Pow(10, float64(b-a)/400))
-
-	score := 0.0
-	if won {
-		score = 1
-	}
-
-	change := int(math.Round(PetEloFactor * (score - expected)))
-	switch {
-	case won && change < 1:
-		return 1
-	case !won && change > -1:
-		return -1
-	}
-
-	return change
 }
 
 // PetFight is a fight as the list of fights keeps it: the owners of the

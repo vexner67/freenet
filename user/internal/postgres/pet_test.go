@@ -111,6 +111,7 @@ func TestPetRepository(t *testing.T) {
 	dragon := user.RestorePet(user.PetState{
 		ID: uuid.Must(uuid.NewV7()), Kind: user.PetDragon, Name: "Смауг", BornAt: now, Satiety: 90, Joy: 90, CountedAt: now,
 		Experience: 500, Rating: rating, Wardrobe: []user.PetItem{"crown", "cape"}, Outfit: []user.PetItem{"crown"},
+		Stance: user.PetAgility, Streak: 2, StreakAt: now,
 	})
 	if err = pets.AddPet(ctx, ann, dragon); err != nil {
 		t.Fatal(err)
@@ -118,7 +119,7 @@ func TestPetRepository(t *testing.T) {
 	// Ann keeps up to ten pets.
 	for range user.MaxPets - 1 {
 		cat := user.RestorePet(user.PetState{
-			ID: uuid.Must(uuid.NewV7()), Kind: user.PetCat, Name: "Кот", BornAt: now, CountedAt: now, Rating: user.PetStartRating,
+			ID: uuid.Must(uuid.NewV7()), Kind: user.PetCat, Name: "Кот", BornAt: now, CountedAt: now, Rating: user.PetStartRating, Stance: user.PetDefense,
 		})
 		if err = pets.AddPet(ctx, ann, cat); err != nil {
 			t.Fatal(err)
@@ -140,6 +141,7 @@ func TestPetRepository(t *testing.T) {
 
 	hamster := user.RestorePet(user.PetState{
 		ID: uuid.Must(uuid.NewV7()), Kind: user.PetHamster, Name: "Хома", BornAt: now, Satiety: 80, Joy: 80, CountedAt: now, Rating: rating + 5,
+		Stance: user.PetAttack,
 	})
 	if err = pets.AddPet(ctx, bob, hamster); err != nil {
 		t.Fatal(err)
@@ -148,14 +150,50 @@ func TestPetRepository(t *testing.T) {
 	if _, err = pets.Pet(ctx, ann, hamster.ID()); !errors.Is(err, user.ErrPetNotFound) {
 		t.Fatalf("Pet of another: %v", err)
 	}
-	if owner, pet, err := pets.Opponent(ctx, ann, rating, now); err != nil || owner != bob || pet != hamster.ID() {
-		t.Fatalf("Opponent = %v, %v, %v", owner, pet, err)
+	contenders, err := pets.Contenders(ctx, ann, rating, now, 1)
+	if err != nil || len(contenders) != 1 || contenders[0].Owner != bob || !reflect.DeepEqual(contenders[0].Pet.State(), hamster.State()) {
+		t.Fatalf("Contenders = %v, %v", contenders, err)
 	}
 
-	fought, defended, bout, err := dragon.Fought(hamster, shop, now, nil)
+	fought, defended, battle, err := dragon.Challenged(hamster, user.PetAttack, shop, now)
 	if err != nil {
 		t.Fatal(err)
 	}
+	battle = battle.Against(bob)
+
+	// A fight led a round after another is kept whole, one a pet.
+	if _, err = pets.LockBattle(ctx, ann, dragon.ID()); !errors.Is(err, user.ErrNoPetBattle) {
+		t.Fatalf("LockBattle without a fight: %v", err)
+	}
+	if err = pets.SaveBattle(ctx, ann, battle); err != nil {
+		t.Fatal(err)
+	}
+	if battle, err = battle.Moved(user.PetStrike, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err = pets.SaveBattle(ctx, ann, battle); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := pets.LockBattle(ctx, ann, dragon.ID()); err != nil || !reflect.DeepEqual(got.State(), battle.State()) {
+		t.Fatalf("LockBattle = %+v, %v; want %+v", got, err, battle.State())
+	}
+	if all, err := pets.Battles(ctx, ann); err != nil || len(all) != 1 {
+		t.Fatalf("Battles = %v, %v", all, err)
+	}
+	if err = pets.DeleteBattle(ctx, ann, dragon.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if all, err := pets.Battles(ctx, ann); err != nil || len(all) != 0 {
+		t.Fatalf("Battles after the delete = %v, %v", all, err)
+	}
+
+	if battle, err = battle.Moved(user.PetAuto, nil); err != nil {
+		t.Fatal(err)
+	}
+	if fought, defended, err = battle.Settled(fought, defended); err != nil {
+		t.Fatal(err)
+	}
+	bout := battle.Bout(shop.Win())
 	if err = pets.SavePet(ctx, fought); err != nil {
 		t.Fatal(err)
 	}
@@ -185,6 +223,36 @@ func TestPetRepository(t *testing.T) {
 	}
 	if after, _ := pets.Stats(ctx); after.Spent != before.Spent+50 || after.Won != before.Won+3 || after.Pets < 2 || after.Fights < 1 {
 		t.Fatalf("Stats = %+v after %+v", after, before)
+	}
+
+	// The keeper of the cases of Ann: nothing until she opens one.
+	if k, err := pets.Keeper(ctx, ann); err != nil || k.State() != (user.PetKeeperState{}) {
+		t.Fatalf("Keeper = %+v, %v", k, err)
+	}
+	if _, err = pets.LockKeeper(ctx, uuid.New()); !errors.Is(err, user.ErrNotFound) {
+		t.Fatalf("LockKeeper of nobody: %v", err)
+	}
+	keeper, err := user.NewPetKeeper().Opened(user.PetCaseSilver, false, 999, 0, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = pets.LockKeeper(ctx, ann); err != nil {
+		t.Fatal(err)
+	}
+	if err = pets.SaveKeeper(ctx, ann, keeper); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := pets.Keeper(ctx, ann); err != nil || got.State() != keeper.State() {
+		t.Fatalf("Keeper = %+v, %v; want %+v", got.State(), err, keeper.State())
+	}
+	if keeper, err = keeper.Left(); err != nil {
+		t.Fatal(err)
+	}
+	if err = pets.SaveKeeper(ctx, ann, keeper); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := pets.LockKeeper(ctx, ann); err != nil || got.State() != keeper.State() {
+		t.Fatalf("LockKeeper = %+v, %v; want %+v", got.State(), err, keeper.State())
 	}
 
 	// The boards: the pet of Ann, her votes and what she earned.

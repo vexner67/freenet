@@ -6038,6 +6038,9 @@ paths:
                         inShop: { type: boolean }
                         stats: { $ref: "#/components/schemas/PetPower" }
                         crit: { type: integer }
+                        element: { type: string, enum: [fire, water, forest], description: 'Water beats fire, fire beats forest, forest beats water: 25% more damage' }
+                        special: { type: string, enum: [counter, rage, cheeks, leap, shell, trick, sight, flame, howl, hide, rainbow, rebirth] }
+                        shards: { type: integer, description: The shards a pet of the kind leaves when it is let go }
                   cases:
                     type: array
                     items:
@@ -6045,6 +6048,7 @@ paths:
                       properties:
                         id: { type: string, enum: [bronze, silver, gold] }
                         odds: { type: array, items: { type: integer }, description: 'In a thousand: common, rare, epic, legendary' }
+                        shards: { type: integer, description: What the case costs in shards }
                   items:
                     type: array
                     items:
@@ -6054,6 +6058,8 @@ paths:
                         slot: { type: string, enum: [head, eyes, neck, body] }
                         price: { type: integer, format: int64 }
                         bonus: { $ref: "#/components/schemas/PetPower" }
+                  keeper: { $ref: "#/components/schemas/PetKeeper" }
+                  battles: { type: array, items: { $ref: "#/components/schemas/PetBattle" }, description: The fights by hand not finished }
         "401": { $ref: "#/components/responses/Unauthenticated" }
     post:
       summary: Adopt a pet
@@ -6095,7 +6101,7 @@ paths:
   /api/v1/me/pets/cases:
     post:
       summary: Open a case
-      description: 'Pays the price of the case into the treasury: a pet of a kind drawn by the odds of its rarity joins your pets, called `name`; up to 10 pets a person (409 past them). Rate limited.'
+      description: 'Pays the price of the case into the treasury, or its `shards` with `shards`: a kind drawn by the odds of its rarity (a legendary one on each 40th case without one) waits in `keeper.dropKind` to be taken or left; 20 cases a day; 409 while a pet of a case waits, past the cases of the day or without shards. Rate limited.'
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -6103,14 +6109,130 @@ paths:
           application/json:
             schema:
               type: object
-              required: [case, name]
+              required: [case]
               properties:
                 case: { type: string, enum: [bronze, silver, gold] }
-                name: { type: string, maxLength: 20 }
+                shards: { type: boolean, description: Pay in shards instead of votes }
       responses:
-        "201": { description: The pet that fell out, content: { application/json: { schema: { $ref: "#/components/schemas/PetCare" } } } }
+        "200":
+          description: The keeper with the pet that fell out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keeper: { $ref: "#/components/schemas/PetKeeper" }
+                  balance: { type: integer, format: int64, description: Your votes after the payment, 0 when paid in shards }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/pets/drop:
+    post:
+      summary: Take the pet of a case
+      description: 'The pet that fell out of a case joins your pets, called `name`; up to 10 pets a person (409 past them, and without a pet waiting). Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 20 }
+      responses:
+        "201": { description: The pet, content: { application/json: { schema: { $ref: "#/components/schemas/PetCare" } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Leave the pet of a case
+      description: 'The pet that fell out of a case is not taken: it leaves its shards (409 without a pet waiting). Rate limited.'
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The keeper
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keeper: { $ref: "#/components/schemas/PetKeeper" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/pets/{id}/stance:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      summary: Choose how a pet defends
+      description: 'The stance the pet takes when it is set upon: attack beats agility, agility beats defense, defense beats attack. Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [stance]
+              properties:
+                stance: { type: string, enum: [attack, defense, agility] }
+      responses:
+        "200": { description: The pet, content: { application/json: { schema: { $ref: "#/components/schemas/PetCare" } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/pets/{id}/battle:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Start a fight by hand
+      description: 'As a fight, with `nickname` and `stance`, but the moves are yours, a round at a time. Until it ends it counts as lost: a fight left counts so. One fight a pet; 409 while it is in one. Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nickname: { type: string }
+                stance: { type: string, enum: [attack, defense, agility] }
+      responses:
+        "201": { description: The fight, content: { application/json: { schema: { $ref: "#/components/schemas/PetBattleTurn" } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/pets/{id}/battle/moves:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Make a move in a fight by hand
+      description: '`strike` hits; `guard` heals a little, halves the next hit taken and makes the next hit dealt harder; `power` hits harder but is dodged more; `auto` plays the fight to the end by the stances. The rival answers by its stance. The last move ends the fight with `fight`. 409 without a fight. Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [move]
+              properties:
+                move: { type: string, enum: [strike, guard, power, auto] }
+      responses:
+        "200": { description: The fight, content: { application/json: { schema: { $ref: "#/components/schemas/PetBattleTurn" } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
@@ -6185,7 +6307,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     delete:
       summary: Release a pet
-      description: The pet is gone; its fights stay, nothing is paid back.
+      description: The pet is gone and leaves its shards; its fights stay, no votes are paid back.
       security: [{ bearer: [] }]
       responses:
         "204": { description: Released }
@@ -6225,7 +6347,7 @@ paths:
       - { name: id, in: path, required: true, schema: { type: string } }
     post:
       summary: Fight
-      description: 'Sets the pet on the best-rated pet of `nickname`, or on one of a near rating without it. The pet needs 15 satiety and 15 joy and loses 10 of each; `fights` a day for each pet. A won fight brings `win` votes from the treasury and rating by Elo. Rate limited.'
+      description: 'Sets the pet on the best-rated pet of `nickname`, or without it on one of a near rating and power (within 15%, else 30%, else the nearest). The pet needs 15 satiety and 15 joy and loses 10 of each; `fights` a day for each pet; each fight within an hour of the last tires it by 5%. A won fight brings `win` votes from the treasury and rating by Elo, both scaled by `ratio`: a weaker rival brings less, a stronger one more. Rate limited.'
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -6235,6 +6357,7 @@ paths:
               type: object
               properties:
                 nickname: { type: string }
+                stance: { type: string, enum: [attack, defense, agility], description: The stance of the attacker, its own without it }
       responses:
         "200":
           description: The fight
@@ -10649,6 +10772,55 @@ components:
         outfit: { type: array, items: { type: string }, description: The clothes it wears, one a slot }
         breed: { allOf: [{ $ref: "#/components/schemas/PetPower" }], description: What its kind gives of the stats }
         clothes: { allOf: [{ $ref: "#/components/schemas/PetPower" }], description: What its clothes give; the rest is levels }
+        stance: { type: string, enum: [attack, defense, agility], description: How it defends }
+        power: { type: integer, description: 'Its strength in one number, which matches rivals: attack×4 + defense×3 + health + speed×2' }
+        fatigue: { type: integer, description: 'The fights in a row within an hour: each takes 5% of the stats, up to 6' }
+    PetKeeper:
+      type: object
+      description: 'What you keep of the cases.'
+      properties:
+        shards: { type: integer }
+        pity: { type: integer, description: The cases since the last legendary pet }
+        pityLimit: { type: integer, description: The case that gives a legendary pet for sure }
+        cases: { type: integer, description: The cases of today }
+        casesLimit: { type: integer }
+        dropKind: { type: string, description: 'The pet a case gave, to be taken or left; "" — none' }
+        dropCase: { type: string }
+    PetBattle:
+      type: object
+      description: A fight by hand not finished.
+      properties:
+        petId: { type: string, format: uuid }
+        attacker: { $ref: "#/components/schemas/PetFighter" }
+        defender: { $ref: "#/components/schemas/PetFighter" }
+        hits: { type: array, items: { $ref: "#/components/schemas/PetHit" } }
+        round: { type: integer }
+        rounds: { type: integer }
+        attackerHealth: { type: integer }
+        defenderHealth: { type: integer }
+        ratio: { type: integer }
+        win: { type: integer, description: The rating a won fight brings }
+        loss: { type: integer, description: The rating a lost one takes }
+    PetBattleTurn:
+      type: object
+      properties:
+        battle: { $ref: "#/components/schemas/PetBattle" }
+        pet: { $ref: "#/components/schemas/Pet" }
+        fight: { allOf: [{ $ref: "#/components/schemas/PetFight" }], nullable: true, description: The fight once it is over }
+        balance: { type: integer, format: int64 }
+    PetHit:
+      type: object
+      properties:
+        byAttacker: { type: boolean }
+        move: { type: string, enum: ['', strike, guard, power], description: '"" in the fights before moves' }
+        dodged: { type: boolean }
+        crit: { type: boolean }
+        damage: { type: integer }
+        heal: { type: integer }
+        special: { type: string, description: The special of the kind that worked }
+        answer: { type: string, description: The special of the other pet that answered the hit }
+        attackerHealth: { type: integer }
+        defenderHealth: { type: integer }
     PetPower:
       type: object
       description: The stats of a pet, or what something adds to them.
@@ -10671,6 +10843,9 @@ components:
         level: { type: integer }
         health: { type: integer }
         outfit: { type: array, items: { type: string }, description: The clothes it wore }
+        stance: { type: string }
+        power: { type: integer }
+        fatigue: { type: integer }
     PetFight:
       type: object
       description: 'A fight: the hits in turn and whether the attacker won, with the rating it won (above zero) or lost.'
@@ -10679,19 +10854,11 @@ components:
         foughtAt: { type: string, format: date-time }
         attacker: { $ref: "#/components/schemas/PetFighter" }
         defender: { $ref: "#/components/schemas/PetFighter" }
-        hits:
-          type: array
-          items:
-            type: object
-            properties:
-              byAttacker: { type: boolean }
-              dodged: { type: boolean }
-              crit: { type: boolean }
-              damage: { type: integer }
-              attackerHealth: { type: integer }
-              defenderHealth: { type: integer }
+        hits: { type: array, items: { $ref: "#/components/schemas/PetHit" } }
         won: { type: boolean }
         rating: { type: integer }
+        ratio: { type: integer, description: 'The power of the defender in a hundred of the attacker, 25 to 200' }
+        reward: { type: integer, format: int64, description: The votes it brought }
     MineState:
       type: object
       properties:

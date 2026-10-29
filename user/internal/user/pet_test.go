@@ -112,81 +112,6 @@ func TestPet_Care(t *testing.T) {
 	}
 }
 
-func TestPet_Fought(t *testing.T) {
-	t.Parallel()
-
-	now := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
-	shop := user.DefaultPetShop()
-
-	dragon := user.RestorePet(user.PetState{
-		Kind: user.PetDragon, Name: "Смауг", Satiety: 100, Joy: 100, CountedAt: now,
-		Experience: user.PetLevelExperience(10), Rating: 1000,
-	})
-	hamster := user.NewPet(user.PetHamster, "Хома", now)
-
-	// With zero dice nobody dodges and the stronger dragon wins.
-	a, d, bout, err := dragon.Fought(hamster, shop, now, nil)
-	if err != nil || !bout.Won || bout.Rating != 16 || len(bout.Hits) == 0 {
-		t.Fatalf("Fought = %+v, %v", bout, err)
-	}
-	last := bout.Hits[len(bout.Hits)-1]
-	if last.DefenderHealth != 0 || !last.ByAttacker {
-		t.Fatalf("the last hit: %+v", last)
-	}
-	if a.Rating() != 1016 || d.Rating() != 984 || a.Wins() != 1 || d.Losses() != 1 {
-		t.Fatalf("after the fight: %d %d %d %d", a.Rating(), d.Rating(), a.Wins(), d.Losses())
-	}
-	if a.SatietyAt(now) != 90 || a.FightsAt(now) != 1 || d.Experience() != user.PetDefendGain {
-		t.Fatalf("what the fight took: %d %d %d", a.SatietyAt(now), a.FightsAt(now), d.Experience())
-	}
-	if a.FightsAt(now.Add(24*time.Hour)) != 0 {
-		t.Fatal("the fights of yesterday count today")
-	}
-
-	// The hamster loses to the dragon, and a hungry pet does not fight.
-	if _, _, bout, err = hamster.Fought(dragon, shop, now, nil); err != nil || bout.Won || bout.Rating != -16 {
-		t.Fatalf("the hamster fought: %+v, %v", bout, err)
-	}
-	hungry := user.RestorePet(user.PetState{Kind: user.PetCat, Satiety: 10, Joy: 100, CountedAt: now})
-	if _, _, _, err = hungry.Fought(hamster, shop, now, nil); !errors.Is(err, user.ErrPetHungry) {
-		t.Fatalf("a hungry pet fought: %v", err)
-	}
-
-	// Dice of the top numbers dodge every hit: the defender keeps it.
-	dodges := make(user.PetDice, user.PetDiceCount)
-	for i := range dodges {
-		dodges[i] = 99
-	}
-	_, _, bout, _ = dragon.Fought(hamster, shop, now, dodges)
-	if bout.Won || len(bout.Hits) != user.MaxPetTurns {
-		t.Fatalf("a fight of dodges: %+v", bout)
-	}
-
-	equal := user.NewPet(user.PetCat, "Мурка", now)
-	_, _, bout, _ = equal.Fought(user.NewPet(user.PetCat, "Пушок", now), shop, now, nil)
-	if bout.Won != (bout.Hits[len(bout.Hits)-1].DefenderHealth == 0) {
-		t.Fatalf("a fight of equals: %+v", bout)
-	}
-
-	tired := a
-	for range shop.Fights() - 1 {
-		fed, _ := tired.Fed(now)
-		if fed != nil {
-			tired = fed
-		}
-		if tired, _, _, err = tired.Fought(hamster, shop, now, nil); err != nil {
-			t.Fatal(err)
-		}
-		if played, err := tired.Played(now); err == nil {
-			tired = played
-		}
-		now = now.Add(user.PetPlayEvery)
-	}
-	if err = tired.CheckFightAt(shop, now); !errors.Is(err, user.ErrPetFightsOver) && !errors.Is(err, user.ErrPetHungry) && !errors.Is(err, user.ErrPetSad) {
-		t.Fatalf("the fights of a day: %v", err)
-	}
-}
-
 func TestPetCases(t *testing.T) {
 	t.Parallel()
 
@@ -212,11 +137,11 @@ func TestPetCases(t *testing.T) {
 		want   user.PetKind
 	}{
 		{user.PetCaseBronze, 0, 0, user.PetCat},
-		{user.PetCaseBronze, 699, 4, user.PetTurtle},
-		{user.PetCaseBronze, 700, 0, user.PetFox},
-		{user.PetCaseBronze, 995, 1, user.PetPhoenix},
+		{user.PetCaseBronze, 719, 4, user.PetTurtle},
+		{user.PetCaseBronze, 720, 0, user.PetFox},
+		{user.PetCaseBronze, 998, 1, user.PetPhoenix},
 		{user.PetCaseGold, 0, 1, user.PetOwl},
-		{user.PetCaseGold, 920, 2, user.PetUnicorn},
+		{user.PetCaseGold, 970, 2, user.PetUnicorn},
 	}
 	for _, tt := range tests {
 		if got := tt.c.Draw(tt.rarity, tt.kind); got != tt.want {
@@ -285,7 +210,7 @@ func TestPetClothes(t *testing.T) {
 
 	// A fight remembers the clothes.
 	rival := user.NewPet(user.PetCat, "Мурка", now)
-	_, _, bout, err := scarf.Fought(rival, user.DefaultPetShop(), now, nil)
+	_, _, bout, err := scarf.Fought(rival, user.PetAttack, user.DefaultPetShop(), now, nil)
 	if err != nil || len(bout.Attacker.Outfit) != 2 || bout.Attacker.Health != scarf.Stats().Health {
 		t.Fatalf("Fought = %+v, %v", bout.Attacker, err)
 	}

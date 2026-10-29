@@ -125,7 +125,10 @@ const petColumns = `
 		fought_on,
 		fights,
 		wardrobe,
-		outfit
+		outfit,
+		stance,
+		streak,
+		streak_at
 `
 
 const listPetsQuery = `
@@ -181,20 +184,25 @@ func scanPet(row pgx.Row) (*user.Pet, error) {
 	var (
 		s                  user.PetState
 		ownerID            uuid.UUID
-		kind, name         string
+		kind, name, stance string
 		playedAt, foughtOn *time.Time
+		streakAt           *time.Time
 		wardrobe, outfit   []string
 	)
 
 	err := row.Scan(
 		&s.ID, &ownerID, &kind, &name, &s.BornAt, &s.Satiety, &s.Joy, &s.CountedAt, &playedAt,
 		&s.Experience, &s.Rating, &s.Wins, &s.Losses, &foughtOn, &s.Fights, &wardrobe, &outfit,
+		&stance, &s.Streak, &streakAt,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	s.Kind, s.Name = user.PetKind(kind), user.PetName(name)
+	s.Kind, s.Name, s.Stance = user.PetKind(kind), user.PetName(name), user.PetStance(stance)
+	if streakAt != nil {
+		s.StreakAt = streakAt.UTC()
+	}
 	s.Wardrobe, s.Outfit = petItems(wardrobe), petItems(outfit)
 	if playedAt != nil {
 		s.PlayedAt = playedAt.UTC()
@@ -211,9 +219,12 @@ func scanPet(row pgx.Row) (*user.Pet, error) {
 func petArgs(userID uuid.UUID, p *user.Pet) []any {
 	s := p.State()
 
-	var playedAt, foughtOn *time.Time
+	var playedAt, foughtOn, streakAt *time.Time
 	if !s.PlayedAt.IsZero() {
 		playedAt = &s.PlayedAt
+	}
+	if !s.StreakAt.IsZero() {
+		streakAt = &s.StreakAt
 	}
 	if !s.FoughtOn.IsZero() {
 		foughtOn = &s.FoughtOn
@@ -222,6 +233,7 @@ func petArgs(userID uuid.UUID, p *user.Pet) []any {
 	return []any{
 		s.ID, userID, s.Kind.String(), s.Name.String(), s.BornAt, s.Satiety, s.Joy, s.CountedAt, playedAt,
 		s.Experience, s.Rating, s.Wins, s.Losses, foughtOn, s.Fights, itemNames(s.Wardrobe), itemNames(s.Outfit),
+		s.Stance.String(), s.Streak, streakAt,
 	}
 }
 
@@ -248,15 +260,15 @@ func itemNames(items []user.PetItem) []string {
 	return names
 }
 
-// insertPetQuery adds the pet unless its owner keeps $18 already.
+// insertPetQuery adds the pet unless its owner keeps $21 already.
 const insertPetQuery = `
 	INSERT INTO pets (` + petColumns + `)
-	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
 	WHERE (
 		SELECT count(*)
 		FROM pets
 		WHERE user_id = $2
-	) < $18
+	) < $21
 `
 
 func (r *PetRepository) AddPet(ctx context.Context, userID uuid.UUID, p *user.Pet) error {
@@ -292,7 +304,10 @@ const updatePetQuery = `
 		fought_on = $13,
 		fights = $14,
 		wardrobe = $15,
-		outfit = $16
+		outfit = $16,
+		stance = $17,
+		streak = $18,
+		streak_at = $19
 	WHERE id = $1
 `
 
@@ -329,69 +344,93 @@ func (r *PetRepository) DeletePet(ctx context.Context, userID, petID uuid.UUID) 
 	return nil
 }
 
-// petOpponentQuery takes the ten pets nearest to the rating, by the rating
-// index from above and below, and one of them at random.
-const petOpponentQuery = `
+// petContendersQuery takes the pets nearest to the rating, by the rating
+// index from above and below, $4 of them.
+const petContendersQuery = `
 	WITH near AS (
-		(SELECT p.user_id, p.id, p.rating
+		(SELECT p.id, p.rating
 		FROM pets AS p
 		JOIN users AS u ON u.id = p.user_id
 		WHERE p.rating >= $2
 			AND p.user_id <> $1
 			AND ` + petShownUser + `
 		ORDER BY p.rating, p.id
-		LIMIT 10)
+		LIMIT $4)
 		UNION ALL
-		(SELECT p.user_id, p.id, p.rating
+		(SELECT p.id, p.rating
 		FROM pets AS p
 		JOIN users AS u ON u.id = p.user_id
 		WHERE p.rating < $2
 			AND p.user_id <> $1
 			AND ` + petShownUser + `
 		ORDER BY p.rating DESC, p.id
-		LIMIT 10)
+		LIMIT $4)
 	)
-	SELECT user_id, id
-	FROM (
-		SELECT user_id, id
+	SELECT user_id,` + petColumns + `
+	FROM pets
+	WHERE id IN (
+		SELECT id
 		FROM near
 		ORDER BY abs(rating - $2), id
-		LIMIT 10
-	) AS nearest
-	ORDER BY random()
-	LIMIT 1
+		LIMIT $4
+	)
+	ORDER BY abs(rating - $2), id
 `
 
 // petShownUser is the condition of an owner u neither deleted nor banned
 // at $3.
 const petShownUser = `u.deactivated_at IS NULL AND (u.banned_at IS NULL OR u.banned_until <= $3)`
 
-func (r *PetRepository) Opponent(ctx context.Context, userID uuid.UUID, rating int, now time.Time) (owner, pet uuid.UUID, err error) {
-	err = r.conn(ctx).QueryRow(ctx, petOpponentQuery, userID, rating, now).Scan(&owner, &pet)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.Nil, uuid.Nil, user.ErrNoPetOpponent
+func (r *PetRepository) Contenders(ctx context.Context, userID uuid.UUID, rating int, now time.Time, limit int) ([]user.PetContender, error) {
+	rows, err := r.conn(ctx).Query(ctx, petContendersQuery, userID, rating, now, limit)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
 	}
 
-	return owner, pet, errs.Wrap("r.conn.QueryRow", err)
+	contenders, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (user.PetContender, error) {
+		var owner uuid.UUID
+		p, err := scanPet(ownedRow{row: row, owner: &owner})
+
+		return user.PetContender{Owner: owner, Pet: p}, err
+	})
+
+	return contenders, errs.Wrap("pgx.CollectRows", err)
+}
+
+// ownedRow is a row of the owner of a pet and its petColumns.
+type ownedRow struct {
+	row   pgx.Row
+	owner *uuid.UUID
+}
+
+func (r ownedRow) Scan(dest ...any) error {
+	return r.row.Scan(append([]any{r.owner}, dest...)...)
 }
 
 // storedHit, storedFighter and storedBout are a fight as the column keeps
 // it.
 type storedHit struct {
-	ByAttacker     bool `json:"byAttacker"`
-	Dodged         bool `json:"dodged"`
-	Crit           bool `json:"crit"`
-	Damage         int  `json:"damage"`
-	AttackerHealth int  `json:"attackerHealth"`
-	DefenderHealth int  `json:"defenderHealth"`
+	ByAttacker     bool            `json:"byAttacker"`
+	Move           user.PetMove    `json:"move,omitempty"`
+	Dodged         bool            `json:"dodged"`
+	Crit           bool            `json:"crit"`
+	Damage         int             `json:"damage"`
+	Heal           int             `json:"heal,omitempty"`
+	Special        user.PetSpecial `json:"special,omitempty"`
+	Answer         user.PetSpecial `json:"answer,omitempty"`
+	AttackerHealth int             `json:"attackerHealth"`
+	DefenderHealth int             `json:"defenderHealth"`
 }
 
 type storedFighter struct {
-	Kind   string   `json:"kind"`
-	Name   string   `json:"name"`
-	Level  int      `json:"level"`
-	Health int      `json:"health"`
-	Outfit []string `json:"outfit,omitempty"`
+	Kind    string   `json:"kind"`
+	Name    string   `json:"name"`
+	Level   int      `json:"level"`
+	Health  int      `json:"health"`
+	Outfit  []string `json:"outfit,omitempty"`
+	Stance  string   `json:"stance,omitempty"`
+	Power   int      `json:"power,omitempty"`
+	Fatigue int      `json:"fatigue,omitempty"`
 }
 
 type storedBout struct {
@@ -400,14 +439,40 @@ type storedBout struct {
 	Hits     []storedHit   `json:"hits"`
 	Won      bool          `json:"won"`
 	Rating   int           `json:"rating"`
+	Ratio    int           `json:"ratio,omitempty"`
+	Reward   int64         `json:"reward,omitempty"`
 }
 
 func storeFighter(f user.PetFighter) storedFighter {
-	return storedFighter{Kind: f.Kind.String(), Name: f.Name.String(), Level: f.Level, Health: f.Health, Outfit: itemNames(f.Outfit)}
+	return storedFighter{
+		Kind: f.Kind.String(), Name: f.Name.String(), Level: f.Level, Health: f.Health, Outfit: itemNames(f.Outfit),
+		Stance: f.Stance.String(), Power: f.Power, Fatigue: f.Fatigue,
+	}
 }
 
 func restoreFighter(f storedFighter) user.PetFighter {
-	return user.PetFighter{Kind: user.PetKind(f.Kind), Name: user.PetName(f.Name), Level: f.Level, Health: f.Health, Outfit: petItems(f.Outfit)}
+	return user.PetFighter{
+		Kind: user.PetKind(f.Kind), Name: user.PetName(f.Name), Level: f.Level, Health: f.Health, Outfit: petItems(f.Outfit),
+		Stance: user.PetStance(f.Stance), Power: f.Power, Fatigue: f.Fatigue,
+	}
+}
+
+func storeHits(hits []user.PetHit) []storedHit {
+	stored := make([]storedHit, len(hits))
+	for i, h := range hits {
+		stored[i] = storedHit(h)
+	}
+
+	return stored
+}
+
+func restoreHits(stored []storedHit) []user.PetHit {
+	hits := make([]user.PetHit, len(stored))
+	for i, h := range stored {
+		hits[i] = user.PetHit(h)
+	}
+
+	return hits
 }
 
 const insertPetFightQuery = `
@@ -424,10 +489,7 @@ const insertPetFightQuery = `
 func (r *PetRepository) AddFight(ctx context.Context, f user.PetFight) error {
 	stored := storedBout{
 		Attacker: storeFighter(f.Bout.Attacker), Defender: storeFighter(f.Bout.Defender),
-		Hits: make([]storedHit, len(f.Bout.Hits)), Won: f.Bout.Won, Rating: f.Bout.Rating,
-	}
-	for i, h := range f.Bout.Hits {
-		stored.Hits[i] = storedHit(h)
+		Hits: storeHits(f.Bout.Hits), Won: f.Bout.Won, Rating: f.Bout.Rating, Ratio: f.Bout.Ratio, Reward: f.Bout.Reward,
 	}
 
 	data, err := json.Marshal(stored)
@@ -492,10 +554,7 @@ func (r *PetRepository) Fights(ctx context.Context, userID uuid.UUID, limit int)
 		f.At = f.At.UTC()
 		f.Bout = user.PetBout{
 			Attacker: restoreFighter(stored.Attacker), Defender: restoreFighter(stored.Defender),
-			Hits: make([]user.PetHit, len(stored.Hits)), Won: stored.Won, Rating: stored.Rating,
-		}
-		for i, h := range stored.Hits {
-			f.Bout.Hits[i] = user.PetHit(h)
+			Hits: restoreHits(stored.Hits), Won: stored.Won, Rating: stored.Rating, Ratio: stored.Ratio, Reward: stored.Reward,
 		}
 
 		return f, nil
@@ -530,4 +589,209 @@ func (r *PetRepository) Stats(ctx context.Context) (user.PetShopStats, error) {
 	err := r.conn(ctx).QueryRow(ctx, petShopStatsQuery).Scan(&s.Pets, &s.Fights, &s.Spent, &s.Won)
 
 	return s, errs.Wrap("r.conn.QueryRow", err)
+}
+
+const selectPetKeeperQuery = `
+	SELECT
+		shards,
+		pity,
+		cases_on,
+		cases,
+		drop_kind,
+		drop_case
+	FROM pet_keepers
+	WHERE user_id = $1
+`
+
+// ensurePetKeeperQuery adds the row of a keeper, so that it can be locked.
+const ensurePetKeeperQuery = `
+	INSERT INTO pet_keepers (user_id)
+	VALUES ($1)
+	ON CONFLICT (user_id) DO NOTHING
+`
+
+func (r *PetRepository) Keeper(ctx context.Context, userID uuid.UUID) (*user.PetKeeper, error) {
+	k, err := r.keeper(ctx, selectPetKeeperQuery, userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return user.NewPetKeeper(), nil
+	}
+
+	return k, errs.Wrap("r.keeper", err)
+}
+
+func (r *PetRepository) LockKeeper(ctx context.Context, userID uuid.UUID) (*user.PetKeeper, error) {
+	_, err := r.conn(ctx).Exec(ctx, ensurePetKeeperQuery, userID)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode {
+		return nil, user.ErrNotFound
+	}
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Exec", err)
+	}
+
+	k, err := r.keeper(ctx, selectPetKeeperQuery+" FOR UPDATE", userID)
+
+	return k, errs.Wrap("r.keeper", err)
+}
+
+func (r *PetRepository) keeper(ctx context.Context, query string, userID uuid.UUID) (*user.PetKeeper, error) {
+	var (
+		s                  user.PetKeeperState
+		casesOn            *time.Time
+		dropKind, dropCase *string
+	)
+
+	err := r.conn(ctx).QueryRow(ctx, query, userID).Scan(&s.Shards, &s.Pity, &casesOn, &s.Cases, &dropKind, &dropCase)
+	if err != nil {
+		return nil, err
+	}
+
+	if casesOn != nil {
+		s.CasesOn = *casesOn
+	}
+	if dropKind != nil && dropCase != nil {
+		s.Drop, s.DropCase = user.PetKind(*dropKind), user.PetCase(*dropCase)
+	}
+
+	return user.RestorePetKeeper(s), nil
+}
+
+const upsertPetKeeperQuery = `
+	INSERT INTO pet_keepers (
+		user_id,
+		shards,
+		pity,
+		cases_on,
+		cases,
+		drop_kind,
+		drop_case
+	)
+	VALUES ($1, $2, $3, $4, $5, $6, $7)
+	ON CONFLICT (user_id) DO UPDATE
+	SET shards = EXCLUDED.shards,
+		pity = EXCLUDED.pity,
+		cases_on = EXCLUDED.cases_on,
+		cases = EXCLUDED.cases,
+		drop_kind = EXCLUDED.drop_kind,
+		drop_case = EXCLUDED.drop_case
+`
+
+func (r *PetRepository) SaveKeeper(ctx context.Context, userID uuid.UUID, k *user.PetKeeper) error {
+	s := k.State()
+
+	var (
+		casesOn            *time.Time
+		dropKind, dropCase *string
+	)
+	if !s.CasesOn.IsZero() {
+		casesOn = &s.CasesOn
+	}
+	if s.Drop != "" {
+		kind, c := s.Drop.String(), s.DropCase.String()
+		dropKind, dropCase = &kind, &c
+	}
+
+	_, err := r.conn(ctx).Exec(ctx, upsertPetKeeperQuery, userID, s.Shards, s.Pity, casesOn, s.Cases, dropKind, dropCase)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode {
+		return user.ErrNotFound
+	}
+
+	return errs.Wrap("r.conn.Exec", err)
+}
+
+// The state of a battle is the domain state as JSON: it is only ever read
+// back by this code, whole.
+const listPetBattlesQuery = `
+	SELECT state
+	FROM pet_battles
+	WHERE user_id = $1
+	ORDER BY pet_id
+`
+
+func (r *PetRepository) Battles(ctx context.Context, userID uuid.UUID) ([]*user.PetBattle, error) {
+	rows, err := r.conn(ctx).Query(ctx, listPetBattlesQuery, userID)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	battles, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*user.PetBattle, error) {
+		return scanBattle(row)
+	})
+
+	return battles, errs.Wrap("pgx.CollectRows", err)
+}
+
+const lockPetBattleQuery = `
+	SELECT state
+	FROM pet_battles
+	WHERE pet_id = $2
+		AND user_id = $1
+	FOR UPDATE
+`
+
+func (r *PetRepository) LockBattle(ctx context.Context, userID, petID uuid.UUID) (*user.PetBattle, error) {
+	b, err := scanBattle(r.conn(ctx).QueryRow(ctx, lockPetBattleQuery, userID, petID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, user.ErrNoPetBattle
+	}
+
+	return b, errs.Wrap("scanBattle", err)
+}
+
+func scanBattle(row pgx.Row) (*user.PetBattle, error) {
+	var data []byte
+	if err := row.Scan(&data); err != nil {
+		return nil, err
+	}
+
+	var s user.PetBattleState
+	if err := json.Unmarshal(data, &s); err != nil {
+		return nil, errs.Wrap("json.Unmarshal", err)
+	}
+	s.StartedAt = s.StartedAt.UTC()
+
+	return user.RestorePetBattle(s), nil
+}
+
+const upsertPetBattleQuery = `
+	INSERT INTO pet_battles (
+		pet_id,
+		user_id,
+		state,
+		started_at
+	)
+	VALUES ($1, $2, $3, $4)
+	ON CONFLICT (pet_id) DO UPDATE
+	SET state = EXCLUDED.state
+`
+
+func (r *PetRepository) SaveBattle(ctx context.Context, userID uuid.UUID, b *user.PetBattle) error {
+	data, err := json.Marshal(b.State())
+	if err != nil {
+		return errs.Wrap("json.Marshal", err)
+	}
+
+	_, err = r.conn(ctx).Exec(ctx, upsertPetBattleQuery, b.PetID(), userID, data, b.StartedAt())
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode {
+		return user.ErrPetNotFound
+	}
+
+	return errs.Wrap("r.conn.Exec", err)
+}
+
+const deletePetBattleQuery = `
+	DELETE FROM pet_battles
+	WHERE pet_id = $2
+		AND user_id = $1
+`
+
+func (r *PetRepository) DeleteBattle(ctx context.Context, userID, petID uuid.UUID) error {
+	_, err := r.conn(ctx).Exec(ctx, deletePetBattleQuery, userID, petID)
+
+	return errs.Wrap("r.conn.Exec", err)
 }

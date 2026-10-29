@@ -185,6 +185,11 @@ const (
 	UserService_FightPet_FullMethodName           = "/user.v1.UserService/FightPet"
 	UserService_ListPetFights_FullMethodName      = "/user.v1.UserService/ListPetFights"
 	UserService_OpenPetCase_FullMethodName        = "/user.v1.UserService/OpenPetCase"
+	UserService_TakePetDrop_FullMethodName        = "/user.v1.UserService/TakePetDrop"
+	UserService_LeavePetDrop_FullMethodName       = "/user.v1.UserService/LeavePetDrop"
+	UserService_SetPetStance_FullMethodName       = "/user.v1.UserService/SetPetStance"
+	UserService_StartPetBattle_FullMethodName     = "/user.v1.UserService/StartPetBattle"
+	UserService_MovePetBattle_FullMethodName      = "/user.v1.UserService/MovePetBattle"
 	UserService_BuyPetItem_FullMethodName         = "/user.v1.UserService/BuyPetItem"
 	UserService_DressPet_FullMethodName           = "/user.v1.UserService/DressPet"
 	UserService_GetPetSettings_FullMethodName     = "/user.v1.UserService/GetPetSettings"
@@ -654,7 +659,21 @@ type UserServiceClient interface {
 	// "the pet has these clothes already"); DressPet puts on or takes off
 	// clothes of its wardrobe ("the pet has no such clothes"). An unknown
 	// thing — InvalidArgument "unknown pet clothes".
-	OpenPetCase(ctx context.Context, in *OpenPetCaseRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
+	OpenPetCase(ctx context.Context, in *OpenPetCaseRequest, opts ...grpc.CallOption) (*OpenPetCaseResponse, error)
+	// TakePetDrop takes the pet a case gave, called name (FailedPrecondition
+	// "there is no pet from a case", "you have too many pets");
+	// LeavePetDrop leaves it for its shards.
+	TakePetDrop(ctx context.Context, in *TakePetDropRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
+	LeavePetDrop(ctx context.Context, in *LeavePetDropRequest, opts ...grpc.CallOption) (*PetKeeperResponse, error)
+	// SetPetStance sets the stance a pet defends in.
+	SetPetStance(ctx context.Context, in *SetPetStanceRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
+	// StartPetBattle starts a fight the caller leads a round after another
+	// (FailedPrecondition "the pet is in a fight"); it counts as lost until
+	// it is won. MovePetBattle makes a move in it ("strike", "guard",
+	// "power" or "auto" for the rest); FailedPrecondition "the pet is not in
+	// a fight".
+	StartPetBattle(ctx context.Context, in *StartPetBattleRequest, opts ...grpc.CallOption) (*PetBattleResponse, error)
+	MovePetBattle(ctx context.Context, in *MovePetBattleRequest, opts ...grpc.CallOption) (*PetBattleResponse, error)
 	BuyPetItem(ctx context.Context, in *BuyPetItemRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
 	DressPet(ctx context.Context, in *DressPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
 	// For the administrators (PermissionDenied for others): the shop of
@@ -2321,10 +2340,60 @@ func (c *userServiceClient) ListPetFights(ctx context.Context, in *ListPetFights
 	return out, nil
 }
 
-func (c *userServiceClient) OpenPetCase(ctx context.Context, in *OpenPetCaseRequest, opts ...grpc.CallOption) (*PetCareResponse, error) {
+func (c *userServiceClient) OpenPetCase(ctx context.Context, in *OpenPetCaseRequest, opts ...grpc.CallOption) (*OpenPetCaseResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(OpenPetCaseResponse)
+	err := c.cc.Invoke(ctx, UserService_OpenPetCase_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) TakePetDrop(ctx context.Context, in *TakePetDropRequest, opts ...grpc.CallOption) (*PetCareResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PetCareResponse)
-	err := c.cc.Invoke(ctx, UserService_OpenPetCase_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, UserService_TakePetDrop_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) LeavePetDrop(ctx context.Context, in *LeavePetDropRequest, opts ...grpc.CallOption) (*PetKeeperResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PetKeeperResponse)
+	err := c.cc.Invoke(ctx, UserService_LeavePetDrop_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SetPetStance(ctx context.Context, in *SetPetStanceRequest, opts ...grpc.CallOption) (*PetCareResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PetCareResponse)
+	err := c.cc.Invoke(ctx, UserService_SetPetStance_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) StartPetBattle(ctx context.Context, in *StartPetBattleRequest, opts ...grpc.CallOption) (*PetBattleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PetBattleResponse)
+	err := c.cc.Invoke(ctx, UserService_StartPetBattle_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) MovePetBattle(ctx context.Context, in *MovePetBattleRequest, opts ...grpc.CallOption) (*PetBattleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PetBattleResponse)
+	err := c.cc.Invoke(ctx, UserService_MovePetBattle_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2861,7 +2930,21 @@ type UserServiceServer interface {
 	// "the pet has these clothes already"); DressPet puts on or takes off
 	// clothes of its wardrobe ("the pet has no such clothes"). An unknown
 	// thing — InvalidArgument "unknown pet clothes".
-	OpenPetCase(context.Context, *OpenPetCaseRequest) (*PetCareResponse, error)
+	OpenPetCase(context.Context, *OpenPetCaseRequest) (*OpenPetCaseResponse, error)
+	// TakePetDrop takes the pet a case gave, called name (FailedPrecondition
+	// "there is no pet from a case", "you have too many pets");
+	// LeavePetDrop leaves it for its shards.
+	TakePetDrop(context.Context, *TakePetDropRequest) (*PetCareResponse, error)
+	LeavePetDrop(context.Context, *LeavePetDropRequest) (*PetKeeperResponse, error)
+	// SetPetStance sets the stance a pet defends in.
+	SetPetStance(context.Context, *SetPetStanceRequest) (*PetCareResponse, error)
+	// StartPetBattle starts a fight the caller leads a round after another
+	// (FailedPrecondition "the pet is in a fight"); it counts as lost until
+	// it is won. MovePetBattle makes a move in it ("strike", "guard",
+	// "power" or "auto" for the rest); FailedPrecondition "the pet is not in
+	// a fight".
+	StartPetBattle(context.Context, *StartPetBattleRequest) (*PetBattleResponse, error)
+	MovePetBattle(context.Context, *MovePetBattleRequest) (*PetBattleResponse, error)
 	BuyPetItem(context.Context, *BuyPetItemRequest) (*PetCareResponse, error)
 	DressPet(context.Context, *DressPetRequest) (*PetCareResponse, error)
 	// For the administrators (PermissionDenied for others): the shop of
@@ -3380,8 +3463,23 @@ func (UnimplementedUserServiceServer) FightPet(context.Context, *FightPetRequest
 func (UnimplementedUserServiceServer) ListPetFights(context.Context, *ListPetFightsRequest) (*ListPetFightsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPetFights not implemented")
 }
-func (UnimplementedUserServiceServer) OpenPetCase(context.Context, *OpenPetCaseRequest) (*PetCareResponse, error) {
+func (UnimplementedUserServiceServer) OpenPetCase(context.Context, *OpenPetCaseRequest) (*OpenPetCaseResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method OpenPetCase not implemented")
+}
+func (UnimplementedUserServiceServer) TakePetDrop(context.Context, *TakePetDropRequest) (*PetCareResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method TakePetDrop not implemented")
+}
+func (UnimplementedUserServiceServer) LeavePetDrop(context.Context, *LeavePetDropRequest) (*PetKeeperResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LeavePetDrop not implemented")
+}
+func (UnimplementedUserServiceServer) SetPetStance(context.Context, *SetPetStanceRequest) (*PetCareResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetPetStance not implemented")
+}
+func (UnimplementedUserServiceServer) StartPetBattle(context.Context, *StartPetBattleRequest) (*PetBattleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method StartPetBattle not implemented")
+}
+func (UnimplementedUserServiceServer) MovePetBattle(context.Context, *MovePetBattleRequest) (*PetBattleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method MovePetBattle not implemented")
 }
 func (UnimplementedUserServiceServer) BuyPetItem(context.Context, *BuyPetItemRequest) (*PetCareResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BuyPetItem not implemented")
@@ -6395,6 +6493,96 @@ func _UserService_OpenPetCase_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_TakePetDrop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TakePetDropRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).TakePetDrop(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_TakePetDrop_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).TakePetDrop(ctx, req.(*TakePetDropRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_LeavePetDrop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LeavePetDropRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).LeavePetDrop(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_LeavePetDrop_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).LeavePetDrop(ctx, req.(*LeavePetDropRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SetPetStance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetPetStanceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetPetStance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetPetStance_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetPetStance(ctx, req.(*SetPetStanceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_StartPetBattle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartPetBattleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).StartPetBattle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_StartPetBattle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).StartPetBattle(ctx, req.(*StartPetBattleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_MovePetBattle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MovePetBattleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).MovePetBattle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_MovePetBattle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).MovePetBattle(ctx, req.(*MovePetBattleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_BuyPetItem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BuyPetItemRequest)
 	if err := dec(in); err != nil {
@@ -7187,6 +7375,26 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "OpenPetCase",
 			Handler:    _UserService_OpenPetCase_Handler,
+		},
+		{
+			MethodName: "TakePetDrop",
+			Handler:    _UserService_TakePetDrop_Handler,
+		},
+		{
+			MethodName: "LeavePetDrop",
+			Handler:    _UserService_LeavePetDrop_Handler,
+		},
+		{
+			MethodName: "SetPetStance",
+			Handler:    _UserService_SetPetStance_Handler,
+		},
+		{
+			MethodName: "StartPetBattle",
+			Handler:    _UserService_StartPetBattle_Handler,
+		},
+		{
+			MethodName: "MovePetBattle",
+			Handler:    _UserService_MovePetBattle_Handler,
 		},
 		{
 			MethodName: "BuyPetItem",

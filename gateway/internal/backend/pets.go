@@ -66,6 +66,7 @@ func (p *Pets) Get(ctx context.Context, accessToken string) (model.PetState, err
 	for _, k := range resp.GetKinds() {
 		state.Kinds = append(state.Kinds, model.PetKind{
 			Kind: k.GetKind(), Rarity: k.GetRarity(), InShop: k.GetInShop(), Stats: fromProtoPetPower(k.GetStats()), Crit: int(k.GetCrit()),
+			Element: k.GetElement(), Special: k.GetSpecial(), Shards: int(k.GetShards()),
 		})
 	}
 	for _, c := range resp.GetCases() {
@@ -73,10 +74,14 @@ func (p *Pets) Get(ctx context.Context, accessToken string) (model.PetState, err
 		for i, o := range c.GetOdds() {
 			odds[i] = int(o)
 		}
-		state.Cases = append(state.Cases, model.PetCase{ID: c.GetId(), Odds: odds})
+		state.Cases = append(state.Cases, model.PetCase{ID: c.GetId(), Odds: odds, Shards: int(c.GetShards())})
 	}
 	for _, item := range resp.GetItems() {
 		state.Items = append(state.Items, model.PetItem{ID: item.GetId(), Slot: item.GetSlot(), Price: item.GetPrice(), Bonus: fromProtoPetPower(item.GetBonus())})
+	}
+	state.Keeper = fromProtoPetKeeper(resp.GetKeeper())
+	for _, b := range resp.GetBattles() {
+		state.Battles = append(state.Battles, fromProtoPetBattle(b))
 	}
 
 	return state, nil
@@ -128,14 +133,67 @@ func (p *Pets) Rename(ctx context.Context, accessToken, petID, name string) (mod
 	return fromProtoPetCare(resp), nil
 }
 
-// OpenCase opens the case caseID: a pet called name joins the pets.
-func (p *Pets) OpenCase(ctx context.Context, accessToken, caseID, name string) (model.PetCare, error) {
-	resp, err := p.api.OpenPetCase(withToken(ctx, accessToken), &userv1.OpenPetCaseRequest{CaseId: caseID, Name: name})
+// OpenCase opens the case caseID, for shards with withShards: its pet
+// waits to be taken or left.
+func (p *Pets) OpenCase(ctx context.Context, accessToken, caseID string, withShards bool) (model.PetDrop, error) {
+	resp, err := p.api.OpenPetCase(withToken(ctx, accessToken), &userv1.OpenPetCaseRequest{CaseId: caseID, Shards: withShards})
 	if err != nil {
-		return model.PetCare{}, errs.Wrap("p.api.OpenPetCase", fromStatus(err))
+		return model.PetDrop{}, errs.Wrap("p.api.OpenPetCase", fromStatus(err))
+	}
+
+	return model.PetDrop{Keeper: fromProtoPetKeeper(resp.GetKeeper()), Balance: resp.GetBalance()}, nil
+}
+
+// TakeDrop takes the pet of the case, called name.
+func (p *Pets) TakeDrop(ctx context.Context, accessToken, name string) (model.PetCare, error) {
+	resp, err := p.api.TakePetDrop(withToken(ctx, accessToken), &userv1.TakePetDropRequest{Name: name})
+	if err != nil {
+		return model.PetCare{}, errs.Wrap("p.api.TakePetDrop", fromStatus(err))
 	}
 
 	return fromProtoPetCare(resp), nil
+}
+
+// LeaveDrop leaves the pet of the case for its shards.
+func (p *Pets) LeaveDrop(ctx context.Context, accessToken string) (model.PetKeeper, error) {
+	resp, err := p.api.LeavePetDrop(withToken(ctx, accessToken), &userv1.LeavePetDropRequest{})
+	if err != nil {
+		return model.PetKeeper{}, errs.Wrap("p.api.LeavePetDrop", fromStatus(err))
+	}
+
+	return fromProtoPetKeeper(resp.GetKeeper()), nil
+}
+
+// SetStance sets the stance the pet defends in.
+func (p *Pets) SetStance(ctx context.Context, accessToken, petID, stance string) (model.PetCare, error) {
+	resp, err := p.api.SetPetStance(withToken(ctx, accessToken), &userv1.SetPetStanceRequest{PetId: petID, Stance: stance})
+	if err != nil {
+		return model.PetCare{}, errs.Wrap("p.api.SetPetStance", fromStatus(err))
+	}
+
+	return fromProtoPetCare(resp), nil
+}
+
+// StartBattle starts a fight of the pet in stance the caller leads a round
+// after another, against the best pet of nickname, "" for one near in
+// power.
+func (p *Pets) StartBattle(ctx context.Context, accessToken, petID, nickname, stance string) (model.PetBattleTurn, error) {
+	resp, err := p.api.StartPetBattle(withToken(ctx, accessToken), &userv1.StartPetBattleRequest{PetId: petID, Nickname: nickname, Stance: stance})
+	if err != nil {
+		return model.PetBattleTurn{}, errs.Wrap("p.api.StartPetBattle", fromStatus(err))
+	}
+
+	return fromProtoPetBattleTurn(resp), nil
+}
+
+// MoveBattle makes move in the fight of the pet.
+func (p *Pets) MoveBattle(ctx context.Context, accessToken, petID, move string) (model.PetBattleTurn, error) {
+	resp, err := p.api.MovePetBattle(withToken(ctx, accessToken), &userv1.MovePetBattleRequest{PetId: petID, Move: move})
+	if err != nil {
+		return model.PetBattleTurn{}, errs.Wrap("p.api.MovePetBattle", fromStatus(err))
+	}
+
+	return fromProtoPetBattleTurn(resp), nil
 }
 
 func (p *Pets) BuyItem(ctx context.Context, accessToken, petID, item string) (model.PetCare, error) {
@@ -165,10 +223,10 @@ func (p *Pets) Release(ctx context.Context, accessToken, petID string) error {
 	return nil
 }
 
-// Fight sets the caller's pet petID on the best pet of nickname, "" for
-// one of a near rating.
-func (p *Pets) Fight(ctx context.Context, accessToken, petID, nickname string) (model.PetFought, error) {
-	resp, err := p.api.FightPet(withToken(ctx, accessToken), &userv1.FightPetRequest{PetId: petID, Nickname: nickname})
+// Fight sets the caller's pet petID in stance on the best pet of
+// nickname, "" for one near in power.
+func (p *Pets) Fight(ctx context.Context, accessToken, petID, nickname, stance string) (model.PetFought, error) {
+	resp, err := p.api.FightPet(withToken(ctx, accessToken), &userv1.FightPetRequest{PetId: petID, Nickname: nickname, Stance: stance})
 	if err != nil {
 		return model.PetFought{}, errs.Wrap("p.api.FightPet", fromStatus(err))
 	}
@@ -259,6 +317,9 @@ func fromProtoPet(p *userv1.Pet) model.Pet {
 		Outfit:              p.GetOutfit(),
 		Breed:               fromProtoPetPower(p.GetBreed()),
 		Clothes:             fromProtoPetPower(p.GetClothes()),
+		Stance:              p.GetStance(),
+		Power:               int(p.GetPower()),
+		Fatigue:             int(p.GetFatigue()),
 	}
 }
 
@@ -267,27 +328,71 @@ func fromProtoPetCare(resp *userv1.PetCareResponse) model.PetCare {
 }
 
 func fromProtoPetFighter(f *userv1.PetFighter) model.PetFighter {
-	return model.PetFighter{Kind: f.GetKind(), Name: f.GetName(), Level: int(f.GetLevel()), Health: int(f.GetHealth()), Outfit: f.GetOutfit()}
+	return model.PetFighter{
+		Kind: f.GetKind(), Name: f.GetName(), Level: int(f.GetLevel()), Health: int(f.GetHealth()), Outfit: f.GetOutfit(),
+		Stance: f.GetStance(), Power: int(f.GetPower()), Fatigue: int(f.GetFatigue()),
+	}
+}
+
+func fromProtoPetHits(hits []*userv1.PetHit) []model.PetHit {
+	out := make([]model.PetHit, 0, len(hits))
+	for _, h := range hits {
+		out = append(out, model.PetHit{
+			ByAttacker: h.GetByAttacker(), Move: h.GetMove(), Dodged: h.GetDodged(), Crit: h.GetCrit(), Damage: int(h.GetDamage()),
+			Heal: int(h.GetHeal()), Special: h.GetSpecial(), Answer: h.GetAnswer(),
+			AttackerHealth: int(h.GetAttackerHealth()), DefenderHealth: int(h.GetDefenderHealth()),
+		})
+	}
+
+	return out
 }
 
 func fromProtoPetFight(f *userv1.PetFight) model.PetFight {
-	fight := model.PetFight{
+	return model.PetFight{
 		ID:         f.GetId(),
 		AttackerID: f.GetAttackerId(),
 		DefenderID: f.GetDefenderId(),
 		FoughtAt:   fromTimestamp(f.GetFoughtAt()),
 		Attacker:   fromProtoPetFighter(f.GetAttacker()),
 		Defender:   fromProtoPetFighter(f.GetDefender()),
-		Hits:       make([]model.PetHit, 0, len(f.GetHits())),
+		Hits:       fromProtoPetHits(f.GetHits()),
 		Won:        f.GetWon(),
 		Rating:     int(f.GetRating()),
+		Ratio:      int(f.GetRatio()),
+		Reward:     f.GetReward(),
 	}
-	for _, h := range f.GetHits() {
-		fight.Hits = append(fight.Hits, model.PetHit{
-			ByAttacker: h.GetByAttacker(), Dodged: h.GetDodged(), Crit: h.GetCrit(), Damage: int(h.GetDamage()),
-			AttackerHealth: int(h.GetAttackerHealth()), DefenderHealth: int(h.GetDefenderHealth()),
-		})
+}
+
+func fromProtoPetKeeper(k *userv1.PetKeeper) model.PetKeeper {
+	return model.PetKeeper{
+		Shards: int(k.GetShards()), Pity: int(k.GetPity()), PityLimit: int(k.GetPityLimit()),
+		Cases: int(k.GetCases()), CasesLimit: int(k.GetCasesLimit()), DropKind: k.GetDropKind(), DropCase: k.GetDropCase(),
+	}
+}
+
+func fromProtoPetBattle(b *userv1.PetBattle) model.PetBattle {
+	return model.PetBattle{
+		PetID:          b.GetPetId(),
+		DefenderID:     b.GetDefenderId(),
+		Attacker:       fromProtoPetFighter(b.GetAttacker()),
+		Defender:       fromProtoPetFighter(b.GetDefender()),
+		Hits:           fromProtoPetHits(b.GetHits()),
+		Round:          int(b.GetRound()),
+		Rounds:         int(b.GetRounds()),
+		AttackerHealth: int(b.GetAttackerHealth()),
+		DefenderHealth: int(b.GetDefenderHealth()),
+		Ratio:          int(b.GetRatio()),
+		Win:            int(b.GetWin()),
+		Loss:           int(b.GetLoss()),
+	}
+}
+
+func fromProtoPetBattleTurn(resp *userv1.PetBattleResponse) model.PetBattleTurn {
+	turn := model.PetBattleTurn{Battle: fromProtoPetBattle(resp.GetBattle()), Pet: fromProtoPet(resp.GetPet()), Balance: resp.GetBalance()}
+	if resp.GetFight() != nil {
+		fight := fromProtoPetFight(resp.GetFight())
+		turn.Fight = &fight
 	}
 
-	return fight
+	return turn
 }

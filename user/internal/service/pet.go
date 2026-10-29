@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,10 +27,9 @@ type PetRepository interface {
 	AddPet(ctx context.Context, userID uuid.UUID, p *user.Pet) error
 	SavePet(ctx context.Context, p *user.Pet) error
 	DeletePet(ctx context.Context, userID, petID uuid.UUID) error
-	// Opponent is a pet near rating and its owner, one of the nearest at
-	// random, of someone not userID and neither deleted nor banned at
-	// now; user.ErrNoPetOpponent.
-	Opponent(ctx context.Context, userID uuid.UUID, rating int, now time.Time) (owner, pet uuid.UUID, err error)
+	// Contenders are the pets nearest to rating, up to limit, of people
+	// not userID and neither deleted nor banned at now.
+	Contenders(ctx context.Context, userID uuid.UUID, rating int, now time.Time, limit int) ([]user.PetContender, error)
 	AddFight(ctx context.Context, f user.PetFight) error
 	// Fights are those userID fought on either side, newest first.
 	Fights(ctx context.Context, userID uuid.UUID, limit int) ([]user.PetFight, error)
@@ -37,6 +37,30 @@ type PetRepository interface {
 	Count(ctx context.Context, spent, won int64) error
 	Stats(ctx context.Context) (user.PetShopStats, error)
 }
+
+// PetKeeperRepository keeps what people keep of the cases.
+type PetKeeperRepository interface {
+	// Keeper is user.NewPetKeeper for one who never opened a case.
+	Keeper(ctx context.Context, userID uuid.UUID) (*user.PetKeeper, error)
+	// LockKeeper is Keeper kept so until the end of the transaction.
+	LockKeeper(ctx context.Context, userID uuid.UUID) (*user.PetKeeper, error)
+	SaveKeeper(ctx context.Context, userID uuid.UUID, k *user.PetKeeper) error
+}
+
+// PetBattleRepository keeps the fights led a round after another, one a
+// pet; a pet let go takes its fight.
+type PetBattleRepository interface {
+	// Battles are those of the pets of userID.
+	Battles(ctx context.Context, userID uuid.UUID) ([]*user.PetBattle, error)
+	// LockBattle is the fight of the pet petID of userID kept so until the
+	// end of the transaction; user.ErrNoPetBattle.
+	LockBattle(ctx context.Context, userID, petID uuid.UUID) (*user.PetBattle, error)
+	SaveBattle(ctx context.Context, userID uuid.UUID, b *user.PetBattle) error
+	DeleteBattle(ctx context.Context, userID, petID uuid.UUID) error
+}
+
+// petContenders are the contenders an opponent is picked of.
+const petContenders = 200
 
 // PetCare is the pet after something was done to it and the votes of its
 // owner after, 0 when nothing was paid.
@@ -53,6 +77,21 @@ type PetFought struct {
 	Balance int64
 }
 
+// PetDrop is the keeper after a case and the votes after it, 0 when
+// nothing was paid.
+type PetDrop struct {
+	Keeper  *user.PetKeeper
+	Balance int64
+}
+
+// PetBattleTurn is a fight after a move and the pet that leads it; Fought
+// when it is over.
+type PetBattleTurn struct {
+	Battle *user.PetBattle
+	Pet    *user.Pet
+	Fought *PetFought
+}
+
 // PetSettings are the shop and how the pets do: for the administrators.
 type PetSettings struct {
 	Shop  user.PetShop
@@ -64,6 +103,8 @@ type PetSettings struct {
 type PetService struct {
 	userRepo UserRepository
 	pets     PetRepository
+	keepers  PetKeeperRepository
+	battles  PetBattleRepository
 	wallets  WalletRepository
 	tx       TxManager
 	admins   user.Admins
@@ -71,8 +112,18 @@ type PetService struct {
 	roll func(n int64) (int64, error)
 }
 
-func NewPetService(users UserRepository, pets PetRepository, wallets WalletRepository, tx TxManager, admins user.Admins) *PetService {
-	return &PetService{userRepo: users, pets: pets, wallets: wallets, tx: tx, admins: admins, roll: cryptoRoll}
+// PetStores are where the pets are kept.
+type PetStores struct {
+	Pets    PetRepository
+	Keepers PetKeeperRepository
+	Battles PetBattleRepository
+}
+
+func NewPetService(users UserRepository, stores PetStores, wallets WalletRepository, tx TxManager, admins user.Admins) *PetService {
+	return &PetService{
+		userRepo: users, pets: stores.Pets, keepers: stores.Keepers, battles: stores.Battles,
+		wallets: wallets, tx: tx, admins: admins, roll: cryptoRoll,
+	}
 }
 
 // WithRoll makes the fights roll with roll: for tests.
@@ -182,21 +233,28 @@ func (s *PetService) Adopt(ctx context.Context, userID uuid.UUID, kind user.PetK
 	return care, nil
 }
 
-// OpenCase opens the case c for userID at now for its price: a pet of the
-// kind it draws, called name, joins the pets; user.ErrTooManyPets,
-// user.ErrNotEnoughVotes.
-func (s *PetService) OpenCase(ctx context.Context, userID uuid.UUID, c user.PetCase, name user.PetName, now time.Time) (PetCare, error) {
+// Keeper is what userID keeps of the cases.
+func (s *PetService) Keeper(ctx context.Context, userID uuid.UUID) (*user.PetKeeper, error) {
+	k, err := s.keepers.Keeper(ctx, userID)
+
+	return k, errs.Wrap("s.keepers.Keeper", err)
+}
+
+// OpenCase opens the case c for userID at now, for its price or for
+// shards with withShards: the pet it gives waits to be taken or left.
+// What user.PetKeeper.Opened refuses, user.ErrNotEnoughVotes.
+func (s *PetService) OpenCase(ctx context.Context, userID uuid.UUID, c user.PetCase, withShards bool, now time.Time) (PetDrop, error) {
 	rarity, err := s.roll(user.PetCaseOdds)
 	if err != nil {
-		return PetCare{}, errs.Wrap("s.roll", err)
+		return PetDrop{}, errs.Wrap("s.roll", err)
 	}
 
 	kind, err := s.roll(user.PetDiceRange)
 	if err != nil {
-		return PetCare{}, errs.Wrap("s.roll", err)
+		return PetDrop{}, errs.Wrap("s.roll", err)
 	}
 
-	var care PetCare
+	var drop PetDrop
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		shop, err := s.pets.Shop(ctx)
@@ -204,7 +262,47 @@ func (s *PetService) OpenCase(ctx context.Context, userID uuid.UUID, c user.PetC
 			return errs.Wrap("s.pets.Shop", err)
 		}
 
-		// As in Adopt: the pets are counted before the votes are taken.
+		k, err := s.keepers.LockKeeper(ctx, userID)
+		if err != nil {
+			return errs.Wrap("s.keepers.LockKeeper", err)
+		}
+
+		if drop.Keeper, err = k.Opened(c, withShards, rarity, kind, now); err != nil {
+			return errs.Wrap("k.Opened", err)
+		}
+
+		if !withShards {
+			if drop.Balance, err = s.spend(ctx, userID, shop.CasePrice(c), "case"); err != nil {
+				return errs.Wrap("s.spend", err)
+			}
+		}
+
+		return errs.Wrap("s.keepers.SaveKeeper", s.keepers.SaveKeeper(ctx, userID, drop.Keeper))
+	})
+	if err != nil {
+		return PetDrop{}, errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return drop, nil
+}
+
+// TakeDrop takes the pet of the case of userID at now, called name;
+// user.ErrNoPetDrop, user.ErrTooManyPets.
+func (s *PetService) TakeDrop(ctx context.Context, userID uuid.UUID, name user.PetName, now time.Time) (*user.Pet, error) {
+	var pet *user.Pet
+
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		k, err := s.keepers.LockKeeper(ctx, userID)
+		if err != nil {
+			return errs.Wrap("s.keepers.LockKeeper", err)
+		}
+
+		taken, kind, err := k.Took()
+		if err != nil {
+			return errs.Wrap("k.Took", err)
+		}
+
+		// As in Adopt: the pets are counted before anything is saved.
 		pets, err := s.pets.Pets(ctx, userID)
 		if err != nil {
 			return errs.Wrap("s.pets.Pets", err)
@@ -213,19 +311,42 @@ func (s *PetService) OpenCase(ctx context.Context, userID uuid.UUID, c user.PetC
 			return user.ErrTooManyPets
 		}
 
-		if care.Balance, err = s.spend(ctx, userID, shop.CasePrice(c), "case"); err != nil {
-			return errs.Wrap("s.spend", err)
+		pet = user.NewPet(kind, name, now.Truncate(time.Microsecond))
+		if err = s.pets.AddPet(ctx, userID, pet); err != nil {
+			return errs.Wrap("s.pets.AddPet", err)
 		}
 
-		care.Pet = user.NewPet(c.Draw(rarity, kind), name, now.Truncate(time.Microsecond))
-
-		return errs.Wrap("s.pets.AddPet", s.pets.AddPet(ctx, userID, care.Pet))
+		return errs.Wrap("s.keepers.SaveKeeper", s.keepers.SaveKeeper(ctx, userID, taken))
 	})
 	if err != nil {
-		return PetCare{}, errs.Wrap("s.tx.WithinTx", err)
+		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
-	return care, nil
+	return pet, nil
+}
+
+// LeaveDrop leaves the pet of the case of userID for its shards;
+// user.ErrNoPetDrop.
+func (s *PetService) LeaveDrop(ctx context.Context, userID uuid.UUID) (*user.PetKeeper, error) {
+	var left *user.PetKeeper
+
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		k, err := s.keepers.LockKeeper(ctx, userID)
+		if err != nil {
+			return errs.Wrap("s.keepers.LockKeeper", err)
+		}
+
+		if left, err = k.Left(); err != nil {
+			return errs.Wrap("k.Left", err)
+		}
+
+		return errs.Wrap("s.keepers.SaveKeeper", s.keepers.SaveKeeper(ctx, userID, left))
+	})
+	if err != nil {
+		return nil, errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return left, nil
 }
 
 // BuyItem buys item for the pet petID of userID and puts it on, for its
@@ -323,9 +444,43 @@ func (s *PetService) Rename(ctx context.Context, userID, petID uuid.UUID, name u
 	return care.Pet, errs.Wrap("s.change", err)
 }
 
-// Release lets the pet petID of userID go; its fights stay in the lists.
-func (s *PetService) Release(ctx context.Context, userID, petID uuid.UUID) error {
-	return errs.Wrap("s.pets.DeletePet", s.pets.DeletePet(ctx, userID, petID))
+// Release lets the pet petID of userID go for its shards; its fights stay
+// in the lists, the fight it leads is lost.
+func (s *PetService) Release(ctx context.Context, userID, petID uuid.UUID) (*user.PetKeeper, error) {
+	var keeper *user.PetKeeper
+
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		p, err := s.pets.LockPet(ctx, userID, petID)
+		if err != nil {
+			return errs.Wrap("s.pets.LockPet", err)
+		}
+
+		if err = s.pets.DeletePet(ctx, userID, petID); err != nil {
+			return errs.Wrap("s.pets.DeletePet", err)
+		}
+
+		k, err := s.keepers.LockKeeper(ctx, userID)
+		if err != nil {
+			return errs.Wrap("s.keepers.LockKeeper", err)
+		}
+		keeper = k.Released(p.Kind())
+
+		return errs.Wrap("s.keepers.SaveKeeper", s.keepers.SaveKeeper(ctx, userID, keeper))
+	})
+	if err != nil {
+		return nil, errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return keeper, nil
+}
+
+// SetStance makes the pet petID of userID defend in stance.
+func (s *PetService) SetStance(ctx context.Context, userID, petID uuid.UUID, stance user.PetStance) (*user.Pet, error) {
+	care, err := s.change(ctx, userID, petID, func(_ context.Context, p *user.Pet, _ user.PetShop) (PetCare, error) {
+		return PetCare{Pet: p.Stood(stance)}, nil
+	})
+
+	return care.Pet, errs.Wrap("s.change", err)
 }
 
 // defender is the owner and the pet the pet petID of userID fights: the
@@ -337,9 +492,19 @@ func (s *PetService) defender(ctx context.Context, userID, petID uuid.UUID, nick
 			return uuid.Nil, uuid.Nil, errs.Wrap("s.pets.Pet", err)
 		}
 
-		owner, pet, err = s.pets.Opponent(ctx, userID, own.Rating(), now)
+		contenders, err := s.pets.Contenders(ctx, userID, own.Rating(), now, petContenders)
+		if err != nil {
+			return uuid.Nil, uuid.Nil, errs.Wrap("s.pets.Contenders", err)
+		}
 
-		return owner, pet, errs.Wrap("s.pets.Opponent", err)
+		pick, err := s.roll(user.PetDiceRange)
+		if err != nil {
+			return uuid.Nil, uuid.Nil, errs.Wrap("s.roll", err)
+		}
+
+		c, err := user.PickPetOpponent(own, contenders, pick)
+
+		return c.Owner, c.Pet.ID(), errs.Wrap("user.PickPetOpponent", err)
 	}
 
 	u, err := s.shownOwner(ctx, nickname, now)
@@ -388,21 +553,31 @@ type petRef struct {
 }
 
 // lockPair locks the pets a and b in the order of their IDs, so that two
-// fights of the same pets never wait for each other in a circle.
+// fights of the same pets never wait for each other in a circle; b is nil
+// when it is gone.
 func (s *PetService) lockPair(ctx context.Context, a, b petRef) (*user.Pet, *user.Pet, error) {
+	lock := func(r petRef) (*user.Pet, error) {
+		p, err := s.pets.LockPet(ctx, r.owner, r.pet)
+		if r == b && errors.Is(err, user.ErrPetNotFound) {
+			return nil, nil
+		}
+
+		return p, errs.Wrap("s.pets.LockPet", err)
+	}
+
 	first, second := a, b
 	if second.pet.String() < first.pet.String() {
 		first, second = second, first
 	}
 
-	pf, err := s.pets.LockPet(ctx, first.owner, first.pet)
+	pf, err := lock(first)
 	if err != nil {
-		return nil, nil, errs.Wrap("s.pets.LockPet", err)
+		return nil, nil, err
 	}
 
-	ps, err := s.pets.LockPet(ctx, second.owner, second.pet)
+	ps, err := lock(second)
 	if err != nil {
-		return nil, nil, errs.Wrap("s.pets.LockPet", err)
+		return nil, nil, err
 	}
 
 	if first == a {
@@ -412,39 +587,162 @@ func (s *PetService) lockPair(ctx context.Context, a, b petRef) (*user.Pet, *use
 	return ps, pf, nil
 }
 
-// Fight sets the pet petID of userID on the best pet of nickname, or on
-// a pet near in rating with nickname empty, at now; a won fight brings
-// votes. user.ErrPetNotFound, user.ErrPetFightSelf, user.ErrNoPetOpponent
-// and what user.Pet.Fought refuses.
-func (s *PetService) Fight(ctx context.Context, userID, petID uuid.UUID, nickname user.Nickname, now time.Time) (PetFought, error) {
-	now = now.Truncate(time.Microsecond)
-
-	defenderID, defenderPet, err := s.defender(ctx, userID, petID, nickname, now)
+// fightOf is what a fight needs: the opponent of the pet petID of userID
+// and the dice.
+func (s *PetService) fightOf(ctx context.Context, userID, petID uuid.UUID, nickname user.Nickname, now time.Time) (petRef, user.PetDice, error) {
+	owner, pet, err := s.defender(ctx, userID, petID, nickname, now)
 	if err != nil {
-		return PetFought{}, errs.Wrap("s.defender", err)
+		return petRef{}, nil, errs.Wrap("s.defender", err)
 	}
 
 	dice, err := s.dice()
 	if err != nil {
-		return PetFought{}, errs.Wrap("s.dice", err)
+		return petRef{}, nil, errs.Wrap("s.dice", err)
+	}
+
+	return petRef{owner: owner, pet: pet}, dice, nil
+}
+
+// challenge locks the pet petID of userID and the defender, refuses a pet
+// in a fight and starts one in stance at now.
+func (s *PetService) challenge(ctx context.Context, userID, petID uuid.UUID, defender petRef, stance user.PetStance, now time.Time) (*user.Pet, *user.Pet, *user.PetBattle, user.PetShop, error) {
+	shop, err := s.pets.Shop(ctx)
+	if err != nil {
+		return nil, nil, nil, shop, errs.Wrap("s.pets.Shop", err)
+	}
+
+	attacker, d, err := s.lockPair(ctx, petRef{userID, petID}, defender)
+	if err != nil {
+		return nil, nil, nil, shop, errs.Wrap("s.lockPair", err)
+	}
+	if d == nil {
+		return nil, nil, nil, shop, user.ErrNoPetOpponent
+	}
+
+	if _, err = s.battles.LockBattle(ctx, userID, petID); !errors.Is(err, user.ErrNoPetBattle) {
+		if err == nil {
+			err = user.ErrPetInBattle
+		}
+
+		return nil, nil, nil, shop, errs.Wrap("s.battles.LockBattle", err)
+	}
+
+	a, d, battle, err := attacker.Challenged(d, stance, shop, now)
+	if err != nil {
+		return nil, nil, nil, shop, errs.Wrap("attacker.Challenged", err)
+	}
+
+	return a, d, battle.Against(defender.owner), shop, nil
+}
+
+// settle saves the pets after the battle of userID is over, keeps the
+// fight and pays a win.
+func (s *PetService) settle(ctx context.Context, userID uuid.UUID, battle *user.PetBattle, shop user.PetShop, now time.Time) (PetFought, error) {
+	attacker, defender, err := s.lockPair(ctx, petRef{userID, battle.PetID()}, petRef{battle.DefenderOwner(), battle.DefenderPet()})
+	if err != nil {
+		return PetFought{}, errs.Wrap("s.lockPair", err)
+	}
+
+	return s.saveFight(ctx, userID, battle, shop, attacker, defender, now)
+}
+
+// saveFight saves attacker and defender, as they were at the start of the
+// battle, after it.
+func (s *PetService) saveFight(ctx context.Context, userID uuid.UUID, battle *user.PetBattle, shop user.PetShop, attacker, defender *user.Pet, now time.Time) (PetFought, error) {
+	a, d, err := battle.Settled(attacker, defender)
+	if err != nil {
+		return PetFought{}, errs.Wrap("battle.Settled", err)
+	}
+
+	if err = s.pets.SavePet(ctx, a); err != nil {
+		return PetFought{}, errs.Wrap("s.pets.SavePet", err)
+	}
+	if d != nil {
+		if err = s.pets.SavePet(ctx, d); err != nil {
+			return PetFought{}, errs.Wrap("s.pets.SavePet", err)
+		}
+	}
+
+	bout := battle.Bout(shop.Win())
+	fought := PetFought{Pet: a, Fight: user.PetFight{ID: uuid.Must(uuid.NewV7()), AttackerID: userID, DefenderID: battle.DefenderOwner(), Bout: bout, At: now}}
+	// The owner of the defender may have gone during a long fight.
+	if err = s.pets.AddFight(ctx, fought.Fight); err != nil && !errors.Is(err, user.ErrNotFound) {
+		return PetFought{}, errs.Wrap("s.pets.AddFight", err)
+	}
+
+	if bout.Reward == 0 {
+		return fought, nil
+	}
+
+	wallet, err := s.wallets.Credit(ctx, userID, bout.Reward, 0, user.Entry(user.VotePet, battle.DefenderOwner(), "fight"))
+	if err != nil {
+		return PetFought{}, errs.Wrap("s.wallets.Credit", err)
+	}
+	fought.Balance = wallet.Votes
+
+	return fought, errs.Wrap("s.pets.Count", s.pets.Count(ctx, 0, bout.Reward))
+}
+
+// Fight sets the pet petID of userID in stance on the best pet of
+// nickname, or on a pet near in power with nickname empty, at now, and
+// fights it to the end; a won fight brings votes. user.ErrPetNotFound,
+// user.ErrPetFightSelf, user.ErrNoPetOpponent, user.ErrPetInBattle and
+// what user.Pet.Challenged refuses.
+func (s *PetService) Fight(ctx context.Context, userID, petID uuid.UUID, nickname user.Nickname, stance user.PetStance, now time.Time) (PetFought, error) {
+	now = now.Truncate(time.Microsecond)
+
+	defender, dice, err := s.fightOf(ctx, userID, petID, nickname, now)
+	if err != nil {
+		return PetFought{}, errs.Wrap("s.fightOf", err)
 	}
 
 	var fought PetFought
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		shop, err := s.pets.Shop(ctx)
+		a, d, battle, shop, err := s.challenge(ctx, userID, petID, defender, stance, now)
 		if err != nil {
-			return errs.Wrap("s.pets.Shop", err)
+			return errs.Wrap("s.challenge", err)
 		}
 
-		attacker, defender, err := s.lockPair(ctx, petRef{userID, petID}, petRef{defenderID, defenderPet})
-		if err != nil {
-			return errs.Wrap("s.lockPair", err)
+		if battle, err = battle.Moved(user.PetAuto, dice); err != nil {
+			return errs.Wrap("battle.Moved", err)
 		}
 
-		a, d, bout, err := attacker.Fought(defender, shop, now, dice)
+		fought, err = s.saveFight(ctx, userID, battle, shop, a, d, now)
+
+		return errs.Wrap("s.saveFight", err)
+	})
+	if err != nil {
+		return PetFought{}, errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return fought, nil
+}
+
+// Battles are the fights the pets of userID lead a round after another.
+func (s *PetService) Battles(ctx context.Context, userID uuid.UUID) ([]*user.PetBattle, error) {
+	battles, err := s.battles.Battles(ctx, userID)
+
+	return battles, errs.Wrap("s.battles.Battles", err)
+}
+
+// StartBattle sets the pet petID of userID in stance on an opponent as
+// Fight does, but the owner leads the fight a round after another; the
+// fight counts as lost until it is won. What Fight refuses.
+func (s *PetService) StartBattle(ctx context.Context, userID, petID uuid.UUID, nickname user.Nickname, stance user.PetStance, now time.Time) (PetBattleTurn, error) {
+	now = now.Truncate(time.Microsecond)
+
+	defender, _, err := s.fightOf(ctx, userID, petID, nickname, now)
+	if err != nil {
+		return PetBattleTurn{}, errs.Wrap("s.fightOf", err)
+	}
+
+	var turn PetBattleTurn
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		a, d, battle, _, err := s.challenge(ctx, userID, petID, defender, stance, now)
 		if err != nil {
-			return errs.Wrap("attacker.Fought", err)
+			return errs.Wrap("s.challenge", err)
 		}
 
 		if err = s.pets.SavePet(ctx, a); err != nil {
@@ -454,29 +752,65 @@ func (s *PetService) Fight(ctx context.Context, userID, petID uuid.UUID, nicknam
 			return errs.Wrap("s.pets.SavePet", err)
 		}
 
-		fought.Pet = a
-		fought.Fight = user.PetFight{ID: uuid.Must(uuid.NewV7()), AttackerID: userID, DefenderID: defenderID, Bout: bout, At: now}
-		if err = s.pets.AddFight(ctx, fought.Fight); err != nil {
-			return errs.Wrap("s.pets.AddFight", err)
-		}
+		turn = PetBattleTurn{Battle: battle, Pet: a}
 
-		if !bout.Won || shop.Win() == 0 {
-			return nil
-		}
-
-		wallet, err := s.wallets.Credit(ctx, userID, shop.Win(), 0, user.Entry(user.VotePet, defenderID, "fight"))
-		if err != nil {
-			return errs.Wrap("s.wallets.Credit", err)
-		}
-		fought.Balance = wallet.Votes
-
-		return errs.Wrap("s.pets.Count", s.pets.Count(ctx, 0, shop.Win()))
+		return errs.Wrap("s.battles.SaveBattle", s.battles.SaveBattle(ctx, userID, battle))
 	})
 	if err != nil {
-		return PetFought{}, errs.Wrap("s.tx.WithinTx", err)
+		return PetBattleTurn{}, errs.Wrap("s.tx.WithinTx", err)
 	}
 
-	return fought, nil
+	return turn, nil
+}
+
+// MoveBattle makes move in the fight of the pet petID of userID at now;
+// the last round settles it. user.ErrNoPetBattle.
+func (s *PetService) MoveBattle(ctx context.Context, userID, petID uuid.UUID, move user.PetMove, now time.Time) (PetBattleTurn, error) {
+	now = now.Truncate(time.Microsecond)
+
+	dice, err := s.dice()
+	if err != nil {
+		return PetBattleTurn{}, errs.Wrap("s.dice", err)
+	}
+
+	var turn PetBattleTurn
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		battle, err := s.battles.LockBattle(ctx, userID, petID)
+		if err != nil {
+			return errs.Wrap("s.battles.LockBattle", err)
+		}
+
+		if turn.Battle, err = battle.Moved(move, dice); err != nil {
+			return errs.Wrap("battle.Moved", err)
+		}
+
+		if !turn.Battle.Done() {
+			if turn.Pet, err = s.pets.Pet(ctx, userID, petID); err != nil {
+				return errs.Wrap("s.pets.Pet", err)
+			}
+
+			return errs.Wrap("s.battles.SaveBattle", s.battles.SaveBattle(ctx, userID, turn.Battle))
+		}
+
+		shop, err := s.pets.Shop(ctx)
+		if err != nil {
+			return errs.Wrap("s.pets.Shop", err)
+		}
+
+		fought, err := s.settle(ctx, userID, turn.Battle, shop, now)
+		if err != nil {
+			return errs.Wrap("s.settle", err)
+		}
+		turn.Pet, turn.Fought = fought.Pet, &fought
+
+		return errs.Wrap("s.battles.DeleteBattle", s.battles.DeleteBattle(ctx, userID, petID))
+	})
+	if err != nil {
+		return PetBattleTurn{}, errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return turn, nil
 }
 
 // Fights are the last fights of the pets of userID, on either side.

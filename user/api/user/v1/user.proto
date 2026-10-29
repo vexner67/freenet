@@ -489,7 +489,21 @@ service UserService {
   // "the pet has these clothes already"); DressPet puts on or takes off
   // clothes of its wardrobe ("the pet has no such clothes"). An unknown
   // thing — InvalidArgument "unknown pet clothes".
-  rpc OpenPetCase(OpenPetCaseRequest) returns (PetCareResponse);
+  rpc OpenPetCase(OpenPetCaseRequest) returns (OpenPetCaseResponse);
+  // TakePetDrop takes the pet a case gave, called name (FailedPrecondition
+  // "there is no pet from a case", "you have too many pets");
+  // LeavePetDrop leaves it for its shards.
+  rpc TakePetDrop(TakePetDropRequest) returns (PetCareResponse);
+  rpc LeavePetDrop(LeavePetDropRequest) returns (PetKeeperResponse);
+  // SetPetStance sets the stance a pet defends in.
+  rpc SetPetStance(SetPetStanceRequest) returns (PetCareResponse);
+  // StartPetBattle starts a fight the caller leads a round after another
+  // (FailedPrecondition "the pet is in a fight"); it counts as lost until
+  // it is won. MovePetBattle makes a move in it ("strike", "guard",
+  // "power" or "auto" for the rest); FailedPrecondition "the pet is not in
+  // a fight".
+  rpc StartPetBattle(StartPetBattleRequest) returns (PetBattleResponse);
+  rpc MovePetBattle(MovePetBattleRequest) returns (PetBattleResponse);
   rpc BuyPetItem(BuyPetItemRequest) returns (PetCareResponse);
   rpc DressPet(DressPetRequest) returns (PetCareResponse);
   // For the administrators (PermissionDenied for others): the shop of
@@ -3076,6 +3090,12 @@ message PetKind {
   bool in_shop = 3;
   PetStats stats = 4;
   int32 crit = 5;
+  // "fire", "water" or "forest".
+  string element = 6;
+  // Its trick in a fight.
+  string special = 7;
+  // The shards it leaves when it is let go.
+  int32 shards = 8;
 }
 
 // PetCase is a case: the odds in a thousand of each rarity, from the
@@ -3083,6 +3103,21 @@ message PetKind {
 message PetCase {
   string id = 1;
   repeated int32 odds = 2;
+  // What it costs in shards.
+  int32 shards = 3;
+}
+
+// PetKeeper is what the caller keeps of the cases: the shards, the cases
+// since the last legendary pet and the one that gives it for sure, the
+// cases of today and of a day, and the pet a case gave, not taken yet.
+message PetKeeper {
+  int32 shards = 1;
+  int32 pity = 2;
+  int32 pity_limit = 3;
+  int32 cases = 4;
+  int32 cases_limit = 5;
+  string drop_kind = 6;
+  string drop_case = 7;
 }
 
 // PetItem is a thing of clothes of the catalogue: its slot, price and
@@ -3126,6 +3161,12 @@ message Pet {
   // What its kind and its clothes give of its stats; the rest is levels.
   PetStats breed = 24;
   PetStats clothes = 25;
+  // The stance it defends in.
+  string stance = 26;
+  // Its stats in one number: opponents are matched by it.
+  int32 power = 27;
+  // Its fights in a row: each takes 5% of its attack, defense and health.
+  int32 fatigue = 28;
 }
 
 message GetPetRequest {}
@@ -3139,6 +3180,9 @@ message PetState {
   repeated PetKind kinds = 4;
   repeated PetCase cases = 5;
   repeated PetItem items = 6;
+  PetKeeper keeper = 7;
+  // The fights the pets lead a round after another.
+  repeated PetBattle battles = 8;
 }
 
 message GetUserPetRequest {
@@ -3174,8 +3218,31 @@ message ReleasePetRequest {
 }
 
 message OpenPetCaseRequest {
+  reserved 2;
   string case_id = 1;
-  string name = 2;
+  // Pay with shards instead of votes.
+  bool shards = 3;
+}
+
+message OpenPetCaseResponse {
+  PetKeeper keeper = 1;
+  // The votes after the payment, 0 for shards.
+  int64 balance = 2;
+}
+
+message TakePetDropRequest {
+  string name = 1;
+}
+
+message LeavePetDropRequest {}
+
+message PetKeeperResponse {
+  PetKeeper keeper = 1;
+}
+
+message SetPetStanceRequest {
+  string pet_id = 1;
+  string stance = 2;
 }
 
 message BuyPetItemRequest {
@@ -3203,6 +3270,9 @@ message PetFighter {
   int32 health = 4;
   // The clothes it wore.
   repeated string outfit = 5;
+  string stance = 6;
+  int32 power = 7;
+  int32 fatigue = 8;
 }
 
 // PetHit is a turn of a fight: who hit, whether the other dodged or it
@@ -3214,6 +3284,13 @@ message PetHit {
   int32 damage = 4;
   int32 attacker_health = 5;
   int32 defender_health = 6;
+  // "strike", "guard" or "power"; empty in old fights.
+  string move = 7;
+  // The health the one who acted healed.
+  int32 heal = 8;
+  // The special of the one who acted, and of the other that answered.
+  string special = 9;
+  string answer = 10;
 }
 
 message PetFight {
@@ -3227,6 +3304,29 @@ message PetFight {
   bool won = 8;
   // The rating the attacker won (above zero) or lost.
   int32 rating = 9;
+  // The power of the defender to the attacker's in percent: the rewards
+  // of a win follow it.
+  int32 ratio = 10;
+  // The votes the win brought.
+  int64 reward = 11;
+}
+
+// PetBattle is a fight the caller leads a round after another: the
+// combatants, the acts so far, the health left and what it brings — win
+// rating points for a win, loss for a defeat, which is counted already.
+message PetBattle {
+  string pet_id = 1;
+  string defender_id = 2;
+  PetFighter attacker = 3;
+  PetFighter defender = 4;
+  repeated PetHit hits = 5;
+  int32 round = 6;
+  int32 rounds = 7;
+  int32 attacker_health = 8;
+  int32 defender_health = 9;
+  int32 ratio = 10;
+  int32 win = 11;
+  int32 loss = 12;
 }
 
 message FightPetRequest {
@@ -3234,6 +3334,28 @@ message FightPetRequest {
   string nickname = 1;
   // The pet of the caller that fights.
   string pet_id = 2;
+  // The stance it fights in; empty — the one it defends in.
+  string stance = 3;
+}
+
+message StartPetBattleRequest {
+  string pet_id = 1;
+  string nickname = 2;
+  string stance = 3;
+}
+
+message MovePetBattleRequest {
+  string pet_id = 1;
+  string move = 2;
+}
+
+message PetBattleResponse {
+  PetBattle battle = 1;
+  Pet pet = 2;
+  // The fight as the list keeps it, once it is over, and the votes after
+  // a won one.
+  PetFight fight = 3;
+  int64 balance = 4;
 }
 
 message FightPetResponse {

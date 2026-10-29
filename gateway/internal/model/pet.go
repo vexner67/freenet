@@ -69,6 +69,11 @@ type Pet struct {
 	// stats; the rest is levels.
 	Breed   PetPower
 	Clothes PetPower
+	// Stance is how it defends, Power its stats in one number, Fatigue its
+	// fights in a row.
+	Stance  string
+	Power   int
+	Fatigue int
 }
 
 // PetPower are the stats of a pet, or what something adds to them.
@@ -80,20 +85,45 @@ type PetPower struct {
 }
 
 // PetKind is a kind of the catalogue: how rare it is, whether the shop
-// sells it, its stats at level 1 and its chance to hit twice as hard.
+// sells it, its stats at level 1, its chance to hit twice as hard, its
+// element and trick in a fight and the shards it leaves.
 type PetKind struct {
-	Kind   string
-	Rarity string
-	InShop bool
-	Stats  PetPower
-	Crit   int
+	Kind    string
+	Rarity  string
+	InShop  bool
+	Stats   PetPower
+	Crit    int
+	Element string
+	Special string
+	Shards  int
 }
 
 // PetCase is a case: the odds in a thousand of each rarity, from the most
-// common.
+// common, and what it costs in shards.
 type PetCase struct {
-	ID   string
-	Odds []int
+	ID     string
+	Odds   []int
+	Shards int
+}
+
+// PetKeeper is what the caller keeps of the cases: the shards, the cases
+// since the last legendary pet and the one that gives it for sure, the
+// cases of today and of a day, and the pet a case gave, not taken yet.
+type PetKeeper struct {
+	Shards     int
+	Pity       int
+	PityLimit  int
+	Cases      int
+	CasesLimit int
+	DropKind   string
+	DropCase   string
+}
+
+// PetDrop is the keeper after a case and the balance after it, 0 for one
+// opened for shards.
+type PetDrop struct {
+	Keeper  PetKeeper
+	Balance int64
 }
 
 // PetItem is a thing of clothes: its slot, price and what it adds.
@@ -107,11 +137,13 @@ type PetItem struct {
 // PetState is the shop and the pets of the caller, the oldest first, with
 // the catalogue.
 type PetState struct {
-	Shop  PetShop
-	Pets  []Pet
-	Kinds []PetKind
-	Cases []PetCase
-	Items []PetItem
+	Shop    PetShop
+	Pets    []Pet
+	Kinds   []PetKind
+	Cases   []PetCase
+	Items   []PetItem
+	Keeper  PetKeeper
+	Battles []PetBattle
 }
 
 // PetCare is a pet after it was adopted, fed, played with or renamed, and
@@ -123,20 +155,29 @@ type PetCare struct {
 
 // PetFighter is a pet as it came to a fight.
 type PetFighter struct {
-	Kind   string
-	Name   string
-	Level  int
-	Health int
-	Outfit []string
+	Kind    string
+	Name    string
+	Level   int
+	Health  int
+	Outfit  []string
+	Stance  string
+	Power   int
+	Fatigue int
 }
 
-// PetHit is a turn of a fight: who hit, whether the other dodged or it
-// was a crit, the damage and the health of both after it.
+// PetHit is an act of a fight: who acted and how, whether the other
+// dodged or it was a crit, the damage, what the actor healed, its special
+// and the special of the other that answered, and the health of both
+// after it.
 type PetHit struct {
 	ByAttacker     bool
+	Move           string
 	Dodged         bool
 	Crit           bool
 	Damage         int
+	Heal           int
+	Special        string
+	Answer         string
 	AttackerHealth int
 	DefenderHealth int
 }
@@ -153,6 +194,37 @@ type PetFight struct {
 	Hits       []PetHit
 	Won        bool
 	Rating     int
+	// Ratio is the power of the defender to the attacker's in percent,
+	// Reward the votes the win brought.
+	Ratio  int
+	Reward int64
+}
+
+// PetBattle is a fight the caller leads a round after another: the
+// combatants, the acts so far, the health left, and the rating a win
+// brings and a defeat costs.
+type PetBattle struct {
+	PetID          string
+	DefenderID     string
+	Attacker       PetFighter
+	Defender       PetFighter
+	Hits           []PetHit
+	Round          int
+	Rounds         int
+	AttackerHealth int
+	DefenderHealth int
+	Ratio          int
+	Win            int
+	Loss           int
+}
+
+// PetBattleTurn is a fight after a move, the pet that leads it, and the
+// fight as the list keeps it with the balance after it once it is over.
+type PetBattleTurn struct {
+	Battle  PetBattle
+	Pet     Pet
+	Fight   *PetFight
+	Balance int64
 }
 
 // PetFought is a fight of the caller's pet, the pet after it and the

@@ -21,9 +21,14 @@ type Pets interface {
 	Play(ctx context.Context, accessToken, petID string) (model.PetCare, error)
 	Rename(ctx context.Context, accessToken, petID, name string) (model.PetCare, error)
 	Release(ctx context.Context, accessToken, petID string) error
-	Fight(ctx context.Context, accessToken, petID, nickname string) (model.PetFought, error)
+	SetStance(ctx context.Context, accessToken, petID, stance string) (model.PetCare, error)
+	Fight(ctx context.Context, accessToken, petID, nickname, stance string) (model.PetFought, error)
 	Fights(ctx context.Context, accessToken string) ([]model.PetFight, error)
-	OpenCase(ctx context.Context, accessToken, caseID, name string) (model.PetCare, error)
+	StartBattle(ctx context.Context, accessToken, petID, nickname, stance string) (model.PetBattleTurn, error)
+	MoveBattle(ctx context.Context, accessToken, petID, move string) (model.PetBattleTurn, error)
+	OpenCase(ctx context.Context, accessToken, caseID string, withShards bool) (model.PetDrop, error)
+	TakeDrop(ctx context.Context, accessToken, name string) (model.PetCare, error)
+	LeaveDrop(ctx context.Context, accessToken string) (model.PetKeeper, error)
 	BuyItem(ctx context.Context, accessToken, petID, item string) (model.PetCare, error)
 	Dress(ctx context.Context, accessToken, petID, item string, wear bool) (model.PetCare, error)
 	Settings(ctx context.Context, accessToken string) (model.PetShop, model.PetStats, error)
@@ -47,20 +52,36 @@ type petPowerJSON struct {
 }
 
 // petKindJSON is a kind of the catalogue; inShop: the shop sells it, the
-// others fall out of cases.
+// others fall out of cases. shards are what it leaves when let go.
 type petKindJSON struct {
-	Kind   string       `json:"kind"`
-	Rarity string       `json:"rarity"`
-	InShop bool         `json:"inShop"`
-	Stats  petPowerJSON `json:"stats"`
-	Crit   int          `json:"crit"`
+	Kind    string       `json:"kind"`
+	Rarity  string       `json:"rarity"`
+	InShop  bool         `json:"inShop"`
+	Stats   petPowerJSON `json:"stats"`
+	Crit    int          `json:"crit"`
+	Element string       `json:"element"`
+	Special string       `json:"special"`
+	Shards  int          `json:"shards"`
 }
 
 // petCaseJSON is a case: the odds in a thousand of common, rare, epic and
-// legendary pets.
+// legendary pets, and its price in shards.
 type petCaseJSON struct {
-	ID   string `json:"id"`
-	Odds []int  `json:"odds"`
+	ID     string `json:"id"`
+	Odds   []int  `json:"odds"`
+	Shards int    `json:"shards"`
+}
+
+// petKeeperJSON is what the caller keeps of the cases; dropKind and
+// dropCase are the pet a case gave, "" when none waits.
+type petKeeperJSON struct {
+	Shards     int    `json:"shards"`
+	Pity       int    `json:"pity"`
+	PityLimit  int    `json:"pityLimit"`
+	Cases      int    `json:"cases"`
+	CasesLimit int    `json:"casesLimit"`
+	DropKind   string `json:"dropKind"`
+	DropCase   string `json:"dropCase"`
 }
 
 type petItemJSON struct {
@@ -98,26 +119,36 @@ type petJSON struct {
 	Outfit              []string     `json:"outfit"`
 	Breed               petPowerJSON `json:"breed"`
 	Clothes             petPowerJSON `json:"clothes"`
+	Stance              string       `json:"stance"`
+	Power               int          `json:"power"`
+	Fatigue             int          `json:"fatigue"`
 }
 
 // petFighterJSON is a pet as it came to a fight, with its owner — null
 // when their page is deleted or erased.
 type petFighterJSON struct {
-	User   *authorJSON `json:"user"`
-	Kind   string      `json:"kind"`
-	Name   string      `json:"name"`
-	Level  int         `json:"level"`
-	Health int         `json:"health"`
-	Outfit []string    `json:"outfit"`
+	User    *authorJSON `json:"user"`
+	Kind    string      `json:"kind"`
+	Name    string      `json:"name"`
+	Level   int         `json:"level"`
+	Health  int         `json:"health"`
+	Outfit  []string    `json:"outfit"`
+	Stance  string      `json:"stance"`
+	Power   int         `json:"power"`
+	Fatigue int         `json:"fatigue"`
 }
 
 type petHitJSON struct {
-	ByAttacker     bool `json:"byAttacker"`
-	Dodged         bool `json:"dodged"`
-	Crit           bool `json:"crit"`
-	Damage         int  `json:"damage"`
-	AttackerHealth int  `json:"attackerHealth"`
-	DefenderHealth int  `json:"defenderHealth"`
+	ByAttacker     bool   `json:"byAttacker"`
+	Move           string `json:"move"`
+	Dodged         bool   `json:"dodged"`
+	Crit           bool   `json:"crit"`
+	Damage         int    `json:"damage"`
+	Heal           int    `json:"heal"`
+	Special        string `json:"special"`
+	Answer         string `json:"answer"`
+	AttackerHealth int    `json:"attackerHealth"`
+	DefenderHealth int    `json:"defenderHealth"`
 }
 
 type petFightJSON struct {
@@ -128,6 +159,24 @@ type petFightJSON struct {
 	Hits     []petHitJSON   `json:"hits"`
 	Won      bool           `json:"won"`
 	Rating   int            `json:"rating"`
+	Ratio    int            `json:"ratio"`
+	Reward   int64          `json:"reward"`
+}
+
+// petBattleJSON is a fight the caller leads a round after another: win
+// is the rating a win brings, loss what a defeat costs.
+type petBattleJSON struct {
+	PetID          string         `json:"petId"`
+	Attacker       petFighterJSON `json:"attacker"`
+	Defender       petFighterJSON `json:"defender"`
+	Hits           []petHitJSON   `json:"hits"`
+	Round          int            `json:"round"`
+	Rounds         int            `json:"rounds"`
+	AttackerHealth int            `json:"attackerHealth"`
+	DefenderHealth int            `json:"defenderHealth"`
+	Ratio          int            `json:"ratio"`
+	Win            int            `json:"win"`
+	Loss           int            `json:"loss"`
 }
 
 func toPetShopJSON(s model.PetShop) petShopJSON {
@@ -180,6 +229,9 @@ func toPetJSON(p model.Pet) petJSON {
 		Outfit:              names(p.Outfit),
 		Breed:               petPowerJSON(p.Breed),
 		Clothes:             petPowerJSON(p.Clothes),
+		Stance:              p.Stance,
+		Power:               p.Power,
+		Fatigue:             p.Fatigue,
 	}
 }
 
@@ -193,7 +245,10 @@ func toPetsJSON(pets []model.Pet) []petJSON {
 }
 
 func toPetFighterJSON(f model.PetFighter, owner string, people map[string]model.Author) petFighterJSON {
-	out := petFighterJSON{Kind: f.Kind, Name: f.Name, Level: f.Level, Health: f.Health, Outfit: names(f.Outfit)}
+	out := petFighterJSON{
+		Kind: f.Kind, Name: f.Name, Level: f.Level, Health: f.Health, Outfit: names(f.Outfit),
+		Stance: f.Stance, Power: f.Power, Fatigue: f.Fatigue,
+	}
 	if a, ok := people[owner]; ok && !a.Deactivated {
 		j := toAuthorJSON(a)
 		out.User = &j
@@ -208,15 +263,44 @@ func toPetFightJSON(f model.PetFight, people map[string]model.Author) petFightJS
 		FoughtAt: timeString(f.FoughtAt),
 		Attacker: toPetFighterJSON(f.Attacker, f.AttackerID, people),
 		Defender: toPetFighterJSON(f.Defender, f.DefenderID, people),
-		Hits:     make([]petHitJSON, 0, len(f.Hits)),
+		Hits:     toPetHitsJSON(f.Hits),
 		Won:      f.Won,
 		Rating:   f.Rating,
-	}
-	for _, h := range f.Hits {
-		out.Hits = append(out.Hits, petHitJSON(h))
+		Ratio:    f.Ratio,
+		Reward:   f.Reward,
 	}
 
 	return out
+}
+
+func toPetHitsJSON(hits []model.PetHit) []petHitJSON {
+	out := make([]petHitJSON, 0, len(hits))
+	for _, h := range hits {
+		out = append(out, petHitJSON(h))
+	}
+
+	return out
+}
+
+// toPetBattleJSON is b of the caller me.
+func toPetBattleJSON(b model.PetBattle, me string, people map[string]model.Author) petBattleJSON {
+	return petBattleJSON{
+		PetID:          b.PetID,
+		Attacker:       toPetFighterJSON(b.Attacker, me, people),
+		Defender:       toPetFighterJSON(b.Defender, b.DefenderID, people),
+		Hits:           toPetHitsJSON(b.Hits),
+		Round:          b.Round,
+		Rounds:         b.Rounds,
+		AttackerHealth: b.AttackerHealth,
+		DefenderHealth: b.DefenderHealth,
+		Ratio:          b.Ratio,
+		Win:            b.Win,
+		Loss:           b.Loss,
+	}
+}
+
+func toPetKeeperJSON(k model.PetKeeper) petKeeperJSON {
+	return petKeeperJSON(k)
 }
 
 // fightPeople are the owners of the pets of fights.
@@ -397,7 +481,10 @@ func (a *api) getPets(w http.ResponseWriter, r *http.Request) {
 
 	kinds := make([]petKindJSON, 0, len(state.Kinds))
 	for _, k := range state.Kinds {
-		kinds = append(kinds, petKindJSON{Kind: k.Kind, Rarity: k.Rarity, InShop: k.InShop, Stats: petPowerJSON(k.Stats), Crit: k.Crit})
+		kinds = append(kinds, petKindJSON{
+			Kind: k.Kind, Rarity: k.Rarity, InShop: k.InShop, Stats: petPowerJSON(k.Stats), Crit: k.Crit,
+			Element: k.Element, Special: k.Special, Shards: k.Shards,
+		})
 	}
 	cases := make([]petCaseJSON, 0, len(state.Cases))
 	for _, c := range state.Cases {
@@ -408,13 +495,42 @@ func (a *api) getPets(w http.ResponseWriter, r *http.Request) {
 		items = append(items, petItemJSON{ID: item.ID, Slot: item.Slot, Price: item.Price, Bonus: petPowerJSON(item.Bonus)})
 	}
 
+	battles, err := a.battlesJSON(r, state.Battles)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	writeJSON(w, http.StatusOK, struct {
-		Shop  petShopJSON   `json:"shop"`
-		Pets  []petJSON     `json:"pets"`
-		Kinds []petKindJSON `json:"kinds"`
-		Cases []petCaseJSON `json:"cases"`
-		Items []petItemJSON `json:"items"`
-	}{toPetShopJSON(state.Shop), toPetsJSON(state.Pets), kinds, cases, items})
+		Shop    petShopJSON     `json:"shop"`
+		Pets    []petJSON       `json:"pets"`
+		Kinds   []petKindJSON   `json:"kinds"`
+		Cases   []petCaseJSON   `json:"cases"`
+		Items   []petItemJSON   `json:"items"`
+		Keeper  petKeeperJSON   `json:"keeper"`
+		Battles []petBattleJSON `json:"battles"`
+	}{toPetShopJSON(state.Shop), toPetsJSON(state.Pets), kinds, cases, items, toPetKeeperJSON(state.Keeper), battles})
+}
+
+// battlesJSON are the fights of the caller with the owners of the pets
+// they fight; the caller themself is left out, the page knows them.
+func (a *api) battlesJSON(r *http.Request, battles []model.PetBattle) ([]petBattleJSON, error) {
+	ids := make([]string, 0, len(battles))
+	for _, b := range battles {
+		ids = append(ids, b.DefenderID)
+	}
+
+	people, err := a.people(r, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]petBattleJSON, 0, len(battles))
+	for _, b := range battles {
+		out = append(out, toPetBattleJSON(b, "", people))
+	}
+
+	return out, nil
 }
 
 // getUserPets are the pets of a page, public as the page.
@@ -460,7 +576,8 @@ func (a *api) adoptPet(w http.ResponseWriter, r *http.Request) {
 	a.writePetCare(w, r, func() (model.PetCare, error) { return a.pets.Adopt(r.Context(), token, req.Kind, req.Name) }, http.StatusCreated)
 }
 
-// openPetCase opens a case: the pet that fell out of it.
+// openPetCase opens a case, for votes or for shards: the pet that fell
+// out of it waits to be taken or left.
 func (a *api) openPetCase(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -469,7 +586,35 @@ func (a *api) openPetCase(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Case string `json:"case"`
+		Case   string `json:"case"`
+		Shards bool   `json:"shards"`
+	}
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	drop, err := a.pets.OpenCase(r.Context(), token, req.Case, req.Shards)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, struct {
+		Keeper  petKeeperJSON `json:"keeper"`
+		Balance int64         `json:"balance"`
+	}{toPetKeeperJSON(drop.Keeper), drop.Balance})
+}
+
+// takePetDrop takes the pet a case gave, called name.
+func (a *api) takePetDrop(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req struct {
 		Name string `json:"name"`
 	}
 	if err = decode(w, r, &req); err != nil {
@@ -477,7 +622,47 @@ func (a *api) openPetCase(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.writePetCare(w, r, func() (model.PetCare, error) { return a.pets.OpenCase(r.Context(), token, req.Case, req.Name) }, http.StatusCreated)
+	a.writePetCare(w, r, func() (model.PetCare, error) { return a.pets.TakeDrop(r.Context(), token, req.Name) }, http.StatusCreated)
+}
+
+// leavePetDrop leaves the pet a case gave for its shards.
+func (a *api) leavePetDrop(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	keeper, err := a.pets.LeaveDrop(r.Context(), token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, struct {
+		Keeper petKeeperJSON `json:"keeper"`
+	}{toPetKeeperJSON(keeper)})
+}
+
+// setPetStance sets the stance a pet defends in.
+func (a *api) setPetStance(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req struct {
+		Stance string `json:"stance"`
+	}
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.writePetCare(w, r, func() (model.PetCare, error) {
+		return a.pets.SetStance(r.Context(), token, r.PathValue("id"), req.Stance)
+	}, http.StatusOK)
 }
 
 // buyPetItem buys clothes for a pet and puts them on.
@@ -591,15 +776,13 @@ func (a *api) fightPet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req struct {
-		Nickname string `json:"nickname"`
-	}
+	var req fightRequest
 	if err = decode(w, r, &req); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	fought, err := a.pets.Fight(r.Context(), token, r.PathValue("id"), req.Nickname)
+	fought, err := a.pets.Fight(r.Context(), token, r.PathValue("id"), req.Nickname, req.Stance)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -616,6 +799,89 @@ func (a *api) fightPet(w http.ResponseWriter, r *http.Request) {
 		Pet     petJSON      `json:"pet"`
 		Balance int64        `json:"balance"`
 	}{toPetFightJSON(fought.Fight, people), toPetJSON(fought.Pet), fought.Balance})
+}
+
+// fightRequest is whom a pet fights, the best pet of a page or one near
+// in power without a nickname, and in which stance, "" for the one it
+// defends in.
+type fightRequest struct {
+	Nickname string `json:"nickname"`
+	Stance   string `json:"stance"`
+}
+
+// startPetBattle starts a fight the caller leads a round after another.
+func (a *api) startPetBattle(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req fightRequest
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.writeBattleTurn(w, r, func() (model.PetBattleTurn, error) {
+		return a.pets.StartBattle(r.Context(), token, r.PathValue("id"), req.Nickname, req.Stance)
+	}, http.StatusCreated)
+}
+
+// movePetBattle makes a move in the fight of a pet: "strike", "guard",
+// "power" or "auto" for the rest of it.
+func (a *api) movePetBattle(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req struct {
+		Move string `json:"move"`
+	}
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.writeBattleTurn(w, r, func() (model.PetBattleTurn, error) {
+		return a.pets.MoveBattle(r.Context(), token, r.PathValue("id"), req.Move)
+	}, http.StatusOK)
+}
+
+// writeBattleTurn writes the fight after turn, the pet, and the fight as
+// the list keeps it once it is over (null before).
+func (a *api) writeBattleTurn(w http.ResponseWriter, r *http.Request, turn func() (model.PetBattleTurn, error), code int) {
+	t, err := turn()
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	ids := []string{t.Battle.DefenderID}
+	if t.Fight != nil {
+		ids = append(ids, t.Fight.AttackerID)
+	}
+
+	people, err := a.people(r, ids)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var fight *petFightJSON
+	if t.Fight != nil {
+		f := toPetFightJSON(*t.Fight, people)
+		fight = &f
+	}
+
+	writeJSON(w, code, struct {
+		Battle  petBattleJSON `json:"battle"`
+		Pet     petJSON       `json:"pet"`
+		Fight   *petFightJSON `json:"fight"`
+		Balance int64         `json:"balance"`
+	}{toPetBattleJSON(t.Battle, "", people), toPetJSON(t.Pet), fight, t.Balance})
 }
 
 // listPetFights are the last fights of the caller's pets, newest first.
