@@ -698,7 +698,7 @@
 
     <section id="world" hidden>
       <h1 class="aui-page-heading">Мир</h1>
-      <p class="admin-lead">Мир — карта, на которой люди основывают государства за голоса, принимают граждан и колонизируют ничьи земли. Карта создаётся по сиду в фоне за минуту-другую; готовую можно посмотреть и открыть. Открыт всегда один мир: открытие новой карты завершает прежний, и его государства исчезают. Голоса за основание уходят в Казну, взносы граждан — в казну государства.</p>
+      <p class="admin-lead">Мир — карта сайта с провинциями, их местностью, населением и ресурсами. Карта создаётся по сиду в фоне за минуту-другую; готовую можно посмотреть и открыть. Открыт всегда один мир: открытие новой карты завершает прежний.</p>
       <div class="aui-message aui-message-success" id="world-saved" hidden></div>
       <h2>Карты</h2>
       <div class="aui-table-wrap">
@@ -721,49 +721,6 @@
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Создать карту</button>
           <button class="aui-button" id="world-end" type="button">Завершить мир</button>
-        </div>
-      </form>
-      <h2>Правила</h2>
-      <form class="aui" id="world-rules">
-        <div class="field-group">
-          <label for="world-foundCost">Основание государства, голосов</label>
-          <input class="text admin-casino-field" id="world-foundCost" type="number" min="0" required>
-        </div>
-        <div class="field-group">
-          <label for="world-foundTreasury">Казна нового государства, голосов</label>
-          <input class="text admin-casino-field" id="world-foundTreasury" type="number" min="0" required>
-          <div class="description">Не больше цены основания: остальное уходит в Казну сайта.</div>
-        </div>
-        <div class="field-group">
-          <label for="world-foundLands">Провинций при основании</label>
-          <input class="text admin-casino-field" id="world-foundLands" type="number" min="0" required>
-          <div class="description">Сколько ничьих соседних провинций государство получает вместе со столицей.</div>
-        </div>
-        <div class="field-group">
-          <label for="world-capitalDistance">Расстояние между столицами</label>
-          <input class="text admin-casino-field" id="world-capitalDistance" type="number" min="1" required>
-          <div class="description">Наименьшее число шагов по суше от новой столицы до чужой.</div>
-        </div>
-        <div class="field-group">
-          <label for="world-protectionDays">Защита нового государства, дней</label>
-          <input class="text admin-casino-field" id="world-protectionDays" type="number" min="0" required>
-        </div>
-        <div class="field-group">
-          <label for="world-colonizeCost">Колония, голосов</label>
-          <input class="text admin-casino-field" id="world-colonizeCost" type="number" min="0" required>
-          <div class="description">Первая колония; каждая следующая дороже на десятую часть за провинцию государства.</div>
-        </div>
-        <div class="field-group">
-          <label for="world-colonizeHours">Колония обосновывается, часов</label>
-          <input class="text admin-casino-field" id="world-colonizeHours" type="number" min="1" required>
-        </div>
-        <div class="field-group">
-          <label for="world-income">Доход провинции</label>
-          <input class="text admin-casino-field" id="world-income" type="number" min="0" required>
-          <div class="description">Десятые сотой голоса в час с тысячи жителей: при 5 провинция в 20 тысяч жителей приносит 0,1 голоса в час.</div>
-        </div>
-        <div class="buttons-container">
-          <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
         </div>
       </form>
     </section>

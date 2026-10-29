@@ -1,9 +1,8 @@
 // The map of "Мир" on a canvas, without libraries: the picture of the
 // land in tiles the world service drew (the closest zoom there is, and a
 // coarser one stretched while it loads, so the map is never empty), and
-// over it what changes every hour — the states — painted in the browser
-// from the raster of the provinces: every cell of the map knows its
-// province, so a state is the cells of its provinces, and the province
+// over it the province chosen, painted in the browser from the raster of
+// the provinces: every cell of the map knows its province, so the province
 // under a finger is one look into the raster. The map is dragged with a
 // mouse or a finger, zoomed with the wheel, two fingers or a double
 // click; a click chooses a province.
@@ -61,28 +60,6 @@ export function cellAt(view, sx, sy, width, height) {
   return { x, y };
 }
 
-// stateCenters are where the names of the states stand: the middle of
-// their provinces weighed by area, and how wide the state is (cells).
-export function stateCenters(owners, provinces) {
-  const sums = new Map();
-  for (const p of provinces) {
-    const owner = owners[p.id] ?? 0;
-    if (!owner) continue;
-    const s = sums.get(owner) ?? { x: 0, y: 0, area: 0, minX: Infinity, maxX: -Infinity };
-    s.x += p.x * p.area;
-    s.y += p.y * p.area;
-    s.area += p.area;
-    s.minX = Math.min(s.minX, p.x);
-    s.maxX = Math.max(s.maxX, p.x);
-    sums.set(owner, s);
-  }
-
-  const centers = new Map();
-  for (const [owner, s] of sums) centers.set(owner, { x: s.x / s.area, y: s.y / s.area, span: Math.max(s.maxX - s.minX, Math.sqrt(s.area)) });
-
-  return centers;
-}
-
 // parseRGB reads "rgb(1, 2, 3)" as [1, 2, 3].
 export function parseRGB(text) {
   const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(text ?? '');
@@ -127,12 +104,8 @@ export function createWorldMap(box, { worldId, atlas, raster, onSelect = () => {
   let view = { x: 0, y: 0, scale: 1, width: 1, height: 1 };
   let ratio = 1;
   let maxZoom = atlas.zooms > 0 ? Math.min(atlas.zooms - 1, MAX_ZOOM) : MAX_ZOOM;
-  let mode = 'political';
-  let owners = [];
-  let states = [];
-  let colonies = [];
+  let mode = 'relief';
   let selected = null;
-  let marked = new Set();
   let frame = 0;
   const tiles = new Map();
 
@@ -184,57 +157,23 @@ export function createWorldMap(box, { worldId, atlas, raster, onSelect = () => {
     }
   }
 
-  // --- the states over the land ---
+  // --- the chosen province over the land ---
 
-  // paint draws the states, the marked and the chosen provinces into the
-  // overlay, a pixel a cell.
+  // paint draws the chosen province into the overlay, a pixel a cell.
   function paint() {
     const image = octx.createImageData(W, H);
     const px = image.data;
-    const palette = states.map((s) => colorOf(box, `state-b${s.color}`));
-    const markColor = colorOf(box, 'world-mark');
     const pickColor = colorOf(box, 'world-pick');
-    const colonyOf = new Map(colonies.map((c) => [c.province, c.stateId]));
-    const stateIndex = new Map(states.map((s, i) => [s.id, i]));
-    const fill = mode === 'political' ? 110 : 0;
-    const ownerOf = (p) => owners[p] ?? 0;
 
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
-        const i = y * W + x;
-        const p = raster[i];
-        const owner = ownerOf(p);
-        const o = i * 4;
-        let color = null;
-        let alpha = 0;
-
-        if (owner && mode !== 'relief') {
-          // The edge of a state is drawn strong, its inside faint.
-          const edge = (x > 0 && ownerOf(raster[i - 1]) !== owner) || (x < W - 1 && ownerOf(raster[i + 1]) !== owner) ||
-            (y > 0 && ownerOf(raster[i - W]) !== owner) || (y < H - 1 && ownerOf(raster[i + W]) !== owner);
-          color = palette[owner - 1];
-          alpha = edge ? 230 : fill;
-        } else if (colonyOf.has(p) && mode !== 'relief') {
-          // A colony is striped in the color of its state.
-          color = palette[stateIndex.get(colonyOf.get(p))];
-          alpha = (x + y) % 4 < 2 ? 150 : 0;
-        }
-        if (marked.has(p)) {
-          color = markColor;
-          alpha = (x + y) % 3 === 0 ? 200 : 90;
-        }
-        if (p === selected) {
-          const edge = raster[i - 1] !== p || raster[i + 1] !== p || raster[i - W] !== p || raster[i + W] !== p;
-          color = pickColor;
-          alpha = edge ? 255 : 70;
-        }
-        if (!color || !alpha) continue;
-
-        px[o] = color[0];
-        px[o + 1] = color[1];
-        px[o + 2] = color[2];
-        px[o + 3] = alpha;
-      }
+    for (let i = 0; selected !== null && i < W * H; i++) {
+      const p = raster[i];
+      if (p !== selected) continue;
+      const edge = raster[i - 1] !== p || raster[i + 1] !== p || raster[i - W] !== p || raster[i + W] !== p;
+      const o = i * 4;
+      px[o] = pickColor[0];
+      px[o + 1] = pickColor[1];
+      px[o + 2] = pickColor[2];
+      px[o + 3] = edge ? 255 : 70;
     }
 
     octx.putImageData(image, 0, 0);
@@ -267,19 +206,7 @@ export function createWorldMap(box, { worldId, atlas, raster, onSelect = () => {
       ctx.fillText(s, x, y);
     };
 
-    // The states by their names, the larger first; the provinces once
-    // they are large enough to hold a name.
-    if (mode !== 'relief') {
-      const centers = stateCenters(owners, provinces);
-      const shown = [...centers].sort((a, b) => b[1].span - a[1].span);
-      for (const [owner, c] of shown) {
-        const s = states[owner - 1];
-        if (!s) continue;
-        const [x, y] = at(c.x, c.y);
-        word(s.name.toUpperCase(), x, y, Math.min(18, Math.max(10, c.span * view.scale * 0.15)), true);
-      }
-    }
-
+    // The provinces once they are large enough to hold a name.
     for (const p of provinces) {
       if (p.sea || !p.name) continue;
       const side = Math.sqrt(p.area) * view.scale;
@@ -436,22 +363,12 @@ export function createWorldMap(box, { worldId, atlas, raster, onSelect = () => {
   resize();
 
   return {
-    // setWorld gives the states and who owns what (the owner of province
-    // p is states[owners[p] - 1]).
-    setWorld(next) {
-      ({ owners, states, colonies } = next);
-      paint();
-    },
     setMode(next) {
       mode = next;
-      paint();
+      redraw();
     },
     select(id) {
       selected = id;
-      paint();
-    },
-    mark(ids) {
-      marked = new Set(ids);
       paint();
     },
     // show brings province id to the middle, closer if the map is far.

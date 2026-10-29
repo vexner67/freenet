@@ -3282,7 +3282,7 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 .m .article-body-input { min-height: 240px; font-size: 16px; }
 .m .article-card.with-cover, .m .article-card.with-cover .article-card-text { min-height: 150px; }
 
-/* «Мир»: the map with its panel, the states and their flags. */
+/* «Мир»: the map with its panel. */
 .world-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
 .world-status { overflow: hidden; color: var(--text-808080); text-overflow: ellipsis; white-space: nowrap; }
 .world-frame { display: flex; gap: 8px; margin: 0 0 10px; }
@@ -3293,7 +3293,6 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 .world-zoom-button { width: 26px; height: 26px; padding: 0; background: var(--back-fff); border: 1px solid var(--line-8b8b8b); border-radius: 2px; color: var(--text-333); font: bold 14px Tahoma, Verdana, sans-serif; cursor: pointer; opacity: 0.9; }
 .world-zoom-button:hover { background: var(--back-f2f5f8); }
 .world-panel { flex: none; width: 190px; padding: 8px; background: var(--back-f9f9f9); border: 1px solid var(--line-dae1e8); }
-.world-panel .button { display: inline-block; margin: 8px 0 0; }
 .world-panel-name { margin: 0 0 4px; color: var(--text-45688e); font-size: 13px; font-weight: bold; overflow-wrap: anywhere; }
 .world-badge { display: inline-block; margin: 0 4px 4px 0; padding: 1px 5px; background: var(--back-eee5b8); border: 1px solid var(--line-d7cf9e); color: var(--text-58462a); }
 .world-facts { width: 100%; border-collapse: collapse; }
@@ -3308,138 +3307,12 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 .world-sea { background: var(--back-45708f); }
 .world-label { color: var(--text-2b2116); }
 .world-halo { color: var(--text-fbf6e9); }
-.world-mark { background: var(--back-ffd54a); }
-.world-pick { background: var(--back-d23a32); }
-.world-rating { width: 100%; border-collapse: collapse; }
-.world-rating th { padding: 4px; border-bottom: 1px solid var(--line-dae1e8); color: var(--text-808080); font-weight: normal; text-align: left; }
-.world-rating td { padding: 4px; border-bottom: 1px solid var(--line-eee); }
-.world-rating-value { text-align: right; white-space: nowrap; }
-.world-events { margin: 4px 0 8px; }
-.world-event { display: flex; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line-eee); }
-.world-event-at { flex: none; width: 110px; color: var(--text-808080); }
-.world-event-text { min-width: 0; overflow-wrap: anywhere; }
-.world-more { display: inline-block; margin: 4px 0; }
-.world-state-link { white-space: nowrap; }
-.world-state-link .flag { vertical-align: -3px; }
-.flag { display: inline-block; box-shadow: 0 0 0 1px var(--line-8b8b8b); }
-.world-state-flag { flex: none; align-self: flex-start; }
-.world-motto { color: var(--text-555); }
-.world-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
-.world-lands { margin: 4px 0 8px; line-height: 1.6; }
-.world-people { margin: 4px 0 8px; }
-.world-person { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--line-eee); }
-.world-person select, .world-row select, .world-flag-row select { width: auto; max-width: 100%; }
-.world-role { color: var(--text-808080); }
-.world-budget-box { overflow-x: auto; }
-.world-budget { width: 100%; margin: 4px 0 8px; border-collapse: collapse; }
-.world-budget th { padding: 3px; border-bottom: 1px solid var(--line-dae1e8); color: var(--text-808080); font-weight: normal; text-align: right; }
-.world-budget td { padding: 3px; border-bottom: 1px solid var(--line-eee); text-align: right; white-space: nowrap; }
-.world-budget th:first-child, .world-budget td:first-child { text-align: left; }
-.world-edit { margin: 4px 0 10px; }
-.world-edit summary { color: var(--text-2b587a); cursor: pointer; }
-.world-form { margin: 8px 0; border-collapse: collapse; }
-.world-form td { padding: 3px 4px; }
-.world-form td.label { width: 120px; color: var(--text-808080); text-align: right; }
-.world-form input[type="text"] { width: 260px; }
-.world-found .button { margin: 6px 0; }
-.world-flag-editor { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
-.world-flag-preview { flex: none; }
-.world-flag-controls { flex: 1; min-width: 0; }
-.world-flag-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 6px; }
-.world-flag-label { width: 100px; color: var(--text-808080); }
-.world-swatches { display: flex; flex-wrap: wrap; gap: 2px; max-width: 260px; }
-.world-swatch { width: 18px; height: 18px; padding: 0; border: 1px solid var(--line-8b8b8b); cursor: pointer; }
-.world-swatch.chosen { outline: 2px solid var(--line-333); outline-offset: 1px; }
-
 /* «Мир» on a phone: the map as wide as the screen, the panel of a
    province over its bottom, as the sheets of apps. */
 .world-frame { display: block; margin: 0 -8px 10px; }
 .world-map { height: 62vh; border-width: 1px 0; }
 .world-zoom-button { width: 40px; height: 40px; font-size: 18px; }
 .world-panel { width: auto; margin: 0; border-width: 0 0 1px; }
-.world-panel .button { min-height: 36px; }
 .world-full { padding: 0; }
 .world-full .world-map { height: 60vh; }
 .world-full .world-panel { width: auto; max-height: 40vh; }
-.world-event { flex-direction: column; gap: 0; }
-.world-form td.label { width: auto; text-align: left; }
-.world-form tr { display: flex; flex-direction: column; }
-.world-form input[type="text"] { width: 100%; font-size: 16px; }
-.world-form select, .world-flag-row select { font-size: 16px; }
-.world-swatch { width: 28px; height: 28px; }
-.world-budget { font-size: 10px; }
-
-/* «Мир»: the colors of flags (SVG fills of flag.js), their swatches and
-   those of the states, which the map reads too. */
-.flag-c0 { fill: var(--back-ffffff); }
-.flag-c1 { fill: var(--back-1a1a1a); }
-.flag-c2 { fill: var(--back-c8102e); }
-.flag-c3 { fill: var(--back-8b1a1a); }
-.flag-c4 { fill: var(--back-e8731a); }
-.flag-c5 { fill: var(--back-f2c200); }
-.flag-c6 { fill: var(--back-ffd83d); }
-.flag-c7 { fill: var(--back-7ab648); }
-.flag-c8 { fill: var(--back-138a36); }
-.flag-c9 { fill: var(--back-0b5d2a); }
-.flag-c10 { fill: var(--back-11807d); }
-.flag-c11 { fill: var(--back-5fa8dd); }
-.flag-c12 { fill: var(--back-1f5fbf); }
-.flag-c13 { fill: var(--back-13286b); }
-.flag-c14 { fill: var(--back-6a2c8f); }
-.flag-c15 { fill: var(--back-9b59b6); }
-.flag-c16 { fill: var(--back-e86b9a); }
-.flag-c17 { fill: var(--back-6d1f3a); }
-.flag-c18 { fill: var(--back-7a4a1e); }
-.flag-c19 { fill: var(--back-c9a66b); }
-.flag-c20 { fill: var(--back-b8bcc2); }
-.flag-c21 { fill: var(--back-6b7078); }
-.flag-c22 { fill: var(--back-f3e9c6); }
-.flag-c23 { fill: var(--back-29b6d1); }
-.flag-b0 { background: var(--back-ffffff); }
-.flag-b1 { background: var(--back-1a1a1a); }
-.flag-b2 { background: var(--back-c8102e); }
-.flag-b3 { background: var(--back-8b1a1a); }
-.flag-b4 { background: var(--back-e8731a); }
-.flag-b5 { background: var(--back-f2c200); }
-.flag-b6 { background: var(--back-ffd83d); }
-.flag-b7 { background: var(--back-7ab648); }
-.flag-b8 { background: var(--back-138a36); }
-.flag-b9 { background: var(--back-0b5d2a); }
-.flag-b10 { background: var(--back-11807d); }
-.flag-b11 { background: var(--back-5fa8dd); }
-.flag-b12 { background: var(--back-1f5fbf); }
-.flag-b13 { background: var(--back-13286b); }
-.flag-b14 { background: var(--back-6a2c8f); }
-.flag-b15 { background: var(--back-9b59b6); }
-.flag-b16 { background: var(--back-e86b9a); }
-.flag-b17 { background: var(--back-6d1f3a); }
-.flag-b18 { background: var(--back-7a4a1e); }
-.flag-b19 { background: var(--back-c9a66b); }
-.flag-b20 { background: var(--back-b8bcc2); }
-.flag-b21 { background: var(--back-6b7078); }
-.flag-b22 { background: var(--back-f3e9c6); }
-.flag-b23 { background: var(--back-29b6d1); }
-.state-b0 { background: var(--back-c0504d); }
-.state-b1 { background: var(--back-4f81bd); }
-.state-b2 { background: var(--back-9bbb59); }
-.state-b3 { background: var(--back-8064a2); }
-.state-b4 { background: var(--back-f79646); }
-.state-b5 { background: var(--back-4bacc6); }
-.state-b6 { background: var(--back-d4a017); }
-.state-b7 { background: var(--back-7f6084); }
-.state-b8 { background: var(--back-2e8b57); }
-.state-b9 { background: var(--back-b5651d); }
-.state-b10 { background: var(--back-6a5acd); }
-.state-b11 { background: var(--back-cd5c5c); }
-.state-b12 { background: var(--back-20b2aa); }
-.state-b13 { background: var(--back-da70d6); }
-.state-b14 { background: var(--back-8fbc8f); }
-.state-b15 { background: var(--back-b8860b); }
-.state-b16 { background: var(--back-5f9ea0); }
-.state-b17 { background: var(--back-bc8f8f); }
-.state-b18 { background: var(--back-9370db); }
-.state-b19 { background: var(--back-3cb371); }
-.state-b20 { background: var(--back-d2691e); }
-.state-b21 { background: var(--back-4682b4); }
-.state-b22 { background: var(--back-c71585); }
-.state-b23 { background: var(--back-808000); }

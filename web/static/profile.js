@@ -1,5 +1,5 @@
 import { api, currentUser, started } from './api.js';
-import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, plural, MAX_RATING, firmLine, firmPictures, titleGroups, titleIconPath, worldRole } from './labels.js';
+import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, plural, MAX_RATING, firmLine, firmPictures, titleGroups, titleIconPath } from './labels.js';
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
@@ -13,8 +13,6 @@ import { personCell } from './people.js';
 import { openStories } from './stories.js';
 import { petImage } from './pet.js';
 import { tr } from './i18n.js';
-import { flagNode } from './flag.js';
-import { statePath } from './world-ui.js';
 
 const nickname = decodeURIComponent(location.pathname.slice(1));
 const CLUBS_SHOWN = 6;
@@ -396,27 +394,6 @@ async function showFirms(user, isOwner) {
   $('business-block').hidden = false;
 }
 
-// showWorld is the block "Мир" of a citizen of a state of the world: the
-// flag of the state, its name and the office of the page there.
-async function showWorld(user) {
-  let citizenship;
-  try {
-    citizenship = await api.userWorld(user.nickname);
-  } catch {
-    return; // Not to be had: the page works without it.
-  }
-  const state = citizenship.state;
-  if (!state) return;
-
-  $('world-role').textContent = worldRole(citizenship.role);
-  $('world-side').replaceChildren(el('div', { className: 'pet-side-row' },
-    el('a', { className: 'pet-side-picture', href: statePath(state.id) }, flagNode(state.flag, 64, state.name)),
-    el('div', { className: 'pet-side-text' },
-      el('a', { href: statePath(state.id) }, el('b', { textContent: state.name })),
-      state.motto ? el('div', { className: 'hint', textContent: `«${state.motto}»` }) : null)));
-  $('world-block').hidden = false;
-}
-
 // showStories offers "Смотреть историю" under the photo while the user
 // has live stories the viewer sees.
 async function showStories(user) {
@@ -615,7 +592,6 @@ try {
     showGifts(profile, me, isOwner);
     showPet(profile, me, isOwner);
     showFirms(profile, isOwner);
-    showWorld(profile);
     showTitles(profile);
     if (me) showStories(profile);
     // "Гости": the owner learns of the visit, unless it leaves no trace.
