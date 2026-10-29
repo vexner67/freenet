@@ -43,8 +43,6 @@ func PublicMethods() []string {
 		userv1.UserService_GetUserTitles_FullMethodName,
 		userv1.UserService_GetOrCreateByEmail_FullMethodName,
 		userv1.UserService_GetAccountState_FullMethodName,
-		userv1.UserService_ChargeVotes_FullMethodName,
-		userv1.UserService_PayVotes_FullMethodName,
 	}
 }
 
@@ -76,7 +74,5 @@ func InternalMethods() map[string][]string {
 		// the gateway, which sends it, tells whether it was.
 		userv1.UserService_PayMessage_FullMethodName:    {mtls.Gateway},
 		userv1.UserService_RefundMessage_FullMethodName: {mtls.Gateway},
-		userv1.UserService_ChargeVotes_FullMethodName:   {mtls.World},
-		userv1.UserService_PayVotes_FullMethodName:      {mtls.World},
 	}
 }

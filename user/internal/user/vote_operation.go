@@ -97,8 +97,9 @@ const (
 	// VotePet: a pet adopted or fed, or the votes a fight it won brought;
 	// the note is "adopt", "feed" or "fight".
 	VotePet VoteKind = "pet"
-	// VoteWorld: votes paid to a state of «Мир» or out of its treasury;
-	// the note is what for, "found_state" or "donate".
+	// VoteWorld: votes paid to a state of «Мир» or out of its treasury,
+	// when «Мир» had states; kept for the history of the wallets. The note
+	// is what for, "found_state" or "donate".
 	VoteWorld VoteKind = "world"
 )
 

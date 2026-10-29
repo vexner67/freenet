@@ -5,7 +5,6 @@ import (
 	"log/slog"
 
 	"github.com/vexner67/freenet/pkg/grpcserver"
-	"github.com/vexner67/freenet/world/internal/service"
 	"github.com/vexner67/freenet/world/internal/world"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -20,22 +19,9 @@ func ErrorInterceptor(log *slog.Logger) grpc.UnaryServerInterceptor {
 
 // The errors told to the client as they are, by the code they get.
 var (
-	invalid = []error{
-		world.ErrGrid, world.ErrRules, world.ErrFlag, world.ErrStateName, world.ErrAdjective, world.ErrMotto,
-		world.ErrColor, world.ErrGovernment, world.ErrRole, world.ErrDonation, world.ErrNotProvince,
-		world.ErrSelf, service.ErrTooManyEvents,
-	}
-	missing = []error{
-		world.ErrNotFound, world.ErrNoWorld, world.ErrTileNotFound, world.ErrStateNotFound, world.ErrNoApplication,
-		world.ErrProvinceNotFound,
-	}
-	refused = []error{
-		world.ErrNotReady, world.ErrNotOpen, world.ErrProvinceTaken, world.ErrTooClose, world.ErrNotNeighbour,
-		world.ErrNoColonists, world.ErrTreasury, world.ErrCitizen, world.ErrNotCitizen, world.ErrApplied,
-		world.ErrRulerLeaves, world.ErrFreeCity, service.ErrNotEnoughVotes, service.ErrNotSettled,
-	}
-	taken     = []error{world.ErrNameTaken}
-	forbidden = []error{world.ErrNotAllowed, service.ErrPageGone}
+	invalid = []error{world.ErrGrid}
+	missing = []error{world.ErrNotFound, world.ErrNoWorld, world.ErrTileNotFound}
+	refused = []error{world.ErrNotReady, world.ErrNotOpen}
 )
 
 func toStatus(err error) (*status.Status, bool) {
@@ -46,8 +32,6 @@ func toStatus(err error) (*status.Status, bool) {
 		{codes.InvalidArgument, invalid},
 		{codes.NotFound, missing},
 		{codes.FailedPrecondition, refused},
-		{codes.AlreadyExists, taken},
-		{codes.PermissionDenied, forbidden},
 	} {
 		for _, e := range group.known {
 			if errors.Is(err, e) {

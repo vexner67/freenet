@@ -26,8 +26,6 @@ const (
 type WorldService struct {
 	worlds WorldRepository
 	maps   MapRepository
-	games  GameRepository
-	rules  RulesRepository
 	maker  MapMaker
 	tx     TxManager
 	now    func() time.Time
@@ -43,15 +41,13 @@ type WorldService struct {
 type WorldDeps struct {
 	Worlds WorldRepository
 	Maps   MapRepository
-	Games  GameRepository
-	Rules  RulesRepository
 	Maker  MapMaker
 	Tx     TxManager
 }
 
 func NewWorldService(d WorldDeps) *WorldService {
 	return &WorldService{
-		worlds: d.Worlds, maps: d.Maps, games: d.Games, rules: d.Rules, maker: d.Maker, tx: d.Tx, now: time.Now,
+		worlds: d.Worlds, maps: d.Maps, maker: d.Maker, tx: d.Tx, now: time.Now,
 		wake: make(chan struct{}, 1), atlases: map[uuid.UUID]*world.Atlas{},
 	}
 }
@@ -138,11 +134,7 @@ func (s *WorldService) Open(ctx context.Context, id uuid.UUID) (*world.World, er
 			return errs.Wrap("s.endOpen", err)
 		}
 
-		if err = s.worlds.SaveWorld(ctx, w); err != nil {
-			return errs.Wrap("s.worlds.SaveWorld", err)
-		}
-
-		return errs.Wrap("s.games.CreateGame", s.games.CreateGame(ctx, w.ID(), world.NewGame(now)))
+		return errs.Wrap("s.worlds.SaveWorld", s.worlds.SaveWorld(ctx, w))
 	})
 
 	return w, errs.Wrap("s.tx.WithinTx", err)
@@ -183,18 +175,10 @@ func (s *WorldService) Worlds(ctx context.Context) ([]*world.World, error) {
 	return ws, errs.Wrap("s.worlds.Worlds", err)
 }
 
-func (s *WorldService) Rules(ctx context.Context) (world.Rules, error) {
-	r, err := s.rules.Rules(ctx)
-	return r, errs.Wrap("s.rules.Rules", err)
-}
-
-// SetRules: world.ErrRules.
-func (s *WorldService) SetRules(ctx context.Context, r world.Rules) error {
-	if err := r.Validate(); err != nil {
-		return errs.Wrap("r.Validate", err)
-	}
-
-	return errs.Wrap("s.rules.SetRules", s.rules.SetRules(ctx, r))
+// Current is the world open now; world.ErrNoWorld.
+func (s *WorldService) Current(ctx context.Context) (*world.World, error) {
+	w, err := s.worlds.OpenWorld(ctx)
+	return w, errs.Wrap("s.worlds.OpenWorld", err)
 }
 
 // Atlas is the map of the world id.

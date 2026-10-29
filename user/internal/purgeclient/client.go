@@ -18,7 +18,6 @@ import (
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/outbox"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
-	worldv1 "github.com/vexner67/freenet/world/api/world/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -61,7 +60,6 @@ const (
 	MediaStream   = "media"
 	MessageStream = "message"
 	ClubStream    = "club"
-	WorldStream   = "world"
 )
 
 // Recorder adds a message to an outbox stream in the transaction of ctx.
@@ -320,13 +318,6 @@ func Message(api messagev1.MessageServiceClient, timeout time.Duration) outbox.D
 func Club(api clubv1.ClubServiceClient, timeout time.Duration) outbox.Deliver {
 	return deliver(timeout, func(ctx context.Context, id string) error {
 		_, err := api.PurgeUser(ctx, &clubv1.PurgeUserRequest{UserId: id})
-		return err
-	})
-}
-
-func World(api worldv1.WorldServiceClient, timeout time.Duration) outbox.Deliver {
-	return deliver(timeout, func(ctx context.Context, id string) error {
-		_, err := api.PurgeUser(ctx, &worldv1.PurgeUserRequest{UserId: id})
 		return err
 	})
 }

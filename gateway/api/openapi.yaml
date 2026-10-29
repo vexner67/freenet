@@ -8334,268 +8334,23 @@ paths:
   /api/v1/world:
     get:
       summary: The open world of «Мир»
-      description: 'Public; with a token `viewer` tells where you are. `owners` has a number a province: 0 for nobody, otherwise the index in `states` plus one. 404 when no world is open.'
+      description: Public; its map is under `/media/world/{worldId}`. 404 when no world is open.
       security: [{}, { bearer: [] }]
       responses:
         "200":
           description: The world
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/WorldMap" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
-  /api/v1/world/events:
-    get:
-      summary: The news of the world
-      description: Public, newest first; `state` narrows them to one state, `before` is the ID of the last one seen.
-      parameters:
-        - { name: state, in: query, schema: { type: string, format: uuid } }
-        - { name: before, in: query, schema: { type: string, format: uuid } }
-        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50 } }
-      responses:
-        "200":
-          description: The news
-          content:
-            application/json:
               schema:
                 type: object
-                required: [events]
+                required: [world]
                 properties:
-                  events:
-                    type: array
-                    items: { $ref: "#/components/schemas/WorldEvent" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-
-  /api/v1/world/states:
-    post:
-      summary: Found a state
-      description: 'Costs `rules.foundCost` votes of your page, which has to be old enough to found one; the capital has to be free and far enough from the other capitals. The state gets the capital, `rules.foundLands` free neighbours and `rules.foundTreasury` votes.'
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [name, capital, flag, color, government]
-              properties:
-                name: { type: string, maxLength: 40 }
-                adjective: { type: string, maxLength: 40 }
-                motto: { type: string, maxLength: 80 }
-                color: { type: integer, minimum: 0, maximum: 23 }
-                flag: { $ref: "#/components/schemas/Flag" }
-                government: { type: string, enum: [monarchy, republic, dictatorship, federation, islamism] }
-                capital: { type: integer, description: The province of the capital }
-      responses:
-        "201":
-          description: Founded
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [id]
-                properties:
-                  id: { type: string, format: uuid }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
+                  world: { $ref: "#/components/schemas/World" }
         "404": { $ref: "#/components/responses/NotFound" }
-        "409": { $ref: "#/components/responses/Conflict" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
-
-  /api/v1/world/states/{id}:
-    get:
-      summary: The page of a state
-      description: Public; `applications` only for its ruler and minister of the interior, empty for everyone else.
-      security: [{}, { bearer: [] }]
-      parameters:
-        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
-      responses:
-        "200":
-          description: The state
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/StateView" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
-  /api/v1/world/state:
-    put:
-      summary: Change your state
-      description: Only for its ruler; the name and the form of government stay.
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [color, flag]
-              properties:
-                adjective: { type: string, maxLength: 40 }
-                motto: { type: string, maxLength: 80 }
-                color: { type: integer, minimum: 0, maximum: 23 }
-                flag: { $ref: "#/components/schemas/Flag" }
-      responses:
-        "204": { description: Changed }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/PermissionDenied" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
-
-  /api/v1/world/states/{id}/applications:
-    post:
-      summary: Apply for the citizenship of a state
-      security: [{ bearer: [] }]
-      parameters:
-        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
-      responses:
-        "204": { description: Applied }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "409": { $ref: "#/components/responses/Conflict" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
-
-  /api/v1/world/application:
-    delete:
-      summary: Withdraw your application
-      security: [{ bearer: [] }]
-      responses:
-        "204": { description: Withdrawn }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
-  /api/v1/world/applications/{userId}:
-    parameters:
-      - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
-    put:
-      summary: Take a person into your state
-      description: For its ruler and minister of the interior.
-      security: [{ bearer: [] }]
-      responses:
-        "204": { description: Taken }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/PermissionDenied" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "409": { $ref: "#/components/responses/Conflict" }
-    delete:
-      summary: Turn away an application to your state
-      security: [{ bearer: [] }]
-      responses:
-        "204": { description: Turned away }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/PermissionDenied" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
-  /api/v1/world/citizenship:
-    delete:
-      summary: Leave your state
-      description: The ruler cannot leave; they abdicate first.
-      security: [{ bearer: [] }]
-      responses:
-        "204": { description: Left }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "409": { $ref: "#/components/responses/Conflict" }
-
-  /api/v1/world/citizens/{userId}:
-    delete:
-      summary: Expel a citizen of your state
-      description: For its ruler and minister of the interior; a minister cannot expel the ruler or another minister.
-      security: [{ bearer: [] }]
-      parameters:
-        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
-      responses:
-        "204": { description: Expelled }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/PermissionDenied" }
-        "409": { $ref: "#/components/responses/Conflict" }
-
-  /api/v1/world/citizens/{userId}/role:
-    put:
-      summary: Give a citizen of your state an office
-      description: Only for its ruler.
-      security: [{ bearer: [] }]
-      parameters:
-        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [role]
-              properties:
-                role: { type: string, enum: [minister_economy, minister_foreign, minister_defense, minister_interior, general, citizen] }
-      responses:
-        "204": { description: Appointed }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/PermissionDenied" }
-        "409": { $ref: "#/components/responses/Conflict" }
-
-  /api/v1/world/abdication:
-    post:
-      summary: Hand your state to another citizen
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [heirId]
-              properties:
-                heirId: { type: string, format: uuid }
-      responses:
-        "204": { description: Handed over }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/PermissionDenied" }
-        "409": { $ref: "#/components/responses/Conflict" }
-
-  /api/v1/world/colonies:
-    post:
-      summary: Send colonists to a free province
-      description: 'For the ruler and the minister of the economy: the province borders the state, the treasury pays `colonyCost` of the state page, and it is the state''s in `rules.colonizeHours`.'
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [province]
-              properties:
-                province: { type: integer }
-      responses:
-        "204": { description: Sent }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/PermissionDenied" }
-        "409": { $ref: "#/components/responses/Conflict" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
-
-  /api/v1/world/donations:
-    post:
-      summary: Give votes of your page to the treasury of your state
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [votes]
-              properties:
-                votes: { type: integer, format: int64, minimum: 1 }
-      responses:
-        "204": { description: Given }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "409": { $ref: "#/components/responses/Conflict" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/world/worlds:
     get:
-      summary: The maps made and the rules of the game
+      summary: The maps made
       description: Only for the administrators of the site.
       security: [{ bearer: [] }]
       responses:
@@ -8605,12 +8360,11 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [worlds, rules]
+                required: [worlds]
                 properties:
                   worlds:
                     type: array
                     items: { $ref: "#/components/schemas/World" }
-                  rules: { $ref: "#/components/schemas/WorldRules" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/PermissionDenied" }
     post:
@@ -8639,7 +8393,7 @@ paths:
 
   /api/v1/world/worlds/{id}/open:
     post:
-      summary: Open a ready map for the game
+      summary: Show a ready map on the site
       description: Only for the administrators of the site; the world open now ends.
       security: [{ bearer: [] }]
       parameters:
@@ -8660,44 +8414,6 @@ paths:
         "204": { description: Ended }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/PermissionDenied" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
-  /api/v1/world/rules:
-    put:
-      summary: Change the rules of the game
-      description: Only for the administrators of the site.
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/WorldRules" }
-      responses:
-        "204": { description: Changed }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403": { $ref: "#/components/responses/PermissionDenied" }
-
-  /api/v1/users/{nickname}/world:
-    get:
-      summary: The state of a person
-      description: Public; `state` is null for none, and when no world is open.
-      parameters:
-        - { name: nickname, in: path, required: true, schema: { type: string } }
-      responses:
-        "200":
-          description: The citizenship
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [state, role]
-                properties:
-                  state:
-                    oneOf:
-                      - { $ref: "#/components/schemas/State" }
-                      - { type: "null" }
-                  role: { type: string, description: Their office there; empty for none }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /media/world/{worldId}/atlas:
@@ -10507,87 +10223,6 @@ components:
         openedAt: { type: [string, "null"], format: date-time }
         endedAt: { type: [string, "null"], format: date-time }
 
-    WorldRules:
-      type: object
-      required: [foundCost, foundTreasury, foundLands, capitalDistance, protectionDays, colonizeCost, colonizeHours, income]
-      properties:
-        foundCost: { type: integer, format: int64, description: Votes a state costs to found }
-        foundTreasury: { type: integer, format: int64, description: Votes in the treasury of a new state }
-        foundLands: { type: integer, description: Free neighbours of the capital a new state gets }
-        capitalDistance: { type: integer, description: Fewest provinces between two capitals }
-        protectionDays: { type: integer, description: Days a new state is protected }
-        colonizeCost: { type: integer, format: int64, description: What a colony costs at first, in votes; dearer with every province }
-        colonizeHours: { type: integer }
-        income: { type: integer, format: int64, description: What a thousand people pay an hour, in tenths of a hundredth of a vote }
-
-    Flag:
-      type: object
-      required: [pattern, colors]
-      properties:
-        pattern: { type: string, enum: [plain, bicolor_h, bicolor_v, tricolor_h, tricolor_v, cross, nordic, diagonal, border, triangle, circle] }
-        colors: { type: array, items: { type: integer, minimum: 0, maximum: 23 }, description: As many as the pattern has }
-        emblem: { type: string, enum: ["", star, sun, moon, crown, anchor, tower, sword, tree, wave, wheat, shield, hammer] }
-        emblemColor: { type: integer, minimum: 0, maximum: 23 }
-        emblemAt: { type: string, enum: ["", center, canton] }
-
-    State:
-      type: object
-      required: [id, name, adjective, motto, color, flag, government, ruler, capital, treasury, foundedAt, protectedUntil, clubId, lands, population, citizens, income]
-      properties:
-        id: { type: string, format: uuid }
-        name: { type: string }
-        adjective: { type: string }
-        motto: { type: string }
-        color: { type: integer, description: Its color on the map, of the palette of 24 }
-        flag: { $ref: "#/components/schemas/Flag" }
-        government: { type: string, enum: [monarchy, republic, dictatorship, federation, islamism] }
-        ruler:
-          description: Null in the state of a person (`/users/{nickname}/world`) and for a page erased
-          oneOf:
-            - { $ref: "#/components/schemas/Author" }
-            - { type: "null" }
-        capital: { type: integer }
-        treasury: { type: integer, format: int64, description: In hundredths of a vote }
-        foundedAt: { type: string, format: date-time }
-        protectedUntil: { type: string, format: date-time }
-        clubId: { type: string, description: Its group; empty until it is made }
-        lands: { type: integer }
-        population: { type: integer, description: In thousands }
-        citizens: { type: integer }
-        income: { type: integer, format: int64, description: An hour, in hundredths of a vote }
-
-    Colony:
-      type: object
-      required: [province, stateId, until]
-      properties:
-        province: { type: integer }
-        stateId: { type: string, format: uuid }
-        until: { type: string, format: date-time, description: When the province becomes the state's }
-
-    WorldStanding:
-      type: object
-      required: [stateId, role, appliedTo]
-      properties:
-        stateId: { type: string, description: Your state; empty for none }
-        role: { type: string, description: Your office there }
-        appliedTo: { type: string, description: The state you applied to; empty for none }
-
-    WorldMap:
-      type: object
-      required: [world, rules, hour, states, owners, colonies, viewer]
-      properties:
-        world: { $ref: "#/components/schemas/World" }
-        rules: { $ref: "#/components/schemas/WorldRules" }
-        hour: { type: string, format: date-time, description: The last hour counted }
-        states:
-          type: array
-          items: { $ref: "#/components/schemas/State" }
-        owners: { type: array, items: { type: integer } }
-        colonies:
-          type: array
-          items: { $ref: "#/components/schemas/Colony" }
-        viewer: { $ref: "#/components/schemas/WorldStanding" }
-
     Atlas:
       type: object
       required: [width, height, zooms, provinces]
@@ -10625,63 +10260,6 @@ components:
                     to: { type: integer }
                     river: { type: boolean }
                     sea: { type: boolean }
-
-    StateView:
-      type: object
-      required: [state, lands, citizens, colonies, applications, colonyCost, budget, viewer]
-      properties:
-        state: { $ref: "#/components/schemas/State" }
-        lands: { type: array, items: { type: integer } }
-        citizens:
-          type: array
-          items:
-            type: object
-            required: [user, role, joinedAt]
-            properties:
-              user: { $ref: "#/components/schemas/Author" }
-              role: { type: string }
-              joinedAt: { type: string, format: date-time }
-        colonies:
-          type: array
-          items: { $ref: "#/components/schemas/Colony" }
-        applications:
-          type: array
-          items:
-            type: object
-            required: [user, at]
-            properties:
-              user: { $ref: "#/components/schemas/Author" }
-              at: { type: string, format: date-time }
-        colonyCost: { type: integer, format: int64, description: What the next colony costs, in hundredths of a vote }
-        budget:
-          type: array
-          description: The last 24 hours, in hundredths of a vote; spending is negative
-          items:
-            type: object
-            required: [hour, income, donations, founding, colonization]
-            properties:
-              hour: { type: string, format: date-time }
-              income: { type: integer, format: int64 }
-              donations: { type: integer, format: int64 }
-              founding: { type: integer, format: int64 }
-              colonization: { type: integer, format: int64 }
-        viewer: { $ref: "#/components/schemas/WorldStanding" }
-
-    WorldEvent:
-      type: object
-      required: [id, kind, stateId, user, province, name, role, at]
-      properties:
-        id: { type: string, format: uuid }
-        kind: { type: string, enum: [founded, joined, left, expelled, appointed, succeeded, colonized, dissolved] }
-        stateId: { type: string, format: uuid }
-        user:
-          oneOf:
-            - { $ref: "#/components/schemas/Author" }
-            - { type: "null" }
-        province: { type: integer }
-        name: { type: string, description: The name of the state }
-        role: { type: string }
-        at: { type: string, format: date-time }
 
     Casino:
       type: object

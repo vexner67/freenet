@@ -251,7 +251,6 @@ func (a *App) build(cfg config.Config) error {
 			Holdems:     a.holdems,
 			BetEvents:   service.NewBetEventService(store.users, store.betEvents, store.wallets, store.tx, admins),
 			Paid:        service.NewPaidService(store.users, store.wallets, store.purchases, store.economy, permissions, store.tx),
-			World:       service.NewWorldService(store.users, store.wallets, store.worldVotes, store.tx),
 			Guests:      service.NewGuestService(store.users, store.guests),
 			Tops:        service.NewTopService(store.tops),
 			Pets:        service.NewPetService(store.users, store.pets, store.wallets, store.tx, admins),
@@ -435,8 +434,6 @@ type storage struct {
 	titles service.TitleRepository
 	// purchases are the paid posts opened and the messages paid for.
 	purchases service.PurchaseRepository
-	// worldVotes are the operations of votes of «Мир».
-	worldVotes service.WorldVoteRepository
 	// ads are the advertising of the global feed, and how it does.
 	ads interface {
 		service.AdRepository
@@ -478,7 +475,6 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			holdems:      inmem.NewHoldemRepository(),
 			betEvents:    inmem.NewBetEventRepository(),
 			purchases:    inmem.NewPurchaseRepository(),
-			worldVotes:   inmem.NewWorldVoteRepository(),
 			guests:       inmem.NewGuestRepository(users),
 			pets:         pets,
 			tops:         inmem.NewTopRepository(users, pets),
@@ -538,7 +534,6 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		holdems:      postgres.NewHoldemRepository(a.pool),
 		betEvents:    postgres.NewBetEventRepository(a.pool),
 		purchases:    postgres.NewPurchaseRepository(a.pool),
-		worldVotes:   postgres.NewWorldVoteRepository(a.pool),
 		guests:       postgres.NewGuestRepository(a.pool),
 		pets:         postgres.NewPetRepository(a.pool),
 		tops:         postgres.NewTopRepository(a.pool),

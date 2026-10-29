@@ -7,11 +7,10 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/vexner67/freenet/world/api/world/v1;worldv1";
 
-// WorldService is «Мир»: worlds made of a seed by the administrators, their
-// maps, and the states people found in the open one.
+// WorldService is «Мир»: worlds made of a seed by the administrators and
+// their maps.
 service WorldService {
-  // Public: anyone may read the world; with a token the answer says where
-  // the viewer stands. NotFound "no world is open".
+  // Public: the world open now. NotFound "no world is open".
   rpc GetWorld(GetWorldRequest) returns (GetWorldResponse);
   // Public: the provinces of the map of a world, the same for its life.
   rpc GetAtlas(GetAtlasRequest) returns (GetAtlasResponse);
@@ -20,52 +19,15 @@ service WorldService {
   rpc GetRaster(GetRasterRequest) returns (GetRasterResponse);
   // Public: a picture of the map, 256×256 PNG; NotFound "tile not found".
   rpc GetTile(GetTileRequest) returns (GetTileResponse);
-  // Public: a state of the open world with its people and land;
-  // applications only to those who answer them.
-  rpc GetState(GetStateRequest) returns (GetStateResponse);
-  // Public: the news of the open world, of a state if given, newest first.
-  rpc ListWorldEvents(ListWorldEventsRequest) returns (ListWorldEventsResponse);
-  // Public: the state a person is a citizen of in the open world, if any.
-  rpc GetCitizenship(GetCitizenshipRequest) returns (GetCitizenshipResponse);
-
-  // Require an access token: what people do in the open world.
-  // FoundState takes found_cost votes of the founder, a page older than a
-  // week with a profile (FailedPrecondition "not enough votes", "the page
-  // is too new to found a state"); the capital is free land, not a free
-  // city, far enough from other capitals.
-  rpc FoundState(FoundStateRequest) returns (FoundStateResponse);
-  // The ruler changes the adjective, motto, color and flag.
-  rpc EditState(EditStateRequest) returns (google.protobuf.Empty);
-  rpc ApplyCitizenship(ApplyCitizenshipRequest) returns (google.protobuf.Empty);
-  rpc WithdrawApplication(google.protobuf.Empty) returns (google.protobuf.Empty);
-  // The ruler and the minister of the interior answer applications.
-  rpc AnswerApplication(AnswerApplicationRequest) returns (google.protobuf.Empty);
-  rpc LeaveState(google.protobuf.Empty) returns (google.protobuf.Empty);
-  rpc ExpelCitizen(ExpelCitizenRequest) returns (google.protobuf.Empty);
-  // The ruler gives offices.
-  rpc AppointCitizen(AppointCitizenRequest) returns (google.protobuf.Empty);
-  // The ruler gives the state to a citizen and stays one.
-  rpc Abdicate(AbdicateRequest) returns (google.protobuf.Empty);
-  // The ruler and the minister of the economy settle free land next to the
-  // state from the treasury.
-  rpc Colonize(ColonizeRequest) returns (google.protobuf.Empty);
-  // A citizen gives votes to the treasury of their state.
-  rpc Donate(DonateRequest) returns (google.protobuf.Empty);
-
-  // Internal (user): the page is gone; its citizenship ends, a state it
-  // ruled goes to another or dissolves.
-  rpc PurgeUser(PurgeUserRequest) returns (google.protobuf.Empty);
 
   // Internal (gateway, which asks the user service first whether its
-  // caller is an administrator of the site): the worlds and the rules.
+  // caller is an administrator of the site): the worlds.
   rpc ListWorlds(google.protobuf.Empty) returns (ListWorldsResponse);
   // The map is made in the background; the world is ready to open then.
   rpc CreateWorld(CreateWorldRequest) returns (CreateWorldResponse);
   // Opens a ready world and ends the one open before it.
   rpc OpenWorld(OpenWorldRequest) returns (google.protobuf.Empty);
   rpc EndWorld(google.protobuf.Empty) returns (google.protobuf.Empty);
-  rpc GetWorldRules(google.protobuf.Empty) returns (WorldRules);
-  rpc SetWorldRules(WorldRules) returns (google.protobuf.Empty);
 }
 
 enum WorldStatus {
@@ -87,86 +49,13 @@ message World {
   google.protobuf.Timestamp ended_at = 7;
 }
 
-// The numbers of «Мир»; votes are whole votes, income is in hundredths of
-// a vote ten thousand people bring in an hour.
-message WorldRules {
-  int64 found_cost = 1;
-  int64 found_treasury = 2;
-  int32 found_lands = 3;
-  int32 capital_distance = 4;
-  int32 protection_days = 5;
-  int64 colonize_cost = 6;
-  int32 colonize_hours = 7;
-  int64 income = 8;
-}
-
-message Flag {
-  // plain, bicolor_h, bicolor_v, tricolor_h, tricolor_v, cross, nordic,
-  // diagonal, border, triangle, circle.
-  string pattern = 1;
-  // Numbers of the palette of 24 colors, as many as the pattern has.
-  repeated int32 colors = 2;
-  // "" for none, or star, sun, moon, crown, anchor, tower, sword, tree,
-  // wave, wheat, shield, hammer.
-  string emblem = 3;
-  int32 emblem_color = 4;
-  // center or canton.
-  string emblem_at = 5;
-}
-
-// A state with what it has. Money is in hundredths of a vote.
-message State {
-  string id = 1;
-  string name = 2;
-  string adjective = 3;
-  string motto = 4;
-  int32 color = 5;
-  Flag flag = 6;
-  // monarchy, republic, dictatorship, federation, islamism.
-  string government = 7;
-  string ruler_id = 8;
-  int32 capital = 9;
-  int64 treasury = 10;
-  google.protobuf.Timestamp founded_at = 11;
-  google.protobuf.Timestamp protected_until = 12;
-  // "" until the group is made.
-  string club_id = 13;
-  int32 lands = 14;
-  // Thousands of people.
-  int32 population = 15;
-  int32 citizens = 16;
-  // Per hour.
-  int64 income = 17;
-}
-
-message Colony {
-  int32 province = 1;
-  string state_id = 2;
-  google.protobuf.Timestamp until = 3;
-}
-
-// Where the viewer stands: a citizen (state_id, role) or an applicant.
-message Standing {
-  string state_id = 1;
-  // ruler, minister_economy, minister_foreign, minister_defense,
-  // minister_interior, general, citizen.
-  string role = 2;
-  string applied_to = 3;
-}
-
 message GetWorldRequest {}
 
 message GetWorldResponse {
   World world = 1;
-  WorldRules rules = 2;
-  // The last hour counted; the next ends an hour later.
-  google.protobuf.Timestamp hour = 3;
-  repeated State states = 4;
-  // The state of every province by its number: 0 for nobody, else the
-  // place in states plus one.
-  repeated int32 owners = 5;
-  repeated Colony colonies = 6;
-  Standing viewer = 7;
+  // The states of people were removed from «Мир».
+  reserved 2 to 7;
+  reserved "rules", "hour", "states", "owners", "colonies", "viewer";
 }
 
 message GetAtlasRequest {
@@ -224,131 +113,6 @@ message GetTileRequest {
 
 message GetTileResponse {
   bytes png = 1;
-}
-
-message GetStateRequest {
-  string state_id = 1;
-}
-
-message Citizen {
-  string user_id = 1;
-  string role = 2;
-  google.protobuf.Timestamp joined_at = 3;
-}
-
-message Application {
-  string user_id = 1;
-  google.protobuf.Timestamp at = 2;
-}
-
-// The money of an hour, in hundredths.
-message BudgetHour {
-  google.protobuf.Timestamp hour = 1;
-  int64 income = 2;
-  int64 donations = 3;
-  int64 founding = 4;
-  int64 colonization = 5;
-}
-
-message GetStateResponse {
-  State state = 1;
-  repeated int32 lands = 2;
-  repeated Citizen citizens = 3;
-  repeated Colony colonies = 4;
-  repeated Application applications = 5;
-  // What the next colony costs, in hundredths.
-  int64 colony_cost = 6;
-  repeated BudgetHour budget = 7;
-  Standing viewer = 8;
-}
-
-message ListWorldEventsRequest {
-  string state_id = 1;
-  string before = 2;
-  int32 limit = 3;
-}
-
-message WorldEvent {
-  string id = 1;
-  // founded, joined, left, expelled, appointed, succeeded, colonized,
-  // dissolved.
-  string kind = 2;
-  string state_id = 3;
-  string user_id = 4;
-  int32 province = 5;
-  // The name of the state then.
-  string name = 6;
-  string role = 7;
-  google.protobuf.Timestamp at = 8;
-}
-
-message ListWorldEventsResponse {
-  repeated WorldEvent events = 1;
-}
-
-message GetCitizenshipRequest {
-  string user_id = 1;
-}
-
-message GetCitizenshipResponse {
-  // Unset for none.
-  State state = 1;
-  string role = 2;
-}
-
-message FoundStateRequest {
-  string name = 1;
-  string adjective = 2;
-  string motto = 3;
-  int32 color = 4;
-  Flag flag = 5;
-  string government = 6;
-  int32 capital = 7;
-}
-
-message FoundStateResponse {
-  string state_id = 1;
-}
-
-message EditStateRequest {
-  string adjective = 1;
-  string motto = 2;
-  int32 color = 3;
-  Flag flag = 4;
-}
-
-message ApplyCitizenshipRequest {
-  string state_id = 1;
-}
-
-message AnswerApplicationRequest {
-  string user_id = 1;
-  bool accept = 2;
-}
-
-message ExpelCitizenRequest {
-  string user_id = 1;
-}
-
-message AppointCitizenRequest {
-  string user_id = 1;
-  string role = 2;
-}
-
-message AbdicateRequest {
-  string heir_id = 1;
-}
-
-message ColonizeRequest {
-  int32 province = 1;
-}
-
-message DonateRequest {
-  int64 votes = 1;
-}
-
-message PurgeUserRequest {
-  string user_id = 1;
 }
 
 message ListWorldsResponse {

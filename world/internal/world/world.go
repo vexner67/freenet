@@ -1,5 +1,5 @@
-// Package world is the domain of «Мир»: the worlds made of a seed, their
-// map, the states of people in them and how they live by the hour.
+// Package world is the domain of «Мир»: the worlds made of a seed and
+// their maps.
 package world
 
 import (
@@ -26,7 +26,7 @@ const (
 	StatusGenerating Status = "generating"
 	// StatusReady: the map is made; the administrators may open it.
 	StatusReady Status = "ready"
-	// StatusOpen: people play it. One world at most is open.
+	// StatusOpen: the site shows it. One world at most is open.
 	StatusOpen   Status = "open"
 	StatusEnded  Status = "ended"
 	StatusFailed Status = "failed"
@@ -36,7 +36,7 @@ const (
 // 4096 cells, but 2048 needs a quarter of the memory and time.
 var Grids = []int{1024, 2048, 4096}
 
-// World is a world of «Мир»: a seed, its map and its states.
+// World is a world of «Мир»: a seed and its map.
 type World struct {
 	id        uuid.UUID
 	seed      uint64
@@ -111,7 +111,7 @@ func (w *World) Failed() {
 	}
 }
 
-// Open lets people in; ErrNotReady unless its map is made.
+// Open shows the world on the site; ErrNotReady unless its map is made.
 func (w *World) Open(now time.Time) error {
 	if w.status != StatusReady {
 		return ErrNotReady

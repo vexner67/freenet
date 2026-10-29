@@ -20,42 +20,24 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	WorldService_GetWorld_FullMethodName            = "/world.v1.WorldService/GetWorld"
-	WorldService_GetAtlas_FullMethodName            = "/world.v1.WorldService/GetAtlas"
-	WorldService_GetRaster_FullMethodName           = "/world.v1.WorldService/GetRaster"
-	WorldService_GetTile_FullMethodName             = "/world.v1.WorldService/GetTile"
-	WorldService_GetState_FullMethodName            = "/world.v1.WorldService/GetState"
-	WorldService_ListWorldEvents_FullMethodName     = "/world.v1.WorldService/ListWorldEvents"
-	WorldService_GetCitizenship_FullMethodName      = "/world.v1.WorldService/GetCitizenship"
-	WorldService_FoundState_FullMethodName          = "/world.v1.WorldService/FoundState"
-	WorldService_EditState_FullMethodName           = "/world.v1.WorldService/EditState"
-	WorldService_ApplyCitizenship_FullMethodName    = "/world.v1.WorldService/ApplyCitizenship"
-	WorldService_WithdrawApplication_FullMethodName = "/world.v1.WorldService/WithdrawApplication"
-	WorldService_AnswerApplication_FullMethodName   = "/world.v1.WorldService/AnswerApplication"
-	WorldService_LeaveState_FullMethodName          = "/world.v1.WorldService/LeaveState"
-	WorldService_ExpelCitizen_FullMethodName        = "/world.v1.WorldService/ExpelCitizen"
-	WorldService_AppointCitizen_FullMethodName      = "/world.v1.WorldService/AppointCitizen"
-	WorldService_Abdicate_FullMethodName            = "/world.v1.WorldService/Abdicate"
-	WorldService_Colonize_FullMethodName            = "/world.v1.WorldService/Colonize"
-	WorldService_Donate_FullMethodName              = "/world.v1.WorldService/Donate"
-	WorldService_PurgeUser_FullMethodName           = "/world.v1.WorldService/PurgeUser"
-	WorldService_ListWorlds_FullMethodName          = "/world.v1.WorldService/ListWorlds"
-	WorldService_CreateWorld_FullMethodName         = "/world.v1.WorldService/CreateWorld"
-	WorldService_OpenWorld_FullMethodName           = "/world.v1.WorldService/OpenWorld"
-	WorldService_EndWorld_FullMethodName            = "/world.v1.WorldService/EndWorld"
-	WorldService_GetWorldRules_FullMethodName       = "/world.v1.WorldService/GetWorldRules"
-	WorldService_SetWorldRules_FullMethodName       = "/world.v1.WorldService/SetWorldRules"
+	WorldService_GetWorld_FullMethodName    = "/world.v1.WorldService/GetWorld"
+	WorldService_GetAtlas_FullMethodName    = "/world.v1.WorldService/GetAtlas"
+	WorldService_GetRaster_FullMethodName   = "/world.v1.WorldService/GetRaster"
+	WorldService_GetTile_FullMethodName     = "/world.v1.WorldService/GetTile"
+	WorldService_ListWorlds_FullMethodName  = "/world.v1.WorldService/ListWorlds"
+	WorldService_CreateWorld_FullMethodName = "/world.v1.WorldService/CreateWorld"
+	WorldService_OpenWorld_FullMethodName   = "/world.v1.WorldService/OpenWorld"
+	WorldService_EndWorld_FullMethodName    = "/world.v1.WorldService/EndWorld"
 )
 
 // WorldServiceClient is the client API for WorldService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// WorldService is «Мир»: worlds made of a seed by the administrators, their
-// maps, and the states people found in the open one.
+// WorldService is «Мир»: worlds made of a seed by the administrators and
+// their maps.
 type WorldServiceClient interface {
-	// Public: anyone may read the world; with a token the answer says where
-	// the viewer stands. NotFound "no world is open".
+	// Public: the world open now. NotFound "no world is open".
 	GetWorld(ctx context.Context, in *GetWorldRequest, opts ...grpc.CallOption) (*GetWorldResponse, error)
 	// Public: the provinces of the map of a world, the same for its life.
 	GetAtlas(ctx context.Context, in *GetAtlasRequest, opts ...grpc.CallOption) (*GetAtlasResponse, error)
@@ -64,49 +46,14 @@ type WorldServiceClient interface {
 	GetRaster(ctx context.Context, in *GetRasterRequest, opts ...grpc.CallOption) (*GetRasterResponse, error)
 	// Public: a picture of the map, 256×256 PNG; NotFound "tile not found".
 	GetTile(ctx context.Context, in *GetTileRequest, opts ...grpc.CallOption) (*GetTileResponse, error)
-	// Public: a state of the open world with its people and land;
-	// applications only to those who answer them.
-	GetState(ctx context.Context, in *GetStateRequest, opts ...grpc.CallOption) (*GetStateResponse, error)
-	// Public: the news of the open world, of a state if given, newest first.
-	ListWorldEvents(ctx context.Context, in *ListWorldEventsRequest, opts ...grpc.CallOption) (*ListWorldEventsResponse, error)
-	// Public: the state a person is a citizen of in the open world, if any.
-	GetCitizenship(ctx context.Context, in *GetCitizenshipRequest, opts ...grpc.CallOption) (*GetCitizenshipResponse, error)
-	// Require an access token: what people do in the open world.
-	// FoundState takes found_cost votes of the founder, a page older than a
-	// week with a profile (FailedPrecondition "not enough votes", "the page
-	// is too new to found a state"); the capital is free land, not a free
-	// city, far enough from other capitals.
-	FoundState(ctx context.Context, in *FoundStateRequest, opts ...grpc.CallOption) (*FoundStateResponse, error)
-	// The ruler changes the adjective, motto, color and flag.
-	EditState(ctx context.Context, in *EditStateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	ApplyCitizenship(ctx context.Context, in *ApplyCitizenshipRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	WithdrawApplication(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// The ruler and the minister of the interior answer applications.
-	AnswerApplication(ctx context.Context, in *AnswerApplicationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	LeaveState(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	ExpelCitizen(ctx context.Context, in *ExpelCitizenRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// The ruler gives offices.
-	AppointCitizen(ctx context.Context, in *AppointCitizenRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// The ruler gives the state to a citizen and stays one.
-	Abdicate(ctx context.Context, in *AbdicateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// The ruler and the minister of the economy settle free land next to the
-	// state from the treasury.
-	Colonize(ctx context.Context, in *ColonizeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// A citizen gives votes to the treasury of their state.
-	Donate(ctx context.Context, in *DonateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Internal (user): the page is gone; its citizenship ends, a state it
-	// ruled goes to another or dissolves.
-	PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal (gateway, which asks the user service first whether its
-	// caller is an administrator of the site): the worlds and the rules.
+	// caller is an administrator of the site): the worlds.
 	ListWorlds(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListWorldsResponse, error)
 	// The map is made in the background; the world is ready to open then.
 	CreateWorld(ctx context.Context, in *CreateWorldRequest, opts ...grpc.CallOption) (*CreateWorldResponse, error)
 	// Opens a ready world and ends the one open before it.
 	OpenWorld(ctx context.Context, in *OpenWorldRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	EndWorld(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	GetWorldRules(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*WorldRules, error)
-	SetWorldRules(ctx context.Context, in *WorldRules, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type worldServiceClient struct {
@@ -157,156 +104,6 @@ func (c *worldServiceClient) GetTile(ctx context.Context, in *GetTileRequest, op
 	return out, nil
 }
 
-func (c *worldServiceClient) GetState(ctx context.Context, in *GetStateRequest, opts ...grpc.CallOption) (*GetStateResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetStateResponse)
-	err := c.cc.Invoke(ctx, WorldService_GetState_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *worldServiceClient) ListWorldEvents(ctx context.Context, in *ListWorldEventsRequest, opts ...grpc.CallOption) (*ListWorldEventsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListWorldEventsResponse)
-	err := c.cc.Invoke(ctx, WorldService_ListWorldEvents_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *worldServiceClient) GetCitizenship(ctx context.Context, in *GetCitizenshipRequest, opts ...grpc.CallOption) (*GetCitizenshipResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetCitizenshipResponse)
-	err := c.cc.Invoke(ctx, WorldService_GetCitizenship_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *worldServiceClient) FoundState(ctx context.Context, in *FoundStateRequest, opts ...grpc.CallOption) (*FoundStateResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(FoundStateResponse)
-	err := c.cc.Invoke(ctx, WorldService_FoundState_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *worldServiceClient) EditState(ctx context.Context, in *EditStateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, WorldService_EditState_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *worldServiceClient) ApplyCitizenship(ctx context.Context, in *ApplyCitizenshipRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, WorldService_ApplyCitizenship_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *worldServiceClient) WithdrawApplication(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, WorldService_WithdrawApplication_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *worldServiceClient) AnswerApplication(ctx context.Context, in *AnswerApplicationRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, WorldService_AnswerApplication_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *worldServiceClient) LeaveState(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, WorldService_LeaveState_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *worldServiceClient) ExpelCitizen(ctx context.Context, in *ExpelCitizenRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, WorldService_ExpelCitizen_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *worldServiceClient) AppointCitizen(ctx context.Context, in *AppointCitizenRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, WorldService_AppointCitizen_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *worldServiceClient) Abdicate(ctx context.Context, in *AbdicateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, WorldService_Abdicate_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *worldServiceClient) Colonize(ctx context.Context, in *ColonizeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, WorldService_Colonize_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *worldServiceClient) Donate(ctx context.Context, in *DonateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, WorldService_Donate_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *worldServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, WorldService_PurgeUser_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *worldServiceClient) ListWorlds(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListWorldsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListWorldsResponse)
@@ -347,35 +144,14 @@ func (c *worldServiceClient) EndWorld(ctx context.Context, in *emptypb.Empty, op
 	return out, nil
 }
 
-func (c *worldServiceClient) GetWorldRules(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*WorldRules, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(WorldRules)
-	err := c.cc.Invoke(ctx, WorldService_GetWorldRules_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *worldServiceClient) SetWorldRules(ctx context.Context, in *WorldRules, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, WorldService_SetWorldRules_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // WorldServiceServer is the server API for WorldService service.
 // All implementations must embed UnimplementedWorldServiceServer
 // for forward compatibility.
 //
-// WorldService is «Мир»: worlds made of a seed by the administrators, their
-// maps, and the states people found in the open one.
+// WorldService is «Мир»: worlds made of a seed by the administrators and
+// their maps.
 type WorldServiceServer interface {
-	// Public: anyone may read the world; with a token the answer says where
-	// the viewer stands. NotFound "no world is open".
+	// Public: the world open now. NotFound "no world is open".
 	GetWorld(context.Context, *GetWorldRequest) (*GetWorldResponse, error)
 	// Public: the provinces of the map of a world, the same for its life.
 	GetAtlas(context.Context, *GetAtlasRequest) (*GetAtlasResponse, error)
@@ -384,49 +160,14 @@ type WorldServiceServer interface {
 	GetRaster(context.Context, *GetRasterRequest) (*GetRasterResponse, error)
 	// Public: a picture of the map, 256×256 PNG; NotFound "tile not found".
 	GetTile(context.Context, *GetTileRequest) (*GetTileResponse, error)
-	// Public: a state of the open world with its people and land;
-	// applications only to those who answer them.
-	GetState(context.Context, *GetStateRequest) (*GetStateResponse, error)
-	// Public: the news of the open world, of a state if given, newest first.
-	ListWorldEvents(context.Context, *ListWorldEventsRequest) (*ListWorldEventsResponse, error)
-	// Public: the state a person is a citizen of in the open world, if any.
-	GetCitizenship(context.Context, *GetCitizenshipRequest) (*GetCitizenshipResponse, error)
-	// Require an access token: what people do in the open world.
-	// FoundState takes found_cost votes of the founder, a page older than a
-	// week with a profile (FailedPrecondition "not enough votes", "the page
-	// is too new to found a state"); the capital is free land, not a free
-	// city, far enough from other capitals.
-	FoundState(context.Context, *FoundStateRequest) (*FoundStateResponse, error)
-	// The ruler changes the adjective, motto, color and flag.
-	EditState(context.Context, *EditStateRequest) (*emptypb.Empty, error)
-	ApplyCitizenship(context.Context, *ApplyCitizenshipRequest) (*emptypb.Empty, error)
-	WithdrawApplication(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
-	// The ruler and the minister of the interior answer applications.
-	AnswerApplication(context.Context, *AnswerApplicationRequest) (*emptypb.Empty, error)
-	LeaveState(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
-	ExpelCitizen(context.Context, *ExpelCitizenRequest) (*emptypb.Empty, error)
-	// The ruler gives offices.
-	AppointCitizen(context.Context, *AppointCitizenRequest) (*emptypb.Empty, error)
-	// The ruler gives the state to a citizen and stays one.
-	Abdicate(context.Context, *AbdicateRequest) (*emptypb.Empty, error)
-	// The ruler and the minister of the economy settle free land next to the
-	// state from the treasury.
-	Colonize(context.Context, *ColonizeRequest) (*emptypb.Empty, error)
-	// A citizen gives votes to the treasury of their state.
-	Donate(context.Context, *DonateRequest) (*emptypb.Empty, error)
-	// Internal (user): the page is gone; its citizenship ends, a state it
-	// ruled goes to another or dissolves.
-	PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error)
 	// Internal (gateway, which asks the user service first whether its
-	// caller is an administrator of the site): the worlds and the rules.
+	// caller is an administrator of the site): the worlds.
 	ListWorlds(context.Context, *emptypb.Empty) (*ListWorldsResponse, error)
 	// The map is made in the background; the world is ready to open then.
 	CreateWorld(context.Context, *CreateWorldRequest) (*CreateWorldResponse, error)
 	// Opens a ready world and ends the one open before it.
 	OpenWorld(context.Context, *OpenWorldRequest) (*emptypb.Empty, error)
 	EndWorld(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
-	GetWorldRules(context.Context, *emptypb.Empty) (*WorldRules, error)
-	SetWorldRules(context.Context, *WorldRules) (*emptypb.Empty, error)
 	mustEmbedUnimplementedWorldServiceServer()
 }
 
@@ -449,51 +190,6 @@ func (UnimplementedWorldServiceServer) GetRaster(context.Context, *GetRasterRequ
 func (UnimplementedWorldServiceServer) GetTile(context.Context, *GetTileRequest) (*GetTileResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetTile not implemented")
 }
-func (UnimplementedWorldServiceServer) GetState(context.Context, *GetStateRequest) (*GetStateResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetState not implemented")
-}
-func (UnimplementedWorldServiceServer) ListWorldEvents(context.Context, *ListWorldEventsRequest) (*ListWorldEventsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ListWorldEvents not implemented")
-}
-func (UnimplementedWorldServiceServer) GetCitizenship(context.Context, *GetCitizenshipRequest) (*GetCitizenshipResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetCitizenship not implemented")
-}
-func (UnimplementedWorldServiceServer) FoundState(context.Context, *FoundStateRequest) (*FoundStateResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method FoundState not implemented")
-}
-func (UnimplementedWorldServiceServer) EditState(context.Context, *EditStateRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method EditState not implemented")
-}
-func (UnimplementedWorldServiceServer) ApplyCitizenship(context.Context, *ApplyCitizenshipRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method ApplyCitizenship not implemented")
-}
-func (UnimplementedWorldServiceServer) WithdrawApplication(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method WithdrawApplication not implemented")
-}
-func (UnimplementedWorldServiceServer) AnswerApplication(context.Context, *AnswerApplicationRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method AnswerApplication not implemented")
-}
-func (UnimplementedWorldServiceServer) LeaveState(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method LeaveState not implemented")
-}
-func (UnimplementedWorldServiceServer) ExpelCitizen(context.Context, *ExpelCitizenRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method ExpelCitizen not implemented")
-}
-func (UnimplementedWorldServiceServer) AppointCitizen(context.Context, *AppointCitizenRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method AppointCitizen not implemented")
-}
-func (UnimplementedWorldServiceServer) Abdicate(context.Context, *AbdicateRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method Abdicate not implemented")
-}
-func (UnimplementedWorldServiceServer) Colonize(context.Context, *ColonizeRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method Colonize not implemented")
-}
-func (UnimplementedWorldServiceServer) Donate(context.Context, *DonateRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method Donate not implemented")
-}
-func (UnimplementedWorldServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
-}
 func (UnimplementedWorldServiceServer) ListWorlds(context.Context, *emptypb.Empty) (*ListWorldsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListWorlds not implemented")
 }
@@ -505,12 +201,6 @@ func (UnimplementedWorldServiceServer) OpenWorld(context.Context, *OpenWorldRequ
 }
 func (UnimplementedWorldServiceServer) EndWorld(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method EndWorld not implemented")
-}
-func (UnimplementedWorldServiceServer) GetWorldRules(context.Context, *emptypb.Empty) (*WorldRules, error) {
-	return nil, status.Error(codes.Unimplemented, "method GetWorldRules not implemented")
-}
-func (UnimplementedWorldServiceServer) SetWorldRules(context.Context, *WorldRules) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method SetWorldRules not implemented")
 }
 func (UnimplementedWorldServiceServer) mustEmbedUnimplementedWorldServiceServer() {}
 func (UnimplementedWorldServiceServer) testEmbeddedByValue()                      {}
@@ -605,276 +295,6 @@ func _WorldService_GetTile_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WorldService_GetState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetStateRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).GetState(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_GetState_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).GetState(ctx, req.(*GetStateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorldService_ListWorldEvents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListWorldEventsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).ListWorldEvents(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_ListWorldEvents_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).ListWorldEvents(ctx, req.(*ListWorldEventsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorldService_GetCitizenship_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetCitizenshipRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).GetCitizenship(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_GetCitizenship_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).GetCitizenship(ctx, req.(*GetCitizenshipRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorldService_FoundState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FoundStateRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).FoundState(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_FoundState_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).FoundState(ctx, req.(*FoundStateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorldService_EditState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EditStateRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).EditState(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_EditState_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).EditState(ctx, req.(*EditStateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorldService_ApplyCitizenship_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ApplyCitizenshipRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).ApplyCitizenship(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_ApplyCitizenship_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).ApplyCitizenship(ctx, req.(*ApplyCitizenshipRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorldService_WithdrawApplication_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).WithdrawApplication(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_WithdrawApplication_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).WithdrawApplication(ctx, req.(*emptypb.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorldService_AnswerApplication_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AnswerApplicationRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).AnswerApplication(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_AnswerApplication_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).AnswerApplication(ctx, req.(*AnswerApplicationRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorldService_LeaveState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).LeaveState(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_LeaveState_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).LeaveState(ctx, req.(*emptypb.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorldService_ExpelCitizen_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ExpelCitizenRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).ExpelCitizen(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_ExpelCitizen_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).ExpelCitizen(ctx, req.(*ExpelCitizenRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorldService_AppointCitizen_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AppointCitizenRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).AppointCitizen(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_AppointCitizen_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).AppointCitizen(ctx, req.(*AppointCitizenRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorldService_Abdicate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AbdicateRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).Abdicate(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_Abdicate_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).Abdicate(ctx, req.(*AbdicateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorldService_Colonize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ColonizeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).Colonize(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_Colonize_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).Colonize(ctx, req.(*ColonizeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorldService_Donate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DonateRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).Donate(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_Donate_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).Donate(ctx, req.(*DonateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorldService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PurgeUserRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).PurgeUser(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_PurgeUser_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).PurgeUser(ctx, req.(*PurgeUserRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _WorldService_ListWorlds_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -947,42 +367,6 @@ func _WorldService_EndWorld_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _WorldService_GetWorldRules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).GetWorldRules(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_GetWorldRules_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).GetWorldRules(ctx, req.(*emptypb.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _WorldService_SetWorldRules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(WorldRules)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(WorldServiceServer).SetWorldRules(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: WorldService_SetWorldRules_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorldServiceServer).SetWorldRules(ctx, req.(*WorldRules))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // WorldService_ServiceDesc is the grpc.ServiceDesc for WorldService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1007,66 +391,6 @@ var WorldService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _WorldService_GetTile_Handler,
 		},
 		{
-			MethodName: "GetState",
-			Handler:    _WorldService_GetState_Handler,
-		},
-		{
-			MethodName: "ListWorldEvents",
-			Handler:    _WorldService_ListWorldEvents_Handler,
-		},
-		{
-			MethodName: "GetCitizenship",
-			Handler:    _WorldService_GetCitizenship_Handler,
-		},
-		{
-			MethodName: "FoundState",
-			Handler:    _WorldService_FoundState_Handler,
-		},
-		{
-			MethodName: "EditState",
-			Handler:    _WorldService_EditState_Handler,
-		},
-		{
-			MethodName: "ApplyCitizenship",
-			Handler:    _WorldService_ApplyCitizenship_Handler,
-		},
-		{
-			MethodName: "WithdrawApplication",
-			Handler:    _WorldService_WithdrawApplication_Handler,
-		},
-		{
-			MethodName: "AnswerApplication",
-			Handler:    _WorldService_AnswerApplication_Handler,
-		},
-		{
-			MethodName: "LeaveState",
-			Handler:    _WorldService_LeaveState_Handler,
-		},
-		{
-			MethodName: "ExpelCitizen",
-			Handler:    _WorldService_ExpelCitizen_Handler,
-		},
-		{
-			MethodName: "AppointCitizen",
-			Handler:    _WorldService_AppointCitizen_Handler,
-		},
-		{
-			MethodName: "Abdicate",
-			Handler:    _WorldService_Abdicate_Handler,
-		},
-		{
-			MethodName: "Colonize",
-			Handler:    _WorldService_Colonize_Handler,
-		},
-		{
-			MethodName: "Donate",
-			Handler:    _WorldService_Donate_Handler,
-		},
-		{
-			MethodName: "PurgeUser",
-			Handler:    _WorldService_PurgeUser_Handler,
-		},
-		{
 			MethodName: "ListWorlds",
 			Handler:    _WorldService_ListWorlds_Handler,
 		},
@@ -1081,14 +405,6 @@ var WorldService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "EndWorld",
 			Handler:    _WorldService_EndWorld_Handler,
-		},
-		{
-			MethodName: "GetWorldRules",
-			Handler:    _WorldService_GetWorldRules_Handler,
-		},
-		{
-			MethodName: "SetWorldRules",
-			Handler:    _WorldService_SetWorldRules_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

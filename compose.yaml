@@ -279,14 +279,8 @@ services:
       TLS_KEY_PATH: /certs/world-key.pem
       STORAGE: persistent
       DATABASE_URL: postgres://${WORLD_POSTGRES_USER}:${WORLD_POSTGRES_PASSWORD}@world-postgres:5432/${WORLD_POSTGRES_DB}?sslmode=disable
-      REDIS_ADDR: redis:6379
-      USER_SERVICE_ADDR: user:7052
-      CLUB_SERVICE_ADDR: club:7057
     depends_on:
       world-postgres: { condition: service_healthy }
-      redis: { condition: service_healthy }
-      user: { condition: service_healthy }
-      club: { condition: service_healthy }
 
   user:
     <<: *service
@@ -306,9 +300,6 @@ services:
       MEDIA_SERVICE_ADDR: media:7054
       MESSAGE_SERVICE_ADDR: message:7056
       CLUB_SERVICE_ADDR: club:7057
-      # Not in depends_on: world waits for user, and the purge retries
-      # until world is up.
-      WORLD_SERVICE_ADDR: world:7058
       # Shorter in tests: how long a deleted page can be restored.
       ACCOUNT_RETENTION: ${ACCOUNT_RETENTION:-5040h}
       # Who makes the vouchers ("Ваучеры"): emails, comma-separated.

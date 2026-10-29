@@ -8,27 +8,21 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	clubv1 "github.com/vexner67/freenet/club/api/club/v1"
 	"github.com/vexner67/freenet/pkg/errs"
-	"github.com/vexner67/freenet/pkg/grpcclient"
 	"github.com/vexner67/freenet/pkg/grpcserver"
 	"github.com/vexner67/freenet/pkg/jwtauth"
 	"github.com/vexner67/freenet/pkg/logger"
 	"github.com/vexner67/freenet/pkg/metrics"
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/pgpool"
-	"github.com/vexner67/freenet/pkg/ratelimit"
 	"github.com/vexner67/freenet/pkg/tracing"
-	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	worldv1 "github.com/vexner67/freenet/world/api/world/v1"
-	"github.com/vexner67/freenet/world/internal/clubclient"
 	"github.com/vexner67/freenet/world/internal/config"
 	worldgrpc "github.com/vexner67/freenet/world/internal/grpc"
 	"github.com/vexner67/freenet/world/internal/inmem"
 	"github.com/vexner67/freenet/world/internal/maker"
 	"github.com/vexner67/freenet/world/internal/postgres"
 	"github.com/vexner67/freenet/world/internal/service"
-	"github.com/vexner67/freenet/world/internal/userclient"
 	"github.com/vexner67/freenet/world/migrations"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -45,15 +39,11 @@ type App struct {
 	logger  *slog.Logger
 	tracer  *tracing.Tracer
 	pool    *pgxpool.Pool
-	limiter ratelimit.Store
-	conns   []*grpc.ClientConn
 	server  *grpcserver.Server
 	metrics *metrics.Server
 	addr    string
 
 	worlds           *service.WorldService
-	games            *service.GameService
-	worldInterval    time.Duration
 	generateInterval time.Duration
 }
 
@@ -69,7 +59,6 @@ func New(cfg config.Config) (*App, error) {
 	a := &App{
 		logger:           log,
 		addr:             fmt.Sprintf(":%d", cfg.GRPCPort),
-		worldInterval:    cfg.WorldInterval,
 		generateInterval: cfg.GenerateInterval,
 	}
 
@@ -96,19 +85,9 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("a.newStorage", err)
 	}
 
-	wallets, clubs, err := a.newClients(cfg)
-	if err != nil {
-		return errs.Wrap("a.newClients", err)
-	}
-
 	mapMaker, err := maker.New(cfg.TileWidth)
 	if err != nil {
 		return errs.Wrap("maker.New", err)
-	}
-
-	limiter, err := a.newLimiter(cfg)
-	if err != nil {
-		return errs.Wrap("a.newLimiter", err)
 	}
 
 	publicKey, err := jwtauth.LoadPublicKey(cfg.JWTPublicKeyPath)
@@ -136,7 +115,6 @@ func (a *App) build(cfg config.Config) error {
 			worldgrpc.ErrorInterceptor(a.logger),
 			restrictInternal(cfg),
 			jwtauth.UnaryServerInterceptor(verifier, jwtauth.Access{Public: worldgrpc.PublicMethods()}),
-			ratelimit.UnaryServerInterceptor(limiter, rateLimits(cfg), a.logger),
 		),
 	)
 	if err != nil {
@@ -144,12 +122,9 @@ func (a *App) build(cfg config.Config) error {
 	}
 
 	a.worlds = service.NewWorldService(service.WorldDeps{
-		Worlds: store.worlds, Maps: store.maps, Games: store.games, Rules: store.rules, Maker: mapMaker, Tx: store.tx,
+		Worlds: store.worlds, Maps: store.maps, Maker: mapMaker, Tx: store.tx,
 	})
-	a.games = service.NewGameService(service.GameDeps{
-		Worlds: a.worlds, Games: store.games, Events: store.events, Wallets: wallets, Clubs: clubs, Tx: store.tx,
-	})
-	worldv1.RegisterWorldServiceServer(a.server.Registrar(), worldgrpc.NewWorldHandler(a.worlds, a.games))
+	worldv1.RegisterWorldServiceServer(a.server.Registrar(), worldgrpc.NewWorldHandler(a.worlds))
 
 	if cfg.MetricsPort == 0 {
 		a.logger.Info("METRICS_PORT is not set: metrics are not served")
@@ -157,7 +132,7 @@ func (a *App) build(cfg config.Config) error {
 		a.metrics = metrics.NewServer(fmt.Sprintf(":%d", cfg.MetricsPort), reg, a.logger)
 	}
 
-	a.logger.Info("world configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled(), "clubs", cfg.ClubServiceAddr != "")
+	a.logger.Info("world configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled())
 
 	return nil
 }
@@ -174,93 +149,17 @@ func restrictInternal(cfg config.Config) grpc.UnaryServerInterceptor {
 	return mtls.RestrictMethods(worldgrpc.InternalMethods())
 }
 
-// rateLimits are how often each user may act in the world: all the
-// actions count together.
-func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
-	limits := map[string]ratelimit.Rules{}
-	for _, m := range []string{
-		worldv1.WorldService_FoundState_FullMethodName,
-		worldv1.WorldService_EditState_FullMethodName,
-		worldv1.WorldService_ApplyCitizenship_FullMethodName,
-		worldv1.WorldService_WithdrawApplication_FullMethodName,
-		worldv1.WorldService_AnswerApplication_FullMethodName,
-		worldv1.WorldService_LeaveState_FullMethodName,
-		worldv1.WorldService_ExpelCitizen_FullMethodName,
-		worldv1.WorldService_AppointCitizen_FullMethodName,
-		worldv1.WorldService_Abdicate_FullMethodName,
-		worldv1.WorldService_Colonize_FullMethodName,
-		worldv1.WorldService_Donate_FullMethodName,
-	} {
-		limits[m] = cfg.ActionLimits
-	}
-
-	return limits
-}
-
-// newLimiter counts in Redis when it is configured, so that all replicas
-// share the limits, and in memory otherwise.
-func (a *App) newLimiter(cfg config.Config) (ratelimit.Limiter, error) {
-	if cfg.RedisAddr == "" {
-		a.logger.Warn("REDIS_ADDR is not set: rate limits are counted per replica")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
-	defer cancel()
-
-	var err error
-
-	a.limiter, err = ratelimit.Open(ctx, cfg.RedisAddr)
-	if err != nil {
-		return nil, errs.Wrap("ratelimit.Open", err)
-	}
-
-	return a.limiter, nil
-}
-
-// newClients connect to the user service, which keeps the votes, and the
-// club service, which makes the groups of the states. The connections are
-// lazy, so the services may start in any order.
-func (a *App) newClients(cfg config.Config) (service.Wallets, service.Clubs, error) {
-	creds, err := mtls.ClientCredentials(cfg.TLS)
-	if err != nil {
-		return nil, nil, errs.Wrap("mtls.ClientCredentials", err)
-	}
-
-	userConn, err := grpcclient.New(cfg.UserServiceAddr, creds, a.tracer.DialOption())
-	if err != nil {
-		return nil, nil, errs.Wrap("grpcclient.New", err)
-	}
-	a.conns = append(a.conns, userConn)
-	wallets := userclient.New(userv1.NewUserServiceClient(userConn), cfg.CallTimeout)
-
-	if cfg.ClubServiceAddr == "" {
-		a.logger.Warn("CLUB_SERVICE_ADDR is not set: the states have no groups")
-		return wallets, clubclient.Nop{}, nil
-	}
-
-	clubConn, err := grpcclient.New(cfg.ClubServiceAddr, creds, a.tracer.DialOption())
-	if err != nil {
-		return nil, nil, errs.Wrap("grpcclient.New", err)
-	}
-	a.conns = append(a.conns, clubConn)
-
-	return wallets, clubclient.New(clubv1.NewClubServiceClient(clubConn), cfg.CallTimeout), nil
-}
-
 // storage is the set of repositories chosen by STORAGE.
 type storage struct {
 	worlds service.WorldRepository
 	maps   service.MapRepository
-	games  service.GameRepository
-	events service.EventRepository
-	rules  service.RulesRepository
 	tx     service.TxManager
 }
 
 func (a *App) newStorage(cfg config.Config) (storage, error) {
 	if cfg.Storage == config.StorageInmem {
 		store := inmem.NewStore()
-		return storage{worlds: store, maps: store, games: store, events: store, rules: store, tx: inmem.TxManager{}}, nil
+		return storage{worlds: store, maps: store, tx: inmem.TxManager{}}, nil
 	}
 
 	if cfg.MigrateOnStart {
@@ -288,14 +187,11 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 	return storage{
 		worlds: postgres.NewWorldRepository(a.pool),
 		maps:   postgres.NewMapRepository(a.pool),
-		games:  postgres.NewGameRepository(a.pool),
-		events: postgres.NewEventRepository(a.pool),
-		rules:  postgres.NewRulesRepository(a.pool),
 		tx:     pgpool.NewTxManager(a.pool),
 	}, nil
 }
 
-// Run serves, counts the hours of the world and makes the maps until ctx
+// Run serves and makes the maps until ctx
 // is cancelled or the gRPC or metrics server fails, which stops the rest
 // too.
 func (a *App) Run(ctx context.Context) error {
@@ -312,42 +208,11 @@ func (a *App) Run(ctx context.Context) error {
 	}
 
 	g.Go(func() error {
-		a.runWorld(ctx)
-		return nil
-	})
-
-	g.Go(func() error {
 		a.runGeneration(ctx)
 		return nil
 	})
 
 	return g.Wait()
-}
-
-// runWorld counts the hours of the open world and makes the groups of new
-// states every interval until ctx is cancelled; a failure is logged and
-// the next round tries again.
-func (a *App) runWorld(ctx context.Context) {
-	ticker := time.NewTicker(a.worldInterval)
-	defer ticker.Stop()
-
-	for {
-		if hours, err := a.games.Tick(ctx); err != nil && ctx.Err() == nil {
-			a.logger.ErrorContext(ctx, "hour of the world", "error", err)
-		} else if hours > 0 {
-			a.logger.InfoContext(ctx, "hours of the world counted", "hours", hours)
-		}
-
-		if _, err := a.games.MakeClubs(ctx); err != nil && ctx.Err() == nil {
-			a.logger.ErrorContext(ctx, "groups of the states", "error", err)
-		}
-
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-		}
-	}
 }
 
 // runGeneration makes the maps of new worlds, when told of one and every
@@ -397,18 +262,6 @@ func (a *App) Close() {
 	if a.tracer != nil {
 		if err := a.tracer.Close(); err != nil {
 			a.logger.Error("tracer close", "error", err)
-		}
-	}
-
-	if a.limiter != nil {
-		if err := a.limiter.Close(); err != nil {
-			a.logger.Error("rate limiter close", "error", err)
-		}
-	}
-
-	for _, conn := range a.conns {
-		if err := conn.Close(); err != nil {
-			a.logger.Error("service connection close", "error", err)
 		}
 	}
 

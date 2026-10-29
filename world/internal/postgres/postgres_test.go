@@ -66,8 +66,6 @@ func TestRepositories(t *testing.T) {
 	pool, ctx := newPool(t)
 	worlds := postgres.NewWorldRepository(pool)
 	maps := postgres.NewMapRepository(pool)
-	games := postgres.NewGameRepository(pool)
-	events := postgres.NewEventRepository(pool)
 	tx := pgpool.NewTxManager(pool)
 	now := time.Now().UTC()
 
@@ -150,92 +148,13 @@ func TestRepositories(t *testing.T) {
 		t.Fatalf("Worlds = %v, %v", list, err)
 	}
 
-	t.Run("a game reads back whole", func(t *testing.T) {
-		g := world.NewGame(now)
-		if err := games.CreateGame(ctx, w.ID(), g); err != nil {
-			t.Fatal(err)
-		}
-
-		name, _ := world.NewStateName("Бореалия")
-		flag, _ := world.NewFlag(world.FlagParts{Pattern: world.PatternNordic, Colors: []int{1, 2}, Emblem: "star", EmblemColor: 3, EmblemAt: world.EmblemCanton})
-		ruler, other := uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())
-		f := world.Founding{ID: uuid.Must(uuid.NewV7()), RulerID: ruler, Name: name, Motto: "Вперёд", Color: 5, Flag: flag, Government: world.GovernmentFederation, Capital: 1}
-
-		err := tx.WithinTx(ctx, func(ctx context.Context) error {
-			g, err := games.Game(ctx, w.ID(), true)
-			if err != nil {
-				return err
-			}
-			if err = g.Found(line(), world.DefaultRules, f, now); err != nil {
-				return err
-			}
-			if err = g.Apply(other, f.ID, now); err != nil {
-				return err
-			}
-			if err = g.Colonize(line(), world.DefaultRules, ruler, 3, now); err != nil {
-				return err
-			}
-			if err = games.SaveGame(ctx, w.ID(), g); err != nil {
-				return err
-			}
-			return events.AddEvents(ctx, w.ID(), g.TakeEvents())
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		back, err := games.Game(ctx, w.ID(), false)
-		if err != nil {
-			t.Fatal(err)
-		}
-		s := back.Snapshot()
-		st := s.States[0]
-		if len(s.States) != 1 || st.Name != "Бореалия" || st.Motto != "Вперёд" || st.Color != 5 || st.Government != world.GovernmentFederation ||
-			st.Flag.Parts().EmblemAt != world.EmblemCanton || st.Flag.Parts().Colors[1] != 2 || st.Treasury != 100000-26000 ||
-			len(st.Budget) != 1 || st.Budget[0].Colonization != 26000 || !st.FoundedAt.Equal(now.Truncate(time.Microsecond)) {
-			t.Fatalf("state = %+v", st)
-		}
-		if len(s.Owners) != 3 || s.Owners[1] != f.ID || len(s.Citizens) != 1 || s.Citizens[0].Role != world.RoleRuler ||
-			len(s.Applications) != 1 || len(s.Colonies) != 1 || s.Colonies[0].Province != 3 || !s.Hour.Equal(g.Hour()) {
-			t.Fatalf("game = %+v", s)
-		}
-
-		news, err := events.Events(ctx, w.ID(), f.ID, uuid.Nil, 10)
-		if err != nil || len(news) != 1 || news[0].Kind != world.EventFounded || news[0].UserID != ruler || news[0].Province != 1 {
-			t.Fatalf("Events = %+v, %v", news, err)
-		}
-		if news, err = events.Events(ctx, w.ID(), uuid.Nil, news[0].ID, 10); err != nil || len(news) != 0 {
-			t.Fatalf("Events before the first = %+v, %v", news, err)
-		}
-	})
-
 	if err = w.End(now); err != nil {
 		t.Fatal(err)
 	}
 	if err = worlds.SaveWorld(ctx, w); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = games.Game(ctx, uuid.Must(uuid.NewV7()), false); !errors.Is(err, world.ErrNotFound) {
-		t.Fatalf("Game of nothing: %v", err)
-	}
-	if err = games.SaveGame(ctx, uuid.Must(uuid.NewV7()), world.NewGame(now)); !errors.Is(err, world.ErrNotFound) {
-		t.Fatalf("SaveGame of nothing: %v", err)
-	}
-}
-
-func TestRulesRepository(t *testing.T) {
-	pool, ctx := newPool(t)
-	rules := postgres.NewRulesRepository(pool)
-
-	r := world.DefaultRules
-	r.ColonizeHours = 6
-	if err := rules.SetRules(ctx, r); err != nil {
-		t.Fatal(err)
-	}
-	if got, err := rules.Rules(ctx); err != nil || got != r {
-		t.Fatalf("Rules = %+v, %v", got, err)
-	}
-	if err := rules.SetRules(ctx, world.DefaultRules); err != nil {
-		t.Fatal(err)
+	if _, err = worlds.OpenWorld(ctx); !errors.Is(err, world.ErrNoWorld) {
+		t.Fatalf("OpenWorld after the end: %v", err)
 	}
 }

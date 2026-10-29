@@ -9,7 +9,6 @@ import (
 
 	"github.com/vexner67/freenet/pkg/envconfig"
 	"github.com/vexner67/freenet/pkg/mtls"
-	"github.com/vexner67/freenet/pkg/ratelimit"
 	"github.com/vexner67/freenet/pkg/tracing"
 )
 
@@ -42,27 +41,12 @@ type Config struct {
 	// MigrateOnStart applies pending migrations before serving.
 	MigrateOnStart bool `env:"MIGRATE_ON_START" envDefault:"true"`
 
-	// UserServiceAddr takes and pays the votes of states.
-	UserServiceAddr string `env:"USER_SERVICE_ADDR,required,notEmpty"`
-	// ClubServiceAddr is optional: without it the states have no groups.
-	ClubServiceAddr string `env:"CLUB_SERVICE_ADDR"`
-	// CallTimeout bounds one call to another service.
-	CallTimeout time.Duration `env:"CALL_TIMEOUT" envDefault:"3s"`
-
-	// WorldInterval is how often the hours of the world are counted and
-	// the groups of new states made.
-	WorldInterval time.Duration `env:"WORLD_INTERVAL" envDefault:"1m"`
 	// GenerateInterval is how often a replica looks for a world whose map
 	// is to be made, besides being told by CreateWorld.
 	GenerateInterval time.Duration `env:"GENERATE_INTERVAL" envDefault:"1m"`
 	// TileWidth is the width of the map at the closest zoom, in pixels:
 	// 512 times a power of two.
 	TileWidth int `env:"TILE_WIDTH" envDefault:"4096"`
-
-	// Spam protection, per user. REDIS_ADDR shares the counters between
-	// replicas; without it each counts on its own.
-	RedisAddr    string          `env:"REDIS_ADDR"`
-	ActionLimits ratelimit.Rules `env:"RATE_LIMIT_WORLD_ACTIONS" envDefault:"30/1m,300/24h"`
 
 	// Access tokens are issued by the auth service; world only verifies
 	// them.
@@ -85,8 +69,8 @@ func (c Config) Validate() error {
 		return fmt.Errorf("unknown STORAGE %q, want %q or %q", c.Storage, StorageInmem, StoragePersistent)
 	}
 
-	if c.WorldInterval <= 0 || c.GenerateInterval <= 0 {
-		return errors.New("WORLD_INTERVAL and GENERATE_INTERVAL must be positive")
+	if c.GenerateInterval <= 0 {
+		return errors.New("GENERATE_INTERVAL must be positive")
 	}
 
 	if err := c.Tracing.Validate(); err != nil {

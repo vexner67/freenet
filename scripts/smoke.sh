@@ -242,10 +242,9 @@ token=$token2 call GET /api/v1/dialogs | jq -e --arg s "$sealed" '.dialogs[0].la
 expect=400 call POST "/api/v1/dialogs/$nickname2/messages" '{"text":"plain"}' | jq -e '.error.message == "messages are end-to-end encrypted"' >/dev/null
 step "message: dialogs sealed for the keys of both"
 
-# The world answers through the gateway: a new page is nobody's citizen,
-# whether a world is open or not.
-call GET "/api/v1/users/$nickname/world" | jq -e '.state == null' >/dev/null
-step "world: a new page is no citizen"
+# The world answers through the gateway: a new stack has no world open.
+expect=404 call GET /api/v1/world | jq -e '.error.message == "no world is open"' >/dev/null
+step "world: no world is open yet"
 
 # refresh replaces the tokens, as the website does after deleting and
 # restoring the page.

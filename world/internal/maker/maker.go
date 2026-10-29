@@ -106,8 +106,8 @@ func atlasOf(g *mapgen.Map) *world.Atlas {
 }
 
 // rasterOf is the province of every cell as little-endian uint16, gzipped:
-// the site finds the province under a finger with it and paints the
-// states.
+// the site finds the province under a finger with it and draws its
+// border.
 func rasterOf(g *mapgen.Map) ([]byte, error) {
 	cells := make([]byte, 2*len(g.Province))
 	for i, p := range g.Province {

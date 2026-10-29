@@ -238,8 +238,6 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.PermissionDenied, user.ErrCannotMessage.Error()), true
 	case errors.Is(err, user.ErrPaymentNotFound):
 		return status.New(codes.NotFound, user.ErrPaymentNotFound.Error()), true
-	case errors.Is(err, service.ErrWorldVotes):
-		return status.New(codes.InvalidArgument, service.ErrWorldVotes.Error()), true
 	case errors.Is(err, service.ErrTooManyPosts), errors.Is(err, user.ErrInvalidMessagePrice):
 		return status.New(codes.InvalidArgument, err.Error()), true
 	case errors.Is(err, user.ErrNotEnoughVotes):

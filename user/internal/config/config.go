@@ -49,7 +49,6 @@ type Config struct {
 	MediaServiceAddr   string `env:"MEDIA_SERVICE_ADDR"`
 	MessageServiceAddr string `env:"MESSAGE_SERVICE_ADDR"`
 	ClubServiceAddr    string `env:"CLUB_SERVICE_ADDR"`
-	WorldServiceAddr   string `env:"WORLD_SERVICE_ADDR"`
 	// NotifyTimeout bounds one delivery to another service.
 	NotifyTimeout time.Duration `env:"NOTIFY_TIMEOUT" envDefault:"2s"`
 

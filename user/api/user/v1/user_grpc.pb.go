@@ -153,8 +153,6 @@ const (
 	UserService_DeactivateAccount_FullMethodName  = "/user.v1.UserService/DeactivateAccount"
 	UserService_ReactivateAccount_FullMethodName  = "/user.v1.UserService/ReactivateAccount"
 	UserService_GetAccountState_FullMethodName    = "/user.v1.UserService/GetAccountState"
-	UserService_ChargeVotes_FullMethodName        = "/user.v1.UserService/ChargeVotes"
-	UserService_PayVotes_FullMethodName           = "/user.v1.UserService/PayVotes"
 	UserService_GetMine_FullMethodName            = "/user.v1.UserService/GetMine"
 	UserService_DigOre_FullMethodName             = "/user.v1.UserService/DigOre"
 	UserService_SellOre_FullMethodName            = "/user.v1.UserService/SellOre"
@@ -533,14 +531,6 @@ type UserServiceClient interface {
 	// Internal (auth): whether the page is deleted, for the access tokens
 	// it issues; NotFound once its data is erased.
 	GetAccountState(ctx context.Context, in *GetAccountStateRequest, opts ...grpc.CallOption) (*GetAccountStateResponse, error)
-	// Internal (world): votes paid to a state of «Мир» — they go to the
-	// treasury — and votes paid out of one. op_id makes an operation happen
-	// once: a repeat changes nothing and answers the votes the page has.
-	// ChargeVotes: FailedPrecondition "not enough votes", PermissionDenied
-	// for a page deleted or blocked, FailedPrecondition for one not yet
-	// settled when settled is asked.
-	ChargeVotes(ctx context.Context, in *ChargeVotesRequest, opts ...grpc.CallOption) (*ChargeVotesResponse, error)
-	PayVotes(ctx context.Context, in *PayVotesRequest, opts ...grpc.CallOption) (*PayVotesResponse, error)
 	// Require an access token: the mine of the site. A dig of an ore takes
 	// energy, which comes back with time, and gives ore and experience;
 	// higher ores open with experience (FailedPrecondition "this ore needs
@@ -2008,26 +1998,6 @@ func (c *userServiceClient) GetAccountState(ctx context.Context, in *GetAccountS
 	return out, nil
 }
 
-func (c *userServiceClient) ChargeVotes(ctx context.Context, in *ChargeVotesRequest, opts ...grpc.CallOption) (*ChargeVotesResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ChargeVotesResponse)
-	err := c.cc.Invoke(ctx, UserService_ChargeVotes_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *userServiceClient) PayVotes(ctx context.Context, in *PayVotesRequest, opts ...grpc.CallOption) (*PayVotesResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(PayVotesResponse)
-	err := c.cc.Invoke(ctx, UserService_PayVotes_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *userServiceClient) GetMine(ctx context.Context, in *GetMineRequest, opts ...grpc.CallOption) (*MineState, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(MineState)
@@ -2728,14 +2698,6 @@ type UserServiceServer interface {
 	// Internal (auth): whether the page is deleted, for the access tokens
 	// it issues; NotFound once its data is erased.
 	GetAccountState(context.Context, *GetAccountStateRequest) (*GetAccountStateResponse, error)
-	// Internal (world): votes paid to a state of «Мир» — they go to the
-	// treasury — and votes paid out of one. op_id makes an operation happen
-	// once: a repeat changes nothing and answers the votes the page has.
-	// ChargeVotes: FailedPrecondition "not enough votes", PermissionDenied
-	// for a page deleted or blocked, FailedPrecondition for one not yet
-	// settled when settled is asked.
-	ChargeVotes(context.Context, *ChargeVotesRequest) (*ChargeVotesResponse, error)
-	PayVotes(context.Context, *PayVotesRequest) (*PayVotesResponse, error)
 	// Require an access token: the mine of the site. A dig of an ore takes
 	// energy, which comes back with time, and gives ore and experience;
 	// higher ores open with experience (FailedPrecondition "this ore needs
@@ -3271,12 +3233,6 @@ func (UnimplementedUserServiceServer) ReactivateAccount(context.Context, *Reacti
 }
 func (UnimplementedUserServiceServer) GetAccountState(context.Context, *GetAccountStateRequest) (*GetAccountStateResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAccountState not implemented")
-}
-func (UnimplementedUserServiceServer) ChargeVotes(context.Context, *ChargeVotesRequest) (*ChargeVotesResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ChargeVotes not implemented")
-}
-func (UnimplementedUserServiceServer) PayVotes(context.Context, *PayVotesRequest) (*PayVotesResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method PayVotes not implemented")
 }
 func (UnimplementedUserServiceServer) GetMine(context.Context, *GetMineRequest) (*MineState, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMine not implemented")
@@ -5801,42 +5757,6 @@ func _UserService_GetAccountState_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UserService_ChargeVotes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ChargeVotesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(UserServiceServer).ChargeVotes(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: UserService_ChargeVotes_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).ChargeVotes(ctx, req.(*ChargeVotesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _UserService_PayVotes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(PayVotesRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(UserServiceServer).PayVotes(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: UserService_PayVotes_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).PayVotes(ctx, req.(*PayVotesRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _UserService_GetMine_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetMineRequest)
 	if err := dec(in); err != nil {
@@ -7023,14 +6943,6 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAccountState",
 			Handler:    _UserService_GetAccountState_Handler,
-		},
-		{
-			MethodName: "ChargeVotes",
-			Handler:    _UserService_ChargeVotes_Handler,
-		},
-		{
-			MethodName: "PayVotes",
-			Handler:    _UserService_PayVotes_Handler,
 		},
 		{
 			MethodName: "GetMine",

@@ -26,7 +26,7 @@ type mapKey struct {
 	z, x, y int
 }
 
-// Store keeps the worlds, their maps, games and news, and the rules.
+// Store keeps the worlds and their maps.
 type Store struct {
 	mu      sync.Mutex
 	worlds  map[uuid.UUID]world.Stored
@@ -34,16 +34,12 @@ type Store struct {
 	atlases map[uuid.UUID]*world.Atlas
 	rasters map[uuid.UUID][]byte
 	tiles   map[mapKey][]byte
-	games   map[uuid.UUID]world.GameState
-	events  map[uuid.UUID][]world.Event
-	rules   *world.Rules
 }
 
 func NewStore() *Store {
 	return &Store{
 		worlds: map[uuid.UUID]world.Stored{}, leases: map[uuid.UUID]time.Time{}, atlases: map[uuid.UUID]*world.Atlas{},
-		rasters: map[uuid.UUID][]byte{}, tiles: map[mapKey][]byte{}, games: map[uuid.UUID]world.GameState{},
-		events: map[uuid.UUID][]world.Event{},
+		rasters: map[uuid.UUID][]byte{}, tiles: map[mapKey][]byte{},
 	}
 }
 
@@ -211,100 +207,4 @@ func (s *Store) Tile(ctx context.Context, worldID uuid.UUID, z, x, y int) ([]byt
 	}
 
 	return t, nil
-}
-
-func (s *Store) CreateGame(ctx context.Context, worldID uuid.UUID, g *world.Game) error {
-	return s.SaveGame(ctx, worldID, g)
-}
-
-// Game keeps no lock: a mutex held across the caller's work would make a
-// test of two changes hang instead of fail.
-func (s *Store) Game(ctx context.Context, worldID uuid.UUID, _ bool) (*world.Game, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, errs.Wrap("ctx.Err", err)
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	g, ok := s.games[worldID]
-	if !ok {
-		return nil, world.ErrNotFound
-	}
-
-	return world.RestoreGame(g), nil
-}
-
-func (s *Store) SaveGame(ctx context.Context, worldID uuid.UUID, g *world.Game) error {
-	if err := ctx.Err(); err != nil {
-		return errs.Wrap("ctx.Err", err)
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.games[worldID] = g.Snapshot()
-
-	return nil
-}
-
-func (s *Store) AddEvents(ctx context.Context, worldID uuid.UUID, events []world.Event) error {
-	if err := ctx.Err(); err != nil {
-		return errs.Wrap("ctx.Err", err)
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.events[worldID] = append(s.events[worldID], events...)
-
-	return nil
-}
-
-func (s *Store) Events(ctx context.Context, worldID, stateID, before uuid.UUID, limit int) ([]world.Event, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, errs.Wrap("ctx.Err", err)
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	var out []world.Event
-	all := s.events[worldID]
-	for i := len(all) - 1; i >= 0 && len(out) < limit; i-- {
-		e := all[i]
-		if (stateID == uuid.Nil || e.StateID == stateID) && (before == uuid.Nil || slices.Compare(e.ID[:], before[:]) < 0) {
-			out = append(out, e)
-		}
-	}
-
-	return out, nil
-}
-
-func (s *Store) Rules(ctx context.Context) (world.Rules, error) {
-	if err := ctx.Err(); err != nil {
-		return world.Rules{}, errs.Wrap("ctx.Err", err)
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.rules == nil {
-		return world.DefaultRules, nil
-	}
-
-	return *s.rules, nil
-}
-
-func (s *Store) SetRules(ctx context.Context, r world.Rules) error {
-	if err := ctx.Err(); err != nil {
-		return errs.Wrap("ctx.Err", err)
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.rules = &r
-
-	return nil
 }

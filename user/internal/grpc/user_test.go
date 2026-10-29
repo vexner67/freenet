@@ -116,7 +116,6 @@ func newServer(t *testing.T) testServer {
 		Holdems:     service.NewHoldemService(users, inmem.NewHoldemRepository(), users, inmem.TxManager{}),
 		BetEvents:   service.NewBetEventService(users, inmem.NewBetEventRepository(), users, inmem.TxManager{}, admins),
 		Paid:        service.NewPaidService(users, users, inmem.NewPurchaseRepository(), inmem.NewEconomyRepository(), permissions, inmem.TxManager{}),
-		World:       service.NewWorldService(users, users, inmem.NewWorldVoteRepository(), inmem.TxManager{}),
 		Permissions: permissions,
 		Presence:    presence,
 		Backdrops:   service.NewBackdropService(users, users),
