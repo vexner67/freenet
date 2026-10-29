@@ -44,7 +44,8 @@
                 <button class="button" type="submit" id="adopt-button">Завести</button>
               </form>
               <div class="section-title">Сундуки</div>
-              <p class="hint">В магазине продаются не все питомцы: лис, сова, волк, панда, единорог и феникс выпадают только из сундуков. Чем дороже сундук, тем чаще из него выходят редкие питомцы.</p>
+              <p class="hint">В магазине продаются не все питомцы: лис, сова, волк, панда, единорог и феникс выпадают только из сундуков. Чем дороже сундук, тем чаще из него выходят редкие питомцы, а каждый сороковой сундук без легендарного даёт легендарного наверняка. Выпавшего питомца можно не забирать: тогда он оставит осколки, как и отпущенный. За осколки тоже открываются сундуки.</p>
+              <div class="pet-keeper" id="keeper"></div>
               <div class="pet-cases" id="cases"></div>
             </div>
 
@@ -78,12 +79,19 @@
               <div class="section-title">Бой</div>
               <div class="pet-fight-box">
                 <p class="hint" id="fights-left"></p>
+                <div class="pet-stance-row">
+                  <label for="stance">Стойка в бою:</label>
+                  <select id="stance"></select>
+                  <label class="pet-manual"><input type="checkbox" id="manual"> вести бой вручную</label>
+                </div>
+                <p class="hint" id="stance-about"></p>
                 <form class="pet-challenge" id="challenge">
                   <button class="button" type="button" id="find">Найти соперника</button>
                   <span class="hint">или вызвать по никнейму:</span>
                   <input type="text" id="rival" placeholder="никнейм">
                   <button class="button" type="submit" id="call">Вызвать</button>
                 </form>
+                <p class="pet-stance-row"><label for="guard">Когда вызывают вас, питомец стоит в стойке:</label> <select id="guard"></select></p>
                 <div class="pet-arena" id="arena" hidden></div>
               </div>
 

@@ -1,19 +1,22 @@
 // "Питомец" (/pet), a tamagotchi: a person adopts up to ten pets in the
-// shop for votes or opens a chest, from which a pet of a rarity drops
-// (?pet=<id> opens one of them), dresses it in clothes that add to its
-// stats, and feeds it (for votes) and plays with it (free, once a while), or
-// it gets hungry and sad by itself. Care and fights give it experience,
-// and its level makes it stronger. The pet fights the pets of others —
-// one found by the rating or one called by a nickname (?fight=<nickname>
-// from a profile): the server decides the fight, the page plays it hit by
-// hit and tells it as a story. A win brings votes and rating. The administrators set the prices
-// in the admin panel (/admin/pets).
+// shop for votes or opens a chest, for votes or shards, from which a pet of
+// a rarity drops — to be taken or left for shards (?pet=<id> opens one of
+// them), dresses it in clothes that add to its stats, and feeds it (for
+// votes) and plays with it (free, once a while), or it gets hungry and sad
+// by itself. Care and fights give it experience, and its level makes it
+// stronger. The pet fights the pets of others — one of a near power found
+// by the rating or one called by a nickname (?fight=<nickname> from a
+// profile) — in a stance: the server decides the fight, the page plays it
+// hit by hit and tells it as a story; or the owner leads it by hand, a
+// move a round. A win brings votes and rating, more over a stronger rival.
+// The administrators set the prices in the admin panel (/admin/pets).
 
 import { api, currentUser, session, started } from './api.js';
 import {
-  balanceVotes, balanceWord, formatDateTime, formatPostDate, groupedVotes, petBonus, petCaseName, petCaseText, petFightResult, petFightStory,
-  petItemName, petKindName, petKindText, petKinds, petLevelProgress, petMood, petOdds, petRarities, petRarityName, petSlotName,
-  petSlots, petStatName, petStatText, petStats, petWait, votesAmount, votesFontSize,
+  balanceVotes, balanceWord, formatDateTime, formatPostDate, groupedVotes, petBonus, petCaseName, petCaseText, petElementName, petFightResult,
+  petFightStory, petHitLines, petItemName, petKindName, petKindText, petKinds, petLevelProgress, petMood, petMoveName, petMoveText, petMoves,
+  petOdds, petRarities, petShards, petRarityName, petSlotName, petSlots, petSpecialName, petSpecialText, petStanceName, petStanceText, petStances,
+  petStatName, petStatText, petStats, petWait, votesAmount, votesFontSize,
 } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
@@ -34,6 +37,8 @@ let me = null;
 let shop = null;
 let catalogue = { kinds: [], cases: [], items: [] };
 let pets = [];
+let keeper = { shards: 0, pity: 0, pityLimit: 40, cases: 0, casesLimit: 20, dropKind: '', dropCase: '' };
+let battles = [];
 let pet = null;
 let chosen = '';
 let busy = false;
@@ -48,9 +53,12 @@ function showBalance(votes) {
 
 function setBusy(on) {
   busy = on;
-  for (const id of ['feed', 'find', 'call', 'adopt-button']) $(id).disabled = on;
+  $('adopt-button').disabled = on;
   for (const b of document.querySelectorAll('.pet-busy')) b.disabled = on;
-  if (pet) showActions();
+  if (pet) {
+    showActions();
+    showFightButtons();
+  }
 }
 
 // act runs an action of the page: errors go above it, the balance follows.
@@ -82,6 +90,15 @@ function rarityBadge(rarity) {
   return el('span', { className: `pet-rarity pet-rarity-${rarity}`, textContent: petRarityName(rarity) });
 }
 
+// specialNode is the element of a kind and its trick in a fight.
+function specialNode(kind) {
+  const of = kindOf(kind);
+  if (!of.special) return null;
+  return el('div', { className: 'pet-kind-special' },
+    el('b', { textContent: petSpecialName(of.special) }),
+    ` (${petElementName(of.element)}): ${petSpecialText(of.special)}`);
+}
+
 function kindCard(kind) {
   const price = shop.prices[kind] ?? 0;
   const card = el('div', { className: `pet-kind pet-kind-${kindOf(kind).rarity}` },
@@ -89,6 +106,7 @@ function kindCard(kind) {
     el('div', { className: 'pet-kind-name', textContent: petKindName(kind) }),
     rarityBadge(kindOf(kind).rarity),
     el('div', { className: 'pet-kind-about', textContent: petKindText(kind) }),
+    specialNode(kind),
     el('div', { className: 'pet-kind-price', textContent: votesAmount(price) }),
     button(tr('Выбрать'), () => choose(kind)));
   card.dataset.kind = kind;
@@ -108,7 +126,7 @@ function choose(kind) {
 function showShop() {
   pet = null;
   $('kinds').replaceChildren(...petKinds.filter((kind) => kindOf(kind).inShop).map(kindCard));
-  $('cases').replaceChildren(...catalogue.cases.map(caseCard));
+  showCases();
   $('home').hidden = true;
   $('shop').hidden = false;
   showTabs();
@@ -147,9 +165,12 @@ function inside(odds) {
 
 function caseCard(chest) {
   const price = shop.cases?.[chest.id] ?? 0;
-  const open = button(tr('Открыть за {0}', votesAmount(price)), () => openCase(chest));
-  open.classList.add('pet-busy');
-  open.disabled = busy || pets.length >= maxPets;
+  const closed = Boolean(keeper.dropKind) || keeper.cases >= keeper.casesLimit;
+  const open = button(tr('Открыть за {0}', votesAmount(price)), () => openCase(chest, false));
+  const forShards = button(tr('За {0}', petShards(chest.shards)), () => openCase(chest, true));
+  for (const b of [open, forShards]) b.classList.add('pet-busy');
+  open.disabled = busy || closed;
+  forShards.disabled = busy || closed || keeper.shards < chest.shards;
   return el('div', { className: `pet-case pet-case-${chest.id}` },
     el('div', { className: 'pet-case-picture' }, petCaseImage(chest.id, 64)),
     el('div', { className: 'pet-case-text' },
@@ -157,7 +178,31 @@ function caseCard(chest) {
       el('div', { className: 'hint', textContent: petCaseText(chest.id) }),
       oddsBar(chest.odds),
       inside(chest.odds)),
-    el('div', { className: 'pet-case-buy' }, open));
+    el('div', { className: 'pet-case-buy' }, open, forShards));
+}
+
+// showKeeper tells the shards, the chests of today and how far the chest
+// that gives a legendary pet for sure is.
+function showKeeper() {
+  const pity = el('div', { className: 'pet-bar-fill pet-pity' });
+  pity.style.width = `${(100 * keeper.pity) / keeper.pityLimit}%`;
+  const waiting = keeper.dropKind
+    ? el('p', {}, tr('Вас ждёт питомец из сундука: {0}. ', petKindName(keeper.dropKind)),
+      el('a', { textContent: tr('Забрать или оставить'), onclick: () => showDrop(false) }))
+    : null;
+  $('keeper').replaceChildren(
+    el('div', { className: 'pet-keeper-row' },
+      el('span', { textContent: tr('Осколки: {0}', keeper.shards) }),
+      el('span', { textContent: tr('Сундуков сегодня: {0} из {1}', keeper.cases, keeper.casesLimit) })),
+    el('div', { className: 'pet-keeper-row' },
+      el('span', { textContent: tr('Легендарный наверняка — через {0}', keeper.pityLimit - keeper.pity) }),
+      el('div', { className: 'pet-bar', 'aria-hidden': 'true' }, pity)),
+    ...(waiting ? [waiting] : []));
+}
+
+function showCases() {
+  showKeeper();
+  $('cases').replaceChildren(...catalogue.cases.map(caseCard));
 }
 
 // strip is the strip of the roulette: pets drawn by the odds of the
@@ -178,47 +223,78 @@ function strip(chest, kind, place, length) {
   return kinds;
 }
 
-async function openCase(chest) {
-  const opened = await act(() => api.openPetCase(chest.id, tr('Найдёныш')));
+async function openCase(chest, withShards) {
+  const opened = await act(() => api.openPetCase(chest.id, withShards));
   if (!opened) return;
-  const got = opened.pet;
-  pets.push(got);
+  keeper = opened.keeper;
+  showCases();
+  showDrop(true);
+}
+
+// showDrop is the pet a chest gave: the roulette spins to it first when it
+// has just dropped. It is taken with a name or left for its shards.
+function showDrop(spin) {
+  const kind = keeper.dropKind;
+  const chest = catalogue.cases.find((c) => c.id === keeper.dropCase) ?? catalogue.cases[0];
+  if (!kind || !chest) return;
+  const rarity = kindOf(kind).rarity;
+  const shards = kindOf(kind).shards ?? 0;
 
   const modal = openModal(petCaseName(chest.id));
   const cell = 76;
   const place = 30;
   const tape = el('div', { className: 'pet-roulette-tape' },
-    ...strip(chest, got.kind, place, place + 5).map((kind) => el('div', { className: `pet-roulette-cell pet-kind-${kindOf(kind).rarity}` }, petImage(kind, 64))));
+    ...strip(chest, kind, place, place + 5).map((k) => el('div', { className: `pet-roulette-cell pet-kind-${kindOf(k).rarity}` }, petImage(k, 64))));
   const wheel = el('div', { className: 'pet-roulette' }, tape, el('div', { className: 'pet-roulette-mark' }));
   const reveal = el('div', { className: 'pet-reveal', hidden: true });
-  modal.body.append(wheel, reveal);
+  const error = el('div', { className: 'error', hidden: true });
+  modal.body.append(spin ? wheel : '', reveal, error);
   modal.box.classList.add('pet-roulette-modal');
 
   const show = () => {
-    const name = el('input', { type: 'text', maxLength: 20, value: petKindName(got.kind), required: true });
+    const name = el('input', { type: 'text', maxLength: 20, value: petKindName(kind), required: true });
     reveal.replaceChildren(
-      el('div', { className: `pet-reveal-picture pet-kind-${got.rarity}` }, petImage(got.kind, 96)),
+      el('div', { className: `pet-reveal-picture pet-kind-${rarity}` }, petImage(kind, 96)),
       el('div', { className: 'pet-reveal-text' },
-        el('div', { className: 'pet-reveal-title', textContent: tr('Из сундука вышел питомец: {0}!', petKindName(got.kind)) }),
-        rarityBadge(got.rarity),
-        el('p', { className: 'hint', textContent: petKindText(got.kind) }),
-        el('label', { textContent: tr('Имя питомца:') }), name));
+        el('div', { className: 'pet-reveal-title', textContent: tr('Из сундука вышел питомец: {0}!', petKindName(kind)) }),
+        rarityBadge(rarity),
+        el('p', { className: 'hint', textContent: petKindText(kind) }),
+        specialNode(kind),
+        el('label', { textContent: tr('Имя питомца:') }), name,
+        pets.length >= maxPets ? el('p', { className: 'hint', textContent: tr('У вас уже десять питомцев: чтобы забрать этого, отпустите кого-нибудь.') }) : null));
     reveal.hidden = false;
-    const keepName = button(tr('Готово'), async () => {
-      modal.close();
-      const wanted = name.value.trim();
-      if (wanted && wanted !== got.name) {
-        const renamed = await act(() => api.renamePet(got.id, wanted));
-        if (renamed) {
-          keep(renamed.pet);
-          return;
-        }
+    const decide = (run, done) => async () => {
+      if (busy) return;
+      hideError(error);
+      setBusy(true);
+      try {
+        const answer = await run();
+        modal.close();
+        done(answer);
+      } catch (e) {
+        showError(error, e);
+      } finally {
+        setBusy(false);
       }
-      keep(got);
-    });
-    modal.actions.replaceChildren(keepName);
-    name.select();
+    };
+    const take = button(tr('Забрать'), decide(() => api.takePetDrop(name.value), (answer) => {
+      keeper = { ...keeper, dropKind: '', dropCase: '' };
+      keep(answer.pet);
+    }));
+    take.disabled = pets.length >= maxPets;
+    const leave = button(tr('Оставить за {0}', petShards(shards)), decide(() => api.leavePetDrop(), (answer) => {
+      keeper = answer.keeper;
+      if (pet) showTabs();
+      else showShop();
+    }), { secondary: true });
+    modal.actions.replaceChildren(take, leave);
+    if (!take.disabled) name.select();
   };
+
+  if (!spin) {
+    show();
+    return;
+  }
 
   // The tape stops with the pet under the mark, a little off its middle,
   // as a real wheel would.
@@ -340,6 +416,13 @@ function showStats() {
   showPowers();
   $('stats').replaceChildren(
     statRow(tr('Порода:'), `${petKindName(pet.kind)}, ${petRarityName(pet.rarity || kindOf(pet.kind).rarity)}`),
+    kindOf(pet.kind).special
+      ? statRow(tr('Стихия:'), petElementName(kindOf(pet.kind).element))
+      : null,
+    kindOf(pet.kind).special
+      ? statRow(tr('Особенность:'), `${petSpecialName(kindOf(pet.kind).special)} — ${petSpecialText(kindOf(pet.kind).special)}`)
+      : null,
+    statRow(tr('Сила:'), groupedVotes(pet.power ?? 0)),
     statRow(tr('Рейтинг:'), groupedVotes(pet.rating)),
     statRow(tr('Бои:'), tr('побед: {0}, поражений: {1}', pet.wins, pet.losses)),
     statRow(tr('Живёт у вас:'), tr('с {0}', formatDateTime(pet.bornAt))),
@@ -421,21 +504,41 @@ function showPet(next) {
   bar('experience', petLevelProgress(pet));
   $('experience').textContent = `${groupedVotes(pet.experience)} / ${groupedVotes(pet.nextLevelExperience)}`;
 
-  const left = Math.max(0, shop.fights - pet.fights);
-  $('fights-left').textContent = tr('Боёв сегодня: {0} из {1}. Победа приносит {2} и рейтинг; для боя питомцу нужны сытость и настроение.',
-    pet.fights, shop.fights, votesAmount(shop.win));
-  $('find').disabled = busy || left === 0;
-  $('call').disabled = busy || left === 0;
+  $('fights-left').textContent = tr('Боёв сегодня: {0} из {1}. Победа над равным приносит {2} и рейтинг, над сильным — больше, над слабым — меньше; соперника подбирают по силе. Для боя питомцу нужны сытость и настроение.',
+    pet.fights, shop.fights, votesAmount(shop.win))
+    + (pet.fatigue ? ' ' + tr('Питомец устал от боёв подряд: −{0}% к силе. Час отдыха снимает усталость.', pet.fatigue * 5) : '');
+  $('stance').value = pet.stance || 'defense';
+  $('guard').value = pet.stance || 'defense';
+  showStanceText();
 
   showActions();
+  showFightButtons();
   showStats();
   showWardrobe();
   $('shop').hidden = true;
   $('home').hidden = false;
   showTabs();
+
+  const battle = battleOf(pet);
+  if (battle) showBattle(battle);
+  else if ($('arena').dataset.pet !== pet.id) $('arena').hidden = true;
 }
 
 // Fights.
+
+function battleOf(p) {
+  return battles.find((b) => b.petId === p.id) ?? null;
+}
+
+function showFightButtons() {
+  const closed = busy || pet.fights >= shop.fights || Boolean(battleOf(pet));
+  $('find').disabled = closed;
+  $('call').disabled = closed;
+}
+
+function showStanceText() {
+  $('stance-about').textContent = petStanceText($('stance').value);
+}
 
 // fighterSide is a pet of a fight, with its owner's page under its name.
 function fighterSide(fighter) {
@@ -456,7 +559,8 @@ function storyNode(lines) {
 }
 
 function storyLine(line) {
-  const kind = line.end ? ' pet-log-end' : line.crit ? ' pet-log-crit' : line.dodge ? ' pet-log-dodge' : '';
+  const kind = line.end ? ' pet-log-end' : line.crit ? ' pet-log-crit' : line.dodge ? ' pet-log-dodge'
+    : line.special ? ' pet-log-special' : line.guard ? ' pet-log-guard' : '';
   return el('div', { className: 'pet-log-line' + kind, textContent: line.text });
 }
 
@@ -498,6 +602,10 @@ function fighterBox(fighter) {
 
   return {
     box,
+    set(left) {
+      health.style.width = `${(100 * left) / fighter.health}%`;
+      value.textContent = `${left} / ${fighter.health}`;
+    },
     hit(left) {
       health.style.width = `${(100 * left) / fighter.health}%`;
       value.textContent = `${left} / ${fighter.health}`;
@@ -508,6 +616,16 @@ function fighterBox(fighter) {
       }
     },
   };
+}
+
+// showHit puts the health of both after a hit; the one hurt shakes.
+function showHit(attacker, defender, hit) {
+  attacker.set(hit.attackerHealth);
+  defender.set(hit.defenderHealth);
+  if (hit.damage > 0) {
+    if (hit.byAttacker) defender.hit(hit.defenderHealth);
+    else attacker.hit(hit.attackerHealth);
+  }
 }
 
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -522,12 +640,13 @@ async function playFight(fight) {
   $('arena').replaceChildren(
     el('div', { className: 'pet-arena-ring' }, attacker.box, el('div', { className: 'pet-arena-vs', textContent: 'VS' }), defender.box),
     log, end);
+  $('arena').dataset.pet = pet.id;
   $('arena').hidden = false;
 
   log.append(storyLine(story[0]));
   for (const [i, hit] of fight.hits.entries()) {
     if (!still) await pause(hitPause);
-    (hit.byAttacker ? defender : attacker).hit(hit.byAttacker ? hit.defenderHealth : hit.attackerHealth);
+    showHit(attacker, defender, hit);
     log.append(storyLine(story[i + 1]));
     log.scrollTop = log.scrollHeight;
   }
@@ -537,14 +656,25 @@ async function playFight(fight) {
   const result = petFightResult(fight, true);
   end.className = result.won ? 'pet-arena-result pet-won' : 'pet-arena-result pet-lost';
   end.textContent = result.won
-    ? tr('Победа! {0} и рейтинг {1}.', votesAmount(shop.win), result.rating)
+    ? tr('Победа! {0} и рейтинг {1}.', votesAmount(fight.reward ?? shop.win), result.rating)
     : tr('Поражение. Рейтинг {0}.', result.rating);
   end.hidden = false;
 }
 
 async function fight(nickname) {
+  const stance = $('stance').value;
+  if ($('manual').checked) {
+    const started = (await act(() => api.startPetBattle(pet.id, nickname, stance).then((turn) => ({ turn }))))?.turn;
+    if (!started) return;
+    battles = [...battles.filter((b) => b.petId !== pet.id), started.battle];
+    view = null;
+    keep(started.pet);
+    $('arena').scrollIntoView({ block: 'nearest', behavior: still ? 'auto' : 'smooth' });
+    return;
+  }
+
   // The balance waits for the end of the fight: it would tell who won.
-  const answer = (await act(() => api.fightPet(pet.id, nickname).then((fought) => ({ fought }))))?.fought;
+  const answer = (await act(() => api.fightPet(pet.id, nickname, stance).then((fought) => ({ fought }))))?.fought;
   if (!answer) return;
 
   setBusy(true);
@@ -555,6 +685,88 @@ async function fight(nickname) {
   }
   keep(answer.pet);
   showBalance(answer.balance);
+  api.petFights().then(({ fights }) => showFights(fights)).catch(() => {});
+}
+
+// A fight by hand: the arena stays with the health of both, the story so
+// far and the moves; each move plays the hits it brought. Until the end
+// the fight counts as lost, so leaving it loses.
+
+let view = null;
+
+function showBattle(battle) {
+  if (view?.petId === battle.petId && $('arena').dataset.pet === battle.petId && !$('arena').hidden) return;
+  const attacker = fighterBox(battle.attacker);
+  const defender = fighterBox(battle.defender);
+  attacker.set(battle.attackerHealth);
+  defender.set(battle.defenderHealth);
+  const log = el('div', { className: 'pet-log pet-story' },
+    storyLine({ text: tr('{0} ({1} ур.) вызывает на бой {2} ({3} ур.).', battle.attacker.name, battle.attacker.level, battle.defender.name, battle.defender.level) }),
+    ...petHitLines(battle.attacker, battle.defender, battle.hits).map(storyLine));
+  const info = el('p', { className: 'hint' });
+  const moves = el('div', { className: 'pet-moves' }, ...petMoves.map((move) => {
+    const b = button(petMoveName(move), () => moveBattle(move), { secondary: move === 'auto' });
+    b.title = petMoveText(move);
+    b.classList.add('pet-busy');
+    b.disabled = busy;
+    return b;
+  }));
+  const end = el('div', { className: 'pet-arena-result', hidden: true });
+  $('arena').replaceChildren(
+    el('div', { className: 'pet-arena-ring' }, attacker.box, el('div', { className: 'pet-arena-vs', textContent: 'VS' }), defender.box),
+    log, info, moves, end);
+  $('arena').dataset.pet = battle.petId;
+  $('arena').hidden = false;
+  log.scrollTop = log.scrollHeight;
+  view = { petId: battle.petId, battle, attacker, defender, log, info, moves, end };
+  showRound(battle);
+}
+
+function showRound(battle) {
+  view.info.textContent = tr('Раунд {0} из {1}. Стойки: ваша — {2}, соперника — {3}. Победа: +{4} к рейтингу, поражение: −{5}. Пока бой не закончен, он считается проигранным.',
+    Math.min(battle.round + 1, battle.rounds), battle.rounds, petStanceName(battle.attacker.stance), petStanceName(battle.defender.stance), battle.win, battle.loss);
+}
+
+async function moveBattle(move) {
+  const turn = (await act(() => api.movePetBattle(pet.id, move).then((t) => ({ t }))))?.t;
+  if (!turn || !view) return;
+
+  setBusy(true);
+  try {
+    const { battle } = turn;
+    const lines = petHitLines(battle.attacker, battle.defender, battle.hits, view.battle.hits.length);
+    for (const [n, hit] of battle.hits.slice(view.battle.hits.length).entries()) {
+      if (!still) await pause(hitPause);
+      showHit(view.attacker, view.defender, hit);
+      view.log.append(storyLine(lines[n]));
+      view.log.scrollTop = view.log.scrollHeight;
+    }
+    view.battle = battle;
+    showRound(battle);
+  } finally {
+    setBusy(false);
+  }
+
+  if (!turn.fight) {
+    battles = battles.map((b) => (b.petId === turn.battle.petId ? turn.battle : b));
+    return;
+  }
+
+  const story = petFightStory(turn.fight);
+  view.log.append(storyLine(story.at(-1)));
+  view.log.scrollTop = view.log.scrollHeight;
+  const result = petFightResult(turn.fight, true);
+  view.end.className = result.won ? 'pet-arena-result pet-won' : 'pet-arena-result pet-lost';
+  view.end.textContent = result.won
+    ? tr('Победа! {0} и рейтинг {1}.', votesAmount(turn.fight.reward), result.rating)
+    : tr('Поражение. Рейтинг {0}.', result.rating);
+  view.end.hidden = false;
+  view.info.hidden = true;
+  view.moves.hidden = true;
+  battles = battles.filter((b) => b.petId !== turn.battle.petId);
+  view = null;
+  keep(turn.pet);
+  showBalance(turn.balance);
   api.petFights().then(({ fights }) => showFights(fights)).catch(() => {});
 }
 
@@ -576,12 +788,15 @@ function openRename() {
 
 function openRelease() {
   const modal = openModal(tr('Отпустить питомца'));
-  modal.body.append(el('p', { textContent: tr('Отпустить {0}? Питомец уйдёт навсегда, с уровнем и рейтингом, а голоса за него не вернутся.', pet.name) }));
+  const shards = kindOf(pet.kind).shards ?? 0;
+  modal.body.append(el('p', { textContent: tr('Отпустить {0}? Питомец уйдёт навсегда, с уровнем и рейтингом, а голоса за него не вернутся — останется {1}.', pet.name, petShards(shards)) }));
   modal.actions.append(
     button(tr('Отпустить'), async () => {
       modal.close();
       const gone = pet.id;
       if (await act(() => api.releasePet(gone).then(() => ({})))) {
+        keeper = { ...keeper, shards: keeper.shards + shards };
+        battles = battles.filter((b) => b.petId !== gone);
         pets = pets.filter((p) => p.id !== gone);
         chosen = '';
         $('adopt').hidden = true;
@@ -619,6 +834,12 @@ function watch() {
     const nickname = $('rival').value.trim().replace(/^@/, '');
     if (nickname) fight(nickname);
   });
+  $('stance').addEventListener('change', showStanceText);
+  $('guard').addEventListener('change', async () => {
+    const set = await act(() => api.setPetStance(pet.id, $('guard').value));
+    if (set) keep(set.pet);
+    else $('guard').value = pet.stance;
+  });
   $('rename').addEventListener('click', openRename);
   $('release').addEventListener('click', openRelease);
 }
@@ -634,12 +855,18 @@ if (!me) {
     const answer = await answered;
     shop = answer.shop;
     catalogue = { kinds: answer.kinds ?? [], cases: answer.cases ?? [], items: answer.items ?? [] };
+    if (answer.keeper) keeper = answer.keeper;
+    battles = answer.battles ?? [];
+    const stances = () => petStances.map((stance) => el('option', { value: stance, textContent: petStanceName(stance) }));
+    $('stance').replaceChildren(...stances());
+    $('guard').replaceChildren(...stances());
     showBalance(me.votes ?? 0);
     watch();
     pets = answer.pets;
     const wanted = new URLSearchParams(location.search).get('pet');
     if (pets.length) showPet(pets.find((p) => p.id === wanted) ?? pets[0]);
     else showShop();
+    if (keeper.dropKind) showDrop(false);
     showFights((await fought).fights);
     const rival = new URLSearchParams(location.search).get('fight');
     if (rival) $('rival').value = rival;

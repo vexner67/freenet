@@ -2677,6 +2677,15 @@ const errorTexts = {
   'the pet has these clothes already': tr('У питомца уже есть эта вещь.'),
   'the pet has no such clothes': tr('У питомца нет этой вещи — сначала купите её.'),
   'the prices of the pet shop must be from 0': tr('Цены зоомагазина — не меньше 0.'),
+  'the pet is in a fight': tr('Питомец уже в бою — сначала доведите его до конца.'),
+  'the pet is not in a fight': tr('Питомец сейчас не в бою.'),
+  'the fight is over': tr('Бой уже закончился.'),
+  'take or leave the pet of the case first': tr('Сначала заберите или оставьте питомца из прошлого сундука.'),
+  'there is no pet from a case': tr('Питомца из сундука нет — откройте сундук.'),
+  'you have opened enough cases today': tr('На сегодня сундуков хватит. Приходите завтра.'),
+  'not enough shards': tr('Не хватает осколков.'),
+  'unknown stance': tr('Такой стойки нет.'),
+  'unknown move': tr('Такого хода нет.'),
   'the fights of a day must be from 1 to 1000': tr('Боёв в день — от 1 до 1000.'),
   'this ore needs more experience': tr('Эту руду можно копать, набравшись опыта.'),
   'not enough energy': tr('Не хватает энергии. Она восстанавливается сама.'),
@@ -3422,7 +3431,7 @@ const petCaseNames = {
 
 const petCaseAbout = {
   bronze: tr('Чаще всего — обычный питомец, но может повезти.'),
-  silver: tr('Редкие попадаются чаще обычных.'),
+  silver: tr('Редкие выпадают так же часто, как обычные.'),
   gold: tr('Обычных здесь нет: только редкие и лучше.'),
 };
 
@@ -3544,8 +3553,8 @@ export function petWait(seconds) {
   return tr('{0} с', s);
 }
 
-// petMoves are how pets of a kind strike in the story of a fight.
-const petMoves = {
+// petVerbs are how pets of a kind strike in the story of a fight.
+const petVerbs = {
   cat: [tr('царапает'), tr('бьёт лапой'), tr('кидается на')],
   dog: [tr('кусает'), tr('бросается на'), tr('хватает зубами')],
   hamster: [tr('кусает'), tr('кидается на'), tr('пихает щёками')],
@@ -3560,24 +3569,160 @@ const petMoves = {
   phoenix: [tr('опаляет'), tr('клюёт'), tr('бьёт огненным крылом')],
 };
 
+// petShards is a number of shards: "1 осколок", "25 осколков".
+export function petShards(n) {
+  return `${n} ${plural(n, ['осколок', 'осколка', 'осколков'])}`;
+}
+
+// petStances are the stances in the order the site shows them, as
+// user.PetStances: each beats the next and is beaten by the one before.
+export const petStances = ['attack', 'defense', 'agility'];
+
+const petStanceNames = {
+  attack: tr('нападение'),
+  defense: tr('оборона'),
+  agility: tr('ловкость'),
+};
+
+const petStanceAbout = {
+  attack: tr('Бьёт сильнее и раз в три хода — сильным ударом. Сильнее ловкости.'),
+  defense: tr('Получает меньше урона и встаёт в защиту. Сильнее нападения.'),
+  agility: tr('Чаще уворачивается. Сильнее обороны.'),
+};
+
+export function petStanceName(stance) {
+  return petStanceNames[stance] ?? stance;
+}
+
+export function petStanceText(stance) {
+  return petStanceAbout[stance] ?? '';
+}
+
+const petElementNames = {
+  fire: tr('огонь'),
+  water: tr('вода'),
+  forest: tr('лес'),
+};
+
+export function petElementName(element) {
+  return petElementNames[element] ?? element;
+}
+
+const petSpecialNames = {
+  counter: tr('Ответный удар'),
+  rage: tr('Ярость'),
+  cheeks: tr('Запасы за щеками'),
+  leap: tr('Прыжок'),
+  shell: tr('Панцирь'),
+  trick: tr('Обман'),
+  sight: tr('Зоркость'),
+  flame: tr('Пламя'),
+  howl: tr('Вой'),
+  hide: tr('Толстая шкура'),
+  rainbow: tr('Радуга'),
+  rebirth: tr('Возрождение'),
+};
+
+const petSpecialAbout = {
+  counter: tr('Увернувшись, сразу бьёт в ответ вполсилы.'),
+  rage: tr('Почти без сил бьёт на 30% сильнее.'),
+  cheeks: tr('Почти без сил один раз съедает запасы вместо удара и лечит четверть здоровья.'),
+  leap: tr('Первым ударом бьёт дважды.'),
+  shell: tr('Меньше чем с половиной здоровья один раз прячется от удара.'),
+  trick: tr('Первый удар соперника всегда мимо.'),
+  sight: tr('Во второй половине боя уворачивается чаще.'),
+  flame: tr('Каждый третий удар проходит сквозь защиту.'),
+  howl: tr('Каждый следующий удар сильнее прежнего.'),
+  hide: tr('Каждый удар по ней слабее на 2.'),
+  rainbow: tr('Ударив вдвое сильнее, лечит половину урона.'),
+  rebirth: tr('Один раз возрождается из пепла с четвертью здоровья.'),
+};
+
+export function petSpecialName(special) {
+  return petSpecialNames[special] ?? special;
+}
+
+export function petSpecialText(special) {
+  return petSpecialAbout[special] ?? '';
+}
+
+// petMoveNames are the moves of a fight by hand, as user.PetMove.
+const petMoveNames = {
+  strike: tr('Удар'),
+  guard: tr('Защита'),
+  power: tr('Сильный удар'),
+  auto: tr('Доиграть'),
+};
+
+const petMoveAbout = {
+  strike: tr('Обычный удар.'),
+  guard: tr('Переводит дух, вдвое ослабляет следующий удар соперника и усиливает свой.'),
+  power: tr('Бьёт на 60% сильнее, но по нему легче промахнуться.'),
+  auto: tr('Дальше бой идёт сам, по стойке питомца.'),
+};
+
+export const petMoves = ['strike', 'guard', 'power', 'auto'];
+
+export function petMoveName(move) {
+  return petMoveNames[move] ?? move;
+}
+
+export function petMoveText(move) {
+  return petMoveAbout[move] ?? '';
+}
+
+// petHitText is a hit of a fight in words: who did what to whom, with the
+// specials of the kinds that worked. by acted, to is the other, left is
+// the health to has after it, verb how the kind of by strikes.
+function petHitText(hit, by, to, left, verb) {
+  if (hit.special === 'cheeks') return { text: tr('{0} достаёт припасы из-за щёк и подкрепляется: +{1} здоровья.', by.name, hit.heal) };
+  if (hit.move === 'guard' && !hit.heal) return { text: tr('{0} встаёт в защиту.', by.name), guard: true };
+  if (hit.move === 'guard') return { text: tr('{0} встаёт в защиту и переводит дух: +{1} здоровья.', by.name, hit.heal), guard: true };
+  if (hit.answer === 'trick') return { text: tr('{0} обманывает {1}: удар уходит мимо.', to.name, by.name), dodge: true };
+  if (hit.dodged && hit.answer === 'sight') return { text: tr('{0} замечает удар {1} заранее и уворачивается.', to.name, by.name), dodge: true };
+  if (hit.dodged) return { text: tr('{0} {1} {2}, но промахивается: {2} уворачивается.', by.name, verb, to.name), dodge: true };
+  if (hit.answer === 'shell') return { text: tr('{0} прячется в панцирь — удар {1} отскакивает!', to.name, by.name), special: true };
+  if (hit.special === 'counter') return { text: tr('{0} тут же отвечает ударом: минус {1}, остаётся {2}.', by.name, hit.damage, left), special: true };
+
+  let text;
+  if (hit.answer === 'rebirth') {
+    text = tr('{0} {1} {2}: минус {3}. {2} сгорает, но возрождается из пепла с {4} здоровья!', by.name, verb, to.name, hit.damage, left);
+  } else if (hit.crit) {
+    text = tr('{0} {1} {2} со всей силы! Минус {3}, остаётся {4}.', by.name, verb, to.name, hit.damage, left);
+  } else {
+    text = tr('{0} {1} {2}: минус {3}, остаётся {4}.', by.name, verb, to.name, hit.damage, left);
+  }
+  const before = {
+    power: tr('Сильный удар!'),
+    leap: tr('Прыжок — и ещё удар!'),
+    flame: tr('Пламя сквозь защиту!'),
+    rage: tr('{0} в ярости!', by.name),
+    howl: tr('{0} воет и бьёт ещё сильнее!', by.name),
+  }[hit.special || hit.move];
+  if (before) text = `${before} ${text}`;
+  if (hit.special === 'rainbow') text = `${text} ${tr('Радуга лечит {0}: +{1}.', by.name, hit.heal)}`;
+
+  return { text, crit: hit.crit, special: Boolean(hit.special || hit.answer) };
+}
+
+// petHitLines are the hits of a fight as lines of its story, from the
+// first'th on: a fight by hand adds them as it goes.
+export function petHitLines(attacker, defender, hits, first = 0) {
+  return hits.slice(first).map((hit, n) => {
+    const i = first + n;
+    const [by, to] = hit.byAttacker ? [attacker, defender] : [defender, attacker];
+    const left = hit.byAttacker ? hit.defenderHealth : hit.attackerHealth;
+    const verbs = petVerbs[by.kind] ?? petVerbs.cat;
+    return petHitText(hit, by, to, left, verbs[i % verbs.length]);
+  });
+}
+
 // petFightStory is a fight told as a story, a line for each hit, from the
 // start to the winner: the arena and the past fights show it.
 export function petFightStory(fight) {
   const { attacker, defender } = fight;
   const lines = [{ text: tr('{0} ({1} ур.) вызывает на бой {2} ({3} ур.).', attacker.name, attacker.level, defender.name, defender.level) }];
-  fight.hits.forEach((hit, i) => {
-    const [by, to] = hit.byAttacker ? [attacker, defender] : [defender, attacker];
-    const left = hit.byAttacker ? hit.defenderHealth : hit.attackerHealth;
-    const moves = petMoves[by.kind] ?? petMoves.cat;
-    const move = moves[i % moves.length];
-    if (hit.dodged) {
-      lines.push({ text: tr('{0} {1} {2}, но промахивается: {2} уворачивается.', by.name, move, to.name), dodge: true });
-    } else if (hit.crit) {
-      lines.push({ text: tr('{0} {1} {2} со всей силы! Минус {3}, остаётся {4}.', by.name, move, to.name, hit.damage, left), crit: true });
-    } else {
-      lines.push({ text: tr('{0} {1} {2}: минус {3}, остаётся {4}.', by.name, move, to.name, hit.damage, left) });
-    }
-  });
+  lines.push(...petHitLines(attacker, defender, fight.hits));
   const winner = fight.won ? attacker : defender;
   const loser = fight.won ? defender : attacker;
   const last = fight.hits.at(-1);

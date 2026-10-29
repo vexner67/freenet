@@ -1426,7 +1426,7 @@ test('the pets and the boards of the site are those of the user service', async 
 });
 
 test('pets, fights, boards and guests are told', async () => {
-  const { petFightResult, petLevelProgress, petMood, petWait, petFightStory, petOdds, petBonus, petKinds, petKindName, petItemName, guestCame } = await import('../static/labels.js');
+  const { petFightResult, petLevelProgress, petMood, petWait, petFightStory, petOdds, petBonus, petKinds, petKindName, petItemName, guestCame, petHitLines, petShards, petStances, petStanceName } = await import('../static/labels.js');
 
   assert.deepEqual(petFightResult({ won: true, rating: 16 }, true), { won: true, text: 'Победа', rating: '+16' });
   assert.deepEqual(petFightResult({ won: true, rating: 16 }, false), { won: false, text: 'Поражение', rating: '−16' });
@@ -1460,6 +1460,29 @@ test('pets, fights, boards and guests are told', async () => {
   assert.ok(story[3].crit && story[2].dodge && story[4].end);
   const timeout = petFightStory({ attacker: cat, defender: dog, won: false, hits: [{ byAttacker: true, damage: 1, attackerHealth: 40, defenderHealth: 45 }] });
   assert.equal(timeout.at(-1).text, 'Время вышло: у Рекс осталось больше здоровья. Победитель — Рекс!');
+
+  const fox = { name: 'Алиса', kind: 'fox', level: 1 };
+  const turtle = { name: 'Тортилла', kind: 'turtle', level: 1 };
+  const moves = petHitLines(fox, turtle, [
+    { byAttacker: true, move: 'guard', heal: 2, attackerHealth: 40, defenderHealth: 50 },
+    { byAttacker: false, move: 'strike', dodged: true, answer: 'trick', attackerHealth: 40, defenderHealth: 50 },
+    { byAttacker: true, move: 'power', damage: 9, attackerHealth: 40, defenderHealth: 41 },
+    { byAttacker: true, move: 'strike', answer: 'shell', attackerHealth: 40, defenderHealth: 20 },
+    { byAttacker: true, move: 'strike', damage: 20, answer: 'rebirth', attackerHealth: 40, defenderHealth: 12 },
+  ]);
+  assert.deepEqual(moves.map((line) => line.text), [
+    'Алиса встаёт в защиту и переводит дух: +2 здоровья.',
+    'Алиса обманывает Тортилла: удар уходит мимо.',
+    'Сильный удар! Алиса царапает Тортилла: минус 9, остаётся 41.',
+    'Тортилла прячется в панцирь — удар Алиса отскакивает!',
+    'Алиса бросается на Тортилла: минус 20. Тортилла сгорает, но возрождается из пепла с 12 здоровья!',
+  ]);
+  assert.ok(moves[0].guard && moves[1].dodge && moves[3].special);
+  assert.equal(petHitLines(fox, turtle, [{ byAttacker: true, damage: 1, attackerHealth: 1, defenderHealth: 1 }, { byAttacker: true, damage: 1, attackerHealth: 1, defenderHealth: 1 }], 1).length, 1);
+  assert.equal(petShards(1), '1 осколок');
+  assert.equal(petShards(3), '3 осколка');
+  assert.equal(petShards(25), '25 осколков');
+  assert.deepEqual(petStances.map(petStanceName), ['нападение', 'оборона', 'ловкость']);
 
   assert.deepEqual(petOdds([700, 250, 45, 5]), ['70%', '25%', '4.5%', '0.5%']);
   assert.equal(petBonus({ attack: 3, defense: 0, health: 0, speed: 1 }), '+3 к атаке, +1 к скорости');

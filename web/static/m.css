@@ -2085,7 +2085,7 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .pet-case-gold { border-left-color: var(--line-e2b24a); background: var(--back-f9f6e7); }
 .pet-case-picture { flex: none; padding: 4px; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
 .pet-case-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.pet-case-buy { flex: none; }
+.pet-case-buy { flex: none; display: flex; flex-direction: column; gap: 4px; }
 .pet-odds { display: flex; height: 8px; margin-top: 2px; background: var(--back-e6e6e6); border: 1px solid var(--line-ccc); }
 .pet-odds-part { height: 100%; }
 .pet-odds-legend { display: flex; flex-wrap: wrap; gap: 2px 10px; color: var(--text-808080); font-size: 10px; }
@@ -2134,13 +2134,26 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .pet-story .pet-log-line { margin: 3px 0; }
 .pet-log-dodge { color: var(--text-808080); font-style: italic; }
 .pet-log-end { margin-top: 4px; color: var(--text-333); font-weight: bold; }
+.pet-kind-special { color: var(--text-555); }
+.pet-keeper { margin: 4px 0 8px; padding: 6px 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.pet-keeper p { margin: 4px 0 0; }
+.pet-keeper-row { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; margin: 2px 0; }
+.pet-pity { background: var(--back-6a3fd8); }
+.pet-stance-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0; }
+.pet-stance-row select { width: auto; }
+.pet-manual { display: inline-flex; gap: 4px; align-items: center; margin-left: 8px; }
+.pet-moves { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 6px; }
+.pet-log-special { color: var(--text-6b3fb8); }
+.pet-log-guard { color: var(--text-2b587a); }
+.pet-moves .button { flex: 1 1 40%; }
+.pet-manual { margin-left: 0; }
 .pet-fight-tell { display: inline-block; margin-top: 2px; cursor: pointer; }
 .pet-fight-entry { border-bottom: 1px solid var(--line-e8ebee); }
 .pet-fight-entry .pet-fight { border-bottom: 0; }
 .pet-fight-story { margin: 0 4px 6px; padding: 4px 6px; background: var(--back-f9f6e7); border: 1px solid var(--line-d7cf9e); }
 .pet-wardrobe { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .pet-case { flex-wrap: wrap; }
-.pet-case-buy { width: 100%; }
+.pet-case-buy { width: 100%; gap: 6px; }
 .pet-case-buy .button { width: 100%; }
 .pet-roulette-modal { width: auto; }
 .pet-power-label { width: 80px; }
