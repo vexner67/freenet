@@ -5,3 +5,9 @@ const (
 	PageCSP = pageCSP
 	APICSP  = apiCSP
 )
+
+// Timeout is the middleware that bounds requests, and UploadReadTimeout
+// how long the body of an upload may take.
+var Timeout = timeout
+
+const UploadReadTimeout = uploadReadTimeout

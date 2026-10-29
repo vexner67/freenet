@@ -2,11 +2,14 @@ package rest
 
 import (
 	"context"
+	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
@@ -149,8 +152,14 @@ func secureHeaders(next http.Handler) http.Handler {
 	})
 }
 
+// uploadReadTimeout is how long the body of a request may take to come:
+// a photo or a document over a slow connection.
+const uploadReadTimeout = time.Minute
+
 // timeout bounds every request but the event stream, which lives as long
-// as the page that opened it.
+// as the page that opened it. An upload counts its time from when its body
+// is read: over a slow connection reading a photo took the whole time, and
+// it failed with 503 before media was asked.
 func timeout(d time.Duration) middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -159,11 +168,66 @@ func timeout(d time.Duration) middleware {
 				return
 			}
 
-			ctx, cancel := context.WithTimeout(r.Context(), d)
+			if !isUpload(r) {
+				ctx, cancel := context.WithTimeout(r.Context(), d)
+				defer cancel()
+
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+
+			ctx, cancel := context.WithTimeout(r.Context(), uploadReadTimeout+d)
 			defer cancel()
 
-			next.ServeHTTP(w, r.WithContext(ctx))
+			body := &timedBody{ReadCloser: r.Body, after: d, cancel: cancel}
+			defer body.stop()
+
+			r = r.WithContext(ctx)
+			r.Body = body
+			next.ServeHTTP(w, r)
 		})
+	}
+}
+
+// isUpload tells a request that sends a file, not JSON.
+func isUpload(r *http.Request) bool {
+	if r.Body == nil || r.Body == http.NoBody || r.ContentLength == 0 {
+		return false
+	}
+
+	return !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json")
+}
+
+// timedBody cancels the request after it has been read to its end: the
+// time of the request starts then.
+type timedBody struct {
+	io.ReadCloser
+	after  time.Duration
+	cancel context.CancelFunc
+
+	mu    sync.Mutex
+	timer *time.Timer
+}
+
+func (b *timedBody) Read(p []byte) (int, error) {
+	n, err := b.ReadCloser.Read(p)
+	if errors.Is(err, io.EOF) {
+		b.mu.Lock()
+		if b.timer == nil {
+			b.timer = time.AfterFunc(b.after, b.cancel)
+		}
+		b.mu.Unlock()
+	}
+
+	return n, err
+}
+
+func (b *timedBody) stop() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.timer != nil {
+		b.timer.Stop()
 	}
 }
 

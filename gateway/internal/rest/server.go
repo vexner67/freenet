@@ -114,8 +114,9 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger, reg prometheu
 			Handler:           handler,
 			ReadHeaderTimeout: 5 * time.Second,
 			// Long enough to upload a photo over a slow connection.
-			ReadTimeout:  time.Minute,
-			WriteTimeout: cfg.RequestTimeout + 5*time.Second,
+			ReadTimeout: uploadReadTimeout,
+			// An upload is answered within RequestTimeout of its body.
+			WriteTimeout: uploadReadTimeout + cfg.RequestTimeout + 5*time.Second,
 			IdleTimeout:  time.Minute,
 		},
 		logger:  logger,
