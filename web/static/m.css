@@ -3282,38 +3282,4 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 .m .article-body-input { min-height: 240px; font-size: 16px; }
 .m .article-card.with-cover, .m .article-card.with-cover .article-card-text { min-height: 150px; }
 
-/* «Мир»: the map with its panel. */
-.world-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
-.world-status { overflow: hidden; color: var(--text-808080); text-overflow: ellipsis; white-space: nowrap; }
-.world-frame { display: flex; gap: 8px; margin: 0 0 10px; }
-.world-map { position: relative; flex: 1; min-width: 0; height: 440px; overflow: hidden; background: var(--back-45708f); border: 1px solid var(--line-c5d0db); }
-.world-canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
-.world-canvas:active { cursor: grabbing; }
-.world-zoom { position: absolute; top: 6px; right: 6px; z-index: 1; display: flex; flex-direction: column; gap: 4px; }
-.world-zoom-button { width: 26px; height: 26px; padding: 0; background: var(--back-fff); border: 1px solid var(--line-8b8b8b); border-radius: 2px; color: var(--text-333); font: bold 14px Tahoma, Verdana, sans-serif; cursor: pointer; opacity: 0.9; }
-.world-zoom-button:hover { background: var(--back-f2f5f8); }
-.world-panel { flex: none; width: 190px; padding: 8px; background: var(--back-f9f9f9); border: 1px solid var(--line-dae1e8); }
-.world-panel-name { margin: 0 0 4px; color: var(--text-45688e); font-size: 13px; font-weight: bold; overflow-wrap: anywhere; }
-.world-badge { display: inline-block; margin: 0 4px 4px 0; padding: 1px 5px; background: var(--back-eee5b8); border: 1px solid var(--line-d7cf9e); color: var(--text-58462a); }
-.world-facts { width: 100%; border-collapse: collapse; }
-.world-facts td { padding: 2px 0; vertical-align: top; }
-.world-fact-name { width: 72px; padding-right: 6px; color: var(--text-808080); }
-.world-full { position: fixed; inset: 0; z-index: 50; margin: 0; padding: 8px; background: var(--back-fff); }
-.world-full .world-map { height: auto; }
-.world-full .world-panel { width: 300px; overflow: auto; }
-.world-fixed { overflow: hidden; }
 /* The probes the canvas reads its colors off. */
-.world-probe { display: none; }
-.world-sea { background: var(--back-45708f); }
-.world-pick { background: var(--back-d23a32); }
-.world-label { color: var(--text-2b2116); }
-.world-halo { color: var(--text-fbf6e9); }
-/* «Мир» on a phone: the map as wide as the screen, the panel of a
-   province over its bottom, as the sheets of apps. */
-.world-frame { display: block; margin: 0 -8px 10px; }
-.world-map { height: 62vh; border-width: 1px 0; }
-.world-zoom-button { width: 40px; height: 40px; font-size: 18px; }
-.world-panel { width: auto; margin: 0; border-width: 0 0 1px; }
-.world-full { padding: 0; }
-.world-full .world-map { height: 60vh; }
-.world-full .world-panel { width: auto; max-height: 40vh; }

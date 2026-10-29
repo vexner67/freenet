@@ -45,7 +45,6 @@
         <a class="aui-nav-item" href="/admin/bets" title="Ставки"><span class="aui-icon aui-icon-bets"></span><span class="aui-nav-item-label">Ставки</span></a>
         <a class="aui-nav-item" href="/admin/mine" title="Шахта"><span class="aui-icon aui-icon-mine"></span><span class="aui-nav-item-label">Шахта</span></a>
         <a class="aui-nav-item" href="/admin/business" title="Бизнес"><span class="aui-icon aui-icon-business"></span><span class="aui-nav-item-label">Бизнес</span></a>
-        <a class="aui-nav-item" href="/admin/world" title="Мир"><span class="aui-icon aui-icon-world"></span><span class="aui-nav-item-label">Мир</span></a>
         <a class="aui-nav-item" href="/admin/bank" title="Банк"><span class="aui-icon aui-icon-bank"></span><span class="aui-nav-item-label">Банк</span></a>
         <a class="aui-nav-item" href="/admin/pets" title="Питомцы"><span class="aui-icon aui-icon-pet"></span><span class="aui-nav-item-label">Питомцы</span></a>
         <a class="aui-nav-item" href="/admin/ads" title="Реклама"><span class="aui-icon aui-icon-ad"></span><span class="aui-nav-item-label">Реклама</span></a>
@@ -692,35 +691,6 @@
         </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
-        </div>
-      </form>
-    </section>
-
-    <section id="world" hidden>
-      <h1 class="aui-page-heading">Мир</h1>
-      <p class="admin-lead">Мир — карта сайта с провинциями, их местностью, населением и ресурсами. Карта создаётся по сиду в фоне за минуту-другую; готовую можно посмотреть и открыть. Открыт всегда один мир: открытие новой карты завершает прежний.</p>
-      <div class="aui-message aui-message-success" id="world-saved" hidden></div>
-      <h2>Карты</h2>
-      <div class="aui-table-wrap">
-        <table class="aui">
-          <thead><tr><th>Карта</th><th>Создана</th><th>Сид</th><th>Сетка</th><th>Состояние</th><th></th></tr></thead>
-          <tbody id="world-maps"></tbody>
-        </table>
-      </div>
-      <form class="aui" id="world-create">
-        <div class="field-group">
-          <label for="world-seed">Сид</label>
-          <input class="text admin-casino-field" id="world-seed" type="text" inputmode="numeric" pattern="[0-9]*">
-          <div class="description">Одинаковый сид даёт одинаковую карту; пусто — случайный.</div>
-        </div>
-        <div class="field-group">
-          <label for="world-grid">Сетка</label>
-          <select class="select" id="world-grid"><option value="1024">1024 — маленькая</option><option value="2048" selected>2048 — обычная</option><option value="4096">4096 — подробная</option></select>
-          <div class="description">Ширина карты в клетках: подробная создаётся дольше.</div>
-        </div>
-        <div class="buttons-container">
-          <button class="aui-button aui-button-primary" type="submit">Создать карту</button>
-          <button class="aui-button" id="world-end" type="button">Завершить мир</button>
         </div>
       </form>
     </section>

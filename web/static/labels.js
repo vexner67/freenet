@@ -2571,11 +2571,6 @@ const errorTexts = {
   'the bid is too low': tr('Ставка слишком мала.'),
   'an auction with bids cannot be cancelled': tr('Аукцион, на котором уже есть ставки, отменить нельзя.'),
   'not enough votes': tr('У вас недостаточно голосов.'),
-  'world not found': tr('Такого мира нет.'),
-  'no world is open': tr('Мир ещё не открыт.'),
-  'invalid grid of the map': tr('Такого размера карты нет.'),
-  'the world is not ready': tr('Карта мира ещё не готова.'),
-  'the world is not open': tr('Мир закрыт.'),
   'the name of an enterprise must be 1 to 40 characters in one line': tr('Название предприятия — от 1 до 40 символов в одну строку.'),
   'there is no such enterprise': tr('Такого предприятия нет.'),
   'only the director runs the enterprise': tr('Управлять предприятием может только директор.'),
@@ -3453,42 +3448,5 @@ export function topValue(board, value) {
 // their name: " заходила на вашу страницу.".
 export function guestCame(guest) {
   return byGender(guest.user.gender, tr(' заходил на вашу страницу.'), tr(' заходила на вашу страницу.'));
-}
-
-// --- «Мир» ---
-
-// worldTerrains are the lands of the provinces (mapgen.Terrain).
-const worldTerrains = {
-  plains: tr('равнины'),
-  hills: tr('холмы'),
-  mountains: tr('горы'),
-  forest: tr('лес'),
-  desert: tr('пустыня'),
-  swamp: tr('болото'),
-  tundra: tr('тундра'),
-  sea: tr('море'),
-};
-
-export const worldTerrain = (t) => worldTerrains[t] ?? t;
-
-// worldResources are the riches of the provinces (mapgen.Resource), with
-// the sign the map puts on them.
-export const worldResources = {
-  grain: [tr('зерно'), '🌾'],
-  wood: [tr('лес'), '🌲'],
-  ore: [tr('руда'), '⛏'],
-  oil: [tr('нефть'), '🛢'],
-  gold: [tr('золото'), '💰'],
-  horses: [tr('лошади'), '🐎'],
-};
-
-export const worldResource = (r) => worldResources[r]?.[0] ?? r;
-
-// worldPopulation is a population in thousands: "12 тыс. чел.", "1,5
-// млн чел.".
-export function worldPopulation(thousands) {
-  if (thousands >= 1000) return tr('{0} млн чел.', String(Math.round(thousands / 100) / 10).replace('.', ','));
-
-  return tr('{0} тыс. чел.', groupedVotes(thousands));
 }
 

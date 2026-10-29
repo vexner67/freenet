@@ -11,8 +11,7 @@
 // the top of "Ракетка", and the antes and the pays of "Покер"), "Ставки" (/admin/bets: the
 // events people stake on, a new one, and closing, resolving, cancelling
 // and deleting them), "Бизнес" (/admin/business: the prices of the
-// enterprises and the goods, the rules of the market), "Мир" (/admin/world:
-// the maps of the world), "Банк" (/admin/bank: the rates and limits of
+// enterprises and the goods, the rules of the market), "Банк" (/admin/bank: the rates and limits of
 // deposits and loans), "Шахта" (/admin/mine: the ores, the energy and the
 // events of a dig), "Питомцы" (/admin/pets: the prices of the pets and their
 // fights)
@@ -1059,81 +1058,6 @@ function settingsRows(body, items, fields, name) {
   });
 }
 
-// worldSettings is "Мир": the maps made, a new one, opening a ready one
-// and ending the open one.
-const worldStatuses = {
-  generating: tr('создаётся'),
-  ready: tr('готова'),
-  open: tr('открыта'),
-  ended: tr('завершена'),
-  failed: tr('не удалась'),
-};
-
-async function worldSettings(answered) {
-  const said = (text) => {
-    $('world-saved').textContent = text;
-    $('world-saved').hidden = false;
-  };
-
-  const show = ({ worlds }) => {
-    $('world-maps').replaceChildren(...worlds.map((w) => {
-      const preview = w.status === 'generating' || w.status === 'failed'
-        ? el('span', {}, '—')
-        : el('span', { className: 'admin-world-preview' },
-          el('img', { src: `/media/world/${encodeURIComponent(w.id)}/tiles/0/0/0`, alt: '' }),
-          el('img', { src: `/media/world/${encodeURIComponent(w.id)}/tiles/0/1/0`, alt: '' }));
-      const open = el('button', { className: 'aui-button', type: 'button', textContent: tr('Открыть') });
-      open.addEventListener('click', async () => {
-        if (!confirm(tr('Открыть эту карту? Открытый сейчас мир завершится.'))) return;
-        open.disabled = true;
-        try {
-          await api.openWorld(w.id);
-          said(tr('Мир открыт.'));
-          show(await api.worlds());
-        } catch (e) {
-          showError(e);
-          open.disabled = false;
-        }
-      });
-
-      return el('tr', {},
-        el('td', {}, preview),
-        el('td', {}, formatDateTime(w.createdAt)),
-        el('td', {}, w.seed),
-        el('td', {}, String(w.grid)),
-        el('td', {}, worldStatuses[w.status] ?? w.status),
-        el('td', {}, w.status === 'ready' ? open : ''));
-    }));
-  };
-  show(await answered);
-
-  $('world-create').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    error.hidden = true;
-    try {
-      await api.createWorld($('world-seed').value.trim(), Number($('world-grid').value));
-      said(tr('Карта создаётся: обновите страницу через минуту-другую.'));
-      show(await api.worlds());
-    } catch (e) {
-      showError(e);
-    }
-  });
-
-  $('world-end').addEventListener('click', async () => {
-    if (!confirm(tr('Завершить открытый мир?'))) return;
-    error.hidden = true;
-    try {
-      await api.endWorld();
-      said(tr('Мир завершён.'));
-      show(await api.worlds());
-    } catch (e) {
-      showError(e);
-    }
-  });
-
-  $('world').hidden = false;
-}
-
 // businessSettings is "Бизнес": the prices of the enterprises and the
 // goods, the rules of the market and how the economy has done.
 async function businessSettings(answered) {
@@ -1802,7 +1726,6 @@ const reads = {
   '/admin/bets': () => started(api.betEvents()),
   '/admin/mine': () => started(api.mineSettings()),
   '/admin/business': () => started(api.firmSettings()),
-  '/admin/world': () => started(api.worlds()),
   '/admin/bank': () => started(api.bankSettings()),
   '/admin/pets': () => started(api.petSettings()),
 }[adID ? '/admin/ads' : path]?.();
@@ -1846,8 +1769,6 @@ if (!me) {
     await mineSettings(reads).catch(showError);
   } else if (path === '/admin/business') {
     await businessSettings(reads).catch(showError);
-  } else if (path === '/admin/world') {
-    await worldSettings(reads).catch(showError);
   } else if (path === '/admin/bank') {
     await bankSettings(reads).catch(showError);
   } else if (path === '/admin/pets') {

@@ -305,9 +305,6 @@ a:hover { text-decoration: underline; }
 .aui-icon-mine { --icon: url("/static/icons/admin-mine.svg"); }
 .aui-icon-pet { --icon: url("/static/icons/admin-pet.svg"); }
 .aui-icon-business { --icon: url("/static/icons/admin-business.svg"); }
-.aui-icon-world { --icon: url("/static/icons/admin-world.svg"); }
-.admin-world-preview { display: flex; width: 128px; }
-.admin-world-preview img { width: 64px; height: 64px; }
 .aui-icon-bank { --icon: url("/static/icons/admin-bank.svg"); }
 .aui-icon-users { --icon: url("/static/icons/admin-users.svg"); }
 .aui-icon-clubs { --icon: url("/static/icons/admin-clubs.svg"); }
