@@ -88,6 +88,9 @@ const (
 	// KindPrime: the actor gave the recipient Freenet Prime; PostID
 	// names the purchase.
 	KindPrime Kind = "prime"
+	// KindMatch: the actor and the recipient liked each other in
+	// "Знакомства". One per pair and recipient.
+	KindMatch Kind = "match"
 )
 
 var (
@@ -139,7 +142,7 @@ func (e Event) Validate() error {
 		KindPhotoComment, KindTopicMessageLike, KindPhotoMention,
 		KindStoryComment:
 		ok = hasPost && hasComment
-	case KindFollow, KindClubAdmin, KindInvite, KindVerified, KindClubVerified:
+	case KindFollow, KindClubAdmin, KindInvite, KindVerified, KindClubVerified, KindMatch:
 		ok = !hasPost && !hasComment
 	default:
 		return ErrUnknownKind

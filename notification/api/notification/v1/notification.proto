@@ -119,6 +119,9 @@ enum Kind {
   // The actor gave the recipient Freenet Prime; post_id is the purchase,
   // which the user service names.
   KIND_PRIME = 28;
+  // The actor and the recipient liked each other in "Знакомства"; each
+  // gets one, the other the actor.
+  KIND_MATCH = 29;
 }
 
 // Event: post_id is set for all but follows, invitations, appointments

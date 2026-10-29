@@ -58,6 +58,9 @@ const clubTexts = {
   club_verified: 'Сообщество подтверждено: у его названия теперь галочка.',
 };
 
+// A match of "Знакомства", said of the person who liked back.
+const matchText = 'Взаимная симпатия в знакомствах.';
+
 // The same in English (i18n.js), when the pages are English: a verb has
 // one form, whoever did it.
 const english = {
@@ -95,6 +98,7 @@ const english = {
     club_admin: 'You were made a manager of the community.',
     club_verified: 'The community is verified: its name has a check mark now.',
   },
+  match: 'You liked each other in dating.',
   community: 'Community',
   chat: 'Chat',
   message: 'New message.',
@@ -144,6 +148,10 @@ function notificationOf(p, lang = 'ru') {
   if (clubTexts[p.kind]) {
     const url = { suggested_post: clubPath(actor) + '/suggested', club_verified: clubPath(actor) }[p.kind] ?? '/notifications';
     return { title: name, body: en ? english.club[p.kind] : clubTexts[p.kind], url, tag };
+  }
+
+  if (p.kind === 'match') {
+    return { title: name, body: en ? english.match : matchText, url: '/dating', tag };
   }
 
   const text = pushTexts[p.kind];
