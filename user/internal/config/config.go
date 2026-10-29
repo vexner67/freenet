@@ -111,6 +111,10 @@ type Config struct {
 	// BankInterval is how often the loans past their term are collected.
 	BankInterval time.Duration `env:"BANK_INTERVAL" envDefault:"10m"`
 
+	// EndlessInterval is how often the administrators get back the votes
+	// they spent (user.EndlessVotes).
+	EndlessInterval time.Duration `env:"ENDLESS_INTERVAL" envDefault:"1m"`
+
 	// HoldemInterval is how often the poker tables nobody reads move on.
 	HoldemInterval time.Duration `env:"HOLDEM_INTERVAL" envDefault:"5s"`
 
@@ -148,6 +152,10 @@ func (c Config) Validate() error {
 
 	if c.BankInterval <= 0 {
 		return errors.New("BANK_INTERVAL must be positive")
+	}
+
+	if c.EndlessInterval <= 0 {
+		return errors.New("ENDLESS_INTERVAL must be positive")
 	}
 
 	if c.HoldemInterval <= 0 {

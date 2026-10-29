@@ -347,6 +347,7 @@ const treasuryQuery = `
 		coalesce((
 			SELECT sum(u.votes)
 			FROM users u
+			WHERE u.votes < $1
 		), 0)::bigint
 	FROM treasury t
 `
@@ -358,11 +359,29 @@ func (r *WalletRepository) Treasury(ctx context.Context) (user.Treasury, error) 
 	}
 
 	var t user.Treasury
-	if err := r.conn(ctx).QueryRow(ctx, treasuryQuery).Scan(&t.Votes, &t.Outstanding, &t.Held); err != nil {
+	if err := r.conn(ctx).QueryRow(ctx, treasuryQuery, user.EndlessFloor).Scan(&t.Votes, &t.Outstanding, &t.Held); err != nil {
 		return user.Treasury{}, errs.Wrap("r.conn.QueryRow", err)
 	}
 
 	return t, nil
+}
+
+// The endless balance of the administrators is no change of votes: the
+// statement does not write it down, and the treasury pays nothing for it.
+const endowWalletsQuery = `
+	UPDATE users
+	SET votes = $2
+	WHERE lower(email) = ANY ($1)
+		AND votes < $2
+`
+
+func (r *WalletRepository) Endow(ctx context.Context, emails []string, votes int64) (int, error) {
+	tag, err := r.conn(ctx).Exec(ctx, endowWalletsQuery, emails, votes)
+	if err != nil {
+		return 0, errs.Wrap("r.conn.Exec", err)
+	}
+
+	return int(tag.RowsAffected()), nil
 }
 
 // The bonus of a day is taken once: a later day replaces the one kept.

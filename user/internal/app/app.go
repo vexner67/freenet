@@ -61,6 +61,10 @@ type App struct {
 	// banks collect the loans past their term every bankEvery.
 	banks     *service.BankService
 	bankEvery time.Duration
+	// endless gives the administrators back what they spent every
+	// endlessEvery.
+	endless      *service.EndlessService
+	endlessEvery time.Duration
 	// holdems move on the poker tables nobody looks at every holdemEvery.
 	holdems     *service.HoldemService
 	holdemEvery time.Duration
@@ -186,6 +190,8 @@ func (a *App) build(cfg config.Config) error {
 	a.auctionEvery = cfg.GiftAuctionInterval
 	a.banks = service.NewBankService(store.users, store.bank, store.wallets, store.tx, admins)
 	a.bankEvery = cfg.BankInterval
+	a.endless = service.NewEndlessService(store.endless, admins)
+	a.endlessEvery = cfg.EndlessInterval
 	a.holdems = service.NewHoldemService(store.users, store.holdems, store.wallets, store.tx)
 	a.holdemEvery = cfg.HoldemInterval
 	a.firms = service.NewFirmService(store.users, store.firms, store.wallets, store.tx, admins)
@@ -395,6 +401,8 @@ type storage struct {
 	stickerPacks service.StickerPackRepository
 	// wallets are the votes and the rating of users.
 	wallets service.WalletRepository
+	// endless keeps the balances of the administrators endless.
+	endless service.EndlessRepository
 	// statements are the changes of their votes.
 	statements service.StatementRepository
 	// bonuses are the daily bonuses and the members of the treasury.
@@ -459,6 +467,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			stickers:     stickers,
 			stickerPacks: inmem.NewStickerPackRepository(users, stickers),
 			wallets:      users,
+			endless:      users,
 			statements:   users,
 			bonuses:      users,
 			vouchers:     inmem.NewVoucherRepository(users),
@@ -518,6 +527,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		stickers:     postgres.NewStickerRepository(a.pool),
 		stickerPacks: postgres.NewStickerPackRepository(a.pool),
 		wallets:      postgres.NewWalletRepository(a.pool),
+		endless:      postgres.NewWalletRepository(a.pool),
 		statements:   postgres.NewWalletRepository(a.pool),
 		bonuses:      postgres.NewWalletRepository(a.pool),
 		vouchers:     postgres.NewVoucherRepository(a.pool),
@@ -580,6 +590,10 @@ func (a *App) Run(ctx context.Context) error {
 
 	g.Go(func() error {
 		return errs.Wrap("a.runBank", a.runBank(ctx, a.bankEvery))
+	})
+
+	g.Go(func() error {
+		return errs.Wrap("a.runEndless", a.runEndless(ctx, a.endlessEvery))
 	})
 
 	g.Go(func() error {

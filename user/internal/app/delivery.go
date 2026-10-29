@@ -267,6 +267,26 @@ func (a *App) runBank(ctx context.Context, every time.Duration) error {
 	}
 }
 
+// runEndless gives the administrators back the votes they spent at once
+// and then every interval, until ctx ends; a failure is logged and tried
+// again next time.
+func (a *App) runEndless(ctx context.Context, every time.Duration) error {
+	t := time.NewTicker(every)
+	defer t.Stop()
+
+	for {
+		if _, err := a.endless.Endow(ctx); err != nil && ctx.Err() == nil {
+			a.logger.ErrorContext(ctx, "endless votes of the administrators", "error", err)
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-t.C:
+		}
+	}
+}
+
 // runFirms counts the hours of the economy of the enterprises that ended,
 // looking every interval, until ctx is done. Replicas count each hour
 // once: the city is locked while counted.

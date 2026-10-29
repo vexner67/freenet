@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -158,10 +159,36 @@ func (r *UserRepository) Treasury(ctx context.Context) (user.Treasury, error) {
 	t := r.treasury
 	t.Outstanding = promised
 	for _, u := range r.users {
-		t.Held += u.Wallet().Votes
+		if votes := u.Wallet().Votes; !user.IsEndless(votes) {
+			t.Held += votes
+		}
 	}
 
 	return t, nil
+}
+
+// Endow raises to votes the balances of the pages of emails that have
+// less; it is no change of votes the statement writes down.
+func (r *UserRepository) Endow(ctx context.Context, emails []string, votes int64) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	raised := 0
+	for _, u := range r.users {
+		wallet := u.Wallet()
+		if wallet.Votes >= votes || !slices.Contains(emails, strings.ToLower(u.Email().String())) {
+			continue
+		}
+		wallet.Votes = votes
+		r.users[u.ID()] = *u.WithWallet(wallet)
+		raised++
+	}
+
+	return raised, nil
 }
 
 // TakeBonus marks the bonus of day taken by userID; user.ErrBonusTaken.
