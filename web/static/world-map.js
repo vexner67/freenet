@@ -159,25 +159,64 @@ export function createWorldMap(box, { worldId, atlas, raster, onSelect = () => {
 
   // --- the chosen province over the land ---
 
-  // paint draws the chosen province into the overlay, a pixel a cell.
-  function paint() {
-    const image = octx.createImageData(W, H);
-    const px = image.data;
-    const pickColor = colorOf(box, 'world-pick');
+  // bounds are the cells each province spans, [x0, y0, x1, y1] by its
+  // number, read off the raster once, on the first choice.
+  let bounds = null;
+  let painted = null;
 
-    for (let i = 0; selected !== null && i < W * H; i++) {
-      const p = raster[i];
-      if (p !== selected) continue;
-      const edge = raster[i - 1] !== p || raster[i + 1] !== p || raster[i - W] !== p || raster[i + W] !== p;
-      const o = i * 4;
-      px[o] = pickColor[0];
-      px[o + 1] = pickColor[1];
-      px[o + 2] = pickColor[2];
-      px[o + 3] = edge ? 255 : 70;
+  function provinceBounds() {
+    const b = new Int32Array(provinces.length * 4);
+    for (let p = 0; p < provinces.length; p++) b.set([W, H, -1, -1], p * 4);
+    for (let i = 0; i < W * H; i++) {
+      const o = raster[i] * 4;
+      if (o >= b.length) continue;
+      const x = i % W;
+      const y = (i - x) / W;
+      if (x < b[o]) b[o] = x;
+      if (y < b[o + 1]) b[o + 1] = y;
+      if (x > b[o + 2]) b[o + 2] = x;
+      if (y > b[o + 3]) b[o + 3] = y;
     }
 
-    octx.putImageData(image, 0, 0);
+    return b;
+  }
+
+  // paint draws the chosen province into the overlay, a pixel a cell,
+  // touching only the box it spans and the one painted before.
+  function paint() {
+    if (painted) octx.clearRect(painted[0], painted[1], painted[2], painted[3]);
+    painted = null;
+    if (selected !== null && selected < provinces.length) {
+      bounds ??= provinceBounds();
+      const o = selected * 4;
+      const [x0, y0, x1, y1] = bounds.subarray(o, o + 4);
+      if (x1 >= x0) paintBox(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+    }
     redraw();
+  }
+
+  // paintBox paints the cells of the chosen province within the box; the
+  // edge of the map is an edge of the province.
+  function paintBox(x0, y0, w, h) {
+    const image = octx.createImageData(w, h);
+    const px = image.data;
+    const pickColor = colorOf(box, 'world-pick');
+    const at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? -1 : raster[y * W + x]);
+
+    for (let y = y0; y < y0 + h; y++) {
+      for (let x = x0; x < x0 + w; x++) {
+        if (raster[y * W + x] !== selected) continue;
+        const edge = at(x - 1, y) !== selected || at(x + 1, y) !== selected || at(x, y - 1) !== selected || at(x, y + 1) !== selected;
+        const o = ((y - y0) * w + (x - x0)) * 4;
+        px[o] = pickColor[0];
+        px[o + 1] = pickColor[1];
+        px[o + 2] = pickColor[2];
+        px[o + 3] = edge ? 255 : 70;
+      }
+    }
+
+    octx.putImageData(image, x0, y0);
+    painted = [x0, y0, w, h];
   }
 
   // --- the words over the map ---

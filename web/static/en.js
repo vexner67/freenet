@@ -3113,6 +3113,7 @@ export default {
   'Мир завершён.': 'The world has ended.',
   'Мир: основание государства': 'World: founding a state',
   'Мир: возврат за неосновавшееся государство': 'World: refund for a state that was not founded',
+  'Мир: возврат голосов за упразднённые государства': 'World: refund for the states that were abolished',
   'Мир: взнос в казну государства': 'World: a gift to the treasury of a state',
   'Такого мира нет.': 'There is no such world.',
   'Мир ещё не открыт.': 'The world is not open yet.',

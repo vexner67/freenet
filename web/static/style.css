@@ -3324,5 +3324,6 @@ img.name-prime.name-prime {
 /* The probes the canvas reads its colors off. */
 .world-probe { display: none; }
 .world-sea { background: var(--back-45708f); }
+.world-pick { background: var(--back-d23a32); }
 .world-label { color: var(--text-2b2116); }
 .world-halo { color: var(--text-fbf6e9); }

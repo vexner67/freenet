@@ -2100,6 +2100,7 @@ export function voteOperation(op, myId) {
     case 'world':
       if (note === 'found_state') return { title: tr('Мир: основание государства'), role: '' };
       if (note === 'refund') return { title: tr('Мир: возврат за неосновавшееся государство'), role: '' };
+      if (note === 'closed') return { title: tr('Мир: возврат голосов за упразднённые государства'), role: '' };
       return { title: tr('Мир: взнос в казну государства'), role: '' };
     case 'pet':
       if (note === 'adopt') return { title: tr('Питомец: покупка'), role: '' };
