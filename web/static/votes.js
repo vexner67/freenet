@@ -8,7 +8,7 @@
 // and "Кредит" (?act=loan).
 
 import { api, currentUser, started } from './api.js';
-import { MAX_RATING, RATING_PRICE, bankRate, bankVotes, TRANSFER_FEE_PERCENT, formatDateTime, groupedVotes, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, votesFontSize, voucherGave } from './labels.js';
+import { MAX_RATING, RATING_PRICE, bankRate, bankVotes, TRANSFER_FEE_PERCENT, formatDateTime, groupedVotes, isEndless, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, votesFontSize, voucherGave } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError, verifiedMark } from './layout.js';
 import { tr } from './i18n.js';
 import { isNickname, recipientPicker } from './recipient.js';
@@ -38,7 +38,8 @@ function showBalance(votes, kopecks) {
   $('votes').textContent = groupedVotes(votes);
   $('votes').style.fontSize = `${votesFontSize(votes)}px`;
   $('votes-word').textContent = plural(votes, ['голос', 'голоса', 'голосов']);
-  $('votes-rubles').textContent = kopecks ? `≈ ${rubles(votes * kopecks)}` : '';
+  // The endless balance of an administrator is worth no sum.
+  $('votes-rubles').textContent = kopecks && !isEndless(votes) ? `≈ ${rubles(votes * kopecks)}` : '';
 }
 
 // operationRow is a line of the statement: when, what and with whom, the

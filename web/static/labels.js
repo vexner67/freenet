@@ -1129,6 +1129,7 @@ export function autoplayNext({ played, times, balance, cost }) {
 // as they grow (a digit of Tahoma, bold too, is under 0,65 of the size), as openvk's
 // textFit does.
 export function votesFontSize(votes, width = 140) {
+  if (isEndless(votes)) return 48;
   const digits = String(Math.max(0, Math.trunc(votes))).length;
   const gaps = Math.floor((digits - 1) / 3);
 
@@ -1535,7 +1536,18 @@ export function voucherGave({ votes, rating }) {
 // groupedVotes is a number of votes with its thousands apart:
 // "1 250 000".
 export function groupedVotes(n) {
+  if (isEndless(n)) return '∞';
   return String(Math.trunc(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+}
+
+// ENDLESS_VOTES is where the balance of an administrator begins: it is
+// kept at a quadrillion, so they can pay for anything (user.EndlessFloor),
+// and shown as "∞".
+export const ENDLESS_VOTES = 10 ** 14;
+
+// isEndless tells the endless balance of an administrator, either way.
+export function isEndless(n) {
+  return Math.abs(n) >= ENDLESS_VOTES;
 }
 
 // votesAmount is "1 250 000 голосов".
