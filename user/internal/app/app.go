@@ -341,11 +341,14 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 
 		// Hunger and the fights of a day hold pets back; the limit is
 		// against scripts.
-		userv1.UserService_AdoptPet_FullMethodName:  cfg.PetLimits,
-		userv1.UserService_FeedPet_FullMethodName:   cfg.PetLimits,
-		userv1.UserService_PlayPet_FullMethodName:   cfg.PetLimits,
-		userv1.UserService_RenamePet_FullMethodName: cfg.PetLimits,
-		userv1.UserService_FightPet_FullMethodName:  cfg.PetLimits,
+		userv1.UserService_AdoptPet_FullMethodName:    cfg.PetLimits,
+		userv1.UserService_FeedPet_FullMethodName:     cfg.PetLimits,
+		userv1.UserService_PlayPet_FullMethodName:     cfg.PetLimits,
+		userv1.UserService_RenamePet_FullMethodName:   cfg.PetLimits,
+		userv1.UserService_FightPet_FullMethodName:    cfg.PetLimits,
+		userv1.UserService_OpenPetCase_FullMethodName: cfg.PetLimits,
+		userv1.UserService_BuyPetItem_FullMethodName:  cfg.PetLimits,
+		userv1.UserService_DressPet_FullMethodName:    cfg.PetLimits,
 	}
 }
 

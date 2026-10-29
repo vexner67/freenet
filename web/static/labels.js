@@ -3343,15 +3343,23 @@ export function activeSection(path, ownPath) {
   return '';
 }
 
-// petKinds are the pets of the shop in the order the site shows them,
-// as user.PetKinds.
-export const petKinds = ['cat', 'dog', 'hamster', 'dragon'];
+// petKinds are all the pets in the order the site shows them, as
+// user.PetKinds.
+export const petKinds = ['cat', 'dog', 'hamster', 'dragon', 'rabbit', 'turtle', 'fox', 'owl', 'wolf', 'panda', 'unicorn', 'phoenix'];
 
 const petKindNames = {
   cat: tr('Кот'),
   dog: tr('Пёс'),
   hamster: tr('Хомяк'),
+  rabbit: tr('Кролик'),
+  turtle: tr('Черепаха'),
+  fox: tr('Лис'),
+  owl: tr('Сова'),
   dragon: tr('Дракон'),
+  wolf: tr('Волк'),
+  panda: tr('Панда'),
+  unicorn: tr('Единорог'),
+  phoenix: tr('Феникс'),
 };
 
 const petKindAbout = {

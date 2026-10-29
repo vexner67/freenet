@@ -35,6 +35,9 @@ type PetService interface {
 	Release(ctx context.Context, userID, petID uuid.UUID) error
 	Fight(ctx context.Context, userID, petID uuid.UUID, nickname user.Nickname, now time.Time) (service.PetFought, error)
 	Fights(ctx context.Context, userID uuid.UUID) ([]user.PetFight, error)
+	OpenCase(ctx context.Context, userID uuid.UUID, c user.PetCase, name user.PetName, now time.Time) (service.PetCare, error)
+	BuyItem(ctx context.Context, userID, petID uuid.UUID, item user.PetItem) (service.PetCare, error)
+	Dress(ctx context.Context, userID, petID uuid.UUID, item user.PetItem, wear bool) (*user.Pet, error)
 	Settings(ctx context.Context, adminID uuid.UUID) (service.PetSettings, error)
 	SetShop(ctx context.Context, adminID uuid.UUID, shop user.PetShop) error
 }
@@ -147,7 +150,57 @@ func toProtoPetShop(s user.PetShop) *userv1.PetShop {
 		prices[kind.String()] = price
 	}
 
-	return &userv1.PetShop{Prices: prices, Meal: s.Meal(), Win: s.Win(), Fights: int32(s.Fights())} //nolint:gosec // at most user.MaxPetFightsADay
+	cases := make(map[string]int64, len(s.Cases()))
+	for c, price := range s.Cases() {
+		cases[c.String()] = price
+	}
+
+	return &userv1.PetShop{Prices: prices, Cases: cases, Meal: s.Meal(), Win: s.Win(), Fights: int32(s.Fights())} //nolint:gosec // at most user.MaxPetFightsADay
+}
+
+//nolint:gosec // the stats of a pet are small
+func toProtoPetStats(s user.PetStats) *userv1.PetStats {
+	return &userv1.PetStats{Attack: int32(s.Attack), Defense: int32(s.Defense), Health: int32(s.Health), Speed: int32(s.Speed)}
+}
+
+func itemNames(items []user.PetItem) []string {
+	names := make([]string, len(items))
+	for i, item := range items {
+		names[i] = item.String()
+	}
+
+	return names
+}
+
+// petCatalogue is what the shop knows: the kinds, the cases and the
+// clothes.
+//
+//nolint:gosec // odds are in a thousand, crits in a hundred
+func petCatalogue(state *userv1.PetState) *userv1.PetState {
+	shop := map[user.PetKind]bool{}
+	for _, k := range user.ShopPetKinds {
+		shop[k] = true
+	}
+	for _, k := range user.PetKinds {
+		breed := user.RestorePet(user.PetState{Kind: k})
+		state.Kinds = append(state.Kinds, &userv1.PetKind{
+			Kind: k.String(), Rarity: k.Rarity().String(), InShop: shop[k], Stats: toProtoPetStats(breed.BreedStats()), Crit: int32(breed.Crit()),
+		})
+	}
+	for _, c := range user.PetCases {
+		pc := &userv1.PetCase{Id: c.String()}
+		for _, odds := range c.Odds() {
+			pc.Odds = append(pc.Odds, int32(odds))
+		}
+		state.Cases = append(state.Cases, pc)
+	}
+	for _, item := range user.PetItems {
+		state.Items = append(state.Items, &userv1.PetItem{
+			Id: item.Item.String(), Slot: string(item.Slot), Price: item.Price, Bonus: toProtoPetStats(item.Bonus),
+		})
+	}
+
+	return state
 }
 
 func fromProtoPetShop(s *userv1.PetShop) (user.PetShop, error) {
@@ -160,7 +213,21 @@ func fromProtoPetShop(s *userv1.PetShop) (user.PetShop, error) {
 		prices[k] = price
 	}
 
-	return user.NewPetShop(prices, s.GetMeal(), s.GetWin(), int(s.GetFights()))
+	shop, err := user.NewPetShop(prices, s.GetMeal(), s.GetWin(), int(s.GetFights()))
+	if err != nil || s.GetCases() == nil {
+		return shop, err
+	}
+
+	cases := make(map[user.PetCase]int64, len(s.GetCases()))
+	for id, price := range s.GetCases() {
+		c, err := user.NewPetCase(id)
+		if err != nil {
+			return user.PetShop{}, err
+		}
+		cases[c] = price
+	}
+
+	return shop.WithCases(cases)
 }
 
 //nolint:gosec // the numbers of a pet are small: feelings to 100, levels to 30, stats and fights of a day
@@ -189,6 +256,11 @@ func toProtoPet(p *user.Pet, now time.Time) *userv1.Pet {
 		Health:          int32(stats.Health),
 		Speed:           int32(stats.Speed),
 		Crit:            int32(p.Crit()),
+		Rarity:          p.Kind().Rarity().String(),
+		Wardrobe:        itemNames(p.Wardrobe()),
+		Outfit:          itemNames(p.Outfit()),
+		Breed:           toProtoPetStats(p.BreedStats()),
+		Clothes:         toProtoPetStats(p.ClothesStats()),
 	}
 	if level < user.MaxPetLevel {
 		pet.NextLevelExperience = user.PetLevelExperience(level + 1)
@@ -203,7 +275,7 @@ func toProtoPet(p *user.Pet, now time.Time) *userv1.Pet {
 //nolint:gosec // the numbers of a fight are small: health, damage, levels and rating points
 func toProtoPetFight(f user.PetFight) *userv1.PetFight {
 	fighter := func(pf user.PetFighter) *userv1.PetFighter {
-		return &userv1.PetFighter{Kind: pf.Kind.String(), Name: pf.Name.String(), Level: int32(pf.Level), Health: int32(pf.Health)}
+		return &userv1.PetFighter{Kind: pf.Kind.String(), Name: pf.Name.String(), Level: int32(pf.Level), Health: int32(pf.Health), Outfit: itemNames(pf.Outfit)}
 	}
 
 	fight := &userv1.PetFight{
@@ -242,7 +314,7 @@ func (h *UserHandler) GetPet(ctx context.Context, _ *userv1.GetPetRequest) (*use
 		return nil, err
 	}
 
-	return &userv1.PetState{Shop: toProtoPetShop(shop), Pets: toProtoPets(pets, time.Now())}, nil
+	return petCatalogue(&userv1.PetState{Shop: toProtoPetShop(shop), Pets: toProtoPets(pets, time.Now())}), nil
 }
 
 func (h *UserHandler) GetUserPet(ctx context.Context, req *userv1.GetUserPetRequest) (*userv1.GetUserPetResponse, error) {
@@ -371,6 +443,69 @@ func (h *UserHandler) FightPet(ctx context.Context, req *userv1.FightPetRequest)
 	}
 
 	return &userv1.FightPetResponse{Fight: toProtoPetFight(fought.Fight), Pet: toProtoPet(fought.Pet, now), Balance: fought.Balance}, nil
+}
+
+func (h *UserHandler) OpenPetCase(ctx context.Context, req *userv1.OpenPetCaseRequest) (*userv1.PetCareResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := user.NewPetCase(req.GetCaseId())
+	if err != nil {
+		return nil, err
+	}
+	name, err := user.NewPetName(req.GetName())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	now := time.Now()
+
+	care, err := h.pets.OpenCase(ctx, userID, c, name, now)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.PetCareResponse{Pet: toProtoPet(care.Pet, now), Balance: care.Balance}, nil
+}
+
+func (h *UserHandler) BuyPetItem(ctx context.Context, req *userv1.BuyPetItemRequest) (*userv1.PetCareResponse, error) {
+	userID, petID, err := petCaller(ctx, req.GetPetId())
+	if err != nil {
+		return nil, err
+	}
+
+	item, err := user.NewPetItem(req.GetItem())
+	if err != nil {
+		return nil, err
+	}
+
+	care, err := h.pets.BuyItem(ctx, userID, petID, item)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.PetCareResponse{Pet: toProtoPet(care.Pet, time.Now()), Balance: care.Balance}, nil
+}
+
+func (h *UserHandler) DressPet(ctx context.Context, req *userv1.DressPetRequest) (*userv1.PetCareResponse, error) {
+	userID, petID, err := petCaller(ctx, req.GetPetId())
+	if err != nil {
+		return nil, err
+	}
+
+	item, err := user.NewPetItem(req.GetItem())
+	if err != nil {
+		return nil, err
+	}
+
+	p, err := h.pets.Dress(ctx, userID, petID, item, req.GetWear())
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.PetCareResponse{Pet: toProtoPet(p, time.Now())}, nil
 }
 
 func (h *UserHandler) ListPetFights(ctx context.Context, _ *userv1.ListPetFightsRequest) (*userv1.ListPetFightsResponse, error) {

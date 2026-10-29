@@ -3106,4 +3106,12 @@ export default {
   'Мир: возврат за неосновавшееся государство': 'World: refund for a state that was not founded',
   'Мир: возврат голосов за упразднённые государства': 'World: refund for the states that were abolished',
   'Мир: взнос в казну государства': 'World: a gift to the treasury of a state',
+  'Кролик': 'Rabbit',
+  'Черепаха': 'Turtle',
+  'Лис': 'Fox',
+  'Сова': 'Owl',
+  'Волк': 'Wolf',
+  'Панда': 'Panda',
+  'Единорог': 'Unicorn',
+  'Феникс': 'Phoenix',
 };

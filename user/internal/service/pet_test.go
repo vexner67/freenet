@@ -248,3 +248,51 @@ func TestGuestService(t *testing.T) {
 		t.Fatalf("a bad cursor: %v", err)
 	}
 }
+
+func TestPetCasesAndClothes(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	w := newWalletWorld(t)
+	ann := w.person(t, "ann")
+	if _, err := w.users.Credit(ctx, ann, 2000, 0, user.VoteEntry{}); err != nil {
+		t.Fatal(err)
+	}
+
+	repo := inmem.NewPetRepository(w.users)
+	// The rolls fall high: a legendary pet, the second of its kinds.
+	pets := service.NewPetService(w.users, repo, w.users, inmem.TxManager{}, user.Admins{}).
+		WithRoll(func(n int64) (int64, error) { return n - 1, nil })
+	now := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
+
+	care, err := pets.OpenCase(ctx, ann, user.PetCaseBronze, "Находка", now)
+	if err != nil || care.Pet.Kind().Rarity() != user.PetLegendary || care.Balance != 1850 {
+		t.Fatalf("OpenCase = %+v, %v", care, err)
+	}
+	found := care.Pet.ID()
+
+	if care, err = pets.BuyItem(ctx, ann, found, "crown"); err != nil || care.Balance != 350 || len(care.Pet.Outfit()) != 1 {
+		t.Fatalf("BuyItem = %+v, %v", care, err)
+	}
+	if _, err = pets.BuyItem(ctx, ann, found, "crown"); !errors.Is(err, user.ErrPetItemOwned) {
+		t.Fatalf("buying the crown again: %v", err)
+	}
+	if _, err = pets.BuyItem(ctx, ann, found, "cape"); !errors.Is(err, user.ErrNotEnoughVotes) {
+		t.Fatalf("buying without votes: %v", err)
+	}
+	p, err := pets.Dress(ctx, ann, found, "crown", false)
+	if err != nil || len(p.Outfit()) != 0 || len(p.Wardrobe()) != 1 {
+		t.Fatalf("Dress = %v, %v", p, err)
+	}
+	if _, err = pets.Dress(ctx, ann, found, "cape", true); !errors.Is(err, user.ErrPetItemMissing) {
+		t.Fatalf("wearing what was not bought: %v", err)
+	}
+	if kept, err := pets.Pets(ctx, ann); err != nil || len(kept) != 1 || len(kept[0].Wardrobe()) != 1 {
+		t.Fatalf("Pets = %v, %v", kept, err)
+	}
+
+	// A case is not opened past the pets one keeps, nor without votes.
+	if _, err = pets.OpenCase(ctx, ann, user.PetCaseGold, "Ещё", now); !errors.Is(err, user.ErrNotEnoughVotes) {
+		t.Fatalf("OpenCase without votes: %v", err)
+	}
+}

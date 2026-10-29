@@ -2,7 +2,9 @@ package user
 
 import (
 	"errors"
+	"maps"
 	"math"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -22,10 +24,56 @@ const (
 	PetHamster PetKind = "hamster"
 	// PetDragon is strong at everything and dear.
 	PetDragon PetKind = "dragon"
+	// The kinds only cases give.
+	PetRabbit  PetKind = "rabbit"
+	PetTurtle  PetKind = "turtle"
+	PetFox     PetKind = "fox"
+	PetOwl     PetKind = "owl"
+	PetWolf    PetKind = "wolf"
+	PetPanda   PetKind = "panda"
+	PetUnicorn PetKind = "unicorn"
+	PetPhoenix PetKind = "phoenix"
 )
 
 // PetKinds are all kinds in the order the site shows them.
-var PetKinds = []PetKind{PetCat, PetDog, PetHamster, PetDragon}
+var PetKinds = []PetKind{PetCat, PetDog, PetHamster, PetDragon, PetRabbit, PetTurtle, PetFox, PetOwl, PetWolf, PetPanda, PetUnicorn, PetPhoenix}
+
+// ShopPetKinds are the kinds the shop sells; the others fall out of cases.
+var ShopPetKinds = []PetKind{PetCat, PetDog, PetHamster, PetDragon}
+
+// PetRarity is how rarely a kind falls out of a case.
+type PetRarity string
+
+const (
+	PetCommon    PetRarity = "common"
+	PetRare      PetRarity = "rare"
+	PetEpic      PetRarity = "epic"
+	PetLegendary PetRarity = "legendary"
+)
+
+// PetRarities are the rarities from the most common.
+var PetRarities = []PetRarity{PetCommon, PetRare, PetEpic, PetLegendary}
+
+func (r PetRarity) String() string {
+	return string(r)
+}
+
+// Rarity is how rare the kind is.
+func (k PetKind) Rarity() PetRarity {
+	return breeds[k].rarity
+}
+
+// PetKindsOf are the kinds of rarity r in the order of PetKinds.
+func PetKindsOf(r PetRarity) []PetKind {
+	var kinds []PetKind
+	for _, k := range PetKinds {
+		if k.Rarity() == r {
+			kinds = append(kinds, k)
+		}
+	}
+
+	return kinds
+}
 
 // The rules of a pet: what a meal and a game give, how fast hunger and
 // boredom come and what a fight takes.
@@ -87,6 +135,11 @@ var (
 	ErrNoPetOpponent  = errors.New("there is nobody to fight")
 	ErrPetShopPrice   = errors.New("the prices of the pet shop must be from 0")
 	ErrPetShopFights  = errors.New("the fights of a day must be from 1 to 1000")
+	ErrNotInPetShop   = errors.New("the shop does not sell this pet")
+	ErrUnknownPetCase = errors.New("unknown case")
+	ErrUnknownPetItem = errors.New("unknown pet clothes")
+	ErrPetItemOwned   = errors.New("the pet has these clothes already")
+	ErrPetItemMissing = errors.New("the pet has no such clothes")
 )
 
 func NewPetKind(s string) (PetKind, error) {
@@ -137,21 +190,165 @@ type PetStats struct {
 	Speed   int
 }
 
-// breeds are the stats of each kind at level 1.
-var breeds = map[PetKind]PetStats{
-	PetCat:     {Attack: 6, Defense: 4, Health: 40, Speed: 14},
-	PetDog:     {Attack: 7, Defense: 6, Health: 46, Speed: 6},
-	PetHamster: {Attack: 5, Defense: 4, Health: 36, Speed: 10},
-	PetDragon:  {Attack: 8, Defense: 7, Health: 52, Speed: 8},
+// Add is s with the stats of o added.
+func (s PetStats) Add(o PetStats) PetStats {
+	return PetStats{Attack: s.Attack + o.Attack, Defense: s.Defense + o.Defense, Health: s.Health + o.Health, Speed: s.Speed + o.Speed}
+}
+
+// breed is a kind: its stats at level 1, its chance in a hundred to hit
+// twice as hard and its rarity.
+type breed struct {
+	stats  PetStats
+	crit   int
+	rarity PetRarity
+}
+
+// breeds are the kinds: the rarer, the stronger.
+var breeds = map[PetKind]breed{
+	PetCat:     {PetStats{Attack: 6, Defense: 4, Health: 40, Speed: 14}, 5, PetCommon},
+	PetDog:     {PetStats{Attack: 7, Defense: 6, Health: 46, Speed: 6}, 5, PetCommon},
+	PetHamster: {PetStats{Attack: 5, Defense: 4, Health: 36, Speed: 10}, 20, PetCommon},
+	PetRabbit:  {PetStats{Attack: 5, Defense: 3, Health: 36, Speed: 18}, 5, PetCommon},
+	PetTurtle:  {PetStats{Attack: 4, Defense: 10, Health: 50, Speed: 2}, 5, PetCommon},
+	PetFox:     {PetStats{Attack: 7, Defense: 5, Health: 42, Speed: 16}, 8, PetRare},
+	PetOwl:     {PetStats{Attack: 7, Defense: 5, Health: 42, Speed: 12}, 18, PetRare},
+	PetDragon:  {PetStats{Attack: 8, Defense: 7, Health: 52, Speed: 8}, 5, PetEpic},
+	PetWolf:    {PetStats{Attack: 10, Defense: 6, Health: 50, Speed: 12}, 8, PetEpic},
+	PetPanda:   {PetStats{Attack: 8, Defense: 10, Health: 62, Speed: 5}, 6, PetEpic},
+	PetUnicorn: {PetStats{Attack: 11, Defense: 9, Health: 60, Speed: 14}, 10, PetLegendary},
+	PetPhoenix: {PetStats{Attack: 12, Defense: 8, Health: 58, Speed: 14}, 14, PetLegendary},
 }
 
 // critOf is the chance in a hundred of a kind to hit twice as hard.
 func critOf(k PetKind) int {
-	if k == PetHamster {
-		return 20
+	return breeds[k].crit
+}
+
+// PetCase is a case of pets: opened, it gives a pet of a kind drawn by
+// the odds of its rarity.
+type PetCase string
+
+const (
+	PetCaseBronze PetCase = "bronze"
+	PetCaseSilver PetCase = "silver"
+	PetCaseGold   PetCase = "gold"
+)
+
+// PetCases are all cases from the cheapest.
+var PetCases = []PetCase{PetCaseBronze, PetCaseSilver, PetCaseGold}
+
+// PetCaseOdds is what the odds of a case add up to: they are in a
+// thousand.
+const PetCaseOdds = 1000
+
+// caseOdds are the odds of each rarity of PetRarities in a case.
+var caseOdds = map[PetCase][]int{
+	PetCaseBronze: {700, 250, 45, 5},
+	PetCaseSilver: {400, 420, 150, 30},
+	PetCaseGold:   {0, 550, 370, 80},
+}
+
+func NewPetCase(s string) (PetCase, error) {
+	if _, ok := caseOdds[PetCase(s)]; !ok {
+		return "", ErrUnknownPetCase
 	}
 
-	return 5
+	return PetCase(s), nil
+}
+
+func (c PetCase) String() string {
+	return string(c)
+}
+
+// Odds are the chances in PetCaseOdds of each rarity of PetRarities.
+func (c PetCase) Odds() []int {
+	return slices.Clone(caseOdds[c])
+}
+
+// Draw is the kind the case gives for rarity, a number in [0,
+// PetCaseOdds) that picks the rarity by the odds, and kind, any number
+// from 0 that picks one of its kinds.
+func (c PetCase) Draw(rarity, kind int64) PetKind {
+	odds := caseOdds[c]
+	picked := PetRarities[len(PetRarities)-1]
+	for i, chance := range odds {
+		if rarity < int64(chance) {
+			picked = PetRarities[i]
+			break
+		}
+		rarity -= int64(chance)
+	}
+
+	kinds := PetKindsOf(picked)
+
+	return kinds[kind%int64(len(kinds))]
+}
+
+// PetSlot is where on a pet clothes go: one thing a slot.
+type PetSlot string
+
+const (
+	PetHead PetSlot = "head"
+	PetEyes PetSlot = "eyes"
+	PetNeck PetSlot = "neck"
+	PetBody PetSlot = "body"
+)
+
+// PetSlots are the slots from the head down.
+var PetSlots = []PetSlot{PetHead, PetEyes, PetNeck, PetBody}
+
+// PetItem is a thing of clothes a pet wears.
+type PetItem string
+
+// PetItemSpec is a thing of clothes: where it goes, what it costs and
+// what it adds to the stats of the pet that wears it.
+type PetItemSpec struct {
+	Item  PetItem
+	Slot  PetSlot
+	Price int64
+	Bonus PetStats
+}
+
+// PetItems are the clothes the shop sells, a slot after another, from
+// the cheapest; the prices are fixed, as the catalogue is.
+var PetItems = []PetItemSpec{
+	{Item: "cap", Slot: PetHead, Price: 60, Bonus: PetStats{Speed: 2}},
+	{Item: "helmet", Slot: PetHead, Price: 300, Bonus: PetStats{Defense: 3}},
+	{Item: "crown", Slot: PetHead, Price: 1500, Bonus: PetStats{Attack: 3, Defense: 3}},
+	{Item: "glasses", Slot: PetEyes, Price: 80, Bonus: PetStats{Attack: 1, Defense: 1}},
+	{Item: "shades", Slot: PetEyes, Price: 200, Bonus: PetStats{Speed: 3}},
+	{Item: "monocle", Slot: PetEyes, Price: 700, Bonus: PetStats{Attack: 3, Speed: 1}},
+	{Item: "bow", Slot: PetNeck, Price: 40, Bonus: PetStats{Health: 6}},
+	{Item: "scarf", Slot: PetNeck, Price: 150, Bonus: PetStats{Health: 12}},
+	{Item: "medal", Slot: PetNeck, Price: 600, Bonus: PetStats{Attack: 2, Health: 8}},
+	{Item: "sweater", Slot: PetBody, Price: 180, Bonus: PetStats{Health: 15}},
+	{Item: "armor", Slot: PetBody, Price: 900, Bonus: PetStats{Defense: 4, Health: 10}},
+	{Item: "cape", Slot: PetBody, Price: 1200, Bonus: PetStats{Attack: 4, Speed: 2}},
+}
+
+func NewPetItem(s string) (PetItem, error) {
+	for _, spec := range PetItems {
+		if string(spec.Item) == s {
+			return spec.Item, nil
+		}
+	}
+
+	return "", ErrUnknownPetItem
+}
+
+func (i PetItem) String() string {
+	return string(i)
+}
+
+// Spec is the thing in the catalogue.
+func (i PetItem) Spec() PetItemSpec {
+	for _, spec := range PetItems {
+		if spec.Item == i {
+			return spec
+		}
+	}
+
+	return PetItemSpec{}
 }
 
 // PetLevel is the level of experience, from 1 to MaxPetLevel.
@@ -173,15 +370,20 @@ func PetLevelExperience(level int) int64 {
 // fight brings and how many fights a pet has a day.
 type PetShop struct {
 	prices map[PetKind]int64
+	cases  map[PetCase]int64
 	meal   int64
 	win    int64
 	fights int
 }
 
-// NewPetShop checks the shop: prices holds every kind.
+// defaultCases are what the cases cost until the administrators say.
+var defaultCases = map[PetCase]int64{PetCaseBronze: 150, PetCaseSilver: 400, PetCaseGold: 1200}
+
+// NewPetShop checks the shop: prices holds every kind of ShopPetKinds;
+// the cases cost as by default until WithCases.
 func NewPetShop(prices map[PetKind]int64, meal, win int64, fights int) (PetShop, error) {
-	kept := make(map[PetKind]int64, len(PetKinds))
-	for _, k := range PetKinds {
+	kept := make(map[PetKind]int64, len(ShopPetKinds))
+	for _, k := range ShopPetKinds {
 		price, ok := prices[k]
 		if !ok || price < 0 || price > MaxAmount {
 			return PetShop{}, ErrPetShopPrice
@@ -196,22 +398,54 @@ func NewPetShop(prices map[PetKind]int64, meal, win int64, fights int) (PetShop,
 		return PetShop{}, ErrPetShopFights
 	}
 
-	return PetShop{prices: kept, meal: meal, win: win, fights: fights}, nil
+	return PetShop{prices: kept, cases: maps.Clone(defaultCases), meal: meal, win: win, fights: fights}, nil
+}
+
+// WithCases is the shop with the cases at prices, which holds every case.
+func (s PetShop) WithCases(prices map[PetCase]int64) (PetShop, error) {
+	kept := make(map[PetCase]int64, len(PetCases))
+	for _, c := range PetCases {
+		price, ok := prices[c]
+		if !ok || price < 0 || price > MaxAmount {
+			return PetShop{}, ErrPetShopPrice
+		}
+		kept[c] = price
+	}
+	s.cases = kept
+
+	return s, nil
 }
 
 // DefaultPetShop is the shop until the administrators set one.
 func DefaultPetShop() PetShop {
 	return PetShop{
 		prices: map[PetKind]int64{PetCat: 100, PetDog: 100, PetHamster: 50, PetDragon: 500},
+		cases:  maps.Clone(defaultCases),
 		meal:   5,
 		win:    3,
 		fights: 10,
 	}
 }
 
-// Price is what adopting k costs.
-func (s PetShop) Price(k PetKind) int64 {
-	return s.prices[k]
+// Price is what adopting k costs; ErrNotInPetShop for a kind only cases
+// give.
+func (s PetShop) Price(k PetKind) (int64, error) {
+	price, ok := s.prices[k]
+	if !ok {
+		return 0, ErrNotInPetShop
+	}
+
+	return price, nil
+}
+
+// CasePrice is what opening c costs.
+func (s PetShop) CasePrice(c PetCase) int64 {
+	return s.cases[c]
+}
+
+// Cases are the prices of all cases.
+func (s PetShop) Cases() map[PetCase]int64 {
+	return maps.Clone(s.cases)
 }
 
 // Prices are the prices of all kinds.
@@ -253,6 +487,10 @@ type PetState struct {
 	Losses     int
 	FoughtOn   time.Time
 	Fights     int
+	// Wardrobe are the clothes bought for the pet, Outfit those it wears:
+	// one a slot.
+	Wardrobe []PetItem
+	Outfit   []PetItem
 }
 
 // Pet is a pet of a person, a tamagotchi: it grows hungry and bored with
@@ -275,8 +513,15 @@ func RestorePet(s PetState) *Pet {
 
 // State is what storage keeps.
 func (p *Pet) State() PetState {
-	return p.s
+	s := p.s
+	s.Wardrobe, s.Outfit = slices.Clone(s.Wardrobe), slices.Clone(s.Outfit)
+
+	return s
 }
+
+// Wardrobe are the clothes bought for the pet, Outfit those it wears.
+func (p *Pet) Wardrobe() []PetItem { return slices.Clone(p.s.Wardrobe) }
+func (p *Pet) Outfit() []PetItem   { return slices.Clone(p.s.Outfit) }
 
 func (p *Pet) ID() uuid.UUID       { return p.s.ID }
 func (p *Pet) Kind() PetKind       { return p.s.Kind }
@@ -330,22 +575,37 @@ func (p *Pet) PlayAt() time.Time {
 	return p.s.PlayedAt.Add(PetPlayEvery)
 }
 
-// Stats are how the pet fights at its level.
+// Stats are how the pet fights at its level in its clothes: BreedStats,
+// LevelStats and ClothesStats added up.
 func (p *Pet) Stats() PetStats {
-	s := breeds[p.s.Kind]
+	return p.BreedStats().Add(p.LevelStats()).Add(p.ClothesStats())
+}
+
+// BreedStats are the stats of its kind at level 1.
+func (p *Pet) BreedStats() PetStats {
+	return breeds[p.s.Kind].stats
+}
+
+// LevelStats are what its levels add.
+func (p *Pet) LevelStats() PetStats {
 	grown := p.Level() - 1
 
-	return PetStats{
-		Attack:  s.Attack + grown,
-		Defense: s.Defense + grown,
-		Health:  s.Health + 4*grown,
-		Speed:   s.Speed + grown/5,
+	return PetStats{Attack: grown, Defense: grown, Health: 4 * grown, Speed: grown / 5}
+}
+
+// ClothesStats are what the clothes it wears add.
+func (p *Pet) ClothesStats() PetStats {
+	var sum PetStats
+	for _, item := range p.s.Outfit {
+		sum = sum.Add(item.Spec().Bonus)
 	}
+
+	return sum
 }
 
 // counted is the pet with its feelings counted at now.
 func (p *Pet) counted(now time.Time) PetState {
-	s := p.s
+	s := p.State()
 	s.Satiety, s.Joy, s.CountedAt = p.SatietyAt(now), p.JoyAt(now), now
 
 	return s
@@ -382,10 +642,40 @@ func (p *Pet) Played(now time.Time) (*Pet, error) {
 
 // Renamed is the pet called name.
 func (p *Pet) Renamed(name PetName) *Pet {
-	s := p.s
+	s := p.State()
 	s.Name = name
 
 	return &Pet{s: s}
+}
+
+// Bought is the pet with item bought and put on, instead of what it wore
+// in its slot; ErrPetItemOwned when it has it.
+func (p *Pet) Bought(item PetItem) (*Pet, error) {
+	if slices.Contains(p.s.Wardrobe, item) {
+		return nil, ErrPetItemOwned
+	}
+
+	s := p.State()
+	s.Wardrobe = append(s.Wardrobe, item)
+
+	return (&Pet{s: s}).Dressed(item, true)
+}
+
+// Dressed is the pet with item put on, instead of what it wore in its
+// slot, or taken off; ErrPetItemMissing when it has none.
+func (p *Pet) Dressed(item PetItem, wear bool) (*Pet, error) {
+	if !slices.Contains(p.s.Wardrobe, item) {
+		return nil, ErrPetItemMissing
+	}
+
+	s := p.State()
+	slot := item.Spec().Slot
+	s.Outfit = slices.DeleteFunc(s.Outfit, func(worn PetItem) bool { return worn.Spec().Slot == slot })
+	if wear {
+		s.Outfit = append(s.Outfit, item)
+	}
+
+	return &Pet{s: s}, nil
 }
 
 // CheckFightAt tells whether the pet may fight at now under shop.
@@ -429,12 +719,13 @@ type PetHit struct {
 	DefenderHealth int
 }
 
-// PetFighter is a pet as a fight remembers it.
+// PetFighter is a pet as a fight remembers it, in the clothes it wore.
 type PetFighter struct {
 	Kind   PetKind
 	Name   PetName
 	Level  int
 	Health int
+	Outfit []PetItem
 }
 
 // PetBout is a fight: who fought, how it went and what it changed.
@@ -474,8 +765,8 @@ func (p *Pet) Fought(defender *Pet, shop PetShop, now time.Time, dice PetDice) (
 
 	as, ds := p.Stats(), defender.Stats()
 	bout := PetBout{
-		Attacker: PetFighter{Kind: p.s.Kind, Name: p.s.Name, Level: p.Level(), Health: as.Health},
-		Defender: PetFighter{Kind: defender.s.Kind, Name: defender.s.Name, Level: defender.Level(), Health: ds.Health},
+		Attacker: PetFighter{Kind: p.s.Kind, Name: p.s.Name, Level: p.Level(), Health: as.Health, Outfit: p.Outfit()},
+		Defender: PetFighter{Kind: defender.s.Kind, Name: defender.s.Name, Level: defender.Level(), Health: ds.Health, Outfit: defender.Outfit()},
 	}
 
 	ah, dh := as.Health, ds.Health
@@ -512,7 +803,7 @@ func (p *Pet) Fought(defender *Pet, shop PetShop, now time.Time, dice PetDice) (
 	a.FoughtOn = BonusDay(now)
 	a.Rating += bout.Rating
 
-	d := defender.s
+	d := defender.State()
 	d.Rating -= bout.Rating
 	d.Experience += PetDefendGain
 

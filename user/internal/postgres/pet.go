@@ -34,6 +34,9 @@ func (r *PetRepository) conn(ctx context.Context) pgpool.Querier {
 // storedPetShop is the shop as the column keeps it.
 type storedPetShop struct {
 	Prices map[string]int64 `json:"prices"`
+	// Cases are missing from a shop set before there were cases: the
+	// default prices then.
+	Cases  map[string]int64 `json:"cases,omitempty"`
 	Meal   int64            `json:"meal"`
 	Win    int64            `json:"win"`
 	Fights int              `json:"fights"`
@@ -65,8 +68,18 @@ func (r *PetRepository) Shop(ctx context.Context) (user.PetShop, error) {
 	}
 
 	shop, err := user.NewPetShop(prices, stored.Meal, stored.Win, stored.Fights)
+	if err != nil || stored.Cases == nil {
+		return shop, errs.Wrap("user.NewPetShop", err)
+	}
 
-	return shop, errs.Wrap("user.NewPetShop", err)
+	cases := make(map[user.PetCase]int64, len(stored.Cases))
+	for c, price := range stored.Cases {
+		cases[user.PetCase(c)] = price
+	}
+
+	shop, err = shop.WithCases(cases)
+
+	return shop, errs.Wrap("shop.WithCases", err)
 }
 
 const setPetShopQuery = `
@@ -75,9 +88,12 @@ const setPetShopQuery = `
 `
 
 func (r *PetRepository) SetShop(ctx context.Context, shop user.PetShop) error {
-	stored := storedPetShop{Prices: map[string]int64{}, Meal: shop.Meal(), Win: shop.Win(), Fights: shop.Fights()}
+	stored := storedPetShop{Prices: map[string]int64{}, Cases: map[string]int64{}, Meal: shop.Meal(), Win: shop.Win(), Fights: shop.Fights()}
 	for kind, price := range shop.Prices() {
 		stored.Prices[kind.String()] = price
+	}
+	for c, price := range shop.Cases() {
+		stored.Cases[c.String()] = price
 	}
 
 	data, err := json.Marshal(stored)
@@ -107,7 +123,9 @@ const petColumns = `
 		wins,
 		losses,
 		fought_on,
-		fights
+		fights,
+		wardrobe,
+		outfit
 `
 
 const listPetsQuery = `
@@ -165,17 +183,19 @@ func scanPet(row pgx.Row) (*user.Pet, error) {
 		ownerID            uuid.UUID
 		kind, name         string
 		playedAt, foughtOn *time.Time
+		wardrobe, outfit   []string
 	)
 
 	err := row.Scan(
 		&s.ID, &ownerID, &kind, &name, &s.BornAt, &s.Satiety, &s.Joy, &s.CountedAt, &playedAt,
-		&s.Experience, &s.Rating, &s.Wins, &s.Losses, &foughtOn, &s.Fights,
+		&s.Experience, &s.Rating, &s.Wins, &s.Losses, &foughtOn, &s.Fights, &wardrobe, &outfit,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	s.Kind, s.Name = user.PetKind(kind), user.PetName(name)
+	s.Wardrobe, s.Outfit = petItems(wardrobe), petItems(outfit)
 	if playedAt != nil {
 		s.PlayedAt = playedAt.UTC()
 	}
@@ -201,19 +221,42 @@ func petArgs(userID uuid.UUID, p *user.Pet) []any {
 
 	return []any{
 		s.ID, userID, s.Kind.String(), s.Name.String(), s.BornAt, s.Satiety, s.Joy, s.CountedAt, playedAt,
-		s.Experience, s.Rating, s.Wins, s.Losses, foughtOn, s.Fights,
+		s.Experience, s.Rating, s.Wins, s.Losses, foughtOn, s.Fights, itemNames(s.Wardrobe), itemNames(s.Outfit),
 	}
 }
 
-// insertPetQuery adds the pet unless its owner keeps $16 already.
+// petItems are the clothes of names, none for none.
+func petItems(names []string) []user.PetItem {
+	if len(names) == 0 {
+		return nil
+	}
+
+	items := make([]user.PetItem, len(names))
+	for i, n := range names {
+		items[i] = user.PetItem(n)
+	}
+
+	return items
+}
+
+func itemNames(items []user.PetItem) []string {
+	names := make([]string, len(items))
+	for i, item := range items {
+		names[i] = item.String()
+	}
+
+	return names
+}
+
+// insertPetQuery adds the pet unless its owner keeps $18 already.
 const insertPetQuery = `
 	INSERT INTO pets (` + petColumns + `)
-	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
 	WHERE (
 		SELECT count(*)
 		FROM pets
 		WHERE user_id = $2
-	) < $16
+	) < $18
 `
 
 func (r *PetRepository) AddPet(ctx context.Context, userID uuid.UUID, p *user.Pet) error {
@@ -247,7 +290,9 @@ const updatePetQuery = `
 		wins = $11,
 		losses = $12,
 		fought_on = $13,
-		fights = $14
+		fights = $14,
+		wardrobe = $15,
+		outfit = $16
 	WHERE id = $1
 `
 
@@ -342,10 +387,11 @@ type storedHit struct {
 }
 
 type storedFighter struct {
-	Kind   string `json:"kind"`
-	Name   string `json:"name"`
-	Level  int    `json:"level"`
-	Health int    `json:"health"`
+	Kind   string   `json:"kind"`
+	Name   string   `json:"name"`
+	Level  int      `json:"level"`
+	Health int      `json:"health"`
+	Outfit []string `json:"outfit,omitempty"`
 }
 
 type storedBout struct {
@@ -357,11 +403,11 @@ type storedBout struct {
 }
 
 func storeFighter(f user.PetFighter) storedFighter {
-	return storedFighter{Kind: f.Kind.String(), Name: f.Name.String(), Level: f.Level, Health: f.Health}
+	return storedFighter{Kind: f.Kind.String(), Name: f.Name.String(), Level: f.Level, Health: f.Health, Outfit: itemNames(f.Outfit)}
 }
 
 func restoreFighter(f storedFighter) user.PetFighter {
-	return user.PetFighter{Kind: user.PetKind(f.Kind), Name: user.PetName(f.Name), Level: f.Level, Health: f.Health}
+	return user.PetFighter{Kind: user.PetKind(f.Kind), Name: user.PetName(f.Name), Level: f.Level, Health: f.Health, Outfit: petItems(f.Outfit)}
 }
 
 const insertPetFightQuery = `

@@ -482,6 +482,16 @@ service UserService {
   rpc ReleasePet(ReleasePetRequest) returns (google.protobuf.Empty);
   rpc FightPet(FightPetRequest) returns (FightPetResponse);
   rpc ListPetFights(ListPetFightsRequest) returns (ListPetFightsResponse);
+  // OpenPetCase opens a case for its price: a pet of a kind drawn by the
+  // odds of its rarity joins the pets ("you have too many pets", "not
+  // enough votes"; an unknown case — InvalidArgument "unknown case").
+  // BuyPetItem buys clothes for a pet and puts them on (FailedPrecondition
+  // "the pet has these clothes already"); DressPet puts on or takes off
+  // clothes of its wardrobe ("the pet has no such clothes"). An unknown
+  // thing — InvalidArgument "unknown pet clothes".
+  rpc OpenPetCase(OpenPetCaseRequest) returns (PetCareResponse);
+  rpc BuyPetItem(BuyPetItemRequest) returns (PetCareResponse);
+  rpc DressPet(DressPetRequest) returns (PetCareResponse);
   // For the administrators (PermissionDenied for others): the shop of
   // pets and how they do.
   rpc GetPetSettings(GetPetSettingsRequest) returns (GetPetSettingsResponse);
@@ -3042,10 +3052,46 @@ message ListTopResponse {
 // PetShop is what pets cost: each kind, a meal; the votes a won fight
 // brings and the fights of a day.
 message PetShop {
+  // The kinds the shop sells, not those of cases.
   map<string, int64> prices = 1;
   int64 meal = 2;
   int64 win = 3;
   int32 fights = 4;
+  // What each case costs.
+  map<string, int64> cases = 5;
+}
+
+// PetStats are the stats of a pet, or what something adds to them.
+message PetStats {
+  int32 attack = 1;
+  int32 defense = 2;
+  int32 health = 3;
+  int32 speed = 4;
+}
+
+// PetKind is a kind: how rare it is and whether the shop sells it.
+message PetKind {
+  string kind = 1;
+  string rarity = 2;
+  bool in_shop = 3;
+  PetStats stats = 4;
+  int32 crit = 5;
+}
+
+// PetCase is a case: the odds in a thousand of each rarity, from the
+// most common.
+message PetCase {
+  string id = 1;
+  repeated int32 odds = 2;
+}
+
+// PetItem is a thing of clothes of the catalogue: its slot, price and
+// what it adds.
+message PetItem {
+  string id = 1;
+  string slot = 2;
+  int64 price = 3;
+  PetStats bonus = 4;
 }
 
 // Pet is a pet as it is now: satiety and joy from 0 to 100, how it
@@ -3073,15 +3119,26 @@ message Pet {
   int32 health = 17;
   int32 speed = 18;
   int32 crit = 19;
+  string rarity = 21;
+  // The clothes bought for it and those it wears.
+  repeated string wardrobe = 22;
+  repeated string outfit = 23;
+  // What its kind and its clothes give of its stats; the rest is levels.
+  PetStats breed = 24;
+  PetStats clothes = 25;
 }
 
 message GetPetRequest {}
 
-// PetState is the shop and the pets of the caller, the oldest first.
+// PetState is the shop and the pets of the caller, the oldest first, with
+// the catalogue: the kinds, the cases and the clothes.
 message PetState {
   reserved 2;
   PetShop shop = 1;
   repeated Pet pets = 3;
+  repeated PetKind kinds = 4;
+  repeated PetCase cases = 5;
+  repeated PetItem items = 6;
 }
 
 message GetUserPetRequest {
@@ -3116,6 +3173,23 @@ message ReleasePetRequest {
   string pet_id = 1;
 }
 
+message OpenPetCaseRequest {
+  string case_id = 1;
+  string name = 2;
+}
+
+message BuyPetItemRequest {
+  string pet_id = 1;
+  string item = 2;
+}
+
+message DressPetRequest {
+  string pet_id = 1;
+  string item = 2;
+  // false takes it off.
+  bool wear = 3;
+}
+
 message PetCareResponse {
   Pet pet = 1;
   // The votes after a payment, 0 when nothing was paid.
@@ -3127,6 +3201,8 @@ message PetFighter {
   string name = 2;
   int32 level = 3;
   int32 health = 4;
+  // The clothes it wore.
+  repeated string outfit = 5;
 }
 
 // PetHit is a turn of a fight: who hit, whether the other dodged or it

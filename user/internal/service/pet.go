@@ -162,7 +162,12 @@ func (s *PetService) Adopt(ctx context.Context, userID uuid.UUID, kind user.PetK
 			return user.ErrTooManyPets
 		}
 
-		if care.Balance, err = s.spend(ctx, userID, shop.Price(kind), "adopt"); err != nil {
+		price, err := shop.Price(kind)
+		if err != nil {
+			return errs.Wrap("shop.Price", err)
+		}
+
+		if care.Balance, err = s.spend(ctx, userID, price, "adopt"); err != nil {
 			return errs.Wrap("s.spend", err)
 		}
 
@@ -175,6 +180,81 @@ func (s *PetService) Adopt(ctx context.Context, userID uuid.UUID, kind user.PetK
 	}
 
 	return care, nil
+}
+
+// OpenCase opens the case c for userID at now for its price: a pet of the
+// kind it draws, called name, joins the pets; user.ErrTooManyPets,
+// user.ErrNotEnoughVotes.
+func (s *PetService) OpenCase(ctx context.Context, userID uuid.UUID, c user.PetCase, name user.PetName, now time.Time) (PetCare, error) {
+	rarity, err := s.roll(user.PetCaseOdds)
+	if err != nil {
+		return PetCare{}, errs.Wrap("s.roll", err)
+	}
+
+	kind, err := s.roll(user.PetDiceRange)
+	if err != nil {
+		return PetCare{}, errs.Wrap("s.roll", err)
+	}
+
+	var care PetCare
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		shop, err := s.pets.Shop(ctx)
+		if err != nil {
+			return errs.Wrap("s.pets.Shop", err)
+		}
+
+		// As in Adopt: the pets are counted before the votes are taken.
+		pets, err := s.pets.Pets(ctx, userID)
+		if err != nil {
+			return errs.Wrap("s.pets.Pets", err)
+		}
+		if len(pets) >= user.MaxPets {
+			return user.ErrTooManyPets
+		}
+
+		if care.Balance, err = s.spend(ctx, userID, shop.CasePrice(c), "case"); err != nil {
+			return errs.Wrap("s.spend", err)
+		}
+
+		care.Pet = user.NewPet(c.Draw(rarity, kind), name, now.Truncate(time.Microsecond))
+
+		return errs.Wrap("s.pets.AddPet", s.pets.AddPet(ctx, userID, care.Pet))
+	})
+	if err != nil {
+		return PetCare{}, errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return care, nil
+}
+
+// BuyItem buys item for the pet petID of userID and puts it on, for its
+// price; user.ErrPetItemOwned, user.ErrNotEnoughVotes.
+func (s *PetService) BuyItem(ctx context.Context, userID, petID uuid.UUID, item user.PetItem) (PetCare, error) {
+	care, err := s.change(ctx, userID, petID, func(ctx context.Context, p *user.Pet, _ user.PetShop) (PetCare, error) {
+		bought, err := p.Bought(item)
+		if err != nil {
+			return PetCare{}, errs.Wrap("p.Bought", err)
+		}
+
+		balance, err := s.spend(ctx, userID, item.Spec().Price, "clothes")
+
+		return PetCare{Pet: bought, Balance: balance}, errs.Wrap("s.spend", err)
+	})
+
+	return care, errs.Wrap("s.change", err)
+}
+
+// Dress puts item of its wardrobe on the pet petID of userID, or takes
+// it off; user.ErrPetItemMissing.
+func (s *PetService) Dress(ctx context.Context, userID, petID uuid.UUID, item user.PetItem, wear bool) (*user.Pet, error) {
+	care, err := s.change(ctx, userID, petID, func(_ context.Context, p *user.Pet, _ user.PetShop) (PetCare, error) {
+		dressed, err := p.Dressed(item, wear)
+
+		return PetCare{Pet: dressed}, errs.Wrap("p.Dressed", err)
+	})
+
+	return care.Pet, errs.Wrap("s.change", err)
 }
 
 // change does do to the pet petID of userID in a transaction and saves

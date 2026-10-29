@@ -184,6 +184,9 @@ const (
 	UserService_ReleasePet_FullMethodName         = "/user.v1.UserService/ReleasePet"
 	UserService_FightPet_FullMethodName           = "/user.v1.UserService/FightPet"
 	UserService_ListPetFights_FullMethodName      = "/user.v1.UserService/ListPetFights"
+	UserService_OpenPetCase_FullMethodName        = "/user.v1.UserService/OpenPetCase"
+	UserService_BuyPetItem_FullMethodName         = "/user.v1.UserService/BuyPetItem"
+	UserService_DressPet_FullMethodName           = "/user.v1.UserService/DressPet"
 	UserService_GetPetSettings_FullMethodName     = "/user.v1.UserService/GetPetSettings"
 	UserService_SetPetSettings_FullMethodName     = "/user.v1.UserService/SetPetSettings"
 	UserService_GetUserTitles_FullMethodName      = "/user.v1.UserService/GetUserTitles"
@@ -644,6 +647,16 @@ type UserServiceClient interface {
 	ReleasePet(ctx context.Context, in *ReleasePetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	FightPet(ctx context.Context, in *FightPetRequest, opts ...grpc.CallOption) (*FightPetResponse, error)
 	ListPetFights(ctx context.Context, in *ListPetFightsRequest, opts ...grpc.CallOption) (*ListPetFightsResponse, error)
+	// OpenPetCase opens a case for its price: a pet of a kind drawn by the
+	// odds of its rarity joins the pets ("you have too many pets", "not
+	// enough votes"; an unknown case — InvalidArgument "unknown case").
+	// BuyPetItem buys clothes for a pet and puts them on (FailedPrecondition
+	// "the pet has these clothes already"); DressPet puts on or takes off
+	// clothes of its wardrobe ("the pet has no such clothes"). An unknown
+	// thing — InvalidArgument "unknown pet clothes".
+	OpenPetCase(ctx context.Context, in *OpenPetCaseRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
+	BuyPetItem(ctx context.Context, in *BuyPetItemRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
+	DressPet(ctx context.Context, in *DressPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
 	// For the administrators (PermissionDenied for others): the shop of
 	// pets and how they do.
 	GetPetSettings(ctx context.Context, in *GetPetSettingsRequest, opts ...grpc.CallOption) (*GetPetSettingsResponse, error)
@@ -2308,6 +2321,36 @@ func (c *userServiceClient) ListPetFights(ctx context.Context, in *ListPetFights
 	return out, nil
 }
 
+func (c *userServiceClient) OpenPetCase(ctx context.Context, in *OpenPetCaseRequest, opts ...grpc.CallOption) (*PetCareResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PetCareResponse)
+	err := c.cc.Invoke(ctx, UserService_OpenPetCase_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) BuyPetItem(ctx context.Context, in *BuyPetItemRequest, opts ...grpc.CallOption) (*PetCareResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PetCareResponse)
+	err := c.cc.Invoke(ctx, UserService_BuyPetItem_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) DressPet(ctx context.Context, in *DressPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PetCareResponse)
+	err := c.cc.Invoke(ctx, UserService_DressPet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) GetPetSettings(ctx context.Context, in *GetPetSettingsRequest, opts ...grpc.CallOption) (*GetPetSettingsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetPetSettingsResponse)
@@ -2811,6 +2854,16 @@ type UserServiceServer interface {
 	ReleasePet(context.Context, *ReleasePetRequest) (*emptypb.Empty, error)
 	FightPet(context.Context, *FightPetRequest) (*FightPetResponse, error)
 	ListPetFights(context.Context, *ListPetFightsRequest) (*ListPetFightsResponse, error)
+	// OpenPetCase opens a case for its price: a pet of a kind drawn by the
+	// odds of its rarity joins the pets ("you have too many pets", "not
+	// enough votes"; an unknown case — InvalidArgument "unknown case").
+	// BuyPetItem buys clothes for a pet and puts them on (FailedPrecondition
+	// "the pet has these clothes already"); DressPet puts on or takes off
+	// clothes of its wardrobe ("the pet has no such clothes"). An unknown
+	// thing — InvalidArgument "unknown pet clothes".
+	OpenPetCase(context.Context, *OpenPetCaseRequest) (*PetCareResponse, error)
+	BuyPetItem(context.Context, *BuyPetItemRequest) (*PetCareResponse, error)
+	DressPet(context.Context, *DressPetRequest) (*PetCareResponse, error)
 	// For the administrators (PermissionDenied for others): the shop of
 	// pets and how they do.
 	GetPetSettings(context.Context, *GetPetSettingsRequest) (*GetPetSettingsResponse, error)
@@ -3326,6 +3379,15 @@ func (UnimplementedUserServiceServer) FightPet(context.Context, *FightPetRequest
 }
 func (UnimplementedUserServiceServer) ListPetFights(context.Context, *ListPetFightsRequest) (*ListPetFightsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPetFights not implemented")
+}
+func (UnimplementedUserServiceServer) OpenPetCase(context.Context, *OpenPetCaseRequest) (*PetCareResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method OpenPetCase not implemented")
+}
+func (UnimplementedUserServiceServer) BuyPetItem(context.Context, *BuyPetItemRequest) (*PetCareResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BuyPetItem not implemented")
+}
+func (UnimplementedUserServiceServer) DressPet(context.Context, *DressPetRequest) (*PetCareResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DressPet not implemented")
 }
 func (UnimplementedUserServiceServer) GetPetSettings(context.Context, *GetPetSettingsRequest) (*GetPetSettingsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPetSettings not implemented")
@@ -6315,6 +6377,60 @@ func _UserService_ListPetFights_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_OpenPetCase_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OpenPetCaseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).OpenPetCase(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_OpenPetCase_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).OpenPetCase(ctx, req.(*OpenPetCaseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_BuyPetItem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BuyPetItemRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).BuyPetItem(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_BuyPetItem_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).BuyPetItem(ctx, req.(*BuyPetItemRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_DressPet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DressPetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DressPet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DressPet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DressPet(ctx, req.(*DressPetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetPetSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetPetSettingsRequest)
 	if err := dec(in); err != nil {
@@ -7067,6 +7183,18 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListPetFights",
 			Handler:    _UserService_ListPetFights_Handler,
+		},
+		{
+			MethodName: "OpenPetCase",
+			Handler:    _UserService_OpenPetCase_Handler,
+		},
+		{
+			MethodName: "BuyPetItem",
+			Handler:    _UserService_BuyPetItem_Handler,
+		},
+		{
+			MethodName: "DressPet",
+			Handler:    _UserService_DressPet_Handler,
 		},
 		{
 			MethodName: "GetPetSettings",

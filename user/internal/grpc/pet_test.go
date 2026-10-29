@@ -142,3 +142,51 @@ func TestGuests(t *testing.T) {
 		t.Fatalf("ListGuests with a bad cursor: %v", err)
 	}
 }
+
+func TestPetCasesAndClothes(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	admin := s.signIn(t, adminEmail)
+	ann, _ := s.member(t, "ann")
+
+	state, err := s.client.GetPet(ann, &userv1.GetPetRequest{})
+	if err != nil || len(state.GetKinds()) != 12 || len(state.GetCases()) != 3 || len(state.GetItems()) != 12 || state.GetShop().GetCases()["gold"] != 1200 {
+		t.Fatalf("the catalogue = %v, %v", state, err)
+	}
+
+	created, err := s.client.CreateVoucher(admin, &userv1.CreateVoucherRequest{Votes: 300, Usages: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.RedeemVoucher(ann, &userv1.RedeemVoucherRequest{Token: created.GetVoucher().GetToken()}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err = s.client.OpenPetCase(ann, &userv1.OpenPetCaseRequest{CaseId: "diamond", Name: "Находка"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("OpenPetCase of an unknown case: %v", err)
+	}
+	opened, err := s.client.OpenPetCase(ann, &userv1.OpenPetCaseRequest{CaseId: "bronze", Name: "Находка"})
+	if err != nil || opened.GetBalance() != 150 || opened.GetPet().GetRarity() == "" || opened.GetPet().GetBreed().GetHealth() == 0 {
+		t.Fatalf("OpenPetCase = %v, %v", opened, err)
+	}
+	pet := opened.GetPet().GetId()
+
+	if _, err = s.client.BuyPetItem(ann, &userv1.BuyPetItemRequest{PetId: pet, Item: "tie"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("BuyPetItem of an unknown thing: %v", err)
+	}
+	bought, err := s.client.BuyPetItem(ann, &userv1.BuyPetItemRequest{PetId: pet, Item: "scarf"})
+	if err != nil || bought.GetBalance() != 0 || bought.GetPet().GetClothes().GetHealth() != 12 || len(bought.GetPet().GetOutfit()) != 1 {
+		t.Fatalf("BuyPetItem = %v, %v", bought, err)
+	}
+	if _, err = s.client.BuyPetItem(ann, &userv1.BuyPetItemRequest{PetId: pet, Item: "scarf"}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("buying the scarf again: %v", err)
+	}
+	dressed, err := s.client.DressPet(ann, &userv1.DressPetRequest{PetId: pet, Item: "scarf"})
+	if err != nil || len(dressed.GetPet().GetOutfit()) != 0 || len(dressed.GetPet().GetWardrobe()) != 1 {
+		t.Fatalf("DressPet = %v, %v", dressed, err)
+	}
+	if _, err = s.client.DressPet(ann, &userv1.DressPetRequest{PetId: pet, Item: "cape", Wear: true}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("wearing what was not bought: %v", err)
+	}
+}

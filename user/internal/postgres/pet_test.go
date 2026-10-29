@@ -89,6 +89,9 @@ func TestPetRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if shop, err = shop.WithCases(map[user.PetCase]int64{user.PetCaseBronze: 11, user.PetCaseSilver: 22, user.PetCaseGold: 33}); err != nil {
+		t.Fatal(err)
+	}
 	if err = pets.SetShop(ctx, shop); err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +110,7 @@ func TestPetRepository(t *testing.T) {
 	rating := 100_000 + rand.IntN(1_000_000)
 	dragon := user.RestorePet(user.PetState{
 		ID: uuid.Must(uuid.NewV7()), Kind: user.PetDragon, Name: "Смауг", BornAt: now, Satiety: 90, Joy: 90, CountedAt: now,
-		Experience: 500, Rating: rating,
+		Experience: 500, Rating: rating, Wardrobe: []user.PetItem{"crown", "cape"}, Outfit: []user.PetItem{"crown"},
 	})
 	if err = pets.AddPet(ctx, ann, dragon); err != nil {
 		t.Fatal(err)

@@ -186,3 +186,107 @@ func TestPet_Fought(t *testing.T) {
 		t.Fatalf("the fights of a day: %v", err)
 	}
 }
+
+func TestPetCases(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range user.PetCases {
+		sum := 0
+		for _, odds := range c.Odds() {
+			sum += odds
+		}
+		if sum != user.PetCaseOdds {
+			t.Errorf("the odds of %s add up to %d", c, sum)
+		}
+	}
+	for _, r := range user.PetRarities {
+		if len(user.PetKindsOf(r)) == 0 {
+			t.Errorf("no kind is %s", r)
+		}
+	}
+
+	tests := []struct {
+		c      user.PetCase
+		rarity int64
+		kind   int64
+		want   user.PetKind
+	}{
+		{user.PetCaseBronze, 0, 0, user.PetCat},
+		{user.PetCaseBronze, 699, 4, user.PetTurtle},
+		{user.PetCaseBronze, 700, 0, user.PetFox},
+		{user.PetCaseBronze, 995, 1, user.PetPhoenix},
+		{user.PetCaseGold, 0, 1, user.PetOwl},
+		{user.PetCaseGold, 920, 2, user.PetUnicorn},
+	}
+	for _, tt := range tests {
+		if got := tt.c.Draw(tt.rarity, tt.kind); got != tt.want {
+			t.Errorf("%s.Draw(%d, %d) = %s, want %s", tt.c, tt.rarity, tt.kind, got, tt.want)
+		}
+	}
+
+	if _, err := user.NewPetCase("diamond"); !errors.Is(err, user.ErrUnknownPetCase) {
+		t.Errorf("NewPetCase of an unknown case: %v", err)
+	}
+
+	shop, err := user.DefaultPetShop().WithCases(map[user.PetCase]int64{user.PetCaseBronze: 1, user.PetCaseSilver: 2, user.PetCaseGold: 3})
+	if err != nil || shop.CasePrice(user.PetCaseGold) != 3 {
+		t.Fatalf("WithCases = %v, %v", shop.Cases(), err)
+	}
+	if _, err = shop.WithCases(map[user.PetCase]int64{user.PetCaseBronze: 1}); !errors.Is(err, user.ErrPetShopPrice) {
+		t.Errorf("WithCases without every case: %v", err)
+	}
+	if _, err = shop.Price(user.PetPhoenix); !errors.Is(err, user.ErrNotInPetShop) {
+		t.Errorf("the price of a phoenix: %v", err)
+	}
+}
+
+func TestPetClothes(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
+	p := user.NewPet(user.PetDog, "Шарик", now)
+	base := p.Stats()
+
+	if _, err := user.NewPetItem("tie"); !errors.Is(err, user.ErrUnknownPetItem) {
+		t.Errorf("NewPetItem of an unknown thing: %v", err)
+	}
+	if _, err := p.Dressed("cap", true); !errors.Is(err, user.ErrPetItemMissing) {
+		t.Errorf("wearing what was not bought: %v", err)
+	}
+
+	// The cap is put on as it is bought; the helmet takes its place.
+	capped, err := p.Bought("cap")
+	if err != nil || capped.Stats().Speed != base.Speed+2 || len(capped.Outfit()) != 1 {
+		t.Fatalf("Bought = %+v, %v", capped.Stats(), err)
+	}
+	if _, err = capped.Bought("cap"); !errors.Is(err, user.ErrPetItemOwned) {
+		t.Errorf("buying the cap twice: %v", err)
+	}
+	helmet, err := capped.Bought("helmet")
+	if err != nil || len(helmet.Outfit()) != 1 || helmet.Outfit()[0] != "helmet" || len(helmet.Wardrobe()) != 2 {
+		t.Fatalf("a second hat: %v, %v, %v", helmet.Outfit(), helmet.Wardrobe(), err)
+	}
+	scarf, err := helmet.Bought("scarf")
+	if err != nil || scarf.ClothesStats() != (user.PetStats{Defense: 3, Health: 12}) {
+		t.Fatalf("a hat and a scarf: %+v, %v", scarf.ClothesStats(), err)
+	}
+	if scarf.Stats() != scarf.BreedStats().Add(scarf.LevelStats()).Add(scarf.ClothesStats()) {
+		t.Errorf("the stats do not add up")
+	}
+
+	bare, err := scarf.Dressed("helmet", false)
+	if err != nil || len(bare.Outfit()) != 1 || bare.Outfit()[0] != "scarf" {
+		t.Fatalf("taking the helmet off: %v, %v", bare.Outfit(), err)
+	}
+	// The pet before stays as it was.
+	if len(scarf.Outfit()) != 2 || len(p.Wardrobe()) != 0 {
+		t.Errorf("a change leaked: %v, %v", scarf.Outfit(), p.Wardrobe())
+	}
+
+	// A fight remembers the clothes.
+	rival := user.NewPet(user.PetCat, "Мурка", now)
+	_, _, bout, err := scarf.Fought(rival, user.DefaultPetShop(), now, nil)
+	if err != nil || len(bout.Attacker.Outfit) != 2 || bout.Attacker.Health != scarf.Stats().Health {
+		t.Fatalf("Fought = %+v, %v", bout.Attacker, err)
+	}
+}

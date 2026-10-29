@@ -60,6 +60,9 @@ var petErrors = []struct {
 }{
 	{user.ErrTitleNotFound, codes.NotFound},
 	{user.ErrUnknownPetKind, codes.InvalidArgument},
+	{user.ErrUnknownPetCase, codes.InvalidArgument},
+	{user.ErrUnknownPetItem, codes.InvalidArgument},
+	{user.ErrNotInPetShop, codes.InvalidArgument},
 	{user.ErrPetNameEmpty, codes.InvalidArgument},
 	{user.ErrPetNameTooLong, codes.InvalidArgument},
 	{user.ErrPetNameLines, codes.InvalidArgument},
@@ -69,6 +72,8 @@ var petErrors = []struct {
 	{user.ErrPetNotFound, codes.NotFound},
 	{user.ErrTooManyPets, codes.FailedPrecondition},
 	{user.ErrPetFull, codes.FailedPrecondition},
+	{user.ErrPetItemOwned, codes.FailedPrecondition},
+	{user.ErrPetItemMissing, codes.FailedPrecondition},
 	{user.ErrPetTired, codes.FailedPrecondition},
 	{user.ErrPetHungry, codes.FailedPrecondition},
 	{user.ErrPetSad, codes.FailedPrecondition},
