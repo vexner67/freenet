@@ -320,6 +320,9 @@ func fromProtoPet(p *userv1.Pet) model.Pet {
 		Stance:              p.GetStance(),
 		Power:               int(p.GetPower()),
 		Fatigue:             int(p.GetFatigue()),
+		SalePrice:           p.GetSalePrice(),
+		SaleAt:              fromTimestamp(p.GetSaleAt()),
+		BossAt:              fromTimestamp(p.GetBossAt()),
 	}
 }
 

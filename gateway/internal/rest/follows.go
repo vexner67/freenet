@@ -392,13 +392,15 @@ func (a *api) authors(r *http.Request, authorIDs []string) (map[string]model.Aut
 }
 
 // people looks up users in as few requests as it can; those whose page is
-// deleted are there, marked, and those erased are missing.
+// deleted are there, marked, and those erased are missing. An empty ID is
+// nobody (a boss not beaten yet, a cell of an erased page): it is not
+// asked for.
 func (a *api) people(r *http.Request, authorIDs []string) (map[string]model.Author, error) {
 	seen := make(map[string]bool, len(authorIDs))
 	ids := make([]string, 0, len(authorIDs))
 
 	for _, id := range authorIDs {
-		if !seen[id] {
+		if id != "" && !seen[id] {
 			seen[id] = true
 			ids = append(ids, id)
 		}

@@ -27,6 +27,7 @@ type fakePets struct {
 	shards   bool
 	shop     model.PetShop
 	noPet    bool
+	arena    model.PetArenaAction
 	err      error
 }
 
@@ -182,6 +183,62 @@ func (f *fakePets) Settings(_ context.Context, token string) (model.PetShop, mod
 func (f *fakePets) Set(_ context.Context, token string, shop model.PetShop) error {
 	f.token, f.shop = token, shop
 	return f.err
+}
+
+func (f *fakePets) arenaOf() model.PetArena {
+	return model.PetArena{
+		Boss: model.PetBoss{Kind: "dragon", Health: 100, MaxHealth: 200, KilledBy: "", Hits: []model.PetBossHit{{UserID: "u1", Damage: 100, Hits: 2}}},
+		Tournament: model.PetTournament{
+			Held: true, Entrants: []model.PetEntrant{{OwnerID: "u1", PetID: "p1"}, {OwnerID: "u3", PetID: "p3"}},
+			Rounds: [][]model.PetMatch{{{A: 0, B: 1, Winner: 0, Bout: new(f.fight())}}}, Places: []int{0, 1},
+		},
+		Seasons: []model.PetSeason{{Season: time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC), Places: []model.PetSeasonPlace{{OwnerID: "u1", Prize: 2000}}}},
+		Quests:  []model.PetQuest{{Kind: "win", Goal: 3, Progress: 1}},
+		Market:  []model.PetListing{{OwnerID: "u1", Pet: f.pet()}},
+	}
+}
+
+func (f *fakePets) Arena(_ context.Context, token string) (model.PetArena, error) {
+	f.token = token
+	return f.arenaOf(), f.err
+}
+
+func (f *fakePets) RunArena(_ context.Context, token string, a model.PetArenaAction) (model.PetArenaDone, error) {
+	f.token, f.arena = token, a
+	bout := f.fight()
+
+	return model.PetArenaDone{Arena: f.arenaOf(), Bout: &bout, Balance: 77}, f.err
+}
+
+func TestPetArena(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	auth := []string{"Authorization", "Bearer tok"}
+
+	if w := h.do("GET", "/api/v1/me/pets/arena", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("the arena of a guest: %d", w.Code)
+	}
+
+	// The owner of p3 is deleted: the tournament shows no owner of it.
+	w := h.do("GET", "/api/v1/me/pets/arena", "", auth...)
+	got := decode[map[string]any](t, w)
+	tournament := got["tournament"].(map[string]any)
+	entrants := tournament["entrants"].([]any)
+	if w.Code != http.StatusOK || got["boss"].(map[string]any)["killedBy"] != nil ||
+		got["boss"].(map[string]any)["hits"].([]any)[0].(map[string]any)["user"].(map[string]any)["nickname"] != "ann" ||
+		entrants[1].(map[string]any)["user"] != nil || len(tournament["rounds"].([]any)) != 1 ||
+		got["seasons"].([]any)[0].(map[string]any)["season"] != "2026-09-01" || got["last"] != nil ||
+		len(got["market"].([]any)) != 1 || len(got["achievements"].([]any)) != 0 {
+		t.Fatalf("arena: %d %v", w.Code, got)
+	}
+
+	w = h.do("POST", "/api/v1/me/pets/arena", `{"action":"bet","petId":"p3","votes":100}`, auth...)
+	got = decode[map[string]any](t, w)
+	if w.Code != http.StatusOK || h.pets.arena != (model.PetArenaAction{Action: "bet", PetID: "p3", Votes: 100}) ||
+		got["balance"] != 77.0 || got["bout"] == nil || got["arena"].(map[string]any)["boss"] == nil {
+		t.Fatalf("bet: %d %v", w.Code, got)
+	}
 }
 
 func TestGuestsAndTop(t *testing.T) {

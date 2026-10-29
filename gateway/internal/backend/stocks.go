@@ -55,6 +55,7 @@ func fromProtoStocks(s *userv1.StocksState) model.Stocks {
 			Shares: c.GetShares(), Pool: c.GetPool(), Float: c.GetFloat(), Book: c.GetBook(), Fair: c.GetFair(),
 			Price: c.GetPrice(), Bid: c.GetBid(), Ask: c.GetAsk(), BestBid: c.GetBestBid(), BestAsk: c.GetBestAsk(),
 			DayAgo: c.GetDayAgo(), Volume: c.GetVolume(), Profit: c.GetProfit(), Holders: int(c.GetHolders()),
+			BandLow: c.GetBandLow(), BandHigh: c.GetBandHigh(),
 		}
 		for _, k := range c.GetCandles() {
 			company.Candles = append(company.Candles, model.StockCandle{

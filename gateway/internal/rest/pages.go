@@ -112,6 +112,8 @@ func registerPages(mux *http.ServeMux, dir string) {
 	mux.Handle("GET /guests", http.RedirectHandler("/notifications?box=archive", http.StatusMovedPermanently))
 	mux.Handle("GET /top", site.page(dir, "top.html"))
 	mux.Handle("GET /pet", site.page(dir, "pet.html"))
+	mux.Handle("GET /canvas", site.page(dir, "canvas.html"))
+	mux.Handle("GET /dating", site.page(dir, "dating.html"))
 	mux.Handle("GET /business", site.page(dir, "business.html"))
 	mux.Handle("GET /stocks", site.page(dir, "stocks.html"))
 	mux.Handle("GET /votes", site.page(dir, "votes.html"))

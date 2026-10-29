@@ -257,7 +257,7 @@ func (f *fakeUsers) profileOf(nickname string) (model.PublicProfile, error) {
 }
 
 // GetProfiles knows u1, u2, u3 (a deleted page) and anyone whose ID starts
-// with "x", and takes at most 100 IDs, as the user service.
+// with "x", and takes at most 100 IDs and no empty one, as the user service.
 func (f *fakeUsers) GetProfiles(_ context.Context, ids []string) ([]model.PublicProfile, error) {
 	f.profileIDs = ids
 	f.profileCalls++
@@ -266,6 +266,9 @@ func (f *fakeUsers) GetProfiles(_ context.Context, ids []string) ([]model.Public
 	}
 	var found []model.PublicProfile
 	for _, id := range ids {
+		if id == "" {
+			return nil, failure.New(failure.InvalidArgument, "invalid user id")
+		}
 		if strings.HasPrefix(id, "x") {
 			found = append(found, model.PublicProfile{ID: id, Profile: model.Profile{Name: id, Nickname: id}})
 		}
@@ -1586,6 +1589,8 @@ type harness struct {
 	documents     *fakeDocuments
 	articles      *fakeArticles
 	stories       *fakeStories
+	canvas        *fakeCanvas
+	dating        *fakeDating
 	previews      *fakePreviews
 }
 
@@ -1624,6 +1629,8 @@ func newHarness(cfg rest.Config) harness {
 		documents:     &fakeDocuments{},
 		articles:      &fakeArticles{},
 		stories:       &fakeStories{},
+		canvas:        &fakeCanvas{},
+		dating:        &fakeDating{},
 		previews:      &fakePreviews{},
 	}
 	h.metrics = prometheus.NewRegistry()
@@ -1657,6 +1664,8 @@ func newHarness(cfg rest.Config) harness {
 		Documents:     h.documents,
 		Articles:      h.articles,
 		Stories:       h.stories,
+		Canvas:        h.canvas,
+		Dating:        h.dating,
 		Previews:      h.previews,
 	}, h.metrics).Handler()
 

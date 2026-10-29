@@ -57,7 +57,7 @@ func (b *Firms) Run(ctx context.Context, accessToken string, act model.FirmAct) 
 		Action: act.Action, FirmId: act.FirmID, Kind: act.Kind, Name: act.Name, Good: act.Good, Buy: act.Buy,
 		Price: act.Price, Units: act.Units, Workers: workers, Wage: act.Wage, Votes: act.Votes, Shares: act.Shares,
 		OrderId: act.OrderID, AutoBuy: act.AutoBuy, BuyMax: act.BuyMax, AutoSell: act.AutoSell, SellMin: act.SellMin,
-		Improvement: act.Improvement, ContractId: act.ContractID,
+		Improvement: act.Improvement, ContractId: act.ContractID, ToFirmId: act.ToFirmID, From: act.From, RouteId: act.RouteID,
 	})
 	if err != nil {
 		return model.FirmDone{}, errs.Wrap("b.api.RunFirms", fromStatus(err))
@@ -179,6 +179,9 @@ func fromProtoFirm(f *userv1.Firm) model.Firm {
 	}
 	for _, h := range f.GetHolders() {
 		out.Holders = append(out.Holders, model.FirmHolder{UserID: h.GetUserId(), Shares: h.GetShares()})
+	}
+	for _, r := range f.GetRoutes() {
+		out.Routes = append(out.Routes, model.FirmRoute{ID: r.GetId(), ToFirmID: r.GetToFirmId(), Good: r.GetGood(), From: r.GetFrom(), Units: r.GetUnits()})
 	}
 
 	return out

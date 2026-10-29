@@ -139,6 +139,15 @@ type firmJSON struct {
 	Forecast     *firmHourJSON          `json:"forecast"`
 	ForecastCash int64                  `json:"forecastCash"`
 	Wanted       int                    `json:"wanted"`
+	Routes       []firmRouteJSON        `json:"routes"`
+}
+
+type firmRouteJSON struct {
+	ID    string `json:"id"`
+	To    string `json:"to"`
+	Good  string `json:"good"`
+	From  int64  `json:"from"`
+	Units int64  `json:"units"`
 }
 
 type firmLabourJSON struct {
@@ -330,6 +339,9 @@ func toFirmJSON(f model.Firm, people map[string]model.PublicProfile) firmJSON {
 		ForecastCash: f.ForecastCash,
 		Wanted:       f.Wanted,
 		Holders:      []firmHolderJSON{},
+		Routes: listJSON(f.Routes, func(r model.FirmRoute) firmRouteJSON {
+			return firmRouteJSON{ID: r.ID, To: r.ToFirmID, Good: r.Good, From: r.From, Units: r.Units}
+		}),
 	}
 	if f.Forecast != nil {
 		forecast := toFirmHourJSON(*f.Forecast)
@@ -395,6 +407,9 @@ func (a *api) runFirms(w http.ResponseWriter, r *http.Request) {
 		SellMin  int64  `json:"sellMin"`
 		Improve  string `json:"improvement"`
 		Contract string `json:"contract"`
+		To       string `json:"to"`
+		From     int64  `json:"from"`
+		Route    string `json:"route"`
 	}
 	if err = decode(w, r, &req); err != nil {
 		a.writeError(w, r, err)
@@ -405,7 +420,7 @@ func (a *api) runFirms(w http.ResponseWriter, r *http.Request) {
 		Action: r.PathValue("action"), FirmID: req.Firm, Kind: req.Kind, Name: req.Name, Good: req.Good, Buy: req.Buy,
 		Price: req.Price, Units: req.Units, Workers: req.Workers, Wage: req.Wage, Votes: req.Votes, Shares: req.Shares,
 		OrderID: req.Order, AutoBuy: req.AutoBuy, BuyMax: req.BuyMax, AutoSell: req.AutoSell, SellMin: req.SellMin,
-		Improvement: req.Improve, ContractID: req.Contract,
+		Improvement: req.Improve, ContractID: req.Contract, ToFirmID: req.To, From: req.From, RouteID: req.Route,
 	})
 	if err != nil {
 		a.writeError(w, r, err)

@@ -567,6 +567,8 @@ type Backends struct {
 	Documents     Documents
 	Articles      Articles
 	Stories       Stories
+	Canvas        Canvas
+	Dating        Dating
 	// Previews reads the cards of the pages posts link to; nil makes
 	// posts without cards.
 	Previews Previews
@@ -608,6 +610,8 @@ type api struct {
 	documents         Documents
 	articles          Articles
 	stories           Stories
+	canvas            Canvas
+	dating            Dating
 	previews          Previews
 	logger            *slog.Logger
 	trustForwardedFor bool
@@ -961,6 +965,14 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/me/pets/fights", a.listPetFights)
 	mux.HandleFunc("POST /api/v1/me/pets/cases", a.openPetCase)
 	mux.HandleFunc("POST /api/v1/me/pets/drop", a.takePetDrop)
+	mux.HandleFunc("GET /api/v1/me/pets/arena", a.getPetArena)
+	mux.HandleFunc("POST /api/v1/me/pets/arena", a.runPetArena)
+	mux.HandleFunc("GET /api/v1/canvas", a.getCanvas)
+	mux.HandleFunc("POST /api/v1/canvas/cells", a.paintCanvas)
+	mux.HandleFunc("GET /api/v1/canvas/cells/{x}/{y}", a.getCanvasCell)
+	mux.HandleFunc("GET /api/v1/me/dating", a.getDating)
+	mux.HandleFunc("PUT /api/v1/me/dating", a.putDating)
+	mux.HandleFunc("POST /api/v1/me/dating/answers", a.answerDating)
 	mux.HandleFunc("DELETE /api/v1/me/pets/drop", a.leavePetDrop)
 	mux.HandleFunc("PATCH /api/v1/me/pets/{id}", a.renamePet)
 	mux.HandleFunc("DELETE /api/v1/me/pets/{id}", a.releasePet)

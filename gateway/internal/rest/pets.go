@@ -33,6 +33,8 @@ type Pets interface {
 	Dress(ctx context.Context, accessToken, petID, item string, wear bool) (model.PetCare, error)
 	Settings(ctx context.Context, accessToken string) (model.PetShop, model.PetStats, error)
 	Set(ctx context.Context, accessToken string, shop model.PetShop) error
+	Arena(ctx context.Context, accessToken string) (model.PetArena, error)
+	RunArena(ctx context.Context, accessToken string, a model.PetArenaAction) (model.PetArenaDone, error)
 }
 
 // petShopJSON is the shop; cases left out of a change keep their prices.
@@ -122,6 +124,9 @@ type petJSON struct {
 	Stance              string       `json:"stance"`
 	Power               int          `json:"power"`
 	Fatigue             int          `json:"fatigue"`
+	SalePrice           int64        `json:"salePrice"`
+	SaleAt              *string      `json:"saleAt"`
+	BossAt              *string      `json:"bossAt"`
 }
 
 // petFighterJSON is a pet as it came to a fight, with its owner — null
@@ -232,6 +237,9 @@ func toPetJSON(p model.Pet) petJSON {
 		Stance:              p.Stance,
 		Power:               p.Power,
 		Fatigue:             p.Fatigue,
+		SalePrice:           p.SalePrice,
+		SaleAt:              optionalTime(p.SaleAt),
+		BossAt:              optionalTime(p.BossAt),
 	}
 }
 

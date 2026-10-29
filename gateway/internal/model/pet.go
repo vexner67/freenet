@@ -74,6 +74,12 @@ type Pet struct {
 	Stance  string
 	Power   int
 	Fatigue int
+	// SalePrice is the votes it is up for on the market, 0 when it is
+	// not; SaleAt when it may go up and BossAt when it may hit the boss
+	// again, zero when it may now.
+	SalePrice int64
+	SaleAt    time.Time
+	BossAt    time.Time
 }
 
 // PetPower are the stats of a pet, or what something adds to them.

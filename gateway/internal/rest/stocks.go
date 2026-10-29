@@ -36,6 +36,8 @@ type stockCompanyJSON struct {
 	Profit   int64                  `json:"profit"`
 	Holders  int                    `json:"holders"`
 	Candles  []stockCandleJSON      `json:"candles"`
+	BandLow  int64                  `json:"bandLow"`
+	BandHigh int64                  `json:"bandHigh"`
 }
 
 type stockIndexJSON struct {
@@ -103,7 +105,7 @@ func (a *api) stocksResponse(r *http.Request, s model.Stocks) (stocksJSON, error
 				Firm: c.FirmID, Name: c.Name, Kind: c.Kind, Level: c.Level, Director: person(people, c.DirectorID),
 				Shares: c.Shares, Pool: c.Pool, Float: c.Float, Book: c.Book, Fair: c.Fair, Price: c.Price, Bid: c.Bid,
 				Ask: c.Ask, BestBid: c.BestBid, BestAsk: c.BestAsk, DayAgo: c.DayAgo, Volume: c.Volume, Profit: c.Profit,
-				Holders: c.Holders,
+				Holders: c.Holders, BandLow: c.BandLow, BandHigh: c.BandHigh,
 				Candles: listJSON(c.Candles, func(k model.StockCandle) stockCandleJSON {
 					return stockCandleJSON{
 						Hour: timeString(k.Hour), Open: k.Open, High: k.High, Low: k.Low, Close: k.Close, Volume: k.Volume,

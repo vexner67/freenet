@@ -5672,10 +5672,10 @@ paths:
   /api/v1/firms/{action}:
     post:
       summary: Act in the economy
-      description: '`found` founds an enterprise of `kind` named `name` (1–40 characters) for its price, into the treasury: you hold its 100 shares and direct it; at most 10 directed. For the director of `firm`: `rename` (`name`), `upgrade` (paid from its cash), `staff` (`workers` sought up to the seats — those past them are let go, the vacancies filled of the people out of work as the labour market goes — `wage` in hundredths from half to three times the standard), `deposit` (`votes` into its cash), `dividend` (`votes` of its cash to the shareholders by their shares), `liquidate` (its worth to the shareholders; its goods are lost), `auto` (for `good`: `autoBuy` from the state paying at most `buyMax`, `autoSell` taking at least `sellMin`), `order` (`good`, `buy`, `price` in hundredths, `units` — on the exchange; what meets other orders changes hands at their price at once, the seller paying the fee), `cancel` (`order`), `state_buy` and `state_sell` (`good`, `units` — with the state at once), `issue` (`shares` new put up on the stock exchange in place of those put up before, 0 — none; sold, they pay into its cash), `repair` (its machines, from its cash), `improve` (`improvement`: `machines` make more, `storage` holds more, `sales` sell dearer; three ranks), `take_contract` (`contract` of the city its storage keeps the good of; at most 2 at once, a day to deliver, a tenth of what is left undelivered fined) and `deliver` (`contract`, `units` from its storage, paid at once). The largest shareholder directs. Taking votes out (`dividend`, `liquidate`) is for pages a week old with a filled profile. Rate limited.'
+      description: '`found` founds an enterprise of `kind` named `name` (1–40 characters) for its price, into the treasury: you hold its 100 shares and direct it; at most 10 directed. For the director of `firm`: `rename` (`name`), `upgrade` (paid from its cash), `staff` (`workers` sought up to the seats — those past them are let go, the vacancies filled of the people out of work as the labour market goes — `wage` in hundredths from half to three times the standard), `deposit` (`votes` into its cash), `dividend` (`votes` of its cash to the shareholders by their shares), `liquidate` (its worth to the shareholders; its goods are lost), `auto` (for `good`: `autoBuy` from the state paying at most `buyMax`, `autoSell` taking at least `sellMin`), `order` (`good`, `buy`, `price` in hundredths, `units` — on the exchange; what meets other orders changes hands at their price at once, the seller paying the fee), `cancel` (`order`), `state_buy` and `state_sell` (`good`, `units` — with the state at once), `issue` (`shares` new put up on the stock exchange in place of those put up before, 0 — none; sold, they pay into its cash), `repair` (its machines, from its cash), `improve` (`improvement`: `machines` make more, `storage` holds more, `sales` sell dearer; three ranks), `take_contract` (`contract` of the city its storage keeps the good of; at most 2 at once, a day to deliver, a tenth of what is left undelivered fined) `deliver` (`contract`, `units` from its storage, paid at once), `route` (a supply of `good`, `units` an hour to the enterprise `to` of the same director once the storage keeps `from` units, paid halfway between the prices of the state with no fee; at most 5) and `unroute` (`route`). The largest shareholder directs. Taking votes out (`dividend`, `liquidate`) is for pages a week old with a filled profile. Rate limited.'
       security: [{ bearer: [] }]
       parameters:
-        - { name: action, in: path, required: true, schema: { type: string, enum: [found, rename, upgrade, staff, deposit, dividend, liquidate, auto, order, cancel, state_buy, state_sell, issue, repair, improve, take_contract, deliver] } }
+        - { name: action, in: path, required: true, schema: { type: string, enum: [found, rename, upgrade, staff, deposit, dividend, liquidate, auto, order, cancel, state_buy, state_sell, issue, repair, improve, take_contract, deliver, route, unroute] } }
       requestBody:
         content:
           application/json:
@@ -5700,6 +5700,9 @@ paths:
                 sellMin: { type: integer, format: int64 }
                 improvement: { type: string, enum: [machines, storage, sales] }
                 contract: { type: string, description: The ID of an order of the city }
+                to: { type: string, description: "route: the enterprise of the same director the supply goes to" }
+                from: { type: integer, format: int64, description: "route: the units kept from which the supply goes" }
+                route: { type: string, description: "unroute: the ID of the supply to stop" }
       responses:
         "200":
           description: What the action did
@@ -6162,6 +6165,180 @@ paths:
                 properties:
                   keeper: { $ref: "#/components/schemas/PetKeeper" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/pets/arena:
+    get:
+      summary: The arena of the pets
+      description: 'What the pets do together: the boss of the week everybody hits (its prize is split by the damage dealt, more to the one who finishes it), the tournament of the week (Sunday 20:00 Moscow, 16 pets at most, one a person, with bets of the onlookers; the treasury takes 10% of the stakes) and of the last week, the places of the monthly season of the rating as they stand and of the seasons closed (the best ten are paid, ratings then keep half of their distance from the start), three tasks of the day with the days in a row all were done, your badges and the pets up for sale. The season and the tournaments that are over are settled first.'
+      security: [{ bearer: [] }]
+      responses:
+        "200": { description: The arena, content: { application/json: { schema: { $ref: "#/components/schemas/PetArena" } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      summary: Act on the arena
+      description: '`boss` hits the boss with the pet `petId` (it rests 2 hours after); `join` and `leave` the tournament before it begins; `bet` `votes` (10 to 100000, one bet a tournament) on a pet in it; `sell` the pet for `votes` (a week after you got it, from 50/200/800/3000 votes by rarity, 3 at a time; it does not fight while up for sale); `unsell` it; `buy` a pet up for sale, the treasury taking 10% of the price from the seller''s share. 409 when the state does not allow it. Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [boss, join, leave, bet, sell, unsell, buy] }
+                petId: { type: string }
+                votes: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: The arena after it
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  arena: { $ref: "#/components/schemas/PetArena" }
+                  bout: { allOf: [{ $ref: "#/components/schemas/PetFight" }], nullable: true, description: The hit of the boss }
+                  balance: { type: integer, format: int64, description: Your votes after a payment, 0 when nothing was paid }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/canvas:
+    get:
+      summary: The shared canvas
+      description: 'The canvas everybody paints, a cell a minute each: `size`×`size` cells, a byte each row after row in base64, the color of a cell from the palette of 16 (0 is white). `nextAt` is when you may paint again, null when now or for a guest. Public.'
+      responses:
+        "200":
+          description: The canvas
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [cells, size, nextAt, cooldown]
+                properties:
+                  cells: { type: string, format: byte }
+                  size: { type: integer }
+                  nextAt: { type: string, format: date-time, nullable: true }
+                  cooldown: { type: integer, description: Seconds between two cells of one person }
+
+  /api/v1/canvas/cells:
+    post:
+      summary: Paint a cell of the canvas
+      description: 'Paints the cell `x`, `y` (from 0) with `color` (0–15). 400 for a cell or color there is not; 409 within a minute of the last cell. Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [x, y, color]
+              properties:
+                x: { type: integer }
+                y: { type: integer }
+                color: { type: integer }
+      responses:
+        "200":
+          description: When you may paint again
+          content: { application/json: { schema: { type: object, properties: { nextAt: { type: string, format: date-time } } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/canvas/cells/{x}/{y}:
+    parameters:
+      - { name: x, in: path, required: true, schema: { type: integer } }
+      - { name: y, in: path, required: true, schema: { type: integer } }
+    get:
+      summary: Who painted a cell
+      description: 'Who painted the cell last (null when the page is gone), the color and when. 404 for a cell never painted. Public.'
+      responses:
+        "200":
+          description: The cell
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { allOf: [{ $ref: "#/components/schemas/Author" }], nullable: true }
+                  color: { type: integer }
+                  paintedAt: { type: string, format: date-time }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/me/dating:
+    get:
+      summary: Dating
+      description: '"Знакомства": your card (null before you made one), up to ten cards to like or skip — of people whose card is on, who seek your gender and whose gender you seek — and the matches, people who liked you back, the latest first. Cards show only the public profile.'
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: Dating
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  card: { allOf: [{ $ref: "#/components/schemas/DatingCard" }], nullable: true }
+                  deck: { type: array, items: { $ref: "#/components/schemas/DatingCard" } }
+                  matches:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        user: { $ref: "#/components/schemas/Author" }
+                        matchedAt: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    put:
+      summary: Make or change your dating card
+      description: 'Turned off, the card hides you from the others and the others from you. 400 for an unknown goal or gender, about longer than 300 characters; 409 before the profile is filled in.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [goal]
+              properties:
+                goal: { type: string, enum: [friendship, chat, love] }
+                seek: { type: string, enum: ["", male, female], description: Empty for anyone }
+                about: { type: string, maxLength: 300 }
+                on: { type: boolean }
+      responses:
+        "200": { description: The card, content: { application/json: { schema: { $ref: "#/components/schemas/DatingCard" } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /api/v1/me/dating/answers:
+    post:
+      summary: Like or skip a dating card
+      description: 'A like answered with a like is a match: both get a notification. 404 for a card that is off; 409 when your card is off or you answered the card before. Rate limited.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, like]
+              properties:
+                userId: { type: string }
+                like: { type: boolean }
+      responses:
+        "200":
+          description: Whether it is a match
+          content: { application/json: { schema: { type: object, properties: { matched: { type: boolean } } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
@@ -9104,6 +9281,14 @@ components:
         large: { type: string, example: "/media/avatars/<user>/<avatar>/large.jpg" }
         small: { type: string, example: "/media/avatars/<user>/<avatar>/small.jpg" }
 
+    DatingCard:
+      type: object
+      properties:
+        user: { allOf: [{ $ref: "#/components/schemas/Author" }], nullable: true, description: The owner; null on your own card }
+        goal: { type: string, enum: [friendship, chat, love] }
+        seek: { type: string, enum: ["", male, female] }
+        about: { type: string }
+        on: { type: boolean }
     Author:
       type: object
       required: [id, nickname, name, surname, gender]
@@ -10437,6 +10622,17 @@ components:
         level: { type: integer }
         workers: { type: integer, description: The workers it has }
         wanted: { type: integer, description: The workers it seeks — those it has and the vacancies }
+        routes:
+          type: array
+          description: The supplies it hands every hour by itself to other enterprises of its director
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              to: { type: string, description: The enterprise the supply goes to }
+              good: { type: string }
+              from: { type: integer, format: int64, description: The supply goes once the storage keeps this many }
+              units: { type: integer, format: int64, description: Units an hour }
         wage: { type: integer, format: int64 }
         cash: { type: integer, format: int64, description: Hundredths of a vote }
         escrow: { type: integer, format: int64, description: Hundredths its buying orders keep }
@@ -10636,6 +10832,8 @@ components:
               volume: { type: integer, format: int64, description: Shares traded in a day }
               profit: { type: integer, format: int64, description: Hundredths it earned in a day }
               holders: { type: integer }
+              bandLow: { type: integer, format: int64, description: The lowest price an order of people may stand at }
+              bandHigh: { type: integer, format: int64, description: The highest price an order of people may stand at }
               candles:
                 type: array
                 items:
@@ -10775,6 +10973,9 @@ components:
         stance: { type: string, enum: [attack, defense, agility], description: How it defends }
         power: { type: integer, description: 'Its strength in one number, which matches rivals: attack×4 + defense×3 + health + speed×2' }
         fatigue: { type: integer, description: 'The fights in a row within an hour: each takes 5% of the stats, up to 6' }
+        salePrice: { type: integer, format: int64, description: The votes it is up for on the market, 0 when it is not }
+        saleAt: { type: string, format: date-time, nullable: true, description: When it may go up for sale, null when it may now }
+        bossAt: { type: string, format: date-time, nullable: true, description: When it may hit the boss again, null when it may now }
     PetKeeper:
       type: object
       description: 'What you keep of the cases.'
@@ -10859,6 +11060,105 @@ components:
         rating: { type: integer }
         ratio: { type: integer, description: 'The power of the defender in a hundred of the attacker, 25 to 200' }
         reward: { type: integer, format: int64, description: The votes it brought }
+    PetSeasonPlace:
+      type: object
+      properties:
+        user: { allOf: [{ $ref: "#/components/schemas/Author" }], nullable: true }
+        petId: { type: string }
+        kind: { type: string }
+        name: { type: string }
+        rating: { type: integer }
+        prize: { type: integer, format: int64 }
+    PetTournament:
+      type: object
+      properties:
+        startsAt: { type: string, format: date-time }
+        held: { type: boolean }
+        entrants:
+          type: array
+          items:
+            type: object
+            properties:
+              user: { allOf: [{ $ref: "#/components/schemas/Author" }], nullable: true }
+              petId: { type: string }
+              kind: { type: string }
+              name: { type: string }
+              level: { type: integer }
+              power: { type: integer }
+        rounds:
+          type: array
+          description: The rounds fought; a match names the entrants by index, b -1 for a pet alone
+          items:
+            type: array
+            items:
+              type: object
+              properties:
+                a: { type: integer }
+                b: { type: integer }
+                winner: { type: integer }
+                bout: { allOf: [{ $ref: "#/components/schemas/PetFight" }], nullable: true }
+        places: { type: array, items: { type: integer }, description: The indexes of the entrants by place, the winner first }
+        bets: { type: integer }
+        pool: { type: integer, format: int64 }
+        betPetId: { type: string, description: The pet you bet on, empty without a bet }
+        betVotes: { type: integer, format: int64 }
+    PetArena:
+      type: object
+      properties:
+        boss:
+          type: object
+          properties:
+            kind: { type: string }
+            health: { type: integer }
+            maxHealth: { type: integer }
+            killedBy: { allOf: [{ $ref: "#/components/schemas/Author" }], nullable: true }
+            killedAt: { type: string, format: date-time, nullable: true }
+            hits:
+              type: array
+              description: By damage, the most first
+              items:
+                type: object
+                properties:
+                  user: { allOf: [{ $ref: "#/components/schemas/Author" }], nullable: true }
+                  damage: { type: integer }
+                  hits: { type: integer }
+            stats: { $ref: "#/components/schemas/PetPower" }
+            prize: { type: integer, format: int64 }
+            lastHit: { type: integer, format: int64 }
+        tournament: { $ref: "#/components/schemas/PetTournament" }
+        last: { allOf: [{ $ref: "#/components/schemas/PetTournament" }], nullable: true }
+        seasonEndsAt: { type: string, format: date-time }
+        top: { type: array, items: { $ref: "#/components/schemas/PetSeasonPlace" } }
+        seasons:
+          type: array
+          items:
+            type: object
+            properties:
+              season: { type: string, format: date }
+              places: { type: array, items: { $ref: "#/components/schemas/PetSeasonPlace" } }
+        quests:
+          type: array
+          items:
+            type: object
+            properties:
+              kind: { type: string, enum: [win, fight, case, feed, play, boss, manual] }
+              goal: { type: integer }
+              progress: { type: integer }
+        streak: { type: integer }
+        achievements:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              gotAt: { type: string, format: date-time }
+        market:
+          type: array
+          items:
+            type: object
+            properties:
+              user: { allOf: [{ $ref: "#/components/schemas/Author" }], nullable: true }
+              pet: { $ref: "#/components/schemas/Pet" }
     MineState:
       type: object
       properties:

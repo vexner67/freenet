@@ -163,6 +163,19 @@ type Firm struct {
 	ForecastCash int64
 	// Wanted is the workers it seeks: Workers and the vacancies.
 	Wanted int
+	// Routes are the supplies it hands every hour to others of its
+	// director.
+	Routes []FirmRoute
+}
+
+// FirmRoute is a supply of an enterprise: Units of Good an hour to the
+// enterprise ToFirmID, once From units are kept.
+type FirmRoute struct {
+	ID       string
+	ToFirmID string
+	Good     string
+	From     int64
+	Units    int64
 }
 
 // FirmLabour is the labour market of the city: its people, those working,
@@ -257,6 +270,11 @@ type FirmAct struct {
 	// Improvement is what is improved, ContractID the order of the city.
 	Improvement string
 	ContractID  string
+	// ToFirmID, From and RouteID are of the supplies: where to, from how
+	// many units kept, and which one to stop.
+	ToFirmID string
+	From     int64
+	RouteID  string
 }
 
 // FirmDeal is units that changed hands at a price in hundredths.
@@ -322,6 +340,9 @@ type StockCompany struct {
 	Profit     int64
 	Holders    int
 	Candles    []StockCandle
+	// BandLow and BandHigh are the prices orders of people may stand at.
+	BandLow  int64
+	BandHigh int64
 }
 
 // StockIndexPoint is the index at an hour, in hundredths of a point.
