@@ -99,7 +99,8 @@ const (
 	VotePet VoteKind = "pet"
 	// VoteWorld: votes paid to a state of «Мир» or out of its treasury,
 	// when «Мир» had states; kept for the history of the wallets. The note
-	// is what for, "found_state" or "donate".
+	// is what for: "found_state", "donate", "refund", or "closed" — what
+	// came back when the states were abolished.
 	VoteWorld VoteKind = "world"
 )
 
