@@ -334,16 +334,31 @@ function showTabs() {
   const arena = el('button', { type: 'button', className: league ? 'pet-tab pet-tab-more pet-tab-chosen' : 'pet-tab pet-tab-more' },
     el('b', { textContent: '⚔' }), el('span', { textContent: tr('Арена') }));
   arena.addEventListener('click', () => { if (!busy) showLeague(); });
+  tabs.push(arena);
   if (pets.length < maxPets) {
     const more = el('button', { type: 'button', className: pet || league ? 'pet-tab pet-tab-more' : 'pet-tab pet-tab-more pet-tab-chosen' },
       el('b', { textContent: '+' }), el('span', { textContent: tr('Завести ещё') }));
     more.addEventListener('click', () => { if (!busy) showShop(); });
     tabs.push(more);
   }
-  tabs.push(arena);
   $('pet-tabs').replaceChildren(...tabs);
   $('pet-tabs').hidden = false;
-  $('pets-count').textContent = pets.length ? tr('Питомцев: {0} из {1}.', pets.length, maxPets) : '';
+  $('pets-count').replaceChildren(...countNodes());
+}
+
+// countNodes say how many pets there are and, away from the arena, where
+// the quests, the boss, the tournament, the season and the market are.
+function countNodes() {
+  const nodes = pets.length ? [tr('Питомцев: {0} из {1}.', pets.length, maxPets)] : [];
+  if (league) return nodes;
+
+  const link = el('a', { href: '/pet?arena=1', textContent: tr('Арена') });
+  link.addEventListener('click', (event) => {
+    event.preventDefault();
+    if (!busy) showLeague();
+  });
+
+  return [...nodes, nodes.length ? ' ' : '', link, tr(': задания дня, босс недели, турнир, сезон, достижения и рынок питомцев.')];
 }
 
 // keep puts a pet as the server answered in its place.

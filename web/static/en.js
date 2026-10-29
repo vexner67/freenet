@@ -2528,6 +2528,7 @@ export default {
   'питомец|питомца|питомцев': 'pet|pets',
   'Завести ещё': 'Get one more',
   'Питомцев: {0} из {1}.': 'Pets: {0} of {1}.',
+  ': задания дня, босс недели, турнир, сезон, достижения и рынок питомцев.': ': daily quests, the boss of the week, the tournament, the season, achievements and the pet market.',
   'Победа! {0} и рейтинг {1}.': 'Victory! {0} and rating {1}.',
   'Победа': 'Victory',
   'Поиграть': 'Play',
