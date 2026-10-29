@@ -13,7 +13,7 @@ const BetOdds = 10_000
 // The bounds of the bets: how big a bet may be, how many multipliers it
 // chooses from and how big they are, in hundredths: 101 is ×1.01.
 const (
-	MaxBet            = MaxAmount
+	MaxBet            = MaxMoved
 	MaxAimMultipliers = 10
 	MinAimMultiplier  = 101
 	MaxAimMultiplier  = MaxMultiplier
@@ -177,5 +177,5 @@ func (b Bet) Wins(roll int) bool {
 // Prize is what the bet pays when it wins: the votes multiplied, rounded
 // down.
 func (b Bet) Prize() int64 {
-	return b.amount * int64(b.multiplier) / 100
+	return MulDiv(b.amount, int64(b.multiplier), 100)
 }

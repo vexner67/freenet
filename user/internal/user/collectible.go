@@ -26,7 +26,7 @@ const (
 	PrimeGiftFeePermille = 25
 	// MaxGiftSalePrice is the dearest a collectible may be sold or bid
 	// for.
-	MaxGiftSalePrice = MaxAmount
+	MaxGiftSalePrice = MaxMoved
 	// MinAuctionHours and MaxAuctionHours bound how long an auction runs.
 	MinAuctionHours = 1
 	MaxAuctionHours = 7 * 24

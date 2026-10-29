@@ -161,7 +161,7 @@ func TestVouchersAndVotes(t *testing.T) {
 		want codes.Code
 	}{
 		{"nothing", &userv1.TransferVotesRequest{UserId: bobID}, codes.InvalidArgument},
-		{"too much at once", &userv1.TransferVotesRequest{UserId: bobID, Votes: user.MaxAmount + 1}, codes.InvalidArgument},
+		{"too much at once", &userv1.TransferVotesRequest{UserId: bobID, Votes: user.MaxVotes + 1}, codes.InvalidArgument},
 		{"more than there is", &userv1.TransferVotesRequest{UserId: bobID, Votes: 5}, codes.FailedPrecondition},
 		{"to oneself", &userv1.TransferVotesRequest{UserId: annID, Votes: 1}, codes.InvalidArgument},
 		{"to nobody", &userv1.TransferVotesRequest{UserId: uuid.NewString(), Votes: 1}, codes.NotFound},

@@ -36,6 +36,22 @@ func TestAccount(t *testing.T) {
 	if err := c.Withdraw(ann, 50); err != nil || c.Account(ann) != 0 {
 		t.Errorf("withdraw: %v, %d", err, c.Account(ann))
 	}
+
+	// More than a trillion at once, but not more than an account holds.
+	if err := c.Fund(ann, user.MaxMoved); err != nil || c.Account(ann) != user.MaxMoved*100 {
+		t.Fatalf("fund the most: %v, %d", err, c.Account(ann))
+	}
+	if err := c.Fund(ann, user.MaxMoved+1); !errors.Is(err, user.ErrFirmVotes) {
+		t.Errorf("funding above the most: %v", err)
+	}
+	for c.Account(ann) <= user.MaxPayout-user.MaxMoved*100 {
+		if err := c.Fund(ann, user.MaxMoved); err != nil {
+			t.Fatalf("fund: %v", err)
+		}
+	}
+	if err := c.Fund(ann, user.MaxMoved); !errors.Is(err, user.ErrFirmVotes) {
+		t.Errorf("funding a full account: %v", err)
+	}
 }
 
 // TestBuyNewShares buys of the exchange the new shares an enterprise puts

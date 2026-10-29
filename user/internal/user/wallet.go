@@ -7,7 +7,7 @@ import (
 )
 
 // MaxVotes is the most votes one transfer or one voucher carries.
-const MaxVotes = MaxAmount
+const MaxVotes = MaxMoved
 
 var (
 	ErrVotesInvalid = errors.New("the number of votes must be at least 1")

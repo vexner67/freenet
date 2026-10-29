@@ -60,7 +60,7 @@ func NewBank(b Bank) (Bank, error) {
 		}
 	}
 	for _, most := range []int64{b.DepositMost, b.LoanMost} {
-		if most < 1 || most > MaxAmount {
+		if most < 1 || most > MaxMoved {
 			return Bank{}, ErrBankMost
 		}
 	}
@@ -116,7 +116,7 @@ func (a BankAccount) At(b Bank, now time.Time) BankAccount {
 		days := wholeDays(a.depositAt, now)
 		for range days {
 			earning := min(a.deposit, b.DepositMost*100)
-			a.deposit = min(a.deposit+earning*int64(b.DepositRate)/BankOdds, MaxAmount*100)
+			a.deposit = min(a.deposit+MulDiv(earning, int64(b.DepositRate), BankOdds), MaxMoved*100)
 		}
 		a.depositAt = a.depositAt.Add(time.Duration(days) * bankDay)
 	}
@@ -132,7 +132,7 @@ func (a BankAccount) At(b Bank, now time.Time) BankAccount {
 			if day := a.debtAt.Add(time.Duration(i+1) * bankDay); day.After(a.dueAt) {
 				rate = int64(b.PenaltyRate)
 			}
-			a.debt = min(a.debt+(a.debt*rate+BankOdds-1)/BankOdds, most)
+			a.debt = min(a.debt+MulDivUp(a.debt, rate, BankOdds), most)
 		}
 		a.debtAt = a.debtAt.Add(time.Duration(days) * bankDay)
 	}
@@ -153,7 +153,7 @@ func wholeDays(since, now time.Time) int {
 // Put puts votes on the deposit at now; ErrBankAmount, ErrDepositMost.
 // A deposit begins its days anew when it was empty.
 func (a BankAccount) Put(b Bank, votes int64, now time.Time) (BankAccount, error) {
-	if votes < 1 || votes > MaxAmount {
+	if votes < 1 || votes > MaxMoved {
 		return a, ErrBankAmount
 	}
 
@@ -176,7 +176,7 @@ func (a BankAccount) Take(b Bank, votes int64, now time.Time) (BankAccount, int6
 	if votes == 0 {
 		votes = a.DepositVotes()
 	}
-	if votes < 1 || votes > MaxAmount {
+	if votes < 1 || votes > MaxMoved {
 		return a, 0, ErrBankAmount
 	}
 	if votes > a.DepositVotes() {
@@ -194,7 +194,7 @@ func (a BankAccount) Borrow(b Bank, votes int64, now time.Time) (BankAccount, er
 	if a.HasLoan() {
 		return a, ErrLoanActive
 	}
-	if votes < 1 || votes > MaxAmount {
+	if votes < 1 || votes > MaxMoved {
 		return a, ErrBankAmount
 	}
 	if votes > b.LoanMost {
@@ -214,7 +214,7 @@ func (a BankAccount) Repay(b Bank, votes int64, now time.Time) (BankAccount, int
 	if !a.HasLoan() {
 		return a, 0, ErrNoLoan
 	}
-	if votes < 0 || votes > MaxAmount {
+	if votes < 0 || votes > MaxMoved {
 		return a, 0, ErrBankAmount
 	}
 	if votes == 0 || votes >= a.Owed() {

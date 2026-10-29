@@ -20,6 +20,14 @@ const (
 	// arithmetic: an amount times a multiplier of up to MaxMultiplier still
 	// fits in int64.
 	MaxAmount = 1_000_000_000_000
+	// MaxMoved is the most votes one move of votes people make may carry —
+	// a transfer, a deposit, a stake, a sale, a payment into an account —
+	// as many as an administrator has (EndlessVotes). Wherever such an
+	// amount is multiplied, it goes through MulDiv.
+	MaxMoved = EndlessVotes
+	// MaxPayout is the most one win or one product of votes pays (MulDiv),
+	// so that a balance it is added to stays within int64.
+	MaxPayout = 1_000_000_000_000_000_000
 	// MaxMultiplier is the biggest multiplier the administrators set, in
 	// hundredths: ×10000.
 	MaxMultiplier = 1_000_000

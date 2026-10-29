@@ -148,9 +148,10 @@ func (c *City) addCash(userID uuid.UUID, hundredths int64) {
 	}
 }
 
-// Fund puts votes, paid apart, on the account of userID; ErrFirmVotes.
+// Fund puts votes, paid apart, on the account of userID; ErrFirmVotes,
+// also when the account would hold more than MaxPayout hundredths.
 func (c *City) Fund(userID uuid.UUID, votes int64) error {
-	if votes < 1 || votes > MaxAmount {
+	if votes < 1 || votes > MaxMoved || c.Account(userID) > MaxPayout-votes*100 {
 		return ErrFirmVotes
 	}
 
@@ -162,7 +163,7 @@ func (c *City) Fund(userID uuid.UUID, votes int64) error {
 // Withdraw takes votes off the account of userID, paid to it apart;
 // ErrFirmVotes, ErrAccount.
 func (c *City) Withdraw(userID uuid.UUID, votes int64) error {
-	if votes < 1 || votes > MaxAmount {
+	if votes < 1 || votes > MaxMoved {
 		return ErrFirmVotes
 	}
 	if c.Account(userID) < votes*100 {

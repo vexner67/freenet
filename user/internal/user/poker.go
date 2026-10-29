@@ -433,7 +433,7 @@ func (h *PokerHand) Call(p Poker) (*PokerHand, error) {
 	player := BestHand(append(append([]Card{}, h.cards[0:2]...), h.cards[4:9]...))
 	dealer := BestHand(append(append([]Card{}, h.cards[2:4]...), h.cards[4:9]...))
 	ante, call := h.ante, 2*h.ante
-	won := ante + ante*int64(p.Pay(player.Rank))
+	won := ante + MulDiv(ante, int64(p.Pay(player.Rank)), 1)
 
 	switch {
 	case !dealer.Qualifies():

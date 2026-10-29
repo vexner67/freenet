@@ -246,7 +246,7 @@ func (c *City) befall(rules FirmRules, f *Firm, at time.Time) {
 	c.begin(spec, f.id, at)
 	f.mood += spec.mood
 	f.wear = min(f.wear+spec.wear, 100)
-	f.cash -= f.cash * spec.fine / 100
+	f.cash -= MulDiv(f.cash, spec.fine, 100)
 }
 
 func (c *City) begin(spec eventSpec, firmID uuid.UUID, at time.Time) Event {

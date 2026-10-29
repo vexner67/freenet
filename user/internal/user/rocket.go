@@ -182,7 +182,7 @@ func RestoreRocketRound(id, userID uuid.UUID, amount int64, crash, auto int, sta
 }
 
 func prize(amount int64, multiplier int) int64 {
-	return amount * int64(multiplier) / 100
+	return MulDiv(amount, int64(multiplier), 100)
 }
 
 func (r *RocketRound) ID() uuid.UUID {

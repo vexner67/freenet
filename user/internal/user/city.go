@@ -453,14 +453,15 @@ func (c *City) Staff(rules FirmRules, userID, firmID uuid.UUID, workers int, wag
 	return nil
 }
 
-// Deposit puts votes, paid apart, into the cash; ErrFirmVotes.
+// Deposit puts votes, paid apart, into the cash; ErrFirmVotes, also when
+// the cash would be more than MaxPayout hundredths.
 func (c *City) Deposit(userID, firmID uuid.UUID, votes int64) error {
 	f, err := c.directed(userID, firmID)
 	if err != nil {
 		return err
 	}
 
-	if votes < 1 || votes > MaxAmount {
+	if votes < 1 || votes > MaxMoved || f.cash > MaxPayout-votes*100 {
 		return ErrFirmVotes
 	}
 
@@ -503,8 +504,7 @@ func (c *City) share(firmID uuid.UUID, votes int64) ([]Payout, int64) {
 	var payouts []Payout
 	var paid int64
 	for _, h := range c.Holdings(firmID) {
-		// at most MaxAmount×MaxFirmShares: within int64
-		v := votes * h.Shares / total
+		v := MulDiv(votes, h.Shares, total)
 		if v <= 0 {
 			continue
 		}
@@ -527,7 +527,7 @@ func (c *City) Dividend(userID, firmID uuid.UUID, votes int64) ([]Payout, error)
 		return nil, err
 	}
 
-	if votes < 1 || votes > MaxAmount {
+	if votes < 1 || votes > MaxMoved {
 		return nil, ErrFirmVotes
 	}
 	if f.cash < votes*100 {

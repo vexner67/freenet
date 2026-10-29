@@ -2,7 +2,6 @@ package user
 
 import (
 	"errors"
-	"math/big"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -21,7 +20,7 @@ const (
 	// MaxBetEventAhead is how far ahead the stakes of an event may close.
 	MaxBetEventAhead = 366 * 24 * time.Hour
 	// MaxStake is the most votes one stake puts on an outcome.
-	MaxStake = MaxAmount
+	MaxStake = MaxMoved
 	// MinEventOdds and MaxEventOdds bound the odds of an outcome, in
 	// hundredths: 101 is ×1.01, MaxMultiplier ×10000.
 	MinEventOdds = 101
@@ -270,7 +269,7 @@ func (e *BetEvent) Stake(outcome int, amount int64, now time.Time) (int64, error
 		return 0, nil
 	}
 
-	return amount * int64(e.odds[outcome]) / 100, nil
+	return MulDiv(amount, int64(e.odds[outcome]), 100), nil
 }
 
 // Reodded is the event with new odds, for the stakes made from now on;
@@ -406,7 +405,5 @@ func Payouts(stakes []Stake, winner int) []Stake {
 // share is amount * pool / won rounded down, without overflowing: the
 // stakes may be big.
 func share(amount, pool, won int64) int64 {
-	n := new(big.Int).Mul(big.NewInt(amount), big.NewInt(pool))
-
-	return n.Quo(n, big.NewInt(won)).Int64()
+	return MulDiv(amount, pool, won)
 }
