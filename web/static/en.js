@@ -3163,6 +3163,7 @@ export default {
   'республика': 'republic',
   'диктатура': 'dictatorship',
   'федерация': 'federation',
+  'исламизм': 'Islamism',
   'министр экономики': 'minister of economy',
   'министр иностранных дел': 'minister of foreign affairs',
   'министр обороны': 'minister of defense',

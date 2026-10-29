@@ -153,6 +153,10 @@
   /* «Мир»: the palettes of flags and of states (flag.js), the same in
      every theme — a flag is a flag. */
   --back-ffffff: #ffffff;
+  /* The words over the world map: dark ink on a pale halo in every theme,
+     as the map itself is the same picture. */
+  --text-2b2116: #2b2116;
+  --text-fbf6e9: #fbf6e9;
   --back-45708f: #45708f;
   --back-1a1a1a: #1a1a1a;
   --back-c8102e: #c8102e;

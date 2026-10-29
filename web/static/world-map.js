@@ -15,8 +15,8 @@ import { worldResources } from './labels.js';
 export const TILE = 256;
 export const BASE_WIDTH = 2 * TILE;
 
-// The closest zoom any map has; the one a world has is learned when its
-// tiles run out.
+// The closest zoom any map has: an atlas says how many a world has, and
+// one kept from before it did learns it when the tiles run out.
 const MAX_ZOOM = 6;
 
 // The canvas of a phone is drawn no finer than twice its pixels: finer is
@@ -126,7 +126,7 @@ export function createWorldMap(box, { worldId, atlas, raster, onSelect = () => {
 
   let view = { x: 0, y: 0, scale: 1, width: 1, height: 1 };
   let ratio = 1;
-  let maxZoom = MAX_ZOOM;
+  let maxZoom = atlas.zooms > 0 ? Math.min(atlas.zooms - 1, MAX_ZOOM) : MAX_ZOOM;
   let mode = 'political';
   let owners = [];
   let states = [];
@@ -249,7 +249,7 @@ export function createWorldMap(box, { worldId, atlas, raster, onSelect = () => {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = `rgba(${halo.join(',')},0.85)`;
+    ctx.strokeStyle = `rgba(${halo.join(',')},0.9)`;
     ctx.fillStyle = `rgb(${text.join(',')})`;
     const at = (x, y) => [(x - view.x) * view.scale * ratio, (y - view.y) * view.scale * ratio];
     const taken = [];
@@ -262,7 +262,7 @@ export function createWorldMap(box, { worldId, atlas, raster, onSelect = () => {
       ctx.font = `${bold ? 'bold ' : ''}${Math.round(size * ratio)}px Tahoma, Verdana, sans-serif`;
       const w = ctx.measureText(s).width;
       if (!free(x - w / 2, y - size * ratio / 2, w, size * ratio)) return;
-      ctx.lineWidth = 3 * ratio;
+      ctx.lineWidth = 3.5 * ratio;
       ctx.strokeText(s, x, y);
       ctx.fillText(s, x, y);
     };
@@ -288,7 +288,7 @@ export function createWorldMap(box, { worldId, atlas, raster, onSelect = () => {
       if (mode === 'resources' && p.resources?.length && side > 14) {
         word(p.resources.map((r) => worldResources[r]?.[1] ?? '').join(''), x, y + 12 * ratio, 12);
       }
-      if (side > 60 || (p.freeCity && side > 30)) word(p.name, x, y, 10);
+      if (side > 60 || (p.freeCity && side > 30)) word(p.name, x, y, 11, p.freeCity);
     }
   }
 

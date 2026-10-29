@@ -3504,6 +3504,7 @@ export const governments = [
   ['republic', tr('республика')],
   ['dictatorship', tr('диктатура')],
   ['federation', tr('федерация')],
+  ['islamism', tr('исламизм')],
 ];
 
 export const governmentName = (g) => governments.find(([v]) => v === g)?.[1] ?? g;
