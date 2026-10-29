@@ -8,7 +8,7 @@ import { sendSealed } from './e2ee.js';
 import { chatTitle, conversationOf, conversationPath, conversationValue, formatPostDate, forwardTree, messagePreview, snippet } from './labels.js';
 import { el, fullName, isPhone, showError, hideError } from './layout.js';
 import { button, openModal, openSheet } from './modal.js';
-import { photosNode, sharedNode, sharedPhotoNode } from './posts.js';
+import { dots, photosNode, sharedNode, sharedPhotoNode } from './posts.js';
 import { stickerNode } from './stickers.js';
 import { documentsNode } from './docs.js';
 import { tr } from './i18n.js';
@@ -64,7 +64,7 @@ const actionIcons = {
 };
 
 // actionsNode is what can be done with a message, under its date: one
-// link "Действия" opening the list, as "Прикрепить" of a form does, so
+// "⋯" opening the list, as the footer of a post has, as "Прикрепить" of a form does, so
 // that the actions do not stretch the message; each is a link with its
 // icon. actions are [name, click] pairs; those not available are falsy.
 export function actionsNode(actions) {
@@ -75,13 +75,13 @@ export function actionsNode(actions) {
   if (isPhone()) {
     return el('a', {
       className: 'im-message-action message-actions',
-      textContent: tr('Действия'),
+      title: tr('Действия'),
       onclick: () => openSheet(shown.map(([name, run]) => ({ text: name, run, danger: name === tr('Удалить') }))),
-    });
+    }, dots());
   }
 
   return el('span', { className: 'attach-menu attach-auto message-actions' },
-    el('a', { className: 'attach-toggle im-message-action', textContent: tr('Действия') }),
+    el('a', { className: 'attach-toggle im-message-action', title: tr('Действия') }, dots()),
     el('span', { className: 'attach-list' },
       ...shown.map(([name, onclick]) => el('a', { className: `attach-link ${actionIcons[name] ?? ''}`.trim(), textContent: name, onclick }))));
 }

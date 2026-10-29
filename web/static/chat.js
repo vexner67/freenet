@@ -24,7 +24,7 @@ import { isLive, onEvent } from './events.js';
 import { openAvatarDialog } from './avatar.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
 import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, photoChanges, primeDress, primeNameClass, selectedCount, snippet } from './labels.js';
-import { $, avatarURL, chatPhotoURL, el, fullName, isPhone, keepFocus, whenShown, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
+import { $, avatarURL, chatPhotoURL, el, fullName, keepFocus, whenShown, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
 import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
@@ -660,7 +660,7 @@ function chatActions(active) {
 }
 
 // aboutActions are the actions of the chat as rows with their marks, at
-// the top of "О чате" on a phone; a row closes the window first.
+// the top of "О чате"; a row closes the window first.
 function aboutActions(modal) {
   return el('div', { className: 'chat-about-actions' }, ...chatActions(true).map(([text, run, mark]) => (typeof run === 'string'
     ? el('a', { className: `chat-about-action ${mark}`, href: run, textContent: text })
@@ -713,7 +713,7 @@ function openAbout() {
     chat.state === 'active' ? photoLinks : '',
     el('b', { textContent: chatTitle(chat) }),
     el('div', { className: 'hint', textContent: chatMembers(chat.memberCount) }),
-    isPhone() && chat.state === 'active' ? aboutActions(modal) : '',
+    chat.state === 'active' ? aboutActions(modal) : '',
     people,
     chat.ownerId === me.id && chat.state === 'active' && el('p', { className: 'album-delete' },
       tr('Вы также можете '), el('a', { textContent: tr('удалить беседу'), onclick: () => { modal.close(); confirmDeleteChat(); } }), '.'),
@@ -730,8 +730,9 @@ function show(now) {
   const link = ([text, run, mark]) => (typeof run === 'string'
     ? el('a', { className: `chat-bar-action ${mark}`, href: run, textContent: text })
     : el('a', { className: `chat-bar-action ${mark}`, textContent: text, onclick: run }));
-  // A phone has them in "О чате", in rows.
-  const links = isPhone() && active ? [] : chatActions(active).map(link);
+  // An active chat has them in "О чате", in rows; over the messages stays
+  // only the search of a chat one has left.
+  const links = active ? [] : chatActions(active).map(link);
 
   document.title = tr('{0} | Сообщения', chatTitle(chat));
   $('title').replaceChildren(el('a', { href: '/im', textContent: tr('Мои Сообщения') }), ' » ', chatTitle(chat));
@@ -827,8 +828,8 @@ if (!me) {
     $('about').addEventListener('click', openAbout);
     $('messenger').hidden = false;
     show(found);
-    // A phone opens a chat to write in it, as its messengers do.
-    if (isPhone() && !$('form').hidden) whenShown().then(() => $('text').focus({ preventScroll: true }));
+    // A chat is opened to write in it, as messengers do.
+    if (!$('form').hidden) whenShown().then(() => $('text').focus({ preventScroll: true }));
     add(page.messages, false);
     olderCursor = page.nextCursor;
     // At the end, and kept there while the messages take their height.

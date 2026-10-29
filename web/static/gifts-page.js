@@ -6,7 +6,7 @@
 // collection. On one's own page it is "Купить подарок": one for oneself.
 
 import { api, currentUser } from './api.js';
-import { collectibleName, formatPostDate, genitiveName, giftCollections, giftNames, giftPrice, voteRate, votesCount } from './labels.js';
+import { balanceAmount, collectibleName, formatPostDate, genitiveName, giftCollections, giftNames, giftPrice, voteRate, votesCount } from './labels.js';
 import { collectibleCard, giftPath, giftPicture, giftRow, giftsPath, menuPath, pickPath } from './gifts.js';
 import { $, avatarURL, el, fullName, hideError, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
@@ -179,7 +179,7 @@ function confirm(owner, me, gift, price) {
   const anonymous = el('input', { type: 'checkbox' });
   const error = el('div', { className: 'error', hidden: true });
   const send = button(mine ? tr('Купить подарок') : tr('Отправить подарок'), null, { type: 'submit' });
-  const balance = el('div', { className: 'gift-send-balance', textContent: tr('У Вас {0}', votesCount(me.votes ?? 0)) });
+  const balance = el('div', { className: 'gift-send-balance', textContent: tr('У Вас {0}', balanceAmount(me.votes ?? 0)) });
 
   rate.then((kopecks) => {
     if (kopecks) balance.append(` (${voteRate(kopecks)})`);

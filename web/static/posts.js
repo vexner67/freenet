@@ -44,8 +44,10 @@ export function postPath(post) {
 //   withCommentsLink: false on the page of the post, which shows the comments;
 //   onWallOf: the viewer (null for anonymous) when posts of several walls
 //     are mixed, as in the news feed: someone else's wall is then named,
-//     "написал на стене Петра Петрова", as openvk does there only.
-export function postNode(post, { viewer = null, moderates = false, onDelete, onPinned, onArchived, canLike = false, onError, withCommentsLink = true, onWallOf, found = '' } = {}) {
+//     "написал на стене Петра Петрова", as openvk does there only;
+//   pageOf: the owner of the page the wall is on: their own posts there
+//     go without the pattern of their page, which is already behind them.
+export function postNode(post, { viewer = null, moderates = false, onDelete, onPinned, onArchived, canLike = false, onError, withCommentsLink = true, onWallOf, pageOf, found = '' } = {}) {
   const path = pagePath(post.author);
   const date = el('div', { className: 'post-date' });
   const content = el('div', { className: 'post-content' });
@@ -243,7 +245,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     }
   }
 
-  const node = el('div', { className: ['post', ...primeDress(post.author)].join(' ') },
+  const node = el('div', { className: ['post', ...(pageOf?.id === post.author.id ? [] : primeDress(post.author))].join(' ') },
     el('a', { className: 'post-avatar', href: path },
       el('img', { src: avatarURL(post.author, 'small'), alt: '' }),
       // openvk's "Онлайн" under the photo of a person who is on the site.
@@ -621,7 +623,8 @@ function bubble() {
   return icon('M1 0h9a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1H5L2.5 10V7.5H1a1 1 0 0 1-1-1V1a1 1 0 0 1 1-1Z');
 }
 
-function dots() {
+// dots are "⋯", the mark of a list of actions.
+export function dots() {
   return icon('M1.3 3.7a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6Zm4.2 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6Zm4.2 0a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6Z');
 }
 

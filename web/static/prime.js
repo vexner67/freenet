@@ -6,7 +6,7 @@
 
 import { api, currentUser, started } from './api.js';
 import {
-  formatDateTime, primeBackgrounds, primeFrames, primeMoodIcons, primeMoodText, primeMoods, primeNames, primePeriods,
+  balanceAmount, formatDateTime, primeBackgrounds, primeFrames, primeMoodIcons, primeMoodText, primeMoods, primeNames, primePeriods,
   primeNameClass, primeSaving, primeStyleClasses, primeTerms, transferNickname, votesAmount,
 } from './labels.js';
 import { $, avatarURL, el, fullName, hideError, pagePath, profilePath, renderChrome, showError, verifiedMark } from './layout.js';
@@ -33,7 +33,7 @@ function showState(me) {
     : tr('У вас пока нет Prime.');
   // One who has Prime sees what it gives, not its prices.
   $('buy-part').hidden = Boolean(until);
-  $('balance').textContent = votesAmount(me.votes ?? 0);
+  $('balance').textContent = balanceAmount(me.votes ?? 0);
   $('invisible-part').hidden = !until;
   $('style-part').hidden = !until;
   $('invisible').checked = Boolean(me.primeInvisible);

@@ -9,7 +9,7 @@
 
 import { api, currentUser, session, started } from './api.js';
 import {
-  firmEventAbout, firmEventName, firmKindName, firmPictures, formatDateTime, groupedVotes, hundredths, hundredthsOf, isGoodEvent, priceChange, sharePercent, stockHour, stockTick, votesAmount,
+  balanceAmount, firmEventAbout, firmEventName, firmKindName, firmPictures, formatDateTime, groupedVotes, hundredths, hundredthsOf, isGoodEvent, priceChange, sharePercent, stockHour, stockTick, votesAmount,
 } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { candleChart, lineChart, sparkline } from './charts.js';
@@ -176,7 +176,7 @@ function accountBox(anchor) {
     const n = amount.get();
     amount.limit(1, Math.max(1, most()));
     after.textContent = way === 'in'
-      ? tr('На счету станет {0}, у вас останется {1}', money(state.account + n * 100), votesAmount(balance - n))
+      ? tr('На счету станет {0}, у вас останется {1}', money(state.account + n * 100), balanceAmount(balance - n))
       : tr('На счету останется {0}, вам придёт {1}', money(state.account - n * 100), votesAmount(n));
     go.textContent = way === 'in' ? tr('Пополнить на {0}', votesAmount(n)) : tr('Вывести {0}', votesAmount(n));
     go.disabled = most() < 1;
@@ -201,7 +201,7 @@ function accountBox(anchor) {
     ])),
     after,
     el('div', { className: 'pop-actions' }, go),
-    el('div', { className: 'pop-note', textContent: tr('На ваших голосах: {0}. Выводить голоса могут страницы старше недели с заполненной анкетой.', votesAmount(balance)) }),
+    el('div', { className: 'pop-note', textContent: tr('На ваших голосах: {0}. Выводить голоса могут страницы старше недели с заполненной анкетой.', balanceAmount(balance)) }),
   );
   recount();
   pop.place();

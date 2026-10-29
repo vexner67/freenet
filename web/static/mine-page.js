@@ -8,7 +8,7 @@
 // panel (/admin/mine).
 
 import { api, currentUser, session, started } from './api.js';
-import { energyWait, experienceCount, groupedVotes, mineDug, mineEnergy, mineSold, oreName, orePrice, oreValue, plural, unitsCount, votesAmount, votesFontSize } from './labels.js';
+import { balanceVotes, balanceWord, energyWait, experienceCount, groupedVotes, mineDug, mineEnergy, mineSold, oreName, orePrice, oreValue, unitsCount, votesAmount, votesFontSize } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
 
@@ -25,9 +25,9 @@ let busy = false;
 let rows = new Map();
 
 function showBalance(votes) {
-  $('votes').textContent = groupedVotes(votes);
+  $('votes').textContent = balanceVotes(votes);
   $('votes').style.fontSize = `${votesFontSize(votes)}px`;
-  $('votes-word').textContent = plural(votes, ['голос', 'голоса', 'голосов']);
+  $('votes-word').textContent = balanceWord(votes);
   $('balance').hidden = false;
 }
 

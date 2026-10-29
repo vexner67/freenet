@@ -851,14 +851,17 @@ async function prime(answered) {
   $('prime').hidden = false;
 }
 
-// petSettings is "Питомцы": the prices of the four pets, of a meal, what a
-// win brings and how many fights a day a pet has, and how the pets do.
+// petSettings is "Питомцы": the prices of the four pets of the shop, of the
+// cases, of a meal, what a win brings and how many fights a day a pet has,
+// and how the pets do.
 async function petSettings(answered) {
   const kinds = ['cat', 'dog', 'hamster', 'dragon'];
+  const cases = ['bronze', 'silver', 'gold'];
   const save = $('pets-form').querySelector('button[type=submit]');
 
   const show = (settings) => {
     for (const kind of kinds) $(`pet-${kind}`).value = String(settings.shop.prices[kind] ?? 0);
+    for (const c of cases) $(`pet-case-${c}`).value = String(settings.shop.cases?.[c] ?? 0);
     $('pet-meal').value = String(settings.shop.meal);
     $('pet-win').value = String(settings.shop.win);
     $('pet-fights').value = String(settings.shop.fights);
@@ -876,6 +879,7 @@ async function petSettings(answered) {
     try {
       await api.setPetSettings({
         prices: Object.fromEntries(kinds.map((kind) => [kind, Number($(`pet-${kind}`).value)])),
+        cases: Object.fromEntries(cases.map((c) => [c, Number($(`pet-case-${c}`).value)])),
         meal: Number($('pet-meal').value),
         win: Number($('pet-win').value),
         fights: Number($('pet-fights').value),

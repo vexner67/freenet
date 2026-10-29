@@ -8,7 +8,7 @@
 // and "Кредит" (?act=loan).
 
 import { api, currentUser, started } from './api.js';
-import { MAX_RATING, RATING_PRICE, bankRate, bankVotes, TRANSFER_FEE_PERCENT, formatDateTime, groupedVotes, isEndless, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, votesFontSize, voucherGave } from './labels.js';
+import { balanceVotes, balanceWord, balanceAmount, MAX_RATING, RATING_PRICE, bankRate, bankVotes, TRANSFER_FEE_PERCENT, formatDateTime, isEndless, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, votesFontSize, voucherGave } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError, verifiedMark } from './layout.js';
 import { tr } from './i18n.js';
 import { isNickname, recipientPicker } from './recipient.js';
@@ -35,9 +35,9 @@ function say(title, ...rest) {
 }
 
 function showBalance(votes, kopecks) {
-  $('votes').textContent = groupedVotes(votes);
+  $('votes').textContent = balanceVotes(votes);
   $('votes').style.fontSize = `${votesFontSize(votes)}px`;
-  $('votes-word').textContent = plural(votes, ['голос', 'голоса', 'голосов']);
+  $('votes-word').textContent = balanceWord(votes);
   // The endless balance of an administrator is worth no sum.
   $('votes-rubles').textContent = kopecks && !isEndless(votes) ? `≈ ${rubles(votes * kopecks)}` : '';
 }
@@ -61,7 +61,7 @@ function operationRow(op, me) {
     el('div', { className: 'bank-op-about' }, ...about),
     el('div', { className: 'bank-op-sum' },
       el('b', { className: op.amount < 0 ? 'bank-out' : 'bank-in', textContent: signedVotes(op.amount) }),
-      el('div', { className: 'bank-op-balance', textContent: tr('остаток {0}', votesAmount(op.balance)) })));
+      el('div', { className: 'bank-op-balance', textContent: tr('остаток {0}', balanceAmount(op.balance)) })));
 }
 
 // showBonus is the daily bonus: a button while it waits for the caller
@@ -142,7 +142,7 @@ async function initAccount(me) {
 // recipient picked as recipient.js has it.
 function initTransfer(me) {
   const to = $('transfer-to');
-  $('transfer-balance').textContent = votesAmount(me.votes ?? 0);
+  $('transfer-balance').textContent = balanceAmount(me.votes ?? 0);
 
   const picker = recipientPicker({
     to, me, people: $('transfer-people'), shown: $('transfer-recipient'),
@@ -187,14 +187,14 @@ function initTransfer(me) {
       const left = await api.transferVotes(recipient.nickname, sent, $('transfer-note').value.trim());
 
       me.votes = left.votes;
-      $('transfer-balance').textContent = votesAmount(left.votes);
+      $('transfer-balance').textContent = balanceAmount(left.votes);
       $('transfer-votes').value = '';
       $('transfer-note').value = '';
       $('transfer-fee').hidden = true;
       say(tr('Голоса переданы'), tr('Вы успешно передали '), el('b', { textContent: votesAmount(sent) }), ' — ',
         el('a', { href: pagePath(recipient), textContent: fullName(recipient) }), '. ',
         tr('Комиссия: {0}.', votesAmount(left.fee)), ' ',
-        el('a', { href: '/votes', textContent: tr('На вашем счету {0}.', votesAmount(left.votes)) }));
+        el('a', { href: '/votes', textContent: tr('На вашем счету {0}.', balanceAmount(left.votes)) }));
     } catch (e) {
       showError(error, e.status === 404 ? tr('Получатель не найден.') : e);
     } finally {
@@ -207,7 +207,7 @@ function initTransfer(me) {
 // votes, the price shown as they are typed.
 function initRating(me) {
   const percent = $('rating-percent');
-  $('rating-balance').textContent = votesAmount(me.votes ?? 0);
+  $('rating-balance').textContent = balanceAmount(me.votes ?? 0);
   // The rating of the page is what its profile shows: how full it is
   // plus the rating raised, together at most MAX_RATING. One who has it
   // is told so instead of the form, which cannot work.
@@ -246,11 +246,11 @@ function initRating(me) {
       me.votes = raised.balance;
       me.completeness = Math.min(page() + raised.rating - (me.rating ?? 0), MAX_RATING);
       me.rating = raised.rating;
-      $('rating-balance').textContent = votesAmount(raised.balance);
+      $('rating-balance').textContent = balanceAmount(raised.balance);
       percent.value = '';
       $('rating-cost').hidden = true;
       say(tr('Рейтинг повышен'), tr('Теперь ваш рейтинг — {0} %.', page()), ' ',
-        el('a', { href: '/votes', textContent: tr('На вашем счету {0}.', votesAmount(raised.balance)) }));
+        el('a', { href: '/votes', textContent: tr('На вашем счету {0}.', balanceAmount(raised.balance)) }));
       if (full()) $('rating-form').hidden = true;
     } catch (e) {
       showError(error, e);
@@ -265,7 +265,7 @@ function showBank(bank, balance) {
   const { settings: s, account: a } = bank;
   const owed = Math.ceil(a.debt / 100);
 
-  for (const b of document.querySelectorAll('.bank-balance-votes')) b.textContent = votesAmount(balance);
+  for (const b of document.querySelectorAll('.bank-balance-votes')) b.textContent = balanceAmount(balance);
   $('deposit-state').textContent = a.deposit
     ? tr('На вкладе {0}.', bankVotes(a.deposit))
     : tr('Вклада пока нет.');
@@ -324,7 +324,7 @@ async function initBank(me) {
         withdraw: tr('Голоса сняты со вклада'),
         loan: tr('Кредит получен'),
         repay: bank.account.debt ? tr('Часть кредита погашена') : tr('Кредит погашен'),
-      }[action], tr('{0}. На вашем счету {1}.', votesAmount(moved.votes), votesAmount(moved.balance)));
+      }[action], tr('{0}. На вашем счету {1}.', votesAmount(moved.votes), balanceAmount(moved.balance)));
     } catch (e) {
       showError(error, e);
     } finally {
@@ -389,7 +389,7 @@ function initTopUp(me) {
       me.votes = got.balance;
       for (const key of keys) key.value = '';
       say(tr('Ваучер активирован'), tr('Вам начислено: {0}. Этим кодом вы больше не сможете его активировать. ', voucherGave(got)),
-        el('a', { href: '/votes', textContent: tr('На вашем счету {0}.', votesAmount(got.balance)) }));
+        el('a', { href: '/votes', textContent: tr('На вашем счету {0}.', balanceAmount(got.balance)) }));
     } catch (e) {
       showError(error, e);
     } finally {

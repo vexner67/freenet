@@ -899,13 +899,14 @@ body.prime-bg.prime-bg-trip::before {
 }
 /* In the ratings the pattern is behind the whole row, from edge to edge:
    on the cells, fixed to the screen so it runs on across them unbroken
-   (a ::before of a row would be taken for a cell of its own), and faded
-   as behind a post. */
+   (a ::before of a row would be taken for a cell of its own), and dimmed
+   as behind a message: the pattern on its plate, under a veil of the page
+   as thick as the 0.7 opacity of a message leaves. */
 .top-row.prime-dressed { position: static; isolation: auto; }
 .top-row.prime-dressed::before { content: none; }
 .top-row.prime-dressed td {
-  background: linear-gradient(color-mix(in srgb, var(--back-f2f5f8) 30%, transparent), color-mix(in srgb, var(--back-f2f5f8) 30%, transparent)),
-    var(--prime-pattern) fixed;
+  background: linear-gradient(color-mix(in srgb, var(--back-fff) 30%, transparent), color-mix(in srgb, var(--back-fff) 30%, transparent)),
+    var(--prime-pattern) fixed, var(--back-f2f5f8);
 }
 /* A dressed block is its own stacking context, so the open menu of its
    actions would slip under the next message or comment: the block with
@@ -1033,6 +1034,9 @@ body.prime-bg.prime-bg-trip::before {
    the message actions of VK, always on touch screens and while open; the
    list is that of "Прикрепить", without icons, at the right edge. */
 .im-message-action { font-size: 10px; visibility: hidden; cursor: pointer; }
+/* "⋯" of a message, as the one of a post: grey dots, darker under the mouse. */
+.im-message-action svg { display: block; width: 15px; height: 14px; fill: var(--text-2b587a); opacity: .45; }
+.im-message-action:hover svg, .attach-menu.open .im-message-action svg { opacity: .8; }
 .im-message:hover .im-message-action, .attach-menu.open .im-message-action { visibility: visible; }
 @media (hover: none) { .im-message-action { visibility: visible; } }
 .message-actions { display: block; margin: 3px 0 0; }
@@ -1052,6 +1056,21 @@ body.prime-bg.prime-bg-trip::before {
 .chat-action-rename::before { background-image: url("/static/icons/edit.svg"); }
 .chat-action-leave::before { background-image: url("/static/icons/chat-leave.svg"); }
 .chat-action-leave { color: var(--text-c33); }
+/* "О чате": what may be done with the chat, rows with their marks under the
+   name, as on a phone, but the size of a mouse: grey under it, leaving red. */
+.chat-about-actions { margin: 6px -10px 8px; border-top: 1px solid var(--line-ececec); text-align: left; }
+.chat-about-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line-ececec);
+  color: var(--text-2b587a);
+  cursor: pointer;
+}
+.chat-about-action:hover { background: var(--back-f0f0f0); text-decoration: none; }
+.chat-about-action::before { content: ""; flex-shrink: 0; width: 16px; height: 16px; background-repeat: no-repeat; background-position: center; background-size: 16px; }
+.chat-bar #actions:empty { display: none; }
 .safety-code { margin: 8px 0; font: bold 16px monospace; letter-spacing: 1px; text-align: center; }
 /* "Двухфакторная аутентификация" (twofactor.js): the QR code at its own
    pixels in a white frame, the key under it, the code in a form row and
@@ -1884,7 +1903,9 @@ a.poll-result-name { cursor: pointer; }
 /* A sticker keeps its shape: one of the studio, a photo of any shape,
    is fitted into the square, not stretched over it. */
 .sticker { display: block; width: 160px; height: 160px; margin: 2px 0; object-fit: contain; }
-.im-message img.sticker { width: 160px; height: 160px; object-fit: contain; border-radius: 0; }
+/* A sticker of any shape starts at the top left corner of its square, so
+   that every one comes up at the same place. */
+.im-message img.sticker { width: 160px; height: 160px; object-fit: contain; object-position: left top; border-radius: 0; }
 .sticker-panel { margin: 8px 0 0; padding: 8px; max-height: 260px; overflow-y: auto; border: 1px solid var(--line-dedede); background: var(--back-fff); }
 .sticker-pack { margin: 0 0 8px; }
 .sticker-pack-title { display: block; margin: 0 0 4px; color: var(--text-45688e); }
@@ -2305,6 +2326,12 @@ button.stock-plaque:hover { background: var(--back-f2f5f8); border-color: var(--
 .deal-summary div { display: flex; justify-content: space-between; }
 .deal-go, .deal.buy .deal-go, .deal-go.buy { padding: 6px 10px; background: var(--back-3f8f35); border-color: var(--back-3f8f35); font-size: 12px; font-weight: bold; }
 .deal.sell .deal-go, .deal-go.sell { background: var(--back-d23a32); border-color: var(--back-d23a32); }
+/* A click on an order of another enterprise: green buys, red sells. */
+.deal-take { padding: 2px 8px; background: var(--back-3f8f35); border-color: var(--back-3f8f35); font-weight: bold; }
+.deal-take.sell { background: var(--back-d23a32); border-color: var(--back-d23a32); }
+.deal-take:disabled { background: var(--back-595959); border-color: var(--back-595959); opacity: .5; }
+.deal-side.buy { color: var(--back-3f8f35); }
+.deal-side.sell { color: var(--back-d23a32); }
 
 /* The card of an enterprise: plaques that open mini windows, tiles of the
    storage, cards of the improvements and of the orders of the city. */
@@ -3131,9 +3158,9 @@ img.name-prime.name-prime {
 .pet-adopt input { width: 160px; }
 .pet-card { display: flex; gap: 14px; align-items: flex-start; margin: 0 0 10px; padding: 10px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
 .pet-stage { flex: none; display: flex; align-items: flex-end; justify-content: center; width: 120px; height: 120px; background: var(--back-fff) linear-gradient(to top, var(--back-dcefd9) 22px, transparent 22px); border: 1px solid var(--line-c3cad2); }
-.pet-stage .pet-picture { margin-bottom: 8px; }
-.pet-happy .pet-picture { animation: pet-hop 1.6s steps(2) infinite; }
-.pet-sad .pet-picture { filter: grayscale(0.7); }
+.pet-stage > * { margin-bottom: 8px; }
+.pet-happy > * { animation: pet-hop 1.6s steps(2) infinite; }
+.pet-sad > * { filter: grayscale(0.7); }
 @keyframes pet-hop { 50% { transform: translateY(-6px); } }
 .pet-info { flex: 1; min-width: 0; }
 .pet-name { font-size: 13px; }
@@ -3176,8 +3203,80 @@ img.name-prime.name-prime {
 .pet-fight-name { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
 .pet-result { text-align: center; }
 .pet-links { margin: 10px 0 0; color: var(--text-808080); }
+/* Rarities, chests and clothes of pets: plates of colour and boxes with a
+   bevel, as the browser games of the 2000s drew their loot. */
+.pet-dressed { position: relative; display: block; flex: none; }
+.pet-cloth { position: absolute; }
+.pet-rarity { display: inline-block; padding: 0 5px; font-size: 10px; font-weight: bold; line-height: 15px; color: var(--text-fff); text-shadow: 0 1px 0 rgb(0 0 0 / 30%); border: 1px solid rgb(0 0 0 / 20%); }
+.pet-rarity-common { background: var(--back-8b8b8b); }
+.pet-rarity-rare { background: var(--back-2e7dd7); }
+.pet-rarity-epic { background: var(--back-6a3fd8); }
+.pet-rarity-legendary { color: var(--text-58462a); text-shadow: none; background: var(--back-f0d878); border-color: var(--line-a8800f); }
+.pet-kind-rare, .pet-kind-rare .pet-kind-picture { border-color: var(--line-8fa7c2); }
+.pet-kind-epic, .pet-kind-epic .pet-kind-picture { border-color: var(--back-c7b2ee); }
+.pet-kind-legendary, .pet-kind-legendary .pet-kind-picture { border-color: var(--line-e2b24a); }
+.pet-cases { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 10px; }
+.pet-case { display: flex; gap: 10px; align-items: center; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); border-left-width: 4px; }
+.pet-case-bronze { border-left-color: var(--line-c3a476); }
+.pet-case-silver { border-left-color: var(--line-aaa); }
+.pet-case-gold { border-left-color: var(--line-e2b24a); background: var(--back-f9f6e7); }
+.pet-case-picture { flex: none; padding: 4px; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
+.pet-case-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pet-case-buy { flex: none; }
+.pet-odds { display: flex; height: 8px; margin-top: 2px; background: var(--back-e6e6e6); border: 1px solid var(--line-ccc); }
+.pet-odds-part { height: 100%; }
+.pet-odds-legend { display: flex; flex-wrap: wrap; gap: 2px 10px; color: var(--text-808080); font-size: 10px; }
+.pet-odds-legend i { display: inline-block; width: 8px; height: 8px; margin-right: 3px; vertical-align: -1px; }
+.pet-case-inside { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
+.pet-case-pet { padding: 1px; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
+.pet-roulette-modal { width: 460px; }
+.pet-roulette { position: relative; height: 84px; overflow: hidden; background: var(--back-3e3e3e); border: 1px solid var(--line-2f2f2f); box-shadow: inset 0 0 12px rgb(0 0 0 / 60%); }
+.pet-roulette-tape { display: flex; gap: 4px; padding: 6px 0; }
+.pet-roulette-spin { transition: transform 4.2s cubic-bezier(0.12, 0.7, 0.18, 1); }
+.pet-roulette-cell { flex: none; display: flex; align-items: center; justify-content: center; width: 72px; height: 72px; background: var(--back-fff); border: 2px solid var(--line-dae1e8); }
+.pet-roulette-mark { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; background: var(--back-ffd54a); box-shadow: 0 0 6px var(--back-ffd54a); }
+.pet-roulette-done .pet-roulette-mark { animation: casino-won 0.5s 3; }
+.pet-reveal { display: flex; gap: 12px; align-items: flex-start; margin-top: 10px; }
+.pet-reveal-picture { flex: none; padding: 6px; background: var(--back-fff); border: 2px solid var(--line-dae1e8); }
+.pet-reveal-text { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.pet-reveal-text input { width: 180px; }
+.pet-reveal-title { font-size: 13px; font-weight: bold; }
+.pet-powers { margin: 4px 0 6px; }
+.pet-power { display: flex; gap: 8px; align-items: center; width: 100%; padding: 3px 4px; font: inherit; color: inherit; text-align: left; cursor: pointer; background: none; border: 0; border-bottom: 1px dotted var(--line-dae1e8); }
+.pet-power:hover, .pet-power-open { background: var(--back-f2f5f8); }
+.pet-power-label { flex: none; width: 110px; color: var(--text-808080); }
+.pet-power-bar { flex: 1; display: flex; height: 12px; background: var(--back-e6e6e6); border: 1px solid var(--line-ccc); box-shadow: inset 0 1px 1px rgb(0 0 0 / 10%); }
+.pet-power-part { height: 100%; transition: width 0.3s; }
+.pet-power-breed { background: var(--back-5b7aa1); }
+.pet-power-levels { background: var(--back-ffd54a); }
+.pet-power-clothes { background: var(--back-43a047); }
+.pet-power-value { flex: none; width: 40px; text-align: right; }
+.pet-power-about { margin: 0 0 4px 118px; padding: 4px 6px; color: var(--text-555); background: var(--back-f9f6e7); border: 1px solid var(--line-d7cf9e); }
+.pet-power-sum { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 3px; }
+.pet-power-sum i { display: inline-block; width: 8px; height: 8px; margin-right: 3px; vertical-align: -1px; }
+.pet-power-crit { display: flex; gap: 8px; padding: 3px 4px; }
+.pet-wardrobe { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 6px 0 10px; }
+.pet-slot { background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.pet-slot-title { padding: 2px 6px; font-weight: bold; color: var(--text-45688e); background: var(--back-e9edf1); border-bottom: 1px solid var(--line-dae1e8); }
+.pet-slot-items { display: flex; flex-direction: column; gap: 4px; padding: 4px; }
+.pet-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 4px; text-align: center; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
+.pet-item:hover, .pet-item:focus-within { border-color: var(--line-8fa7c2); }
+.pet-item-owned { background: var(--back-f2f5f8); }
+.pet-item-worn { background: var(--back-dcefd9); border-color: var(--line-d5ddb6); }
+.pet-item-picture { display: flex; align-items: center; justify-content: center; height: 24px; }
+.pet-item-name { font-weight: bold; }
+.pet-item-bonus { color: var(--text-0c7a3c); font-size: 10px; }
+.pet-item-state { color: var(--text-808080); font-size: 10px; }
+.pet-item .button { max-width: 100%; margin-top: 2px; padding-inline: 6px; white-space: normal; }
+.pet-story .pet-log-line { margin: 3px 0; }
+.pet-log-dodge { color: var(--text-808080); font-style: italic; }
+.pet-log-end { margin-top: 4px; color: var(--text-333); font-weight: bold; }
+.pet-fight-tell { display: inline-block; margin-top: 2px; cursor: pointer; }
+.pet-fight-entry { border-bottom: 1px solid var(--line-e8ebee); }
+.pet-fight-entry .pet-fight { border-bottom: 0; }
+.pet-fight-story { margin: 0 4px 6px; padding: 4px 6px; background: var(--back-f9f6e7); border: 1px solid var(--line-d7cf9e); }
 @media (prefers-reduced-motion: reduce) {
-  .pet-happy .pet-picture, .pet-hurt .pet-arena-picture { animation: none; }
+  .pet-happy > *, .pet-hurt .pet-arena-picture, .pet-roulette-done .pet-roulette-mark { animation: none; }
 }
 
 /* The pet on the profile, under the clubs. */

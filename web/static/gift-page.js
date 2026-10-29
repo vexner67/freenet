@@ -4,7 +4,7 @@
 // owner, "Продать", "Аукцион" and "Передать". openvk has nothing like it.
 
 import { api, currentUser, started } from './api.js';
-import { auctionLeft, collectibleName, formatDateTime, giftBackdrops, giftHistoryLine, giftIncome, giftModels, giftSymbols, GIFT_FEE_PERCENT, label, PRIME_GIFT_FEE_PERCENT, traitChance, transferNickname, votesCount } from './labels.js';
+import { balanceAmount, auctionLeft, collectibleName, formatDateTime, giftBackdrops, giftHistoryLine, giftIncome, giftModels, giftSymbols, GIFT_FEE_PERCENT, label, PRIME_GIFT_FEE_PERCENT, traitChance, transferNickname, votesCount } from './labels.js';
 import { collectibleCard, giftsPath } from './gifts.js';
 import { $, el, fullName, hideError, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
@@ -86,7 +86,7 @@ function buy(c, me) {
     await reload(me, tr('Подарок теперь ваш.'));
   }));
 
-  modal.body.append(el('p', { textContent: tr('{0} перейдёт к вам за {1}. У вас {2}.', collectibleName(c.gift), votesCount(price), votesCount(me.votes ?? 0)) }), place);
+  modal.body.append(el('p', { textContent: tr('{0} перейдёт к вам за {1}. У вас {2}.', collectibleName(c.gift), votesCount(price), balanceAmount(me.votes ?? 0)) }), place);
   modal.actions.append(go, button(tr('Отмена'), modal.close, { secondary: true }));
 }
 

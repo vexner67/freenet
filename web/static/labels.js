@@ -1534,16 +1534,33 @@ export function voucherGave({ votes, rating }) {
 }
 
 // groupedVotes is a number of votes with its thousands apart:
-// "1 250 000".
+// "1 250 000" — always the digits, however many: only a balance is "∞"
+// (balanceVotes).
 export function groupedVotes(n) {
-  if (isEndless(n)) return '∞';
-  return String(Math.trunc(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
+  return BigInt(Math.trunc(Math.abs(n))).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0');
 }
 
 // ENDLESS_VOTES is where the balance of an administrator begins: it is
 // kept at a quadrillion, so they can pay for anything (user.EndlessFloor),
-// and shown as "∞".
+// and the balance is shown as "∞"; what they buy, hold or move with it —
+// shares, cash, stakes — is shown in digits.
 export const ENDLESS_VOTES = 10 ** 14;
+
+// balanceVotes is the balance of a person in the box of "Голоса": "∞" for
+// the endless one of an administrator, the digits otherwise.
+export function balanceVotes(n) {
+  return isEndless(n) ? '∞' : groupedVotes(n);
+}
+
+// balanceAmount is a balance with its word: "∞ голосов", "1 250 голосов".
+export function balanceAmount(n) {
+  return isEndless(n) ? tr('∞ голосов') : votesAmount(n);
+}
+
+// balanceWord is the word under a balance: "голосов" under ∞.
+export function balanceWord(n) {
+  return plural(isEndless(n) ? 0 : n, ['голос', 'голоса', 'голосов']);
+}
 
 // isEndless tells the endless balance of an administrator, either way.
 export function isEndless(n) {
@@ -2654,6 +2671,11 @@ const errorTexts = {
   'the pet has fought enough today': tr('Питомец сегодня уже набоялся. Приходите завтра.'),
   'a pet does not fight itself': tr('Питомец не дерётся сам с собой.'),
   'there is nobody to fight': tr('Соперников пока нет.'),
+  'the shop does not sell this pet': tr('Этого питомца в магазине нет — он выпадает только из сундуков.'),
+  'unknown case': tr('Такого сундука нет.'),
+  'unknown pet clothes': tr('Такой одежды нет.'),
+  'the pet has these clothes already': tr('У питомца уже есть эта вещь.'),
+  'the pet has no such clothes': tr('У питомца нет этой вещи — сначала купите её.'),
   'the prices of the pet shop must be from 0': tr('Цены зоомагазина — не меньше 0.'),
   'the fights of a day must be from 1 to 1000': tr('Боёв в день — от 1 до 1000.'),
   'this ore needs more experience': tr('Эту руду можно копать, набравшись опыта.'),
@@ -3344,7 +3366,7 @@ export function activeSection(path, ownPath) {
 }
 
 // petKinds are all the pets in the order the site shows them, as
-// user.PetKinds.
+// user.PetKinds: the shop sells some, the others only drop from cases.
 export const petKinds = ['cat', 'dog', 'hamster', 'dragon', 'rabbit', 'turtle', 'fox', 'owl', 'wolf', 'panda', 'unicorn', 'phoenix'];
 
 const petKindNames = {
@@ -3366,8 +3388,128 @@ const petKindAbout = {
   cat: tr('Ловкий: чаще уворачивается от ударов.'),
   dog: tr('Сильный и выносливый.'),
   hamster: tr('Маленький и везучий: чаще бьёт вдвое сильнее.'),
+  rabbit: tr('Самый быстрый из обычных: бьёт первым.'),
+  turtle: tr('Медленная, но удары от неё отскакивают.'),
+  fox: tr('Хитрый и быстрый, редко промахивается.'),
+  owl: tr('Мудрая: знает, куда бить, — часто бьёт вдвое сильнее.'),
   dragon: tr('Силён во всём, но дорог.'),
+  wolf: tr('Хищник: сильный удар и быстрые лапы.'),
+  panda: tr('Огромная и выносливая, её трудно свалить.'),
+  unicorn: tr('Легенда: силён, крепок и быстр.'),
+  phoenix: tr('Легенда: самый сильный удар и огонь в крыльях.'),
 };
+
+const petRarityNames = {
+  common: tr('обычный'),
+  rare: tr('редкий'),
+  epic: tr('эпический'),
+  legendary: tr('легендарный'),
+};
+
+// petRarities are the rarities from the most common, as user.PetRarities;
+// the odds of a case follow this order.
+export const petRarities = ['common', 'rare', 'epic', 'legendary'];
+
+export function petRarityName(rarity) {
+  return petRarityNames[rarity] ?? rarity;
+}
+
+const petCaseNames = {
+  bronze: tr('Бронзовый сундук'),
+  silver: tr('Серебряный сундук'),
+  gold: tr('Золотой сундук'),
+};
+
+const petCaseAbout = {
+  bronze: tr('Чаще всего — обычный питомец, но может повезти.'),
+  silver: tr('Редкие попадаются чаще обычных.'),
+  gold: tr('Обычных здесь нет: только редкие и лучше.'),
+};
+
+export function petCaseName(id) {
+  return petCaseNames[id] ?? id;
+}
+
+export function petCaseText(id) {
+  return petCaseAbout[id] ?? '';
+}
+
+// petOdds are the chances of a case in percent, by rarity: odds are per
+// mille, as user.PetCaseOdds.
+export function petOdds(odds) {
+  return odds.map((n) => {
+    const percent = n / 10;
+    return Number.isInteger(percent) ? `${percent}%` : `${percent.toFixed(1)}%`;
+  });
+}
+
+const petItemNames = {
+  cap: tr('Кепка'),
+  helmet: tr('Шлем'),
+  crown: tr('Корона'),
+  glasses: tr('Очки'),
+  shades: tr('Тёмные очки'),
+  monocle: tr('Монокль'),
+  bow: tr('Бантик'),
+  scarf: tr('Шарф'),
+  medal: tr('Медаль'),
+  sweater: tr('Свитер'),
+  armor: tr('Доспехи'),
+  cape: tr('Плащ'),
+};
+
+export function petItemName(item) {
+  return petItemNames[item] ?? item;
+}
+
+const petSlotNames = {
+  head: tr('Голова'),
+  eyes: tr('Глаза'),
+  neck: tr('Шея'),
+  body: tr('Туловище'),
+};
+
+// petSlots are the places of clothes, as user.PetSlots.
+export const petSlots = ['head', 'eyes', 'neck', 'body'];
+
+export function petSlotName(slot) {
+  return petSlotNames[slot] ?? slot;
+}
+
+// petStatNames are the stats of a pet as the page names them.
+export const petStats = ['attack', 'defense', 'health', 'speed'];
+
+const petStatNames = {
+  attack: tr('Атака'),
+  defense: tr('Защита'),
+  health: tr('Здоровье'),
+  speed: tr('Скорость'),
+};
+
+const petStatAbout = {
+  attack: tr('Сколько урона наносит удар. Защита соперника отнимает от него часть.'),
+  defense: tr('Сколько урона гасит каждый удар соперника.'),
+  health: tr('Сколько урона питомец выдержит до конца боя.'),
+  speed: tr('Кто быстрее, тот бьёт первым и чаще уворачивается.'),
+};
+
+export function petStatName(stat) {
+  return petStatNames[stat] ?? stat;
+}
+
+export function petStatText(stat) {
+  return petStatAbout[stat] ?? '';
+}
+
+// petBonus is what clothes add: "+3 к атаке, +1 к скорости".
+export function petBonus(bonus) {
+  const parts = [];
+  if (bonus.attack) parts.push(tr('+{0} к атаке', bonus.attack));
+  if (bonus.defense) parts.push(tr('+{0} к защите', bonus.defense));
+  if (bonus.health) parts.push(tr('+{0} к здоровью', bonus.health));
+  if (bonus.speed) parts.push(tr('+{0} к скорости', bonus.speed));
+  return parts.join(', ');
+}
 
 export function petKindName(kind) {
   return petKindNames[kind] ?? kind;
@@ -3402,12 +3544,51 @@ export function petWait(seconds) {
   return tr('{0} с', s);
 }
 
-// petHitText is a hit of a fight as its log says it.
-export function petHitText(hit, attacker, defender) {
-  const [by, to] = hit.byAttacker ? [attacker, defender] : [defender, attacker];
-  if (hit.dodged) return tr('{0} бьёт, но {1} уворачивается.', by.name, to.name);
-  if (hit.crit) return tr('{0} бьёт со всей силы! {1}: −{2}.', by.name, to.name, hit.damage);
-  return tr('{0} бьёт. {1}: −{2}.', by.name, to.name, hit.damage);
+// petMoves are how pets of a kind strike in the story of a fight.
+const petMoves = {
+  cat: [tr('царапает'), tr('бьёт лапой'), tr('кидается на')],
+  dog: [tr('кусает'), tr('бросается на'), tr('хватает зубами')],
+  hamster: [tr('кусает'), tr('кидается на'), tr('пихает щёками')],
+  rabbit: [tr('лягает'), tr('прыгает на'), tr('бьёт задними лапами')],
+  turtle: [tr('кусает'), tr('бьёт панцирем'), tr('толкает')],
+  fox: [tr('кусает'), tr('бросается на'), tr('царапает')],
+  owl: [tr('клюёт'), tr('налетает на'), tr('бьёт крылом')],
+  dragon: [tr('дышит огнём на'), tr('бьёт хвостом'), tr('кусает')],
+  wolf: [tr('рвёт зубами'), tr('бросается на'), tr('кусает')],
+  panda: [tr('бьёт лапой'), tr('наваливается на'), tr('толкает')],
+  unicorn: [tr('бодает'), tr('лягает'), tr('бьёт рогом')],
+  phoenix: [tr('опаляет'), tr('клюёт'), tr('бьёт огненным крылом')],
+};
+
+// petFightStory is a fight told as a story, a line for each hit, from the
+// start to the winner: the arena and the past fights show it.
+export function petFightStory(fight) {
+  const { attacker, defender } = fight;
+  const lines = [{ text: tr('{0} ({1} ур.) вызывает на бой {2} ({3} ур.).', attacker.name, attacker.level, defender.name, defender.level) }];
+  fight.hits.forEach((hit, i) => {
+    const [by, to] = hit.byAttacker ? [attacker, defender] : [defender, attacker];
+    const left = hit.byAttacker ? hit.defenderHealth : hit.attackerHealth;
+    const moves = petMoves[by.kind] ?? petMoves.cat;
+    const move = moves[i % moves.length];
+    if (hit.dodged) {
+      lines.push({ text: tr('{0} {1} {2}, но промахивается: {2} уворачивается.', by.name, move, to.name), dodge: true });
+    } else if (hit.crit) {
+      lines.push({ text: tr('{0} {1} {2} со всей силы! Минус {3}, остаётся {4}.', by.name, move, to.name, hit.damage, left), crit: true });
+    } else {
+      lines.push({ text: tr('{0} {1} {2}: минус {3}, остаётся {4}.', by.name, move, to.name, hit.damage, left) });
+    }
+  });
+  const winner = fight.won ? attacker : defender;
+  const loser = fight.won ? defender : attacker;
+  const last = fight.hits.at(-1);
+  const knocked = last && (last.attackerHealth <= 0 || last.defenderHealth <= 0);
+  lines.push({
+    text: knocked
+      ? tr('{0} без сил. Победитель — {1}!', loser.name, winner.name)
+      : tr('Время вышло: у {0} осталось больше здоровья. Победитель — {0}!', winner.name),
+    end: true,
+  });
+  return lines;
 }
 
 // petFightResult is how a fight ended for whom it is shown: attacking
@@ -3449,7 +3630,7 @@ export function topBoardText(board) {
 
 // topValue is the number of a place: votes, the rating of a pet.
 export function topValue(board, value) {
-  return board === 'pets' ? tr('рейтинг {0}', groupedVotes(value)) : votesAmount(value);
+  return board === 'pets' ? tr('рейтинг {0}', groupedVotes(value)) : board === 'rich' ? balanceAmount(value) : votesAmount(value);
 }
 
 // guestCame is what a guest did, told among the notifications after

@@ -16,8 +16,8 @@
 
 import { api, currentUser, session, started } from './api.js';
 import {
-  firmEventAbout, firmEventName, firmHour, firmKindName, firmPictures, formatDateTime, goodName, goodPictures, groupedVotes, hundredths,
-  hundredthsOf, improvements, isGoodEvent, plural, sharePercent, votesAmount,
+  balanceVotes, balanceWord, balanceAmount, firmEventAbout, firmEventName, firmHour, firmKindName, firmPictures, formatDateTime, goodName, goodPictures, groupedVotes, hundredths,
+  hundredthsOf, improvements, isGoodEvent, sharePercent, votesAmount,
 } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
@@ -37,8 +37,8 @@ let chosen = '';
 
 function showBalance(votes) {
   balance = votes;
-  $('votes').textContent = groupedVotes(votes);
-  $('votes-word').textContent = plural(votes, ['голос', 'голоса', 'голосов']);
+  $('votes').textContent = balanceVotes(votes);
+  $('votes-word').textContent = balanceWord(votes);
   $('balance').hidden = false;
 }
 
@@ -597,7 +597,7 @@ function cashBox(anchor, f) {
   const payGo = el('button', { type: 'button', className: 'button', onclick: () => popAct(pop, 'dividend', { ...body, votes: pay.get() }, (d) => tr('Дивиденды выплачены, ваша доля — {0}.', votesAmount(d.got))) });
 
   function recount() {
-    putNote.textContent = tr('Станет в кассе {0}, у вас останется {1}.', money(f.cash + put.get() * 100), votesAmount(balance - put.get()));
+    putNote.textContent = tr('Станет в кассе {0}, у вас останется {1}.', money(f.cash + put.get() * 100), balanceAmount(balance - put.get()));
     putGo.textContent = tr('Вложить {0}', votesAmount(put.get()));
     putGo.disabled = balance < 1;
     const v = pay.get();
@@ -741,8 +741,9 @@ function production(f) {
     title(tr('Склад')),
     el('div', { className: 'firm-goods' }, ...f.stock.map((s) => goodTile(f, spec, s))),
     hint(directs(f)
-      ? tr('Нажмите на товар, чтобы продать его государству, купить или настроить склад: он сам закупает сырьё и продаёт продукцию по ценам не хуже заданных.')
-      : tr('Склад сам закупает сырьё и продаёт продукцию государству.')),
+      ? tr('Нажмите на товар, чтобы продать его государству, купить или настроить склад: он сам закупает сырьё и продаёт продукцию по ценам не хуже заданных — сначала у других предприятий, потом у государства.')
+      : tr('Склад сам закупает сырьё и продаёт продукцию — сначала другим предприятиям, потом государству.')),
+    ...(directs(f) ? offers(f) : []),
   ];
 }
 
@@ -974,9 +975,53 @@ function liquidate(f) {
   );
 }
 
+// offers are the orders of other enterprises this one takes in a click:
+// those that sell what it buys and those that buy what it makes. The deal
+// goes at the price of the order, as many units as the order, the cash
+// and the storage allow, with nothing to type.
+function offers(f) {
+  const spec = specOf(f.kind);
+  const stockOf = (good) => f.stock.find((s) => s.good === good);
+  const wanted = state.orders
+    .filter((o) => o.firmId !== f.id && (o.buy ? spec.output === o.good : buys(spec, o.good)))
+    .sort((a, b) => Number(a.buy) - Number(b.buy) || (a.buy ? b.price - a.price : a.price - b.price));
+  const heading = title(tr('Предложения других предприятий'));
+  if (!wanted.length) return [heading, hint(tr('Сейчас никто не продаёт то, что нужно вашему предприятию, и не покупает то, что оно делает.'))];
+
+  const rows = wanted.map((o) => {
+    const s = stockOf(o.good);
+    const room = Math.max(0, (s?.capacity ?? 0) - (s?.units ?? 0) - (s?.incoming ?? 0));
+    const units = o.buy ? Math.min(o.units, s?.units ?? 0) : Math.min(o.units, Math.floor(f.cash / o.price), room);
+    const other = firmOf(o.firmId);
+    const take = el('button', {
+      type: 'button',
+      className: `button deal-take ${o.buy ? 'sell' : 'buy'}`,
+      disabled: units < 1,
+      title: units < 1 ? (o.buy ? tr('На складе нет этого товара') : tr('Не хватает денег в кассе или места на складе')) : '',
+      textContent: o.buy ? tr('Продать {0} шт.', groupedVotes(Math.max(units, 0))) : tr('Купить {0} шт.', groupedVotes(Math.max(units, 0))),
+      onclick: () => act('order', { firm: f.id, good: o.good, buy: !o.buy, price: o.price, units }, (d) => {
+        const dealt = d.deals.reduce((n, deal) => n + deal.units, 0);
+        return o.buy ? tr('Продано {0} шт. по {1}.', groupedVotes(dealt), money(o.price)) : tr('Куплено {0} шт. по {1}.', groupedVotes(dealt), money(o.price));
+      }),
+    });
+    return [
+      goodLink(o.good),
+      other ? firmLink(other) : '',
+      el('span', { className: o.buy ? 'deal-side buy' : 'deal-side sell', textContent: o.buy ? tr('покупает') : tr('продаёт') }),
+      hundredths(o.price), groupedVotes(o.units), take,
+    ];
+  });
+
+  return [
+    heading,
+    table([[tr('Товар'), 0], [tr('Предприятие'), 0], ['', 70], [tr('Цена'), 60, true], [tr('Шт.'), 60, true], ['', 120, true]], rows),
+    hint(tr('Нажмите кнопку — сделка пройдёт сразу по цене заявки. Склад, который закупает и продаёт сам, каждый час сначала берёт такие заявки и товар других предприятий по цене между ценами государства, а уже потом идёт к государству.')),
+  ];
+}
+
 function orders(f) {
   const own = state.orders.filter((o) => o.firmId === f.id);
-  const nodes = [title(tr('Заявки предприятия'))];
+  const nodes = [...offers(f), title(tr('Заявки предприятия'))];
   nodes.push(own.length
     ? table([[tr('Товар'), 0], [tr('Заявка'), 80], [tr('Цена'), 80, true], [tr('Осталось'), 80, true], ['', 70, true]], own.map((o) => [
       goodLink(o.good), o.buy ? tr('покупка') : tr('продажа'), hundredths(o.price), groupedVotes(o.units),

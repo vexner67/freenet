@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale, primePeriods, primeSaving, primeTerms, titleIcons, titleIconPath, titleGroups, topValue } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, balanceVotes, balanceAmount, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale, primePeriods, primeSaving, primeTerms, titleIcons, titleIconPath, titleGroups, topValue } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -1151,13 +1151,17 @@ test('votesFontSize makes a large balance fit its box', () => {
   assert.equal(votesFontSize(10 ** 20), 48);
 });
 
-test('the endless votes of the administrators are shown as ∞', () => {
-  assert.equal(groupedVotes(10 ** 15), '∞');
-  assert.equal(groupedVotes(10 ** 15 - 5000), '∞');
-  assert.equal(groupedVotes(10 ** 14 - 1), '99\u00a0999\u00a0999\u00a0999\u00a0999');
-  assert.equal(votesAmount(10 ** 15), '∞ голосов');
+test('only the endless balance of an administrator is shown as ∞', () => {
+  assert.equal(balanceVotes(10 ** 15), '∞');
+  assert.equal(balanceVotes(10 ** 15 - 5000), '∞');
+  assert.equal(balanceVotes(10 ** 14 - 1), '99\u00a0999\u00a0999\u00a0999\u00a0999');
+  assert.equal(balanceAmount(10 ** 15), '∞ голосов');
   assert.equal(votesFontSize(10 ** 15), 48);
   assert.equal(topValue('rich', 10 ** 15), '∞ голосов');
+  // What is bought with it — shares, cash, a capitalization — is digits.
+  assert.equal(groupedVotes(10 ** 15), '1\u00a0000\u00a0000\u00a0000\u00a0000\u00a0000');
+  assert.equal(votesAmount(10 ** 18), '1\u00a0000\u00a0000\u00a0000\u00a0000\u00a0000\u00a0000 голосов');
+  assert.equal(topValue('business', 10 ** 15), '1\u00a0000\u00a0000\u00a0000\u00a0000\u00a0000 голосов');
 });
 
 test('the statement of votes speaks of each line', () => {
@@ -1422,7 +1426,7 @@ test('the pets and the boards of the site are those of the user service', async 
 });
 
 test('pets, fights, boards and guests are told', async () => {
-  const { petFightResult, petLevelProgress, petMood, petWait, petHitText, guestCame } = await import('../static/labels.js');
+  const { petFightResult, petLevelProgress, petMood, petWait, petFightStory, petOdds, petBonus, petKinds, petKindName, petItemName, guestCame } = await import('../static/labels.js');
 
   assert.deepEqual(petFightResult({ won: true, rating: 16 }, true), { won: true, text: 'Победа', rating: '+16' });
   assert.deepEqual(petFightResult({ won: true, rating: 16 }, false), { won: false, text: 'Поражение', rating: '−16' });
@@ -1436,10 +1440,32 @@ test('pets, fights, boards and guests are told', async () => {
   assert.equal(petWait(61), '2 мин.');
   assert.equal(petWait(40.2), '41 с');
 
-  const cat = { name: 'Мурка' };
-  const dog = { name: 'Рекс' };
-  assert.equal(petHitText({ byAttacker: true, damage: 5 }, cat, dog), 'Мурка бьёт. Рекс: −5.');
-  assert.equal(petHitText({ byAttacker: false, dodged: true }, cat, dog), 'Рекс бьёт, но Мурка уворачивается.');
+  const cat = { name: 'Мурка', kind: 'cat', level: 3 };
+  const dog = { name: 'Рекс', kind: 'dog', level: 2 };
+  const story = petFightStory({
+    attacker: cat, defender: dog, won: true,
+    hits: [
+      { byAttacker: true, damage: 5, attackerHealth: 40, defenderHealth: 41 },
+      { byAttacker: false, dodged: true, attackerHealth: 40, defenderHealth: 41 },
+      { byAttacker: true, crit: true, damage: 41, attackerHealth: 40, defenderHealth: 0 },
+    ],
+  });
+  assert.deepEqual(story.map((line) => line.text), [
+    'Мурка (3 ур.) вызывает на бой Рекс (2 ур.).',
+    'Мурка царапает Рекс: минус 5, остаётся 41.',
+    'Рекс бросается на Мурка, но промахивается: Мурка уворачивается.',
+    'Мурка кидается на Рекс со всей силы! Минус 41, остаётся 0.',
+    'Рекс без сил. Победитель — Мурка!',
+  ]);
+  assert.ok(story[3].crit && story[2].dodge && story[4].end);
+  const timeout = petFightStory({ attacker: cat, defender: dog, won: false, hits: [{ byAttacker: true, damage: 1, attackerHealth: 40, defenderHealth: 45 }] });
+  assert.equal(timeout.at(-1).text, 'Время вышло: у Рекс осталось больше здоровья. Победитель — Рекс!');
+
+  assert.deepEqual(petOdds([700, 250, 45, 5]), ['70%', '25%', '4.5%', '0.5%']);
+  assert.equal(petBonus({ attack: 3, defense: 0, health: 0, speed: 1 }), '+3 к атаке, +1 к скорости');
+  assert.equal(petKinds.length, 12);
+  for (const kind of petKinds) assert.notEqual(petKindName(kind), kind);
+  assert.equal(petItemName('crown'), 'Корона');
 
   assert.equal(topValue('pets', 1016), 'рейтинг 1\u00a0016');
   assert.match(topValue('rich', 3000), /^3\s000\sголосов$/);

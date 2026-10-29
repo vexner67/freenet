@@ -77,6 +77,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
     onError: (e) => showError(error, e),
     // "Поиск" highlights what it found.
     found: query,
+    pageOf: owner,
   });
 
   function reload() {

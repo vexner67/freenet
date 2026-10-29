@@ -24,7 +24,7 @@
 // the jackpot of the casino takes the whole screen (jackpot.js).
 
 import { api, currentUser, started } from './api.js';
-import { aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betPrize, betRoll, casinoChance, cellFontSize, casinoPlan, groupedVotes, plural, rocketMultiplier, rocketScale, rocketShown, rocketTime, rocketsCount, spinsCount, typedOdds, votesCount, votesFontSize, wagersCount } from './labels.js';
+import { balanceVotes, balanceWord, aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betPrize, betRoll, casinoChance, cellFontSize, casinoPlan, groupedVotes, plural, rocketMultiplier, rocketScale, rocketShown, rocketTime, rocketsCount, spinsCount, typedOdds, votesCount, votesFontSize, wagersCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
 import { jackpot } from './jackpot.js';
@@ -173,9 +173,9 @@ function showBalance(votes) {
     $('votes').classList.add('bump');
   }
   balance = votes;
-  $('votes').textContent = groupedVotes(votes);
+  $('votes').textContent = balanceVotes(votes);
   $('votes').style.fontSize = `${votesFontSize(votes)}px`;
-  $('votes-word').textContent = plural(votes, ['голос', 'голоса', 'голосов']);
+  $('votes-word').textContent = balanceWord(votes);
   $('balance').hidden = false;
 }
 

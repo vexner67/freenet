@@ -43,13 +43,16 @@
                 <input type="text" id="adopt-name" maxlength="20" required>
                 <button class="button" type="submit" id="adopt-button">Завести</button>
               </form>
+              <div class="section-title">Сундуки</div>
+              <p class="hint">В магазине продаются не все питомцы: лис, сова, волк, панда, единорог и феникс выпадают только из сундуков. Чем дороже сундук, тем чаще из него выходят редкие питомцы.</p>
+              <div class="pet-cases" id="cases"></div>
             </div>
 
             <div id="home" hidden>
               <div class="pet-card">
                 <div class="pet-stage" id="stage"></div>
                 <div class="pet-info">
-                  <div class="pet-name"><b id="name"></b> <span class="hint" id="kind"></span></div>
+                  <div class="pet-name"><b id="name"></b> <span class="hint" id="kind"></span> <span id="rarity"></span></div>
                   <div class="pet-mood" id="mood"></div>
                   <table class="pet-bars">
                     <tr><td class="pet-bar-label">Сытость:</td><td><div class="pet-bar" aria-hidden="true"><div class="pet-bar-fill pet-satiety" id="satiety-bar"></div></div></td><td class="pet-bar-value" id="satiety"></td></tr>
@@ -64,7 +67,13 @@
                 </div>
               </div>
 
+              <div class="section-title">Характеристики</div>
+              <div class="pet-powers" id="powers"></div>
               <table class="info pet-stats" id="stats"></table>
+
+              <div class="section-title">Гардероб</div>
+              <p class="hint">Одежда прибавляет питомцу силы. Наведите на вещь, чтобы примерить её; купленная остаётся в гардеробе, её можно снять и надеть снова. В каждое место — одна вещь.</p>
+              <div class="pet-wardrobe" id="wardrobe"></div>
 
               <div class="section-title">Бой</div>
               <div class="pet-fight-box">

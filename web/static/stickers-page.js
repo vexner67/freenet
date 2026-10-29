@@ -10,7 +10,7 @@
 // are chosen from a person's page now: ?act=gifts leads to one's own.
 
 import { api, currentUser } from './api.js';
-import { STICKER_SECTIONS, STICKER_TAX_PERCENT, installsCount, stickerIncome, shopPacks, stickerImage, stickerPackAction, stickerPackName, stickerPackPrice, stickersCount, votesCount } from './labels.js';
+import { balanceAmount, STICKER_SECTIONS, STICKER_TAX_PERCENT, installsCount, stickerIncome, shopPacks, stickerImage, stickerPackAction, stickerPackName, stickerPackPrice, stickersCount, votesCount } from './labels.js';
 import { pickPath } from './gifts.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
@@ -103,7 +103,7 @@ function openPack(pack) {
 
   // What one has to pay with, under the button of a pack one buys.
   const balance = me && pack.price && !pack.bought
-    ? el('span', { className: 'hint', textContent: tr('У Вас {0}', votesCount(me.votes ?? 0)) })
+    ? el('span', { className: 'hint', textContent: tr('У Вас {0}', balanceAmount(me.votes ?? 0)) })
     : null;
 
   modal.box.classList.add('stickers-pack-modal');

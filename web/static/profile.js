@@ -338,7 +338,7 @@ async function showPet(user, me, isOwner) {
     $('pet-link').href = '/pet?fight=' + encodeURIComponent(user.nickname);
   }
   $('pet-side').replaceChildren(...pets.map((pet) => el('div', { className: 'pet-side-row' },
-    el('a', { className: 'pet-side-picture', href: isOwner ? '/pet?pet=' + pet.id : '/top?board=pets' }, petImage(pet.kind, pets.length > 1 ? 48 : 64)),
+    el('a', { className: 'pet-side-picture', href: isOwner ? '/pet?pet=' + pet.id : '/top?board=pets' }, petImage(pet.kind, pets.length > 1 ? 48 : 64, pet.outfit)),
     el('div', { className: 'pet-side-text' },
       el('b', { textContent: pet.name }),
       el('div', { className: 'hint', textContent: `${petKindName(pet.kind)}, ${tr('{0} ур.', pet.level)}` }),
