@@ -2618,6 +2618,17 @@ const errorTexts = {
   'the enterprise has an order of its own the other way at this price: cancel it first': tr('У предприятия есть встречная заявка по такой цене — сначала снимите её.'),
   'an enterprise keeps at most 10 orders on the exchange': tr('У предприятия может быть не больше 10 заявок на бирже.'),
   'there is no such order': tr('Такой заявки нет.'),
+  'a supply goes to another enterprise you direct that works with the good, of 1 unit or more an hour, once from 0 units are kept': tr('Поставка — другому вашему предприятию, которому нужен этот товар, от 1 штуки в час.'),
+  'an enterprise keeps at most 5 supplies': tr('У предприятия может быть не больше 5 поставок.'),
+  'there is no such supply': tr('Такой поставки нет.'),
+  'an order must be for 1 share or more at a price from 1 hundredth': tr('Заявка — от 1 акции по цене от 0,01 голоса.'),
+  'you have not so many shares free of your orders': tr('У вас нет столько акций, свободных от заявок.'),
+  'there is not so much money on your account': tr('На брокерском счёте нет столько денег.'),
+  'nobody sells or buys the shares at this price now': tr('Сейчас никто не продаёт и не покупает акции по такой цене.'),
+  'you have an order of your own the other way at this price: cancel it first': tr('У вас есть встречная заявка по такой цене — сначала снимите её.'),
+  'a page keeps at most 20 orders on the exchange': tr('На бирже может быть не больше 20 ваших заявок.'),
+  'there is no such order of shares': tr('Такой заявки на акции нет.'),
+  'the price of an order must be within 15% of the price of the exchange': tr('Цена заявки — не дальше 15 % от цены биржи: дальше сделки не идут.'),
   'an offer must be for 1 share or more of those others hold, at no less than a share goes for now': tr('Выкупить можно от 1 акции из тех, что у других, не дешевле нынешней цены.'),
   'there is no such offer': tr('Такого предложения о выкупе нет.'),
   'you make an offer for this enterprise already': tr('Вы уже предлагаете выкупить акции этого предприятия.'),
@@ -2687,6 +2698,31 @@ const errorTexts = {
   'unknown stance': tr('Такой стойки нет.'),
   'unknown move': tr('Такого хода нет.'),
   'the fights of a day must be from 1 to 1000': tr('Боёв в день — от 1 до 1000.'),
+  'unknown pet arena action': tr('Такого действия на арене нет.'),
+  'the boss of the week is beaten': tr('Босс этой недели уже повержен. Новый придёт в понедельник.'),
+  'the pet rests after its hit of the boss': tr('Питомец отдыхает после удара по боссу.'),
+  'the tournament of the week has begun': tr('Турнир этой недели уже начался.'),
+  'the tournament is full': tr('В турнире уже шестнадцать питомцев.'),
+  'you have a pet in the tournament already': tr('Ваш питомец уже записан в турнир.'),
+  'the pet is not in the tournament': tr('Этого питомца нет в турнире.'),
+  'a bet is from 10 to 100000 votes': tr('Ставка — от 10 до 100 000 голосов.'),
+  'you have bet on the tournament already': tr('Вы уже сделали ставку на этот турнир.'),
+  'the pet is up for sale': tr('Питомец выставлен на рынок — сначала снимите его с продажи.'),
+  'the pet is not for sale': tr('Этот питомец не продаётся.'),
+  'a pet goes up for sale a week after its owner got it': tr('Продать питомца можно через неделю после того, как он у вас появился.'),
+  'a pet costs from the least of its rarity': tr('Цена ниже наименьшей для этой редкости.'),
+  'a page sells at most 3 pets at a time': tr('На продаже может быть не больше трёх ваших питомцев.'),
+  'this is your own pet': tr('Это ваш питомец.'),
+  'there is no such cell of the canvas': tr('Такой клетки на холсте нет.'),
+  'there is no such color of the canvas': tr('Такого цвета на холсте нет.'),
+  'you paint the canvas again a minute after': tr('Следующую клетку можно закрасить через минуту.'),
+  'there is no such goal of dating': tr('Такой цели знакомства нет.'),
+  'there is no such gender to seek': tr('Выберите, кого вы ищете.'),
+  'the text about yourself is too long': tr('Рассказ о себе — не длиннее 300 символов.'),
+  'dating is off': tr('Включите свою анкету, чтобы отвечать на чужие.'),
+  'you have already answered this card': tr('Вы уже ответили на эту анкету.'),
+  'you cannot like yourself': tr('Себе симпатию не отправить.'),
+  'fill in the profile before dating': tr('Сначала заполните профиль: имя и никнейм.'),
   'this ore needs more experience': tr('Эту руду можно копать, набравшись опыта.'),
   'not enough energy': tr('Не хватает энергии. Она восстанавливается сама.'),
   'not enough ore to sell': tr('Продавать нечего: руды не хватает и на голос.'),
@@ -3362,6 +3398,52 @@ export function newYearGreeting(date) {
   return date.getMonth() >= 6 ? tr('С наступающим Новым годом!') : tr('С Новым годом!');
 }
 
+// canvasColors are the 16 colors of the shared canvas, by their numbers in
+// the user service: the picture is data, not the theme of the site.
+export const canvasColors = [
+  '#ffffff', '#e4e4e4', '#888888', '#222222', '#ffa7d1', '#e50000', '#e59500', '#a06a42',
+  '#e5d900', '#94e044', '#02be01', '#00d3dd', '#0083c7', '#0000ea', '#cf6ee4', '#820080',
+];
+
+// canvasPicture turns the cells of the canvas, base64 a byte each, into
+// the RGBA of an ImageData.
+export function canvasPicture(cells) {
+  const bytes = atob(cells);
+  const rgba = new Uint8ClampedArray(bytes.length * 4);
+  for (let i = 0; i < bytes.length; i++) {
+    const hex = canvasColors[bytes.charCodeAt(i)] ?? canvasColors[0];
+    rgba[i * 4] = parseInt(hex.slice(1, 3), 16);
+    rgba[i * 4 + 1] = parseInt(hex.slice(3, 5), 16);
+    rgba[i * 4 + 2] = parseInt(hex.slice(5, 7), 16);
+    rgba[i * 4 + 3] = 255;
+  }
+
+  return rgba;
+}
+
+// canvasCellAt is the cell under a point of the canvas shown width wide,
+// the point taken from its left top corner.
+export function canvasCellAt(px, py, width, size) {
+  const at = (p) => Math.min(size - 1, Math.max(0, Math.floor((p / width) * size)));
+
+  return { x: at(px), y: at(py) };
+}
+
+// datingGoals are what people look for in "Знакомства", datingSeeks whom.
+export const datingGoals = ['friendship', 'chat', 'love'];
+export const datingSeeks = ['', 'female', 'male'];
+
+const datingGoalNames = { friendship: tr('дружба'), chat: tr('общение'), love: tr('отношения') };
+const datingSeekNames = { '': tr('все'), female: tr('девушки'), male: tr('парни') };
+
+export function datingGoalName(goal) {
+  return datingGoalNames[goal] ?? goal;
+}
+
+export function datingSeekName(seek) {
+  return datingSeekNames[seek] ?? seek;
+}
+
 // activeSection is the section of the bar at the bottom of a phone a path
 // is in (layout.js): the page of whoever signed in, ownPath, the news, the
 // messages — dialogs and chats too — and the notifications; '' for others.
@@ -3734,6 +3816,51 @@ export function petFightStory(fight) {
     end: true,
   });
   return lines;
+}
+
+// petQuestName is a task of the day of the arena (user.PetQuestKind).
+const petQuestNames = {
+  win: tr('Победить в боях'),
+  fight: tr('Провести бои'),
+  case: tr('Открыть сундук'),
+  feed: tr('Покормить питомцев'),
+  play: tr('Поиграть с питомцами'),
+  boss: tr('Ударить босса недели'),
+  manual: tr('Провести бой вручную'),
+};
+
+export function petQuestName(kind) {
+  return petQuestNames[kind] ?? kind;
+}
+
+// petAchievements are the badges of the arena in the order the page shows
+// them (user.PetAchievements), each with its name and what earns it.
+export const petAchievements = [
+  'first_win', 'wins_100', 'fights_500', 'collector', 'legend', 'phoenix', 'top_level',
+  'boss_slayer', 'champion', 'season_top', 'week_streak', 'millionaire',
+];
+
+const petAchievementAbout = {
+  first_win: [tr('Первая победа'), tr('Выиграть первый бой.')],
+  wins_100: [tr('Сотня побед'), tr('Выиграть сто боёв.')],
+  fights_500: [tr('Ветеран'), tr('Провести пятьсот боёв.')],
+  collector: [tr('Коллекционер'), tr('Держать питомцев пяти разных видов.')],
+  legend: [tr('Легенда'), tr('Завести легендарного питомца.')],
+  phoenix: [tr('Из пепла'), tr('Завести феникса.')],
+  top_level: [tr('Вершина'), tr('Вырастить питомца до последнего уровня.')],
+  boss_slayer: [tr('Победитель босса'), tr('Нанести боссу недели последний удар.')],
+  champion: [tr('Чемпион'), tr('Выиграть турнир выходного дня.')],
+  season_top: [tr('Лучший сезона'), tr('Войти в десятку лучших сезона.')],
+  week_streak: [tr('Без пропусков'), tr('Выполнять все задания дня семь дней подряд.')],
+  millionaire: [tr('Миллионер'), tr('Накопить миллион голосов.')],
+};
+
+export function petAchievementName(id) {
+  return petAchievementAbout[id]?.[0] ?? id;
+}
+
+export function petAchievementText(id) {
+  return petAchievementAbout[id]?.[1] ?? '';
 }
 
 // petFightResult is how a fight ended for whom it is shown: attacking

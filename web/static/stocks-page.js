@@ -11,7 +11,8 @@ import { api, currentUser, session, started } from './api.js';
 import {
   balanceAmount, firmEventAbout, firmEventName, firmKindName, firmPictures, formatDateTime, groupedVotes, hundredths, hundredthsOf, isGoodEvent, priceChange, sharePercent, stockHour, stockTick, votesAmount,
 } from './labels.js';
-import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
+import { $, el, fullName, onScreen, pagePath, replaceInPlace, renderChrome, showError, hideError } from './layout.js';
+import { toast } from './modal.js';
 import { candleChart, lineChart, sparkline } from './charts.js';
 import { chips, isOpen, popover, segmented, stepper } from './controls.js';
 import { tr } from './i18n.js';
@@ -104,11 +105,16 @@ async function act(action, body, text, box = null) {
     if (done.spent > 0 || done.got > 0) showBalance(done.balance);
     state = done.stocks;
     show();
-    said(typeof text === 'function' ? text(done) : text);
+    const message = typeof text === 'function' ? text(done) : text;
+    said(message);
+    // The page stays where the deal was done; what was done is said over
+    // it and, when that is out of sight, at the bottom.
+    if (message && !onScreen($('done'))) toast(message);
     return true;
   } catch (e) {
     showError(error, e);
     error.hidden = false;
+    if (!onScreen(error)) toast(error.textContent);
     return false;
   } finally {
     busy = false;
@@ -506,7 +512,11 @@ function dealPanel(c, h) {
     go.textContent = side === 'buy'
       ? tr('Купить {0} акц.', groupedVotes(n))
       : tr('Продать {0} акц.', groupedVotes(n));
-    go.disabled = !n || (side === 'sell' && n > h.free) || (side === 'buy' && sum > state.account);
+    // An order further from the price of the exchange than its band is
+    // refused, as a real exchange does: the button waits for a price in it.
+    const outOfBand = mode === 'limit' && c.bandHigh > 0 && (p < c.bandLow || p > c.bandHigh);
+    band.classList.toggle('stock-down', outOfBand);
+    go.disabled = !n || outOfBand || (side === 'sell' && n > h.free) || (side === 'buy' && sum > state.account);
   }
 
   const sides = segmented([['buy', tr('Купить'), 'buy'], ['sell', tr('Продать'), 'sell']], side, (v) => {
@@ -521,9 +531,11 @@ function dealPanel(c, h) {
   });
   const priceRow = el('div', { className: 'deal-row' }, el('span', { className: 'deal-label', textContent: tr('Цена') }),
     el('span', { className: 'stepper' }, nudge(-1), priceInput, nudge(1)));
+  const band = el('div', { className: 'hint', textContent: tr('Цена заявки — от {0} до {1}: дальше от цены биржи сделки не идут.', money(c.bandLow), money(c.bandHigh)) });
 
   function draw() {
     priceRow.hidden = mode !== 'limit';
+    band.hidden = mode !== 'limit';
     recount();
   }
 
@@ -541,6 +553,7 @@ function dealPanel(c, h) {
     el('div', { className: 'deal-row' }, sides.node),
     el('div', { className: 'deal-row' }, modes.node),
     priceRow,
+    band,
     el('div', { className: 'deal-row' }, el('span', { className: 'deal-label', textContent: tr('Акций') }), shares.node),
     el('div', { className: 'deal-row' }, chips([
       ['1', () => shares.set(1)], ['10', () => shares.set(10)], ['50', () => shares.set(50)],
@@ -561,7 +574,7 @@ function dealPanel(c, h) {
 function show() {
   const firm = firmOfAddress();
   const nodes = firm ? companyView(companyOf(firm)) : market();
-  $('stocks').replaceChildren(...nodes.filter(Boolean));
+  replaceInPlace($('stocks'), ...nodes.filter(Boolean));
 }
 
 // refresh asks for the exchange again once its hour ends, unless a mini

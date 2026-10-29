@@ -12,7 +12,7 @@
 import { api, currentUser } from './api.js';
 import { balanceAmount, STICKER_SECTIONS, STICKER_TAX_PERCENT, installsCount, stickerIncome, shopPacks, stickerImage, stickerPackAction, stickerPackName, stickerPackPrice, stickersCount, votesCount } from './labels.js';
 import { pickPath } from './gifts.js';
-import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
+import { $, el, fullName, pagePath, replaceInPlace, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { stickerNode } from './stickers.js';
 import { tr } from './i18n.js';
@@ -178,7 +178,7 @@ function render() {
     : act === 'author' ? packs
       : shopPacks(packs.filter((p) => p.published || p.added), section, query);
 
-  $('packs').replaceChildren(...shown.map(packCard));
+  replaceInPlace($('packs'), ...shown.map(packCard));
   $('empty').hidden = shown.length > 0;
 }
 

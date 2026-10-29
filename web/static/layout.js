@@ -426,6 +426,27 @@ export function whenShown() {
   return pageShown;
 }
 
+// replaceInPlace replaces what a block holds where the reader is: the
+// block keeps its height until the new content is laid out, so the page
+// does not shrink under them and throw them up to its top after an
+// action.
+export function replaceInPlace(block, ...nodes) {
+  const y = scrollY;
+  block.style.minHeight = `${block.offsetHeight}px`;
+  block.replaceChildren(...nodes);
+  if (scrollY !== y) scrollTo(0, y);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    block.style.minHeight = '';
+  }));
+}
+
+// onScreen tells whether a node is seen in the window now.
+export function onScreen(node) {
+  if (node.hidden) return false;
+  const box = node.getBoundingClientRect();
+  return box.bottom > 0 && box.top < innerHeight;
+}
+
 // A tab opens another page, drawn anew: it comes up scrolled where the
 // tab was pressed, not at its top, and with the row of tabs scrolled as
 // it was, so only what is under the tabs changes.
@@ -475,6 +496,81 @@ export function isPhone() {
 // The cookie that keeps the version of the site chosen under a page
 // (gateway, pages.go): "full" for the pages of a computer on a phone.
 const fullSite = /(?:^|; )site=full(?:;|$)/;
+
+// The way back through the site: the pages of Freenet visited in this
+// tab, one a section (an address without its query), so "назад" leads to
+// the page before and not to the step before on the same page — the game
+// of the casino, the enterprise of the business. A page added to the home
+// screen of a phone has no back button of its own.
+const trailKey = 'freenet.trail';
+const trailLength = 30;
+
+function readTrail() {
+  try {
+    const trail = JSON.parse(sessionStorage.getItem(trailKey));
+    return Array.isArray(trail) ? trail : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeTrail(trail) {
+  try {
+    sessionStorage.setItem(trailKey, JSON.stringify(trail.slice(-trailLength)));
+  } catch {
+    // Without storage there is no way back but the browser's.
+  }
+}
+
+// walkTrail puts the page opened on the trail: the same section takes
+// the place of the last, one gone back to cuts the trail at it.
+function walkTrail() {
+  const here = { path: location.pathname, href: location.pathname + location.search, y: 0 };
+  let trail = readTrail();
+  const last = trail.at(-1);
+  const kind = performance.getEntriesByType?.('navigation')[0]?.type;
+  const before = trail.findLastIndex((t) => t.path === here.path);
+
+  if (last?.path === here.path) trail[trail.length - 1] = { ...last, href: here.href };
+  else if (kind === 'back_forward' && before >= 0) trail = [...trail.slice(0, before), here];
+  else trail.push(here);
+  writeTrail(trail);
+
+  // The page left keeps where it was, to be opened there again.
+  addEventListener('pagehide', () => {
+    const now = readTrail();
+    if (now.at(-1)?.path !== location.pathname) return;
+    now[now.length - 1] = { ...now.at(-1), href: location.pathname + location.search, y: scrollY };
+    writeTrail(now);
+  });
+}
+
+// goBack opens the page before this one where it was left.
+function goBack(event) {
+  event.preventDefault();
+  const trail = readTrail();
+  const to = trail.at(-2);
+  if (!to) return;
+  writeTrail(trail.slice(0, -1));
+  try {
+    sessionStorage.setItem(placeKey, JSON.stringify({ to: to.href, y: to.y ?? 0, row: 0, at: Date.now() }));
+  } catch {
+    // The page opens at its top.
+  }
+  location.assign(to.href);
+}
+
+// addBackLink puts "назад" into the header when there is a page of
+// Freenet to go back to: an arrow at the left on a phone, a link of the
+// header on a computer.
+function addBackLink() {
+  const header = document.querySelector('.header');
+  if (!header || header.querySelector('.header-back') || readTrail().length < 2) return;
+  header.prepend(el('a', { className: 'header-back', href: readTrail().at(-2).href, title: tr('Назад'), ariaLabel: tr('Назад'), onclick: goBack },
+    el('img', { src: '/static/icons/back.svg', alt: '' }), el('span', { textContent: tr('назад') })));
+}
+
+if (typeof document !== 'undefined') walkTrail();
 
 // addVersionSwitch puts "Полная версия" under a page of a phone, and
 // "Мобильная версия" under a page of a computer on a phone whose owner
@@ -552,6 +648,8 @@ export function applyInterface(me) {
     el('a', { href: '/casino', textContent: tr('Азартные игры') }),
     el('a', { href: '/pet', textContent: tr('Питомцы') }),
     el('a', { href: '/top', textContent: tr('Рейтинги') }),
+    el('a', { href: '/canvas', textContent: tr('Холст') }),
+    el('a', { href: '/dating', textContent: tr('Знакомства') }),
     accountsLink(me),
     el('a', { href: '/search', textContent: tr('Поиск') }),
     // The administrators of the site have openvk's "Админ-панель" under
@@ -584,6 +682,7 @@ export function renderChrome(me) {
   const menu = $('menu');
 
   addHeaderSearch();
+  addBackLink();
   addVersionSwitch();
   // A phone has the links of a signed-in user in the bar of sections and
   // the menu, not in its header (m.css).

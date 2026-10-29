@@ -10,6 +10,7 @@
 // hit by hit and tells it as a story; or the owner leads it by hand, a
 // move a round. A win brings votes and rating, more over a stronger rival.
 // The administrators set the prices in the admin panel (/admin/pets).
+// The tab "Арена" (?arena=1, pet-league.js) is what the pets do together.
 
 import { api, currentUser, session, started } from './api.js';
 import {
@@ -18,8 +19,9 @@ import {
   petOdds, petRarities, petShards, petRarityName, petSlotName, petSlots, petSpecialName, petSpecialText, petStanceName, petStanceText, petStances,
   petStatName, petStatText, petStats, petWait, votesAmount, votesFontSize,
 } from './labels.js';
-import { $, el, renderChrome, showError, hideError } from './layout.js';
-import { button, openModal } from './modal.js';
+import { $, el, renderChrome, replaceInPlace, showError, hideError } from './layout.js';
+import { button, notify, openModal } from './modal.js';
+import { leagueNodes } from './pet-league.js';
 import { petCaseImage, petImage, petItemImage } from './pet.js';
 import { tr } from './i18n.js';
 
@@ -43,6 +45,7 @@ let pet = null;
 let chosen = '';
 let busy = false;
 let waitTimer = 0;
+let league = false;
 
 function showBalance(votes) {
   $('votes').textContent = balanceVotes(votes);
@@ -125,6 +128,8 @@ function choose(kind) {
 
 function showShop() {
   pet = null;
+  league = false;
+  $('league').hidden = true;
   $('kinds').replaceChildren(...petKinds.filter((kind) => kindOf(kind).inShop).map(kindCard));
   showCases();
   $('home').hidden = true;
@@ -326,14 +331,18 @@ function showTabs() {
     tab.addEventListener('click', () => { if (!busy) showPet(p); });
     return tab;
   });
+  const arena = el('button', { type: 'button', className: league ? 'pet-tab pet-tab-more pet-tab-chosen' : 'pet-tab pet-tab-more' },
+    el('b', { textContent: '⚔' }), el('span', { textContent: tr('Арена') }));
+  arena.addEventListener('click', () => { if (!busy) showLeague(); });
   if (pets.length < maxPets) {
-    const more = el('button', { type: 'button', className: pet ? 'pet-tab pet-tab-more' : 'pet-tab pet-tab-more pet-tab-chosen' },
+    const more = el('button', { type: 'button', className: pet || league ? 'pet-tab pet-tab-more' : 'pet-tab pet-tab-more pet-tab-chosen' },
       el('b', { textContent: '+' }), el('span', { textContent: tr('Завести ещё') }));
     more.addEventListener('click', () => { if (!busy) showShop(); });
     tabs.push(more);
   }
+  tabs.push(arena);
   $('pet-tabs').replaceChildren(...tabs);
-  $('pet-tabs').hidden = pets.length === 0;
+  $('pet-tabs').hidden = false;
   $('pets-count').textContent = pets.length ? tr('Питомцев: {0} из {1}.', pets.length, maxPets) : '';
 }
 
@@ -489,6 +498,8 @@ function stageClass() {
 
 function showPet(next) {
   pet = next;
+  league = false;
+  $('league').hidden = true;
   $('stage').className = stageClass();
   stage(pet.outfit);
   $('name').textContent = pet.name;
@@ -506,7 +517,8 @@ function showPet(next) {
 
   $('fights-left').textContent = tr('Боёв сегодня: {0} из {1}. Победа над равным приносит {2} и рейтинг, над сильным — больше, над слабым — меньше; соперника подбирают по силе. Для боя питомцу нужны сытость и настроение.',
     pet.fights, shop.fights, votesAmount(shop.win))
-    + (pet.fatigue ? ' ' + tr('Питомец устал от боёв подряд: −{0}% к силе. Час отдыха снимает усталость.', pet.fatigue * 5) : '');
+    + (pet.fatigue ? ' ' + tr('Питомец устал от боёв подряд: −{0}% к силе. Час отдыха снимает усталость.', pet.fatigue * 5) : '')
+    + (pet.salePrice ? ' ' + tr('Питомец выставлен на рынок за {0} и не дерётся, пока его не снимут с продажи.', votesAmount(pet.salePrice)) : '');
   $('stance').value = pet.stance || 'defense';
   $('guard').value = pet.stance || 'defense';
   showStanceText();
@@ -808,6 +820,43 @@ function openRelease() {
     button(tr('Отмена'), modal.close, { secondary: true }));
 }
 
+// The arena.
+
+// drawLeague draws the arena as the server answered, keeping the page
+// where it is, with what the last action brought over it.
+function drawLeague(arena, note = null) {
+  const ctx = {
+    me,
+    pets,
+    run: async (body, then) => {
+      // A balance of 0 is "nothing was paid", not an empty purse.
+      const answer = await act(async () => {
+        const done = await api.runPetArena(body);
+        if (!done.balance) delete done.balance;
+        return done;
+      });
+      if (!answer) return;
+      pets = (await api.pets().catch(() => ({ pets }))).pets;
+      showTabs();
+      drawLeague(answer.arena, then?.(answer) ?? null);
+    },
+  };
+  const box = note ? el('div', { className: 'notice pet-league-note' }, note) : null;
+  replaceInPlace($('league'), ...(box ? [box] : []), ...leagueNodes(arena, ctx));
+  if (box) notify(box);
+}
+
+async function showLeague() {
+  pet = null;
+  league = true;
+  $('shop').hidden = true;
+  $('home').hidden = true;
+  $('league').hidden = false;
+  showTabs();
+  const arena = await act(() => api.petArena());
+  if (arena) drawLeague(arena);
+}
+
 function watch() {
   $('adopt').addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -864,7 +913,8 @@ if (!me) {
     watch();
     pets = answer.pets;
     const wanted = new URLSearchParams(location.search).get('pet');
-    if (pets.length) showPet(pets.find((p) => p.id === wanted) ?? pets[0]);
+    if (new URLSearchParams(location.search).has('arena')) showLeague();
+    else if (pets.length) showPet(pets.find((p) => p.id === wanted) ?? pets[0]);
     else showShop();
     if (keeper.dropKind) showDrop(false);
     showFights((await fought).fights);

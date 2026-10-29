@@ -5,6 +5,7 @@
 import { api, currentUser } from './api.js';
 import { genders, relationships, takesPartner, worldviews, politicalViews, months } from './labels.js';
 import { $, avatarURL, el, renderChrome, showError, hideError } from './layout.js';
+import { notify } from './modal.js';
 import { openAvatarDialog } from './avatar.js';
 import { initBackdropForm } from './backdrop.js';
 import { tr } from './i18n.js';
@@ -62,7 +63,7 @@ function updateRelationship() {
 function saved() {
   $('notice').textContent = tr('Изменения сохранены. Новые данные появятся на вашей странице.');
   $('notice').hidden = false;
-  $('notice').scrollIntoView({ block: 'nearest' });
+  notify($('notice'));
 }
 
 // submit runs a save of a tab with its button disabled; errors show above.
@@ -79,7 +80,7 @@ function onSubmit(form, save) {
       await save();
     } catch (e) {
       showError(error, e);
-      error.scrollIntoView({ block: 'nearest' });
+      notify(error);
     } finally {
       button.disabled = false;
     }

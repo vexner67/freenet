@@ -10,6 +10,7 @@ import {
   primeNameClass, primeSaving, primeStyleClasses, primeTerms, transferNickname, votesAmount,
 } from './labels.js';
 import { $, avatarURL, el, fullName, hideError, pagePath, profilePath, renderChrome, showError, verifiedMark } from './layout.js';
+import { notify } from './modal.js';
 import { tr } from './i18n.js';
 import { isNickname, recipientPicker } from './recipient.js';
 
@@ -21,7 +22,7 @@ const prices = started(api.primePrices());
 function say(title, ...rest) {
   $('notice').replaceChildren(el('b', { textContent: title }), ...(rest.length ? [el('br'), ...rest] : []));
   $('notice').hidden = false;
-  $('notice').scrollIntoView({ block: 'nearest' });
+  notify($('notice'), title);
 }
 
 // showState is until when the caller has Prime, and the balance.

@@ -19,8 +19,8 @@ import {
   balanceVotes, balanceWord, balanceAmount, firmEventAbout, firmEventName, firmHour, firmKindName, firmPictures, formatDateTime, goodName, goodPictures, groupedVotes, hundredths,
   hundredthsOf, improvements, isGoodEvent, sharePercent, votesAmount,
 } from './labels.js';
-import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
-import { button, openModal } from './modal.js';
+import { $, el, fullName, onScreen, pagePath, replaceInPlace, renderChrome, showError, hideError } from './layout.js';
+import { button, openModal, toast } from './modal.js';
 import { lineChart, sparkline } from './charts.js';
 import { chips, isOpen, meter, popover, segmented, slider, stepper } from './controls.js';
 import { tr } from './i18n.js';
@@ -83,19 +83,21 @@ function where() {
   };
 }
 
-function go(href) {
+// go opens another address of the page; a tab keeps the page where it is,
+// as the tabs of the other pages do, another link opens it at its top.
+function go(href, isTab = false) {
   history.pushState(null, '', href);
   hideError($('error'));
   said('');
   show();
-  window.scrollTo(0, 0);
+  if (!isTab) window.scrollTo(0, 0);
 }
 
 // follow opens a link of the page without loading it again.
 function follow(event) {
   if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
   event.preventDefault();
-  go(event.currentTarget.getAttribute('href'));
+  go(event.currentTarget.getAttribute('href'), Boolean(event.currentTarget.closest('.tabs')));
 }
 
 const firmPath = (f, part = '') => `/business?firm=${encodeURIComponent(f.id)}${part ? `&part=${part}` : ''}`;
@@ -190,15 +192,20 @@ async function act(action, body, text, box = null) {
     const done = await api.runFirms(action, body);
     if (done.spent > 0 || done.got > 0) showBalance(done.balance);
     state = done.firms;
-    if (action === 'found') history.pushState(null, '', firmPath({ id: done.firm }));
-    if (action === 'liquidate') history.pushState(null, '', '/business');
+    // What an action leads to takes the place of the page it was done on:
+    // "back" goes to the page before, not to an enterprise no longer there.
+    if (action === 'found') history.replaceState(null, '', firmPath({ id: done.firm }));
+    if (action === 'liquidate') history.replaceState(null, '', '/business');
     show();
-    said(typeof text === 'function' ? text(done) : text);
-    $('done').scrollIntoView({ block: 'nearest' });
+    const message = typeof text === 'function' ? text(done) : text;
+    said(message);
+    // The page stays where the action was done; what was done is said
+    // over the tabs and, when they are out of sight, at the bottom.
+    if (message && !onScreen($('done'))) toast(message);
     return true;
   } catch (e) {
     showError(error, e);
-    error.scrollIntoView({ block: 'nearest' });
+    if (!onScreen(error)) toast(error.textContent);
     return false;
   } finally {
     busy = false;
@@ -496,6 +503,7 @@ function firmCard(f, part) {
     ['improve', tr('Улучшения')],
     ['contracts', tr('Заказы города')],
     directs(f) ? ['trade', tr('Заявки')] : null,
+    directs(f) ? ['routes', tr('Поставки')] : null,
     ['report', tr('Отчёт')],
     ['holders', tr('Акционеры')],
   ].filter(Boolean);
@@ -506,6 +514,7 @@ function firmCard(f, part) {
     improve: () => upgrades(f),
     contracts: () => firmContracts(f),
     trade: () => orders(f),
+    routes: () => routes(f),
     report: () => [report(f)],
     holders: () => holders(f),
   }[part]();
@@ -1080,6 +1089,61 @@ function orders(f) {
   return nodes;
 }
 
+// takes is whether the enterprise works with a good: makes of it or, a
+// shop, sells it to the city.
+const takes = (f, good) => specOf(f.kind).inputs.some((i) => i.good === good) || specOf(f.kind).sells.includes(good);
+
+// routes are the supplies of the enterprise to others of its director,
+// handed every hour by themselves, and a form of a new one: the good, the
+// enterprise it goes to, from how many units kept and how many an hour.
+function routes(f) {
+  const nodes = [title(tr('Поставки'))];
+  nodes.push(f.routes.length
+    ? table([[tr('Товар'), 0], [tr('Куда'), 0], [tr('Когда на складе от'), 110, true], [tr('В час'), 70, true], ['', 70, true]], f.routes.map((r) => [
+      goodLink(r.good), firmOf(r.to) ? firmLink(firmOf(r.to)) : tr('—'), groupedVotes(r.from), groupedVotes(r.units),
+      el('a', { href: '#', textContent: tr('Отменить'), onclick: (e) => { e.preventDefault(); act('unroute', { firm: f.id, route: r.id }, tr('Поставка отменена.')); } }),
+    ]))
+    : hint(tr('Поставок нет.')));
+
+  const goods = f.stock.map((s) => s.good).filter((g) => state.firms.some((o) => o.id !== f.id && directs(o) && takes(o, g)));
+  if (!goods.length) {
+    nodes.push(hint(tr('Поставлять некуда: у вас нет другого предприятия, которому нужны товары этого.')));
+    return nodes;
+  }
+
+  let good = goods[0];
+  const goodPick = el('span', { className: 'firm-good-pick' });
+  const target = el('select', { className: 'firm-route-to' });
+  const from = stepper({ value: 0, min: 0, max: 1_000_000_000, wide: true });
+  const units = stepper({ value: 10, min: 1, max: 1_000_000_000, wide: true });
+
+  function draw() {
+    goodPick.replaceChildren(...goods.map((g) => el('button', {
+      type: 'button', className: g === good ? 'firm-good-chip active' : 'firm-good-chip', title: goodName(g),
+      onclick: () => {
+        good = g;
+        draw();
+      },
+    }, goodIcon(g, 24), el('span', { textContent: goodName(g) }))));
+    target.replaceChildren(...state.firms.filter((o) => o.id !== f.id && directs(o) && takes(o, good))
+      .map((o) => el('option', { value: o.id, textContent: `${o.name} (${firmKindName(o.kind).toLowerCase()})` })));
+  }
+  draw();
+
+  const go = button(tr('Добавить поставку'), () => act('route', { firm: f.id, good, to: target.value, from: from.get(), units: units.get() },
+    tr('Поставка добавлена: она пойдёт с началом следующего часа.')));
+  nodes.push(title(tr('Новая поставка')), el('div', { className: 'firm-order' },
+    el('div', { className: 'deal-row' }, goodPick),
+    el('div', { className: 'deal-row' }, el('span', { className: 'deal-label', textContent: tr('Куда') }), target),
+    el('div', { className: 'deal-row' }, el('span', { className: 'deal-label', textContent: tr('От, шт.') }), from.node,
+      chips([['0', () => from.set(0)], ['100', () => from.set(100)], ['1 000', () => from.set(1000)]])),
+    el('div', { className: 'deal-row' }, el('span', { className: 'deal-label', textContent: tr('В час, шт.') }), units.node,
+      chips([['10', () => units.set(10)], ['100', () => units.set(100)], ['1 000', () => units.set(1000)]])),
+    go));
+  nodes.push(hint(tr('Каждый час, когда на складе этого предприятия товара не меньше «от», столько, сколько указано, уходит другому вашему предприятию — до продаж и сколько вместит его склад и оплатит касса. Цена — посередине между ценами государства, без комиссии биржи: акционеры обоих предприятий ничего не теряют. Поставок у предприятия — до {0}.', 5)));
+  return nodes;
+}
+
 function report(f) {
   // The hour going on is the live row on top, not one of those ended.
   const ended = f.forecast ? f.hours.filter((h) => Date.parse(h.hour) < hourStart()) : f.hours;
@@ -1256,7 +1320,7 @@ function show() {
   else if (tab === 'contracts') nodes = contracts();
   else if (tab === 'guide') nodes = guide();
   else nodes = myFirms();
-  $('firm-view').replaceChildren(...nodes.filter(Boolean));
+  replaceInPlace($('firm-view'), ...nodes.filter(Boolean));
   blink();
 }
 

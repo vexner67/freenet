@@ -186,6 +186,11 @@ function notificationText(n) {
     return [name, tr(' {0} вам ', notificationVerb('prime', n.actor)), el('a', { href: '/prime' }, el('b', { textContent: 'Prime' })), '.'];
   }
 
+  // A like of "Знакомства" answered with a like; the matches are there.
+  if (n.type === 'match') {
+    return [name, tr(' — взаимная симпатия в '), el('a', { href: '/dating' }, el('b', { textContent: tr('знакомствах') })), '.'];
+  }
+
   // openvk's "передал вам голоса"; the balance is in the settings.
   if (n.type === 'votes') {
     return [name, tr(' {0} вам ', notificationVerb('votes', n.actor)), el('a', { href: '/votes' }, el('b', { textContent: tr('голоса') })), '.'];

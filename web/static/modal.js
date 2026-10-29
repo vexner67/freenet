@@ -1,7 +1,7 @@
 // openvk's message box: a title bar, a body and buttons at the bottom,
 // over a darkened page. Esc or a click beside the box closes it.
 
-import { el } from './layout.js';
+import { el, onScreen } from './layout.js';
 import { tr } from './i18n.js';
 
 // openModal shows a box and returns it: body and actions are its parts to
@@ -126,4 +126,11 @@ export function toast(text) {
   const note = el('div', { className: 'toast', role: 'status', textContent: text });
   document.body.append(note);
   setTimeout(() => note.remove(), 2200);
+}
+
+// notify leaves the page where it is after an action: what was done is
+// said in node over the page and, when that is out of sight, at the
+// bottom of the window too, instead of throwing the reader up to it.
+export function notify(node, text = node.textContent) {
+  if (text && !onScreen(node)) toast(text);
 }

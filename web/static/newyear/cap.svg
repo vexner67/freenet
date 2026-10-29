@@ -1,4 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="56" height="14" viewBox="0 0 56 14">
-<path d="M2.5 6Q1 1.6 7 1.2Q14 -.2 22 1Q30 .2 38 .8Q47 0 52 1.4Q56 2.6 54.5 6Q53.6 8.2 51.4 7.6Q48.8 7 47.6 9Q46 13.2 43.8 9.4Q41.4 7.2 36 7.8Q31 8.6 28 7.8Q24 7.2 21 8.2Q19.4 11 17.4 8.4Q14 7 10.2 7.8Q8.6 12 6.8 8.4Q5.6 6.6 4.4 8Q2.4 9 2.5 6Z" fill="#fff" stroke="#b7c7d8" stroke-width=".8"/>
-<path d="M7 3Q20 1.6 30 2.6Q42 1.6 51 3" fill="none" stroke="#dde6ef" stroke-width="1.2" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="58" height="22" viewBox="0 0 58 22">
+<defs>
+<linearGradient id="snow" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#fff"/>
+<stop offset=".55" stop-color="#f6faff"/>
+<stop offset="1" stop-color="#cfdeee"/>
+</linearGradient>
+<linearGradient id="ice" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#eef6ff"/>
+<stop offset="1" stop-color="#a9cdee" stop-opacity=".85"/>
+</linearGradient>
+</defs>
+<path d="M12 12.6L13.4 19.6L15 12.6Z M34.6 12.8L35.9 21L37.4 12.8Z M47.4 12.2L48.4 17.2L49.6 12.2Z" fill="url(#ice)" stroke="#9fbfdc" stroke-width=".4" stroke-linejoin="round"/>
+<path d="M2 9.6C0.6 5.6 4 3.2 7.6 3.6C9.6 0.8 14.4 0.4 17 2.6C19.6 0.2 25 0 27.6 2.4C30.4 0.2 35.6 0.4 38 2.6C40.8 0.6 46 0.8 48 3.4C52.2 2.6 56.8 4.6 55.8 9C55.4 11.2 53.6 12.2 52 11.8C50.6 13.8 47.6 13.6 46.2 12.2C44.6 14.2 40.6 14.4 38.8 12.4C36.8 14.4 32.2 14.6 30.2 12.6C27.8 14.8 23.4 14.4 21.6 12.4C19.4 14.4 15.2 14.2 13.6 12.2C11.6 14 7.8 13.8 6.6 11.6C4.4 12.6 2.6 11.6 2 9.6Z" fill="url(#snow)" stroke="#b9cde2" stroke-width=".7"/>
+<path d="M6 6.2C9 4.4 12.6 4 15.6 4.8M20 4C23 2.8 26.4 2.8 29 3.8M33 4C36 2.8 39.6 3 42 4.4M46 5.2C48.6 4.4 51.6 4.8 53.4 6.4" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".95"/>
+<g fill="#cfe0f0"><circle cx="10" cy="9.4" r=".9"/><circle cx="25" cy="10.2" r=".8"/><circle cx="41" cy="9.6" r=".9"/><circle cx="51" cy="8.6" r=".7"/></g>
+<g fill="#7fb4e6"><path d="M22 6.4L22.5 7.8L23.9 8.3L22.5 8.8L22 10.2L21.5 8.8L20.1 8.3L21.5 7.8Z"/><path d="M44.4 5.8L44.8 6.9L45.9 7.3L44.8 7.7L44.4 8.8L44 7.7L42.9 7.3L44 6.9Z"/></g>
+<path d="M33.6 6.6L34 7.6L35 8L34 8.4L33.6 9.4L33.2 8.4L32.2 8L33.2 7.6Z" fill="#f2c94c"/>
+<g fill="#fff"><circle cx="5" cy="15.8" r="1"/><circle cx="27" cy="17.6" r=".8"/><circle cx="42.6" cy="19" r="1"/><circle cx="54" cy="15.4" r=".7"/></g>
 </svg>

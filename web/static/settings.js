@@ -11,7 +11,7 @@
 import { api, currentUser } from './api.js';
 import { deviceName, formatDateTime, keyStateText, sessionsCount, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes, pushStateTexts } from './labels.js';
 import { $, applyInterface, deviceTheme, el, setDeviceTheme, profilePath, renderChrome, showError, hideError } from './layout.js';
-import { button, openModal } from './modal.js';
+import { button, notify, openModal } from './modal.js';
 import { openDeactivate } from './deactivate.js';
 import { disablePush, enablePush, pushState } from './push.js';
 import { ensureKey, exportKeys, forgetKeys, hasKeys, importKeys, KEY_READY, newCode, newKey } from './e2ee.js';
@@ -45,7 +45,7 @@ function onSubmit(form, save) {
       showError(error, e);
     } finally {
       button.disabled = false;
-      $('notice').scrollIntoView({ block: 'nearest' });
+      notify($('notice').hidden ? error : $('notice'));
     }
   });
 }
@@ -333,7 +333,7 @@ function openForget(me, done) {
 function say(title, ...rest) {
   $('notice').replaceChildren(el('b', { textContent: title }), ...(rest.length ? [el('br'), ...rest] : []));
   $('notice').hidden = false;
-  $('notice').scrollIntoView({ block: 'nearest' });
+  notify($('notice'), title);
 }
 
 const me = await currentUser().catch(() => null);

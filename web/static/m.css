@@ -79,6 +79,21 @@ b, strong { font-weight: bold; }
   border-left: 1px solid var(--line-2f2f2f);
   box-shadow: inset 1px 0 var(--line-6f6f6f);
 }
+/* "назад" (layout.js addBackLink): an arrow at the left of the header,
+   the page of Freenet before this one, as the apps had. */
+.header-back {
+  order: -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  margin: 0 6px 0 -10px;
+  border-right: 1px solid var(--line-2f2f2f);
+  box-shadow: inset -1px 0 var(--line-6f6f6f);
+}
+.header-back img { display: block; width: 22px; height: 22px; opacity: 0.85; }
+.header-back span { display: none; }
+.header-back:active { background: rgba(255, 255, 255, 0.1); }
 .header-search img { display: block; width: 22px; height: 22px; opacity: 0.85; }
 .header-search:active, .header-links a:active { background: rgba(255, 255, 255, 0.1); }
 
@@ -275,12 +290,25 @@ b, strong { font-weight: bold; }
 .festive .post > .post-avatar::before {
   content: "";
   position: absolute;
-  top: -6px;
-  left: -3px;
-  width: 56px;
-  height: 14px;
+  top: -8px;
+  left: -4px;
+  width: 58px;
+  height: 22px;
   background: url("/static/newyear/cap.svg") no-repeat;
   pointer-events: none;
+  filter: drop-shadow(0 1px 1px rgba(60, 90, 130, 0.25));
+}
+/* A thick cap of snow on the big photo of a page, icicles hanging. */
+.festive .avatar-box::before {
+  content: "";
+  position: absolute;
+  top: -9%;
+  left: -4%;
+  width: 108%;
+  aspect-ratio: 58 / 22;
+  background: url("/static/newyear/cap.svg") 0 0 / 100% no-repeat;
+  pointer-events: none;
+  z-index: 1;
 }
 /* A bauble hangs at the right of the bar over a post. */
 .festive .post-author { position: relative; }
@@ -2141,6 +2169,24 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .pet-pity { background: var(--back-6a3fd8); }
 .pet-stance-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0; }
 .pet-stance-row select { width: auto; }
+.pet-league-note { margin: 0 0 10px; }
+.pet-league-table { width: 100%; margin: 6px 0 10px; }
+.pet-league-table th { padding: 3px 6px; color: var(--text-808080); font-weight: normal; text-align: left; border-bottom: 1px solid var(--line-dae1e8); }
+.pet-league-table td { padding: 3px 6px; vertical-align: middle; border-bottom: 1px solid var(--line-dae1e8); }
+.pet-entrant { display: inline-flex; align-items: center; gap: 4px; }
+.pet-entrants > div { margin: 2px 0; }
+.pet-round { margin: 6px 0; }
+.pet-round > b { display: block; margin: 0 0 2px; color: var(--text-45688e); }
+.pet-match { margin: 2px 0 2px 8px; }
+.pet-places { margin: 6px 0 10px; padding-left: 20px; }
+.pet-places li { margin: 2px 0; }
+.pet-votes { width: 90px; }
+.pet-quests .pet-bar-label { width: 180px; }
+.pet-badges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 6px 0 10px; }
+.pet-badge { padding: 6px 8px; color: var(--text-808080); background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); opacity: 0.6; }
+.pet-badge-got { color: inherit; background: var(--back-f9f6e7); border-color: var(--line-c3a476); opacity: 1; }
+.pet-badges { grid-template-columns: 1fr 1fr; }
+.pet-league-table { display: block; overflow-x: auto; }
 .pet-manual { display: inline-flex; gap: 4px; align-items: center; margin-left: 8px; }
 .pet-moves { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 6px; }
 .pet-log-special { color: var(--text-6b3fb8); }
@@ -3388,3 +3434,32 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 .m .article-card.with-cover, .m .article-card.with-cover .article-card-text { min-height: 150px; }
 
 /* The probes the canvas reads its colors off. */
+
+/* "Холст": the canvas fills the width of the screen at first. */
+.canvas-palette { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.canvas-swatch { width: 32px; height: 32px; padding: 0; border: 1px solid var(--line-c0cad5); }
+.canvas-swatch.active { outline: 2px solid var(--line-595959); outline-offset: 1px; }
+.canvas-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 8px; }
+.canvas-tools a { padding: 6px 0; }
+.canvas-tools #zoom-in, .canvas-tools #zoom-out { min-width: 36px; padding: 4px 0; font-size: 20px; text-align: center; }
+.canvas-tools a.active { font-weight: bold; }
+.canvas-status { flex-basis: 100%; color: var(--text-808080); }
+.canvas-status.canvas-ready { color: var(--text-45688e); font-weight: bold; }
+.canvas-frame { max-width: 100%; max-height: 70vh; overflow: auto; border: 1px solid var(--line-c0cad5); background: var(--back-f6f6f6); }
+.canvas-board { display: block; image-rendering: pixelated; }
+.canvas-zoom-1 { width: 100%; height: auto; aspect-ratio: 1; }
+.canvas-zoom-2 { width: 200%; height: auto; aspect-ratio: 1; }
+.canvas-zoom-4 { width: 400%; height: auto; aspect-ratio: 1; }
+
+/* "Знакомства": the photo over the words. */
+.dating-card { padding: 10px; border: 1px solid var(--line-dae1e8); background: var(--back-f6f6f6); }
+.dating-photo { display: block; width: 100%; max-height: 360px; object-fit: cover; margin-bottom: 8px; }
+.dating-name { font-size: 16px; font-weight: bold; }
+.dating-goal { margin: 4px 0; color: var(--text-808080); }
+.dating-text { margin: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dating-actions { display: flex; gap: 8px; margin-top: 12px; }
+.dating-actions .button { flex: 1; }
+.dating-person { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line-dae1e8); }
+.dating-avatar { width: 50px; height: 50px; object-fit: cover; }
+.dating-saved { color: var(--text-808080); }
+.dating #dating-about { width: 100%; min-height: 80px; box-sizing: border-box; }

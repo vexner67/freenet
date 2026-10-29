@@ -10,6 +10,7 @@
 import { api, currentUser, started } from './api.js';
 import { balanceVotes, balanceWord, balanceAmount, MAX_RATING, RATING_PRICE, bankRate, bankVotes, TRANSFER_FEE_PERCENT, formatDateTime, isEndless, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, votesFontSize, voucherGave } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError, verifiedMark } from './layout.js';
+import { notify } from './modal.js';
 import { tr } from './i18n.js';
 import { isNickname, recipientPicker } from './recipient.js';
 
@@ -31,7 +32,7 @@ const bankState = ['deposit', 'loan'].includes(act) ? started(api.bank()) : null
 function say(title, ...rest) {
   $('notice').replaceChildren(el('b', { textContent: title }), ...(rest.length ? [el('br'), ...rest] : []));
   $('notice').hidden = false;
-  $('notice').scrollIntoView({ block: 'nearest' });
+  notify($('notice'), title);
 }
 
 function showBalance(votes, kopecks) {
