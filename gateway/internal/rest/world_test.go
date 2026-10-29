@@ -46,7 +46,7 @@ func (f *fakeWorld) Atlas(_ context.Context, worldID string) (model.Atlas, error
 	if worldID != "w1" {
 		return model.Atlas{}, failure.New(failure.NotFound, "world not found")
 	}
-	return model.Atlas{Width: 4, Height: 2, Provinces: []model.Province{{ID: 0, Sea: true}, {ID: 1, Name: "Vale", Links: []model.ProvinceLink{{To: 0, Sea: true}}}}}, nil
+	return model.Atlas{Width: 4, Height: 2, Zooms: 3, Provinces: []model.Province{{ID: 0, Sea: true}, {ID: 1, Name: "Vale", Links: []model.ProvinceLink{{To: 0, Sea: true}}}}}, nil
 }
 
 func (f *fakeWorld) Raster(context.Context, string) ([]byte, error) { return []byte{0x1f, 0x8b}, nil }
@@ -178,7 +178,7 @@ func TestWorldMapFiles(t *testing.T) {
 
 	w := h.do("GET", "/media/world/w1/atlas", "")
 	atlas := decode[map[string]any](t, w)
-	if w.Code != http.StatusOK || w.Header().Get("Cache-Control") != "public, max-age=31536000, immutable" || len(atlas["provinces"].([]any)) != 2 {
+	if w.Code != http.StatusOK || w.Header().Get("Cache-Control") != "public, max-age=31536000, immutable" || len(atlas["provinces"].([]any)) != 2 || atlas["zooms"] != 3.0 {
 		t.Fatalf("atlas: %d %v %v", w.Code, w.Header(), atlas)
 	}
 	if w = h.do("GET", "/media/world/w9/atlas", ""); w.Code != http.StatusNotFound {

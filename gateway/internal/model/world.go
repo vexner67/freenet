@@ -94,6 +94,8 @@ type Atlas struct {
 	Width     int
 	Height    int
 	Provinces []Province
+	// Zooms is how many zooms of tiles there are, from 0.
+	Zooms int
 }
 
 type Province struct {

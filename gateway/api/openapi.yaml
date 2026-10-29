@@ -8384,7 +8384,7 @@ paths:
                 motto: { type: string, maxLength: 80 }
                 color: { type: integer, minimum: 0, maximum: 23 }
                 flag: { $ref: "#/components/schemas/Flag" }
-                government: { type: string, enum: [monarchy, republic, dictatorship, federation] }
+                government: { type: string, enum: [monarchy, republic, dictatorship, federation, islamism] }
                 capital: { type: integer, description: The province of the capital }
       responses:
         "201":
@@ -10540,7 +10540,7 @@ components:
         motto: { type: string }
         color: { type: integer, description: Its color on the map, of the palette of 24 }
         flag: { $ref: "#/components/schemas/Flag" }
-        government: { type: string, enum: [monarchy, republic, dictatorship, federation] }
+        government: { type: string, enum: [monarchy, republic, dictatorship, federation, islamism] }
         ruler:
           description: Null in the state of a person (`/users/{nickname}/world`) and for a page erased
           oneOf:
@@ -10590,10 +10590,13 @@ components:
 
     Atlas:
       type: object
-      required: [width, height, provinces]
+      required: [width, height, zooms, provinces]
       properties:
         width: { type: integer }
         height: { type: integer }
+        zooms:
+          type: integer
+          description: How many zooms of tiles there are, from 0; the tiles of zoom z are 512·2^z pixels wide in all.
         provinces:
           type: array
           items:

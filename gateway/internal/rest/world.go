@@ -141,6 +141,7 @@ type provinceJSON struct {
 type atlasJSON struct {
 	Width     int            `json:"width"`
 	Height    int            `json:"height"`
+	Zooms     int            `json:"zooms"`
 	Provinces []provinceJSON `json:"provinces"`
 }
 
@@ -236,7 +237,7 @@ func (a *api) worldAtlas(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := atlasJSON{Width: atlas.Width, Height: atlas.Height, Provinces: make([]provinceJSON, 0, len(atlas.Provinces))}
+	resp := atlasJSON{Width: atlas.Width, Height: atlas.Height, Zooms: atlas.Zooms, Provinces: make([]provinceJSON, 0, len(atlas.Provinces))}
 	for _, p := range atlas.Provinces {
 		links := make([]provinceLinkJSON, 0, len(p.Links))
 		for _, l := range p.Links {

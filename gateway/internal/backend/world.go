@@ -59,7 +59,7 @@ func (w *World) Atlas(ctx context.Context, worldID string) (model.Atlas, error) 
 		return model.Atlas{}, errs.Wrap("w.api.GetAtlas", fromStatus(err))
 	}
 
-	a := model.Atlas{Width: int(resp.GetWidth()), Height: int(resp.GetHeight())}
+	a := model.Atlas{Width: int(resp.GetWidth()), Height: int(resp.GetHeight()), Zooms: int(resp.GetZooms())}
 	for _, p := range resp.GetProvinces() {
 		province := model.Province{
 			ID:         int(p.GetId()),
