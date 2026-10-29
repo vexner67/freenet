@@ -2,6 +2,7 @@ package user
 
 import (
 	"errors"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
@@ -133,6 +134,7 @@ type Firm struct {
 	price      int64
 	float      int64
 	candles    []Candle
+	routes     []SupplyRoute
 }
 
 // FirmState is an enterprise as kept.
@@ -159,6 +161,7 @@ type FirmState struct {
 	Price      int64
 	Float      int64
 	Candles    []Candle
+	Routes     []SupplyRoute
 }
 
 func restoreFirm(s FirmState) *Firm {
@@ -169,6 +172,7 @@ func restoreFirm(s FirmState) *Firm {
 		hours: append([]FirmHour(nil), s.Hours...), wear: min(max(s.Wear, 0), 100), ranks: map[Improvement]int{},
 		improved: max(s.Improved, 0), idleUntil: s.IdleUntil.UTC(), mood: min(max(s.Mood, -maxMood), maxMood),
 		price: max(s.Price, 0), float: max(s.Float, 0), candles: append([]Candle(nil), s.Candles...),
+		routes: slices.Clone(s.Routes),
 	}
 	// Kept before the labour market, an enterprise sought the workers it
 	// had.
@@ -202,6 +206,7 @@ func (f *Firm) state() FirmState {
 		Stock: map[Good]int64{}, Carry: map[Good]float64{}, Auto: map[Good]Auto{},
 		Hours: append([]FirmHour(nil), f.hours...), Wear: f.wear, Ranks: map[Improvement]int{}, Improved: f.improved,
 		IdleUntil: f.idleUntil, Mood: f.mood, Price: f.price, Float: f.float, Candles: append([]Candle(nil), f.candles...),
+		Routes: slices.Clone(f.routes),
 	}
 	for imp, r := range f.ranks {
 		s.Ranks[imp] = r
@@ -367,12 +372,15 @@ const (
 	FirmTender      FirmAction = "tender"
 	FirmTenderSell  FirmAction = "tender_sell"
 	FirmTenderClose FirmAction = "tender_cancel"
+	FirmRoute       FirmAction = "route"
+	FirmUnroute     FirmAction = "unroute"
 )
 
 var firmActions = []FirmAction{
 	FirmFound, FirmRename, FirmUpgrade, FirmStaff, FirmDeposit, FirmDividend, FirmLiquidate, FirmAutomate,
 	FirmOrder, FirmCancel, FirmStateBuy, FirmStateSell, FirmIssue, FirmRepair, FirmImprove, FirmTake, FirmDeliver,
 	FirmFund, FirmWithdraw, FirmStockOrder, FirmStockCancel, FirmTender, FirmTenderSell, FirmTenderClose,
+	FirmRoute, FirmUnroute,
 }
 
 var ErrUnknownFirmAction = errors.New("unknown action with an enterprise")

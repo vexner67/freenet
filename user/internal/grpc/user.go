@@ -63,6 +63,8 @@ type UserHandler struct {
 	permissionService PermissionService
 	presenceService   PresenceService
 	backdropService   BackdropService
+	canvas            CanvasService
+	dating            DatingService
 	logger            *slog.Logger
 }
 
@@ -117,6 +119,10 @@ type Services struct {
 	Permissions PermissionService
 	Presence    PresenceService
 	Backdrops   BackdropService
+	// Canvas is the shared canvas.
+	Canvas CanvasService
+	// Dating is "Знакомства".
+	Dating DatingService
 }
 
 func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
@@ -151,6 +157,8 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		permissionService: s.Permissions,
 		presenceService:   s.Presence,
 		backdropService:   s.Backdrops,
+		canvas:            s.Canvas,
+		dating:            s.Dating,
 		logger:            logger,
 	}
 }

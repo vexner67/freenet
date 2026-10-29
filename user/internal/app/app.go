@@ -259,11 +259,13 @@ func (a *App) build(cfg config.Config) error {
 			Paid:        service.NewPaidService(store.users, store.wallets, store.purchases, store.economy, permissions, store.tx),
 			Guests:      service.NewGuestService(store.users, store.guests),
 			Tops:        service.NewTopService(store.tops),
-			Pets:        service.NewPetService(store.users, service.PetStores{Pets: store.pets, Keepers: store.pets, Battles: store.pets}, store.wallets, store.tx, admins),
+			Pets:        service.NewPetService(store.users, service.PetStores{Pets: store.pets, Keepers: store.pets, Battles: store.pets, Events: store.pets, Seasons: store.pets, Quests: store.pets, Market: store.pets}, store.wallets, store.tx, admins),
 			Titles:      service.NewTitleService(store.users, store.titles, admins),
 			Permissions: permissions,
 			Presence:    a.presence,
 			Backdrops:   service.NewBackdropService(store.users, store.users),
+			Canvas:      service.NewCanvasService(store.canvas, store.tx),
+			Dating:      service.NewDatingService(store.users, store.dating, deliver.matched, store.tx),
 		}, a.logger),
 	)
 
@@ -354,6 +356,13 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		userv1.UserService_SetPetStance_FullMethodName:   cfg.PetLimits,
 		userv1.UserService_StartPetBattle_FullMethodName: cfg.PetLimits,
 		userv1.UserService_MovePetBattle_FullMethodName:  cfg.PetLimits,
+		userv1.UserService_RunPetArena_FullMethodName:    cfg.PetLimits,
+		// The minute between cells holds the canvas back; the limit is
+		// against scripts.
+		userv1.UserService_PaintCanvas_FullMethodName: cfg.PetLimits,
+		// Likes and skips are cheap to make by a script: the limit keeps
+		// one from answering every card at once.
+		userv1.UserService_AnswerDating_FullMethodName: cfg.PetLimits,
 	}
 }
 
@@ -383,6 +392,10 @@ type petStore interface {
 	service.PetRepository
 	service.PetKeeperRepository
 	service.PetBattleRepository
+	service.PetEventRepository
+	service.PetSeasonRepository
+	service.PetQuestRepository
+	service.PetMarketRepository
 }
 
 // storage is the set of repositories chosen by STORAGE.
@@ -457,6 +470,10 @@ type storage struct {
 	tops service.TopRepository
 	// titles are the awards of the administrators.
 	titles service.TitleRepository
+	// canvas is the shared canvas.
+	canvas service.CanvasRepository
+	// dating is "Знакомства".
+	dating service.DatingRepository
 	// purchases are the paid posts opened and the messages paid for.
 	purchases service.PurchaseRepository
 	// ads are the advertising of the global feed, and how it does.
@@ -505,6 +522,8 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			pets:         pets,
 			tops:         inmem.NewTopRepository(users, pets),
 			titles:       inmem.NewTitleRepository(users),
+			canvas:       inmem.NewCanvasRepository(users),
+			dating:       inmem.NewDatingRepository(users),
 			ads:          inmem.NewAdRepository(),
 			tx:           inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
@@ -565,6 +584,8 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		pets:         postgres.NewPetRepository(a.pool),
 		tops:         postgres.NewTopRepository(a.pool),
 		titles:       postgres.NewTitleRepository(a.pool),
+		canvas:       postgres.NewCanvasRepository(a.pool),
+		dating:       postgres.NewDatingRepository(a.pool),
 		ads:          postgres.NewAdRepository(a.pool),
 		tx:           pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {

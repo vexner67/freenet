@@ -1164,6 +1164,7 @@ func (c *City) work(rules FirmRules, f *Firm, at time.Time) {
 	}
 
 	if spec.IsShop() {
+		c.route(rules, f, at)
 		for _, g := range spec.Sells {
 			c.retail(rules, f, g, workers, city, at)
 		}
@@ -1172,6 +1173,8 @@ func (c *City) work(rules FirmRules, f *Firm, at time.Time) {
 	}
 
 	c.make(rules, f, plan, workers, at)
+	// The supplies to the enterprises of the director go before any sale.
+	c.route(rules, f, at)
 
 	if a := f.auto[spec.Output]; a.Sell {
 		if cv, err := rules.StateBuys(spec.Output); err == nil {

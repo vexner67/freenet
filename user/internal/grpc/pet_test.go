@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
+	"github.com/vexner67/freenet/user/internal/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -131,6 +132,24 @@ func TestPet(t *testing.T) {
 		t.Fatalf("SetPetSettings without fights: %v", err)
 	}
 
+	arena, err := s.client.GetPetArena(ann, &userv1.GetPetArenaRequest{})
+	if err != nil || arena.GetBoss().GetHealth() != arena.GetBoss().GetMaxHealth() || len(arena.GetQuests()) != 3 || len(arena.GetTop()) != 2 {
+		t.Fatalf("GetPetArena = %v, %v", arena, err)
+	}
+	joined, err := s.client.RunPetArena(bob, &userv1.RunPetArenaRequest{Action: "join", PetId: hamster.GetPet().GetId()})
+	if err != nil || len(joined.GetArena().GetTournament().GetEntrants()) != 1 {
+		t.Fatalf("RunPetArena join = %v, %v", joined, err)
+	}
+	if _, err = s.client.RunPetArena(ann, &userv1.RunPetArenaRequest{Action: "bet", PetId: hamster.GetPet().GetId(), Votes: 5}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a bet of 5: %v", err)
+	}
+	if _, err = s.client.RunPetArena(ann, &userv1.RunPetArenaRequest{Action: "sell", PetId: cat, Votes: 100}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("selling a pet just adopted: %v", err)
+	}
+	if _, err = s.client.RunPetArena(ann, &userv1.RunPetArenaRequest{Action: "dance", PetId: cat}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("an unknown action: %v", err)
+	}
+
 	if _, err = s.client.ReleasePet(bob, &userv1.ReleasePetRequest{PetId: hamster.GetPet().GetId()}); err != nil {
 		t.Fatal(err)
 	}
@@ -196,8 +215,10 @@ func TestPetCasesAndClothes(t *testing.T) {
 	if _, err = s.client.OpenPetCase(ann, &userv1.OpenPetCaseRequest{CaseId: "bronze", Shards: true}); status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("OpenPetCase without shards: %v", err)
 	}
+	// A task of the day to open a chest, if Ann has one, pays for it.
 	opened, err := s.client.OpenPetCase(ann, &userv1.OpenPetCaseRequest{CaseId: "bronze"})
-	if err != nil || opened.GetBalance() != 150 || opened.GetKeeper().GetDropKind() == "" || opened.GetKeeper().GetPity() != 1 {
+	quest := opened.GetBalance() - 150
+	if err != nil || (quest != 0 && quest != user.PetQuestReward) || opened.GetKeeper().GetDropKind() == "" || opened.GetKeeper().GetPity() != 1 {
 		t.Fatalf("OpenPetCase = %v, %v", opened, err)
 	}
 	if _, err = s.client.TakePetDrop(ann, &userv1.TakePetDropRequest{Name: ""}); status.Code(err) != codes.InvalidArgument {
@@ -216,7 +237,7 @@ func TestPetCasesAndClothes(t *testing.T) {
 		t.Fatalf("BuyPetItem of an unknown thing: %v", err)
 	}
 	bought, err := s.client.BuyPetItem(ann, &userv1.BuyPetItemRequest{PetId: pet, Item: "scarf"})
-	if err != nil || bought.GetBalance() != 0 || bought.GetPet().GetClothes().GetHealth() != 12 || len(bought.GetPet().GetOutfit()) != 1 {
+	if err != nil || bought.GetBalance() != quest || bought.GetPet().GetClothes().GetHealth() != 12 || len(bought.GetPet().GetOutfit()) != 1 {
 		t.Fatalf("BuyPetItem = %v, %v", bought, err)
 	}
 	if _, err = s.client.BuyPetItem(ann, &userv1.BuyPetItemRequest{PetId: pet, Item: "scarf"}); status.Code(err) != codes.FailedPrecondition {

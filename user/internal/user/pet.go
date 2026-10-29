@@ -527,6 +527,12 @@ type PetState struct {
 	// PetRest of the one before: they tire the pet.
 	Streak   int
 	StreakAt time.Time
+	// OwnedSince is when its owner got it; SalePrice the votes it is up
+	// for on the market, 0 — not for sale; BossAt when it last hit the
+	// boss of the week.
+	OwnedSince time.Time
+	SalePrice  int64
+	BossAt     time.Time
 }
 
 // Pet is a pet of a person, a tamagotchi: it grows hungry and bored with
@@ -540,7 +546,7 @@ type Pet struct {
 func NewPet(kind PetKind, name PetName, now time.Time) *Pet {
 	return &Pet{s: PetState{
 		ID: uuid.Must(uuid.NewV7()), Kind: kind, Name: name, BornAt: now, Satiety: 80, Joy: 80, CountedAt: now, Rating: PetStartRating,
-		Stance: PetDefense,
+		Stance: PetDefense, OwnedSince: now,
 	}}
 }
 
@@ -571,6 +577,18 @@ func (p *Pet) Losses() int         { return p.s.Losses }
 func (p *Pet) PlayedAt() time.Time { return p.s.PlayedAt }
 func (p *Pet) Level() int          { return PetLevel(p.s.Experience) }
 func (p *Pet) Stance() PetStance   { return p.s.Stance }
+func (p *Pet) SalePrice() int64    { return p.s.SalePrice }
+func (p *Pet) BossAt() time.Time   { return p.s.BossAt }
+
+// OwnedSince is when its owner got it: a pet kept before the market, when
+// it was born.
+func (p *Pet) OwnedSince() time.Time {
+	if p.s.OwnedSince.IsZero() {
+		return p.s.BornAt
+	}
+
+	return p.s.OwnedSince
+}
 
 // felt is a feeling of at, which was value at CountedAt and loses a point
 // each loss.
@@ -755,6 +773,8 @@ func (p *Pet) CheckFightAt(shop PetShop, now time.Time) error {
 		return ErrPetSad
 	case p.FightsAt(now) >= shop.Fights():
 		return ErrPetFightsOver
+	case p.s.SalePrice > 0:
+		return ErrPetOnSale
 	}
 
 	return nil

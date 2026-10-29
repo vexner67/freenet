@@ -133,6 +133,9 @@ func toProtoFirm(v service.FirmsView, f *user.Firm) *userv1.Firm {
 	for _, h := range f.Hours() {
 		pb.Hours = append(pb.Hours, toProtoFirmHour(h))
 	}
+	for _, r := range f.Routes() {
+		pb.Routes = append(pb.Routes, &userv1.FirmRoute{Id: r.ID.String(), ToFirmId: r.To.String(), Good: r.Good.String(), From: r.From, Units: r.Units})
+	}
 	if forecast, ok := v.Forecast[f.ID()]; ok {
 		pb.Forecast, pb.ForecastCash = toProtoFirmHour(forecast.Hour), forecast.Cash
 	}
@@ -254,13 +257,17 @@ func fromProtoFirmAct(req *userv1.RunFirmsRequest) (service.FirmAct, error) {
 		Action: action, Workers: int(req.GetWorkers()), Wage: req.GetWage(), Votes: req.GetVotes(), Shares: req.GetShares(),
 		Order: user.ExchangeOrder{Buy: req.GetBuy(), Price: req.GetPrice(), Units: req.GetUnits()},
 		Auto:  user.Auto{Buy: req.GetAutoBuy(), BuyMax: req.GetBuyMax(), Sell: req.GetAutoSell(), SellMin: req.GetSellMin()},
+		Route: user.SupplyRoute{From: req.GetFrom(), Units: req.GetUnits()},
 	}
 
 	ids := []struct {
 		to   *uuid.UUID
 		from string
 		what string
-	}{{&act.FirmID, req.GetFirmId(), "enterprise"}, {&act.OrderID, req.GetOrderId(), "order"}, {&act.ContractID, req.GetContractId(), "contract"}}
+	}{
+		{&act.FirmID, req.GetFirmId(), "enterprise"}, {&act.OrderID, req.GetOrderId(), "order"}, {&act.ContractID, req.GetContractId(), "contract"},
+		{&act.Route.To, req.GetToFirmId(), "enterprise"}, {&act.RouteID, req.GetRouteId(), "supply"},
+	}
 	for _, id := range ids {
 		if *id.to, err = optionalID(id.from, id.what); err != nil {
 			return service.FirmAct{}, err

@@ -65,7 +65,9 @@ func TestFirmRepository(t *testing.T) {
 	if err = city.Fund(ann.ID(), 500); err != nil {
 		t.Fatal(err)
 	}
-	order := user.StockOrder{FirmID: mill.ID(), Buy: true, Price: 1, Shares: 3}
+	// An order of people stands within the band of the price of the
+	// exchange: its least price waits on the book.
+	order := user.StockOrder{FirmID: mill.ID(), Buy: true, Price: city.Quote(tuned, mill, now).Low, Shares: 3}
 	if _, err = city.PlaceStock(tuned, ann.ID(), order, now); err != nil {
 		t.Fatal(err)
 	}

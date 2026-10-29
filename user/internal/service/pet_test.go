@@ -35,7 +35,7 @@ func TestPetService(t *testing.T) {
 	}
 
 	repo := inmem.NewPetRepository(w.users)
-	pets := service.NewPetService(w.users, service.PetStores{Pets: repo, Keepers: repo, Battles: repo}, w.users, inmem.TxManager{}, admins).
+	pets := service.NewPetService(w.users, service.PetStores{Pets: repo, Keepers: repo, Battles: repo, Events: repo, Seasons: repo, Quests: repo, Market: repo}, w.users, inmem.TxManager{}, admins).
 		WithRoll(func(int64) (int64, error) { return 0, nil })
 
 	now := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
@@ -262,12 +262,12 @@ func TestPetCasesAndClothes(t *testing.T) {
 
 	repo := inmem.NewPetRepository(w.users)
 	// The rolls fall high: a legendary pet, the second of its kinds.
-	pets := service.NewPetService(w.users, service.PetStores{Pets: repo, Keepers: repo, Battles: repo}, w.users, inmem.TxManager{}, user.Admins{}).
+	pets := service.NewPetService(w.users, service.PetStores{Pets: repo, Keepers: repo, Battles: repo, Events: repo, Seasons: repo, Quests: repo, Market: repo}, w.users, inmem.TxManager{}, user.Admins{}).
 		WithRoll(func(n int64) (int64, error) { return n - 1, nil })
 	now := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
 
 	drop, err := pets.OpenCase(ctx, ann, user.PetCaseBronze, false, now)
-	if err != nil || drop.Keeper.Drop().Rarity() != user.PetLegendary || drop.Balance != 1850 {
+	if err != nil || drop.Keeper.Drop().Rarity() != user.PetLegendary || drop.Balance != 1850+questPaid(ann, now, user.PetQuestCase) {
 		t.Fatalf("OpenCase = %+v, %v", drop, err)
 	}
 	if _, err = pets.OpenCase(ctx, ann, user.PetCaseBronze, false, now); !errors.Is(err, user.ErrPetDropWaiting) {
@@ -295,7 +295,7 @@ func TestPetCasesAndClothes(t *testing.T) {
 	found := taken.ID()
 
 	care, err := pets.BuyItem(ctx, ann, found, "crown")
-	if err != nil || care.Balance != 350 || len(care.Pet.Outfit()) != 1 {
+	if err != nil || care.Balance != 350+questPaid(ann, now, user.PetQuestCase) || len(care.Pet.Outfit()) != 1 {
 		t.Fatalf("BuyItem = %+v, %v", care, err)
 	}
 	if _, err = pets.BuyItem(ctx, ann, found, "crown"); !errors.Is(err, user.ErrPetItemOwned) {
@@ -337,7 +337,7 @@ func TestPetBattles(t *testing.T) {
 	}
 
 	repo := inmem.NewPetRepository(w.users)
-	pets := service.NewPetService(w.users, service.PetStores{Pets: repo, Keepers: repo, Battles: repo}, w.users, inmem.TxManager{}, user.Admins{}).
+	pets := service.NewPetService(w.users, service.PetStores{Pets: repo, Keepers: repo, Battles: repo, Events: repo, Seasons: repo, Quests: repo, Market: repo}, w.users, inmem.TxManager{}, user.Admins{}).
 		WithRoll(func(int64) (int64, error) { return 0, nil })
 	now := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
 
@@ -397,4 +397,16 @@ func TestPetBattles(t *testing.T) {
 	if battles, err := pets.Battles(ctx, ann); err != nil || len(battles) != 0 {
 		t.Fatalf("the fight of a released pet = %v, %v", battles, err)
 	}
+}
+
+// questPaid is what a task of kind done once pays userID on the day of
+// now: the tasks are drawn for each person and day.
+func questPaid(userID uuid.UUID, now time.Time, kind user.PetQuestKind) int64 {
+	for _, q := range user.PetQuestsOf(userID, user.BonusDay(now)) {
+		if q.Kind == kind && q.Goal == 1 {
+			return user.PetQuestReward
+		}
+	}
+
+	return 0
 }

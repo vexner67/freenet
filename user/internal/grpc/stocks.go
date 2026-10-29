@@ -52,6 +52,7 @@ func toProtoCompany(v service.FirmsView, f *user.Firm, looked bool) *userv1.Stoc
 		DirectorId: f.DirectorID().String(), Shares: q.Shares, Pool: q.Pool, Float: q.Float, Book: q.Book, Fair: q.Fair,
 		Price: q.Price, Bid: q.Bid, Ask: q.Ask, BestBid: q.BestBid, BestAsk: q.BestAsk, DayAgo: q.DayAgo, Volume: q.Volume,
 		Profit: f.Profit(), Holders: int32(holders), Candles: toProtoCandles(candles), //nolint:gosec // people of the site
+		BandLow: q.Low, BandHigh: q.High,
 	}
 }
 

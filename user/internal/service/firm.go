@@ -64,6 +64,8 @@ type FirmAct struct {
 	Improvement user.Improvement
 	ContractID  uuid.UUID
 	OrderID     uuid.UUID
+	Route       user.SupplyRoute
+	RouteID     uuid.UUID
 }
 
 // FirmDone is what an action did: the votes the caller spent and got and
@@ -372,6 +374,13 @@ func (r firmRun) do(ctx context.Context) error {
 		return errs.Wrap("c.SellToTender", err)
 	case user.FirmTenderClose:
 		return errs.Wrap("c.CancelTender", c.CancelTender(r.userID, a.OrderID))
+	case user.FirmRoute:
+		route := a.Route
+		route.Good = a.Order.Good
+		_, err := c.AddRoute(r.userID, a.FirmID, route)
+		return errs.Wrap("c.AddRoute", err)
+	case user.FirmUnroute:
+		return errs.Wrap("c.RemoveRoute", c.RemoveRoute(r.userID, a.FirmID, a.RouteID))
 	}
 
 	return user.ErrUnknownFirmAction

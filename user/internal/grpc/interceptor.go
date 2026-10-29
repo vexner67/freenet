@@ -89,6 +89,31 @@ var petErrors = []struct {
 	{user.ErrNoPetDrop, codes.FailedPrecondition},
 	{user.ErrPetCasesOver, codes.FailedPrecondition},
 	{user.ErrNotEnoughShards, codes.FailedPrecondition},
+	{service.ErrPetArenaAction, codes.InvalidArgument},
+	{user.ErrPetBet, codes.InvalidArgument},
+	{user.ErrPetSalePrice, codes.InvalidArgument},
+	{user.ErrPetBossDown, codes.FailedPrecondition},
+	{user.ErrPetBossRest, codes.FailedPrecondition},
+	{user.ErrPetTournamentClosed, codes.FailedPrecondition},
+	{user.ErrPetTournamentFull, codes.FailedPrecondition},
+	{user.ErrPetTournamentJoined, codes.FailedPrecondition},
+	{user.ErrPetNotInTournament, codes.FailedPrecondition},
+	{user.ErrPetBetPlaced, codes.FailedPrecondition},
+	{user.ErrPetOnSale, codes.FailedPrecondition},
+	{user.ErrPetNotOnSale, codes.FailedPrecondition},
+	{user.ErrPetResale, codes.FailedPrecondition},
+	{user.ErrTooManyPetSales, codes.FailedPrecondition},
+	{user.ErrPetOwnSale, codes.FailedPrecondition},
+	{user.ErrCanvasCell, codes.InvalidArgument},
+	{user.ErrCanvasColor, codes.InvalidArgument},
+	{user.ErrCanvasCooldown, codes.FailedPrecondition},
+	{user.ErrDatingGoal, codes.InvalidArgument},
+	{user.ErrDatingSeek, codes.InvalidArgument},
+	{user.ErrDatingAbout, codes.InvalidArgument},
+	{user.ErrDatingSelf, codes.InvalidArgument},
+	{user.ErrDatingOff, codes.FailedPrecondition},
+	{user.ErrDatingTwice, codes.FailedPrecondition},
+	{user.ErrDatingProfile, codes.FailedPrecondition},
 }
 
 // bankInvalid are the amounts and settings the bank does not take.
@@ -323,10 +348,10 @@ var (
 	firmInvalid = []error{
 		user.ErrUnknownFirm, user.ErrUnknownGood, user.ErrUnknownFirmAction, user.ErrFirmName, user.ErrFirmStaff,
 		user.ErrFirmGood, user.ErrFirmUnits, user.ErrFirmVotes, user.ErrFirmAuto, user.ErrOrder, user.ErrStockOrder,
-		user.ErrIssue, user.ErrDeliver, user.ErrTender, user.ErrFirmPlans, user.ErrFirmPlan, user.ErrGoodPlan, user.ErrFirmPercents, user.ErrFirmCapital, user.ErrFirmLimits,
+		user.ErrStockBand, user.ErrRoute, user.ErrIssue, user.ErrDeliver, user.ErrTender, user.ErrFirmPlans, user.ErrFirmPlan, user.ErrGoodPlan, user.ErrFirmPercents, user.ErrFirmCapital, user.ErrFirmLimits,
 	}
 	firmMissing = []error{
-		user.ErrFirmNotFound, user.ErrOrderNotFound, user.ErrStockOrderNotFound, user.ErrContractNotFound,
+		user.ErrFirmNotFound, user.ErrOrderNotFound, user.ErrStockOrderNotFound, user.ErrContractNotFound, user.ErrRouteNotFound,
 		user.ErrTenderNotFound,
 	}
 	firmRefused = []error{
@@ -334,7 +359,7 @@ var (
 		user.ErrFirmStorage, user.ErrFirmNotYet, user.ErrFirmNoDeal, user.ErrFirmShortCash, user.ErrOwnOrder,
 		user.ErrTooManyOrders, user.ErrFirmWorn, user.ErrImprovement, user.ErrStockShares, user.ErrAccount,
 		user.ErrStockNoDeal, user.ErrOwnStockOrder, user.ErrTooManyStockOrders, user.ErrContractTaken,
-		user.ErrTooManyContracts, user.ErrOwnTender, user.ErrTooManyTenders, user.ErrTenderToYourself,
+		user.ErrTooManyContracts, user.ErrOwnTender, user.ErrTooManyTenders, user.ErrTenderToYourself, user.ErrTooManyRoutes,
 	}
 )
 

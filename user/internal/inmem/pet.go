@@ -24,12 +24,13 @@ type PetRepository struct {
 	battles map[uuid.UUID]ownedBattle
 	fights  []user.PetFight
 	stats   user.PetShopStats
+	arena   petArena
 }
 
 func NewPetRepository(users *UserRepository) *PetRepository {
 	r := &PetRepository{
 		users: users, shop: user.DefaultPetShop(), pets: map[uuid.UUID]owned{},
-		keepers: map[uuid.UUID]user.PetKeeperState{}, battles: map[uuid.UUID]ownedBattle{},
+		keepers: map[uuid.UUID]user.PetKeeperState{}, battles: map[uuid.UUID]ownedBattle{}, arena: newPetArena(),
 	}
 	users.onDelete(r.forget)
 
@@ -43,6 +44,8 @@ func (r *PetRepository) forget(id uuid.UUID) {
 	maps.DeleteFunc(r.pets, func(_ uuid.UUID, o owned) bool { return o.owner == id })
 	maps.DeleteFunc(r.battles, func(_ uuid.UUID, b ownedBattle) bool { return b.owner == id })
 	delete(r.keepers, id)
+	delete(r.arena.quests, id)
+	delete(r.arena.achievements, id)
 	r.fights = slices.DeleteFunc(r.fights, func(f user.PetFight) bool { return f.AttackerID == id || f.DefenderID == id })
 }
 

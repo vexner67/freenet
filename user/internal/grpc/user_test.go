@@ -107,7 +107,7 @@ func newServer(t *testing.T) testServer {
 		Mines:       service.NewMineService(users, inmem.NewMineRepository(), users, inmem.TxManager{}, admins),
 		Guests:      service.NewGuestService(users, inmem.NewGuestRepository(users)),
 		Tops:        service.NewTopService(inmem.NewTopRepository(users, pets)),
-		Pets:        service.NewPetService(users, service.PetStores{Pets: pets, Keepers: pets, Battles: pets}, users, inmem.TxManager{}, admins),
+		Pets:        service.NewPetService(users, service.PetStores{Pets: pets, Keepers: pets, Battles: pets, Events: pets, Seasons: pets, Quests: pets, Market: pets}, users, inmem.TxManager{}, admins),
 		Titles:      service.NewTitleService(users, inmem.NewTitleRepository(users), admins),
 		Firms:       service.NewFirmService(users, inmem.NewFirmRepository(), users, inmem.TxManager{}, admins),
 		Banks:       service.NewBankService(users, inmem.NewBankRepository(), users, inmem.TxManager{}, admins),
@@ -119,6 +119,8 @@ func newServer(t *testing.T) testServer {
 		Permissions: permissions,
 		Presence:    presence,
 		Backdrops:   service.NewBackdropService(users, users),
+		Canvas:      service.NewCanvasService(inmem.NewCanvasRepository(users), inmem.TxManager{}),
+		Dating:      service.NewDatingService(users, inmem.NewDatingRepository(users), notifyclient.Nop{}, inmem.TxManager{}),
 	}, log))
 
 	go func() { _ = srv.Serve(lis) }()

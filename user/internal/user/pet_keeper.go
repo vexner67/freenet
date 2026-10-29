@@ -148,3 +148,12 @@ func (k *PetKeeper) Released(kind PetKind) *PetKeeper {
 
 	return &PetKeeper{s: s}
 }
+
+// Earned is the keeper with shards more: of the tasks of the day, of the
+// boss.
+func (k *PetKeeper) Earned(shards int) *PetKeeper {
+	s := k.s
+	s.Shards += max(shards, 0)
+
+	return &PetKeeper{s: s}
+}

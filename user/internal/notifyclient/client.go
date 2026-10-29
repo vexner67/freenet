@@ -109,6 +109,22 @@ func (o *Outbox) PrimeGiven(ctx context.Context, purchaseID, buyerID, recipientI
 	}})
 }
 
+// Matched tells both of a pair that they liked each other in "Знакомства".
+func (o *Outbox) Matched(ctx context.Context, firstID, secondID uuid.UUID) error {
+	for _, pair := range [][2]uuid.UUID{{firstID, secondID}, {secondID, firstID}} {
+		err := o.add(ctx, kindNotify, &notificationv1.NotifyRequest{Event: &notificationv1.Event{
+			Kind:        notificationv1.Kind_KIND_MATCH,
+			RecipientId: pair[0].String(),
+			ActorId:     pair[1].String(),
+		}})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (o *Outbox) add(ctx context.Context, kind string, req proto.Message) error {
 	payload, err := proto.Marshal(req)
 	if err != nil {
@@ -200,6 +216,8 @@ func (Nop) GiftDeleted(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error {
 func (Nop) VotesSent(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error { return nil }
 
 func (Nop) PrimeGiven(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error { return nil }
+
+func (Nop) Matched(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 
 func (Nop) Verified(context.Context, uuid.UUID, uuid.UUID) error   { return nil }
 func (Nop) Unverified(context.Context, uuid.UUID, uuid.UUID) error { return nil }

@@ -397,7 +397,9 @@ service UserService {
   // units — on the exchange), "cancel" (order_id), "state_buy" and
   // "state_sell" (good, units), "issue" (shares — put up on the stock
   // exchange), "repair", "improve" (improvement), "take_contract"
-  // (contract_id) and "deliver" (contract_id, units). Taking votes out is
+  // (contract_id), "deliver" (contract_id, units), "route" (good, units,
+  // to_firm_id, from — a supply to another enterprise of the director
+  // every hour) and "unroute" (route_id). Taking votes out is
   // for pages a week old with a filled profile. Money of the enterprises
   // is in hundredths of a vote, of people — in votes.
   rpc GetFirms(GetFirmsRequest) returns (FirmsState);
@@ -510,6 +512,52 @@ service UserService {
   // pets and how they do.
   rpc GetPetSettings(GetPetSettingsRequest) returns (GetPetSettingsResponse);
   rpc SetPetSettings(SetPetSettingsRequest) returns (google.protobuf.Empty);
+  // GetPetArena is what the pets do together, as the caller sees it: the
+  // boss of the week, the tournament of the week and of the last, the
+  // places of the season and of those closed, the tasks of the day and
+  // the badges of the caller, and the pets up for sale; the season and
+  // the tournaments that are over are settled first. RunPetArena does an
+  // action and answers with the arena after it: "boss" hits the boss with
+  // a pet (FailedPrecondition "the boss of the week is beaten", "the pet
+  // rests after its hit of the boss"), "join" and "leave" the tournament
+  // ("the tournament of the week has begun", "the tournament is full",
+  // "you have a pet in the tournament already", "the pet is not in the
+  // tournament"), "bet" votes on a pet in it (InvalidArgument "a bet is
+  // from 10 to 100000 votes", FailedPrecondition "you have bet on the
+  // tournament already"), "sell" a pet for votes (FailedPrecondition "a
+  // pet goes up for sale a week after its owner got it", "a page sells at
+  // most 3 pets at a time", InvalidArgument "a pet costs from the least
+  // of its rarity"), "unsell" it and "buy" one up for sale
+  // (FailedPrecondition "this is your own pet", "the pet is not for
+  // sale"). A pet up for sale does not fight ("the pet is up for sale").
+  rpc GetPetArena(GetPetArenaRequest) returns (PetArena);
+  rpc RunPetArena(RunPetArenaRequest) returns (RunPetArenaResponse);
+
+  // GetCanvas is the shared canvas, public: its cells a byte each, row
+  // after row, the color in the palette of 16, and when the caller may
+  // paint next (unset when now and for a guest). PaintCanvas paints a
+  // cell (InvalidArgument "there is no such cell of the canvas", "there
+  // is no such color of the canvas"; FailedPrecondition "you paint the
+  // canvas again a minute after"). GetCanvasCell, public, is who painted
+  // a cell last and when (NotFound "user not found" for a cell never
+  // painted).
+  rpc GetCanvas(GetCanvasRequest) returns (GetCanvasResponse);
+  rpc PaintCanvas(PaintCanvasRequest) returns (PaintCanvasResponse);
+  rpc GetCanvasCell(GetCanvasCellRequest) returns (GetCanvasCellResponse);
+
+  // GetDating is "Знакомства" of the caller: their card (unset before
+  // they made one), up to ten cards to answer and the matches. A card is
+  // shown to those whose gender it seeks and who seek its owner's.
+  // SaveDatingCard makes or changes the card (InvalidArgument "there is no
+  // such goal of dating", "there is no such gender to seek", "the text
+  // about yourself is too long"; FailedPrecondition "fill in the profile
+  // before dating"). AnswerDating likes or skips a card and tells whether
+  // the like made a match (FailedPrecondition "dating is off",
+  // "you have already answered this card"; InvalidArgument "you cannot
+  // like yourself"; NotFound "user not found" for a card that is off).
+  rpc GetDating(GetDatingRequest) returns (GetDatingResponse);
+  rpc SaveDatingCard(SaveDatingCardRequest) returns (SaveDatingCardResponse);
+  rpc AnswerDating(AnswerDatingRequest) returns (AnswerDatingResponse);
 
   // Titles: awards with a name and a picture the administrators give a
   // page, the same one as many times as they like. GetUserTitles is
@@ -2600,6 +2648,19 @@ message Firm {
   int64 forecast_cash = 29;
   // wanted is the workers the enterprise seeks: workers and the vacancies.
   int32 wanted = 30;
+  // routes are the supplies the enterprise hands every hour by itself to
+  // others of its director.
+  repeated FirmRoute routes = 31;
+}
+
+// FirmRoute is a supply of an enterprise: units of good an hour to the
+// enterprise to_firm_id of the same director, once from units are kept.
+message FirmRoute {
+  string id = 1;
+  string to_firm_id = 2;
+  string good = 3;
+  int64 from = 4;
+  int64 units = 5;
 }
 
 // FirmLabour is the labour market of the city: its people, those working,
@@ -2699,6 +2760,11 @@ message RunFirmsRequest {
   int64 sell_min = 18;
   string improvement = 19;
   string contract_id = 20;
+  // "route": a supply of good, units an hour to to_firm_id once from
+  // units are kept; "unroute": stops the supply route_id.
+  string to_firm_id = 21;
+  int64 from = 22;
+  string route_id = 23;
 }
 
 message FirmDeal {
@@ -2740,7 +2806,8 @@ message StockCandle {
 // price now, what the exchange pays and asks, the best orders of people
 // (0 — none), the price a day ago and the shares traded in a day; the
 // profit of the last day in hundredths; its candles — of the week for the
-// company looked at, of the day for the others.
+// company looked at, of the day for the others; the prices the orders of
+// people may stand at, from band_low to band_high.
 message StockCompany {
   string firm_id = 1;
   string name = 2;
@@ -2762,6 +2829,8 @@ message StockCompany {
   int64 profit = 18;
   int32 holders = 19;
   repeated StockCandle candles = 20;
+  int64 band_low = 21;
+  int64 band_high = 22;
 }
 
 // StockIndexPoint is the index of the exchange at an hour, in hundredths
@@ -3167,6 +3236,11 @@ message Pet {
   int32 power = 27;
   // Its fights in a row: each takes 5% of its attack, defense and health.
   int32 fatigue = 28;
+  // The votes it is up for on the market, 0 when it is not; when it may
+  // go up, and when it may hit the boss again (unset when it may now).
+  int64 sale_price = 29;
+  google.protobuf.Timestamp sale_at = 30;
+  google.protobuf.Timestamp boss_at = 31;
 }
 
 message GetPetRequest {}
@@ -3385,6 +3459,163 @@ message SetPetSettingsRequest {
   PetShop shop = 1;
 }
 
+message GetPetArenaRequest {}
+
+// PetBossHit is what a person did to the boss: the damage of their pets
+// and their hits.
+message PetBossHit {
+  string user_id = 1;
+  int32 damage = 2;
+  int32 hits = 3;
+}
+
+// PetBoss is the boss of a week: the health left, who finished it and
+// when, the hits by damage, the most first, and the votes it brings.
+message PetBoss {
+  google.protobuf.Timestamp week = 1;
+  string kind = 2;
+  int32 health = 3;
+  int32 max_health = 4;
+  string killed_by = 5;
+  google.protobuf.Timestamp killed_at = 6;
+  repeated PetBossHit hits = 7;
+  PetStats stats = 8;
+  int64 prize = 9;
+  int64 last_hit = 10;
+}
+
+message PetEntrant {
+  string owner_id = 1;
+  string pet_id = 2;
+  string kind = 3;
+  string name = 4;
+  int32 level = 5;
+  int32 power = 6;
+}
+
+// PetMatch is a fight of a tournament: the entrants by their indexes,
+// b -1 for a pet alone, the winner of them and the fight.
+message PetMatch {
+  int32 a = 1;
+  int32 b = 2;
+  int32 winner = 3;
+  PetFight bout = 4;
+}
+
+message PetRound {
+  repeated PetMatch matches = 1;
+}
+
+// PetTournament is the tournament of a week: the entrants, the rounds
+// once it is held, the places (the indexes of the entrants, the winner
+// first), the stakes and the bet of the caller.
+message PetTournament {
+  google.protobuf.Timestamp week = 1;
+  google.protobuf.Timestamp starts_at = 2;
+  bool held = 3;
+  repeated PetEntrant entrants = 4;
+  repeated PetRound rounds = 5;
+  repeated int32 places = 6;
+  int32 bets = 7;
+  int64 pool = 8;
+  string bet_pet_id = 9;
+  int64 bet_votes = 10;
+}
+
+message PetSeasonPlace {
+  string owner_id = 1;
+  string pet_id = 2;
+  string kind = 3;
+  string name = 4;
+  int32 rating = 5;
+  int64 prize = 6;
+}
+
+message PetSeason {
+  google.protobuf.Timestamp season = 1;
+  repeated PetSeasonPlace places = 2;
+}
+
+message PetQuest {
+  string kind = 1;
+  int32 goal = 2;
+  int32 progress = 3;
+}
+
+message PetAchievement {
+  string id = 1;
+  google.protobuf.Timestamp got_at = 2;
+}
+
+message PetListing {
+  string owner_id = 1;
+  Pet pet = 2;
+}
+
+message PetArena {
+  PetBoss boss = 1;
+  PetTournament tournament = 2;
+  // Unset when the last week had none.
+  PetTournament last = 3;
+  google.protobuf.Timestamp season_ends_at = 4;
+  // The places of the season as they stand.
+  repeated PetSeasonPlace top = 5;
+  // The seasons closed, the last first.
+  repeated PetSeason seasons = 6;
+  repeated PetQuest quests = 7;
+  // The days in a row the caller did all the tasks.
+  int32 streak = 8;
+  repeated PetAchievement achievements = 9;
+  repeated PetListing market = 10;
+}
+
+message GetCanvasRequest {}
+
+message GetCanvasResponse {
+  bytes cells = 1;
+  // The cells of a side.
+  int32 size = 2;
+  google.protobuf.Timestamp next_at = 3;
+  int32 cooldown_seconds = 4;
+}
+
+message PaintCanvasRequest {
+  int32 x = 1;
+  int32 y = 2;
+  int32 color = 3;
+}
+
+message PaintCanvasResponse {
+  google.protobuf.Timestamp next_at = 1;
+}
+
+message GetCanvasCellRequest {
+  int32 x = 1;
+  int32 y = 2;
+}
+
+message GetCanvasCellResponse {
+  // Empty when the page of the painter is erased.
+  string user_id = 1;
+  int32 color = 2;
+  google.protobuf.Timestamp painted_at = 3;
+}
+
+message RunPetArenaRequest {
+  string action = 1;
+  string pet_id = 2;
+  // The votes of a bet, the price of a sale.
+  int64 votes = 3;
+}
+
+message RunPetArenaResponse {
+  PetArena arena = 1;
+  // The hit of the boss.
+  PetFight bout = 2;
+  // The votes after a payment, 0 when nothing was paid.
+  int64 balance = 3;
+}
+
 message GetUserFirmsRequest {
   string nickname = 1;
 }
@@ -3432,4 +3663,48 @@ message GrantTitleResponse {
 
 message RevokeTitleRequest {
   string title_id = 1;
+}
+
+message DatingCard {
+  string user_id = 1;
+  // "friendship", "chat" or "love".
+  string goal = 2;
+  // The gender sought: "male", "female", or empty for anyone.
+  string seek = 3;
+  string about = 4;
+  bool on = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+message DatingMatch {
+  string user_id = 1;
+  google.protobuf.Timestamp matched_at = 2;
+}
+
+message GetDatingRequest {}
+
+message GetDatingResponse {
+  DatingCard card = 1;
+  repeated DatingCard deck = 2;
+  repeated DatingMatch matches = 3;
+}
+
+message SaveDatingCardRequest {
+  string goal = 1;
+  string seek = 2;
+  string about = 3;
+  bool on = 4;
+}
+
+message SaveDatingCardResponse {
+  DatingCard card = 1;
+}
+
+message AnswerDatingRequest {
+  string user_id = 1;
+  bool like = 2;
+}
+
+message AnswerDatingResponse {
+  bool matched = 1;
 }

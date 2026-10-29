@@ -105,6 +105,10 @@ type PetService struct {
 	pets     PetRepository
 	keepers  PetKeeperRepository
 	battles  PetBattleRepository
+	events   PetEventRepository
+	seasons  PetSeasonRepository
+	quests   PetQuestRepository
+	market   PetMarketRepository
 	wallets  WalletRepository
 	tx       TxManager
 	admins   user.Admins
@@ -117,11 +121,16 @@ type PetStores struct {
 	Pets    PetRepository
 	Keepers PetKeeperRepository
 	Battles PetBattleRepository
+	Events  PetEventRepository
+	Seasons PetSeasonRepository
+	Quests  PetQuestRepository
+	Market  PetMarketRepository
 }
 
 func NewPetService(users UserRepository, stores PetStores, wallets WalletRepository, tx TxManager, admins user.Admins) *PetService {
 	return &PetService{
 		userRepo: users, pets: stores.Pets, keepers: stores.Keepers, battles: stores.Battles,
+		events: stores.Events, seasons: stores.Seasons, quests: stores.Quests, market: stores.Market,
 		wallets: wallets, tx: tx, admins: admins, roll: cryptoRoll,
 	}
 }
@@ -277,7 +286,18 @@ func (s *PetService) OpenCase(ctx context.Context, userID uuid.UUID, c user.PetC
 			}
 		}
 
-		return errs.Wrap("s.keepers.SaveKeeper", s.keepers.SaveKeeper(ctx, userID, drop.Keeper))
+		if err = s.keepers.SaveKeeper(ctx, userID, drop.Keeper); err != nil {
+			return errs.Wrap("s.keepers.SaveKeeper", err)
+		}
+
+		paid, err := s.did(ctx, userID, now, user.PetQuestCase)
+		if paid > 0 {
+			drop.Balance = paid
+			// The task of the case may have brought shards.
+			drop.Keeper, err = s.keepers.Keeper(ctx, userID)
+		}
+
+		return errs.Wrap("s.did", err)
 	})
 	if err != nil {
 		return PetDrop{}, errs.Wrap("s.tx.WithinTx", err)
@@ -417,8 +437,13 @@ func (s *PetService) Feed(ctx context.Context, userID, petID uuid.UUID, now time
 		}
 
 		balance, err := s.spend(ctx, userID, shop.Meal(), "feed")
+		if err != nil {
+			return PetCare{}, errs.Wrap("s.spend", err)
+		}
 
-		return PetCare{Pet: fed, Balance: balance}, errs.Wrap("s.spend", err)
+		paid, err := s.did(ctx, userID, now, user.PetQuestFeed)
+
+		return PetCare{Pet: fed, Balance: max(paid, balance)}, errs.Wrap("s.did", err)
 	})
 
 	return care, errs.Wrap("s.change", err)
@@ -428,8 +453,13 @@ func (s *PetService) Feed(ctx context.Context, userID, petID uuid.UUID, now time
 func (s *PetService) Play(ctx context.Context, userID, petID uuid.UUID, now time.Time) (*user.Pet, error) {
 	care, err := s.change(ctx, userID, petID, func(_ context.Context, p *user.Pet, _ user.PetShop) (PetCare, error) {
 		played, err := p.Played(now.Truncate(time.Microsecond))
+		if err != nil {
+			return PetCare{}, errs.Wrap("p.Played", err)
+		}
 
-		return PetCare{Pet: played}, errs.Wrap("p.Played", err)
+		_, err = s.did(ctx, userID, now, user.PetQuestPlay)
+
+		return PetCare{Pet: played}, errs.Wrap("s.did", err)
 	})
 
 	return care.Pet, errs.Wrap("s.change", err)
@@ -708,15 +738,33 @@ func (s *PetService) Fight(ctx context.Context, userID, petID uuid.UUID, nicknam
 			return errs.Wrap("battle.Moved", err)
 		}
 
-		fought, err = s.saveFight(ctx, userID, battle, shop, a, d, now)
+		if fought, err = s.saveFight(ctx, userID, battle, shop, a, d, now); err != nil {
+			return errs.Wrap("s.saveFight", err)
+		}
 
-		return errs.Wrap("s.saveFight", err)
+		return errs.Wrap("s.didFight", s.didFight(ctx, userID, &fought, now))
 	})
 	if err != nil {
 		return PetFought{}, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return fought, nil
+}
+
+// didFight counts the fight, and more, towards the tasks of the day of
+// userID, the votes they paid in the fight.
+func (s *PetService) didFight(ctx context.Context, userID uuid.UUID, fought *PetFought, now time.Time, more ...user.PetQuestKind) error {
+	kinds := append([]user.PetQuestKind{user.PetQuestFight}, more...)
+	if fought.Fight.Bout.Won {
+		kinds = append(kinds, user.PetQuestWin)
+	}
+
+	paid, err := s.did(ctx, userID, now, kinds...)
+	if paid > 0 {
+		fought.Balance = paid
+	}
+
+	return errs.Wrap("s.did", err)
 }
 
 // Battles are the fights the pets of userID lead a round after another.
@@ -801,6 +849,9 @@ func (s *PetService) MoveBattle(ctx context.Context, userID, petID uuid.UUID, mo
 		fought, err := s.settle(ctx, userID, turn.Battle, shop, now)
 		if err != nil {
 			return errs.Wrap("s.settle", err)
+		}
+		if err = s.didFight(ctx, userID, &fought, now, user.PetQuestManual); err != nil {
+			return errs.Wrap("s.didFight", err)
 		}
 		turn.Pet, turn.Fought = fought.Pet, &fought
 

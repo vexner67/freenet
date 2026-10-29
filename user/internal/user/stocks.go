@@ -20,6 +20,12 @@ import (
 // market, the more it sold or bought in a day the worse. It never pays
 // more than a share is worth closed: what it gets of the shares it holds —
 // dividends, liquidation — goes to the treasury.
+//
+// So that nobody draws a price as they like, as a real exchange does not
+// let them: people deal with each other only within StockBand of the
+// price of the exchange, and new shares are put up at one price — the
+// money of a director buying the shares of their own enterprise goes back
+// into its cash, so such a purchase is no demand and moves no price.
 
 // MarketID is the holder of the shares the exchange bought of people.
 var MarketID = uuid.Nil
@@ -31,6 +37,9 @@ const (
 	MaxStockOrders = 20
 	// maxMood is how far the mood of the market moves a price.
 	maxMood = 0.4
+	// StockBand is how far from the price of the exchange the orders of
+	// people may stand: further off they are refused.
+	StockBand = 0.15
 	// indexBase is the index of the exchange at its start, in hundredths
 	// of a point.
 	indexBase = 100_000
@@ -44,6 +53,7 @@ var (
 	ErrOwnStockOrder      = errors.New("you have an order of your own the other way at this price: cancel it first")
 	ErrTooManyStockOrders = errors.New("a page keeps at most 20 orders on the exchange")
 	ErrStockOrderNotFound = errors.New("there is no such order of shares")
+	ErrStockBand          = errors.New("the price of an order must be within 15% of the price of the exchange")
 	ErrIssue              = errors.New("an enterprise may put up from 0 new shares, no more than the site lets it have in all")
 )
 
@@ -107,7 +117,8 @@ type StockFill struct {
 // price now, what the exchange pays and asks for the next share (Ask 0 —
 // it has none to sell), the best orders of people (0 — none), the price a
 // day ago, and the shares that changed hands in a day; Shares are held by
-// people and the exchange (Pool), Float are new ones for sale.
+// people and the exchange (Pool), Float are new ones for sale. Orders of
+// people may stand from Low to High.
 type StockQuote struct {
 	FirmID  uuid.UUID
 	Shares  int64
@@ -122,6 +133,8 @@ type StockQuote struct {
 	BestAsk int64
 	DayAgo  int64
 	Volume  int64
+	Low     int64
+	High    int64
 }
 
 // Account is the money userID keeps on the exchange.
@@ -253,6 +266,19 @@ func (c *City) marketOf(rules FirmRules, f *Firm, at time.Time) market {
 	return m
 }
 
+// band is the prices people may deal at with each other: StockBand
+// around the mid of the exchange.
+func (m market) band() (low, high int64) {
+	return max(int64(math.Ceil(float64(m.mid)*(1-StockBand))), 1), max(int64(float64(m.mid)*(1+StockBand)), 1)
+}
+
+// inBand is whether an order of people stands within the band.
+func (m market) inBand(price int64) bool {
+	low, high := m.band()
+
+	return price >= low && price <= high
+}
+
 // price is the price of a share at the end of an hour: the mid of the
 // exchange moved by what it sold and bought in a day.
 func (m market) price() int64 {
@@ -269,6 +295,7 @@ func (c *City) Quote(rules FirmRules, f *Firm, now time.Time) StockQuote {
 		FirmID: f.id, Shares: c.Shares(f.id), Pool: c.held(f.id, MarketID), Float: f.float,
 		Book: m.book, Fair: m.fair, Price: f.price, Bid: int64(m.bid.at(m.bought)),
 	}
+	q.Low, q.High = m.band()
 	if q.Price == 0 {
 		q.Price = m.price()
 	}
@@ -313,8 +340,8 @@ type stockFill struct {
 // deals what it can at once and the rest is dropped. What meets the orders
 // of others or the prices of the exchange deals at once at their prices,
 // the better first; the rest of an order with a price waits. Buying pays
-// of the account. ErrStockOrder, ErrStockShares, ErrAccount, ErrStockNoDeal,
-// ErrOwnStockOrder, ErrTooManyStockOrders.
+// of the account. ErrStockOrder, ErrStockBand, ErrStockShares, ErrAccount,
+// ErrStockNoDeal, ErrOwnStockOrder, ErrTooManyStockOrders.
 func (c *City) PlaceStock(rules FirmRules, userID uuid.UUID, o StockOrder, now time.Time) (StockFill, error) {
 	f, err := c.Firm(o.FirmID)
 	if err != nil {
@@ -323,6 +350,9 @@ func (c *City) PlaceStock(rules FirmRules, userID uuid.UUID, o StockOrder, now t
 
 	if err = c.checkStock(userID, o); err != nil {
 		return StockFill{}, err
+	}
+	if o.Price > 0 && !c.marketOf(rules, f, now).inBand(o.Price) {
+		return StockFill{}, ErrStockBand
 	}
 
 	if o.ID, err = uuid.NewV7(); err != nil {
@@ -409,11 +439,11 @@ func crossesStock(a, b StockOrder) bool {
 func (c *City) deal(rules FirmRules, f *Firm, fill *stockFill, people bool, now time.Time) {
 	o := fill.order
 	for o.Shares > 0 {
+		m := c.marketOf(rules, f, now)
 		i := -1
 		if people {
-			i = c.bestStock(*o)
+			i = c.bestStock(*o, m)
 		}
-		m := c.marketOf(rules, f, now)
 
 		var mm int64
 		if o.Buy && m.supply > 0 {
@@ -438,11 +468,12 @@ func (c *City) deal(rules FirmRules, f *Firm, fill *stockFill, people bool, now 
 	}
 }
 
-// bestStock is the order of another o meets first; -1 for none.
-func (c *City) bestStock(o StockOrder) int {
+// bestStock is the order of another o meets first; -1 for none. An order
+// the price of the exchange has left behind out of the band waits.
+func (c *City) bestStock(o StockOrder, m market) int {
 	best := -1
 	for i, other := range c.stockOrders {
-		if other.FirmID != o.FirmID || other.Buy == o.Buy || other.UserID == o.UserID {
+		if other.FirmID != o.FirmID || other.Buy == o.Buy || other.UserID == o.UserID || !m.inBand(other.Price) {
 			continue
 		}
 		if o.Price > 0 && !crossesStock(o, other) {
@@ -532,6 +563,10 @@ func (c *City) dealMarket(f *Firm, fill *stockFill, m market, next int, now time
 }
 
 func (c *City) buyOfMarket(f *Firm, fill *stockFill, m market, limit int64, now time.Time) bool {
+	if f.float > 0 {
+		return c.buyNew(f, fill, m, limit, now)
+	}
+
 	o := fill.order
 	units := min(o.Shares, m.supply)
 	if limit < math.MaxInt64 {
@@ -556,15 +591,7 @@ func (c *City) buyOfMarket(f *Firm, fill *stockFill, m market, limit int64, now 
 	}
 
 	paid := cost(units)
-	fromFloat := min(units, f.float)
-	if fromFloat > 0 {
-		// New shares: their part of the price goes into the cash.
-		f.cash += paid * fromFloat / units
-		f.float -= fromFloat
-	}
-	if fromPool := units - fromFloat; fromPool > 0 {
-		c.setHolding(f.id, MarketID, c.held(f.id, MarketID)-fromPool)
-	}
+	c.setHolding(f.id, MarketID, c.held(f.id, MarketID)-units)
 	c.setHolding(f.id, o.UserID, c.held(f.id, o.UserID)+units)
 
 	fill.budget -= paid
@@ -573,6 +600,36 @@ func (c *City) buyOfMarket(f *Firm, fill *stockFill, m market, limit int64, now 
 	o.Shares -= units
 	c.recordStock(f.id, now, units, 0)
 	c.trade(f, now, (paid+units-1)/units, units)
+
+	return true
+}
+
+// buyNew buys the new shares an enterprise put up, all at the price the
+// exchange asks now: the money goes into the cash of the enterprise, so it
+// is no demand — the exchange counts none sold, and the price does not
+// climb with them.
+func (c *City) buyNew(f *Firm, fill *stockFill, m market, limit int64, now time.Time) bool {
+	o := fill.order
+	price := int64(math.Ceil(m.ask.at(m.sold)))
+	if price > limit {
+		return false
+	}
+
+	units := min(o.Shares, f.float, fill.budget/price)
+	if units < 1 {
+		return false
+	}
+
+	paid := units * price
+	f.cash += paid
+	f.float -= units
+	c.setHolding(f.id, o.UserID, c.held(f.id, o.UserID)+units)
+
+	fill.budget -= paid
+	fill.Shares += units
+	fill.Money += paid
+	o.Shares -= units
+	c.trade(f, now, price, units)
 
 	return true
 }

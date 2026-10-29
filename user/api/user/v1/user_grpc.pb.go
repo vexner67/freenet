@@ -194,6 +194,14 @@ const (
 	UserService_DressPet_FullMethodName           = "/user.v1.UserService/DressPet"
 	UserService_GetPetSettings_FullMethodName     = "/user.v1.UserService/GetPetSettings"
 	UserService_SetPetSettings_FullMethodName     = "/user.v1.UserService/SetPetSettings"
+	UserService_GetPetArena_FullMethodName        = "/user.v1.UserService/GetPetArena"
+	UserService_RunPetArena_FullMethodName        = "/user.v1.UserService/RunPetArena"
+	UserService_GetCanvas_FullMethodName          = "/user.v1.UserService/GetCanvas"
+	UserService_PaintCanvas_FullMethodName        = "/user.v1.UserService/PaintCanvas"
+	UserService_GetCanvasCell_FullMethodName      = "/user.v1.UserService/GetCanvasCell"
+	UserService_GetDating_FullMethodName          = "/user.v1.UserService/GetDating"
+	UserService_SaveDatingCard_FullMethodName     = "/user.v1.UserService/SaveDatingCard"
+	UserService_AnswerDating_FullMethodName       = "/user.v1.UserService/AnswerDating"
 	UserService_GetUserTitles_FullMethodName      = "/user.v1.UserService/GetUserTitles"
 	UserService_GrantTitle_FullMethodName         = "/user.v1.UserService/GrantTitle"
 	UserService_RevokeTitle_FullMethodName        = "/user.v1.UserService/RevokeTitle"
@@ -571,7 +579,9 @@ type UserServiceClient interface {
 	// units — on the exchange), "cancel" (order_id), "state_buy" and
 	// "state_sell" (good, units), "issue" (shares — put up on the stock
 	// exchange), "repair", "improve" (improvement), "take_contract"
-	// (contract_id) and "deliver" (contract_id, units). Taking votes out is
+	// (contract_id), "deliver" (contract_id, units), "route" (good, units,
+	// to_firm_id, from — a supply to another enterprise of the director
+	// every hour) and "unroute" (route_id). Taking votes out is
 	// for pages a week old with a filled profile. Money of the enterprises
 	// is in hundredths of a vote, of people — in votes.
 	GetFirms(ctx context.Context, in *GetFirmsRequest, opts ...grpc.CallOption) (*FirmsState, error)
@@ -680,6 +690,50 @@ type UserServiceClient interface {
 	// pets and how they do.
 	GetPetSettings(ctx context.Context, in *GetPetSettingsRequest, opts ...grpc.CallOption) (*GetPetSettingsResponse, error)
 	SetPetSettings(ctx context.Context, in *SetPetSettingsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// GetPetArena is what the pets do together, as the caller sees it: the
+	// boss of the week, the tournament of the week and of the last, the
+	// places of the season and of those closed, the tasks of the day and
+	// the badges of the caller, and the pets up for sale; the season and
+	// the tournaments that are over are settled first. RunPetArena does an
+	// action and answers with the arena after it: "boss" hits the boss with
+	// a pet (FailedPrecondition "the boss of the week is beaten", "the pet
+	// rests after its hit of the boss"), "join" and "leave" the tournament
+	// ("the tournament of the week has begun", "the tournament is full",
+	// "you have a pet in the tournament already", "the pet is not in the
+	// tournament"), "bet" votes on a pet in it (InvalidArgument "a bet is
+	// from 10 to 100000 votes", FailedPrecondition "you have bet on the
+	// tournament already"), "sell" a pet for votes (FailedPrecondition "a
+	// pet goes up for sale a week after its owner got it", "a page sells at
+	// most 3 pets at a time", InvalidArgument "a pet costs from the least
+	// of its rarity"), "unsell" it and "buy" one up for sale
+	// (FailedPrecondition "this is your own pet", "the pet is not for
+	// sale"). A pet up for sale does not fight ("the pet is up for sale").
+	GetPetArena(ctx context.Context, in *GetPetArenaRequest, opts ...grpc.CallOption) (*PetArena, error)
+	RunPetArena(ctx context.Context, in *RunPetArenaRequest, opts ...grpc.CallOption) (*RunPetArenaResponse, error)
+	// GetCanvas is the shared canvas, public: its cells a byte each, row
+	// after row, the color in the palette of 16, and when the caller may
+	// paint next (unset when now and for a guest). PaintCanvas paints a
+	// cell (InvalidArgument "there is no such cell of the canvas", "there
+	// is no such color of the canvas"; FailedPrecondition "you paint the
+	// canvas again a minute after"). GetCanvasCell, public, is who painted
+	// a cell last and when (NotFound "user not found" for a cell never
+	// painted).
+	GetCanvas(ctx context.Context, in *GetCanvasRequest, opts ...grpc.CallOption) (*GetCanvasResponse, error)
+	PaintCanvas(ctx context.Context, in *PaintCanvasRequest, opts ...grpc.CallOption) (*PaintCanvasResponse, error)
+	GetCanvasCell(ctx context.Context, in *GetCanvasCellRequest, opts ...grpc.CallOption) (*GetCanvasCellResponse, error)
+	// GetDating is "Знакомства" of the caller: their card (unset before
+	// they made one), up to ten cards to answer and the matches. A card is
+	// shown to those whose gender it seeks and who seek its owner's.
+	// SaveDatingCard makes or changes the card (InvalidArgument "there is no
+	// such goal of dating", "there is no such gender to seek", "the text
+	// about yourself is too long"; FailedPrecondition "fill in the profile
+	// before dating"). AnswerDating likes or skips a card and tells whether
+	// the like made a match (FailedPrecondition "dating is off",
+	// "you have already answered this card"; InvalidArgument "you cannot
+	// like yourself"; NotFound "user not found" for a card that is off).
+	GetDating(ctx context.Context, in *GetDatingRequest, opts ...grpc.CallOption) (*GetDatingResponse, error)
+	SaveDatingCard(ctx context.Context, in *SaveDatingCardRequest, opts ...grpc.CallOption) (*SaveDatingCardResponse, error)
+	AnswerDating(ctx context.Context, in *AnswerDatingRequest, opts ...grpc.CallOption) (*AnswerDatingResponse, error)
 	// Titles: awards with a name and a picture the administrators give a
 	// page, the same one as many times as they like. GetUserTitles is
 	// public: the titles of nickname, the newest first (NotFound for a page
@@ -2440,6 +2494,86 @@ func (c *userServiceClient) SetPetSettings(ctx context.Context, in *SetPetSettin
 	return out, nil
 }
 
+func (c *userServiceClient) GetPetArena(ctx context.Context, in *GetPetArenaRequest, opts ...grpc.CallOption) (*PetArena, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PetArena)
+	err := c.cc.Invoke(ctx, UserService_GetPetArena_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) RunPetArena(ctx context.Context, in *RunPetArenaRequest, opts ...grpc.CallOption) (*RunPetArenaResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunPetArenaResponse)
+	err := c.cc.Invoke(ctx, UserService_RunPetArena_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetCanvas(ctx context.Context, in *GetCanvasRequest, opts ...grpc.CallOption) (*GetCanvasResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCanvasResponse)
+	err := c.cc.Invoke(ctx, UserService_GetCanvas_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) PaintCanvas(ctx context.Context, in *PaintCanvasRequest, opts ...grpc.CallOption) (*PaintCanvasResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PaintCanvasResponse)
+	err := c.cc.Invoke(ctx, UserService_PaintCanvas_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetCanvasCell(ctx context.Context, in *GetCanvasCellRequest, opts ...grpc.CallOption) (*GetCanvasCellResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCanvasCellResponse)
+	err := c.cc.Invoke(ctx, UserService_GetCanvasCell_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetDating(ctx context.Context, in *GetDatingRequest, opts ...grpc.CallOption) (*GetDatingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDatingResponse)
+	err := c.cc.Invoke(ctx, UserService_GetDating_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SaveDatingCard(ctx context.Context, in *SaveDatingCardRequest, opts ...grpc.CallOption) (*SaveDatingCardResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SaveDatingCardResponse)
+	err := c.cc.Invoke(ctx, UserService_SaveDatingCard_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) AnswerDating(ctx context.Context, in *AnswerDatingRequest, opts ...grpc.CallOption) (*AnswerDatingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AnswerDatingResponse)
+	err := c.cc.Invoke(ctx, UserService_AnswerDating_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) GetUserTitles(ctx context.Context, in *GetUserTitlesRequest, opts ...grpc.CallOption) (*GetUserTitlesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetUserTitlesResponse)
@@ -2842,7 +2976,9 @@ type UserServiceServer interface {
 	// units — on the exchange), "cancel" (order_id), "state_buy" and
 	// "state_sell" (good, units), "issue" (shares — put up on the stock
 	// exchange), "repair", "improve" (improvement), "take_contract"
-	// (contract_id) and "deliver" (contract_id, units). Taking votes out is
+	// (contract_id), "deliver" (contract_id, units), "route" (good, units,
+	// to_firm_id, from — a supply to another enterprise of the director
+	// every hour) and "unroute" (route_id). Taking votes out is
 	// for pages a week old with a filled profile. Money of the enterprises
 	// is in hundredths of a vote, of people — in votes.
 	GetFirms(context.Context, *GetFirmsRequest) (*FirmsState, error)
@@ -2951,6 +3087,50 @@ type UserServiceServer interface {
 	// pets and how they do.
 	GetPetSettings(context.Context, *GetPetSettingsRequest) (*GetPetSettingsResponse, error)
 	SetPetSettings(context.Context, *SetPetSettingsRequest) (*emptypb.Empty, error)
+	// GetPetArena is what the pets do together, as the caller sees it: the
+	// boss of the week, the tournament of the week and of the last, the
+	// places of the season and of those closed, the tasks of the day and
+	// the badges of the caller, and the pets up for sale; the season and
+	// the tournaments that are over are settled first. RunPetArena does an
+	// action and answers with the arena after it: "boss" hits the boss with
+	// a pet (FailedPrecondition "the boss of the week is beaten", "the pet
+	// rests after its hit of the boss"), "join" and "leave" the tournament
+	// ("the tournament of the week has begun", "the tournament is full",
+	// "you have a pet in the tournament already", "the pet is not in the
+	// tournament"), "bet" votes on a pet in it (InvalidArgument "a bet is
+	// from 10 to 100000 votes", FailedPrecondition "you have bet on the
+	// tournament already"), "sell" a pet for votes (FailedPrecondition "a
+	// pet goes up for sale a week after its owner got it", "a page sells at
+	// most 3 pets at a time", InvalidArgument "a pet costs from the least
+	// of its rarity"), "unsell" it and "buy" one up for sale
+	// (FailedPrecondition "this is your own pet", "the pet is not for
+	// sale"). A pet up for sale does not fight ("the pet is up for sale").
+	GetPetArena(context.Context, *GetPetArenaRequest) (*PetArena, error)
+	RunPetArena(context.Context, *RunPetArenaRequest) (*RunPetArenaResponse, error)
+	// GetCanvas is the shared canvas, public: its cells a byte each, row
+	// after row, the color in the palette of 16, and when the caller may
+	// paint next (unset when now and for a guest). PaintCanvas paints a
+	// cell (InvalidArgument "there is no such cell of the canvas", "there
+	// is no such color of the canvas"; FailedPrecondition "you paint the
+	// canvas again a minute after"). GetCanvasCell, public, is who painted
+	// a cell last and when (NotFound "user not found" for a cell never
+	// painted).
+	GetCanvas(context.Context, *GetCanvasRequest) (*GetCanvasResponse, error)
+	PaintCanvas(context.Context, *PaintCanvasRequest) (*PaintCanvasResponse, error)
+	GetCanvasCell(context.Context, *GetCanvasCellRequest) (*GetCanvasCellResponse, error)
+	// GetDating is "Знакомства" of the caller: their card (unset before
+	// they made one), up to ten cards to answer and the matches. A card is
+	// shown to those whose gender it seeks and who seek its owner's.
+	// SaveDatingCard makes or changes the card (InvalidArgument "there is no
+	// such goal of dating", "there is no such gender to seek", "the text
+	// about yourself is too long"; FailedPrecondition "fill in the profile
+	// before dating"). AnswerDating likes or skips a card and tells whether
+	// the like made a match (FailedPrecondition "dating is off",
+	// "you have already answered this card"; InvalidArgument "you cannot
+	// like yourself"; NotFound "user not found" for a card that is off).
+	GetDating(context.Context, *GetDatingRequest) (*GetDatingResponse, error)
+	SaveDatingCard(context.Context, *SaveDatingCardRequest) (*SaveDatingCardResponse, error)
+	AnswerDating(context.Context, *AnswerDatingRequest) (*AnswerDatingResponse, error)
 	// Titles: awards with a name and a picture the administrators give a
 	// page, the same one as many times as they like. GetUserTitles is
 	// public: the titles of nickname, the newest first (NotFound for a page
@@ -3492,6 +3672,30 @@ func (UnimplementedUserServiceServer) GetPetSettings(context.Context, *GetPetSet
 }
 func (UnimplementedUserServiceServer) SetPetSettings(context.Context, *SetPetSettingsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetPetSettings not implemented")
+}
+func (UnimplementedUserServiceServer) GetPetArena(context.Context, *GetPetArenaRequest) (*PetArena, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPetArena not implemented")
+}
+func (UnimplementedUserServiceServer) RunPetArena(context.Context, *RunPetArenaRequest) (*RunPetArenaResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RunPetArena not implemented")
+}
+func (UnimplementedUserServiceServer) GetCanvas(context.Context, *GetCanvasRequest) (*GetCanvasResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCanvas not implemented")
+}
+func (UnimplementedUserServiceServer) PaintCanvas(context.Context, *PaintCanvasRequest) (*PaintCanvasResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PaintCanvas not implemented")
+}
+func (UnimplementedUserServiceServer) GetCanvasCell(context.Context, *GetCanvasCellRequest) (*GetCanvasCellResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCanvasCell not implemented")
+}
+func (UnimplementedUserServiceServer) GetDating(context.Context, *GetDatingRequest) (*GetDatingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDating not implemented")
+}
+func (UnimplementedUserServiceServer) SaveDatingCard(context.Context, *SaveDatingCardRequest) (*SaveDatingCardResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SaveDatingCard not implemented")
+}
+func (UnimplementedUserServiceServer) AnswerDating(context.Context, *AnswerDatingRequest) (*AnswerDatingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AnswerDating not implemented")
 }
 func (UnimplementedUserServiceServer) GetUserTitles(context.Context, *GetUserTitlesRequest) (*GetUserTitlesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUserTitles not implemented")
@@ -6655,6 +6859,150 @@ func _UserService_SetPetSettings_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetPetArena_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPetArenaRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetPetArena(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetPetArena_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetPetArena(ctx, req.(*GetPetArenaRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_RunPetArena_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunPetArenaRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).RunPetArena(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_RunPetArena_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).RunPetArena(ctx, req.(*RunPetArenaRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetCanvas_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCanvasRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetCanvas(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetCanvas_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetCanvas(ctx, req.(*GetCanvasRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_PaintCanvas_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PaintCanvasRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).PaintCanvas(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_PaintCanvas_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).PaintCanvas(ctx, req.(*PaintCanvasRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetCanvasCell_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCanvasCellRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetCanvasCell(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetCanvasCell_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetCanvasCell(ctx, req.(*GetCanvasCellRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetDating_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDatingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetDating(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetDating_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetDating(ctx, req.(*GetDatingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SaveDatingCard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveDatingCardRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SaveDatingCard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SaveDatingCard_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SaveDatingCard(ctx, req.(*SaveDatingCardRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_AnswerDating_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AnswerDatingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).AnswerDating(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_AnswerDating_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).AnswerDating(ctx, req.(*AnswerDatingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetUserTitles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetUserTitlesRequest)
 	if err := dec(in); err != nil {
@@ -7411,6 +7759,38 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetPetSettings",
 			Handler:    _UserService_SetPetSettings_Handler,
+		},
+		{
+			MethodName: "GetPetArena",
+			Handler:    _UserService_GetPetArena_Handler,
+		},
+		{
+			MethodName: "RunPetArena",
+			Handler:    _UserService_RunPetArena_Handler,
+		},
+		{
+			MethodName: "GetCanvas",
+			Handler:    _UserService_GetCanvas_Handler,
+		},
+		{
+			MethodName: "PaintCanvas",
+			Handler:    _UserService_PaintCanvas_Handler,
+		},
+		{
+			MethodName: "GetCanvasCell",
+			Handler:    _UserService_GetCanvasCell_Handler,
+		},
+		{
+			MethodName: "GetDating",
+			Handler:    _UserService_GetDating_Handler,
+		},
+		{
+			MethodName: "SaveDatingCard",
+			Handler:    _UserService_SaveDatingCard_Handler,
+		},
+		{
+			MethodName: "AnswerDating",
+			Handler:    _UserService_AnswerDating_Handler,
 		},
 		{
 			MethodName: "GetUserTitles",

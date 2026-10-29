@@ -88,9 +88,11 @@ func TestBuyNewShares(t *testing.T) {
 		t.Errorf("account %d", c.Account(investor))
 	}
 
-	// The price rises with the shares the exchange sold in a day.
-	if again := c.Quote(rules, f, cityStart); again.Ask <= q.Ask || f.Price() <= q.Price {
-		t.Errorf("ask %d after %d, price %d after %d", again.Ask, q.Ask, f.Price(), q.Price)
+	// New shares are no demand: the exchange counts none sold, so the
+	// hour closes at the mid of the exchange, not pushed up by them.
+	c.Tick(rules, cityStart.Add(time.Hour))
+	if closed := c.Quote(rules, f, cityStart.Add(time.Hour)); closed.Price > (closed.Low+closed.High)/2+1 {
+		t.Errorf("the hour closed at %d over the mid of %d–%d", closed.Price, closed.Low, closed.High)
 	}
 
 	// No new shares left, none bought back: the exchange has none to sell.
@@ -162,7 +164,16 @@ func TestStockOrders(t *testing.T) {
 	f := found(t, c, rules, founder, user.FirmMill)
 
 	q := c.Quote(rules, f, cityStart)
-	high := q.Ask * 2
+	if q.Low >= q.Bid || q.High <= q.Ask {
+		t.Fatalf("the band %d–%d of bid %d and ask %d", q.Low, q.High, q.Bid, q.Ask)
+	}
+	for _, price := range []int64{q.Low - 1, q.High + 1} {
+		if _, err := c.PlaceStock(rules, founder, user.StockOrder{FirmID: f.ID(), Price: price, Shares: 1}, cityStart); !errors.Is(err, user.ErrStockBand) {
+			t.Errorf("an order at %d out of the band: %v", price, err)
+		}
+	}
+
+	high := q.Ask - 1
 	if _, err := c.PlaceStock(rules, founder, user.StockOrder{FirmID: f.ID(), Price: high, Shares: 30}, cityStart); err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +188,7 @@ func TestStockOrders(t *testing.T) {
 	if err := c.Fund(investor, 10_000); err != nil {
 		t.Fatal(err)
 	}
-	low := q.Bid / 2
+	low := q.Low
 	if _, err := c.PlaceStock(rules, investor, user.StockOrder{FirmID: f.ID(), Buy: true, Price: low, Shares: 10}, cityStart); err != nil {
 		t.Fatal(err)
 	}
@@ -192,9 +203,9 @@ func TestStockOrders(t *testing.T) {
 		t.Errorf("cancel: %v, account %d", err, c.Account(investor))
 	}
 
-	// Buying above the order of the founder deals at its price, the new
+	// Buying at the order of the founder deals at its price, the new
 	// shares of the exchange being dearer; the seller pays the fee.
-	fill, err := c.PlaceStock(rules, investor, user.StockOrder{FirmID: f.ID(), Buy: true, Price: high + 100, Shares: 30}, cityStart)
+	fill, err := c.PlaceStock(rules, investor, user.StockOrder{FirmID: f.ID(), Buy: true, Price: high, Shares: 30}, cityStart)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +259,7 @@ func TestWaitingOrderMeetsTheExchange(t *testing.T) {
 	f := found(t, c, rules, founder, user.FirmFarm)
 
 	q := c.Quote(rules, f, cityStart)
-	if _, err := c.PlaceStock(rules, founder, user.StockOrder{FirmID: f.ID(), Price: q.Bid * 2, Shares: 5}, cityStart); err != nil {
+	if _, err := c.PlaceStock(rules, founder, user.StockOrder{FirmID: f.ID(), Price: q.High, Shares: 5}, cityStart); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.Deposit(founder, f.ID(), 5_000); err != nil {
@@ -256,7 +267,7 @@ func TestWaitingOrderMeetsTheExchange(t *testing.T) {
 	}
 	c.Tick(rules, cityStart.Add(time.Hour))
 
-	if len(c.StockOrders()) != 0 || held(c, f.ID(), user.MarketID) != 5 || c.Account(founder) < q.Bid*2*5 {
+	if len(c.StockOrders()) != 0 || held(c, f.ID(), user.MarketID) != 5 || c.Account(founder) < q.High*5 {
 		t.Errorf("orders %d, the exchange holds %d, account %d", len(c.StockOrders()), held(c, f.ID(), user.MarketID), c.Account(founder))
 	}
 }

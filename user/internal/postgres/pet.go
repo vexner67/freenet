@@ -128,7 +128,10 @@ const petColumns = `
 		outfit,
 		stance,
 		streak,
-		streak_at
+		streak_at,
+		owned_since,
+		sale_price,
+		boss_at
 `
 
 const listPetsQuery = `
@@ -187,13 +190,14 @@ func scanPet(row pgx.Row) (*user.Pet, error) {
 		kind, name, stance string
 		playedAt, foughtOn *time.Time
 		streakAt           *time.Time
+		ownedSince, bossAt *time.Time
 		wardrobe, outfit   []string
 	)
 
 	err := row.Scan(
 		&s.ID, &ownerID, &kind, &name, &s.BornAt, &s.Satiety, &s.Joy, &s.CountedAt, &playedAt,
 		&s.Experience, &s.Rating, &s.Wins, &s.Losses, &foughtOn, &s.Fights, &wardrobe, &outfit,
-		&stance, &s.Streak, &streakAt,
+		&stance, &s.Streak, &streakAt, &ownedSince, &s.SalePrice, &bossAt,
 	)
 	if err != nil {
 		return nil, err
@@ -202,6 +206,12 @@ func scanPet(row pgx.Row) (*user.Pet, error) {
 	s.Kind, s.Name, s.Stance = user.PetKind(kind), user.PetName(name), user.PetStance(stance)
 	if streakAt != nil {
 		s.StreakAt = streakAt.UTC()
+	}
+	if ownedSince != nil {
+		s.OwnedSince = ownedSince.UTC()
+	}
+	if bossAt != nil {
+		s.BossAt = bossAt.UTC()
 	}
 	s.Wardrobe, s.Outfit = petItems(wardrobe), petItems(outfit)
 	if playedAt != nil {
@@ -219,7 +229,13 @@ func scanPet(row pgx.Row) (*user.Pet, error) {
 func petArgs(userID uuid.UUID, p *user.Pet) []any {
 	s := p.State()
 
-	var playedAt, foughtOn, streakAt *time.Time
+	var playedAt, foughtOn, streakAt, ownedSince, bossAt *time.Time
+	if !s.OwnedSince.IsZero() {
+		ownedSince = &s.OwnedSince
+	}
+	if !s.BossAt.IsZero() {
+		bossAt = &s.BossAt
+	}
 	if !s.PlayedAt.IsZero() {
 		playedAt = &s.PlayedAt
 	}
@@ -233,7 +249,7 @@ func petArgs(userID uuid.UUID, p *user.Pet) []any {
 	return []any{
 		s.ID, userID, s.Kind.String(), s.Name.String(), s.BornAt, s.Satiety, s.Joy, s.CountedAt, playedAt,
 		s.Experience, s.Rating, s.Wins, s.Losses, foughtOn, s.Fights, itemNames(s.Wardrobe), itemNames(s.Outfit),
-		s.Stance.String(), s.Streak, streakAt,
+		s.Stance.String(), s.Streak, streakAt, ownedSince, s.SalePrice, bossAt,
 	}
 }
 
@@ -260,15 +276,15 @@ func itemNames(items []user.PetItem) []string {
 	return names
 }
 
-// insertPetQuery adds the pet unless its owner keeps $21 already.
+// insertPetQuery adds the pet unless its owner keeps $24 already.
 const insertPetQuery = `
 	INSERT INTO pets (` + petColumns + `)
-	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20
+	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
 	WHERE (
 		SELECT count(*)
 		FROM pets
 		WHERE user_id = $2
-	) < $21
+	) < $24
 `
 
 func (r *PetRepository) AddPet(ctx context.Context, userID uuid.UUID, p *user.Pet) error {
@@ -307,7 +323,10 @@ const updatePetQuery = `
 		outfit = $16,
 		stance = $17,
 		streak = $18,
-		streak_at = $19
+		streak_at = $19,
+		owned_since = $20,
+		sale_price = $21,
+		boss_at = $22
 	WHERE id = $1
 `
 

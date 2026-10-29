@@ -108,6 +108,15 @@ type storedFirm struct {
 	Price      int64                    `json:"price"`
 	Float      int64                    `json:"float"`
 	Candles    []storedCandle           `json:"candles"`
+	Routes     []storedRoute            `json:"routes,omitempty"`
+}
+
+type storedRoute struct {
+	ID    uuid.UUID `json:"id"`
+	To    uuid.UUID `json:"to"`
+	Good  user.Good `json:"good"`
+	From  int64     `json:"from"`
+	Units int64     `json:"units"`
 }
 
 type storedCandle struct {
@@ -238,7 +247,13 @@ type storedCity struct {
 	Tenders     []storedTender        `json:"tenders,omitempty"`
 }
 
+// convert keeps nil as nil, as the state of the domain does: a firm with
+// no supplies reads back as it was saved.
 func convert[From, To any](from []From, to func(From) To) []To {
+	if from == nil {
+		return nil
+	}
+
 	out := make([]To, len(from))
 	for i, f := range from {
 		out[i] = to(f)
@@ -259,6 +274,7 @@ func storeFirm(f user.FirmState) storedFirm {
 		Hours: convert(f.Hours, func(h user.FirmHour) storedFirmHour { return storedFirmHour(h) }),
 		Wear:  f.Wear, Ranks: f.Ranks, Improved: f.Improved, IdleUntil: f.IdleUntil, Mood: f.Mood, Price: f.Price,
 		Float: f.Float, Candles: convert(f.Candles, func(c user.Candle) storedCandle { return storedCandle(c) }),
+		Routes: convert(f.Routes, func(r user.SupplyRoute) storedRoute { return storedRoute(r) }),
 	}
 }
 
@@ -274,6 +290,7 @@ func restoreFirm(f storedFirm) user.FirmState {
 		Hours: convert(f.Hours, func(h storedFirmHour) user.FirmHour { return user.FirmHour(h) }),
 		Wear:  f.Wear, Ranks: f.Ranks, Improved: f.Improved, IdleUntil: f.IdleUntil, Mood: f.Mood, Price: f.Price,
 		Float: f.Float, Candles: convert(f.Candles, func(c storedCandle) user.Candle { return user.Candle(c) }),
+		Routes: convert(f.Routes, func(r storedRoute) user.SupplyRoute { return user.SupplyRoute(r) }),
 	}
 }
 

@@ -47,6 +47,8 @@ type PetService interface {
 	Dress(ctx context.Context, userID, petID uuid.UUID, item user.PetItem, wear bool) (*user.Pet, error)
 	Settings(ctx context.Context, adminID uuid.UUID) (service.PetSettings, error)
 	SetShop(ctx context.Context, adminID uuid.UUID, shop user.PetShop) error
+	Arena(ctx context.Context, userID uuid.UUID, now time.Time) (service.PetArena, error)
+	RunArena(ctx context.Context, a service.PetArenaAct) (service.PetArenaDone, error)
 }
 
 // petOf is the ID of a pet of the caller; one of a wrong form is no pet.
@@ -272,6 +274,13 @@ func toProtoPet(p *user.Pet, now time.Time) *userv1.Pet {
 		Stance:          p.Stance().String(),
 		Power:           int32(p.Power()),
 		Fatigue:         int32(p.FatigueAt(now)),
+		SalePrice:       p.SalePrice(),
+	}
+	if at := p.SaleAt(); at.After(now) {
+		pet.SaleAt = timestamppb.New(at)
+	}
+	if at := p.BossHitAt(); at.After(now) {
+		pet.BossAt = timestamppb.New(at)
 	}
 	if level < user.MaxPetLevel {
 		pet.NextLevelExperience = user.PetLevelExperience(level + 1)
