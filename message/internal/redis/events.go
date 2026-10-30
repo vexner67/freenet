@@ -16,7 +16,7 @@ import (
 // Channel is the Redis channel of the events.
 const Channel = "message:events"
 
-var errNoEvent = errors.New("event is neither a message, a read mark, a deletion, an edit, typing nor of a chat")
+var errNoEvent = errors.New("event is neither a message, a read mark, a deletion, an edit, typing, a call nor of a chat")
 
 // EventCodec is a pubsub.Codec for service.Event.
 type EventCodec struct{}
@@ -29,6 +29,13 @@ type eventJSON struct {
 	Edited  *messageJSON `json:"edited,omitempty"`
 	Chat    *chatJSON    `json:"chat,omitempty"`
 	Typing  *typingJSON  `json:"typing,omitempty"`
+	Call    *callJSON    `json:"call,omitempty"`
+}
+
+// callJSON is a sealed signal of the call with peer_id.
+type callJSON struct {
+	PeerID uuid.UUID `json:"peer_id"`
+	Sealed string    `json:"sealed"`
 }
 
 // typingJSON: user_id is writing, in chat_id or, when it is the nil UUID,
@@ -536,6 +543,8 @@ func (EventCodec) Encode(userID uuid.UUID, e service.Event) ([]byte, error) {
 		ej.Deleted = &deletedJSON{ID: e.Deleted.ID, SenderID: e.Deleted.SenderID, RecipientID: e.Deleted.RecipientID}
 	case e.Typing != nil:
 		ej.Typing = &typingJSON{UserID: e.Typing.UserID, ChatID: e.Typing.ChatID}
+	case e.Call != nil:
+		ej.Call = &callJSON{PeerID: e.Call.PeerID, Sealed: e.Call.Sealed}
 	default:
 		return nil, errNoEvent
 	}
@@ -586,6 +595,8 @@ func (EventCodec) Decode(data []byte) (uuid.UUID, service.Event, error) {
 		}, nil
 	case ej.Typing != nil:
 		return ej.UserID, service.Event{Typing: &service.Typing{UserID: ej.Typing.UserID, ChatID: ej.Typing.ChatID}}, nil
+	case ej.Call != nil:
+		return ej.UserID, service.Event{Call: &service.CallSignal{PeerID: ej.Call.PeerID, Sealed: ej.Call.Sealed}}, nil
 	default:
 		return uuid.Nil, service.Event{}, errNoEvent
 	}

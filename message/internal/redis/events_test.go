@@ -320,3 +320,23 @@ func TestEventCodec_Typing(t *testing.T) {
 		}
 	}
 }
+
+// A call rings only through this codec in production, where the replicas
+// share events: the hub of development never encodes them.
+func TestEventCodec_Call(t *testing.T) {
+	t.Parallel()
+
+	var codec redis.EventCodec
+	ann, bob := uuid.New(), uuid.New()
+	call := service.CallSignal{PeerID: ann, Sealed: "AQID"}
+
+	data, err := codec.Encode(bob, service.Event{Call: &call})
+	if err != nil {
+		t.Fatalf("Encode a call: %v", err)
+	}
+
+	key, e, err := codec.Decode(data)
+	if err != nil || key != bob || e.Message != nil || e.Call == nil || *e.Call != call {
+		t.Fatalf("call round trip = %v %+v %v", key, e.Call, err)
+	}
+}
