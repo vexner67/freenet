@@ -548,6 +548,8 @@ export const api = {
     authorized('PATCH', `/api/v1/chat-messages/${encodeURIComponent(id)}`, { text, baseText: base, addPhotos: add, removePhotos: remove }),
   deleteChatMessage: (id) => authorized('DELETE', `/api/v1/chat-messages/${encodeURIComponent(id)}`),
   markDialogRead: (nickname, upTo) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/read`, { upTo }),
+  callSignal: (nickname, sealed) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/call`, { sealed }),
+  callServers: () => authorized('GET', '/api/v1/call-servers'),
   dialogTyping: (nickname) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/typing`),
   // Your own message, from both sides, within a day of sending: it stays
   // in the dialog as "Сообщение удалено"; forMe

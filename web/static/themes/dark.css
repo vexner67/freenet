@@ -75,15 +75,10 @@
   --text-43a047: #6cc070;
   --text-45688e: #9cc0e6;
   --text-d94c4c: #e06060;
-  --text-777: #999999;
-  --text-808080: #8c8c8c;
-  --text-8b8b8b: #888888;
   --text-7d96af: #a9c1da;
-  --text-9c9670: #8f8a68;
-  --text-999: #777777;
-  --text-a0a0a0: #8c8c8c;
-  --text-aaa: #666666;
-  --text-ccc: #444444;
+  --text-9c9670: #b5b08a;
+  --text-aaa: #a8a8a8;
+  --text-ccc: #8a8a8a;
   --text-fff: #ffffff;
   /* Borders, outlines and shadows */
   --line-fff: #1a1a1a;
@@ -177,10 +172,10 @@ input[type="number"], input[type="search"], input[type="url"], input[type="tel"]
 .form textarea, .wall-form textarea, .modal-body textarea, .messenger-box textarea, .board-search input { background: #242424; border-color: #444; color: #e0e0e0; color-scheme: dark; }
 input:focus, select:focus, textarea:focus,
 .form textarea:focus, .wall-form textarea:focus, .modal-body textarea:focus { outline-color: #5b7fa6; }
-.post-date, .post-date a, .reply-to, .wall-more { color: #8c8c8c; }
-.posts-microblog .post-menu a { color: #808080; }
+.post-date, .post-date a, .reply-to, .wall-more { color: #adadad; }
+.posts-microblog .post-menu a { color: #adadad; }
 .post-shared { border-left-color: #3a4450; }
-.post-shared.deleted { color: #8c8c8c; }
+.post-shared.deleted { color: #adadad; }
 .wall-more:hover { background: #2c2c2c; }
 .posts-microblog .post, .posts-microblog .comment { border-color: #333; }
 .posts-microblog .post-buttons a.like:hover { background: #2c2c2c; }

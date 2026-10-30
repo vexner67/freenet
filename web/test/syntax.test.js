@@ -59,3 +59,13 @@ test('every module exports what is imported from it', () => {
     }
   }
 });
+
+// A module has one address only when it is named by '/static/…' or imported
+// statically: gateway versions those. A relative import() would resolve
+// against the importer's version and load a second copy with its own state
+// (the listening copy of calls.js knew who was signed in, the dialog's did not).
+test('import() names a module by its whole path', () => {
+  for (const name of readdirSync(statics).filter((n) => n.endsWith('.js'))) {
+    assert.doesNotMatch(readFileSync(new URL(name, statics), 'utf8'), /\bimport\(\s*['"`]\./, name);
+  }
+});

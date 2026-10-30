@@ -713,6 +713,7 @@ export function renderChrome(me) {
     onEvent('ready', applyCounters);
     onEvent('counters', applyCounters);
     connectEvents();
+    import('/static/calls.js').then(({ listenCalls }) => listenCalls(me)).catch(() => {});
     // The key messages of dialogs are sealed with: made here for one who
     // has none, checked now and then against the server's.
     ensureKey(me.id).catch(() => {});

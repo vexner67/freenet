@@ -18,6 +18,7 @@ import { api, currentUser, started } from './api.js';
 import { initAttachments } from './attach.js';
 import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
+import { startCall } from './calls.js';
 import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, openMessages, ownKey, safetyCode, sendSealed } from './e2ee.js';
 import { isLive, onEvent } from './events.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
@@ -782,6 +783,7 @@ if (!me) {
 
     $('search-link').href = '/im?peer=' + encodeURIComponent(peer.nickname);
     $('safety-link').addEventListener('click', showSafetyCode);
+    $('call-link').addEventListener('click', () => startCall(peer));
     if (saved()) $('dialog-links').replaceChildren($('search-link'));
     $('dialog-links').hidden = false;
     const selectedMessages = () => [...selected].map((id) => shown.get(id)?.message).filter(Boolean);

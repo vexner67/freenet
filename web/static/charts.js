@@ -15,7 +15,7 @@ function palette() {
     line: css('--text-45688e'),
     area: css('--back-d9e1ea'),
     grid: css('--line-e8e8e8'),
-    text: css('--text-808080'),
+    text: css('--text-626262'),
     back: css('--back-fff'),
     cross: css('--line-8b8b8b'),
     label: css('--back-595959'),
