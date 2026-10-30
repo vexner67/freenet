@@ -55,6 +55,7 @@ services:
       # chat of the alerts (telegram, with TELEGRAM_* of the server's
       # .env) or by mail (smtp, with SMTP_*): MAILER in the server's .env.
       MAILER: ${MAILER:-console}
+      CAPTCHA_REQUIRED: "true"
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
