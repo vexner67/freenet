@@ -97,6 +97,25 @@ func (m *Messages) MarkRead(ctx context.Context, accessToken, peerID, upTo strin
 	return nil
 }
 
+// CallSignal hands a sealed signal of a call to peerID.
+func (m *Messages) CallSignal(ctx context.Context, accessToken, peerID, sealed string) error {
+	if _, err := m.api.SendCallSignal(withToken(ctx, accessToken), &messagev1.SendCallSignalRequest{PeerId: peerID, Sealed: sealed}); err != nil {
+		return errs.Wrap("m.api.SendCallSignal", fromStatus(err))
+	}
+
+	return nil
+}
+
+// CallServers are the servers of a call of the caller.
+func (m *Messages) CallServers(ctx context.Context, accessToken string) (model.CallServers, error) {
+	resp, err := m.api.GetCallServers(withToken(ctx, accessToken), &messagev1.GetCallServersRequest{})
+	if err != nil {
+		return model.CallServers{}, errs.Wrap("m.api.GetCallServers", fromStatus(err))
+	}
+
+	return model.CallServers{URLs: resp.GetUrls(), Username: resp.GetUsername(), Credential: resp.GetCredential()}, nil
+}
+
 // Typing tells peerID that the caller is writing to them.
 func (m *Messages) Typing(ctx context.Context, accessToken, peerID string) error {
 	if _, err := m.api.SetTyping(withToken(ctx, accessToken), &messagev1.SetTypingRequest{PeerId: peerID}); err != nil {
@@ -208,6 +227,10 @@ func (m *Messages) Subscribe(ctx context.Context, accessToken string) (model.Mes
 			edited := toChatMessage(ce)
 
 			return model.MessageEvent{ChatEdited: &edited}, nil
+		}
+
+		if c := resp.GetCallSignal(); c != nil {
+			return model.MessageEvent{Call: &model.CallSignal{PeerID: c.GetPeerId(), Sealed: c.GetSealed()}}, nil
 		}
 
 		if t := resp.GetTyping(); t != nil {

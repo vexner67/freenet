@@ -352,6 +352,10 @@ type Messages interface {
 	CountUnread(ctx context.Context, accessToken string) (int, error)
 	History(ctx context.Context, accessToken, peerID string, at model.MessagesAt, limit int) (model.MessagePage, error)
 	MarkRead(ctx context.Context, accessToken, peerID, upTo string) error
+	// CallSignal hands a sealed signal of a call to the peer.
+	CallSignal(ctx context.Context, accessToken, peerID, sealed string) error
+	// CallServers are the STUN and TURN servers of a call.
+	CallServers(ctx context.Context, accessToken string) (model.CallServers, error)
 	// Typing tells the peer the caller is writing to them.
 	Typing(ctx context.Context, accessToken, peerID string) error
 	Delete(ctx context.Context, accessToken, id string) error
@@ -733,6 +737,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/messages", a.sendMessage)
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/read", a.markDialogRead)
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/typing", a.dialogTyping)
+	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/call", a.dialogCall)
+	mux.HandleFunc("GET /api/v1/call-servers", a.callServers)
 	mux.HandleFunc("GET /api/v1/messages/search", a.searchMessages)
 	mux.HandleFunc("PATCH /api/v1/messages/{id}", a.editMessage)
 	mux.HandleFunc("DELETE /api/v1/messages/{id}", a.deleteMessage)

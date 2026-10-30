@@ -840,6 +840,20 @@ type MessageEvent struct {
 	ChatEdited  *ChatMessage
 	ChatRead    *ChatRead
 	Typing      *Typing
+	Call        *CallSignal
+}
+
+// CallSignal is a sealed signal of the call with PeerID.
+type CallSignal struct {
+	PeerID string
+	Sealed string
+}
+
+// CallServers are the STUN and TURN servers of a call.
+type CallServers struct {
+	URLs       []string
+	Username   string
+	Credential string
 }
 
 // Typing: UserID is writing to the caller, in chat ChatID or, when it is

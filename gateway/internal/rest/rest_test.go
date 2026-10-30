@@ -1381,6 +1381,7 @@ func (f *fakeNotifications) UnsubscribePush(_ context.Context, token, endpoint s
 // fakeMessages: ann is u1, bob u2. Ann has dialogs with bob and with an
 // account that is gone.
 type fakeMessages struct {
+	callPeer, callSealed string
 	// sent is what the last message sent said, sealed.
 	token, peerID, cursor, after, sent, markedUpTo, deleted string
 	// hidden is the message deleted for the caller alone, edited
@@ -1550,6 +1551,16 @@ func (f *fakeMessages) Key(_ context.Context, token, userID string) ([]byte, err
 func (f *fakeMessages) MarkRead(_ context.Context, token, peerID, upTo string) error {
 	f.token, f.peerID, f.markedUpTo = token, peerID, upTo
 	return f.err
+}
+
+func (f *fakeMessages) CallSignal(_ context.Context, _, peerID, sealed string) error {
+	f.callPeer, f.callSealed = peerID, sealed
+
+	return nil
+}
+
+func (f *fakeMessages) CallServers(context.Context, string) (model.CallServers, error) {
+	return model.CallServers{URLs: []string{"turn:example.com"}, Username: "u", Credential: "c"}, nil
 }
 
 func (f *fakeMessages) Typing(_ context.Context, token, peerID string) error {

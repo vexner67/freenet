@@ -52,6 +52,13 @@ type (
 		Message messageJSON `json:"message"`
 	}
 
+	// callEventJSON: a sealed signal of the call with Peer.
+	callEventJSON struct {
+		Type   string     `json:"type"` // "call_signal"
+		Peer   authorJSON `json:"peer"`
+		Sealed string     `json:"sealed"`
+	}
+
 	// readEventJSON: the dialog with Peer was read up to UpTo, by the
 	// caller on another page (ByMe) or by the peer.
 	readEventJSON struct {
@@ -312,7 +319,7 @@ func (s *eventSession) forwardMessages(ctx context.Context, next model.MessageEv
 			return err
 		}
 
-		if e.Typing != nil {
+		if e.Typing != nil || e.Call != nil {
 			continue // nothing unread changes
 		}
 
@@ -356,6 +363,15 @@ func (s *eventSession) messageEvent(e model.MessageEvent) (any, error) {
 		}
 
 		return deleteEventJSON{Type: "delete", Peer: peer, ID: d.ID}, nil
+	}
+
+	if c := e.Call; c != nil {
+		peer, ok, err := s.peer(c.PeerID)
+		if err != nil || !ok {
+			return nil, err
+		}
+
+		return callEventJSON{Type: "call_signal", Peer: peer, Sealed: c.Sealed}, nil
 	}
 
 	if t := e.Typing; t != nil {

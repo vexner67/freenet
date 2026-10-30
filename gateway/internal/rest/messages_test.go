@@ -363,6 +363,25 @@ func TestMarkDialogRead(t *testing.T) {
 	}
 }
 
+func TestDialogCall(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	if w := h.do("POST", "/api/v1/dialogs/bob/call", `{"sealed":"s"}`, "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.messages.callPeer != "u2" || h.messages.callSealed != "s" {
+		t.Fatalf("%d %+v", w.Code, h.messages)
+	}
+	if w := h.do("GET", "/api/v1/call-servers", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK {
+		t.Fatalf("servers: %d", w.Code)
+	}
+
+	// Only to someone the caller may write to.
+	h = newHarness(rest.Config{})
+	h.users.closedMessages = true
+	if w := h.do("POST", "/api/v1/dialogs/bob/call", `{"sealed":"s"}`, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden || h.messages.callPeer != "" {
+		t.Fatalf("closed: %d %+v", w.Code, h.messages)
+	}
+}
+
 func TestDialogTyping(t *testing.T) {
 	t.Parallel()
 

@@ -6168,6 +6168,20 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/dialogs/{nickname}/call:
+    post:
+      summary: Hands a sealed signal of a call to the peer; nothing is kept
+      parameters:
+        - { name: nickname, in: path, required: true, schema: { type: string } }
+      responses:
+        "204":
+          description: Handed over
+  /api/v1/call-servers:
+    get:
+      summary: The STUN and TURN servers of a call, with credentials of a limited time
+      responses:
+        "200":
+          description: The servers
   /api/v1/me/pets/named:
     get:
       summary: The pet everyone is given, when it opens and whether it is taken
