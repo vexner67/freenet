@@ -11,8 +11,25 @@ const error = $('error');
 
 let email = '';
 
+// The picture to read, when the site asks for one; each is good for one
+// try, so another comes after any answer.
+let captcha = { required: false };
+
+async function showCaptcha() {
+  captcha = await api.captcha();
+  $('captcha').hidden = !captcha.required;
+  $('captcha-answer').required = captcha.required;
+  $('captcha-answer').value = '';
+  if (captcha.required) $('captcha-image').src = `data:image/svg+xml,${encodeURIComponent(captcha.image)}`;
+}
+
 async function sendCode() {
-  await api.requestCode(email);
+  try {
+    await api.requestCode(email, captcha.id ?? '', $('captcha-answer').value.trim());
+  } catch (e) {
+    await showCaptcha().catch(() => {});
+    throw e;
+  }
 
   $('sent-to').textContent = email;
   emailForm.hidden = true;
@@ -89,6 +106,7 @@ $('change-email').addEventListener('click', () => {
   hideError(error);
   codeForm.hidden = true;
   emailForm.hidden = false;
+  showCaptcha().catch((e) => showError(error, e));
   $('email').focus();
 });
 
@@ -106,13 +124,21 @@ async function showInviter(nickname) {
   $('invited').hidden = false;
 }
 
-$('resend').addEventListener('click', () => withButton($('code-submit'), sendCode));
+// A new code takes a new picture, so "Прислать снова" goes back to it.
+$('resend').addEventListener('click', () => {
+  codeForm.hidden = true;
+  emailForm.hidden = false;
+  withButton($('email-submit'), showCaptcha);
+  ($('captcha').hidden ? $('email') : $('captcha-answer')).focus();
+});
+$('captcha-new').addEventListener('click', () => withButton($('email-submit'), showCaptcha));
 
 const me = await currentUser().catch(() => null);
 if (me) {
   location.replace(homePath(me));
 } else {
   renderChrome(null);
+  showCaptcha().catch((e) => showError(error, e));
 
   // The accounts set aside in this browser: a click signs in as one.
   showAccounts(() => {

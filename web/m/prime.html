@@ -43,17 +43,21 @@
             </div>
           </div>
 
-          <h4>Что даёт Prime</h4>
-          <ul class="prime-perks">
-            <li><b>Значок Prime</b> после имени — везде, где у подтверждённых страниц стоит галочка.</li>
-            <li><b>Оформление страницы</b>: цвет имени, рамка фото, узор за страницей и смайлик настроения у статуса.</li>
-            <li><b>Аметистовый стиль</b> сайта во «Внешнем виде» настроек.</li>
-            <li><b>Подарки Prime</b> — коллекция, которую могут отправлять только подписчики.</li>
-            <li><b>Без рекламы</b> в новостях.</li>
-            <li><b>Невидимка</b>: никто не видит, что вы онлайн и когда были в сети, ваши просмотры историй не считаются, а заходя на чужие страницы, вы не попадаете в их гости.</li>
-            <li><b>Переводы голосов без комиссии</b>.</li>
-            <li><b>Меньший налог с продажи своих наборов стикеров</b>.</li>
-          </ul>
+          <div class="prime-window">
+            <div class="prime-window-title"><img src="/static/prime/perk-badge.svg" alt="" width="16" height="16">Что даёт Prime</div>
+            <div class="prime-window-body">
+              <ul class="prime-perks">
+                <li><img src="/static/prime/perk-badge.svg" alt="" width="32" height="32"><div><b>Значок Prime</b> после имени — везде, где у подтверждённых страниц стоит галочка.</div></li>
+                <li><img src="/static/prime/perk-style.svg" alt="" width="32" height="32"><div><b>Оформление страницы</b>: цвет имени, рамка фото, узор за страницей и смайлик настроения у статуса.</div></li>
+                <li><img src="/static/prime/perk-amethyst.svg" alt="" width="32" height="32"><div><b>Аметистовый стиль</b> сайта во «Внешнем виде» настроек.</div></li>
+                <li><img src="/static/prime/perk-gift.svg" alt="" width="32" height="32"><div><b>Подарки Prime</b> — коллекция, которую могут отправлять только подписчики.</div></li>
+                <li><img src="/static/prime/perk-noads.svg" alt="" width="32" height="32"><div><b>Без рекламы</b> в новостях.</div></li>
+                <li><img src="/static/prime/perk-invisible.svg" alt="" width="32" height="32"><div><b>Невидимка</b>: никто не видит, что вы онлайн и когда были в сети, ваши просмотры историй не считаются, а заходя на чужие страницы, вы не попадаете в их гости.</div></li>
+                <li><img src="/static/prime/perk-transfer.svg" alt="" width="32" height="32"><div><b>Переводы голосов без комиссии</b>.</div></li>
+                <li><img src="/static/prime/perk-stickers.svg" alt="" width="32" height="32"><div><b>Меньший налог с продажи своих наборов стикеров</b>.</div></li>
+              </ul>
+            </div>
+          </div>
 
           <div id="buy-part" hidden>
             <h4>Купить подписку</h4>
@@ -61,7 +65,10 @@
             <div class="prime-plans" id="plans"></div>
           </div>
 
-          <h4>Подарить подписку</h4>
+          <div class="prime-window prime-gift">
+            <div class="prime-window-title"><img src="/static/prime/perk-gift.svg" alt="" width="16" height="16">Подарить подписку</div>
+            <div class="prime-window-body">
+              <img class="prime-gift-picture" src="/static/prime/perk-gift.svg" alt="" width="64" height="64">
           <form id="give">
             <table class="form">
               <tr>
@@ -79,9 +86,13 @@
             </table>
             <div class="actions"><button class="button" type="submit">Подарить</button></div>
           </form>
+            </div>
+          </div>
 
           <div id="style-part" hidden>
-            <h4>Оформление страницы</h4>
+            <div class="prime-window">
+            <div class="prime-window-title"><img src="/static/prime/perk-style.svg" alt="" width="16" height="16">Оформление страницы</div>
+            <div class="prime-window-body">
             <p>Так ваша страница выглядит для всех, пока у вас есть Prime.</p>
             <div class="prime-preview" id="style-preview">
               <span class="prime-sparkle-box" id="style-photo"><img class="avatar" id="style-avatar" src="/static/avatar.svg" alt="" width="60" height="60"></span>
@@ -92,16 +103,18 @@
               <img class="prime-mood" id="style-mood" src="/static/prime/mood-happy.svg" alt="" width="32" height="32" hidden>
             </div>
             <form id="style">
-              <p class="prime-style-label">Цвет имени:</p>
+              <p class="prime-style-label"><img src="/static/prime/style-name.svg" alt="" width="16" height="16">Цвет имени:</p>
               <div class="prime-swatches" id="style-names"></div>
-              <p class="prime-style-label">Рамка фото:</p>
+              <p class="prime-style-label"><img src="/static/prime/style-frame.svg" alt="" width="16" height="16">Рамка фото:</p>
               <div class="prime-swatches" id="style-frames"></div>
-              <p class="prime-style-label">Узор за страницей:</p>
+              <p class="prime-style-label"><img src="/static/prime/style-pattern.svg" alt="" width="16" height="16">Узор за страницей:</p>
               <div class="prime-swatches" id="style-backgrounds"></div>
-              <p class="prime-style-label">Настроение у статуса:</p>
+              <p class="prime-style-label"><img src="/static/prime/mood-happy.svg" alt="" width="16" height="16">Настроение у статуса:</p>
               <div class="prime-swatches" id="style-moods"></div>
               <div class="actions"><button class="button" type="submit">Сохранить</button></div>
             </form>
+            </div>
+            </div>
           </div>
 
           <div id="invisible-part" hidden>

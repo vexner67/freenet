@@ -8,7 +8,7 @@
 // panel (/admin/mine).
 
 import { api, currentUser, session, started } from './api.js';
-import { balanceVotes, balanceWord, energyWait, experienceCount, groupedVotes, mineDug, mineEnergy, mineSold, oreName, orePrice, oreValue, unitsCount, votesAmount, votesFontSize } from './labels.js';
+import { balanceVotes, balanceWord, energyWait, experienceCount, groupedVotes, mineDug, mineEnergy, mineSold, oreName, orePrice, oreValue, oreValuePerEnergy, unitsCount, votesAmount, votesFontSize } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
 
@@ -66,6 +66,7 @@ function oreRow(vein) {
     tr('+{0} опыта', groupedVotes(vein.gain)),
     tr('энергия: {0}', vein.energy),
     orePrice(vein.price),
+    tr('≈ {0} за энергию', oreValuePerEnergy(vein)),
   ].join(' · ');
 
   const row = el('div', { className: open ? 'mine-ore' : 'mine-ore mine-locked' },

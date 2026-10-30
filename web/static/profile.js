@@ -1,6 +1,7 @@
 import { api, currentUser, started } from './api.js';
-import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, plural, MAX_RATING, firmLine, firmPictures, titleGroups, titleIconPath } from './labels.js';
-import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
+import { celebrate } from './birthday.js';
+import { isBirthdayToday, relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, plural, MAX_RATING, firmLine, firmPictures, titleGroups, titleIconPath } from './labels.js';
+import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark, whenShown } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
 import { initBlacklistLink } from './blacklist.js';
@@ -127,7 +128,22 @@ function renderHeader(profile, isOwner) {
   $('title-aside').replaceChildren(isOwner || profile.online ? el('b', { textContent: seen }) : seen || '@' + profile.nickname);
 }
 
+// showBirthday dresses the page for the one day of its owner's birthday:
+// a plaque, a party hat on the photo, its own background and confetti.
+function showBirthday(user, isOwner) {
+  if (!isBirthdayToday(user.birthday)) return;
+
+  document.body.classList.add('birthday');
+  $('birthday-title').textContent = isOwner ? tr('С днём рождения!') : tr('Сегодня день рождения у {0}!', genitiveName(user));
+  $('birthday-text').textContent = isOwner ? tr('Щёлкните, чтобы запустить ещё конфетти.') : tr('Поздравьте и отправьте подарок.');
+  $('birthday-hat').hidden = false;
+  $('birthday').hidden = false;
+  $('birthday').addEventListener('click', celebrate);
+  whenShown().then(celebrate);
+}
+
 function render(user, isOwner, profile) {
+  showBirthday(user, isOwner);
   const fullName = [user.name, user.surname].filter(Boolean).join(' ');
 
   renderHeader(profile, isOwner);

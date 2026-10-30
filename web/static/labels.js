@@ -207,6 +207,19 @@ function dayOfMonth(day, month) {
   return lang === 'en' ? `${months[month]} ${day}` : `${day} ${months[month]}`;
 }
 
+// isBirthdayToday tells whether the day of a birthday ("1990-05-17" or
+// "--05-17") is today where the reader is; the 29th of February is kept on
+// the 28th in a year without one.
+export function isBirthdayToday(iso, now = new Date()) {
+  const [month, day] = (iso ?? '').slice(-5).split('-').map(Number);
+
+  if (!month || !day) return false;
+
+  const leap = new Date(now.getFullYear(), 1, 29).getMonth() === 1;
+
+  return now.getMonth() + 1 === month && now.getDate() === (month === 2 && day === 29 && !leap ? 28 : day);
+}
+
 // formatBirthday turns "1990-05-17" into "17 мая 1990 г., 35 лет".
 // A birthday shown without its year comes as "--05-17": "17 мая", as
 // openvk's "Показывать только день и месяц".
@@ -1609,6 +1622,14 @@ export function orePrice(price) {
   return tr('100 шт. — {0}', votesAmount(price));
 }
 
+// oreValuePerEnergy is what a point of energy brings at a vein on average,
+// so that ores compare at a glance: a rarer one always brings more.
+export function oreValuePerEnergy(vein) {
+  const units = (vein.least + vein.most) / 2;
+
+  return votesAmount(Math.round((units * vein.price) / 100 / vein.energy));
+}
+
 // energyWait is the time till the next point of energy: "4:05",
 // "1:02:30".
 export function energyWait(seconds) {
@@ -1968,6 +1989,7 @@ export const primeNames = [
   ['sapphire', tr('сапфировое')],
   ['gold', tr('золотое')],
   ['rainbow', tr('радужное')],
+  ['none', tr('без цвета')],
 ];
 
 export const primeFrames = [
@@ -1977,6 +1999,7 @@ export const primeFrames = [
   ['glitter', tr('блёстки')],
   ['hearts', tr('сердечки')],
   ['stars', tr('звёздочки')],
+  ['none', tr('без рамки')],
 ];
 
 export const primeBackgrounds = [
@@ -1987,7 +2010,7 @@ export const primeBackgrounds = [
   ['clouds', tr('облака')],
   ['flowers', tr('цветы')],
   ['sparkles', tr('блёстки')],
-  ['trip', tr('под кайфом')],
+  ['trip', tr('галлюцинации')],
 ];
 
 export const primeMoods = [
@@ -2038,6 +2061,8 @@ export function primeNameClass(person) {
   if (!person?.prime) return '';
 
   const name = person.primeStyle?.name;
+
+  if (name === 'none') return '';
 
   return name && name !== 'amethyst' ? 'prime-name prime-name-' + name : 'prime-name';
 }
@@ -2734,7 +2759,11 @@ const errorTexts = {
   'the yield of an ore must be at least 1, the least not above the most': tr('Добыча — не меньше 1 шт., наименьшая не больше наибольшей.'),
   'the price of an ore must be at least 0': tr('Цена руды — не меньше 0.'),
   'the experience of a dig must be at least 0': tr('Опыт за копку — не меньше 0.'),
+  'a stop order needs a limit price and a stop: to sell below the price now, to buy above it': tr('Стоп-цена продажи — ниже цены сейчас, покупки — выше.'),
+  'no enterprise of yours needs what another one makes': tr('Ни одному вашему предприятию не нужно то, что делает другое.'),
+  'wrong captcha': tr('Цифры с картинки введены неверно. Попробуйте ещё раз.'),
   'a dig must take at least 1 energy': tr('Копка тратит не меньше 1 энергии.'),
+  'a point of energy must bring more at each ore than at the one before': tr('Единица энергии на каждой руде должна приносить больше, чем на предыдущей.'),
   'the energy of a miner must be at least 1, not below a dig': tr('Энергия — не меньше 1 и не меньше, чем тратит копка.'),
   'a point of energy must come back in at least 1 second': tr('Единица энергии восстанавливается не быстрее, чем за 1 секунду.'),
   'the chances of the events must be from 0 and together at most 10000': tr('Шансы событий вместе — не больше 100 %.'),

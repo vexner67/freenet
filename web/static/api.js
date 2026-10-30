@@ -254,7 +254,8 @@ async function authorized(method, path, body) {
 }
 
 export const api = {
-  requestCode: (email) => request('POST', '/api/v1/auth/code', { email }),
+  captcha: () => request('GET', '/api/v1/auth/captcha'),
+  requestCode: (email, captchaId, captchaAnswer) => request('POST', '/api/v1/auth/code', { email, captchaId, captchaAnswer }),
 
   // verifyCode signs in, or, for a page with the second step on, returns
   // { twoFactorTicket } that verifyTwoFactor takes with the code of the app.

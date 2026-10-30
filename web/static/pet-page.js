@@ -82,6 +82,13 @@ async function act(run) {
   }
 }
 
+// unpaid is what an action that may cost nothing answers: a balance of 0
+// is "nothing was paid", not an empty purse.
+function unpaid(answer) {
+  if (!answer.balance) delete answer.balance;
+  return answer;
+}
+
 // The shop.
 
 function kindOf(kind) {
@@ -808,7 +815,7 @@ function openRename() {
   modal.box.addEventListener('submit', async (event) => {
     event.preventDefault();
     modal.close();
-    const renamed = await act(() => api.renamePet(pet.id, input.value));
+    const renamed = await act(() => api.renamePet(pet.id, input.value).then(unpaid));
     if (renamed) keep(renamed.pet);
   });
   input.select();
@@ -845,12 +852,7 @@ function drawLeague(arena, note = null) {
     me,
     pets,
     run: async (body, then) => {
-      // A balance of 0 is "nothing was paid", not an empty purse.
-      const answer = await act(async () => {
-        const done = await api.runPetArena(body);
-        if (!done.balance) delete done.balance;
-        return done;
-      });
+      const answer = await act(() => api.runPetArena(body).then(unpaid));
       if (!answer) return;
       pets = (await api.pets().catch(() => ({ pets }))).pets;
       showTabs();
@@ -890,7 +892,7 @@ function watch() {
     if (fed) keep(fed.pet);
   });
   $('play').addEventListener('click', async () => {
-    const played = await act(() => api.playPet(pet.id));
+    const played = await act(() => api.playPet(pet.id).then(unpaid));
     if (played) keep(played.pet);
   });
   $('find').addEventListener('click', () => fight(''));
@@ -901,7 +903,7 @@ function watch() {
   });
   $('stance').addEventListener('change', showStanceText);
   $('guard').addEventListener('change', async () => {
-    const set = await act(() => api.setPetStance(pet.id, $('guard').value));
+    const set = await act(() => api.setPetStance(pet.id, $('guard').value).then(unpaid));
     if (set) keep(set.pet);
     else $('guard').value = pet.stance;
   });

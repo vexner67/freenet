@@ -74,7 +74,10 @@ function showBonus(state, me, kopecks) {
     ? tr('Бонус получают страницы старше недели с заполненной анкетой.')
     : state.taken
       ? tr('Сегодня вы его уже получили. Следующий — завтра.')
-      : tr('Каждый день — {0}.', votesAmount(state.votes));
+      : tr('Сегодня — {0}.', votesAmount(state.votes));
+  $('bonus-streak').textContent = state.eligible && state.streak > 0
+    ? tr('Заходите каждый день: бонус растёт до семикратного. Дней подряд: {0} из {1}.', Math.min(state.streak, 7), 7)
+    : '';
   claim.textContent = tr('Получить {0}', votesAmount(state.votes));
   claim.hidden = !state.eligible || state.taken;
   $('bonus').hidden = false;

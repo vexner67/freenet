@@ -1098,9 +1098,12 @@ const takes = (f, good) => specOf(f.kind).inputs.some((i) => i.good === good) ||
 // enterprise it goes to, from how many units kept and how many an hour.
 function routes(f) {
   const nodes = [title(tr('Поставки'))];
+  nodes.push(el('div', { className: 'firm-order' },
+    button(tr('Настроить поставки автоматически'), () => act('auto_routes', { firm: f.id }, tr('Поставки настроены: каждый час предприятия получают столько, сколько им нужно.'))),
+    hint(tr('Сайт сам соединит все ваши предприятия и каждый час будет считать, сколько нужно передать: запас на {0} ч. работы получателя по числу рабочих, их выработке и износу станков. Сначала предприятие оставляет товар на принятые заказы города и часть на ещё не принятые, остальное делит между получателями по тому, сколько им не хватает. Ручные поставки заменятся.', 3))));
   nodes.push(f.routes.length
     ? table([[tr('Товар'), 0], [tr('Куда'), 0], [tr('Когда на складе от'), 110, true], [tr('В час'), 70, true], ['', 70, true]], f.routes.map((r) => [
-      goodLink(r.good), firmOf(r.to) ? firmLink(firmOf(r.to)) : tr('—'), groupedVotes(r.from), groupedVotes(r.units),
+      goodLink(r.good), firmOf(r.to) ? firmLink(firmOf(r.to)) : tr('—'), r.auto ? tr('авто') : groupedVotes(r.from), r.auto ? tr('по расчёту') : groupedVotes(r.units),
       el('a', { href: '#', textContent: tr('Отменить'), onclick: (e) => { e.preventDefault(); act('unroute', { firm: f.id, route: r.id }, tr('Поставка отменена.')); } }),
     ]))
     : hint(tr('Поставок нет.')));

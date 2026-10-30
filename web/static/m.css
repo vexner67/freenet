@@ -346,6 +346,8 @@ b, strong { font-weight: bold; }
   font-weight: bold;
 }
 .sidebar-form label { display: block; margin: 6px 0 2px; }
+.captcha { margin-top: 6px; }
+.captcha img { display: block; max-width: 100%; border: 1px solid var(--line-7d8792); }
 .sidebar-form .button { width: 100%; margin-top: 6px; }
 .sidebar-form .hint { margin-top: 6px; }
 /* Who invites, over the main page (login.js), and the link of
@@ -1264,6 +1266,8 @@ button.stock-plaque:hover { background: var(--back-f2f5f8); border-color: var(--
 .stock-fact:last-child { border-right: 0; }
 .stock-fact span:first-child { overflow: hidden; color: var(--text-626262); text-overflow: ellipsis; white-space: nowrap; }
 .stock-fact b { white-space: nowrap; }
+.stock-tape { display: flex; flex-direction: column; max-height: 220px; margin: 4px 0 10px; overflow-y: auto; }
+.stock-tape-row { display: flex; gap: 10px; justify-content: space-between; padding: 3px 6px; border-bottom: 1px solid var(--line-e0e0e0); }
 .stock-chart-head { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
 .stock-chart-head .section-title { flex: 1; }
 .stock-trade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
@@ -3526,3 +3530,102 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 .call-window { width: 100%; max-width: none; height: 100%; max-height: none; border: 0; border-radius: 0; }
 .call-stage { flex: 1; height: auto; min-height: 200px; }
 .call-button { width: 84px; padding: 8px 2px 5px; font-size: 11px; }
+
+/* /prime in the look of the sites of the 2000s: the hero is a glossy
+   plaque and every part is a small window with a shiny title bar. */
+.prime-hero {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--text-6b3fb8);
+  border-radius: 6px;
+  background: linear-gradient(rgb(255 255 255 / 35%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--text-6b3fb8);
+  color: var(--text-fff);
+}
+.prime-hero .prime-hero-title { color: var(--text-fff); font-size: 18px; text-shadow: 0 1px 1px rgb(0 0 0 / 45%); }
+.prime-hero .prime-state { color: var(--text-fff); }
+.prime-hero .prime-state a { color: var(--text-fff); text-decoration: underline; }
+.prime-window {
+  margin: 0 0 14px;
+  border: 1px solid var(--text-6b3fb8);
+  border-radius: 6px 6px 3px 3px;
+  background: var(--back-fff);
+  box-shadow: 2px 2px 0 var(--back-c7b2ee);
+}
+.prime-window-title {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 5px 5px 0 0;
+  background: linear-gradient(rgb(255 255 255 / 35%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--text-6b3fb8);
+  color: var(--text-fff);
+  font-weight: bold;
+  text-shadow: 0 1px 0 rgb(0 0 0 / 40%);
+}
+.prime-window-body { padding: 10px; }
+.prime-window .prime-perks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.prime-window .prime-perks li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--back-c7b2ee);
+  border-radius: 4px;
+  line-height: 1.35;
+}
+.prime-perks img { flex: none; }
+.prime-gift .prime-window-body { display: flex; gap: 12px; align-items: flex-start; }
+.prime-gift-picture { flex: none; }
+.prime-gift form { flex: 1; min-width: 0; }
+.prime-gift table.form { width: 100%; margin: 0; }
+.prime-window .prime-style-label { display: flex; gap: 6px; align-items: center; margin: 12px 0 6px; padding-bottom: 3px; border-bottom: 1px dotted var(--back-c7b2ee); color: var(--text-6b3fb8); }
+.prime-window .prime-preview { border: 1px dashed var(--text-6b3fb8); border-radius: 4px; }
+.prime-window .prime-swatch:has(input:checked) { box-shadow: 0 0 6px var(--text-6b3fb8); }
+.prime-page.prime-frame-none .avatar { border: 0; outline: none; }
+
+/* The birthday of the owner of a page: for one day it has a plaque, a
+   party hat on the photo, its own background and confetti (birthday.js). */
+body.birthday { background: var(--back-f2f5f8) url("/static/birthday/bg.svg"); }
+body.birthday.prime-bg.prime-bg-trip::before { content: none; }
+.birthday.prime-bg.prime-bg-trip .layout::before { box-shadow: none; animation: none; }
+.birthday .layout { position: relative; }
+.birthday-banner {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border: 2px solid var(--line-e2b24a);
+  border-radius: 6px;
+  background: linear-gradient(rgb(255 255 255 / 45%), transparent 50%), var(--back-ffd54a);
+  color: var(--text-333);
+  cursor: pointer;
+}
+.birthday-banner[hidden] { display: none; }
+.birthday-words { flex: 1; text-align: center; }
+.birthday-words b { display: block; font-size: 14px; }
+.avatar-box .birthday-hat { position: absolute; top: -18px; left: -10px; z-index: 2; transform: rotate(-18deg); pointer-events: none; }
+.birthday .avatar-box { position: relative; }
+.birthday-sky { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 100; }
+.birthday-piece {
+  position: absolute;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  animation: birthday-burst var(--fall, 2.4s) cubic-bezier(0.15, 0.7, 0.4, 1) forwards;
+}
+.birthday-piece:nth-child(5n) { background: var(--back-ffd54a); }
+.birthday-piece:nth-child(5n + 1) { background: var(--back-d23a32); }
+.birthday-piece:nth-child(5n + 2) { background: var(--back-43a047); }
+.birthday-piece:nth-child(5n + 3) { width: 9px; height: 9px; border-radius: 50%; background: var(--back-2e7dd7); }
+.birthday-piece:nth-child(5n + 4) { background: var(--text-6b3fb8); }
+@keyframes birthday-burst {
+  from { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 1; }
+  35% { transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(1) rotate(calc(var(--turn, 0deg) / 3)); opacity: 1; }
+  to { transform: translate(var(--dx, 0px), calc(var(--dy, 0px) + 70vh)) scale(1) rotate(var(--turn, 0deg)); opacity: 0; }
+}
+.prime-window .prime-perks { grid-template-columns: 1fr; }
+.prime-gift .prime-window-body { flex-direction: column; }
+.prime-gift form { width: 100%; }
+.prime-gift-picture { align-self: center; }

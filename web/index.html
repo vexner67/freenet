@@ -32,6 +32,12 @@
       <form class="sidebar-form" id="email-form">
         <label for="email">Электронная почта:</label>
         <input type="email" id="email" autocomplete="email" required>
+        <div class="captcha" id="captcha" hidden>
+          <img id="captcha-image" alt="Цифры с картинки" width="170" height="54">
+          <a id="captcha-new">Другая картинка</a>
+          <label for="captcha-answer">Цифры с картинки:</label>
+          <input type="text" id="captcha-answer" inputmode="numeric" autocomplete="off" maxlength="5">
+        </div>
         <button class="button" type="submit" id="email-submit">Получить код</button>
         <p class="hint">Паролей нет: мы пришлём код на почту. Аккаунт создастся сам при первом входе.</p>
       </form>

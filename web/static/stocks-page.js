@@ -298,7 +298,9 @@ function myOrders(orders, named) {
     return el('div', { className: `stock-order ${o.buy ? 'buy' : 'sell'}` },
       el('span', { className: 'stock-order-side', textContent: o.buy ? tr('покупка') : tr('продажа') }),
       named && c ? el('b', { textContent: c.name }) : null,
-      el('span', { textContent: tr('{0} акц. по {1}', groupedVotes(o.shares), hundredths(o.price)) }),
+      el('span', { textContent: o.stop
+        ? tr('{0} акц.: стоп {1}, затем по {2}', groupedVotes(o.shares), hundredths(o.stop), hundredths(o.price))
+        : tr('{0} акц. по {1}', groupedVotes(o.shares), hundredths(o.price)) }),
       el('button', { type: 'button', className: 'chip', textContent: tr('снять'), onclick: () => act('stock_cancel', { order: o.id, firm: firmOfAddress() }, tr('Заявка снята.')) }));
   }));
 }
@@ -339,6 +341,8 @@ function companyView(c) {
     el('div', { className: 'stock-trade' },
       el('div', {}, title(tr('Стакан')), orderBook(c)),
       el('div', {}, title(tr('Сделка')), dealPanel(c, h))),
+    title(tr('Лента сделок')),
+    tape(c),
     title(tr('Мои акции и заявки')),
     h.shares || ordersOf(c.firm).length
       ? el('div', {},
@@ -396,6 +400,10 @@ function tenderForm(c, h) {
   const sum = el('div', { className: 'deal-summary' });
   const go = el('button', { type: 'button', className: 'button deal-go', textContent: tr('Предложить выкуп') });
   const price = () => hundredthsOf(priceInput.value);
+  // A stop order sells a little below its stop and buys a little above,
+  // so that it deals when it wakes even if the price runs on.
+  const stopLimit = () => Math.max(1, Math.round(price() * (side === 'buy' ? 1.05 : 0.95)));
+  const stopOff = () => (side === 'buy' ? price() <= c.price : price() >= c.price);
 
   function recount() {
     const total = shares.get() * price();
@@ -418,6 +426,8 @@ function tenderForm(c, h) {
 }
 
 function facts(c) {
+  // A day of profit a share: what a price is measured against.
+  const earnings = c.shares ? Math.trunc(c.profit / c.shares) : 0;
   const fact = (name, value) => el('div', { className: 'stock-fact' }, el('span', { textContent: name }), el('b', {}, value));
   return el('div', { className: 'stock-facts' },
     fact(tr('Стоимость'), hundredths(c.book)),
@@ -427,7 +437,23 @@ function facts(c) {
     fact(tr('Акционеров'), String(c.holders)),
     fact(tr('Акций всего'), groupedVotes(c.shares)),
     fact(tr('Продаёт биржа'), groupedVotes(c.pool + c.float)),
+    fact(tr('Капитализация'), money(c.price * c.shares)),
+    fact(tr('Прибыль на акцию (EPS)'), money(earnings)),
+    fact(tr('P/E'), earnings > 0 ? (c.price / (earnings * 365)).toFixed(1) : tr('—')),
   );
+}
+
+// tape is the last deals of the company, the newest first.
+function tape(c) {
+  if (!c.tape?.length) return hint(tr('Сделок пока не было.'));
+
+  return el('div', { className: 'stock-tape' }, ...c.tape.slice().reverse().map((t, i, all) => {
+    const before = all[i + 1]?.price ?? t.price;
+    return el('div', { className: 'stock-tape-row' },
+      el('span', { textContent: formatDateTime(t.at) }),
+      el('b', { className: t.price >= before ? 'stock-up' : 'stock-down', textContent: hundredths(t.price) }),
+      el('span', { textContent: tr('{0} акц.', groupedVotes(t.shares)) }));
+  }));
 }
 
 // pick sets the price of a row of the order book in the panel of a deal:
@@ -477,6 +503,7 @@ function dealPanel(c, h) {
   // expected is what a share should go for: the price of an order, or at
   // the market the best price there is now.
   const expected = () => {
+    if (mode === 'stop') return stopLimit();
     if (mode === 'limit') return price();
     if (side === 'buy') return Math.min(c.ask, c.bestAsk || Infinity);
     return Math.max(c.bid, c.bestBid);
@@ -516,7 +543,8 @@ function dealPanel(c, h) {
     // refused, as a real exchange does: the button waits for a price in it.
     const outOfBand = mode === 'limit' && c.bandHigh > 0 && (p < c.bandLow || p > c.bandHigh);
     band.classList.toggle('stock-down', outOfBand);
-    go.disabled = !n || outOfBand || (side === 'sell' && n > h.free) || (side === 'buy' && sum > state.account);
+    stopHint.classList.toggle('stock-down', mode === 'stop' && stopOff());
+    go.disabled = !n || outOfBand || (mode === 'stop' && stopOff()) || (side === 'sell' && n > h.free) || (side === 'buy' && sum > state.account);
   }
 
   const sides = segmented([['buy', tr('Купить'), 'buy'], ['sell', tr('Продать'), 'sell']], side, (v) => {
@@ -525,7 +553,7 @@ function dealPanel(c, h) {
     priceInput.value = plain(side === 'buy' ? c.ask : c.bid);
     draw();
   });
-  const modes = segmented([['market', tr('по рынку')], ['limit', tr('по своей цене')]], mode, (v) => {
+  const modes = segmented([['market', tr('по рынку')], ['limit', tr('по своей цене')], ['stop', tr('стоп')]], mode, (v) => {
     mode = v;
     draw();
   });
@@ -533,15 +561,24 @@ function dealPanel(c, h) {
     el('span', { className: 'stepper' }, nudge(-1), priceInput, nudge(1)));
   const band = el('div', { className: 'hint', textContent: tr('Цена заявки — от {0} до {1}: дальше от цены биржи сделки не идут.', money(c.bandLow), money(c.bandHigh)) });
 
+  const stopHint = el('div', { className: 'hint' });
+
   function draw() {
-    priceRow.hidden = mode !== 'limit';
+    priceRow.hidden = mode === 'market';
     band.hidden = mode !== 'limit';
+    stopHint.hidden = mode !== 'stop';
+    stopHint.textContent = side === 'buy'
+      ? tr('Стоп-заявка на покупку: выше цены сейчас ({0}). Когда цена дойдёт до неё, заявка встанет в стакан. Цена проверяется раз в час.', money(c.price))
+      : tr('Стоп-лосс: ниже цены сейчас ({0}). Когда цена упадёт до неё, акции выставятся на продажу. Цена проверяется раз в час.', money(c.price));
     recount();
   }
 
   go.addEventListener('click', () => {
     const n = shares.get();
-    act('stock_order', { firm: c.firm, buy: side === 'buy', price: mode === 'limit' ? price() : 0, shares: n }, (d) => {
+    const order = { firm: c.firm, buy: side === 'buy', price: mode === 'limit' ? price() : 0, shares: n };
+    if (mode === 'stop') Object.assign(order, { price: stopLimit(), stop: price() });
+    act('stock_order', order, (d) => {
+      if (mode === 'stop') return tr('Стоп-заявка выставлена.');
       if (d.shares === n) return side === 'buy' ? tr('Куплено {0} акц. за {1}.', groupedVotes(d.shares), money(d.money)) : tr('Продано {0} акц. за {1}.', groupedVotes(d.shares), money(d.money));
       if (d.shares > 0) return tr('Сразу исполнено {0} акц. из {1}, остальное ждёт в заявке.', groupedVotes(d.shares), groupedVotes(n));
       return tr('Заявка выставлена: она исполнится, когда найдётся цена.');
@@ -554,6 +591,7 @@ function dealPanel(c, h) {
     el('div', { className: 'deal-row' }, modes.node),
     priceRow,
     band,
+    stopHint,
     el('div', { className: 'deal-row' }, el('span', { className: 'deal-label', textContent: tr('Акций') }), shares.node),
     el('div', { className: 'deal-row' }, chips([
       ['1', () => shares.set(1)], ['10', () => shares.set(10)], ['50', () => shares.set(50)],

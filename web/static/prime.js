@@ -162,7 +162,7 @@ function initStyle(me) {
     style.background)));
   $('style-moods').replaceChildren(...primeMoods.map(([value, name]) => swatch('mood', value, name,
     primeMoodIcons[value]
-      ? el('img', { src: primeMoodIcons[value], alt: '', width: 16, height: 16 })
+      ? el('img', { src: primeMoodIcons[value], alt: '', width: 32, height: 32 })
       : el('span', { className: 'prime-swatch-none', textContent: '—' }),
     style.mood)));
   showPreview(me, style);

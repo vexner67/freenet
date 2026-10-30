@@ -32,10 +32,20 @@
         <div class="error" id="error" hidden></div>
         <div class="notice" id="deactivated" hidden></div>
 
+        <div class="birthday-banner" id="birthday" hidden>
+          <img src="/static/birthday/balloons.svg" alt="" width="48" height="48">
+          <div class="birthday-words">
+            <b id="birthday-title"></b>
+            <span id="birthday-text"></span>
+          </div>
+          <img src="/static/birthday/cake.svg" alt="" width="48" height="48">
+        </div>
+
         <div class="profile" id="profile" hidden>
           <div class="profile-left">
             <div class="avatar-box">
               <img class="avatar" id="avatar" src="/static/avatar.svg" alt="">
+              <img class="birthday-hat" id="birthday-hat" src="/static/birthday/hat.svg" alt="" width="48" height="48" hidden>
               <div class="avatar-controls" id="avatar-actions" hidden>
                 <a class="avatar-delete" id="avatar-delete" title="Удалить фотографию" hidden>×</a>
                 <a class="avatar-upload" id="avatar-upload">Поставить изображение</a>
