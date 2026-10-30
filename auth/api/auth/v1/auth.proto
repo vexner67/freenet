@@ -8,6 +8,8 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 service AuthService {
+  // NewCaptcha gives the picture RequestCode asks to read, when it does.
+  rpc NewCaptcha(NewCaptchaRequest) returns (NewCaptchaResponse);
   rpc RequestCode(RequestCodeRequest) returns (google.protobuf.Empty);
   rpc VerifyCode(VerifyCodeRequest) returns (TokenPair);
   rpc RefreshToken(RefreshTokenRequest) returns (TokenPair);
@@ -38,8 +40,20 @@ service AuthService {
   rpc RenewRecoveryCodes(RenewRecoveryCodesRequest) returns (RenewRecoveryCodesResponse);
 }
 
+message NewCaptchaRequest {}
+
+message NewCaptchaResponse {
+  // False: signing in asks for no picture, and the rest is empty.
+  bool required = 1;
+  string id = 2;
+  // An SVG.
+  string image = 3;
+}
+
 message RequestCodeRequest {
   string email = 1;
+  string captcha_id = 2;
+  string captcha_answer = 3;
 }
 
 message VerifyCodeRequest {

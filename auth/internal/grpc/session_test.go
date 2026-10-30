@@ -98,7 +98,7 @@ func TestAuthHandler_Sessions(t *testing.T) {
 	laptop, phone := list[0], list[1]
 
 	fake := &fakeSessions{userID: ann, sessions: list}
-	h := NewAuthHandler(nil, fake, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	h := NewAuthHandler(nil, nil, fake, nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	ctx := jwtauth.ContextWithIdentity(context.Background(), jwtauth.Identity{UserID: ann, SessionID: phone.ID()})
 
 	resp, err := h.ListSessions(ctx, &authv1.ListSessionsRequest{})
@@ -159,7 +159,7 @@ func TestPublicMethods(t *testing.T) {
 			}
 		}
 	}
-	if len(public) != 5 {
+	if len(public) != 6 {
 		t.Fatalf("PublicMethods = %v", public)
 	}
 }

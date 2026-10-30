@@ -25,6 +25,8 @@ func toStatus(err error) (*status.Status, bool) {
 		// One answer for both cases, so it is impossible to tell
 		// whether a code was ever requested for the email.
 		return status.New(codes.Unauthenticated, "invalid or expired code"), true
+	case errors.Is(err, service.ErrCaptcha):
+		return status.New(codes.InvalidArgument, service.ErrCaptcha.Error()), true
 	case errors.Is(err, service.ErrInvalidRefreshToken),
 		errors.Is(err, service.ErrSessionNotFound):
 		return status.New(codes.Unauthenticated, "invalid refresh token"), true

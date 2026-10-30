@@ -20,6 +20,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	AuthService_NewCaptcha_FullMethodName         = "/auth.v1.AuthService/NewCaptcha"
 	AuthService_RequestCode_FullMethodName        = "/auth.v1.AuthService/RequestCode"
 	AuthService_VerifyCode_FullMethodName         = "/auth.v1.AuthService/VerifyCode"
 	AuthService_RefreshToken_FullMethodName       = "/auth.v1.AuthService/RefreshToken"
@@ -39,6 +40,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthServiceClient interface {
+	// NewCaptcha gives the picture RequestCode asks to read, when it does.
+	NewCaptcha(ctx context.Context, in *NewCaptchaRequest, opts ...grpc.CallOption) (*NewCaptchaResponse, error)
 	RequestCode(ctx context.Context, in *RequestCodeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	VerifyCode(ctx context.Context, in *VerifyCodeRequest, opts ...grpc.CallOption) (*TokenPair, error)
 	RefreshToken(ctx context.Context, in *RefreshTokenRequest, opts ...grpc.CallOption) (*TokenPair, error)
@@ -73,6 +76,16 @@ type authServiceClient struct {
 
 func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
 	return &authServiceClient{cc}
+}
+
+func (c *authServiceClient) NewCaptcha(ctx context.Context, in *NewCaptchaRequest, opts ...grpc.CallOption) (*NewCaptchaResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(NewCaptchaResponse)
+	err := c.cc.Invoke(ctx, AuthService_NewCaptcha_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *authServiceClient) RequestCode(ctx context.Context, in *RequestCodeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
@@ -209,6 +222,8 @@ func (c *authServiceClient) RenewRecoveryCodes(ctx context.Context, in *RenewRec
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
 type AuthServiceServer interface {
+	// NewCaptcha gives the picture RequestCode asks to read, when it does.
+	NewCaptcha(context.Context, *NewCaptchaRequest) (*NewCaptchaResponse, error)
 	RequestCode(context.Context, *RequestCodeRequest) (*emptypb.Empty, error)
 	VerifyCode(context.Context, *VerifyCodeRequest) (*TokenPair, error)
 	RefreshToken(context.Context, *RefreshTokenRequest) (*TokenPair, error)
@@ -245,6 +260,9 @@ type AuthServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedAuthServiceServer struct{}
 
+func (UnimplementedAuthServiceServer) NewCaptcha(context.Context, *NewCaptchaRequest) (*NewCaptchaResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method NewCaptcha not implemented")
+}
 func (UnimplementedAuthServiceServer) RequestCode(context.Context, *RequestCodeRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RequestCode not implemented")
 }
@@ -303,6 +321,24 @@ func RegisterAuthServiceServer(s grpc.ServiceRegistrar, srv AuthServiceServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&AuthService_ServiceDesc, srv)
+}
+
+func _AuthService_NewCaptcha_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NewCaptchaRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).NewCaptcha(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_NewCaptcha_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).NewCaptcha(ctx, req.(*NewCaptchaRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _AuthService_RequestCode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -546,6 +582,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "auth.v1.AuthService",
 	HandlerType: (*AuthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "NewCaptcha",
+			Handler:    _AuthService_NewCaptcha_Handler,
+		},
 		{
 			MethodName: "RequestCode",
 			Handler:    _AuthService_RequestCode_Handler,

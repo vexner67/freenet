@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
 	authv1 "github.com/vexner67/freenet/auth/api/auth/v1"
+	"github.com/vexner67/freenet/auth/internal/captcha"
 	"github.com/vexner67/freenet/auth/internal/config"
 	"github.com/vexner67/freenet/auth/internal/console"
 	authgrpc "github.com/vexner67/freenet/auth/internal/grpc"
@@ -67,6 +68,7 @@ type sessionRepository interface {
 type storage struct {
 	sessions  sessionRepository
 	codes     service.CodeRepository
+	captchas  service.CaptchaRepository
 	limiter   service.RateLimiter
 	tickets   service.TicketRepository
 	twoFactor twoFactorRepository
@@ -160,6 +162,13 @@ func (a *App) build(cfg config.Config) error {
 		},
 	)
 
+	pictures := service.NewCaptchaService(store.captchas, hasher, store.limiter, captcha.New, service.CaptchaPolicy{
+		Required: cfg.Captcha.Required,
+		TTL:      cfg.Captcha.TTL,
+		PerIP:    cfg.Captcha.PerIP,
+		Window:   cfg.Captcha.Window,
+	})
+
 	serverCreds, err := mtls.ServerCredentials(cfg.TLS)
 	if err != nil {
 		return errs.Wrap("mtls.ServerCredentials", err)
@@ -190,6 +199,7 @@ func (a *App) build(cfg config.Config) error {
 	}
 	authv1.RegisterAuthServiceServer(a.server.Registrar(), authgrpc.NewAuthHandler(
 		authService,
+		pictures,
 		service.NewSessionService(store.sessions, cfg.RefreshTokenTTL),
 		twoFactor,
 		a.logger,
@@ -211,6 +221,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		return storage{
 			sessions:  inmem.NewSessionRepository(),
 			codes:     inmem.NewCodeRepository(),
+			captchas:  inmem.NewCaptchaRepository(),
 			limiter:   ratelimit.NewMemory(),
 			tickets:   inmem.NewTicketRepository(),
 			twoFactor: inmem.NewTwoFactorRepository(),
@@ -254,6 +265,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 	return storage{
 		sessions:  postgres.NewSessionRepository(a.pool),
 		codes:     redis.NewCodeRepository(a.redis),
+		captchas:  redis.NewCaptchaRepository(a.redis),
 		limiter:   ratelimit.NewRedis(a.redis),
 		tickets:   redis.NewTicketRepository(a.redis),
 		twoFactor: postgres.NewTwoFactorRepository(a.pool, box),

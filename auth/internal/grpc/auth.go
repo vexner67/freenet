@@ -29,6 +29,12 @@ type AuthService interface {
 	Logout(ctx context.Context, refreshToken string) error
 }
 
+// CaptchaService is the picture to read before a code is mailed.
+type CaptchaService interface {
+	New(ctx context.Context, clientIP string) (service.Captcha, error)
+	Check(ctx context.Context, id, answer string) error
+}
+
 type SessionService interface {
 	List(ctx context.Context, userID uuid.UUID) ([]*session.Session, error)
 	End(ctx context.Context, userID, sessionID uuid.UUID) error
@@ -46,24 +52,39 @@ type TwoFactorService interface {
 type AuthHandler struct {
 	authv1.UnimplementedAuthServiceServer
 	authService    AuthService
+	captcha        CaptchaService
 	sessionService SessionService
 	twoFactor      TwoFactorService
 	logger         *slog.Logger
 }
 
-func NewAuthHandler(svc AuthService, sessions SessionService, twoFactor TwoFactorService, logger *slog.Logger) *AuthHandler {
+func NewAuthHandler(svc AuthService, captcha CaptchaService, sessions SessionService, twoFactor TwoFactorService, logger *slog.Logger) *AuthHandler {
 	return &AuthHandler{
 		authService:    svc,
+		captcha:        captcha,
 		sessionService: sessions,
 		twoFactor:      twoFactor,
 		logger:         logger,
 	}
 }
 
+func (h *AuthHandler) NewCaptcha(ctx context.Context, _ *authv1.NewCaptchaRequest) (*authv1.NewCaptchaResponse, error) {
+	c, err := h.captcha.New(ctx, clientIP(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	return &authv1.NewCaptchaResponse{Required: c.Required, Id: c.ID, Image: c.Image}, nil
+}
+
 func (h *AuthHandler) RequestCode(ctx context.Context, req *authv1.RequestCodeRequest) (*emptypb.Empty, error) {
 	email, err := account.NewEmail(req.GetEmail())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err = h.captcha.Check(ctx, req.GetCaptchaId(), req.GetCaptchaAnswer()); err != nil {
+		return nil, err
 	}
 
 	if err = h.authService.RequestCode(ctx, email, clientIP(ctx)); err != nil {

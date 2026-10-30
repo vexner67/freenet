@@ -70,6 +70,8 @@ type Config struct {
 	RefreshTokenTTL time.Duration `env:"REFRESH_TOKEN_TTL" envDefault:"720h"`
 
 	Code CodeConfig `envPrefix:"CODE_"`
+	// Captcha is the picture to read before a code is mailed.
+	Captcha CaptchaConfig `envPrefix:"CAPTCHA_"`
 	// TwoFactor is the second step of signing in with an authenticator app.
 	TwoFactor TwoFactorConfig `envPrefix:"TWO_FACTOR_"`
 }
@@ -108,6 +110,15 @@ type CodeConfig struct {
 	RequestsWindow time.Duration `env:"REQUESTS_WINDOW" envDefault:"1h"`
 }
 
+type CaptchaConfig struct {
+	// Required is off by default, for development and the smoke test;
+	// production turns it on.
+	Required bool          `env:"REQUIRED" envDefault:"false"`
+	TTL      time.Duration `env:"TTL" envDefault:"5m"`
+	PerIP    int           `env:"PER_IP" envDefault:"60"`
+	Window   time.Duration `env:"WINDOW" envDefault:"10m"`
+}
+
 func Load() (Config, error) {
 	return envconfig.Load[Config]()
 }
@@ -135,6 +146,10 @@ func (c Config) Validate() error {
 		}
 	default:
 		return fmt.Errorf("unknown MAILER %q, want %q, %q or %q", c.Mailer, MailerConsole, MailerSMTP, MailerTelegram)
+	}
+
+	if c.Captcha.TTL <= 0 || c.Captcha.PerIP <= 0 || c.Captcha.Window <= 0 {
+		return errors.New("CAPTCHA_TTL, CAPTCHA_PER_IP and CAPTCHA_WINDOW must be positive")
 	}
 
 	if c.Code.TTL <= 0 || c.Code.ResendInterval <= 0 || c.Code.RequestsWindow <= 0 ||

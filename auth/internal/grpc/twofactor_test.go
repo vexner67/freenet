@@ -68,7 +68,7 @@ func TestAuthHandler_TwoFactor(t *testing.T) {
 
 	ann := uuid.New()
 	fake := &fakeTwoFactor{}
-	h := NewAuthHandler(nil, nil, fake, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	h := NewAuthHandler(nil, nil, nil, fake, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	ctx := jwtauth.ContextWithIdentity(context.Background(), jwtauth.Identity{UserID: ann, SessionID: uuid.New()})
 
 	if _, err := h.GetTwoFactor(context.Background(), &authv1.GetTwoFactorRequest{}); status.Code(err) != codes.Unauthenticated {
