@@ -220,6 +220,8 @@ services:
       REDIS_ADDR: redis:6379
       MEDIA_SERVICE_ADDR: media:7054
       NOTIFICATION_SERVICE_ADDR: notification:7055
+      TURN_URLS: ${TURN_URLS:-}
+      TURN_SECRET: ${TURN_SECRET:-}
     depends_on:
       message-postgres: { condition: service_healthy }
       redis: { condition: service_healthy }

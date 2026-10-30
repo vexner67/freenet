@@ -22,6 +22,11 @@ sed -i "s/^FREENET_TAG=.*/FREENET_TAG=$tag/" .env
 # "admin" it is born with.
 grep -q '^GRAFANA_ADMIN_PASSWORD=.' .env || echo "GRAFANA_ADMIN_PASSWORD=$(openssl rand -hex 16)" >> .env
 
+# Calls: the secret shared by the message service and TURN, and the address
+# TURN tells browsers to send to.
+grep -q '^TURN_SECRET=.' .env || echo "TURN_SECRET=$(openssl rand -hex 32)" >> .env
+grep -q '^TURN_HOST=.' .env || echo "TURN_HOST=$(ip -4 route get 1.1.1.1 | awk '{for (i = 1; i < NF; i++) if ($i == "src") print $(i + 1)}')" >> .env
+
 docker login ghcr.io --username "$user" --password-stdin >/dev/null
 trap 'docker logout ghcr.io >/dev/null' EXIT
 

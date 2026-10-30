@@ -33,6 +33,8 @@ services:
   message:
     image: ghcr.io/vexner67/freenet-message:${FREENET_TAG:?set FREENET_TAG}
     build: !reset null
+    environment:
+      TURN_URLS: stun:${TURN_HOST:-localhost}:3478,turn:${TURN_HOST:-localhost}:3478?transport=udp,turn:${TURN_HOST:-localhost}:3478?transport=tcp
   club:
     image: ghcr.io/vexner67/freenet-club:${FREENET_TAG:?set FREENET_TAG}
     build: !reset null
@@ -103,6 +105,44 @@ services:
       - caddy_config:/config
     depends_on:
       gateway: { condition: service_healthy }
+
+  # TURN relays a call only when two browsers cannot reach each other. It
+  # carries packets already encrypted between them. It sits on a network of
+  # its own and refuses private addresses, so a relay never reaches inside.
+  coturn:
+    image: coturn/coturn:4.6.3
+    restart: unless-stopped
+    networks: [turn]
+    command:
+      - --fingerprint
+      - --use-auth-secret
+      - --static-auth-secret=${TURN_SECRET:-}
+      - --realm=freenet
+      - --external-ip=${TURN_HOST:-127.0.0.1}
+      - --listening-port=3478
+      - --min-port=49160
+      - --max-port=49260
+      - --no-tls
+      - --no-dtls
+      - --no-cli
+      - --no-multicast-peers
+      - --no-software-attribute
+      - --user-quota=12
+      - --total-quota=400
+      - --denied-peer-ip=0.0.0.0-0.255.255.255
+      - --denied-peer-ip=10.0.0.0-10.255.255.255
+      - --denied-peer-ip=100.64.0.0-100.127.255.255
+      - --denied-peer-ip=127.0.0.0-127.255.255.255
+      - --denied-peer-ip=169.254.0.0-169.254.255.255
+      - --denied-peer-ip=172.16.0.0-172.31.255.255
+      - --denied-peer-ip=192.168.0.0-192.168.255.255
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      - "49160-49260:49160-49260/udp"
+
+networks:
+  turn:
 
 volumes:
   caddy_data:
