@@ -85,6 +85,14 @@ func (f *fakePets) UserPets(_ context.Context, token, nickname string) ([]model.
 	return []model.Pet{f.pet()}, "u2", f.err
 }
 
+func (f *fakePets) NamedPet(context.Context, string) (model.NamedPet, error) {
+	return model.NamedPet{Kind: "big2z"}, nil
+}
+
+func (f *fakePets) ClaimNamedPet(context.Context, string) (model.PetCare, error) {
+	return model.PetCare{}, nil
+}
+
 func (f *fakePets) Adopt(_ context.Context, token, kind, name string) (model.PetCare, error) {
 	f.token, f.kind, f.name = token, kind, name
 	return model.PetCare{Pet: f.pet(), Balance: 900}, f.err

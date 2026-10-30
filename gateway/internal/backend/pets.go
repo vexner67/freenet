@@ -97,6 +97,24 @@ func (p *Pets) UserPets(ctx context.Context, accessToken, nickname string) ([]mo
 	return fromProtoPets(resp.GetPets()), resp.GetOwnerId(), nil
 }
 
+func (p *Pets) NamedPet(ctx context.Context, accessToken string) (model.NamedPet, error) {
+	resp, err := p.api.GetNamedPet(withToken(ctx, accessToken), &userv1.GetNamedPetRequest{})
+	if err != nil {
+		return model.NamedPet{}, errs.Wrap("p.api.GetNamedPet", fromStatus(err))
+	}
+
+	return model.NamedPet{Kind: resp.GetKind(), OpensAt: resp.GetOpensAt().AsTime(), Claimed: resp.GetClaimed()}, nil
+}
+
+func (p *Pets) ClaimNamedPet(ctx context.Context, accessToken string) (model.PetCare, error) {
+	resp, err := p.api.ClaimNamedPet(withToken(ctx, accessToken), &userv1.ClaimNamedPetRequest{})
+	if err != nil {
+		return model.PetCare{}, errs.Wrap("p.api.ClaimNamedPet", fromStatus(err))
+	}
+
+	return fromProtoPetCare(resp), nil
+}
+
 func (p *Pets) Adopt(ctx context.Context, accessToken, kind, name string) (model.PetCare, error) {
 	resp, err := p.api.AdoptPet(withToken(ctx, accessToken), &userv1.AdoptPetRequest{Kind: kind, Name: name})
 	if err != nil {

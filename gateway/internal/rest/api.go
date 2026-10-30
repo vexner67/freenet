@@ -962,6 +962,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/top", a.listTop)
 	mux.HandleFunc("GET /api/v1/me/pets", a.getPets)
 	mux.HandleFunc("POST /api/v1/me/pets", a.adoptPet)
+	mux.HandleFunc("GET /api/v1/me/pets/named", a.namedPet)
+	mux.HandleFunc("POST /api/v1/me/pets/named", a.claimNamedPet)
 	mux.HandleFunc("GET /api/v1/me/pets/fights", a.listPetFights)
 	mux.HandleFunc("POST /api/v1/me/pets/cases", a.openPetCase)
 	mux.HandleFunc("POST /api/v1/me/pets/drop", a.takePetDrop)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/model"
 )
@@ -17,6 +18,8 @@ type Pets interface {
 	Get(ctx context.Context, accessToken string) (model.PetState, error)
 	UserPets(ctx context.Context, accessToken, nickname string) ([]model.Pet, string, error)
 	Adopt(ctx context.Context, accessToken, kind, name string) (model.PetCare, error)
+	NamedPet(ctx context.Context, accessToken string) (model.NamedPet, error)
+	ClaimNamedPet(ctx context.Context, accessToken string) (model.PetCare, error)
 	Feed(ctx context.Context, accessToken, petID string) (model.PetCare, error)
 	Play(ctx context.Context, accessToken, petID string) (model.PetCare, error)
 	Rename(ctx context.Context, accessToken, petID, name string) (model.PetCare, error)
@@ -563,6 +566,38 @@ func (a *api) getUserPets(w http.ResponseWriter, r *http.Request) {
 type petCareJSON struct {
 	Pet     petJSON `json:"pet"`
 	Balance int64   `json:"balance"`
+}
+
+type namedPetJSON struct {
+	Kind    string `json:"kind"`
+	OpensAt string `json:"opensAt"`
+	Claimed bool   `json:"claimed"`
+}
+
+func (a *api) namedPet(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	named, err := a.pets.NamedPet(r.Context(), token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, namedPetJSON{Kind: named.Kind, OpensAt: named.OpensAt.UTC().Format(time.RFC3339), Claimed: named.Claimed})
+}
+
+func (a *api) claimNamedPet(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.writePetCare(w, r, func() (model.PetCare, error) { return a.pets.ClaimNamedPet(r.Context(), token) }, http.StatusCreated)
 }
 
 func (a *api) adoptPet(w http.ResponseWriter, r *http.Request) {

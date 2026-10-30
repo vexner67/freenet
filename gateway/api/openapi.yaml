@@ -6168,6 +6168,17 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/me/pets/named:
+    get:
+      summary: The pet everyone is given, when it opens and whether it is taken
+      responses:
+        "200":
+          description: The state of the pet
+    post:
+      summary: Takes the pet once; 409 before it opens and the second time
+      responses:
+        "201":
+          description: The pet
   /api/v1/me/pets/arena:
     get:
       summary: The arena of the pets

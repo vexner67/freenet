@@ -104,6 +104,14 @@ type PetKind struct {
 	Shards  int
 }
 
+// NamedPet is the pet everyone is given: when it opens and whether the
+// viewer took it.
+type NamedPet struct {
+	Kind    string
+	OpensAt time.Time
+	Claimed bool
+}
+
 // PetCase is a case: the odds in a thousand of each rarity, from the most
 // common, and what it costs in shards.
 type PetCase struct {
