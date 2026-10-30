@@ -26,6 +26,13 @@ service MessageService {
   // typing event, nothing is kept. Whether the caller may write to the
   // peer, the gateway checks.
   rpc SetTyping(SetTypingRequest) returns (google.protobuf.Empty);
+  // SendCallSignal hands a sealed signal of a call to the peer's pages and
+  // the caller's other pages. Nothing is kept and the server cannot read
+  // it.
+  rpc SendCallSignal(SendCallSignalRequest) returns (google.protobuf.Empty);
+  // GetCallServers are the STUN and TURN servers of a call, with
+  // credentials of a limited time.
+  rpc GetCallServers(GetCallServersRequest) returns (GetCallServersResponse);
   // The caller takes their message back from both sides of the dialog,
   // within a day of sending (deletable_until): it stays there saying
   // nothing (deleted_at) until each side deletes it for themselves; media
@@ -335,6 +342,19 @@ message MarkDialogReadRequest {
   string up_to_id = 2;
 }
 
+message SendCallSignalRequest {
+  string peer_id = 1;
+  string sealed = 2;
+}
+
+message GetCallServersRequest {}
+
+message GetCallServersResponse {
+  repeated string urls = 1;
+  string username = 2;
+  string credential = 3;
+}
+
 message SetTypingRequest {
   string peer_id = 1;
 }
@@ -442,7 +462,14 @@ message SubscribeResponse {
     // Someone is writing to the caller, in a dialog or a chat; the page
     // shows it for a few seconds unless told again.
     Typing typing = 8;
+    // A sealed signal of a call with peer_id.
+    CallSignal call_signal = 9;
   }
+}
+
+message CallSignal {
+  string peer_id = 1;
+  string sealed = 2;
 }
 
 // user_id is writing in chat_id or, when it is empty, in the dialog with

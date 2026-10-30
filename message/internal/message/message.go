@@ -38,12 +38,17 @@ const (
 	MaxForwarded = 20
 )
 
+// MaxCallSignal bounds a sealed signal of a call: a description of a
+// session with video is some kilobytes.
+const MaxCallSignal = 64 << 10
+
 var (
 	// ErrTextEmpty: neither text nor photos. The message keeps the words
 	// it had before messages took photos: clients know it.
 	ErrTextEmpty      = errors.New("message text is empty")
 	ErrTextTooLong    = errors.New("message text is too long")
 	ErrToYourself     = errors.New("you cannot write to yourself")
+	ErrCallSignal     = errors.New("a call signal is empty or too long")
 	ErrNotFound       = errors.New("message not found")
 	ErrTooManyPhotos  = errors.New("a message has at most 10 photos")
 	ErrDuplicatePhoto = errors.New("the same photo is attached twice")

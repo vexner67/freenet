@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
@@ -24,6 +25,8 @@ type MessageService interface {
 	Around(ctx context.Context, userID, peerID, id uuid.UUID, size int) (service.HistoryPage, error)
 	MarkRead(ctx context.Context, userID, peerID, upTo uuid.UUID) error
 	Typing(ctx context.Context, userID, peerID uuid.UUID) error
+	CallSignal(ctx context.Context, userID, peerID uuid.UUID, sealed string) error
+	CallServers(userID uuid.UUID, now time.Time) service.CallServers
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	Hide(ctx context.Context, userID, id uuid.UUID) error
 	DeleteMany(ctx context.Context, userID uuid.UUID, ids []uuid.UUID, forEveryone bool) error
@@ -289,6 +292,35 @@ func (h *MessageHandler) SetTyping(ctx context.Context, req *messagev1.SetTyping
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func (h *MessageHandler) SendCallSignal(ctx context.Context, req *messagev1.SendCallSignalRequest) (*emptypb.Empty, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	peerID, err := parseID(req.GetPeerId(), "invalid peer id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.messageService.CallSignal(ctx, userID, peerID, req.GetSealed()); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *MessageHandler) GetCallServers(ctx context.Context, _ *messagev1.GetCallServersRequest) (*messagev1.GetCallServersResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	servers := h.messageService.CallServers(userID, time.Now())
+
+	return &messagev1.GetCallServersResponse{Urls: servers.URLs, Username: servers.Username, Credential: servers.Credential}, nil
 }
 
 func (h *MessageHandler) DeleteMessage(ctx context.Context, req *messagev1.DeleteMessageRequest) (*emptypb.Empty, error) {

@@ -327,6 +327,13 @@ func toProtoEvent(e service.Event) *messagev1.SubscribeResponse {
 		return toProtoChatEvent(e.Chat)
 	}
 
+	if e.Call != nil {
+		return &messagev1.SubscribeResponse{Event: &messagev1.SubscribeResponse_CallSignal{CallSignal: &messagev1.CallSignal{
+			PeerId: e.Call.PeerID.String(),
+			Sealed: e.Call.Sealed,
+		}}}
+	}
+
 	if e.Typing != nil {
 		return &messagev1.SubscribeResponse{Event: &messagev1.SubscribeResponse_Typing{Typing: &messagev1.Typing{
 			UserId: e.Typing.UserID.String(),

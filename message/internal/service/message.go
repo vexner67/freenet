@@ -272,6 +272,7 @@ type Event struct {
 	Edited  *message.Message
 	Chat    *ChatEvent
 	Typing  *Typing
+	Call    *CallSignal
 }
 
 // Typing: UserID is writing a message to whoever hears it, in the dialog
@@ -306,6 +307,7 @@ type Events interface {
 }
 
 type MessageService struct {
+	turn        TurnConfig
 	messageRepo MessageRepository
 	dialogRepo  DialogRepository
 	keys        KeyRepository
@@ -332,6 +334,9 @@ type Deps struct {
 	Photos       PhotoKeeper
 	// Pusher may be nil: nobody's browsers hear of the messages.
 	Pusher Pusher
+	// Turn may be empty: browsers then reach each other directly or not at
+	// all.
+	Turn TurnConfig
 }
 
 func NewMessageService(d Deps) *MessageService {
@@ -344,6 +349,7 @@ func NewMessageService(d Deps) *MessageService {
 		tx:          d.Tx,
 		photos:      d.Photos,
 		pusher:      pusherOr(d.Pusher),
+		turn:        d.Turn,
 		forwards:    forwarder{messages: d.Messages, chatMessages: d.ChatMessages, members: d.ChatMembers, dialogs: true},
 		now:         time.Now,
 	}

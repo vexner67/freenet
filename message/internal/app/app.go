@@ -159,7 +159,7 @@ func (a *App) build(cfg config.Config) error {
 		messagegrpc.NewMessageHandler(
 			service.NewMessageService(service.Deps{
 				Messages: repos.messages, Dialogs: repos.dialogs, Keys: repos.keys, ChatMessages: repos.chatMessages, ChatMembers: repos.chatMembers,
-				Reactions: repos.reactions, Events: events, Tx: repos.tx, Photos: photos, Pusher: a.servicePusher(),
+				Reactions: repos.reactions, Events: events, Tx: repos.tx, Photos: photos, Pusher: a.servicePusher(), Turn: service.TurnConfig{URLs: cfg.TurnURLs, Secret: cfg.TurnSecret},
 			}),
 			service.NewChatService(service.ChatDeps{
 				Chats: repos.chats, Members: repos.chatMembers, Messages: repos.chatMessages, DialogMessages: repos.messages,
@@ -292,8 +292,9 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		messagev1.MessageService_PinChatMessage_FullMethodName:  cfg.ChatLimits,
 		messagev1.MessageService_SetChatPhoto_FullMethodName:    cfg.ChatLimits,
 		// Typing tells others nothing to keep, but it is told to them.
-		messagev1.MessageService_SetTyping_FullMethodName:     cfg.TypingLimits,
-		messagev1.MessageService_SetChatTyping_FullMethodName: cfg.TypingLimits,
+		messagev1.MessageService_SetTyping_FullMethodName:      cfg.TypingLimits,
+		messagev1.MessageService_SendCallSignal_FullMethodName: cfg.CallLimits,
+		messagev1.MessageService_SetChatTyping_FullMethodName:  cfg.TypingLimits,
 		// A reaction is told to the others too.
 		messagev1.MessageService_ReactToMessage_FullMethodName:     cfg.ReactionLimits,
 		messagev1.MessageService_ReactToChatMessage_FullMethodName: cfg.ReactionLimits,

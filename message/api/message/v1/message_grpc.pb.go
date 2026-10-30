@@ -26,6 +26,8 @@ const (
 	MessageService_ListMessages_FullMethodName       = "/message.v1.MessageService/ListMessages"
 	MessageService_MarkDialogRead_FullMethodName     = "/message.v1.MessageService/MarkDialogRead"
 	MessageService_SetTyping_FullMethodName          = "/message.v1.MessageService/SetTyping"
+	MessageService_SendCallSignal_FullMethodName     = "/message.v1.MessageService/SendCallSignal"
+	MessageService_GetCallServers_FullMethodName     = "/message.v1.MessageService/GetCallServers"
 	MessageService_DeleteMessage_FullMethodName      = "/message.v1.MessageService/DeleteMessage"
 	MessageService_HideMessage_FullMethodName        = "/message.v1.MessageService/HideMessage"
 	MessageService_DeleteMessages_FullMethodName     = "/message.v1.MessageService/DeleteMessages"
@@ -82,6 +84,13 @@ type MessageServiceClient interface {
 	// typing event, nothing is kept. Whether the caller may write to the
 	// peer, the gateway checks.
 	SetTyping(ctx context.Context, in *SetTypingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// SendCallSignal hands a sealed signal of a call to the peer's pages and
+	// the caller's other pages. Nothing is kept and the server cannot read
+	// it.
+	SendCallSignal(ctx context.Context, in *SendCallSignalRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// GetCallServers are the STUN and TURN servers of a call, with
+	// credentials of a limited time.
+	GetCallServers(ctx context.Context, in *GetCallServersRequest, opts ...grpc.CallOption) (*GetCallServersResponse, error)
 	// The caller takes their message back from both sides of the dialog,
 	// within a day of sending (deletable_until): it stays there saying
 	// nothing (deleted_at) until each side deletes it for themselves; media
@@ -248,6 +257,26 @@ func (c *messageServiceClient) SetTyping(ctx context.Context, in *SetTypingReque
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, MessageService_SetTyping_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) SendCallSignal(ctx context.Context, in *SendCallSignalRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_SendCallSignal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) GetCallServers(ctx context.Context, in *GetCallServersRequest, opts ...grpc.CallOption) (*GetCallServersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCallServersResponse)
+	err := c.cc.Invoke(ctx, MessageService_GetCallServers_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -596,6 +625,13 @@ type MessageServiceServer interface {
 	// typing event, nothing is kept. Whether the caller may write to the
 	// peer, the gateway checks.
 	SetTyping(context.Context, *SetTypingRequest) (*emptypb.Empty, error)
+	// SendCallSignal hands a sealed signal of a call to the peer's pages and
+	// the caller's other pages. Nothing is kept and the server cannot read
+	// it.
+	SendCallSignal(context.Context, *SendCallSignalRequest) (*emptypb.Empty, error)
+	// GetCallServers are the STUN and TURN servers of a call, with
+	// credentials of a limited time.
+	GetCallServers(context.Context, *GetCallServersRequest) (*GetCallServersResponse, error)
 	// The caller takes their message back from both sides of the dialog,
 	// within a day of sending (deletable_until): it stays there saying
 	// nothing (deleted_at) until each side deletes it for themselves; media
@@ -725,6 +761,12 @@ func (UnimplementedMessageServiceServer) MarkDialogRead(context.Context, *MarkDi
 }
 func (UnimplementedMessageServiceServer) SetTyping(context.Context, *SetTypingRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetTyping not implemented")
+}
+func (UnimplementedMessageServiceServer) SendCallSignal(context.Context, *SendCallSignalRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendCallSignal not implemented")
+}
+func (UnimplementedMessageServiceServer) GetCallServers(context.Context, *GetCallServersRequest) (*GetCallServersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetCallServers not implemented")
 }
 func (UnimplementedMessageServiceServer) DeleteMessage(context.Context, *DeleteMessageRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMessage not implemented")
@@ -944,6 +986,42 @@ func _MessageService_SetTyping_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MessageServiceServer).SetTyping(ctx, req.(*SetTypingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_SendCallSignal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendCallSignalRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).SendCallSignal(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_SendCallSignal_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).SendCallSignal(ctx, req.(*SendCallSignalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_GetCallServers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCallServersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).GetCallServers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_GetCallServers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).GetCallServers(ctx, req.(*GetCallServersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1529,6 +1607,14 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetTyping",
 			Handler:    _MessageService_SetTyping_Handler,
+		},
+		{
+			MethodName: "SendCallSignal",
+			Handler:    _MessageService_SendCallSignal_Handler,
+		},
+		{
+			MethodName: "GetCallServers",
+			Handler:    _MessageService_GetCallServers_Handler,
 		},
 		{
 			MethodName: "DeleteMessage",

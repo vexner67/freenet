@@ -64,6 +64,14 @@ type Config struct {
 	// TypingLimits is how often a page tells that its user is typing:
 	// every few seconds while they do.
 	TypingLimits ratelimit.Rules `env:"RATE_LIMIT_TYPING" envDefault:"30/1m,5000/24h"`
+	// CallLimits is how often a page sends a signal of a call: a call
+	// takes dozens of them as it starts.
+	CallLimits ratelimit.Rules `env:"RATE_LIMIT_CALLS" envDefault:"240/1m,20000/24h"`
+	// TurnURLs are the STUN and TURN servers of calls, comma separated;
+	// TurnSecret is shared with them (coturn's static-auth-secret). Without
+	// them browsers reach each other directly or not at all.
+	TurnURLs   []string `env:"TURN_URLS"`
+	TurnSecret string   `env:"TURN_SECRET"`
 	// ReactionLimits is how often a user puts or takes a reaction on a
 	// message: each is told to the others.
 	ReactionLimits ratelimit.Rules `env:"RATE_LIMIT_REACTIONS" envDefault:"60/1m,2000/24h"`
