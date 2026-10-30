@@ -181,7 +181,7 @@ func fromProtoFirm(f *userv1.Firm) model.Firm {
 		out.Holders = append(out.Holders, model.FirmHolder{UserID: h.GetUserId(), Shares: h.GetShares()})
 	}
 	for _, r := range f.GetRoutes() {
-		out.Routes = append(out.Routes, model.FirmRoute{ID: r.GetId(), ToFirmID: r.GetToFirmId(), Good: r.GetGood(), From: r.GetFrom(), Units: r.GetUnits()})
+		out.Routes = append(out.Routes, model.FirmRoute{ID: r.GetId(), ToFirmID: r.GetToFirmId(), Good: r.GetGood(), From: r.GetFrom(), Units: r.GetUnits(), Auto: r.GetAuto()})
 	}
 
 	return out

@@ -376,6 +376,7 @@ type bonusJSON struct {
 	Votes    int64 `json:"votes"`
 	Taken    bool  `json:"taken"`
 	Eligible bool  `json:"eligible"`
+	Streak   int   `json:"streak"`
 }
 
 func (a *api) bonus(w http.ResponseWriter, r *http.Request) {

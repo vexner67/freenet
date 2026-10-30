@@ -11,7 +11,15 @@ import (
 const dateLayout = "2006-01-02"
 
 type codeRequest struct {
-	Email string `json:"email"`
+	Email         string `json:"email"`
+	CaptchaID     string `json:"captchaId"`
+	CaptchaAnswer string `json:"captchaAnswer"`
+}
+
+type captchaJSON struct {
+	Required bool   `json:"required"`
+	ID       string `json:"id,omitempty"`
+	Image    string `json:"image,omitempty"`
 }
 
 type verifyRequest struct {

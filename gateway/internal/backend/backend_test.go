@@ -212,7 +212,7 @@ func TestMetadata(t *testing.T) {
 	t.Parallel()
 
 	authAPI := &fakeAuthAPI{}
-	if err := NewAuth(authAPI).RequestCode(context.Background(), "ann@example.com", "198.51.100.7"); err != nil {
+	if err := NewAuth(authAPI).RequestCode(context.Background(), model.CodeRequest{Email: "ann@example.com"}, "198.51.100.7"); err != nil {
 		t.Fatal(err)
 	}
 	if got := authAPI.md.Get(authv1.ClientIPMetadata); len(got) != 1 || got[0] != "198.51.100.7" {

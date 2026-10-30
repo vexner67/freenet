@@ -13,7 +13,8 @@ import (
 )
 
 type Auth interface {
-	RequestCode(ctx context.Context, email, clientIP string) error
+	RequestCode(ctx context.Context, req model.CodeRequest, clientIP string) error
+	NewCaptcha(ctx context.Context, clientIP string) (model.Captcha, error)
 	// VerifyCode and RefreshToken say where the user is, for the list of
 	// their sessions.
 	VerifyCode(ctx context.Context, email, code string, client model.Client) (model.Tokens, error)
@@ -638,6 +639,7 @@ func (a *api) routes() *http.ServeMux {
 
 	mux.HandleFunc("GET "+HealthPath, a.health)
 
+	mux.HandleFunc("GET /api/v1/auth/captcha", a.newCaptcha)
 	mux.HandleFunc("POST /api/v1/auth/code", a.requestCode)
 	mux.HandleFunc("POST /api/v1/auth/verify", a.verifyCode)
 	mux.HandleFunc("POST /api/v1/auth/refresh", a.refreshToken)

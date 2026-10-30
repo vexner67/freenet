@@ -31,6 +31,24 @@ servers:
     description: Local development
 
 paths:
+  /api/v1/auth/captcha:
+    get:
+      summary: A picture of digits to read before asking for a code
+      description: Without `required` signing in asks for no picture.
+      responses:
+        "200":
+          description: The picture
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [required]
+                properties:
+                  required: { type: boolean }
+                  id: { type: string }
+                  image: { type: string, description: An SVG }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/auth/code:
     post:
       summary: Email a sign-in code
@@ -47,6 +65,8 @@ paths:
               additionalProperties: false
               properties:
                 email: { type: string, format: email, example: ann@example.com }
+                captchaId: { type: string }
+                captchaAnswer: { type: string }
       responses:
         "204": { description: Code sent }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -5750,6 +5770,7 @@ paths:
                 shares: { type: integer, format: int64 }
                 votes: { type: integer, format: int64 }
                 order: { type: string, description: The ID of an order of shares or of an offer }
+                stop: { type: integer, format: int64, description: 'Above 0: `stock_order` sleeps until the price comes to it, then stands at `price`. To sell below the price now, to buy above it.' }
       responses:
         "200":
           description: What the action did

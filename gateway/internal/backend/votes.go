@@ -195,7 +195,7 @@ func (v *Votes) Bonus(ctx context.Context, accessToken string) (model.Bonus, err
 		return model.Bonus{}, errs.Wrap("v.api.GetBonus", fromStatus(err))
 	}
 
-	return model.Bonus{Votes: resp.GetVotes(), Taken: resp.GetTaken(), Eligible: resp.GetEligible()}, nil
+	return model.Bonus{Votes: resp.GetVotes(), Taken: resp.GetTaken(), Eligible: resp.GetEligible(), Streak: int(resp.GetStreak())}, nil
 }
 
 func (v *Votes) ClaimBonus(ctx context.Context, accessToken string) (model.Redeemed, error) {

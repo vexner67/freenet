@@ -22,7 +22,7 @@ func (b *Firms) Stocks(ctx context.Context, accessToken, firmID string) (model.S
 func (b *Firms) RunStocks(ctx context.Context, accessToken string, act model.StockAct) (model.StockDone, error) {
 	resp, err := b.api.RunStocks(withToken(ctx, accessToken), &userv1.RunStocksRequest{
 		Action: act.Action, FirmId: act.FirmID, Buy: act.Buy, Price: act.Price, Shares: act.Shares, Votes: act.Votes,
-		OrderId: act.OrderID,
+		OrderId: act.OrderID, Stop: act.Stop,
 	})
 	if err != nil {
 		return model.StockDone{}, errs.Wrap("b.api.RunStocks", fromStatus(err))
@@ -62,6 +62,9 @@ func fromProtoStocks(s *userv1.StocksState) model.Stocks {
 				Hour: timeOf(k.GetHour()), Open: k.GetOpen(), High: k.GetHigh(), Low: k.GetLow(), Close: k.GetClose(),
 				Volume: k.GetVolume(),
 			})
+		}
+		for _, t := range c.GetTape() {
+			company.Tape = append(company.Tape, model.StockTrade{At: timeOf(t.GetAt()), Price: t.GetPrice(), Shares: t.GetShares()})
 		}
 		out.Companies = append(out.Companies, company)
 	}

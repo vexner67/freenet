@@ -148,6 +148,7 @@ type firmRouteJSON struct {
 	Good  string `json:"good"`
 	From  int64  `json:"from"`
 	Units int64  `json:"units"`
+	Auto  bool   `json:"auto"`
 }
 
 type firmLabourJSON struct {
@@ -340,7 +341,7 @@ func toFirmJSON(f model.Firm, people map[string]model.PublicProfile) firmJSON {
 		Wanted:       f.Wanted,
 		Holders:      []firmHolderJSON{},
 		Routes: listJSON(f.Routes, func(r model.FirmRoute) firmRouteJSON {
-			return firmRouteJSON{ID: r.ID, To: r.ToFirmID, Good: r.Good, From: r.From, Units: r.Units}
+			return firmRouteJSON{ID: r.ID, To: r.ToFirmID, Good: r.Good, From: r.From, Units: r.Units, Auto: r.Auto}
 		}),
 	}
 	if f.Forecast != nil {

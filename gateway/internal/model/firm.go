@@ -176,6 +176,7 @@ type FirmRoute struct {
 	Good     string
 	From     int64
 	Units    int64
+	Auto     bool
 }
 
 // FirmLabour is the labour market of the city: its people, those working,
@@ -343,6 +344,15 @@ type StockCompany struct {
 	// BandLow and BandHigh are the prices orders of people may stand at.
 	BandLow  int64
 	BandHigh int64
+	// Tape is the last deals, only of the company looked at.
+	Tape []StockTrade
+}
+
+// StockTrade is a deal: Shares changed hands at Price hundredths.
+type StockTrade struct {
+	At     time.Time
+	Price  int64
+	Shares int64
 }
 
 // StockIndexPoint is the index at an hour, in hundredths of a point.
@@ -359,6 +369,7 @@ type StockOrder struct {
 	Price    int64
 	Shares   int64
 	PlacedAt time.Time
+	Stop     int64
 }
 
 // StockLevel is a price of the order book.
@@ -402,6 +413,8 @@ type StockAct struct {
 	Shares  int64
 	Votes   int64
 	OrderID string
+	// Stop above 0 makes the order sleep until the price comes to it.
+	Stop int64
 }
 
 // StockDone is what an action did: the votes spent and got and the

@@ -36,7 +36,11 @@ type fakeAuth struct {
 	twoFactorOn bool
 }
 
-func (f *fakeAuth) RequestCode(ctx context.Context, _, clientIP string) error {
+func (f *fakeAuth) NewCaptcha(context.Context, string) (model.Captcha, error) {
+	return model.Captcha{Required: true, ID: "c1", Image: "<svg/>"}, nil
+}
+
+func (f *fakeAuth) RequestCode(ctx context.Context, _ model.CodeRequest, clientIP string) error {
 	f.clientIP = clientIP
 	f.requestID = reqid.FromContext(ctx)
 	return f.err

@@ -42,12 +42,23 @@ func (a *api) requestCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := a.auth.RequestCode(r.Context(), req.Email, clientIP(r, a.trustForwardedFor)); err != nil {
+	asked := model.CodeRequest{Email: req.Email, CaptchaID: req.CaptchaID, CaptchaAnswer: req.CaptchaAnswer}
+	if err := a.auth.RequestCode(r.Context(), asked, clientIP(r, a.trustForwardedFor)); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (a *api) newCaptcha(w http.ResponseWriter, r *http.Request) {
+	c, err := a.auth.NewCaptcha(r.Context(), clientIP(r, a.trustForwardedFor))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, captchaJSON{Required: c.Required, ID: c.ID, Image: c.Image})
 }
 
 func (a *api) verifyCode(w http.ResponseWriter, r *http.Request) {

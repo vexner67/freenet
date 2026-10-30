@@ -22,16 +22,31 @@ func NewAuth(api authv1.AuthServiceClient) *Auth {
 
 // RequestCode passes the end user's address, which auth trusts only from
 // the gateway's mTLS identity, for its per-address rate limit.
-func (a *Auth) RequestCode(ctx context.Context, email, clientIP string) error {
+func (a *Auth) RequestCode(ctx context.Context, req model.CodeRequest, clientIP string) error {
 	if clientIP != "" {
 		ctx = metadata.AppendToOutgoingContext(ctx, authv1.ClientIPMetadata, clientIP)
 	}
 
-	if _, err := a.api.RequestCode(ctx, &authv1.RequestCodeRequest{Email: email}); err != nil {
+	asked := &authv1.RequestCodeRequest{Email: req.Email, CaptchaId: req.CaptchaID, CaptchaAnswer: req.CaptchaAnswer}
+	if _, err := a.api.RequestCode(ctx, asked); err != nil {
 		return errs.Wrap("a.api.RequestCode", fromStatus(err))
 	}
 
 	return nil
+}
+
+// NewCaptcha gives the picture to read before asking for a code.
+func (a *Auth) NewCaptcha(ctx context.Context, clientIP string) (model.Captcha, error) {
+	if clientIP != "" {
+		ctx = metadata.AppendToOutgoingContext(ctx, authv1.ClientIPMetadata, clientIP)
+	}
+
+	c, err := a.api.NewCaptcha(ctx, &authv1.NewCaptchaRequest{})
+	if err != nil {
+		return model.Captcha{}, errs.Wrap("a.api.NewCaptcha", fromStatus(err))
+	}
+
+	return model.Captcha{Required: c.GetRequired(), ID: c.GetId(), Image: c.GetImage()}, nil
 }
 
 // VerifyCode says where the user signs in from, for their list of sessions.

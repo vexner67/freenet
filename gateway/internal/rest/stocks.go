@@ -36,6 +36,7 @@ type stockCompanyJSON struct {
 	Profit   int64                  `json:"profit"`
 	Holders  int                    `json:"holders"`
 	Candles  []stockCandleJSON      `json:"candles"`
+	Tape     []stockTradeJSON       `json:"tape"`
 	BandLow  int64                  `json:"bandLow"`
 	BandHigh int64                  `json:"bandHigh"`
 }
@@ -58,6 +59,12 @@ type stockLevelJSON struct {
 	Price  int64 `json:"price"`
 	Shares int64 `json:"shares"`
 	Orders int   `json:"orders"`
+}
+
+type stockTradeJSON struct {
+	At     string `json:"at"`
+	Price  int64  `json:"price"`
+	Shares int64  `json:"shares"`
 }
 
 type stockHoldingJSON struct {
@@ -106,6 +113,9 @@ func (a *api) stocksResponse(r *http.Request, s model.Stocks) (stocksJSON, error
 				Shares: c.Shares, Pool: c.Pool, Float: c.Float, Book: c.Book, Fair: c.Fair, Price: c.Price, Bid: c.Bid,
 				Ask: c.Ask, BestBid: c.BestBid, BestAsk: c.BestAsk, DayAgo: c.DayAgo, Volume: c.Volume, Profit: c.Profit,
 				Holders: c.Holders, BandLow: c.BandLow, BandHigh: c.BandHigh,
+				Tape: listJSON(c.Tape, func(t model.StockTrade) stockTradeJSON {
+					return stockTradeJSON{At: timeString(t.At), Price: t.Price, Shares: t.Shares}
+				}),
 				Candles: listJSON(c.Candles, func(k model.StockCandle) stockCandleJSON {
 					return stockCandleJSON{
 						Hour: timeString(k.Hour), Open: k.Open, High: k.High, Low: k.Low, Close: k.Close, Volume: k.Volume,
@@ -174,6 +184,7 @@ func (a *api) runStocks(w http.ResponseWriter, r *http.Request) {
 		Shares int64  `json:"shares"`
 		Votes  int64  `json:"votes"`
 		Order  string `json:"order"`
+		Stop   int64  `json:"stop"`
 	}
 	if err = decode(w, r, &req); err != nil {
 		a.writeError(w, r, err)
@@ -182,7 +193,7 @@ func (a *api) runStocks(w http.ResponseWriter, r *http.Request) {
 
 	d, err := a.firmsBackend.RunStocks(r.Context(), token, model.StockAct{
 		Action: r.PathValue("action"), FirmID: req.Firm, Buy: req.Buy, Price: req.Price, Shares: req.Shares,
-		Votes: req.Votes, OrderID: req.Order,
+		Votes: req.Votes, OrderID: req.Order, Stop: req.Stop,
 	})
 	if err != nil {
 		a.writeError(w, r, err)

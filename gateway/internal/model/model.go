@@ -4,6 +4,20 @@ package model
 
 import "time"
 
+// CodeRequest asks to mail a sign-in code, with the digits of a picture.
+type CodeRequest struct {
+	Email         string
+	CaptchaID     string
+	CaptchaAnswer string
+}
+
+// Captcha is a picture to read before asking for a code.
+type Captcha struct {
+	Required bool
+	ID       string
+	Image    string
+}
+
 type Tokens struct {
 	AccessToken  string
 	RefreshToken string
@@ -1503,6 +1517,7 @@ type Bonus struct {
 	Votes    int64
 	Taken    bool
 	Eligible bool
+	Streak   int
 }
 
 // VoucherDraft is a voucher to make: Token empty for a generated serial
