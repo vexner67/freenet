@@ -3169,8 +3169,8 @@ img.name-prime.name-prime {
 .top-who { min-width: 0; }
 .top-pet { display: flex; gap: 4px; align-items: center; margin-top: 2px; color: var(--text-555); }
 
-/* "Питомец" (/pet): pixel pets, drawn 16×16 and shown in whole steps. */
-.pet-picture { display: block; image-rendering: pixelated; }
+/* "Питомец" (/pet): round drawn pets. */
+.pet-picture { display: block; }
 .pet-shop { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0 10px; }
 .pet-kind { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); text-align: center; }
 .pet-kind-chosen { background: var(--back-f9f6e7); border-color: var(--line-c3a476); }
@@ -3488,3 +3488,41 @@ img.name-prime.name-prime {
 .dating-avatar { width: 50px; height: 50px; object-fit: cover; }
 .dating-saved { color: var(--text-808080); }
 .dating #dating-about { width: 100%; min-height: 60px; box-sizing: border-box; }
+
+/* The frame of BIG 2Z: a shadow under a lock, then the fall of the pet. */
+.named-pet { display: flex; gap: 14px; align-items: center; margin-bottom: 10px; padding: 10px 12px; color: var(--back-fff); background: var(--back-14103a); border: 2px solid var(--back-f7cf4c); border-radius: 6px; }
+.named-picture { position: relative; flex: none; width: 96px; height: 96px; }
+.named-shadow { display: block; filter: brightness(0) drop-shadow(0 0 6px var(--text-23e0ff)); }
+.named-lock { position: absolute; right: -2px; bottom: -2px; font-size: 26px; }
+.named-text { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.named-title { font-size: 16px; font-weight: bold; color: var(--back-f7cf4c); }
+.named-status { color: var(--text-23e0ff); }
+.named-open { animation: named-blink .8s ease-in-out infinite; }
+@keyframes named-blink { 50% { opacity: .35; box-shadow: 0 0 12px var(--back-f7cf4c); } }
+.pet-rarity-named { color: var(--back-14103a); text-shadow: none; background: var(--text-23e0ff); border-color: var(--back-f7cf4c); }
+.named-scene { position: fixed; inset: 0; z-index: 1000; display: flex; gap: 24px; align-items: center; justify-content: center; overflow: hidden; color: var(--back-fff); background: var(--back-14103a); }
+.named-rays { position: absolute; left: 50%; top: 50%; width: 180vmax; height: 180vmax; margin: -90vmax 0 0 -90vmax; background: repeating-conic-gradient(var(--back-3f2bb8) 0 12deg, transparent 12deg 24deg); opacity: 0; animation: named-rays 2s 1.5s forwards, named-turn 30s 1.5s linear infinite; }
+@keyframes named-rays { to { opacity: .5; } }
+@keyframes named-turn { to { rotate: 360deg; } }
+.named-flash { position: absolute; inset: 0; background: var(--back-fff); opacity: 0; pointer-events: none; animation: named-flash .7s 1.5s ease-out; }
+@keyframes named-flash { 15% { opacity: 1; } 100% { opacity: 0; } }
+.named-chest { position: absolute; width: 160px; height: 160px; animation: named-chest 1.6s forwards; }
+@keyframes named-chest {
+  0% { transform: translateY(-110vh); }
+  40% { transform: translateY(0) scale(1.15, .85); }
+  50% { transform: scale(1); }
+  60% { transform: rotate(-8deg); }
+  68% { transform: rotate(8deg); }
+  76% { transform: rotate(-12deg); }
+  84% { transform: rotate(12deg) scale(1.1); }
+  99% { transform: scale(1.5); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.named-pose { position: relative; flex: none; width: 240px; height: 240px; opacity: 0; animation: named-pose 1s 1.55s cubic-bezier(.3, 1.6, .5, 1) forwards, named-stand 2.4s 2.6s ease-in-out infinite; }
+@keyframes named-pose { from { transform: translateY(-60vh) scale(.3); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes named-stand { 50% { transform: translateY(-6px) scale(1.03); } }
+.named-about { position: relative; display: none; flex: none; flex-direction: column; align-items: flex-start; gap: 8px; width: 260px; padding: 12px; font-size: 12px; background: var(--back-14103a); border: 2px solid var(--back-f7cf4c); border-radius: 6px; }
+.named-about p { margin: 0; }
+.named-stats { margin: 0; padding: 0; list-style: none; color: var(--text-23e0ff); }
+.named-done .named-about { display: flex; animation: named-about .5s ease-out; }
+@keyframes named-about { from { transform: translateX(40px); opacity: 0; } }

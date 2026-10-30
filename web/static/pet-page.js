@@ -23,6 +23,7 @@ import { $, el, renderChrome, replaceInPlace, showError, hideError } from './lay
 import { button, notify, openModal } from './modal.js';
 import { leagueNodes } from './pet-league.js';
 import { petCaseImage, petImage, petItemImage } from './pet.js';
+import { showNamedPet } from './pet-named.js';
 import { tr } from './i18n.js';
 
 const answered = session.get() ? started(api.pets()) : null;
@@ -932,6 +933,7 @@ if (!me) {
     else if (pets.length) showPet(pets.find((p) => p.id === wanted) ?? pets[0]);
     else showShop();
     if (keeper.dropKind) showDrop(false);
+    showNamedPet(kindOf('big2z'), keep).catch(() => {});
     showFights((await fought).fights);
     const rival = new URLSearchParams(location.search).get('fight');
     if (rival) $('rival').value = rival;

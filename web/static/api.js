@@ -750,6 +750,8 @@ export const api = {
   userTitles: (nickname) => optional('GET', `/api/v1/users/${encodeURIComponent(nickname)}/titles`),
   grantTitle: (nickname, name, icon) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/titles`, { name, icon }),
   revokeTitle: (id) => authorized('DELETE', `/api/v1/titles/${encodeURIComponent(id)}`),
+  namedPet: () => authorized('GET', '/api/v1/me/pets/named'),
+  claimNamedPet: () => authorized('POST', '/api/v1/me/pets/named'),
   adoptPet: (kind, name) => authorized('POST', '/api/v1/me/pets', { kind, name }),
   openPetCase: (id, shards = false) => authorized('POST', '/api/v1/me/pets/cases', { case: id, shards }),
   takePetDrop: (name) => authorized('POST', '/api/v1/me/pets/drop', { name }),

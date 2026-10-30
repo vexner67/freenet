@@ -1486,7 +1486,7 @@ test('pets, fights, boards and guests are told', async () => {
 
   assert.deepEqual(petOdds([700, 250, 45, 5]), ['70%', '25%', '4.5%', '0.5%']);
   assert.equal(petBonus({ attack: 3, defense: 0, health: 0, speed: 1 }), '+3 к атаке, +1 к скорости');
-  assert.equal(petKinds.length, 12);
+  assert.equal(petKinds.length, 13);
   for (const kind of petKinds) assert.notEqual(petKindName(kind), kind);
   assert.equal(petItemName('crown'), 'Корона');
 

@@ -2675,6 +2675,8 @@ const errorTexts = {
   'the name of a pet is one line': tr('Имя питомца — в одну строку.'),
   'pet not found': tr('Питомца нет.'),
   'you have too many pets': tr('У вас уже десять питомцев — больше завести нельзя.'),
+  'the pet is still locked': tr('Питомец ещё под замком.'),
+  'the pet is already taken': tr('Этот питомец у вас уже был.'),
   'the pet is not hungry': tr('Питомец сыт и есть не хочет.'),
   'the pet has played recently': tr('Питомец недавно играл — дайте ему отдохнуть.'),
   'the pet is too hungry to fight': tr('Питомец слишком голоден для боя. Покормите его.'),
@@ -3458,7 +3460,7 @@ export function activeSection(path, ownPath) {
 
 // petKinds are all the pets in the order the site shows them, as
 // user.PetKinds: the shop sells some, the others only drop from cases.
-export const petKinds = ['cat', 'dog', 'hamster', 'dragon', 'rabbit', 'turtle', 'fox', 'owl', 'wolf', 'panda', 'unicorn', 'phoenix'];
+export const petKinds = ['cat', 'dog', 'hamster', 'dragon', 'rabbit', 'turtle', 'fox', 'owl', 'wolf', 'panda', 'unicorn', 'phoenix', 'big2z'];
 
 const petKindNames = {
   cat: tr('Кот'),
@@ -3473,6 +3475,7 @@ const petKindNames = {
   panda: tr('Панда'),
   unicorn: tr('Единорог'),
   phoenix: tr('Феникс'),
+  big2z: 'BIG 2Z',
 };
 
 const petKindAbout = {
@@ -3488,6 +3491,7 @@ const petKindAbout = {
   panda: tr('Огромная и выносливая, её трудно свалить.'),
   unicorn: tr('Легенда: силён, крепок и быстр.'),
   phoenix: tr('Легенда: самый сильный удар и огонь в крыльях.'),
+  big2z: tr('Именной питомец в честь churkez228: гроза арены с молниями в кулаках.'),
 };
 
 const petRarityNames = {
@@ -3495,6 +3499,7 @@ const petRarityNames = {
   rare: tr('редкий'),
   epic: tr('эпический'),
   legendary: tr('легендарный'),
+  named: tr('именной'),
 };
 
 // petRarities are the rarities from the most common, as user.PetRarities;
