@@ -197,7 +197,7 @@ func TestPetCasesAndClothes(t *testing.T) {
 	ann, _ := s.member(t, "ann")
 
 	state, err := s.client.GetPet(ann, &userv1.GetPetRequest{})
-	if err != nil || len(state.GetKinds()) != 12 || len(state.GetCases()) != 3 || len(state.GetItems()) != 12 || state.GetShop().GetCases()["gold"] != 1200 {
+	if err != nil || len(state.GetKinds()) != 13 || len(state.GetCases()) != 3 || len(state.GetItems()) != 12 || state.GetShop().GetCases()["gold"] != 1200 {
 		t.Fatalf("the catalogue = %v, %v", state, err)
 	}
 

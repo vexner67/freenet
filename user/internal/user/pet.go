@@ -32,10 +32,12 @@ const (
 	PetPanda   PetKind = "panda"
 	PetUnicorn PetKind = "unicorn"
 	PetPhoenix PetKind = "phoenix"
+	// PetBig2Z is named after churkez228 and given to everyone once.
+	PetBig2Z PetKind = "big2z"
 )
 
 // PetKinds are all kinds in the order the site shows them.
-var PetKinds = []PetKind{PetCat, PetDog, PetHamster, PetDragon, PetRabbit, PetTurtle, PetFox, PetOwl, PetWolf, PetPanda, PetUnicorn, PetPhoenix}
+var PetKinds = []PetKind{PetCat, PetDog, PetHamster, PetDragon, PetRabbit, PetTurtle, PetFox, PetOwl, PetWolf, PetPanda, PetUnicorn, PetPhoenix, PetBig2Z}
 
 // ShopPetKinds are the kinds the shop sells; the others fall out of cases.
 var ShopPetKinds = []PetKind{PetCat, PetDog, PetHamster, PetDragon}
@@ -48,6 +50,9 @@ const (
 	PetRare      PetRarity = "rare"
 	PetEpic      PetRarity = "epic"
 	PetLegendary PetRarity = "legendary"
+	// PetNamed is above the rarities of cases: such a pet never falls out
+	// of one.
+	PetNamed PetRarity = "named"
 )
 
 // PetRarities are the rarities from the most common.
@@ -231,12 +236,14 @@ var breeds = map[PetKind]breed{
 	PetPanda:   {PetStats{Attack: 8, Defense: 10, Health: 62, Speed: 5}, 6, PetEpic, PetForest, PetHide},
 	PetUnicorn: {PetStats{Attack: 11, Defense: 9, Health: 60, Speed: 14}, 10, PetLegendary, PetWater, PetRainbow},
 	PetPhoenix: {PetStats{Attack: 12, Defense: 8, Health: 58, Speed: 14}, 14, PetLegendary, PetFire, PetRebirth},
+	// Very strong on purpose for its first week: the owner will weaken it.
+	PetBig2Z: {PetStats{Attack: 20, Defense: 16, Health: 110, Speed: 18}, 25, PetNamed, PetFire, PetFlame},
 }
 
 // growth is the percent of the stats of a level a pet of each rarity
 // gains: the rarer pets start stronger and grow slower, so that levels
 // catch up with a rare kind.
-var growth = map[PetRarity]int{PetCommon: 100, PetRare: 90, PetEpic: 80, PetLegendary: 70}
+var growth = map[PetRarity]int{PetCommon: 100, PetRare: 90, PetEpic: 80, PetLegendary: 70, PetNamed: 70}
 
 // Element is what the kind is of.
 func (k PetKind) Element() PetElement {

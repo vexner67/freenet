@@ -14,8 +14,15 @@ import (
 
 // PetRepository keeps the pets, their fights and the shop in memory; a
 // deleted user takes their pet and fights, as the foreign keys do.
+// grant is a pet given once a kind.
+type grant struct {
+	userID uuid.UUID
+	kind   user.PetKind
+}
+
 type PetRepository struct {
-	users *UserRepository
+	grants map[grant]bool
+	users  *UserRepository
 
 	mu      sync.Mutex
 	shop    user.PetShop
@@ -117,6 +124,34 @@ func (r *PetRepository) Pet(ctx context.Context, userID, petID uuid.UUID) (*user
 // LockPet is Pet: there are no transactions in memory.
 func (r *PetRepository) LockPet(ctx context.Context, userID, petID uuid.UUID) (*user.Pet, error) {
 	return r.Pet(ctx, userID, petID)
+}
+
+func (r *PetRepository) GrantPet(ctx context.Context, userID uuid.UUID, p *user.Pet, _ time.Time) error {
+	if _, err := r.users.GetByID(ctx, userID); err != nil {
+		return errs.Wrap("r.users.GetByID", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	key := grant{userID: userID, kind: p.Kind()}
+	if r.grants[key] {
+		return user.ErrPetClaimed
+	}
+	if r.grants == nil {
+		r.grants = map[grant]bool{}
+	}
+	r.grants[key] = true
+	r.pets[p.ID()] = owned{owner: userID, state: p.State()}
+
+	return nil
+}
+
+func (r *PetRepository) Granted(_ context.Context, userID uuid.UUID, kind user.PetKind) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return r.grants[grant{userID: userID, kind: kind}], nil
 }
 
 func (r *PetRepository) AddPet(ctx context.Context, userID uuid.UUID, p *user.Pet) error {

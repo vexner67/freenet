@@ -73,6 +73,8 @@ var petErrors = []struct {
 	{user.ErrUnknownTop, codes.InvalidArgument},
 	{user.ErrPetNotFound, codes.NotFound},
 	{user.ErrTooManyPets, codes.FailedPrecondition},
+	{user.ErrPetLocked, codes.FailedPrecondition},
+	{user.ErrPetClaimed, codes.FailedPrecondition},
 	{user.ErrPetFull, codes.FailedPrecondition},
 	{user.ErrPetItemOwned, codes.FailedPrecondition},
 	{user.ErrPetItemMissing, codes.FailedPrecondition},

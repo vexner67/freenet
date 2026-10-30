@@ -21142,6 +21142,138 @@ func (x *GetUserPetResponse) GetPets() []*Pet {
 	return nil
 }
 
+type GetNamedPetRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetNamedPetRequest) Reset() {
+	*x = GetNamedPetRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[313]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetNamedPetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetNamedPetRequest) ProtoMessage() {}
+
+func (x *GetNamedPetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[313]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetNamedPetRequest.ProtoReflect.Descriptor instead.
+func (*GetNamedPetRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{313}
+}
+
+type GetNamedPetResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kind          string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	OpensAt       *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=opens_at,json=opensAt,proto3" json:"opens_at,omitempty"`
+	Claimed       bool                   `protobuf:"varint,3,opt,name=claimed,proto3" json:"claimed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetNamedPetResponse) Reset() {
+	*x = GetNamedPetResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[314]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetNamedPetResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetNamedPetResponse) ProtoMessage() {}
+
+func (x *GetNamedPetResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[314]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetNamedPetResponse.ProtoReflect.Descriptor instead.
+func (*GetNamedPetResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{314}
+}
+
+func (x *GetNamedPetResponse) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *GetNamedPetResponse) GetOpensAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.OpensAt
+	}
+	return nil
+}
+
+func (x *GetNamedPetResponse) GetClaimed() bool {
+	if x != nil {
+		return x.Claimed
+	}
+	return false
+}
+
+type ClaimNamedPetRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClaimNamedPetRequest) Reset() {
+	*x = ClaimNamedPetRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[315]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClaimNamedPetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClaimNamedPetRequest) ProtoMessage() {}
+
+func (x *ClaimNamedPetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[315]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClaimNamedPetRequest.ProtoReflect.Descriptor instead.
+func (*ClaimNamedPetRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{315}
+}
+
 type AdoptPetRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Kind          string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
@@ -21152,7 +21284,7 @@ type AdoptPetRequest struct {
 
 func (x *AdoptPetRequest) Reset() {
 	*x = AdoptPetRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[313]
+	mi := &file_api_user_v1_user_proto_msgTypes[316]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21164,7 +21296,7 @@ func (x *AdoptPetRequest) String() string {
 func (*AdoptPetRequest) ProtoMessage() {}
 
 func (x *AdoptPetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[313]
+	mi := &file_api_user_v1_user_proto_msgTypes[316]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21177,7 +21309,7 @@ func (x *AdoptPetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdoptPetRequest.ProtoReflect.Descriptor instead.
 func (*AdoptPetRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{313}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{316}
 }
 
 func (x *AdoptPetRequest) GetKind() string {
@@ -21203,7 +21335,7 @@ type FeedPetRequest struct {
 
 func (x *FeedPetRequest) Reset() {
 	*x = FeedPetRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[314]
+	mi := &file_api_user_v1_user_proto_msgTypes[317]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21215,7 +21347,7 @@ func (x *FeedPetRequest) String() string {
 func (*FeedPetRequest) ProtoMessage() {}
 
 func (x *FeedPetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[314]
+	mi := &file_api_user_v1_user_proto_msgTypes[317]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21228,7 +21360,7 @@ func (x *FeedPetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeedPetRequest.ProtoReflect.Descriptor instead.
 func (*FeedPetRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{314}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{317}
 }
 
 func (x *FeedPetRequest) GetPetId() string {
@@ -21247,7 +21379,7 @@ type PlayPetRequest struct {
 
 func (x *PlayPetRequest) Reset() {
 	*x = PlayPetRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[315]
+	mi := &file_api_user_v1_user_proto_msgTypes[318]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21259,7 +21391,7 @@ func (x *PlayPetRequest) String() string {
 func (*PlayPetRequest) ProtoMessage() {}
 
 func (x *PlayPetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[315]
+	mi := &file_api_user_v1_user_proto_msgTypes[318]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21272,7 +21404,7 @@ func (x *PlayPetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlayPetRequest.ProtoReflect.Descriptor instead.
 func (*PlayPetRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{315}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{318}
 }
 
 func (x *PlayPetRequest) GetPetId() string {
@@ -21292,7 +21424,7 @@ type RenamePetRequest struct {
 
 func (x *RenamePetRequest) Reset() {
 	*x = RenamePetRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[316]
+	mi := &file_api_user_v1_user_proto_msgTypes[319]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21304,7 +21436,7 @@ func (x *RenamePetRequest) String() string {
 func (*RenamePetRequest) ProtoMessage() {}
 
 func (x *RenamePetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[316]
+	mi := &file_api_user_v1_user_proto_msgTypes[319]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21317,7 +21449,7 @@ func (x *RenamePetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenamePetRequest.ProtoReflect.Descriptor instead.
 func (*RenamePetRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{316}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{319}
 }
 
 func (x *RenamePetRequest) GetName() string {
@@ -21343,7 +21475,7 @@ type ReleasePetRequest struct {
 
 func (x *ReleasePetRequest) Reset() {
 	*x = ReleasePetRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[317]
+	mi := &file_api_user_v1_user_proto_msgTypes[320]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21355,7 +21487,7 @@ func (x *ReleasePetRequest) String() string {
 func (*ReleasePetRequest) ProtoMessage() {}
 
 func (x *ReleasePetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[317]
+	mi := &file_api_user_v1_user_proto_msgTypes[320]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21368,7 +21500,7 @@ func (x *ReleasePetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReleasePetRequest.ProtoReflect.Descriptor instead.
 func (*ReleasePetRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{317}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{320}
 }
 
 func (x *ReleasePetRequest) GetPetId() string {
@@ -21389,7 +21521,7 @@ type OpenPetCaseRequest struct {
 
 func (x *OpenPetCaseRequest) Reset() {
 	*x = OpenPetCaseRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[318]
+	mi := &file_api_user_v1_user_proto_msgTypes[321]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21401,7 +21533,7 @@ func (x *OpenPetCaseRequest) String() string {
 func (*OpenPetCaseRequest) ProtoMessage() {}
 
 func (x *OpenPetCaseRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[318]
+	mi := &file_api_user_v1_user_proto_msgTypes[321]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21414,7 +21546,7 @@ func (x *OpenPetCaseRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OpenPetCaseRequest.ProtoReflect.Descriptor instead.
 func (*OpenPetCaseRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{318}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{321}
 }
 
 func (x *OpenPetCaseRequest) GetCaseId() string {
@@ -21442,7 +21574,7 @@ type OpenPetCaseResponse struct {
 
 func (x *OpenPetCaseResponse) Reset() {
 	*x = OpenPetCaseResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[319]
+	mi := &file_api_user_v1_user_proto_msgTypes[322]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21454,7 +21586,7 @@ func (x *OpenPetCaseResponse) String() string {
 func (*OpenPetCaseResponse) ProtoMessage() {}
 
 func (x *OpenPetCaseResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[319]
+	mi := &file_api_user_v1_user_proto_msgTypes[322]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21467,7 +21599,7 @@ func (x *OpenPetCaseResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OpenPetCaseResponse.ProtoReflect.Descriptor instead.
 func (*OpenPetCaseResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{319}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{322}
 }
 
 func (x *OpenPetCaseResponse) GetKeeper() *PetKeeper {
@@ -21493,7 +21625,7 @@ type TakePetDropRequest struct {
 
 func (x *TakePetDropRequest) Reset() {
 	*x = TakePetDropRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[320]
+	mi := &file_api_user_v1_user_proto_msgTypes[323]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21505,7 +21637,7 @@ func (x *TakePetDropRequest) String() string {
 func (*TakePetDropRequest) ProtoMessage() {}
 
 func (x *TakePetDropRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[320]
+	mi := &file_api_user_v1_user_proto_msgTypes[323]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21518,7 +21650,7 @@ func (x *TakePetDropRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TakePetDropRequest.ProtoReflect.Descriptor instead.
 func (*TakePetDropRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{320}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{323}
 }
 
 func (x *TakePetDropRequest) GetName() string {
@@ -21536,7 +21668,7 @@ type LeavePetDropRequest struct {
 
 func (x *LeavePetDropRequest) Reset() {
 	*x = LeavePetDropRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[321]
+	mi := &file_api_user_v1_user_proto_msgTypes[324]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21548,7 +21680,7 @@ func (x *LeavePetDropRequest) String() string {
 func (*LeavePetDropRequest) ProtoMessage() {}
 
 func (x *LeavePetDropRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[321]
+	mi := &file_api_user_v1_user_proto_msgTypes[324]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21561,7 +21693,7 @@ func (x *LeavePetDropRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LeavePetDropRequest.ProtoReflect.Descriptor instead.
 func (*LeavePetDropRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{321}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{324}
 }
 
 type PetKeeperResponse struct {
@@ -21573,7 +21705,7 @@ type PetKeeperResponse struct {
 
 func (x *PetKeeperResponse) Reset() {
 	*x = PetKeeperResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[322]
+	mi := &file_api_user_v1_user_proto_msgTypes[325]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21585,7 +21717,7 @@ func (x *PetKeeperResponse) String() string {
 func (*PetKeeperResponse) ProtoMessage() {}
 
 func (x *PetKeeperResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[322]
+	mi := &file_api_user_v1_user_proto_msgTypes[325]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21598,7 +21730,7 @@ func (x *PetKeeperResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetKeeperResponse.ProtoReflect.Descriptor instead.
 func (*PetKeeperResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{322}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{325}
 }
 
 func (x *PetKeeperResponse) GetKeeper() *PetKeeper {
@@ -21618,7 +21750,7 @@ type SetPetStanceRequest struct {
 
 func (x *SetPetStanceRequest) Reset() {
 	*x = SetPetStanceRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[323]
+	mi := &file_api_user_v1_user_proto_msgTypes[326]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21630,7 +21762,7 @@ func (x *SetPetStanceRequest) String() string {
 func (*SetPetStanceRequest) ProtoMessage() {}
 
 func (x *SetPetStanceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[323]
+	mi := &file_api_user_v1_user_proto_msgTypes[326]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21643,7 +21775,7 @@ func (x *SetPetStanceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetPetStanceRequest.ProtoReflect.Descriptor instead.
 func (*SetPetStanceRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{323}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{326}
 }
 
 func (x *SetPetStanceRequest) GetPetId() string {
@@ -21670,7 +21802,7 @@ type BuyPetItemRequest struct {
 
 func (x *BuyPetItemRequest) Reset() {
 	*x = BuyPetItemRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[324]
+	mi := &file_api_user_v1_user_proto_msgTypes[327]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21682,7 +21814,7 @@ func (x *BuyPetItemRequest) String() string {
 func (*BuyPetItemRequest) ProtoMessage() {}
 
 func (x *BuyPetItemRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[324]
+	mi := &file_api_user_v1_user_proto_msgTypes[327]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21695,7 +21827,7 @@ func (x *BuyPetItemRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BuyPetItemRequest.ProtoReflect.Descriptor instead.
 func (*BuyPetItemRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{324}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{327}
 }
 
 func (x *BuyPetItemRequest) GetPetId() string {
@@ -21724,7 +21856,7 @@ type DressPetRequest struct {
 
 func (x *DressPetRequest) Reset() {
 	*x = DressPetRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[325]
+	mi := &file_api_user_v1_user_proto_msgTypes[328]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21736,7 +21868,7 @@ func (x *DressPetRequest) String() string {
 func (*DressPetRequest) ProtoMessage() {}
 
 func (x *DressPetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[325]
+	mi := &file_api_user_v1_user_proto_msgTypes[328]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21749,7 +21881,7 @@ func (x *DressPetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DressPetRequest.ProtoReflect.Descriptor instead.
 func (*DressPetRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{325}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{328}
 }
 
 func (x *DressPetRequest) GetPetId() string {
@@ -21784,7 +21916,7 @@ type PetCareResponse struct {
 
 func (x *PetCareResponse) Reset() {
 	*x = PetCareResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[326]
+	mi := &file_api_user_v1_user_proto_msgTypes[329]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21796,7 +21928,7 @@ func (x *PetCareResponse) String() string {
 func (*PetCareResponse) ProtoMessage() {}
 
 func (x *PetCareResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[326]
+	mi := &file_api_user_v1_user_proto_msgTypes[329]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21809,7 +21941,7 @@ func (x *PetCareResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetCareResponse.ProtoReflect.Descriptor instead.
 func (*PetCareResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{326}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{329}
 }
 
 func (x *PetCareResponse) GetPet() *Pet {
@@ -21843,7 +21975,7 @@ type PetFighter struct {
 
 func (x *PetFighter) Reset() {
 	*x = PetFighter{}
-	mi := &file_api_user_v1_user_proto_msgTypes[327]
+	mi := &file_api_user_v1_user_proto_msgTypes[330]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21855,7 +21987,7 @@ func (x *PetFighter) String() string {
 func (*PetFighter) ProtoMessage() {}
 
 func (x *PetFighter) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[327]
+	mi := &file_api_user_v1_user_proto_msgTypes[330]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21868,7 +22000,7 @@ func (x *PetFighter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetFighter.ProtoReflect.Descriptor instead.
 func (*PetFighter) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{327}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{330}
 }
 
 func (x *PetFighter) GetKind() string {
@@ -21950,7 +22082,7 @@ type PetHit struct {
 
 func (x *PetHit) Reset() {
 	*x = PetHit{}
-	mi := &file_api_user_v1_user_proto_msgTypes[328]
+	mi := &file_api_user_v1_user_proto_msgTypes[331]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21962,7 +22094,7 @@ func (x *PetHit) String() string {
 func (*PetHit) ProtoMessage() {}
 
 func (x *PetHit) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[328]
+	mi := &file_api_user_v1_user_proto_msgTypes[331]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21975,7 +22107,7 @@ func (x *PetHit) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetHit.ProtoReflect.Descriptor instead.
 func (*PetHit) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{328}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{331}
 }
 
 func (x *PetHit) GetByAttacker() bool {
@@ -22071,7 +22203,7 @@ type PetFight struct {
 
 func (x *PetFight) Reset() {
 	*x = PetFight{}
-	mi := &file_api_user_v1_user_proto_msgTypes[329]
+	mi := &file_api_user_v1_user_proto_msgTypes[332]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22083,7 +22215,7 @@ func (x *PetFight) String() string {
 func (*PetFight) ProtoMessage() {}
 
 func (x *PetFight) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[329]
+	mi := &file_api_user_v1_user_proto_msgTypes[332]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22096,7 +22228,7 @@ func (x *PetFight) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetFight.ProtoReflect.Descriptor instead.
 func (*PetFight) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{329}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{332}
 }
 
 func (x *PetFight) GetId() string {
@@ -22199,7 +22331,7 @@ type PetBattle struct {
 
 func (x *PetBattle) Reset() {
 	*x = PetBattle{}
-	mi := &file_api_user_v1_user_proto_msgTypes[330]
+	mi := &file_api_user_v1_user_proto_msgTypes[333]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22211,7 +22343,7 @@ func (x *PetBattle) String() string {
 func (*PetBattle) ProtoMessage() {}
 
 func (x *PetBattle) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[330]
+	mi := &file_api_user_v1_user_proto_msgTypes[333]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22224,7 +22356,7 @@ func (x *PetBattle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetBattle.ProtoReflect.Descriptor instead.
 func (*PetBattle) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{330}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{333}
 }
 
 func (x *PetBattle) GetPetId() string {
@@ -22325,7 +22457,7 @@ type FightPetRequest struct {
 
 func (x *FightPetRequest) Reset() {
 	*x = FightPetRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[331]
+	mi := &file_api_user_v1_user_proto_msgTypes[334]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22337,7 +22469,7 @@ func (x *FightPetRequest) String() string {
 func (*FightPetRequest) ProtoMessage() {}
 
 func (x *FightPetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[331]
+	mi := &file_api_user_v1_user_proto_msgTypes[334]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22350,7 +22482,7 @@ func (x *FightPetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FightPetRequest.ProtoReflect.Descriptor instead.
 func (*FightPetRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{331}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{334}
 }
 
 func (x *FightPetRequest) GetNickname() string {
@@ -22385,7 +22517,7 @@ type StartPetBattleRequest struct {
 
 func (x *StartPetBattleRequest) Reset() {
 	*x = StartPetBattleRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[332]
+	mi := &file_api_user_v1_user_proto_msgTypes[335]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22397,7 +22529,7 @@ func (x *StartPetBattleRequest) String() string {
 func (*StartPetBattleRequest) ProtoMessage() {}
 
 func (x *StartPetBattleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[332]
+	mi := &file_api_user_v1_user_proto_msgTypes[335]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22410,7 +22542,7 @@ func (x *StartPetBattleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartPetBattleRequest.ProtoReflect.Descriptor instead.
 func (*StartPetBattleRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{332}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{335}
 }
 
 func (x *StartPetBattleRequest) GetPetId() string {
@@ -22444,7 +22576,7 @@ type MovePetBattleRequest struct {
 
 func (x *MovePetBattleRequest) Reset() {
 	*x = MovePetBattleRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[333]
+	mi := &file_api_user_v1_user_proto_msgTypes[336]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22456,7 +22588,7 @@ func (x *MovePetBattleRequest) String() string {
 func (*MovePetBattleRequest) ProtoMessage() {}
 
 func (x *MovePetBattleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[333]
+	mi := &file_api_user_v1_user_proto_msgTypes[336]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22469,7 +22601,7 @@ func (x *MovePetBattleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MovePetBattleRequest.ProtoReflect.Descriptor instead.
 func (*MovePetBattleRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{333}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{336}
 }
 
 func (x *MovePetBattleRequest) GetPetId() string {
@@ -22500,7 +22632,7 @@ type PetBattleResponse struct {
 
 func (x *PetBattleResponse) Reset() {
 	*x = PetBattleResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[334]
+	mi := &file_api_user_v1_user_proto_msgTypes[337]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22512,7 +22644,7 @@ func (x *PetBattleResponse) String() string {
 func (*PetBattleResponse) ProtoMessage() {}
 
 func (x *PetBattleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[334]
+	mi := &file_api_user_v1_user_proto_msgTypes[337]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22525,7 +22657,7 @@ func (x *PetBattleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetBattleResponse.ProtoReflect.Descriptor instead.
 func (*PetBattleResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{334}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{337}
 }
 
 func (x *PetBattleResponse) GetBattle() *PetBattle {
@@ -22568,7 +22700,7 @@ type FightPetResponse struct {
 
 func (x *FightPetResponse) Reset() {
 	*x = FightPetResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[335]
+	mi := &file_api_user_v1_user_proto_msgTypes[338]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22580,7 +22712,7 @@ func (x *FightPetResponse) String() string {
 func (*FightPetResponse) ProtoMessage() {}
 
 func (x *FightPetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[335]
+	mi := &file_api_user_v1_user_proto_msgTypes[338]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22593,7 +22725,7 @@ func (x *FightPetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FightPetResponse.ProtoReflect.Descriptor instead.
 func (*FightPetResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{335}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{338}
 }
 
 func (x *FightPetResponse) GetFight() *PetFight {
@@ -22625,7 +22757,7 @@ type ListPetFightsRequest struct {
 
 func (x *ListPetFightsRequest) Reset() {
 	*x = ListPetFightsRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[336]
+	mi := &file_api_user_v1_user_proto_msgTypes[339]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22637,7 +22769,7 @@ func (x *ListPetFightsRequest) String() string {
 func (*ListPetFightsRequest) ProtoMessage() {}
 
 func (x *ListPetFightsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[336]
+	mi := &file_api_user_v1_user_proto_msgTypes[339]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22650,7 +22782,7 @@ func (x *ListPetFightsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPetFightsRequest.ProtoReflect.Descriptor instead.
 func (*ListPetFightsRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{336}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{339}
 }
 
 type ListPetFightsResponse struct {
@@ -22662,7 +22794,7 @@ type ListPetFightsResponse struct {
 
 func (x *ListPetFightsResponse) Reset() {
 	*x = ListPetFightsResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[337]
+	mi := &file_api_user_v1_user_proto_msgTypes[340]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22674,7 +22806,7 @@ func (x *ListPetFightsResponse) String() string {
 func (*ListPetFightsResponse) ProtoMessage() {}
 
 func (x *ListPetFightsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[337]
+	mi := &file_api_user_v1_user_proto_msgTypes[340]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22687,7 +22819,7 @@ func (x *ListPetFightsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPetFightsResponse.ProtoReflect.Descriptor instead.
 func (*ListPetFightsResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{337}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{340}
 }
 
 func (x *ListPetFightsResponse) GetFights() []*PetFight {
@@ -22705,7 +22837,7 @@ type GetPetSettingsRequest struct {
 
 func (x *GetPetSettingsRequest) Reset() {
 	*x = GetPetSettingsRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[338]
+	mi := &file_api_user_v1_user_proto_msgTypes[341]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22717,7 +22849,7 @@ func (x *GetPetSettingsRequest) String() string {
 func (*GetPetSettingsRequest) ProtoMessage() {}
 
 func (x *GetPetSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[338]
+	mi := &file_api_user_v1_user_proto_msgTypes[341]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22730,7 +22862,7 @@ func (x *GetPetSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPetSettingsRequest.ProtoReflect.Descriptor instead.
 func (*GetPetSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{338}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{341}
 }
 
 type GetPetSettingsResponse struct {
@@ -22746,7 +22878,7 @@ type GetPetSettingsResponse struct {
 
 func (x *GetPetSettingsResponse) Reset() {
 	*x = GetPetSettingsResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[339]
+	mi := &file_api_user_v1_user_proto_msgTypes[342]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22758,7 +22890,7 @@ func (x *GetPetSettingsResponse) String() string {
 func (*GetPetSettingsResponse) ProtoMessage() {}
 
 func (x *GetPetSettingsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[339]
+	mi := &file_api_user_v1_user_proto_msgTypes[342]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22771,7 +22903,7 @@ func (x *GetPetSettingsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPetSettingsResponse.ProtoReflect.Descriptor instead.
 func (*GetPetSettingsResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{339}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{342}
 }
 
 func (x *GetPetSettingsResponse) GetShop() *PetShop {
@@ -22818,7 +22950,7 @@ type SetPetSettingsRequest struct {
 
 func (x *SetPetSettingsRequest) Reset() {
 	*x = SetPetSettingsRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[340]
+	mi := &file_api_user_v1_user_proto_msgTypes[343]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22830,7 +22962,7 @@ func (x *SetPetSettingsRequest) String() string {
 func (*SetPetSettingsRequest) ProtoMessage() {}
 
 func (x *SetPetSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[340]
+	mi := &file_api_user_v1_user_proto_msgTypes[343]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22843,7 +22975,7 @@ func (x *SetPetSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetPetSettingsRequest.ProtoReflect.Descriptor instead.
 func (*SetPetSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{340}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{343}
 }
 
 func (x *SetPetSettingsRequest) GetShop() *PetShop {
@@ -22861,7 +22993,7 @@ type GetPetArenaRequest struct {
 
 func (x *GetPetArenaRequest) Reset() {
 	*x = GetPetArenaRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[341]
+	mi := &file_api_user_v1_user_proto_msgTypes[344]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22873,7 +23005,7 @@ func (x *GetPetArenaRequest) String() string {
 func (*GetPetArenaRequest) ProtoMessage() {}
 
 func (x *GetPetArenaRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[341]
+	mi := &file_api_user_v1_user_proto_msgTypes[344]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22886,7 +23018,7 @@ func (x *GetPetArenaRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPetArenaRequest.ProtoReflect.Descriptor instead.
 func (*GetPetArenaRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{341}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{344}
 }
 
 // PetBossHit is what a person did to the boss: the damage of their pets
@@ -22902,7 +23034,7 @@ type PetBossHit struct {
 
 func (x *PetBossHit) Reset() {
 	*x = PetBossHit{}
-	mi := &file_api_user_v1_user_proto_msgTypes[342]
+	mi := &file_api_user_v1_user_proto_msgTypes[345]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22914,7 +23046,7 @@ func (x *PetBossHit) String() string {
 func (*PetBossHit) ProtoMessage() {}
 
 func (x *PetBossHit) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[342]
+	mi := &file_api_user_v1_user_proto_msgTypes[345]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22927,7 +23059,7 @@ func (x *PetBossHit) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetBossHit.ProtoReflect.Descriptor instead.
 func (*PetBossHit) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{342}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{345}
 }
 
 func (x *PetBossHit) GetUserId() string {
@@ -22971,7 +23103,7 @@ type PetBoss struct {
 
 func (x *PetBoss) Reset() {
 	*x = PetBoss{}
-	mi := &file_api_user_v1_user_proto_msgTypes[343]
+	mi := &file_api_user_v1_user_proto_msgTypes[346]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22983,7 +23115,7 @@ func (x *PetBoss) String() string {
 func (*PetBoss) ProtoMessage() {}
 
 func (x *PetBoss) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[343]
+	mi := &file_api_user_v1_user_proto_msgTypes[346]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22996,7 +23128,7 @@ func (x *PetBoss) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetBoss.ProtoReflect.Descriptor instead.
 func (*PetBoss) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{343}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{346}
 }
 
 func (x *PetBoss) GetWeek() *timestamppb.Timestamp {
@@ -23083,7 +23215,7 @@ type PetEntrant struct {
 
 func (x *PetEntrant) Reset() {
 	*x = PetEntrant{}
-	mi := &file_api_user_v1_user_proto_msgTypes[344]
+	mi := &file_api_user_v1_user_proto_msgTypes[347]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23095,7 +23227,7 @@ func (x *PetEntrant) String() string {
 func (*PetEntrant) ProtoMessage() {}
 
 func (x *PetEntrant) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[344]
+	mi := &file_api_user_v1_user_proto_msgTypes[347]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23108,7 +23240,7 @@ func (x *PetEntrant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetEntrant.ProtoReflect.Descriptor instead.
 func (*PetEntrant) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{344}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{347}
 }
 
 func (x *PetEntrant) GetOwnerId() string {
@@ -23167,7 +23299,7 @@ type PetMatch struct {
 
 func (x *PetMatch) Reset() {
 	*x = PetMatch{}
-	mi := &file_api_user_v1_user_proto_msgTypes[345]
+	mi := &file_api_user_v1_user_proto_msgTypes[348]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23179,7 +23311,7 @@ func (x *PetMatch) String() string {
 func (*PetMatch) ProtoMessage() {}
 
 func (x *PetMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[345]
+	mi := &file_api_user_v1_user_proto_msgTypes[348]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23192,7 +23324,7 @@ func (x *PetMatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetMatch.ProtoReflect.Descriptor instead.
 func (*PetMatch) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{345}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{348}
 }
 
 func (x *PetMatch) GetA() int32 {
@@ -23232,7 +23364,7 @@ type PetRound struct {
 
 func (x *PetRound) Reset() {
 	*x = PetRound{}
-	mi := &file_api_user_v1_user_proto_msgTypes[346]
+	mi := &file_api_user_v1_user_proto_msgTypes[349]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23244,7 +23376,7 @@ func (x *PetRound) String() string {
 func (*PetRound) ProtoMessage() {}
 
 func (x *PetRound) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[346]
+	mi := &file_api_user_v1_user_proto_msgTypes[349]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23257,7 +23389,7 @@ func (x *PetRound) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetRound.ProtoReflect.Descriptor instead.
 func (*PetRound) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{346}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{349}
 }
 
 func (x *PetRound) GetMatches() []*PetMatch {
@@ -23288,7 +23420,7 @@ type PetTournament struct {
 
 func (x *PetTournament) Reset() {
 	*x = PetTournament{}
-	mi := &file_api_user_v1_user_proto_msgTypes[347]
+	mi := &file_api_user_v1_user_proto_msgTypes[350]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23300,7 +23432,7 @@ func (x *PetTournament) String() string {
 func (*PetTournament) ProtoMessage() {}
 
 func (x *PetTournament) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[347]
+	mi := &file_api_user_v1_user_proto_msgTypes[350]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23313,7 +23445,7 @@ func (x *PetTournament) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetTournament.ProtoReflect.Descriptor instead.
 func (*PetTournament) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{347}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{350}
 }
 
 func (x *PetTournament) GetWeek() *timestamppb.Timestamp {
@@ -23400,7 +23532,7 @@ type PetSeasonPlace struct {
 
 func (x *PetSeasonPlace) Reset() {
 	*x = PetSeasonPlace{}
-	mi := &file_api_user_v1_user_proto_msgTypes[348]
+	mi := &file_api_user_v1_user_proto_msgTypes[351]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23412,7 +23544,7 @@ func (x *PetSeasonPlace) String() string {
 func (*PetSeasonPlace) ProtoMessage() {}
 
 func (x *PetSeasonPlace) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[348]
+	mi := &file_api_user_v1_user_proto_msgTypes[351]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23425,7 +23557,7 @@ func (x *PetSeasonPlace) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetSeasonPlace.ProtoReflect.Descriptor instead.
 func (*PetSeasonPlace) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{348}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{351}
 }
 
 func (x *PetSeasonPlace) GetOwnerId() string {
@@ -23480,7 +23612,7 @@ type PetSeason struct {
 
 func (x *PetSeason) Reset() {
 	*x = PetSeason{}
-	mi := &file_api_user_v1_user_proto_msgTypes[349]
+	mi := &file_api_user_v1_user_proto_msgTypes[352]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23492,7 +23624,7 @@ func (x *PetSeason) String() string {
 func (*PetSeason) ProtoMessage() {}
 
 func (x *PetSeason) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[349]
+	mi := &file_api_user_v1_user_proto_msgTypes[352]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23505,7 +23637,7 @@ func (x *PetSeason) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetSeason.ProtoReflect.Descriptor instead.
 func (*PetSeason) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{349}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{352}
 }
 
 func (x *PetSeason) GetSeason() *timestamppb.Timestamp {
@@ -23533,7 +23665,7 @@ type PetQuest struct {
 
 func (x *PetQuest) Reset() {
 	*x = PetQuest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[350]
+	mi := &file_api_user_v1_user_proto_msgTypes[353]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23545,7 +23677,7 @@ func (x *PetQuest) String() string {
 func (*PetQuest) ProtoMessage() {}
 
 func (x *PetQuest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[350]
+	mi := &file_api_user_v1_user_proto_msgTypes[353]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23558,7 +23690,7 @@ func (x *PetQuest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetQuest.ProtoReflect.Descriptor instead.
 func (*PetQuest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{350}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{353}
 }
 
 func (x *PetQuest) GetKind() string {
@@ -23592,7 +23724,7 @@ type PetAchievement struct {
 
 func (x *PetAchievement) Reset() {
 	*x = PetAchievement{}
-	mi := &file_api_user_v1_user_proto_msgTypes[351]
+	mi := &file_api_user_v1_user_proto_msgTypes[354]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23604,7 +23736,7 @@ func (x *PetAchievement) String() string {
 func (*PetAchievement) ProtoMessage() {}
 
 func (x *PetAchievement) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[351]
+	mi := &file_api_user_v1_user_proto_msgTypes[354]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23617,7 +23749,7 @@ func (x *PetAchievement) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetAchievement.ProtoReflect.Descriptor instead.
 func (*PetAchievement) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{351}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{354}
 }
 
 func (x *PetAchievement) GetId() string {
@@ -23644,7 +23776,7 @@ type PetListing struct {
 
 func (x *PetListing) Reset() {
 	*x = PetListing{}
-	mi := &file_api_user_v1_user_proto_msgTypes[352]
+	mi := &file_api_user_v1_user_proto_msgTypes[355]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23656,7 +23788,7 @@ func (x *PetListing) String() string {
 func (*PetListing) ProtoMessage() {}
 
 func (x *PetListing) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[352]
+	mi := &file_api_user_v1_user_proto_msgTypes[355]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23669,7 +23801,7 @@ func (x *PetListing) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetListing.ProtoReflect.Descriptor instead.
 func (*PetListing) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{352}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{355}
 }
 
 func (x *PetListing) GetOwnerId() string {
@@ -23708,7 +23840,7 @@ type PetArena struct {
 
 func (x *PetArena) Reset() {
 	*x = PetArena{}
-	mi := &file_api_user_v1_user_proto_msgTypes[353]
+	mi := &file_api_user_v1_user_proto_msgTypes[356]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23720,7 +23852,7 @@ func (x *PetArena) String() string {
 func (*PetArena) ProtoMessage() {}
 
 func (x *PetArena) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[353]
+	mi := &file_api_user_v1_user_proto_msgTypes[356]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23733,7 +23865,7 @@ func (x *PetArena) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PetArena.ProtoReflect.Descriptor instead.
 func (*PetArena) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{353}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{356}
 }
 
 func (x *PetArena) GetBoss() *PetBoss {
@@ -23814,7 +23946,7 @@ type GetCanvasRequest struct {
 
 func (x *GetCanvasRequest) Reset() {
 	*x = GetCanvasRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[354]
+	mi := &file_api_user_v1_user_proto_msgTypes[357]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23826,7 +23958,7 @@ func (x *GetCanvasRequest) String() string {
 func (*GetCanvasRequest) ProtoMessage() {}
 
 func (x *GetCanvasRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[354]
+	mi := &file_api_user_v1_user_proto_msgTypes[357]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23839,7 +23971,7 @@ func (x *GetCanvasRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCanvasRequest.ProtoReflect.Descriptor instead.
 func (*GetCanvasRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{354}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{357}
 }
 
 type GetCanvasResponse struct {
@@ -23855,7 +23987,7 @@ type GetCanvasResponse struct {
 
 func (x *GetCanvasResponse) Reset() {
 	*x = GetCanvasResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[355]
+	mi := &file_api_user_v1_user_proto_msgTypes[358]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23867,7 +23999,7 @@ func (x *GetCanvasResponse) String() string {
 func (*GetCanvasResponse) ProtoMessage() {}
 
 func (x *GetCanvasResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[355]
+	mi := &file_api_user_v1_user_proto_msgTypes[358]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23880,7 +24012,7 @@ func (x *GetCanvasResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCanvasResponse.ProtoReflect.Descriptor instead.
 func (*GetCanvasResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{355}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{358}
 }
 
 func (x *GetCanvasResponse) GetCells() []byte {
@@ -23922,7 +24054,7 @@ type PaintCanvasRequest struct {
 
 func (x *PaintCanvasRequest) Reset() {
 	*x = PaintCanvasRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[356]
+	mi := &file_api_user_v1_user_proto_msgTypes[359]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23934,7 +24066,7 @@ func (x *PaintCanvasRequest) String() string {
 func (*PaintCanvasRequest) ProtoMessage() {}
 
 func (x *PaintCanvasRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[356]
+	mi := &file_api_user_v1_user_proto_msgTypes[359]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23947,7 +24079,7 @@ func (x *PaintCanvasRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PaintCanvasRequest.ProtoReflect.Descriptor instead.
 func (*PaintCanvasRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{356}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{359}
 }
 
 func (x *PaintCanvasRequest) GetX() int32 {
@@ -23980,7 +24112,7 @@ type PaintCanvasResponse struct {
 
 func (x *PaintCanvasResponse) Reset() {
 	*x = PaintCanvasResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[357]
+	mi := &file_api_user_v1_user_proto_msgTypes[360]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23992,7 +24124,7 @@ func (x *PaintCanvasResponse) String() string {
 func (*PaintCanvasResponse) ProtoMessage() {}
 
 func (x *PaintCanvasResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[357]
+	mi := &file_api_user_v1_user_proto_msgTypes[360]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24005,7 +24137,7 @@ func (x *PaintCanvasResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PaintCanvasResponse.ProtoReflect.Descriptor instead.
 func (*PaintCanvasResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{357}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{360}
 }
 
 func (x *PaintCanvasResponse) GetNextAt() *timestamppb.Timestamp {
@@ -24025,7 +24157,7 @@ type GetCanvasCellRequest struct {
 
 func (x *GetCanvasCellRequest) Reset() {
 	*x = GetCanvasCellRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[358]
+	mi := &file_api_user_v1_user_proto_msgTypes[361]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24037,7 +24169,7 @@ func (x *GetCanvasCellRequest) String() string {
 func (*GetCanvasCellRequest) ProtoMessage() {}
 
 func (x *GetCanvasCellRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[358]
+	mi := &file_api_user_v1_user_proto_msgTypes[361]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24050,7 +24182,7 @@ func (x *GetCanvasCellRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCanvasCellRequest.ProtoReflect.Descriptor instead.
 func (*GetCanvasCellRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{358}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{361}
 }
 
 func (x *GetCanvasCellRequest) GetX() int32 {
@@ -24079,7 +24211,7 @@ type GetCanvasCellResponse struct {
 
 func (x *GetCanvasCellResponse) Reset() {
 	*x = GetCanvasCellResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[359]
+	mi := &file_api_user_v1_user_proto_msgTypes[362]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24091,7 +24223,7 @@ func (x *GetCanvasCellResponse) String() string {
 func (*GetCanvasCellResponse) ProtoMessage() {}
 
 func (x *GetCanvasCellResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[359]
+	mi := &file_api_user_v1_user_proto_msgTypes[362]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24104,7 +24236,7 @@ func (x *GetCanvasCellResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCanvasCellResponse.ProtoReflect.Descriptor instead.
 func (*GetCanvasCellResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{359}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{362}
 }
 
 func (x *GetCanvasCellResponse) GetUserId() string {
@@ -24140,7 +24272,7 @@ type RunPetArenaRequest struct {
 
 func (x *RunPetArenaRequest) Reset() {
 	*x = RunPetArenaRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[360]
+	mi := &file_api_user_v1_user_proto_msgTypes[363]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24152,7 +24284,7 @@ func (x *RunPetArenaRequest) String() string {
 func (*RunPetArenaRequest) ProtoMessage() {}
 
 func (x *RunPetArenaRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[360]
+	mi := &file_api_user_v1_user_proto_msgTypes[363]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24165,7 +24297,7 @@ func (x *RunPetArenaRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunPetArenaRequest.ProtoReflect.Descriptor instead.
 func (*RunPetArenaRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{360}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{363}
 }
 
 func (x *RunPetArenaRequest) GetAction() string {
@@ -24202,7 +24334,7 @@ type RunPetArenaResponse struct {
 
 func (x *RunPetArenaResponse) Reset() {
 	*x = RunPetArenaResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[361]
+	mi := &file_api_user_v1_user_proto_msgTypes[364]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24214,7 +24346,7 @@ func (x *RunPetArenaResponse) String() string {
 func (*RunPetArenaResponse) ProtoMessage() {}
 
 func (x *RunPetArenaResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[361]
+	mi := &file_api_user_v1_user_proto_msgTypes[364]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24227,7 +24359,7 @@ func (x *RunPetArenaResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunPetArenaResponse.ProtoReflect.Descriptor instead.
 func (*RunPetArenaResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{361}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{364}
 }
 
 func (x *RunPetArenaResponse) GetArena() *PetArena {
@@ -24260,7 +24392,7 @@ type GetUserFirmsRequest struct {
 
 func (x *GetUserFirmsRequest) Reset() {
 	*x = GetUserFirmsRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[362]
+	mi := &file_api_user_v1_user_proto_msgTypes[365]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24272,7 +24404,7 @@ func (x *GetUserFirmsRequest) String() string {
 func (*GetUserFirmsRequest) ProtoMessage() {}
 
 func (x *GetUserFirmsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[362]
+	mi := &file_api_user_v1_user_proto_msgTypes[365]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24285,7 +24417,7 @@ func (x *GetUserFirmsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserFirmsRequest.ProtoReflect.Descriptor instead.
 func (*GetUserFirmsRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{362}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{365}
 }
 
 func (x *GetUserFirmsRequest) GetNickname() string {
@@ -24312,7 +24444,7 @@ type UserFirm struct {
 
 func (x *UserFirm) Reset() {
 	*x = UserFirm{}
-	mi := &file_api_user_v1_user_proto_msgTypes[363]
+	mi := &file_api_user_v1_user_proto_msgTypes[366]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24324,7 +24456,7 @@ func (x *UserFirm) String() string {
 func (*UserFirm) ProtoMessage() {}
 
 func (x *UserFirm) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[363]
+	mi := &file_api_user_v1_user_proto_msgTypes[366]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24337,7 +24469,7 @@ func (x *UserFirm) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserFirm.ProtoReflect.Descriptor instead.
 func (*UserFirm) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{363}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{366}
 }
 
 func (x *UserFirm) GetId() string {
@@ -24398,7 +24530,7 @@ type GetUserFirmsResponse struct {
 
 func (x *GetUserFirmsResponse) Reset() {
 	*x = GetUserFirmsResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[364]
+	mi := &file_api_user_v1_user_proto_msgTypes[367]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24410,7 +24542,7 @@ func (x *GetUserFirmsResponse) String() string {
 func (*GetUserFirmsResponse) ProtoMessage() {}
 
 func (x *GetUserFirmsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[364]
+	mi := &file_api_user_v1_user_proto_msgTypes[367]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24423,7 +24555,7 @@ func (x *GetUserFirmsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserFirmsResponse.ProtoReflect.Descriptor instead.
 func (*GetUserFirmsResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{364}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{367}
 }
 
 func (x *GetUserFirmsResponse) GetFirms() []*UserFirm {
@@ -24445,7 +24577,7 @@ type Title struct {
 
 func (x *Title) Reset() {
 	*x = Title{}
-	mi := &file_api_user_v1_user_proto_msgTypes[365]
+	mi := &file_api_user_v1_user_proto_msgTypes[368]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24457,7 +24589,7 @@ func (x *Title) String() string {
 func (*Title) ProtoMessage() {}
 
 func (x *Title) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[365]
+	mi := &file_api_user_v1_user_proto_msgTypes[368]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24470,7 +24602,7 @@ func (x *Title) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Title.ProtoReflect.Descriptor instead.
 func (*Title) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{365}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{368}
 }
 
 func (x *Title) GetId() string {
@@ -24510,7 +24642,7 @@ type GetUserTitlesRequest struct {
 
 func (x *GetUserTitlesRequest) Reset() {
 	*x = GetUserTitlesRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[366]
+	mi := &file_api_user_v1_user_proto_msgTypes[369]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24522,7 +24654,7 @@ func (x *GetUserTitlesRequest) String() string {
 func (*GetUserTitlesRequest) ProtoMessage() {}
 
 func (x *GetUserTitlesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[366]
+	mi := &file_api_user_v1_user_proto_msgTypes[369]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24535,7 +24667,7 @@ func (x *GetUserTitlesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserTitlesRequest.ProtoReflect.Descriptor instead.
 func (*GetUserTitlesRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{366}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{369}
 }
 
 func (x *GetUserTitlesRequest) GetNickname() string {
@@ -24554,7 +24686,7 @@ type GetUserTitlesResponse struct {
 
 func (x *GetUserTitlesResponse) Reset() {
 	*x = GetUserTitlesResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[367]
+	mi := &file_api_user_v1_user_proto_msgTypes[370]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24566,7 +24698,7 @@ func (x *GetUserTitlesResponse) String() string {
 func (*GetUserTitlesResponse) ProtoMessage() {}
 
 func (x *GetUserTitlesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[367]
+	mi := &file_api_user_v1_user_proto_msgTypes[370]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24579,7 +24711,7 @@ func (x *GetUserTitlesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserTitlesResponse.ProtoReflect.Descriptor instead.
 func (*GetUserTitlesResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{367}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{370}
 }
 
 func (x *GetUserTitlesResponse) GetTitles() []*Title {
@@ -24600,7 +24732,7 @@ type GrantTitleRequest struct {
 
 func (x *GrantTitleRequest) Reset() {
 	*x = GrantTitleRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[368]
+	mi := &file_api_user_v1_user_proto_msgTypes[371]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24612,7 +24744,7 @@ func (x *GrantTitleRequest) String() string {
 func (*GrantTitleRequest) ProtoMessage() {}
 
 func (x *GrantTitleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[368]
+	mi := &file_api_user_v1_user_proto_msgTypes[371]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24625,7 +24757,7 @@ func (x *GrantTitleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrantTitleRequest.ProtoReflect.Descriptor instead.
 func (*GrantTitleRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{368}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{371}
 }
 
 func (x *GrantTitleRequest) GetNickname() string {
@@ -24658,7 +24790,7 @@ type GrantTitleResponse struct {
 
 func (x *GrantTitleResponse) Reset() {
 	*x = GrantTitleResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[369]
+	mi := &file_api_user_v1_user_proto_msgTypes[372]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24670,7 +24802,7 @@ func (x *GrantTitleResponse) String() string {
 func (*GrantTitleResponse) ProtoMessage() {}
 
 func (x *GrantTitleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[369]
+	mi := &file_api_user_v1_user_proto_msgTypes[372]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24683,7 +24815,7 @@ func (x *GrantTitleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrantTitleResponse.ProtoReflect.Descriptor instead.
 func (*GrantTitleResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{369}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{372}
 }
 
 func (x *GrantTitleResponse) GetTitle() *Title {
@@ -24702,7 +24834,7 @@ type RevokeTitleRequest struct {
 
 func (x *RevokeTitleRequest) Reset() {
 	*x = RevokeTitleRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[370]
+	mi := &file_api_user_v1_user_proto_msgTypes[373]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24714,7 +24846,7 @@ func (x *RevokeTitleRequest) String() string {
 func (*RevokeTitleRequest) ProtoMessage() {}
 
 func (x *RevokeTitleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[370]
+	mi := &file_api_user_v1_user_proto_msgTypes[373]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24727,7 +24859,7 @@ func (x *RevokeTitleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeTitleRequest.ProtoReflect.Descriptor instead.
 func (*RevokeTitleRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{370}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{373}
 }
 
 func (x *RevokeTitleRequest) GetTitleId() string {
@@ -24753,7 +24885,7 @@ type DatingCard struct {
 
 func (x *DatingCard) Reset() {
 	*x = DatingCard{}
-	mi := &file_api_user_v1_user_proto_msgTypes[371]
+	mi := &file_api_user_v1_user_proto_msgTypes[374]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24765,7 +24897,7 @@ func (x *DatingCard) String() string {
 func (*DatingCard) ProtoMessage() {}
 
 func (x *DatingCard) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[371]
+	mi := &file_api_user_v1_user_proto_msgTypes[374]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24778,7 +24910,7 @@ func (x *DatingCard) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DatingCard.ProtoReflect.Descriptor instead.
 func (*DatingCard) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{371}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{374}
 }
 
 func (x *DatingCard) GetUserId() string {
@@ -24833,7 +24965,7 @@ type DatingMatch struct {
 
 func (x *DatingMatch) Reset() {
 	*x = DatingMatch{}
-	mi := &file_api_user_v1_user_proto_msgTypes[372]
+	mi := &file_api_user_v1_user_proto_msgTypes[375]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24845,7 +24977,7 @@ func (x *DatingMatch) String() string {
 func (*DatingMatch) ProtoMessage() {}
 
 func (x *DatingMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[372]
+	mi := &file_api_user_v1_user_proto_msgTypes[375]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24858,7 +24990,7 @@ func (x *DatingMatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DatingMatch.ProtoReflect.Descriptor instead.
 func (*DatingMatch) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{372}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{375}
 }
 
 func (x *DatingMatch) GetUserId() string {
@@ -24883,7 +25015,7 @@ type GetDatingRequest struct {
 
 func (x *GetDatingRequest) Reset() {
 	*x = GetDatingRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[373]
+	mi := &file_api_user_v1_user_proto_msgTypes[376]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24895,7 +25027,7 @@ func (x *GetDatingRequest) String() string {
 func (*GetDatingRequest) ProtoMessage() {}
 
 func (x *GetDatingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[373]
+	mi := &file_api_user_v1_user_proto_msgTypes[376]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24908,7 +25040,7 @@ func (x *GetDatingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDatingRequest.ProtoReflect.Descriptor instead.
 func (*GetDatingRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{373}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{376}
 }
 
 type GetDatingResponse struct {
@@ -24922,7 +25054,7 @@ type GetDatingResponse struct {
 
 func (x *GetDatingResponse) Reset() {
 	*x = GetDatingResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[374]
+	mi := &file_api_user_v1_user_proto_msgTypes[377]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24934,7 +25066,7 @@ func (x *GetDatingResponse) String() string {
 func (*GetDatingResponse) ProtoMessage() {}
 
 func (x *GetDatingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[374]
+	mi := &file_api_user_v1_user_proto_msgTypes[377]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24947,7 +25079,7 @@ func (x *GetDatingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDatingResponse.ProtoReflect.Descriptor instead.
 func (*GetDatingResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{374}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{377}
 }
 
 func (x *GetDatingResponse) GetCard() *DatingCard {
@@ -24983,7 +25115,7 @@ type SaveDatingCardRequest struct {
 
 func (x *SaveDatingCardRequest) Reset() {
 	*x = SaveDatingCardRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[375]
+	mi := &file_api_user_v1_user_proto_msgTypes[378]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24995,7 +25127,7 @@ func (x *SaveDatingCardRequest) String() string {
 func (*SaveDatingCardRequest) ProtoMessage() {}
 
 func (x *SaveDatingCardRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[375]
+	mi := &file_api_user_v1_user_proto_msgTypes[378]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25008,7 +25140,7 @@ func (x *SaveDatingCardRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveDatingCardRequest.ProtoReflect.Descriptor instead.
 func (*SaveDatingCardRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{375}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{378}
 }
 
 func (x *SaveDatingCardRequest) GetGoal() string {
@@ -25048,7 +25180,7 @@ type SaveDatingCardResponse struct {
 
 func (x *SaveDatingCardResponse) Reset() {
 	*x = SaveDatingCardResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[376]
+	mi := &file_api_user_v1_user_proto_msgTypes[379]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25060,7 +25192,7 @@ func (x *SaveDatingCardResponse) String() string {
 func (*SaveDatingCardResponse) ProtoMessage() {}
 
 func (x *SaveDatingCardResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[376]
+	mi := &file_api_user_v1_user_proto_msgTypes[379]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25073,7 +25205,7 @@ func (x *SaveDatingCardResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveDatingCardResponse.ProtoReflect.Descriptor instead.
 func (*SaveDatingCardResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{376}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{379}
 }
 
 func (x *SaveDatingCardResponse) GetCard() *DatingCard {
@@ -25093,7 +25225,7 @@ type AnswerDatingRequest struct {
 
 func (x *AnswerDatingRequest) Reset() {
 	*x = AnswerDatingRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[377]
+	mi := &file_api_user_v1_user_proto_msgTypes[380]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25105,7 +25237,7 @@ func (x *AnswerDatingRequest) String() string {
 func (*AnswerDatingRequest) ProtoMessage() {}
 
 func (x *AnswerDatingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[377]
+	mi := &file_api_user_v1_user_proto_msgTypes[380]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25118,7 +25250,7 @@ func (x *AnswerDatingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerDatingRequest.ProtoReflect.Descriptor instead.
 func (*AnswerDatingRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{377}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{380}
 }
 
 func (x *AnswerDatingRequest) GetUserId() string {
@@ -25144,7 +25276,7 @@ type AnswerDatingResponse struct {
 
 func (x *AnswerDatingResponse) Reset() {
 	*x = AnswerDatingResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[378]
+	mi := &file_api_user_v1_user_proto_msgTypes[381]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25156,7 +25288,7 @@ func (x *AnswerDatingResponse) String() string {
 func (*AnswerDatingResponse) ProtoMessage() {}
 
 func (x *AnswerDatingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[378]
+	mi := &file_api_user_v1_user_proto_msgTypes[381]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25169,7 +25301,7 @@ func (x *AnswerDatingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerDatingResponse.ProtoReflect.Descriptor instead.
 func (*AnswerDatingResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{378}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{381}
 }
 
 func (x *AnswerDatingResponse) GetMatched() bool {
@@ -26704,7 +26836,13 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\bnickname\x18\x01 \x01(\tR\bnickname\"W\n" +
 	"\x12GetUserPetResponse\x12\x19\n" +
 	"\bowner_id\x18\x02 \x01(\tR\aownerId\x12 \n" +
-	"\x04pets\x18\x03 \x03(\v2\f.user.v1.PetR\x04petsJ\x04\b\x01\x10\x02\"9\n" +
+	"\x04pets\x18\x03 \x03(\v2\f.user.v1.PetR\x04petsJ\x04\b\x01\x10\x02\"\x14\n" +
+	"\x12GetNamedPetRequest\"z\n" +
+	"\x13GetNamedPetResponse\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\x125\n" +
+	"\bopens_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\aopensAt\x12\x18\n" +
+	"\aclaimed\x18\x03 \x01(\bR\aclaimed\"\x16\n" +
+	"\x14ClaimNamedPetRequest\"9\n" +
 	"\x0fAdoptPetRequest\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\"'\n" +
@@ -27084,7 +27222,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x0fPOKER_STATE_WON\x10\x03\x12\x14\n" +
 	"\x10POKER_STATE_LOST\x10\x04\x12\x14\n" +
 	"\x10POKER_STATE_TIED\x10\x05\x12\x1b\n" +
-	"\x17POKER_STATE_UNQUALIFIED\x10\x062\xc7i\n" +
+	"\x17POKER_STATE_UNQUALIFIED\x10\x062\xdbj\n" +
 	"\vUserService\x12]\n" +
 	"\x12GetOrCreateByEmail\x12\".user.v1.GetOrCreateByEmailRequest\x1a#.user.v1.GetOrCreateByEmailResponse\x126\n" +
 	"\x05GetMe\x12\x15.user.v1.GetMeRequest\x1a\x16.user.v1.GetMeResponse\x12N\n" +
@@ -27255,7 +27393,9 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x06GetPet\x12\x16.user.v1.GetPetRequest\x1a\x11.user.v1.PetState\x12E\n" +
 	"\n" +
 	"GetUserPet\x12\x1a.user.v1.GetUserPetRequest\x1a\x1b.user.v1.GetUserPetResponse\x12>\n" +
-	"\bAdoptPet\x12\x18.user.v1.AdoptPetRequest\x1a\x18.user.v1.PetCareResponse\x12<\n" +
+	"\bAdoptPet\x12\x18.user.v1.AdoptPetRequest\x1a\x18.user.v1.PetCareResponse\x12H\n" +
+	"\vGetNamedPet\x12\x1b.user.v1.GetNamedPetRequest\x1a\x1c.user.v1.GetNamedPetResponse\x12H\n" +
+	"\rClaimNamedPet\x12\x1d.user.v1.ClaimNamedPetRequest\x1a\x18.user.v1.PetCareResponse\x12<\n" +
 	"\aFeedPet\x12\x17.user.v1.FeedPetRequest\x1a\x18.user.v1.PetCareResponse\x12<\n" +
 	"\aPlayPet\x12\x17.user.v1.PlayPetRequest\x1a\x18.user.v1.PetCareResponse\x12@\n" +
 	"\tRenamePet\x12\x19.user.v1.RenamePetRequest\x1a\x18.user.v1.PetCareResponse\x12@\n" +
@@ -27300,7 +27440,7 @@ func file_api_user_v1_user_proto_rawDescGZIP() []byte {
 }
 
 var file_api_user_v1_user_proto_enumTypes = make([]protoimpl.EnumInfo, 13)
-var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 384)
+var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 387)
 var file_api_user_v1_user_proto_goTypes = []any{
 	(FieldPlace)(0),                    // 0: user.v1.FieldPlace
 	(Audience)(0),                      // 1: user.v1.Audience
@@ -27628,98 +27768,101 @@ var file_api_user_v1_user_proto_goTypes = []any{
 	(*PetState)(nil),                   // 323: user.v1.PetState
 	(*GetUserPetRequest)(nil),          // 324: user.v1.GetUserPetRequest
 	(*GetUserPetResponse)(nil),         // 325: user.v1.GetUserPetResponse
-	(*AdoptPetRequest)(nil),            // 326: user.v1.AdoptPetRequest
-	(*FeedPetRequest)(nil),             // 327: user.v1.FeedPetRequest
-	(*PlayPetRequest)(nil),             // 328: user.v1.PlayPetRequest
-	(*RenamePetRequest)(nil),           // 329: user.v1.RenamePetRequest
-	(*ReleasePetRequest)(nil),          // 330: user.v1.ReleasePetRequest
-	(*OpenPetCaseRequest)(nil),         // 331: user.v1.OpenPetCaseRequest
-	(*OpenPetCaseResponse)(nil),        // 332: user.v1.OpenPetCaseResponse
-	(*TakePetDropRequest)(nil),         // 333: user.v1.TakePetDropRequest
-	(*LeavePetDropRequest)(nil),        // 334: user.v1.LeavePetDropRequest
-	(*PetKeeperResponse)(nil),          // 335: user.v1.PetKeeperResponse
-	(*SetPetStanceRequest)(nil),        // 336: user.v1.SetPetStanceRequest
-	(*BuyPetItemRequest)(nil),          // 337: user.v1.BuyPetItemRequest
-	(*DressPetRequest)(nil),            // 338: user.v1.DressPetRequest
-	(*PetCareResponse)(nil),            // 339: user.v1.PetCareResponse
-	(*PetFighter)(nil),                 // 340: user.v1.PetFighter
-	(*PetHit)(nil),                     // 341: user.v1.PetHit
-	(*PetFight)(nil),                   // 342: user.v1.PetFight
-	(*PetBattle)(nil),                  // 343: user.v1.PetBattle
-	(*FightPetRequest)(nil),            // 344: user.v1.FightPetRequest
-	(*StartPetBattleRequest)(nil),      // 345: user.v1.StartPetBattleRequest
-	(*MovePetBattleRequest)(nil),       // 346: user.v1.MovePetBattleRequest
-	(*PetBattleResponse)(nil),          // 347: user.v1.PetBattleResponse
-	(*FightPetResponse)(nil),           // 348: user.v1.FightPetResponse
-	(*ListPetFightsRequest)(nil),       // 349: user.v1.ListPetFightsRequest
-	(*ListPetFightsResponse)(nil),      // 350: user.v1.ListPetFightsResponse
-	(*GetPetSettingsRequest)(nil),      // 351: user.v1.GetPetSettingsRequest
-	(*GetPetSettingsResponse)(nil),     // 352: user.v1.GetPetSettingsResponse
-	(*SetPetSettingsRequest)(nil),      // 353: user.v1.SetPetSettingsRequest
-	(*GetPetArenaRequest)(nil),         // 354: user.v1.GetPetArenaRequest
-	(*PetBossHit)(nil),                 // 355: user.v1.PetBossHit
-	(*PetBoss)(nil),                    // 356: user.v1.PetBoss
-	(*PetEntrant)(nil),                 // 357: user.v1.PetEntrant
-	(*PetMatch)(nil),                   // 358: user.v1.PetMatch
-	(*PetRound)(nil),                   // 359: user.v1.PetRound
-	(*PetTournament)(nil),              // 360: user.v1.PetTournament
-	(*PetSeasonPlace)(nil),             // 361: user.v1.PetSeasonPlace
-	(*PetSeason)(nil),                  // 362: user.v1.PetSeason
-	(*PetQuest)(nil),                   // 363: user.v1.PetQuest
-	(*PetAchievement)(nil),             // 364: user.v1.PetAchievement
-	(*PetListing)(nil),                 // 365: user.v1.PetListing
-	(*PetArena)(nil),                   // 366: user.v1.PetArena
-	(*GetCanvasRequest)(nil),           // 367: user.v1.GetCanvasRequest
-	(*GetCanvasResponse)(nil),          // 368: user.v1.GetCanvasResponse
-	(*PaintCanvasRequest)(nil),         // 369: user.v1.PaintCanvasRequest
-	(*PaintCanvasResponse)(nil),        // 370: user.v1.PaintCanvasResponse
-	(*GetCanvasCellRequest)(nil),       // 371: user.v1.GetCanvasCellRequest
-	(*GetCanvasCellResponse)(nil),      // 372: user.v1.GetCanvasCellResponse
-	(*RunPetArenaRequest)(nil),         // 373: user.v1.RunPetArenaRequest
-	(*RunPetArenaResponse)(nil),        // 374: user.v1.RunPetArenaResponse
-	(*GetUserFirmsRequest)(nil),        // 375: user.v1.GetUserFirmsRequest
-	(*UserFirm)(nil),                   // 376: user.v1.UserFirm
-	(*GetUserFirmsResponse)(nil),       // 377: user.v1.GetUserFirmsResponse
-	(*Title)(nil),                      // 378: user.v1.Title
-	(*GetUserTitlesRequest)(nil),       // 379: user.v1.GetUserTitlesRequest
-	(*GetUserTitlesResponse)(nil),      // 380: user.v1.GetUserTitlesResponse
-	(*GrantTitleRequest)(nil),          // 381: user.v1.GrantTitleRequest
-	(*GrantTitleResponse)(nil),         // 382: user.v1.GrantTitleResponse
-	(*RevokeTitleRequest)(nil),         // 383: user.v1.RevokeTitleRequest
-	(*DatingCard)(nil),                 // 384: user.v1.DatingCard
-	(*DatingMatch)(nil),                // 385: user.v1.DatingMatch
-	(*GetDatingRequest)(nil),           // 386: user.v1.GetDatingRequest
-	(*GetDatingResponse)(nil),          // 387: user.v1.GetDatingResponse
-	(*SaveDatingCardRequest)(nil),      // 388: user.v1.SaveDatingCardRequest
-	(*SaveDatingCardResponse)(nil),     // 389: user.v1.SaveDatingCardResponse
-	(*AnswerDatingRequest)(nil),        // 390: user.v1.AnswerDatingRequest
-	(*AnswerDatingResponse)(nil),       // 391: user.v1.AnswerDatingResponse
-	nil,                                // 392: user.v1.GetStickerAuthorsResponse.AuthorsEntry
-	nil,                                // 393: user.v1.Miner.BackpackEntry
-	nil,                                // 394: user.v1.FirmSpec.RateEntry
-	nil,                                // 395: user.v1.PetShop.PricesEntry
-	nil,                                // 396: user.v1.PetShop.CasesEntry
-	(*timestamppb.Timestamp)(nil),      // 397: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),              // 398: google.protobuf.Empty
+	(*GetNamedPetRequest)(nil),         // 326: user.v1.GetNamedPetRequest
+	(*GetNamedPetResponse)(nil),        // 327: user.v1.GetNamedPetResponse
+	(*ClaimNamedPetRequest)(nil),       // 328: user.v1.ClaimNamedPetRequest
+	(*AdoptPetRequest)(nil),            // 329: user.v1.AdoptPetRequest
+	(*FeedPetRequest)(nil),             // 330: user.v1.FeedPetRequest
+	(*PlayPetRequest)(nil),             // 331: user.v1.PlayPetRequest
+	(*RenamePetRequest)(nil),           // 332: user.v1.RenamePetRequest
+	(*ReleasePetRequest)(nil),          // 333: user.v1.ReleasePetRequest
+	(*OpenPetCaseRequest)(nil),         // 334: user.v1.OpenPetCaseRequest
+	(*OpenPetCaseResponse)(nil),        // 335: user.v1.OpenPetCaseResponse
+	(*TakePetDropRequest)(nil),         // 336: user.v1.TakePetDropRequest
+	(*LeavePetDropRequest)(nil),        // 337: user.v1.LeavePetDropRequest
+	(*PetKeeperResponse)(nil),          // 338: user.v1.PetKeeperResponse
+	(*SetPetStanceRequest)(nil),        // 339: user.v1.SetPetStanceRequest
+	(*BuyPetItemRequest)(nil),          // 340: user.v1.BuyPetItemRequest
+	(*DressPetRequest)(nil),            // 341: user.v1.DressPetRequest
+	(*PetCareResponse)(nil),            // 342: user.v1.PetCareResponse
+	(*PetFighter)(nil),                 // 343: user.v1.PetFighter
+	(*PetHit)(nil),                     // 344: user.v1.PetHit
+	(*PetFight)(nil),                   // 345: user.v1.PetFight
+	(*PetBattle)(nil),                  // 346: user.v1.PetBattle
+	(*FightPetRequest)(nil),            // 347: user.v1.FightPetRequest
+	(*StartPetBattleRequest)(nil),      // 348: user.v1.StartPetBattleRequest
+	(*MovePetBattleRequest)(nil),       // 349: user.v1.MovePetBattleRequest
+	(*PetBattleResponse)(nil),          // 350: user.v1.PetBattleResponse
+	(*FightPetResponse)(nil),           // 351: user.v1.FightPetResponse
+	(*ListPetFightsRequest)(nil),       // 352: user.v1.ListPetFightsRequest
+	(*ListPetFightsResponse)(nil),      // 353: user.v1.ListPetFightsResponse
+	(*GetPetSettingsRequest)(nil),      // 354: user.v1.GetPetSettingsRequest
+	(*GetPetSettingsResponse)(nil),     // 355: user.v1.GetPetSettingsResponse
+	(*SetPetSettingsRequest)(nil),      // 356: user.v1.SetPetSettingsRequest
+	(*GetPetArenaRequest)(nil),         // 357: user.v1.GetPetArenaRequest
+	(*PetBossHit)(nil),                 // 358: user.v1.PetBossHit
+	(*PetBoss)(nil),                    // 359: user.v1.PetBoss
+	(*PetEntrant)(nil),                 // 360: user.v1.PetEntrant
+	(*PetMatch)(nil),                   // 361: user.v1.PetMatch
+	(*PetRound)(nil),                   // 362: user.v1.PetRound
+	(*PetTournament)(nil),              // 363: user.v1.PetTournament
+	(*PetSeasonPlace)(nil),             // 364: user.v1.PetSeasonPlace
+	(*PetSeason)(nil),                  // 365: user.v1.PetSeason
+	(*PetQuest)(nil),                   // 366: user.v1.PetQuest
+	(*PetAchievement)(nil),             // 367: user.v1.PetAchievement
+	(*PetListing)(nil),                 // 368: user.v1.PetListing
+	(*PetArena)(nil),                   // 369: user.v1.PetArena
+	(*GetCanvasRequest)(nil),           // 370: user.v1.GetCanvasRequest
+	(*GetCanvasResponse)(nil),          // 371: user.v1.GetCanvasResponse
+	(*PaintCanvasRequest)(nil),         // 372: user.v1.PaintCanvasRequest
+	(*PaintCanvasResponse)(nil),        // 373: user.v1.PaintCanvasResponse
+	(*GetCanvasCellRequest)(nil),       // 374: user.v1.GetCanvasCellRequest
+	(*GetCanvasCellResponse)(nil),      // 375: user.v1.GetCanvasCellResponse
+	(*RunPetArenaRequest)(nil),         // 376: user.v1.RunPetArenaRequest
+	(*RunPetArenaResponse)(nil),        // 377: user.v1.RunPetArenaResponse
+	(*GetUserFirmsRequest)(nil),        // 378: user.v1.GetUserFirmsRequest
+	(*UserFirm)(nil),                   // 379: user.v1.UserFirm
+	(*GetUserFirmsResponse)(nil),       // 380: user.v1.GetUserFirmsResponse
+	(*Title)(nil),                      // 381: user.v1.Title
+	(*GetUserTitlesRequest)(nil),       // 382: user.v1.GetUserTitlesRequest
+	(*GetUserTitlesResponse)(nil),      // 383: user.v1.GetUserTitlesResponse
+	(*GrantTitleRequest)(nil),          // 384: user.v1.GrantTitleRequest
+	(*GrantTitleResponse)(nil),         // 385: user.v1.GrantTitleResponse
+	(*RevokeTitleRequest)(nil),         // 386: user.v1.RevokeTitleRequest
+	(*DatingCard)(nil),                 // 387: user.v1.DatingCard
+	(*DatingMatch)(nil),                // 388: user.v1.DatingMatch
+	(*GetDatingRequest)(nil),           // 389: user.v1.GetDatingRequest
+	(*GetDatingResponse)(nil),          // 390: user.v1.GetDatingResponse
+	(*SaveDatingCardRequest)(nil),      // 391: user.v1.SaveDatingCardRequest
+	(*SaveDatingCardResponse)(nil),     // 392: user.v1.SaveDatingCardResponse
+	(*AnswerDatingRequest)(nil),        // 393: user.v1.AnswerDatingRequest
+	(*AnswerDatingResponse)(nil),       // 394: user.v1.AnswerDatingResponse
+	nil,                                // 395: user.v1.GetStickerAuthorsResponse.AuthorsEntry
+	nil,                                // 396: user.v1.Miner.BackpackEntry
+	nil,                                // 397: user.v1.FirmSpec.RateEntry
+	nil,                                // 398: user.v1.PetShop.PricesEntry
+	nil,                                // 399: user.v1.PetShop.CasesEntry
+	(*timestamppb.Timestamp)(nil),      // 400: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),              // 401: google.protobuf.Empty
 }
 var file_api_user_v1_user_proto_depIdxs = []int32{
 	5,   // 0: user.v1.User.gender:type_name -> user.v1.Gender
 	6,   // 1: user.v1.User.relationship:type_name -> user.v1.Relationship
 	7,   // 2: user.v1.User.worldview:type_name -> user.v1.Worldview
 	8,   // 3: user.v1.User.political_views:type_name -> user.v1.PoliticalViews
-	397, // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
+	400, // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
 	21,  // 5: user.v1.User.privacy:type_name -> user.v1.PrivacySettings
-	397, // 6: user.v1.User.purge_at:type_name -> google.protobuf.Timestamp
+	400, // 6: user.v1.User.purge_at:type_name -> google.protobuf.Timestamp
 	18,  // 7: user.v1.User.contacts:type_name -> user.v1.Contacts
 	19,  // 8: user.v1.User.interests:type_name -> user.v1.Interests
 	20,  // 9: user.v1.User.extra_fields:type_name -> user.v1.ExtraField
-	397, // 10: user.v1.User.registered_at:type_name -> google.protobuf.Timestamp
+	400, // 10: user.v1.User.registered_at:type_name -> google.protobuf.Timestamp
 	15,  // 11: user.v1.User.interface:type_name -> user.v1.InterfaceSettings
 	14,  // 12: user.v1.User.ban:type_name -> user.v1.Ban
-	397, // 13: user.v1.User.prime_until:type_name -> google.protobuf.Timestamp
+	400, // 13: user.v1.User.prime_until:type_name -> google.protobuf.Timestamp
 	165, // 14: user.v1.User.prime_style:type_name -> user.v1.PrimeStyle
-	397, // 15: user.v1.Ban.banned_at:type_name -> google.protobuf.Timestamp
-	397, // 16: user.v1.Ban.until:type_name -> google.protobuf.Timestamp
+	400, // 15: user.v1.Ban.banned_at:type_name -> google.protobuf.Timestamp
+	400, // 16: user.v1.Ban.until:type_name -> google.protobuf.Timestamp
 	15,  // 17: user.v1.UpdateInterfaceRequest.interface:type_name -> user.v1.InterfaceSettings
 	13,  // 18: user.v1.UpdateInterfaceResponse.user:type_name -> user.v1.User
 	0,   // 19: user.v1.ExtraField.place:type_name -> user.v1.FieldPlace
@@ -27737,12 +27880,12 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	6,   // 31: user.v1.PublicProfile.relationship:type_name -> user.v1.Relationship
 	7,   // 32: user.v1.PublicProfile.worldview:type_name -> user.v1.Worldview
 	8,   // 33: user.v1.PublicProfile.political_views:type_name -> user.v1.PoliticalViews
-	397, // 34: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
+	400, // 34: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
 	18,  // 35: user.v1.PublicProfile.contacts:type_name -> user.v1.Contacts
 	19,  // 36: user.v1.PublicProfile.interests:type_name -> user.v1.Interests
 	20,  // 37: user.v1.PublicProfile.extra_fields:type_name -> user.v1.ExtraField
-	397, // 38: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
-	397, // 39: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
+	400, // 38: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
+	400, // 39: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
 	14,  // 40: user.v1.PublicProfile.ban:type_name -> user.v1.Ban
 	165, // 41: user.v1.PublicProfile.prime_style:type_name -> user.v1.PrimeStyle
 	13,  // 42: user.v1.GetMeResponse.user:type_name -> user.v1.User
@@ -27750,7 +27893,7 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	6,   // 44: user.v1.UpdateProfileRequest.relationship:type_name -> user.v1.Relationship
 	7,   // 45: user.v1.UpdateProfileRequest.worldview:type_name -> user.v1.Worldview
 	8,   // 46: user.v1.UpdateProfileRequest.political_views:type_name -> user.v1.PoliticalViews
-	397, // 47: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
+	400, // 47: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
 	13,  // 48: user.v1.UpdateProfileResponse.user:type_name -> user.v1.User
 	18,  // 49: user.v1.UpdateContactsRequest.contacts:type_name -> user.v1.Contacts
 	13,  // 50: user.v1.UpdateContactsResponse.user:type_name -> user.v1.User
@@ -27778,7 +27921,7 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	101, // 72: user.v1.GetGiftCatalogResponse.backdrops:type_name -> user.v1.GiftTrait
 	101, // 73: user.v1.GetGiftCatalogResponse.symbols:type_name -> user.v1.GiftTrait
 	105, // 74: user.v1.SendGiftResponse.gift:type_name -> user.v1.Gift
-	397, // 75: user.v1.Gift.sent_at:type_name -> google.protobuf.Timestamp
+	400, // 75: user.v1.Gift.sent_at:type_name -> google.protobuf.Timestamp
 	22,  // 76: user.v1.Gift.sender:type_name -> user.v1.PublicProfile
 	105, // 77: user.v1.ListGiftsResponse.gifts:type_name -> user.v1.Gift
 	105, // 78: user.v1.UpgradeGiftResponse.gift:type_name -> user.v1.Gift
@@ -27788,20 +27931,20 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	22,  // 82: user.v1.Collectible.owner:type_name -> user.v1.PublicProfile
 	120, // 83: user.v1.Collectible.auction:type_name -> user.v1.GiftAuction
 	121, // 84: user.v1.Collectible.history:type_name -> user.v1.GiftHistoryLine
-	397, // 85: user.v1.GiftAuction.ends_at:type_name -> google.protobuf.Timestamp
+	400, // 85: user.v1.GiftAuction.ends_at:type_name -> google.protobuf.Timestamp
 	22,  // 86: user.v1.GiftAuction.seller:type_name -> user.v1.PublicProfile
 	22,  // 87: user.v1.GiftAuction.bidder:type_name -> user.v1.PublicProfile
-	397, // 88: user.v1.GiftHistoryLine.at:type_name -> google.protobuf.Timestamp
+	400, // 88: user.v1.GiftHistoryLine.at:type_name -> google.protobuf.Timestamp
 	22,  // 89: user.v1.GiftHistoryLine.from:type_name -> user.v1.PublicProfile
 	22,  // 90: user.v1.GiftHistoryLine.to:type_name -> user.v1.PublicProfile
 	119, // 91: user.v1.ListGiftMarketResponse.collectibles:type_name -> user.v1.Collectible
 	119, // 92: user.v1.ListGiftAuctionsResponse.collectibles:type_name -> user.v1.Collectible
-	397, // 93: user.v1.VoteOperation.created_at:type_name -> google.protobuf.Timestamp
+	400, // 93: user.v1.VoteOperation.created_at:type_name -> google.protobuf.Timestamp
 	138, // 94: user.v1.ListVoteOperationsResponse.operations:type_name -> user.v1.VoteOperation
 	140, // 95: user.v1.CreateVoucherResponse.voucher:type_name -> user.v1.Voucher
 	140, // 96: user.v1.ListVouchersResponse.vouchers:type_name -> user.v1.Voucher
 	158, // 97: user.v1.GetPrimeResponse.prices:type_name -> user.v1.PrimePrices
-	397, // 98: user.v1.BuyPrimeResponse.until:type_name -> google.protobuf.Timestamp
+	400, // 98: user.v1.BuyPrimeResponse.until:type_name -> google.protobuf.Timestamp
 	158, // 99: user.v1.SetPrimePricesRequest.prices:type_name -> user.v1.PrimePrices
 	165, // 100: user.v1.SetPrimeStyleRequest.style:type_name -> user.v1.PrimeStyle
 	10,  // 101: user.v1.GetDecorResponse.decor:type_name -> user.v1.Decor
@@ -27821,23 +27964,23 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	170, // 115: user.v1.SetCasinoRequest.prizes:type_name -> user.v1.CasinoPrize
 	173, // 116: user.v1.SetCasinoBetsRequest.aim:type_name -> user.v1.AimMultiplier
 	197, // 117: user.v1.BetEvent.outcomes:type_name -> user.v1.BetOutcome
-	397, // 118: user.v1.BetEvent.closes_at:type_name -> google.protobuf.Timestamp
-	397, // 119: user.v1.BetEvent.created_at:type_name -> google.protobuf.Timestamp
+	400, // 118: user.v1.BetEvent.closes_at:type_name -> google.protobuf.Timestamp
+	400, // 119: user.v1.BetEvent.created_at:type_name -> google.protobuf.Timestamp
 	198, // 120: user.v1.ListBetEventsResponse.events:type_name -> user.v1.BetEvent
-	397, // 121: user.v1.CreateBetEventRequest.closes_at:type_name -> google.protobuf.Timestamp
+	400, // 121: user.v1.CreateBetEventRequest.closes_at:type_name -> google.protobuf.Timestamp
 	210, // 122: user.v1.Ad.stats:type_name -> user.v1.AdStats
 	209, // 123: user.v1.ListAdsResponse.ads:type_name -> user.v1.Ad
 	209, // 124: user.v1.CreateAdResponse.ad:type_name -> user.v1.Ad
 	209, // 125: user.v1.EditAdResponse.ad:type_name -> user.v1.Ad
-	397, // 126: user.v1.BanUserRequest.until:type_name -> google.protobuf.Timestamp
+	400, // 126: user.v1.BanUserRequest.until:type_name -> google.protobuf.Timestamp
 	227, // 127: user.v1.GetStickerCatalogResponse.packs:type_name -> user.v1.StickerPack
 	227, // 128: user.v1.ListMyStickerPacksResponse.packs:type_name -> user.v1.StickerPack
 	227, // 129: user.v1.CreateStickerPackResponse.pack:type_name -> user.v1.StickerPack
 	227, // 130: user.v1.EditStickerPackResponse.pack:type_name -> user.v1.StickerPack
-	392, // 131: user.v1.GetStickerAuthorsResponse.authors:type_name -> user.v1.GetStickerAuthorsResponse.AuthorsEntry
+	395, // 131: user.v1.GetStickerAuthorsResponse.authors:type_name -> user.v1.GetStickerAuthorsResponse.AuthorsEntry
 	240, // 132: user.v1.MineSettings.veins:type_name -> user.v1.OreVein
 	241, // 133: user.v1.MineSettings.events:type_name -> user.v1.MineEvents
-	393, // 134: user.v1.Miner.backpack:type_name -> user.v1.Miner.BackpackEntry
+	396, // 134: user.v1.Miner.backpack:type_name -> user.v1.Miner.BackpackEntry
 	242, // 135: user.v1.MineState.settings:type_name -> user.v1.MineSettings
 	243, // 136: user.v1.MineState.miner:type_name -> user.v1.Miner
 	245, // 137: user.v1.DigOreResponse.mine:type_name -> user.v1.MineState
@@ -27847,39 +27990,39 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	253, // 141: user.v1.FirmSettings.plans:type_name -> user.v1.FirmPlan
 	254, // 142: user.v1.FirmSettings.goods:type_name -> user.v1.GoodPlan
 	257, // 143: user.v1.FirmSpec.inputs:type_name -> user.v1.FirmInput
-	394, // 144: user.v1.FirmSpec.rate:type_name -> user.v1.FirmSpec.RateEntry
-	397, // 145: user.v1.FirmHour.hour:type_name -> google.protobuf.Timestamp
-	397, // 146: user.v1.Firm.founded_at:type_name -> google.protobuf.Timestamp
+	397, // 144: user.v1.FirmSpec.rate:type_name -> user.v1.FirmSpec.RateEntry
+	400, // 145: user.v1.FirmHour.hour:type_name -> google.protobuf.Timestamp
+	400, // 146: user.v1.Firm.founded_at:type_name -> google.protobuf.Timestamp
 	259, // 147: user.v1.Firm.stock:type_name -> user.v1.FirmStock
 	260, // 148: user.v1.Firm.hours:type_name -> user.v1.FirmHour
 	261, // 149: user.v1.Firm.holders:type_name -> user.v1.FirmHolder
-	397, // 150: user.v1.Firm.idle_until:type_name -> google.protobuf.Timestamp
+	400, // 150: user.v1.Firm.idle_until:type_name -> google.protobuf.Timestamp
 	262, // 151: user.v1.Firm.improvements:type_name -> user.v1.FirmImprovement
 	260, // 152: user.v1.Firm.forecast:type_name -> user.v1.FirmHour
 	264, // 153: user.v1.Firm.routes:type_name -> user.v1.FirmRoute
-	397, // 154: user.v1.StockTender.placed_at:type_name -> google.protobuf.Timestamp
-	397, // 155: user.v1.StockTender.until:type_name -> google.protobuf.Timestamp
-	397, // 156: user.v1.ExchangeOrder.placed_at:type_name -> google.protobuf.Timestamp
-	397, // 157: user.v1.FirmContract.posted:type_name -> google.protobuf.Timestamp
-	397, // 158: user.v1.FirmContract.deadline:type_name -> google.protobuf.Timestamp
-	397, // 159: user.v1.FirmEvent.start:type_name -> google.protobuf.Timestamp
-	397, // 160: user.v1.FirmEvent.end:type_name -> google.protobuf.Timestamp
+	400, // 154: user.v1.StockTender.placed_at:type_name -> google.protobuf.Timestamp
+	400, // 155: user.v1.StockTender.until:type_name -> google.protobuf.Timestamp
+	400, // 156: user.v1.ExchangeOrder.placed_at:type_name -> google.protobuf.Timestamp
+	400, // 157: user.v1.FirmContract.posted:type_name -> google.protobuf.Timestamp
+	400, // 158: user.v1.FirmContract.deadline:type_name -> google.protobuf.Timestamp
+	400, // 159: user.v1.FirmEvent.start:type_name -> google.protobuf.Timestamp
+	400, // 160: user.v1.FirmEvent.end:type_name -> google.protobuf.Timestamp
 	255, // 161: user.v1.FirmsState.settings:type_name -> user.v1.FirmSettings
 	256, // 162: user.v1.FirmsState.catalog:type_name -> user.v1.FirmSpec
 	258, // 163: user.v1.FirmsState.quotes:type_name -> user.v1.GoodQuote
 	263, // 164: user.v1.FirmsState.firms:type_name -> user.v1.Firm
 	267, // 165: user.v1.FirmsState.orders:type_name -> user.v1.ExchangeOrder
-	397, // 166: user.v1.FirmsState.next_hour:type_name -> google.protobuf.Timestamp
+	400, // 166: user.v1.FirmsState.next_hour:type_name -> google.protobuf.Timestamp
 	268, // 167: user.v1.FirmsState.contracts:type_name -> user.v1.FirmContract
 	269, // 168: user.v1.FirmsState.news:type_name -> user.v1.FirmEvent
 	265, // 169: user.v1.FirmsState.labour:type_name -> user.v1.FirmLabour
 	266, // 170: user.v1.FirmsState.tenders:type_name -> user.v1.StockTender
 	273, // 171: user.v1.RunFirmsResponse.deals:type_name -> user.v1.FirmDeal
 	271, // 172: user.v1.RunFirmsResponse.firms:type_name -> user.v1.FirmsState
-	397, // 173: user.v1.StockCandle.hour:type_name -> google.protobuf.Timestamp
+	400, // 173: user.v1.StockCandle.hour:type_name -> google.protobuf.Timestamp
 	276, // 174: user.v1.StockCompany.candles:type_name -> user.v1.StockCandle
-	397, // 175: user.v1.StockIndexPoint.hour:type_name -> google.protobuf.Timestamp
-	397, // 176: user.v1.StockOrder.placed_at:type_name -> google.protobuf.Timestamp
+	400, // 175: user.v1.StockIndexPoint.hour:type_name -> google.protobuf.Timestamp
+	400, // 176: user.v1.StockOrder.placed_at:type_name -> google.protobuf.Timestamp
 	277, // 177: user.v1.StocksState.companies:type_name -> user.v1.StockCompany
 	278, // 178: user.v1.StocksState.index:type_name -> user.v1.StockIndexPoint
 	269, // 179: user.v1.StocksState.news:type_name -> user.v1.FirmEvent
@@ -27887,12 +28030,12 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	279, // 181: user.v1.StocksState.orders:type_name -> user.v1.StockOrder
 	280, // 182: user.v1.StocksState.bids:type_name -> user.v1.StockLevel
 	280, // 183: user.v1.StocksState.asks:type_name -> user.v1.StockLevel
-	397, // 184: user.v1.StocksState.next_hour:type_name -> google.protobuf.Timestamp
+	400, // 184: user.v1.StocksState.next_hour:type_name -> google.protobuf.Timestamp
 	266, // 185: user.v1.StocksState.tenders:type_name -> user.v1.StockTender
 	282, // 186: user.v1.RunStocksResponse.stocks:type_name -> user.v1.StocksState
 	255, // 187: user.v1.GetFirmSettingsResponse.settings:type_name -> user.v1.FirmSettings
 	255, // 188: user.v1.SetFirmSettingsRequest.settings:type_name -> user.v1.FirmSettings
-	397, // 189: user.v1.BankAccount.due_at:type_name -> google.protobuf.Timestamp
+	400, // 189: user.v1.BankAccount.due_at:type_name -> google.protobuf.Timestamp
 	288, // 190: user.v1.BankState.settings:type_name -> user.v1.BankSettings
 	289, // 191: user.v1.BankState.account:type_name -> user.v1.BankAccount
 	291, // 192: user.v1.BankMoveResponse.bank:type_name -> user.v1.BankState
@@ -27901,459 +28044,464 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	307, // 195: user.v1.ListHoldemTablesResponse.tables:type_name -> user.v1.HoldemTable
 	307, // 196: user.v1.HoldemTableResponse.table:type_name -> user.v1.HoldemTable
 	306, // 197: user.v1.HoldemTable.seats:type_name -> user.v1.HoldemSeat
-	397, // 198: user.v1.Guest.visited_at:type_name -> google.protobuf.Timestamp
+	400, // 198: user.v1.Guest.visited_at:type_name -> google.protobuf.Timestamp
 	310, // 199: user.v1.ListGuestsResponse.guests:type_name -> user.v1.Guest
-	397, // 200: user.v1.ListGuestsResponse.seen_at:type_name -> google.protobuf.Timestamp
+	400, // 200: user.v1.ListGuestsResponse.seen_at:type_name -> google.protobuf.Timestamp
 	313, // 201: user.v1.ListTopResponse.entries:type_name -> user.v1.TopEntry
-	395, // 202: user.v1.PetShop.prices:type_name -> user.v1.PetShop.PricesEntry
-	396, // 203: user.v1.PetShop.cases:type_name -> user.v1.PetShop.CasesEntry
+	398, // 202: user.v1.PetShop.prices:type_name -> user.v1.PetShop.PricesEntry
+	399, // 203: user.v1.PetShop.cases:type_name -> user.v1.PetShop.CasesEntry
 	316, // 204: user.v1.PetKind.stats:type_name -> user.v1.PetStats
 	316, // 205: user.v1.PetItem.bonus:type_name -> user.v1.PetStats
-	397, // 206: user.v1.Pet.born_at:type_name -> google.protobuf.Timestamp
-	397, // 207: user.v1.Pet.play_at:type_name -> google.protobuf.Timestamp
+	400, // 206: user.v1.Pet.born_at:type_name -> google.protobuf.Timestamp
+	400, // 207: user.v1.Pet.play_at:type_name -> google.protobuf.Timestamp
 	316, // 208: user.v1.Pet.breed:type_name -> user.v1.PetStats
 	316, // 209: user.v1.Pet.clothes:type_name -> user.v1.PetStats
-	397, // 210: user.v1.Pet.sale_at:type_name -> google.protobuf.Timestamp
-	397, // 211: user.v1.Pet.boss_at:type_name -> google.protobuf.Timestamp
+	400, // 210: user.v1.Pet.sale_at:type_name -> google.protobuf.Timestamp
+	400, // 211: user.v1.Pet.boss_at:type_name -> google.protobuf.Timestamp
 	315, // 212: user.v1.PetState.shop:type_name -> user.v1.PetShop
 	321, // 213: user.v1.PetState.pets:type_name -> user.v1.Pet
 	317, // 214: user.v1.PetState.kinds:type_name -> user.v1.PetKind
 	318, // 215: user.v1.PetState.cases:type_name -> user.v1.PetCase
 	320, // 216: user.v1.PetState.items:type_name -> user.v1.PetItem
 	319, // 217: user.v1.PetState.keeper:type_name -> user.v1.PetKeeper
-	343, // 218: user.v1.PetState.battles:type_name -> user.v1.PetBattle
+	346, // 218: user.v1.PetState.battles:type_name -> user.v1.PetBattle
 	321, // 219: user.v1.GetUserPetResponse.pets:type_name -> user.v1.Pet
-	319, // 220: user.v1.OpenPetCaseResponse.keeper:type_name -> user.v1.PetKeeper
-	319, // 221: user.v1.PetKeeperResponse.keeper:type_name -> user.v1.PetKeeper
-	321, // 222: user.v1.PetCareResponse.pet:type_name -> user.v1.Pet
-	397, // 223: user.v1.PetFight.fought_at:type_name -> google.protobuf.Timestamp
-	340, // 224: user.v1.PetFight.attacker:type_name -> user.v1.PetFighter
-	340, // 225: user.v1.PetFight.defender:type_name -> user.v1.PetFighter
-	341, // 226: user.v1.PetFight.hits:type_name -> user.v1.PetHit
-	340, // 227: user.v1.PetBattle.attacker:type_name -> user.v1.PetFighter
-	340, // 228: user.v1.PetBattle.defender:type_name -> user.v1.PetFighter
-	341, // 229: user.v1.PetBattle.hits:type_name -> user.v1.PetHit
-	343, // 230: user.v1.PetBattleResponse.battle:type_name -> user.v1.PetBattle
-	321, // 231: user.v1.PetBattleResponse.pet:type_name -> user.v1.Pet
-	342, // 232: user.v1.PetBattleResponse.fight:type_name -> user.v1.PetFight
-	342, // 233: user.v1.FightPetResponse.fight:type_name -> user.v1.PetFight
-	321, // 234: user.v1.FightPetResponse.pet:type_name -> user.v1.Pet
-	342, // 235: user.v1.ListPetFightsResponse.fights:type_name -> user.v1.PetFight
-	315, // 236: user.v1.GetPetSettingsResponse.shop:type_name -> user.v1.PetShop
-	315, // 237: user.v1.SetPetSettingsRequest.shop:type_name -> user.v1.PetShop
-	397, // 238: user.v1.PetBoss.week:type_name -> google.protobuf.Timestamp
-	397, // 239: user.v1.PetBoss.killed_at:type_name -> google.protobuf.Timestamp
-	355, // 240: user.v1.PetBoss.hits:type_name -> user.v1.PetBossHit
-	316, // 241: user.v1.PetBoss.stats:type_name -> user.v1.PetStats
-	342, // 242: user.v1.PetMatch.bout:type_name -> user.v1.PetFight
-	358, // 243: user.v1.PetRound.matches:type_name -> user.v1.PetMatch
-	397, // 244: user.v1.PetTournament.week:type_name -> google.protobuf.Timestamp
-	397, // 245: user.v1.PetTournament.starts_at:type_name -> google.protobuf.Timestamp
-	357, // 246: user.v1.PetTournament.entrants:type_name -> user.v1.PetEntrant
-	359, // 247: user.v1.PetTournament.rounds:type_name -> user.v1.PetRound
-	397, // 248: user.v1.PetSeason.season:type_name -> google.protobuf.Timestamp
-	361, // 249: user.v1.PetSeason.places:type_name -> user.v1.PetSeasonPlace
-	397, // 250: user.v1.PetAchievement.got_at:type_name -> google.protobuf.Timestamp
-	321, // 251: user.v1.PetListing.pet:type_name -> user.v1.Pet
-	356, // 252: user.v1.PetArena.boss:type_name -> user.v1.PetBoss
-	360, // 253: user.v1.PetArena.tournament:type_name -> user.v1.PetTournament
-	360, // 254: user.v1.PetArena.last:type_name -> user.v1.PetTournament
-	397, // 255: user.v1.PetArena.season_ends_at:type_name -> google.protobuf.Timestamp
-	361, // 256: user.v1.PetArena.top:type_name -> user.v1.PetSeasonPlace
-	362, // 257: user.v1.PetArena.seasons:type_name -> user.v1.PetSeason
-	363, // 258: user.v1.PetArena.quests:type_name -> user.v1.PetQuest
-	364, // 259: user.v1.PetArena.achievements:type_name -> user.v1.PetAchievement
-	365, // 260: user.v1.PetArena.market:type_name -> user.v1.PetListing
-	397, // 261: user.v1.GetCanvasResponse.next_at:type_name -> google.protobuf.Timestamp
-	397, // 262: user.v1.PaintCanvasResponse.next_at:type_name -> google.protobuf.Timestamp
-	397, // 263: user.v1.GetCanvasCellResponse.painted_at:type_name -> google.protobuf.Timestamp
-	366, // 264: user.v1.RunPetArenaResponse.arena:type_name -> user.v1.PetArena
-	342, // 265: user.v1.RunPetArenaResponse.bout:type_name -> user.v1.PetFight
-	376, // 266: user.v1.GetUserFirmsResponse.firms:type_name -> user.v1.UserFirm
-	397, // 267: user.v1.Title.granted_at:type_name -> google.protobuf.Timestamp
-	378, // 268: user.v1.GetUserTitlesResponse.titles:type_name -> user.v1.Title
-	378, // 269: user.v1.GrantTitleResponse.title:type_name -> user.v1.Title
-	397, // 270: user.v1.DatingCard.updated_at:type_name -> google.protobuf.Timestamp
-	397, // 271: user.v1.DatingMatch.matched_at:type_name -> google.protobuf.Timestamp
-	384, // 272: user.v1.GetDatingResponse.card:type_name -> user.v1.DatingCard
-	384, // 273: user.v1.GetDatingResponse.deck:type_name -> user.v1.DatingCard
-	385, // 274: user.v1.GetDatingResponse.matches:type_name -> user.v1.DatingMatch
-	384, // 275: user.v1.SaveDatingCardResponse.card:type_name -> user.v1.DatingCard
-	23,  // 276: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
-	25,  // 277: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
-	27,  // 278: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
-	52,  // 279: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
-	54,  // 280: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
-	37,  // 281: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
-	16,  // 282: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
-	29,  // 283: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
-	31,  // 284: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
-	33,  // 285: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
-	51,  // 286: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
-	57,  // 287: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
-	35,  // 288: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
-	39,  // 289: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
-	59,  // 290: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
-	41,  // 291: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
-	43,  // 292: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
-	42,  // 293: user.v1.UserService.AcceptInvite:input_type -> user.v1.AcceptInviteRequest
-	44,  // 294: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
-	46,  // 295: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
-	46,  // 296: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
-	47,  // 297: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
-	48,  // 298: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
-	61,  // 299: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
-	65,  // 300: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
-	67,  // 301: user.v1.UserService.GetBoughtPosts:input_type -> user.v1.GetBoughtPostsRequest
-	69,  // 302: user.v1.UserService.BuyPost:input_type -> user.v1.BuyPostRequest
-	71,  // 303: user.v1.UserService.PayMessage:input_type -> user.v1.PayMessageRequest
-	73,  // 304: user.v1.UserService.RefundMessage:input_type -> user.v1.RefundMessageRequest
-	84,  // 305: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
-	86,  // 306: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
-	89,  // 307: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
-	63,  // 308: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
-	74,  // 309: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
-	75,  // 310: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
-	76,  // 311: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
-	78,  // 312: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
-	80,  // 313: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
-	81,  // 314: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
-	82,  // 315: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
-	91,  // 316: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
-	99,  // 317: user.v1.UserService.GetGiftCatalog:input_type -> user.v1.GetGiftCatalogRequest
-	103, // 318: user.v1.UserService.SendGift:input_type -> user.v1.SendGiftRequest
-	106, // 319: user.v1.UserService.ListGifts:input_type -> user.v1.ListGiftsRequest
-	108, // 320: user.v1.UserService.DeleteGift:input_type -> user.v1.DeleteGiftRequest
-	109, // 321: user.v1.UserService.SetGiftPrice:input_type -> user.v1.SetGiftPriceRequest
-	110, // 322: user.v1.UserService.UpgradeGift:input_type -> user.v1.UpgradeGiftRequest
-	112, // 323: user.v1.UserService.TransferGift:input_type -> user.v1.TransferGiftRequest
-	113, // 324: user.v1.UserService.SetGiftSale:input_type -> user.v1.SetGiftSaleRequest
-	115, // 325: user.v1.UserService.BuyGift:input_type -> user.v1.BuyGiftRequest
-	117, // 326: user.v1.UserService.GetCollectible:input_type -> user.v1.GetCollectibleRequest
-	122, // 327: user.v1.UserService.ListGiftMarket:input_type -> user.v1.ListGiftMarketRequest
-	124, // 328: user.v1.UserService.StartGiftAuction:input_type -> user.v1.StartGiftAuctionRequest
-	125, // 329: user.v1.UserService.MintGiftAuction:input_type -> user.v1.MintGiftAuctionRequest
-	127, // 330: user.v1.UserService.CancelGiftAuction:input_type -> user.v1.CancelGiftAuctionRequest
-	128, // 331: user.v1.UserService.BidGift:input_type -> user.v1.BidGiftRequest
-	130, // 332: user.v1.UserService.ListGiftAuctions:input_type -> user.v1.ListGiftAuctionsRequest
-	132, // 333: user.v1.UserService.SetGiftSupply:input_type -> user.v1.SetGiftSupplyRequest
-	225, // 334: user.v1.UserService.GetStickerCatalog:input_type -> user.v1.GetStickerCatalogRequest
-	228, // 335: user.v1.UserService.AddStickerPack:input_type -> user.v1.AddStickerPackRequest
-	229, // 336: user.v1.UserService.RemoveStickerPack:input_type -> user.v1.RemoveStickerPackRequest
-	230, // 337: user.v1.UserService.ListMyStickerPacks:input_type -> user.v1.ListMyStickerPacksRequest
-	232, // 338: user.v1.UserService.CreateStickerPack:input_type -> user.v1.CreateStickerPackRequest
-	234, // 339: user.v1.UserService.EditStickerPack:input_type -> user.v1.EditStickerPackRequest
-	236, // 340: user.v1.UserService.DeleteStickerPack:input_type -> user.v1.DeleteStickerPackRequest
-	238, // 341: user.v1.UserService.GetStickerAuthors:input_type -> user.v1.GetStickerAuthorsRequest
-	133, // 342: user.v1.UserService.TransferVotes:input_type -> user.v1.TransferVotesRequest
-	135, // 343: user.v1.UserService.RedeemVoucher:input_type -> user.v1.RedeemVoucherRequest
-	137, // 344: user.v1.UserService.ListVoteOperations:input_type -> user.v1.ListVoteOperationsRequest
-	141, // 345: user.v1.UserService.CreateVoucher:input_type -> user.v1.CreateVoucherRequest
-	143, // 346: user.v1.UserService.ListVouchers:input_type -> user.v1.ListVouchersRequest
-	145, // 347: user.v1.UserService.DeleteVoucher:input_type -> user.v1.DeleteVoucherRequest
-	146, // 348: user.v1.UserService.GetVoteRate:input_type -> user.v1.GetVoteRateRequest
-	148, // 349: user.v1.UserService.SetVoteRate:input_type -> user.v1.SetVoteRateRequest
-	149, // 350: user.v1.UserService.GetTreasury:input_type -> user.v1.GetTreasuryRequest
-	152, // 351: user.v1.UserService.GetBonus:input_type -> user.v1.GetBonusRequest
-	154, // 352: user.v1.UserService.ClaimBonus:input_type -> user.v1.ClaimBonusRequest
-	151, // 353: user.v1.UserService.SetEconomy:input_type -> user.v1.SetEconomyRequest
-	156, // 354: user.v1.UserService.RaiseRating:input_type -> user.v1.RaiseRatingRequest
-	159, // 355: user.v1.UserService.GetPrime:input_type -> user.v1.GetPrimeRequest
-	161, // 356: user.v1.UserService.BuyPrime:input_type -> user.v1.BuyPrimeRequest
-	163, // 357: user.v1.UserService.SetPrimePrices:input_type -> user.v1.SetPrimePricesRequest
-	164, // 358: user.v1.UserService.SetPrimeInvisible:input_type -> user.v1.SetPrimeInvisibleRequest
-	166, // 359: user.v1.UserService.SetPrimeStyle:input_type -> user.v1.SetPrimeStyleRequest
-	167, // 360: user.v1.UserService.GetDecor:input_type -> user.v1.GetDecorRequest
-	169, // 361: user.v1.UserService.SetDecor:input_type -> user.v1.SetDecorRequest
-	171, // 362: user.v1.UserService.GetCasino:input_type -> user.v1.GetCasinoRequest
-	174, // 363: user.v1.UserService.GetCasinoSettings:input_type -> user.v1.GetCasinoSettingsRequest
-	191, // 364: user.v1.UserService.SetCasino:input_type -> user.v1.SetCasinoRequest
-	192, // 365: user.v1.UserService.SpinCasino:input_type -> user.v1.SpinCasinoRequest
-	194, // 366: user.v1.UserService.SetCasinoBets:input_type -> user.v1.SetCasinoBetsRequest
-	195, // 367: user.v1.UserService.BetCasino:input_type -> user.v1.BetCasinoRequest
-	199, // 368: user.v1.UserService.ListBetEvents:input_type -> user.v1.ListBetEventsRequest
-	201, // 369: user.v1.UserService.CreateBetEvent:input_type -> user.v1.CreateBetEventRequest
-	203, // 370: user.v1.UserService.CloseBetEvent:input_type -> user.v1.BetEventRequest
-	204, // 371: user.v1.UserService.ResolveBetEvent:input_type -> user.v1.ResolveBetEventRequest
-	203, // 372: user.v1.UserService.CancelBetEvent:input_type -> user.v1.BetEventRequest
-	203, // 373: user.v1.UserService.DeleteBetEvent:input_type -> user.v1.BetEventRequest
-	202, // 374: user.v1.UserService.SetBetEventOdds:input_type -> user.v1.SetBetEventOddsRequest
-	205, // 375: user.v1.UserService.StakeBet:input_type -> user.v1.StakeBetRequest
-	177, // 376: user.v1.UserService.SetCasinoRocket:input_type -> user.v1.SetCasinoRocketRequest
-	178, // 377: user.v1.UserService.SetCasinoJackpot:input_type -> user.v1.SetCasinoJackpotRequest
-	179, // 378: user.v1.UserService.LaunchRocket:input_type -> user.v1.LaunchRocketRequest
-	180, // 379: user.v1.UserService.GetRocket:input_type -> user.v1.RocketRequest
-	180, // 380: user.v1.UserService.CashRocket:input_type -> user.v1.RocketRequest
-	183, // 381: user.v1.UserService.GetPoker:input_type -> user.v1.GetPokerRequest
-	185, // 382: user.v1.UserService.DealPoker:input_type -> user.v1.DealPokerRequest
-	186, // 383: user.v1.UserService.FoldPoker:input_type -> user.v1.PokerHandRequest
-	186, // 384: user.v1.UserService.CallPoker:input_type -> user.v1.PokerHandRequest
-	188, // 385: user.v1.UserService.GetPokerSettings:input_type -> user.v1.GetPokerSettingsRequest
-	190, // 386: user.v1.UserService.SetPokerSettings:input_type -> user.v1.SetPokerSettingsRequest
-	297, // 387: user.v1.UserService.ListHoldemTables:input_type -> user.v1.ListHoldemTablesRequest
-	299, // 388: user.v1.UserService.CreateHoldemTable:input_type -> user.v1.CreateHoldemTableRequest
-	300, // 389: user.v1.UserService.QuickHoldem:input_type -> user.v1.QuickHoldemRequest
-	301, // 390: user.v1.UserService.GetHoldemTable:input_type -> user.v1.HoldemTableRequest
-	302, // 391: user.v1.UserService.SitHoldemTable:input_type -> user.v1.SitHoldemTableRequest
-	301, // 392: user.v1.UserService.LeaveHoldemTable:input_type -> user.v1.HoldemTableRequest
-	303, // 393: user.v1.UserService.ActHoldemTable:input_type -> user.v1.ActHoldemTableRequest
-	301, // 394: user.v1.UserService.BackHoldemTable:input_type -> user.v1.HoldemTableRequest
-	304, // 395: user.v1.UserService.InviteHoldemTable:input_type -> user.v1.InviteHoldemTableRequest
-	207, // 396: user.v1.UserService.SetVerified:input_type -> user.v1.SetVerifiedRequest
-	208, // 397: user.v1.UserService.SetAlert:input_type -> user.v1.SetAlertRequest
-	211, // 398: user.v1.UserService.ListAds:input_type -> user.v1.ListAdsRequest
-	213, // 399: user.v1.UserService.CreateAd:input_type -> user.v1.CreateAdRequest
-	215, // 400: user.v1.UserService.EditAd:input_type -> user.v1.EditAdRequest
-	217, // 401: user.v1.UserService.DeleteAd:input_type -> user.v1.DeleteAdRequest
-	219, // 402: user.v1.UserService.ViewAd:input_type -> user.v1.ViewAdRequest
-	221, // 403: user.v1.UserService.ClickAd:input_type -> user.v1.ClickAdRequest
-	223, // 404: user.v1.UserService.BanUser:input_type -> user.v1.BanUserRequest
-	224, // 405: user.v1.UserService.UnbanUser:input_type -> user.v1.UnbanUserRequest
-	93,  // 406: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
-	95,  // 407: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
-	97,  // 408: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
-	244, // 409: user.v1.UserService.GetMine:input_type -> user.v1.GetMineRequest
-	246, // 410: user.v1.UserService.DigOre:input_type -> user.v1.DigOreRequest
-	248, // 411: user.v1.UserService.SellOre:input_type -> user.v1.SellOreRequest
-	250, // 412: user.v1.UserService.GetMineSettings:input_type -> user.v1.GetMineSettingsRequest
-	252, // 413: user.v1.UserService.SetMine:input_type -> user.v1.SetMineRequest
-	270, // 414: user.v1.UserService.GetFirms:input_type -> user.v1.GetFirmsRequest
-	272, // 415: user.v1.UserService.RunFirms:input_type -> user.v1.RunFirmsRequest
-	375, // 416: user.v1.UserService.GetUserFirms:input_type -> user.v1.GetUserFirmsRequest
-	285, // 417: user.v1.UserService.GetFirmSettings:input_type -> user.v1.GetFirmSettingsRequest
-	287, // 418: user.v1.UserService.SetFirmSettings:input_type -> user.v1.SetFirmSettingsRequest
-	275, // 419: user.v1.UserService.GetStocks:input_type -> user.v1.GetStocksRequest
-	283, // 420: user.v1.UserService.RunStocks:input_type -> user.v1.RunStocksRequest
-	290, // 421: user.v1.UserService.GetBank:input_type -> user.v1.GetBankRequest
-	292, // 422: user.v1.UserService.PutDeposit:input_type -> user.v1.BankAmountRequest
-	292, // 423: user.v1.UserService.TakeDeposit:input_type -> user.v1.BankAmountRequest
-	292, // 424: user.v1.UserService.TakeLoan:input_type -> user.v1.BankAmountRequest
-	292, // 425: user.v1.UserService.RepayLoan:input_type -> user.v1.BankAmountRequest
-	294, // 426: user.v1.UserService.GetBankSettings:input_type -> user.v1.GetBankSettingsRequest
-	296, // 427: user.v1.UserService.SetBankSettings:input_type -> user.v1.SetBankSettingsRequest
-	308, // 428: user.v1.UserService.VisitPage:input_type -> user.v1.VisitPageRequest
-	309, // 429: user.v1.UserService.ListGuests:input_type -> user.v1.ListGuestsRequest
-	312, // 430: user.v1.UserService.ListTop:input_type -> user.v1.ListTopRequest
-	322, // 431: user.v1.UserService.GetPet:input_type -> user.v1.GetPetRequest
-	324, // 432: user.v1.UserService.GetUserPet:input_type -> user.v1.GetUserPetRequest
-	326, // 433: user.v1.UserService.AdoptPet:input_type -> user.v1.AdoptPetRequest
-	327, // 434: user.v1.UserService.FeedPet:input_type -> user.v1.FeedPetRequest
-	328, // 435: user.v1.UserService.PlayPet:input_type -> user.v1.PlayPetRequest
-	329, // 436: user.v1.UserService.RenamePet:input_type -> user.v1.RenamePetRequest
-	330, // 437: user.v1.UserService.ReleasePet:input_type -> user.v1.ReleasePetRequest
-	344, // 438: user.v1.UserService.FightPet:input_type -> user.v1.FightPetRequest
-	349, // 439: user.v1.UserService.ListPetFights:input_type -> user.v1.ListPetFightsRequest
-	331, // 440: user.v1.UserService.OpenPetCase:input_type -> user.v1.OpenPetCaseRequest
-	333, // 441: user.v1.UserService.TakePetDrop:input_type -> user.v1.TakePetDropRequest
-	334, // 442: user.v1.UserService.LeavePetDrop:input_type -> user.v1.LeavePetDropRequest
-	336, // 443: user.v1.UserService.SetPetStance:input_type -> user.v1.SetPetStanceRequest
-	345, // 444: user.v1.UserService.StartPetBattle:input_type -> user.v1.StartPetBattleRequest
-	346, // 445: user.v1.UserService.MovePetBattle:input_type -> user.v1.MovePetBattleRequest
-	337, // 446: user.v1.UserService.BuyPetItem:input_type -> user.v1.BuyPetItemRequest
-	338, // 447: user.v1.UserService.DressPet:input_type -> user.v1.DressPetRequest
-	351, // 448: user.v1.UserService.GetPetSettings:input_type -> user.v1.GetPetSettingsRequest
-	353, // 449: user.v1.UserService.SetPetSettings:input_type -> user.v1.SetPetSettingsRequest
-	354, // 450: user.v1.UserService.GetPetArena:input_type -> user.v1.GetPetArenaRequest
-	373, // 451: user.v1.UserService.RunPetArena:input_type -> user.v1.RunPetArenaRequest
-	367, // 452: user.v1.UserService.GetCanvas:input_type -> user.v1.GetCanvasRequest
-	369, // 453: user.v1.UserService.PaintCanvas:input_type -> user.v1.PaintCanvasRequest
-	371, // 454: user.v1.UserService.GetCanvasCell:input_type -> user.v1.GetCanvasCellRequest
-	386, // 455: user.v1.UserService.GetDating:input_type -> user.v1.GetDatingRequest
-	388, // 456: user.v1.UserService.SaveDatingCard:input_type -> user.v1.SaveDatingCardRequest
-	390, // 457: user.v1.UserService.AnswerDating:input_type -> user.v1.AnswerDatingRequest
-	379, // 458: user.v1.UserService.GetUserTitles:input_type -> user.v1.GetUserTitlesRequest
-	381, // 459: user.v1.UserService.GrantTitle:input_type -> user.v1.GrantTitleRequest
-	383, // 460: user.v1.UserService.RevokeTitle:input_type -> user.v1.RevokeTitleRequest
-	24,  // 461: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
-	26,  // 462: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
-	28,  // 463: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
-	53,  // 464: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
-	55,  // 465: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
-	38,  // 466: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
-	17,  // 467: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
-	30,  // 468: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
-	32,  // 469: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
-	34,  // 470: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
-	56,  // 471: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
-	58,  // 472: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
-	36,  // 473: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
-	40,  // 474: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
-	60,  // 475: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
-	398, // 476: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
-	398, // 477: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
-	398, // 478: user.v1.UserService.AcceptInvite:output_type -> google.protobuf.Empty
-	45,  // 479: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
-	50,  // 480: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
-	50,  // 481: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
-	398, // 482: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
-	49,  // 483: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
-	62,  // 484: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
-	66,  // 485: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
-	68,  // 486: user.v1.UserService.GetBoughtPosts:output_type -> user.v1.GetBoughtPostsResponse
-	70,  // 487: user.v1.UserService.BuyPost:output_type -> user.v1.BuyPostResponse
-	72,  // 488: user.v1.UserService.PayMessage:output_type -> user.v1.PayMessageResponse
-	398, // 489: user.v1.UserService.RefundMessage:output_type -> google.protobuf.Empty
-	85,  // 490: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
-	87,  // 491: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
-	90,  // 492: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
-	64,  // 493: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
-	398, // 494: user.v1.UserService.Block:output_type -> google.protobuf.Empty
-	398, // 495: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
-	77,  // 496: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
-	79,  // 497: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
-	398, // 498: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
-	398, // 499: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
-	83,  // 500: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
-	92,  // 501: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
-	100, // 502: user.v1.UserService.GetGiftCatalog:output_type -> user.v1.GetGiftCatalogResponse
-	104, // 503: user.v1.UserService.SendGift:output_type -> user.v1.SendGiftResponse
-	107, // 504: user.v1.UserService.ListGifts:output_type -> user.v1.ListGiftsResponse
-	398, // 505: user.v1.UserService.DeleteGift:output_type -> google.protobuf.Empty
-	398, // 506: user.v1.UserService.SetGiftPrice:output_type -> google.protobuf.Empty
-	111, // 507: user.v1.UserService.UpgradeGift:output_type -> user.v1.UpgradeGiftResponse
-	398, // 508: user.v1.UserService.TransferGift:output_type -> google.protobuf.Empty
-	114, // 509: user.v1.UserService.SetGiftSale:output_type -> user.v1.SetGiftSaleResponse
-	116, // 510: user.v1.UserService.BuyGift:output_type -> user.v1.BuyGiftResponse
-	118, // 511: user.v1.UserService.GetCollectible:output_type -> user.v1.GetCollectibleResponse
-	123, // 512: user.v1.UserService.ListGiftMarket:output_type -> user.v1.ListGiftMarketResponse
-	398, // 513: user.v1.UserService.StartGiftAuction:output_type -> google.protobuf.Empty
-	126, // 514: user.v1.UserService.MintGiftAuction:output_type -> user.v1.MintGiftAuctionResponse
-	398, // 515: user.v1.UserService.CancelGiftAuction:output_type -> google.protobuf.Empty
-	129, // 516: user.v1.UserService.BidGift:output_type -> user.v1.BidGiftResponse
-	131, // 517: user.v1.UserService.ListGiftAuctions:output_type -> user.v1.ListGiftAuctionsResponse
-	398, // 518: user.v1.UserService.SetGiftSupply:output_type -> google.protobuf.Empty
-	226, // 519: user.v1.UserService.GetStickerCatalog:output_type -> user.v1.GetStickerCatalogResponse
-	398, // 520: user.v1.UserService.AddStickerPack:output_type -> google.protobuf.Empty
-	398, // 521: user.v1.UserService.RemoveStickerPack:output_type -> google.protobuf.Empty
-	231, // 522: user.v1.UserService.ListMyStickerPacks:output_type -> user.v1.ListMyStickerPacksResponse
-	233, // 523: user.v1.UserService.CreateStickerPack:output_type -> user.v1.CreateStickerPackResponse
-	235, // 524: user.v1.UserService.EditStickerPack:output_type -> user.v1.EditStickerPackResponse
-	237, // 525: user.v1.UserService.DeleteStickerPack:output_type -> user.v1.DeleteStickerPackResponse
-	239, // 526: user.v1.UserService.GetStickerAuthors:output_type -> user.v1.GetStickerAuthorsResponse
-	134, // 527: user.v1.UserService.TransferVotes:output_type -> user.v1.TransferVotesResponse
-	136, // 528: user.v1.UserService.RedeemVoucher:output_type -> user.v1.RedeemVoucherResponse
-	139, // 529: user.v1.UserService.ListVoteOperations:output_type -> user.v1.ListVoteOperationsResponse
-	142, // 530: user.v1.UserService.CreateVoucher:output_type -> user.v1.CreateVoucherResponse
-	144, // 531: user.v1.UserService.ListVouchers:output_type -> user.v1.ListVouchersResponse
-	398, // 532: user.v1.UserService.DeleteVoucher:output_type -> google.protobuf.Empty
-	147, // 533: user.v1.UserService.GetVoteRate:output_type -> user.v1.GetVoteRateResponse
-	398, // 534: user.v1.UserService.SetVoteRate:output_type -> google.protobuf.Empty
-	150, // 535: user.v1.UserService.GetTreasury:output_type -> user.v1.GetTreasuryResponse
-	153, // 536: user.v1.UserService.GetBonus:output_type -> user.v1.GetBonusResponse
-	155, // 537: user.v1.UserService.ClaimBonus:output_type -> user.v1.ClaimBonusResponse
-	398, // 538: user.v1.UserService.SetEconomy:output_type -> google.protobuf.Empty
-	157, // 539: user.v1.UserService.RaiseRating:output_type -> user.v1.RaiseRatingResponse
-	160, // 540: user.v1.UserService.GetPrime:output_type -> user.v1.GetPrimeResponse
-	162, // 541: user.v1.UserService.BuyPrime:output_type -> user.v1.BuyPrimeResponse
-	398, // 542: user.v1.UserService.SetPrimePrices:output_type -> google.protobuf.Empty
-	398, // 543: user.v1.UserService.SetPrimeInvisible:output_type -> google.protobuf.Empty
-	398, // 544: user.v1.UserService.SetPrimeStyle:output_type -> google.protobuf.Empty
-	168, // 545: user.v1.UserService.GetDecor:output_type -> user.v1.GetDecorResponse
-	398, // 546: user.v1.UserService.SetDecor:output_type -> google.protobuf.Empty
-	172, // 547: user.v1.UserService.GetCasino:output_type -> user.v1.GetCasinoResponse
-	175, // 548: user.v1.UserService.GetCasinoSettings:output_type -> user.v1.GetCasinoSettingsResponse
-	398, // 549: user.v1.UserService.SetCasino:output_type -> google.protobuf.Empty
-	193, // 550: user.v1.UserService.SpinCasino:output_type -> user.v1.SpinCasinoResponse
-	398, // 551: user.v1.UserService.SetCasinoBets:output_type -> google.protobuf.Empty
-	196, // 552: user.v1.UserService.BetCasino:output_type -> user.v1.BetCasinoResponse
-	200, // 553: user.v1.UserService.ListBetEvents:output_type -> user.v1.ListBetEventsResponse
-	198, // 554: user.v1.UserService.CreateBetEvent:output_type -> user.v1.BetEvent
-	398, // 555: user.v1.UserService.CloseBetEvent:output_type -> google.protobuf.Empty
-	398, // 556: user.v1.UserService.ResolveBetEvent:output_type -> google.protobuf.Empty
-	398, // 557: user.v1.UserService.CancelBetEvent:output_type -> google.protobuf.Empty
-	398, // 558: user.v1.UserService.DeleteBetEvent:output_type -> google.protobuf.Empty
-	398, // 559: user.v1.UserService.SetBetEventOdds:output_type -> google.protobuf.Empty
-	206, // 560: user.v1.UserService.StakeBet:output_type -> user.v1.StakeBetResponse
-	398, // 561: user.v1.UserService.SetCasinoRocket:output_type -> google.protobuf.Empty
-	398, // 562: user.v1.UserService.SetCasinoJackpot:output_type -> google.protobuf.Empty
-	181, // 563: user.v1.UserService.LaunchRocket:output_type -> user.v1.RocketRound
-	181, // 564: user.v1.UserService.GetRocket:output_type -> user.v1.RocketRound
-	181, // 565: user.v1.UserService.CashRocket:output_type -> user.v1.RocketRound
-	184, // 566: user.v1.UserService.GetPoker:output_type -> user.v1.PokerTable
-	187, // 567: user.v1.UserService.DealPoker:output_type -> user.v1.PokerHand
-	187, // 568: user.v1.UserService.FoldPoker:output_type -> user.v1.PokerHand
-	187, // 569: user.v1.UserService.CallPoker:output_type -> user.v1.PokerHand
-	189, // 570: user.v1.UserService.GetPokerSettings:output_type -> user.v1.GetPokerSettingsResponse
-	398, // 571: user.v1.UserService.SetPokerSettings:output_type -> google.protobuf.Empty
-	298, // 572: user.v1.UserService.ListHoldemTables:output_type -> user.v1.ListHoldemTablesResponse
-	305, // 573: user.v1.UserService.CreateHoldemTable:output_type -> user.v1.HoldemTableResponse
-	305, // 574: user.v1.UserService.QuickHoldem:output_type -> user.v1.HoldemTableResponse
-	307, // 575: user.v1.UserService.GetHoldemTable:output_type -> user.v1.HoldemTable
-	305, // 576: user.v1.UserService.SitHoldemTable:output_type -> user.v1.HoldemTableResponse
-	305, // 577: user.v1.UserService.LeaveHoldemTable:output_type -> user.v1.HoldemTableResponse
-	307, // 578: user.v1.UserService.ActHoldemTable:output_type -> user.v1.HoldemTable
-	307, // 579: user.v1.UserService.BackHoldemTable:output_type -> user.v1.HoldemTable
-	307, // 580: user.v1.UserService.InviteHoldemTable:output_type -> user.v1.HoldemTable
-	398, // 581: user.v1.UserService.SetVerified:output_type -> google.protobuf.Empty
-	398, // 582: user.v1.UserService.SetAlert:output_type -> google.protobuf.Empty
-	212, // 583: user.v1.UserService.ListAds:output_type -> user.v1.ListAdsResponse
-	214, // 584: user.v1.UserService.CreateAd:output_type -> user.v1.CreateAdResponse
-	216, // 585: user.v1.UserService.EditAd:output_type -> user.v1.EditAdResponse
-	218, // 586: user.v1.UserService.DeleteAd:output_type -> user.v1.DeleteAdResponse
-	220, // 587: user.v1.UserService.ViewAd:output_type -> user.v1.ViewAdResponse
-	222, // 588: user.v1.UserService.ClickAd:output_type -> user.v1.ClickAdResponse
-	398, // 589: user.v1.UserService.BanUser:output_type -> google.protobuf.Empty
-	398, // 590: user.v1.UserService.UnbanUser:output_type -> google.protobuf.Empty
-	94,  // 591: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
-	96,  // 592: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
-	98,  // 593: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
-	245, // 594: user.v1.UserService.GetMine:output_type -> user.v1.MineState
-	247, // 595: user.v1.UserService.DigOre:output_type -> user.v1.DigOreResponse
-	249, // 596: user.v1.UserService.SellOre:output_type -> user.v1.SellOreResponse
-	251, // 597: user.v1.UserService.GetMineSettings:output_type -> user.v1.GetMineSettingsResponse
-	398, // 598: user.v1.UserService.SetMine:output_type -> google.protobuf.Empty
-	271, // 599: user.v1.UserService.GetFirms:output_type -> user.v1.FirmsState
-	274, // 600: user.v1.UserService.RunFirms:output_type -> user.v1.RunFirmsResponse
-	377, // 601: user.v1.UserService.GetUserFirms:output_type -> user.v1.GetUserFirmsResponse
-	286, // 602: user.v1.UserService.GetFirmSettings:output_type -> user.v1.GetFirmSettingsResponse
-	398, // 603: user.v1.UserService.SetFirmSettings:output_type -> google.protobuf.Empty
-	282, // 604: user.v1.UserService.GetStocks:output_type -> user.v1.StocksState
-	284, // 605: user.v1.UserService.RunStocks:output_type -> user.v1.RunStocksResponse
-	291, // 606: user.v1.UserService.GetBank:output_type -> user.v1.BankState
-	293, // 607: user.v1.UserService.PutDeposit:output_type -> user.v1.BankMoveResponse
-	293, // 608: user.v1.UserService.TakeDeposit:output_type -> user.v1.BankMoveResponse
-	293, // 609: user.v1.UserService.TakeLoan:output_type -> user.v1.BankMoveResponse
-	293, // 610: user.v1.UserService.RepayLoan:output_type -> user.v1.BankMoveResponse
-	295, // 611: user.v1.UserService.GetBankSettings:output_type -> user.v1.GetBankSettingsResponse
-	398, // 612: user.v1.UserService.SetBankSettings:output_type -> google.protobuf.Empty
-	398, // 613: user.v1.UserService.VisitPage:output_type -> google.protobuf.Empty
-	311, // 614: user.v1.UserService.ListGuests:output_type -> user.v1.ListGuestsResponse
-	314, // 615: user.v1.UserService.ListTop:output_type -> user.v1.ListTopResponse
-	323, // 616: user.v1.UserService.GetPet:output_type -> user.v1.PetState
-	325, // 617: user.v1.UserService.GetUserPet:output_type -> user.v1.GetUserPetResponse
-	339, // 618: user.v1.UserService.AdoptPet:output_type -> user.v1.PetCareResponse
-	339, // 619: user.v1.UserService.FeedPet:output_type -> user.v1.PetCareResponse
-	339, // 620: user.v1.UserService.PlayPet:output_type -> user.v1.PetCareResponse
-	339, // 621: user.v1.UserService.RenamePet:output_type -> user.v1.PetCareResponse
-	398, // 622: user.v1.UserService.ReleasePet:output_type -> google.protobuf.Empty
-	348, // 623: user.v1.UserService.FightPet:output_type -> user.v1.FightPetResponse
-	350, // 624: user.v1.UserService.ListPetFights:output_type -> user.v1.ListPetFightsResponse
-	332, // 625: user.v1.UserService.OpenPetCase:output_type -> user.v1.OpenPetCaseResponse
-	339, // 626: user.v1.UserService.TakePetDrop:output_type -> user.v1.PetCareResponse
-	335, // 627: user.v1.UserService.LeavePetDrop:output_type -> user.v1.PetKeeperResponse
-	339, // 628: user.v1.UserService.SetPetStance:output_type -> user.v1.PetCareResponse
-	347, // 629: user.v1.UserService.StartPetBattle:output_type -> user.v1.PetBattleResponse
-	347, // 630: user.v1.UserService.MovePetBattle:output_type -> user.v1.PetBattleResponse
-	339, // 631: user.v1.UserService.BuyPetItem:output_type -> user.v1.PetCareResponse
-	339, // 632: user.v1.UserService.DressPet:output_type -> user.v1.PetCareResponse
-	352, // 633: user.v1.UserService.GetPetSettings:output_type -> user.v1.GetPetSettingsResponse
-	398, // 634: user.v1.UserService.SetPetSettings:output_type -> google.protobuf.Empty
-	366, // 635: user.v1.UserService.GetPetArena:output_type -> user.v1.PetArena
-	374, // 636: user.v1.UserService.RunPetArena:output_type -> user.v1.RunPetArenaResponse
-	368, // 637: user.v1.UserService.GetCanvas:output_type -> user.v1.GetCanvasResponse
-	370, // 638: user.v1.UserService.PaintCanvas:output_type -> user.v1.PaintCanvasResponse
-	372, // 639: user.v1.UserService.GetCanvasCell:output_type -> user.v1.GetCanvasCellResponse
-	387, // 640: user.v1.UserService.GetDating:output_type -> user.v1.GetDatingResponse
-	389, // 641: user.v1.UserService.SaveDatingCard:output_type -> user.v1.SaveDatingCardResponse
-	391, // 642: user.v1.UserService.AnswerDating:output_type -> user.v1.AnswerDatingResponse
-	380, // 643: user.v1.UserService.GetUserTitles:output_type -> user.v1.GetUserTitlesResponse
-	382, // 644: user.v1.UserService.GrantTitle:output_type -> user.v1.GrantTitleResponse
-	398, // 645: user.v1.UserService.RevokeTitle:output_type -> google.protobuf.Empty
-	461, // [461:646] is the sub-list for method output_type
-	276, // [276:461] is the sub-list for method input_type
-	276, // [276:276] is the sub-list for extension type_name
-	276, // [276:276] is the sub-list for extension extendee
-	0,   // [0:276] is the sub-list for field type_name
+	400, // 220: user.v1.GetNamedPetResponse.opens_at:type_name -> google.protobuf.Timestamp
+	319, // 221: user.v1.OpenPetCaseResponse.keeper:type_name -> user.v1.PetKeeper
+	319, // 222: user.v1.PetKeeperResponse.keeper:type_name -> user.v1.PetKeeper
+	321, // 223: user.v1.PetCareResponse.pet:type_name -> user.v1.Pet
+	400, // 224: user.v1.PetFight.fought_at:type_name -> google.protobuf.Timestamp
+	343, // 225: user.v1.PetFight.attacker:type_name -> user.v1.PetFighter
+	343, // 226: user.v1.PetFight.defender:type_name -> user.v1.PetFighter
+	344, // 227: user.v1.PetFight.hits:type_name -> user.v1.PetHit
+	343, // 228: user.v1.PetBattle.attacker:type_name -> user.v1.PetFighter
+	343, // 229: user.v1.PetBattle.defender:type_name -> user.v1.PetFighter
+	344, // 230: user.v1.PetBattle.hits:type_name -> user.v1.PetHit
+	346, // 231: user.v1.PetBattleResponse.battle:type_name -> user.v1.PetBattle
+	321, // 232: user.v1.PetBattleResponse.pet:type_name -> user.v1.Pet
+	345, // 233: user.v1.PetBattleResponse.fight:type_name -> user.v1.PetFight
+	345, // 234: user.v1.FightPetResponse.fight:type_name -> user.v1.PetFight
+	321, // 235: user.v1.FightPetResponse.pet:type_name -> user.v1.Pet
+	345, // 236: user.v1.ListPetFightsResponse.fights:type_name -> user.v1.PetFight
+	315, // 237: user.v1.GetPetSettingsResponse.shop:type_name -> user.v1.PetShop
+	315, // 238: user.v1.SetPetSettingsRequest.shop:type_name -> user.v1.PetShop
+	400, // 239: user.v1.PetBoss.week:type_name -> google.protobuf.Timestamp
+	400, // 240: user.v1.PetBoss.killed_at:type_name -> google.protobuf.Timestamp
+	358, // 241: user.v1.PetBoss.hits:type_name -> user.v1.PetBossHit
+	316, // 242: user.v1.PetBoss.stats:type_name -> user.v1.PetStats
+	345, // 243: user.v1.PetMatch.bout:type_name -> user.v1.PetFight
+	361, // 244: user.v1.PetRound.matches:type_name -> user.v1.PetMatch
+	400, // 245: user.v1.PetTournament.week:type_name -> google.protobuf.Timestamp
+	400, // 246: user.v1.PetTournament.starts_at:type_name -> google.protobuf.Timestamp
+	360, // 247: user.v1.PetTournament.entrants:type_name -> user.v1.PetEntrant
+	362, // 248: user.v1.PetTournament.rounds:type_name -> user.v1.PetRound
+	400, // 249: user.v1.PetSeason.season:type_name -> google.protobuf.Timestamp
+	364, // 250: user.v1.PetSeason.places:type_name -> user.v1.PetSeasonPlace
+	400, // 251: user.v1.PetAchievement.got_at:type_name -> google.protobuf.Timestamp
+	321, // 252: user.v1.PetListing.pet:type_name -> user.v1.Pet
+	359, // 253: user.v1.PetArena.boss:type_name -> user.v1.PetBoss
+	363, // 254: user.v1.PetArena.tournament:type_name -> user.v1.PetTournament
+	363, // 255: user.v1.PetArena.last:type_name -> user.v1.PetTournament
+	400, // 256: user.v1.PetArena.season_ends_at:type_name -> google.protobuf.Timestamp
+	364, // 257: user.v1.PetArena.top:type_name -> user.v1.PetSeasonPlace
+	365, // 258: user.v1.PetArena.seasons:type_name -> user.v1.PetSeason
+	366, // 259: user.v1.PetArena.quests:type_name -> user.v1.PetQuest
+	367, // 260: user.v1.PetArena.achievements:type_name -> user.v1.PetAchievement
+	368, // 261: user.v1.PetArena.market:type_name -> user.v1.PetListing
+	400, // 262: user.v1.GetCanvasResponse.next_at:type_name -> google.protobuf.Timestamp
+	400, // 263: user.v1.PaintCanvasResponse.next_at:type_name -> google.protobuf.Timestamp
+	400, // 264: user.v1.GetCanvasCellResponse.painted_at:type_name -> google.protobuf.Timestamp
+	369, // 265: user.v1.RunPetArenaResponse.arena:type_name -> user.v1.PetArena
+	345, // 266: user.v1.RunPetArenaResponse.bout:type_name -> user.v1.PetFight
+	379, // 267: user.v1.GetUserFirmsResponse.firms:type_name -> user.v1.UserFirm
+	400, // 268: user.v1.Title.granted_at:type_name -> google.protobuf.Timestamp
+	381, // 269: user.v1.GetUserTitlesResponse.titles:type_name -> user.v1.Title
+	381, // 270: user.v1.GrantTitleResponse.title:type_name -> user.v1.Title
+	400, // 271: user.v1.DatingCard.updated_at:type_name -> google.protobuf.Timestamp
+	400, // 272: user.v1.DatingMatch.matched_at:type_name -> google.protobuf.Timestamp
+	387, // 273: user.v1.GetDatingResponse.card:type_name -> user.v1.DatingCard
+	387, // 274: user.v1.GetDatingResponse.deck:type_name -> user.v1.DatingCard
+	388, // 275: user.v1.GetDatingResponse.matches:type_name -> user.v1.DatingMatch
+	387, // 276: user.v1.SaveDatingCardResponse.card:type_name -> user.v1.DatingCard
+	23,  // 277: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
+	25,  // 278: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
+	27,  // 279: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
+	52,  // 280: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
+	54,  // 281: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
+	37,  // 282: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
+	16,  // 283: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
+	29,  // 284: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
+	31,  // 285: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
+	33,  // 286: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
+	51,  // 287: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
+	57,  // 288: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
+	35,  // 289: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
+	39,  // 290: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
+	59,  // 291: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
+	41,  // 292: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
+	43,  // 293: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
+	42,  // 294: user.v1.UserService.AcceptInvite:input_type -> user.v1.AcceptInviteRequest
+	44,  // 295: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
+	46,  // 296: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
+	46,  // 297: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
+	47,  // 298: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
+	48,  // 299: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
+	61,  // 300: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
+	65,  // 301: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
+	67,  // 302: user.v1.UserService.GetBoughtPosts:input_type -> user.v1.GetBoughtPostsRequest
+	69,  // 303: user.v1.UserService.BuyPost:input_type -> user.v1.BuyPostRequest
+	71,  // 304: user.v1.UserService.PayMessage:input_type -> user.v1.PayMessageRequest
+	73,  // 305: user.v1.UserService.RefundMessage:input_type -> user.v1.RefundMessageRequest
+	84,  // 306: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
+	86,  // 307: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
+	89,  // 308: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
+	63,  // 309: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
+	74,  // 310: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
+	75,  // 311: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
+	76,  // 312: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
+	78,  // 313: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
+	80,  // 314: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
+	81,  // 315: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
+	82,  // 316: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
+	91,  // 317: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
+	99,  // 318: user.v1.UserService.GetGiftCatalog:input_type -> user.v1.GetGiftCatalogRequest
+	103, // 319: user.v1.UserService.SendGift:input_type -> user.v1.SendGiftRequest
+	106, // 320: user.v1.UserService.ListGifts:input_type -> user.v1.ListGiftsRequest
+	108, // 321: user.v1.UserService.DeleteGift:input_type -> user.v1.DeleteGiftRequest
+	109, // 322: user.v1.UserService.SetGiftPrice:input_type -> user.v1.SetGiftPriceRequest
+	110, // 323: user.v1.UserService.UpgradeGift:input_type -> user.v1.UpgradeGiftRequest
+	112, // 324: user.v1.UserService.TransferGift:input_type -> user.v1.TransferGiftRequest
+	113, // 325: user.v1.UserService.SetGiftSale:input_type -> user.v1.SetGiftSaleRequest
+	115, // 326: user.v1.UserService.BuyGift:input_type -> user.v1.BuyGiftRequest
+	117, // 327: user.v1.UserService.GetCollectible:input_type -> user.v1.GetCollectibleRequest
+	122, // 328: user.v1.UserService.ListGiftMarket:input_type -> user.v1.ListGiftMarketRequest
+	124, // 329: user.v1.UserService.StartGiftAuction:input_type -> user.v1.StartGiftAuctionRequest
+	125, // 330: user.v1.UserService.MintGiftAuction:input_type -> user.v1.MintGiftAuctionRequest
+	127, // 331: user.v1.UserService.CancelGiftAuction:input_type -> user.v1.CancelGiftAuctionRequest
+	128, // 332: user.v1.UserService.BidGift:input_type -> user.v1.BidGiftRequest
+	130, // 333: user.v1.UserService.ListGiftAuctions:input_type -> user.v1.ListGiftAuctionsRequest
+	132, // 334: user.v1.UserService.SetGiftSupply:input_type -> user.v1.SetGiftSupplyRequest
+	225, // 335: user.v1.UserService.GetStickerCatalog:input_type -> user.v1.GetStickerCatalogRequest
+	228, // 336: user.v1.UserService.AddStickerPack:input_type -> user.v1.AddStickerPackRequest
+	229, // 337: user.v1.UserService.RemoveStickerPack:input_type -> user.v1.RemoveStickerPackRequest
+	230, // 338: user.v1.UserService.ListMyStickerPacks:input_type -> user.v1.ListMyStickerPacksRequest
+	232, // 339: user.v1.UserService.CreateStickerPack:input_type -> user.v1.CreateStickerPackRequest
+	234, // 340: user.v1.UserService.EditStickerPack:input_type -> user.v1.EditStickerPackRequest
+	236, // 341: user.v1.UserService.DeleteStickerPack:input_type -> user.v1.DeleteStickerPackRequest
+	238, // 342: user.v1.UserService.GetStickerAuthors:input_type -> user.v1.GetStickerAuthorsRequest
+	133, // 343: user.v1.UserService.TransferVotes:input_type -> user.v1.TransferVotesRequest
+	135, // 344: user.v1.UserService.RedeemVoucher:input_type -> user.v1.RedeemVoucherRequest
+	137, // 345: user.v1.UserService.ListVoteOperations:input_type -> user.v1.ListVoteOperationsRequest
+	141, // 346: user.v1.UserService.CreateVoucher:input_type -> user.v1.CreateVoucherRequest
+	143, // 347: user.v1.UserService.ListVouchers:input_type -> user.v1.ListVouchersRequest
+	145, // 348: user.v1.UserService.DeleteVoucher:input_type -> user.v1.DeleteVoucherRequest
+	146, // 349: user.v1.UserService.GetVoteRate:input_type -> user.v1.GetVoteRateRequest
+	148, // 350: user.v1.UserService.SetVoteRate:input_type -> user.v1.SetVoteRateRequest
+	149, // 351: user.v1.UserService.GetTreasury:input_type -> user.v1.GetTreasuryRequest
+	152, // 352: user.v1.UserService.GetBonus:input_type -> user.v1.GetBonusRequest
+	154, // 353: user.v1.UserService.ClaimBonus:input_type -> user.v1.ClaimBonusRequest
+	151, // 354: user.v1.UserService.SetEconomy:input_type -> user.v1.SetEconomyRequest
+	156, // 355: user.v1.UserService.RaiseRating:input_type -> user.v1.RaiseRatingRequest
+	159, // 356: user.v1.UserService.GetPrime:input_type -> user.v1.GetPrimeRequest
+	161, // 357: user.v1.UserService.BuyPrime:input_type -> user.v1.BuyPrimeRequest
+	163, // 358: user.v1.UserService.SetPrimePrices:input_type -> user.v1.SetPrimePricesRequest
+	164, // 359: user.v1.UserService.SetPrimeInvisible:input_type -> user.v1.SetPrimeInvisibleRequest
+	166, // 360: user.v1.UserService.SetPrimeStyle:input_type -> user.v1.SetPrimeStyleRequest
+	167, // 361: user.v1.UserService.GetDecor:input_type -> user.v1.GetDecorRequest
+	169, // 362: user.v1.UserService.SetDecor:input_type -> user.v1.SetDecorRequest
+	171, // 363: user.v1.UserService.GetCasino:input_type -> user.v1.GetCasinoRequest
+	174, // 364: user.v1.UserService.GetCasinoSettings:input_type -> user.v1.GetCasinoSettingsRequest
+	191, // 365: user.v1.UserService.SetCasino:input_type -> user.v1.SetCasinoRequest
+	192, // 366: user.v1.UserService.SpinCasino:input_type -> user.v1.SpinCasinoRequest
+	194, // 367: user.v1.UserService.SetCasinoBets:input_type -> user.v1.SetCasinoBetsRequest
+	195, // 368: user.v1.UserService.BetCasino:input_type -> user.v1.BetCasinoRequest
+	199, // 369: user.v1.UserService.ListBetEvents:input_type -> user.v1.ListBetEventsRequest
+	201, // 370: user.v1.UserService.CreateBetEvent:input_type -> user.v1.CreateBetEventRequest
+	203, // 371: user.v1.UserService.CloseBetEvent:input_type -> user.v1.BetEventRequest
+	204, // 372: user.v1.UserService.ResolveBetEvent:input_type -> user.v1.ResolveBetEventRequest
+	203, // 373: user.v1.UserService.CancelBetEvent:input_type -> user.v1.BetEventRequest
+	203, // 374: user.v1.UserService.DeleteBetEvent:input_type -> user.v1.BetEventRequest
+	202, // 375: user.v1.UserService.SetBetEventOdds:input_type -> user.v1.SetBetEventOddsRequest
+	205, // 376: user.v1.UserService.StakeBet:input_type -> user.v1.StakeBetRequest
+	177, // 377: user.v1.UserService.SetCasinoRocket:input_type -> user.v1.SetCasinoRocketRequest
+	178, // 378: user.v1.UserService.SetCasinoJackpot:input_type -> user.v1.SetCasinoJackpotRequest
+	179, // 379: user.v1.UserService.LaunchRocket:input_type -> user.v1.LaunchRocketRequest
+	180, // 380: user.v1.UserService.GetRocket:input_type -> user.v1.RocketRequest
+	180, // 381: user.v1.UserService.CashRocket:input_type -> user.v1.RocketRequest
+	183, // 382: user.v1.UserService.GetPoker:input_type -> user.v1.GetPokerRequest
+	185, // 383: user.v1.UserService.DealPoker:input_type -> user.v1.DealPokerRequest
+	186, // 384: user.v1.UserService.FoldPoker:input_type -> user.v1.PokerHandRequest
+	186, // 385: user.v1.UserService.CallPoker:input_type -> user.v1.PokerHandRequest
+	188, // 386: user.v1.UserService.GetPokerSettings:input_type -> user.v1.GetPokerSettingsRequest
+	190, // 387: user.v1.UserService.SetPokerSettings:input_type -> user.v1.SetPokerSettingsRequest
+	297, // 388: user.v1.UserService.ListHoldemTables:input_type -> user.v1.ListHoldemTablesRequest
+	299, // 389: user.v1.UserService.CreateHoldemTable:input_type -> user.v1.CreateHoldemTableRequest
+	300, // 390: user.v1.UserService.QuickHoldem:input_type -> user.v1.QuickHoldemRequest
+	301, // 391: user.v1.UserService.GetHoldemTable:input_type -> user.v1.HoldemTableRequest
+	302, // 392: user.v1.UserService.SitHoldemTable:input_type -> user.v1.SitHoldemTableRequest
+	301, // 393: user.v1.UserService.LeaveHoldemTable:input_type -> user.v1.HoldemTableRequest
+	303, // 394: user.v1.UserService.ActHoldemTable:input_type -> user.v1.ActHoldemTableRequest
+	301, // 395: user.v1.UserService.BackHoldemTable:input_type -> user.v1.HoldemTableRequest
+	304, // 396: user.v1.UserService.InviteHoldemTable:input_type -> user.v1.InviteHoldemTableRequest
+	207, // 397: user.v1.UserService.SetVerified:input_type -> user.v1.SetVerifiedRequest
+	208, // 398: user.v1.UserService.SetAlert:input_type -> user.v1.SetAlertRequest
+	211, // 399: user.v1.UserService.ListAds:input_type -> user.v1.ListAdsRequest
+	213, // 400: user.v1.UserService.CreateAd:input_type -> user.v1.CreateAdRequest
+	215, // 401: user.v1.UserService.EditAd:input_type -> user.v1.EditAdRequest
+	217, // 402: user.v1.UserService.DeleteAd:input_type -> user.v1.DeleteAdRequest
+	219, // 403: user.v1.UserService.ViewAd:input_type -> user.v1.ViewAdRequest
+	221, // 404: user.v1.UserService.ClickAd:input_type -> user.v1.ClickAdRequest
+	223, // 405: user.v1.UserService.BanUser:input_type -> user.v1.BanUserRequest
+	224, // 406: user.v1.UserService.UnbanUser:input_type -> user.v1.UnbanUserRequest
+	93,  // 407: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
+	95,  // 408: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
+	97,  // 409: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
+	244, // 410: user.v1.UserService.GetMine:input_type -> user.v1.GetMineRequest
+	246, // 411: user.v1.UserService.DigOre:input_type -> user.v1.DigOreRequest
+	248, // 412: user.v1.UserService.SellOre:input_type -> user.v1.SellOreRequest
+	250, // 413: user.v1.UserService.GetMineSettings:input_type -> user.v1.GetMineSettingsRequest
+	252, // 414: user.v1.UserService.SetMine:input_type -> user.v1.SetMineRequest
+	270, // 415: user.v1.UserService.GetFirms:input_type -> user.v1.GetFirmsRequest
+	272, // 416: user.v1.UserService.RunFirms:input_type -> user.v1.RunFirmsRequest
+	378, // 417: user.v1.UserService.GetUserFirms:input_type -> user.v1.GetUserFirmsRequest
+	285, // 418: user.v1.UserService.GetFirmSettings:input_type -> user.v1.GetFirmSettingsRequest
+	287, // 419: user.v1.UserService.SetFirmSettings:input_type -> user.v1.SetFirmSettingsRequest
+	275, // 420: user.v1.UserService.GetStocks:input_type -> user.v1.GetStocksRequest
+	283, // 421: user.v1.UserService.RunStocks:input_type -> user.v1.RunStocksRequest
+	290, // 422: user.v1.UserService.GetBank:input_type -> user.v1.GetBankRequest
+	292, // 423: user.v1.UserService.PutDeposit:input_type -> user.v1.BankAmountRequest
+	292, // 424: user.v1.UserService.TakeDeposit:input_type -> user.v1.BankAmountRequest
+	292, // 425: user.v1.UserService.TakeLoan:input_type -> user.v1.BankAmountRequest
+	292, // 426: user.v1.UserService.RepayLoan:input_type -> user.v1.BankAmountRequest
+	294, // 427: user.v1.UserService.GetBankSettings:input_type -> user.v1.GetBankSettingsRequest
+	296, // 428: user.v1.UserService.SetBankSettings:input_type -> user.v1.SetBankSettingsRequest
+	308, // 429: user.v1.UserService.VisitPage:input_type -> user.v1.VisitPageRequest
+	309, // 430: user.v1.UserService.ListGuests:input_type -> user.v1.ListGuestsRequest
+	312, // 431: user.v1.UserService.ListTop:input_type -> user.v1.ListTopRequest
+	322, // 432: user.v1.UserService.GetPet:input_type -> user.v1.GetPetRequest
+	324, // 433: user.v1.UserService.GetUserPet:input_type -> user.v1.GetUserPetRequest
+	329, // 434: user.v1.UserService.AdoptPet:input_type -> user.v1.AdoptPetRequest
+	326, // 435: user.v1.UserService.GetNamedPet:input_type -> user.v1.GetNamedPetRequest
+	328, // 436: user.v1.UserService.ClaimNamedPet:input_type -> user.v1.ClaimNamedPetRequest
+	330, // 437: user.v1.UserService.FeedPet:input_type -> user.v1.FeedPetRequest
+	331, // 438: user.v1.UserService.PlayPet:input_type -> user.v1.PlayPetRequest
+	332, // 439: user.v1.UserService.RenamePet:input_type -> user.v1.RenamePetRequest
+	333, // 440: user.v1.UserService.ReleasePet:input_type -> user.v1.ReleasePetRequest
+	347, // 441: user.v1.UserService.FightPet:input_type -> user.v1.FightPetRequest
+	352, // 442: user.v1.UserService.ListPetFights:input_type -> user.v1.ListPetFightsRequest
+	334, // 443: user.v1.UserService.OpenPetCase:input_type -> user.v1.OpenPetCaseRequest
+	336, // 444: user.v1.UserService.TakePetDrop:input_type -> user.v1.TakePetDropRequest
+	337, // 445: user.v1.UserService.LeavePetDrop:input_type -> user.v1.LeavePetDropRequest
+	339, // 446: user.v1.UserService.SetPetStance:input_type -> user.v1.SetPetStanceRequest
+	348, // 447: user.v1.UserService.StartPetBattle:input_type -> user.v1.StartPetBattleRequest
+	349, // 448: user.v1.UserService.MovePetBattle:input_type -> user.v1.MovePetBattleRequest
+	340, // 449: user.v1.UserService.BuyPetItem:input_type -> user.v1.BuyPetItemRequest
+	341, // 450: user.v1.UserService.DressPet:input_type -> user.v1.DressPetRequest
+	354, // 451: user.v1.UserService.GetPetSettings:input_type -> user.v1.GetPetSettingsRequest
+	356, // 452: user.v1.UserService.SetPetSettings:input_type -> user.v1.SetPetSettingsRequest
+	357, // 453: user.v1.UserService.GetPetArena:input_type -> user.v1.GetPetArenaRequest
+	376, // 454: user.v1.UserService.RunPetArena:input_type -> user.v1.RunPetArenaRequest
+	370, // 455: user.v1.UserService.GetCanvas:input_type -> user.v1.GetCanvasRequest
+	372, // 456: user.v1.UserService.PaintCanvas:input_type -> user.v1.PaintCanvasRequest
+	374, // 457: user.v1.UserService.GetCanvasCell:input_type -> user.v1.GetCanvasCellRequest
+	389, // 458: user.v1.UserService.GetDating:input_type -> user.v1.GetDatingRequest
+	391, // 459: user.v1.UserService.SaveDatingCard:input_type -> user.v1.SaveDatingCardRequest
+	393, // 460: user.v1.UserService.AnswerDating:input_type -> user.v1.AnswerDatingRequest
+	382, // 461: user.v1.UserService.GetUserTitles:input_type -> user.v1.GetUserTitlesRequest
+	384, // 462: user.v1.UserService.GrantTitle:input_type -> user.v1.GrantTitleRequest
+	386, // 463: user.v1.UserService.RevokeTitle:input_type -> user.v1.RevokeTitleRequest
+	24,  // 464: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
+	26,  // 465: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
+	28,  // 466: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
+	53,  // 467: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
+	55,  // 468: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
+	38,  // 469: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
+	17,  // 470: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
+	30,  // 471: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
+	32,  // 472: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
+	34,  // 473: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
+	56,  // 474: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
+	58,  // 475: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
+	36,  // 476: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
+	40,  // 477: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
+	60,  // 478: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
+	401, // 479: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
+	401, // 480: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
+	401, // 481: user.v1.UserService.AcceptInvite:output_type -> google.protobuf.Empty
+	45,  // 482: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
+	50,  // 483: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
+	50,  // 484: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
+	401, // 485: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
+	49,  // 486: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
+	62,  // 487: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
+	66,  // 488: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
+	68,  // 489: user.v1.UserService.GetBoughtPosts:output_type -> user.v1.GetBoughtPostsResponse
+	70,  // 490: user.v1.UserService.BuyPost:output_type -> user.v1.BuyPostResponse
+	72,  // 491: user.v1.UserService.PayMessage:output_type -> user.v1.PayMessageResponse
+	401, // 492: user.v1.UserService.RefundMessage:output_type -> google.protobuf.Empty
+	85,  // 493: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
+	87,  // 494: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
+	90,  // 495: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
+	64,  // 496: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
+	401, // 497: user.v1.UserService.Block:output_type -> google.protobuf.Empty
+	401, // 498: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
+	77,  // 499: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
+	79,  // 500: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
+	401, // 501: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
+	401, // 502: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
+	83,  // 503: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
+	92,  // 504: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
+	100, // 505: user.v1.UserService.GetGiftCatalog:output_type -> user.v1.GetGiftCatalogResponse
+	104, // 506: user.v1.UserService.SendGift:output_type -> user.v1.SendGiftResponse
+	107, // 507: user.v1.UserService.ListGifts:output_type -> user.v1.ListGiftsResponse
+	401, // 508: user.v1.UserService.DeleteGift:output_type -> google.protobuf.Empty
+	401, // 509: user.v1.UserService.SetGiftPrice:output_type -> google.protobuf.Empty
+	111, // 510: user.v1.UserService.UpgradeGift:output_type -> user.v1.UpgradeGiftResponse
+	401, // 511: user.v1.UserService.TransferGift:output_type -> google.protobuf.Empty
+	114, // 512: user.v1.UserService.SetGiftSale:output_type -> user.v1.SetGiftSaleResponse
+	116, // 513: user.v1.UserService.BuyGift:output_type -> user.v1.BuyGiftResponse
+	118, // 514: user.v1.UserService.GetCollectible:output_type -> user.v1.GetCollectibleResponse
+	123, // 515: user.v1.UserService.ListGiftMarket:output_type -> user.v1.ListGiftMarketResponse
+	401, // 516: user.v1.UserService.StartGiftAuction:output_type -> google.protobuf.Empty
+	126, // 517: user.v1.UserService.MintGiftAuction:output_type -> user.v1.MintGiftAuctionResponse
+	401, // 518: user.v1.UserService.CancelGiftAuction:output_type -> google.protobuf.Empty
+	129, // 519: user.v1.UserService.BidGift:output_type -> user.v1.BidGiftResponse
+	131, // 520: user.v1.UserService.ListGiftAuctions:output_type -> user.v1.ListGiftAuctionsResponse
+	401, // 521: user.v1.UserService.SetGiftSupply:output_type -> google.protobuf.Empty
+	226, // 522: user.v1.UserService.GetStickerCatalog:output_type -> user.v1.GetStickerCatalogResponse
+	401, // 523: user.v1.UserService.AddStickerPack:output_type -> google.protobuf.Empty
+	401, // 524: user.v1.UserService.RemoveStickerPack:output_type -> google.protobuf.Empty
+	231, // 525: user.v1.UserService.ListMyStickerPacks:output_type -> user.v1.ListMyStickerPacksResponse
+	233, // 526: user.v1.UserService.CreateStickerPack:output_type -> user.v1.CreateStickerPackResponse
+	235, // 527: user.v1.UserService.EditStickerPack:output_type -> user.v1.EditStickerPackResponse
+	237, // 528: user.v1.UserService.DeleteStickerPack:output_type -> user.v1.DeleteStickerPackResponse
+	239, // 529: user.v1.UserService.GetStickerAuthors:output_type -> user.v1.GetStickerAuthorsResponse
+	134, // 530: user.v1.UserService.TransferVotes:output_type -> user.v1.TransferVotesResponse
+	136, // 531: user.v1.UserService.RedeemVoucher:output_type -> user.v1.RedeemVoucherResponse
+	139, // 532: user.v1.UserService.ListVoteOperations:output_type -> user.v1.ListVoteOperationsResponse
+	142, // 533: user.v1.UserService.CreateVoucher:output_type -> user.v1.CreateVoucherResponse
+	144, // 534: user.v1.UserService.ListVouchers:output_type -> user.v1.ListVouchersResponse
+	401, // 535: user.v1.UserService.DeleteVoucher:output_type -> google.protobuf.Empty
+	147, // 536: user.v1.UserService.GetVoteRate:output_type -> user.v1.GetVoteRateResponse
+	401, // 537: user.v1.UserService.SetVoteRate:output_type -> google.protobuf.Empty
+	150, // 538: user.v1.UserService.GetTreasury:output_type -> user.v1.GetTreasuryResponse
+	153, // 539: user.v1.UserService.GetBonus:output_type -> user.v1.GetBonusResponse
+	155, // 540: user.v1.UserService.ClaimBonus:output_type -> user.v1.ClaimBonusResponse
+	401, // 541: user.v1.UserService.SetEconomy:output_type -> google.protobuf.Empty
+	157, // 542: user.v1.UserService.RaiseRating:output_type -> user.v1.RaiseRatingResponse
+	160, // 543: user.v1.UserService.GetPrime:output_type -> user.v1.GetPrimeResponse
+	162, // 544: user.v1.UserService.BuyPrime:output_type -> user.v1.BuyPrimeResponse
+	401, // 545: user.v1.UserService.SetPrimePrices:output_type -> google.protobuf.Empty
+	401, // 546: user.v1.UserService.SetPrimeInvisible:output_type -> google.protobuf.Empty
+	401, // 547: user.v1.UserService.SetPrimeStyle:output_type -> google.protobuf.Empty
+	168, // 548: user.v1.UserService.GetDecor:output_type -> user.v1.GetDecorResponse
+	401, // 549: user.v1.UserService.SetDecor:output_type -> google.protobuf.Empty
+	172, // 550: user.v1.UserService.GetCasino:output_type -> user.v1.GetCasinoResponse
+	175, // 551: user.v1.UserService.GetCasinoSettings:output_type -> user.v1.GetCasinoSettingsResponse
+	401, // 552: user.v1.UserService.SetCasino:output_type -> google.protobuf.Empty
+	193, // 553: user.v1.UserService.SpinCasino:output_type -> user.v1.SpinCasinoResponse
+	401, // 554: user.v1.UserService.SetCasinoBets:output_type -> google.protobuf.Empty
+	196, // 555: user.v1.UserService.BetCasino:output_type -> user.v1.BetCasinoResponse
+	200, // 556: user.v1.UserService.ListBetEvents:output_type -> user.v1.ListBetEventsResponse
+	198, // 557: user.v1.UserService.CreateBetEvent:output_type -> user.v1.BetEvent
+	401, // 558: user.v1.UserService.CloseBetEvent:output_type -> google.protobuf.Empty
+	401, // 559: user.v1.UserService.ResolveBetEvent:output_type -> google.protobuf.Empty
+	401, // 560: user.v1.UserService.CancelBetEvent:output_type -> google.protobuf.Empty
+	401, // 561: user.v1.UserService.DeleteBetEvent:output_type -> google.protobuf.Empty
+	401, // 562: user.v1.UserService.SetBetEventOdds:output_type -> google.protobuf.Empty
+	206, // 563: user.v1.UserService.StakeBet:output_type -> user.v1.StakeBetResponse
+	401, // 564: user.v1.UserService.SetCasinoRocket:output_type -> google.protobuf.Empty
+	401, // 565: user.v1.UserService.SetCasinoJackpot:output_type -> google.protobuf.Empty
+	181, // 566: user.v1.UserService.LaunchRocket:output_type -> user.v1.RocketRound
+	181, // 567: user.v1.UserService.GetRocket:output_type -> user.v1.RocketRound
+	181, // 568: user.v1.UserService.CashRocket:output_type -> user.v1.RocketRound
+	184, // 569: user.v1.UserService.GetPoker:output_type -> user.v1.PokerTable
+	187, // 570: user.v1.UserService.DealPoker:output_type -> user.v1.PokerHand
+	187, // 571: user.v1.UserService.FoldPoker:output_type -> user.v1.PokerHand
+	187, // 572: user.v1.UserService.CallPoker:output_type -> user.v1.PokerHand
+	189, // 573: user.v1.UserService.GetPokerSettings:output_type -> user.v1.GetPokerSettingsResponse
+	401, // 574: user.v1.UserService.SetPokerSettings:output_type -> google.protobuf.Empty
+	298, // 575: user.v1.UserService.ListHoldemTables:output_type -> user.v1.ListHoldemTablesResponse
+	305, // 576: user.v1.UserService.CreateHoldemTable:output_type -> user.v1.HoldemTableResponse
+	305, // 577: user.v1.UserService.QuickHoldem:output_type -> user.v1.HoldemTableResponse
+	307, // 578: user.v1.UserService.GetHoldemTable:output_type -> user.v1.HoldemTable
+	305, // 579: user.v1.UserService.SitHoldemTable:output_type -> user.v1.HoldemTableResponse
+	305, // 580: user.v1.UserService.LeaveHoldemTable:output_type -> user.v1.HoldemTableResponse
+	307, // 581: user.v1.UserService.ActHoldemTable:output_type -> user.v1.HoldemTable
+	307, // 582: user.v1.UserService.BackHoldemTable:output_type -> user.v1.HoldemTable
+	307, // 583: user.v1.UserService.InviteHoldemTable:output_type -> user.v1.HoldemTable
+	401, // 584: user.v1.UserService.SetVerified:output_type -> google.protobuf.Empty
+	401, // 585: user.v1.UserService.SetAlert:output_type -> google.protobuf.Empty
+	212, // 586: user.v1.UserService.ListAds:output_type -> user.v1.ListAdsResponse
+	214, // 587: user.v1.UserService.CreateAd:output_type -> user.v1.CreateAdResponse
+	216, // 588: user.v1.UserService.EditAd:output_type -> user.v1.EditAdResponse
+	218, // 589: user.v1.UserService.DeleteAd:output_type -> user.v1.DeleteAdResponse
+	220, // 590: user.v1.UserService.ViewAd:output_type -> user.v1.ViewAdResponse
+	222, // 591: user.v1.UserService.ClickAd:output_type -> user.v1.ClickAdResponse
+	401, // 592: user.v1.UserService.BanUser:output_type -> google.protobuf.Empty
+	401, // 593: user.v1.UserService.UnbanUser:output_type -> google.protobuf.Empty
+	94,  // 594: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
+	96,  // 595: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
+	98,  // 596: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
+	245, // 597: user.v1.UserService.GetMine:output_type -> user.v1.MineState
+	247, // 598: user.v1.UserService.DigOre:output_type -> user.v1.DigOreResponse
+	249, // 599: user.v1.UserService.SellOre:output_type -> user.v1.SellOreResponse
+	251, // 600: user.v1.UserService.GetMineSettings:output_type -> user.v1.GetMineSettingsResponse
+	401, // 601: user.v1.UserService.SetMine:output_type -> google.protobuf.Empty
+	271, // 602: user.v1.UserService.GetFirms:output_type -> user.v1.FirmsState
+	274, // 603: user.v1.UserService.RunFirms:output_type -> user.v1.RunFirmsResponse
+	380, // 604: user.v1.UserService.GetUserFirms:output_type -> user.v1.GetUserFirmsResponse
+	286, // 605: user.v1.UserService.GetFirmSettings:output_type -> user.v1.GetFirmSettingsResponse
+	401, // 606: user.v1.UserService.SetFirmSettings:output_type -> google.protobuf.Empty
+	282, // 607: user.v1.UserService.GetStocks:output_type -> user.v1.StocksState
+	284, // 608: user.v1.UserService.RunStocks:output_type -> user.v1.RunStocksResponse
+	291, // 609: user.v1.UserService.GetBank:output_type -> user.v1.BankState
+	293, // 610: user.v1.UserService.PutDeposit:output_type -> user.v1.BankMoveResponse
+	293, // 611: user.v1.UserService.TakeDeposit:output_type -> user.v1.BankMoveResponse
+	293, // 612: user.v1.UserService.TakeLoan:output_type -> user.v1.BankMoveResponse
+	293, // 613: user.v1.UserService.RepayLoan:output_type -> user.v1.BankMoveResponse
+	295, // 614: user.v1.UserService.GetBankSettings:output_type -> user.v1.GetBankSettingsResponse
+	401, // 615: user.v1.UserService.SetBankSettings:output_type -> google.protobuf.Empty
+	401, // 616: user.v1.UserService.VisitPage:output_type -> google.protobuf.Empty
+	311, // 617: user.v1.UserService.ListGuests:output_type -> user.v1.ListGuestsResponse
+	314, // 618: user.v1.UserService.ListTop:output_type -> user.v1.ListTopResponse
+	323, // 619: user.v1.UserService.GetPet:output_type -> user.v1.PetState
+	325, // 620: user.v1.UserService.GetUserPet:output_type -> user.v1.GetUserPetResponse
+	342, // 621: user.v1.UserService.AdoptPet:output_type -> user.v1.PetCareResponse
+	327, // 622: user.v1.UserService.GetNamedPet:output_type -> user.v1.GetNamedPetResponse
+	342, // 623: user.v1.UserService.ClaimNamedPet:output_type -> user.v1.PetCareResponse
+	342, // 624: user.v1.UserService.FeedPet:output_type -> user.v1.PetCareResponse
+	342, // 625: user.v1.UserService.PlayPet:output_type -> user.v1.PetCareResponse
+	342, // 626: user.v1.UserService.RenamePet:output_type -> user.v1.PetCareResponse
+	401, // 627: user.v1.UserService.ReleasePet:output_type -> google.protobuf.Empty
+	351, // 628: user.v1.UserService.FightPet:output_type -> user.v1.FightPetResponse
+	353, // 629: user.v1.UserService.ListPetFights:output_type -> user.v1.ListPetFightsResponse
+	335, // 630: user.v1.UserService.OpenPetCase:output_type -> user.v1.OpenPetCaseResponse
+	342, // 631: user.v1.UserService.TakePetDrop:output_type -> user.v1.PetCareResponse
+	338, // 632: user.v1.UserService.LeavePetDrop:output_type -> user.v1.PetKeeperResponse
+	342, // 633: user.v1.UserService.SetPetStance:output_type -> user.v1.PetCareResponse
+	350, // 634: user.v1.UserService.StartPetBattle:output_type -> user.v1.PetBattleResponse
+	350, // 635: user.v1.UserService.MovePetBattle:output_type -> user.v1.PetBattleResponse
+	342, // 636: user.v1.UserService.BuyPetItem:output_type -> user.v1.PetCareResponse
+	342, // 637: user.v1.UserService.DressPet:output_type -> user.v1.PetCareResponse
+	355, // 638: user.v1.UserService.GetPetSettings:output_type -> user.v1.GetPetSettingsResponse
+	401, // 639: user.v1.UserService.SetPetSettings:output_type -> google.protobuf.Empty
+	369, // 640: user.v1.UserService.GetPetArena:output_type -> user.v1.PetArena
+	377, // 641: user.v1.UserService.RunPetArena:output_type -> user.v1.RunPetArenaResponse
+	371, // 642: user.v1.UserService.GetCanvas:output_type -> user.v1.GetCanvasResponse
+	373, // 643: user.v1.UserService.PaintCanvas:output_type -> user.v1.PaintCanvasResponse
+	375, // 644: user.v1.UserService.GetCanvasCell:output_type -> user.v1.GetCanvasCellResponse
+	390, // 645: user.v1.UserService.GetDating:output_type -> user.v1.GetDatingResponse
+	392, // 646: user.v1.UserService.SaveDatingCard:output_type -> user.v1.SaveDatingCardResponse
+	394, // 647: user.v1.UserService.AnswerDating:output_type -> user.v1.AnswerDatingResponse
+	383, // 648: user.v1.UserService.GetUserTitles:output_type -> user.v1.GetUserTitlesResponse
+	385, // 649: user.v1.UserService.GrantTitle:output_type -> user.v1.GrantTitleResponse
+	401, // 650: user.v1.UserService.RevokeTitle:output_type -> google.protobuf.Empty
+	464, // [464:651] is the sub-list for method output_type
+	277, // [277:464] is the sub-list for method input_type
+	277, // [277:277] is the sub-list for extension type_name
+	277, // [277:277] is the sub-list for extension extendee
+	0,   // [0:277] is the sub-list for field type_name
 }
 
 func init() { file_api_user_v1_user_proto_init() }
@@ -28369,7 +28517,7 @@ func file_api_user_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_user_v1_user_proto_rawDesc), len(file_api_user_v1_user_proto_rawDesc)),
 			NumEnums:      13,
-			NumMessages:   384,
+			NumMessages:   387,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -478,6 +478,8 @@ service UserService {
   rpc GetPet(GetPetRequest) returns (PetState);
   rpc GetUserPet(GetUserPetRequest) returns (GetUserPetResponse);
   rpc AdoptPet(AdoptPetRequest) returns (PetCareResponse);
+  rpc GetNamedPet(GetNamedPetRequest) returns (GetNamedPetResponse);
+  rpc ClaimNamedPet(ClaimNamedPetRequest) returns (PetCareResponse);
   rpc FeedPet(FeedPetRequest) returns (PetCareResponse);
   rpc PlayPet(PlayPetRequest) returns (PetCareResponse);
   rpc RenamePet(RenamePetRequest) returns (PetCareResponse);
@@ -3268,6 +3270,16 @@ message GetUserPetResponse {
   string owner_id = 2;
   repeated Pet pets = 3;
 }
+
+message GetNamedPetRequest {}
+
+message GetNamedPetResponse {
+  string kind = 1;
+  google.protobuf.Timestamp opens_at = 2;
+  bool claimed = 3;
+}
+
+message ClaimNamedPetRequest {}
 
 message AdoptPetRequest {
   string kind = 1;

@@ -29,6 +29,8 @@ type PetService interface {
 	Pets(ctx context.Context, userID uuid.UUID) ([]*user.Pet, error)
 	UserPets(ctx context.Context, nickname user.Nickname, now time.Time) ([]*user.Pet, uuid.UUID, error)
 	Adopt(ctx context.Context, userID uuid.UUID, kind user.PetKind, name user.PetName, now time.Time) (service.PetCare, error)
+	Big2Z(ctx context.Context, userID uuid.UUID) (service.NamedPet, error)
+	ClaimBig2Z(ctx context.Context, userID uuid.UUID, now time.Time) (*user.Pet, error)
 	Feed(ctx context.Context, userID, petID uuid.UUID, now time.Time) (service.PetCare, error)
 	Play(ctx context.Context, userID, petID uuid.UUID, now time.Time) (*user.Pet, error)
 	Rename(ctx context.Context, userID, petID uuid.UUID, name user.PetName) (*user.Pet, error)
@@ -414,6 +416,36 @@ func (h *UserHandler) GetUserPet(ctx context.Context, req *userv1.GetUserPetRequ
 	}
 
 	return &userv1.GetUserPetResponse{Pets: toProtoPets(pets, now), OwnerId: ownerID.String()}, nil
+}
+
+func (h *UserHandler) GetNamedPet(ctx context.Context, _ *userv1.GetNamedPetRequest) (*userv1.GetNamedPetResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	named, err := h.pets.Big2Z(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.GetNamedPetResponse{Kind: named.Kind.String(), OpensAt: timestamppb.New(named.OpensAt), Claimed: named.Claimed}, nil
+}
+
+func (h *UserHandler) ClaimNamedPet(ctx context.Context, _ *userv1.ClaimNamedPetRequest) (*userv1.PetCareResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+
+	pet, err := h.pets.ClaimBig2Z(ctx, userID, now)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.PetCareResponse{Pet: toProtoPet(pet, now)}, nil
 }
 
 func (h *UserHandler) AdoptPet(ctx context.Context, req *userv1.AdoptPetRequest) (*userv1.PetCareResponse, error) {

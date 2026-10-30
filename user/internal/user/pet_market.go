@@ -33,7 +33,7 @@ var (
 
 // minPetPrices are the least a pet of each rarity goes for: cheaper, the
 // market would hand the rare kinds over for nothing.
-var minPetPrices = map[PetRarity]int64{PetCommon: 50, PetRare: 200, PetEpic: 800, PetLegendary: 3000}
+var minPetPrices = map[PetRarity]int64{PetCommon: 50, PetRare: 200, PetEpic: 800, PetLegendary: 3000, PetNamed: 3000}
 
 // MinPrice is the least a pet of the rarity goes for on the market.
 func (r PetRarity) MinPrice() int64 {

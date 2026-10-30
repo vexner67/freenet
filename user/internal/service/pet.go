@@ -25,6 +25,11 @@ type PetRepository interface {
 	// AddPet is user.ErrTooManyPets when userID keeps user.MaxPets,
 	// user.ErrNotFound without the user.
 	AddPet(ctx context.Context, userID uuid.UUID, p *user.Pet) error
+	// GrantPet adds p however many pets userID keeps, once a kind: a
+	// second time is user.ErrPetClaimed, even after p is gone.
+	GrantPet(ctx context.Context, userID uuid.UUID, p *user.Pet, now time.Time) error
+	// Granted says whether userID was given a pet of kind.
+	Granted(ctx context.Context, userID uuid.UUID, kind user.PetKind) (bool, error)
 	SavePet(ctx context.Context, p *user.Pet) error
 	DeletePet(ctx context.Context, userID, petID uuid.UUID) error
 	// Contenders are the pets nearest to rating, up to limit, of people
@@ -240,6 +245,44 @@ func (s *PetService) Adopt(ctx context.Context, userID uuid.UUID, kind user.PetK
 	}
 
 	return care, nil
+}
+
+// NamedPet says when the pet everyone is given opens and whether userID
+// took it.
+type NamedPet struct {
+	Kind    user.PetKind
+	OpensAt time.Time
+	Claimed bool
+}
+
+// Big2Z is the state of the pet for userID.
+func (s *PetService) Big2Z(ctx context.Context, userID uuid.UUID) (NamedPet, error) {
+	claimed, err := s.pets.Granted(ctx, userID, user.PetBig2Z)
+	if err != nil {
+		return NamedPet{}, errs.Wrap("s.pets.Granted", err)
+	}
+
+	return NamedPet{Kind: user.PetBig2Z, OpensAt: user.PetBig2ZOpensAt, Claimed: claimed}, nil
+}
+
+// ClaimBig2Z gives userID the pet for free; user.ErrPetLocked before it
+// opens, user.ErrPetClaimed the second time. It does not count against
+// user.MaxPets, as everyone is to have it.
+func (s *PetService) ClaimBig2Z(ctx context.Context, userID uuid.UUID, now time.Time) (*user.Pet, error) {
+	if now.Before(user.PetBig2ZOpensAt) {
+		return nil, user.ErrPetLocked
+	}
+
+	now = now.Truncate(time.Microsecond)
+	pet := user.NewPet(user.PetBig2Z, user.PetBig2ZName, now)
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		return errs.Wrap("s.pets.GrantPet", s.pets.GrantPet(ctx, userID, pet, now))
+	})
+	if err != nil {
+		return nil, errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return pet, nil
 }
 
 // Keeper is what userID keeps of the cases.

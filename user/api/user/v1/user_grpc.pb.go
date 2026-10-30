@@ -178,6 +178,8 @@ const (
 	UserService_GetPet_FullMethodName             = "/user.v1.UserService/GetPet"
 	UserService_GetUserPet_FullMethodName         = "/user.v1.UserService/GetUserPet"
 	UserService_AdoptPet_FullMethodName           = "/user.v1.UserService/AdoptPet"
+	UserService_GetNamedPet_FullMethodName        = "/user.v1.UserService/GetNamedPet"
+	UserService_ClaimNamedPet_FullMethodName      = "/user.v1.UserService/ClaimNamedPet"
 	UserService_FeedPet_FullMethodName            = "/user.v1.UserService/FeedPet"
 	UserService_PlayPet_FullMethodName            = "/user.v1.UserService/PlayPet"
 	UserService_RenamePet_FullMethodName          = "/user.v1.UserService/RenamePet"
@@ -656,6 +658,8 @@ type UserServiceClient interface {
 	GetPet(ctx context.Context, in *GetPetRequest, opts ...grpc.CallOption) (*PetState, error)
 	GetUserPet(ctx context.Context, in *GetUserPetRequest, opts ...grpc.CallOption) (*GetUserPetResponse, error)
 	AdoptPet(ctx context.Context, in *AdoptPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
+	GetNamedPet(ctx context.Context, in *GetNamedPetRequest, opts ...grpc.CallOption) (*GetNamedPetResponse, error)
+	ClaimNamedPet(ctx context.Context, in *ClaimNamedPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
 	FeedPet(ctx context.Context, in *FeedPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
 	PlayPet(ctx context.Context, in *PlayPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
 	RenamePet(ctx context.Context, in *RenamePetRequest, opts ...grpc.CallOption) (*PetCareResponse, error)
@@ -2334,6 +2338,26 @@ func (c *userServiceClient) AdoptPet(ctx context.Context, in *AdoptPetRequest, o
 	return out, nil
 }
 
+func (c *userServiceClient) GetNamedPet(ctx context.Context, in *GetNamedPetRequest, opts ...grpc.CallOption) (*GetNamedPetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetNamedPetResponse)
+	err := c.cc.Invoke(ctx, UserService_GetNamedPet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ClaimNamedPet(ctx context.Context, in *ClaimNamedPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PetCareResponse)
+	err := c.cc.Invoke(ctx, UserService_ClaimNamedPet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) FeedPet(ctx context.Context, in *FeedPetRequest, opts ...grpc.CallOption) (*PetCareResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PetCareResponse)
@@ -3053,6 +3077,8 @@ type UserServiceServer interface {
 	GetPet(context.Context, *GetPetRequest) (*PetState, error)
 	GetUserPet(context.Context, *GetUserPetRequest) (*GetUserPetResponse, error)
 	AdoptPet(context.Context, *AdoptPetRequest) (*PetCareResponse, error)
+	GetNamedPet(context.Context, *GetNamedPetRequest) (*GetNamedPetResponse, error)
+	ClaimNamedPet(context.Context, *ClaimNamedPetRequest) (*PetCareResponse, error)
 	FeedPet(context.Context, *FeedPetRequest) (*PetCareResponse, error)
 	PlayPet(context.Context, *PlayPetRequest) (*PetCareResponse, error)
 	RenamePet(context.Context, *RenamePetRequest) (*PetCareResponse, error)
@@ -3624,6 +3650,12 @@ func (UnimplementedUserServiceServer) GetUserPet(context.Context, *GetUserPetReq
 }
 func (UnimplementedUserServiceServer) AdoptPet(context.Context, *AdoptPetRequest) (*PetCareResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AdoptPet not implemented")
+}
+func (UnimplementedUserServiceServer) GetNamedPet(context.Context, *GetNamedPetRequest) (*GetNamedPetResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetNamedPet not implemented")
+}
+func (UnimplementedUserServiceServer) ClaimNamedPet(context.Context, *ClaimNamedPetRequest) (*PetCareResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ClaimNamedPet not implemented")
 }
 func (UnimplementedUserServiceServer) FeedPet(context.Context, *FeedPetRequest) (*PetCareResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method FeedPet not implemented")
@@ -6571,6 +6603,42 @@ func _UserService_AdoptPet_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetNamedPet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNamedPetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetNamedPet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetNamedPet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetNamedPet(ctx, req.(*GetNamedPetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ClaimNamedPet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClaimNamedPetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ClaimNamedPet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ClaimNamedPet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ClaimNamedPet(ctx, req.(*ClaimNamedPetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_FeedPet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(FeedPetRequest)
 	if err := dec(in); err != nil {
@@ -7695,6 +7763,14 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AdoptPet",
 			Handler:    _UserService_AdoptPet_Handler,
+		},
+		{
+			MethodName: "GetNamedPet",
+			Handler:    _UserService_GetNamedPet_Handler,
+		},
+		{
+			MethodName: "ClaimNamedPet",
+			Handler:    _UserService_ClaimNamedPet_Handler,
 		},
 		{
 			MethodName: "FeedPet",
