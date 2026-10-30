@@ -40,6 +40,11 @@ const (
 	// StockBand is how far from the price of the exchange the orders of
 	// people may stand: further off they are refused.
 	StockBand = 0.15
+	// maxHourMove is how far the price of the exchange moves in an hour:
+	// like the limits of a real exchange, it gives people time to answer.
+	maxHourMove = 0.1
+	// TapeTrades are the last deals of an enterprise it remembers.
+	TapeTrades = 30
 	// indexBase is the index of the exchange at its start, in hundredths
 	// of a point.
 	indexBase = 100_000
@@ -54,6 +59,7 @@ var (
 	ErrTooManyStockOrders = errors.New("a page keeps at most 20 orders on the exchange")
 	ErrStockOrderNotFound = errors.New("there is no such order of shares")
 	ErrStockBand          = errors.New("the price of an order must be within 15% of the price of the exchange")
+	ErrStockStop          = errors.New("a stop order needs a limit price and a stop: to sell below the price now, to buy above it")
 	ErrIssue              = errors.New("an enterprise may put up from 0 new shares, no more than the site lets it have in all")
 )
 
@@ -65,7 +71,9 @@ type Account struct {
 
 // StockOrder is an order of a page to buy or sell Shares of an enterprise
 // at Price hundredths a share. A buying order keeps the money of what is
-// left of it, a selling one the shares.
+// left of it, a selling one the shares. With Stop above 0 it is a stop
+// order: it sleeps out of the book until the price comes to Stop, then
+// stands as an order at Price.
 type StockOrder struct {
 	ID       uuid.UUID
 	FirmID   uuid.UUID
@@ -74,6 +82,14 @@ type StockOrder struct {
 	Price    int64
 	Shares   int64
 	PlacedAt time.Time
+	Stop     int64
+}
+
+// StockTrade is a deal of the tape: Shares changed hands at Price.
+type StockTrade struct {
+	At     time.Time
+	Price  int64
+	Shares int64
 }
 
 // Candle is an hour of the price of a share, in hundredths: at its start,
@@ -305,7 +321,7 @@ func (c *City) Quote(rules FirmRules, f *Firm, now time.Time) StockQuote {
 
 	for _, o := range c.stockOrders {
 		switch {
-		case o.FirmID != f.id:
+		case o.FirmID != f.id || o.Stop > 0:
 		case o.Buy && o.Price > q.BestBid:
 			q.BestBid = o.Price
 		case !o.Buy && (q.BestAsk == 0 || o.Price < q.BestAsk):
@@ -351,6 +367,9 @@ func (c *City) PlaceStock(rules FirmRules, userID uuid.UUID, o StockOrder, now t
 	if err = c.checkStock(userID, o); err != nil {
 		return StockFill{}, err
 	}
+	if o.Stop > 0 {
+		return StockFill{}, c.placeStop(rules, f, o, userID, now)
+	}
 	if o.Price > 0 && !c.marketOf(rules, f, now).inBand(o.Price) {
 		return StockFill{}, ErrStockBand
 	}
@@ -393,8 +412,44 @@ func (c *City) PlaceStock(rules FirmRules, userID uuid.UUID, o StockOrder, now t
 	return fill.StockFill, nil
 }
 
+// placeStop puts a stop order to sleep, holding what it will need. It must
+// not stand at a price already reached: that is a plain order.
+func (c *City) placeStop(rules FirmRules, f *Firm, o StockOrder, userID uuid.UUID, now time.Time) error {
+	price := c.Quote(rules, f, now).Price
+	if o.Price == 0 || o.Stop > MaxFirmPrice || (o.Buy && o.Stop <= price) || (!o.Buy && o.Stop >= price) {
+		return ErrStockStop
+	}
+
+	var err error
+	if o.ID, err = uuid.NewV7(); err != nil {
+		return err
+	}
+	o.UserID, o.PlacedAt = userID, now.UTC()
+	if o.Buy {
+		c.addCash(userID, -o.Price*o.Shares)
+	}
+	c.stockOrders = append(c.stockOrders, o)
+
+	return nil
+}
+
+// wakeStops turns the stop orders the price came to into plain orders.
+func (c *City) wakeStops(rules FirmRules, at time.Time) {
+	for i := range c.stockOrders {
+		o := &c.stockOrders[i]
+		f, err := c.Firm(o.FirmID)
+		if o.Stop == 0 || err != nil {
+			continue
+		}
+
+		if price := c.marketOf(rules, f, at).price(); (o.Buy && price >= o.Stop) || (!o.Buy && price <= o.Stop) {
+			o.Stop = 0
+		}
+	}
+}
+
 func (c *City) checkStock(userID uuid.UUID, o StockOrder) error {
-	if o.Shares < 1 || o.Shares > maxFirmUnits || o.Price < 0 || o.Price > MaxFirmPrice {
+	if o.Shares < 1 || o.Shares > maxFirmUnits || o.Price < 0 || o.Price > MaxFirmPrice || o.Stop < 0 {
 		return ErrStockOrder
 	}
 
@@ -405,7 +460,7 @@ func (c *City) checkStock(userID uuid.UUID, o StockOrder) error {
 		}
 
 		count++
-		if o.Price > 0 && other.FirmID == o.FirmID && other.Buy != o.Buy && crossesStock(o, other) {
+		if o.Price > 0 && o.Stop == 0 && other.Stop == 0 && other.FirmID == o.FirmID && other.Buy != o.Buy && crossesStock(o, other) {
 			return ErrOwnStockOrder
 		}
 	}
@@ -473,6 +528,10 @@ func (c *City) deal(rules FirmRules, f *Firm, fill *stockFill, people bool, now 
 func (c *City) bestStock(o StockOrder, m market) int {
 	best := -1
 	for i, other := range c.stockOrders {
+		if other.Stop > 0 {
+			continue
+		}
+
 		if other.FirmID != o.FirmID || other.Buy == o.Buy || other.UserID == o.UserID || !m.inBand(other.Price) {
 			continue
 		}
@@ -676,6 +735,11 @@ func (c *City) trade(f *Firm, at time.Time, price, shares int64) {
 	k.Close = price
 	k.Volume += shares
 	f.price = price
+
+	f.tape = append(f.tape, StockTrade{At: at.UTC(), Price: price, Shares: shares})
+	if over := len(f.tape) - TapeTrades; over > 0 {
+		f.tape = append([]StockTrade(nil), f.tape[over:]...)
+	}
 }
 
 // candle is the candle of the hour of at, opened at the price before or,
@@ -742,11 +806,12 @@ func (c *City) exchange(rules FirmRules, at time.Time) {
 		f.mood = min(max(f.mood*0.9+0.05*noise, -maxMood), maxMood)
 	}
 
+	c.wakeStops(rules, at)
 	c.meet(rules, at)
 	c.closeTenders(at.Add(time.Hour))
 
 	for _, f := range c.firms {
-		price := c.marketOf(rules, f, at).price()
+		price := f.withinHourMove(c.marketOf(rules, f, at).price())
 		k := f.candle(at, price)
 		k.High = max(k.High, price)
 		k.Low = min(k.Low, price)
@@ -759,13 +824,25 @@ func (c *City) exchange(rules FirmRules, at time.Time) {
 	c.indexAt(at)
 }
 
+// withinHourMove is price kept within maxHourMove of the price before.
+func (f *Firm) withinHourMove(price int64) int64 {
+	if f.price == 0 {
+		return price
+	}
+
+	low := max(int64(math.Ceil(float64(f.price)*(1-maxHourMove))), 1)
+	high := max(int64(float64(f.price)*(1+maxHourMove)), f.price+1)
+
+	return min(max(price, low), high)
+}
+
 // meet deals the waiting orders, the oldest first, with the exchange at
 // its prices of the end of the hour at.
 func (c *City) meet(rules FirmRules, at time.Time) {
 	for _, o := range c.StockOrders() {
 		i := slices.IndexFunc(c.stockOrders, func(w StockOrder) bool { return w.ID == o.ID })
 		f, err := c.Firm(o.FirmID)
-		if i < 0 || err != nil {
+		if i < 0 || err != nil || o.Stop > 0 {
 			continue
 		}
 

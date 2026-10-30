@@ -94,3 +94,14 @@ func TestNewJackpot(t *testing.T) {
 		t.Fatalf("NewJackpot(500) = %v, %v", j, err)
 	}
 }
+
+func TestBonusOf(t *testing.T) {
+	t.Parallel()
+
+	e := user.Economy{Bonus: 10}
+	for day, want := range map[int]int64{0: 10, 1: 10, 2: 20, 7: 70, 8: 70, 365: 70} {
+		if got := e.BonusOf(day); got != want {
+			t.Errorf("BonusOf(%d) = %d, want %d", day, got, want)
+		}
+	}
+}

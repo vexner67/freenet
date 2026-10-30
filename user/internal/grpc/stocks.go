@@ -52,8 +52,22 @@ func toProtoCompany(v service.FirmsView, f *user.Firm, looked bool) *userv1.Stoc
 		DirectorId: f.DirectorID().String(), Shares: q.Shares, Pool: q.Pool, Float: q.Float, Book: q.Book, Fair: q.Fair,
 		Price: q.Price, Bid: q.Bid, Ask: q.Ask, BestBid: q.BestBid, BestAsk: q.BestAsk, DayAgo: q.DayAgo, Volume: q.Volume,
 		Profit: f.Profit(), Holders: int32(holders), Candles: toProtoCandles(candles), //nolint:gosec // people of the site
-		BandLow: q.Low, BandHigh: q.High,
+		BandLow: q.Low, BandHigh: q.High, Tape: toProtoTape(f, looked),
 	}
+}
+
+func toProtoTape(f *user.Firm, looked bool) []*userv1.StockTrade {
+	if !looked {
+		return nil
+	}
+
+	tape := f.Tape()
+	out := make([]*userv1.StockTrade, len(tape))
+	for i, t := range tape {
+		out[i] = &userv1.StockTrade{At: timestamppb.New(t.At), Price: t.Price, Shares: t.Shares}
+	}
+
+	return out
 }
 
 // toProtoBook is the order book of the company: the prices people wait
@@ -62,7 +76,7 @@ func toProtoBook(orders []user.StockOrder, firmID uuid.UUID) (bids, asks []*user
 	side := func(buy bool) []*userv1.StockLevel {
 		var levels []*userv1.StockLevel
 		for _, o := range orders {
-			if o.FirmID != firmID || o.Buy != buy {
+			if o.FirmID != firmID || o.Buy != buy || o.Stop > 0 {
 				continue
 			}
 
@@ -112,7 +126,7 @@ func toProtoStocks(v service.FirmsView, userID, firmID uuid.UUID) *userv1.Stocks
 		if o.UserID == userID {
 			state.Orders = append(state.Orders, &userv1.StockOrder{
 				Id: o.ID.String(), FirmId: o.FirmID.String(), Buy: o.Buy, Price: o.Price, Shares: o.Shares,
-				PlacedAt: timestamppb.New(o.PlacedAt),
+				PlacedAt: timestamppb.New(o.PlacedAt), Stop: o.Stop,
 			})
 		}
 	}
@@ -174,7 +188,7 @@ func fromProtoStocksAct(req *userv1.RunStocksRequest) (service.FirmAct, error) {
 	if err != nil {
 		return service.FirmAct{}, err
 	}
-	act.Stock = user.StockOrder{FirmID: firmID, Buy: req.GetBuy(), Price: req.GetPrice(), Shares: req.GetShares()}
+	act.Stock = user.StockOrder{FirmID: firmID, Buy: req.GetBuy(), Price: req.GetPrice(), Shares: req.GetShares(), Stop: req.GetStop()}
 
 	return act, nil
 }

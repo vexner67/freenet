@@ -54,6 +54,10 @@ func TestNewMine(t *testing.T) {
 			v[1].Energy = 0
 			return v
 		}, user.ErrOreEnergy},
+		{"a rarer ore that pays less", func(v []user.OreVein, _ *int, _ *time.Duration, _ *user.MineEvents) []user.OreVein {
+			v[4].Price = v[2].Price
+			return v
+		}, user.ErrOreValue},
 		{"a dig above the energy", func(v []user.OreVein, e *int, _ *time.Duration, _ *user.MineEvents) []user.OreVein {
 			*e = 2
 			return v

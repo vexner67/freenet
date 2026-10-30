@@ -1770,6 +1770,8 @@ message GetBonusResponse {
   bool taken = 2;
   // The caller may take it: a page a week old with a filled profile.
   bool eligible = 3;
+  // The day in a row the caller is on, counting today's bonus.
+  int32 streak = 4;
 }
 
 message ClaimBonusRequest {}
@@ -2663,6 +2665,8 @@ message FirmRoute {
   string good = 3;
   int64 from = 4;
   int64 units = 5;
+  // auto: it counts what to hand by itself; from and units mean nothing.
+  bool auto = 6;
 }
 
 // FirmLabour is the labour market of the city: its people, those working,
@@ -2833,6 +2837,15 @@ message StockCompany {
   repeated StockCandle candles = 20;
   int64 band_low = 21;
   int64 band_high = 22;
+  // tape is the last deals, only of the company looked at.
+  repeated StockTrade tape = 23;
+}
+
+// StockTrade is a deal: shares changed hands at a price.
+message StockTrade {
+  google.protobuf.Timestamp at = 1;
+  int64 price = 2;
+  int64 shares = 3;
 }
 
 // StockIndexPoint is the index of the exchange at an hour, in hundredths
@@ -2851,6 +2864,8 @@ message StockOrder {
   int64 price = 4;
   int64 shares = 5;
   google.protobuf.Timestamp placed_at = 6;
+  // stop above 0: it sleeps until the price comes to it.
+  int64 stop = 7;
 }
 
 // StockLevel is a price of the order book and the shares people wait to
@@ -2899,6 +2914,7 @@ message RunStocksRequest {
   int64 shares = 5;
   int64 votes = 6;
   string order_id = 7;
+  int64 stop = 8;
 }
 
 // RunStocksResponse is the votes the caller spent and got and the balance

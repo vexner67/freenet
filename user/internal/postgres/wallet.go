@@ -392,50 +392,58 @@ const takeBonusQuery = `
 	)
 	VALUES ($1, $2)
 	ON CONFLICT (user_id) DO UPDATE
-	SET day = EXCLUDED.day
+	SET day = EXCLUDED.day,
+		streak = CASE WHEN vote_bonuses.day = EXCLUDED.day - 1 THEN vote_bonuses.streak + 1 ELSE 1 END
 	WHERE vote_bonuses.day < EXCLUDED.day
-	RETURNING user_id
+	RETURNING streak
 `
 
-// TakeBonus marks the bonus of day taken by userID; user.ErrBonusTaken.
-func (r *WalletRepository) TakeBonus(ctx context.Context, userID uuid.UUID, day time.Time) error {
-	var taker uuid.UUID
+// TakeBonus marks the bonus of day taken by userID and says how many days
+// in a row that makes; user.ErrBonusTaken.
+func (r *WalletRepository) TakeBonus(ctx context.Context, userID uuid.UUID, day time.Time) (int, error) {
+	var streak int
 
-	err := r.conn(ctx).QueryRow(ctx, takeBonusQuery, userID, day).Scan(&taker)
+	err := r.conn(ctx).QueryRow(ctx, takeBonusQuery, userID, day).Scan(&streak)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return user.ErrBonusTaken
+		return 0, user.ErrBonusTaken
 	}
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode {
-		return user.ErrNotFound
+		return 0, user.ErrNotFound
 	}
 	if err != nil {
-		return errs.Wrap("r.conn.QueryRow", err)
+		return 0, errs.Wrap("r.conn.QueryRow", err)
 	}
 
-	return nil
+	return streak, nil
 }
 
 const lastBonusQuery = `
-	SELECT day
+	SELECT
+		day,
+		streak
 	FROM vote_bonuses
 	WHERE user_id = $1
 `
 
-// LastBonus is the day userID took the last bonus on, zero for never.
-func (r *WalletRepository) LastBonus(ctx context.Context, userID uuid.UUID) (time.Time, error) {
-	var day time.Time
+// LastBonus is the day userID took the last bonus on, zero for never, and
+// how many days in a row that made.
+func (r *WalletRepository) LastBonus(ctx context.Context, userID uuid.UUID) (time.Time, int, error) {
+	var (
+		day    time.Time
+		streak int
+	)
 
-	err := r.conn(ctx).QueryRow(ctx, lastBonusQuery, userID).Scan(&day)
+	err := r.conn(ctx).QueryRow(ctx, lastBonusQuery, userID).Scan(&day, &streak)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return time.Time{}, nil
+		return time.Time{}, 0, nil
 	}
 	if err != nil {
-		return time.Time{}, errs.Wrap("r.conn.QueryRow", err)
+		return time.Time{}, 0, errs.Wrap("r.conn.QueryRow", err)
 	}
 
-	return time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC), nil
+	return time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC), streak, nil
 }
 
 const listVoteOperationsQuery = `

@@ -379,6 +379,9 @@ func (r firmRun) do(ctx context.Context) error {
 		route.Good = a.Order.Good
 		_, err := c.AddRoute(r.userID, a.FirmID, route)
 		return errs.Wrap("c.AddRoute", err)
+	case user.FirmAutoRoutes:
+		_, err := c.AutoRoutes(r.userID)
+		return errs.Wrap("c.AutoRoutes", err)
 	case user.FirmUnroute:
 		return errs.Wrap("c.RemoveRoute", c.RemoveRoute(r.userID, a.FirmID, a.RouteID))
 	}

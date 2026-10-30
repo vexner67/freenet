@@ -349,7 +349,7 @@ func toStatus(err error) (*status.Status, bool) {
 var (
 	firmInvalid = []error{
 		user.ErrUnknownFirm, user.ErrUnknownGood, user.ErrUnknownFirmAction, user.ErrFirmName, user.ErrFirmStaff,
-		user.ErrFirmGood, user.ErrFirmUnits, user.ErrFirmVotes, user.ErrFirmAuto, user.ErrOrder, user.ErrStockOrder,
+		user.ErrFirmGood, user.ErrFirmUnits, user.ErrFirmVotes, user.ErrFirmAuto, user.ErrOrder, user.ErrStockOrder, user.ErrStockStop,
 		user.ErrStockBand, user.ErrRoute, user.ErrIssue, user.ErrDeliver, user.ErrTender, user.ErrFirmPlans, user.ErrFirmPlan, user.ErrGoodPlan, user.ErrFirmPercents, user.ErrFirmCapital, user.ErrFirmLimits,
 	}
 	firmMissing = []error{
@@ -360,7 +360,7 @@ var (
 		user.ErrNotDirector, user.ErrTooManyFirms, user.ErrFirmTopLevel, user.ErrFirmCash, user.ErrFirmStock,
 		user.ErrFirmStorage, user.ErrFirmNotYet, user.ErrFirmNoDeal, user.ErrFirmShortCash, user.ErrOwnOrder,
 		user.ErrTooManyOrders, user.ErrFirmWorn, user.ErrImprovement, user.ErrStockShares, user.ErrAccount,
-		user.ErrStockNoDeal, user.ErrOwnStockOrder, user.ErrTooManyStockOrders, user.ErrContractTaken,
+		user.ErrStockNoDeal, user.ErrNoAutoRoutes, user.ErrOwnStockOrder, user.ErrTooManyStockOrders, user.ErrContractTaken,
 		user.ErrTooManyContracts, user.ErrOwnTender, user.ErrTooManyTenders, user.ErrTenderToYourself, user.ErrTooManyRoutes,
 	}
 )

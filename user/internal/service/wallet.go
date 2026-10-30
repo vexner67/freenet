@@ -46,11 +46,12 @@ type WalletRepository interface {
 
 // BonusRepository keeps the daily bonuses.
 type BonusRepository interface {
-	// TakeBonus marks the bonus of day taken by userID;
-	// user.ErrBonusTaken for a day taken already.
-	TakeBonus(ctx context.Context, userID uuid.UUID, day time.Time) error
-	// LastBonus is the day of the last bonus of userID, zero for never.
-	LastBonus(ctx context.Context, userID uuid.UUID) (time.Time, error)
+	// TakeBonus marks the bonus of day taken by userID and says how many
+	// days in a row that makes; user.ErrBonusTaken for a day taken already.
+	TakeBonus(ctx context.Context, userID uuid.UUID, day time.Time) (int, error)
+	// LastBonus is the day of the last bonus of userID, zero for never,
+	// and how many days in a row that made.
+	LastBonus(ctx context.Context, userID uuid.UUID) (time.Time, int, error)
 }
 
 // StatementRepository reads the statements of pages: every change of
@@ -126,9 +127,11 @@ type StatementPage struct {
 }
 
 // Bonus is the daily bonus of a page: what it gives now, whether it is
-// taken today and whether the page may take it at all.
+// taken today and whether the page may take it at all. Streak is the day
+// in a row the page is on, counting today's bonus.
 type Bonus struct {
 	Votes    int64
+	Streak   int
 	Taken    bool
 	Eligible bool
 }
@@ -350,7 +353,7 @@ func (s *WalletService) Bonus(ctx context.Context, userID uuid.UUID, now time.Ti
 		return Bonus{}, errs.Wrap("s.userRepo.GetByID", err)
 	}
 
-	last, err := s.bonuses.LastBonus(ctx, userID)
+	last, streak, err := s.bonuses.LastBonus(ctx, userID)
 	if err != nil {
 		return Bonus{}, errs.Wrap("s.bonuses.LastBonus", err)
 	}
@@ -360,9 +363,21 @@ func (s *WalletService) Bonus(ctx context.Context, userID uuid.UUID, now time.Ti
 		return Bonus{}, errs.Wrap("s.economy.Economy", err)
 	}
 
+	today := user.BonusDay(now)
+	taken := !last.Before(today)
+
+	switch {
+	case taken:
+	case last.Equal(today.AddDate(0, 0, -1)):
+		streak++
+	default:
+		streak = 1
+	}
+
 	return Bonus{
-		Votes:    economy.Bonus,
-		Taken:    !last.Before(user.BonusDay(now)),
+		Votes:    economy.BonusOf(streak),
+		Streak:   streak,
+		Taken:    taken,
 		Eligible: u.CheckBonusAt(now) == nil,
 	}, nil
 }
@@ -387,13 +402,13 @@ func (s *WalletService) ClaimBonus(ctx context.Context, userID uuid.UUID, now ti
 	var claimed Redeemed
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		if err := s.bonuses.TakeBonus(ctx, userID, user.BonusDay(now)); err != nil {
+		streak, err := s.bonuses.TakeBonus(ctx, userID, user.BonusDay(now))
+		if err != nil {
 			return errs.Wrap("s.bonuses.TakeBonus", err)
 		}
 
-		claimed.Votes = economy.Bonus
+		claimed.Votes = economy.BonusOf(streak)
 
-		var err error
 		claimed.Wallet, err = s.wallets.Credit(ctx, userID, claimed.Votes, 0, user.Entry(user.VoteBonus, uuid.Nil, ""))
 
 		return errs.Wrap("s.wallets.Credit", err)

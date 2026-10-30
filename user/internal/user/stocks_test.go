@@ -321,3 +321,79 @@ func TestRestoreOldOffers(t *testing.T) {
 		t.Errorf("offers are kept again")
 	}
 }
+
+func TestStopOrders(t *testing.T) {
+	t.Parallel()
+
+	rules := user.DefaultFirmRules()
+	c := newCity()
+	founder := uuid.New()
+	f := found(t, c, rules, founder, user.FirmFarm)
+	price := c.Quote(rules, f, cityStart).Price
+	if err := c.Fund(founder, 10_000); err != nil {
+		t.Fatal(err)
+	}
+
+	for name, o := range map[string]user.StockOrder{
+		"no limit":               {FirmID: f.ID(), Stop: price - 1, Shares: 1},
+		"a sale above the price": {FirmID: f.ID(), Price: price, Stop: price + 1, Shares: 1},
+		"a purchase below it":    {FirmID: f.ID(), Buy: true, Price: price, Stop: price - 1, Shares: 1},
+	} {
+		if _, err := c.PlaceStock(rules, founder, o, cityStart); !errors.Is(err, user.ErrStockStop) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+
+	// Asleep it holds the shares, stands out of the book and meets nobody.
+	sale := user.StockOrder{FirmID: f.ID(), Price: 1, Stop: price - 1, Shares: 10}
+	if _, err := c.PlaceStock(rules, founder, sale, cityStart); err != nil {
+		t.Fatal(err)
+	}
+	if c.Free(f.ID(), founder) != 90 {
+		t.Errorf("free %d of 100 with 10 asleep", c.Free(f.ID(), founder))
+	}
+	if q := c.Quote(rules, f, cityStart); q.BestAsk != 0 {
+		t.Errorf("a stop order in the book: %+v", q)
+	}
+
+	// Taken off, it gives everything back.
+	if err := c.CancelStock(founder, c.StockOrders()[0].ID); err != nil || c.Free(f.ID(), founder) != 100 {
+		t.Fatalf("cancel: %v, free %d", err, c.Free(f.ID(), founder))
+	}
+
+	before := c.Account(founder)
+	buy := user.StockOrder{FirmID: f.ID(), Buy: true, Price: price + 2, Stop: price + 1, Shares: 3}
+	if _, err := c.PlaceStock(rules, founder, buy, cityStart); err != nil {
+		t.Fatal(err)
+	}
+	if c.Account(founder) != before-3*(price+2) {
+		t.Errorf("account %d after holding from %d", c.Account(founder), before)
+	}
+
+	// The price comes to the stop: the order wakes as a plain one.
+	c.Tick(rules, cityStart.Add(6*time.Hour))
+	if f.Price() < price+1 {
+		t.Skipf("the price stayed at %d", f.Price())
+	}
+	for _, o := range c.StockOrders() {
+		if o.Stop != 0 {
+			t.Errorf("still asleep at %d: %+v", f.Price(), o)
+		}
+	}
+}
+
+func TestPriceMovesWithinLimits(t *testing.T) {
+	t.Parallel()
+
+	rules := user.DefaultFirmRules()
+	c := newCity()
+	f := found(t, c, rules, uuid.New(), user.FirmFarm)
+	c.Tick(rules, cityStart.Add(24*time.Hour))
+
+	candles := f.Candles()
+	for i := 1; i < len(candles); i++ {
+		if before, now := float64(candles[i-1].Close), float64(candles[i].Close); now > before*1.1+1 || now < before*0.9-1 {
+			t.Errorf("the hour %d went from %.0f to %.0f", i, before, now)
+		}
+	}
+}

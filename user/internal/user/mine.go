@@ -68,6 +68,7 @@ var (
 	ErrOrePrice        = errors.New("the price of an ore must be at least 0")
 	ErrOreGain         = errors.New("the experience of a dig must be at least 0")
 	ErrOreEnergy       = errors.New("a dig must take at least 1 energy")
+	ErrOreValue        = errors.New("a point of energy must bring more at each ore than at the one before")
 	ErrMineEnergy      = errors.New("the energy of a miner must be at least 1, not below a dig")
 	ErrMineRegen       = errors.New("a point of energy must come back in at least 1 second")
 	ErrMineChances     = errors.New("the chances of the events must be from 0 and together at most 10000")
@@ -140,6 +141,9 @@ func NewMine(veins []OreVein, energy int, regen time.Duration, events MineEvents
 		if v.Energy > energy {
 			return Mine{}, ErrMineEnergy
 		}
+		if i > 0 && !v.paysMoreThan(veins[i-1]) {
+			return Mine{}, ErrOreValue
+		}
 	}
 
 	switch {
@@ -154,6 +158,20 @@ func NewMine(veins []OreVein, energy int, regen time.Duration, events MineEvents
 	}
 
 	return Mine{veins: append([]OreVein(nil), veins...), energy: energy, regen: regen, events: events}, nil
+}
+
+// paysMoreThan is whether a point of energy brings more at v than at o, on
+// average: a rarer ore must be worth reaching. Compared crosswise, so that
+// no division rounds it away; big numbers, as admins may set huge ones.
+func (v OreVein) paysMoreThan(o OreVein) bool {
+	worth := func(a, b OreVein) *big.Int {
+		w := big.NewInt(a.Least + a.Most)
+		w.Mul(w, big.NewInt(a.Price))
+
+		return w.Mul(w, big.NewInt(int64(b.Energy)))
+	}
+
+	return worth(v, o).Cmp(worth(o, v)) > 0
 }
 
 func checkVein(v OreVein, i int, veins []OreVein) error {
@@ -204,16 +222,17 @@ func (e MineEvents) check() error {
 
 // DefaultMine is the mine until the administrators change it. A point of
 // energy comes back in 15 minutes, so a miner has about a hundred of them
-// a day; a dig of stone sells for about 3 votes, of a crystal — for 60.
+// a day. A point of energy sells for about 3 votes at the stone and 40 at
+// the crystal: the rarer the ore, the more each point brings.
 func DefaultMine() Mine {
 	return Mine{
 		veins: []OreVein{
 			{Ore: OreStone, Experience: 0, Least: 120, Most: 180, Price: 2, Gain: 10, Energy: 1},
 			{Ore: OreCoal, Experience: 500, Least: 100, Most: 140, Price: 5, Gain: 15, Energy: 1},
-			{Ore: OreIron, Experience: 2_000, Least: 80, Most: 120, Price: 10, Gain: 25, Energy: 1},
-			{Ore: OreGold, Experience: 8_000, Least: 40, Most: 60, Price: 40, Gain: 40, Energy: 2},
-			{Ore: OreDiamond, Experience: 30_000, Least: 20, Most: 30, Price: 140, Gain: 60, Energy: 2},
-			{Ore: OreCrystal, Experience: 100_000, Least: 10, Most: 14, Price: 500, Gain: 100, Energy: 3},
+			{Ore: OreIron, Experience: 2_000, Least: 80, Most: 120, Price: 9, Gain: 25, Energy: 1},
+			{Ore: OreGold, Experience: 8_000, Least: 40, Most: 60, Price: 60, Gain: 60, Energy: 2},
+			{Ore: OreDiamond, Experience: 30_000, Least: 20, Most: 30, Price: 200, Gain: 100, Energy: 2},
+			{Ore: OreCrystal, Experience: 100_000, Least: 10, Most: 14, Price: 1000, Gain: 225, Energy: 3},
 		},
 		energy: 10,
 		regen:  15 * time.Minute,

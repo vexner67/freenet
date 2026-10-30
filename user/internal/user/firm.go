@@ -134,6 +134,7 @@ type Firm struct {
 	price      int64
 	float      int64
 	candles    []Candle
+	tape       []StockTrade
 	routes     []SupplyRoute
 }
 
@@ -161,6 +162,7 @@ type FirmState struct {
 	Price      int64
 	Float      int64
 	Candles    []Candle
+	Tape       []StockTrade
 	Routes     []SupplyRoute
 }
 
@@ -171,7 +173,7 @@ func restoreFirm(s FirmState) *Firm {
 		stock: map[Good]int64{}, carry: map[Good]float64{}, auto: map[Good]Auto{},
 		hours: append([]FirmHour(nil), s.Hours...), wear: min(max(s.Wear, 0), 100), ranks: map[Improvement]int{},
 		improved: max(s.Improved, 0), idleUntil: s.IdleUntil.UTC(), mood: min(max(s.Mood, -maxMood), maxMood),
-		price: max(s.Price, 0), float: max(s.Float, 0), candles: append([]Candle(nil), s.Candles...),
+		price: max(s.Price, 0), float: max(s.Float, 0), candles: append([]Candle(nil), s.Candles...), tape: append([]StockTrade(nil), s.Tape...),
 		routes: slices.Clone(s.Routes),
 	}
 	// Kept before the labour market, an enterprise sought the workers it
@@ -205,7 +207,7 @@ func (f *Firm) state() FirmState {
 		Level: f.level, Workers: f.workers, Wanted: f.wanted, Wage: f.wage, Cash: f.cash,
 		Stock: map[Good]int64{}, Carry: map[Good]float64{}, Auto: map[Good]Auto{},
 		Hours: append([]FirmHour(nil), f.hours...), Wear: f.wear, Ranks: map[Improvement]int{}, Improved: f.improved,
-		IdleUntil: f.idleUntil, Mood: f.mood, Price: f.price, Float: f.float, Candles: append([]Candle(nil), f.candles...),
+		IdleUntil: f.idleUntil, Mood: f.mood, Price: f.price, Float: f.float, Candles: append([]Candle(nil), f.candles...), Tape: append([]StockTrade(nil), f.tape...),
 		Routes: slices.Clone(f.routes),
 	}
 	for imp, r := range f.ranks {
@@ -262,6 +264,9 @@ func (f *Firm) Price() int64 { return f.price }
 
 // Float is the new shares the enterprise sells through the exchange.
 func (f *Firm) Float() int64 { return f.float }
+
+// Tape is the last deals of the shares, the oldest first.
+func (f *Firm) Tape() []StockTrade { return append([]StockTrade(nil), f.tape...) }
 
 // Candles are the hours of the price, the oldest first.
 func (f *Firm) Candles() []Candle {
@@ -374,13 +379,14 @@ const (
 	FirmTenderClose FirmAction = "tender_cancel"
 	FirmRoute       FirmAction = "route"
 	FirmUnroute     FirmAction = "unroute"
+	FirmAutoRoutes  FirmAction = "auto_routes"
 )
 
 var firmActions = []FirmAction{
 	FirmFound, FirmRename, FirmUpgrade, FirmStaff, FirmDeposit, FirmDividend, FirmLiquidate, FirmAutomate,
 	FirmOrder, FirmCancel, FirmStateBuy, FirmStateSell, FirmIssue, FirmRepair, FirmImprove, FirmTake, FirmDeliver,
 	FirmFund, FirmWithdraw, FirmStockOrder, FirmStockCancel, FirmTender, FirmTenderSell, FirmTenderClose,
-	FirmRoute, FirmUnroute,
+	FirmRoute, FirmUnroute, FirmAutoRoutes,
 }
 
 var ErrUnknownFirmAction = errors.New("unknown action with an enterprise")

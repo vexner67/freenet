@@ -31,11 +31,11 @@ type PrimeBackground string
 type PrimeMood string
 
 // The choices, the default first: the amethyst of Prime, no pattern, no
-// mood. The site keeps their names and pictures (primeNames, primeFrames,
+// mood; "none" leaves the name or the photo plain. The site keeps their names and pictures (primeNames, primeFrames,
 // primeBackgrounds, primeMoods in labels.js; a test compares them).
 var (
-	PrimeNames       = []PrimeName{"amethyst", "ruby", "emerald", "sapphire", "gold", "rainbow"}
-	PrimeFrames      = []PrimeFrame{"amethyst", "gold", "silver", "glitter", "hearts", "stars"}
+	PrimeNames       = []PrimeName{"amethyst", "ruby", "emerald", "sapphire", "gold", "rainbow", "none"}
+	PrimeFrames      = []PrimeFrame{"amethyst", "gold", "silver", "glitter", "hearts", "stars", "none"}
 	PrimeBackgrounds = []PrimeBackground{"", "stars", "hearts", "checks", "clouds", "flowers", "sparkles", "trip"}
 	PrimeMoods       = []PrimeMood{"", "happy", "love", "cool", "wink", "sad", "angry", "sleepy"}
 )

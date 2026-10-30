@@ -50,6 +50,16 @@ func NewEconomy(bonus int64, transferFee, stickerTax, primeStickerTax int) (Econ
 	return Economy{Bonus: bonus, TransferFee: transferFee, StickerTax: stickerTax, PrimeStickerTax: primeStickerTax}, nil
 }
 
+// MaxBonusStreak is the day in a row from which the daily bonus stops
+// growing: it pays for coming back, not for having come long ago.
+const MaxBonusStreak = 7
+
+// BonusOf is the bonus of the day-th day in a row: the base times the day,
+// up to MaxBonusStreak times.
+func (e Economy) BonusOf(day int) int64 {
+	return e.Bonus * int64(min(max(day, 1), MaxBonusStreak))
+}
+
 // TransferFeeOf is what a transfer of votes costs its sender on top.
 func (e Economy) TransferFeeOf(votes int64) int64 {
 	return (votes*int64(e.TransferFee) + 99) / 100

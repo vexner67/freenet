@@ -492,20 +492,21 @@ func (s *PetService) Feed(ctx context.Context, userID, petID uuid.UUID, now time
 	return care, errs.Wrap("s.change", err)
 }
 
-// Play plays with the pet petID of userID at now; user.ErrPetTired.
-func (s *PetService) Play(ctx context.Context, userID, petID uuid.UUID, now time.Time) (*user.Pet, error) {
+// Play plays with the pet petID of userID at now; the balance is 0 unless
+// a quest of the day paid. user.ErrPetTired.
+func (s *PetService) Play(ctx context.Context, userID, petID uuid.UUID, now time.Time) (PetCare, error) {
 	care, err := s.change(ctx, userID, petID, func(_ context.Context, p *user.Pet, _ user.PetShop) (PetCare, error) {
 		played, err := p.Played(now.Truncate(time.Microsecond))
 		if err != nil {
 			return PetCare{}, errs.Wrap("p.Played", err)
 		}
 
-		_, err = s.did(ctx, userID, now, user.PetQuestPlay)
+		paid, err := s.did(ctx, userID, now, user.PetQuestPlay)
 
-		return PetCare{Pet: played}, errs.Wrap("s.did", err)
+		return PetCare{Pet: played, Balance: paid}, errs.Wrap("s.did", err)
 	})
 
-	return care.Pet, errs.Wrap("s.change", err)
+	return care, errs.Wrap("s.change", err)
 }
 
 // Rename calls the pet petID of userID name.

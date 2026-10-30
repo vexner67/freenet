@@ -53,13 +53,18 @@ func TestWalletService_Bonus(t *testing.T) {
 		t.Fatalf("Treasury = %+v, %v", treasury, err)
 	}
 
-	// The next day there is another.
-	if claimed, err = w.wallets.ClaimBonus(ctx, ann, now.Add(24*time.Hour)); err != nil || claimed.Wallet.Votes != 2*user.DefaultEconomy.Bonus {
+	// The next day there is another, grown by the streak.
+	if claimed, err = w.wallets.ClaimBonus(ctx, ann, now.Add(24*time.Hour)); err != nil || claimed.Votes != user.DefaultEconomy.BonusOf(2) || claimed.Wallet.Votes != 3*user.DefaultEconomy.Bonus {
 		t.Fatalf("next ClaimBonus = %+v, %v", claimed, err)
 	}
 
+	// A day missed starts the streak over.
+	if claimed, err = w.wallets.ClaimBonus(ctx, ann, now.Add(72*time.Hour)); err != nil || claimed.Votes != user.DefaultEconomy.Bonus {
+		t.Fatalf("ClaimBonus after a gap = %+v, %v", claimed, err)
+	}
+
 	ops, err := w.wallets.Statement(ctx, ann, uuid.Nil, user.VoteFlowAll, 10, now)
-	if err != nil || len(ops.Operations) != 2 || ops.Operations[0].Kind != user.VoteBonus {
+	if err != nil || len(ops.Operations) != 3 || ops.Operations[0].Kind != user.VoteBonus {
 		t.Fatalf("Operations = %+v, %v", ops, err)
 	}
 }

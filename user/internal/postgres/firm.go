@@ -108,7 +108,14 @@ type storedFirm struct {
 	Price      int64                    `json:"price"`
 	Float      int64                    `json:"float"`
 	Candles    []storedCandle           `json:"candles"`
+	Tape       []storedTrade            `json:"tape,omitempty"`
 	Routes     []storedRoute            `json:"routes,omitempty"`
+}
+
+type storedTrade struct {
+	At     time.Time `json:"at"`
+	Price  int64     `json:"price"`
+	Shares int64     `json:"shares"`
 }
 
 type storedRoute struct {
@@ -117,6 +124,7 @@ type storedRoute struct {
 	Good  user.Good `json:"good"`
 	From  int64     `json:"from"`
 	Units int64     `json:"units"`
+	Auto  bool      `json:"auto,omitempty"`
 }
 
 type storedCandle struct {
@@ -166,6 +174,7 @@ type storedStockOrder struct {
 	Price    int64     `json:"price"`
 	Shares   int64     `json:"shares"`
 	PlacedAt time.Time `json:"placedAt"`
+	Stop     int64     `json:"stop,omitempty"`
 }
 
 type storedStockHour struct {
@@ -274,6 +283,7 @@ func storeFirm(f user.FirmState) storedFirm {
 		Hours: convert(f.Hours, func(h user.FirmHour) storedFirmHour { return storedFirmHour(h) }),
 		Wear:  f.Wear, Ranks: f.Ranks, Improved: f.Improved, IdleUntil: f.IdleUntil, Mood: f.Mood, Price: f.Price,
 		Float: f.Float, Candles: convert(f.Candles, func(c user.Candle) storedCandle { return storedCandle(c) }),
+		Tape:   convert(f.Tape, func(t user.StockTrade) storedTrade { return storedTrade(t) }),
 		Routes: convert(f.Routes, func(r user.SupplyRoute) storedRoute { return storedRoute(r) }),
 	}
 }
@@ -290,6 +300,7 @@ func restoreFirm(f storedFirm) user.FirmState {
 		Hours: convert(f.Hours, func(h storedFirmHour) user.FirmHour { return user.FirmHour(h) }),
 		Wear:  f.Wear, Ranks: f.Ranks, Improved: f.Improved, IdleUntil: f.IdleUntil, Mood: f.Mood, Price: f.Price,
 		Float: f.Float, Candles: convert(f.Candles, func(c storedCandle) user.Candle { return user.Candle(c) }),
+		Tape:   convert(f.Tape, func(t storedTrade) user.StockTrade { return user.StockTrade(t) }),
 		Routes: convert(f.Routes, func(r storedRoute) user.SupplyRoute { return user.SupplyRoute(r) }),
 	}
 }

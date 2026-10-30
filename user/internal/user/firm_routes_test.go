@@ -101,3 +101,36 @@ func mustFirm(t *testing.T, c *user.City, id uuid.UUID) *user.Firm {
 
 	return f
 }
+
+func TestAutoRoutes(t *testing.T) {
+	t.Parallel()
+
+	rules := user.DefaultFirmRules()
+	c := newCity()
+	owner := uuid.New()
+	farm := found(t, c, rules, owner, user.FirmFarm)
+	mill := found(t, c, rules, owner, user.FirmMill)
+
+	made, err := c.AutoRoutes(owner)
+	if err != nil || made != 1 {
+		t.Fatalf("AutoRoutes = %d, %v", made, err)
+	}
+	if r := farm.Routes(); len(r) != 1 || !r[0].Auto || r[0].To != mill.ID() || r[0].Good != user.GoodGrain {
+		t.Fatalf("the farm supplies %+v", r)
+	}
+	if r := user.RestoreCity(c.State()); !mustFirm(t, r, farm.ID()).Routes()[0].Auto {
+		t.Error("the supply stopped being automatic when kept")
+	}
+
+	if _, err = c.AutoRoutes(uuid.New()); !errors.Is(err, user.ErrNoAutoRoutes) {
+		t.Errorf("AutoRoutes of nobody: %v", err)
+	}
+
+	// Whatever the farm makes goes to the mill, as much as it uses.
+	for hour := 2; hour < 8; hour++ {
+		c.Tick(rules, cityStart.Add(time.Duration(hour)*time.Hour))
+	}
+	if mill.Workers() > 0 && farm.Workers() > 0 && mill.Stock(user.GoodGrain) == 0 {
+		t.Errorf("the mill stands idle, and the farm keeps %d", farm.Stock(user.GoodGrain))
+	}
+}

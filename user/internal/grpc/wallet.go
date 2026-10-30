@@ -300,7 +300,7 @@ func (h *UserHandler) GetBonus(ctx context.Context, _ *userv1.GetBonusRequest) (
 		return nil, err
 	}
 
-	return &userv1.GetBonusResponse{Votes: bonus.Votes, Taken: bonus.Taken, Eligible: bonus.Eligible}, nil
+	return &userv1.GetBonusResponse{Votes: bonus.Votes, Taken: bonus.Taken, Eligible: bonus.Eligible, Streak: int32(bonus.Streak)}, nil
 }
 
 func (h *UserHandler) ClaimBonus(ctx context.Context, _ *userv1.ClaimBonusRequest) (*userv1.ClaimBonusResponse, error) {

@@ -32,7 +32,7 @@ type PetService interface {
 	Big2Z(ctx context.Context, userID uuid.UUID) (service.NamedPet, error)
 	ClaimBig2Z(ctx context.Context, userID uuid.UUID, now time.Time) (*user.Pet, error)
 	Feed(ctx context.Context, userID, petID uuid.UUID, now time.Time) (service.PetCare, error)
-	Play(ctx context.Context, userID, petID uuid.UUID, now time.Time) (*user.Pet, error)
+	Play(ctx context.Context, userID, petID uuid.UUID, now time.Time) (service.PetCare, error)
 	Rename(ctx context.Context, userID, petID uuid.UUID, name user.PetName) (*user.Pet, error)
 	Release(ctx context.Context, userID, petID uuid.UUID) (*user.PetKeeper, error)
 	SetStance(ctx context.Context, userID, petID uuid.UUID, stance user.PetStance) (*user.Pet, error)
@@ -497,12 +497,12 @@ func (h *UserHandler) PlayPet(ctx context.Context, req *userv1.PlayPetRequest) (
 
 	now := time.Now()
 
-	p, err := h.pets.Play(ctx, userID, petID, now)
+	care, err := h.pets.Play(ctx, userID, petID, now)
 	if err != nil {
 		return nil, err
 	}
 
-	return &userv1.PetCareResponse{Pet: toProtoPet(p, now)}, nil
+	return &userv1.PetCareResponse{Pet: toProtoPet(care.Pet, now), Balance: care.Balance}, nil
 }
 
 func (h *UserHandler) RenamePet(ctx context.Context, req *userv1.RenamePetRequest) (*userv1.PetCareResponse, error) {

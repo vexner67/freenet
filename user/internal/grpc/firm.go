@@ -134,7 +134,7 @@ func toProtoFirm(v service.FirmsView, f *user.Firm) *userv1.Firm {
 		pb.Hours = append(pb.Hours, toProtoFirmHour(h))
 	}
 	for _, r := range f.Routes() {
-		pb.Routes = append(pb.Routes, &userv1.FirmRoute{Id: r.ID.String(), ToFirmId: r.To.String(), Good: r.Good.String(), From: r.From, Units: r.Units})
+		pb.Routes = append(pb.Routes, &userv1.FirmRoute{Id: r.ID.String(), ToFirmId: r.To.String(), Good: r.Good.String(), From: r.From, Units: r.Units, Auto: r.Auto})
 	}
 	if forecast, ok := v.Forecast[f.ID()]; ok {
 		pb.Forecast, pb.ForecastCash = toProtoFirmHour(forecast.Hour), forecast.Cash
