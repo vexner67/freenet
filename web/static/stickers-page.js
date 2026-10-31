@@ -13,14 +13,17 @@ import { api, currentUser } from './api.js';
 import { balanceAmount, STICKER_SECTIONS, STICKER_TAX_PERCENT, installsCount, stickerIncome, shopPacks, stickerImage, stickerPackAction, stickerPackName, stickerPackPrice, stickersCount, votesCount } from './labels.js';
 import { pickPath } from './gifts.js';
 import { $, el, fullName, pagePath, replaceInPlace, renderChrome, showError, hideError } from './layout.js';
+import { countTo, flash, floatText } from './game.js';
 import { button, openModal } from './modal.js';
+import { coins, dealTick, fanfare } from './sounds.js';
+import { meter } from './controls.js';
 import { stickerNode } from './stickers.js';
 import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
 const act = ['settings', 'author', 'new', 'edit', 'gifts'].includes(params.get('act')) ? params.get('act') : 'shop';
-const section = Object.hasOwn(STICKER_SECTIONS, params.get('section')) ? params.get('section') : 'popular';
-const query = params.get('q') ?? '';
+let section = Object.hasOwn(STICKER_SECTIONS, params.get('section')) ? params.get('section') : 'popular';
+let query = params.get('q') ?? '';
 
 // As many stickers as a pack holds, and as many photos as one request
 // adds to it (the gateway takes no more).
@@ -37,6 +40,96 @@ function thumb(pack) {
   if (!src) return el('div', { className: 'stickers-pack-thumb-empty' });
 
   return el('img', { src, alt: stickerPackName(pack), loading: 'lazy' });
+}
+
+// leaf turns the stickers of a pack over on its card while the mouse is on it.
+function leaf(card, pack) {
+  const picture = card.querySelector('.stickers-pack-thumb img');
+  if (!picture || pack.stickers.length < 2) return;
+  let timer = 0;
+  let i = 0;
+  card.addEventListener('mouseenter', () => {
+    timer = setInterval(() => {
+      i = (i + 1) % pack.stickers.length;
+      picture.src = stickerImage(pack.stickers[i]);
+    }, 450);
+  });
+  card.addEventListener('mouseleave', () => {
+    clearInterval(timer);
+    i = 0;
+    picture.src = stickerImage(pack.stickers[0]);
+  });
+}
+
+// quickAdd is the button of a card of the shop: the pack is taken right from
+// it, with no box in between.
+function quickAdd(pack) {
+  if (!me || pack.added || act !== 'shop') return null;
+  const go = el('button', { type: 'button', className: 'button game-go small', textContent: pack.price && !pack.bought ? tr('Купить') : tr('Добавить') });
+  go.addEventListener('click', async () => {
+    go.disabled = true;
+    hideError($('error'));
+    try {
+      await take(pack);
+      floatText(go, `+${pack.stickers.length}`, 'gold');
+      coins();
+      render();
+    } catch (e) {
+      go.disabled = false;
+      showError($('error'), refused(e));
+    }
+  });
+  return go;
+}
+
+async function take(pack) {
+  await api.addStickerPack(pack.id);
+  if (pack.price && !pack.bought) me.votes = Math.max((me.votes ?? 0) - pack.price, 0);
+  pack.bought = true;
+  pack.added = true;
+}
+
+const refused = (e) => (e.message === 'not enough votes' ? tr('Недостаточно голосов для покупки.') : e);
+
+// shownScore are the numbers on the plates, to run from them.
+const shownScore = { packs: null, stickers: null };
+
+// showScore is the plates over the cards: what one has of the shop, a strip
+// to the whole of it, and the votes.
+function showScore() {
+  if (!me || act === 'author') return;
+  const mine = packs.filter((p) => p.added);
+  const count = (id, value) => {
+    const before = shownScore[id] ?? value;
+    countTo($(`score-${id}`), before, value, String);
+    if (before !== value) flash($(`score-${id}`).closest('.game-hud-cell'), 'gold');
+    shownScore[id] = value;
+  };
+  count('packs', mine.length);
+  count('stickers', mine.reduce((sum, p) => sum + p.stickers.length, 0));
+  $('score-votes').textContent = balanceAmount(me.votes ?? 0);
+  $('score-bar').replaceChildren(meter(mine.length, packs.length || 1, `${mine.length} / ${packs.length}`));
+  $('score').hidden = false;
+}
+
+// lucky opens a pack one has not got yet, picked at random.
+function lucky() {
+  const left = packs.filter((p) => p.published && !p.added);
+  if (!left.length) return;
+  fanfare();
+  openPack(left[Math.floor(Math.random() * left.length)]);
+}
+
+// pickSection shows a section of the shop in place, with no trip to the server.
+function pickSection(name) {
+  section = name;
+  for (const id of Object.keys(STICKER_SECTIONS)) $(`section-${id}`).classList.toggle('active', id === name);
+  $('search-section').value = name;
+  const url = new URL(location.href);
+  url.searchParams.set('section', name);
+  history.replaceState(null, '', url);
+  dealTick();
+  render();
 }
 
 // author is who made a pack, a link to their page; a pack of the site
@@ -70,15 +163,17 @@ function packCard(pack) {
     if (act === 'settings') foot.push(button(tr('Убрать набор'), () => confirmRemove(pack), { secondary: true }));
   }
 
-  return el('div', { className: 'stickers-pack-card' },
+  const card = el('div', { className: 'stickers-pack-card' },
     link({ className: 'stickers-pack-thumb' }, thumb(pack)),
     el('div', { className: 'stickers-pack-name' }, link({ textContent: stickerPackName(pack), title: stickerPackName(pack) })),
     studio
       ? el('div', { className: 'stickers-pack-author', textContent: pack.published ? tr('в магазине') : tr('не опубликован') })
       : pack.author ? el('div', { className: 'stickers-pack-author' }, author(pack)) : null,
     el('div', { className: 'stickers-pack-desc', textContent: pack.about ?? '' }),
-    el('div', { className: 'stickers-pack-footer' }, ...foot),
+    el('div', { className: 'stickers-pack-footer' }, ...foot, quickAdd(pack)),
   );
+  leaf(card, pack);
+  return card;
 }
 
 // openPack is openvk's box "Информация о наборе": the cover, the name, who
@@ -122,7 +217,11 @@ function openPack(pack) {
       el('span', { className: 'stickers-modal-count', textContent: stickersCount(pack.stickers.length) }),
       copy),
     el('div', { className: 'stickers-modal-grid' },
-      ...pack.stickers.map((sticker) => el('div', { className: 'stickers-modal-item' }, stickerNode(sticker)))),
+      ...pack.stickers.map((sticker, i) => {
+        const item = el('div', { className: 'stickers-modal-item', onclick: () => { item.classList.remove('jump'); void item.offsetWidth; item.classList.add('jump'); dealTick(); } }, stickerNode(sticker));
+        item.style.animationDelay = `${Math.min(i, 20) * 25}ms`;
+        return item;
+      })),
   );
   modal.actions.append(button(tr('Закрыть'), modal.close));
 }
@@ -139,16 +238,15 @@ async function add(pack, action, error) {
   action.disabled = true;
 
   try {
-    await api.addStickerPack(pack.id);
-    if (pack.price && !pack.bought) me.votes = Math.max((me.votes ?? 0) - pack.price, 0);
-    pack.bought = true;
-    pack.added = true;
+    await take(pack);
+    floatText(action, `+${pack.stickers.length}`, 'gold');
+    coins();
     action.textContent = stickerPackAction(pack);
     action.nextElementSibling?.remove();
     render();
   } catch (e) {
     action.disabled = false;
-    showError(error, e.message === 'not enough votes' ? tr('Недостаточно голосов для покупки.') : e);
+    showError(error, refused(e));
   }
 }
 
@@ -180,6 +278,7 @@ function render() {
 
   replaceInPlace($('packs'), ...shown.map(packCard));
   $('empty').hidden = shown.length > 0;
+  showScore();
 }
 
 async function showShop() {
@@ -187,6 +286,19 @@ async function showShop() {
   $(`section-${section}`).classList.add('active');
   $('search-section').value = section;
   $('search-query').value = query;
+  $('search-query').addEventListener('input', () => {
+    query = $('search-query').value;
+    render();
+  });
+  $('search').addEventListener('submit', (event) => event.preventDefault());
+  for (const id of Object.keys(STICKER_SECTIONS)) {
+    $(`section-${id}`).addEventListener('click', (event) => {
+      event.preventDefault();
+      pickSection(id);
+    });
+  }
+  $('lucky').hidden = !me;
+  $('lucky').addEventListener('click', lucky);
 
   try {
     ({ packs } = await api.stickers());

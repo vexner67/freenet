@@ -4,6 +4,8 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 
+html { scrollbar-gutter: stable; }
+
 body {
   margin: 0;
   background: var(--back-fff);
@@ -225,6 +227,10 @@ h1.page-title { font-size: inherit; }
 /* Until the page is drawn whole (theme.js, layout.js). */
 .pending .columns,
 .pending .footer { visibility: hidden; }
+/* Until the page is drawn nothing of it is painted, and the browser keeps
+   the page before on the screen: the header does not blink, and a page
+   comes in place of a page. A slow one shows its header after a moment. */
+.pending:not(.slow) body { visibility: hidden; }
 
 .sidebar { width: 140px; flex-shrink: 0; }
 
@@ -3152,7 +3158,7 @@ img.name-prime.name-prime {
    bevel, as the browser games of the 2000s drew their loot. */
 .pet-dressed { position: relative; display: block; flex: none; }
 .pet-dressed > .pet-picture { position: relative; }
-.pet-dressed > .pet-cloth { position: absolute; top: 0; left: 0; background: none; border-color: transparent; }
+.pet-dressed > .pet-picture.pet-cloth { position: absolute; top: 0; left: 0; background: none; border-color: transparent; }
 .pet-rarity { display: inline-block; padding: 0 5px; font-size: 10px; font-weight: bold; line-height: 15px; color: var(--text-fff); text-shadow: 0 1px 0 rgb(0 0 0 / 30%); border: 1px solid rgb(0 0 0 / 20%); }
 .pet-rarity-common { background: var(--back-8b8b8b); }
 .pet-rarity-rare { background: var(--back-2e7dd7); }
@@ -3686,7 +3692,7 @@ body:has(.messenger) .page-title > span:first-child::before { background-image: 
 .game-hud { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0 0 10px; background: var(--back-5b7aa1); border: 1px solid var(--back-5b7aa1); border-radius: 4px; box-shadow: 2px 2px 0 var(--back-dae1e8); overflow: hidden; }
 .game-hud-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 6px 8px; background: linear-gradient(var(--back-fff), var(--back-e9edf1)); }
 .game-hud-name { display: flex; gap: 4px; align-items: center; color: var(--text-45688e); font-weight: bold; }
-.game-hud-sum { color: var(--text-3e3e3e); font-size: 18px; line-height: 20px; }
+.game-hud-sum { color: var(--text-000); font-size: 18px; line-height: 20px; }
 .game-hud-cell .hint { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .game-hud.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 button.game-hud-cell { border: 0; color: var(--text-000); font: inherit; text-align: left; cursor: pointer; }
@@ -3812,10 +3818,11 @@ button.bank-card:hover { transform: translateY(-2px) rotate(-0.5deg); }
 .bank-card-brand, .bank-card-chip, .bank-card-number, .bank-card-since, .bank-card-holder, .bank-card-sum, .bank-card-strip, .bank-card-sign, .bank-card-note { position: absolute; }
 .bank-card-brand { top: 6%; right: 6%; font-size: 6cqw; font-style: italic; font-weight: bold; text-shadow: 0 1px 1px rgb(0 0 0 / 35%); }
 .bank-card-chip { top: 27%; left: 7%; width: 13%; height: 20%; border: 1px solid rgb(120 90 20); border-radius: 1.2cqw; background: linear-gradient(90deg, transparent 32%, rgb(120 90 20 / 60%) 33%, transparent 34%, transparent 65%, rgb(120 90 20 / 60%) 66%, transparent 67%), linear-gradient(transparent 48%, rgb(120 90 20 / 60%) 49%, transparent 51%), linear-gradient(135deg, rgb(255 240 170), rgb(214 164 58)); }
-.bank-card-number { top: 54%; left: 7%; font-family: "Courier New", Courier, monospace; font-size: 7.4cqw; font-weight: bold; white-space: nowrap; text-shadow: 0 1px 0 rgb(255 255 255 / 25%), 0 -1px 0 rgb(0 0 0 / 45%); }
+.bank-card.small-name .bank-card-holder { font-size: 3cqw; }
+.bank-card-number { top: 52%; left: 7%; font-family: "Courier New", Courier, monospace; font-size: 7.4cqw; font-weight: bold; white-space: nowrap; text-shadow: 0 1px 0 rgb(255 255 255 / 25%), 0 -1px 0 rgb(0 0 0 / 45%); }
 .bank-card-since { top: 72%; left: 7%; font-size: 3.4cqw; }
-.bank-card-holder { bottom: 6%; left: 7%; max-width: 52%; overflow: hidden; font-size: 3.9cqw; font-weight: bold; letter-spacing: 0.05em; text-overflow: ellipsis; white-space: nowrap; }
-.bank-card-sum { right: 6%; bottom: 6%; max-width: 38%; overflow: hidden; font-size: 4.2cqw; font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
+.bank-card-holder { right: 6%; bottom: 6%; left: 7%; overflow: hidden; font-size: 3.9cqw; font-weight: bold; letter-spacing: 0.05em; text-overflow: ellipsis; white-space: nowrap; }
+.bank-card-sum { top: 70%; right: 6%; max-width: 50%; overflow: hidden; font-size: 4.2cqw; font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
 .bank-card-strip { top: 11%; right: 0; left: 0; height: 20%; background: rgb(20 20 24); }
 .bank-card-sign { top: 40%; left: 7%; width: 72%; padding: 1.4cqw 2cqw; box-sizing: border-box; overflow: hidden; background: rgb(250 248 236); color: rgb(38 38 48); font-size: 3.6cqw; font-style: italic; text-overflow: ellipsis; white-space: nowrap; }
 .bank-card-note { right: 7%; bottom: 8%; left: 7%; font-size: 3.2cqw; }
@@ -3859,3 +3866,93 @@ button.bank-card:hover { transform: translateY(-2px) rotate(-0.5deg); }
   .bank-card, .bank-card-inner, .bank-pip.next, .bank-tile img, .bank-cover { transition: none; animation: none; }
   .bank-card.shine .bank-card-face::after { display: none; }
 }
+
+/* Motion. Only opacity and transform move, which the compositor draws without
+   laying the page out again, and nothing waits for an animation: an action
+   is done at once and the motion follows it. */
+:where(a, button, input, textarea, select, .button) { transition: color 0.12s, background-color 0.12s, border-color 0.12s, box-shadow 0.12s, opacity 0.12s; }
+:where(.button, button):active:not(:disabled) { transform: translateY(1px); }
+@keyframes appear { from { opacity: 0; } }
+@keyframes rise { from { opacity: 0; transform: translateY(5px); } }
+@keyframes pop { from { opacity: 0; transform: scale(0.97); } }
+@keyframes heart { 50% { transform: scale(1.35); } }
+.modal { animation: appear 0.12s ease-out; }
+.modal-box { animation: pop 0.14s ease-out; }
+.pop, .notice, .error, .attach-menu.open .attach-list { animation: rise 0.14s ease-out; }
+.shown .post, .shown .comment, .shown .im-message, .shown .bank-op { animation: rise 0.16s ease-out; }
+.shown .like.liked svg { animation: heart 0.25s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  :where(a, button, input, textarea, select, .button) { transition: none; }
+  .modal, .modal-box, .pop, .notice, .error, .attach-menu.open .attach-list, .shown .post, .shown .comment, .shown .im-message, .shown .bank-op, .shown .like.liked svg { animation: none; }
+}
+
+.pet-keeper-hud .meter { display: block; height: 7px; }
+.pet-keeper-hud .meter-text { display: none; }
+.pet-keeper-hud .game-hud-cell { font: inherit; }
+.pet-shard-row { display: flex; gap: 6px; align-items: center; min-width: 220px; margin: 0 0 6px; }
+.pet-shard-text { flex: 1; min-width: 0; }
+.pet-shard-text .meter { display: block; }
+.pet-roulette-modal { width: 460px; max-width: calc(100vw - 16px); }
+.pet-reveal-place { position: relative; height: 210px; margin-top: 10px; }
+.pet-reveal-place .pet-reveal { height: 100%; margin: 0; overflow-y: auto; visibility: hidden; }
+.pet-reveal-place .pet-reveal.open { visibility: visible; animation: pop 0.2s ease-out; }
+.pet-reveal-wait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.pet-reveal-wait img { animation: case-shake 0.35s ease-in-out infinite; }
+@keyframes case-shake { 25% { transform: rotate(-4deg); } 75% { transform: rotate(4deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .pet-reveal-place .pet-reveal.open, .pet-reveal-wait img { animation: none; }
+}
+
+/* Stories in the look of the 2000s. */
+.story-bar { gap: 6px; padding: 6px; background: linear-gradient(var(--back-fff), var(--back-e9edf1)); border: 1px solid var(--line-c0cad5); border-radius: 4px; box-shadow: 2px 2px 0 var(--back-dae1e8); }
+.story-circle { position: relative; transition: transform 0.12s; }
+.story-circle:hover { transform: translateY(-2px); }
+.story-circle img:not(.story-plus) { border-radius: 6px; border-color: var(--line-c0cad5); box-shadow: 1px 1px 2px rgb(0 0 0 / 30%); }
+.story-fresh img:not(.story-plus) { border-color: var(--back-f7a02c); box-shadow: 0 0 5px var(--back-f7a02c); }
+.story-circle .story-plus { position: absolute; top: 34px; left: 40px; width: 18px; height: 18px; padding: 0; border: 0; }
+.story-box { overflow: hidden; background: var(--back-fff); border: 1px solid var(--back-5b7aa1); border-radius: 6px 6px 3px 3px; box-shadow: 3px 3px 0 rgb(0 0 0 / 40%); animation: pop 0.16s ease-out; }
+.story-progress { order: 2; padding: 4px 6px; background: rgb(20 20 24); }
+.story-head { order: 1; padding: 4px 8px; background: linear-gradient(rgb(255 255 255 / 35%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--back-5b7aa1); }
+.story-head img { border-radius: 3px; width: 22px; height: 22px; }
+.story-head .story-icon { width: 16px; height: 16px; border-radius: 0; }
+.story-stage { order: 3; background: rgb(20 20 24); }
+.story-panel { order: 4; }
+.story-segment { height: 5px; border-radius: 1px; }
+.story-fill { background: linear-gradient(rgb(255 240 170), rgb(242 169 47)); }
+.story-foot { justify-content: stretch; }
+.story-foot .post-bar { flex: 1; margin: 0; }
+.story-foot .like-count { font-size: 11px; }
+
+/* Stickers in the look of the 2000s. */
+.stickers-pack-card { background: linear-gradient(var(--back-fff), var(--back-f2f5f8)); border-radius: 4px; box-shadow: 2px 2px 0 var(--back-dae1e8); transition: transform 0.12s, box-shadow 0.12s; }
+.stickers-pack-card:hover { transform: translateY(-2px); box-shadow: 3px 4px 0 var(--back-dae1e8); }
+.stickers-pack-thumb img { transition: transform 0.12s; }
+.stickers-pack-card:hover .stickers-pack-thumb img { transform: scale(1.06) rotate(-2deg); }
+.stickers-pack-footer .button.game-go { display: block; width: 100%; margin-top: 4px; }
+.stickers-modal-item { animation: pop 0.2s ease-out backwards; cursor: pointer; }
+.stickers-modal-item.jump { animation: heart 0.25s ease-out; }
+.sticker-lucky { display: inline-flex; gap: 4px; align-items: center; margin-bottom: 6px; }
+.sticker-votes { font-size: 13px; }
+#score .meter { display: block; }
+
+/* The casino in the look of the 2000s. A result has its place from the
+   start: the page does not move when it comes. */
+.casino-game { background: var(--back-fff); padding: 0 8px 8px; border: 1px solid var(--back-5b7aa1); border-radius: 6px 6px 3px 3px; box-shadow: 2px 2px 0 var(--back-dae1e8); }
+.casino-game > .game-window-title { margin: 0 -8px 8px; }
+.casino-lead { display: none; }
+.casino-result[hidden] { display: block; visibility: hidden; }
+.casino-result { min-height: 16px; }
+.casino-result:not([hidden]) { animation: pop 0.16s ease-out; }
+.casino-cell { background: linear-gradient(var(--back-fff), var(--back-e9edf1)); border-radius: 4px; box-shadow: inset 0 1px 0 var(--back-fff); }
+.casino-balance { padding: 6px; background: linear-gradient(var(--back-fff), var(--back-e9edf1)); border: 1px solid var(--back-5b7aa1); border-radius: 4px; box-shadow: 2px 2px 0 var(--back-dae1e8); }
+.casino-controls .button.game-go { display: inline-block; width: auto; min-width: 200px; }
+.casino-hud .game-hud-cell.hot { background: linear-gradient(var(--back-fff3c4), var(--back-ffd54a)); }
+@media (prefers-reduced-motion: reduce) {
+  .story-box, .stickers-modal-item, .stickers-modal-item.jump, .casino-result:not([hidden]) { animation: none; }
+  .story-circle, .stickers-pack-card, .stickers-pack-thumb img { transition: none; }
+}
+
+/* The windows of the page of pets are the windows of the games. */
+.pet-window { margin: 0 0 12px; background: var(--back-fff); border: 1px solid var(--back-5b7aa1); border-radius: 6px 6px 3px 3px; box-shadow: 2px 2px 0 var(--back-dae1e8); }
+.pet-window-title { display: flex; gap: 6px; align-items: center; padding: 4px 8px; color: var(--text-fff); font-weight: bold; text-shadow: 0 1px 0 rgb(0 0 0 / 40%); background: linear-gradient(rgb(255 255 255 / 35%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--back-5b7aa1); border-radius: 5px 5px 0 0; }
+.pet-window-body { padding: 8px; }

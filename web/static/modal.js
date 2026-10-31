@@ -5,15 +5,16 @@ import { el, onScreen } from './layout.js';
 import { tr } from './i18n.js';
 
 // openModal shows a box and returns it: body and actions are its parts to
-// fill (and refill), close removes it.
-export function openModal(title, { tag = 'div' } = {}) {
+// fill (and refill), close removes it. A locked box is left only by its
+// own buttons: neither Esc nor a click beside it closes it.
+export function openModal(title, { tag = 'div', locked = false } = {}) {
   const body = el('div', { className: 'modal-body' });
   const actions = el('div', { className: 'modal-actions' });
   const box = el(tag, { className: 'modal-box' }, el('div', { className: 'modal-header', textContent: title }), body, actions);
   const overlay = el('div', { className: 'modal' }, box);
 
   function onKey(event) {
-    if (event.key === 'Escape') close();
+    if (event.key === 'Escape' && !locked) close();
   }
 
   function close() {
@@ -22,7 +23,7 @@ export function openModal(title, { tag = 'div' } = {}) {
   }
 
   overlay.addEventListener('click', (event) => {
-    if (event.target === overlay) close();
+    if (event.target === overlay && !locked) close();
   });
   document.addEventListener('keydown', onKey);
   document.body.append(overlay);

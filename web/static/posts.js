@@ -619,7 +619,7 @@ function arrow() {
 
 // bubble is the mark of the comments, dots of what else may be done: on
 // the bar of a phone.
-function bubble() {
+export function bubble() {
   return icon('M1 0h9a1 1 0 0 1 1 1v5.5a1 1 0 0 1-1 1H5L2.5 10V7.5H1a1 1 0 0 1-1-1V1a1 1 0 0 1 1-1Z');
 }
 

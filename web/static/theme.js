@@ -15,6 +15,7 @@
 (() => {
   const root = document.documentElement;
   root.classList.add('pending');
+  setTimeout(() => root.classList.add('slow'), 400);
   setTimeout(() => root.classList.remove('pending'), 1200);
 })();
 

@@ -48,10 +48,12 @@ test('the page is hidden until it is drawn, and shown anyway after a while', () 
   const { classes, later } = run({});
 
   assert.ok(classes.has('pending'));
-  assert.equal(later.length, 1);
-  assert.ok(later[0].ms > 0 && later[0].ms <= 2000);
+  assert.equal(later.length, 2);
+  assert.ok(later[0].ms < later[1].ms && later[1].ms <= 2000);
 
   later[0].fn();
+  assert.ok(classes.has('slow'), 'a slow page shows its header first');
+  later[1].fn();
   assert.ok(!classes.has('pending'));
 });
 

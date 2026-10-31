@@ -9,7 +9,7 @@
 // table: the page shows it again when it opens.
 
 import { api } from './api.js';
-import { POKER_PAID, betAmount, groupedVotes, handsCount, pokerCard, pokerHandName, pokerOutcome, pokerPay, votesCount } from './labels.js';
+import { POKER_PAID, betAmount, groupedVotes, pokerCard, pokerHandName, pokerOutcome, pokerPay, votesCount } from './labels.js';
 import { $, el, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
 import { jackpot } from './jackpot.js';
@@ -52,7 +52,6 @@ function table(hand) {
 // balance, the lock of all the games, the cheer and the jackpot.
 export function poker(settings, dealt, casino) {
   const amount = $('poker-amount');
-  const session = { count: 0, spent: 0, won: 0 };
   // shown is what each row shows, so that only new cards fly in.
   const shown = { dealer: [], board: [], player: [] };
   let hand = dealt;
@@ -148,9 +147,7 @@ export function poker(settings, dealt, casino) {
     result.hidden = false;
     if (won) casino.cheer(result, hand.payout, hand.ante * 3);
 
-    $('poker-session').textContent = tr('За этот заход: {0}, поставлено {1}, выиграно {2}.',
-      handsCount(session.count), votesCount(session.spent), votesCount(session.won));
-    $('poker-session').hidden = false;
+    casino.score(result, hand.ante * 3, won ? hand.payout : 0);
   }
 
   // play runs a request to the server with all the games locked.
@@ -173,17 +170,12 @@ export function poker(settings, dealt, casino) {
 
     hand = await api.dealPoker(votes);
     $('poker-result').hidden = true;
-    session.count++;
-    session.spent += votes;
     casino.showBalance(hand.balance);
     draw();
   }));
 
   $('poker-call').addEventListener('click', () => play(async () => {
     const over = await api.callPoker(hand.id);
-
-    session.spent += hand.ante * 2;
-    session.won += over.payout;
     hand = over;
     casino.showBalance(over.balance);
     draw();

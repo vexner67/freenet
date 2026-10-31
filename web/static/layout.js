@@ -411,6 +411,8 @@ if (typeof document !== 'undefined') applyLook(storedLook());
 const pageShown = typeof document === 'undefined' ? Promise.resolve() : idle().then(() => {
   returnToPlace();
   document.documentElement.classList.remove('pending');
+  // What comes on the page from now on comes with a motion (style.css).
+  requestAnimationFrame(() => document.documentElement.classList.add('shown'));
 });
 if (typeof document !== 'undefined') document.addEventListener('click', keepPlace);
 

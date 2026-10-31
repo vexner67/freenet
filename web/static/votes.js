@@ -101,7 +101,7 @@ function cardNode(card, me) {
   const cover = coverOf(card.cover);
   const name = fullName(me).toUpperCase();
   const art = () => el('img', { className: 'bank-card-art', src: cover.src, alt: '' });
-  const node = el('button', { type: 'button', className: `bank-card${cover.dark ? ' ink-dark' : ''}`, title: tr('Перевернуть'), ariaLabel: tr('Перевернуть') },
+  const node = el('button', { type: 'button', className: `bank-card${cover.dark ? ' ink-dark' : ''}${name.length > 30 ? ' small-name' : ''}`, title: tr('Перевернуть'), ariaLabel: tr('Перевернуть') },
     el('span', { className: 'bank-card-inner' },
       el('span', { className: 'bank-card-face' }, art(),
         el('span', { className: 'bank-card-brand', textContent: 'freenet' }),

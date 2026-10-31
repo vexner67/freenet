@@ -15,14 +15,15 @@ export function gameIcon(src, size = 16) {
   return el('img', { className: 'game-icon', src, alt: '', width: size, height: size });
 }
 
-// helpButton is a "?" that opens text in a mini window.
+// helpButton is a "?" that opens text in a mini window; text may be a
+// function, for words that change.
 export function helpButton(text) {
   const node = el('button', { type: 'button', className: 'game-help', title: tr('Как это работает'), ariaLabel: tr('Как это работает') },
     gameIcon('/static/icons/game/help.svg', 16));
   node.addEventListener('click', () => {
     const pop = popover(node, tr('Как это работает'));
     if (!pop) return;
-    pop.body.append(...[text].flat().map((line) => el('div', { className: 'pop-note', textContent: line })));
+    pop.body.append(...[typeof text === 'function' ? text() : text].flat().map((line) => el('div', { className: 'pop-note', textContent: line })));
     pop.place();
   });
   return node;

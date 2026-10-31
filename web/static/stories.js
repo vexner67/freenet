@@ -6,12 +6,12 @@
 // the comments, laid out as those under a post of a wall.
 
 import { api } from './api.js';
-import { storyAge, storyComments, storyViewers, storyViews } from './labels.js';
+import { storyAge, storyViewers, storyViews } from './labels.js';
 import { commentNode } from './comments.js';
-import { autosize, avatarURL, el, fullName, pagePath, showError, verifiedMark } from './layout.js';
+import { autosize, avatarURL, el, fullName, isPhone, pagePath, showError, verifiedMark } from './layout.js';
 import { openLikers } from './likers.js';
-import { button, openModal } from './modal.js';
-import { likeButton, separated } from './posts.js';
+import { button, openMenu, openModal, openSheet } from './modal.js';
+import { bubble, likeButton } from './posts.js';
 import { tr } from './i18n.js';
 
 // How long a story is shown before the next one, as on VK.
@@ -59,6 +59,7 @@ export async function initStoryBar(bar, me, asked = null) {
     if (me.profileCompleted) {
       const add = circle(me, true, tr('Добавить историю'), () => openStoryForm(load));
       add.classList.add('story-add');
+      add.prepend(el('img', { className: 'story-plus', src: '/static/icons/game/plus.svg', alt: '' }));
       circles.unshift(add);
     }
 
@@ -152,6 +153,7 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
     progress.replaceChildren(...entry.stories.map((_, i) => el('div', { className: 'story-segment' },
       el('div', { className: i < story ? 'story-fill story-filled' : 'story-fill' }))));
     head.replaceChildren(
+      el('img', { className: 'story-icon', src: '/static/icons/game/story.svg', alt: '' }),
       el('a', { href: pagePath(entry.author) }, el('img', { src: avatarURL(entry.author, 'small'), alt: '' })),
       el('a', { href: pagePath(entry.author) }, fullName(entry.author), verifiedMark(entry.author)),
       el('span', { className: 'story-age', textContent: storyAge(s.createdAt) }),
@@ -195,9 +197,12 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
       },
       likers: null,
     });
-    const talk = el('a', { textContent: storyComments(s.comments), onclick: () => toggleComments(s) });
+    const talk = el('a', { className: 'like post-comments-link', title: tr('Комментарии'), onclick: () => toggleComments(s) },
+      bubble(), el('span', { className: 'like-count', textContent: s.comments > 0 ? String(s.comments) : '' }));
+    const more = s.mine ? el('a', { className: 'like post-more', title: tr('Действия'), textContent: '⋯' }) : null;
+    more?.addEventListener('click', () => (isPhone() ? openSheet(ownItems(s)) : openMenu(more, ownItems(s))));
 
-    foot.replaceChildren(el('span', { className: 'story-links' }, ...separated([talk, ...(s.mine ? ownLinks(s) : [])])), heart);
+    foot.replaceChildren(el('div', { className: 'post-menu post-bar' }, heart, talk, more));
   }
 
   function toggleComments(s) {
@@ -294,13 +299,12 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
     return node;
   }
 
-  function ownLinks(s) {
-    // Nobody to list until somebody viewed it.
-    const views = s.views
-      ? el('a', { textContent: storyViews(s.views), onclick: () => openLikers(s.views, s.id, api.storyViewers, viewers) })
-      : el('span', { textContent: storyViews(0) });
-
-    return [views, el('a', { textContent: tr('Удалить'), onclick: () => confirmDelete(s) })];
+  // ownItems are what the author does with a story, from the "⋯" of its bar.
+  function ownItems(s) {
+    return [
+      { text: storyViews(s.views), run: () => { if (s.views) openLikers(s.views, s.id, api.storyViewers, viewers); } },
+      { text: tr('Удалить'), run: () => confirmDelete(s), danger: true },
+    ];
   }
 
   function confirmDelete(s) {

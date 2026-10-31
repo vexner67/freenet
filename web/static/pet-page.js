@@ -20,7 +20,10 @@ import {
   petStatName, petStatText, petStats, petWait, votesAmount, votesFontSize,
 } from './labels.js';
 import { $, el, renderChrome, replaceInPlace, showError, hideError } from './layout.js';
+import { meter, popover } from './controls.js';
+import { countTo, flash, floatText, gameIcon } from './game.js';
 import { button, notify, openModal } from './modal.js';
+import { coins, dealTick, fanfare } from './sounds.js';
 import { leagueNodes } from './pet-league.js';
 import { petCaseImage, petImage, petItemImage } from './pet.js';
 import { showNamedPet } from './pet-named.js';
@@ -41,6 +44,8 @@ let me = null;
 let shop = null;
 let catalogue = { kinds: [], cases: [], items: [] };
 let pets = [];
+// shownKeeper are the numbers the plates of the cases show, to run from them.
+const shownKeeper = {};
 let keeper = { shards: 0, pity: 0, pityLimit: 40, cases: 0, casesLimit: 20, dropKind: '', dropCase: '' };
 let battles = [];
 let pet = null;
@@ -196,23 +201,59 @@ function caseCard(box) {
     el('div', { className: 'pet-case-buy' }, open, forShards));
 }
 
-// showKeeper tells the shards, the cases of today and how far the case
-// that gives a legendary pet for sure is.
+// keeperCell is a plate of the cases: a number that runs to its new value,
+// a strip under it and, on a press, what the number means.
+function keeperCell({ id, icon, name, value, text, part, whole, tone, open }) {
+  const sum = el('span', { className: 'game-hud-sum', textContent: text(shownKeeper[id] ?? value) });
+  const cell = el('button', { type: 'button', className: 'game-hud-cell', title: name },
+    el('span', { className: 'game-hud-name' }, gameIcon(icon, 16), name), sum,
+    meter(part, whole, '', tone));
+
+  cell.addEventListener('click', () => {
+    const pop = popover(cell, name);
+    if (!pop) return;
+    open(pop);
+    pop.place();
+  });
+  const before = shownKeeper[id];
+  countTo(sum, before ?? value, value, text);
+  if (before !== undefined && before !== value) flash(cell, value > before ? 'gold' : 'good');
+  shownKeeper[id] = value;
+  return cell;
+}
+
+// shardsPanel is what the shards buy: a strip to each case.
+function shardsPanel(pop) {
+  pop.body.append(...catalogue.cases.map((box) => {
+    const enough = keeper.shards >= box.shards;
+    const go = button(enough ? tr('Открыть') : petShards(box.shards), () => {
+      pop.close();
+      openCase(box, true);
+    });
+    go.disabled = !enough || busy || Boolean(keeper.dropKind) || keeper.cases >= keeper.casesLimit;
+    return el('div', { className: 'pet-shard-row' }, petCaseImage(box.id, 32),
+      el('div', { className: 'pet-shard-text' }, el('b', { textContent: petCaseName(box.id) }),
+        meter(keeper.shards, box.shards, `${Math.min(keeper.shards, box.shards)} / ${box.shards}`)), go);
+  }));
+}
+
+// showKeeper is three plates: the shards, the cases of today and how far
+// the case that gives a legendary pet for sure is.
 function showKeeper() {
-  const pity = el('div', { className: 'pet-bar-fill pet-pity' });
-  pity.style.width = `${(100 * keeper.pity) / keeper.pityLimit}%`;
-  const waiting = keeper.dropKind
-    ? el('p', {}, tr('Вас ждёт питомец из кейса: {0}. ', petKindName(keeper.dropKind)),
-      el('a', { textContent: tr('Забрать или оставить'), onclick: () => showDrop(false) }))
-    : null;
-  $('keeper').replaceChildren(
-    el('div', { className: 'pet-keeper-row' },
-      el('span', { textContent: tr('Осколки: {0}', keeper.shards) }),
-      el('span', { textContent: tr('Кейсов сегодня: {0} из {1}', keeper.cases, keeper.casesLimit) })),
-    el('div', { className: 'pet-keeper-row' },
-      el('span', { textContent: tr('Легендарный наверняка — через {0}', keeper.pityLimit - keeper.pity) }),
-      el('div', { className: 'pet-bar', 'aria-hidden': 'true' }, pity)),
-    ...(waiting ? [waiting] : []));
+  const left = keeper.pityLimit - keeper.pity;
+  const dearest = Math.max(...catalogue.cases.map((box) => box.shards), 1);
+  $('keeper').replaceChildren(el('div', { className: 'game-hud pet-keeper-hud' },
+    keeperCell({ id: 'shards', icon: '/static/icons/game/shard.svg', name: tr('Осколки'), value: keeper.shards, text: String, part: keeper.shards, whole: dearest, open: shardsPanel }),
+    keeperCell({
+      id: 'cases', icon: '/static/icons/pet/case.svg', name: tr('Кейсы сегодня'), value: keeper.cases, text: (n) => `${n} / ${keeper.casesLimit}`,
+      part: keeper.cases, whole: keeper.casesLimit,
+      open: (pop) => pop.body.append(meter(keeper.cases, keeper.casesLimit, tr('осталось {0}', keeper.casesLimit - keeper.cases))),
+    }),
+    keeperCell({
+      id: 'pity', icon: '/static/icons/game/crown.svg', name: tr('До легендарного'), value: left, text: String, part: keeper.pity, whole: keeper.pityLimit, tone: 'pet-pity',
+      open: (pop) => pop.body.append(meter(keeper.pity, keeper.pityLimit, `${keeper.pity} / ${keeper.pityLimit}`, 'pet-pity'),
+        el('div', { className: 'pop-note', textContent: tr('Через столько кейсов легендарный питомец выпадет наверняка.') })),
+    })));
 }
 
 function showCases() {
@@ -246,8 +287,27 @@ async function openCase(box, withShards) {
   showDrop(true);
 }
 
+// spinTicks sounds a click for every cell that passes the mark, for as long
+// as the tape moves.
+function spinTicks(tape, cell) {
+  let last = 0;
+  let going = true;
+  const look = () => {
+    if (!going) return;
+    const passed = Math.floor(Math.abs(new DOMMatrixReadOnly(getComputedStyle(tape).transform).m41) / cell);
+    if (passed !== last) dealTick(passed % 2 === 0);
+    last = passed;
+    requestAnimationFrame(look);
+  };
+  requestAnimationFrame(look);
+  return () => { going = false; };
+}
+
 // showDrop is the pet a case gave: the roulette spins to it first when it
-// has just dropped. It is taken with a name or left for its shards.
+// has just dropped. It is taken with a name or left for its shards, and the
+// window lets go only then. The window is of one size from the first
+// moment: the buttons stand in their places while the tape turns, so that
+// nothing moves from under the mouse when the pet comes out.
 function showDrop(spin) {
   const kind = keeper.dropKind;
   const box = catalogue.cases.find((c) => c.id === keeper.dropCase) ?? catalogue.cases[0];
@@ -255,78 +315,84 @@ function showDrop(spin) {
   const rarity = kindOf(kind).rarity;
   const shards = kindOf(kind).shards ?? 0;
 
-  const modal = openModal(petCaseName(box.id));
+  const modal = openModal(petCaseName(box.id), { locked: true });
   const cell = 76;
   const place = 30;
   const tape = el('div', { className: 'pet-roulette-tape' },
     ...strip(box, kind, place, place + 5).map((k) => el('div', { className: `pet-roulette-cell pet-kind-${kindOf(k).rarity}` }, petImage(k, 64))));
   const wheel = el('div', { className: 'pet-roulette' }, tape, el('div', { className: 'pet-roulette-mark' }));
-  const reveal = el('div', { className: 'pet-reveal', hidden: true });
+  const name = el('input', { type: 'text', maxLength: 20, value: petKindName(kind), required: true, disabled: true });
+  const reveal = el('div', { className: 'pet-reveal' },
+    el('div', { className: `pet-reveal-picture pet-kind-${rarity}` }, petImage(kind, 96)),
+    el('div', { className: 'pet-reveal-text' },
+      el('div', { className: 'pet-reveal-title', textContent: tr('Из кейса вышел питомец: {0}!', petKindName(kind)) }),
+      rarityBadge(rarity),
+      el('p', { className: 'hint', textContent: petKindText(kind) }),
+      specialNode(kind),
+      el('label', { textContent: tr('Имя питомца:') }), name,
+      pets.length >= maxPets ? el('p', { className: 'hint', textContent: tr('У вас уже десять питомцев: чтобы забрать этого, отпустите кого-нибудь.') }) : null));
   const error = el('div', { className: 'error', hidden: true });
-  modal.body.append(spin ? wheel : '', reveal, error);
+  const hidden = gameIcon('/static/icons/pet/case.svg', 96);
+  const waiting = el('div', { className: 'pet-reveal-wait' }, hidden);
+  modal.body.append(wheel, el('div', { className: 'pet-reveal-place' }, reveal, waiting), error);
   modal.box.classList.add('pet-roulette-modal');
 
+  const decide = (run, done) => async () => {
+    if (busy) return;
+    hideError(error);
+    setBusy(true);
+    try {
+      const answer = await run();
+      modal.close();
+      done(answer);
+    } catch (e) {
+      showError(error, e);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const take = button(tr('Забрать'), decide(() => api.takePetDrop(name.value), (answer) => {
+    keeper = { ...keeper, dropKind: '', dropCase: '' };
+    keep(answer.pet);
+  }));
+  const leave = button(tr('Оставить за {0}', petShards(shards)), decide(() => api.leavePetDrop(), (answer) => {
+    keeper = answer.keeper;
+    if (pet) showTabs();
+    else showShop();
+  }), { secondary: true });
+  take.disabled = true;
+  leave.disabled = true;
+  modal.actions.append(take, leave);
+
   const show = () => {
-    const name = el('input', { type: 'text', maxLength: 20, value: petKindName(kind), required: true });
-    reveal.replaceChildren(
-      el('div', { className: `pet-reveal-picture pet-kind-${rarity}` }, petImage(kind, 96)),
-      el('div', { className: 'pet-reveal-text' },
-        el('div', { className: 'pet-reveal-title', textContent: tr('Из кейса вышел питомец: {0}!', petKindName(kind)) }),
-        rarityBadge(rarity),
-        el('p', { className: 'hint', textContent: petKindText(kind) }),
-        specialNode(kind),
-        el('label', { textContent: tr('Имя питомца:') }), name,
-        pets.length >= maxPets ? el('p', { className: 'hint', textContent: tr('У вас уже десять питомцев: чтобы забрать этого, отпустите кого-нибудь.') }) : null));
-    reveal.hidden = false;
-    const decide = (run, done) => async () => {
-      if (busy) return;
-      hideError(error);
-      setBusy(true);
-      try {
-        const answer = await run();
-        modal.close();
-        done(answer);
-      } catch (e) {
-        showError(error, e);
-      } finally {
-        setBusy(false);
-      }
-    };
-    const take = button(tr('Забрать'), decide(() => api.takePetDrop(name.value), (answer) => {
-      keeper = { ...keeper, dropKind: '', dropCase: '' };
-      keep(answer.pet);
-    }));
+    wheel.classList.add('pet-roulette-done');
+    waiting.remove();
+    reveal.classList.add('open');
     take.disabled = pets.length >= maxPets;
-    const leave = button(tr('Оставить за {0}', petShards(shards)), decide(() => api.leavePetDrop(), (answer) => {
-      keeper = answer.keeper;
-      if (pet) showTabs();
-      else showShop();
-    }), { secondary: true });
-    modal.actions.replaceChildren(take, leave);
+    leave.disabled = false;
+    name.disabled = false;
+    if (['epic', 'legendary'].includes(rarity)) fanfare();
+    else if (spin) coins();
+    if (spin) floatText(reveal, petRarityName(rarity), 'gold');
     if (!take.disabled) name.select();
   };
-
-  if (!spin) {
-    show();
-    return;
-  }
 
   // The tape stops with the pet under the mark, a little off its middle,
   // as a real wheel would.
   const width = wheel.clientWidth || 380;
   const shift = place * cell - width / 2 + cell / 2 + Math.round((Math.random() - 0.5) * cell * 0.6);
-  if (still) {
+  if (!spin || still) {
     tape.style.transform = `translateX(${-shift}px)`;
     show();
     return;
   }
-  modal.actions.append(el('span', { className: 'hint', textContent: tr('Кейс открывается…') }));
+  const stopTicks = spinTicks(tape, cell);
   requestAnimationFrame(() => requestAnimationFrame(() => {
     tape.classList.add('pet-roulette-spin');
     tape.style.transform = `translateX(${-shift}px)`;
   }));
   tape.addEventListener('transitionend', () => {
-    wheel.classList.add('pet-roulette-done');
+    stopTicks();
     show();
   }, { once: true });
 }

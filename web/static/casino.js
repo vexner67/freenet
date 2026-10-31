@@ -24,10 +24,11 @@
 // the jackpot of the casino takes the whole screen (jackpot.js).
 
 import { api, currentUser, started } from './api.js';
-import { balanceVotes, balanceWord, aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betPrize, betRoll, casinoChance, cellFontSize, casinoPlan, groupedVotes, plural, rocketMultiplier, rocketScale, rocketShown, rocketTime, rocketsCount, spinsCount, typedOdds, votesCount, votesFontSize, wagersCount } from './labels.js';
+import { balanceVotes, balanceWord, aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betPrize, betRoll, casinoChance, cellFontSize, casinoPlan, groupedVotes, plural, rocketMultiplier, rocketScale, rocketShown, rocketTime, rocketsCount, signedVotes, spinsCount, typedOdds, votesCount, votesFontSize, wagersCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
-import { aimStop, aimSweep, rocketBoom, rocketCash, rocketEngine, wheelStop, wheelTick } from './sounds.js';
+import { countTo, flash, floatText, helpButton } from './game.js';
+import { aimStop, aimSweep, coins, rocketBoom, rocketCash, rocketEngine, wheelStop, wheelTick } from './sounds.js';
 import { jackpot } from './jackpot.js';
 import { poker } from './poker.js';
 import { holdem } from './holdem.js';
@@ -44,9 +45,6 @@ const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let cells = [];
 let lit = 0;
-const session = { spins: 0, spent: 0, won: 0 };
-const wagers = { count: 0, spent: 0, won: 0 };
-const flights = { count: 0, spent: 0, won: 0 };
 let balance = 0;
 let playing = false;
 let aimShown = false;
@@ -168,6 +166,36 @@ function setPlaying(on) {
   refreshPoker();
 }
 
+// totals are what was played since the page was opened, in all the games.
+const totals = { played: 0, spent: 0, won: 0, streak: 0 };
+
+function showTotal(id, value, from, text = groupedVotes) {
+  countTo($(id), from, value, text);
+}
+
+// score counts a round on the plates over the games and rewards it where it
+// was shown: a win flies up from node with the sound of coins.
+function score(node, cost, won) {
+  const before = { ...totals };
+  totals.played++;
+  totals.spent += cost;
+  totals.won += won;
+  totals.streak = won > cost ? totals.streak + 1 : 0;
+  showTotal('hud-played', totals.played, before.played, String);
+  showTotal('hud-won', totals.won, before.won);
+  const net = (t) => t.won - t.spent;
+  showTotal('hud-net', net(totals), net(before), signedVotes);
+  $('hud-streak').textContent = String(totals.streak);
+  $('hud-streak').closest('.game-hud-cell').classList.toggle('hot', totals.streak >= 3);
+  if (won > 0) {
+    floatText(node, `+${groupedVotes(won)}`, 'gold');
+    flash(node, 'gold');
+    coins();
+  } else {
+    flash(node, 'bad');
+  }
+}
+
 function showBalance(votes) {
   // The balance jumps when it grows.
   if (votes > balance && !$('balance').hidden && !still) {
@@ -233,9 +261,7 @@ function showResult(votes, price) {
   result.textContent = votes > 0 ? tr('Вы выиграли {0}!', votesCount(votes)) : tr('В этот раз ничего. Попробуйте ещё!');
   result.hidden = false;
 
-  $('session').textContent = tr('За этот заход: {0}, потрачено {1}, выиграно {2}.',
-    spinsCount(session.spins), votesCount(session.spent), votesCount(session.won));
-  $('session').hidden = false;
+  score(result, price, votes);
 }
 
 async function spinOnce(price) {
@@ -244,9 +270,6 @@ async function spinOnce(price) {
   // The price is gone at once, the prize comes when the light stops.
   showBalance(won.balance - won.votes);
   await run(won.prize);
-  session.spins++;
-  session.spent += price;
-  session.won += won.votes;
   showBalance(won.balance);
   showResult(won.votes, price);
   if (won.votes >= jackpotFrom) jackpot(won.votes);
@@ -476,9 +499,6 @@ function betting(bets, signedIn) {
     showBalance(wager.balance - wager.votes);
     await roll(wager.roll);
     $('dice-mark').classList.add(wager.won ? 'won' : 'lost');
-    wagers.count++;
-    wagers.spent += votes;
-    wagers.won += wager.votes;
     showBalance(wager.balance);
     showWager(wager, votes);
     if (wager.won && wager.votes >= jackpotFrom) jackpot(wager.votes);
@@ -530,9 +550,7 @@ function showWager(wager, stake) {
     : tr('Выпало {0}, а зелёное поле — от {1} до {2}. Ставка проиграна.', betRoll(wager.roll), betRoll(zone.low), betRoll(zone.high));
   result.hidden = false;
 
-  $('bet-session').textContent = tr('За этот заход: {0}, поставлено {1}, выиграно {2}.',
-    wagersCount(wagers.count), votesCount(wagers.spent), votesCount(wagers.won));
-  $('bet-session').hidden = false;
+  score(result, stake, wager.won ? wager.votes : 0);
 }
 
 // sky is what the sky of "Ракетка" shows: the milliseconds of the flight
@@ -723,10 +741,6 @@ async function flyOnce(votes, auto) {
   await land(over, ms);
   rocketBoom();
   $('rocket-launch').hidden = false;
-
-  flights.count++;
-  flights.spent += votes;
-  flights.won += over.payout;
   showBalance(round.state === 'flying' ? (over.balance || balance) : round.balance);
   showFlight(over, votes);
   if (over.payout >= jackpotFrom) jackpot(over.payout);
@@ -747,9 +761,7 @@ function showFlight(round, stake) {
   }
   result.hidden = false;
 
-  $('rocket-session').textContent = tr('За этот заход: {0}, поставлено {1}, выиграно {2}.',
-    rocketsCount(flights.count), votesCount(flights.spent), votesCount(flights.won));
-  $('rocket-session').hidden = false;
+  score(result, stake, won ? round.payout : 0);
 }
 
 // rocketing is the form of "Ракетка": the bet, the multiplier to cash at
@@ -960,6 +972,7 @@ try {
       setPlaying,
       showBalance,
       cheer,
+      score,
       jackpotFrom: () => jackpotFrom,
     });
     showTables = holdem({ signedIn, balance: () => balance, showBalance, navigate });
@@ -976,6 +989,19 @@ try {
     history.replaceState(null, '', aimShown ? '/casino?game=aim' : '/casino');
   }
   watchTabs();
+  // The long words of each game wait behind the "?" of its window.
+  for (const game of ['wheel', 'aim', 'rocket', 'poker', 'events']) {
+    const leads = [...$(`${game}-game`).querySelectorAll('.casino-lead')];
+    $(`${game}-help`).replaceChildren(helpButton(() => leads.map((lead) => lead.textContent)));
+  }
+  // Space plays again, whatever game is shown.
+  document.addEventListener('keydown', (event) => {
+    if (event.code !== 'Space' || event.target.closest('input, textarea, select, button, a')) return;
+    const go = ['spin', 'bet', 'rocket-launch', 'rocket-cash'].map($).find((b) => b.offsetParent && !b.disabled);
+    if (!go) return;
+    event.preventDefault();
+    go.click();
+  });
   showBoard(prizes);
   showGame(location.href);
 

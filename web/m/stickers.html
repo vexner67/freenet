@@ -29,11 +29,17 @@
     <div class="page">
       <div class="page-title"><span id="title">Стикеры</span></div>
       <div class="page-body">
-        <div class="tabs" id="tabs">
-          <a id="tab-shop" href="/stickers">Магазин стикеров</a>
-          <a id="tab-settings" href="/stickers?act=settings" hidden>Установленные наборы</a>
-          <a id="tab-author" href="/stickers?act=author" hidden>Студия стикеров</a>
+        <div class="tabs game-tabs" id="tabs">
+          <a id="tab-shop" href="/stickers"><img src="/static/icons/game/shop.svg" alt="" width="16" height="16">Магазин стикеров</a>
+          <a id="tab-settings" href="/stickers?act=settings" hidden><img src="/static/icons/game/sticker.svg" alt="" width="16" height="16">Установленные наборы</a>
+          <a id="tab-author" href="/stickers?act=author" hidden><img src="/static/icons/game/studio.svg" alt="" width="16" height="16">Студия стикеров</a>
           <a class="tabs-side" id="tab-dialogs" href="/im" hidden>Диалоги</a>
+        </div>
+        <div class="game-hud four" id="score" hidden>
+          <div class="game-hud-cell"><span class="game-hud-name"><img src="/static/icons/game/box.svg" alt="" width="16" height="16">Мои наборы</span><span class="game-hud-sum" id="score-packs"></span></div>
+          <div class="game-hud-cell"><span class="game-hud-name"><img src="/static/icons/game/sticker.svg" alt="" width="16" height="16">Мои стикеры</span><span class="game-hud-sum" id="score-stickers"></span></div>
+          <div class="game-hud-cell"><span class="game-hud-name"><img src="/static/icons/game/coins.svg" alt="" width="16" height="16">На счету</span><span class="game-hud-sum sticker-votes" id="score-votes"></span></div>
+          <div class="game-hud-cell"><span class="game-hud-name"><img src="/static/icons/game/crown.svg" alt="" width="16" height="16">Коллекция</span><span id="score-bar"></span></div>
         </div>
         <div class="mb-tabs" id="sections" hidden>
           <div class="mb-tab-row">
@@ -41,6 +47,7 @@
             <a class="mb-tab" id="section-free" href="/stickers?section=free">Бесплатные</a>
             <a class="mb-tab" id="section-all" href="/stickers?section=all">Все</a>
           </div>
+          <button class="button sticker-lucky" type="button" id="lucky" hidden><img src="/static/icons/game/clover.svg" alt="" width="16" height="16">Мне повезёт</button>
           <form action="/stickers" method="get" id="search">
             <input type="hidden" name="section" id="search-section">
             <input type="search" name="q" id="search-query" placeholder="Поиск по наборам стикеров">

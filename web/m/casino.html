@@ -31,19 +31,26 @@
       <div class="page-body">
         <div class="error" id="error" hidden></div>
         <div class="casino-festive" aria-hidden="true"><span class="casino-festive-text">Новогоднее казино — удача в подарок!</span></div>
-        <div class="tabs casino-tabs" id="casino-tabs" hidden>
-          <a id="tab-wheel" href="/casino">Огонёк</a>
-          <a id="tab-aim" href="/casino?game=aim" hidden>Прицел</a>
-          <a id="tab-rocket" href="/casino?game=rocket" hidden>Ракетка</a>
-          <a id="tab-poker" href="/casino?game=poker" hidden>Покер</a>
-          <a id="tab-events" href="/casino?game=events">Ставки</a>
+        <div class="tabs game-tabs casino-tabs" id="casino-tabs" hidden>
+          <a id="tab-wheel" href="/casino"><img src="/static/icons/game/wheel.svg" alt="" width="16" height="16">Огонёк</a>
+          <a id="tab-aim" href="/casino?game=aim" hidden><img src="/static/icons/game/aim.svg" alt="" width="16" height="16">Прицел</a>
+          <a id="tab-rocket" href="/casino?game=rocket" hidden><img src="/static/icons/game/rocket.svg" alt="" width="16" height="16">Ракетка</a>
+          <a id="tab-poker" href="/casino?game=poker" hidden><img src="/static/icons/game/cards.svg" alt="" width="16" height="16">Покер</a>
+          <a id="tab-events" href="/casino?game=events"><img src="/static/icons/game/bets.svg" alt="" width="16" height="16">Ставки</a>
+        </div>
+        <div class="game-hud four casino-hud" id="casino-hud">
+          <div class="game-hud-cell"><span class="game-hud-name"><img src="/static/icons/game/clock.svg" alt="" width="16" height="16">Сыграно</span><span class="game-hud-sum" id="hud-played">0</span></div>
+          <div class="game-hud-cell"><span class="game-hud-name"><img src="/static/icons/game/coins.svg" alt="" width="16" height="16">Выиграно</span><span class="game-hud-sum" id="hud-won">0</span></div>
+          <div class="game-hud-cell"><span class="game-hud-name"><img src="/static/icons/game/profit.svg" alt="" width="16" height="16">Итог</span><span class="game-hud-sum" id="hud-net">0</span></div>
+          <div class="game-hud-cell"><span class="game-hud-name"><img src="/static/icons/game/flame.svg" alt="" width="16" height="16">Серия побед</span><span class="game-hud-sum" id="hud-streak">0</span></div>
         </div>
         <div class="casino" id="casino" hidden>
           <div class="casino-game" id="wheel-game" hidden>
+            <div class="game-window-title"><img src="/static/icons/game/wheel.svg" alt="" width="16" height="16"><span>Огонёк</span><span id="wheel-help"></span></div>
             <p class="casino-lead">Огонёк обежит призы и остановится на одном из них — он ваш. Прокрутка стоит <b id="price"></b>.</p>
             <div class="casino-board" id="board"></div>
             <div class="casino-controls">
-              <button class="button" id="spin" type="button" hidden></button>
+              <button class="button game-go" id="spin" type="button" hidden></button>
               <span class="hint" id="guest" hidden>Играть могут только вошедшие на сайт.</span>
             </div>
             <div class="casino-auto" id="wheel-auto" hidden>
@@ -53,9 +60,9 @@
             </div>
             <p class="hint casino-session" id="wheel-auto-state" hidden></p>
             <div class="casino-result" id="result" hidden></div>
-            <p class="hint casino-session" id="session" hidden></p>
           </div>
           <div class="casino-game" id="aim-game" hidden>
+            <div class="game-window-title"><img src="/static/icons/game/aim.svg" alt="" width="16" height="16"><span>Прицел</span><span id="aim-help"></span></div>
             <p class="casino-lead">Поставьте голоса на множитель. Отметка попадёт в зелёное поле — ставка вернётся умноженной на него, мимо — пропадёт. Чем больше множитель, тем уже поле.</p>
             <form class="casino-bet" id="bet-form">
               <div class="casino-stake">
@@ -78,7 +85,7 @@
               <div class="casino-dice-scale" aria-hidden="true"><span>0</span><span>100</span></div>
               <p class="casino-sum" id="bet-sum"></p>
               <div class="casino-controls">
-                <button class="button" id="bet" type="submit" hidden></button>
+                <button class="button game-go" id="bet" type="submit" hidden></button>
                 <span class="hint" id="bet-guest" hidden>Играть могут только вошедшие на сайт.</span>
               </div>
             </form>
@@ -89,9 +96,9 @@
             </div>
             <p class="hint casino-session" id="aim-auto-state" hidden></p>
             <div class="casino-result" id="bet-result" hidden></div>
-            <p class="hint casino-session" id="bet-session" hidden></p>
           </div>
           <div class="casino-game" id="rocket-game" hidden>
+            <div class="game-window-title"><img src="/static/icons/game/rocket.svg" alt="" width="16" height="16"><span>Ракетка</span><span id="rocket-help"></span></div>
             <p class="casino-lead">Ракета взлетает, и множитель растёт от ×1. Заберите ставку, пока она не взорвалась, — ставка вернётся умноженной на то, что показывает ракета. Не успели — ставка пропала. Где ракета взорвётся, решается при взлёте.</p>
             <form class="casino-bet" id="rocket-form">
               <div class="casino-stake">
@@ -117,7 +124,7 @@
               </div>
               <p class="casino-sum" id="rocket-sum"></p>
               <div class="casino-controls">
-                <button class="button" id="rocket-launch" type="submit" hidden></button>
+                <button class="button game-go" id="rocket-launch" type="submit" hidden></button>
                 <button class="button rocket-cash" id="rocket-cash" type="button" hidden></button>
                 <span class="hint" id="rocket-guest" hidden>Играть могут только вошедшие на сайт.</span>
               </div>
@@ -129,9 +136,9 @@
             </div>
             <p class="hint casino-session" id="rocket-auto-state" hidden></p>
             <div class="casino-result" id="rocket-result" hidden></div>
-            <p class="hint casino-session" id="rocket-session" hidden></p>
           </div>
           <div class="casino-game" id="poker-game" hidden>
+            <div class="game-window-title"><img src="/static/icons/game/cards.svg" alt="" width="16" height="16"><span>Покер</span><span id="poker-help"></span></div>
             <div class="mb-tabs casino-sections">
               <div class="mb-tab-row">
                 <a class="mb-tab" id="poker-mode-tables" href="/casino?game=poker">Столы</a>
@@ -264,7 +271,6 @@
                 <span class="hint" id="poker-guest" hidden>Играть могут только вошедшие на сайт.</span>
               </div>
               <div class="casino-result" id="poker-result" hidden></div>
-              <p class="hint casino-session" id="poker-session" hidden></p>
               <table class="poker-pays" id="poker-pays">
                 <caption>Выплаты по анте</caption>
                 <tbody id="poker-pays-rows"></tbody>
@@ -273,6 +279,7 @@
             </div>
           </div>
           <div class="casino-game" id="events-game" hidden>
+            <div class="game-window-title"><img src="/static/icons/game/bets.svg" alt="" width="16" height="16"><span>Ставки</span><span id="events-help"></span></div>
             <p class="casino-lead">Угадайте, чем кончится событие, и поставьте на исход сколько хотите голосов. У каждого исхода свой коэффициент: если исход сбудется, ставка вернётся умноженной на коэффициент, с которым её сделали.</p>
             <div class="mb-tabs casino-sections">
               <div class="mb-tab-row">
