@@ -24,7 +24,7 @@ globalThis.fetch = async (path, init) => {
   return { status, ok: status >= 200 && status < 300, json: async () => body };
 };
 
-const { api, idle } = await import('../static/api.js');
+const { api, currentUser, idle, session, tokenBanned } = await import('../static/api.js');
 
 function reset(answering) {
   sent = [];
@@ -82,4 +82,43 @@ test('idle waits for the reads the answers start', async () => {
   order.push('idle');
 
   assert.deepEqual(order, ['read', 'idle']);
+});
+
+const tokenOf = (claims) => `h.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.s`;
+
+test('tokenBanned reads the claim of an access token', () => {
+  assert.equal(tokenBanned(tokenOf({ banned: true, name: 'Анна' })), true);
+  assert.equal(tokenBanned(tokenOf({})), false);
+  assert.equal(tokenBanned('tok'), false);
+  assert.equal(tokenBanned(undefined), false);
+});
+
+test('an action refused by the token of a lifted block takes a new token and goes through', async () => {
+  session.save({ accessToken: tokenOf({ banned: true }), refreshToken: 'ref' });
+  reset(({ path, auth }) => {
+    if (path === '/api/v1/auth/refresh') return { status: 200, body: { accessToken: 'fresh', refreshToken: 'ref2' } };
+    return auth === 'Bearer fresh' ? { status: 200, body: { ok: true } } : { status: 403, body: { error: { code: 'forbidden', message: 'no' } } };
+  });
+
+  assert.deepEqual(await api.me(), { ok: true });
+  assert.equal(session.get().accessToken, 'fresh');
+  assert.equal(sent.filter((r) => r.path === '/api/v1/auth/refresh').length, 1);
+});
+
+test('a refusal of an ordinary token is not retried', async () => {
+  session.save({ accessToken: tokenOf({}), refreshToken: 'ref' });
+  reset(() => ({ status: 403, body: { error: { code: 'forbidden', message: 'no' } } }));
+
+  await assert.rejects(api.me(), { status: 403 });
+  assert.equal(sent.length, 1);
+});
+
+test('currentUser takes a new token as soon as the block is gone', async () => {
+  session.save({ accessToken: tokenOf({ banned: true }), refreshToken: 'ref' });
+  reset(({ path }) => (path === '/api/v1/auth/refresh'
+    ? { status: 200, body: { accessToken: 'fresh', refreshToken: 'ref2' } }
+    : { status: 200, body: { id: 'me' } }));
+
+  await currentUser();
+  assert.equal(session.get().accessToken, 'fresh');
 });

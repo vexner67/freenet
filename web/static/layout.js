@@ -876,7 +876,11 @@ function renderDeactivatedChrome(me, links, menu) {
   }
 
   const own = profilePath(me);
-  if (decodeURIComponent(location.pathname) !== own) location.replace(own);
+  if (decodeURIComponent(location.pathname) !== own) {
+    location.replace(own);
+    return;
+  }
+  if (me.ban) import('/static/ban-screen.js').then(({ showBanScreen }) => showBanScreen(me, others ? accountsLink(me) : null));
 }
 
 // The clubs you run and keep in the left menu ("Добавить в левое меню"),

@@ -4205,3 +4205,41 @@ a.game-hud-cell:hover { background: var(--back-fbf3c3); }
 .gray-bar-search input { width: 100%; box-sizing: border-box; }
 #create { flex: none; width: auto; }
 .notify-filters { min-height: 38px; }
+
+/* The blocked page: a dark room over everything, one window in it. */
+.ban-open, .ban-open body { overflow: hidden; }
+.ban-screen { position: fixed; inset: 0; z-index: 110; display: flex; padding: 16px; overflow: auto; background: repeating-linear-gradient(90deg, var(--back-3e3e3e) 0 26px, var(--back-636363) 26px 30px); box-sizing: border-box; animation: ban-in 0.2s ease-out; }
+@keyframes ban-in { from { opacity: 0; } }
+.ban-window { width: 100%; max-width: 560px; margin: auto; background: var(--back-fff); border: 1px solid var(--line-333); border-radius: 4px; box-shadow: 3px 3px 0 var(--line-333); overflow: hidden; }
+.ban-title { background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); font-size: 13px; }
+.ban-title .game-help { margin-left: auto; }
+.ban-body { display: flex; gap: 14px; padding: 12px; }
+.ban-photo { position: relative; flex: none; align-self: flex-start; width: 120px; height: 120px; padding: 0; background: none; border: 2px solid var(--line-333); border-radius: 4px; cursor: pointer; overflow: hidden; }
+.ban-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ban-grid { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 16px, var(--back-3e3e3e) 16px 20px); }
+.ban-photo:hover .ban-grid { opacity: 0.8; }
+.ban-shake { animation: ban-shake 0.28s; }
+@keyframes ban-shake { 25% { transform: translateX(-4px) rotate(-1deg); } 75% { transform: translateX(4px) rotate(1deg); } }
+.ban-gate { flex: 1; min-width: 0; line-height: 1.5; }
+.ban-gate p { margin: 0 0 4px; }
+.ban-reason { margin: 0 0 6px; padding: 6px 8px; background: var(--back-ffe58a); border: 1px solid var(--line-333); border-radius: 3px; color: var(--text-000); font-weight: bold; overflow-wrap: anywhere; }
+.ban-clock { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; margin: 6px 0; }
+.ban-clock-cell { padding: 4px 2px; background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); border: 1px solid var(--line-333); border-radius: 3px; text-align: center; }
+.ban-clock-cell .hint { display: block; color: var(--text-fff); font-size: 10px; }
+.ban-digit { color: var(--back-ffd54a); font-size: 20px; font-variant-numeric: tabular-nums; line-height: 24px; }
+.ban-forever { margin: 6px 0; padding: 6px; background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); border: 1px solid var(--line-333); border-radius: 3px; color: var(--back-ffd54a); font-size: 18px; font-weight: bold; text-align: center; }
+.ban-bar { display: block; height: 8px; overflow: hidden; background: var(--back-3e3e3e); border: 1px solid var(--line-333); border-radius: 3px; }
+.ban-bar-fill { display: block; height: 100%; background: var(--back-ffd54a); transform-origin: left; transition: transform 1s linear; }
+.ban-shakes { min-height: 34px; margin: 6px 0; }
+.ban-said { font-weight: bold; }
+.ban-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.ban-free .ban-title { background: linear-gradient(var(--back-ffe58a), var(--back-ffd54a)); color: var(--text-000); text-shadow: none; }
+.ban-free .ban-grid { transform: translateY(-100%); transition: transform 0.6s ease-in; }
+@media (prefers-reduced-motion: reduce) {
+  .ban-screen, .ban-shake { animation: none; }
+  .ban-bar-fill, .ban-free .ban-grid { transition: none; }
+}
+
+.ban-body { flex-direction: column; align-items: center; }
+.ban-photo { align-self: center; }
+.ban-screen { padding: 8px; }

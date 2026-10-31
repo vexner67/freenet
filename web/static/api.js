@@ -238,6 +238,19 @@ async function optional(method, path) {
   return request(method, path);
 }
 
+// tokenBanned tells an access token issued while the page was blocked. It
+// says so until it expires, up to 15 minutes after the block is lifted, and
+// every action is refused until a new one is taken.
+export function tokenBanned(accessToken) {
+  try {
+    const payload = accessToken.split('.')[1].replaceAll('-', '+').replaceAll('_', '/');
+
+    return Boolean(JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(payload), (c) => c.charCodeAt(0)))).banned);
+  } catch {
+    return false;
+  }
+}
+
 async function authorized(method, path, body) {
   const current = session.get();
   if (!current) throw new ApiError(401, 'unauthenticated', 'missing access token');
@@ -245,7 +258,7 @@ async function authorized(method, path, body) {
   try {
     return await request(method, path, body, current.accessToken);
   } catch (e) {
-    if (e.status !== 401) throw e;
+    if (e.status !== 401 && !(e.status === 403 && tokenBanned(current.accessToken))) throw e;
   }
 
   await refresh(current.accessToken);
@@ -969,7 +982,13 @@ export async function currentUser() {
   if (!session.get()) return null;
 
   try {
-    return await api.me();
+    const me = await api.me();
+    const token = session.get()?.accessToken;
+
+    // The block is lifted: the page must work before the first action.
+    if (!me.ban && tokenBanned(token)) await refresh(token);
+
+    return me;
   } catch (e) {
     if (e.status === 401 || e.status === 404) {
       session.clear();
