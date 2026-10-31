@@ -122,3 +122,34 @@ test('currentUser takes a new token as soon as the block is gone', async () => {
   await currentUser();
   assert.equal(session.get().accessToken, 'fresh');
 });
+
+test('an action is not repeated as another account a tab switched to', async () => {
+  session.save({ accessToken: tokenOf({ sub: 'ann', banned: true }), refreshToken: 'ref' });
+  reset(({ auth }) => {
+    if (auth) session.save({ accessToken: tokenOf({ sub: 'bob' }), refreshToken: 'bobs' });
+    return { status: 403, body: { error: { code: 'forbidden', message: 'no' } } };
+  });
+
+  await assert.rejects(api.me(), { code: 'account_changed' });
+  assert.equal(sent.length, 1);
+});
+
+test('an expired token does not end the session another tab switched to', async () => {
+  session.save({ accessToken: tokenOf({ sub: 'ann' }), refreshToken: 'ref' });
+  reset(({ auth }) => {
+    if (auth) session.save({ accessToken: tokenOf({ sub: 'bob' }), refreshToken: 'bobs' });
+    return { status: 401, body: { error: { code: 'unauthenticated', message: 'no' } } };
+  });
+
+  await assert.rejects(currentUser(), { code: 'account_changed' });
+  assert.equal(session.get().refreshToken, 'bobs');
+});
+
+test('a failed refresh does not lose who /me said is signed in', async () => {
+  session.save({ accessToken: tokenOf({ banned: true }), refreshToken: 'ref' });
+  reset(({ path }) => (path === '/api/v1/auth/refresh'
+    ? { status: 500, body: {} }
+    : { status: 200, body: { id: 'me' } }));
+
+  assert.deepEqual(await currentUser(), { id: 'me' });
+});

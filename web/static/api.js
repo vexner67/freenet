@@ -242,12 +242,18 @@ async function optional(method, path) {
 // says so until it expires, up to 15 minutes after the block is lifted, and
 // every action is refused until a new one is taken.
 export function tokenBanned(accessToken) {
+  return Boolean(claimsOf(accessToken).banned);
+}
+
+// claimsOf reads what a token says, for the client's own choices only: the
+// server checks its signature.
+function claimsOf(accessToken) {
   try {
     const payload = accessToken.split('.')[1].replaceAll('-', '+').replaceAll('_', '/');
 
-    return Boolean(JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(payload), (c) => c.charCodeAt(0)))).banned);
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(payload), (c) => c.charCodeAt(0))));
   } catch {
-    return false;
+    return {};
   }
 }
 
@@ -263,7 +269,16 @@ async function authorized(method, path, body) {
 
   await refresh(current.accessToken);
 
-  return request(method, path, body, session.get().accessToken);
+  // Another tab may have switched the account meanwhile: what this one asked
+  // must not be done as someone else. Not a 401: the session is alive, and
+  // that status would end it (currentUser).
+  const renewed = session.get();
+  if (renewed && claimsOf(renewed.accessToken).sub !== claimsOf(current.accessToken).sub) {
+    throw new ApiError(0, 'account_changed', 'account changed');
+  }
+  if (!renewed) throw new ApiError(401, 'unauthenticated', 'missing access token');
+
+  return request(method, path, body, renewed.accessToken);
 }
 
 export const api = {
@@ -986,7 +1001,8 @@ export async function currentUser() {
     const token = session.get()?.accessToken;
 
     // The block is lifted: the page must work before the first action.
-    if (!me.ban && tokenBanned(token)) await refresh(token);
+    // Should that fail, the next action asks again: /me has answered.
+    if (!me.ban && tokenBanned(token)) await refresh(token).catch(() => {});
 
     return me;
   } catch (e) {
