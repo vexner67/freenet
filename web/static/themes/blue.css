@@ -28,3 +28,9 @@ a { color: #2b587a; }
 .faq-head { background: #dae1e8; border-color: #c3cbd4; }
 .completeness-gauge { background: #dee5eb; border-top-color: #b1bdd6; }
 .completeness-gauge > div { background: #c3cfdc; }
+
+/* The dark frames of the site wear the header of the theme. */
+.game-window-title, .pet-window-title, .story-head, .tabs.game-tabs a.active, .tabs.game-tabs a.active:hover, .pet-tab-chosen, .pet-tab-chosen:hover { background: linear-gradient(#5d80a8, #45688e); border-color: #3a5a7d; }
+.game-window, .game-hud, .casino-game, .casino-balance, .pet-window, .story-box { border-color: #3a5a7d; }
+.game-hud { background: #3a5a7d; }
+.game-tabs { border-bottom-color: #3a5a7d; }

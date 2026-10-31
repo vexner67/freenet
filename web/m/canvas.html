@@ -31,16 +31,31 @@
       <div class="page-body">
         <div class="error" id="error" hidden></div>
         <div class="canvas-page" id="board" hidden>
-          <p class="casino-lead">Один холст на весь сайт: закрашивайте клетки сколько хотите. Вместе можно нарисовать что угодно — договаривайтесь в сообщениях.</p>
-          <div class="canvas-palette" id="palette"></div>
-          <div class="canvas-tools">
-            <span class="canvas-status" id="status"></span>
-            <a href="#" id="look">Кто закрасил клетку?</a>
-            <a href="#" id="zoom-out" title="Уменьшить">−</a>
-            <a href="#" id="zoom-in" title="Увеличить">+</a>
-            <a href="#" id="zoom-fit">Весь холст</a>
+          <div class="game-hud four" id="hud"></div>
+          <div class="game-window">
+            <div class="game-window-title"><img class="game-icon" src="/static/icons/game/palette.svg" alt="" width="16" height="16"><span>Холст</span><span id="canvas-help"></span></div>
+            <div class="game-window-body">
+              <div class="canvas-colors">
+                <span class="canvas-current" id="current" title="Цвет в руке"></span>
+                <div class="canvas-recent" id="recent"></div>
+                <div class="canvas-palette" id="palette"></div>
+              </div>
+              <div class="canvas-status" id="status"></div>
+              <div class="canvas-paint">
+                <div class="canvas-toolbox" id="tools">
+                  <button class="canvas-tool" type="button" id="tool-brush" title="Кисть (B)"><img src="/static/icons/game/brush.svg" alt="Кисть" width="20" height="20"></button>
+                  <button class="canvas-tool" type="button" id="tool-hand" title="Рука: двигать холст (H)"><img src="/static/icons/game/hand.svg" alt="Рука: двигать холст" width="20" height="20"></button>
+                  <button class="canvas-tool" type="button" id="tool-pick" title="Пипетка: взять цвет (I)"><img src="/static/icons/game/pipette.svg" alt="Пипетка: взять цвет" width="20" height="20"></button>
+                  <button class="canvas-tool" type="button" id="tool-look" title="Кто закрасил клетку? (W)"><img src="/static/icons/game/who.svg" alt="Кто закрасил клетку?" width="20" height="20"></button>
+                  <button class="canvas-tool" type="button" id="undo" title="Отменить (Z)"><img src="/static/icons/game/undo.svg" alt="Отменить" width="20" height="20"></button>
+                  <button class="canvas-tool" type="button" id="zoom-in" title="Увеличить (+)"><img src="/static/icons/game/zoom-in.svg" alt="Увеличить" width="20" height="20"></button>
+                  <button class="canvas-tool" type="button" id="zoom-out" title="Уменьшить (−)"><img src="/static/icons/game/zoom-out.svg" alt="Уменьшить" width="20" height="20"></button>
+                  <button class="canvas-tool" type="button" id="zoom-fit" title="Весь холст (0)"><img src="/static/icons/game/fit.svg" alt="Весь холст" width="20" height="20"></button>
+                </div>
+                <div class="canvas-frame" id="frame"><canvas class="canvas-board" id="canvas" width="100" height="100"></canvas></div>
+              </div>
+            </div>
           </div>
-          <div class="canvas-frame" id="frame"><canvas class="canvas-board" id="canvas" width="100" height="100"></canvas></div>
           <div class="canvas-tip" id="tip" hidden></div>
         </div>
       </div>

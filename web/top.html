@@ -29,10 +29,12 @@
     <div class="page">
       <div class="page-title"><span>Рейтинги</span></div>
       <div class="page-body">
-        <div class="tabs casino-tabs" id="tabs"></div>
+        <div class="tabs game-tabs" id="tabs"></div>
         <div class="error" id="error" hidden></div>
         <div class="top" id="top" hidden>
-          <p class="casino-lead" id="about"></p>
+          <div class="game-hud" id="hud"></div>
+          <div class="top-about" id="climb"></div>
+          <div class="top-podium" id="podium" hidden></div>
           <table class="top-table" id="table">
             <thead><tr><th class="top-place">Место</th><th>Участник</th><th class="top-value">Счёт</th></tr></thead>
             <tbody id="rows"></tbody>

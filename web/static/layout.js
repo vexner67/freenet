@@ -2,7 +2,7 @@
 // User data is only ever set with textContent, never as HTML.
 
 import { button, openModal } from './modal.js';
-import { accountName, canPark, onAccountChange, park, parkedAccounts, signedInAs, switchTo, tendParked } from './accounts.js';
+import { MAX_PARKED, accountName, onAccountChange, park, parkedAccounts, signedInAs, switchTo, tendParked } from './accounts.js';
 import { api, idle } from './api.js';
 import { ensureKey } from './e2ee.js';
 import { connectEvents, onEvent } from './events.js';
@@ -287,22 +287,61 @@ function accountsLink(me) {
   return el('a', { textContent: tr('Аккаунты'), onclick: () => openAccounts(me) });
 }
 
+// accountSlot is a place of the box: a photo, a name and what it does.
+function accountSlot(photo, name, note, onclick, { className = '', count = 0, key = '' } = {}) {
+  return el(onclick ? 'button' : 'div', { className: `account-slot ${className}`.trim(), type: onclick ? 'button' : undefined, onclick },
+    key && el('span', { className: 'account-key', textContent: key }),
+    count > 0 && el('span', { className: 'counter', textContent: unreadCountText(count) }),
+    el('img', { className: 'account-photo', src: photo, alt: '' }),
+    el('b', { className: 'account-name', textContent: name }),
+    el('span', { className: 'account-note', textContent: note }));
+}
+
+// openAccounts is the box of the accounts: the one signed in, those that
+// wait, each one press (or its number on the keyboard) away, and the places
+// still free, so that it is seen how many more there may be.
 function openAccounts(me) {
   const modal = openModal(tr('Аккаунты'));
+  let order = [];
+
+  function pressKey(event) {
+    if (!modal.box.isConnected) {
+      document.removeEventListener('keydown', pressKey);
+      return;
+    }
+    order[Number(event.key) - 1]?.();
+  }
+  document.addEventListener('keydown', pressKey);
+  modal.box.classList.add('accounts-box');
 
   function draw() {
     // Closed meanwhile: there is nothing to draw in.
     if (!modal.box.isConnected) return;
 
-    const waiting = accountLinks(me);
+    const waiting = parkedAccounts();
+    const free = MAX_PARKED - waiting.length;
+    const go = (a, node) => {
+      node.classList.add('switching');
+      switchAccount(a.id, me);
+    };
+    const slots = waiting.map((a, i) => {
+      const slot = accountSlot(a.avatar || '/static/avatar.svg', shortened(accountName(a), ACCOUNT_NAME_LENGTH), tr('Войти'),
+        () => go(a, slot), { count: a.unread, key: String(i + 1) });
 
-    modal.body.replaceChildren(waiting.length > 0
-      ? el('nav', { className: 'menu account-list' }, ...waiting)
-      : el('p', { className: 'hint', textContent: tr('Других аккаунтов в этом браузере нет.') }));
-    modal.actions.replaceChildren(
-      canPark() && button(tr('Добавить аккаунт'), () => addAccount(me)),
-      button(tr('Закрыть'), modal.close, { secondary: true }),
+      return slot;
+    });
+    const add = () => addAccount(me);
+
+    order = [...waiting.map((a, i) => () => go(a, slots[i])), ...(free > 0 ? [add] : [])];
+    modal.body.replaceChildren(
+      el('div', { className: 'account-slots' },
+        me && accountSlot(avatarURL(me, 'small'), shortened(fullName(me), ACCOUNT_NAME_LENGTH), tr('Вы здесь'), null, { className: 'account-here' }),
+        ...slots,
+        ...Array.from({ length: free }, (_, i) => accountSlot('/static/icons/game/plus.svg', tr('Добавить аккаунт'), tr('свободное место'), add,
+          { className: 'account-free', key: i === 0 ? String(waiting.length + 1) : '' }))),
+      el('div', { className: 'account-meter' }, tr('Занято мест: {0} из {1}', waiting.length + (me ? 1 : 0), MAX_PARKED + 1)),
     );
+    modal.actions.replaceChildren(button(tr('Закрыть'), modal.close, { secondary: true }));
   }
 
   showAccounts(draw);

@@ -2,27 +2,34 @@
 // ?section=groups) or posts ("Записи", ?section=posts), by the words of
 // ?q=, a page at a time; a tag ("#поход") finds the posts that say it, and
 // the tags of the texts lead here. People are also found by the links of a
-// page: ?hometown=, ?city=, ?film=, ?show=, ?book=.
+// page: ?hometown=, ?city=, ?film=, ?show=, ?book=. Results come as the words
+// are typed, and the tabs change without a new page; the earlier searches of
+// this browser wait under the field, one press away, and the next page comes
+// by itself when the end of the list is near.
 
 import { api, currentUser } from './api.js';
 import { resultsCount } from './labels.js';
 import { $, el, isMicroblog, renderChrome, showError, hideError } from './layout.js';
+import { gameIcon } from './game.js';
 import { clubRow } from './clubs.js';
 import { personRow } from './people.js';
 import { postNode, wallOwnerID } from './posts.js';
 import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
-const query = (params.get('q') ?? '').trim();
-const kind = ['groups', 'posts'].includes(params.get('section')) ? params.get('section') : '';
-const groups = kind === 'groups';
+let query = (params.get('q') ?? '').trim();
+let kind = ['groups', 'posts'].includes(params.get('section')) ? params.get('section') : '';
 
 // filterNames say what a filter of a page's link looks for.
 const filterNames = { hometown: tr('Родной город'), city: tr('Город'), film: tr('Любимые фильмы'), show: tr('Любимые ТВ-шоу'), book: tr('Любимые книги') };
-const filters = kind ? {} : Object.fromEntries(Object.keys(filterNames)
+let filters = kind ? {} : Object.fromEntries(Object.keys(filterNames)
   .map((key) => [key, (params.get(key) ?? '').trim()])
   .filter(([, value]) => value));
-const filtered = Object.keys(filters).length > 0;
+const isFiltered = () => Object.keys(filters).length > 0;
+// How long the field stays quiet before the words are searched for.
+const typingPause = 280;
+const recentKey = 'freenet.searches';
+const recentSize = 8;
 
 const me = await currentUser().catch(() => null);
 
@@ -77,77 +84,250 @@ const sections = {
     count: (total) => (total === 0 ? tr('По данному запросу ничего не найдено.') : resultsCount(total)),
   },
 };
-const section = sections[kind];
+const section = () => sections[kind];
 
 let cursor = '';
 let shown = 0;
 let total = 0;
+let loading = false;
+// Only the last search is answered; the words have changed for the others.
+let asked = 0;
+let typing = 0;
 
-async function loadMore() {
-  hideError($('error'));
-
+function savedSearches() {
   try {
-    const page = await section.search(query, cursor, filters);
-    const items = section.items(page);
+    const list = JSON.parse(localStorage.getItem(recentKey));
 
-    $('people').append(...items.map((item) => section.row(item)));
-    if (!cursor) total = page.total ?? 0;
-    shown += items.length;
-    cursor = page.nextCursor;
-
-    $('more').hidden = !cursor;
-    $('count').textContent = section.count ? section.count(total) : (shown === 0 ? section.none : tr('Найдено: {0}{1}', shown, cursor ? '+' : ''));
-    $('count').hidden = false;
-  } catch (e) {
-    showError($('error'), e);
+    return Array.isArray(list) ? list.filter((q) => typeof q === 'string') : [];
+  } catch {
+    return [];
   }
 }
 
-function tab(id, tabKind) {
-  const link = $(id);
-  const tabParams = new URLSearchParams();
-  if (tabKind) tabParams.set('section', tabKind);
-  if (query) tabParams.set('q', query);
-  link.href = '/search' + (tabParams.size ? '?' + tabParams : '');
-  link.classList.toggle('active', tabKind === kind);
+function showRecent() {
+  const list = savedSearches();
+
+  $('recent').hidden = list.length === 0;
+  $('recent').replaceChildren(
+    gameIcon('/static/icons/game/clock.svg'),
+    ...list.map((q) => el('button', { type: 'button', className: 'chip', textContent: q, onclick: () => searchFor(q) })),
+    el('a', { href: '#', className: 'search-forget', textContent: tr('очистить'), onclick: forgetSearches }),
+  );
 }
+
+function rememberSearch() {
+  if (!query) return;
+
+  try {
+    localStorage.setItem(recentKey, JSON.stringify([query, ...savedSearches().filter((q) => q !== query)].slice(0, recentSize)));
+  } catch {
+    // The list just stays as it was.
+  }
+  showRecent();
+}
+
+function forgetSearches(event) {
+  event.preventDefault();
+  try {
+    localStorage.removeItem(recentKey);
+  } catch {
+    // Nothing is kept then.
+  }
+  showRecent();
+}
+
+function say(text) {
+  $('count').textContent = text;
+}
+
+function showPage(page, items) {
+  $('people').append(...items.map((item) => section().row(item)));
+  if (!cursor) total = page.total ?? 0;
+  shown += items.length;
+  cursor = page.nextCursor;
+  $('more').hidden = !cursor;
+  say(section().count ? section().count(total) : (shown === 0 ? section().none : tr('Найдено: {0}{1}', shown, cursor ? '+' : '')));
+  if (shown === 0) {
+    $('people').append(el('div', { className: 'search-none' }, gameIcon('/static/icons/game/loupe.svg', 48), el('p', { className: 'hint', textContent: tr('Попробуйте другие слова или загляните в другой раздел.') })));
+  }
+}
+
+// loadMore adds the next page of what is found.
+async function loadMore() {
+  if (loading || !cursor) return;
+
+  const mine = asked;
+
+  loading = true;
+  try {
+    const page = await section().search(query, cursor, filters);
+
+    if (mine === asked) showPage(page, section().items(page));
+  } catch (e) {
+    showError($('error'), e);
+  } finally {
+    loading = false;
+  }
+}
+
+// find searches anew; what is on the screen stays, dimmed, until the answer.
+async function find() {
+  asked += 1;
+  const mine = asked;
+  const active = Boolean(query || isFiltered()) && !guest();
+
+  hideError($('error'));
+  showIntro(!active);
+  if (!active) {
+    $('people').replaceChildren();
+    $('more').hidden = true;
+    say('');
+    return;
+  }
+
+  $('people').classList.add('searching');
+  try {
+    const page = await section().search(query, '', filters);
+    if (mine !== asked) return;
+
+    $('people').replaceChildren();
+    cursor = '';
+    shown = 0;
+    showPage(page, section().items(page));
+  } catch (e) {
+    if (mine === asked) showError($('error'), e);
+  } finally {
+    if (mine === asked) $('people').classList.remove('searching');
+  }
+}
+
+// guest: the posts are searched by those who signed in, as on openvk.
+const guest = () => kind === 'posts' && !me;
+
+function showIntro(shownNow) {
+  $('intro').hidden = !shownNow || kind !== '';
+  $('intro-groups').hidden = !shownNow || kind !== 'groups';
+  $('intro-posts').hidden = !shownNow || kind !== 'posts' || guest();
+  $('guest-posts').hidden = !guest();
+}
+
+function address(tabKind = kind) {
+  const list = new URLSearchParams();
+
+  if (tabKind) list.set('section', tabKind);
+  if (query) list.set('q', query);
+  if (tabKind === '') for (const [key, value] of Object.entries(filters)) list.set(key, value);
+
+  return '/search' + (list.size ? '?' + list : '');
+}
+
+function showTabs() {
+  for (const [id, tabKind] of [['tab-people', ''], ['tab-groups', 'groups'], ['tab-posts', 'posts']]) {
+    $(id).href = address(tabKind);
+    $(id).classList.toggle('active', tabKind === kind);
+  }
+}
+
+// showSection dresses the page for its section.
+function showSection() {
+  $('title').textContent = section().title;
+  $('section').value = kind;
+  $('section').disabled = !kind;
+  $('q').placeholder = section().placeholder;
+  // A post is searched for by at most 100 characters.
+  $('q').maxLength = kind === 'posts' ? 100 : 64;
+  $('search-form').hidden = guest();
+  $('filter').hidden = kind !== '' || !isFiltered();
+}
+
+function showWords() {
+  document.title = query || isFiltered() ? `${query || Object.values(filters)[0]} — ${section().tab} | Freenet` : `${section().title} | Freenet`;
+  $('clear').hidden = !query;
+  showTabs();
+  history.replaceState(null, '', address());
+}
+
+function searchFor(words) {
+  clearTimeout(typing);
+  query = words.trim();
+  $('q').value = query;
+  showWords();
+  rememberSearch();
+  find();
+}
+
+for (const [id, tabKind] of [['tab-people', ''], ['tab-groups', 'groups'], ['tab-posts', 'posts']]) {
+  $(id).addEventListener('click', (event) => {
+    if (event.button || event.metaKey || event.ctrlKey || event.shiftKey) return;
+    event.preventDefault();
+    clearTimeout(typing);
+    kind = tabKind;
+    if (kind) filters = {};
+    showSection();
+    showWords();
+    find();
+    $('q').focus();
+  });
+}
+
+$('q').addEventListener('input', () => {
+  query = $('q').value.trim();
+  $('clear').hidden = !$('q').value;
+  clearTimeout(typing);
+  typing = setTimeout(() => {
+    showWords();
+    find();
+  }, typingPause);
+});
+
+$('search-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  searchFor($('q').value);
+});
+
+$('clear').addEventListener('click', () => {
+  searchFor('');
+  $('q').focus();
+});
+
+$('more').addEventListener('click', loadMore);
+
+// What is pressed in the list was what was looked for.
+$('people').addEventListener('click', (event) => {
+  if (event.target.closest('a')) rememberSearch();
+});
+
+// The examples of the hints are one press from being searched.
+for (const example of document.querySelectorAll('.search-example')) {
+  example.addEventListener('click', () => searchFor(example.textContent));
+}
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === '/' && !event.target.closest?.('input, textarea, select')) {
+    event.preventDefault();
+    $('q').focus();
+    $('q').select();
+  }
+  if (event.key === 'Escape' && event.target === $('q') && query) searchFor('');
+});
+
+// The next page comes before the end of the list is reached.
+new IntersectionObserver((seen) => {
+  if (seen.some((entry) => entry.isIntersecting)) loadMore();
+}, { rootMargin: '300px' }).observe($('more'));
 
 renderChrome(me);
 
-$('title').textContent = section.title;
-tab('tab-people', '');
-tab('tab-groups', 'groups');
-tab('tab-posts', 'posts');
-$('section').value = kind;
-$('section').disabled = !kind;
-$('q').placeholder = section.placeholder;
-// A post is searched for by at most 100 characters.
-$('q').maxLength = kind === 'posts' ? 100 : 64;
-$('q').value = query;
-$('q').focus();
-$('intro').hidden = kind !== '';
-$('intro-groups').hidden = !groups;
-$('intro-posts').hidden = kind !== 'posts';
-
-if (filtered) {
+if (isFiltered()) {
   const [key, value] = Object.entries(filters)[0];
   const rest = new URLSearchParams(query ? { q: query } : {});
   $('filter').replaceChildren(`${filterNames[key]}: `, el('b', { textContent: value }), ' ',
     el('a', { href: '/search' + (rest.size ? '?' + rest : ''), textContent: tr('(сбросить)') }));
-  $('filter').hidden = false;
 }
 
-// The posts are searched by those who signed in, as on openvk.
-const guest = kind === 'posts' && !me;
-$('search-form').hidden = guest;
-$('intro-posts').hidden = guest || kind !== 'posts';
-$('guest-posts').hidden = !guest;
-
-if ((query || filtered) && !guest) {
-  document.title = `${query || Object.values(filters)[0]} — ${section.tab} | Freenet`;
-  $('intro').hidden = true;
-  $('intro-groups').hidden = true;
-  $('intro-posts').hidden = true;
-  $('more').addEventListener('click', loadMore);
-  await loadMore();
-}
+$('q').value = query;
+showSection();
+showRecent();
+showWords();
+$('q').focus();
+await find();

@@ -1834,8 +1834,8 @@ export function titleGroups(titles) {
   return [...groups.values()].sort((a, b) => (a.last < b.last ? 1 : a.last > b.last ? -1 : 0));
 }
 
-// firmPictures are the pixel pictures of the enterprises, as the pets
-// are drawn (static/firms/<kind>.svg).
+// firmPictures are the mascots of the enterprises, round as the pets
+// (static/firms/<kind>.svg).
 export const firmPictures = {
   farm: '/static/firms/farm.svg',
   mine: '/static/firms/mine.svg',

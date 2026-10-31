@@ -29,23 +29,28 @@
     <div class="page">
       <div class="page-title"><span id="title">Поиск людей</span></div>
       <div class="page-body">
-        <div class="tabs">
-          <a id="tab-people">Люди</a>
-          <a id="tab-groups">Группы</a>
-          <a id="tab-posts">Записи</a>
+        <div class="tabs game-tabs">
+          <a id="tab-people"><img class="game-icon" src="/static/icons/game/people.svg" alt="" width="16" height="16">Люди</a>
+          <a id="tab-groups"><img class="game-icon" src="/static/icons/game/group.svg" alt="" width="16" height="16">Группы</a>
+          <a id="tab-posts"><img class="game-icon" src="/static/icons/game/note.svg" alt="" width="16" height="16">Записи</a>
         </div>
         <form class="search-form" id="search-form" action="/search" method="get">
           <input type="hidden" id="section" name="section">
-          <input type="text" id="q" name="q" maxlength="64" placeholder="Имя, фамилия или никнейм" aria-label="Кого ищем">
-          <button class="button" type="submit">Искать</button>
+          <span class="search-box">
+            <img class="game-icon" src="/static/icons/game/loupe.svg" alt="" width="18" height="18">
+            <input type="text" id="q" name="q" maxlength="64" placeholder="Имя, фамилия или никнейм" aria-label="Кого ищем" autocomplete="off">
+            <button class="search-clear" type="button" id="clear" title="Очистить" hidden>×</button>
+          </span>
+          <button class="button game-go small" type="submit">Искать</button>
         </form>
+        <div class="search-recent" id="recent" hidden></div>
         <div class="error" id="error" hidden></div>
-        <p class="hint" id="intro">Например: <i>Анна Ли</i> или <i>ann</i>. Регистр и порядок слов не важны.</p>
-        <p class="hint" id="intro-groups" hidden>По названию или адресу группы, например <i>любители котов</i>. Регистр и порядок слов не важны.</p>
-        <p class="hint" id="intro-posts" hidden>По словам записи, например <i>идём в поход</i>, или по хэштегу — <i>#поход</i>. Регистр не важен.</p>
+        <p class="hint" id="intro">Например: <button class="chip search-example" type="button">Анна Ли</button> <button class="chip search-example" type="button">ann</button> Регистр и порядок слов не важны.</p>
+        <p class="hint" id="intro-groups" hidden>По названию или адресу группы, например <button class="chip search-example" type="button">любители котов</button> Регистр и порядок слов не важны.</p>
+        <p class="hint" id="intro-posts" hidden>По словам записи, например <button class="chip search-example" type="button">идём в поход</button> или по хэштегу — <button class="chip search-example" type="button">#поход</button> Регистр не важен.</p>
         <p class="hint" id="guest-posts" hidden>Искать записи могут только вошедшие на сайт. <a href="/">Войти</a></p>
         <p class="search-filter" id="filter" hidden></p>
-        <p class="search-count" id="count" hidden></p>
+        <p class="search-count" id="count"></p>
         <div id="people"></div>
         <a class="wall-more" id="more" hidden>Показать ещё</a>
       </div>

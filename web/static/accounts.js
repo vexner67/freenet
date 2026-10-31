@@ -108,11 +108,6 @@ function save(parked) {
   else localStorage.removeItem(KEY);
 }
 
-// canPark: there is room to set one more account aside.
-export function canPark() {
-  return parkedAccounts().length < MAX_PARKED;
-}
-
 // current is the account signed in, as it would wait.
 function current(me) {
   const tokens = session.get();
