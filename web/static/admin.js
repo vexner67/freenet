@@ -865,6 +865,7 @@ async function petSettings(answered) {
     $('pet-meal').value = String(settings.shop.meal);
     $('pet-win').value = String(settings.shop.win);
     $('pet-fights').value = String(settings.shop.fights);
+    $('pet-cases-a-day').value = String(settings.shop.casesADay);
     $('pets-stats').textContent = tr('Питомцев: {0}, боёв: {1}. Потрачено на питомцев {2}, выиграно в боях {3}.',
       groupedVotes(settings.pets), groupedVotes(settings.fights), votesCount(settings.spent), votesCount(settings.won));
   };
@@ -883,6 +884,7 @@ async function petSettings(answered) {
         meal: Number($('pet-meal').value),
         win: Number($('pet-win').value),
         fights: Number($('pet-fights').value),
+        casesADay: Number($('pet-cases-a-day').value),
       });
       show(await api.petSettings());
       $('pets-saved').textContent = tr('Изменения сохранены');

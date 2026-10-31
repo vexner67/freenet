@@ -871,21 +871,8 @@ body.prime-bg { background: var(--back-f2f5f8) var(--prime-pattern); }
   box-shadow: 0 0 12px rgba(80, 60, 120, 0.25);
   z-index: -1;
 }
-.prime-dressed { position: relative; isolation: isolate; }
-.prime-dressed::before {
-  content: "";
-  position: absolute;
-  inset: -4px -6px;
-  border-radius: 3px;
-  background: var(--back-f2f5f8) var(--prime-pattern);
-  opacity: 0.7;
-  z-index: -1;
-  pointer-events: none;
-}
-.im-message.prime-dressed::before, .im-quote.prime-dressed::before { inset: 0; }
 /* "галлюцинации" does not stay still: behind the page the pattern breathes,
-   drifts and runs through every colour, the column glows in rainbow, and
-   behind a post or a message the colours run too. */
+   drifts and runs through every colour, and the column glows in rainbow. */
 body.prime-bg.prime-bg-trip::before {
   content: "";
   position: fixed;
@@ -900,10 +887,9 @@ body.prime-bg.prime-bg-trip::before {
   box-shadow: 0 0 22px 8px rgb(255 0 128 / 85%), 0 0 60px 18px rgb(0 200 255 / 55%);
   animation: trip-colors 4s linear infinite;
 }
-.prime-dressed.prime-bg-trip::before, .prime-swatch-bg.prime-bg-trip { animation: trip-colors 5s linear infinite; }
-/* The words over it stay read: the pattern behind a post is fainter, the
-   name and status of the preview sit on a pale plate. */
-.prime-dressed.prime-bg-trip::before { opacity: 0.55; }
+.prime-swatch-bg.prime-bg-trip { animation: trip-colors 5s linear infinite; }
+/* The words over it stay read: the name and status of the preview sit on
+   a pale plate. */
 .prime-preview.prime-bg-trip > div { padding: 2px 6px; background: color-mix(in srgb, var(--back-fff) 85%, transparent); }
 @keyframes trip-colors {
   from { filter: hue-rotate(0deg) saturate(1.8) contrast(1.1); }
@@ -917,21 +903,8 @@ body.prime-bg.prime-bg-trip::before {
   from { background-position: 0 0; }
   to { background-position: 400px 600px; }
 }
-/* In the ratings the pattern is behind the whole row, from edge to edge:
-   on the cells, fixed to the screen so it runs on across them unbroken
-   (a ::before of a row would be taken for a cell of its own), and dimmed
-   as behind a message: the pattern on its plate, under a veil of the page
-   as thick as the 0.7 opacity of a message leaves. */
-.top-row.prime-dressed { position: static; isolation: auto; }
-.top-row.prime-dressed::before { content: none; }
-.top-row.prime-dressed td {
-  background: linear-gradient(color-mix(in srgb, var(--back-fff) 30%, transparent), color-mix(in srgb, var(--back-fff) 30%, transparent)),
-    var(--prime-pattern) fixed, var(--back-f2f5f8);
-}
-/* A dressed block is its own stacking context, so the open menu of its
-   actions would slip under the next message or comment: the block with
-   the open menu rises over its neighbours. */
-.prime-dressed:has(.attach-menu.open), .im-message:has(.attach-menu.open) { z-index: 40; }
+/* The open menu of a message rises over the messages after it. */
+.im-message:has(.attach-menu.open) { z-index: 40; }
 
 .prime-mood { width: 32px; height: 32px; }
 /* The mood sits on the right under "Онлайн", by the name. */
@@ -941,7 +914,7 @@ body.prime-bg.prime-bg-trip::before {
 
 @media (prefers-reduced-motion: reduce) {
   .prime-name.prime-name-rainbow, .prime-page.prime-frame-glitter .avatar, .prime-frame-glitter .prime-sparkles { animation: none; }
-  body.prime-bg.prime-bg-trip::before, .prime-bg.prime-bg-trip .layout::before, .prime-dressed.prime-bg-trip::before,
+  body.prime-bg.prime-bg-trip::before, .prime-bg.prime-bg-trip .layout::before,
   .prime-swatch-bg.prime-bg-trip { animation: none; }
 }
 
@@ -1030,8 +1003,7 @@ body.prime-bg.prime-bg-trip::before {
 .messenger-typing { height: 14px; padding: 0 20px 3px 67px; color: var(--text-626262); line-height: 14px; }
 .im-message { display: flex; gap: 10px; margin-bottom: 3px; padding: 8px 10px; border-radius: 3px; touch-action: manipulation; }
 .im-message.unread { background: var(--back-ededed); }
-/* An unread message also gets a blue stripe at its left edge: the grey
-   tint alone vanishes under the pattern of a Prime author (.prime-dressed). */
+/* An unread message also gets a blue stripe at its left edge. */
 .im-message { position: relative; }
 .im-message.unread::after {
   content: "";
@@ -1049,17 +1021,19 @@ body.prime-bg.prime-bg-trip::before {
 .im-message-content { flex: 1; min-width: 0; line-height: 1.45; }
 .im-message-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .im-message-text.collapsed { max-height: 115px; overflow: hidden; }
-.im-message-date { width: 100px; color: var(--text-404036); font-size: 9px; text-align: right; }
-/* "Действия" of a message: one link under the date, shown on hover, as
-   the message actions of VK, always on touch screens and while open; the
-   list is that of "Прикрепить", without icons, at the right edge. */
+/* The date column is as tall as the message: the time at the top, the
+   actions at the bottom right, right under it. */
+.im-message-date { display: flex; flex-direction: column; align-items: flex-end; width: 100px; color: var(--text-404036); font-size: 9px; text-align: right; }
+/* "Действия" of a message: one link at the bottom corner, shown on hover,
+   as the message actions of VK, always on touch screens and while open;
+   the list is that of "Прикрепить", without icons, at the right edge. */
 .im-message-action { font-size: 10px; visibility: hidden; cursor: pointer; }
 /* "⋯" of a message, as the one of a post: grey dots, darker under the mouse. */
 .im-message-action svg { display: block; width: 15px; height: 14px; fill: var(--text-2b587a); opacity: .45; }
 .im-message-action:hover svg, .attach-menu.open .im-message-action svg { opacity: .8; }
 .im-message:hover .im-message-action, .attach-menu.open .im-message-action { visibility: visible; }
 @media (hover: none) { .im-message-action { visibility: visible; } }
-.message-actions { display: block; margin: 3px 0 0; }
+.message-actions, .im-message-date .message-actions { display: block; margin: auto 0 0; padding-top: 3px; }
 .message-actions .attach-list { left: auto; right: 0; min-width: 100px; font-size: 11px; text-align: left; }
 /* A click selects a message, as on VK; the bar over the dialog acts on
    the selected ones. */
@@ -3228,7 +3202,8 @@ img.name-prime.name-prime {
 /* Rarities, chests and clothes of pets: plates of colour and boxes with a
    bevel, as the browser games of the 2000s drew their loot. */
 .pet-dressed { position: relative; display: block; flex: none; }
-.pet-cloth { position: absolute; }
+.pet-dressed > .pet-picture { position: relative; }
+.pet-dressed > .pet-cloth { position: absolute; top: 0; left: 0; background: none; border-color: transparent; }
 .pet-rarity { display: inline-block; padding: 0 5px; font-size: 10px; font-weight: bold; line-height: 15px; color: var(--text-fff); text-shadow: 0 1px 0 rgb(0 0 0 / 30%); border: 1px solid rgb(0 0 0 / 20%); }
 .pet-rarity-common { background: var(--back-8b8b8b); }
 .pet-rarity-rare { background: var(--back-2e7dd7); }
@@ -3280,16 +3255,16 @@ img.name-prime.name-prime {
 .pet-wardrobe { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 6px 0 10px; }
 .pet-slot { background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
 .pet-slot-title { padding: 2px 6px; font-weight: bold; color: var(--text-45688e); background: var(--back-e9edf1); border-bottom: 1px solid var(--line-dae1e8); }
-.pet-slot-items { display: flex; flex-direction: column; gap: 4px; padding: 4px; }
+.pet-slot-items { display: grid; grid-auto-rows: 136px; gap: 4px; padding: 4px; }
 .pet-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 4px; text-align: center; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
 .pet-item:hover, .pet-item:focus-within { border-color: var(--line-8fa7c2); }
 .pet-item-owned { background: var(--back-f2f5f8); }
 .pet-item-worn { background: var(--back-dcefd9); border-color: var(--line-d5ddb6); }
-.pet-item-picture { display: flex; align-items: center; justify-content: center; height: 24px; }
+.pet-item-picture { display: flex; flex: none; align-items: center; justify-content: center; width: 48px; height: 48px; }
 .pet-item-name { font-weight: bold; }
 .pet-item-bonus { color: var(--text-0c7a3c); font-size: 10px; }
 .pet-item-state { color: var(--text-626262); font-size: 10px; }
-.pet-item .button { max-width: 100%; margin-top: 2px; padding-inline: 6px; white-space: normal; }
+.pet-item .button { max-width: 100%; margin-top: auto; padding-inline: 6px; white-space: normal; }
 .pet-story .pet-log-line { margin: 3px 0; }
 .pet-log-dodge { color: var(--text-626262); font-style: italic; }
 .pet-log-end { margin-top: 4px; color: var(--text-333); font-weight: bold; }
@@ -3743,3 +3718,24 @@ body:has(.messenger) .page-title > span:first-child::before { background-image: 
   background: url("/static/icons/attach.svg") no-repeat center;
 }
 .messenger-buttons #stickers-link::before { background-image: url("/static/icons/sticker.svg"); }
+
+/* The windows of the pages of pets, as the sites of the 2000s drew them:
+   a glossy blue title with an icon, a white body, a hard shadow. */
+.pet-window { margin: 0 0 12px; background: var(--back-fff); border: 1px solid var(--back-5b7aa1); border-radius: 6px 6px 3px 3px; box-shadow: 2px 2px 0 var(--back-dae1e8); }
+.pet-window-title { display: flex; gap: 6px; align-items: center; padding: 4px 8px; color: var(--text-fff); font-weight: bold; text-shadow: 0 1px 0 rgb(0 0 0 / 40%); background: linear-gradient(rgb(255 255 255 / 35%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--back-5b7aa1); border-radius: 5px 5px 0 0; }
+.pet-window-title img { flex: none; }
+.pet-window-body { padding: 8px; }
+.pet-window-body > :last-child { margin-bottom: 0; }
+.pet-tab { background: linear-gradient(var(--back-fff), var(--back-e9edf1)); border-radius: 4px; }
+.pet-tab:hover { background: var(--back-e9edf1); }
+.pet-tab-chosen, .pet-tab-chosen:hover { background: linear-gradient(rgb(255 255 255 / 35%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--back-5b7aa1); border-color: var(--back-5b7aa1); }
+.pet-tab-more img { flex: none; margin: 2px 2px 2px 4px; }
+.pet-kind, .pet-case { border-radius: 4px; box-shadow: inset 0 1px 0 var(--back-fff); background: linear-gradient(var(--back-fff), var(--back-f2f5f8)); }
+.pet-case-picture { border-radius: 4px; }
+.pet-rules-table { width: 100%; margin: 6px 0 0; }
+.pet-rules-table td { padding: 3px 6px; vertical-align: top; border-bottom: 1px dotted var(--line-dae1e8); }
+.pet-rules-table td.label { width: 130px; color: var(--text-45688e); font-weight: bold; }
+.pet-rules-pet { width: 36px; }
+.pet-rules p { margin: 0 0 4px; line-height: 1.45; }
+.pet-badges { grid-template-columns: repeat(4, 1fr); }
+.pet-badge { padding: 4px 6px; text-align: center; }

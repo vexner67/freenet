@@ -27,6 +27,7 @@ import { api, currentUser, started } from './api.js';
 import { balanceVotes, balanceWord, aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betPrize, betRoll, casinoChance, cellFontSize, casinoPlan, groupedVotes, plural, rocketMultiplier, rocketScale, rocketShown, rocketTime, rocketsCount, spinsCount, typedOdds, votesCount, votesFontSize, wagersCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
+import { aimStop, aimSweep, rocketBoom, rocketCash, rocketEngine, wheelStop, wheelTick } from './sounds.js';
 import { jackpot } from './jackpot.js';
 import { poker } from './poker.js';
 import { holdem } from './holdem.js';
@@ -92,30 +93,31 @@ const roundGap = 2100;
 
 const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
-// cellNumber is the big number of a cell, sized by its length; fitCells
-// then shrinks it until it clears the edges of its cell.
+// cellNumber is the big number of a cell; fitCells sizes it.
 function cellNumber(text) {
-  const node = el('span', { className: 'casino-votes', textContent: text });
-  node.style.fontSize = `${cellFontSize(text)}px`;
-
-  return node;
+  return el('span', { className: 'casino-votes', textContent: text });
 }
 
-// fitCells sizes the numbers of the cells in box to their cells as drawn:
-// a number keeps cellMargin pixels from either edge, so that it does not
-// touch the border of its square, however wide the cell came out.
+// fitCells gives the numbers of the cells in box one size, that of the one
+// that needs the smallest: it keeps cellMargin pixels from either edge, so
+// that no number touches the border of its square, however wide the cell
+// came out.
 const cellMargin = 5;
 
 function fitCells(box) {
-  for (const number of box.querySelectorAll('.casino-votes')) {
-    const cell = number.parentElement;
-    let size = cellFontSize(number.textContent);
-    number.style.fontSize = `${size}px`;
-    const room = cell.clientWidth - 2 * cellMargin;
-    while (room > 0 && size > 9 && number.scrollWidth > room) {
-      size -= 1;
-      number.style.fontSize = `${size}px`;
-    }
+  const numbers = [...box.querySelectorAll('.casino-votes')];
+  let size = Math.min(...numbers.map((number) => cellFontSize(number.textContent)));
+  const setSize = () => numbers.forEach((number) => { number.style.fontSize = `${size}px`; });
+  const fits = (number) => {
+    const room = number.parentElement.clientWidth - 2 * cellMargin;
+
+    return room <= 0 || number.scrollWidth <= room;
+  };
+
+  setSize();
+  while (size > 9 && !numbers.every(fits)) {
+    size -= 1;
+    setSize();
   }
 }
 
@@ -156,8 +158,9 @@ function setPlaying(on) {
   for (const control of $('events').querySelectorAll('input, button')) control.disabled = on;
   for (const game of ['wheel', 'aim', 'rocket']) {
     $(`${game}-auto-count`).disabled = on;
-    // The button of "Автоигра" under way stops it.
-    if (!auto || auto.button !== $(`${game}-auto-start`)) $(`${game}-auto-start`).disabled = on;
+    // The button of "Автоигра" under way stops it, also when it stands in
+    // a form locked above.
+    $(`${game}-auto-start`).disabled = on && auto?.button !== $(`${game}-auto-start`);
   }
   for (const tab of tabs()) tab.setAttribute('aria-disabled', String(on));
   refreshBet();
@@ -186,7 +189,9 @@ async function run(prize) {
     for (const step of casinoPlan(cells.length, lit, prize)) {
       await sleep(step.delay);
       light(step.cell);
+      wheelTick();
     }
+    wheelStop();
   }
   light(prize);
   cells[prize].classList.add('won');
@@ -283,7 +288,9 @@ async function autoplay(game, cost, round, count) {
 
   try {
     while (!auto.stop && (next = autoplayNext({ played, times, balance, cost })) === 'go') {
-      await sleep(roundGap - (Date.now() - begun));
+      // Not before the first round: the time since 1970 would make a pause
+      // too long for setTimeout, which wraps it to some other length.
+      if (played > 0) await sleep(Math.max(0, roundGap - (Date.now() - begun)));
       if (auto.stop) break;
       state.textContent = times > 0 ? tr('Автоигра: {0} из {1}.', played + 1, times) : tr('Автоигра: {0}-я, пока есть голоса.', played + 1);
       begun = Date.now();
@@ -451,7 +458,11 @@ function betting(bets, signedIn) {
       mark.classList.remove('rolling');
     }
     mark.style.left = `${to / 100}%`;
-    if (!still) await sleep(1100);
+    if (!still) {
+      aimSweep(1.1);
+      await sleep(1100);
+      aimStop();
+    }
     // The number stands over the marker, not past the ends of the strip.
     mark.classList.toggle('near-start', to < 1000);
     mark.classList.toggle('near-end', to > 9000);
@@ -690,20 +701,27 @@ async function flyOnce(votes, auto) {
   const round = await api.launchRocket(votes, auto);
   let over = round;
   let ms = 0;
+  const silence = rocketEngine();
 
   // The bet is gone at once, the win comes with the cash.
   showBalance(round.balance - round.payout);
   showSky('flying');
   $('rocket-result').hidden = true;
-  if (round.state === 'flying') {
-    ({ round: over, ms } = await flyLive(round, votes));
-  } else {
-    // A rocket cashing by itself is over at the launch: its flight is
-    // shown up to the cash or the explosion, at most 10 s.
-    ms = rocketTime(Math.min(round.crash, round.cashed || round.crash));
-    await glide(0, ms, Math.min(ms, 10000));
+  try {
+    if (round.state === 'flying') {
+      ({ round: over, ms } = await flyLive(round, votes));
+    } else {
+      // A rocket cashing by itself is over at the launch: its flight is
+      // shown up to the cash or the explosion, at most 10 s.
+      ms = rocketTime(Math.min(round.crash, round.cashed || round.crash));
+      await glide(0, ms, Math.min(ms, 10000));
+    }
+  } finally {
+    silence();
   }
+  if (over.state === 'cashed') rocketCash();
   await land(over, ms);
+  rocketBoom();
   $('rocket-launch').hidden = false;
 
   flights.count++;

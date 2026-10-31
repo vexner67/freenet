@@ -1392,7 +1392,7 @@ test('the styles of Prime of the site are those of the user service', async () =
 });
 
 test('the classes and the mood of a page dressed with Prime', async () => {
-  const { primeMoodText, primeStyleClasses, primeNameClass, primeDress } = await import('../static/labels.js');
+  const { primeMoodText, primeStyleClasses, primeNameClass } = await import('../static/labels.js');
 
   assert.deepEqual(primeStyleClasses(null), []);
   assert.deepEqual(primeStyleClasses({ name: 'ruby', frame: 'stars', background: '', mood: '' }), ['prime-frame-stars']);
@@ -1402,9 +1402,6 @@ test('the classes and the mood of a page dressed with Prime', async () => {
   assert.equal(primeNameClass({ prime: true }), 'prime-name');
   assert.equal(primeNameClass({ prime: true, primeStyle: { name: 'amethyst' } }), 'prime-name');
   assert.equal(primeNameClass({ prime: true, primeStyle: { name: 'rainbow' } }), 'prime-name prime-name-rainbow');
-  assert.deepEqual(primeDress({ prime: true, primeStyle: { background: 'stars' } }), ['prime-dressed', 'prime-bg-stars']);
-  assert.deepEqual(primeDress({ prime: true, primeStyle: { background: '' } }), []);
-  assert.deepEqual(primeDress({ primeStyle: { background: 'stars' } }), []);
   assert.equal(primeMoodText('love'), 'Настроение: влюблённое');
   assert.equal(primeMoodText(''), '');
   assert.equal(primeMoodText('bored'), '');

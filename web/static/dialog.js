@@ -22,7 +22,7 @@ import { startCall } from './calls.js';
 import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, openMessages, ownKey, safetyCode, sendSealed } from './e2ee.js';
 import { isLive, onEvent } from './events.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
-import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, messagesCount, primeDress, primeNameClass, selectedCount, votesCount } from './labels.js';
+import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, messagesCount, primeNameClass, selectedCount, votesCount } from './labels.js';
 import { $, avatarURL, el, fullName, keepFocus, whenShown, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
@@ -78,7 +78,7 @@ function messageNode(m) {
   const content = el('div', { className: 'im-message-body' });
   const date = el('div', { className: 'im-message-date' });
 
-  const node = el('div', { className: ['im-message', ...(m.out ? ['out'] : []), ...(m.read ? [] : ['unread']), ...primeDress(author)].join(' ') },
+  const node = el('div', { className: ['im-message', ...(m.out ? ['out'] : []), ...(m.read ? [] : ['unread'])].join(' ') },
     el('a', { href: '/' + author.nickname }, el('img', { src: avatarURL(author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
       el('a', { className: ['post-name', primeNameClass(author)].filter(Boolean).join(' '), href: '/' + author.nickname, textContent: fullName(author) }),
@@ -105,8 +105,10 @@ function messageNode(m) {
     ].filter(Boolean));
     if (shownMessage.replyTo && !shownMessage.deleted) content.prepend(quoteNode(shownMessage.replyTo, quotedText(shownMessage), goTo));
     date.replaceChildren(...[
-      formatPostDate(shownMessage.createdAt),
-      shownMessage.editedAt && el('span', { className: 'post-edited', title: tr('Отредактировано'), textContent: tr(' (ред.)') }),
+      el('span', { className: 'im-message-time' }, ...[
+        formatPostDate(shownMessage.createdAt),
+        shownMessage.editedAt && el('span', { className: 'post-edited', title: tr('Отредактировано'), textContent: tr(' (ред.)') }),
+      ].filter(Boolean)),
       actionsNode([
         replies && !shownMessage.deleted && !shownMessage.unreadable && [tr('Ответить'), () => answer(shownMessage)],
         !shownMessage.deleted && [tr('Реакция'), () => {

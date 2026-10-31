@@ -2067,14 +2067,6 @@ export function primeNameClass(person) {
   return name && name !== 'amethyst' ? 'prime-name prime-name-' + name : 'prime-name';
 }
 
-// primeDress are the classes of a post or a message of the person: the
-// pattern of their page faintly behind it, none without one.
-export function primeDress(person) {
-  const background = person?.prime && person.primeStyle?.background;
-
-  return background ? ['prime-dressed', 'prime-bg-' + background] : [];
-}
-
 // primeSaving is how much cheaper a month of a longer period is than a
 // month bought alone, in whole percent; 0 when it is not.
 export function primeSaving(prices, months, price) {
@@ -2709,8 +2701,8 @@ const errorTexts = {
   'the pet has fought enough today': tr('Питомец сегодня уже набоялся. Приходите завтра.'),
   'a pet does not fight itself': tr('Питомец не дерётся сам с собой.'),
   'there is nobody to fight': tr('Соперников пока нет.'),
-  'the shop does not sell this pet': tr('Этого питомца в магазине нет — он выпадает только из сундуков.'),
-  'unknown case': tr('Такого сундука нет.'),
+  'the shop does not sell this pet': tr('Этого питомца в магазине нет — он выпадает только из кейсов.'),
+  'unknown case': tr('Такого кейса нет.'),
   'unknown pet clothes': tr('Такой одежды нет.'),
   'the pet has these clothes already': tr('У питомца уже есть эта вещь.'),
   'the pet has no such clothes': tr('У питомца нет этой вещи — сначала купите её.'),
@@ -2718,9 +2710,9 @@ const errorTexts = {
   'the pet is in a fight': tr('Питомец уже в бою — сначала доведите его до конца.'),
   'the pet is not in a fight': tr('Питомец сейчас не в бою.'),
   'the fight is over': tr('Бой уже закончился.'),
-  'take or leave the pet of the case first': tr('Сначала заберите или оставьте питомца из прошлого сундука.'),
-  'there is no pet from a case': tr('Питомца из сундука нет — откройте сундук.'),
-  'you have opened enough cases today': tr('На сегодня сундуков хватит. Приходите завтра.'),
+  'take or leave the pet of the case first': tr('Сначала заберите или оставьте питомца из прошлого кейса.'),
+  'there is no pet from a case': tr('Питомца из кейса нет — откройте кейс.'),
+  'you have opened enough cases today': tr('На сегодня кейсов хватит. Приходите завтра.'),
   'not enough shards': tr('Не хватает осколков.'),
   'unknown stance': tr('Такой стойки нет.'),
   'unknown move': tr('Такого хода нет.'),
@@ -3563,9 +3555,9 @@ export function petRarityName(rarity) {
 }
 
 const petCaseNames = {
-  bronze: tr('Бронзовый сундук'),
-  silver: tr('Серебряный сундук'),
-  gold: tr('Золотой сундук'),
+  bronze: tr('Бронзовый кейс'),
+  silver: tr('Серебряный кейс'),
+  gold: tr('Золотой кейс'),
 };
 
 const petCaseAbout = {
@@ -3879,7 +3871,7 @@ export function petFightStory(fight) {
 const petQuestNames = {
   win: tr('Победить в боях'),
   fight: tr('Провести бои'),
-  case: tr('Открыть сундук'),
+  case: tr('Открыть кейс'),
   feed: tr('Покормить питомцев'),
   play: tr('Поиграть с питомцами'),
   boss: tr('Ударить босса недели'),

@@ -4,7 +4,7 @@
 // anyone in the conversation puts one reaction of six on a message, shown
 // under it with how many put each.
 
-import { REACTIONS, genitiveName, primeDress, primeNameClass, quoteText, reactionCounts, reacted } from './labels.js';
+import { REACTIONS, genitiveName, primeNameClass, quoteText, reactionCounts, reacted } from './labels.js';
 import { $, el, fullName, showError } from './layout.js';
 import { tr } from './i18n.js';
 
@@ -14,7 +14,7 @@ import { tr } from './i18n.js';
 // its colour, the pattern behind.
 export function quoteNode(q, text, open) {
   return el('a', {
-    className: ['im-quote', ...primeDress(q.author)].join(' '),
+    className: 'im-quote',
     title: tr('Перейти к сообщению'),
     onclick: () => open(q.id),
   },

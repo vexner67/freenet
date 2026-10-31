@@ -23,7 +23,7 @@ import { openAddMembers } from './chats.js';
 import { isLive, onEvent } from './events.js';
 import { openAvatarDialog } from './avatar.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
-import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, photoChanges, primeDress, primeNameClass, selectedCount, snippet } from './labels.js';
+import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, photoChanges, primeNameClass, selectedCount, snippet } from './labels.js';
 import { $, avatarURL, chatPhotoURL, el, fullName, keepFocus, whenShown, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
@@ -88,7 +88,7 @@ function messageNode(m) {
 
   const content = el('div', { className: 'im-message-body' });
   const date = el('div', { className: 'im-message-date' });
-  const node = el('div', { className: ['im-message', ...(m.author.id === me.id ? ['out'] : []), ...(m.unread ? ['unread'] : []), ...primeDress(m.author)].join(' ') },
+  const node = el('div', { className: ['im-message', ...(m.author.id === me.id ? ['out'] : []), ...(m.unread ? ['unread'] : [])].join(' ') },
     el('a', { href: '/' + m.author.nickname }, el('img', { src: avatarURL(m.author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
       el('a', { className: ['post-name', primeNameClass(m.author)].filter(Boolean).join(' '), href: '/' + m.author.nickname, textContent: fullName(m.author) }),
@@ -113,8 +113,10 @@ function messageNode(m) {
       ...(now.deleted ? [] : reactionNodes(now, me.id, node.picking, react)),
     ].filter(Boolean));
     date.replaceChildren(...[
-      formatPostDate(now.createdAt),
-      now.editedAt && !now.deleted && el('span', { className: 'post-edited', title: tr('Отредактировано'), textContent: tr(' (ред.)') }),
+      el('span', { className: 'im-message-time' }, ...[
+        formatPostDate(now.createdAt),
+        now.editedAt && !now.deleted && el('span', { className: 'post-edited', title: tr('Отредактировано'), textContent: tr(' (ред.)') }),
+      ].filter(Boolean)),
       actionsNode([
         replies && !now.deleted && active && [tr('Ответить'), () => answer(now)],
         !now.deleted && active && [tr('Реакция'), () => {

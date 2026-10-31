@@ -20,8 +20,8 @@ import { tr } from './i18n.js';
 // (user/internal/user/pet_arena.go, pet_market.go).
 const minBet = 10;
 const maxBet = 100000;
-const minPrices = { common: 50, rare: 200, epic: 800, legendary: 3000 };
-const marketFee = 10;
+export const minPrices = { common: 50, rare: 200, epic: 800, legendary: 3000 };
+export const marketFee = 10;
 
 // ownerLink is the page of the owner of a pet, or "страница удалена".
 function ownerLink(user) {
@@ -63,8 +63,6 @@ function questsBlock(arena) {
     el('td', {}, progressBar(q.progress, q.goal, q.progress >= q.goal ? 'pet-experience' : 'pet-joy')),
     el('td', { className: 'pet-bar-value', textContent: q.progress >= q.goal ? tr('готово') : `${q.progress} / ${q.goal}` })));
   return [
-    el('div', { className: 'section-title', textContent: tr('Задания дня') }),
-    el('p', { className: 'hint', textContent: tr('Каждое задание приносит {0}, все три — ещё 5 осколков и {1} за каждый день подряд (до семи). Новые задания — каждый день в полночь по Москве.', votesAmount(15), votesAmount(10)) }),
     el('table', { className: 'pet-bars pet-quests' }, ...rows),
     el('p', { className: 'hint', textContent: tr('Все задания подряд: {0} дн.', arena.streak) }),
   ];
@@ -76,8 +74,6 @@ function bossBlock(arena, ctx) {
   const boss = arena.boss;
   const ready = ctx.pets.filter((p) => !p.salePrice && !p.bossAt);
   const out = [
-    el('div', { className: 'section-title', textContent: tr('Босс недели') }),
-    el('p', { className: 'hint', textContent: tr('Босса бьют все питомцы сайта. Удар не стоит ничего, питомец получает опыт и отдыхает два часа; каждый удар — осколок. Кто побьёт босса, делят {0} по нанесённому урону, последний удар — ещё {1}. Новый босс — каждый понедельник.', votesAmount(boss.prize), votesAmount(boss.lastHit)) }),
   ];
 
   const card = el('div', { className: 'pet-card pet-boss' },
@@ -151,8 +147,6 @@ function placesNode(t) {
 function tournamentBlock(arena, ctx) {
   const t = arena.tournament;
   const out = [
-    el('div', { className: 'section-title', textContent: tr('Турнир выходного дня') }),
-    el('p', { className: 'hint', textContent: tr('До шестнадцати питомцев, по одному от человека, бьются на выбывание в воскресенье в 20:00 по Москве. Питомцы в турнире не устают и не теряют рейтинг. Победителю — {0}, финалисту — {1}, полуфиналистам — по {2}. Зрители ставят на питомцев: поставившие на победителя делят все ставки, кроме 10%.', votesAmount(1000), votesAmount(400), votesAmount(150)) }),
   ];
 
   if (t.held) {
@@ -215,8 +209,7 @@ function placesTable(places) {
 
 function seasonBlock(arena) {
   const out = [
-    el('div', { className: 'section-title', textContent: tr('Сезон') }),
-    el('p', { className: 'hint', textContent: tr('Сезон длится месяц и кончается {0}. Десятка лучших по рейтингу (по одному питомцу от человека) получает от {1} до {2}, затем рейтинг всех питомцев вдвое приближается к начальному.', formatDateTime(arena.seasonEndsAt), votesAmount(200), votesAmount(2000)) }),
+    el('p', { className: 'hint', textContent: tr('Сезон кончается {0}.', formatDateTime(arena.seasonEndsAt)) }),
   ];
   out.push(arena.top.length ? placesTable(arena.top) : el('p', { className: 'hint', textContent: tr('Питомцев пока нет.') }));
 
@@ -234,11 +227,10 @@ function seasonBlock(arena) {
 function achievementsBlock(arena) {
   const got = new Map(arena.achievements.map((a) => [a.id, a.gotAt]));
   return [
-    el('div', { className: 'section-title', textContent: tr('Достижения: {0} из {1}', got.size, petAchievements.length) }),
     el('div', { className: 'pet-badges' }, ...petAchievements.map((id) => el('div', {
       className: got.has(id) ? 'pet-badge pet-badge-got' : 'pet-badge',
-      title: got.has(id) ? tr('Получено {0}', formatDateTime(got.get(id))) : '',
-    }, el('b', { textContent: petAchievementName(id) }), el('div', { className: 'hint', textContent: petAchievementText(id) })))),
+      title: petAchievementText(id) + (got.has(id) ? ` ${tr('Получено {0}', formatDateTime(got.get(id)))}` : ''),
+    }, el('b', { textContent: petAchievementName(id) })))),
   ];
 }
 
@@ -286,8 +278,6 @@ function sellNode(ctx) {
 
 function marketBlock(arena, ctx) {
   return [
-    el('div', { className: 'section-title', textContent: tr('Рынок питомцев') }),
-    el('p', { className: 'hint', textContent: tr('Питомца можно продать другому человеку через неделю после того, как он у вас появился, и не дешевле {0} за обычного, {1} за редкого, {2} за эпического и {3} за легендарного. Казна берёт {4}% цены, до трёх питомцев на продаже сразу; выставленный питомец не дерётся.', groupedVotes(minPrices.common), groupedVotes(minPrices.rare), groupedVotes(minPrices.epic), groupedVotes(minPrices.legendary), marketFee) }),
     arena.market.length
       ? el('table', { className: 'info pet-league-table' }, ...arena.market.map((l) => listingRow(l, ctx)))
       : el('p', { className: 'hint', textContent: tr('Сейчас никто не продаёт питомцев.') }),
@@ -295,16 +285,26 @@ function marketBlock(arena, ctx) {
   ];
 }
 
+// petWindow is a block of the pages of pets: a glossy title with its icon,
+// as the windows of the sites of the 2000s.
+export function petWindow(icon, title, nodes) {
+  return el('div', { className: 'pet-window' },
+    el('div', { className: 'pet-window-title' }, el('img', { src: icon, alt: '', width: 16, height: 16 }), el('span', { textContent: title })),
+    el('div', { className: 'pet-window-body' }, ...nodes));
+}
+
 // leagueNodes are the blocks of the arena for ctx: { me, pets, run(body,
 // then) } — run does an action and draws the arena it answers with, and
 // what then(answer) returns, a node or a text, over it.
 export function leagueNodes(arena, ctx) {
+  const got = arena.achievements.length;
+
   return [
-    ...questsBlock(arena),
-    ...bossBlock(arena, ctx),
-    ...tournamentBlock(arena, ctx),
-    ...seasonBlock(arena),
-    ...achievementsBlock(arena),
-    ...marketBlock(arena, ctx),
+    petWindow('/static/icons/pet/quests.svg', tr('Задания дня'), questsBlock(arena)),
+    petWindow('/static/icons/pet/boss.svg', tr('Босс недели'), bossBlock(arena, ctx)),
+    petWindow('/static/icons/pet/cup.svg', tr('Турнир выходного дня'), tournamentBlock(arena, ctx)),
+    petWindow('/static/icons/pet/season.svg', tr('Сезон'), seasonBlock(arena)),
+    petWindow('/static/icons/pet/badge.svg', tr('Достижения: {0} из {1}', got, petAchievements.length), achievementsBlock(arena)),
+    petWindow('/static/icons/pet/market.svg', tr('Рынок питомцев'), marketBlock(arena, ctx)),
   ];
 }

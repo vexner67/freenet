@@ -3,7 +3,7 @@
 // right.
 
 import { api } from './api.js';
-import { formatPostDate, primeDress } from './labels.js';
+import { formatPostDate } from './labels.js';
 import { avatarURL, el, fullName, pagePath, textNode, verifiedMark } from './layout.js';
 import { likeButton, nameClass, photosNode, separated } from './posts.js';
 import { tr } from './i18n.js';
@@ -44,7 +44,7 @@ export function commentNode(comment, { onDelete, onReply, canLike = false, onErr
   const like = withLike ? likeButton(comment, { canLike, onError, ...hearts }) : '';
 
   // Shown on another page, it is no target of links there.
-  const node = el('div', { className: ['post', 'comment', ...primeDress(comment.author)].join(' '), id: href ? '' : commentAnchor(comment.id) },
+  const node = el('div', { className: 'post comment', id: href ? '' : commentAnchor(comment.id) },
     el('a', { className: 'post-avatar', href: path }, el('img', { src: avatarURL(comment.author, 'small'), alt: '' })),
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },

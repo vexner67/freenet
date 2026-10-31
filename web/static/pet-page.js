@@ -1,5 +1,5 @@
 // "Питомец" (/pet), a tamagotchi: a person adopts up to ten pets in the
-// shop for votes or opens a chest, for votes or shards, from which a pet of
+// shop for votes or opens a case, for votes or shards, from which a pet of
 // a rarity drops — to be taken or left for shards (?pet=<id> opens one of
 // them), dresses it in clothes that add to its stats, and feeds it (for
 // votes) and plays with it (free, once a while), or it gets hungry and sad
@@ -14,7 +14,7 @@
 
 import { api, currentUser, session, started } from './api.js';
 import {
-  balanceVotes, balanceWord, formatDateTime, formatPostDate, groupedVotes, petBonus, petCaseName, petCaseText, petElementName, petFightResult,
+  balanceVotes, balanceWord, formatDateTime, formatPostDate, groupedVotes, petBonus, petCaseName, petElementName, petFightResult,
   petFightStory, petHitLines, petItemName, petKindName, petKindText, petKinds, petLevelProgress, petMood, petMoveName, petMoveText, petMoves,
   petOdds, petRarities, petShards, petRarityName, petSlotName, petSlots, petSpecialName, petSpecialText, petStanceName, petStanceText, petStances,
   petStatName, petStatText, petStats, petWait, votesAmount, votesFontSize,
@@ -24,6 +24,7 @@ import { button, notify, openModal } from './modal.js';
 import { leagueNodes } from './pet-league.js';
 import { petCaseImage, petImage, petItemImage } from './pet.js';
 import { showNamedPet } from './pet-named.js';
+import { rulesNodes } from './pet-rules.js';
 import { tr } from './i18n.js';
 
 const answered = session.get() ? started(api.pets()) : null;
@@ -47,6 +48,7 @@ let chosen = '';
 let busy = false;
 let waitTimer = 0;
 let league = false;
+let rules = false;
 
 function showBalance(votes) {
   $('votes').textContent = balanceVotes(votes);
@@ -116,11 +118,10 @@ function kindCard(kind) {
     el('div', { className: 'pet-kind-picture' }, petImage(kind, 64)),
     el('div', { className: 'pet-kind-name', textContent: petKindName(kind) }),
     rarityBadge(kindOf(kind).rarity),
-    el('div', { className: 'pet-kind-about', textContent: petKindText(kind) }),
-    specialNode(kind),
     el('div', { className: 'pet-kind-price', textContent: votesAmount(price) }),
     button(tr('Выбрать'), () => choose(kind)));
   card.dataset.kind = kind;
+  card.title = petKindText(kind);
 
   return card;
 }
@@ -137,7 +138,9 @@ function choose(kind) {
 function showShop() {
   pet = null;
   league = false;
+  rules = false;
   $('league').hidden = true;
+  $('rules').hidden = true;
   $('kinds').replaceChildren(...petKinds.filter((kind) => kindOf(kind).inShop).map(kindCard));
   showCases();
   $('home').hidden = true;
@@ -145,10 +148,10 @@ function showShop() {
   showTabs();
 }
 
-// Chests: a pet of a rarity drops from each, by its odds. The server
+// Cases: a pet of a rarity drops from each, by its odds. The server
 // draws it; the page spins a strip of pets that stops on it.
 
-// oddsBar is the odds of a chest as a bar of the colours of rarities.
+// oddsBar is the odds of a case as a bar of the colours of rarities.
 function oddsBar(odds) {
   const percents = petOdds(odds);
   const bar = el('div', { className: 'pet-odds', title: petRarities.map((r, i) => `${petRarityName(r)}: ${percents[i]}`).join(', ') });
@@ -165,7 +168,7 @@ function oddsBar(odds) {
   return el('div', {}, bar, legend);
 }
 
-// inside are the pets that drop from a chest, small, by rarity.
+// inside are the pets that drop from a case, small, by rarity.
 function inside(odds) {
   const kinds = petKinds.filter((kind) => odds[petRarities.indexOf(kindOf(kind).rarity)] > 0);
   return el('div', { className: 'pet-case-inside' },
@@ -176,37 +179,36 @@ function inside(odds) {
     }));
 }
 
-function caseCard(chest) {
-  const price = shop.cases?.[chest.id] ?? 0;
+function caseCard(box) {
+  const price = shop.cases?.[box.id] ?? 0;
   const closed = Boolean(keeper.dropKind) || keeper.cases >= keeper.casesLimit;
-  const open = button(tr('Открыть за {0}', votesAmount(price)), () => openCase(chest, false));
-  const forShards = button(tr('За {0}', petShards(chest.shards)), () => openCase(chest, true));
+  const open = button(tr('Открыть за {0}', votesAmount(price)), () => openCase(box, false));
+  const forShards = button(tr('За {0}', petShards(box.shards)), () => openCase(box, true));
   for (const b of [open, forShards]) b.classList.add('pet-busy');
   open.disabled = busy || closed;
-  forShards.disabled = busy || closed || keeper.shards < chest.shards;
-  return el('div', { className: `pet-case pet-case-${chest.id}` },
-    el('div', { className: 'pet-case-picture' }, petCaseImage(chest.id, 64)),
+  forShards.disabled = busy || closed || keeper.shards < box.shards;
+  return el('div', { className: `pet-case pet-case-${box.id}` },
+    el('div', { className: 'pet-case-picture' }, petCaseImage(box.id, 64)),
     el('div', { className: 'pet-case-text' },
-      el('div', { className: 'pet-kind-name', textContent: petCaseName(chest.id) }),
-      el('div', { className: 'hint', textContent: petCaseText(chest.id) }),
-      oddsBar(chest.odds),
-      inside(chest.odds)),
+      el('div', { className: 'pet-kind-name', textContent: petCaseName(box.id) }),
+      oddsBar(box.odds),
+      inside(box.odds)),
     el('div', { className: 'pet-case-buy' }, open, forShards));
 }
 
-// showKeeper tells the shards, the chests of today and how far the chest
+// showKeeper tells the shards, the cases of today and how far the case
 // that gives a legendary pet for sure is.
 function showKeeper() {
   const pity = el('div', { className: 'pet-bar-fill pet-pity' });
   pity.style.width = `${(100 * keeper.pity) / keeper.pityLimit}%`;
   const waiting = keeper.dropKind
-    ? el('p', {}, tr('Вас ждёт питомец из сундука: {0}. ', petKindName(keeper.dropKind)),
+    ? el('p', {}, tr('Вас ждёт питомец из кейса: {0}. ', petKindName(keeper.dropKind)),
       el('a', { textContent: tr('Забрать или оставить'), onclick: () => showDrop(false) }))
     : null;
   $('keeper').replaceChildren(
     el('div', { className: 'pet-keeper-row' },
       el('span', { textContent: tr('Осколки: {0}', keeper.shards) }),
-      el('span', { textContent: tr('Сундуков сегодня: {0} из {1}', keeper.cases, keeper.casesLimit) })),
+      el('span', { textContent: tr('Кейсов сегодня: {0} из {1}', keeper.cases, keeper.casesLimit) })),
     el('div', { className: 'pet-keeper-row' },
       el('span', { textContent: tr('Легендарный наверняка — через {0}', keeper.pityLimit - keeper.pity) }),
       el('div', { className: 'pet-bar', 'aria-hidden': 'true' }, pity)),
@@ -219,8 +221,8 @@ function showCases() {
 }
 
 // strip is the strip of the roulette: pets drawn by the odds of the
-// chest, with the one that dropped at place.
-function strip(chest, kind, place, length) {
+// case, with the one that dropped at place.
+function strip(box, kind, place, length) {
   const kinds = [];
   for (let i = 0; i < length; i++) {
     if (i === place) {
@@ -228,7 +230,7 @@ function strip(chest, kind, place, length) {
       continue;
     }
     let roll = Math.random() * 1000;
-    let rarity = petRarities.findIndex((_, r) => (roll -= chest.odds[r]) < 0);
+    let rarity = petRarities.findIndex((_, r) => (roll -= box.odds[r]) < 0);
     if (rarity < 0) rarity = 0;
     const of = petKinds.filter((k) => kindOf(k).rarity === petRarities[rarity]);
     kinds.push(of[Math.floor(Math.random() * of.length)] ?? kind);
@@ -236,28 +238,28 @@ function strip(chest, kind, place, length) {
   return kinds;
 }
 
-async function openCase(chest, withShards) {
-  const opened = await act(() => api.openPetCase(chest.id, withShards));
+async function openCase(box, withShards) {
+  const opened = await act(() => api.openPetCase(box.id, withShards));
   if (!opened) return;
   keeper = opened.keeper;
   showCases();
   showDrop(true);
 }
 
-// showDrop is the pet a chest gave: the roulette spins to it first when it
+// showDrop is the pet a case gave: the roulette spins to it first when it
 // has just dropped. It is taken with a name or left for its shards.
 function showDrop(spin) {
   const kind = keeper.dropKind;
-  const chest = catalogue.cases.find((c) => c.id === keeper.dropCase) ?? catalogue.cases[0];
-  if (!kind || !chest) return;
+  const box = catalogue.cases.find((c) => c.id === keeper.dropCase) ?? catalogue.cases[0];
+  if (!kind || !box) return;
   const rarity = kindOf(kind).rarity;
   const shards = kindOf(kind).shards ?? 0;
 
-  const modal = openModal(petCaseName(chest.id));
+  const modal = openModal(petCaseName(box.id));
   const cell = 76;
   const place = 30;
   const tape = el('div', { className: 'pet-roulette-tape' },
-    ...strip(chest, kind, place, place + 5).map((k) => el('div', { className: `pet-roulette-cell pet-kind-${kindOf(k).rarity}` }, petImage(k, 64))));
+    ...strip(box, kind, place, place + 5).map((k) => el('div', { className: `pet-roulette-cell pet-kind-${kindOf(k).rarity}` }, petImage(k, 64))));
   const wheel = el('div', { className: 'pet-roulette' }, tape, el('div', { className: 'pet-roulette-mark' }));
   const reveal = el('div', { className: 'pet-reveal', hidden: true });
   const error = el('div', { className: 'error', hidden: true });
@@ -269,7 +271,7 @@ function showDrop(spin) {
     reveal.replaceChildren(
       el('div', { className: `pet-reveal-picture pet-kind-${rarity}` }, petImage(kind, 96)),
       el('div', { className: 'pet-reveal-text' },
-        el('div', { className: 'pet-reveal-title', textContent: tr('Из сундука вышел питомец: {0}!', petKindName(kind)) }),
+        el('div', { className: 'pet-reveal-title', textContent: tr('Из кейса вышел питомец: {0}!', petKindName(kind)) }),
         rarityBadge(rarity),
         el('p', { className: 'hint', textContent: petKindText(kind) }),
         specialNode(kind),
@@ -318,7 +320,7 @@ function showDrop(spin) {
     show();
     return;
   }
-  modal.actions.append(el('span', { className: 'hint', textContent: tr('Сундук открывается…') }));
+  modal.actions.append(el('span', { className: 'hint', textContent: tr('Кейс открывается…') }));
   requestAnimationFrame(() => requestAnimationFrame(() => {
     tape.classList.add('pet-roulette-spin');
     tape.style.transform = `translateX(${-shift}px)`;
@@ -339,34 +341,23 @@ function showTabs() {
     tab.addEventListener('click', () => { if (!busy) showPet(p); });
     return tab;
   });
-  const arena = el('button', { type: 'button', className: league ? 'pet-tab pet-tab-more pet-tab-chosen' : 'pet-tab pet-tab-more' },
-    el('b', { textContent: '⚔' }), el('span', { textContent: tr('Арена') }));
-  arena.addEventListener('click', () => { if (!busy) showLeague(); });
-  tabs.push(arena);
-  if (pets.length < maxPets) {
-    const more = el('button', { type: 'button', className: pet || league ? 'pet-tab pet-tab-more' : 'pet-tab pet-tab-more pet-tab-chosen' },
-      el('b', { textContent: '+' }), el('span', { textContent: tr('Завести ещё') }));
-    more.addEventListener('click', () => { if (!busy) showShop(); });
-    tabs.push(more);
-  }
+  const pageTab = (icon, title, chosen, open) => {
+    const tab = el('button', { type: 'button', className: chosen ? 'pet-tab pet-tab-more pet-tab-chosen' : 'pet-tab pet-tab-more' },
+      el('img', { src: icon, alt: '', width: 24, height: 24 }), el('span', { textContent: title }));
+    tab.addEventListener('click', () => { if (!busy) open(); });
+    return tab;
+  };
+  tabs.push(pageTab('/static/icons/pet/arena.svg', tr('Арена'), league, showLeague));
+  if (pets.length < maxPets) tabs.push(pageTab('/static/icons/pet/more.svg', tr('Завести ещё'), !pet && !league && !rules, showShop));
+  tabs.push(pageTab('/static/icons/pet/rules.svg', tr('Правила'), rules, showRules));
   $('pet-tabs').replaceChildren(...tabs);
   $('pet-tabs').hidden = false;
   $('pets-count').replaceChildren(...countNodes());
 }
 
-// countNodes say how many pets there are and, away from the arena, where
-// the quests, the boss, the tournament, the season and the market are.
+// countNodes say how many pets there are.
 function countNodes() {
-  const nodes = pets.length ? [tr('Питомцев: {0} из {1}.', pets.length, maxPets)] : [];
-  if (league) return nodes;
-
-  const link = el('a', { href: '/pet?arena=1', textContent: tr('Арена') });
-  link.addEventListener('click', (event) => {
-    event.preventDefault();
-    if (!busy) showLeague();
-  });
-
-  return [...nodes, nodes.length ? ' ' : '', link, tr(': задания дня, босс недели, турнир, сезон, достижения и рынок питомцев.')];
+  return pets.length ? [tr('Питомцев: {0} из {1}.', pets.length, maxPets)] : [];
 }
 
 // keep puts a pet as the server answered in its place.
@@ -452,7 +443,7 @@ function showStats() {
       ? statRow(tr('Стихия:'), petElementName(kindOf(pet.kind).element))
       : null,
     kindOf(pet.kind).special
-      ? statRow(tr('Особенность:'), `${petSpecialName(kindOf(pet.kind).special)} — ${petSpecialText(kindOf(pet.kind).special)}`)
+      ? statRow(tr('Особенность:'), petSpecialName(kindOf(pet.kind).special))
       : null,
     statRow(tr('Сила:'), groupedVotes(pet.power ?? 0)),
     statRow(tr('Рейтинг:'), groupedVotes(pet.rating)),
@@ -492,7 +483,7 @@ function itemCard(item) {
   action.disabled = busy;
 
   const card = el('div', { className: worn ? 'pet-item pet-item-worn' : owned ? 'pet-item pet-item-owned' : 'pet-item', tabIndex: 0 },
-    el('div', { className: 'pet-item-picture' }, petItemImage(item.id, 40)),
+    el('div', { className: 'pet-item-picture' }, petItemImage(item.id, 48)),
     el('div', { className: 'pet-item-name', textContent: petItemName(item.id) }),
     el('div', { className: 'pet-item-bonus', textContent: petBonus(item.bonus) }),
     worn ? el('div', { className: 'pet-item-state', textContent: tr('надето') }) : owned ? el('div', { className: 'pet-item-state', textContent: tr('в гардеробе') }) : null,
@@ -522,7 +513,9 @@ function stageClass() {
 function showPet(next) {
   pet = next;
   league = false;
+  rules = false;
   $('league').hidden = true;
+  $('rules').hidden = true;
   $('stage').className = stageClass();
   stage(pet.outfit);
   $('name').textContent = pet.name;
@@ -538,10 +531,9 @@ function showPet(next) {
   bar('experience', petLevelProgress(pet));
   $('experience').textContent = `${groupedVotes(pet.experience)} / ${groupedVotes(pet.nextLevelExperience)}`;
 
-  $('fights-left').textContent = tr('Боёв сегодня: {0} из {1}. Победа над равным приносит {2} и рейтинг, над сильным — больше, над слабым — меньше; соперника подбирают по силе. Для боя питомцу нужны сытость и настроение.',
-    pet.fights, shop.fights, votesAmount(shop.win))
-    + (pet.fatigue ? ' ' + tr('Питомец устал от боёв подряд: −{0}% к силе. Час отдыха снимает усталость.', pet.fatigue * 5) : '')
-    + (pet.salePrice ? ' ' + tr('Питомец выставлен на рынок за {0} и не дерётся, пока его не снимут с продажи.', votesAmount(pet.salePrice)) : '');
+  $('fights-left').textContent = tr('Боёв сегодня: {0} из {1}.', pet.fights, shop.fights)
+    + (pet.fatigue ? ' ' + tr('Питомец устал: −{0}% к силе.', pet.fatigue * 5) : '')
+    + (pet.salePrice ? ' ' + tr('На рынке за {0}, не дерётся.', votesAmount(pet.salePrice)) : '');
   $('stance').value = pet.stance || 'defense';
   $('guard').value = pet.stance || 'defense';
   showStanceText();
@@ -572,7 +564,7 @@ function showFightButtons() {
 }
 
 function showStanceText() {
-  $('stance-about').textContent = petStanceText($('stance').value);
+  $('stance').title = petStanceText($('stance').value);
 }
 
 // fighterSide is a pet of a fight, with its owner's page under its name.
@@ -867,12 +859,29 @@ function drawLeague(arena, note = null) {
 async function showLeague() {
   pet = null;
   league = true;
+  rules = false;
   $('shop').hidden = true;
   $('home').hidden = true;
+  $('rules').hidden = true;
   $('league').hidden = false;
   showTabs();
   const arena = await act(() => api.petArena());
   if (arena) drawLeague(arena);
+}
+
+// showRules is the tab with all the rules and mechanics, which the other
+// tabs leave out; the boss and the season tell their numbers from the arena.
+async function showRules() {
+  pet = null;
+  league = false;
+  rules = true;
+  $('shop').hidden = true;
+  $('home').hidden = true;
+  $('league').hidden = true;
+  $('rules').hidden = false;
+  showTabs();
+  const arena = await act(() => api.petArena());
+  if (arena && rules) $('rules').replaceChildren(...rulesNodes(arena, catalogue));
 }
 
 function watch() {

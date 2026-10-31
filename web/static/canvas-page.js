@@ -1,7 +1,8 @@
 // "Холст" (/canvas): one canvas of 100×100 cells for the whole site. Anyone
 // signed in paints cells in one of 64 colors; anyone, a guest too, sees it
-// and who painted a cell. The canvas comes anew every ten seconds while the
-// page is in sight. The wheel, two fingers and the buttons zoom it,
+// and who painted a cell. Each cell comes as it is painted, over a socket of
+// its own that needs no sign-in; while the socket is down the canvas comes
+// anew every ten seconds. The wheel, two fingers and the buttons zoom it,
 // dragging moves it; a press that did not move paints.
 
 import { api, currentUser, started } from './api.js';
@@ -17,6 +18,7 @@ const wheelZoom = 0.002;
 // How far a press moves before it is a drag and not a click.
 const dragFrom = 6;
 const hoverDelay = 120;
+const reconnectAfter = 2_000;
 
 let me = null;
 let size = 100;
@@ -25,6 +27,10 @@ let color = 3;
 let looking = false;
 // The cells painted and not answered yet: a refresh keeps them as drawn.
 const unanswered = new Map();
+// The socket is open; the cells that came while a refresh is on its way,
+// which its older canvas must not undo.
+let live = false;
+let arrived = null;
 
 const board = $('canvas');
 const frame = $('frame');
@@ -49,6 +55,17 @@ function show(canvas) {
   cells = canvas.cells;
   for (const { x, y, value } of unanswered.values()) cells = setCell(cells, x, y, value);
   draw();
+}
+
+// painted puts on the canvas a cell somebody has just painted; one pixel
+// is drawn, as the whole picture would cost too much for each.
+function painted({ x, y, color: value }) {
+  if (!Number.isInteger(x) || !Number.isInteger(y) || !canvasColors[value]) return;
+
+  cells = setCell(cells, x, y, value);
+  context.fillStyle = canvasColors[value];
+  context.fillRect(x, y, 1, 1);
+  arrived?.push({ x, y, color: value });
 }
 
 function showStatus() {
@@ -338,12 +355,38 @@ $('zoom-fit').addEventListener('click', (event) => {
 addEventListener('resize', place);
 
 async function refresh() {
-  if (document.hidden) return;
+  if (document.hidden && !live) return;
+
+  arrived = [];
   try {
-    show(await api.canvas());
+    const canvas = await api.canvas();
+    const late = arrived;
+
+    arrived = null;
+    show(canvas);
+    late.forEach(painted);
   } catch {
     // The next refresh tries again.
+  } finally {
+    arrived = null;
   }
+}
+
+// connect holds the socket of the cells; each new one reads the canvas, as
+// the cells painted while it was down never came.
+function connect() {
+  const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+  const socket = new WebSocket(`${scheme}://${location.host}/api/v1/canvas/live`);
+
+  socket.addEventListener('open', () => {
+    live = true;
+    refresh();
+  });
+  socket.addEventListener('message', (message) => painted(JSON.parse(message.data)));
+  socket.addEventListener('close', () => {
+    live = false;
+    setTimeout(connect, reconnectAfter);
+  });
 }
 
 me = await currentUser().catch(() => null);
@@ -355,7 +398,10 @@ try {
   showStatus();
   $('board').hidden = false;
   place();
-  setInterval(refresh, refreshEvery);
+  connect();
+  setInterval(() => {
+    if (!live) refresh();
+  }, refreshEvery);
 } catch (e) {
   showError($('error'), e);
 }

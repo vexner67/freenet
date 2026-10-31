@@ -2088,7 +2088,8 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 /* Rarities, chests and clothes of pets: plates of colour and boxes with a
    bevel, as the browser games of the 2000s drew their loot. */
 .pet-dressed { position: relative; display: block; flex: none; }
-.pet-cloth { position: absolute; }
+.pet-dressed > .pet-picture { position: relative; }
+.pet-dressed > .pet-cloth { position: absolute; top: 0; left: 0; background: none; border-color: transparent; }
 .pet-rarity { display: inline-block; padding: 0 5px; font-size: 10px; font-weight: bold; line-height: 15px; color: var(--text-fff); text-shadow: 0 1px 0 rgb(0 0 0 / 30%); border: 1px solid rgb(0 0 0 / 20%); }
 .pet-rarity-common { background: var(--back-8b8b8b); }
 .pet-rarity-rare { background: var(--back-2e7dd7); }
@@ -2140,16 +2141,16 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .pet-wardrobe { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 6px 0 10px; }
 .pet-slot { background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
 .pet-slot-title { padding: 2px 6px; font-weight: bold; color: var(--text-45688e); background: var(--back-e9edf1); border-bottom: 1px solid var(--line-dae1e8); }
-.pet-slot-items { display: flex; flex-direction: column; gap: 4px; padding: 4px; }
+.pet-slot-items { display: grid; grid-auto-rows: 136px; gap: 4px; padding: 4px; }
 .pet-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 4px; text-align: center; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
 .pet-item:hover, .pet-item:focus-within { border-color: var(--line-8fa7c2); }
 .pet-item-owned { background: var(--back-f2f5f8); }
 .pet-item-worn { background: var(--back-dcefd9); border-color: var(--line-d5ddb6); }
-.pet-item-picture { display: flex; align-items: center; justify-content: center; height: 24px; }
+.pet-item-picture { display: flex; flex: none; align-items: center; justify-content: center; width: 48px; height: 48px; }
 .pet-item-name { font-weight: bold; }
 .pet-item-bonus { color: var(--text-0c7a3c); font-size: 10px; }
 .pet-item-state { color: var(--text-626262); font-size: 10px; }
-.pet-item .button { max-width: 100%; margin-top: 2px; padding-inline: 6px; white-space: normal; }
+.pet-item .button { max-width: 100%; margin-top: auto; padding-inline: 6px; white-space: normal; }
 .pet-story .pet-log-line { margin: 3px 0; }
 .pet-log-dodge { color: var(--text-626262); font-style: italic; }
 .pet-log-end { margin-top: 4px; color: var(--text-333); font-weight: bold; }
@@ -2963,7 +2964,9 @@ body:has(#peer-avatar) .im-message .name-checkmark,
 .im-message.out .post-name, .im-message.out .im-message-content > .name-checkmark { display: none; }
 .im-message-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .im-message-text.collapsed { max-height: 190px; overflow: hidden; }
-.im-message-date { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0 10px; width: 100%; color: var(--text-626262); font-size: 11px; }
+.im-message-date { display: flex; flex-direction: column; align-items: flex-end; width: 100%; color: var(--text-626262); font-size: 11px; }
+.im-message-date .message-actions { margin: 0; }
+.im-message-date .message-actions .attach-list { left: auto; right: 0; }
 .im-message-action { padding: 4px 0; color: var(--text-2b587a); font-size: 12px; }
 .im-message-action svg { display: block; width: 20px; height: 18px; fill: var(--text-2b587a); opacity: .5; }
 .im-message.unread::after { content: ""; position: absolute; top: 6px; bottom: 6px; left: -6px; width: 3px; border-radius: 2px; background: var(--back-5b7aa1); }
@@ -3202,27 +3205,6 @@ img.name-prime.name-prime { display: inline; width: 12px; height: 12px; margin: 
 /* The pattern of the page lies under its plate, a band the column of a
    computer would leave; the page itself stays white to be read. */
 body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb, var(--back-eee5b8) 70%, transparent), color-mix(in srgb, var(--back-eee5b8) 70%, transparent)), var(--prime-pattern); }
-.prime-dressed { position: relative; isolation: isolate; }
-.prime-dressed::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: var(--back-f2f5f8) var(--prime-pattern);
-  opacity: 0.6;
-  pointer-events: none;
-}
-.im-message.prime-dressed::before { border-radius: inherit; }
-.prime-dressed:has(.attach-menu.open) { z-index: 40; }
-/* A row of the ratings is no box of its own: a ::before there would be
-   taken for a cell and push the row aside, so the pattern lies on its
-   cells. */
-.top-row.prime-dressed { position: static; isolation: auto; }
-.top-row.prime-dressed::before { content: none; }
-.top-row.prime-dressed td {
-  background: linear-gradient(color-mix(in srgb, var(--back-fff) 30%, transparent), color-mix(in srgb, var(--back-fff) 30%, transparent)),
-    var(--prime-pattern), var(--back-f2f5f8);
-}
 
 /* The New Year: the garland under the header and the red counters, no
    snow falling over the page. */
@@ -3718,3 +3700,24 @@ body:has(.messenger) .page-title > span:first-child::before { background-image: 
   border-color: var(--back-45688e);
   background: url("/static/icons/im-send.svg") no-repeat 6px center, linear-gradient(rgb(255 255 255 / 30%), rgb(255 255 255 / 4%) 50%, transparent 50%), var(--back-45688e);
 }
+
+/* The windows of the pages of pets, as the sites of the 2000s drew them:
+   a glossy blue title with an icon, a white body, a hard shadow. */
+.pet-window { margin: 0 0 12px; background: var(--back-fff); border: 1px solid var(--back-5b7aa1); border-radius: 6px 6px 3px 3px; box-shadow: 2px 2px 0 var(--back-dae1e8); }
+.pet-window-title { display: flex; gap: 6px; align-items: center; padding: 4px 8px; color: var(--text-fff); font-weight: bold; text-shadow: 0 1px 0 rgb(0 0 0 / 40%); background: linear-gradient(rgb(255 255 255 / 35%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--back-5b7aa1); border-radius: 5px 5px 0 0; }
+.pet-window-title img { flex: none; }
+.pet-window-body { padding: 8px; }
+.pet-window-body > :last-child { margin-bottom: 0; }
+.pet-tab { background: linear-gradient(var(--back-fff), var(--back-e9edf1)); border-radius: 4px; }
+.pet-tab:hover { background: var(--back-e9edf1); }
+.pet-tab-chosen, .pet-tab-chosen:hover { background: linear-gradient(rgb(255 255 255 / 35%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--back-5b7aa1); border-color: var(--back-5b7aa1); }
+.pet-tab-more img { flex: none; margin: 2px 2px 2px 4px; }
+.pet-kind, .pet-case { border-radius: 4px; box-shadow: inset 0 1px 0 var(--back-fff); background: linear-gradient(var(--back-fff), var(--back-f2f5f8)); }
+.pet-case-picture { border-radius: 4px; }
+.pet-rules-table { width: 100%; margin: 6px 0 0; }
+.pet-rules-table td { padding: 3px 6px; vertical-align: top; border-bottom: 1px dotted var(--line-dae1e8); }
+.pet-rules-table td.label { width: 130px; color: var(--text-45688e); font-weight: bold; }
+.pet-rules-pet { width: 36px; }
+.pet-rules p { margin: 0 0 4px; line-height: 1.45; }
+.pet-badges { grid-template-columns: repeat(2, 1fr); }
+.pet-badge { padding: 4px 6px; text-align: center; }

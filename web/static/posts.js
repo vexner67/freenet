@@ -4,7 +4,7 @@
 
 import { api } from './api.js';
 import { attachLikers } from './likers.js';
-import { documentsCount, errorText, formatPostDate, genitiveName, photosCount, primeDress, primeNameClass, sharedBy, votesCount, wrote } from './labels.js';
+import { documentsCount, errorText, formatPostDate, genitiveName, photosCount, primeNameClass, sharedBy, votesCount, wrote } from './labels.js';
 import { adult, avatarURL, el, externalLink, fullName, isMicroblog, isPhone, pagePath, textNode, verifiedMark } from './layout.js';
 import { editPost } from './postedit.js';
 import { openShare } from './share.js';
@@ -245,7 +245,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     }
   }
 
-  const node = el('div', { className: ['post', ...(pageOf?.id === post.author.id ? [] : primeDress(post.author))].join(' ') },
+  const node = el('div', { className: 'post' },
     el('a', { className: 'post-avatar', href: path },
       el('img', { src: avatarURL(post.author, 'small'), alt: '' }),
       // openvk's "Онлайн" under the photo of a person who is on the site.
@@ -399,7 +399,7 @@ export function sharedNode(shared, { canVote = false, onError } = {}) {
   fill();
   revealOnClick(content);
 
-  return el('div', { className: ['post-shared', ...(shared.nsfw ? ['shared-nsfw'] : []), ...primeDress(shared.author)].join(' ') },
+  return el('div', { className: ['post-shared', ...(shared.nsfw ? ['shared-nsfw'] : [])].join(' ') },
     el('a', { className: 'post-avatar', href: path }, el('img', { src: avatarURL(shared.author, 'small'), alt: '' })),
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },

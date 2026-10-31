@@ -321,7 +321,7 @@
 
     <section id="pets" hidden>
       <h1 class="aui-page-heading">Питомцы</h1>
-      <p class="admin-lead">Люди заводят питомца за голоса или открывают сундук с питомцем случайной редкости, кормят и одевают его за голоса и бесплатно играют с ним; всё потраченное уходит в Казну. Питомцы дерутся друг с другом, и победа приносит голоса из Казны и рейтинг. Новые цены действуют для следующих покупок и боёв.</p>
+      <p class="admin-lead">Люди заводят питомца за голоса или открывают кейс с питомцем случайной редкости, кормят и одевают его за голоса и бесплатно играют с ним; всё потраченное уходит в Казну. Питомцы дерутся друг с другом, и победа приносит голоса из Казны и рейтинг. Новые цены действуют для следующих покупок и боёв.</p>
       <p class="admin-casino-stats" id="pets-stats"></p>
       <div class="aui-message aui-message-success" id="pets-saved" hidden></div>
       <form class="aui" id="pets-form">
@@ -343,16 +343,16 @@
           <input class="text admin-casino-field" id="pet-dragon" type="number" min="0" required>
         </div>
         <div class="field-group">
-          <label for="pet-case-bronze">Бронзовый сундук</label>
+          <label for="pet-case-bronze">Бронзовый кейс</label>
           <input class="text admin-casino-field" id="pet-case-bronze" type="number" min="0" required>
-          <div class="description">Цена сундука в голосах. Из сундука выпадает питомец случайной редкости: из бронзового чаще обычные, из золотого — только редкие и лучше.</div>
+          <div class="description">Цена кейса в голосах. Из кейса выпадает питомец случайной редкости: из бронзового чаще обычные, из золотого — только редкие и лучше.</div>
         </div>
         <div class="field-group">
-          <label for="pet-case-silver">Серебряный сундук</label>
+          <label for="pet-case-silver">Серебряный кейс</label>
           <input class="text admin-casino-field" id="pet-case-silver" type="number" min="0" required>
         </div>
         <div class="field-group">
-          <label for="pet-case-gold">Золотой сундук</label>
+          <label for="pet-case-gold">Золотой кейс</label>
           <input class="text admin-casino-field" id="pet-case-gold" type="number" min="0" required>
         </div>
         <div class="field-group">
@@ -369,6 +369,11 @@
           <label for="pet-fights">Боёв в день</label>
           <input class="text admin-casino-field" id="pet-fights" type="number" min="1" required>
           <div class="description">Сколько раз в день питомец может вызвать на бой.</div>
+        </div>
+        <div class="field-group">
+          <label for="pet-cases-a-day">Кейсов в день</label>
+          <input class="text admin-casino-field" id="pet-cases-a-day" type="number" min="1" max="1000" required>
+          <div class="description">Сколько кейсов один человек может открыть за день.</div>
         </div>
         <div class="buttons-container">
           <button class="aui-button aui-button-primary" type="submit">Сохранить</button>

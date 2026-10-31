@@ -212,4 +212,3 @@ input:focus, select:focus, textarea:focus,
 
 /* The pattern of a person with Prime behind their posts and messages, and
    the light frame glow, fainter on the dark. */
-.prime-dressed::before { opacity: 0.25; }

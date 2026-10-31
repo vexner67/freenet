@@ -4,7 +4,7 @@
 // wear medals, as the boards of the forums of the 2000s.
 
 import { api, currentUser, started } from './api.js';
-import { primeDress, primeNameClass, topBoardName, topBoardText, topBoards, topValue } from './labels.js';
+import { primeNameClass, topBoardName, topBoardText, topBoards, topValue } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showError, verifiedMark } from './layout.js';
 import { petImage } from './pet.js';
 import { tr } from './i18n.js';
@@ -51,7 +51,7 @@ function personCell(entry) {
 }
 
 function row(entry) {
-  return el('tr', { className: ['top-row', ...(entry.place <= 3 ? ['top-row-medal'] : []), ...primeDress(entry.user)].join(' ') },
+  return el('tr', { className: ['top-row', ...(entry.place <= 3 ? ['top-row-medal'] : [])].join(' ') },
     placeCell(entry.place),
     personCell(entry),
     el('td', { className: 'top-value', textContent: topValue(board, entry.value) }));
