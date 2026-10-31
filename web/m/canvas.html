@@ -31,16 +31,17 @@
       <div class="page-body">
         <div class="error" id="error" hidden></div>
         <div class="canvas-page" id="board" hidden>
-          <p class="casino-lead">Один холст на весь сайт: каждый может закрасить одну клетку в минуту. Вместе можно нарисовать что угодно — договаривайтесь в сообщениях.</p>
+          <p class="casino-lead">Один холст на весь сайт: закрашивайте клетки сколько хотите. Вместе можно нарисовать что угодно — договаривайтесь в сообщениях.</p>
           <div class="canvas-palette" id="palette"></div>
           <div class="canvas-tools">
             <span class="canvas-status" id="status"></span>
             <a href="#" id="look">Кто закрасил клетку?</a>
             <a href="#" id="zoom-out" title="Уменьшить">−</a>
             <a href="#" id="zoom-in" title="Увеличить">+</a>
+            <a href="#" id="zoom-fit">Весь холст</a>
           </div>
           <div class="canvas-frame" id="frame"><canvas class="canvas-board" id="canvas" width="100" height="100"></canvas></div>
-          <p class="hint" id="cell"></p>
+          <div class="canvas-tip" id="tip" hidden></div>
         </div>
       </div>
     </div>

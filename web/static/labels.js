@@ -2742,7 +2742,6 @@ const errorTexts = {
   'this is your own pet': tr('Это ваш питомец.'),
   'there is no such cell of the canvas': tr('Такой клетки на холсте нет.'),
   'there is no such color of the canvas': tr('Такого цвета на холсте нет.'),
-  'you paint the canvas again a minute after': tr('Следующую клетку можно закрасить через минуту.'),
   'there is no such goal of dating': tr('Такой цели знакомства нет.'),
   'there is no such gender to seek': tr('Выберите, кого вы ищете.'),
   'the text about yourself is too long': tr('Рассказ о себе — не длиннее 300 символов.'),
@@ -3429,12 +3428,36 @@ export function newYearGreeting(date) {
   return date.getMonth() >= 6 ? tr('С наступающим Новым годом!') : tr('С Новым годом!');
 }
 
-// canvasColors are the 16 colors of the shared canvas, by their numbers in
-// the user service: the picture is data, not the theme of the site.
+// canvasColors are the 64 colors of the shared canvas, by their numbers in
+// the user service: the picture is data, not the theme of the site. New
+// colors go to the end, or the cells already painted would change.
 export const canvasColors = [
   '#ffffff', '#e4e4e4', '#888888', '#222222', '#ffa7d1', '#e50000', '#e59500', '#a06a42',
   '#e5d900', '#94e044', '#02be01', '#00d3dd', '#0083c7', '#0000ea', '#cf6ee4', '#820080',
+  '#f5f5f5', '#c8c8c8', '#a8a8a8', '#6a6a6a', '#4a4a4a', '#000000', '#ffd6d6', '#ff8a8a',
+  '#ff4d4d', '#b30000', '#7a0000', '#ffe0b8', '#ffbe6b', '#ff8c1a', '#c46200', '#8a4300',
+  '#fff7b0', '#fff04d', '#ffd500', '#b89b00', '#7a6700', '#d9f7c8', '#a8ec7a', '#5fd13a',
+  '#1f8f1f', '#0d5c0d', '#c8f7f2', '#66e6dc', '#00a896', '#007a6e', '#cfe9ff', '#7ac4ff',
+  '#2e9bff', '#0057b8', '#003380', '#001a4d', '#e0d4ff', '#b79cff', '#7a4dff', '#4a1fb8',
+  '#ffd6ec', '#ff85c2', '#ff1f8f', '#b3005e', '#6e003a', '#e8cfb0', '#c49a6c', '#6e4526',
 ];
+
+// canvasPalette are the numbers of the colors in the order they are shown:
+// the grays from light to dark, then by hue, each hue from light to dark.
+export function canvasPalette() {
+  const hsl = (hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+    const top = Math.max(r, g, b);
+    const span = top - Math.min(r, g, b);
+    const light = (top + top - span) / 2;
+    const turn = top === r ? (g - b) / span + 6 : top === g ? (b - r) / span + 2 : (r - g) / span + 4;
+
+    return { hue: span < 0.05 ? -1 : Math.floor((turn * 60 % 360) / 30), light };
+  };
+  const seen = canvasColors.map((hex, i) => ({ i, ...hsl(hex) }));
+
+  return seen.sort((a, b) => a.hue - b.hue || b.light - a.light).map((c) => c.i);
+}
 
 // canvasPicture turns the cells of the canvas, base64 a byte each, into
 // the RGBA of an ImageData.

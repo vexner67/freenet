@@ -1,11 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { canvasCellAt, canvasColors, canvasPicture, datingGoalName, datingGoals, datingSeekName, datingSeeks } from '../static/labels.js';
+import { canvasCellAt, canvasColors, canvasPalette, canvasPicture, datingGoalName, datingGoals, datingSeekName, datingSeeks } from '../static/labels.js';
 
-test('the canvas has the 16 colors of the user service', () => {
-  assert.equal(canvasColors.length, 16);
+test('the canvas has the 64 colors of the user service, none twice', () => {
+  assert.equal(canvasColors.length, 64);
+  assert.equal(new Set(canvasColors).size, 64);
   assert.ok(canvasColors.every((c) => /^#[0-9a-f]{6}$/.test(c)));
+});
+
+test('the palette shows every color once, the grays first', () => {
+  const shown = canvasPalette();
+
+  assert.deepEqual([...shown].sort((a, b) => a - b), canvasColors.map((_, i) => i));
+  assert.equal(canvasColors[shown[0]], '#ffffff');
 });
 
 test('the cells of the canvas become the pixels of a picture', () => {

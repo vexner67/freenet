@@ -3427,8 +3427,8 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 /* The probes the canvas reads its colors off. */
 
 /* "Холст": the canvas fills the width of the screen at first. */
-.canvas-palette { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
-.canvas-swatch { width: 32px; height: 32px; padding: 0; border: 1px solid var(--line-c0cad5); }
+.canvas-palette { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; margin: 0 0 8px; }
+.canvas-swatch { aspect-ratio: 1; min-width: 0; min-height: 0; padding: 0; border: 1px solid var(--line-707070); border-radius: 0; cursor: pointer; }
 .canvas-swatch.active { outline: 2px solid var(--line-595959); outline-offset: 1px; }
 .canvas-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 8px; }
 .canvas-tools a { padding: 6px 0; }
@@ -3436,11 +3436,9 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 .canvas-tools a.active { font-weight: bold; }
 .canvas-status { flex-basis: 100%; color: var(--text-626262); }
 .canvas-status.canvas-ready { color: var(--text-45688e); font-weight: bold; }
-.canvas-frame { max-width: 100%; max-height: 70vh; overflow: auto; border: 1px solid var(--line-c0cad5); background: var(--back-f6f6f6); }
-.canvas-board { display: block; image-rendering: pixelated; }
-.canvas-zoom-1 { width: 100%; height: auto; aspect-ratio: 1; }
-.canvas-zoom-2 { width: 200%; height: auto; aspect-ratio: 1; }
-.canvas-zoom-4 { width: 400%; height: auto; aspect-ratio: 1; }
+.canvas-frame { position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; border: 1px solid var(--line-c0cad5); background: var(--back-fff); cursor: crosshair; touch-action: none; user-select: none; box-sizing: border-box; }
+.canvas-frame.dragging { cursor: grabbing; }
+.canvas-board { position: absolute; display: block; image-rendering: pixelated; }
 
 /* "Знакомства": the photo over the words. */
 .dating-card { padding: 10px; border: 1px solid var(--line-dae1e8); background: var(--back-f6f6f6); }
@@ -3629,3 +3627,94 @@ body.birthday.prime-bg.prime-bg-trip::before { content: none; }
 .prime-gift .prime-window-body { flex-direction: column; }
 .prime-gift form { width: 100%; }
 .prime-gift-picture { align-self: center; }
+
+/* The line of the painter by the pointer on "Холст". */
+.canvas-tip {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  max-width: 240px;
+  padding: 3px 6px;
+  border: 1px solid var(--line-707070);
+  background: var(--back-fff);
+  box-shadow: 1px 1px 3px rgb(0 0 0 / 35%);
+  pointer-events: none;
+}
+.canvas-tip[hidden] { display: none; }
+.canvas-tip.pinned { pointer-events: auto; }
+.canvas-tip img:first-child { flex: none; object-fit: cover; }
+.canvas-tip-date { color: var(--text-626262); font-size: 9px; }
+.graffiti-canvas.pouring { cursor: cell; }
+.graffiti-fill { display: inline-flex; gap: 4px; align-items: center; cursor: pointer; }
+.graffiti-fill::before { content: ""; width: 16px; height: 16px; background: url("/static/icons/fill.svg") no-repeat center; }
+.graffiti-fill.active { font-weight: bold; }
+
+/* Messages in the look of the messengers of the 2000s: a shiny title bar,
+   framed photos, glossy bubbles and a toolbar under them. */
+body:has(.dialogs) .page-title, body:has(.messenger) .page-title {
+  background: linear-gradient(rgb(255 255 255 / 30%), rgb(255 255 255 / 4%) 50%, transparent 50%), var(--back-45688e);
+  color: var(--text-fff);
+  text-shadow: 0 1px 0 rgb(0 0 0 / 40%);
+}
+body:has(.dialogs) .page-title a, body:has(.messenger) .page-title a,
+body:has(.dialogs) .page-title .aside, body:has(.messenger) .page-title .aside { color: var(--text-fff); }
+body:has(.dialogs) .page-title > span:first-child::before, body:has(.messenger) .page-title > span:first-child::before {
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  vertical-align: -3px;
+  background: url("/static/icons/im-mail.svg") no-repeat center;
+}
+body:has(.messenger) .page-title > span:first-child::before { background-image: url("/static/icons/im-chat.svg"); }
+#call-link::before, #safety-link::before, #search-link::before, #about::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 3px;
+  vertical-align: -3px;
+  background: no-repeat center / 14px;
+}
+#call-link::before { background-image: url("/static/icons/im-phone.svg"); }
+#safety-link::before { background-image: url("/static/icons/im-lock.svg"); }
+#search-link::before { background-image: url("/static/icons/chat-search.svg"); }
+#about::before { background-image: url("/static/icons/info.svg"); }
+.dialog-avatar, .im-message > a:first-child img, .messenger-avatar {
+  padding: 1px;
+  border: 1px solid var(--line-c0cad5);
+  border-radius: 2px;
+  background: var(--back-fff);
+  box-sizing: border-box;
+}
+.dialog { background: linear-gradient(var(--back-fff), var(--back-f7f7f7)); }
+.dialog-message.unread { position: relative; padding-right: 24px; border: 1px solid var(--line-e2b24a); background: var(--back-fff3c4); }
+.dialog-message.unread::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  background: url("/static/icons/im-mail.svg") no-repeat center;
+}
+.messenger-messages { background: linear-gradient(var(--back-f2f5f8), var(--back-fff) 160px); }
+.im-message {
+  border: 1px solid var(--line-dae1e8);
+  border-radius: 6px;
+  background: linear-gradient(var(--back-fff), var(--back-f7f7f7));
+  box-shadow: 0 1px 1px rgb(0 0 0 / 8%);
+}
+.im-message.out { border-color: var(--line-c0cad5); background: linear-gradient(var(--back-fff), var(--back-dae1e8)); }
+.im-message.unread { border-color: var(--line-e2b24a); background: var(--back-fff3c4); }
+.im-message.selected, .im-message.selected.unread { background: var(--back-dae1e8); }
+.im-message.found, .im-message.found.unread { background: var(--back-f6f0d2); }
+.messenger-input { background: linear-gradient(var(--back-f7f7f7), var(--back-e6e6e6)); }
+.messenger-buttons #send {
+  padding-left: 26px;
+  border-color: var(--back-45688e);
+  background: url("/static/icons/im-send.svg") no-repeat 6px center, linear-gradient(rgb(255 255 255 / 30%), rgb(255 255 255 / 4%) 50%, transparent 50%), var(--back-45688e);
+}
