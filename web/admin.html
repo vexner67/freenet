@@ -9,7 +9,7 @@
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <link rel="manifest" href="/static/manifest.json">
-  <meta name="theme-color" content="#0747a6">
+  <meta name="theme-color" content="#3e3e3e">
   <script src="/static/theme.js"></script>
   <link rel="stylesheet" href="/static/admin.css">
   <script type="module" src="/static/admin.js"></script>
@@ -17,7 +17,8 @@
 <body>
 <header class="aui-header">
   <button class="aui-header-menu" id="nav-open" type="button" title="Меню" aria-controls="sidebar" aria-expanded="false"><span></span></button>
-  <a class="aui-header-logo" href="/"><span class="aui-header-mark">f</span><span class="aui-header-name">Freenet</span><span class="aui-header-sub">Админ-панель</span></a>
+  <a class="aui-header-logo" href="/"><svg class="logo-mark" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="6"/><path d="M19.4 6.6h-1.8a4 4 0 0 0-4 4V23" stroke-width="4"/><path d="M8.4 13.5h10.6" stroke-width="3.6"/></svg><svg class="logo-word" viewBox="28 0 87 28" aria-hidden="true"><path d="M32.5 23v-7.6a4 4 0 0 1 4-4h1.8M52.9 16.25a4.85 4.85 0 1 0-1.25 3.25M69 16.25a4.85 4.85 0 1 0-1.25 3.25M75.4 9.5V23m0-6.75a4.85 4.85 0 0 1 9.7 0V23M101.2 16.25a4.85 4.85 0 1 0-1.25 3.25M107.6 6.6v10.5a4 4 0 0 0 4 4h1.8" stroke-width="3.8"/><path d="M41.3 16.25h13.5M57.4 16.25h13.5M89.6 16.25h13.5M104.1 11.2h9.3" stroke-width="3.4"/></svg><span class="aui-header-sub">Админ-панель</span></a>
+  <button class="admin-deeds" id="deeds" type="button" title="Сделано сегодня" hidden><span class="aui-icon aui-icon-prime"></span><b id="deeds-count">0</b></button>
   <button class="aui-toggle" id="switch-theme" type="button" role="switch" aria-checked="false" title="Тёмная тема"><span class="aui-toggle-knob"></span></button>
 </header>
 
@@ -25,6 +26,7 @@
   <div class="aui-nav-blanket" id="nav-blanket"></div>
   <nav class="aui-sidebar" id="sidebar" aria-label="Админ-панель">
     <div class="aui-sidebar-body">
+      <input class="admin-nav-filter" id="nav-filter" type="search" placeholder="Найти раздел ( / )" aria-label="Найти раздел" autocomplete="off">
       <div class="aui-sidebar-group">
         <div class="aui-nav-heading">Обзор</div>
         <a class="aui-nav-item" href="/admin" title="Сводка"><span class="aui-icon aui-icon-dashboard"></span><span class="aui-nav-item-label">Сводка</span></a>
@@ -65,46 +67,51 @@
 
     <section id="summary" hidden>
       <h1 class="aui-page-heading">Сводка</h1>
-      <hr>
+      <div class="admin-launchers" id="launchers"></div>
       <h1>Люди</h1>
       <div class="admin-cards">
-        <div class="admin-card">
+        <a class="admin-card" href="/admin/users">
+          <span class="aui-icon aui-icon-users admin-card-icon"></span>
           <div class="admin-card-digit" id="count-users"></div>
           <div id="users-words"></div>
           <ul>
             <li class="admin-online"><b id="count-online"></b> <span id="online-words"></span></li>
             <li><b id="count-verified"></b> <span id="verified-words"></span></li>
           </ul>
-        </div>
+        </a>
       </div>
       <h1>Контент</h1>
       <div class="admin-cards">
-        <div class="admin-card admin-card-centered">
+        <a class="admin-card admin-card-centered" href="/admin/clubs">
+          <span class="aui-icon aui-icon-clubs admin-card-icon"></span>
           <div class="admin-card-digit" id="count-clubs"></div>
           <div id="clubs-words"></div>
-        </div>
-        <div class="admin-card admin-card-centered">
+        </a>
+        <a class="admin-card admin-card-centered" href="/admin/users">
+          <span class="aui-icon aui-icon-dashboard admin-card-icon"></span>
           <div class="admin-card-digit" id="count-posts"></div>
           <div id="posts-words"></div>
-        </div>
+        </a>
       </div>
       <div id="economy" hidden>
         <h1>Экономика</h1>
         <div class="admin-cards">
-          <div class="admin-card">
+          <a class="admin-card" href="/admin/vouchers">
+            <span class="aui-icon aui-icon-card admin-card-icon"></span>
             <div class="admin-card-digit" id="count-treasury"></div>
             <div id="treasury-words"></div>
             <ul>
               <li><b id="count-outstanding"></b> <span id="outstanding-words"></span></li>
             </ul>
-          </div>
-          <div class="admin-card">
+          </a>
+          <a class="admin-card" href="/admin/bank">
+            <span class="aui-icon aui-icon-bank admin-card-icon"></span>
             <div class="admin-card-digit" id="count-held"></div>
             <div id="held-words"></div>
             <ul>
               <li><b id="count-bonus"></b> <span id="bonus-words"></span></li>
             </ul>
-          </div>
+          </a>
         </div>
         <h2>Бонус и комиссии</h2>
         <div class="aui-message aui-message-success" id="economy-saved" hidden></div>

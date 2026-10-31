@@ -16,13 +16,15 @@
 // events of a dig), "Питомцы" (/admin/pets: the prices of the pets and their
 // fights)
 // and "Реклама" (/admin/ads: the ads of the global feed, the form of a new
-// one at /admin/ads/new and of one at /admin/ads/<id>). The page is its own, AUI as openvk's:
-// none of the site's chrome. Only the administrators of the site
+// one at /admin/ads/new and of one at /admin/ads/<id>). The page is its own,
+// none of the site's chrome, in the look of the site (admin-look.js gives it
+// what answers an action). Only the administrators of the site
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
 import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, handsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, bankVotes, firmKindName, goodName, formatDateTime, titleIconPath, titleIcons, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
+import { countUp, deed, lookReady } from './admin-look.js';
 import { remember } from './newyear.js';
 
 const $ = (id) => document.getElementById(id);
@@ -82,6 +84,8 @@ for (const link of document.querySelectorAll('.aui-nav-item')) {
   link.classList.toggle('active', href === path || (href !== '/admin' && path.startsWith(href + '/')));
 }
 
+lookReady();
+
 const error = $('error');
 
 function showError(e) {
@@ -94,16 +98,23 @@ const fullName = (user) => [user.name, user.surname].filter(Boolean).join(' ');
 // number is written as openvk's: "1 234".
 const number = (n) => n.toLocaleString('ru-RU');
 
-// summary is "Сводка": what the site has, as the cards of openvk's.
-async function summary({ about, treasury }) {
-  const answer = await about;
+// How often "Сводка" asks what the site has now.
+const overviewEvery = 30_000;
+
+function showOverview(answer) {
   const words = adminOverview(answer);
 
   for (const key of ['users', 'online', 'verified', 'clubs', 'posts']) {
-    $('count-' + key).textContent = number(answer[key]);
+    countUp($('count-' + key), answer[key], number);
     $(key + '-words').textContent = words[key];
   }
+}
+
+// summary is "Сводка": what the site has, as the cards of openvk's.
+async function summary({ about, treasury }) {
+  showOverview(await about);
   $('summary').hidden = false;
+  setInterval(() => api.about().then(showOverview).catch(() => {}), overviewEvery);
 
   // The economy is the treasury and what the pages hold; without it the
   // rest of the summary stands.
@@ -111,7 +122,7 @@ async function summary({ about, treasury }) {
   if (!economy) return;
   const said = adminEconomy(economy);
   for (const key of Object.keys(said)) {
-    $('count-' + key).textContent = number(key === 'treasury' ? economy.votes : economy[key] ?? 0);
+    countUp($('count-' + key), key === 'treasury' ? economy.votes : economy[key] ?? 0, number);
     $(key + '-words').textContent = said[key];
   }
   $('economy').hidden = false;
@@ -465,6 +476,9 @@ async function openTitles(user) {
 
 // verifications is the page of a kind of verifiable, for query; bans:
 // without a query it lists the pages blocked now ("Блокировки").
+// How long the search field stays quiet before the words are searched for.
+const typingPause = 280;
+
 function verifications(kind, query, bans = false) {
   const k = bans ? {
     ...verifiable[kind],
@@ -495,6 +509,7 @@ function verifications(kind, query, bans = false) {
       try {
         await k.verify(page, verified);
         toggle.setAttribute('aria-checked', String(verified));
+        deed(toggle);
         const shown = person.querySelector('.name-checkmark');
         if (verified && !shown) person.lastChild.append(checkmark());
         if (!verified) shown?.remove();
@@ -536,9 +551,47 @@ function verifications(kind, query, bans = false) {
     }
   }
 
-  $(k.one + '-query').value = query;
-  $(kind + '-heading').textContent = query ? tr('Результаты поиска') : k.all;
-  $('no-' + kind).textContent = query ? k.none : k.noneVerified;
+  function showQuery() {
+    $(kind + '-heading').textContent = query ? tr('Результаты поиска') : k.all;
+    $('no-' + kind).textContent = query ? k.none : k.noneVerified;
+  }
+
+  // find shows what the words find, in place; only the last search is
+  // answered.
+  let asked = 0;
+
+  async function find(words) {
+    asked += 1;
+    const mine = asked;
+
+    query = words.trim();
+    history.replaceState(null, '', location.pathname + (query ? '?q=' + encodeURIComponent(query) : ''));
+    try {
+      const answer = await k.search(query, '');
+      if (mine !== asked) return;
+
+      showQuery();
+      $(k.one + '-rows').replaceChildren();
+      await more(answer);
+    } catch (e) {
+      showError(e);
+    }
+  }
+
+  let typing = 0;
+  const field = $(k.one + '-query');
+
+  field.value = query;
+  showQuery();
+  field.addEventListener('input', () => {
+    clearTimeout(typing);
+    typing = setTimeout(() => find(field.value), typingPause);
+  });
+  $(k.one + '-search').addEventListener('submit', (event) => {
+    event.preventDefault();
+    clearTimeout(typing);
+    find(field.value);
+  });
   $('more-' + kind).addEventListener('click', () => more(k.search(query, cursor)));
 
   return { more, first: () => k.search(query, '') };

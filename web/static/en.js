@@ -3668,4 +3668,10 @@ export default {
   "Регистр и порядок слов не важны.": "Case and word order do not matter.",
   "или по хэштегу —": "or by a hashtag:",
   "Регистр не важен.": "Case does not matter.",
+  'Сделано сегодня': 'Done today',
+  'Сделано сегодня: {0}': 'Done today: {0}',
+  'Найти раздел ( / )': 'Find a section ( / )',
+  'Найти раздел': 'Find a section',
+  'Новый ваучер': 'New voucher',
+  'Новая реклама': 'New ad',
 };

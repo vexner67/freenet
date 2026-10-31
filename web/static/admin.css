@@ -1,82 +1,95 @@
-/* "Админ-панель": its own page and stylesheet, the site's look and themes
-   are not its. Laid out as openvk's AdminPresenter — a header, a sidebar
-   of grouped links that folds to icons, a page with a big heading, tables,
-   buttons, lozenges and forms — in a newer dress at the owner's wish:
-   white cards with soft shadows on a grey field, an indigo header and
-   rounded controls; on a phone the sidebar slides over the page. Every
-   colour is a variable of the palettes below; the dark one is the toggle
-   in the header. */
+/* "Админ-панель": its own page and stylesheet. Laid out as openvk's
+   AdminPresenter — a header, a sidebar of grouped links that folds to icons,
+   a page with a heading, tables, buttons, lozenges and forms — and dressed
+   as the site, in the look of 2000–2010: a dark header and dark frames with a
+   hard shadow, yellow headings, glossy icons, green buttons that save. On a
+   phone the sidebar slides over the page. Every colour is a variable of the
+   palettes below; the dark one is the toggle in the header. */
 
 html.aui {
-  --aui-header: #1e1b4b;
-  --aui-header-end: #4338ca;
+  --aui-header: #636363;
+  --aui-header-end: #3e3e3e;
   --aui-header-text: #ffffff;
-  --aui-header-subtle: #c7c9f9;
-  --aui-body: #f3f4f8;
+  --aui-header-subtle: #e8e8e8;
+  --aui-frame: #333333;
+  --aui-hard-shadow: #d4d4d4;
+  --aui-title: #eee5b8;
+  --aui-title-line: #d7cf9e;
+  --aui-gloss: rgba(255, 255, 255, 0.3);
+  --aui-tile: #ededed;
+  --aui-gold: #ffd54a;
+  --aui-body: #f0f0f0;
   --aui-panel: #ffffff;
-  --aui-sidebar: #ffffff;
-  --aui-line: #e4e6ef;
-  --aui-rule: #d5d8e3;
-  --aui-text: #1f2335;
-  --aui-subtle: #6b7085;
-  --aui-icon: #5b6178;
-  --aui-link: #4f46e5;
-  --aui-hover: #f1f2f8;
-  --aui-active: #eef0ff;
-  --aui-primary: #4f46e5;
-  --aui-primary-end: #7c3aed;
-  --aui-primary-hover: #4338ca;
+  --aui-sidebar: #f7f7f7;
+  --aui-line: #d0d0d0;
+  --aui-rule: #8b8b8b;
+  --aui-text: #000000;
+  --aui-subtle: #626262;
+  --aui-icon: #595959;
+  --aui-link: #2b587a;
+  --aui-hover: #fbf3c3;
+  --aui-active: #ffe58a;
+  --aui-primary: #3f8f35;
+  --aui-primary-end: #2f6f28;
+  --aui-primary-hover: #4aa33f;
   --aui-primary-text: #ffffff;
-  --aui-button: #f1f2f8;
-  --aui-button-hover: #e4e6f1;
-  --aui-button-text: #2f3450;
+  --aui-button: #595959;
+  --aui-button-hover: #707070;
+  --aui-button-text: #ffffff;
   --aui-input: #ffffff;
-  --aui-input-focus: #6366f1;
-  --aui-ring: rgba(99, 102, 241, 0.22);
-  --aui-shadow: rgba(30, 35, 90, 0.08);
-  --aui-added: #0f7b53;
-  --aui-added-back: #e3f8ee;
-  --aui-removed: #c2331b;
-  --aui-removed-back: #fdecea;
-  --aui-toggle-off: #6b6fb0;
-  --aui-toggle-on: #22c55e;
+  --aui-input-focus: #333333;
+  --aui-ring: rgba(0, 0, 0, 0.16);
+  --aui-shadow: rgba(0, 0, 0, 0.3);
+  --aui-added: #0c7a3c;
+  --aui-added-back: #dcefd9;
+  --aui-removed: #b3122e;
+  --aui-removed-back: #ffefe8;
+  --aui-toggle-off: #8b8b8b;
+  --aui-toggle-on: #3f8f35;
   --aui-knob: #ffffff;
-  --aui-blanket: rgba(17, 19, 40, 0.5);
+  --aui-blanket: rgba(0, 0, 0, 0.5);
 }
 
 html.aui.aui-theme-dark {
-  --aui-header: #0f0d2e;
-  --aui-header-end: #312e81;
-  --aui-header-text: #eef0ff;
-  --aui-header-subtle: #a5a8e6;
-  --aui-body: #13151c;
-  --aui-panel: #1c1f2a;
-  --aui-sidebar: #181a23;
-  --aui-line: #2c3040;
-  --aui-rule: #353a4d;
-  --aui-text: #dfe2ee;
-  --aui-subtle: #9298b0;
-  --aui-icon: #a3a9c2;
-  --aui-link: #a5b4fc;
-  --aui-hover: #242836;
-  --aui-active: #2a2d4a;
-  --aui-primary: #6366f1;
-  --aui-primary-end: #8b5cf6;
-  --aui-primary-hover: #818cf8;
+  --aui-header: #333333;
+  --aui-header-end: #222222;
+  --aui-header-text: #ffffff;
+  --aui-header-subtle: #cccccc;
+  --aui-frame: #0c0c0c;
+  --aui-hard-shadow: #0c0c0c;
+  --aui-title: #3a3522;
+  --aui-title-line: #4d4628;
+  --aui-gloss: rgba(255, 255, 255, 0.14);
+  --aui-tile: #2a2a2a;
+  --aui-gold: #ffd54a;
+  --aui-body: #181818;
+  --aui-panel: #222222;
+  --aui-sidebar: #1e1e1e;
+  --aui-line: #3a3a3a;
+  --aui-rule: #555555;
+  --aui-text: #e8e8e8;
+  --aui-subtle: #a0a0a0;
+  --aui-icon: #b0b0b0;
+  --aui-link: #9cc0e6;
+  --aui-hover: #33302a;
+  --aui-active: #4a4020;
+  --aui-primary: #3f8f35;
+  --aui-primary-end: #2f6f28;
+  --aui-primary-hover: #4aa33f;
   --aui-primary-text: #ffffff;
-  --aui-button: #262a38;
-  --aui-button-hover: #30354a;
-  --aui-button-text: #d3d7e6;
-  --aui-input: #151821;
-  --aui-input-focus: #818cf8;
-  --aui-ring: rgba(129, 140, 248, 0.28);
-  --aui-shadow: rgba(0, 0, 0, 0.35);
-  --aui-added: #6ee7b7;
-  --aui-added-back: #123326;
-  --aui-removed: #fca5a5;
+  --aui-button: #444444;
+  --aui-button-hover: #555555;
+  --aui-button-text: #ffffff;
+  --aui-input: #181818;
+  --aui-input-focus: #8b8b8b;
+  --aui-ring: rgba(255, 255, 255, 0.16);
+  --aui-shadow: rgba(0, 0, 0, 0.5);
+  --aui-added: #8fdc9f;
+  --aui-added-back: #1c3a22;
+  --aui-removed: #f5a3a3;
   --aui-removed-back: #3d1a1a;
-  --aui-toggle-off: #4b4f6b;
-  --aui-toggle-on: #22c55e;
+  --aui-toggle-off: #555555;
+  --aui-toggle-on: #3f8f35;
   --aui-knob: #ffffff;
   --aui-blanket: rgba(0, 0, 0, 0.6);
   color-scheme: dark;
@@ -92,8 +105,7 @@ body {
   flex-direction: column;
   background: var(--aui-body);
   color: var(--aui-text);
-  font: 14px/20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
-  -webkit-font-smoothing: antialiased;
+  font: 12px/18px tahoma, verdana, arial, sans-serif;
 }
 
 a { color: var(--aui-link); text-decoration: none; }
@@ -288,30 +300,27 @@ a:hover { text-decoration: underline; }
   display: inline-block;
   width: 18px;
   height: 18px;
-  background: var(--aui-icon);
-  -webkit-mask: var(--icon) center / contain no-repeat;
-  mask: var(--icon) center / contain no-repeat;
+  background: var(--icon) center / contain no-repeat;
 }
 
-.aui-nav-item.active .aui-icon { background: var(--aui-link); }
-.aui-icon-dashboard { --icon: url("/static/icons/admin-dashboard.svg"); }
-.aui-icon-card { --icon: url("/static/icons/admin-card.svg"); }
-.aui-icon-gift { --icon: url("/static/icons/admin-gift.svg"); }
-.aui-icon-ad { --icon: url("/static/icons/admin-ad.svg"); }
-.aui-icon-snow { --icon: url("/static/icons/admin-snow.svg"); }
-.aui-icon-casino { --icon: url("/static/icons/admin-casino.svg"); }
-.aui-icon-prime { --icon: url("/static/icons/admin-prime.svg"); }
-.aui-icon-bets { --icon: url("/static/icons/admin-bets.svg"); }
-.aui-icon-mine { --icon: url("/static/icons/admin-mine.svg"); }
-.aui-icon-pet { --icon: url("/static/icons/admin-pet.svg"); }
-.aui-icon-business { --icon: url("/static/icons/admin-business.svg"); }
-.aui-icon-bank { --icon: url("/static/icons/admin-bank.svg"); }
-.aui-icon-users { --icon: url("/static/icons/admin-users.svg"); }
-.aui-icon-clubs { --icon: url("/static/icons/admin-clubs.svg"); }
-.aui-icon-ban { --icon: url("/static/icons/admin-ban.svg"); }
-.aui-icon-info { --icon: url("/static/icons/admin-info.svg"); }
-.aui-icon-rules { --icon: url("/static/icons/admin-rules.svg"); }
-.aui-icon-collapse { --icon: url("/static/icons/admin-collapse.svg"); }
+.aui-icon-dashboard { --icon: url("/static/icons/game/index.svg"); }
+.aui-icon-card { --icon: url("/static/icons/game/voucher.svg"); }
+.aui-icon-gift { --icon: url("/static/icons/game/gift.svg"); }
+.aui-icon-ad { --icon: url("/static/icons/game/megaphone.svg"); }
+.aui-icon-snow { --icon: url("/static/icons/game/snow.svg"); }
+.aui-icon-casino { --icon: url("/static/icons/game/cards.svg"); }
+.aui-icon-prime { --icon: url("/static/icons/game/crown.svg"); }
+.aui-icon-bets { --icon: url("/static/icons/game/bets.svg"); }
+.aui-icon-mine { --icon: url("/static/icons/game/pick.svg"); }
+.aui-icon-pet { --icon: url("/static/icons/game/paw.svg"); }
+.aui-icon-business { --icon: url("/static/icons/game/firm.svg"); }
+.aui-icon-bank { --icon: url("/static/icons/game/vault.svg"); }
+.aui-icon-users { --icon: url("/static/icons/game/people.svg"); }
+.aui-icon-clubs { --icon: url("/static/icons/game/group.svg"); }
+.aui-icon-ban { --icon: url("/static/icons/game/ban.svg"); }
+.aui-icon-info { --icon: url("/static/icons/game/help.svg"); }
+.aui-icon-rules { --icon: url("/static/icons/game/book.svg"); }
+.aui-icon-collapse { background: var(--aui-icon); -webkit-mask: url("/static/icons/admin-collapse.svg") center / contain no-repeat; mask: url("/static/icons/admin-collapse.svg") center / contain no-repeat; }
 
 .aui-sidebar-footer { padding: 10px 12px; border-top: 1px solid var(--aui-line); text-align: right; }
 
@@ -714,17 +723,126 @@ form.aui.aui-dialog-content { margin: 0; padding: 12px 24px 24px; }
 .aui-dialog .field-group > label { width: 155px; margin-left: -170px; }
 .aui-dialog .buttons-container { padding-left: 170px; }
 
+/* The dress of 2000–2010, over the layout above. */
+.aui-header { height: 42px; margin: 0 8px; padding: 0 10px; background: linear-gradient(var(--aui-header), var(--aui-header-end)); border: 1px solid var(--aui-frame); border-top: 0; border-radius: 0 0 7px 7px; box-shadow: none; }
+.aui-header-logo { gap: 0; color: var(--aui-header-text); }
+.logo-mark { display: block; width: 26px; height: 26px; }
+.logo-mark rect { fill: var(--aui-knob); }
+.logo-mark path { fill: none; stroke: var(--aui-header-end); }
+.logo-word { display: block; width: 81px; height: 26px; fill: none; stroke: currentColor; }
+.aui-header-sub { margin-left: 10px; font-size: 12px; font-weight: bold; }
+.aui-toggle { width: 46px; height: 22px; border: 1px solid var(--aui-frame); border-radius: 11px; }
+.aui-toggle::after { top: 0; right: 7px; font-size: 11px; }
+.aui-toggle-knob { top: 2px; left: 2px; width: 16px; height: 16px; }
+.aui-toggle[aria-checked="true"] .aui-toggle-knob { left: 26px; }
+.aui-toggle:active { transform: scale(0.95); }
+.aui-sidebar { top: 42px; flex-basis: 196px; height: calc(100vh - 42px); background: var(--aui-sidebar); }
+.aui-sidebar-body { padding: 8px; }
+.admin-nav-filter { display: block; width: 100%; height: 26px; margin: 0 0 8px; padding: 2px 6px; background: var(--aui-input); border: 1px solid var(--aui-rule); border-radius: 3px; color: var(--aui-text); font: inherit; }
+.admin-nav-filter:focus { outline: 0; border-color: var(--aui-frame); box-shadow: 0 0 0 2px var(--aui-ring); }
+.aui-collapsed .admin-nav-filter { display: none; }
+.aui-sidebar-group + .aui-sidebar-group { margin-top: 8px; }
+.aui-nav-heading { padding: 3px 6px; background: linear-gradient(var(--aui-header), var(--aui-header-end)); border-radius: 3px 3px 0 0; color: var(--aui-header-text); font-size: 11px; font-weight: bold; letter-spacing: 0; text-transform: none; }
+.aui-nav-item { gap: 6px; margin: 0; padding: 4px 6px; border-bottom: 1px solid var(--aui-line); border-radius: 0; font-weight: normal; }
+.aui-nav-item:hover { background: var(--aui-hover); }
+.aui-nav-item:hover .aui-icon { transform: scale(1.2); }
+.aui-nav-item.active { background: var(--aui-active); color: var(--aui-text); font-weight: bold; }
+.aui-nav-item.active::before { content: none; }
+.aui-icon { width: 16px; height: 16px; transition: transform 0.12s; }
+.aui-page-panel { padding: 10px 12px 24px; }
+.aui-page-panel > section { max-width: 1040px; padding: 0 10px 12px; border: 1px solid var(--aui-frame); border-radius: 4px; box-shadow: 2px 2px 0 var(--aui-hard-shadow); }
+h1.aui-page-heading { display: flex; gap: 6px; align-items: center; margin: 0 -10px 10px; padding: 5px 10px; background: var(--aui-title); border-bottom: 1px solid var(--aui-title-line); border-radius: 3px 3px 0 0; font-size: 13px; font-weight: bold; letter-spacing: 0; line-height: 18px; }
+h1 { margin: 12px 0 6px; font-size: 12px; }
+h2 { margin: 14px 0 0; padding: 4px 8px; background: linear-gradient(var(--aui-header), var(--aui-header-end)); border: 1px solid var(--aui-frame); border-radius: 4px 4px 0 0; color: var(--aui-header-text); font-size: 12px; line-height: 16px; text-shadow: 0 1px 0 var(--aui-shadow); }
+h2:empty { display: none; }
+form.aui { margin-top: 8px; }
+h2 ~ form.aui:not(.admin-price, .admin-rate, .admin-search, .admin-bet-odds-form, .aui-dialog-content) { margin-top: 0; margin-bottom: 8px; padding: 6px 8px; border: 1px solid var(--aui-rule); border-top: 0; border-radius: 0 0 4px 4px; }
+.aui-page-header { display: flex; justify-content: space-between; align-items: center; margin: 0 -10px 10px; padding-right: 6px; background: var(--aui-title); border-bottom: 1px solid var(--aui-title-line); }
+.aui-page-header h1.aui-page-heading { margin: 0; border: 0; background: none; }
+.aui-page-header .aui-button { float: none; }
+.admin-lead { margin: 6px 0; line-height: 16px; }
+.admin-launchers { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 4px; margin: 0 0 8px; }
+.admin-launch { display: flex; flex-direction: column; gap: 3px; align-items: center; min-width: 0; padding: 6px 2px; background: linear-gradient(var(--aui-panel), var(--aui-tile)); border: 1px solid var(--aui-rule); border-radius: 4px; color: var(--aui-text); font-size: 11px; line-height: 13px; text-align: center; }
+.admin-launch:hover { background: var(--aui-hover); border-color: var(--aui-frame); text-decoration: none; }
+.admin-launch:hover .aui-icon { transform: scale(1.15) rotate(-4deg); }
+.admin-launch:active { transform: translateY(1px); }
+.admin-launch .aui-icon { width: 30px; height: 30px; }
+.admin-cards { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
+.admin-card { display: block; min-height: 72px; padding: 8px 10px; background: linear-gradient(var(--aui-panel), var(--aui-tile)); border: 1px solid var(--aui-frame); border-radius: 4px; box-shadow: 2px 2px 0 var(--aui-hard-shadow); color: var(--aui-subtle); }
+.admin-card::before { content: none; }
+.admin-card:hover { background: var(--aui-hover); box-shadow: 2px 2px 0 var(--aui-hard-shadow); text-decoration: none; transform: none; }
+.admin-card:active { transform: translateY(1px); }
+.admin-card-icon { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; }
+.admin-card:hover .admin-card-icon { transform: scale(1.2); }
+.admin-card-digit { background: none; color: var(--aui-text); font-size: 24px; font-weight: bold; letter-spacing: 0; line-height: 28px; -webkit-text-fill-color: currentColor; }
+.admin-card ul { margin: 4px 0 0; padding-left: 14px; }
+.admin-online { position: relative; }
+.admin-online b::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 4px; background: var(--aui-primary-hover); border-radius: 50%; animation: admin-pulse 1.6s ease-in-out infinite; }
+@keyframes admin-pulse { 50% { opacity: 0.3; } }
+.admin-bump { animation: admin-bump 0.5s; }
+@keyframes admin-bump { from { box-shadow: 0 0 0 3px var(--aui-gold); } }
+.aui-table-wrap { margin: 0 0 8px; border: 1px solid var(--aui-frame); border-radius: 0 0 4px 4px; }
+h1 + .aui-table-wrap, .aui-page-header + .aui-table-wrap, p + .aui-table-wrap, form + .aui-table-wrap { border-radius: 4px; margin-top: 8px; }
+table.aui th { padding: 4px 8px; background: linear-gradient(var(--aui-panel), var(--aui-tile)); border-bottom: 1px solid var(--aui-rule); color: var(--aui-text); font-size: 11px; letter-spacing: 0; text-transform: none; }
+table.aui td { padding: 5px 8px; }
+table.aui tbody tr:hover { background: var(--aui-hover); }
+.admin-code { font-size: 11px; }
+.admin-person img.admin-avatar { width: 28px; height: 28px; border-radius: 3px; }
+.admin-person img.admin-avatar.admin-club { border-radius: 3px; }
+.admin-search { position: relative; max-width: none; margin-bottom: 8px; }
+.admin-casino-stats { padding: 6px 8px; background: var(--aui-hover); border: 1px solid var(--aui-title-line); border-radius: 3px; }
+.aui-lozenge { padding: 1px 6px; border: 1px solid currentColor; border-radius: 3px; font-size: 10px; letter-spacing: 0; text-transform: none; }
+.aui-button { height: 26px; padding: 0 10px; border: 1px solid var(--aui-frame); border-radius: 3px; font-weight: normal; line-height: 24px; text-shadow: 0 1px 0 var(--aui-shadow); transition: background-color 0.1s; }
+.aui-button:hover { color: var(--aui-button-text); }
+.aui-button-primary { background: linear-gradient(var(--aui-gloss), transparent 50%), var(--aui-primary); font-weight: bold; box-shadow: none; }
+.aui-button-primary:hover { background: linear-gradient(var(--aui-gloss), transparent 50%), var(--aui-primary-hover); }
+.aui-button-subtle, .aui-button-link { border-color: transparent; color: var(--aui-link); text-shadow: none; }
+.aui-button-subtle:hover, .aui-button-link:hover { color: var(--aui-link); background: var(--aui-hover); }
+.aui-button-compact { height: 22px; padding: 0 7px; border-radius: 3px; font-size: 11px; line-height: 20px; }
+.aui-message { margin-bottom: 8px; padding: 6px 10px; border: 1px solid currentColor; border-radius: 3px; }
+/* What was saved flies in over the page: nothing under it moves. */
+.aui-message-success:not(#created), #error { position: fixed; top: 52px; right: 16px; z-index: 90; max-width: 360px; box-shadow: 2px 2px 0 var(--aui-shadow); font-weight: bold; animation: admin-toast 0.22s cubic-bezier(0.2, 1.4, 0.4, 1); }
+#error { animation: admin-shake 0.3s; }
+@keyframes admin-toast { from { opacity: 0; transform: translateX(40px); } }
+@keyframes admin-shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+.admin-float { position: fixed; z-index: 95; color: var(--aui-added); font-size: 18px; font-weight: bold; pointer-events: none; animation: admin-float 0.9s ease-out forwards; }
+@keyframes admin-float { to { opacity: 0; transform: translateY(-50px); } }
+form.aui .field-group { min-height: 34px; padding: 3px 0 3px 200px; }
+form.aui .field-group > label { width: 190px; margin-left: -200px; padding: 5px 0; }
+form.aui .text, form.aui .select { height: 26px; padding: 2px 6px; border-radius: 3px; }
+form.aui .textarea { padding: 4px 6px; border-radius: 3px; }
+form.aui .description { margin-top: 2px; font-size: 11px; line-height: 14px; }
+form.aui .admin-dirty .text, form.aui .admin-dirty .select, form.aui .admin-dirty .textarea { background: var(--aui-hover); border-color: var(--aui-frame); }
+.buttons-container { position: sticky; bottom: 0; z-index: 5; padding: 6px 0 6px 200px; background: var(--aui-panel); }
+.aui-dialog .buttons-container { position: static; }
+.admin-title-icons label:has(input:checked) { background: var(--aui-active); border-color: var(--aui-frame); }
+.admin-titles li { padding: 3px 0; }
+.admin-deeds { display: flex; gap: 4px; align-items: center; height: 24px; margin-right: 8px; padding: 0 8px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--aui-frame); border-radius: 3px; color: var(--aui-header-text); font: bold 12px tahoma, verdana, sans-serif; cursor: help; }
+.aui-blanket { backdrop-filter: none; }
+.aui-dialog { border: 1px solid var(--aui-frame); border-radius: 4px; box-shadow: 3px 3px 0 var(--aui-shadow); animation: admin-toast-in 0.14s ease-out; }
+@keyframes admin-toast-in { from { opacity: 0; transform: translateY(-6px); } }
+.aui-dialog-header { padding: 6px 10px; background: linear-gradient(var(--aui-header), var(--aui-header-end)); }
+.aui-dialog-header h2 { background: none; border: 0; color: var(--aui-header-text); font-size: 13px; }
+form.aui.aui-dialog-content { padding: 10px 12px 12px; }
+.aui-dialog .field-group { padding-left: 130px; }
+.aui-dialog .field-group > label { width: 120px; margin-left: -130px; }
+.aui-dialog .buttons-container { padding-left: 130px; }
+@media (prefers-reduced-motion: reduce) {
+  .admin-online b::before, .admin-bump, .aui-message-success, #error, .admin-float, .aui-dialog { animation: none; }
+}
+
+
 /* A phone: the sidebar slides over the page from the menu button, the
    sections lose their margins, labels stand over the fields. */
 @media (max-width: 800px) {
-  .aui-header { gap: 8px; padding: 0 12px; }
+  .aui-header { gap: 8px; margin: 0; padding: 0 10px; border-radius: 0; }
   .aui-header-menu { display: block; }
   .aui-header-sub { display: none; }
 
   .aui-sidebar,
   .aui-collapsed .aui-sidebar {
     position: fixed;
-    top: 56px;
+    top: 42px;
     left: 0;
     bottom: 0;
     z-index: 60;
@@ -746,18 +864,21 @@ form.aui.aui-dialog-content { margin: 0; padding: 12px 24px 24px; }
 
   .aui-nav-open .aui-nav-blanket {
     position: fixed;
-    inset: 56px 0 0;
+    inset: 42px 0 0;
     z-index: 55;
     display: block;
     background: var(--aui-blanket);
   }
 
-  .aui-page-panel { padding: 12px 10px 24px; }
-  .aui-page-panel > section { padding: 18px 14px 20px; border-radius: 14px; }
-  h1.aui-page-heading { font-size: 22px; line-height: 28px; }
-  .admin-cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-  .admin-card { min-height: 0; padding: 16px 14px 12px; }
-  .admin-card-digit { font-size: 30px; line-height: 38px; }
+  .aui-page-panel { padding: 8px 8px 24px; }
+  .aui-page-panel > section { padding: 0 8px 10px; }
+  h1.aui-page-heading { margin: 0 -8px 8px; padding: 6px 8px; }
+  .admin-cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .admin-card { min-height: 0; }
+  .admin-card-digit { font-size: 20px; line-height: 24px; }
+  .admin-launchers { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .aui-button { height: 34px; line-height: 32px; }
+  .aui-message-success:not(#created), #error { top: 50px; right: 8px; left: 8px; max-width: none; }
 
   form.aui .field-group { padding-left: 0; }
 
