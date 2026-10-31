@@ -1698,6 +1698,36 @@ export function bankVotes(hundredths) {
   return `${groupedVotes(whole)}${lang === 'en' ? '.' : ','}${String(cents).padStart(2, '0')} ${plural(2, ['голос', 'голоса', 'голосов'])}`;
 }
 
+// cardCovers are the covers of the virtual card, as the user service has
+// them (cardCovers in user/internal/user/card.go): the name, what it is
+// called, its picture and whether the writing on it is dark.
+export const cardCovers = [
+  { id: 'classic', title: tr('Классика'), src: '/static/cards/classic.svg' },
+  { id: 'gold', title: tr('Золотая'), src: '/static/cards/gold.svg', dark: true },
+  { id: 'platinum', title: tr('Платиновая'), src: '/static/cards/platinum.svg', dark: true },
+  { id: 'black', title: tr('Чёрная'), src: '/static/cards/black.svg' },
+  { id: 'flame', title: tr('Пламя'), src: '/static/cards/flame.svg' },
+  { id: 'ocean', title: tr('Океан'), src: '/static/cards/ocean.svg' },
+  { id: 'matrix', title: tr('Матрица'), src: '/static/cards/matrix.svg' },
+  { id: 'glitter', title: tr('Блёстки'), src: '/static/cards/glitter.svg' },
+  { id: 'chrome', title: tr('Хром'), src: '/static/cards/chrome.svg', dark: true },
+  { id: 'sky', title: tr('Небо'), src: '/static/cards/sky.svg', dark: true },
+];
+
+// cardNumber writes the sixteen digits in fours.
+export function cardNumber(number) {
+  return number.replace(/(.{4})(?=.)/g, '$1 ');
+}
+
+// grownDeposit is what a deposit of hundredths becomes in days, counted as
+// the bank does (BankAccount.At): the rate is earned on the sum up to the
+// limit, whole hundredths a day.
+export function grownDeposit(hundredths, rate, most, days) {
+  let sum = hundredths;
+  for (let day = 0; day < days; day++) sum += Math.floor(Math.min(sum, most * 100) * rate / 10000);
+  return sum;
+}
+
 // bankRate is a rate of the bank, in hundredths of a percent a day:
 // "0,2 % в день".
 export function bankRate(rate) {
@@ -2653,6 +2683,8 @@ const errorTexts = {
   'buy from 1 share to as many as the offer has': tr('Купить можно от 1 акции до числа акций в предложении.'),
   'there is no such offer of shares': tr('Такого предложения акций нет.'),
   'these are your own shares': tr('Это ваши собственные акции.'),
+  'unknown cover of the card': tr('Такой обложки карты нет.'),
+  'the page has no card': tr('Сначала оформите карту.'),
   'the bank takes and gives at least 1 vote': tr('Сумма — хотя бы 1 голос.'),
   'the deposit cannot be larger': tr('Вклад не может быть больше.'),
   'there are not so many votes on the deposit': tr('На вкладе нет столько голосов.'),

@@ -700,6 +700,10 @@ export const api = {
   bank: () => authorized('GET', '/api/v1/me/bank'),
   // moveBank is "deposit", "withdraw", "loan" or "repay" of amount votes.
   moveBank: (action, amount) => authorized('POST', `/api/v1/me/bank/${action}`, { amount }),
+  // The virtual card: null until it is issued, then its number and cover.
+  bankCard: () => authorized('GET', '/api/v1/me/bank/card'),
+  issueBankCard: () => authorized('POST', '/api/v1/me/bank/card'),
+  setBankCardCover: (cover) => authorized('PUT', '/api/v1/me/bank/card', { cover }),
   bankSettings: () => authorized('GET', '/api/v1/bank/settings'),
   setBank: (settings) => authorized('PUT', '/api/v1/bank/settings', settings),
   setVoteRate: (kopecks) => authorized('PUT', '/api/v1/vote-rate', { kopecks }),

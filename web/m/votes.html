@@ -29,63 +29,90 @@
     <div class="page">
       <div class="page-title">Мои Голоса</div>
       <div class="page-body">
-        <div class="tabs">
-          <a id="tab-account" href="/votes">Счёт</a>
-          <a id="tab-transfer" href="/votes?act=transfer">Перевести</a>
-          <a id="tab-top-up" href="/votes?act=top-up">Пополнить</a>
-          <a id="tab-receive" href="/votes?act=receive">Получить</a>
-          <a id="tab-rating" href="/votes?act=rating">Рейтинг</a>
-          <a id="tab-deposit" href="/votes?act=deposit">Вклад</a>
-          <a id="tab-loan" href="/votes?act=loan">Кредит</a>
+        <div class="tabs game-tabs bank-tabs">
+          <a id="tab-account" href="/votes"><img src="/static/icons/game/vault.svg" alt="" width="16" height="16">Счёт</a>
+          <a id="tab-card" href="/votes?act=card"><img src="/static/icons/game/card.svg" alt="" width="16" height="16">Карта</a>
+          <a id="tab-transfer" href="/votes?act=transfer"><img src="/static/icons/game/send.svg" alt="" width="16" height="16">Перевести</a>
+          <a id="tab-top-up" href="/votes?act=top-up"><img src="/static/icons/game/voucher.svg" alt="" width="16" height="16">Пополнить</a>
+          <a id="tab-receive" href="/votes?act=receive"><img src="/static/icons/game/receive.svg" alt="" width="16" height="16">Получить</a>
+          <a id="tab-rating" href="/votes?act=rating"><img src="/static/icons/game/rating.svg" alt="" width="16" height="16">Рейтинг</a>
+          <a id="tab-deposit" href="/votes?act=deposit"><img src="/static/icons/game/piggy.svg" alt="" width="16" height="16">Вклад</a>
+          <a id="tab-loan" href="/votes?act=loan"><img src="/static/icons/game/loan.svg" alt="" width="16" height="16">Кредит</a>
         </div>
-        <div class="container-gray">
         <p id="loading">Загрузка…</p>
         <div class="error" id="error" hidden></div>
         <div class="notice" id="notice" hidden></div>
 
+        <div class="game-hud four" id="bank-hud" hidden>
+          <a class="game-hud-cell game-hud-money" href="/votes"><span class="game-hud-name"><img src="/static/icons/game/coins.svg" alt="" width="16" height="16">На счету</span><span class="game-hud-sum" id="hud-votes"></span></a>
+          <a class="game-hud-cell" href="/votes?act=deposit"><span class="game-hud-name"><img src="/static/icons/game/piggy.svg" alt="" width="16" height="16">Вклад</span><span class="game-hud-sum" id="hud-deposit"></span></a>
+          <a class="game-hud-cell" href="/votes?act=loan"><span class="game-hud-name"><img src="/static/icons/game/loan.svg" alt="" width="16" height="16">Долг</span><span class="game-hud-sum" id="hud-debt"></span></a>
+          <a class="game-hud-cell" href="/votes?act=rating"><span class="game-hud-name"><img src="/static/icons/game/rating.svg" alt="" width="16" height="16">Рейтинг</span><span class="game-hud-sum" id="hud-rating"></span></a>
+        </div>
+
         <div id="account" hidden>
-          <div class="finance">
-            <div class="finance-about">
-              <p>Голоса — валюта Freenet: ими оплачиваются платные подарки и наборы стикеров. Получить их можно ежедневным бонусом, активировав ваучер, или от другого человека.</p>
-              <p>Рейтинг прибавляется к заполненности страницы: его дают ваучеры, а ещё его можно <a href="/votes?act=rating">повысить за голоса</a>.</p>
-              <p class="finance-rate" id="vote-rate" hidden></p>
-              <p>Испытать удачу и выиграть голоса можно в <a href="/casino">Азартных играх</a>.</p>
+          <div class="bank-top">
+            <div class="bank-card-place" id="card-home"></div>
+            <div class="bank-top-side">
+              <div class="finance-balance">
+                на вашем счету
+                <div class="finance-votes" id="votes"></div>
+                <span id="votes-word"></span><br>
+                <span class="finance-rubles" id="votes-rubles"></span>
+                <span class="finance-rate hint" id="vote-rate" hidden></span>
+              </div>
+              <div class="bank-tiles">
+                <a class="bank-tile" href="/votes?act=transfer"><img src="/static/icons/game/send.svg" alt="" width="24" height="24">Перевести</a>
+                <a class="bank-tile" href="/votes?act=top-up"><img src="/static/icons/game/voucher.svg" alt="" width="24" height="24">Пополнить</a>
+                <a class="bank-tile" href="/votes?act=deposit"><img src="/static/icons/game/piggy.svg" alt="" width="24" height="24">На вклад</a>
+                <a class="bank-tile" href="/casino"><img src="/static/icons/game/star.svg" alt="" width="24" height="24">Испытать удачу</a>
+              </div>
             </div>
-            <div class="finance-balance">
-              на вашем счету
-              <div class="finance-votes" id="votes"></div>
-              <span id="votes-word"></span><br>
-              <span class="finance-rubles" id="votes-rubles"></span>
-            </div>
-          </div>
-          <div class="bank-actions">
-            <a class="button" href="/votes?act=transfer">Перевести</a>
-            <a class="button" href="/votes?act=top-up">Пополнить</a>
-            <a class="button" href="/votes?act=receive">Получить</a>
-            <a class="button" href="/votes?act=rating">Повысить рейтинг</a>
-          </div>
-          <div class="bank-bonus" id="bonus" hidden>
-            <div><b>Ежедневный бонус</b><br><span id="bonus-text"></span><br><span class="hint" id="bonus-streak"></span></div>
-            <button class="button" type="button" id="bonus-claim" hidden></button>
-          </div>
-          <div class="bank-totals">
-            <div><span>Поступило за 30 дней</span><b class="bank-in" id="income"></b></div>
-            <div><span>Списано за 30 дней</span><b class="bank-out" id="expense"></b></div>
           </div>
 
-          <h4>История операций</h4>
-          <div class="mb-tabs bank-flows">
-            <a class="mb-tab" id="flow-all" href="/votes">Все операции</a>
-            <a class="mb-tab" id="flow-in" href="/votes?flow=in">Поступления</a>
-            <a class="mb-tab" id="flow-out" href="/votes?flow=out">Списания</a>
+          <div class="bank-bonus" id="bonus" hidden>
+            <div class="game-window"><div class="game-window-title"><img src="/static/icons/game/bonus.svg" alt="" width="16" height="16"><span>Ежедневный бонус</span><span id="bonus-help"></span></div><div class="game-window-body">
+              <div class="bank-pips" id="bonus-pips"></div>
+              <p class="bank-bonus-text" id="bonus-text"></p>
+              <button class="button game-go" type="button" id="bonus-claim" hidden></button>
+              <p class="hint" id="bonus-streak"></p>
+            </div></div>
           </div>
-          <div class="bank-operations" id="operations"></div>
-          <p class="bank-empty" id="operations-empty" hidden>Операций пока нет.</p>
-          <div class="actions"><button class="button" type="button" id="more" hidden>Показать ещё</button></div>
+
+          <div class="bank-totals">
+            <div><span><img src="/static/icons/game/in.svg" alt="" width="16" height="16">Поступило за 30 дней</span><b class="bank-in" id="income"></b></div>
+            <div><span><img src="/static/icons/game/out.svg" alt="" width="16" height="16">Списано за 30 дней</span><b class="bank-out" id="expense"></b></div>
+          </div>
+          <div class="bank-flowbar" id="flow-bar" hidden><span class="bank-flowbar-in" id="flow-bar-in"></span></div>
+
+          <div class="game-window"><div class="game-window-title"><img src="/static/icons/game/log.svg" alt="" width="16" height="16"><span>История операций</span></div><div class="game-window-body">
+            <div class="mb-tabs bank-flows">
+              <a class="mb-tab" id="flow-all" href="/votes">Все операции</a>
+              <a class="mb-tab" id="flow-in" href="/votes?flow=in">Поступления</a>
+              <a class="mb-tab" id="flow-out" href="/votes?flow=out">Списания</a>
+            </div>
+            <div class="bank-operations" id="operations"></div>
+            <p class="bank-empty" id="operations-empty" hidden>Операций пока нет.</p>
+            <div class="actions"><button class="button" type="button" id="more" hidden>Показать ещё</button></div>
+          </div></div>
+        </div>
+
+        <div id="card" hidden>
+          <div class="game-window"><div class="game-window-title"><img src="/static/icons/game/card.svg" alt="" width="16" height="16"><span>Моя карта</span><span id="card-help"></span></div><div class="game-window-body">
+            <div class="bank-card-place big" id="card-big"></div>
+            <div class="bank-card-tools" id="card-tools" hidden>
+              <button class="button" type="button" id="card-flip"><img src="/static/icons/game/flip.svg" alt="" width="16" height="16">Перевернуть</button>
+              <button class="button" type="button" id="card-copy"><img src="/static/icons/game/copy.svg" alt="" width="16" height="16">Скопировать номер</button>
+            </div>
+          </div></div>
+          <div class="game-window"><div class="game-window-title"><img src="/static/icons/game/star.svg" alt="" width="16" height="16"><span>Обложка карты</span></div><div class="game-window-body">
+            <p class="hint" id="covers-hint"></p>
+            <div class="bank-covers" id="card-covers"></div>
+          </div></div>
         </div>
 
         <form id="transfer" hidden>
-          <p>Вы можете отправить в подарок или передать часть голосов другому человеку. Голоса приходят сразу, вернуть их нельзя. Комиссия — процент от суммы, не меньше 1 голоса: она списывается сверх перевода, а сколько она, форма скажет, пока вы печатаете.</p>
+          <div class="game-window"><div class="game-window-title"><img src="/static/icons/game/send.svg" alt="" width="16" height="16"><span>Перевод голосов</span><span id="transfer-help"></span></div><div class="game-window-body">
           <table class="form">
             <tr>
               <th>Ваш баланс:</th>
@@ -103,6 +130,7 @@
               <th><label for="transfer-votes">Количество голосов:</label></th>
               <td class="control">
                 <input type="text" id="transfer-votes" inputmode="numeric" pattern="[0-9]{1,9}" maxlength="9" required autocomplete="off">
+                <div id="transfer-chips"></div>
                 <p class="hint" id="transfer-fee" hidden></p>
               </td>
             </tr>
@@ -111,11 +139,12 @@
               <td class="control"><input type="text" id="transfer-note" maxlength="140" autocomplete="off" placeholder="необязательно"></td>
             </tr>
           </table>
-          <div class="actions"><button class="button" type="submit">Перевести голоса</button></div>
+          <button class="button game-go" type="submit">Перевести голоса</button>
+          </div></div>
         </form>
 
         <div id="top-up" hidden>
-          <p>Введите серийный номер ваучера. Обычно он указан в чеке или в сообщении. Обратите внимание, что ваучеры могут истекать и воспользоваться ими можно только один раз.</p>
+          <div class="game-window"><div class="game-window-title"><img src="/static/icons/game/voucher.svg" alt="" width="16" height="16"><span>Активировать ваучер</span><span id="top-up-help"></span></div><div class="game-window-body">
           <form id="voucher-form">
             <div class="voucher-keys">
               <input type="text" class="voucher-key" maxlength="6" size="6" placeholder="123456" autocomplete="off" spellcheck="false" required aria-label="Код ваучера, часть 1"> -
@@ -123,12 +152,14 @@
               <input type="text" class="voucher-key" maxlength="6" size="6" placeholder="345678" autocomplete="off" spellcheck="false" required aria-label="Код ваучера, часть 3"> -
               <input type="text" class="voucher-key" maxlength="6" size="6" placeholder="90ABCD" autocomplete="off" spellcheck="false" required aria-label="Код ваучера, часть 4">
             </div>
-            <div class="actions"><button class="button" type="submit">Активировать ваучер</button></div>
+            <button class="button game-go" type="submit">Активировать ваучер</button>
           </form>
+          </div></div>
         </div>
 
         <form id="rating" hidden>
-          <p>Рейтинг прибавляется к заполненности страницы: страница с рейтингом может быть заполнена больше чем на 100 %, и тогда шкала становится золотой. Один процент рейтинга стоит 3 голоса. Рейтинг вместе с заполненностью — не больше 1000 %.</p>
+          <div class="game-window"><div class="game-window-title"><img src="/static/icons/game/rating.svg" alt="" width="16" height="16"><span>Повысить рейтинг</span><span id="rating-help"></span></div><div class="game-window-body">
+          <div class="bank-meter" id="rating-meter"></div>
           <div id="rating-form">
           <table class="form">
             <tr>
@@ -139,44 +170,51 @@
               <th><label for="rating-percent">Повысить на, %:</label></th>
               <td class="control">
                 <input type="text" id="rating-percent" inputmode="numeric" pattern="[0-9]{1,4}" maxlength="4" required autocomplete="off">
+                <div id="rating-chips"></div>
                 <p class="hint" id="rating-cost" hidden></p>
               </td>
             </tr>
           </table>
-          <div class="actions"><button class="button" type="submit">Повысить рейтинг</button></div>
+          <button class="button game-go" type="submit">Повысить рейтинг</button>
           </div>
+          </div></div>
         </form>
 
         <div id="deposit" hidden>
-          <p>Голоса на вкладе каждый день растут на процент. Проценты начисляются на сумму до предела вклада, а всё, что они принесли сверх него, копится на вкладе дальше и не сгорает.</p>
-          <p class="bank-balance">Ваш баланс: <b class="bank-balance-votes"></b></p>
-          <div class="bank-box">
-            <p id="deposit-state"></p>
+          <div class="game-window"><div class="game-window-title"><img src="/static/icons/game/piggy.svg" alt="" width="16" height="16"><span>Вклад</span><span id="deposit-help"></span></div><div class="game-window-body">
+            <p class="bank-big" id="deposit-state"></p>
+            <div class="bank-meter" id="deposit-meter"></div>
             <p class="hint" id="deposit-terms"></p>
             <form class="bank-form" id="deposit-form">
               <input type="text" id="deposit-amount" inputmode="numeric" pattern="[0-9]{0,16}" maxlength="16" autocomplete="off" placeholder="сколько голосов" aria-label="Сколько голосов">
-              <button class="button" type="submit" id="deposit-put">Положить</button>
-              <button class="button" type="button" id="deposit-take">Снять</button>
+              <span id="deposit-chips"></span>
+              <p class="bank-forecast" id="deposit-forecast" hidden></p>
+              <div class="bank-buttons">
+                <button class="button game-go" type="submit" id="deposit-put">Положить</button>
+                <button class="button game-go sell" type="button" id="deposit-take">Снять</button>
+              </div>
             </form>
             <p class="hint">Пустое поле у «Снять» — снять все целые голоса.</p>
-          </div>
+          </div></div>
         </div>
 
         <div id="loan" hidden>
-          <p>Кредит выручит, когда голосов не хватает: его возвращают с процентами до срока, а после срока процент больше, и банк сам забирает долг с баланса, а потом со вклада.</p>
-          <p class="bank-balance">Ваш баланс: <b class="bank-balance-votes"></b></p>
-          <div class="bank-box">
-            <p id="loan-state"></p>
+          <div class="game-window"><div class="game-window-title"><img src="/static/icons/game/loan.svg" alt="" width="16" height="16"><span>Кредит</span><span id="loan-help"></span></div><div class="game-window-body">
+            <p class="bank-big" id="loan-state"></p>
+            <div class="bank-meter" id="loan-meter" hidden></div>
             <p class="hint" id="loan-terms"></p>
             <form class="bank-form" id="loan-form">
               <input type="text" id="loan-amount" inputmode="numeric" pattern="[0-9]{0,16}" maxlength="16" autocomplete="off" placeholder="сколько голосов" aria-label="Сколько голосов">
-              <button class="button" type="submit" id="loan-go"></button>
+              <span id="loan-chips"></span>
+              <p class="bank-forecast" id="loan-forecast" hidden></p>
+              <div class="bank-buttons"><button class="button game-go" type="submit" id="loan-go"></button></div>
             </form>
             <p class="hint" id="loan-hint"></p>
-          </div>
+          </div></div>
         </div>
 
         <div id="receive" hidden>
+          <div class="game-window"><div class="game-window-title"><img src="/static/icons/game/receive.svg" alt="" width="16" height="16"><span>Получить голоса</span></div><div class="game-window-body">
           <p>Чтобы вам перевели голоса, отправьте эту ссылку: по ней откроется перевод, где получатель — вы.</p>
           <div class="bank-link">
             <input type="text" id="receive-link" readonly aria-label="Ссылка для перевода">
@@ -184,7 +222,7 @@
           </div>
           <p>Или назовите свой адрес: <b id="receive-nickname"></b>.</p>
           <p>Ещё голоса можно получить, <a href="/votes?act=top-up">активировав ваучер</a>, выиграть в <a href="/casino">Азартных играх</a> или продавая свои <a href="/stickers?act=author">наборы стикеров</a>.</p>
-        </div>
+          </div></div>
         </div>
       </div>
     </div>
