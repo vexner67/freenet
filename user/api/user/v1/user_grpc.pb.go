@@ -170,6 +170,9 @@ const (
 	UserService_TakeDeposit_FullMethodName        = "/user.v1.UserService/TakeDeposit"
 	UserService_TakeLoan_FullMethodName           = "/user.v1.UserService/TakeLoan"
 	UserService_RepayLoan_FullMethodName          = "/user.v1.UserService/RepayLoan"
+	UserService_GetBankCard_FullMethodName        = "/user.v1.UserService/GetBankCard"
+	UserService_IssueBankCard_FullMethodName      = "/user.v1.UserService/IssueBankCard"
+	UserService_SetBankCardCover_FullMethodName   = "/user.v1.UserService/SetBankCardCover"
 	UserService_GetBankSettings_FullMethodName    = "/user.v1.UserService/GetBankSettings"
 	UserService_SetBankSettings_FullMethodName    = "/user.v1.UserService/SetBankSettings"
 	UserService_VisitPage_FullMethodName          = "/user.v1.UserService/VisitPage"
@@ -624,6 +627,13 @@ type UserServiceClient interface {
 	TakeDeposit(ctx context.Context, in *BankAmountRequest, opts ...grpc.CallOption) (*BankMoveResponse, error)
 	TakeLoan(ctx context.Context, in *BankAmountRequest, opts ...grpc.CallOption) (*BankMoveResponse, error)
 	RepayLoan(ctx context.Context, in *BankAmountRequest, opts ...grpc.CallOption) (*BankMoveResponse, error)
+	// The virtual card of the caller; the response has none before it is
+	// issued.
+	GetBankCard(ctx context.Context, in *GetBankCardRequest, opts ...grpc.CallOption) (*BankCardResponse, error)
+	// Issues the caller a card with a number of its own; a page has one, and
+	// asking again gives it.
+	IssueBankCard(ctx context.Context, in *IssueBankCardRequest, opts ...grpc.CallOption) (*BankCardResponse, error)
+	SetBankCardCover(ctx context.Context, in *SetBankCardCoverRequest, opts ...grpc.CallOption) (*BankCardResponse, error)
 	// For the administrators (PermissionDenied for others): the rates and
 	// limits of the bank, and how it does.
 	GetBankSettings(ctx context.Context, in *GetBankSettingsRequest, opts ...grpc.CallOption) (*GetBankSettingsResponse, error)
@@ -2256,6 +2266,36 @@ func (c *userServiceClient) RepayLoan(ctx context.Context, in *BankAmountRequest
 	return out, nil
 }
 
+func (c *userServiceClient) GetBankCard(ctx context.Context, in *GetBankCardRequest, opts ...grpc.CallOption) (*BankCardResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BankCardResponse)
+	err := c.cc.Invoke(ctx, UserService_GetBankCard_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) IssueBankCard(ctx context.Context, in *IssueBankCardRequest, opts ...grpc.CallOption) (*BankCardResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BankCardResponse)
+	err := c.cc.Invoke(ctx, UserService_IssueBankCard_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SetBankCardCover(ctx context.Context, in *SetBankCardCoverRequest, opts ...grpc.CallOption) (*BankCardResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BankCardResponse)
+	err := c.cc.Invoke(ctx, UserService_SetBankCardCover_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) GetBankSettings(ctx context.Context, in *GetBankSettingsRequest, opts ...grpc.CallOption) (*GetBankSettingsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetBankSettingsResponse)
@@ -3041,6 +3081,13 @@ type UserServiceServer interface {
 	TakeDeposit(context.Context, *BankAmountRequest) (*BankMoveResponse, error)
 	TakeLoan(context.Context, *BankAmountRequest) (*BankMoveResponse, error)
 	RepayLoan(context.Context, *BankAmountRequest) (*BankMoveResponse, error)
+	// The virtual card of the caller; the response has none before it is
+	// issued.
+	GetBankCard(context.Context, *GetBankCardRequest) (*BankCardResponse, error)
+	// Issues the caller a card with a number of its own; a page has one, and
+	// asking again gives it.
+	IssueBankCard(context.Context, *IssueBankCardRequest) (*BankCardResponse, error)
+	SetBankCardCover(context.Context, *SetBankCardCoverRequest) (*BankCardResponse, error)
 	// For the administrators (PermissionDenied for others): the rates and
 	// limits of the bank, and how it does.
 	GetBankSettings(context.Context, *GetBankSettingsRequest) (*GetBankSettingsResponse, error)
@@ -3622,6 +3669,15 @@ func (UnimplementedUserServiceServer) TakeLoan(context.Context, *BankAmountReque
 }
 func (UnimplementedUserServiceServer) RepayLoan(context.Context, *BankAmountRequest) (*BankMoveResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RepayLoan not implemented")
+}
+func (UnimplementedUserServiceServer) GetBankCard(context.Context, *GetBankCardRequest) (*BankCardResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetBankCard not implemented")
+}
+func (UnimplementedUserServiceServer) IssueBankCard(context.Context, *IssueBankCardRequest) (*BankCardResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method IssueBankCard not implemented")
+}
+func (UnimplementedUserServiceServer) SetBankCardCover(context.Context, *SetBankCardCoverRequest) (*BankCardResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetBankCardCover not implemented")
 }
 func (UnimplementedUserServiceServer) GetBankSettings(context.Context, *GetBankSettingsRequest) (*GetBankSettingsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetBankSettings not implemented")
@@ -6455,6 +6511,60 @@ func _UserService_RepayLoan_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetBankCard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBankCardRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetBankCard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetBankCard_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetBankCard(ctx, req.(*GetBankCardRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_IssueBankCard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IssueBankCardRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).IssueBankCard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_IssueBankCard_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).IssueBankCard(ctx, req.(*IssueBankCardRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SetBankCardCover_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetBankCardCoverRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetBankCardCover(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetBankCardCover_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetBankCardCover(ctx, req.(*SetBankCardCoverRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetBankSettings_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetBankSettingsRequest)
 	if err := dec(in); err != nil {
@@ -7727,6 +7837,18 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RepayLoan",
 			Handler:    _UserService_RepayLoan_Handler,
+		},
+		{
+			MethodName: "GetBankCard",
+			Handler:    _UserService_GetBankCard_Handler,
+		},
+		{
+			MethodName: "IssueBankCard",
+			Handler:    _UserService_IssueBankCard_Handler,
+		},
+		{
+			MethodName: "SetBankCardCover",
+			Handler:    _UserService_SetBankCardCover_Handler,
 		},
 		{
 			MethodName: "GetBankSettings",

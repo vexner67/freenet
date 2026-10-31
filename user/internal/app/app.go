@@ -254,6 +254,7 @@ func (a *App) build(cfg config.Config) error {
 			Mines:       service.NewMineService(store.users, store.mine, store.wallets, store.tx, admins),
 			Firms:       a.firms,
 			Banks:       a.banks,
+			Cards:       service.NewCardService(store.cards),
 			Holdems:     a.holdems,
 			BetEvents:   service.NewBetEventService(store.users, store.betEvents, store.wallets, store.tx, admins),
 			Paid:        service.NewPaidService(store.users, store.wallets, store.purchases, store.economy, permissions, store.tx),
@@ -337,6 +338,9 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		userv1.UserService_TakeDeposit_FullMethodName: cfg.BankLimits,
 		userv1.UserService_TakeLoan_FullMethodName:    cfg.BankLimits,
 		userv1.UserService_RepayLoan_FullMethodName:   cfg.BankLimits,
+
+		userv1.UserService_IssueBankCard_FullMethodName:    cfg.BankLimits,
+		userv1.UserService_SetBankCardCover_FullMethodName: cfg.BankLimits,
 
 		// A visit is a row in the guests of another page.
 		userv1.UserService_VisitPage_FullMethodName: cfg.VisitLimits,
@@ -452,7 +456,8 @@ type storage struct {
 	// firms is the economy of the enterprises and its rules.
 	firms service.FirmRepository
 	// bank is the bank of the site and the accounts of pages.
-	bank service.BankRepository
+	bank  service.BankRepository
+	cards service.CardRepository
 	// rockets are the rounds of "Ракетка".
 	rockets service.RocketRepository
 	// pokers are the table and the hands of "Покер".
@@ -513,6 +518,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			mine:         inmem.NewMineRepository(),
 			firms:        inmem.NewFirmRepository(),
 			bank:         inmem.NewBankRepository(),
+			cards:        inmem.NewCardRepository(),
 			rockets:      inmem.NewRocketRepository(),
 			pokers:       inmem.NewPokerRepository(),
 			holdems:      inmem.NewHoldemRepository(),
@@ -575,6 +581,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		mine:         postgres.NewMineRepository(a.pool),
 		firms:        postgres.NewFirmRepository(a.pool),
 		bank:         postgres.NewBankRepository(a.pool),
+		cards:        postgres.NewCardRepository(a.pool),
 		rockets:      postgres.NewRocketRepository(a.pool),
 		pokers:       postgres.NewPokerRepository(a.pool),
 		holdems:      postgres.NewHoldemRepository(a.pool),

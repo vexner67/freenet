@@ -127,6 +127,13 @@ var bankRefused = []error{
 }
 
 func toStatus(err error) (*status.Status, bool) {
+	if errors.Is(err, user.ErrCardCover) {
+		return status.New(codes.InvalidArgument, user.ErrCardCover.Error()), true
+	}
+	if errors.Is(err, user.ErrNoCard) {
+		return status.New(codes.FailedPrecondition, user.ErrNoCard.Error()), true
+	}
+
 	for _, invalid := range invalidStickerPack {
 		if errors.Is(err, invalid) {
 			return status.New(codes.InvalidArgument, invalid.Error()), true

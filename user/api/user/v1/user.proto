@@ -441,6 +441,13 @@ service UserService {
   rpc TakeDeposit(BankAmountRequest) returns (BankMoveResponse);
   rpc TakeLoan(BankAmountRequest) returns (BankMoveResponse);
   rpc RepayLoan(BankAmountRequest) returns (BankMoveResponse);
+  // The virtual card of the caller; the response has none before it is
+  // issued.
+  rpc GetBankCard(GetBankCardRequest) returns (BankCardResponse);
+  // Issues the caller a card with a number of its own; a page has one, and
+  // asking again gives it.
+  rpc IssueBankCard(IssueBankCardRequest) returns (BankCardResponse);
+  rpc SetBankCardCover(SetBankCardCoverRequest) returns (BankCardResponse);
   // For the administrators (PermissionDenied for others): the rates and
   // limits of the bank, and how it does.
   rpc GetBankSettings(GetBankSettingsRequest) returns (GetBankSettingsResponse);
@@ -2984,6 +2991,26 @@ message BankMoveResponse {
   int64 votes = 1;
   int64 balance = 2;
   BankState bank = 3;
+}
+
+// BankCard is the virtual card of a page: sixteen digits, the name of its
+// cover and when it was issued.
+message BankCard {
+  string number = 1;
+  string cover = 2;
+  google.protobuf.Timestamp issued_at = 3;
+}
+
+message GetBankCardRequest {}
+
+message IssueBankCardRequest {}
+
+message SetBankCardCoverRequest {
+  string cover = 1;
+}
+
+message BankCardResponse {
+  BankCard card = 1;
 }
 
 message GetBankSettingsRequest {}

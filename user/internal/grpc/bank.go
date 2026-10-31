@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -147,4 +148,69 @@ func (h *UserHandler) SetBankSettings(ctx context.Context, req *userv1.SetBankSe
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+// CardService is the virtual cards of the pages.
+type CardService interface {
+	Card(ctx context.Context, userID uuid.UUID) (user.BankCard, error)
+	Issue(ctx context.Context, userID uuid.UUID, now time.Time) (user.BankCard, error)
+	SetCover(ctx context.Context, userID uuid.UUID, cover user.CardCover) (user.BankCard, error)
+}
+
+func toProtoBankCard(c user.BankCard) *userv1.BankCardResponse {
+	return &userv1.BankCardResponse{Card: &userv1.BankCard{
+		Number:   c.Number().String(),
+		Cover:    c.Cover().String(),
+		IssuedAt: timestamppb.New(c.IssuedAt()),
+	}}
+}
+
+func (h *UserHandler) GetBankCard(ctx context.Context, _ *userv1.GetBankCardRequest) (*userv1.BankCardResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := h.cards.Card(ctx, userID)
+	if errors.Is(err, user.ErrNoCard) {
+		return &userv1.BankCardResponse{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return toProtoBankCard(c), nil
+}
+
+func (h *UserHandler) IssueBankCard(ctx context.Context, _ *userv1.IssueBankCardRequest) (*userv1.BankCardResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := h.cards.Issue(ctx, userID, time.Now())
+	if err != nil {
+		return nil, err
+	}
+
+	return toProtoBankCard(c), nil
+}
+
+func (h *UserHandler) SetBankCardCover(ctx context.Context, req *userv1.SetBankCardCoverRequest) (*userv1.BankCardResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	cover, err := user.NewCardCover(req.GetCover())
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := h.cards.SetCover(ctx, userID, cover)
+	if err != nil {
+		return nil, err
+	}
+
+	return toProtoBankCard(c), nil
 }
