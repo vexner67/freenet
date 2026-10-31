@@ -71,6 +71,15 @@ func TestNewPetShop(t *testing.T) {
 	if _, err := user.NewPetShop(def.Prices(), -1, 3, 10); !errors.Is(err, user.ErrPetShopPrice) {
 		t.Fatalf("a meal below zero: %v", err)
 	}
+	if _, err := def.WithCasesADay(0); !errors.Is(err, user.ErrPetShopCases) {
+		t.Errorf("WithCasesADay(0) = %v, want ErrPetShopCases", err)
+	}
+	if _, err := def.WithCasesADay(user.MaxPetCasesADay + 1); !errors.Is(err, user.ErrPetShopCases) {
+		t.Errorf("WithCasesADay(too many) = %v, want ErrPetShopCases", err)
+	}
+	if shop, err := def.WithCasesADay(50); err != nil || shop.CasesADay() != 50 {
+		t.Errorf("WithCasesADay(50) = %v, %v", shop.CasesADay(), err)
+	}
 	if _, err := user.NewPetShop(def.Prices(), 5, 3, 0); !errors.Is(err, user.ErrPetShopFights) {
 		t.Fatalf("no fights: %v", err)
 	}

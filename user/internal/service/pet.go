@@ -85,8 +85,9 @@ type PetFought struct {
 // PetDrop is the keeper after a case and the votes after it, 0 when
 // nothing was paid.
 type PetDrop struct {
-	Keeper  *user.PetKeeper
-	Balance int64
+	Keeper    *user.PetKeeper
+	Balance   int64
+	CasesADay int
 }
 
 // PetBattleTurn is a fight after a move and the pet that leads it; Fought
@@ -319,7 +320,9 @@ func (s *PetService) OpenCase(ctx context.Context, userID uuid.UUID, c user.PetC
 			return errs.Wrap("s.keepers.LockKeeper", err)
 		}
 
-		if drop.Keeper, err = k.Opened(c, withShards, rarity, kind, now); err != nil {
+		drop.CasesADay = shop.CasesADay()
+
+		if drop.Keeper, err = k.Opened(c, withShards, shop.CasesADay(), rarity, kind, now); err != nil {
 			return errs.Wrap("k.Opened", err)
 		}
 

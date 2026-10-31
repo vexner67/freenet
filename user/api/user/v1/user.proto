@@ -3158,6 +3158,8 @@ message PetShop {
   int32 fights = 4;
   // What each case costs.
   map<string, int64> cases = 5;
+  // The cases a keeper opens a day; 0 in a request leaves them as they are.
+  int32 cases_a_day = 6;
 }
 
 // PetStats are the stats of a pet, or what something adds to them.

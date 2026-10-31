@@ -287,15 +287,15 @@ func TestPetKeeper(t *testing.T) {
 	t.Parallel()
 
 	k := user.NewPetKeeper()
-	if _, err := k.Opened(user.PetCaseGold, true, 0, 0, fightNow); !errors.Is(err, user.ErrNotEnoughShards) {
+	if _, err := k.Opened(user.PetCaseGold, true, user.DefaultPetCasesADay, 0, 0, fightNow); !errors.Is(err, user.ErrNotEnoughShards) {
 		t.Fatalf("a case without shards: %v", err)
 	}
 
-	opened, err := k.Opened(user.PetCaseBronze, false, 0, 0, fightNow)
+	opened, err := k.Opened(user.PetCaseBronze, false, user.DefaultPetCasesADay, 0, 0, fightNow)
 	if err != nil || opened.Drop() != user.PetCat || opened.DropCase() != user.PetCaseBronze || opened.Pity() != 1 || opened.CasesAt(fightNow) != 1 {
 		t.Fatalf("Opened = %+v, %v", opened.State(), err)
 	}
-	if _, err = opened.Opened(user.PetCaseBronze, false, 0, 0, fightNow); !errors.Is(err, user.ErrPetDropWaiting) {
+	if _, err = opened.Opened(user.PetCaseBronze, false, user.DefaultPetCasesADay, 0, 0, fightNow); !errors.Is(err, user.ErrPetDropWaiting) {
 		t.Fatalf("a case with a pet waiting: %v", err)
 	}
 
@@ -309,7 +309,7 @@ func TestPetKeeper(t *testing.T) {
 
 	// The PetPity-th case without a legendary pet gives one.
 	unlucky := user.RestorePetKeeper(user.PetKeeperState{Pity: user.PetPity - 1, Shards: 60})
-	lucky, err := unlucky.Opened(user.PetCaseGold, true, 0, 1, fightNow)
+	lucky, err := unlucky.Opened(user.PetCaseGold, true, user.DefaultPetCasesADay, 0, 1, fightNow)
 	if err != nil || lucky.Drop() != user.PetPhoenix || lucky.Pity() != 0 || lucky.Shards() != 0 {
 		t.Fatalf("the pity: %+v, %v", lucky.State(), err)
 	}
@@ -319,10 +319,10 @@ func TestPetKeeper(t *testing.T) {
 	}
 
 	full := user.RestorePetKeeper(user.PetKeeperState{CasesOn: user.BonusDay(fightNow), Cases: user.MaxPetCasesADay})
-	if _, err = full.Opened(user.PetCaseBronze, false, 0, 0, fightNow); !errors.Is(err, user.ErrPetCasesOver) {
+	if _, err = full.Opened(user.PetCaseBronze, false, user.DefaultPetCasesADay, 0, 0, fightNow); !errors.Is(err, user.ErrPetCasesOver) {
 		t.Fatalf("the cases of a day: %v", err)
 	}
-	if _, err = full.Opened(user.PetCaseBronze, false, 0, 0, fightNow.Add(24*time.Hour)); err != nil {
+	if _, err = full.Opened(user.PetCaseBronze, false, user.DefaultPetCasesADay, 0, 0, fightNow.Add(24*time.Hour)); err != nil {
 		t.Fatalf("the cases of the next day: %v", err)
 	}
 }

@@ -166,7 +166,8 @@ func toProtoPetShop(s user.PetShop) *userv1.PetShop {
 		cases[c.String()] = price
 	}
 
-	return &userv1.PetShop{Prices: prices, Cases: cases, Meal: s.Meal(), Win: s.Win(), Fights: int32(s.Fights())} //nolint:gosec // at most user.MaxPetFightsADay
+	//nolint:gosec // at most user.MaxPetFightsADay and user.MaxPetCasesADay
+	return &userv1.PetShop{Prices: prices, Cases: cases, Meal: s.Meal(), Win: s.Win(), Fights: int32(s.Fights()), CasesADay: int32(s.CasesADay())}
 }
 
 //nolint:gosec // the stats of a pet are small
@@ -226,8 +227,18 @@ func fromProtoPetShop(s *userv1.PetShop) (user.PetShop, error) {
 	}
 
 	shop, err := user.NewPetShop(prices, s.GetMeal(), s.GetWin(), int(s.GetFights()))
-	if err != nil || s.GetCases() == nil {
-		return shop, err
+	if err != nil {
+		return user.PetShop{}, err
+	}
+
+	if s.GetCasesADay() != 0 {
+		if shop, err = shop.WithCasesADay(int(s.GetCasesADay())); err != nil {
+			return user.PetShop{}, err
+		}
+	}
+
+	if s.GetCases() == nil {
+		return shop, nil
 	}
 
 	cases := make(map[user.PetCase]int64, len(s.GetCases()))
@@ -359,10 +370,10 @@ func toProtoPetBattle(b *user.PetBattle) *userv1.PetBattle {
 }
 
 //nolint:gosec // shards and cases are small
-func toProtoPetKeeper(k *user.PetKeeper, now time.Time) *userv1.PetKeeper {
+func toProtoPetKeeper(k *user.PetKeeper, casesADay int, now time.Time) *userv1.PetKeeper {
 	return &userv1.PetKeeper{
 		Shards: int32(k.Shards()), Pity: int32(k.Pity()), PityLimit: user.PetPity,
-		Cases: int32(k.CasesAt(now)), CasesLimit: user.MaxPetCasesADay,
+		Cases: int32(k.CasesAt(now)), CasesLimit: int32(casesADay),
 		DropKind: k.Drop().String(), DropCase: k.DropCase().String(),
 	}
 }
@@ -394,7 +405,7 @@ func (h *UserHandler) GetPet(ctx context.Context, _ *userv1.GetPetRequest) (*use
 	}
 
 	now := time.Now()
-	state := &userv1.PetState{Shop: toProtoPetShop(shop), Pets: toProtoPets(pets, now), Keeper: toProtoPetKeeper(keeper, now)}
+	state := &userv1.PetState{Shop: toProtoPetShop(shop), Pets: toProtoPets(pets, now), Keeper: toProtoPetKeeper(keeper, shop.CasesADay(), now)}
 	for _, b := range battles {
 		state.Battles = append(state.Battles, toProtoPetBattle(b))
 	}
@@ -670,7 +681,7 @@ func (h *UserHandler) OpenPetCase(ctx context.Context, req *userv1.OpenPetCaseRe
 		return nil, err
 	}
 
-	return &userv1.OpenPetCaseResponse{Keeper: toProtoPetKeeper(drop.Keeper, now), Balance: drop.Balance}, nil
+	return &userv1.OpenPetCaseResponse{Keeper: toProtoPetKeeper(drop.Keeper, drop.CasesADay, now), Balance: drop.Balance}, nil
 }
 
 func (h *UserHandler) TakePetDrop(ctx context.Context, req *userv1.TakePetDropRequest) (*userv1.PetCareResponse, error) {
@@ -705,7 +716,12 @@ func (h *UserHandler) LeavePetDrop(ctx context.Context, _ *userv1.LeavePetDropRe
 		return nil, err
 	}
 
-	return &userv1.PetKeeperResponse{Keeper: toProtoPetKeeper(k, time.Now())}, nil
+	shop, err := h.pets.Shop(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.PetKeeperResponse{Keeper: toProtoPetKeeper(k, shop.CasesADay(), time.Now())}, nil
 }
 
 func (h *UserHandler) BuyPetItem(ctx context.Context, req *userv1.BuyPetItemRequest) (*userv1.PetCareResponse, error) {

@@ -232,7 +232,7 @@ func TestPetRepository(t *testing.T) {
 	if _, err = pets.LockKeeper(ctx, uuid.New()); !errors.Is(err, user.ErrNotFound) {
 		t.Fatalf("LockKeeper of nobody: %v", err)
 	}
-	keeper, err := user.NewPetKeeper().Opened(user.PetCaseSilver, false, 999, 0, now)
+	keeper, err := user.NewPetKeeper().Opened(user.PetCaseSilver, false, user.DefaultPetCasesADay, 999, 0, now)
 	if err != nil {
 		t.Fatal(err)
 	}

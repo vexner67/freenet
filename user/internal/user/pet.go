@@ -91,7 +91,7 @@ const (
 	PetGame        = 30
 	// PetGameHunger is the satiety a game takes.
 	PetGameHunger = 5
-	PetPlayEvery  = 30 * time.Minute
+	PetPlayEvery  = 10 * time.Minute
 	// PetFightNeeds is the satiety and joy a fight needs, PetFightTakes —
 	// what it takes.
 	PetFightNeeds = 15
@@ -136,6 +136,7 @@ var (
 	ErrNoPetOpponent  = errors.New("there is nobody to fight")
 	ErrPetShopPrice   = errors.New("the prices of the pet shop must be from 0")
 	ErrPetShopFights  = errors.New("the fights of a day must be from 1 to 1000")
+	ErrPetShopCases   = errors.New("the cases of a day must be from 1 to 1000")
 	ErrNotInPetShop   = errors.New("the shop does not sell this pet")
 	ErrUnknownPetCase = errors.New("unknown case")
 	ErrUnknownPetItem = errors.New("unknown pet clothes")
@@ -403,13 +404,15 @@ func PetLevelExperience(level int) int64 {
 }
 
 // PetShop is what pets cost: to adopt each kind and a meal; what a won
-// fight brings and how many fights a pet has a day.
+// fight brings, how many fights a pet has a day and how many cases its
+// keeper opens a day.
 type PetShop struct {
-	prices map[PetKind]int64
-	cases  map[PetCase]int64
-	meal   int64
-	win    int64
-	fights int
+	prices    map[PetKind]int64
+	cases     map[PetCase]int64
+	meal      int64
+	win       int64
+	fights    int
+	casesADay int
 }
 
 // defaultCases are what the cases cost until the administrators say.
@@ -434,7 +437,7 @@ func NewPetShop(prices map[PetKind]int64, meal, win int64, fights int) (PetShop,
 		return PetShop{}, ErrPetShopFights
 	}
 
-	return PetShop{prices: kept, cases: maps.Clone(defaultCases), meal: meal, win: win, fights: fights}, nil
+	return PetShop{prices: kept, cases: maps.Clone(defaultCases), meal: meal, win: win, fights: fights, casesADay: DefaultPetCasesADay}, nil
 }
 
 // WithCases is the shop with the cases at prices, which holds every case.
@@ -452,14 +455,25 @@ func (s PetShop) WithCases(prices map[PetCase]int64) (PetShop, error) {
 	return s, nil
 }
 
+// WithCasesADay is the shop with n cases a day for a keeper.
+func (s PetShop) WithCasesADay(n int) (PetShop, error) {
+	if n < 1 || n > MaxPetCasesADay {
+		return PetShop{}, ErrPetShopCases
+	}
+	s.casesADay = n
+
+	return s, nil
+}
+
 // DefaultPetShop is the shop until the administrators set one.
 func DefaultPetShop() PetShop {
 	return PetShop{
-		prices: map[PetKind]int64{PetCat: 100, PetDog: 100, PetHamster: 50, PetDragon: 500},
-		cases:  maps.Clone(defaultCases),
-		meal:   5,
-		win:    3,
-		fights: 10,
+		prices:    map[PetKind]int64{PetCat: 100, PetDog: 100, PetHamster: 50, PetDragon: 500},
+		cases:     maps.Clone(defaultCases),
+		meal:      5,
+		win:       3,
+		fights:    10,
+		casesADay: DefaultPetCasesADay,
 	}
 }
 
@@ -504,6 +518,10 @@ func (s PetShop) Win() int64 {
 
 func (s PetShop) Fights() int {
 	return s.fights
+}
+
+func (s PetShop) CasesADay() int {
+	return s.casesADay
 }
 
 // PetState is all a pet keeps: the feelings are what they were at

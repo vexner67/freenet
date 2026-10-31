@@ -40,6 +40,9 @@ type storedPetShop struct {
 	Meal   int64            `json:"meal"`
 	Win    int64            `json:"win"`
 	Fights int              `json:"fights"`
+	// CasesADay is missing from a shop set before the administrators could
+	// say: the default then.
+	CasesADay int `json:"casesADay,omitempty"`
 }
 
 const petShopQuery = `
@@ -68,8 +71,18 @@ func (r *PetRepository) Shop(ctx context.Context) (user.PetShop, error) {
 	}
 
 	shop, err := user.NewPetShop(prices, stored.Meal, stored.Win, stored.Fights)
-	if err != nil || stored.Cases == nil {
-		return shop, errs.Wrap("user.NewPetShop", err)
+	if err != nil {
+		return user.PetShop{}, errs.Wrap("user.NewPetShop", err)
+	}
+
+	if stored.CasesADay != 0 {
+		if shop, err = shop.WithCasesADay(stored.CasesADay); err != nil {
+			return user.PetShop{}, errs.Wrap("shop.WithCasesADay", err)
+		}
+	}
+
+	if stored.Cases == nil {
+		return shop, nil
 	}
 
 	cases := make(map[user.PetCase]int64, len(stored.Cases))
@@ -88,7 +101,7 @@ const setPetShopQuery = `
 `
 
 func (r *PetRepository) SetShop(ctx context.Context, shop user.PetShop) error {
-	stored := storedPetShop{Prices: map[string]int64{}, Cases: map[string]int64{}, Meal: shop.Meal(), Win: shop.Win(), Fights: shop.Fights()}
+	stored := storedPetShop{Prices: map[string]int64{}, Cases: map[string]int64{}, Meal: shop.Meal(), Win: shop.Win(), Fights: shop.Fights(), CasesADay: shop.CasesADay()}
 	for kind, price := range shop.Prices() {
 		stored.Prices[kind.String()] = price
 	}

@@ -5,11 +5,12 @@ import (
 	"time"
 )
 
-// The rules of cases: the case that gives a legendary pet for sure and
-// the cases a day.
+// The rules of cases: the case that gives a legendary pet for sure, the
+// cases a day until the administrators say and the most they may allow.
 const (
-	PetPity         = 40
-	MaxPetCasesADay = 20
+	PetPity             = 40
+	DefaultPetCasesADay = 20
+	MaxPetCasesADay     = 1000
 )
 
 var (
@@ -81,14 +82,14 @@ func (k *PetKeeper) CasesAt(now time.Time) int {
 }
 
 // Opened is the keeper after the case c is opened at now, for shards with
-// withShards: its pet waits to be taken or left. rarity and kind draw it
-// as PetCase.Draw does. ErrPetDropWaiting, ErrPetCasesOver,
-// ErrNotEnoughShards.
-func (k *PetKeeper) Opened(c PetCase, withShards bool, rarity, kind int64, now time.Time) (*PetKeeper, error) {
+// withShards, when a keeper has casesADay a day: its pet waits to be taken
+// or left. rarity and kind draw it as PetCase.Draw does. ErrPetDropWaiting,
+// ErrPetCasesOver, ErrNotEnoughShards.
+func (k *PetKeeper) Opened(c PetCase, withShards bool, casesADay int, rarity, kind int64, now time.Time) (*PetKeeper, error) {
 	switch {
 	case k.s.Drop != "":
 		return nil, ErrPetDropWaiting
-	case k.CasesAt(now) >= MaxPetCasesADay:
+	case k.CasesAt(now) >= casesADay:
 		return nil, ErrPetCasesOver
 	case withShards && k.s.Shards < c.Shards():
 		return nil, ErrNotEnoughShards

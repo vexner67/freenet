@@ -20254,7 +20254,9 @@ type PetShop struct {
 	Win    int64            `protobuf:"varint,3,opt,name=win,proto3" json:"win,omitempty"`
 	Fights int32            `protobuf:"varint,4,opt,name=fights,proto3" json:"fights,omitempty"`
 	// What each case costs.
-	Cases         map[string]int64 `protobuf:"bytes,5,rep,name=cases,proto3" json:"cases,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	Cases map[string]int64 `protobuf:"bytes,5,rep,name=cases,proto3" json:"cases,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	// The cases a keeper opens a day; 0 in a request leaves them as they are.
+	CasesADay     int32 `protobuf:"varint,6,opt,name=cases_a_day,json=casesADay,proto3" json:"cases_a_day,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -20322,6 +20324,13 @@ func (x *PetShop) GetCases() map[string]int64 {
 		return x.Cases
 	}
 	return nil
+}
+
+func (x *PetShop) GetCasesADay() int32 {
+	if x != nil {
+		return x.CasesADay
+	}
+	return 0
 }
 
 // PetStats are the stats of a pet, or what something adds to them.
@@ -26831,13 +26840,14 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\bpet_kind\x18\x03 \x01(\tR\apetKind\x12\x19\n" +
 	"\bpet_name\x18\x04 \x01(\tR\apetName\">\n" +
 	"\x0fListTopResponse\x12+\n" +
-	"\aentries\x18\x01 \x03(\v2\x11.user.v1.TopEntryR\aentries\"\xa5\x02\n" +
+	"\aentries\x18\x01 \x03(\v2\x11.user.v1.TopEntryR\aentries\"\xc5\x02\n" +
 	"\aPetShop\x124\n" +
 	"\x06prices\x18\x01 \x03(\v2\x1c.user.v1.PetShop.PricesEntryR\x06prices\x12\x12\n" +
 	"\x04meal\x18\x02 \x01(\x03R\x04meal\x12\x10\n" +
 	"\x03win\x18\x03 \x01(\x03R\x03win\x12\x16\n" +
 	"\x06fights\x18\x04 \x01(\x05R\x06fights\x121\n" +
-	"\x05cases\x18\x05 \x03(\v2\x1b.user.v1.PetShop.CasesEntryR\x05cases\x1a9\n" +
+	"\x05cases\x18\x05 \x03(\v2\x1b.user.v1.PetShop.CasesEntryR\x05cases\x12\x1e\n" +
+	"\vcases_a_day\x18\x06 \x01(\x05R\tcasesADay\x1a9\n" +
 	"\vPricesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x03R\x05value:\x028\x01\x1a8\n" +
