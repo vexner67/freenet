@@ -6,10 +6,12 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/vexner67/freenet/gateway/internal/model"
+	"github.com/vexner67/freenet/pkg/pubsub"
 )
 
 type Auth interface {
@@ -586,36 +588,41 @@ type Previews interface {
 }
 
 type api struct {
-	auth              Auth
-	users             Users
-	posts             Posts
-	media             Media
-	notifications     Notifications
-	messages          Messages
-	chats             Chats
-	clubs             Clubs
-	topics            Topics
-	albums            Albums
-	faves             Faves
-	gifts             Gifts
-	stickers          Stickers
-	votes             Votes
-	ads               Ads
-	decors            Decor
-	primes            Prime
-	casinos           Casino
-	mines             Mine
-	pets              Pets
-	firmsBackend      Firms
-	titles            Titles
-	banks             Bank
-	pokers            Poker
-	holdems           Holdem
-	bets              Bets
-	documents         Documents
-	articles          Articles
-	stories           Stories
-	canvas            Canvas
+	auth          Auth
+	users         Users
+	posts         Posts
+	media         Media
+	notifications Notifications
+	messages      Messages
+	chats         Chats
+	clubs         Clubs
+	topics        Topics
+	albums        Albums
+	faves         Faves
+	gifts         Gifts
+	stickers      Stickers
+	votes         Votes
+	ads           Ads
+	decors        Decor
+	primes        Prime
+	casinos       Casino
+	mines         Mine
+	pets          Pets
+	firmsBackend  Firms
+	titles        Titles
+	banks         Bank
+	pokers        Poker
+	holdems       Holdem
+	bets          Bets
+	documents     Documents
+	articles      Articles
+	stories       Stories
+	canvas        Canvas
+	// paints tells the open canvases of the cells just painted. A hub of
+	// this process is enough while there is one gateway; a second would
+	// show its pixels at the next reconnect.
+	paints            *pubsub.Hub[struct{}, canvasPaintRequest]
+	canvasStreams     atomic.Int64
 	dating            Dating
 	previews          Previews
 	logger            *slog.Logger
@@ -978,6 +985,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/me/pets/arena", a.getPetArena)
 	mux.HandleFunc("POST /api/v1/me/pets/arena", a.runPetArena)
 	mux.HandleFunc("GET /api/v1/canvas", a.getCanvas)
+	mux.HandleFunc("GET "+canvasLivePath, a.canvasLive)
 	mux.HandleFunc("POST /api/v1/canvas/cells", a.paintCanvas)
 	mux.HandleFunc("GET /api/v1/canvas/cells/{x}/{y}", a.getCanvasCell)
 	mux.HandleFunc("GET /api/v1/me/dating", a.getDating)

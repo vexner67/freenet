@@ -156,14 +156,14 @@ func secureHeaders(next http.Handler) http.Handler {
 // a photo or a document over a slow connection.
 const uploadReadTimeout = time.Minute
 
-// timeout bounds every request but the event stream, which lives as long
-// as the page that opened it. An upload counts its time from when its body
+// timeout bounds every request but the streams, which live as long as the
+// page that opened them. An upload counts its time from when its body
 // is read: over a slow connection reading a photo took the whole time, and
 // it failed with 503 before media was asked.
 func timeout(d time.Duration) middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == eventsPath {
+			if isStream(r.URL.Path) {
 				next.ServeHTTP(w, r)
 				return
 			}

@@ -283,7 +283,12 @@ func (p *Pets) Set(ctx context.Context, accessToken string, shop model.PetShop) 
 		return err
 	}
 
-	req := &userv1.SetPetSettingsRequest{Shop: &userv1.PetShop{Prices: shop.Prices, Cases: shop.Cases, Meal: shop.Meal, Win: shop.Win, Fights: fights}}
+	casesADay, err := int32Of(shop.CasesADay, "cases a day")
+	if err != nil {
+		return err
+	}
+
+	req := &userv1.SetPetSettingsRequest{Shop: &userv1.PetShop{Prices: shop.Prices, Cases: shop.Cases, Meal: shop.Meal, Win: shop.Win, Fights: fights, CasesADay: casesADay}}
 	if _, err = p.api.SetPetSettings(withToken(ctx, accessToken), req); err != nil {
 		return errs.Wrap("p.api.SetPetSettings", fromStatus(err))
 	}
@@ -292,7 +297,7 @@ func (p *Pets) Set(ctx context.Context, accessToken string, shop model.PetShop) 
 }
 
 func fromProtoPetShop(s *userv1.PetShop) model.PetShop {
-	return model.PetShop{Prices: s.GetPrices(), Cases: s.GetCases(), Meal: s.GetMeal(), Win: s.GetWin(), Fights: int(s.GetFights())}
+	return model.PetShop{Prices: s.GetPrices(), Cases: s.GetCases(), Meal: s.GetMeal(), Win: s.GetWin(), Fights: int(s.GetFights()), CasesADay: int(s.GetCasesADay())}
 }
 
 func fromProtoPetPower(s *userv1.PetStats) model.PetPower {

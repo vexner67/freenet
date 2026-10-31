@@ -6270,6 +6270,17 @@ paths:
                   cells: { type: string, format: byte }
                   size: { type: integer }
 
+  /api/v1/canvas/live:
+    get:
+      summary: Cells of the canvas as they are painted (WebSocket)
+      description: |
+        A public WebSocket: after the upgrade the server sends one JSON
+        object `{"x", "y", "color"}` for each painted cell. A close with
+        1013 asks to connect again later and read the canvas anew; the
+        page sends nothing.
+      security: []
+      responses:
+        "101": { description: Switching protocols }
   /api/v1/canvas/cells:
     post:
       summary: Paint a cell of the canvas
@@ -10963,7 +10974,7 @@ components:
             drinkEnergy: { type: integer, description: The energy a drink gives back }
     PetShop:
       type: object
-      description: What pets cost — the price of each kind the shop sells, of each case, a meal; the votes a won fight brings and the fights of a day.
+      description: What pets cost — the price of each kind the shop sells, of each case, a meal; the votes a won fight brings, the fights of a day and the cases a keeper opens a day.
       properties:
         prices:
           type: object
@@ -10975,6 +10986,7 @@ components:
         meal: { type: integer, format: int64 }
         win: { type: integer, format: int64 }
         fights: { type: integer }
+        casesADay: { type: integer, description: The cases a keeper opens a day; left out of a change it stays as it is }
     Title:
       type: object
       description: An award the administrators gave a page.

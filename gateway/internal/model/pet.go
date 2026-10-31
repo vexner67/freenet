@@ -34,6 +34,8 @@ type PetShop struct {
 	Meal   int64
 	Win    int64
 	Fights int
+	// CasesADay are the cases a keeper opens a day; 0 leaves them as they are.
+	CasesADay int
 }
 
 // Pet is a pet as it is now ("Питомец"): satiety and joy from 0 to 100,

@@ -84,7 +84,7 @@ func batchReads(reads []batchRead) ([]*url.URL, error) {
 	for _, read := range reads {
 		u, err := url.ParseRequestURI(read.Path)
 		if err != nil || u.Scheme != "" || u.Host != "" || !strings.HasPrefix(u.Path, "/api/v1/") ||
-			u.Path == batchPath || u.Path == eventsPath {
+			u.Path == batchPath || isStream(u.Path) {
 			return nil, failure.New(failure.InvalidArgument, "invalid path in the batch")
 		}
 

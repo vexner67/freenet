@@ -61,7 +61,7 @@ func (m *httpMetrics) observe(next http.Handler) http.Handler {
 
 		// The stream lives as long as its page: its duration would drown
 		// the others.
-		if r.URL.Path != eventsPath {
+		if !isStream(r.URL.Path) {
 			m.seconds.WithLabelValues(r.Method, route).Observe(time.Since(start).Seconds())
 		}
 	})

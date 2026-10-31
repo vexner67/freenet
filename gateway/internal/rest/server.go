@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/vexner67/freenet/pkg/pubsub"
 )
 
 const shutdownTimeout = 5 * time.Second
@@ -62,6 +63,7 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger, reg prometheu
 		articles:          backends.Articles,
 		stories:           backends.Stories,
 		canvas:            backends.Canvas,
+		paints:            pubsub.New[struct{}, canvasPaintRequest](canvasLag),
 		dating:            backends.Dating,
 		previews:          backends.Previews,
 		votes:             backends.Votes,

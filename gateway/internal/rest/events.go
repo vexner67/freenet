@@ -29,6 +29,11 @@ const (
 	closeTokenExpired websocket.StatusCode = 4001
 )
 
+// isStream tells the paths of the streams that live as long as their page.
+func isStream(path string) bool {
+	return path == eventsPath || path == canvasLivePath
+}
+
 // authMessage is what a connection sends first: the token rides in the
 // stream, not in the URL, which would put it in logs.
 type authMessage struct {

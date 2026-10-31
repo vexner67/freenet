@@ -18,6 +18,7 @@ require (
 	github.com/vexner67/freenet/pkg/logger v0.0.0-20261026132302-cfba5960a592
 	github.com/vexner67/freenet/pkg/metrics v0.0.0-20261026132302-cfba5960a592
 	github.com/vexner67/freenet/pkg/mtls v0.0.0-20261026132302-cfba5960a592
+	github.com/vexner67/freenet/pkg/pubsub v0.0.0-20261031152202-d5e747e8f4df
 	github.com/vexner67/freenet/pkg/reqid v0.0.0-20261026082750-549b2798a72c
 	github.com/vexner67/freenet/pkg/tracing v0.0.0-20261026132302-cfba5960a592
 	github.com/vexner67/freenet/post v0.0.0-20261026132302-cfba5960a592
@@ -42,6 +43,7 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.22.0 // indirect
+	github.com/redis/go-redis/v9 v9.22.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.72.0 // indirect
 	go.opentelemetry.io/otel v1.47.0 // indirect
@@ -52,6 +54,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.11.0 // indirect
+	go.uber.org/atomic v1.12.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260928230214-8a89bd6388cc // indirect

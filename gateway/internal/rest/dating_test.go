@@ -3,9 +3,13 @@ package rest_test
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 	"github.com/vexner67/freenet/gateway/internal/model"
 	"github.com/vexner67/freenet/gateway/internal/rest"
 )
@@ -64,6 +68,45 @@ func (f *fakeDating) Answer(_ context.Context, _, userID string, like bool) (boo
 	f.answer, f.like = userID, like
 
 	return like, nil
+}
+
+// A painted cell reaches a page that holds the canvas open, a guest's too.
+func TestCanvasLive(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	srv := httptest.NewServer(h.handler)
+	t.Cleanup(srv.Close)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	conn, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(srv.URL, "http")+"/api/v1/canvas/live", nil) //nolint:bodyclose // a 101 has none
+	if err != nil {
+		t.Fatalf("Dial: %v", err)
+	}
+	defer conn.CloseNow() //nolint:errcheck // the end of the test
+
+	got := make(chan struct{ X, Y, Color int }, 1)
+	go func() {
+		var cell struct{ X, Y, Color int }
+		if err := wsjson.Read(ctx, conn, &cell); err == nil {
+			got <- cell
+		}
+	}()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/canvas/cells", strings.NewReader(`{"x":1,"y":2,"color":3}`))
+	req.Header.Set("Authorization", "Bearer tok")
+	h.handler.ServeHTTP(httptest.NewRecorder(), req)
+
+	select {
+	case cell := <-got:
+		if cell.X != 1 || cell.Y != 2 || cell.Color != 3 {
+			t.Fatalf("cell = %+v", cell)
+		}
+	case <-ctx.Done():
+		t.Fatal("the cell never came")
+	}
 }
 
 func TestCanvas(t *testing.T) {

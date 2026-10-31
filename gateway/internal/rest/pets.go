@@ -42,11 +42,12 @@ type Pets interface {
 
 // petShopJSON is the shop; cases left out of a change keep their prices.
 type petShopJSON struct {
-	Prices map[string]int64 `json:"prices"`
-	Cases  map[string]int64 `json:"cases"`
-	Meal   int64            `json:"meal"`
-	Win    int64            `json:"win"`
-	Fights int              `json:"fights"`
+	Prices    map[string]int64 `json:"prices"`
+	Cases     map[string]int64 `json:"cases"`
+	Meal      int64            `json:"meal"`
+	Win       int64            `json:"win"`
+	Fights    int              `json:"fights"`
+	CasesADay int              `json:"casesADay"`
 }
 
 type petPowerJSON struct {
@@ -198,7 +199,7 @@ func toPetShopJSON(s model.PetShop) petShopJSON {
 		cases = map[string]int64{}
 	}
 
-	return petShopJSON{Prices: prices, Cases: cases, Meal: s.Meal, Win: s.Win, Fights: s.Fights}
+	return petShopJSON{Prices: prices, Cases: cases, Meal: s.Meal, Win: s.Win, Fights: s.Fights, CasesADay: s.CasesADay}
 }
 
 // names are list, [] for none.
