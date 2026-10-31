@@ -4,7 +4,9 @@
 // podium, as the boards of the games of the 2000s; each of the others has a
 // bar of how far they are from the leader. The strip over the board says how
 // far the viewer is from the place above them. The tabs change without a new
-// page, and what is on the screen stays until the next board is here.
+// page, and what is on the screen stays until the next board is here. Every
+// board takes the same place: three steps, a pet's line under each name, one
+// height of a row, so nothing moves when the tabs change or a number counts.
 
 import { api, currentUser, started } from './api.js';
 import { primeNameClass, topBoardName, topBoardText, topBoards, topValue } from './labels.js';
@@ -65,7 +67,7 @@ function who(entry) {
   ];
 }
 
-const petOf = (entry) => entry.pet && el('div', { className: 'top-pet' }, petImage(entry.pet.kind, 32), el('span', { textContent: entry.pet.name }));
+const petOf = (entry, size) => entry.pet && el('div', { className: 'top-pet' }, petImage(entry.pet.kind, size), el('span', { textContent: entry.pet.name }));
 
 // step is a place of the podium; its number counts up.
 function step(entry) {
@@ -78,17 +80,30 @@ function step(entry) {
       el('img', { className: 'top-step-photo', src: avatarURL(entry.user, 'small'), alt: '' }),
       el('img', { className: 'top-step-medal', src: medals[entry.place - 1], width: 22, height: 28, alt: String(entry.place), title: tr('{0} место', entry.place) })),
     el('div', { className: 'top-step-name' }, ...who(entry)),
-    petOf(entry),
+    el('div', { className: 'top-step-pet' }, petOf(entry, 32)),
     sum,
     el('div', { className: 'top-step-block', textContent: String(entry.place) }));
 }
 
+// freeStep is a place of the podium nobody has taken yet.
+function freeStep(place) {
+  return el('div', { className: `top-step top-step-${place} top-step-free` },
+    el('span', { className: 'top-step-face' }),
+    el('div', { className: 'top-step-name', textContent: '—' }),
+    el('div', { className: 'top-step-pet' }),
+    el('b', { className: 'top-step-sum', textContent: '—' }),
+    el('div', { className: 'top-step-block', textContent: String(place) }));
+}
+
 function showPodium(entries) {
   // Second, first and third, as a podium stands.
-  const places = [entries[1], entries[0], entries[2]].filter((entry) => entry && entry.place <= medals.length);
+  const places = [2, 1, 3].map((place) => {
+    const entry = entries[place - 1];
 
-  $('podium').replaceChildren(...places.map(step));
-  $('podium').hidden = places.length === 0;
+    return entry?.place <= medals.length ? step(entry) : freeStep(place);
+  });
+
+  $('podium').replaceChildren(...places);
 }
 
 function row(entry, leader) {
@@ -101,7 +116,7 @@ function row(entry, leader) {
     el('td', {},
       el('div', { className: 'top-person' },
         el('a', { href: pagePath(entry) }, el('img', { className: 'top-avatar', src: avatarURL(entry.user, 'small'), alt: '' })),
-        el('div', { className: 'top-who' }, ...who(entry), petOf(entry)))),
+        el('div', { className: 'top-who' }, ...who(entry), petOf(entry, 18)))),
     el('td', { className: 'top-value' },
       el('span', { textContent: topValue(board, entry.value) }),
       el('span', { className: 'top-bar' }, bar)));
@@ -149,7 +164,6 @@ function show(entries) {
   showHUD(entries);
   showPodium(entries);
   $('rows').replaceChildren(...rest.map((entry) => row(entry, leader)));
-  $('table').hidden = rest.length === 0;
   $('empty').hidden = entries.length > 0;
   $('top').hidden = false;
   $('top').classList.remove('top-loading');

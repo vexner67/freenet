@@ -6,20 +6,24 @@
 // (?act=interface: the style, the photos and the posts, the clock, where
 // the site opens and what the left menu shows); "Чёрный список" is a page of its own.
 // The votes, which were a tab here (?act=finance), are a page of their own
-// (/votes, votes.js); ?act=vouchers leads to "Админ-панель".
+// (/votes, votes.js); ?act=vouchers leads to "Админ-панель". The tabs change
+// without a new page; the plate over them says how protected the page is,
+// a saved form answers over the page and the fields not saved yet are yellow.
 
 import { api, currentUser } from './api.js';
 import { deviceName, formatDateTime, keyStateText, sessionsCount, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes, pushStateTexts } from './labels.js';
 import { $, applyInterface, deviceTheme, el, setDeviceTheme, profilePath, renderChrome, showError, hideError } from './layout.js';
-import { button, notify, openModal } from './modal.js';
+import { button, openModal } from './modal.js';
 import { openDeactivate } from './deactivate.js';
 import { disablePush, enablePush, pushState } from './push.js';
 import { ensureKey, exportKeys, forgetKeys, hasKeys, importKeys, KEY_READY, newCode, newKey } from './e2ee.js';
 import { showTwoFactor } from './twofactor.js';
+import { countTo, flash, floatText, gameIcon, helpButton } from './game.js';
+import { coins, dealTick, fanfare } from './sounds.js';
 import { tr } from './i18n.js';
 
 const error = $('error');
-const tabs = { security: initSecurity, privacy: initPrivacy, interface: initInterface };
+const tabs = { main: initMain, security: initSecurity, privacy: initPrivacy, interface: initInterface };
 const asked = new URLSearchParams(location.search).get('act');
 
 function fill(select, options, value) {
@@ -40,14 +44,34 @@ function onSubmit(form, save) {
 
     try {
       await save();
-      $('notice').hidden = false;
+      saved(button);
     } catch (e) {
       showError(error, e);
     } finally {
       button.disabled = false;
-      notify($('notice').hidden ? error : $('notice'));
     }
   });
+  form.addEventListener('input', (event) => event.target.closest?.('tr, .settings-block')?.classList.add('field-changed'));
+}
+
+// How long "Изменения сохранены" stays over the page.
+const noticeTime = 3000;
+let noticeTimer = 0;
+
+function showNotice() {
+  $('notice').hidden = false;
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(() => { $('notice').hidden = true; }, noticeTime);
+}
+
+// saved is what a saved form answers: the coins, the green button and the
+// yellow fields back to normal.
+function saved(from) {
+  showNotice();
+  coins();
+  flash(from);
+  floatText(from, tr('Сохранено'));
+  for (const field of document.querySelectorAll('.field-changed')) field.classList.remove('field-changed');
 }
 
 // initMain: the page address is the nickname, saved alone, so a profile
@@ -83,6 +107,7 @@ async function showPush(me) {
       showError(error, e);
     }
     await showPush(me);
+    checkSafety(me);
   };
 
   const actions = {
@@ -232,7 +257,10 @@ async function showKey(me, state) {
   }
 
   const ready = state === KEY_READY;
-  const again = (next) => showKey(me, next);
+  const again = (next) => {
+    checkSafety(me);
+    return showKey(me, next);
+  };
 
   $('key-state').textContent = ready ? tr('На этом устройстве есть ключ шифрования сообщений.') : keyStateText(state);
   $('key-actions').replaceChildren(...[
@@ -332,8 +360,83 @@ function openForget(me, done) {
 // say shows the notice above the tab: a bold line and what follows it.
 function say(title, ...rest) {
   $('notice').replaceChildren(el('b', { textContent: title }), ...(rest.length ? [el('br'), ...rest] : []));
-  $('notice').hidden = false;
-  notify($('notice'), title);
+  showNotice();
+  coins();
+  checkSafety(me);
+}
+
+// The sections of the plate over the tabs: what guards the page, where it is
+// set up, what it says of it.
+const guards = [
+  { key: 'address', icon: '/static/icons/game/profile-card.svg', act: 'main', name: () => tr('Адрес страницы') },
+  { key: 'push', icon: '/static/icons/game/megaphone.svg', act: 'main', name: () => tr('Уведомления') },
+  { key: 'twoFactor', icon: '/static/icons/game/lock.svg', act: 'security', name: () => tr('Вход с кодом') },
+  { key: 'key', icon: '/static/icons/game/vault.svg', act: 'security', name: () => tr('Ключ сообщений') },
+];
+
+let guardsDone = -1;
+
+// showSafety draws what is set up; a new step gets the coins, all of them a
+// fanfare.
+function showSafety(state) {
+  const done = guards.filter((g) => state[g.key]).length;
+  const share = done / guards.length;
+  const sum = el('b', { className: 'settings-hud-sum' });
+  const fill = el('span', { className: 'settings-hud-fill' });
+
+  fill.style.transform = `scaleX(${share})`;
+  countTo(sum, Math.max(0, guardsDone) * 25, share * 100, (value) => `${value} %`);
+  $('safety').replaceChildren(
+    el('div', { className: 'settings-hud-head' }, gameIcon('/static/icons/game/star.svg'), el('span', { textContent: tr('Защита страницы') }), sum,
+      helpButton(tr('Чем больше здесь отмечено, тем труднее чужому войти на вашу страницу и прочесть вашу переписку.'))),
+    el('span', { className: 'settings-hud-bar' }, fill),
+    el('div', { className: 'settings-hud-steps' }, ...guards.map((g) => el('button', {
+      className: state[g.key] ? 'settings-step done' : 'settings-step',
+      type: 'button',
+      onclick: () => openTab(g.act, true),
+    }, gameIcon(g.icon), g.name()))),
+  );
+  if (guardsDone >= 0 && done > guardsDone) {
+    if (done === guards.length) fanfare();
+    else coins();
+    flash($('safety'), 'gold');
+  }
+  guardsDone = done;
+}
+
+async function checkSafety(me) {
+  const [push, twoFactor] = await Promise.all([pushState().catch(() => ''), api.twoFactor().catch(() => null)]);
+
+  showSafety({ address: Boolean(me.nickname), push: push === 'on', twoFactor: Boolean(twoFactor?.enabled), key: hasKeys(me.id) });
+}
+
+const opened = new Set();
+
+// openTab shows a tab in place; what it needs is asked for the first time
+// only.
+function openTab(act, heard = false) {
+  for (const name of Object.keys(tabs)) {
+    $(name).hidden = name !== act;
+    $('tab-' + name).classList.toggle('active', name === act);
+  }
+  if (!opened.has(act)) {
+    opened.add(act);
+    tabs[act](me);
+  }
+  if (heard) {
+    dealTick();
+    history.replaceState(null, '', act === 'main' ? '/settings' : `/settings?act=${act}`);
+  }
+}
+
+function listenTabs() {
+  for (const name of Object.keys(tabs)) {
+    $('tab-' + name).addEventListener('click', (event) => {
+      if (event.button || event.metaKey || event.ctrlKey || event.shiftKey) return;
+      event.preventDefault();
+      openTab(name, true);
+    });
+  }
 }
 
 const me = await currentUser().catch(() => null);
@@ -350,8 +453,8 @@ if (asked === 'vouchers') {
   const act = Object.hasOwn(tabs, asked) ? asked : 'main';
 
   renderChrome(me);
-  $('tab-' + act).classList.add('active');
-  $(act).hidden = false;
-  (tabs[act] ?? initMain)(me);
+  listenTabs();
+  openTab(act);
+  checkSafety(me);
   $('loading').hidden = true;
 }

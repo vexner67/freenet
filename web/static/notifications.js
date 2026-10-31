@@ -5,7 +5,9 @@
 // from the menu with nothing unread, the page shows the archive at once.
 // The guests of the page are here too: those who came since the last look
 // above the unread notifications, all of the last 30 days above the
-// archive. A subscriber of Prime with "Невидимка" leaves no trace.
+// archive. A subscriber of Prime with "Невидимка" leaves no trace. Each row
+// wears the icon of what happened and opens by a press anywhere; the plates
+// over the tabs filter what is shown, and days are told apart by strips.
 
 import { photoPath } from './albums.js';
 import { api, currentUser, started } from './api.js';
@@ -14,6 +16,8 @@ import { formatPostDate, guestCame, notificationVerb, plainMentions, snippet } f
 import { $, avatarURL, el, fullName, guestsSeen, pagePath, profilePath, renderChrome, setCounter, showError, hideError, verifiedMark } from './layout.js';
 import { postPath } from './posts.js';
 import { topicPath } from './topics.js';
+import { countTo, flash, gameIcon } from './game.js';
+import { coins, dealTick } from './sounds.js';
 import { tr } from './i18n.js';
 
 const COMMENT_SNIPPET = 200;
@@ -25,10 +29,111 @@ let cursor = '';
 // IDs of the notifications shown, so a live update repeats none.
 const shownIDs = new Set();
 
+// kinds are the plates over the list: what each shows and the icon its rows
+// wear. A type none lists is under "Важное".
+const kinds = [
+  { key: 'likes', icon: '/static/icons/game/heart.svg', name: () => tr('Лайки'), types: ['like', 'comment_like', 'topic_message_like', 'photo_like', 'story_like'] },
+  { key: 'comments', icon: '/static/icons/game/note.svg', name: () => tr('Комментарии'), types: ['comment', 'comment_reply', 'topic_message', 'photo_comment', 'story_comment', 'wall_post', 'repost'] },
+  { key: 'mentions', icon: '/static/icons/game/who.svg', name: () => tr('Упоминания'), types: ['post_mention', 'comment_mention', 'topic_mention', 'photo_mention'] },
+  { key: 'people', icon: '/static/icons/game/people.svg', name: () => tr('Люди'), types: ['follow', 'invite', 'match'] },
+  { key: 'gifts', icon: '/static/icons/game/gift.svg', name: () => tr('Подарки'), types: ['gift', 'prime', 'votes'] },
+  { key: 'other', icon: '/static/icons/game/star.svg', name: () => tr('Важное'), types: [] },
+];
+const kindOf = (type) => kinds.find((k) => k.types.includes(type)) ?? kinds[kinds.length - 1];
+
+let filter = '';
+let total = 0;
+let today = 0;
+const counted = {};
+
 function nodesOf(notifications) {
   const fresh = notifications.filter((n) => !shownIDs.has(n.id));
   for (const n of fresh) shownIDs.add(n.id);
   return fresh.map(notificationNode).filter(Boolean);
+}
+
+const dayOf = (date) => new Date(date).toDateString();
+
+function dayName(date) {
+  const now = Date.now();
+
+  if (dayOf(date) === dayOf(now)) return tr('Сегодня');
+  if (dayOf(date) === dayOf(now - 86_400_000)) return tr('Вчера');
+
+  return new Date(date).toLocaleDateString(document.documentElement.lang || undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// lastDay is the day of the last row put at the end of the list.
+let lastDay = '';
+
+// withDays puts a strip before the first row of each day.
+function withDays(nodes) {
+  return nodes.flatMap((node) => {
+    const day = dayOf(node.dataset.date);
+    if (day === lastDay) return [node];
+
+    lastDay = day;
+
+    return [el('div', { className: 'notify-day', textContent: dayName(node.dataset.date) }), node];
+  });
+}
+
+function showFilters() {
+  $('notify-filters').replaceChildren(...[{ key: '', icon: '/static/icons/game/index.svg', name: () => tr('Всё') }, ...kinds].map((k) => el('button', {
+    className: k.key === filter ? 'notify-filter active' : 'notify-filter',
+    type: 'button',
+    disabled: Boolean(k.key) && !counted[k.key],
+    onclick: () => {
+      filter = k.key;
+      dealTick();
+      showFilters();
+      applyFilter();
+    },
+  }, gameIcon(k.icon), k.name(), el('b', { textContent: String(k.key ? counted[k.key] ?? 0 : total) }))));
+}
+
+// applyFilter hides what the plate does not show, and the days left empty.
+function applyFilter() {
+  const rows = [...$('notifications').children];
+
+  for (const row of rows) {
+    if (row.dataset.kind) row.hidden = Boolean(filter) && row.dataset.kind !== filter;
+  }
+  rows.forEach((row, i) => {
+    if (row.dataset.kind) return;
+    const next = rows.slice(i + 1).find((other) => !other.dataset.kind || !other.hidden);
+
+    row.hidden = !next?.dataset.kind;
+  });
+}
+
+function hudCell(icon, name, id, hint) {
+  return el('div', { className: 'game-hud-cell' },
+    el('span', { className: 'game-hud-name' }, gameIcon(icon), name),
+    el('b', { className: 'game-hud-sum', id, textContent: '0' }),
+    el('span', { className: 'hint', textContent: hint }));
+}
+
+function showHUD() {
+  $('notify-hud').replaceChildren(
+    hudCell('/static/icons/game/flame.svg', tr('За сегодня'), 'hud-today', tr('новых событий')),
+    hudCell('/static/icons/game/index.svg', tr('Показано'), 'hud-total', tr('событий на странице')),
+    hudCell('/static/icons/game/who.svg', tr('Гости'), 'hud-guests', tr('за последние 30 дней')),
+  );
+}
+
+// count takes in the rows added and runs the plates up.
+function count(nodes) {
+  const was = [total, today];
+
+  for (const node of nodes) {
+    total += 1;
+    counted[node.dataset.kind] = (counted[node.dataset.kind] ?? 0) + 1;
+    if (dayOf(node.dataset.date) === dayOf(Date.now())) today += 1;
+  }
+  countTo($('hud-total'), was[0], total, String);
+  countTo($('hud-today'), was[1], today, String);
+  showFilters();
 }
 
 // unseen is the newest notification shown while the tab was hidden: it is
@@ -52,7 +157,15 @@ async function showNew() {
   try {
     const page = await api.notifications('unread', '');
 
-    $('notifications').prepend(...nodesOf(page.notifications));
+    const fresh = nodesOf(page.notifications);
+    const first = $('notifications').firstElementChild;
+
+    if (!first?.dataset.kind && first?.textContent === tr('Сегодня')) first.after(...fresh);
+    else $('notifications').prepend(el('div', { className: 'notify-day', textContent: tr('Сегодня') }), ...fresh);
+    count(fresh);
+    applyFilter();
+    if (fresh.length) coins();
+    for (const node of fresh) flash(node, 'gold');
     $('empty').hidden = $('notifications').children.length > 0;
 
     if (page.newestId) await markRead(page.newestId);
@@ -227,13 +340,28 @@ function notificationNode(n) {
   const text = notificationText(n);
   if (!text) return null;
 
-  return el('div', { className: 'post notification' },
-    el('a', { className: 'post-avatar', href: pagePath(n.actor) }, el('img', { src: avatarURL(n.actor, 'small'), alt: '' })),
-    el('div', { className: 'post-main' },
-      el('div', { className: 'notification-text' }, ...text),
-      el('div', { className: 'post-date', textContent: formatPostDate(n.createdAt) }),
-    ),
-  );
+  const kind = kindOf(n.type);
+  const words = el('div', { className: 'notification-text' }, ...text);
+  const node = el('div', {
+    className: 'post notification',
+    // A press beside a link opens what the row tells of: the last link is
+    // the post, the photo or the topic, the only one is who did it.
+    onclick: (event) => {
+      if (!event.target.closest('a')) [...words.querySelectorAll('a')].pop()?.click();
+    },
+  },
+  el('a', { className: 'post-avatar', href: pagePath(n.actor) },
+    el('img', { src: avatarURL(n.actor, 'small'), alt: '' }),
+    el('img', { className: 'notification-kind', src: kind.icon, alt: '', width: 18, height: 18 })),
+  el('div', { className: 'post-main' },
+    words,
+    el('div', { className: 'post-date', textContent: formatPostDate(n.createdAt) }),
+  ));
+
+  node.dataset.kind = kind.key;
+  node.dataset.date = n.createdAt;
+
+  return node;
 }
 
 // guestNode is a guest told as a notification: "Анна заходила на вашу
@@ -262,12 +390,13 @@ function showGuests(page) {
   guestsCursor = unreadTab ? '' : page.nextCursor;
   $('guests-more').hidden = !guestsCursor;
 
-  const count = $('guests-list').children.length;
-  $('guests').hidden = count === 0;
+  const guestRows = $('guests-list').children.length;
+  countTo($('hud-guests'), Number($('hud-guests').textContent) || 0, Math.max(guestRows, page.guests.length), String);
+  $('guests').hidden = guestRows === 0;
   // The archive is all notifications at once: guests there go untitled.
   $('guests-title').hidden = !unreadTab;
   $('guests-title').textContent = tr('Новые гости');
-  if (count > 0) $('empty').hidden = true;
+  if (guestRows > 0) $('empty').hidden = true;
 }
 
 async function moreGuests() {
@@ -288,7 +417,11 @@ async function loadMore() {
     const page = await (first ?? api.notifications(box, cursor));
     first = null;
 
-    $('notifications').append(...nodesOf(page.notifications));
+    const fresh = nodesOf(page.notifications);
+
+    $('notifications').append(...withDays(fresh));
+    count(fresh);
+    applyFilter();
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
     $('empty').hidden = $('notifications').children.length + $('guests-list').children.length > 0;
@@ -329,6 +462,8 @@ if (!me) {
   location.replace('/');
 } else {
   renderChrome(me);
+  showHUD();
+  showFilters();
 
   $('title').replaceChildren(
     el('a', { href: profilePath(me), textContent: fullName(me) || tr('Моя страница') }),

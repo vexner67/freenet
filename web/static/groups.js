@@ -11,6 +11,8 @@ import { api, currentUser, started } from './api.js';
 import { clubsCount, myClubsCount } from './labels.js';
 import { $, clubRef, el, fullName, pagePath, renderChrome, showPinnedClubs, showError, hideError } from './layout.js';
 import { clubRow } from './clubs.js';
+import { countTo, flash, floatText, gameIcon } from './game.js';
+import { coins, dealTick } from './sounds.js';
 import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
@@ -47,6 +49,8 @@ function pinLink(club, ref) {
       else await api.pinClub(ref);
       club.pinned = !club.pinned;
       render();
+      coins();
+      floatText(link, club.pinned ? tr('В меню') : tr('Убрано'));
       showPinnedClubs($('menu'));
     } catch (e) {
       showError($('error'), e);
@@ -55,6 +59,32 @@ function pinLink(club, ref) {
   render();
 
   return link;
+}
+
+// leftNode is what stays of a club left: the words and a way back, for a
+// group anyone may join.
+function leftNode(club, ref, row) {
+  const left = el('div', { className: 'post-deleted', textContent: tr('Вы вышли из группы «{0}».', club.name) });
+
+  if (!club.closed) {
+    left.append(' ', el('a', {
+      textContent: tr('Вернуться'),
+      onclick: async () => {
+        hideError($('error'));
+
+        try {
+          await api.joinClub(ref);
+          left.replaceWith(row);
+          coins();
+          flash(row);
+        } catch (e) {
+          showError($('error'), e);
+        }
+      },
+    }));
+  }
+
+  return left;
 }
 
 // leaveLink is "Выйти из группы"; the club then goes from the list.
@@ -67,7 +97,8 @@ function leaveLink(club, ref, node) {
 
       try {
         await api.leaveClub(ref);
-        node().replaceWith(el('div', { className: 'post-deleted', textContent: tr('Вы вышли из группы «{0}».', club.name) }));
+        node().replaceWith(leftNode(club, ref, node()));
+        dealTick();
         if (club.pinned) showPinnedClubs($('menu'));
       } catch (e) {
         showError($('error'), e);
@@ -86,7 +117,9 @@ async function load(list, node, summary) {
     first = null;
 
     if (!cursor) $('summary').textContent = summary(page.total);
+    if (!cursor) showHUD(page.total);
     $('clubs').append(...page.clubs.map((club) => node(club)));
+    applySearch();
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
   } catch (e) {
@@ -94,8 +127,39 @@ async function load(list, node, summary) {
   }
 }
 
+// showHUD is the plates over the list: how many and "Создать группу" close at
+// hand.
+function showHUD(all) {
+  const sum = el('b', { className: 'game-hud-sum' });
+  const shown = !other || other === me?.nickname;
+
+  countTo(sum, 0, all, String, 500);
+  $('groups-hud').hidden = !shown;
+  $('groups-hud').replaceChildren(
+    el('div', { className: 'game-hud-cell' },
+      el('span', { className: 'game-hud-name' }, gameIcon(managed ? '/static/icons/game/crown.svg' : '/static/icons/game/group.svg'), managed ? tr('Управляете') : tr('Вы состоите')),
+      sum, el('span', { className: 'hint', textContent: tr('групп') })),
+    el('a', { className: 'game-hud-cell', href: '/search?section=groups' },
+      el('span', { className: 'game-hud-name' }, gameIcon('/static/icons/game/loupe.svg'), tr('Поиск')),
+      el('b', { className: 'game-hud-sum', textContent: '→' }), el('span', { className: 'hint', textContent: tr('найти новые группы') })),
+    el('a', { className: 'game-hud-cell', href: '/groups/create' },
+      el('span', { className: 'game-hud-name' }, gameIcon('/static/icons/game/plus.svg'), tr('Своя группа')),
+      el('b', { className: 'game-hud-sum', textContent: '+' }), el('span', { className: 'hint', textContent: tr('создать за минуту') })),
+  );
+}
+
+// applySearch leaves the groups shown whose names have the words typed.
+function applySearch() {
+  const words = $('search').value.trim().toLowerCase();
+  const rows = [...$('clubs').querySelectorAll('.list-row')];
+
+  for (const row of rows) row.hidden = !row.textContent.toLowerCase().includes(words);
+  $('clubs-none').hidden = !words || rows.some((row) => !row.hidden);
+}
+
 // showMine is "Мои Группы".
 async function showMine() {
+  $('search').addEventListener('input', applySearch);
   $(managed ? 'tab-managed' : 'tab-all').classList.add('active');
   $('tabs').hidden = false;
   $('gray-bar').hidden = false;
@@ -127,6 +191,8 @@ function membershipLink(club) {
       club.role = changed.role;
       club.requested = changed.requested;
       render();
+      coins();
+      flash(link);
     } catch (e) {
       showError($('error'), e);
     }
@@ -165,6 +231,9 @@ async function showTheirs(nickname, me) {
 // Your own clubs are asked for with who is signed in, in one round trip.
 let first = other ? null : started(api.myClubs('', managed));
 const me = await currentUser().catch(() => null);
+if (!other || other === me?.nickname) {
+  for (const tab of ['tab-all', 'tab-managed']) $(tab).addEventListener('click', dealTick);
+}
 if (other && other !== me?.nickname) {
   renderChrome(me);
   await showTheirs(other, me);

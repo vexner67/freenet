@@ -3990,23 +3990,33 @@ button.bank-card:hover { transform: translateY(-2px) rotate(-0.5deg); }
 
 /* "Рейтинги": the podium of the first three, the rest with a bar to the
    leader. */
-.top { transition: opacity 0.12s; }
+.top { min-height: 620px; transition: opacity 0.12s; }
 .top-loading { opacity: 0.55; }
 .top-about { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin: 0 0 8px; }
 .top-about .button { flex: none; }
 .top-podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; align-items: end; margin: 0 0 12px; padding: 10px 8px 0; background: linear-gradient(var(--back-fafafa), var(--back-e6e6e6)); border: 1px solid var(--line-333); border-radius: 4px; box-shadow: 2px 2px 0 var(--back-d4d4d4); }
-.top-step { display: flex; flex-direction: column; gap: 3px; align-items: center; min-width: 0; text-align: center; animation: top-rise 0.32s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
-.top-step-1 { grid-column: 2; grid-row: 1; animation-delay: 0.14s; }
+.top-step { display: flex; flex-direction: column; gap: 3px; align-items: center; min-width: 0; text-align: center }
+.top-step-1 { grid-column: 2; grid-row: 1; }
 .top-step-2 { grid-column: 1; grid-row: 1; }
-.top-step-3 { grid-column: 3; grid-row: 1; animation-delay: 0.07s; }
-@keyframes top-rise { from { opacity: 0; transform: translateY(16px); } }
+.top-step-3 { grid-column: 3; grid-row: 1; }
 .top-step-face { position: relative; display: block; width: 64px; height: 64px; }
 .top-step-1 .top-step-face { width: 80px; height: 80px; }
 .top-step-photo { display: block; width: 100%; height: 100%; object-fit: cover; border: 2px solid var(--line-333); border-radius: 4px; box-sizing: border-box; background: var(--back-fff); }
 .top-step-face:hover .top-step-photo { transform: scale(1.05); }
 .top-step-medal { position: absolute; right: -8px; bottom: -6px; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 35%)); }
 .top-step-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.top-step-sum { color: var(--text-000); font-size: 13px; }
+.top-step-sum { max-width: 100%; overflow: hidden; color: var(--text-000); font-size: 13px; font-variant-numeric: tabular-nums; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.top-step-pet { display: flex; align-items: center; justify-content: center; height: 34px; max-width: 100%; overflow: hidden; }
+.top-step-pet .top-pet { margin: 0; }
+.top-step-free { color: var(--text-626262); }
+.top-step-free .top-step-face { background: var(--back-e4e4e4); border: 2px dashed var(--line-ccc); border-radius: 4px; box-sizing: border-box; }
+.top-step-free .top-step-sum { color: var(--text-626262); }
+.top-table { table-layout: fixed; }
+.top-table td { height: 48px; box-sizing: border-box; }
+.top-table .top-pet { height: 18px; margin-top: 0; }
+.top-who { overflow: hidden; white-space: nowrap; }
+.top-value span:first-child { font-variant-numeric: tabular-nums; }
+#hud .game-hud-sum, #hud .hint { display: block; overflow: hidden; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
 .top-step-block { width: 100%; margin-top: 2px; padding-top: 4px; background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); border: 1px solid var(--line-333); border-bottom: 0; border-radius: 3px 3px 0 0; color: var(--text-fff); font-size: 16px; font-weight: bold; text-shadow: 0 1px 0 rgb(0 0 0 / 40%); box-sizing: border-box; }
 .top-step-1 .top-step-block { height: 54px; }
 .top-step-2 .top-step-block { height: 40px; }
@@ -4100,5 +4110,68 @@ button.account-slot:active { transform: translateY(1px); }
 .search-none { display: flex; flex-direction: column; gap: 6px; align-items: center; padding: 18px 0; }
 .search-example { margin: 0 2px; }
 @media (prefers-reduced-motion: reduce) {
-  .top-step, .canvas-pop, .canvas-ping, .fly-like, .fly-skip, #people > * { animation: none; }
+  .canvas-pop, .canvas-ping, .fly-like, .fly-skip, #people > * { animation: none; }
 }
+
+/* Settings, notifications and groups, in the dress of the games: dark frames
+   and titles, plates that are pressed, and nothing moves under the reader. */
+.settings-hud { min-height: 92px; margin: 0 0 10px; padding: 6px 8px; background: linear-gradient(var(--back-fff), var(--back-e4e4e4)); border: 1px solid var(--line-333); border-radius: 4px; box-shadow: 2px 2px 0 var(--back-d4d4d4); box-sizing: border-box; }
+.settings-hud-head { display: flex; gap: 4px; align-items: center; color: var(--text-000); font-weight: bold; }
+.settings-hud-sum { margin-left: auto; font-size: 14px; font-variant-numeric: tabular-nums; }
+.settings-hud-bar { display: block; height: 10px; margin: 5px 0; overflow: hidden; background: var(--back-3e3e3e); border: 1px solid var(--line-333); border-radius: 3px; }
+.settings-hud-fill { display: block; height: 100%; background: linear-gradient(var(--back-ffe58a), var(--back-ffd54a)); transform-origin: left; transition: transform 0.4s ease-out; }
+.settings-hud-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.settings-step { display: flex; gap: 4px; align-items: center; min-width: 0; padding: 3px 5px; background: var(--back-f6f6f6); border: 1px dashed var(--line-8b8b8b); border-radius: 3px; color: var(--text-626262); font: inherit; cursor: pointer; }
+.settings-step:hover { background: var(--back-fbf3c3); }
+.settings-step.done { background: var(--back-ffe58a); border: 1px solid var(--line-333); color: var(--text-000); font-weight: bold; }
+.settings-look { margin-top: 0; }
+.container-gray.settings-look h4, .container-gray.settings-look .subhead { padding: 4px 8px; background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); border: 1px solid var(--line-333); border-radius: 4px 4px 0 0; color: var(--text-fff); }
+.settings-look .field-changed input, .settings-look .field-changed select, .settings-look .field-changed textarea { background: var(--back-fbf3c3); outline: 1px solid var(--line-333); }
+.settings-look .actions { position: sticky; bottom: 0; z-index: 2; padding-top: 4px; padding-bottom: 4px; background: var(--back-f6f6f6); }
+.settings-look .actions .button { background: linear-gradient(var(--back-ffe58a), var(--back-ffd54a)); border-color: var(--line-333); color: var(--text-000); font-weight: bold; text-shadow: none; }
+.settings-look #notice { position: fixed; top: 52px; left: 50%; z-index: 40; width: 300px; margin-left: -150px; box-shadow: 2px 2px 0 var(--back-d4d4d4); animation: notify-in 0.2s ease-out; }
+@keyframes notify-in { from { opacity: 0; transform: translateY(-8px); } }
+.settings-look .session-row { padding: 6px; background: var(--back-fff); border: 1px solid var(--line-ccc); border-radius: 3px; margin-bottom: 4px; }
+.settings-look .session-row:hover { background: var(--back-fbf3c3); }
+.notify-filters { display: flex; flex-wrap: wrap; gap: 3px; min-height: 54px; margin: 0 0 8px; }
+.notify-filter { display: inline-flex; gap: 4px; align-items: center; padding: 3px 7px; background: linear-gradient(var(--back-fff), var(--back-e4e4e4)); border: 1px solid var(--line-8b8b8b); border-radius: 3px; color: var(--text-000); font: inherit; cursor: pointer; }
+.notify-filter b { font-variant-numeric: tabular-nums; }
+.notify-filter:hover:not(:disabled) { background: var(--back-fbf3c3); }
+.notify-filter:disabled { opacity: 0.5; cursor: default; }
+.notify-filter.active, .notify-filter.active:hover { background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); border-color: var(--line-333); color: var(--text-fff); }
+.notify-day { margin: 8px 0 0; padding: 3px 8px; background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); border: 1px solid var(--line-333); border-radius: 4px 4px 0 0; color: var(--text-fff); font-weight: bold; }
+.notify-day:first-child { margin-top: 0; }
+#notifications { min-height: 240px; }
+#notifications .notification { margin: 0; padding: 6px 8px; border: 1px solid var(--line-ccc); border-top: 0; cursor: pointer; }
+#notifications .notification:hover { background: var(--back-fbf3c3); }
+.notification .post-avatar { position: relative; }
+.notification-kind { position: absolute; right: -5px; bottom: -3px; width: 18px; height: 18px; }
+.notification-guests .summary-bar { background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); border: 1px solid var(--line-333); color: var(--text-fff); }
+a.game-hud-cell { color: inherit; text-decoration: none; }
+a.game-hud-cell:hover { background: var(--back-fbf3c3); }
+#notify-hud .game-hud-sum, #groups-hud .game-hud-sum, #club-hud .game-hud-sum { font-variant-numeric: tabular-nums; white-space: nowrap; }
+#groups-hud:not([hidden]) + .tabs { margin-top: 0; }
+.clubs-list { min-height: 200px; }
+.clubs-list .list-row { margin-bottom: 6px; padding: 8px; background: linear-gradient(var(--back-fff), var(--back-f6f6f6)); border: 1px solid var(--line-333); border-radius: 4px; box-shadow: 2px 2px 0 var(--back-d4d4d4); }
+.clubs-list .list-row:hover { background: var(--back-fbf3c3); }
+.clubs-list .list-cover img { border: 1px solid var(--line-333); border-radius: 3px; box-sizing: border-box; }
+.clubs-list .post-deleted { margin-bottom: 6px; }
+.club .section-title { background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); color: var(--text-fff); }
+.club .section-title a, .club .section-title .count { color: var(--text-fff); }
+#join { background: linear-gradient(var(--back-ffe58a), var(--back-ffd54a)); border: 1px solid var(--line-333); border-radius: 3px; color: var(--text-000); font-weight: bold; }
+#join:hover { background: var(--back-fbf3c3); }
+.club .profile-links { margin-bottom: 8px; }
+@media (prefers-reduced-motion: reduce) {
+  .settings-look #notice { animation: none; }
+  .settings-hud-fill { transition: none; }
+}
+
+/* A bold active tab would widen the row and wrap it: every board and page
+   would then start lower. */
+.tabs.game-tabs a.active, .tabs.game-tabs a.active:hover { font-weight: normal; }
+#tabs.game-tabs { flex-wrap: nowrap; }
+.top-podium { height: 240px; box-sizing: border-box; }
+.notification .post-avatar img.notification-kind { position: absolute; right: -5px; bottom: -3px; width: 18px; height: 18px; border: 0; border-radius: 0; }
+.gray-bar-search { flex: 1; min-width: 0; }
+.gray-bar-search input { width: 100%; box-sizing: border-box; }
+#create { flex: none; width: auto; }

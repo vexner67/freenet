@@ -29,14 +29,15 @@
     <div class="page">
       <div class="page-title">Мои Настройки</div>
       <div class="page-body">
-        <div class="tabs">
-          <a id="tab-main" href="/settings">Основное</a>
-          <a id="tab-security" href="/settings?act=security">Безопасность</a>
-          <a id="tab-privacy" href="/settings?act=privacy">Приватность</a>
-          <a href="/settings/blacklist">Чёрный список</a>
-          <a id="tab-interface" href="/settings?act=interface">Внешний вид</a>
+        <div class="settings-hud" id="safety"></div>
+        <div class="tabs game-tabs" id="settings-tabs">
+          <a id="tab-main" href="/settings"><img class="game-icon" src="/static/icons/game/gear.svg" alt="" width="16" height="16">Основное</a>
+          <a id="tab-security" href="/settings?act=security"><img class="game-icon" src="/static/icons/game/lock.svg" alt="" width="16" height="16">Безопасность</a>
+          <a id="tab-privacy" href="/settings?act=privacy"><img class="game-icon" src="/static/icons/game/who.svg" alt="" width="16" height="16">Приватность</a>
+          <a href="/settings/blacklist"><img class="game-icon" src="/static/icons/game/ban.svg" alt="" width="16" height="16">Чёрный список</a>
+          <a id="tab-interface" href="/settings?act=interface"><img class="game-icon" src="/static/icons/game/palette.svg" alt="" width="16" height="16">Внешний вид</a>
             </div>
-        <div class="container-gray">
+        <div class="container-gray settings-look">
         <p id="loading">Загрузка…</p>
         <div class="error" id="error" hidden></div>
         <div class="notice" id="notice" hidden><b>Изменения сохранены</b><br>Новые данные появятся на вашей странице.</div>

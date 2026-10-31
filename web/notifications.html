@@ -29,10 +29,12 @@
     <div class="page">
       <div class="page-title"><span id="title">Уведомления</span></div>
       <div class="page-body">
-        <div class="tabs">
-          <a id="tab-unread" href="/notifications?box=unread">Непрочитанное</a>
-          <a id="tab-archive" href="/notifications?box=archive">Архив</a>
+        <div class="game-hud" id="notify-hud"></div>
+        <div class="tabs game-tabs">
+          <a id="tab-unread" href="/notifications?box=unread"><img class="game-icon" src="/static/icons/game/flame.svg" alt="" width="16" height="16">Непрочитанное</a>
+          <a id="tab-archive" href="/notifications?box=archive"><img class="game-icon" src="/static/icons/game/box.svg" alt="" width="16" height="16">Архив</a>
         </div>
+        <div class="notify-filters" id="notify-filters"></div>
         <div class="error" id="error" hidden></div>
         <div class="notification-guests" id="guests" hidden>
           <div class="summary-bar" id="guests-title"></div>
