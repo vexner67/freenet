@@ -4,26 +4,22 @@ import (
 	"context"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
 )
 
-// Canvas is "Холст", the canvas everybody paints a cell a minute.
+// Canvas is "Холст", the canvas everybody paints.
 type Canvas interface {
 	Canvas(ctx context.Context, accessToken string) (model.Canvas, error)
-	Paint(ctx context.Context, accessToken string, p model.CanvasPaint) (time.Time, error)
+	Paint(ctx context.Context, accessToken string, p model.CanvasPaint) error
 	Cell(ctx context.Context, accessToken string, x, y int) (model.CanvasCell, error)
 }
 
-// canvasJSON is the canvas: cells a byte each, row after row, in base64;
-// nextAt is null when the viewer may paint now or is a guest.
+// canvasJSON is the canvas: cells a byte each, row after row, in base64.
 type canvasJSON struct {
-	Cells    []byte  `json:"cells"`
-	Size     int     `json:"size"`
-	NextAt   *string `json:"nextAt"`
-	Cooldown int     `json:"cooldown"`
+	Cells []byte `json:"cells"`
+	Size  int    `json:"size"`
 }
 
 // getCanvas is the canvas, public.
@@ -40,7 +36,7 @@ func (a *api) getCanvas(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, canvasJSON{Cells: c.Cells, Size: c.Size, NextAt: optionalTime(c.NextAt), Cooldown: c.Cooldown})
+	writeJSON(w, http.StatusOK, canvasJSON{Cells: c.Cells, Size: c.Size})
 }
 
 type canvasPaintRequest struct {
@@ -49,7 +45,7 @@ type canvasPaintRequest struct {
 	Color int `json:"color"`
 }
 
-// paintCanvas paints a cell and answers when the caller may paint again.
+// paintCanvas paints a cell.
 func (a *api) paintCanvas(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -63,15 +59,12 @@ func (a *api) paintCanvas(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	next, err := a.canvas.Paint(r.Context(), token, model.CanvasPaint(req))
-	if err != nil {
+	if err = a.canvas.Paint(r.Context(), token, model.CanvasPaint(req)); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, struct {
-		NextAt string `json:"nextAt"`
-	}{timeString(next)})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // getCanvasCell is who painted a cell last, public; user is null when

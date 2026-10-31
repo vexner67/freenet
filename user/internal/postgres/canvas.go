@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -85,35 +84,6 @@ func (r *CanvasRepository) Cell(ctx context.Context, x, y int) (user.CanvasCell,
 	return c, errs.Wrap("scanCanvasCell", err)
 }
 
-const selectCanvasPainterQuery = `
-	SELECT painted_at
-	FROM canvas_painters
-	WHERE user_id = $1
-`
-
-func (r *CanvasRepository) PaintedAt(ctx context.Context, userID uuid.UUID) (time.Time, error) {
-	var at time.Time
-	err := r.conn(ctx).QueryRow(ctx, selectCanvasPainterQuery, userID).Scan(&at)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return time.Time{}, nil
-	}
-
-	return at.UTC(), errs.Wrap("r.conn.QueryRow", err)
-}
-
-// paintCanvasPainterQuery writes down that $1 painted at $2, unless they
-// painted after $3: no row then.
-const paintCanvasPainterQuery = `
-	INSERT INTO canvas_painters (
-		user_id,
-		painted_at
-	)
-	VALUES ($1, $2)
-	ON CONFLICT (user_id) DO UPDATE
-	SET painted_at = EXCLUDED.painted_at
-	WHERE canvas_painters.painted_at <= $3
-`
-
 const paintCanvasCellQuery = `
 	INSERT INTO canvas_cells (` + canvasCellColumns + `)
 	VALUES ($1, $2, $3, $4, $5)
@@ -123,25 +93,13 @@ const paintCanvasCellQuery = `
 		painted_at = EXCLUDED.painted_at
 `
 
-func (r *CanvasRepository) Painted(ctx context.Context, userID uuid.UUID, at, since time.Time) error {
-	tag, err := r.conn(ctx).Exec(ctx, paintCanvasPainterQuery, userID, at, since)
+func (r *CanvasRepository) PutCell(ctx context.Context, c user.CanvasCell) error {
+	_, err := r.conn(ctx).Exec(ctx, paintCanvasCellQuery, c.X, c.Y, c.Color, c.UserID, c.At)
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode {
 		return user.ErrNotFound
 	}
-	if err != nil {
-		return errs.Wrap("r.conn.Exec", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return user.ErrCanvasCooldown
-	}
-
-	return nil
-}
-
-func (r *CanvasRepository) PutCell(ctx context.Context, c user.CanvasCell) error {
-	_, err := r.conn(ctx).Exec(ctx, paintCanvasCellQuery, c.X, c.Y, c.Color, c.UserID, c.At)
 
 	return errs.Wrap("r.conn.Exec", err)
 }

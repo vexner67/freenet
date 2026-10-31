@@ -43,8 +43,4 @@ func TestCanvas(t *testing.T) {
 	if len(picture) != user.CanvasSize*user.CanvasSize || picture[2*user.CanvasSize+3] != 7 || picture[0] != 0 {
 		t.Fatalf("CanvasPicture = %v", picture[:5])
 	}
-
-	if !user.CanvasNextAt(time.Time{}).IsZero() || !user.CanvasNextAt(now).Equal(now.Add(user.CanvasCooldown)) {
-		t.Fatal("CanvasNextAt")
-	}
 }

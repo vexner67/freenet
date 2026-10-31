@@ -119,7 +119,7 @@ func newServer(t *testing.T) testServer {
 		Permissions: permissions,
 		Presence:    presence,
 		Backdrops:   service.NewBackdropService(users, users),
-		Canvas:      service.NewCanvasService(inmem.NewCanvasRepository(users), inmem.TxManager{}),
+		Canvas:      service.NewCanvasService(inmem.NewCanvasRepository(users)),
 		Dating:      service.NewDatingService(users, inmem.NewDatingRepository(users), notifyclient.Nop{}, inmem.TxManager{}),
 	}, log))
 

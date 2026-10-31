@@ -6257,7 +6257,7 @@ paths:
   /api/v1/canvas:
     get:
       summary: The shared canvas
-      description: 'The canvas everybody paints, a cell a minute each: `size`×`size` cells, a byte each row after row in base64, the color of a cell from the palette of 16 (0 is white). `nextAt` is when you may paint again, null when now or for a guest. Public.'
+      description: 'The canvas everybody paints: `size`×`size` cells, a byte each row after row in base64, the color of a cell from the palette of 64 (0 is white). Public.'
       responses:
         "200":
           description: The canvas
@@ -6265,17 +6265,15 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [cells, size, nextAt, cooldown]
+                required: [cells, size]
                 properties:
                   cells: { type: string, format: byte }
                   size: { type: integer }
-                  nextAt: { type: string, format: date-time, nullable: true }
-                  cooldown: { type: integer, description: Seconds between two cells of one person }
 
   /api/v1/canvas/cells:
     post:
       summary: Paint a cell of the canvas
-      description: 'Paints the cell `x`, `y` (from 0) with `color` (0–15). 400 for a cell or color there is not; 409 within a minute of the last cell. Rate limited.'
+      description: 'Paints the cell `x`, `y` (from 0) with `color` (0–63). 400 for a cell or color there is not. Rate limited.'
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -6289,12 +6287,10 @@ paths:
                 y: { type: integer }
                 color: { type: integer }
       responses:
-        "200":
-          description: When you may paint again
-          content: { application/json: { schema: { type: object, properties: { nextAt: { type: string, format: date-time } } } } }
+        "204":
+          description: Painted
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/canvas/cells/{x}/{y}:

@@ -80,6 +80,8 @@ type Config struct {
 	// Pets adopted, fed, played with, renamed and set to fight, each
 	// counted apart.
 	PetLimits ratelimit.Rules `env:"RATE_LIMIT_PETS" envDefault:"30/1m,1000/24h"`
+	// CanvasLimits holds back painting the canvas, which has no pause.
+	CanvasLimits ratelimit.Rules `env:"RATE_LIMIT_CANVAS" envDefault:"240/1m,20000/24h"`
 	// Collectible gifts upgraded, given away, put on sale, bought,
 	// auctioned and bid on, each counted apart.
 	GiftMarketLimits ratelimit.Rules `env:"RATE_LIMIT_GIFT_MARKET" envDefault:"30/1m,500/24h"`

@@ -3,7 +3,6 @@ package inmem
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -15,13 +14,12 @@ import (
 type CanvasRepository struct {
 	users *UserRepository
 
-	mu      sync.Mutex
-	cells   map[[2]int]user.CanvasCell
-	painted map[uuid.UUID]time.Time
+	mu    sync.Mutex
+	cells map[[2]int]user.CanvasCell
 }
 
 func NewCanvasRepository(users *UserRepository) *CanvasRepository {
-	r := &CanvasRepository{users: users, cells: map[[2]int]user.CanvasCell{}, painted: map[uuid.UUID]time.Time{}}
+	r := &CanvasRepository{users: users, cells: map[[2]int]user.CanvasCell{}}
 	users.onDelete(r.forget)
 
 	return r
@@ -31,7 +29,6 @@ func (r *CanvasRepository) forget(id uuid.UUID) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	delete(r.painted, id)
 	for k, c := range r.cells {
 		if c.UserID == id {
 			c.UserID = uuid.Nil
@@ -72,36 +69,9 @@ func (r *CanvasRepository) Cell(ctx context.Context, x, y int) (user.CanvasCell,
 	return c, nil
 }
 
-func (r *CanvasRepository) PaintedAt(ctx context.Context, userID uuid.UUID) (time.Time, error) {
-	if err := ctx.Err(); err != nil {
-		return time.Time{}, errs.Wrap("ctx.Err", err)
-	}
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	return r.painted[userID], nil
-}
-
-func (r *CanvasRepository) Painted(ctx context.Context, userID uuid.UUID, at, since time.Time) error {
-	if _, err := r.users.GetByID(ctx, userID); err != nil {
-		return errs.Wrap("r.users.GetByID", err)
-	}
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if r.painted[userID].After(since) {
-		return user.ErrCanvasCooldown
-	}
-	r.painted[userID] = at
-
-	return nil
-}
-
 func (r *CanvasRepository) PutCell(ctx context.Context, c user.CanvasCell) error {
-	if err := ctx.Err(); err != nil {
-		return errs.Wrap("ctx.Err", err)
+	if _, err := r.users.GetByID(ctx, c.UserID); err != nil {
+		return errs.Wrap("r.users.GetByID", err)
 	}
 
 	r.mu.Lock()

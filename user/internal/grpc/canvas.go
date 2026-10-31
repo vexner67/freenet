@@ -6,30 +6,24 @@ import (
 
 	"github.com/google/uuid"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
-	"github.com/vexner67/freenet/user/internal/service"
 	"github.com/vexner67/freenet/user/internal/user"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // CanvasService is "Холст".
 type CanvasService interface {
-	Canvas(ctx context.Context, viewerID uuid.UUID, now time.Time) (service.CanvasView, error)
+	Canvas(ctx context.Context) ([]byte, error)
 	Cell(ctx context.Context, x, y int) (user.CanvasCell, error)
-	Paint(ctx context.Context, c user.CanvasCell) (time.Time, error)
+	Paint(ctx context.Context, c user.CanvasCell) error
 }
 
 func (h *UserHandler) GetCanvas(ctx context.Context, _ *userv1.GetCanvasRequest) (*userv1.GetCanvasResponse, error) {
-	view, err := h.canvas.Canvas(ctx, viewerID(ctx), time.Now())
+	picture, err := h.canvas.Canvas(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &userv1.GetCanvasResponse{Cells: view.Picture, Size: user.CanvasSize, CooldownSeconds: int32(user.CanvasCooldown / time.Second)}
-	if !view.NextAt.IsZero() {
-		resp.NextAt = timestamppb.New(view.NextAt)
-	}
-
-	return resp, nil
+	return &userv1.GetCanvasResponse{Cells: picture, Size: user.CanvasSize}, nil
 }
 
 func (h *UserHandler) PaintCanvas(ctx context.Context, req *userv1.PaintCanvasRequest) (*userv1.PaintCanvasResponse, error) {
@@ -43,12 +37,11 @@ func (h *UserHandler) PaintCanvas(ctx context.Context, req *userv1.PaintCanvasRe
 		return nil, err
 	}
 
-	next, err := h.canvas.Paint(ctx, cell)
-	if err != nil {
+	if err = h.canvas.Paint(ctx, cell); err != nil {
 		return nil, err
 	}
 
-	return &userv1.PaintCanvasResponse{NextAt: timestamppb.New(next)}, nil
+	return &userv1.PaintCanvasResponse{}, nil
 }
 
 func (h *UserHandler) GetCanvasCell(ctx context.Context, req *userv1.GetCanvasCellRequest) (*userv1.GetCanvasCellResponse, error) {

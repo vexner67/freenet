@@ -2,7 +2,6 @@ package backend
 
 import (
 	"context"
-	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/model"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -25,22 +24,17 @@ func (c *Canvas) Canvas(ctx context.Context, accessToken string) (model.Canvas, 
 	}
 
 	return model.Canvas{
-		Cells:    resp.GetCells(),
-		Size:     int(resp.GetSize()),
-		NextAt:   fromTimestamp(resp.GetNextAt()),
-		Cooldown: int(resp.GetCooldownSeconds()),
+		Cells: resp.GetCells(),
+		Size:  int(resp.GetSize()),
 	}, nil
 }
 
-func (c *Canvas) Paint(ctx context.Context, accessToken string, p model.CanvasPaint) (time.Time, error) {
-	resp, err := c.api.PaintCanvas(withToken(ctx, accessToken), &userv1.PaintCanvasRequest{
+func (c *Canvas) Paint(ctx context.Context, accessToken string, p model.CanvasPaint) error {
+	_, err := c.api.PaintCanvas(withToken(ctx, accessToken), &userv1.PaintCanvasRequest{
 		X: int32(p.X), Y: int32(p.Y), Color: int32(p.Color), //nolint:gosec // the user service checks the bounds
 	})
-	if err != nil {
-		return time.Time{}, errs.Wrap("c.api.PaintCanvas", fromStatus(err))
-	}
 
-	return fromTimestamp(resp.GetNextAt()), nil
+	return errs.Wrap("c.api.PaintCanvas", fromStatus(err))
 }
 
 func (c *Canvas) Cell(ctx context.Context, accessToken string, x, y int) (model.CanvasCell, error) {

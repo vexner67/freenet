@@ -536,11 +536,9 @@ service UserService {
   rpc RunPetArena(RunPetArenaRequest) returns (RunPetArenaResponse);
 
   // GetCanvas is the shared canvas, public: its cells a byte each, row
-  // after row, the color in the palette of 16, and when the caller may
-  // paint next (unset when now and for a guest). PaintCanvas paints a
-  // cell (InvalidArgument "there is no such cell of the canvas", "there
-  // is no such color of the canvas"; FailedPrecondition "you paint the
-  // canvas again a minute after"). GetCanvasCell, public, is who painted
+  // after row, the color in the palette of 64. PaintCanvas paints a cell
+  // (InvalidArgument "there is no such cell of the canvas", "there is no
+  // such color of the canvas"). GetCanvasCell, public, is who painted
   // a cell last and when (NotFound "user not found" for a cell never
   // painted).
   rpc GetCanvas(GetCanvasRequest) returns (GetCanvasResponse);
@@ -3603,8 +3601,8 @@ message GetCanvasResponse {
   bytes cells = 1;
   // The cells of a side.
   int32 size = 2;
-  google.protobuf.Timestamp next_at = 3;
-  int32 cooldown_seconds = 4;
+  reserved 3, 4;
+  reserved "next_at", "cooldown_seconds";
 }
 
 message PaintCanvasRequest {
@@ -3614,7 +3612,8 @@ message PaintCanvasRequest {
 }
 
 message PaintCanvasResponse {
-  google.protobuf.Timestamp next_at = 1;
+  reserved 1;
+  reserved "next_at";
 }
 
 message GetCanvasCellRequest {

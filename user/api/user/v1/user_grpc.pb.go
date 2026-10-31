@@ -715,11 +715,9 @@ type UserServiceClient interface {
 	GetPetArena(ctx context.Context, in *GetPetArenaRequest, opts ...grpc.CallOption) (*PetArena, error)
 	RunPetArena(ctx context.Context, in *RunPetArenaRequest, opts ...grpc.CallOption) (*RunPetArenaResponse, error)
 	// GetCanvas is the shared canvas, public: its cells a byte each, row
-	// after row, the color in the palette of 16, and when the caller may
-	// paint next (unset when now and for a guest). PaintCanvas paints a
-	// cell (InvalidArgument "there is no such cell of the canvas", "there
-	// is no such color of the canvas"; FailedPrecondition "you paint the
-	// canvas again a minute after"). GetCanvasCell, public, is who painted
+	// after row, the color in the palette of 64. PaintCanvas paints a cell
+	// (InvalidArgument "there is no such cell of the canvas", "there is no
+	// such color of the canvas"). GetCanvasCell, public, is who painted
 	// a cell last and when (NotFound "user not found" for a cell never
 	// painted).
 	GetCanvas(ctx context.Context, in *GetCanvasRequest, opts ...grpc.CallOption) (*GetCanvasResponse, error)
@@ -3134,11 +3132,9 @@ type UserServiceServer interface {
 	GetPetArena(context.Context, *GetPetArenaRequest) (*PetArena, error)
 	RunPetArena(context.Context, *RunPetArenaRequest) (*RunPetArenaResponse, error)
 	// GetCanvas is the shared canvas, public: its cells a byte each, row
-	// after row, the color in the palette of 16, and when the caller may
-	// paint next (unset when now and for a guest). PaintCanvas paints a
-	// cell (InvalidArgument "there is no such cell of the canvas", "there
-	// is no such color of the canvas"; FailedPrecondition "you paint the
-	// canvas again a minute after"). GetCanvasCell, public, is who painted
+	// after row, the color in the palette of 64. PaintCanvas paints a cell
+	// (InvalidArgument "there is no such cell of the canvas", "there is no
+	// such color of the canvas"). GetCanvasCell, public, is who painted
 	// a cell last and when (NotFound "user not found" for a cell never
 	// painted).
 	GetCanvas(context.Context, *GetCanvasRequest) (*GetCanvasResponse, error)

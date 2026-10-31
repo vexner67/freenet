@@ -9,19 +9,16 @@ import (
 
 // The shared canvas ("Холст"): a picture of CanvasSize×CanvasSize cells
 // all the people of the site paint together, a cell at a time in one of
-// CanvasColors colors; one paints again CanvasCooldown after. A cell
-// keeps who painted it last and when.
+// CanvasColors colors. A cell keeps who painted it last and when.
 
 const (
-	CanvasSize     = 100
-	CanvasColors   = 16
-	CanvasCooldown = time.Minute
+	CanvasSize   = 100
+	CanvasColors = 64
 )
 
 var (
-	ErrCanvasCell     = errors.New("there is no such cell of the canvas")
-	ErrCanvasColor    = errors.New("there is no such color of the canvas")
-	ErrCanvasCooldown = errors.New("you paint the canvas again a minute after")
+	ErrCanvasCell  = errors.New("there is no such cell of the canvas")
+	ErrCanvasColor = errors.New("there is no such color of the canvas")
 )
 
 // CanvasCell is a cell of the canvas painted Color by UserID at At.
@@ -54,14 +51,4 @@ func CanvasPicture(cells []CanvasCell) []byte {
 	}
 
 	return picture
-}
-
-// CanvasNextAt is when one who last painted at last may paint again, zero
-// for one who never painted.
-func CanvasNextAt(last time.Time) time.Time {
-	if last.IsZero() {
-		return time.Time{}
-	}
-
-	return last.Add(CanvasCooldown)
 }

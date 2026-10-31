@@ -3,13 +3,10 @@ package model
 import "time"
 
 // Canvas is the shared canvas: its cells a byte each, row after row, the
-// color in the palette, and when the viewer may paint next (zero when now
-// and for a guest).
+// color in the palette.
 type Canvas struct {
-	Cells    []byte
-	Size     int
-	NextAt   time.Time
-	Cooldown int
+	Cells []byte
+	Size  int
 }
 
 // CanvasCell is who painted a cell last (empty when the page is erased),

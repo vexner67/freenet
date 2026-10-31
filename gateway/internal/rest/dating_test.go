@@ -17,18 +17,14 @@ type fakeCanvas struct {
 
 func (f *fakeCanvas) Canvas(_ context.Context, token string) (model.Canvas, error) {
 	f.token = token
-	c := model.Canvas{Cells: []byte{0, 1, 2, 3}, Size: 2, Cooldown: 60}
-	if token != "" {
-		c.NextAt = time.Date(2026, 10, 30, 12, 1, 0, 0, time.UTC)
-	}
 
-	return c, nil
+	return model.Canvas{Cells: []byte{0, 1, 2, 3}, Size: 2}, nil
 }
 
-func (f *fakeCanvas) Paint(_ context.Context, token string, p model.CanvasPaint) (time.Time, error) {
+func (f *fakeCanvas) Paint(_ context.Context, token string, p model.CanvasPaint) error {
 	f.token, f.paint = token, p
 
-	return time.Date(2026, 10, 30, 12, 1, 0, 0, time.UTC), nil
+	return nil
 }
 
 // Cell was painted by u3, whose page is deleted, at (1, 1) and by u1
@@ -78,20 +74,15 @@ func TestCanvas(t *testing.T) {
 
 	w := h.do("GET", "/api/v1/canvas", "")
 	got := decode[map[string]any](t, w)
-	if w.Code != http.StatusOK || got["cells"] != "AAECAw==" || got["size"] != 2.0 || got["nextAt"] != nil || h.canvas.token != "" {
+	if w.Code != http.StatusOK || got["cells"] != "AAECAw==" || got["size"] != 2.0 || h.canvas.token != "" {
 		t.Fatalf("the canvas of a guest: %d %v", w.Code, got)
 	}
-	w = h.do("GET", "/api/v1/canvas", "", auth...)
-	if got = decode[map[string]any](t, w); got["nextAt"] != "2026-10-30T12:01:00Z" {
-		t.Fatalf("the canvas: %v", got)
-	}
-
 	if w = h.do("POST", "/api/v1/canvas/cells", `{"x":1,"y":2,"color":3}`); w.Code != http.StatusUnauthorized {
 		t.Fatalf("a guest paints: %d", w.Code)
 	}
 	w = h.do("POST", "/api/v1/canvas/cells", `{"x":1,"y":2,"color":3}`, auth...)
-	if got = decode[map[string]any](t, w); w.Code != http.StatusOK || h.canvas.paint != (model.CanvasPaint{X: 1, Y: 2, Color: 3}) || got["nextAt"] != "2026-10-30T12:01:00Z" {
-		t.Fatalf("paint: %d %v", w.Code, got)
+	if w.Code != http.StatusNoContent || h.canvas.paint != (model.CanvasPaint{X: 1, Y: 2, Color: 3}) {
+		t.Fatalf("paint: %d", w.Code)
 	}
 
 	if w = h.do("GET", "/api/v1/canvas/cells/a/1", ""); w.Code != http.StatusBadRequest {

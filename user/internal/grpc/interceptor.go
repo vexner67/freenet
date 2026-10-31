@@ -108,7 +108,6 @@ var petErrors = []struct {
 	{user.ErrPetOwnSale, codes.FailedPrecondition},
 	{user.ErrCanvasCell, codes.InvalidArgument},
 	{user.ErrCanvasColor, codes.InvalidArgument},
-	{user.ErrCanvasCooldown, codes.FailedPrecondition},
 	{user.ErrDatingGoal, codes.InvalidArgument},
 	{user.ErrDatingSeek, codes.InvalidArgument},
 	{user.ErrDatingAbout, codes.InvalidArgument},
