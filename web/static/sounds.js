@@ -1,4 +1,4 @@
-// The sounds of the casino, each game its own, made on the spot with Web
+// The sounds of the casino and of the games of money, each its own, made on the spot with Web
 // Audio: no files to load. A browser lets a page sound only after a press,
 // and each game starts from one; nothing sounds with reduced motion, as
 // nothing moves then.
@@ -108,4 +108,35 @@ export function rocketCash() {
 
 export function rocketBoom() {
   noise({ freq: 1800, end: 80, seconds: 0.7, volume: 3 });
+}
+
+// digHit is a pick striking rock, a little higher with each dig of a series.
+export function digHit(series = 0) {
+  noise({ freq: 2600, end: 500, seconds: 0.09, volume: 0.9 });
+  tone({ type: 'square', freq: 170 + Math.min(series, 24) * 12, end: 90, seconds: 0.07, volume: 0.5 });
+}
+
+// digRare is something good found in the rock: three notes up.
+export function digRare() {
+  [660, 880, 1320].forEach((freq, i) => tone({ type: 'triangle', freq, seconds: 0.2, delay: i * 0.08 }));
+}
+
+export function digCollapse() {
+  noise({ freq: 900, end: 60, seconds: 0.6, volume: 1.6 });
+  tone({ type: 'sawtooth', freq: 110, end: 40, seconds: 0.5 });
+}
+
+// fanfare is a new thing opened or a round number reached.
+export function fanfare() {
+  [523, 659, 784, 1047].forEach((freq, i) => tone({ type: 'square', freq, seconds: 0.22, delay: i * 0.1, volume: 0.6 }));
+}
+
+// coins is money coming in.
+export function coins() {
+  for (let i = 0; i < 5; i++) tone({ type: 'triangle', freq: 1500 + i * 220, end: 2100 + i * 220, seconds: 0.09, delay: i * 0.055, volume: 0.7 });
+}
+
+// dealTick is a deal done or a setting taken.
+export function dealTick(up = true) {
+  tone({ type: 'sine', freq: up ? 700 : 500, end: up ? 1100 : 300, seconds: 0.12 });
 }

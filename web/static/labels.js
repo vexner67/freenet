@@ -1657,21 +1657,19 @@ export function mineEnergy({ energy, nextEnergySeconds }, { energy: most, regenS
 // mineDug is a line of the log of digs, as the BFG bot says it:
 // "Камень: +147 шт. Энергия: 8, опыт: 64." with the event first.
 export function mineDug(ore, dug, settings) {
-  const { energy, experience } = dug.mine.miner;
-  const state = tr('Энергия: {0}, опыт: {1}.', energy, groupedVotes(experience));
   const units = tr('{0}: +{1}', oreName(ore), unitsCount(dug.units));
 
   switch (dug.event) {
     case 'nugget':
-      return tr('Самородок! Руды в {0} раза больше. {1} {2}', settings.events.nuggetTimes, units, state);
+      return tr('Самородок! Руды в {0} раза больше. {1}', settings.events.nuggetTimes, units);
     case 'chest':
-      return tr('Вы нашли сундук: +{0}! {1} {2}', votesAmount(dug.votes), units, state);
+      return tr('Вы нашли сундук: +{0}! {1}', votesAmount(dug.votes), units);
     case 'collapse':
-      return tr('Обвал! Руду засыпало, в этот раз ничего. {0}', state);
+      return tr('Обвал! Руду засыпало, в этот раз ничего.');
     case 'drink':
-      return tr('Вы нашли энергетик: +{0} энергии. {1} {2}', settings.events.drinkEnergy, units, state);
+      return tr('Вы нашли энергетик: +{0} энергии. {1}', settings.events.drinkEnergy, units);
     default:
-      return `${units} ${state}`;
+      return units;
   }
 }
 

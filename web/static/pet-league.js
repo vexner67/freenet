@@ -14,6 +14,7 @@ import {
 import { el } from './layout.js';
 import { button, openModal } from './modal.js';
 import { petImage } from './pet.js';
+import { gameWindow } from './game.js';
 import { tr } from './i18n.js';
 
 // The rules of the arena, as the user service has them
@@ -285,13 +286,8 @@ function marketBlock(arena, ctx) {
   ];
 }
 
-// petWindow is a block of the pages of pets: a glossy title with its icon,
-// as the windows of the sites of the 2000s.
-export function petWindow(icon, title, nodes) {
-  return el('div', { className: 'pet-window' },
-    el('div', { className: 'pet-window-title' }, el('img', { src: icon, alt: '', width: 16, height: 16 }), el('span', { textContent: title })),
-    el('div', { className: 'pet-window-body' }, ...nodes));
-}
+// petWindow is a block of the pages of pets.
+export const petWindow = gameWindow;
 
 // leagueNodes are the blocks of the arena for ctx: { me, pets, run(body,
 // then) } — run does an action and draws the arena it answers with, and

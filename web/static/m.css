@@ -991,42 +991,9 @@ a.poll-result-name { cursor: pointer; }
 .finance-votes { height: 60px; overflow: hidden; font-size: 48px; font-weight: normal; line-height: 60px; white-space: nowrap; }
 .finance-rate { font-weight: bold; }
 .finance-rubles { color: var(--text-626262); font-weight: normal; }
-/* "Шахта": the energy and experience over the ores, a row a ore with
-   its icon and "Копать", the log of digs and the backpack; the balance at
-   the right, as in the casino. */
-.mine { display: flex; gap: 20px; align-items: flex-start; }
-.mine-main { flex: 1; min-width: 0; }
-.mine-status { display: flex; flex-wrap: wrap; gap: 6px 24px; align-items: center; margin: 0 0 10px; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
-.mine-energy { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.mine-stat-label { color: var(--text-626262); }
-.mine-bar { width: 120px; height: 8px; background: var(--back-e6e6e6); border: 1px solid var(--line-ccc); }
-.mine-bar-fill { height: 100%; background: var(--back-43a047); transition: width 0.3s; }
-.mine-ores, .mine-backpack { margin: 0 0 10px; }
-.mine-ore, .mine-item { display: flex; gap: 8px; align-items: center; padding: 6px 4px; border-bottom: 1px solid var(--line-e8ebee); }
-.mine-ore-text { flex: 1; min-width: 0; }
-.mine-locked { opacity: 0.55; }
-.mine-opens { white-space: nowrap; }
-.mine-icon { flex: none; width: 24px; height: 24px; background: center / contain no-repeat; }
-.mine-icon-stone { background-image: url("/static/icons/ore-stone.svg"); }
-.mine-icon-coal { background-image: url("/static/icons/ore-coal.svg"); }
-.mine-icon-iron { background-image: url("/static/icons/ore-iron.svg"); }
-.mine-icon-gold { background-image: url("/static/icons/ore-gold.svg"); }
-.mine-icon-diamond { background-image: url("/static/icons/ore-diamond.svg"); }
-.mine-icon-crystal { background-image: url("/static/icons/ore-crystal.svg"); }
-.mine-item-name { flex: 1; min-width: 0; }
-.mine-item-units { font-weight: bold; white-space: nowrap; }
-.mine-item-worth { min-width: 110px; text-align: right; white-space: nowrap; }
-.mine-log { margin: 0 0 10px; padding: 6px 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
-.mine-line { margin: 2px 0; color: var(--text-626262); }
-.mine-line:first-child { color: var(--text-000); font-weight: bold; }
-.mine-line.mine-win:first-child { color: var(--text-58462a); }
-.mine-sell-all { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin: 0 0 6px; }
-.mine-totals { margin: 0; text-align: right; }
 /* "Бизнес": the economy of the enterprises in tables, as the browser
    games of the 2000s had it — the balance a line over the tabs, grey
    heads of columns, numbers at the right, forms in a line. */
-.firm-balance { margin: 0 0 8px; text-align: right; }
-.firm-balance b { color: var(--text-45688e); font-size: 13px; }
 .business-done { margin: 0 0 10px; padding: 8px; background: var(--back-eee5b8); border: 1px solid var(--line-d7cf9e); color: var(--text-58462a); font-weight: bold; }
 .firm-tabs { margin-bottom: 10px; }
 /* The pixel pictures of the enterprises and the goods stay sharp at any size. */
@@ -1040,9 +1007,6 @@ a.poll-result-name { cursor: pointer; }
 .firm-good { display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
 .firm-recipe { line-height: 20px; }
 .firm-recipe .firm-icon { margin: -2px 0 0; }
-.firm-clock { display: flex; gap: 8px; align-items: center; margin: 4px 0 8px; }
-.firm-clock .hint { flex: none; }
-.firm-clock .meter { flex: 1; }
 a.firm-tile { transition: transform 0.15s, box-shadow 0.15s; }
 a.firm-tile:hover { box-shadow: 0 2px 6px var(--line-c5d0db); transform: translateY(-2px); }
 a.firm-tile.working .firm-tile-icon .firm-icon { animation: firm-work 1.6s ease-in-out infinite; }
@@ -1209,13 +1173,6 @@ input.step-value.wide { width: 80px; }
 .stock-up { color: var(--text-43a047); font-weight: bold; white-space: nowrap; }
 .stock-down { color: var(--text-d94c4c); font-weight: bold; white-space: nowrap; }
 .stock-flat { color: var(--text-626262); white-space: nowrap; }
-.stock-plaques { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0 0 8px; }
-.stock-plaque { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 6px 8px; background: linear-gradient(var(--back-fff), var(--back-f2f2f2)); border: 1px solid var(--line-d0d0d0); border-top: 2px solid var(--line-5b7aa1); color: var(--text-000); font: 11px tahoma, verdana, sans-serif; text-align: left; }
-button.stock-plaque { cursor: pointer; }
-button.stock-plaque:hover { background: var(--back-f2f5f8); border-color: var(--line-8fa7c2); border-top-color: var(--line-5b7aa1); }
-.stock-plaque-name { color: var(--text-626262); }
-.stock-plaque-value { overflow: hidden; font-size: 14px; font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
-.stock-plaque-sub { overflow: hidden; color: var(--text-626262); text-overflow: ellipsis; white-space: nowrap; }
 .stock-link { color: var(--text-2b587a); }
 /* The running tape of prices, dark as the screens of an exchange. */
 .ticker { overflow: hidden; margin: 0 0 10px; padding: 4px 0; background: linear-gradient(var(--back-444), var(--back-3e3e3e)); border: 1px solid var(--line-2f2f2f); }
@@ -1236,7 +1193,6 @@ button.stock-plaque:hover { background: var(--back-f2f5f8); border-color: var(--
 .stock-row:hover td { background: var(--back-f2f5f8); }
 .stock-price { font-size: 12px; font-weight: bold; }
 .stock-spark { width: 96px; }
-.stock-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .stock-holdings, .stock-news, .stock-orders { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 10px; }
 .stock-holding { display: flex; gap: 8px; align-items: center; padding: 5px 6px; background: var(--back-f9f9f9); border: 1px solid var(--line-e8e8e8); color: var(--text-000); }
 .stock-holding:hover { background: var(--back-f2f5f8); border-color: var(--line-c5d0db); text-decoration: none; }
@@ -2304,12 +2260,6 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 /* The casino: the balance over the games, three cells in a row, the
    amount of a bet over its quick buttons, both the whole width. */
 .casino { flex-direction: column-reverse; align-items: stretch; }
-/* The mine: the balance over it, the bar as wide as it can be. */
-.mine { flex-direction: column-reverse; align-items: stretch; }
-.mine-bar { flex: 1; min-width: 80px; }
-.mine-item { flex-wrap: wrap; }
-.mine-item-worth { min-width: 0; }
-.mine-ore .button, .mine-item .button { min-height: 32px; }
 /* The enterprises: the buttons big enough for a finger, the name and the
    choices as wide as the line; a wide table scrolls inside itself. */
 .business .button { min-height: 32px; }
@@ -2319,18 +2269,15 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .firm-grid input.firm-name, .firm-grid select.firm-select { flex: 1 1 100%; width: auto; min-width: 0; }
 .firm-tiles, .firm-steps, .firm-book { grid-template-columns: minmax(0, 1fr); }
 .firm-kinds-row, .firm-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.firm-clock { flex-wrap: wrap; }
-.firm-clock .meter { flex-basis: 100%; }
 .firm-line { gap: 4px; padding: 8px 6px; }
 .firm-line-out { min-width: 52px; }
 .firm-step-head .firm-icon { width: 32px; height: 32px; }
 .firm-grid + .firm-hint, .firm-dialog .firm-grid + .firm-hint { margin-left: 0; }
-.firm-goods, .firm-upgrades, .stock-columns, .stock-trade { grid-template-columns: minmax(0, 1fr); }
+.firm-goods, .firm-upgrades, .stock-trade { grid-template-columns: minmax(0, 1fr); }
 .firm-header { flex-wrap: wrap; }
 .firm-header-level { align-items: flex-start; width: 100%; }
 .firm-header-level .meter { width: 100%; }
 .firm-contract { flex-wrap: wrap; }
-.stock-plaques { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .stock-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .stock-fact { border-bottom: 1px solid var(--line-e0e0e0); }
 .stock-head { flex-wrap: wrap; }
@@ -3703,11 +3650,111 @@ body:has(.messenger) .page-title > span:first-child::before { background-image: 
 
 /* The windows of the pages of pets, as the sites of the 2000s drew them:
    a glossy blue title with an icon, a white body, a hard shadow. */
-.pet-window { margin: 0 0 12px; background: var(--back-fff); border: 1px solid var(--back-5b7aa1); border-radius: 6px 6px 3px 3px; box-shadow: 2px 2px 0 var(--back-dae1e8); }
-.pet-window-title { display: flex; gap: 6px; align-items: center; padding: 4px 8px; color: var(--text-fff); font-weight: bold; text-shadow: 0 1px 0 rgb(0 0 0 / 40%); background: linear-gradient(rgb(255 255 255 / 35%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--back-5b7aa1); border-radius: 5px 5px 0 0; }
-.pet-window-title img { flex: none; }
-.pet-window-body { padding: 8px; }
-.pet-window-body > :last-child { margin-bottom: 0; }
+.game-window { margin: 0 0 12px; background: var(--back-fff); border: 1px solid var(--back-5b7aa1); border-radius: 6px 6px 3px 3px; box-shadow: 2px 2px 0 var(--back-dae1e8); }
+.game-window-title { display: flex; gap: 6px; align-items: center; padding: 4px 8px; color: var(--text-fff); font-weight: bold; text-shadow: 0 1px 0 rgb(0 0 0 / 40%); background: linear-gradient(rgb(255 255 255 / 35%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--back-5b7aa1); border-radius: 5px 5px 0 0; }
+.game-window-title img { flex: none; }
+.game-window-body { padding: 8px; }
+.game-window-body > :last-child { margin-bottom: 0; }
+
+/* The games of money: the strip of numbers over a page, what answers a press
+   and the big buttons, as the browser games of the 2000s drew them. */
+.game-icon { flex: none; vertical-align: -3px; }
+.game-window-title > span:not([id]) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-window-title .game-sub { flex: none; font-weight: normal; }
+.game-help { display: inline-flex; flex: none; padding: 0; background: none; border: 0; cursor: help; }
+.game-help:hover { filter: brightness(1.2); }
+.game-hud { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0 0 10px; background: var(--back-5b7aa1); border: 1px solid var(--back-5b7aa1); border-radius: 4px; box-shadow: 2px 2px 0 var(--back-dae1e8); overflow: hidden; }
+.game-hud-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 6px 8px; background: linear-gradient(var(--back-fff), var(--back-e9edf1)); }
+.game-hud-name { display: flex; gap: 4px; align-items: center; color: var(--text-45688e); font-weight: bold; }
+.game-hud-sum { color: var(--text-3e3e3e); font-size: 18px; line-height: 20px; }
+.game-hud-cell .hint { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.game-hud.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+button.game-hud-cell { border: 0; color: var(--text-000); font: inherit; text-align: left; cursor: pointer; }
+button.game-hud-cell:hover { background: var(--back-f2f5f8); }
+.button.game-go { display: block; width: 100%; min-height: 34px; background: linear-gradient(rgb(255 255 255 / 30%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--back-3f8f35); font-size: 13px; font-weight: bold; }
+.button.game-go.sell { background: linear-gradient(rgb(255 255 255 / 30%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--back-d23a32); }
+.button.game-go.small { display: inline-block; width: auto; min-height: 0; font-size: 11px; font-weight: normal; }
+.game-float { position: absolute; z-index: 1200; font-size: 16px; font-weight: bold; white-space: nowrap; text-shadow: 1px 1px 0 var(--back-fff), -1px -1px 0 var(--back-fff), 1px -1px 0 var(--back-fff), -1px 1px 0 var(--back-fff); pointer-events: none; transform: translateX(-50%); animation: game-float 0.9s ease-out forwards; }
+.game-float.good { color: var(--text-43a047); }
+.game-float.bad { color: var(--text-c33); }
+.game-float.gold { color: var(--text-a87a00); font-size: 20px; }
+@keyframes game-float { from { opacity: 1; translate: 0 0; } 60% { opacity: 1; } to { opacity: 0; translate: 0 -56px; } }
+.game-flash-good { animation: game-flash-good 0.6s; }
+.game-flash-bad { animation: game-flash-bad 0.6s; }
+.game-flash-gold { animation: game-flash-gold 0.9s; }
+.game-flash-hit { animation: game-hit 0.12s; }
+@keyframes game-flash-good { from { box-shadow: 0 0 0 3px var(--text-43a047); } }
+@keyframes game-flash-bad { 0%, 50% { box-shadow: 0 0 0 3px var(--text-c33); } 15% { translate: -3px 0; } 30% { translate: 3px 0; } 45% { translate: -2px 0; } }
+@keyframes game-flash-gold { from { box-shadow: 0 0 0 4px var(--back-ffd54a); } }
+@keyframes game-hit { 50% { scale: 0.985; } }
+.game-tabs { display: flex; flex-wrap: wrap; gap: 2px; margin: 0 0 10px; border-bottom: 2px solid var(--back-5b7aa1); }
+.tabs.game-tabs a { display: inline-flex; gap: 4px; align-items: center; margin: 0; padding: 4px 9px; background: linear-gradient(var(--back-fff), var(--back-e4e4e4)); border: 1px solid var(--line-c0cad5); border-bottom: 0; border-radius: 4px 4px 0 0; color: var(--text-2b587a); }
+.tabs.game-tabs a:hover { background: var(--back-f2f5f8); }
+.tabs.game-tabs a.active, .tabs.game-tabs a.active:hover { background: linear-gradient(rgb(255 255 255 / 35%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--back-5b7aa1); border-color: var(--back-5b7aa1); color: var(--text-fff); font-weight: bold; }
+
+/* The mine: the rock face is one big button. */
+.mine-meter { display: block; }
+.mine-ores { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; margin: 0 0 8px; }
+.mine-tile { display: flex; flex-direction: column; gap: 1px; align-items: center; min-width: 0; padding: 4px 2px; background: linear-gradient(var(--back-fff), var(--back-e9edf1)); border: 1px solid var(--line-c0cad5); border-radius: 3px; color: var(--text-000); font: 11px tahoma, verdana, sans-serif; cursor: pointer; }
+.mine-tile b, .mine-tile .hint { max-width: 100%; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mine-tile:hover { border-color: var(--line-5b7aa1); background: var(--back-f2f5f8); }
+.mine-tile.chosen { background: var(--back-fbf3c3); border-color: var(--line-e2b24a); box-shadow: inset 0 0 0 1px var(--line-e2b24a); }
+.mine-tile.locked { background: var(--back-f2f2f2); cursor: default; }
+.mine-tile.locked .mine-icon { filter: grayscale(1); opacity: 0.5; }
+.mine-opens { display: inline-flex; gap: 2px; align-items: center; }
+.mine-icon { flex: none; width: 24px; height: 24px; background: center / contain no-repeat; }
+.mine-icon-stone { background-image: url("/static/icons/ore-stone.svg"); }
+.mine-icon-coal { background-image: url("/static/icons/ore-coal.svg"); }
+.mine-icon-iron { background-image: url("/static/icons/ore-iron.svg"); }
+.mine-icon-gold { background-image: url("/static/icons/ore-gold.svg"); }
+.mine-icon-diamond { background-image: url("/static/icons/ore-diamond.svg"); }
+.mine-icon-crystal { background-image: url("/static/icons/ore-crystal.svg"); }
+.mine-face { position: relative; display: flex; flex-direction: column; gap: 2px; align-items: center; width: 100%; min-height: 170px; margin: 0 0 8px; padding: 14px 8px; overflow: hidden; background: radial-gradient(circle at 50% 40%, var(--back-707070), var(--back-3e3e3e) 75%); border: 2px solid var(--line-333); border-radius: 4px; box-shadow: inset 0 0 0 1px var(--back-8b8b8b); color: var(--text-fff); font: 11px tahoma, verdana, sans-serif; cursor: pointer; user-select: none; touch-action: manipulation; }
+.mine-face:hover .mine-face-ore { scale: 1.08; }
+.mine-face.tired { filter: grayscale(0.8); cursor: not-allowed; }
+.mine-face-ore { width: 72px; height: 72px; transition: scale 0.1s; }
+.mine-face-pick { position: absolute; top: 34px; left: calc(50% + 24px); pointer-events: none; transform-origin: 80% 90%; }
+.mine-face-pick.swing { animation: mine-swing 0.2s; }
+@keyframes mine-swing { 40% { rotate: -55deg; } }
+.mine-face-text { font-size: 18px; font-weight: bold; text-shadow: 0 1px 2px var(--back-3e3e3e); }
+.mine-face-sub { color: var(--text-e8e8e8); }
+.mine-series { position: absolute; top: 6px; left: 8px; padding: 1px 6px; background: var(--back-ffd54a); border-radius: 8px; color: var(--text-58462a); font-weight: bold; }
+.mine-log { padding: 4px 6px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
+.mine-line { margin: 1px 0; color: var(--text-626262); }
+.mine-line:first-child { color: var(--text-000); font-weight: bold; }
+.mine-line.mine-win:first-child { color: var(--text-a87a00); }
+.mine-backpack { margin: 0 0 8px; }
+.mine-item { display: flex; gap: 8px; align-items: center; padding: 4px; border-bottom: 1px solid var(--line-e8ebee); }
+.mine-item-name { flex: 1; min-width: 0; }
+.mine-item-units { font-weight: bold; white-space: nowrap; }
+.mine-item-worth { min-width: 90px; text-align: right; white-space: nowrap; }
+.mine-totals { margin: 6px 0 0; text-align: center; }
+
+/* "Что сделать": what can be done now, a button a row. */
+.firm-todos { display: flex; flex-direction: column; }
+.firm-todo { display: flex; gap: 8px; align-items: center; padding: 4px 2px; border-bottom: 1px solid var(--line-e8ebee); }
+.firm-todo:last-child { border-bottom: 0; }
+.firm-todo-text { flex: 1; min-width: 0; }
+.firm-todo-text .hint { margin: 0; }
+.firm-todos + .button, .game-window-body > .button.game-go { margin-bottom: 6px; }
+.firm-good-quick { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.firm-good-quick .firm-good-tile { flex: 1; }
+.firm-good-quick .button { width: 100%; }
+.firm-stat-name .game-icon { vertical-align: -3px; }
+
+.stock-quicks { white-space: nowrap; }
+.stock-quick { width: 28px; padding: 2px 0; border: 1px solid var(--line-595959); border-radius: 3px; color: var(--text-fff); font: bold 11px tahoma, verdana, sans-serif; cursor: pointer; }
+.stock-quick + .stock-quick { margin-left: 2px; }
+.stock-quick.buy { background: linear-gradient(rgb(255 255 255 / 30%), transparent 50%), var(--back-3f8f35); }
+.stock-quick.sell { background: linear-gradient(rgb(255 255 255 / 30%), transparent 50%), var(--back-d23a32); }
+.stock-quick:disabled { filter: opacity(0.4); cursor: default; }
+.stock-rules { margin: 0; line-height: 16px; }
+.stock-trade .game-window { min-width: 0; margin-bottom: 0; }
+.stock-trade { margin-bottom: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .game-float, .mine-face-pick.swing, .game-flash-good, .game-flash-bad, .game-flash-gold, .game-flash-hit { animation: none; }
+}
 .pet-tab { background: linear-gradient(var(--back-fff), var(--back-e9edf1)); border-radius: 4px; }
 .pet-tab:hover { background: var(--back-e9edf1); }
 .pet-tab-chosen, .pet-tab-chosen:hover { background: linear-gradient(rgb(255 255 255 / 35%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--back-5b7aa1); border-color: var(--back-5b7aa1); }
@@ -3721,3 +3768,15 @@ body:has(.messenger) .page-title > span:first-child::before { background-image: 
 .pet-rules p { margin: 0 0 4px; line-height: 1.45; }
 .pet-badges { grid-template-columns: repeat(2, 1fr); }
 .pet-badge { padding: 4px 6px; text-align: center; }
+
+/* The games of money on a phone. */
+.game-hud, .game-hud.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.game-hud-money { grid-column: 1 / -1; }
+.mine-ores { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.mine-face { min-height: 200px; }
+.mine-item { flex-wrap: wrap; }
+.mine-item-worth { min-width: 0; }
+.mine-item .button { min-height: 32px; }
+.button.game-go.small { min-height: 32px; }
+.stock-table .stock-spark { display: none; }
+.stock-quick { width: 34px; padding: 6px 0; }

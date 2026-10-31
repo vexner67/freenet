@@ -1359,7 +1359,7 @@ test('the mine counts the energy on, sells ore and logs digs', async () => {
   assert.equal(oreName('gold'), 'Золото');
 
   const dug = (event, units, votes = 0) => ({ event, units, votes, mine: { miner: { energy: 8, experience: 1250 } } });
-  assert.equal(mineDug('stone', dug('', 147), settings), 'Камень: +147 шт. Энергия: 8, опыт: 1 250.');
+  assert.equal(mineDug('stone', dug('', 147), settings), 'Камень: +147 шт.');
   assert.match(mineDug('gold', dug('nugget', 150), settings), /^Самородок! Руды в 3 раза больше\. Золото: \+150 шт\./);
   assert.match(mineDug('stone', dug('chest', 150, 25), settings), /^Вы нашли сундук: \+25 голосов!/);
   assert.match(mineDug('stone', dug('collapse', 0), settings), /^Обвал!/);

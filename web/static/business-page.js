@@ -10,9 +10,12 @@
 // the raw materials to the shop); the shares are traded in "Акции"
 // (/stocks). Nothing is a form of fields: the plaques of the card — the
 // cash, the workers, the level, the machines, the share — open mini
-// windows of steppers, sliders and quick amounts over themselves. The
-// server counts the hours; the page asks for the city again when an hour
-// ends and only shows what the server said.
+// windows of steppers, sliders and quick amounts over themselves. The strip
+// over the page shows the money and the hour on every tab, and "Что сделать"
+// gathers what can be done right now, each a press of one button. The long
+// text sits behind the "?" of each window. The server counts the hours; the
+// page asks for the city again when an hour ends and only shows what the
+// server said.
 
 import { api, currentUser, session, started } from './api.js';
 import {
@@ -23,6 +26,8 @@ import { $, el, fullName, onScreen, pagePath, replaceInPlace, renderChrome, show
 import { button, openModal, toast } from './modal.js';
 import { lineChart, sparkline } from './charts.js';
 import { chips, isOpen, meter, popover, segmented, slider, stepper } from './controls.js';
+import { countTo, flash, floatText, gameWindow } from './game.js';
+import { coins, dealTick } from './sounds.js';
 import { tr } from './i18n.js';
 
 const answered = session.get() ? started(api.firms()) : null;
@@ -36,14 +41,15 @@ let asked = 0; // when refresh last asked for the city
 let chosen = '';
 
 function showBalance(votes) {
+  countTo($('votes'), balance, votes, balanceVotes);
   balance = votes;
-  $('votes').textContent = balanceVotes(votes);
   $('votes-word').textContent = balanceWord(votes);
   $('balance').hidden = false;
 }
 
 function said(text) {
-  $('done').textContent = text;
+  // A sum in "гол." at the end of a sentence would give it two dots.
+  $('done').textContent = text.replace(/\.\.$/, '.');
   $('done').hidden = !text;
 }
 
@@ -121,7 +127,16 @@ function firmLink(f) {
 
 const person = (p) => (p ? el('a', { href: pagePath(p), textContent: fullName(p) }) : tr('—'));
 const hint = (text) => el('p', { className: 'hint firm-hint', textContent: text });
-const title = (text) => el('div', { className: 'section-title', textContent: text });
+
+// The pictures of the windows, as whole addresses.
+const pictures = {
+  firm: '/static/icons/game/firm.svg', todo: '/static/icons/game/todo.svg', found: '/static/icons/game/found.svg', city: '/static/icons/game/city.svg',
+  news: '/static/icons/game/news.svg', help: '/static/icons/game/help.svg', box: '/static/icons/game/box.svg', order: '/static/icons/game/order.svg',
+  gear: '/static/icons/game/gear.svg', coins: '/static/icons/game/coins.svg', workers: '/static/icons/game/workers.svg', level: '/static/icons/game/level.svg',
+  profit: '/static/icons/game/profit.svg', share: '/static/icons/game/share.svg', wallet: '/static/icons/game/wallet.svg', deal: '/static/icons/game/deal.svg',
+  crown: '/static/icons/game/crown.svg', log: '/static/icons/game/log.svg', clock: '/static/icons/game/clock.svg',
+};
+const win = (picture, heading, nodes, help = '') => gameWindow(pictures[picture], heading, nodes, help);
 
 // bar is a strip filled to part of whole.
 function bar(part, whole) {
@@ -184,12 +199,14 @@ const submit = (text) => button(text, null, { type: 'submit' });
 async function act(action, body, text, box = null) {
   if (busy) return false;
   busy = true;
+  const pressed = lastPress;
   const error = box ?? $('error');
   hideError(error);
   said('');
 
   try {
     const done = await api.runFirms(action, body);
+    reward(done, pressed);
     if (done.spent > 0 || done.got > 0) showBalance(done.balance);
     state = done.firms;
     // What an action leads to takes the place of the page it was done on:
@@ -209,6 +226,28 @@ async function act(action, body, text, box = null) {
     return false;
   } finally {
     busy = false;
+  }
+}
+
+// lastPress is what was pressed last: the rewards of an action fly up from it.
+let lastPress = null;
+document.addEventListener('click', (event) => {
+  lastPress = event.target.closest?.('button, a') ?? null;
+}, true);
+
+// reward answers an action done: money coming in rings and flies up to the
+// strip of the page, anything else ticks.
+function reward(done, node) {
+  if (done.got > 0) {
+    coins();
+    floatText(node, `+${votesAmount(done.got)}`, 'gold');
+    flash($('balance'), 'gold');
+  } else if (done.spent > 0) {
+    dealTick(false);
+    floatText(node, `−${votesAmount(done.spent)}`, 'bad');
+  } else {
+    dealTick();
+    flash(node, 'good');
   }
 }
 
@@ -242,25 +281,28 @@ function rate(spec) {
   return tr('в час на рабочего: {0}', spec.sells.map((g) => `${goodName(g).toLowerCase()} — ${decimal(spec.rate[g])}`).join(', '));
 }
 
-// clock says when the hour of the enterprises ends: a bar of the hour
-// filling up and the minutes and seconds left; the page ticks it every
-// second.
-function clock() {
-  const node = el('div', { className: 'firm-clock' });
-  tick(node);
-  return node;
-}
-
 const hourLength = 3600000;
 
-function tick(node) {
+// showStrip fills the strip over the page: the cash of the enterprises the
+// caller directs and their hour as far as it has passed, and the hour itself
+// filling up with the minutes and seconds left. The page ticks it every
+// second.
+function showStrip() {
   if (!state?.nextHour) return;
   const left = Math.max(0, Date.parse(state.nextHour) - Date.now());
   const seconds = Math.ceil(left / 1000);
-  const countdown = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-  node.replaceChildren(
-    el('span', { className: 'hint', textContent: tr('Рабочий час закончится в {0}', firmHour(state.nextHour)) }),
-    meter(hourLength - Math.min(left, hourLength), hourLength, left ? countdown : tr('считаем…')));
+  $('hud-clock').textContent = left ? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}` : tr('считаем…');
+  $('hud-bar').style.width = `${(100 * (hourLength - Math.min(left, hourLength))) / hourLength}%`;
+  $('hud-end').textContent = tr('до {0}', firmHour(state.nextHour));
+
+  const mine = state.firms.filter(directs);
+  const now = mine.map(coming);
+  const cash = mine.reduce((n, f, i) => n + (now[i]?.cash ?? f.cash), 0);
+  const hour = now.reduce((n, c) => n + (c ? c.hour.income - c.hour.purchases - c.hour.wages - c.hour.upkeep - c.hour.fees : 0), 0);
+  $('hud-cash').textContent = money(cash);
+  $('hud-firms').textContent = tr('предприятий: {0}', mine.length);
+  $('hud-hour').replaceChildren(signed(hour));
+  $('hud-day').replaceChildren(tr('за сутки: '), signed(mine.reduce((n, f) => n + f.profit, 0)));
 }
 
 // profits are the profits of the hours of an enterprise, oldest first.
@@ -347,34 +389,79 @@ function hourProfit(f) {
 
 // --- "Мои предприятия" ---
 
-function myFirms() {
-  const mine = state.firms.filter((f) => held(f) > 0);
-  const nodes = [];
-  if (!mine.length) {
-    nodes.push(title(tr('Как начать')), steps());
-  } else {
-    nodes.push(title(tr('Мои предприятия')), el('div', { className: 'firm-tiles' }, ...mine.map(tile)), clock());
-  }
-  nodes.push(title(tr('Рынок труда')), ...labour());
-  if (state.news.length) nodes.push(title(tr('Новости города')), news(state.news.slice(0, 6)));
-  nodes.push(title(tr('Основать предприятие')), ...founding());
-  return nodes;
-}
-
 // labour is the labour market of the city: its people, those out of work
 // and the wage the enterprises pay on average.
 function labour() {
   const l = state.labour;
   const fact = (name, value) => el('div', { className: 'stock-fact' }, el('span', { textContent: name }), el('b', { textContent: value }));
-  return [
-    el('div', { className: 'stock-facts firm-labour' },
+  return el('div', { className: 'stock-facts firm-labour' },
       fact(tr('Горожан'), groupedVotes(l.people)),
       fact(tr('Работают'), groupedVotes(l.employed)),
       fact(tr('Без работы'), groupedVotes(l.people - l.employed)),
       fact(tr('Вакансий'), groupedVotes(Math.max(l.jobs - l.employed, 0))),
-      fact(tr('Средняя зарплата'), money(l.wage))),
-    hint(tr('Люди приезжают в город за работой, но всех вакансий не закрывают. Безработные идут к тем, кто платит больше, а платящие меньше средней теряют рабочих.')),
-  ];
+      fact(tr('Средняя зарплата'), money(l.wage)));
+}
+
+function myFirms() {
+  const mine = state.firms.filter((f) => held(f) > 0);
+  const nodes = [];
+  if (!mine.length) {
+    nodes.push(win('help', tr('Как начать'), [steps()], about));
+  } else {
+    nodes.push(todo(), win('firm', tr('Мои предприятия'), [el('div', { className: 'firm-tiles' }, ...mine.map(tile))], about));
+  }
+  nodes.push(win('found', tr('Основать предприятие'), founding()));
+  if (state.news.length) nodes.push(win('news', tr('Новости города'), [news(state.news.slice(0, 6))]));
+  nodes.push(win('city', tr('Рынок труда'), [labour()], tr('Люди приезжают в город за работой, но всех вакансий не закрывают. Безработные идут к тем, кто платит больше, а платящие меньше средней теряют рабочих.')));
+  return nodes;
+}
+
+const about = tr('Основайте предприятие и стройте цепочки: фермы, рудники, нефтевышки и лесхозы добывают сырьё, мельницы, заводы и лесопилки делают из него материалы, фабрики — хлеб, мебель и электронику, а магазины продают их городу. Предприятие работает само, час за часом: рабочие получают зарплату из кассы, склад закупает сырьё, а сделанное продаётся на бирже другим игрокам или государству. Берите заказы города, улучшайте станки и склад, чините износ и следите за новостями: засуха или забастовка бьют по выручке. Акции предприятий торгуются на бирже в «Акциях».');
+
+// reserveHours is how many hours of wages and upkeep "Забрать" leaves in the
+// cash, so that taking the profit does not stop an enterprise.
+const reserveHours = 6;
+
+// surplus is what can be taken of the cash of f as dividends, in votes.
+const surplus = (f) => Math.max(0, Math.floor((f.cash - reserveHours * (f.upkeep + f.workers * f.wage)) / 100));
+
+// todo is what the caller can do right now, each with its one button: take
+// the profit, deliver an order, repair, level up, take an order that fits.
+function todo() {
+  const item = (f, picture, text, label, run) => el('div', { className: 'firm-todo' },
+    el('img', { className: 'game-icon', src: pictures[picture], alt: '', width: 24, height: 24 }),
+    el('span', { className: 'firm-todo-text' }, link(f.name, firmPath(f)), el('br'), el('span', { className: 'hint', textContent: text })),
+    el('button', { type: 'button', className: 'button game-go small', textContent: label, onclick: run }));
+
+  const items = [];
+  const directed = state.firms.filter(directs);
+  for (const f of directed) {
+    if (surplus(f) > 0) items.push(item(f, 'coins', tr('В кассе есть прибыль: запас на {0} ч. останется', reserveHours), tr('Забрать {0}', votesAmount(surplus(f))), () => takeProfit(f)));
+    for (const k of state.contracts.filter((x) => x.firm === f.id)) {
+      const units = Math.min(f.stock.find((s) => s.good === k.good)?.units ?? 0, k.units - k.delivered);
+      if (units > 0) items.push(item(f, 'order', tr('Заказ города: {0}, осталось {1}', goodName(k.good).toLowerCase(), left(k.deadline)), tr('Сдать {0} шт.', groupedVotes(units)), () => act('deliver', { contract: k.id, units }, tr('Сдано {0} шт., в кассу — {1}.', groupedVotes(units), money(units * k.price)))));
+    }
+    if (f.wear >= 30 && f.cash >= f.repairCost) items.push(item(f, 'gear', tr('Станки исправны на {0} %', Math.round(100 - f.wear)), tr('Починить за {0}', money(f.repairCost)), () => act('repair', { firm: f.id }, tr('Станки починены.'))));
+    if (f.upgradeCost && f.cash >= f.upgradeCost * 100) items.push(item(f, 'level', tr('Хватает на {0} ур.', f.level + 1), tr('Улучшить за {0}', money(f.upgradeCost * 100)), () => act('upgrade', { firm: f.id }, tr('Предприятие улучшено до {0} ур.', f.level + 1))));
+  }
+  for (const k of state.contracts.filter((x) => !x.firm)) {
+    const f = directed.find((x) => x.stock.some((s) => s.good === k.good));
+    if (f) items.push(item(f, 'order', tr('Новый заказ: {0}, {1} шт. по {2}', goodName(k.good).toLowerCase(), groupedVotes(k.units), money(k.price)), tr('Взять'), () => act('take_contract', { firm: f.id, contract: k.id }, tr('Заказ взят: «{0}» сдаёт {1}.', f.name, goodName(k.good).toLowerCase()))));
+  }
+  if (!items.length) return null;
+
+  const rich = directed.filter((f) => surplus(f) > 0);
+  const all = rich.length > 1 ? el('button', { type: 'button', className: 'button game-go', textContent: tr('Забрать всю прибыль: {0}', votesAmount(rich.reduce((n, f) => n + surplus(f), 0))), onclick: takeAll }) : null;
+  return win('todo', tr('Что сделать'), [all, el('div', { className: 'firm-todos' }, ...items.slice(0, 8))]);
+}
+
+const takeProfit = (f) => act('dividend', { firm: f.id, votes: surplus(f) }, (d) => tr('Дивиденды выплачены, ваша доля — {0}.', votesAmount(d.got)));
+
+// takeAll takes the profit of every enterprise, one after another.
+async function takeAll() {
+  for (const f of state.firms.filter((x) => directs(x) && surplus(x) > 0)) {
+    if (!await takeProfit(f)) return;
+  }
 }
 
 function steps() {
@@ -499,13 +586,13 @@ function firmCard(f, part) {
 
   const plan = planOf(f.kind);
   const parts = [
-    ['work', tr('Производство')],
-    ['improve', tr('Улучшения')],
-    ['contracts', tr('Заказы города')],
-    directs(f) ? ['trade', tr('Заявки')] : null,
-    directs(f) ? ['routes', tr('Поставки')] : null,
-    ['report', tr('Отчёт')],
-    ['holders', tr('Акционеры')],
+    ['work', tr('Производство'), 'gear'],
+    ['improve', tr('Улучшения'), 'level'],
+    ['contracts', tr('Заказы города'), 'order'],
+    directs(f) ? ['trade', tr('Заявки'), 'deal'] : null,
+    directs(f) ? ['routes', tr('Поставки'), 'box'] : null,
+    ['report', tr('Отчёт'), 'log'],
+    ['holders', tr('Акционеры'), 'crown'],
   ].filter(Boolean);
   if (!parts.some(([p]) => p === part)) part = 'work';
 
@@ -515,7 +602,7 @@ function firmCard(f, part) {
     contracts: () => firmContracts(f),
     trade: () => orders(f),
     routes: () => routes(f),
-    report: () => [report(f)],
+    report: () => [win('log', tr('Отчёт'), [report(f)])],
     holders: () => holders(f),
   }[part]();
 
@@ -524,8 +611,11 @@ function firmCard(f, part) {
     header(f, plan),
     idle(f) ? el('div', { className: 'firm-alarm', textContent: tr('Забастовка: рабочие не выходят до {0}. Платите не ниже нормы — {1} в час.', firmHour(f.idleUntil), money(state.settings.wage)) }) : null,
     stats(f, plan),
-    clock(),
-    el('div', { className: 'tabs firm-subtabs' }, ...parts.map(([p, text]) => link(text, firmPath(f, p), p === part ? 'active' : ''))),
+    el('div', { className: 'tabs firm-subtabs game-tabs' }, ...parts.map(([p, text, picture]) => {
+      const tab = link('', firmPath(f, p), p === part ? 'active' : '');
+      tab.append(el('img', { src: pictures[picture], alt: '', width: 16, height: 16 }), text);
+      return tab;
+    })),
     ...view,
     directs(f) ? el('div', { className: 'firm-close' }, el('a', { href: '#', textContent: tr('Ликвидировать предприятие'), onclick: (e) => { e.preventDefault(); liquidate(f); } })) : null,
   ];
@@ -564,10 +654,10 @@ function header(f, plan) {
 }
 
 // plaque is a plaque of the card; onclick opens its mini window.
-function plaque(name, value, sub, onclick = null, key = '') {
+function plaque(picture, name, value, sub, onclick = null, key = '') {
   const shown = el('div', { className: 'firm-stat-value' }, value);
   const node = el(onclick ? 'button' : 'div', { className: onclick ? 'firm-stat clickable' : 'firm-stat' },
-    el('div', { className: 'firm-stat-name' }, name, onclick ? el('span', { className: 'firm-stat-more', textContent: '▾' }) : null),
+    el('div', { className: 'firm-stat-name' }, el('span', {}, el('img', { className: 'game-icon', src: pictures[picture], alt: '', width: 16, height: 16 }), ` ${name}`), onclick ? el('span', { className: 'firm-stat-more', textContent: '▾' }) : null),
     key ? watched(key, shown) : shown,
     el('div', { className: 'firm-stat-sub' }, sub));
   if (onclick) {
@@ -580,12 +670,12 @@ function plaque(name, value, sub, onclick = null, key = '') {
 function stats(f, plan) {
   const own = directs(f);
   return el('div', { className: 'firm-stats' },
-    plaque(tr('Касса'), cashNow(f), f.forecast ? hourProfit(f) : f.escrow > 0 ? tr('и {0} в заявках', money(f.escrow)) : tr('расходы {0} в час', money(f.upkeep + f.workers * f.wage)), own ? (a) => cashBox(a, f) : null, `${f.id}:cash`),
-    plaque(tr('За сутки'), el('span', { className: 'firm-stat-trend' }, signed(f.profit), trend(f, 64)), tr('прибыль за {0} ч.', f.hours.length), null, `${f.id}:profit`),
-    plaque(tr('Рабочие'), `${f.workers} / ${f.wanted}`, f.wanted > f.workers ? tr('ищет ещё {0}, выработка {1} %', f.wanted - f.workers, Math.round(f.productivity * 100)) : tr('выработка {0} %', Math.round(f.productivity * 100)), own ? (a) => staffBox(a, f) : null, `${f.id}:workers`),
-    plaque(tr('Уровень'), `${f.level} / ${plan.levels}`, f.upgradeCost ? tr('следующий — {0}', money(f.upgradeCost * 100)) : tr('высший'), own ? (a) => levelBox(a, f, plan) : null),
-    plaque(tr('Станки'), meter(100 - f.wear, 100, tr('{0} %', Math.round(100 - f.wear)), wearTone(f.wear)), f.wear >= 30 ? tr('изношены — делают меньше') : tr('в порядке'), own ? (a) => repairBox(a, f) : null),
-    plaque(tr('Акция'), money(shareOf(f)), f.float > 0 ? tr('{0} новых на бирже', groupedVotes(f.float)) : tr('торгуется в «Акциях»'), (a) => shareBox(a, f)),
+    plaque('wallet', tr('Касса'), cashNow(f), f.forecast ? hourProfit(f) : f.escrow > 0 ? tr('и {0} в заявках', money(f.escrow)) : tr('расходы {0} в час', money(f.upkeep + f.workers * f.wage)), own ? (a) => cashBox(a, f) : null, `${f.id}:cash`),
+    plaque('profit', tr('За сутки'), el('span', { className: 'firm-stat-trend' }, signed(f.profit), trend(f, 64)), tr('прибыль за {0} ч.', f.hours.length), null, `${f.id}:profit`),
+    plaque('workers', tr('Рабочие'), `${f.workers} / ${f.wanted}`, f.wanted > f.workers ? tr('ищет ещё {0}, выработка {1} %', f.wanted - f.workers, Math.round(f.productivity * 100)) : tr('выработка {0} %', Math.round(f.productivity * 100)), own ? (a) => staffBox(a, f) : null, `${f.id}:workers`),
+    plaque('level', tr('Уровень'), `${f.level} / ${plan.levels}`, f.upgradeCost ? tr('следующий — {0}', money(f.upgradeCost * 100)) : tr('высший'), own ? (a) => levelBox(a, f, plan) : null),
+    plaque('gear', tr('Станки'), meter(100 - f.wear, 100, tr('{0} %', Math.round(100 - f.wear)), wearTone(f.wear)), f.wear >= 30 ? tr('изношены — делают меньше') : tr('в порядке'), own ? (a) => repairBox(a, f) : null),
+    plaque('share', tr('Акция'), money(shareOf(f)), f.float > 0 ? tr('{0} новых на бирже', groupedVotes(f.float)) : tr('торгуется в «Акциях»'), (a) => shareBox(a, f)),
   );
 }
 
@@ -747,9 +837,7 @@ function production(f) {
     el('div', { className: 'firm-work' },
       el('span', { textContent: rate(spec) }),
       el('b', { textContent: tr('Сейчас в час: {0}', now) })),
-    title(tr('Склад')),
-    el('div', { className: 'firm-goods' }, ...f.stock.map((s) => goodTile(f, spec, s))),
-    hint(directs(f)
+    win('box', tr('Склад'), [el('div', { className: 'firm-goods' }, ...f.stock.map((s) => goodTile(f, spec, s)))], directs(f)
       ? tr('Нажмите на товар, чтобы продать его государству, купить или настроить склад: он сам закупает сырьё и продаёт продукцию по ценам не хуже заданных — сначала у других предприятий, потом у государства.')
       : tr('Склад сам закупает сырьё и продаёт продукцию — сначала другим предприятиям, потом государству.')),
     ...(directs(f) ? offers(f) : []),
@@ -797,11 +885,16 @@ function goodTile(f, spec, s) {
       el('b', { textContent: goodName(s.good) }),
       meter(s.units, s.capacity, s.incoming > 0 ? tr('{0} (+{1}) из {2}', groupedVotes(s.units), groupedVotes(s.incoming), groupedVotes(s.capacity)) : tr('{0} из {1}', groupedVotes(s.units), groupedVotes(s.capacity))),
       el('span', { className: 'firm-badges' }, ...badges)));
-  if (directs(f)) {
-    tile.type = 'button';
-    tile.addEventListener('click', () => stockBox(tile, f, spec, s));
-  }
-  return tile;
+  if (!directs(f)) return tile;
+
+  tile.type = 'button';
+  tile.addEventListener('click', () => stockBox(tile, f, spec, s));
+  if (spec.output !== s.good || s.units < 1) return tile;
+  // What the enterprise makes sells to the state in one press.
+  return el('div', { className: 'firm-good-quick' }, tile, el('button', {
+    type: 'button', className: 'button game-go small', textContent: tr('Продать всё за {0}', money(s.units * quoteOf(s.good).stateBid)),
+    onclick: () => act('state_sell', { firm: f.id, good: s.good, units: s.units }, tr('Продано государству: {0} шт.', groupedVotes(s.units))),
+  }));
 }
 
 // stockBox is the mini window of a good of the storage: a deal with the
@@ -847,7 +940,7 @@ function stockBox(anchor, f, spec, s) {
 
 function upgrades(f) {
   const own = directs(f);
-  return [
+  return [win('level', tr('Улучшения'), [
     el('div', { className: 'firm-upgrades' }, ...improvements.map(([kind, name, about]) => {
       const imp = f.improvements.find((i) => i.kind === kind) ?? { rank: 0, cost: 0 };
       const pips = el('span', { className: 'firm-pips' }, ...[1, 2, 3].map((n) => el('span', { className: n <= imp.rank ? 'firm-pip on' : 'firm-pip' })));
@@ -859,8 +952,7 @@ function upgrades(f) {
         el('span', { className: 'hint', textContent: about }),
         go ?? el('span', { className: 'hint', textContent: imp.cost ? tr('следующий ранг — {0}', money(imp.cost)) : tr('высший ранг') }));
     })),
-    hint(tr('Улучшения оплачиваются из кассы и остаются с предприятием: половина их цены входит в его стоимость и в цену акции.')),
-  ];
+  ], tr('Улучшения оплачиваются из кассы и остаются с предприятием: половина их цены входит в его стоимость и в цену акции.'))];
 }
 
 // --- the orders of the city ---
@@ -894,9 +986,14 @@ function contractCard(k, f = null) {
 }
 
 function takeBox(anchor, k, f) {
+  const able = (f ? [f] : state.firms).filter((x) => directs(x) && x.stock.some((s) => s.good === k.good));
+  // With one enterprise that can take it there is nothing to ask.
+  if (able.length === 1) {
+    act('take_contract', { firm: able[0].id, contract: k.id }, tr('Заказ взят: «{0}» сдаёт {1}.', able[0].name, goodName(k.good).toLowerCase()));
+    return;
+  }
   const pop = popover(anchor, tr('Взять заказ'));
   if (!pop) return;
-  const able = (f ? [f] : state.firms).filter((x) => directs(x) && x.stock.some((s) => s.good === k.good));
   if (!able.length) {
     pop.body.append(popNote(tr('Ни одно ваше предприятие не держит {0} на складе.', goodName(k.good).toLowerCase())));
   } else {
@@ -932,12 +1029,10 @@ function deliverBox(anchor, k, f) {
 function firmContracts(f) {
   const own = state.contracts.filter((k) => k.firm === f.id);
   const open = state.contracts.filter((k) => !k.firm && f.stock.some((s) => s.good === k.good));
+  const rule = tr('Город платит за заказ на треть-половину дороже обычной цены. Предприятие берёт не больше двух заказов сразу.');
   return [
-    title(tr('Взятые заказы')),
-    own.length ? el('div', { className: 'firm-contracts' }, ...own.map((k) => contractCard(k, f))) : hint(tr('Предприятие не выполняет заказов.')),
-    title(tr('Можно взять')),
-    open.length ? el('div', { className: 'firm-contracts' }, ...open.map((k) => contractCard(k, f))) : hint(tr('Сейчас город не заказывает того, что держит это предприятие.')),
-    hint(tr('Город платит за заказ на треть-половину дороже обычной цены. Предприятие берёт не больше двух заказов сразу.')),
+    win('order', tr('Взятые заказы'), [own.length ? el('div', { className: 'firm-contracts' }, ...own.map((k) => contractCard(k, f))) : hint(tr('Предприятие не выполняет заказов.'))], rule),
+    win('order', tr('Можно взять'), [open.length ? el('div', { className: 'firm-contracts' }, ...open.map((k) => contractCard(k, f))) : hint(tr('Сейчас город не заказывает того, что держит это предприятие.'))]),
   ];
 }
 
@@ -953,11 +1048,9 @@ const makers = (good) => state.catalog.filter((s) => s.output === good).map((s) 
 function contracts() {
   const rank = (k) => (k.firm ? (directs(firmOf(k.firm) ?? {}) ? 0 : 3) : fits(k) ? 1 : 2);
   const list = [...state.contracts].sort((a, b) => rank(a) - rank(b));
-  return [
-    title(tr('Заказы города')),
+  return [win('order', tr('Заказы города'), [
     list.length ? el('div', { className: 'firm-contracts' }, ...list.map((k) => contractCard(k))) : hint(tr('Сейчас город ничего не заказывает. Новые заказы появляются почти каждый час.')),
-    hint(tr('Город заказывает то, что делают его предприятия, на треть-половину дороже обычной цены: до 8 заказов сразу, новый — в шести часах из десяти. Взятый заказ нужно сдать за сутки со склада предприятия, а за несданное — штраф: десятая часть его цены. Серые заказы ваши предприятия взять не могут.')),
-  ];
+  ], tr('Город заказывает то, что делают его предприятия, на треть-половину дороже обычной цены: до 8 заказов сразу, новый — в шести часах из десяти. Взятый заказ нужно сдать за сутки со склада предприятия, а за несданное — штраф: десятая часть его цены. Серые заказы ваши предприятия взять не могут.'))];
 }
 
 // news are the latest events of the city.
@@ -994,8 +1087,8 @@ function offers(f) {
   const wanted = state.orders
     .filter((o) => o.firmId !== f.id && (o.buy ? spec.output === o.good : buys(spec, o.good)))
     .sort((a, b) => Number(a.buy) - Number(b.buy) || (a.buy ? b.price - a.price : a.price - b.price));
-  const heading = title(tr('Предложения других предприятий'));
-  if (!wanted.length) return [heading, hint(tr('Сейчас никто не продаёт то, что нужно вашему предприятию, и не покупает то, что оно делает.'))];
+  const heading = tr('Предложения других предприятий');
+  if (!wanted.length) return [win('deal', heading, [hint(tr('Сейчас никто не продаёт то, что нужно вашему предприятию, и не покупает то, что оно делает.'))])];
 
   const rows = wanted.map((o) => {
     const s = stockOf(o.good);
@@ -1021,22 +1114,19 @@ function offers(f) {
     ];
   });
 
-  return [
-    heading,
-    table([[tr('Товар'), 0], [tr('Предприятие'), 0], ['', 70], [tr('Цена'), 60, true], [tr('Шт.'), 60, true], ['', 120, true]], rows),
-    hint(tr('Нажмите кнопку — сделка пройдёт сразу по цене заявки. Склад, который закупает и продаёт сам, каждый час сначала берёт такие заявки и товар других предприятий по цене между ценами государства, а уже потом идёт к государству.')),
-  ];
+  return [win('deal', heading, [table([[tr('Товар'), 0], [tr('Предприятие'), 0], ['', 70], [tr('Цена'), 60, true], [tr('Шт.'), 60, true], ['', 120, true]], rows)],
+    tr('Нажмите кнопку — сделка пройдёт сразу по цене заявки. Склад, который закупает и продаёт сам, каждый час сначала берёт такие заявки и товар других предприятий по цене между ценами государства, а уже потом идёт к государству.'))];
 }
 
 function orders(f) {
   const own = state.orders.filter((o) => o.firmId === f.id);
-  const nodes = [...offers(f), title(tr('Заявки предприятия'))];
-  nodes.push(own.length
+  const nodes = [...offers(f)];
+  nodes.push(win('deal', tr('Заявки предприятия'), [own.length
     ? table([[tr('Товар'), 0], [tr('Заявка'), 80], [tr('Цена'), 80, true], [tr('Осталось'), 80, true], ['', 70, true]], own.map((o) => [
       goodLink(o.good), o.buy ? tr('покупка') : tr('продажа'), hundredths(o.price), groupedVotes(o.units),
       el('a', { href: '#', textContent: tr('Снять'), onclick: (e) => { e.preventDefault(); act('cancel', { order: o.id }, tr('Заявка снята.')); } }),
     ]))
-    : hint(tr('Заявок нет.')));
+    : hint(tr('Заявок нет.'))]));
 
   let good = f.stock[0].good;
   let buy = false;
@@ -1078,14 +1168,14 @@ function orders(f) {
 
   drawGoods();
   const priceRow = el('div', { className: 'deal-row' }, el('span', { className: 'deal-label', textContent: tr('Цена') }), price.node);
-  nodes.push(title(tr('Новая заявка')), el('div', { className: 'firm-order' },
+  const rule = tr('Заявка на покупку держит деньги кассы, на продажу — товар склада, пока её не исполнят или не снимут. Сделка идёт по цене той заявки, что выставлена раньше, а продавец платит комиссию {0} %. Нажмите на цену, чтобы подставить её.', state.settings.fee);
+  nodes.push(win('deal', tr('Новая заявка'), [el('div', { className: 'firm-order' },
     el('div', { className: 'deal-row' }, sides.node),
     el('div', { className: 'deal-row' }, goods),
     el('div', { className: 'deal-row' }, el('span', { className: 'deal-label', textContent: tr('Штук') }), units.node,
       chips([['10', () => units.set(10)], ['100', () => units.set(100)], ['1 000', () => units.set(1000)]])),
-    priceRow, pricesRow, total, go));
+    priceRow, pricesRow, total, go)], rule));
   recount();
-  nodes.push(hint(tr('Заявка на покупку держит деньги кассы, на продажу — товар склада, пока её не исполнят или не снимут. Сделка идёт по цене той заявки, что выставлена раньше, а продавец платит комиссию {0} %. Нажмите на цену, чтобы подставить её.', state.settings.fee)));
   return nodes;
 }
 
@@ -1097,16 +1187,16 @@ const takes = (f, good) => specOf(f.kind).inputs.some((i) => i.good === good) ||
 // handed every hour by themselves, and a form of a new one: the good, the
 // enterprise it goes to, from how many units kept and how many an hour.
 function routes(f) {
-  const nodes = [title(tr('Поставки'))];
-  nodes.push(el('div', { className: 'firm-order' },
+  const nodes = [];
+  nodes.push(win('box', tr('Поставки'), [
     button(tr('Настроить поставки автоматически'), () => act('auto_routes', { firm: f.id }, tr('Поставки настроены: каждый час предприятия получают столько, сколько им нужно.'))),
-    hint(tr('Сайт сам соединит все ваши предприятия и каждый час будет считать, сколько нужно передать: запас на {0} ч. работы получателя по числу рабочих, их выработке и износу станков. Сначала предприятие оставляет товар на принятые заказы города и часть на ещё не принятые, остальное делит между получателями по тому, сколько им не хватает. Ручные поставки заменятся.', 3))));
-  nodes.push(f.routes.length
+    f.routes.length
     ? table([[tr('Товар'), 0], [tr('Куда'), 0], [tr('Когда на складе от'), 110, true], [tr('В час'), 70, true], ['', 70, true]], f.routes.map((r) => [
       goodLink(r.good), firmOf(r.to) ? firmLink(firmOf(r.to)) : tr('—'), r.auto ? tr('авто') : groupedVotes(r.from), r.auto ? tr('по расчёту') : groupedVotes(r.units),
       el('a', { href: '#', textContent: tr('Отменить'), onclick: (e) => { e.preventDefault(); act('unroute', { firm: f.id, route: r.id }, tr('Поставка отменена.')); } }),
     ]))
-    : hint(tr('Поставок нет.')));
+    : hint(tr('Поставок нет.')),
+  ], tr('Сайт сам соединит все ваши предприятия и каждый час будет считать, сколько нужно передать: запас на {0} ч. работы получателя по числу рабочих, их выработке и износу станков. Сначала предприятие оставляет товар на принятые заказы города и часть на ещё не принятые, остальное делит между получателями по тому, сколько им не хватает. Ручные поставки заменятся.', 3)));
 
   const goods = f.stock.map((s) => s.good).filter((g) => state.firms.some((o) => o.id !== f.id && directs(o) && takes(o, g)));
   if (!goods.length) {
@@ -1135,15 +1225,15 @@ function routes(f) {
 
   const go = button(tr('Добавить поставку'), () => act('route', { firm: f.id, good, to: target.value, from: from.get(), units: units.get() },
     tr('Поставка добавлена: она пойдёт с началом следующего часа.')));
-  nodes.push(title(tr('Новая поставка')), el('div', { className: 'firm-order' },
+  const rule = tr('Каждый час, когда на складе этого предприятия товара не меньше «от», столько, сколько указано, уходит другому вашему предприятию — до продаж и сколько вместит его склад и оплатит касса. Цена — посередине между ценами государства, без комиссии биржи: акционеры обоих предприятий ничего не теряют. Поставок у предприятия — до {0}.', 5);
+  nodes.push(win('box', tr('Новая поставка'), [el('div', { className: 'firm-order' },
     el('div', { className: 'deal-row' }, goodPick),
     el('div', { className: 'deal-row' }, el('span', { className: 'deal-label', textContent: tr('Куда') }), target),
     el('div', { className: 'deal-row' }, el('span', { className: 'deal-label', textContent: tr('От, шт.') }), from.node,
       chips([['0', () => from.set(0)], ['100', () => from.set(100)], ['1 000', () => from.set(1000)]])),
     el('div', { className: 'deal-row' }, el('span', { className: 'deal-label', textContent: tr('В час, шт.') }), units.node,
       chips([['10', () => units.set(10)], ['100', () => units.set(100)], ['1 000', () => units.set(1000)]])),
-    go));
-  nodes.push(hint(tr('Каждый час, когда на складе этого предприятия товара не меньше «от», столько, сколько указано, уходит другому вашему предприятию — до продаж и сколько вместит его склад и оплатит касса. Цена — посередине между ценами государства, без комиссии биржи: акционеры обоих предприятий ничего не теряют. Поставок у предприятия — до {0}.', 5)));
+    go)], rule));
   return nodes;
 }
 
@@ -1187,7 +1277,7 @@ function comingRow(f, costs, profit) {
 
 function holders(f) {
   const offers = state.tenders.filter((t) => t.firm === f.id);
-  return [
+  return [win('crown', tr('Акционеры'), [
     table([[tr('Акционер'), 0], [tr('Акций'), 70, true], [tr('Доля'), 150]], f.holders.map((h) => [
       person(h.user), groupedVotes(h.shares), el('span', { className: 'firm-share' }, bar(h.shares, f.shares), sharePercent(h.shares, f.shares)),
     ])),
@@ -1195,9 +1285,8 @@ function holders(f) {
       el('div', { className: 'firm-contract-text' },
         el('span', {}, person(t.user), ' ', tr('предлагает выкупить {0} акц. по {1}', groupedVotes(t.shares), money(t.price))),
         el('span', { className: 'hint', textContent: tr('до {0}', firmHour(t.until)) }))))) : null,
-    hint(tr('Директор — тот, у кого больше всех акций: продав много, можно потерять управление, а собрав больше директора — получить его. Акции покупают, продают и предлагают выкупить в «Акциях».')),
     el('p', {}, el('a', { href: `/stocks?firm=${encodeURIComponent(f.id)}`, textContent: tr('Акции предприятия на бирже »') })),
-  ];
+  ], tr('Директор — тот, у кого больше всех акций: продав много, можно потерять управление, а собрав больше директора — получить его. Акции покупают, продают и предлагают выкупить в «Акциях».'))];
 }
 
 // --- "Биржа" ---
@@ -1205,8 +1294,7 @@ function holders(f) {
 const price = (n) => (n > 0 ? hundredths(n) : tr('—'));
 
 function exchange() {
-  return [
-    title(tr('Котировки')),
+  return [win('box', tr('Котировки'), [
     table(
       [[tr('Товар'), 0], [tr('Гос. купит'), 76, true], [tr('Гос. продаст'), 86, true], [tr('Город'), 56, true], [tr('Спрос'), 60, true], [tr('Предл.'), 60, true], [tr('Продано'), 64, true]],
       state.quotes.map((q) => [
@@ -1214,8 +1302,7 @@ function exchange() {
         price(q.bestBid), price(q.bestAsk), groupedVotes(q.volume),
       ]),
     ),
-    hint(tr('Цены — в голосах за штуку. Государство покупает дешевле нормы и продаёт дороже: чем больше с ним наторговали за сутки, тем хуже его цены. Спрос и предложение — лучшие заявки игроков, «Продано» — штук на бирже за сутки. Город платит магазинам за хлеб, мебель и электронику. Нажмите на товар, чтобы увидеть его заявки.')),
-  ];
+  ], tr('Цены — в голосах за штуку. Государство покупает дешевле нормы и продаёт дороже: чем больше с ним наторговали за сутки, тем хуже его цены. Спрос и предложение — лучшие заявки игроков, «Продано» — штук на бирже за сутки. Город платит магазинам за хлеб, мебель и электронику. Нажмите на товар, чтобы увидеть его заявки.'))];
 }
 
 function book(good) {
@@ -1288,25 +1375,20 @@ function guide() {
   };
 
   return [
-    title(tr('Как начать')),
-    steps(),
-    title(tr('Цепочки')),
-    el('div', { className: 'firm-chains' }, ...chains().map((chain) => el('div', { className: 'firm-chain' },
+    win('help', tr('Как начать'), [steps()], about),
+    win('firm', tr('Цепочки'), [el('div', { className: 'firm-chains' }, ...chains().map((chain) => el('div', { className: 'firm-chain' },
       ...chain.flatMap((n, i) => {
         const piece = n[0] === 'firm' ? firmNode(node(n), n[1]) : node(n);
         return i ? [el('span', { className: 'firm-chain-arrow', textContent: '→' }), piece] : [piece];
-      })))),
-    hint(tr('Чем дальше по цепочке, тем дороже предприятие и тем больше оно зарабатывает. Нажмите на предприятие, чтобы основать такое.')),
-    title(tr('Предприятия')),
-    table(
+      }))))], tr('Чем дальше по цепочке, тем дороже предприятие и тем больше оно зарабатывает. Нажмите на предприятие, чтобы основать такое.')),
+    win('firm', tr('Предприятия'), [table(
       [[tr('Предприятие'), 150], [tr('Цена'), 100, true], [tr('Работа'), 0], [tr('Рабочих'), 60, true]],
       state.catalog.map((s) => [
         el('span', { className: 'firm-good' }, firmIcon(s.kind, 16), el('span', { textContent: firmKindName(s.kind) })),
         votesAmount(planOf(s.kind).price), recipe(s), planOf(s.kind).staff,
       ]),
-    ),
-    title(tr('Товары')),
-    table([[tr('Товар'), 0], [tr('Норма цены'), 100, true]], state.settings.goods.map((g) => [goodLink(g.good), money(g.base)])),
+    )]),
+    win('box', tr('Товары'), [table([[tr('Товар'), 0], [tr('Норма цены'), 100, true]], state.settings.goods.map((g) => [goodLink(g.good), money(g.base)]))]),
   ];
 }
 
@@ -1325,12 +1407,13 @@ function show() {
   else nodes = myFirms();
   replaceInPlace($('firm-view'), ...nodes.filter(Boolean));
   blink();
+  showStrip();
 }
 
 // refresh asks for the city again once its hour ends, unless something is
 // being typed or a dialog is open; the clocks go on every second.
 function refresh() {
-  for (const node of document.querySelectorAll('.firm-clock')) tick(node);
+  showStrip();
   redraw();
   if (!state?.nextHour || Date.now() < Date.parse(state.nextHour) + 5000 || busy || Date.now() - asked < 30000) return;
   const typing = document.activeElement?.closest?.('#firm-view') && document.activeElement.matches('input, select');
@@ -1342,6 +1425,8 @@ function refresh() {
     .then((city) => {
       state = city;
       show();
+      coins();
+      flash($('balance'), 'gold');
     })
     .catch(() => {}) // the next tick tries again
     .finally(() => {
@@ -1357,7 +1442,9 @@ if (!me || !answered) {
   $('guest').hidden = false;
   $('firm-tabs').hidden = true;
 } else {
-  showBalance(me.votes ?? 0);
+  balance = me.votes ?? 0;
+  $('votes').textContent = balanceVotes(balance);
+  showBalance(balance);
   for (const a of $('firm-tabs').querySelectorAll('a[data-tab]:not([data-tab="stocks"])')) a.addEventListener('click', follow);
   window.addEventListener('popstate', () => {
     hideError($('error'));

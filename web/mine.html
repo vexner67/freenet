@@ -36,35 +36,47 @@
         <div class="error" id="error" hidden></div>
         <div class="mine" id="mine" hidden>
           <div class="mine-main">
-            <p class="casino-lead">Выберите руду и копайте. Каждая копка тратит энергию и даёт руду и опыт, а с опытом открываются руды дороже. Руда копится в рюкзаке — продайте её за голоса, когда захотите. Энергия восстанавливается сама. Иногда в забое случается что-нибудь неожиданное.</p>
-            <div class="mine-status" id="status" hidden>
-              <div class="mine-energy">
-                <span class="mine-stat-label">Энергия:</span>
-                <b id="energy"></b>
-                <div class="mine-bar" aria-hidden="true"><div class="mine-bar-fill" id="energy-bar"></div></div>
+            <p class="hint" id="guest" hidden>Копать могут только вошедшие на сайт.</p>
+            <div class="game-hud" id="status" hidden>
+              <div class="game-hud-cell">
+                <span class="game-hud-name"><img class="game-icon" src="/static/icons/game/energy.svg" alt="" width="16" height="16">Энергия</span>
+                <span class="meter mine-meter"><span class="meter-fill good" id="energy-bar"></span><span class="meter-text" id="energy"></span></span>
                 <span class="hint" id="energy-next"></span>
               </div>
-              <div class="mine-experience"><span class="mine-stat-label">Опыт:</span> <b id="experience"></b></div>
-            </div>
-            <div class="section-title">Руды</div>
-            <div class="mine-ores" id="ores"></div>
-            <p class="hint" id="guest" hidden>Копать могут только вошедшие на сайт.</p>
-            <div class="mine-log" id="log" hidden></div>
-            <div id="backpack-block" hidden>
-              <div class="section-title">Рюкзак</div>
-              <div class="mine-backpack" id="backpack"></div>
-              <p class="hint" id="backpack-empty">Рюкзак пуст. Накопайте руды.</p>
-              <div class="mine-sell-all" id="sell-all-box" hidden>
-                <span id="backpack-worth"></span>
-                <button class="button" type="button" id="sell-all">Продать всё</button>
+              <div class="game-hud-cell">
+                <span class="game-hud-name"><img class="game-icon" src="/static/icons/game/star.svg" alt="" width="16" height="16">Опыт: <b id="experience"></b></span>
+                <span class="meter mine-meter"><span class="meter-fill" id="next-bar"></span><span class="meter-text" id="next-share"></span></span>
+                <span class="hint" id="next-ore"></span>
               </div>
-              <p class="hint mine-totals" id="totals"></p>
+              <div class="game-hud-cell game-hud-money" id="balance" hidden>
+                <span class="game-hud-name"><img class="game-icon" src="/static/icons/game/coins.svg" alt="" width="16" height="16">На счету</span>
+                <b class="game-hud-sum" id="votes"></b>
+                <span class="hint" id="votes-word"></span>
+              </div>
             </div>
-          </div>
-          <div class="finance-balance casino-balance" id="balance" hidden>
-            на вашем счету
-            <div class="finance-votes" id="votes"></div>
-            <span id="votes-word"></span>
+            <div class="game-window" id="face-block" hidden>
+              <div class="game-window-title"><img src="/static/icons/game/pick.svg" alt="" width="16" height="16"><span>Забой</span><span id="mine-help"></span></div>
+              <div class="game-window-body">
+                <div class="mine-ores" id="ores"></div>
+                <button class="mine-face" type="button" id="dig">
+                  <span class="mine-series" id="series" hidden></span>
+                  <span class="mine-face-ore" id="face-ore"></span>
+                  <img class="mine-face-pick" id="face-pick" src="/static/icons/game/pick.svg" alt="" width="48" height="48">
+                  <span class="mine-face-text" id="dig-text">Копать!</span>
+                  <span class="mine-face-sub" id="dig-sub"></span>
+                </button>
+                <div class="mine-log" id="log" hidden></div>
+              </div>
+            </div>
+            <div class="game-window" id="backpack-block" hidden>
+              <div class="game-window-title"><img src="/static/icons/game/backpack.svg" alt="" width="16" height="16"><span>Рюкзак</span></div>
+              <div class="game-window-body">
+                <div class="mine-backpack" id="backpack"></div>
+                <p class="hint" id="backpack-empty">Рюкзак пуст. Накопайте руды.</p>
+                <button class="button game-go" type="button" id="sell-all" hidden></button>
+                <p class="hint mine-totals" id="totals"></p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -4,8 +4,11 @@
 // of a company (?firm=<id>): its candles, the order book and the panel of
 // a deal. Shares are bought and sold of the broker account, which is
 // topped up from the votes and taken back to them in a mini window over
-// its plaque. The server counts the hours and the prices; the page asks
-// again when an hour ends and only shows what the server said.
+// its plaque. The list of companies has "+1" and "−1": a deal in one press.
+// The tabs of the market (?tab=) keep the portfolio, the news and the rules
+// apart, and the long text of a window sits behind its "?". The server
+// counts the hours and the prices; the page asks again every half minute,
+// blinks what moved and only shows what the server said.
 
 import { api, currentUser, session, started } from './api.js';
 import {
@@ -15,6 +18,8 @@ import { $, el, fullName, onScreen, pagePath, replaceInPlace, renderChrome, show
 import { toast } from './modal.js';
 import { candleChart, lineChart, sparkline } from './charts.js';
 import { chips, isOpen, popover, segmented, stepper } from './controls.js';
+import { flash, floatText, gameIcon, gameWindow } from './game.js';
+import { coins, dealTick } from './sounds.js';
 import { tr } from './i18n.js';
 
 const firmOfAddress = () => new URLSearchParams(location.search).get('firm') ?? '';
@@ -37,17 +42,26 @@ const companyOf = (id) => state.companies.find((c) => c.firm === id);
 const holdingOf = (id) => state.holdings.find((h) => h.firm === id) ?? { shares: 0, free: 0 };
 const ordersOf = (id) => state.orders.filter((o) => o.firm === id);
 const person = (p) => (p ? el('a', { href: pagePath(p), textContent: fullName(p) }) : tr('—'));
-const title = (text) => el('div', { className: 'section-title', textContent: text });
 const hint = (text) => el('p', { className: 'hint firm-hint', textContent: text });
 const firmIcon = (kind, size) => el('img', { className: 'firm-icon', src: firmPictures[kind], alt: '', width: size, height: size });
 const companyPath = (id) => `/stocks?firm=${encodeURIComponent(id)}`;
+const tabOfAddress = () => new URLSearchParams(location.search).get('tab') ?? 'market';
+
+const pictures = {
+  index: '/static/icons/game/index.svg', firm: '/static/icons/game/firm.svg', wallet: '/static/icons/game/wallet.svg', share: '/static/icons/game/share.svg',
+  clock: '/static/icons/game/clock.svg', news: '/static/icons/game/news.svg', help: '/static/icons/game/help.svg', candles: '/static/icons/game/candles.svg',
+  book: '/static/icons/game/book.svg', deal: '/static/icons/game/deal.svg', log: '/static/icons/game/log.svg', crown: '/static/icons/game/crown.svg',
+  profit: '/static/icons/game/profit.svg',
+};
+const win = (picture, heading, nodes, help = '') => gameWindow(pictures[picture], heading, nodes, help);
 
 function showBalance(votes) {
   balance = votes;
 }
 
 function said(text) {
-  $('done').textContent = text;
+  // A sum in "гол." at the end of a sentence would give it two dots.
+  $('done').textContent = text.replace(/\.\.$/, '.');
   $('done').hidden = !text;
 }
 
@@ -63,18 +77,20 @@ function trend(now, before, withSum = false) {
 
 // --- the address of the page ---
 
-function go(href) {
+function go(href, isTab = false) {
+  const firm = firmOfAddress();
   history.pushState(null, '', href);
   hideError($('error'));
   said('');
-  load(firmOfAddress());
-  window.scrollTo(0, 0);
+  if (firm === firmOfAddress()) show();
+  else load(firmOfAddress());
+  if (!isTab) window.scrollTo(0, 0);
 }
 
 function follow(event) {
   if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
   event.preventDefault();
-  go(event.currentTarget.getAttribute('href'));
+  go(event.currentTarget.getAttribute('href'), Boolean(event.currentTarget.closest('.tabs')));
 }
 
 const link = (text, href, className = '') => el('a', { href, className, textContent: text, onclick: follow });
@@ -83,8 +99,10 @@ const link = (text, href, className = '') => el('a', { href, className, textCont
 async function load(firm) {
   busy = true;
   try {
+    const before = new Map(state?.companies.map((c) => [c.firm, c.price]));
     state = await api.stocks(firm);
     show();
+    blink(before);
   } catch (e) {
     showError($('error'), e);
   } finally {
@@ -92,10 +110,41 @@ async function load(firm) {
   }
 }
 
+// blink flashes the rows of the companies whose price moved.
+function blink(before) {
+  for (const row of document.querySelectorAll('.stock-row')) {
+    const was = before.get(row.dataset.firm);
+    const now = companyOf(row.dataset.firm)?.price;
+    if (was && now && was !== now) flash(row, now > was ? 'good' : 'bad');
+  }
+}
+
+// lastPress is what was pressed last: the rewards of a deal fly up from it.
+let lastPress = null;
+document.addEventListener('click', (event) => {
+  lastPress = event.target.closest?.('button, a') ?? null;
+}, true);
+
+// reward answers a deal done: shares bought tick, money coming in rings.
+function reward(done, body, node) {
+  if (!done.shares) {
+    dealTick();
+    return;
+  }
+  if (body.buy) {
+    dealTick();
+    floatText(node, `+${tr('{0} акц.', groupedVotes(done.shares))}`, 'good');
+    return;
+  }
+  coins();
+  floatText(node, `+${money(done.money)}`, 'gold');
+}
+
 // act does an action and shows the exchange it left.
 async function act(action, body, text, box = null) {
   if (busy) return false;
   busy = true;
+  const pressed = lastPress;
   const error = box ?? $('error');
   hideError(error);
   said('');
@@ -103,6 +152,7 @@ async function act(action, body, text, box = null) {
   try {
     const done = await api.runStocks(action, { firm: firmOfAddress(), ...body });
     if (done.spent > 0 || done.got > 0) showBalance(done.balance);
+    reward(done, body, pressed);
     state = done.stocks;
     show();
     const message = typeof text === 'function' ? text(done) : text;
@@ -123,11 +173,11 @@ async function act(action, body, text, box = null) {
 
 // --- the plaques over the page ---
 
-function plaque(name, value, sub, onclick = null) {
-  const node = el(onclick ? 'button' : 'div', { className: onclick ? 'stock-plaque clickable' : 'stock-plaque' },
-    el('span', { className: 'stock-plaque-name', textContent: name }),
-    el('span', { className: 'stock-plaque-value' }, value),
-    el('span', { className: 'stock-plaque-sub' }, sub));
+function plaque(picture, name, value, sub, onclick = null) {
+  const node = el(onclick ? 'button' : 'div', { className: 'game-hud-cell' },
+    el('span', { className: 'game-hud-name' }, gameIcon(pictures[picture]), name),
+    el('b', { className: 'game-hud-sum' }, value),
+    el('span', { className: 'hint' }, sub));
   if (onclick) {
     node.type = 'button';
     node.addEventListener('click', () => onclick(node));
@@ -148,11 +198,16 @@ function plaques() {
   const last = index.at(-1)?.value ?? indexBase;
   const dayAgo = index.length > 24 ? index.at(-25).value : index[0]?.value ?? indexBase;
 
-  return el('div', { className: 'stock-plaques' },
-    plaque(tr('Индекс Freenet'), hundredths(last), trend(last, dayAgo)),
-    plaque(tr('Брокерский счёт'), money(state.account), el('span', { className: 'stock-link', textContent: tr('пополнить или вывести ▾') }), accountBox),
-    plaque(tr('Мои акции'), money(worth()), tr('компаний: {0}', state.holdings.length)),
-    plaque(tr('Торговый час'), clock(), tr('цены пересчитываются каждый час')),
+  const day = state.holdings.reduce((n, h) => {
+    const c = companyOf(h.firm);
+    return n + (c?.dayAgo ? h.shares * (c.price - c.dayAgo) : 0);
+  }, 0);
+
+  return el('div', { className: 'game-hud four' },
+    plaque('index', tr('Индекс Freenet'), hundredths(last), trend(last, dayAgo)),
+    plaque('wallet', tr('Брокерский счёт'), money(state.account), el('span', { className: 'stock-link', textContent: tr('пополнить или вывести ▾') }), accountBox),
+    plaque('share', tr('Мои акции'), money(worth()), day ? el('span', { className: day > 0 ? 'stock-up' : 'stock-down', textContent: tr('{0} за сутки', `${day > 0 ? '+' : '−'}${hundredths(Math.abs(day))}`) }) : tr('компаний: {0}', state.holdings.length)),
+    plaque('clock', tr('Торговый час'), clock(), tr('до пересчёта цен')),
   );
 }
 
@@ -225,41 +280,66 @@ function ticker() {
 }
 
 function market() {
-  const nodes = [plaques(), ticker()];
+  const tab = tabOfAddress();
+  const tabs = [['market', tr('Рынок'), 'index'], ['portfolio', tr('Мой портфель'), 'share'], ['news', tr('Новости города'), 'news'], ['rules', tr('Правила'), 'help']];
+  const view = {
+    portfolio: () => [win('share', tr('Мой портфель'), [portfolio()])],
+    news: () => [win('news', tr('Новости города'), [news(state.news.slice(0, 12))])],
+    rules: () => [win('help', tr('Правила'), [
+      el('p', { className: 'stock-rules', textContent: tr('Цена акции зависит от того, сколько стоит предприятие и сколько оно зарабатывает, от новостей и настроения рынка, а ещё — от того, сколько акций покупают и продают. Биржа сама покупает дешевле стоимости и продаёт дороже: чем больше у неё купили за сутки, тем дороже следующие акции. Продавец платит комиссию {0} %. Акционеры получают дивиденды, когда их выплачивает директор, а самый крупный акционер становится директором.', state.fee) }),
+    ])],
+  }[tab] ?? (() => [
+    win('firm', tr('Компании'), [state.companies.length ? companies() : hint(tr('Ещё никто не основал предприятие — основайте первое в «Заработке».'))]),
+    win('index', tr('Индекс Freenet'), [state.index.length > 1
+      ? lineChart(state.index.map((p) => ({ time: p.hour, value: p.value })), { format: hundredths, when: stockHour, tick: stockTick })
+      : hint(tr('Индекс появится, когда пройдёт первый торговый час.'))]),
+  ]);
 
-  nodes.push(title(tr('Индекс Freenet')));
-  nodes.push(state.index.length > 1
-    ? lineChart(state.index.map((p) => ({ time: p.hour, value: p.value })), { format: hundredths, when: stockHour, tick: stockTick })
-    : hint(tr('Индекс появится, когда пройдёт первый торговый час.')));
+  return [
+    plaques(),
+    ticker(),
+    el('div', { className: 'tabs game-tabs' }, ...tabs.map(([name, text, picture]) => {
+      const a = link('', name === 'market' ? '/stocks' : `/stocks?tab=${name}`, name === tab || (!tabs.some((t) => t[0] === tab) && name === 'market') ? 'active' : '');
+      a.append(el('img', { src: pictures[picture], alt: '', width: 16, height: 16 }), text);
+      return a;
+    })),
+    ...view(),
+  ];
+}
 
-  nodes.push(title(tr('Компании')));
-  nodes.push(state.companies.length ? companies() : hint(tr('Ещё никто не основал предприятие — основайте первое в «Заработке».')));
-
-  nodes.push(el('div', { className: 'stock-columns' },
-    el('div', {}, title(tr('Мой портфель')), portfolio()),
-    el('div', {}, title(tr('Новости города')), news(state.news.slice(0, 12)))));
-  nodes.push(hint(tr('Цена акции зависит от того, сколько стоит предприятие и сколько оно зарабатывает, от новостей и настроения рынка, а ещё — от того, сколько акций покупают и продают. Биржа сама покупает дешевле стоимости и продаёт дороже: чем больше у неё купили за сутки, тем дороже следующие акции. Продавец платит комиссию {0} %. Акционеры получают дивиденды, когда их выплачивает директор, а самый крупный акционер становится директором.', state.fee)));
-  return nodes;
+// quick is a deal of one share at the market, in one press.
+function quick(c, buy) {
+  return el('button', {
+    type: 'button', className: `stock-quick ${buy ? 'buy' : 'sell'}`, textContent: buy ? '+1' : '−1',
+    title: buy ? tr('Купить одну акцию по рынку') : tr('Продать одну акцию по рынку'),
+    disabled: !buy && holdingOf(c.firm).free < 1,
+    onclick: () => act('stock_order', { firm: c.firm, buy, price: 0, shares: 1 }, (d) => {
+      if (!d.shares) return tr('Заявка выставлена: она исполнится, когда найдётся цена.');
+      return buy ? tr('Куплено {0} акц. за {1}.', groupedVotes(d.shares), money(d.money)) : tr('Продано {0} акц. за {1}.', groupedVotes(d.shares), money(d.money));
+    }),
+  });
 }
 
 function companies() {
   const head = (text, className = '') => el('th', { className, textContent: text });
   const rows = [...state.companies].sort((a, b) => b.price * b.shares - a.price * a.shares).map((c) => {
-    const row = el('tr', { className: 'stock-row', onclick: (e) => !e.target.closest('a') && go(companyPath(c.firm)) },
+    const row = el('tr', { className: 'stock-row', onclick: (e) => !e.target.closest('a, button') && go(companyPath(c.firm)) },
       el('td', {}, el('a', { className: 'firm-good', href: companyPath(c.firm), onclick: follow }, firmIcon(c.kind, 24), el('span', {},
         el('b', { textContent: c.name }), el('br'), el('span', { className: 'hint', textContent: `${firmKindName(c.kind)}, ${tr('{0} ур.', c.level)}` })))),
       el('td', { className: 'firm-num stock-price', textContent: hundredths(c.price) }),
       el('td', { className: 'firm-num' }, trend(c.price, c.dayAgo)),
       el('td', { className: 'stock-spark' }, sparkline(c.candles.map((k) => k.close))),
       el('td', { className: 'firm-num stock-wide', textContent: groupedVotes(c.volume) }),
-      el('td', { className: 'firm-num stock-wide', textContent: money(c.price * c.shares) }));
+      el('td', { className: 'firm-num stock-wide', textContent: money(c.price * c.shares) }),
+      el('td', { className: 'stock-quicks' }, quick(c, true), quick(c, false)));
+    row.dataset.firm = c.firm;
     return row;
   });
 
   return el('div', { className: 'firm-scroll' }, el('table', { className: 'list-table stock-table' },
     el('thead', {}, el('tr', {},
       head(tr('Компания')), head(tr('Цена'), 'firm-num'), head(tr('За сутки'), 'firm-num'), head(tr('График'), 'stock-spark'),
-      head(tr('Объём'), 'firm-num stock-wide'), head(tr('Капитализация'), 'firm-num stock-wide'))),
+      head(tr('Объём'), 'firm-num stock-wide'), head(tr('Капитализация'), 'firm-num stock-wide'), head(tr('Сделка')))),
     el('tbody', {}, ...rows)));
 }
 
@@ -332,27 +412,25 @@ function companyView(c) {
         el('div', { className: 'stock-big', textContent: hundredths(c.price) }),
         trend(c.price, c.dayAgo, true),
         el('div', { className: 'hint', textContent: tr('голосов за акцию') }))),
-    facts(c),
-    el('div', { className: 'stock-chart-head' }, el('span', { className: 'section-title', textContent: tr('График цены') }), ranges.node),
-    candles.length ? candleChart(candles, {
-      format: hundredths, when: stockHour, tick: stockTick,
-      texts: { open: tr('откр.'), high: tr('макс.'), low: tr('мин.'), close: tr('закр.'), volume: tr('объём') },
-    }) : hint(tr('Свечи появятся, когда пройдёт первый торговый час.')),
     el('div', { className: 'stock-trade' },
-      el('div', {}, title(tr('Стакан')), orderBook(c)),
-      el('div', {}, title(tr('Сделка')), dealPanel(c, h))),
-    title(tr('Лента сделок')),
-    tape(c),
-    title(tr('Мои акции и заявки')),
-    h.shares || ordersOf(c.firm).length
+      win('deal', tr('Сделка'), [dealPanel(c, h)], tr('«По рынку» покупает и продаёт сразу по лучшей цене, «по своей цене» ждёт, пока найдётся такая цена.')),
+      win('book', tr('Стакан'), [orderBook(c)], tr('Нажмите на строку, чтобы подставить её цену в сделку.'))),
+    win('candles', tr('График цены'), [
+      el('div', { className: 'stock-chart-head' }, ranges.node),
+      candles.length ? candleChart(candles, {
+        format: hundredths, when: stockHour, tick: stockTick,
+        texts: { open: tr('откр.'), high: tr('макс.'), low: tr('мин.'), close: tr('закр.'), volume: tr('объём') },
+      }) : hint(tr('Свечи появятся, когда пройдёт первый торговый час.')),
+    ]),
+    win('share', tr('Мои акции и заявки'), [h.shares || ordersOf(c.firm).length
       ? el('div', {},
         h.shares ? el('p', { className: 'stock-mine' }, tr('У вас {0} акц. на {1} — {2} от всех', groupedVotes(h.shares), money(h.shares * c.price), sharePercent(h.shares, c.shares))) : null,
         ordersOf(c.firm).length ? myOrders(ordersOf(c.firm), false) : null)
-      : hint(tr('У вас нет акций этой компании.')),
-    title(tr('Выкуп акций')),
-    tenders(c, h),
-    title(tr('Новости')),
-    news(about.slice(0, 8)),
+      : hint(tr('У вас нет акций этой компании.'))]),
+    win('profit', tr('Показатели'), [facts(c)]),
+    win('log', tr('Лента сделок'), [tape(c)]),
+    win('crown', tr('Выкуп акций'), [tenders(c, h)], tr('Предложите акционерам продать вам акции не дешевле {0} за штуку. Деньги удерживаются со счёта на сутки, непотраченное вернётся. Кто соберёт больше акций, чем у директора, сам станет директором.', hundredths(c.price))),
+    win('news', tr('Новости'), [news(about.slice(0, 8))]),
   ];
 }
 
@@ -421,8 +499,7 @@ function tenderForm(c, h) {
     el('div', { className: 'deal-row' }, el('span', { className: 'deal-label', textContent: tr('Акций') }), shares.node),
     el('div', { className: 'deal-row' }, el('span', { className: 'deal-label', textContent: tr('Цена') }), el('span', { className: 'stepper' }, priceInput)),
     sum,
-    go,
-    el('p', { className: 'hint', textContent: tr('Предложите акционерам продать вам акции не дешевле {0} за штуку. Деньги удерживаются со счёта на сутки, непотраченное вернётся. Кто соберёт больше акций, чем у директора, сам станет директором.', hundredths(c.price)) }));
+    go);
 }
 
 function facts(c) {
@@ -486,8 +563,7 @@ function orderBook(c) {
     ...asks,
     el('div', { className: 'book-spread' }, tr('последняя {0}', hundredths(c.price))),
     ...bids,
-    row(c.bid, 0, tr('биржа'), true),
-    el('p', { className: 'hint', textContent: tr('Нажмите на строку, чтобы подставить её цену в сделку.') }));
+    row(c.bid, 0, tr('биржа'), true));
 }
 
 function dealPanel(c, h) {
@@ -536,6 +612,7 @@ function dealPanel(c, h) {
       side === 'buy' ? [tr('На счету останется'), money(state.account - sum)] : [tr('Придёт на счёт'), money(sum - fee)],
     ].filter(Boolean);
     summary.replaceChildren(...lines.map(([name, value]) => el('div', {}, el('span', { textContent: name }), el('b', { textContent: value }))));
+    go.className = `button game-go ${side}`;
     go.textContent = side === 'buy'
       ? tr('Купить {0} акц.', groupedVotes(n))
       : tr('Продать {0} акц.', groupedVotes(n));
@@ -599,9 +676,7 @@ function dealPanel(c, h) {
     ])),
     summary,
     go,
-    el('div', { className: 'hint', textContent: side === 'buy'
-      ? tr('На счету {0}. «По рынку» покупает сразу по лучшей цене, «по своей цене» ждёт, пока кто-то продаст не дороже.', money(state.account))
-      : tr('Свободно {0} акц. «По рынку» продаёт сразу по лучшей цене, «по своей цене» ждёт покупателя.', groupedVotes(h.free)) }),
+    el('div', { className: 'hint', textContent: side === 'buy' ? tr('На счету {0}', money(state.account)) : tr('Свободно {0} акц.', groupedVotes(h.free)) }),
   );
   draw();
   return box;
@@ -615,12 +690,13 @@ function show() {
   replaceInPlace($('stocks'), ...nodes.filter(Boolean));
 }
 
-// refresh asks for the exchange again once its hour ends, unless a mini
-// window is open or something is typed; the clocks go on every half
-// minute.
+// refresh asks for the exchange again, unless a mini window is open or
+// something is typed; the clocks go on with it, every half minute.
 function refresh() {
   for (const node of document.querySelectorAll('.stock-clock')) tick(node);
-  if (!state || Date.now() < Date.parse(state.nextHour) + 5000 || busy || isOpen() || document.hidden) return;
+  if (!state || busy || isOpen() || document.hidden) return;
+  // The card of a company holds a deal being made: it waits for the hour.
+  if (firmOfAddress() && Date.now() < Date.parse(state.nextHour) + 5000) return;
   if (document.activeElement?.matches?.('#stocks input')) return;
   load(firmOfAddress());
 }
