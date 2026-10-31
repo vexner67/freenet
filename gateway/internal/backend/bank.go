@@ -98,6 +98,39 @@ func (b *Bank) Set(ctx context.Context, accessToken string, s model.BankSettings
 	return nil
 }
 
+func fromProtoBankCard(resp *userv1.BankCardResponse) model.BankCard {
+	c := resp.GetCard()
+
+	return model.BankCard{Number: c.GetNumber(), Cover: c.GetCover(), IssuedAt: c.GetIssuedAt().AsTime()}
+}
+
+func (b *Bank) Card(ctx context.Context, accessToken string) (model.BankCard, error) {
+	resp, err := b.api.GetBankCard(withToken(ctx, accessToken), &userv1.GetBankCardRequest{})
+	if err != nil {
+		return model.BankCard{}, errs.Wrap("b.api.GetBankCard", fromStatus(err))
+	}
+
+	return fromProtoBankCard(resp), nil
+}
+
+func (b *Bank) IssueCard(ctx context.Context, accessToken string) (model.BankCard, error) {
+	resp, err := b.api.IssueBankCard(withToken(ctx, accessToken), &userv1.IssueBankCardRequest{})
+	if err != nil {
+		return model.BankCard{}, errs.Wrap("b.api.IssueBankCard", fromStatus(err))
+	}
+
+	return fromProtoBankCard(resp), nil
+}
+
+func (b *Bank) SetCardCover(ctx context.Context, accessToken, cover string) (model.BankCard, error) {
+	resp, err := b.api.SetBankCardCover(withToken(ctx, accessToken), &userv1.SetBankCardCoverRequest{Cover: cover})
+	if err != nil {
+		return model.BankCard{}, errs.Wrap("b.api.SetBankCardCover", fromStatus(err))
+	}
+
+	return fromProtoBankCard(resp), nil
+}
+
 func fromProtoBankSettings(s *userv1.BankSettings) model.BankSettings {
 	return model.BankSettings{
 		DepositRate: int(s.GetDepositRate()),

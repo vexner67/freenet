@@ -17,6 +17,9 @@ type Bank interface {
 	Move(ctx context.Context, accessToken, action string, amount int64) (model.BankMove, error)
 	Settings(ctx context.Context, accessToken string) (model.BankSettings, model.BankStats, error)
 	Set(ctx context.Context, accessToken string, settings model.BankSettings) error
+	Card(ctx context.Context, accessToken string) (model.BankCard, error)
+	IssueCard(ctx context.Context, accessToken string) (model.BankCard, error)
+	SetCardCover(ctx context.Context, accessToken, cover string) (model.BankCard, error)
 }
 
 // bankActions are what POST /api/v1/me/bank/{action} does.
@@ -104,6 +107,76 @@ func (a *api) moveBank(w http.ResponseWriter, r *http.Request) {
 		Balance int64    `json:"balance"`
 		Bank    bankJSON `json:"bank"`
 	}{moved.Votes, moved.Balance, toBankJSON(moved.Bank)})
+}
+
+type bankCardJSON struct {
+	Number   string     `json:"number"`
+	Cover    string     `json:"cover"`
+	IssuedAt *time.Time `json:"issuedAt"`
+}
+
+// toBankCardJSON is null for a page without a card.
+func toBankCardJSON(c model.BankCard) *bankCardJSON {
+	if c.Number == "" {
+		return nil
+	}
+
+	issued := c.IssuedAt.UTC()
+
+	return &bankCardJSON{Number: c.Number, Cover: c.Cover, IssuedAt: &issued}
+}
+
+func (a *api) writeBankCard(w http.ResponseWriter, r *http.Request, c model.BankCard, err error) {
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, struct {
+		Card *bankCardJSON `json:"card"`
+	}{toBankCardJSON(c)})
+}
+
+// bankCard is the virtual card of the caller, if it was issued.
+func (a *api) bankCard(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	c, err := a.banks.Card(r.Context(), token)
+	a.writeBankCard(w, r, c, err)
+}
+
+func (a *api) issueBankCard(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	c, err := a.banks.IssueCard(r.Context(), token)
+	a.writeBankCard(w, r, c, err)
+}
+
+func (a *api) setBankCardCover(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req struct {
+		Cover string `json:"cover"`
+	}
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	c, err := a.banks.SetCardCover(r.Context(), token, req.Cover)
+	a.writeBankCard(w, r, c, err)
 }
 
 // bankSettings is "Банк" of the admin panel: the rates and limits and

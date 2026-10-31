@@ -3,6 +3,7 @@ package rest_test
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +17,7 @@ type fakeBank struct {
 	action string
 	amount int64
 	set    model.BankSettings
+	card   model.BankCard
 	err    error
 }
 
@@ -34,6 +36,23 @@ func (f *fakeBank) Get(_ context.Context, token string) (model.Bank, error) {
 func (f *fakeBank) Move(_ context.Context, token, action string, amount int64) (model.BankMove, error) {
 	f.token, f.action, f.amount = token, action, amount
 	return model.BankMove{Votes: amount, Balance: 40, Bank: f.bank()}, f.err
+}
+
+func (f *fakeBank) Card(_ context.Context, token string) (model.BankCard, error) {
+	f.token = token
+	return f.card, f.err
+}
+
+func (f *fakeBank) IssueCard(_ context.Context, token string) (model.BankCard, error) {
+	f.token = token
+	f.card = model.BankCard{Number: "1919000000000000", Cover: "classic", IssuedAt: time.Now()}
+	return f.card, f.err
+}
+
+func (f *fakeBank) SetCardCover(_ context.Context, token, cover string) (model.BankCard, error) {
+	f.token = token
+	f.card.Cover = cover
+	return f.card, f.err
 }
 
 func (f *fakeBank) Settings(_ context.Context, token string) (model.BankSettings, model.BankStats, error) {
@@ -85,5 +104,29 @@ func TestBank(t *testing.T) {
 	h.bank.err = failure.New(failure.Conflict, "pay back the loan you have first")
 	if w = h.do("POST", "/api/v1/me/bank/loan", `{"amount":1}`, "Authorization", "Bearer tok"); w.Code != http.StatusConflict {
 		t.Fatalf("refused: %d", w.Code)
+	}
+}
+
+func TestBankCard(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	if w := h.do("GET", "/api/v1/me/bank/card", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("guest: %d", w.Code)
+	}
+
+	w := h.do("GET", "/api/v1/me/bank/card", "", "Authorization", "Bearer tok")
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"card":null`) {
+		t.Fatalf("no card: %d %s", w.Code, w.Body)
+	}
+
+	w = h.do("POST", "/api/v1/me/bank/card", "", "Authorization", "Bearer tok")
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"number":"1919000000000000"`) {
+		t.Fatalf("issue: %d %s", w.Code, w.Body)
+	}
+
+	w = h.do("PUT", "/api/v1/me/bank/card", `{"cover":"gold"}`, "Authorization", "Bearer tok")
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"cover":"gold"`) {
+		t.Fatalf("cover: %d %s", w.Code, w.Body)
 	}
 }

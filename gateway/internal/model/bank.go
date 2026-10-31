@@ -39,6 +39,14 @@ type BankMove struct {
 	Bank    Bank
 }
 
+// BankCard is the virtual card of the caller; an empty Number means there
+// is none yet.
+type BankCard struct {
+	Number   string
+	Cover    string
+	IssuedAt time.Time
+}
+
 // BankStats are the votes on deposits and owed on loans, in hundredths,
 // and how many pages have each.
 type BankStats struct {
