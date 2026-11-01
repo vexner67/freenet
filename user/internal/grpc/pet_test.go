@@ -3,6 +3,7 @@ package grpc_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"github.com/vexner67/freenet/user/internal/user"
@@ -136,13 +137,7 @@ func TestPet(t *testing.T) {
 	if err != nil || arena.GetBoss().GetHealth() != arena.GetBoss().GetMaxHealth() || len(arena.GetQuests()) != 3 || len(arena.GetTop()) != 2 {
 		t.Fatalf("GetPetArena = %v, %v", arena, err)
 	}
-	joined, err := s.client.RunPetArena(bob, &userv1.RunPetArenaRequest{Action: "join", PetId: hamster.GetPet().GetId()})
-	if err != nil || len(joined.GetArena().GetTournament().GetEntrants()) != 1 {
-		t.Fatalf("RunPetArena join = %v, %v", joined, err)
-	}
-	if _, err = s.client.RunPetArena(ann, &userv1.RunPetArenaRequest{Action: "bet", PetId: hamster.GetPet().GetId(), Votes: 5}); status.Code(err) != codes.InvalidArgument {
-		t.Fatalf("a bet of 5: %v", err)
-	}
+	testPetTournament(t, s, ann, bob, hamster.GetPet().GetId())
 	if _, err = s.client.RunPetArena(ann, &userv1.RunPetArenaRequest{Action: "sell", PetId: cat, Votes: 100}); status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("selling a pet just adopted: %v", err)
 	}
@@ -249,5 +244,28 @@ func TestPetCasesAndClothes(t *testing.T) {
 	}
 	if _, err = s.client.DressPet(ann, &userv1.DressPetRequest{PetId: pet, Item: "cape", Wear: true}); status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("wearing what was not bought: %v", err)
+	}
+}
+
+// testPetTournament joins the tournament of the week and bets on it. The
+// handler takes the real time, and from Sunday 20:00 of Moscow to the end
+// of the week the tournament has begun: then it takes nobody and no bets.
+func testPetTournament(t *testing.T, s testServer, ann, bob context.Context, petID string) {
+	t.Helper()
+
+	now := time.Now()
+	if !now.Before(user.PetTournamentStart(user.PetWeek(now))) {
+		if _, err := s.client.RunPetArena(bob, &userv1.RunPetArenaRequest{Action: "join", PetId: petID}); status.Code(err) != codes.FailedPrecondition {
+			t.Fatalf("joining a tournament that has begun: %v", err)
+		}
+		return
+	}
+
+	joined, err := s.client.RunPetArena(bob, &userv1.RunPetArenaRequest{Action: "join", PetId: petID})
+	if err != nil || len(joined.GetArena().GetTournament().GetEntrants()) != 1 {
+		t.Fatalf("RunPetArena join = %v, %v", joined, err)
+	}
+	if _, err = s.client.RunPetArena(ann, &userv1.RunPetArenaRequest{Action: "bet", PetId: petID, Votes: 5}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a bet of 5: %v", err)
 	}
 }
