@@ -15,18 +15,24 @@
 import { api } from './api.js';
 import { ensureKey, KEY_READY, NO_PEER_KEY, open as unseal, seal, sendSealed } from './e2ee.js';
 import { onEvent } from './events.js';
+import { helpButton } from './game.js';
 import { tr } from './i18n.js';
 import { avatarURL, el, fullName } from './layout.js';
+import { callClick, callDown, callUp, fanfare } from './sounds.js';
 
 const RING_FOR = 45_000;
+const CONNECT_FOR = 30_000;
 const GONE_FOR = 20_000;
 const SAY_FOR = 2_000;
 const AUDIO_BITRATE = 64_000;
 const VIDEO_BITRATE = 1_500_000;
+// The minutes of a call the window celebrates louder than the others.
+const MILESTONES = new Set([5, 10, 15, 30, 60, 90, 120]);
 
 const voice = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
 const picture = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
 const tab = crypto.randomUUID();
+const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let me = null;
 let call = null;
@@ -38,29 +44,32 @@ function timeOf(seconds) {
   return `${hours ? `${hours}:` : ''}${part(Math.floor(seconds / 60) % 60)}:${part(seconds % 60)}`;
 }
 
-// A two-tone ring drawn by the browser: no sound file to fetch. A page the
-// person has not touched may not play it; the window and the title do.
-function ringer() {
+// beeps plays notes — [start, pitch, length] in seconds — again every
+// period, until the returned function stops them. The browser draws them:
+// no sound file to fetch. A page the person has not touched may not play
+// them; the window and the title still show the call.
+function beeps(notes, period, vibrate = null) {
   const AudioContext = window.AudioContext ?? window.webkitAudioContext;
   if (!AudioContext) return () => {};
 
   const audio = new AudioContext();
-  const beep = () => {
-    for (const [at, pitch] of [[0, 620], [0.45, 520], [0.9, 620], [1.35, 520]]) {
+  const play = () => {
+    for (const [at, pitch, length] of notes) {
       const tone = audio.createOscillator();
       const gain = audio.createGain();
       tone.frequency.value = pitch;
       gain.gain.setValueAtTime(0.0001, audio.currentTime + at);
       gain.gain.exponentialRampToValueAtTime(0.12, audio.currentTime + at + 0.03);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + at + 0.4);
+      gain.gain.setValueAtTime(0.12, audio.currentTime + at + length - 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + at + length);
       tone.connect(gain).connect(audio.destination);
       tone.start(audio.currentTime + at);
-      tone.stop(audio.currentTime + at + 0.42);
+      tone.stop(audio.currentTime + at + length + 0.02);
     }
-    navigator.vibrate?.([400, 200, 400]);
+    if (vibrate) navigator.vibrate?.(vibrate);
   };
-  beep();
-  const timer = setInterval(beep, 3500);
+  play();
+  const timer = setInterval(play, period);
 
   return () => {
     clearInterval(timer);
@@ -68,40 +77,73 @@ function ringer() {
   };
 }
 
-function iconButton(icon, label, onclick, className = '') {
-  const image = el('img', { src: icon, alt: '', width: 32, height: 32 });
-  const caption = el('span', { textContent: label });
-  const node = el('button', { type: 'button', className: `call-button ${className}`, onclick }, image, caption);
+// ringer is the two-tone ring of a call coming in.
+const ringer = () => beeps([[0, 620, 0.4], [0.45, 520, 0.4], [0.9, 620, 0.4], [1.35, 520, 0.4]], 3500, [400, 200, 400]);
 
-  return { node, image, caption };
+// ringback is what the caller hears while the other side rings: the long
+// tone of a telephone line, a second of 425 Hz every four.
+const ringback = () => beeps([[0, 425, 1]], 4000);
+
+// iconButton is a round glossy button with a caption under it.
+function iconButton(icon, label, onclick, className = '') {
+  const image = el('img', { src: icon, alt: '', width: 30, height: 30 });
+  const disc = el('span', { className: 'call-disc' }, image);
+  const caption = el('span', { className: 'call-caption', textContent: label });
+  const node = el('button', { type: 'button', className: `call-button ${className}`, onclick }, disc, caption);
+
+  return { node, disc, image, caption };
 }
 
-// The window: a title bar with a lock, the person, how the call goes and a
-// row of big buttons.
+// The window: a dark title with a lock and the bars of the line, the person
+// with waves around them while it rings and a glow that beats with their
+// voice while they talk, a plaque of how it goes next to the clock, the
+// code of the call and a row of big round buttons. Everything has its
+// place from the start, so nothing jumps while the call goes on.
 function drawWindow(peer) {
   const ui = {
-    status: el('div', { className: 'call-status' }),
-    timer: el('div', { className: 'call-timer', hidden: true }),
-    bars: el('span', { className: 'call-bars', hidden: true }, ...[1, 2, 3, 4].map(() => el('i'))),
-    code: el('div', { className: 'call-code', hidden: true }),
+    status: el('span', { className: 'call-status-text' }),
+    clock: el('b', { className: 'call-clock-digits', textContent: timeOf(0) }),
+    pop: el('span', { className: 'call-pop' }),
+    bars: el('span', { className: 'call-bars' }, ...[1, 2, 3, 4].map(() => el('i'))),
+    digits: el('span', { className: 'call-digits' }),
     buttons: el('div', { className: 'call-buttons' }),
-    remote: el('video', { className: 'call-remote', autoplay: true, playsInline: true }),
+    glow: el('span', { className: 'call-glow' }),
+    sound: el('audio', { autoplay: true }),
+    remote: el('video', { className: 'call-remote', autoplay: true, playsInline: true, muted: true }),
     local: el('video', { className: 'call-local', autoplay: true, playsInline: true, muted: true, hidden: true }),
     photo: el('img', { className: 'call-photo', src: avatarURL(peer, 'large'), alt: '' }),
   };
-  ui.stage = el('div', { className: 'call-stage' }, ui.photo, ui.remote, ui.local);
-  ui.back = el('div', { className: 'call-back' },
-    el('div', { className: 'call-window', role: 'dialog' },
-      el('div', { className: 'call-title' },
-        el('img', { src: '/static/icons/call-lock.svg', alt: '', width: 14, height: 14 }),
-        el('span', { textContent: tr('Защищённый звонок') }),
-        ui.bars),
-      ui.stage,
-      el('div', { className: 'call-name', textContent: fullName(peer) }),
-      ui.status, ui.timer, ui.code, ui.buttons));
+  ui.code = el('div', { className: 'call-code' },
+    el('span', { className: 'call-code-name', textContent: tr('Код') }), ui.digits,
+    helpButton(tr('Если у собеседника такой же код, между вами никого нет: голос и видео шифруются от браузера до браузера.')));
+  ui.stage = el('div', { className: 'call-stage' },
+    el('span', { className: 'call-waves' }, el('i'), el('i'), el('i')),
+    ui.glow,
+    el('span', { className: 'call-frame' }, ui.photo),
+    ui.remote, ui.local, ui.sound);
+  ui.window = el('div', { className: 'call-window', role: 'dialog', ariaLabel: tr('Защищённый звонок') },
+    el('div', { className: 'call-title' },
+      el('img', { src: '/static/icons/call-lock.svg', alt: '', width: 16, height: 16 }),
+      el('span', { textContent: tr('Защищённый звонок') }),
+      ui.bars),
+    ui.stage,
+    el('div', { className: 'call-name', textContent: fullName(peer) }),
+    el('div', { className: 'call-plaques' },
+      el('span', { className: 'call-status' }, el('i', { className: 'call-lamp' }), ui.status),
+      el('span', { className: 'call-clock' }, ui.clock, ui.pop)),
+    ui.code, ui.buttons);
+  ui.back = el('div', { className: 'call-back' }, ui.window);
   document.body.append(ui.back);
 
   return ui;
+}
+
+// mood is what the window shows around the person: "calling" and "ringing"
+// send waves, "live" lights the glow and the lamp, "trouble" makes the lamp
+// blink.
+function mood(c, name) {
+  c.ui.back.classList.remove('call-calling', 'call-ringing', 'call-live', 'call-trouble');
+  if (name) c.ui.back.classList.add(`call-${name}`);
 }
 
 function say(text) {
@@ -109,14 +151,15 @@ function say(text) {
 }
 
 // send hands signals on one after another: an address must not outrun the
-// description it belongs to.
+// description it belongs to. It resolves to whether the signal went.
 function send(c, signal) {
-  c.line = c.line.then(async () => {
+  const sent = c.line.then(async () => {
     const payload = JSON.stringify({ ...signal, id: c.id, tab, from: me.id });
     await api.callSignal(c.peer.nickname, await seal(me.id, c.peerKey, { t: payload, f: [] }));
-  }).catch(() => {});
+  });
+  c.line = sent.catch(() => {});
 
-  return c.line;
+  return sent.then(() => true, () => false);
 }
 
 function leavingGuard(event) {
@@ -131,14 +174,20 @@ function finish(text) {
   c.stopRing?.();
   clearTimeout(c.ringTimer);
   clearTimeout(c.goneTimer);
+  clearTimeout(c.connectTimer);
   clearInterval(c.clock);
   clearInterval(c.watch);
+  cancelAnimationFrame(c.meter);
+  c.audio?.close().catch(() => {});
   c.pc?.close();
   for (const track of c.stream?.getTracks() ?? []) track.stop();
   c.camera?.stop();
   removeEventListener('beforeunload', leavingGuard);
+  if (c.startedAt) callDown();
 
-  c.ui.buttons.replaceChildren();
+  mood(c, '');
+  c.ui.back.classList.add('call-over');
+  for (const button of c.ui.buttons.querySelectorAll('button')) button.disabled = true;
   c.ui.status.textContent = text;
   setTimeout(() => c.ui.back.remove(), text ? SAY_FOR : 0);
 }
@@ -177,8 +226,8 @@ async function showCode(c) {
     .sort();
   const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(prints.join('|'))));
   const groups = [0, 2, 4].map((i) => String(((hash[i] << 8) | hash[i + 1]) % 10000).padStart(4, '0'));
-  c.ui.code.textContent = tr('Код разговора: {0}. Если у собеседника такой же, между вами никого нет.', groups.join(' '));
-  c.ui.code.hidden = false;
+  c.ui.digits.replaceChildren(...groups.map((group) => el('b', { textContent: group })));
+  c.ui.code.classList.add('shown');
 }
 
 // watchLine shows how good the connection is by its round trip.
@@ -192,38 +241,135 @@ async function watchLine(c) {
 
   const level = trip < 0.1 ? 4 : trip < 0.25 ? 3 : trip < 0.5 ? 2 : 1;
   [...c.ui.bars.children].forEach((bar, i) => bar.classList.toggle('on', i < level));
-  c.ui.bars.hidden = false;
+}
+
+// loudness is how loud a voice is now, from 0 to 1.
+function loudness(analyser, samples) {
+  analyser.getByteTimeDomainData(samples);
+  let sum = 0;
+  for (const sample of samples) sum += ((sample - 128) / 128) ** 2;
+
+  return Math.min(1, Math.sqrt(sum / samples.length) * 4);
+}
+
+// meter makes the glow around the person beat with their voice and the bar
+// on the microphone button rise with one's own: a call that is alive looks
+// alive. Only transform and opacity change.
+function meter(c) {
+  if (!c.audio) return;
+  const analyser = (stream) => {
+    const node = c.audio.createAnalyser();
+    node.fftSize = 512;
+    c.audio.createMediaStreamSource(stream).connect(node);
+    return node;
+  };
+  const mine = c.stream ? analyser(c.stream) : null;
+  let theirs = null;
+  const samples = new Uint8Array(512);
+  let heard = 0;
+  let said = 0;
+
+  const step = () => {
+    if (call !== c) return;
+    if (!theirs && c.heard?.getAudioTracks().length) theirs = analyser(new MediaStream(c.heard.getAudioTracks()));
+    heard = Math.max(theirs ? loudness(theirs, samples) : 0, heard * 0.85);
+    said = Math.max(mine ? loudness(mine, samples) : 0, said * 0.8);
+    c.ui.glow.style.transform = `scale(${1 + heard * 0.22})`;
+    c.ui.glow.style.opacity = String(0.35 + heard * 0.65);
+    if (c.level) c.level.style.transform = `scaleY(${c.muted ? 0 : said})`;
+    c.meter = requestAnimationFrame(step);
+  };
+  c.audio.resume().catch(() => {});
+  step();
+}
+
+// tick runs every second of a call: the clock, and every full minute a
+// "+1 мин" flying up from it, louder at round numbers.
+function tick(c) {
+  const seconds = Math.floor((Date.now() - c.startedAt) / 1000);
+  c.ui.clock.textContent = timeOf(seconds);
+  if (!seconds || seconds % 60) return;
+
+  const minutes = seconds / 60;
+  const big = MILESTONES.has(minutes);
+  c.ui.pop.textContent = big ? tr('{0} мин!', minutes) : tr('+1 мин');
+  c.ui.pop.classList.toggle('big', big);
+  c.ui.pop.classList.remove('fly');
+  void c.ui.pop.offsetWidth; // the flight starts over every minute
+  c.ui.pop.classList.add('fly');
+  if (big) fanfare();
 }
 
 function connected(c) {
   clearTimeout(c.goneTimer);
-  if (c.startedAt) {
-    say(tr('Идёт разговор'));
-    return;
-  }
+  clearTimeout(c.connectTimer);
+  mood(c, 'live');
+  say(tr('Идёт разговор'));
+  if (c.startedAt) return;
 
   c.startedAt = Date.now();
-  say(tr('Идёт разговор'));
-  c.ui.timer.hidden = false;
-  c.ui.timer.textContent = timeOf(0);
-  c.clock = setInterval(() => { c.ui.timer.textContent = timeOf(Math.floor((Date.now() - c.startedAt) / 1000)); }, 1000);
+  callUp();
+  c.ui.clock.classList.add('on');
+  c.clock = setInterval(() => tick(c), 1000);
   c.watch = setInterval(() => watchLine(c).catch(() => {}), 2000);
   addEventListener('beforeunload', leavingGuard);
   showCode(c).catch(() => {});
+  meter(c);
   for (const t of c.pc.getTransceivers()) {
     if (t.sender.track?.kind === 'audio') limit(t.sender, AUDIO_BITRATE);
   }
 }
 
+// waitConnection ends a call whose browsers never reach each other, with a
+// word of why, instead of leaving it "connecting" for ever.
+function waitConnection(c) {
+  clearTimeout(c.connectTimer);
+  c.connectTimer = setTimeout(() => {
+    if (call !== c || c.startedAt) return;
+    send(c, { k: 'end' });
+    finish(tr('Не удалось соединиться. Проверьте интернет и попробуйте ещё раз.'));
+  }, CONNECT_FOR);
+}
+
+// onTrack plays what comes from the other side: the voice through an audio
+// element of its own, so it sounds while no picture is shown, and the
+// picture in the stage.
+function onTrack(c, track) {
+  c.heard.addTrack(track);
+  const element = track.kind === 'audio' ? c.ui.sound : c.ui.remote;
+  element.srcObject = new MediaStream(c.heard.getTracks().filter((t) => t.kind === track.kind));
+  element.play().catch(() => {});
+}
+
+function lineChanged(c) {
+  const { pc } = c;
+  if (pc.connectionState === 'connected') {
+    connected(c);
+    return;
+  }
+  if (pc.connectionState !== 'disconnected' && pc.connectionState !== 'failed') return;
+
+  mood(c, 'trouble');
+  say(tr('Связь прервалась, восстанавливаем…'));
+  // Either side may ask for new addresses: perfect negotiation sorts out
+  // the two asking at once.
+  if (pc.connectionState === 'failed') pc.restartIce();
+  clearTimeout(c.goneTimer);
+  c.goneTimer = setTimeout(() => {
+    if (call !== c) return;
+    send(c, { k: 'end' });
+    finish(tr('Связь потеряна'));
+  }, GONE_FOR);
+}
+
 async function makePeer(c) {
   const servers = await api.callServers();
   const iceServers = servers.urls.length ? [{ urls: servers.urls, username: servers.username, credential: servers.credential }] : [];
-  const pc = new RTCPeerConnection({ iceServers, bundlePolicy: 'max-bundle' });
-  const heard = new MediaStream();
+  const pc = new RTCPeerConnection({ iceServers, bundlePolicy: 'max-bundle', iceCandidatePoolSize: 2 });
   c.pc = pc;
-  c.ui.remote.srcObject = heard;
+  c.heard = new MediaStream();
 
-  pc.ontrack = ({ track }) => heard.addTrack(track);
+  pc.ontrack = ({ track }) => onTrack(c, track);
   pc.onicecandidate = ({ candidate }) => { if (candidate) send(c, { k: 'ice', candidate }); };
   pc.onnegotiationneeded = async () => {
     try {
@@ -236,19 +382,8 @@ async function makePeer(c) {
       c.makingOffer = false;
     }
   };
-  pc.onconnectionstatechange = () => {
-    if (pc.connectionState === 'connected') connected(c);
-    if (pc.connectionState !== 'disconnected' && pc.connectionState !== 'failed') return;
-
-    say(tr('Связь прервалась, восстанавливаем…'));
-    if (pc.connectionState === 'failed' && c.role === 'caller') pc.restartIce();
-    clearTimeout(c.goneTimer);
-    c.goneTimer = setTimeout(() => {
-      if (call !== c) return;
-      send(c, { k: 'end' });
-      finish(tr('Связь потеряна'));
-    }, GONE_FOR);
-  };
+  pc.onconnectionstatechange = () => lineChanged(c);
+  waitConnection(c);
 
   return pc;
 }
@@ -278,7 +413,9 @@ async function toggleCamera(c, control) {
     c.ui.local.hidden = false;
   }
 
+  callClick(Boolean(c.camera));
   control.image.src = c.camera ? '/static/icons/call-camera.svg' : '/static/icons/call-camera-off.svg';
+  control.node.classList.toggle('on', Boolean(c.camera));
   send(c, { k: 'camera', on: Boolean(c.camera) });
 }
 
@@ -286,12 +423,25 @@ function talkButtons(c) {
   const mic = iconButton('/static/icons/call-mic.svg', tr('Микрофон'), () => {
     const [track] = c.stream.getAudioTracks();
     track.enabled = !track.enabled;
+    c.muted = !track.enabled;
+    callClick(track.enabled);
     mic.image.src = track.enabled ? '/static/icons/call-mic.svg' : '/static/icons/call-mic-off.svg';
     mic.node.classList.toggle('off', !track.enabled);
   });
+  c.level = el('i', { className: 'call-level' });
+  mic.disc.append(c.level);
   const camera = iconButton('/static/icons/call-camera-off.svg', tr('Камера'), () => toggleCamera(c, camera));
   const end = iconButton('/static/icons/call-hangup.svg', tr('Завершить'), hangUp, 'call-end');
-  c.ui.buttons.replaceChildren(mic.node, camera.node, end.node);
+  c.ui.buttons.replaceChildren(mic.node, end.node, camera.node);
+}
+
+// voiceMeter is the audio context that measures the voices of a call. It
+// is made on a press, as browsers want; with reduced motion nothing beats,
+// so there is none.
+function voiceMeter() {
+  const AudioContext = window.AudioContext ?? window.webkitAudioContext;
+
+  return AudioContext && !still ? new AudioContext() : null;
 }
 
 // startCall calls peer from this page.
@@ -299,8 +449,9 @@ export async function startCall(peer) {
   if (call) return;
 
   const ui = drawWindow(peer);
-  const c = { id: crypto.randomUUID(), peer, role: 'caller', ui, line: Promise.resolve() };
+  const c = { id: crypto.randomUUID(), peer, role: 'caller', ui, line: Promise.resolve(), audio: voiceMeter() };
   call = c;
+  mood(c, 'calling');
   say(tr('Подключаемся…'));
   c.ui.buttons.replaceChildren(iconButton('/static/icons/call-hangup.svg', tr('Отмена'), hangUp, 'call-end').node);
 
@@ -316,9 +467,14 @@ export async function startCall(peer) {
   }
   if (call !== c) return;
 
-  send(c, { k: 'ring' });
-  say(tr('Вызываем…'));
   talkButtons(c);
+  if (!await send(c, { k: 'ring' })) {
+    finish(tr('Не удалось дозвониться. Попробуйте ещё раз.'));
+    return;
+  }
+  if (call !== c) return;
+  say(tr('Вызываем…'));
+  c.stopRing = ringback();
   c.ringTimer = setTimeout(() => {
     if (call !== c || c.started) return;
     send(c, { k: 'cancel' });
@@ -330,8 +486,10 @@ export async function startCall(peer) {
 async function accept(c) {
   c.stopRing?.();
   clearTimeout(c.ringTimer);
-  say(tr('Подключаемся…'));
-  c.ui.buttons.replaceChildren();
+  mood(c, 'calling');
+  say(tr('Соединяемся…'));
+  c.audio = voiceMeter();
+  for (const button of c.ui.buttons.querySelectorAll('button')) button.disabled = true;
 
   try {
     c.stream = await microphone();
@@ -344,23 +502,23 @@ async function accept(c) {
 
   c.started = true;
   talkButtons(c);
-  send(c, { k: 'accept' });
+  if (!await send(c, { k: 'accept' })) finish(tr('Не удалось соединиться. Проверьте интернет и попробуйте ещё раз.'));
 }
 
 function ring(peer, signal, peerKey) {
   const ui = drawWindow(peer);
   const c = { id: signal.id, peer, peerKey, peerTab: signal.tab, role: 'callee', ui, line: Promise.resolve() };
   call = c;
-  ui.back.classList.add('call-ringing');
+  mood(c, 'ringing');
   say(tr('Вам звонят'));
   c.stopRing = ringer();
   c.ringTimer = setTimeout(() => { if (call === c) finish(tr('Пропущенный звонок')); }, RING_FOR);
   ui.buttons.replaceChildren(
-    iconButton('/static/icons/call-phone.svg', tr('Принять'), () => accept(c), 'call-answer').node,
     iconButton('/static/icons/call-hangup.svg', tr('Отклонить'), () => {
       send(c, { k: 'decline' });
       finish(tr('Звонок отклонён'));
     }, 'call-end').node,
+    iconButton('/static/icons/call-phone.svg', tr('Принять'), () => accept(c), 'call-answer').node,
   );
 }
 
@@ -388,9 +546,10 @@ async function onDescription(c, description) {
 
 async function onAccepted(c, signal) {
   clearTimeout(c.ringTimer);
+  c.stopRing?.();
   c.peerTab = signal.tab;
   c.started = true;
-  say(tr('Подключаемся…'));
+  say(tr('Соединяемся…'));
   const pc = await makePeer(c);
   pc.addTransceiver(c.stream.getAudioTracks()[0], { direction: 'sendrecv' });
   pc.addTransceiver('video', { direction: 'sendrecv' });

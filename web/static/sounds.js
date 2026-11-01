@@ -1,4 +1,4 @@
-// The sounds of the casino and of the games of money, each its own, made on the spot with Web
+// The sounds of the casino, of the games of money and of calls, each its own, made on the spot with Web
 // Audio: no files to load. A browser lets a page sound only after a press,
 // and each game starts from one; nothing sounds with reduced motion, as
 // nothing moves then.
@@ -139,4 +139,21 @@ export function coins() {
 // dealTick is a deal done or a setting taken.
 export function dealTick(up = true) {
   tone({ type: 'sine', freq: up ? 700 : 500, end: up ? 1100 : 300, seconds: 0.12 });
+}
+
+// callUp is a call connected: two bright notes up, as an old messenger.
+export function callUp() {
+  tone({ type: 'sine', freq: 784, seconds: 0.16, volume: 1.4 });
+  tone({ type: 'sine', freq: 1175, seconds: 0.26, volume: 1.4, delay: 0.12 });
+}
+
+// callDown is a call over: the same notes falling.
+export function callDown() {
+  tone({ type: 'sine', freq: 1175, seconds: 0.16, volume: 1.2 });
+  tone({ type: 'sine', freq: 587, seconds: 0.3, volume: 1.2, delay: 0.12 });
+}
+
+// callClick is a switch of the microphone or the camera.
+export function callClick(on = true) {
+  tone({ type: 'square', freq: on ? 1500 : 900, end: on ? 1900 : 600, seconds: 0.04, volume: 0.6 });
 }

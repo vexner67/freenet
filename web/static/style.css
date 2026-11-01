@@ -3448,35 +3448,82 @@ img.name-prime.name-prime {
 
 /* A call: a window of the old messengers over the page, with glossy
    buttons. The picture of the person gives way to their camera. */
-.call-back { position: fixed; inset: 0; z-index: 900; display: flex; align-items: center; justify-content: center; background: var(--back-14103a); }
-.call-window { display: flex; flex-direction: column; align-items: center; width: 340px; max-width: calc(100% - 32px); max-height: calc(100% - 32px); overflow: auto; padding-bottom: 12px; color: var(--text-000); background: linear-gradient(var(--back-fff), var(--back-e6e6e6)); border: 1px solid var(--text-333); border-radius: 4px; box-shadow: 0 4px 16px var(--text-333); }
-.call-title { display: flex; gap: 6px; align-items: center; align-self: stretch; padding: 5px 8px; font-weight: bold; color: var(--text-fff); text-shadow: 0 1px 0 var(--text-333); background: linear-gradient(var(--back-595959), var(--text-333)); }
+/* The window of a call: a dark frame of the site, the person on a dark
+   stage with waves while it rings and a glow beating with their voice, a
+   lamp and a clock as plaques, the code as three gold tiles and big round
+   glossy buttons. Every part has its height from the start, so nothing
+   moves while the call goes on; only opacity and transform animate. */
+.call-back { position: fixed; inset: 0; z-index: 900; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--back-14103a) 72%, transparent); animation: call-in 0.18s ease-out; }
+.call-back ~ .pop { z-index: 950; }
+.call-window { position: relative; display: flex; flex-direction: column; width: 320px; max-width: calc(100% - 32px); max-height: calc(100% - 32px); overflow: auto; color: var(--text-000); background: linear-gradient(var(--back-fff), var(--back-e9edf1)); border: 1px solid var(--line-333); border-radius: 6px 6px 3px 3px; box-shadow: 2px 2px 0 var(--back-d4d4d4); animation: call-rise 0.22s ease-out; }
+.call-title { display: flex; flex: none; gap: 6px; align-items: center; padding: 5px 8px; font-weight: bold; color: var(--text-fff); text-shadow: 0 1px 0 rgb(0 0 0 / 40%); background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); border-radius: 5px 5px 0 0; }
 .call-title .call-bars { margin-left: auto; }
 .call-bars { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; }
-.call-bars i { width: 3px; background: var(--text-626262); }
+.call-bars i { width: 3px; background: var(--back-707070); border-radius: 1px 1px 0 0; }
 .call-bars i:nth-child(1) { height: 4px; }
 .call-bars i:nth-child(2) { height: 6px; }
 .call-bars i:nth-child(3) { height: 9px; }
 .call-bars i:nth-child(4) { height: 12px; }
-.call-bars i.on { background: var(--text-43a047); }
-.call-stage { position: relative; display: flex; align-items: center; justify-content: center; align-self: stretch; height: 200px; margin: 10px 10px 8px; overflow: hidden; background: var(--back-14103a); border: 1px solid var(--text-626262); }
-.call-photo { width: 130px; height: 130px; object-fit: cover; border: 3px solid var(--back-fff); box-shadow: 0 1px 4px var(--text-333); }
-.call-remote { display: none; width: 100%; height: 100%; object-fit: contain; }
+.call-bars i.on { background: var(--back-8bd86a); }
+.call-stage { position: relative; display: flex; flex: none; align-items: center; justify-content: center; height: 210px; margin: 8px 8px 6px; overflow: hidden; background: radial-gradient(circle at 50% 45%, var(--back-444), var(--back-1f1f1f)); border: 1px solid var(--line-333); border-radius: 4px; }
+.call-frame { position: relative; z-index: 1; padding: 3px; background: linear-gradient(var(--back-fff), var(--back-d4d4d4)); border: 1px solid var(--line-333); border-radius: 50%; box-shadow: 0 2px 0 rgb(0 0 0 / 35%); }
+.call-photo { display: block; width: 120px; height: 120px; object-fit: cover; border-radius: 50%; }
+.call-waves i { position: absolute; top: 50%; left: 50%; width: 128px; height: 128px; margin: -64px 0 0 -64px; border: 2px solid var(--back-8bd86a); border-radius: 50%; opacity: 0; }
+.call-ringing .call-waves i { border-color: var(--back-ffd54a); }
+.call-calling .call-waves i, .call-ringing .call-waves i { animation: call-wave 2.4s ease-out infinite; }
+.call-waves i:nth-child(2) { animation-delay: 0.8s; }
+.call-waves i:nth-child(3) { animation-delay: 1.6s; }
+.call-glow { position: absolute; top: 50%; left: 50%; width: 150px; height: 150px; margin: -75px 0 0 -75px; background: radial-gradient(circle, var(--back-8bd86a) 50%, transparent 71%); border-radius: 50%; opacity: 0; }
+.call-live .call-glow { opacity: 0.5; }
+.call-remote { position: absolute; inset: 0; z-index: 2; display: none; width: 100%; height: 100%; object-fit: contain; background: var(--back-1f1f1f); }
 .call-seen .call-remote { display: block; }
-.call-seen .call-photo { display: none; }
-.call-local { position: absolute; right: 6px; bottom: 6px; width: 84px; height: 63px; object-fit: cover; background: var(--text-333); border: 2px solid var(--back-fff); transform: scaleX(-1); }
-.call-name { font-size: 15px; font-weight: bold; color: var(--text-45688e); }
-.call-status { margin-top: 2px; color: var(--text-626262); }
-.call-timer { margin-top: 2px; font-size: 14px; font-weight: bold; font-variant-numeric: tabular-nums; }
-.call-code { max-width: 300px; margin-top: 6px; padding: 4px 6px; font-size: 10px; text-align: center; color: var(--text-626262); background: var(--back-fff); border: 1px solid var(--line-bbb); }
-.call-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 10px; min-height: 58px; }
-.call-button { display: flex; flex-direction: column; gap: 2px; align-items: center; width: 74px; padding: 5px 2px 3px; font: inherit; font-size: 10px; color: var(--text-000); cursor: pointer; background: linear-gradient(var(--back-fff), var(--back-e6e6e6)); border: 1px solid var(--line-bbb); border-radius: 4px; }
-.call-button:hover { border-color: var(--text-626262); }
-.call-button:active { background: var(--back-e6e6e6); }
-.call-button.off { background: var(--back-e6e6e6); box-shadow: inset 0 1px 3px var(--text-626262); }
-.call-answer, .call-end { font-weight: bold; }
-.call-ringing .call-answer { animation: call-ring 1s ease-in-out infinite; }
-@keyframes call-ring { 50% { box-shadow: 0 0 10px var(--text-43a047); } }
+.call-local { position: absolute; right: 6px; bottom: 6px; z-index: 3; width: 84px; height: 63px; object-fit: cover; background: var(--back-3e3e3e); border: 2px solid var(--line-fff); border-radius: 3px; transform: scaleX(-1); }
+.call-stage audio { display: none; }
+.call-name { flex: none; margin: 0 8px; overflow: hidden; font-size: 15px; font-weight: bold; text-align: center; text-overflow: ellipsis; white-space: nowrap; color: var(--text-45688e); }
+.call-plaques { display: flex; flex: none; gap: 6px; margin: 6px 8px 0; }
+.call-status { display: flex; flex: 1; gap: 7px; align-items: center; min-width: 0; height: 44px; padding: 0 8px; background: linear-gradient(var(--back-fff), var(--back-e6e6e6)); border: 1px solid var(--line-bbb); border-radius: 3px; box-shadow: 1px 1px 0 var(--back-d4d4d4); }
+.call-status-text { display: -webkit-box; overflow: hidden; line-height: 13px; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.call-lamp { flex: none; width: 11px; height: 11px; background: radial-gradient(circle at 35% 35%, var(--back-fff), var(--back-8b8b8b) 65%); border: 1px solid var(--line-707070); border-radius: 50%; }
+.call-calling .call-lamp, .call-ringing .call-lamp { background: radial-gradient(circle at 35% 35%, var(--back-fff3c4), var(--back-f7a02c) 65%); animation: call-blink 1s steps(2) infinite; }
+.call-live .call-lamp { background: radial-gradient(circle at 35% 35%, var(--back-fff), var(--back-43a047) 65%); }
+.call-trouble .call-lamp { background: radial-gradient(circle at 35% 35%, var(--back-fff), var(--back-d23a32) 65%); animation: call-blink 0.5s steps(2) infinite; }
+.call-clock { position: relative; display: flex; flex: none; align-items: center; justify-content: center; width: 78px; height: 44px; background: linear-gradient(var(--back-444), var(--back-1f1f1f)); border: 1px solid var(--line-333); border-radius: 3px; box-shadow: 1px 1px 0 var(--back-d4d4d4); }
+.call-clock-digits { font-family: "Courier New", monospace; font-size: 17px; font-variant-numeric: tabular-nums; color: var(--text-626262); }
+.call-clock-digits.on { color: var(--text-ffd54a); text-shadow: 0 0 5px var(--back-f7a02c); }
+.call-pop { position: absolute; bottom: 100%; left: 50%; font-weight: bold; white-space: nowrap; color: var(--text-43a047); text-shadow: 1px 1px 0 var(--back-fff), -1px -1px 0 var(--back-fff), 1px -1px 0 var(--back-fff), -1px 1px 0 var(--back-fff); pointer-events: none; opacity: 0; transform: translateX(-50%); }
+.call-pop.big { font-size: 14px; color: var(--text-a87a00); }
+.call-pop.fly { animation: call-fly 1.4s ease-out; }
+.call-code { display: flex; flex: none; gap: 5px; align-items: center; justify-content: center; height: 26px; margin: 6px 8px 0; visibility: hidden; opacity: 0; }
+.call-code.shown { visibility: visible; opacity: 1; transition: opacity 0.4s; }
+.call-code-name { color: var(--text-626262); }
+.call-digits { display: flex; gap: 3px; }
+.call-digits b { padding: 2px 5px; font-family: "Courier New", monospace; font-size: 13px; letter-spacing: 1px; color: var(--text-58462a); background: linear-gradient(var(--back-fff3c4), var(--back-ffd54a)); border: 1px solid var(--line-a8800f); border-radius: 3px; box-shadow: 1px 1px 0 var(--back-d4d4d4); }
+.call-buttons { display: flex; flex: none; gap: 16px; align-items: flex-start; justify-content: center; height: 88px; margin-top: 8px; padding-top: 9px; background: linear-gradient(var(--back-e6e6e6), var(--back-d4d4d4)); border-top: 1px solid var(--line-bbb); }
+.call-button { display: flex; flex-direction: column; gap: 4px; align-items: center; width: 72px; padding: 0; font: inherit; font-size: 11px; color: var(--text-333); cursor: pointer; background: none; border: 0; }
+.call-button:disabled { cursor: default; opacity: 0.6; }
+.call-disc { position: relative; display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; overflow: hidden; background: linear-gradient(var(--back-fff), var(--back-d4d4d4)); border: 1px solid var(--line-707070); border-radius: 50%; box-shadow: 0 2px 0 var(--back-8b8b8b); transition: transform 0.08s ease-out; }
+.call-disc::before { position: absolute; top: 2px; right: 7px; left: 7px; height: 45%; content: ""; background: linear-gradient(color-mix(in srgb, var(--back-fff) 80%, transparent), color-mix(in srgb, var(--back-fff) 5%, transparent)); border-radius: 50% / 70% 70% 30% 30%; pointer-events: none; }
+.call-disc img { position: relative; z-index: 1; }
+.call-button:hover:not(:disabled) .call-disc { transform: scale(1.07); }
+.call-button:active:not(:disabled) .call-disc { box-shadow: none; transform: translateY(2px); }
+.call-button.off .call-disc { background: linear-gradient(var(--back-d4d4d4), var(--back-e6e6e6)); box-shadow: inset 0 2px 4px var(--back-8b8b8b); }
+.call-button.on .call-disc { background: linear-gradient(var(--back-fff), var(--back-8bd86a)); border-color: var(--back-3f8f35); }
+.call-end .call-disc { background: linear-gradient(var(--back-f26b5b), var(--back-a01e28)); border-color: var(--back-7a0f1d); }
+.call-answer .call-disc { background: linear-gradient(var(--back-8bd86a), var(--back-3f8f35)); border-color: var(--back-1e5c36); }
+.call-end .call-caption, .call-answer .call-caption { font-weight: bold; }
+.call-ringing .call-answer .call-disc { animation: call-shake 1.2s ease-in-out infinite; }
+.call-level { position: absolute; inset: 0; background: linear-gradient(transparent 20%, color-mix(in srgb, var(--back-43a047) 55%, transparent)); transform: scaleY(0); transform-origin: bottom; pointer-events: none; }
+.call-over { animation: call-out 0.3s ease-in 1.7s forwards; }
+@keyframes call-in { from { opacity: 0; } }
+@keyframes call-rise { from { opacity: 0; transform: scale(0.92); } }
+@keyframes call-out { to { opacity: 0; } }
+@keyframes call-wave { from { opacity: 0.9; transform: scale(1); } to { opacity: 0; transform: scale(2.1); } }
+@keyframes call-blink { 50% { opacity: 0.35; } }
+@keyframes call-fly { from { opacity: 1; transform: translate(-50%, 6px) scale(0.8); } 20% { opacity: 1; transform: translate(-50%, -4px) scale(1.15); } to { opacity: 0; transform: translate(-50%, -30px); } }
+@keyframes call-shake { 0%, 50%, 100% { transform: rotate(0); } 10% { transform: rotate(-14deg) scale(1.08); } 20% { transform: rotate(12deg) scale(1.08); } 30% { transform: rotate(-10deg) scale(1.08); } 40% { transform: rotate(6deg) scale(1.04); } }
+@media (prefers-reduced-motion: reduce) {
+  .call-back, .call-window, .call-waves i, .call-lamp, .call-answer .call-disc, .call-pop, .call-over { animation: none !important; }
+}
 
 /* /prime in the look of the sites of the 2000s: the hero is a glossy
    plaque and every part is a small window with a shiny title bar. */
