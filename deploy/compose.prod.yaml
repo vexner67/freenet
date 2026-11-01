@@ -110,26 +110,40 @@ services:
   # TURN relays a call only when two browsers cannot reach each other. It
   # carries packets already encrypted between them. It sits on a network of
   # its own and refuses private addresses, so a relay never reaches inside.
+  #
+  # When both browsers relay, one relay sends to the other at the public
+  # address of this server. From inside Docker's bridge that packet comes
+  # back through Docker's proxy with the bridge's address as its sender, and
+  # the other relay, which lets in only the public one, drops it: the call
+  # rings, is answered and never connects. So coturn has a fixed address on
+  # its network, and external-ip maps the public address to it: a relay
+  # sends to the other one straight inside the container. That one private
+  # address is the only one let in.
   coturn:
     image: coturn/coturn:4.6.3
     restart: unless-stopped
-    networks: [turn]
+    networks:
+      calls: { ipv4_address: 172.31.250.10 }
     command:
       - --fingerprint
       - --use-auth-secret
       - --static-auth-secret=${TURN_SECRET:-}
       - --realm=freenet
-      - --external-ip=${TURN_HOST:-127.0.0.1}
+      - --listening-ip=172.31.250.10
+      - --relay-ip=172.31.250.10
+      - --external-ip=${TURN_HOST:-127.0.0.1}/172.31.250.10
       - --listening-port=3478
       - --min-port=49160
       - --max-port=49260
       - --no-tls
       - --no-dtls
       - --no-cli
+      - --no-tcp-relay
       - --no-multicast-peers
       - --no-software-attribute
       - --user-quota=12
       - --total-quota=400
+      - --allowed-peer-ip=172.31.250.10
       - --denied-peer-ip=0.0.0.0-0.255.255.255
       - --denied-peer-ip=10.0.0.0-10.255.255.255
       - --denied-peer-ip=100.64.0.0-100.127.255.255
@@ -143,7 +157,13 @@ services:
       - "49160-49260:49160-49260/udp"
 
 networks:
-  turn:
+  # A network of its own with a fixed range for the fixed address above;
+  # the range is the last of those Docker gives out by itself, so no other
+  # network of this server is likely to have taken it.
+  calls:
+    ipam:
+      config:
+        - subnet: 172.31.250.0/24
 
 volumes:
   caddy_data:
