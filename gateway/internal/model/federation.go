@@ -43,6 +43,9 @@ type FediverseAccount struct {
 	// Accepted: its server took the follow of the site; until then its
 	// posts may not come.
 	Accepted bool
+	// Telegram: a public channel of Telegram, which the site reads from
+	// its page rather than the Fediverse.
+	Telegram bool
 }
 
 // FediverseLookup is an account found by its address, and whether the

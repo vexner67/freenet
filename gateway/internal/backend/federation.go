@@ -231,6 +231,7 @@ func fromProtoAccount(a *federationv1.Account) model.FediverseAccount {
 		PageURL:   a.GetPageUrl(),
 		HasAvatar: a.GetHasAvatar(),
 		Accepted:  a.GetAccepted(),
+		Telegram:  a.GetTelegram(),
 	}
 }
 

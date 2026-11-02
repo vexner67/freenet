@@ -30,6 +30,7 @@ type fediverseAccountJSON struct {
 	URL      string `json:"url"`
 	Avatar   string `json:"avatar"`
 	Accepted bool   `json:"accepted"`
+	Telegram bool   `json:"telegram"`
 }
 
 type fediverseLookupJSON struct {
@@ -333,6 +334,78 @@ func (a *api) withFediverse(r *http.Request, token string, q model.FediverseNews
 	return page
 }
 
+// The cursor of the ranked news carries, after remoteCursorMark, where the
+// posts of other servers among them go on: the ID of the last one shown,
+// or remoteNewsDone when they ended. siteNewsDone stands for the cursor of
+// post when the posts of the site ended before them.
+const (
+	remoteCursorMark = "|f:"
+	remoteNewsDone   = "-"
+	siteNewsDone     = "end"
+)
+
+// remoteShare is how many posts of the site a post of another server
+// comes after in the ranked news: one in three.
+const remoteShare = 2
+
+// splitRankedCursor is the cursor of post and that of the posts of other
+// servers in a cursor of the ranked news.
+func splitRankedCursor(cursor string) (site, remote string) {
+	site, remote, _ = strings.Cut(cursor, remoteCursorMark)
+	return site, remote
+}
+
+// withRankedFediverse puts the posts of other servers (Fediverse,
+// Telegram) among the ranked news ("Сначала интересные"): they have no
+// likes to be ranked by, so a page shows its posts of the site and after
+// every remoteShare of them the next of those, newest first, by their
+// own cursor; once the posts of the site end, those fill the page. A
+// failure of federation leaves the news of the site.
+func (a *api) withRankedFediverse(
+	r *http.Request, token string, sources model.FeedSources, remoteCursor string, limit int, page postPageResponse,
+) postPageResponse {
+	siteNext := cmp.Or(page.NextCursor, siteNewsDone)
+
+	var remote []model.FediversePost
+	if a.federation != nil && remoteCursor != remoteNewsDone {
+		size := cmp.Or(limit, defaultPageSize)
+		take := max(1, size/(remoteShare+1))
+		// The posts of the site ended: those of other servers fill the page.
+		if siteNext == siteNewsDone {
+			take = max(take, size-len(page.Posts))
+		}
+
+		var err error
+		if remote, err = a.federation.News(r.Context(), token, fediverseNewsOf(sources, remoteCursor, take)); err != nil {
+			a.logger.WarnContext(r.Context(), "fediverse news", "error", err)
+			remote, remoteCursor = nil, remoteNewsDone
+		} else {
+			remoteCursor = remoteNewsDone
+			if len(remote) == take {
+				remoteCursor = remote[len(remote)-1].ID
+			}
+		}
+	}
+
+	posts := make([]postResponse, 0, len(page.Posts)+len(remote))
+	for i, p := range page.Posts {
+		posts = append(posts, p)
+		if (i+1)%remoteShare == 0 && len(remote) > 0 {
+			posts, remote = append(posts, toFediversePostResponse(remote[0])), remote[1:]
+		}
+	}
+	for _, p := range remote {
+		posts = append(posts, toFediversePostResponse(p))
+	}
+
+	page.Posts, page.NextCursor = posts, ""
+	if siteNext != siteNewsDone || (remoteCursor != remoteNewsDone && remoteCursor != "") {
+		page.NextCursor = siteNext + remoteCursorMark + cmp.Or(remoteCursor, remoteNewsDone)
+	}
+
+	return page
+}
+
 func toFediversePostResponse(p model.FediversePost) postResponse {
 	images := make([]fediverseImageJSON, len(p.ImageDescriptions))
 	for i, d := range p.ImageDescriptions {
@@ -384,6 +457,7 @@ func toFediverseAccountJSON(acc model.FediverseAccount) fediverseAccountJSON {
 		Name:     acc.Name,
 		URL:      cmp.Or(acc.PageURL, acc.ID),
 		Accepted: acc.Accepted,
+		Telegram: acc.Telegram,
 	}
 
 	if acc.HasAvatar {

@@ -229,6 +229,10 @@ func (f *fakeFederation) SiteActor(context.Context) ([]byte, error) {
 
 func (f *fakeFederation) Lookup(_ context.Context, token, address string) (model.FediverseLookup, error) {
 	f.token, f.address = token, address
+	if address == "t.me/meduzalive" {
+		return model.FediverseLookup{Account: meduza}, f.err
+	}
+
 	return model.FediverseLookup{Account: anna, Subscribed: true}, f.err
 }
 
@@ -281,6 +285,10 @@ func (f *fakeFederation) AccountPicture(_ context.Context, id string) (model.Pic
 	return f.picture, f.err
 }
 
+var meduza = model.FediverseAccount{
+	ID: "https://t.me/meduzalive", Handle: "@meduzalive", Name: "Медуза", PageURL: "https://t.me/meduzalive", Accepted: true, Telegram: true,
+}
+
 var anna = model.FediverseAccount{
 	ID: "https://m.example/users/anna", Handle: "@anna@m.example", Name: "Anna", PageURL: "https://m.example/@anna", HasAvatar: true,
 }
@@ -291,6 +299,12 @@ type fediverseAccount struct {
 	URL      string `json:"url"`
 	Avatar   string `json:"avatar"`
 	Accepted bool   `json:"accepted"`
+	Telegram bool   `json:"telegram"`
+}
+
+type fediverseLookupResponse struct {
+	Account    fediverseAccount `json:"account"`
+	Subscribed bool             `json:"subscribed"`
 }
 
 type fediversePosts struct {
@@ -360,16 +374,52 @@ func TestFeed_Fediverse(t *testing.T) {
 		t.Fatalf("news of 2: %+v", got)
 	}
 
-	// The ranked news have no remote posts; a failing federation leaves
-	// the news of the site.
-	h.federation.news = nil
-	if got = decode[fediversePosts](t, h.do("GET", "/api/v1/feed?ranked=true", "", "Authorization", "Bearer tok")); len(got.Posts) != 2 || h.federation.news != nil {
-		t.Fatalf("ranked news %+v, asked %+v", got, h.federation.news)
-	}
-
+	// A failing federation leaves the news of the site.
 	h.federation.newsErr = failure.New(failure.Unavailable, "down")
 	if w = h.do("GET", "/api/v1/feed", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || len(decode[fediversePosts](t, w).Posts) != 2 {
 		t.Fatalf("news without federation: %d", w.Code)
+	}
+}
+
+func TestFeed_RankedFediverse(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+	h.federation.remote = []model.FediversePost{{ID: "f1", URL: "https://t.me/meduzalive/1", Author: meduza, Text: "из канала"}}
+
+	// After every two posts of the site, a post of another server.
+	w := h.do("GET", "/api/v1/feed?ranked=true", "", "Authorization", "Bearer tok")
+	got := decode[fediversePosts](t, w)
+	if w.Code != http.StatusOK || len(got.Posts) != 3 || got.Posts[0].ID != "p3" || got.Posts[1].ID != "p1" || got.Posts[2].ID != "f1" ||
+		!got.Posts[2].Fediverse.Author.Telegram || got.NextCursor != "p1|f:-" {
+		t.Fatalf("ranked news %+v", got)
+	}
+
+	if q := h.federation.news; q == nil || q.Before != "" || q.Limit != 6 {
+		t.Fatalf("asked for %+v, want a third of a page", q)
+	}
+
+	// The posts of other servers ended: the site goes on alone.
+	h.federation.news = nil
+	got = decode[fediversePosts](t, h.do("GET", "/api/v1/feed?ranked=true&cursor=p1%7Cf%3A-", "", "Authorization", "Bearer tok"))
+	if h.posts.cursor != "p1" || h.federation.news != nil || len(got.Posts) != 2 {
+		t.Fatalf("site alone: post asked from %q, federation %+v, news %+v", h.posts.cursor, h.federation.news, got)
+	}
+
+	// The posts of the site ended: those of other servers go on alone.
+	h.posts.cursor = "untouched"
+	got = decode[fediversePosts](t, h.do("GET", "/api/v1/feed?ranked=true&cursor=end%7Cf%3Af9", "", "Authorization", "Bearer tok"))
+	if h.posts.cursor != "untouched" || h.federation.news == nil || h.federation.news.Before != "f9" || h.federation.news.Limit != 20 ||
+		len(got.Posts) != 1 || got.Posts[0].ID != "f1" || got.NextCursor != "" {
+		t.Fatalf("remote alone: post asked from %q, federation %+v, news %+v", h.posts.cursor, h.federation.news, got)
+	}
+
+	// A failing federation leaves the news of the site.
+	h.federation.newsErr = failure.New(failure.Unavailable, "down")
+	got = decode[fediversePosts](t, h.do("GET", "/api/v1/feed?ranked=true", "", "Authorization", "Bearer tok"))
+	if len(got.Posts) != 2 || got.NextCursor != "p1|f:-" {
+		t.Fatalf("ranked news without federation %+v", got)
 	}
 }
 
@@ -382,6 +432,12 @@ func TestFediverseSubscriptions(t *testing.T) {
 	if w.Code != http.StatusOK || h.federation.address != "@anna@m.example" || h.federation.token != "tok" ||
 		!strings.Contains(w.Body.String(), `"subscribed":true`) {
 		t.Fatalf("lookup: %d %s", w.Code, w.Body)
+	}
+
+	w = h.do("GET", "/api/v1/fediverse/lookup?address=t.me%2Fmeduzalive", "", "Authorization", "Bearer tok")
+	if acc := decode[fediverseLookupResponse](t, w).Account; w.Code != http.StatusOK || !acc.Telegram || acc.Handle != "@meduzalive" ||
+		acc.URL != "https://t.me/meduzalive" || !acc.Accepted {
+		t.Fatalf("lookup of a channel: %d %s", w.Code, w.Body)
 	}
 
 	w = h.do("POST", "/api/v1/me/fediverse", `{"address":"anna@m.example"}`, "Authorization", "Bearer tok")

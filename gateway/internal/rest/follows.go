@@ -242,10 +242,17 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, err := a.posts.Feed(r.Context(), token, sources, r.URL.Query().Get("cursor"), limit)
-	if err != nil {
-		a.writeError(w, r, err)
-		return
+	cursor, remoteCursor := r.URL.Query().Get("cursor"), ""
+	if sources.Ranked {
+		cursor, remoteCursor = splitRankedCursor(cursor)
+	}
+
+	page := model.PostPage{}
+	if cursor != siteNewsDone {
+		if page, err = a.posts.Feed(r.Context(), token, sources, cursor, limit); err != nil {
+			a.writeError(w, r, err)
+			return
+		}
 	}
 
 	resp := postPageResponse{NextCursor: page.NextCursor}
@@ -260,8 +267,10 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !sources.Ranked {
-		resp = a.withFediverse(r, token, fediverseNewsOf(sources, r.URL.Query().Get("cursor"), limit), resp)
+	if sources.Ranked {
+		resp = a.withRankedFediverse(r, token, sources, remoteCursor, limit, resp)
+	} else {
+		resp = a.withFediverse(r, token, fediverseNewsOf(sources, cursor, limit), resp)
 	}
 
 	writeJSON(w, http.StatusOK, resp)

@@ -6564,7 +6564,7 @@ paths:
   /api/v1/fediverse/lookup:
     get:
       summary: Find an account of another server
-      description: 'By its address: @username@host, username@host or the https address of the account. 404 when its server does not give it; 429 for too many lookups.'
+      description: 'By its address: @username@host, username@host or the https address of the account, or a public channel of Telegram: t.me/name, https://t.me/s/name or @name. 404 when its server (or t.me) does not give it; 429 for too many lookups.'
       security: [{ bearer: [] }]
       parameters:
         - { name: address, in: query, required: true, schema: { type: string } }
@@ -9028,11 +9028,13 @@ paths:
         With `type=all` it is "Все новости" of openvk instead: the posts of
         every wall, whomever you follow.
 
-        Posts of other servers of the Fediverse come among them by time,
-        with `fediverse` set: those of the accounts you read
-        (`/api/v1/me/fediverse`), or with `type=all` those the
-        administrators put in the news of everyone, in Russian, English or
-        no language said. Not in the ranked news.
+        Posts of other servers of the Fediverse and of public channels of
+        Telegram come among them by time, with `fediverse` set: those of the
+        accounts you read (`/api/v1/me/fediverse`), or with `type=all` those
+        the administrators put in the news of everyone, in Russian, English
+        or no language said. In the ranked news, which have no likes of
+        them to rank them by, one comes after every two posts of the site,
+        newest first, and the cursor carries where they go on.
 
         "Настройки ленты" of openvk come with the request and are not
         kept by the server. The walls you ignore
@@ -9641,6 +9643,7 @@ components:
         url: { type: string, description: Its page on its server }
         avatar: { type: string, description: 'Where the site shows its photo; "" for none' }
         accepted: { type: boolean, description: Its server took the follow of the site }
+        telegram: { type: boolean, description: 'A public channel of Telegram, read from its page t.me/s/<name>; handle is then @name' }
     FediverseAccounts:
       type: object
       properties:
