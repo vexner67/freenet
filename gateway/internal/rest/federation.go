@@ -24,6 +24,21 @@ type Federation interface {
 	Followers(ctx context.Context, userID string) ([]byte, error)
 	Outbox(ctx context.Context, userID string) ([]byte, error)
 	Receive(ctx context.Context, in model.InboxRequest) error
+
+	// The news from other servers: the accounts the site follows and
+	// shows posts of.
+	SiteActor(ctx context.Context) ([]byte, error)
+	Lookup(ctx context.Context, accessToken, address string) (model.FediverseLookup, error)
+	Subscriptions(ctx context.Context, accessToken string) ([]model.FediverseAccount, error)
+	Subscribe(ctx context.Context, accessToken, address string) (model.FediverseAccount, error)
+	Unsubscribe(ctx context.Context, accessToken, id string) error
+	News(ctx context.Context, accessToken string, q model.FediverseNews) ([]model.FediversePost, error)
+	// Internal: the gateway lets only administrators change these.
+	Featured(ctx context.Context) ([]model.FediverseAccount, error)
+	Feature(ctx context.Context, address string) (model.FediverseAccount, error)
+	Unfeature(ctx context.Context, id string) error
+	PostPicture(ctx context.Context, postID string, index int) (model.Picture, error)
+	AccountPicture(ctx context.Context, accountID string) (model.Picture, error)
 }
 
 const (
@@ -54,6 +69,8 @@ func (a *api) registerFederation(mux *http.ServeMux) {
 	mux.HandleFunc("GET /ap/users/{id}/outbox", a.federationDocument(Federation.Outbox))
 	mux.HandleFunc("POST /ap/inbox", a.inbox)
 	mux.HandleFunc("POST /ap/users/{id}/inbox", a.inbox)
+
+	a.registerFediverse(mux)
 }
 
 func (a *api) federationOf(do func(Federation, context.Context, string) (model.Federation, error)) http.HandlerFunc {

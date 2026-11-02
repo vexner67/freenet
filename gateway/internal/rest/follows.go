@@ -260,6 +260,10 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !sources.Ranked {
+		resp = a.withFediverse(r, token, fediverseNewsOf(sources, r.URL.Query().Get("cursor"), limit), resp)
+	}
+
 	writeJSON(w, http.StatusOK, resp)
 }
 

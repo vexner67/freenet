@@ -6543,6 +6543,133 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /ap/actor:
+    get:
+      summary: The actor of the site
+      description: 'The ActivityPub Application of the site itself, which follows accounts of other servers for the news; their servers read it to check its signatures.'
+      responses:
+        "200": { description: The actor, content: { application/activity+json: { schema: { type: object } } } }
+
+  /ap/actor/inbox:
+    post:
+      summary: The inbox of the site
+      description: 'As the shared inbox: Accept and Reject of the follows of the site, Create, Update and Delete of the notes of the accounts it follows.'
+      requestBody: { required: true, content: { application/activity+json: { schema: { type: object } } } }
+      responses:
+        "202": { description: Taken }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/fediverse/lookup:
+    get:
+      summary: Find an account of another server
+      description: 'By its address: @username@host, username@host or the https address of the account. 404 when its server does not give it; 429 for too many lookups.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: address, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The account
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account: { $ref: "#/components/schemas/FediverseAccount" }
+                  subscribed: { type: boolean, description: You read it }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/fediverse:
+    get:
+      summary: The accounts of other servers you read
+      description: 'Their posts come to your news ("Мои новости").'
+      security: [{ bearer: [] }]
+      responses:
+        "200": { description: The accounts, content: { application/json: { schema: { $ref: "#/components/schemas/FediverseAccounts" } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      summary: Read an account of another server
+      description: 'The site follows it, if it does not yet; its posts come once its server accepts. 409 for more than 500 accounts.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [address], properties: { address: { type: string } } } } }
+      responses:
+        "200": { description: The account, content: { application/json: { schema: { $ref: "#/components/schemas/FediverseAccount" } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Stop reading an account of another server
+      description: 'The site stops following it when nobody else reads it and it is not in the news of everyone.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: query, required: true, schema: { type: string }, description: The id of the account }
+      responses:
+        "204": { description: Done }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/admin/fediverse:
+    get:
+      summary: The accounts of other servers in "Все новости"
+      description: 'For administrators.'
+      security: [{ bearer: [] }]
+      responses:
+        "200": { description: The accounts, content: { application/json: { schema: { $ref: "#/components/schemas/FediverseAccounts" } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+    post:
+      summary: Put an account of another server in "Все новости"
+      description: 'For administrators. Its posts in Russian, English or no language said come to the news of everyone.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [address], properties: { address: { type: string } } } } }
+      responses:
+        "200": { description: The account, content: { application/json: { schema: { $ref: "#/components/schemas/FediverseAccount" } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Take an account out of "Все новости"
+      description: 'For administrators.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: query, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Done }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+
+  /media/fediverse/posts/{id}/{index}:
+    get:
+      summary: A picture of a post of another server
+      description: 'Read from its server through the site: pages show pictures of the site only. JPEG, PNG, GIF or WebP.'
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: index, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: The picture, content: { image/*: { schema: { type: string, format: binary } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /media/fediverse/accounts:
+    get:
+      summary: The photo of an account of another server
+      description: 'Of an account the site knows, read from its server through the site.'
+      parameters:
+        - { name: id, in: query, required: true, schema: { type: string } }
+      responses:
+        "200": { description: The picture, content: { image/*: { schema: { type: string, format: binary } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/me/pets/{id}/stance:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
@@ -8890,6 +9017,12 @@ paths:
         With `type=all` it is "Все новости" of openvk instead: the posts of
         every wall, whomever you follow.
 
+        Posts of other servers of the Fediverse come among them by time,
+        with `fediverse` set: those of the accounts you read
+        (`/api/v1/me/fediverse`), or with `type=all` those the
+        administrators put in the news of everyone, in Russian, English or
+        no language said. Not in the ranked news.
+
         "Настройки ленты" of openvk come with the request and are not
         kept by the server. The walls you ignore
         (`/api/v1/me/feed/ignored`) are left out of both feeds, whoever
@@ -9488,6 +9621,19 @@ components:
         open: { type: boolean }
         followers: { type: integer, description: People of other servers who follow the page }
         domain: { type: string, description: 'The address of the page in the Fediverse is @nickname@domain' }
+    FediverseAccount:
+      type: object
+      properties:
+        id: { type: string, description: The address of its actor }
+        handle: { type: string, example: "@anna@mastodon.social" }
+        name: { type: string }
+        url: { type: string, description: Its page on its server }
+        avatar: { type: string, description: 'Where the site shows its photo; "" for none' }
+        accepted: { type: boolean, description: Its server took the follow of the site }
+    FediverseAccounts:
+      type: object
+      properties:
+        accounts: { type: array, items: { $ref: "#/components/schemas/FediverseAccount" } }
     DatingCard:
       type: object
       properties:
@@ -9874,6 +10020,16 @@ components:
           description: "The post speaks for its wall, a community (\"От имени сообщества\"): `author` is the community, `wall` null, who wrote it is not told"
         mine: { type: boolean, description: "You wrote it and may edit it; false without a token, and for a post you suggested that a community published, which is the community's" }
         moderated: { type: boolean, description: "Only in the feed: the post is on the wall of a community you run" }
+        fediverse:
+          type: object
+          description: 'Only in the feed: a post of another server of the Fediverse, with no likes, comments or reposts here; author holds only its name'
+          properties:
+            author: { $ref: "#/components/schemas/FediverseAccount" }
+            url: { type: string, description: The post on its server }
+            summary: { type: string, description: 'The warning before its text; the post is nsfw with one' }
+            images:
+              type: array
+              items: { type: object, properties: { url: { type: string }, description: { type: string } } }
         signer:
           description: "Who wrote a post for a community that names its author (\"Автор: ...\"); null otherwise"
           oneOf:

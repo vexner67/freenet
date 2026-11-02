@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -22,6 +23,13 @@ type fakeFederation struct {
 	read     string
 	received model.InboxRequest
 	err      error
+
+	address string
+	removed string
+	news    *model.FediverseNews
+	remote  []model.FediversePost
+	newsErr error
+	picture model.Picture
 }
 
 func (f *fakeFederation) status() model.Federation {
@@ -210,5 +218,231 @@ func TestFederationOff(t *testing.T) {
 		if w.Code != http.StatusNotFound {
 			t.Errorf("GET %s = %d, want 404", path, w.Code)
 		}
+	}
+}
+
+// The news from other servers.
+
+func (f *fakeFederation) SiteActor(context.Context) ([]byte, error) {
+	return []byte(`{"type":"Application"}`), f.err
+}
+
+func (f *fakeFederation) Lookup(_ context.Context, token, address string) (model.FediverseLookup, error) {
+	f.token, f.address = token, address
+	return model.FediverseLookup{Account: anna, Subscribed: true}, f.err
+}
+
+func (f *fakeFederation) Subscriptions(_ context.Context, token string) ([]model.FediverseAccount, error) {
+	f.token = token
+	return []model.FediverseAccount{anna}, f.err
+}
+
+func (f *fakeFederation) Subscribe(_ context.Context, token, address string) (model.FediverseAccount, error) {
+	f.token, f.address = token, address
+	return anna, f.err
+}
+
+func (f *fakeFederation) Unsubscribe(_ context.Context, token, id string) error {
+	f.token, f.removed = token, id
+	return f.err
+}
+
+func (f *fakeFederation) News(_ context.Context, token string, q model.FediverseNews) ([]model.FediversePost, error) {
+	f.token, f.news = token, &q
+	return f.remote, f.newsErr
+}
+
+func (f *fakeFederation) Featured(context.Context) ([]model.FediverseAccount, error) {
+	return []model.FediverseAccount{anna}, f.err
+}
+
+func (f *fakeFederation) Feature(_ context.Context, address string) (model.FediverseAccount, error) {
+	f.address = address
+	return anna, f.err
+}
+
+func (f *fakeFederation) Unfeature(_ context.Context, id string) error {
+	f.removed = id
+	return f.err
+}
+
+func (f *fakeFederation) PostPicture(_ context.Context, postID string, index int) (model.Picture, error) {
+	f.read = "picture " + postID + " " + strconv.Itoa(index)
+	return f.picture, f.err
+}
+
+func (f *fakeFederation) AccountPicture(_ context.Context, id string) (model.Picture, error) {
+	f.read = "avatar " + id
+	return f.picture, f.err
+}
+
+var anna = model.FediverseAccount{
+	ID: "https://m.example/users/anna", Handle: "@anna@m.example", Name: "Anna", PageURL: "https://m.example/@anna", HasAvatar: true,
+}
+
+type fediverseAccount struct {
+	ID       string `json:"id"`
+	Handle   string `json:"handle"`
+	URL      string `json:"url"`
+	Avatar   string `json:"avatar"`
+	Accepted bool   `json:"accepted"`
+}
+
+type fediversePosts struct {
+	Posts []struct {
+		ID        string `json:"id"`
+		Text      string `json:"text"`
+		NSFW      bool   `json:"nsfw"`
+		Fediverse *struct {
+			Author  fediverseAccount `json:"author"`
+			URL     string           `json:"url"`
+			Summary string           `json:"summary"`
+			Images  []struct {
+				URL         string `json:"url"`
+				Description string `json:"description"`
+			} `json:"images"`
+		} `json:"fediverse"`
+	} `json:"posts"`
+	NextCursor string `json:"nextCursor"`
+}
+
+func TestFeed_Fediverse(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+	h.federation.remote = []model.FediversePost{{
+		ID: "p2", URL: "https://m.example/notes/1", Author: anna, Text: "from afar", Summary: "cw", Sensitive: true,
+		ImageDescriptions: []string{"a cat"}, PublishedAt: time.Date(2026, 11, 1, 10, 0, 0, 0, time.UTC),
+	}}
+
+	w := h.do("GET", "/api/v1/feed?type=all&cursor=p9", "", "Authorization", "Bearer tok")
+	got := decode[fediversePosts](t, w)
+
+	if w.Code != http.StatusOK || len(got.Posts) != 3 || got.Posts[1].ID != "p2" || got.NextCursor != "p1" {
+		t.Fatalf("status %d, news %+v; want the remote post between p3 and p1", w.Code, got)
+	}
+
+	q := h.federation.news
+	if q == nil || !q.Featured || q.Before != "p9" || q.Limit != 20 || q.HideSensitive {
+		t.Fatalf("asked for %+v", q)
+	}
+
+	p := got.Posts[1]
+	if p.Fediverse == nil || p.Text != "from afar" || !p.NSFW || p.Fediverse.Summary != "cw" ||
+		p.Fediverse.URL != "https://m.example/notes/1" || p.Fediverse.Author.Handle != "@anna@m.example" ||
+		p.Fediverse.Author.Avatar != "/media/fediverse/accounts?id=https%3A%2F%2Fm.example%2Fusers%2Fanna" ||
+		len(p.Fediverse.Images) != 1 || p.Fediverse.Images[0].URL != "/media/fediverse/posts/p2/0" {
+		t.Fatalf("remote post %+v", p)
+	}
+
+	// A page as long as the limit ends with the remote post.
+	w = h.do("GET", "/api/v1/feed?limit=2", "", "Authorization", "Bearer tok")
+	if got = decode[fediversePosts](t, w); len(got.Posts) != 2 || got.NextCursor != "p2" || h.federation.news.Featured {
+		t.Fatalf("news of 2: %+v", got)
+	}
+
+	// The ranked news have no remote posts; a failing federation leaves
+	// the news of the site.
+	h.federation.news = nil
+	if got = decode[fediversePosts](t, h.do("GET", "/api/v1/feed?ranked=true", "", "Authorization", "Bearer tok")); len(got.Posts) != 2 || h.federation.news != nil {
+		t.Fatalf("ranked news %+v, asked %+v", got, h.federation.news)
+	}
+
+	h.federation.newsErr = failure.New(failure.Unavailable, "down")
+	if w = h.do("GET", "/api/v1/feed", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || len(decode[fediversePosts](t, w).Posts) != 2 {
+		t.Fatalf("news without federation: %d", w.Code)
+	}
+}
+
+func TestFediverseSubscriptions(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+
+	w := h.do("GET", "/api/v1/fediverse/lookup?address=%40anna%40m.example", "", "Authorization", "Bearer tok")
+	if w.Code != http.StatusOK || h.federation.address != "@anna@m.example" || h.federation.token != "tok" ||
+		!strings.Contains(w.Body.String(), `"subscribed":true`) {
+		t.Fatalf("lookup: %d %s", w.Code, w.Body)
+	}
+
+	w = h.do("POST", "/api/v1/me/fediverse", `{"address":"anna@m.example"}`, "Authorization", "Bearer tok")
+	if acc := decode[fediverseAccount](t, w); w.Code != http.StatusOK || acc.URL != "https://m.example/@anna" || h.federation.address != "anna@m.example" {
+		t.Fatalf("subscribe: %d %+v", w.Code, acc)
+	}
+
+	w = h.do("GET", "/api/v1/me/fediverse", "", "Authorization", "Bearer tok")
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"handle":"@anna@m.example"`) {
+		t.Fatalf("subscriptions: %d %s", w.Code, w.Body)
+	}
+
+	w = h.do("DELETE", "/api/v1/me/fediverse?id=https%3A%2F%2Fm.example%2Fusers%2Fanna", "", "Authorization", "Bearer tok")
+	if w.Code != http.StatusNoContent || h.federation.removed != anna.ID {
+		t.Fatalf("unsubscribe: %d, removed %q", w.Code, h.federation.removed)
+	}
+
+	if w = h.do("GET", "/api/v1/me/fediverse", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without a token: %d", w.Code)
+	}
+}
+
+func TestFediverseAdmin(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+
+	for _, req := range [][2]string{{"GET", ""}, {"POST", `{"address":"@anna@m.example"}`}, {"DELETE", ""}} {
+		if w := h.do(req[0], "/api/v1/admin/fediverse?id=x", req[1], "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
+			t.Fatalf("%s by someone else: %d", req[0], w.Code)
+		}
+	}
+
+	if h.federation.address != "" || h.federation.removed != "" {
+		t.Fatal("federation was asked for someone who does not run the site")
+	}
+
+	h.users.admin = true
+
+	if w := h.do("POST", "/api/v1/admin/fediverse", `{"address":"@anna@m.example"}`, "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.federation.address != "@anna@m.example" {
+		t.Fatalf("feature: %d", w.Code)
+	}
+
+	if w := h.do("GET", "/api/v1/admin/fediverse", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), anna.Handle) {
+		t.Fatalf("featured: %d %s", w.Code, w.Body)
+	}
+
+	if w := h.do("DELETE", "/api/v1/admin/fediverse?id=x", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.federation.removed != "x" {
+		t.Fatalf("unfeature: %d", w.Code)
+	}
+}
+
+func TestFediversePictures(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.federation.picture = model.Picture{Body: []byte("png"), ContentType: "image/png"}
+
+	w := h.do("GET", "/media/fediverse/posts/p2/1", "")
+	if w.Code != http.StatusOK || w.Body.String() != "png" || w.Header().Get("Content-Type") != "image/png" ||
+		w.Header().Get("Cache-Control") != "public, max-age=86400" || h.federation.read != "picture p2 1" {
+		t.Fatalf("post picture: %d %v, read %q", w.Code, w.Header(), h.federation.read)
+	}
+
+	if w = h.do("GET", "/media/fediverse/accounts?id=https%3A%2F%2Fm.example%2Fusers%2Fanna", ""); w.Code != http.StatusOK || h.federation.read != "avatar "+anna.ID {
+		t.Fatalf("avatar: %d, read %q", w.Code, h.federation.read)
+	}
+
+	h.federation.picture = model.Picture{Body: []byte("<svg/>"), ContentType: "image/svg+xml"}
+	if w = h.do("GET", "/media/fediverse/posts/p2/0", ""); w.Code != http.StatusNotFound {
+		t.Fatalf("an SVG: %d", w.Code)
+	}
+
+	if w = h.do("GET", "/media/fediverse/posts/p2/x", ""); w.Code != http.StatusNotFound {
+		t.Fatalf("no index: %d", w.Code)
+	}
+
+	w = h.do("GET", "/ap/actor", "", "Accept", "application/activity+json")
+	if w.Code != http.StatusOK || w.Body.String() != `{"type":"Application"}` || w.Header().Get("Content-Type") != "application/activity+json" {
+		t.Fatalf("site actor: %d %s", w.Code, w.Body)
 	}
 }

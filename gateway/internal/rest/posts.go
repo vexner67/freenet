@@ -117,6 +117,9 @@ type postResponse struct {
 	// LastComments are its newest comments, oldest first: only in a list
 	// asked for with ?comments=last.
 	LastComments []commentResponse `json:"lastComments,omitempty"`
+	// Fediverse is set for a post of another server of the Fediverse in
+	// the news; such a post has no likes, comments or reposts here.
+	Fediverse *fediverseJSON `json:"fediverse,omitempty"`
 }
 
 type repostRequest struct {
