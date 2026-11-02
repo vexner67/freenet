@@ -15,8 +15,10 @@
 // deposits and loans), "Шахта" (/admin/mine: the ores, the energy and the
 // events of a dig), "Питомцы" (/admin/pets: the prices of the pets and their
 // fights)
-// and "Реклама" (/admin/ads: the ads of the global feed, the form of a new
-// one at /admin/ads/new and of one at /admin/ads/<id>). The page is its own,
+// "Реклама" (/admin/ads: the ads of the global feed, the form of a new
+// one at /admin/ads/new and of one at /admin/ads/<id>) and "Fediverse"
+// (/admin/fediverse: the accounts of other servers whose posts come to
+// "Все новости"). The page is its own,
 // none of the site's chrome, in the look of the site (admin-look.js gives it
 // what answers an action). Only the administrators of the site
 // (ADMIN_EMAILS of the user service) get in.
@@ -1763,6 +1765,77 @@ async function adForm(id, answered) {
   $('ad-url').focus();
 }
 
+// fediverse is "Fediverse": the accounts of other servers the site
+// follows for "Все новости", one more added by its address, and taking
+// one away. An account whose server has not yet accepted the follow is
+// "ждём ответа".
+async function fediverse(answered) {
+  function row(account) {
+    const remove = el('button', { className: 'aui-button aui-button-compact', type: 'button', textContent: tr('Убрать') });
+    const line = el('tr', {},
+      el('td', {}, el('div', { className: 'admin-ad' },
+        account.avatar ? el('img', { className: 'admin-fediverse-photo', src: account.avatar, alt: '' }) : '',
+        el('a', { href: account.url, target: '_blank', rel: 'noopener noreferrer nofollow', textContent: account.name || account.handle }),
+      )),
+      el('td', { textContent: account.handle }),
+      el('td', { textContent: account.accepted ? tr('принята') : tr('ждём ответа') }),
+      el('td', {}, remove),
+    );
+    line.dataset.id = account.id;
+
+    remove.addEventListener('click', async () => {
+      if (!confirm(tr('Убрать {0} из «Всех новостей»?', account.handle))) return;
+
+      error.hidden = true;
+      remove.disabled = true;
+      try {
+        await api.unfeatureFediverse(account.id);
+        line.remove();
+        showEmpty();
+        deed(remove);
+      } catch (e) {
+        remove.disabled = false;
+        showError(e);
+      }
+    });
+
+    return line;
+  }
+
+  function showEmpty() {
+    const none = !$('fediverse-rows').children.length;
+    $('fediverse-table').hidden = none;
+    $('no-fediverse').hidden = !none;
+  }
+
+  const form = $('fediverse-form');
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const submit = form.querySelector('button');
+
+    error.hidden = true;
+    submit.disabled = true;
+    try {
+      const account = await api.featureFediverse($('fediverse-address').value.trim());
+      // Added again, it moves to the top.
+      [...$('fediverse-rows').children].find((line) => line.dataset.id === account.id)?.remove();
+      $('fediverse-rows').prepend(row(account));
+      $('fediverse-address').value = '';
+      showEmpty();
+      deed(submit);
+    } catch (e) {
+      showError(e);
+    } finally {
+      submit.disabled = false;
+    }
+  });
+
+  const list = await answered;
+  $('fediverse-rows').replaceChildren(...list.accounts.map(row));
+  showEmpty();
+  $('fediverse').hidden = false;
+}
+
 // The reads of the page go with /me in one round trip; a guest or one who
 // is not an administrator gets nothing from them.
 const query = new URLSearchParams(location.search).get('q')?.trim() ?? '';
@@ -1787,6 +1860,7 @@ const reads = {
   '/admin/business': () => started(api.firmSettings()),
   '/admin/bank': () => started(api.bankSettings()),
   '/admin/pets': () => started(api.petSettings()),
+  '/admin/fediverse': () => started(api.featuredFediverse()),
 }[adID ? '/admin/ads' : path]?.();
 
 const me = await currentUser().catch(() => null);
@@ -1834,6 +1908,8 @@ if (!me) {
     await petSettings(reads).catch(showError);
   } else if (path === '/admin/ads') {
     await ads(reads).catch(showError);
+  } else if (path === '/admin/fediverse') {
+    await fediverse(reads).catch(showError);
   } else if (path === '/admin/ads/new' || adID) {
     await adForm(adID, reads).catch(showError);
   } else {

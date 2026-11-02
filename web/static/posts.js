@@ -280,6 +280,50 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   return node;
 }
 
+// remotePostNode is a post of another server of the Fediverse in the
+// news: its author and the date lead there, its pictures come through the
+// site, and it has no likes, comments or reposts here — only the way to
+// it. The warning its author put before it (summary) shows above the
+// blurred text, as the servers of Mastodon show it.
+export function remotePostNode(post) {
+  const remote = post.fediverse;
+  const author = remote.author;
+  const name = author.name || author.handle;
+  const photos = remote.images.map((image) => ({ large: image.url, small: image.url }));
+
+  const content = el('div', { className: 'post-content' },
+    post.text ? textNode(post.text, { whole: false }) : '',
+    photosNode(photos) ?? '',
+  );
+
+  const node = el('div', { className: 'post post-remote' + (post.nsfw ? ' post-nsfw' : '') },
+    el('a', { className: 'post-avatar', href: author.url, target: '_blank', rel: 'noopener noreferrer nofollow ugc' },
+      el('img', { src: author.avatar || '/static/avatar.svg', alt: '' }),
+    ),
+    el('div', { className: 'post-main' },
+      el('div', { className: 'post-author' },
+        externalLink(author.url, [name]),
+        ' ',
+        el('span', { className: 'post-handle', textContent: author.handle }),
+        el('div', { className: 'post-date' },
+          externalLink(remote.url, [formatPostDate(post.createdAt)]),
+          post.editedAt ? el('span', { className: 'post-edited', title: tr('Отредактировано'), textContent: tr(' (ред.)') }) : '',
+        ),
+      ),
+      remote.summary ? el('div', { className: 'post-summary', textContent: remote.summary }) : null,
+      content,
+      el('div', { className: 'post-menu post-bar' },
+        el('span', { className: 'post-from', textContent: tr('Из Fediverse') }),
+        externalLink(remote.url, [tr('Открыть в Fediverse')]),
+      ),
+    ),
+  );
+
+  revealOnClick(content);
+
+  return node;
+}
+
 // revealOnClick shows a post marked as adult to whoever clicks its blurred
 // content, as openvk does, and not to a guest. content is the blurred part
 // of the post or of the shared post.

@@ -1,6 +1,6 @@
 import { api, currentUser, started } from './api.js';
 import { $, el, isMicroblog, renderChrome, showError, hideError, autosize } from './layout.js';
-import { postNode, wallOwnerID } from './posts.js';
+import { postNode, remotePostNode, wallOwnerID } from './posts.js';
 import { initAttachments } from './attach.js';
 import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
@@ -93,8 +93,11 @@ function reload(me) {
 
 // feedNode is a post as on a wall: I edit and delete what I wrote, and
 // delete, pin and put away what is on my wall and on the walls of the
-// communities I run (post.moderated).
+// communities I run (post.moderated). A post of another server of the
+// Fediverse is only shown.
 function feedNode(post, me) {
+  if (post.fediverse) return remotePostNode(post);
+
   const moderates = Boolean(post.moderated);
 
   return postNode(post, {

@@ -164,6 +164,38 @@ export function externalLink(url, children) {
   return el('a', { className: 'text-link', href: url, target: '_blank', rel: 'noopener noreferrer nofollow ugc', title: url }, ...children);
 }
 
+// fediverseAccountNode is an account of another server of the Fediverse
+// in a list: its photo and name lead there, its address there is gray,
+// and the link on the right does action (run); until its server accepts
+// the follow of the site, it says its posts are yet to come.
+export function fediverseAccountNode(account, { action, run, onError }) {
+  const link = el('a', { className: 'fediverse-account-action', textContent: action });
+  let busy = false;
+
+  link.addEventListener('click', async () => {
+    if (busy) return;
+    busy = true;
+    try {
+      await run();
+    } catch (e) {
+      onError?.(e);
+    } finally {
+      busy = false;
+    }
+  });
+
+  return el('div', { className: 'fediverse-account' },
+    el('a', { href: account.url, target: '_blank', rel: 'noopener noreferrer nofollow ugc' },
+      el('img', { src: account.avatar || '/static/avatar.svg', alt: '', width: 30, height: 30 })),
+    el('div', { className: 'fediverse-account-name' },
+      externalLink(account.url, [account.name || account.handle]),
+      el('div', { className: 'post-handle', textContent: account.handle }),
+      account.accepted ? null : el('div', { className: 'hint', textContent: tr('Ждём ответа сервера: записи придут после него.') }),
+    ),
+    link,
+  );
+}
+
 // foundNodes are text with what says query highlighted.
 function foundNodes(text, query) {
   if (!query) return [text];

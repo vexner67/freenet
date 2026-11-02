@@ -12,7 +12,7 @@
 
 import { api, currentUser } from './api.js';
 import { deviceName, formatDateTime, keyStateText, sessionsCount, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes, pushStateTexts } from './labels.js';
-import { $, applyInterface, deviceTheme, el, setDeviceTheme, profilePath, renderChrome, showError, hideError } from './layout.js';
+import { $, applyInterface, deviceTheme, el, fediverseAccountNode, setDeviceTheme, profilePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { openDeactivate } from './deactivate.js';
 import { disablePush, enablePush, pushState } from './push.js';
@@ -181,6 +181,69 @@ async function showFediverse(me) {
     ? button(tr('Закрыть страницу для Fediverse'), () => openCloseFediverse(() => change(api.closeFederation)))
     : button(tr('Открыть страницу для Fediverse'), () => change(api.openFederation)));
   $('fediverse').hidden = false;
+  initFediverseReading();
+}
+
+let readingReady = false;
+
+// initFediverseReading is "Чтение Fediverse": the people of other servers
+// whose posts come to my news, and the field that adds one by address.
+function initFediverseReading() {
+  if (readingReady) return;
+  readingReady = true;
+
+  const field = $('fediverse-address');
+  const subscribe = button(tr('Подписаться'), add);
+  $('fediverse-subscribe').replaceChildren(subscribe);
+
+  // The field is in the form of privacy: Enter adds, not saves it.
+  field.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    add();
+  });
+
+  async function add() {
+    const address = field.value.trim();
+    if (!address || subscribe.disabled) return;
+
+    hideError(error);
+    subscribe.disabled = true;
+    try {
+      await api.subscribeFediverse(address);
+      field.value = '';
+      await showSubscriptions();
+      flash($('fediverse-subscriptions'));
+    } catch (e) {
+      showError(error, e);
+    } finally {
+      subscribe.disabled = false;
+    }
+  }
+
+  showSubscriptions();
+}
+
+async function showSubscriptions() {
+  let list;
+  try {
+    list = await api.fediverseSubscriptions();
+  } catch (e) {
+    showError(error, e);
+    return;
+  }
+
+  $('fediverse-subscriptions').replaceChildren(...(list.accounts.length === 0
+    ? [el('p', { className: 'hint center', textContent: tr('Вы ещё ни на кого не подписаны в Fediverse.') })]
+    : list.accounts.map((account) => fediverseAccountNode(account, {
+      action: tr('Отписаться'),
+      run: async () => {
+        hideError(error);
+        await api.unsubscribeFediverse(account.id);
+        await showSubscriptions();
+      },
+      onError: (e) => showError(error, e),
+    }))));
 }
 
 function openCloseFediverse(done) {

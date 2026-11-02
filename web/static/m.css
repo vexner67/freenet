@@ -2613,6 +2613,15 @@ label { cursor: pointer; }
 .post-paid-note { margin: 6px 0; color: var(--text-626262); }
 .post-deleted { margin: 0 -10px; padding: 12px 10px; background: var(--back-f6f6f6); color: var(--text-626262); }
 .post-ad .post-author .post-date { color: var(--text-626262); }
+/* A post of another server of the Fediverse in the news (posts.js,
+   remotePostNode): the name leads there, the address there is gray after
+   it, the warning of its author stands above its text, and the bar under
+   it says where it is from instead of likes. */
+.post-remote .post-author > .text-link { font-weight: bold; }
+.post-handle { color: var(--text-626262); }
+.post-summary { padding: 4px; border-bottom: 1px solid var(--line-ececec); color: var(--text-626262); font-weight: bold; white-space: pre-wrap; overflow-wrap: anywhere; }
+.post-remote .post-bar { align-items: center; gap: 8px; }
+.post-from { color: var(--text-626262); }
 .post-ad-cover { display: block; margin-top: 8px; }
 .post-ad-cover img { display: block; width: 100%; max-height: 50vh; object-fit: cover; }
 .post-ad-site { color: var(--text-626262); }
@@ -4295,3 +4304,13 @@ a.game-hud-cell:hover { background: var(--back-fbf3c3); }
 .ban-body { flex-direction: column; align-items: center; }
 .ban-photo { align-self: center; }
 .ban-screen { padding: 8px; }
+
+/* An account of another server of the Fediverse in a list (layout.js,
+   fediverseAccountNode): photo, name and address there, an action on the
+   right. */
+.fediverse-account { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px solid var(--line-ececec); }
+.fediverse-account img { display: block; width: 30px; height: 30px; object-fit: cover; }
+.fediverse-account-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.fediverse-account-action { flex: none; cursor: pointer; }
+.fediverse-follow { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+.fediverse-follow input { flex: 1; min-width: 0; }

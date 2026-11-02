@@ -307,6 +307,7 @@ a:hover { text-decoration: underline; }
 .aui-icon-card { --icon: url("/static/icons/game/voucher.svg"); }
 .aui-icon-gift { --icon: url("/static/icons/game/gift.svg"); }
 .aui-icon-ad { --icon: url("/static/icons/game/megaphone.svg"); }
+.aui-icon-fediverse { --icon: url("/static/icons/game/news.svg"); }
 .aui-icon-snow { --icon: url("/static/icons/game/snow.svg"); }
 .aui-icon-casino { --icon: url("/static/icons/game/cards.svg"); }
 .aui-icon-prime { --icon: url("/static/icons/game/crown.svg"); }
@@ -523,6 +524,7 @@ form.aui.admin-rate .description { flex-basis: 100%; max-width: none; margin-top
 /* "Реклама": each ad with its cover and site, the form's cover. */
 .admin-ad { display: flex; align-items: center; gap: 12px; }
 .admin-ad-cover { width: 72px; height: 44px; border-radius: 8px; object-fit: cover; }
+.admin-fediverse-photo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
 .admin-ad-site { color: var(--aui-subtle); font-size: 12px; }
 .admin-ad-text { min-width: 140px; max-width: 320px; color: var(--aui-subtle); white-space: pre-wrap; overflow-wrap: break-word; }
 .admin-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }

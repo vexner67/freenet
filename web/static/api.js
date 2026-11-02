@@ -337,6 +337,15 @@ export const api = {
   federation: () => authorized('GET', '/api/v1/me/federation'),
   openFederation: () => authorized('PUT', '/api/v1/me/federation'),
   closeFederation: () => authorized('DELETE', '/api/v1/me/federation'),
+  // The accounts of other servers I read, and those the administrators
+  // put in "Все новости".
+  fediverseSubscriptions: () => authorized('GET', '/api/v1/me/fediverse'),
+  subscribeFediverse: (address) => authorized('POST', '/api/v1/me/fediverse', { address }),
+  unsubscribeFediverse: (id) => authorized('DELETE', '/api/v1/me/fediverse?' + new URLSearchParams({ id })),
+  lookupFediverse: (address) => authorized('GET', '/api/v1/fediverse/lookup?' + new URLSearchParams({ address })),
+  featuredFediverse: () => authorized('GET', '/api/v1/admin/fediverse'),
+  featureFediverse: (address) => authorized('POST', '/api/v1/admin/fediverse', { address }),
+  unfeatureFediverse: (id) => authorized('DELETE', '/api/v1/admin/fediverse?' + new URLSearchParams({ id })),
   // "Интерфейс" of the settings: avatarStyle, mainPage and hiddenMenu.
   updateInterface: (ui) => authorized('PUT', '/api/v1/me/interface', ui),
   // "Контакты", "Интересы" and "Дополнительно" of "Редактировать страницу".
