@@ -2,6 +2,7 @@ package rest
 
 import (
 	"cmp"
+	"context"
 	"net/http"
 	"net/url"
 	"slices"
@@ -86,7 +87,12 @@ func (a *api) registerFediverse(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/admin/fediverse", a.featureFediverse)
 	mux.HandleFunc("DELETE /api/v1/admin/fediverse", a.unfeatureFediverse)
 
+	mux.HandleFunc("PUT /api/v1/fediverse/posts/{id}/like", a.likeFediversePost)
+	mux.HandleFunc("DELETE /api/v1/fediverse/posts/{id}/like", a.unlikeFediversePost)
+	mux.HandleFunc("GET /api/v1/fediverse/posts/{id}/likes", a.listFediverseLikers)
+
 	mux.HandleFunc("GET /media/fediverse/posts/{id}/{index}", a.fediversePostPicture)
+	mux.HandleFunc("GET /media/fediverse/posts/{id}/link", a.fediverseLinkPicture)
 	mux.HandleFunc("GET /media/fediverse/posts/{id}/videos/{index}", a.fediverseVideoCover)
 	mux.HandleFunc("GET /media/fediverse/accounts", a.fediverseAccountPicture)
 }
@@ -272,6 +278,64 @@ func (a *api) fediverseVideoCover(w http.ResponseWriter, r *http.Request) {
 	servePicture(w, p)
 }
 
+// fediverseLinkPicture is the picture of the card of the page a post of
+// another server links to.
+func (a *api) fediverseLinkPicture(w http.ResponseWriter, r *http.Request) {
+	p, err := a.federation.LinkPicture(r.Context(), r.PathValue("id"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	servePicture(w, p)
+}
+
+// likeFediversePost and unlikeFediversePost put and take the heart of the
+// caller on a post of another server; it stays here, as a like of a post
+// of the site does. Both are idempotent.
+func (a *api) likeFediversePost(w http.ResponseWriter, r *http.Request) {
+	a.setFediverseLike(w, r, true)
+}
+
+func (a *api) unlikeFediversePost(w http.ResponseWriter, r *http.Request) {
+	a.setFediverseLike(w, r, false)
+}
+
+func (a *api) setFediverseLike(w http.ResponseWriter, r *http.Request, liked bool) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	set := a.federation.UnlikeNews
+	if liked {
+		set = a.federation.LikeNews
+	}
+
+	likes, err := set(r.Context(), token, r.PathValue("id"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, likeResponse{Likes: likes, Liked: liked})
+}
+
+// listFediverseLikers is "Понравилось N людям" of a post of another
+// server: who here like it.
+func (a *api) listFediverseLikers(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.listLikers(w, r, func(ctx context.Context, id, cursor string, limit int) (model.LikerPage, error) {
+		return a.federation.NewsLikers(ctx, token, id, cursor, limit)
+	})
+}
+
 func (a *api) fediverseAccountPicture(w http.ResponseWriter, r *http.Request) {
 	p, err := a.federation.AccountPicture(r.Context(), r.URL.Query().Get("id"))
 	if err != nil {
@@ -440,6 +504,9 @@ func toFediversePostResponse(p model.FediversePost) postResponse {
 		CreatedAt: timeString(p.PublishedAt),
 		EditedAt:  optionalTime(p.UpdatedAt),
 		NSFW:      p.Sensitive,
+		Likes:     p.Likes,
+		Liked:     p.Liked,
+		Link:      toFediverseLinkJSON(p.ID, p.Link),
 		Fediverse: &fediverseJSON{
 			Author:  toFediverseAccountJSON(p.Author),
 			URL:     page,
@@ -448,6 +515,23 @@ func toFediversePostResponse(p model.FediversePost) postResponse {
 			Videos:  videos,
 		},
 	}
+}
+
+// toFediverseLinkJSON is the card of the page a post of another server
+// links to; its picture comes through the site, as the pictures of the
+// post do.
+func toFediverseLinkJSON(postID string, l *model.FediverseLink) *linkJSON {
+	if l == nil {
+		return nil
+	}
+
+	j := &linkJSON{URL: l.URL, Title: l.Title, Description: l.Description, Site: l.Site}
+	if l.HasImage {
+		picture := "/media/fediverse/posts/" + url.PathEscape(postID) + "/link"
+		j.Photo = &photoJSON{Large: picture, Small: picture}
+	}
+
+	return j
 }
 
 func toFediverseAccountJSON(acc model.FediverseAccount) fediverseAccountJSON {

@@ -30,6 +30,9 @@ type fakeFederation struct {
 	remote  []model.FediversePost
 	newsErr error
 	picture model.Picture
+	likes   int
+	liked   string
+	cursor  string
 }
 
 func (f *fakeFederation) status() model.Federation {
@@ -280,6 +283,28 @@ func (f *fakeFederation) PostPicture(_ context.Context, postID string, index int
 	return f.picture, f.err
 }
 
+func (f *fakeFederation) LinkPicture(_ context.Context, postID string) (model.Picture, error) {
+	f.read = "card " + postID
+	return f.picture, f.err
+}
+
+func (f *fakeFederation) LikeNews(_ context.Context, token, postID string) (int, error) {
+	f.token, f.liked = token, "like "+postID
+	f.likes++
+	return f.likes, f.err
+}
+
+func (f *fakeFederation) UnlikeNews(_ context.Context, token, postID string) (int, error) {
+	f.token, f.liked = token, "unlike "+postID
+	f.likes--
+	return f.likes, f.err
+}
+
+func (f *fakeFederation) NewsLikers(_ context.Context, token, postID, cursor string, limit int) (model.LikerPage, error) {
+	f.token, f.liked, f.cursor = token, "likers "+postID, cursor+"/"+strconv.Itoa(limit)
+	return model.LikerPage{UserIDs: []string{"x1", "x2"}, NextCursor: "c2", Total: 5}, f.err
+}
+
 func (f *fakeFederation) AccountPicture(_ context.Context, id string) (model.Picture, error) {
 	f.read = "avatar " + id
 	return f.picture, f.err
@@ -309,9 +334,19 @@ type fediverseLookupResponse struct {
 
 type fediversePosts struct {
 	Posts []struct {
-		ID        string `json:"id"`
-		Text      string `json:"text"`
-		NSFW      bool   `json:"nsfw"`
+		ID    string `json:"id"`
+		Text  string `json:"text"`
+		NSFW  bool   `json:"nsfw"`
+		Likes int    `json:"likes"`
+		Liked bool   `json:"liked"`
+		Link  *struct {
+			URL   string `json:"url"`
+			Title string `json:"title"`
+			Site  string `json:"site"`
+			Photo *struct {
+				Small string `json:"small"`
+			} `json:"photo"`
+		} `json:"link"`
 		Fediverse *struct {
 			Author  fediverseAccount `json:"author"`
 			URL     string           `json:"url"`
@@ -341,6 +376,8 @@ func TestFeed_Fediverse(t *testing.T) {
 		ID: "p2", URL: "https://m.example/notes/1", Author: anna, Text: "from afar", Summary: "cw", Sensitive: true,
 		ImageDescriptions: []string{"a cat"}, PublishedAt: time.Date(2026, 11, 1, 10, 0, 0, 0, time.UTC),
 		Videos: []model.FediverseVideo{{Blurhash: "LEHV6nWB2yk8pyo0adR*.7kCMdnj", Width: 1280, Height: 720, Duration: 84 * time.Second}},
+		Likes:  4, Liked: true,
+		Link: &model.FediverseLink{URL: "https://meduza.io/1", Site: "Meduza", Title: "News", HasImage: true},
 	}}
 
 	w := h.do("GET", "/api/v1/feed?type=all&cursor=p9", "", "Authorization", "Bearer tok")
@@ -361,6 +398,11 @@ func TestFeed_Fediverse(t *testing.T) {
 		p.Fediverse.Author.Avatar != "/media/fediverse/accounts?id=https%3A%2F%2Fm.example%2Fusers%2Fanna" ||
 		len(p.Fediverse.Images) != 1 || p.Fediverse.Images[0].URL != "/media/fediverse/posts/p2/0" {
 		t.Fatalf("remote post %+v", p)
+	}
+
+	if p.Likes != 4 || !p.Liked || p.Link == nil || p.Link.URL != "https://meduza.io/1" || p.Link.Site != "Meduza" ||
+		p.Link.Photo == nil || p.Link.Photo.Small != "/media/fediverse/posts/p2/link" {
+		t.Fatalf("likes %d %v, link %+v", p.Likes, p.Liked, p.Link)
 	}
 
 	if v := p.Fediverse.Videos; len(v) != 1 || v[0].Cover != "/media/fediverse/posts/p2/videos/0" ||
@@ -508,6 +550,10 @@ func TestFediversePictures(t *testing.T) {
 		t.Fatalf("video cover: %d %v, read %q", w.Code, w.Header(), h.federation.read)
 	}
 
+	if w = h.do("GET", "/media/fediverse/posts/p2/link", ""); w.Code != http.StatusOK || h.federation.read != "card p2" {
+		t.Fatalf("picture of a card: %d, read %q", w.Code, h.federation.read)
+	}
+
 	if w = h.do("GET", "/media/fediverse/posts/p2/videos/x", ""); w.Code != http.StatusNotFound {
 		t.Fatalf("a cover with no index: %d", w.Code)
 	}
@@ -528,5 +574,48 @@ func TestFediversePictures(t *testing.T) {
 	w = h.do("GET", "/ap/actor", "", "Accept", "application/activity+json")
 	if w.Code != http.StatusOK || w.Body.String() != `{"type":"Application"}` || w.Header().Get("Content-Type") != "application/activity+json" {
 		t.Fatalf("site actor: %d %s", w.Code, w.Body)
+	}
+}
+
+func TestFediverseLikes(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	auth := []string{"Authorization", "Bearer tok"}
+
+	w := h.do("PUT", "/api/v1/fediverse/posts/p2/like", "", auth...)
+	if got := decode[map[string]any](t, w); w.Code != http.StatusOK || got["likes"] != float64(1) || got["liked"] != true ||
+		h.federation.liked != "like p2" || h.federation.token != "tok" {
+		t.Fatalf("like: %d %v, %q", w.Code, got, h.federation.liked)
+	}
+
+	w = h.do("DELETE", "/api/v1/fediverse/posts/p2/like", "", auth...)
+	if got := decode[map[string]any](t, w); w.Code != http.StatusOK || got["likes"] != float64(0) || got["liked"] != false || h.federation.liked != "unlike p2" {
+		t.Fatalf("unlike: %d %v", w.Code, got)
+	}
+
+	w = h.do("GET", "/api/v1/fediverse/posts/p2/likes?cursor=c1&limit=6", "", auth...)
+	got := decode[struct {
+		Users      []struct{ ID string } `json:"users"`
+		NextCursor string                `json:"nextCursor"`
+		Total      int                   `json:"total"`
+	}](t, w)
+	if w.Code != http.StatusOK || len(got.Users) != 2 || got.Users[0].ID != "x1" || got.NextCursor != "c2" || got.Total != 5 ||
+		h.federation.liked != "likers p2" || h.federation.cursor != "c1/6" {
+		t.Fatalf("likers: %d %+v, %q %q", w.Code, got, h.federation.liked, h.federation.cursor)
+	}
+
+	for _, method := range []string{"PUT", "DELETE"} {
+		if w = h.do(method, "/api/v1/fediverse/posts/p2/like", ""); w.Code != http.StatusUnauthorized {
+			t.Errorf("%s without a token: %d", method, w.Code)
+		}
+	}
+	if w = h.do("GET", "/api/v1/fediverse/posts/p2/likes", ""); w.Code != http.StatusUnauthorized {
+		t.Errorf("likers without a token: %d", w.Code)
+	}
+
+	h.federation.err = failure.New(failure.TooManyRequests, "too many likes")
+	if w = h.do("PUT", "/api/v1/fediverse/posts/p2/like", "", auth...); w.Code != http.StatusTooManyRequests {
+		t.Errorf("too many likes: %d", w.Code)
 	}
 }

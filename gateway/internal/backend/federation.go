@@ -210,6 +210,39 @@ func (f *Federation) VideoCover(ctx context.Context, postID string, index int) (
 	return f.picture(ctx, &federationv1.GetPictureRequest{PostId: postID, Index: int32(index), Video: true}) //nolint:gosec // an index of at most four
 }
 
+func (f *Federation) LinkPicture(ctx context.Context, postID string) (model.Picture, error) {
+	return f.picture(ctx, &federationv1.GetPictureRequest{PostId: postID, Link: true})
+}
+
+func (f *Federation) LikeNews(ctx context.Context, accessToken, postID string) (int, error) {
+	resp, err := f.api.LikeNews(withToken(ctx, accessToken), &federationv1.LikeNewsRequest{PostId: postID})
+	if err != nil {
+		return 0, errs.Wrap("f.api.LikeNews", fromStatus(err))
+	}
+
+	return int(resp.GetLikes()), nil
+}
+
+func (f *Federation) UnlikeNews(ctx context.Context, accessToken, postID string) (int, error) {
+	resp, err := f.api.UnlikeNews(withToken(ctx, accessToken), &federationv1.UnlikeNewsRequest{PostId: postID})
+	if err != nil {
+		return 0, errs.Wrap("f.api.UnlikeNews", fromStatus(err))
+	}
+
+	return int(resp.GetLikes()), nil
+}
+
+func (f *Federation) NewsLikers(ctx context.Context, accessToken, postID, cursor string, limit int) (model.LikerPage, error) {
+	resp, err := f.api.ListNewsLikers(withToken(ctx, accessToken), &federationv1.ListNewsLikersRequest{
+		PostId: postID, Cursor: cursor, Limit: int32(limit), //nolint:gosec // a page size
+	})
+	if err != nil {
+		return model.LikerPage{}, errs.Wrap("f.api.ListNewsLikers", fromStatus(err))
+	}
+
+	return model.LikerPage{UserIDs: resp.GetUserIds(), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
+}
+
 func (f *Federation) AccountPicture(ctx context.Context, accountID string) (model.Picture, error) {
 	return f.picture(ctx, &federationv1.GetPictureRequest{AccountId: accountID})
 }
@@ -272,10 +305,18 @@ func fromProtoNewsPost(p *federationv1.NewsPost) model.FediversePost {
 		ImageDescriptions: descriptions,
 		Videos:            videos,
 		PublishedAt:       p.GetPublishedAt().AsTime(),
+		Likes:             int(p.GetLikes()),
+		Liked:             p.GetLiked(),
 	}
 
 	if p.GetUpdatedAt() != nil {
 		post.UpdatedAt = p.GetUpdatedAt().AsTime()
+	}
+
+	if l := p.GetLink(); l != nil {
+		post.Link = &model.FediverseLink{
+			URL: l.GetUrl(), Site: l.GetSite(), Title: l.GetTitle(), Description: l.GetDescription(), HasImage: l.GetHasImage(),
+		}
 	}
 
 	return post

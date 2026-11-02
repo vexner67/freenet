@@ -40,6 +40,11 @@ type Federation interface {
 	PostPicture(ctx context.Context, postID string, index int) (model.Picture, error)
 	VideoCover(ctx context.Context, postID string, index int) (model.Picture, error)
 	AccountPicture(ctx context.Context, accountID string) (model.Picture, error)
+	LinkPicture(ctx context.Context, postID string) (model.Picture, error)
+	// The hearts of people here on posts of other servers.
+	LikeNews(ctx context.Context, accessToken, postID string) (int, error)
+	UnlikeNews(ctx context.Context, accessToken, postID string) (int, error)
+	NewsLikers(ctx context.Context, accessToken, postID, cursor string, limit int) (model.LikerPage, error)
 }
 
 const (

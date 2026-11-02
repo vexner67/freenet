@@ -86,6 +86,22 @@ type FediversePost struct {
 	PublishedAt time.Time
 	// UpdatedAt is zero for a post never edited.
 	UpdatedAt time.Time
+	// Likes are how many here like it, Liked whether the reader does:
+	// its server does not learn of them.
+	Likes int
+	Liked bool
+	// Link is the card of the page it links to; nil for none.
+	Link *FediverseLink
+}
+
+// FediverseLink is the card of a page a post of another server links
+// to, as its server told it; its picture the site serves by the post.
+type FediverseLink struct {
+	URL         string
+	Site        string
+	Title       string
+	Description string
+	HasImage    bool
 }
 
 // FediverseVideo is a video of a post of another server.

@@ -6649,6 +6649,56 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { $ref: "#/components/responses/PermissionDenied" }
 
+  /api/v1/fediverse/posts/{id}/like:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    put:
+      summary: Like a post of another server or of a channel of Telegram
+      description: 'The like stays here: its server does not learn of it. Idempotent.'
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Like" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Take your like of a post of another server back
+      description: Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Like" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/fediverse/posts/{id}/likes:
+    get:
+      summary: Who here like a post of another server, newest first
+      description: '`total` is the like counter; people whose page is deleted are left out of `users`, still counted.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        "200":
+          description: One page of people
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /media/fediverse/posts/{id}/link:
+    get:
+      summary: The picture of the card of the page a post of another server links to
+      description: 'Read from its server through the site.'
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: The picture, content: { image/*: { schema: { type: string, format: binary } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /media/fediverse/posts/{id}/{index}:
     get:
       summary: A picture of a post of another server
@@ -10036,7 +10086,7 @@ components:
         moderated: { type: boolean, description: "Only in the feed: the post is on the wall of a community you run" }
         fediverse:
           type: object
-          description: 'Only in the feed: a post of another server of the Fediverse, with no likes, comments or reposts here; author holds only its name'
+          description: 'Only in the feed: a post of another server of the Fediverse or of a channel of Telegram, with likes here (`/api/v1/fediverse/posts/{id}/like`) and no comments or reposts; author holds only its name, `link` is the card its server made, with the picture from `/media/fediverse/posts/{id}/link`'
           properties:
             author: { $ref: "#/components/schemas/FediverseAccount" }
             url: { type: string, description: The post on its server }

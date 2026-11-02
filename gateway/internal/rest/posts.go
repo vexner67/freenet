@@ -118,7 +118,8 @@ type postResponse struct {
 	// asked for with ?comments=last.
 	LastComments []commentResponse `json:"lastComments,omitempty"`
 	// Fediverse is set for a post of another server of the Fediverse in
-	// the news; such a post has no likes, comments or reposts here.
+	// the news (or of a channel of Telegram); such a post has likes here,
+	// which its server does not learn of, and no comments or reposts.
 	Fediverse *fediverseJSON `json:"fediverse,omitempty"`
 }
 
