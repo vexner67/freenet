@@ -334,6 +334,9 @@ export const api = {
   updateNickname: (nickname) => authorized('PUT', '/api/v1/me/nickname', { nickname }),
   updateStatus: (status) => authorized('PUT', '/api/v1/me/status', { status }),
   updatePrivacy: (privacy) => authorized('PUT', '/api/v1/me/privacy', privacy),
+  federation: () => authorized('GET', '/api/v1/me/federation'),
+  openFederation: () => authorized('PUT', '/api/v1/me/federation'),
+  closeFederation: () => authorized('DELETE', '/api/v1/me/federation'),
   // "Интерфейс" of the settings: avatarStyle, mainPage and hiddenMenu.
   updateInterface: (ui) => authorized('PUT', '/api/v1/me/interface', ui),
   // "Контакты", "Интересы" and "Дополнительно" of "Редактировать страницу".

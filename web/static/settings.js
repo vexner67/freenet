@@ -134,6 +134,7 @@ function initPrivacy(me) {
   $('message-price').value = String(me.privacy.messagePrice ?? 0);
   fill($('chats-invite'), chatsInvites, me.privacy.chatsInvite);
   fill($('profile-type'), profileTypes, me.privacy.closed ? 'closed' : 'open');
+  showFediverse(me);
 
   onSubmit($('privacy'), async () => {
     const privacy = { wallWrite: $('wall-write').value, messagesWrite: $('messages-write').value, chatsInvite: $('chats-invite').value, closed: $('profile-type').value === 'closed' };
@@ -147,6 +148,51 @@ function initPrivacy(me) {
 
 // initInterface is "Интерфейс", "Часовой пояс" and "Левое меню" of
 // openvk: saved, they show at once, in the menu on the left too.
+// showFediverse is whether the page is open to the Fediverse, and the
+// button that changes it; a site without federation has no such block.
+async function showFediverse(me) {
+  let status;
+  try {
+    status = await api.federation();
+  } catch (e) {
+    if (e.status !== 404) showError(error, e);
+    return;
+  }
+
+  const address = `@${me.nickname}@${status.domain}`;
+  $('fediverse-state').replaceChildren(...(status.open
+    ? [tr('Ваша страница открыта для Fediverse. Её адрес там: '), el('b', { textContent: address }), '. ',
+        tr('Подписчиков в других сетях: {0}.', status.followers), ' ',
+        helpButton(tr('Чтобы подписаться, человеку из Mastodon достаточно ввести {0} в поиск. Закрыв страницу, вы удалите её из Fediverse: её подписчики там пропадут.', address))]
+    : [tr('Ваша страница закрыта для Fediverse.')]));
+
+  const change = async (turn) => {
+    hideError(error);
+    try {
+      await turn();
+      flash($('fediverse-state'));
+    } catch (e) {
+      showError(error, e);
+    }
+    await showFediverse(me);
+  };
+
+  $('fediverse-actions').replaceChildren(status.open
+    ? button(tr('Закрыть страницу для Fediverse'), () => openCloseFediverse(() => change(api.closeFederation)))
+    : button(tr('Открыть страницу для Fediverse'), () => change(api.openFederation)));
+  $('fediverse').hidden = false;
+}
+
+function openCloseFediverse(done) {
+  const modal = openModal(tr('Закрыть страницу для Fediverse'));
+
+  modal.body.append(el('p', {}, tr('Серверы ваших подписчиков в Fediverse узнают, что страницы там больше нет, и подписчики пропадут. Открыть страницу можно снова, но подписываться на неё придётся заново.')));
+  modal.actions.append(button(tr('Закрыть'), () => {
+    modal.close();
+    done();
+  }), button(tr('Отмена'), modal.close, { secondary: true }));
+}
+
 function initInterface(me) {
   const ui = me.interface;
   const device = deviceTheme();

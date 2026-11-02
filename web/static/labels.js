@@ -2484,6 +2484,7 @@ const errorTexts = {
   'network error': tr('Нет связи с сервером. Проверьте подключение.'),
   'invalid email': tr('Похоже, в адресе почты опечатка.'),
   'invalid or expired code': tr('Неверный или устаревший код.'),
+  'a hidden page cannot be opened to the fediverse': tr('Открыть для Fediverse можно только страницу, которую в интернете видят все: это меняется в «Кому в интернете видно мою страницу».'),
   'too many requests, try again later': tr('Слишком часто. Подождите немного и попробуйте снова.'),
   'poll not found': tr('Опрос не найден.'),
   'poll title is empty': tr('Укажите тему опроса.'),

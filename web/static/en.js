@@ -2,6 +2,15 @@
 // gettext has it. A plural is the forms of plural() joined by "|":
 // its English is the singular and the plural.
 export default {
+  'Открыть для Fediverse можно только страницу, которую в интернете видят все: это меняется в «Кому в интернете видно мою страницу».': 'Only a page everyone on the internet can see can be opened to the Fediverse: it is changed in «Who can see my page on the internet».',
+  'Mastodon и другие сети Fediverse смогут найти вашу страницу по адресу и подписаться на неё. Подписчикам оттуда будут приходить записи с вашей стены, которые видны всем.': 'Mastodon and other networks of the Fediverse will be able to find your page by its address and follow it. The followers there will get the posts of your wall that everyone can see.',
+  'Ваша страница открыта для Fediverse. Её адрес там: ': 'Your page is open to the Fediverse. Its address there is ',
+  'Подписчиков в других сетях: {0}.': 'Followers in other networks: {0}.',
+  'Чтобы подписаться, человеку из Mastodon достаточно ввести {0} в поиск. Закрыв страницу, вы удалите её из Fediverse: её подписчики там пропадут.': 'To follow you, a person on Mastodon only has to enter {0} in the search. Closing the page removes it from the Fediverse: its followers there will be gone.',
+  'Ваша страница закрыта для Fediverse.': 'Your page is closed to the Fediverse.',
+  'Закрыть страницу для Fediverse': 'Close the page to the Fediverse',
+  'Открыть страницу для Fediverse': 'Open the page to the Fediverse',
+  'Серверы ваших подписчиков в Fediverse узнают, что страницы там больше нет, и подписчики пропадут. Открыть страницу можно снова, но подписываться на неё придётся заново.': 'The servers of your followers in the Fediverse will learn that the page is gone there, and the followers will be gone. The page can be opened again, but they will have to follow it anew.',
   'Новая страница': 'New page',
   'Развернуть боковую панель': 'Expand the sidebar',
   'Свернуть боковую панель': 'Collapse the sidebar',
