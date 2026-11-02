@@ -118,12 +118,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # The gateway image carries the website (target gateway).
+      # The gateway image carries the website, the federation one ffmpeg:
+      # each has a target of its own.
       - uses: docker/build-push-action@v6
         with:
           context: .
           build-args: SERVICE=${{ matrix.service }}
-          target: ${{ matrix.service == 'gateway' && 'gateway' || '' }}
+          target: ${{ contains(fromJSON('["gateway","federation"]'), matrix.service) && matrix.service || '' }}
           push: true
           tags: |
             ghcr.io/vexner67/freenet-${{ matrix.service }}:${{ github.sha }}

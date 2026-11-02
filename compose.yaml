@@ -272,7 +272,7 @@ services:
   federation:
     <<: *service
     image: freenet-federation
-    build: { context: ., args: { SERVICE: federation } }
+    build: { context: ., target: federation, args: { SERVICE: federation } }
     environment:
       <<: *env
       GRPC_PORT: 7058
