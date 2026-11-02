@@ -2616,7 +2616,7 @@ label { cursor: pointer; }
 /* A post of another server of the Fediverse in the news (posts.js,
    remotePostNode): the name leads there, the address there is gray after
    it, the warning of its author stands above its text, and the bar under
-   it says where it is from instead of likes. */
+   it says where it is from after the heart. */
 .post-remote .post-author > .text-link { font-weight: bold; }
 .post-handle { color: var(--text-626262); }
 .post-summary { padding: 4px; border-bottom: 1px solid var(--line-ececec); color: var(--text-626262); font-weight: bold; white-space: pre-wrap; overflow-wrap: anywhere; }

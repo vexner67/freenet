@@ -283,10 +283,12 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
 
 // remotePostNode is a post of another server of the Fediverse, or of a
 // channel of Telegram, in the news: its author and the date lead there,
-// its pictures come through the site, and it has no likes, comments or
-// reposts here — only the way to it. The warning its author put before it (summary) shows above the
-// blurred text, as the servers of Mastodon show it.
-export function remotePostNode(post) {
+// its pictures and the card of the page it links to come through the
+// site, and it has a heart of the site — its server does not learn of it
+// — but no comments or reposts here, only the way to it. The warning its
+// author put before it (summary) shows above the blurred text, as the
+// servers of Mastodon show it. onError(e) shows a failed like.
+export function remotePostNode(post, { onError } = {}) {
   const remote = post.fediverse;
   const author = remote.author;
   const name = author.name || author.handle;
@@ -297,6 +299,7 @@ export function remotePostNode(post) {
     post.text ? textNode(post.text, { whole: false }) : '',
     photosNode(photos) ?? '',
     videosNode(remote.videos ?? [], remote.url, telegram) ?? '',
+    linkCardNode(post.link) ?? '',
   );
 
   const node = el('div', { className: 'post post-remote' + (post.nsfw ? ' post-nsfw' : '') },
@@ -316,6 +319,7 @@ export function remotePostNode(post) {
       remote.summary ? el('div', { className: 'post-summary', textContent: remote.summary }) : null,
       content,
       el('div', { className: 'post-menu post-bar' },
+        likeButton(post, { canLike: true, onError, like: api.likeFediverse, unlike: api.unlikeFediverse, likers: api.fediverseLikers }),
         el('span', { className: 'post-from', textContent: telegram ? tr('Из Telegram') : tr('Из Fediverse') }),
         externalLink(remote.url, [telegram ? tr('Открыть в Telegram') : tr('Открыть в Fediverse')]),
       ),

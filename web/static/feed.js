@@ -94,9 +94,9 @@ function reload(me) {
 // feedNode is a post as on a wall: I edit and delete what I wrote, and
 // delete, pin and put away what is on my wall and on the walls of the
 // communities I run (post.moderated). A post of another server of the
-// Fediverse is only shown.
+// Fediverse is only shown and liked.
 function feedNode(post, me) {
-  if (post.fediverse) return remotePostNode(post);
+  if (post.fediverse) return remotePostNode(post, { onError: (e) => showError($('error'), e) });
 
   const moderates = Boolean(post.moderated);
 

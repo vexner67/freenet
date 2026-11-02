@@ -342,6 +342,11 @@ export const api = {
   fediverseSubscriptions: () => authorized('GET', '/api/v1/me/fediverse'),
   subscribeFediverse: (address) => authorized('POST', '/api/v1/me/fediverse', { address }),
   unsubscribeFediverse: (id) => authorized('DELETE', '/api/v1/me/fediverse?' + new URLSearchParams({ id })),
+  // The hearts of the site on posts of other servers; their servers do
+  // not learn of them.
+  likeFediverse: (id) => authorized('PUT', `/api/v1/fediverse/posts/${encodeURIComponent(id)}/like`),
+  unlikeFediverse: (id) => authorized('DELETE', `/api/v1/fediverse/posts/${encodeURIComponent(id)}/like`),
+  fediverseLikers: (id, cursor = '', limit = 0) => authorized('GET', page(`/api/v1/fediverse/posts/${encodeURIComponent(id)}/likes`, cursor, limit)),
   lookupFediverse: (address) => authorized('GET', '/api/v1/fediverse/lookup?' + new URLSearchParams({ address })),
   featuredFediverse: () => authorized('GET', '/api/v1/admin/fediverse'),
   featureFediverse: (address) => authorized('POST', '/api/v1/admin/fediverse', { address }),
