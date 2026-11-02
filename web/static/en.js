@@ -4,6 +4,7 @@
 export default {
   'Из Fediverse': 'From the Fediverse',
   'Открыть в Fediverse': 'Open in the Fediverse',
+  'Смотреть в Fediverse': 'Watch in the Fediverse',
   'Ждём ответа сервера: записи придут после него.': 'Waiting for its server to answer: the posts will come after it does.',
   'Вы ещё ни на кого не подписаны в Fediverse.': 'You do not follow anyone in the Fediverse yet.',
   'Чтение Fediverse': 'Reading the Fediverse',

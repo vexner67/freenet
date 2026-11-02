@@ -258,6 +258,18 @@ function onClock(date) {
 
 const two = (n) => String(n).padStart(2, '0');
 
+// videoDuration is how long a video plays, as players write it: "0:07",
+// "1:24", "1:02:03"; empty when it is not known.
+export function videoDuration(seconds) {
+  if (!(seconds > 0)) return '';
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor(seconds / 60) % 60;
+  const rest = two(seconds % 60);
+
+  return hours > 0 ? `${hours}:${two(minutes)}:${rest}` : `${minutes}:${rest}`;
+}
+
 // formatPostDate turns an ISO time into "сегодня в 9:05", "вчера в 18:30",
 // "17 мая в 10:00" or, for other years, "17 мая 2025 в 10:00".
 export function formatPostDate(iso, now = new Date()) {

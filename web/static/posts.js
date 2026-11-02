@@ -4,7 +4,7 @@
 
 import { api } from './api.js';
 import { attachLikers } from './likers.js';
-import { documentsCount, errorText, formatPostDate, genitiveName, photosCount, primeNameClass, sharedBy, votesCount, wrote } from './labels.js';
+import { documentsCount, errorText, formatPostDate, videoDuration, genitiveName, photosCount, primeNameClass, sharedBy, votesCount, wrote } from './labels.js';
 import { adult, avatarURL, el, externalLink, fullName, isMicroblog, isPhone, pagePath, textNode, verifiedMark } from './layout.js';
 import { editPost } from './postedit.js';
 import { openShare } from './share.js';
@@ -15,6 +15,7 @@ import { button, openMenu, openModal, openSheet, toast } from './modal.js';
 import { documentsNode } from './docs.js';
 import { articleCardNode, articleIn } from './articles.js';
 import { tr } from './i18n.js';
+import { drawBlurhash } from './blurhash.js';
 
 // nameClass is the class of the name of an author by a post, a comment or
 // a message: coloured as a person with Prime dressed it.
@@ -294,6 +295,7 @@ export function remotePostNode(post) {
   const content = el('div', { className: 'post-content' },
     post.text ? textNode(post.text, { whole: false }) : '',
     photosNode(photos) ?? '',
+    videosNode(remote.videos ?? [], remote.url) ?? '',
   );
 
   const node = el('div', { className: 'post post-remote' + (post.nsfw ? ' post-nsfw' : '') },
@@ -606,6 +608,33 @@ export function photosNode(photos) {
         openViewer(photos, i);
       },
     }, el('img', { src: photo.small, alt: '', loading: 'lazy' }))));
+}
+
+// videosNode shows the videos of a post of another server as their
+// covers, which open the post there: the site does not play them. Until
+// the cover comes, or when there is none, its blurhash is drawn; the
+// canvas keeps the shape of the video, so nothing moves when it comes.
+function videosNode(videos, url) {
+  if (videos.length === 0) return null;
+
+  return el('div', { className: 'post-videos' }, ...videos.map((video) => {
+    const wide = video.width > 0 && video.height > 0 ? video.width / video.height : 16 / 9;
+    const blur = el('canvas', { className: 'post-video-blur', width: 32, height: Math.max(1, Math.min(64, Math.round(32 / wide))) });
+    drawBlurhash(blur, video.blurhash);
+
+    const cover = el('img', { className: 'post-video-cover', src: video.cover, alt: video.description ?? '', loading: 'lazy' });
+    cover.addEventListener('load', () => cover.classList.add('loaded'));
+    cover.addEventListener('error', () => cover.remove());
+
+    const duration = videoDuration(video.duration);
+
+    return el('a', { className: 'post-video', href: url, target: '_blank', rel: 'noopener noreferrer nofollow ugc', title: tr('Смотреть в Fediverse') },
+      blur,
+      cover,
+      el('span', { className: 'post-video-play' }),
+      duration ? el('span', { className: 'post-video-time', textContent: duration }) : '',
+    );
+  }));
 }
 
 // separated puts " | " between links, as in the menus of openvk.

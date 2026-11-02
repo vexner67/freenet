@@ -4275,3 +4275,16 @@ a.game-hud-cell:hover { background: var(--back-fbf3c3); }
 .fediverse-account-action { flex: none; cursor: pointer; }
 .fediverse-follow { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
 .fediverse-follow input { flex: 1; min-width: 0; }
+
+/* The videos of a post of another server (posts.js, videosNode): the
+   blurhash keeps the shape of the video, the cover comes over it, a
+   glossy play button in the middle and the duration in the corner. */
+.post-videos { display: grid; gap: 3px; padding: 6px 4px; border-bottom: 1px solid var(--line-ececec); }
+.post-video { position: relative; display: block; overflow: hidden; background: var(--back-1f1f1f); }
+.post-video-blur { display: block; width: 100%; height: auto; max-height: 360px; object-fit: cover; }
+.post-video-cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity 200ms ease-in-out; }
+.post-video-cover.loaded { opacity: 1; }
+.post-video-play { position: absolute; top: 50%; left: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border: 2px solid var(--text-fff); border-radius: 50%; background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); box-shadow: 0 2px 6px rgb(0 0 0 / 50%); opacity: 0.9; transition: opacity 200ms ease-in-out, transform 200ms ease-in-out; }
+.post-video-play::before { content: ""; position: absolute; top: 15px; left: 20px; border-style: solid; border-width: 10px 0 10px 17px; border-color: transparent transparent transparent var(--text-fff); }
+.post-video:hover .post-video-play { opacity: 1; transform: scale(1.08); }
+.post-video-time { position: absolute; right: 6px; bottom: 6px; padding: 1px 5px; border-radius: 3px; background: rgb(0 0 0 / 75%); color: var(--text-fff); }
