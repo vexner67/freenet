@@ -1,0 +1,132 @@
+syntax = "proto3";
+
+package federation.v1;
+
+option go_package = "github.com/vexner67/freenet/federation/api/federation/v1;federationv1";
+
+import "google/protobuf/empty.proto";
+
+// FederationService opens pages to the Fediverse (ActivityPub): other
+// servers read their documents and posts, follow them and get what they
+// post. The documents are ActivityPub JSON, which the gateway passes on
+// as it is.
+service FederationService {
+  // Require an access token: the caller's own page. Opening a page that
+  // only some may see is FailedPrecondition.
+  rpc GetFederation(GetFederationRequest) returns (GetFederationResponse);
+  rpc OpenFederation(OpenFederationRequest) returns (OpenFederationResponse);
+  rpc CloseFederation(CloseFederationRequest) returns (CloseFederationResponse);
+
+  // Public: what other servers read. A page not open to the Fediverse,
+  // or a post that does not go there, is NotFound.
+  rpc Finger(FingerRequest) returns (FingerResponse);
+  rpc GetActor(GetActorRequest) returns (GetActorResponse);
+  rpc GetNote(GetNoteRequest) returns (GetNoteResponse);
+  rpc GetFollowers(GetFollowersRequest) returns (GetFollowersResponse);
+  rpc GetOutbox(GetOutboxRequest) returns (GetOutboxResponse);
+
+  // Internal, for the gateway: a request another server made to an
+  // inbox, as it came, for its signature to be checked. A request not
+  // signed by whom it says is Unauthenticated.
+  rpc Receive(ReceiveRequest) returns (google.protobuf.Empty);
+  // Internal, for post: a post was published, edited or deleted.
+  // Idempotent enough: the servers take an activity twice.
+  rpc PostChanged(PostChangedRequest) returns (google.protobuf.Empty);
+}
+
+message FederationStatus {
+  bool open = 1;
+  // How many people of other servers follow the page.
+  int32 followers = 2;
+  // The domain the address of the page ends with: @nickname@domain.
+  string domain = 3;
+}
+
+message GetFederationRequest {}
+
+message GetFederationResponse {
+  FederationStatus status = 1;
+}
+
+message OpenFederationRequest {}
+
+message OpenFederationResponse {
+  FederationStatus status = 1;
+}
+
+message CloseFederationRequest {}
+
+message CloseFederationResponse {
+  FederationStatus status = 1;
+}
+
+message FingerRequest {
+  // acct:nickname@domain, or the address of the page.
+  string resource = 1;
+}
+
+message FingerResponse {
+  // JSON Resource Descriptor (application/jrd+json).
+  bytes document = 1;
+}
+
+message GetActorRequest {
+  string user_id = 1;
+}
+
+message GetActorResponse {
+  // application/activity+json.
+  bytes document = 1;
+  // The page itself, for a browser.
+  string page_url = 2;
+}
+
+message GetNoteRequest {
+  string post_id = 1;
+}
+
+message GetNoteResponse {
+  bytes document = 1;
+  string page_url = 2;
+}
+
+message GetFollowersRequest {
+  string user_id = 1;
+}
+
+message GetFollowersResponse {
+  bytes document = 1;
+}
+
+message GetOutboxRequest {
+  string user_id = 1;
+}
+
+message GetOutboxResponse {
+  bytes document = 1;
+}
+
+message ReceiveRequest {
+  string method = 1;
+  // The path and query the request was made to.
+  string path = 2;
+  // The headers of the request, their names in lower case.
+  map<string, string> headers = 3;
+  bytes body = 4;
+  // The page whose inbox it is; empty for the shared inbox.
+  string user_id = 5;
+}
+
+// PostChange is what happened to a post.
+enum PostChange {
+  POST_CHANGE_UNSPECIFIED = 0;
+  POST_CHANGE_PUBLISHED = 1;
+  POST_CHANGE_EDITED = 2;
+  POST_CHANGE_DELETED = 3;
+}
+
+message PostChangedRequest {
+  PostChange change = 1;
+  string post_id = 2;
+  string author_id = 3;
+}

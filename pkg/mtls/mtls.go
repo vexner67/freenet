@@ -25,6 +25,7 @@ const (
 	Message      = "message"
 	Notification = "notification"
 	Club         = "club"
+	Federation   = "federation"
 	Gateway      = "gateway"
 )
 
