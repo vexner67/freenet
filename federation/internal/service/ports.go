@@ -176,3 +176,17 @@ type Media struct {
 type MediaFetcher interface {
 	Fetch(ctx context.Context, u fedi.URL) (Media, error)
 }
+
+// CoverRepository keeps the first frames of the videos of remote posts,
+// as JPEG: an empty one for a video with no frame to cut. Get of one not
+// kept is fedi.ErrNotFound; the frames go with their post.
+type CoverRepository interface {
+	Get(ctx context.Context, postID uuid.UUID, video fedi.URL) ([]byte, error)
+	Save(ctx context.Context, postID uuid.UUID, video fedi.URL, frame []byte) error
+}
+
+// Framer cuts the first frame of a video of another server, as JPEG; a
+// video it finds no frame in is fedi.ErrNotFound.
+type Framer interface {
+	Frame(ctx context.Context, video fedi.URL) ([]byte, error)
+}

@@ -91,7 +91,10 @@ func TestNewsRepositories(t *testing.T) {
 		doc := fedi.NoteDoc{
 			ID: actor.String() + "/notes/" + n, AttributedTo: actor.String(), Text: n, Language: language,
 			Public: true, Published: at,
-			Attachments: []fedi.AttachmentDoc{{URL: "https://m.example/" + n + ".png", MediaType: "image/png", Description: "d"}},
+			Attachments: []fedi.AttachmentDoc{
+				{URL: "https://m.example/" + n + ".png", MediaType: "image/png", Description: "d"},
+				{URL: "https://m.example/" + n + ".mp4", MediaType: "video/mp4", Blurhash: "LEHV6nWB2yk8pyo0adR*.7kCMdnj", Width: 640, Height: 360, Duration: 90 * time.Second},
+			},
 		}
 		if sensitive {
 			doc.Summary = "cw"
@@ -117,6 +120,32 @@ func TestNewsRepositories(t *testing.T) {
 	byURI, err := news.ByURI(ctx, en.URI())
 	if err != nil || byURI.ID() != en.ID() || len(byURI.Images()) != 1 || byURI.Images()[0].Description != "d" || !byURI.Published().Equal(at) {
 		t.Fatalf("ByURI = %+v, %v", byURI, err)
+	}
+
+	if videos := byURI.Videos(); len(videos) != 1 || videos[0] != en.Videos()[0] {
+		t.Fatalf("videos = %+v, want %+v", videos, en.Videos())
+	}
+
+	covers := postgres.NewCoverRepository(pool)
+	video := en.Videos()[0].URL
+
+	if _, err = covers.Get(ctx, en.ID(), video); !errors.Is(err, fedi.ErrNotFound) {
+		t.Fatalf("Get of a frame never cut = %v", err)
+	}
+	if err = covers.Save(ctx, en.ID(), video, nil); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if frame, err := covers.Get(ctx, en.ID(), video); err != nil || len(frame) != 0 {
+		t.Fatalf("Get of no frame = %q, %v", frame, err)
+	}
+	if err = covers.Save(ctx, en.ID(), video, []byte("jpeg")); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if frame, err := covers.Get(ctx, en.ID(), video); err != nil || string(frame) != "jpeg" {
+		t.Fatalf("Get = %q, %v", frame, err)
+	}
+	if err = covers.Save(ctx, uuid.New(), video, []byte("jpeg")); err != nil {
+		t.Fatalf("Save of a frame of no post: %v", err)
 	}
 
 	list := func(q service.NewsQuery) []uuid.UUID {
@@ -168,6 +197,9 @@ func TestNewsRepositories(t *testing.T) {
 	}
 	if _, err = news.Get(ctx, en.ID()); !errors.Is(err, fedi.ErrNotFound) {
 		t.Fatalf("Get of a deleted post = %v", err)
+	}
+	if _, err = covers.Get(ctx, en.ID(), video); !errors.Is(err, fedi.ErrNotFound) {
+		t.Fatalf("Get of a frame of a deleted post = %v", err)
 	}
 
 	if n, err := news.DeleteBefore(ctx, at.Add(time.Second+time.Millisecond)); err != nil || n < 1 {

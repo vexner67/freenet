@@ -152,6 +152,27 @@ func (m *media) Fetch(_ context.Context, u fedi.URL) (service.Media, error) {
 	return service.Media{Body: []byte("png"), ContentType: "image/png"}, nil
 }
 
+// frames cut frames of the videos it has, counting the cuts.
+type frames struct {
+	frames map[fedi.URL][]byte
+	cuts   int
+	fail   error
+}
+
+func (f *frames) Frame(_ context.Context, video fedi.URL) ([]byte, error) {
+	f.cuts++
+	if f.fail != nil {
+		return nil, f.fail
+	}
+
+	frame, ok := f.frames[video]
+	if !ok {
+		return nil, fedi.ErrNotFound
+	}
+
+	return frame, nil
+}
+
 type fixture struct {
 	svc       *service.Service
 	site      fedi.Site
@@ -170,6 +191,7 @@ type fixture struct {
 	news          *inmem.RemotePostRepository
 	finder        finder
 	media         *media
+	frames        *frames
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -206,6 +228,7 @@ func newFixture(t *testing.T) *fixture {
 		subscriptions: inmem.NewSubscriptionRepository(),
 		finder:        finder{"anya@m.example": remoteActor},
 		media:         &media{},
+		frames:        &frames{frames: map[fedi.URL][]byte{}},
 	}
 	f.news = inmem.NewRemotePostRepository(f.following, f.subscriptions)
 
@@ -229,6 +252,8 @@ func newFixture(t *testing.T) *fixture {
 		News:          f.news,
 		Finder:        f.finder,
 		Media:         f.media,
+		Covers:        inmem.NewCoverRepository(f.news),
+		Frames:        f.frames,
 		Languages:     []string{"ru", "en"},
 		Retention:     90 * 24 * time.Hour,
 	})

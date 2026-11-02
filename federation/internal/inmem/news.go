@@ -200,7 +200,7 @@ func (r *RemotePostRepository) Save(_ context.Context, p *fedi.RemotePost) error
 
 	if i := slices.IndexFunc(r.posts, func(q fedi.RemotePost) bool { return q.URI() == p.URI() }); i >= 0 {
 		kept := r.posts[i]
-		r.posts[i] = *fedi.RestoreRemotePost(kept.ID(), p.URI(), kept.Actor(), p.Page(), p.Text(), p.Summary(), p.Images(),
+		r.posts[i] = *fedi.RestoreRemotePost(kept.ID(), p.URI(), kept.Actor(), p.Page(), p.Text(), p.Summary(), p.Images(), p.Videos(),
 			p.Sensitive(), p.Language(), kept.Published(), p.Updated())
 		return nil
 	}
@@ -266,4 +266,46 @@ func (r *RemotePostRepository) DeleteBefore(_ context.Context, t time.Time) (int
 	r.posts = slices.DeleteFunc(r.posts, func(p fedi.RemotePost) bool { return p.Published().Before(t) })
 
 	return n - len(r.posts), nil
+}
+
+type coverKey struct {
+	postID uuid.UUID
+	video  fedi.URL
+}
+
+// CoverRepository keeps the first frames of videos; a frame of a post the
+// posts no longer keep is gone, as in PostgreSQL.
+type CoverRepository struct {
+	mu     sync.Mutex
+	frames map[coverKey][]byte
+	posts  *RemotePostRepository
+}
+
+func NewCoverRepository(posts *RemotePostRepository) *CoverRepository {
+	return &CoverRepository{frames: map[coverKey][]byte{}, posts: posts}
+}
+
+func (r *CoverRepository) Get(ctx context.Context, postID uuid.UUID, video fedi.URL) ([]byte, error) {
+	if _, err := r.posts.Get(ctx, postID); err != nil {
+		return nil, err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	frame, ok := r.frames[coverKey{postID, video}]
+	if !ok {
+		return nil, fedi.ErrNotFound
+	}
+
+	return slices.Clone(frame), nil
+}
+
+func (r *CoverRepository) Save(_ context.Context, postID uuid.UUID, video fedi.URL, frame []byte) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.frames[coverKey{postID, video}] = slices.Clone(frame)
+
+	return nil
 }

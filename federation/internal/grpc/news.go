@@ -27,6 +27,7 @@ type NewsService interface {
 	Feature(ctx context.Context, address string) (service.Account, error)
 	Unfeature(ctx context.Context, actor fedi.URL) error
 	Picture(ctx context.Context, postID uuid.UUID, index int) (service.Media, error)
+	VideoCover(ctx context.Context, postID uuid.UUID, index int) (service.Media, error)
 	Avatar(ctx context.Context, actor fedi.URL) (service.Media, error)
 }
 
@@ -182,6 +183,10 @@ func (h *FederationHandler) picture(ctx context.Context, req *federationv1.GetPi
 	postID, err := parseID(req.GetPostId(), "post id")
 	if err != nil {
 		return service.Media{}, err
+	}
+
+	if req.GetVideo() {
+		return h.news.VideoCover(ctx, postID, int(req.GetIndex()))
 	}
 
 	return h.news.Picture(ctx, postID, int(req.GetIndex()))

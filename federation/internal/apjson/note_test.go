@@ -3,6 +3,7 @@ package apjson_test
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/vexner67/freenet/federation/internal/apjson"
 	"github.com/vexner67/freenet/federation/internal/fedi"
@@ -88,5 +89,53 @@ func TestPersonOfSite(t *testing.T) {
 
 	if !strings.Contains(string(doc), `"type":"Application"`) {
 		t.Fatalf("the site is %s, want an Application", doc)
+	}
+}
+
+func TestIncomingNote_Video(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name, attachment string
+		want             fedi.AttachmentDoc
+	}{
+		{
+			name: "mastodon with a cover",
+			attachment: `{"type":"Document","mediaType":"video/mp4","url":"https://m.example/v.mp4","name":"a cat",
+				"blurhash":"LEHV6nWB2yk8pyo0adR*.7kCMdnj","width":1280,"height":720,"duration":"PT1M24.5S",
+				"icon":{"type":"Image","mediaType":"image/jpeg","url":"https://m.example/cover.jpg"}}`,
+			want: fedi.AttachmentDoc{
+				URL: "https://m.example/v.mp4", MediaType: "video/mp4", Description: "a cat", Cover: "https://m.example/cover.jpg",
+				Blurhash: "LEHV6nWB2yk8pyo0adR*.7kCMdnj", Width: 1280, Height: 720, Duration: 84*time.Second + 500*time.Millisecond,
+			},
+		},
+		{
+			name:       "covers in a list, duration in hours",
+			attachment: `{"mediaType":"video/webm","url":"https://m.example/v.webm","duration":"PT1H2S","icon":[{"url":"https://m.example/c.png"}]}`,
+			want: fedi.AttachmentDoc{
+				URL: "https://m.example/v.webm", MediaType: "video/webm", Cover: "https://m.example/c.png", Duration: time.Hour + 2*time.Second,
+			},
+		},
+		{
+			name:       "a duration it cannot read",
+			attachment: `{"mediaType":"video/mp4","url":"https://m.example/v.mp4","duration":"84 seconds"}`,
+			want:       fedi.AttachmentDoc{URL: "https://m.example/v.mp4", MediaType: "video/mp4"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			a, err := apjson.Incoming([]byte(`{"type":"Create","actor":"https://m.example/users/ann",
+				"object":{"id":"https://m.example/notes/1","type":"Note","content":"x","attachment":[` + tt.attachment + `]}}`))
+			if err != nil || a.Note == nil || len(a.Note.Attachments) != 1 {
+				t.Fatalf("Incoming = %+v, %v", a, err)
+			}
+
+			if got := a.Note.Attachments[0]; got != tt.want {
+				t.Errorf("attachment = %+v, want %+v", got, tt.want)
+			}
+		})
 	}
 }

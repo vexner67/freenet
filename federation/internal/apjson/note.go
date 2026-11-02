@@ -2,7 +2,9 @@ package apjson
 
 import (
 	"encoding/json"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,9 +29,14 @@ type noteDoc struct {
 	Published    string            `json:"published"`
 	Updated      string            `json:"updated"`
 	Attachment   []struct {
-		MediaType string   `json:"mediaType"`
-		URL       flexible `json:"url"`
-		Name      string   `json:"name"`
+		MediaType string          `json:"mediaType"`
+		URL       flexible        `json:"url"`
+		Name      string          `json:"name"`
+		Icon      json.RawMessage `json:"icon"`
+		Blurhash  string          `json:"blurhash"`
+		Width     int             `json:"width"`
+		Height    int             `json:"height"`
+		Duration  string          `json:"duration"`
 	} `json:"attachment"`
 }
 
@@ -114,10 +121,59 @@ func toNoteDoc(raw json.RawMessage) *fedi.NoteDoc {
 	}
 
 	for _, a := range n.Attachment {
-		doc.Attachments = append(doc.Attachments, fedi.AttachmentDoc{URL: a.URL.first(), MediaType: a.MediaType, Description: a.Name})
+		doc.Attachments = append(doc.Attachments, fedi.AttachmentDoc{
+			URL: a.URL.first(), MediaType: a.MediaType, Description: a.Name,
+			Cover: imageURL(a.Icon), Blurhash: a.Blurhash, Width: a.Width, Height: a.Height,
+			Duration: parseDuration(a.Duration),
+		})
 	}
 
 	return doc
+}
+
+// imageURL is the address of an image object, or of the first of a list
+// of them; Mastodon gives the cover a video's author chose so.
+func imageURL(raw json.RawMessage) string {
+	var image struct {
+		URL flexible `json:"url"`
+	}
+	if json.Unmarshal(raw, &image) == nil {
+		return image.URL.first()
+	}
+
+	var images []json.RawMessage
+	if json.Unmarshal(raw, &images) == nil && len(images) > 0 {
+		return imageURL(images[0])
+	}
+
+	return ""
+}
+
+// isoDuration is an ISO 8601 duration of hours, minutes and seconds, as
+// Mastodon ("PT1M24.5S") and PeerTube ("PT84S") write it.
+var isoDuration = regexp.MustCompile(`^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$`)
+
+// parseDuration is zero for a duration it cannot read.
+func parseDuration(s string) time.Duration {
+	m := isoDuration.FindStringSubmatch(s)
+	if m == nil {
+		return 0
+	}
+
+	var d time.Duration
+	for i, unit := range []time.Duration{time.Hour, time.Minute, time.Second} {
+		if m[i+1] == "" {
+			continue
+		}
+
+		n, err := strconv.ParseFloat(m[i+1], 64)
+		if err != nil {
+			return 0
+		}
+		d += time.Duration(n * float64(unit))
+	}
+
+	return d
 }
 
 func parseTime(s string) time.Time {

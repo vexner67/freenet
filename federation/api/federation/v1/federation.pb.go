@@ -1625,6 +1625,85 @@ func (x *NewsImage) GetDescription() string {
 	return ""
 }
 
+// A video, shown as its cover, which opens the post on its server.
+type NewsVideo struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Description string                 `protobuf:"bytes,1,opt,name=description,proto3" json:"description,omitempty"`
+	// A blurred cover, drawn until GetPicture reads the cover.
+	Blurhash string `protobuf:"bytes,2,opt,name=blurhash,proto3" json:"blurhash,omitempty"`
+	// Zero when the server did not tell.
+	Width           int32 `protobuf:"varint,3,opt,name=width,proto3" json:"width,omitempty"`
+	Height          int32 `protobuf:"varint,4,opt,name=height,proto3" json:"height,omitempty"`
+	DurationSeconds int32 `protobuf:"varint,5,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *NewsVideo) Reset() {
+	*x = NewsVideo{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NewsVideo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NewsVideo) ProtoMessage() {}
+
+func (x *NewsVideo) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NewsVideo.ProtoReflect.Descriptor instead.
+func (*NewsVideo) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *NewsVideo) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *NewsVideo) GetBlurhash() string {
+	if x != nil {
+		return x.Blurhash
+	}
+	return ""
+}
+
+func (x *NewsVideo) GetWidth() int32 {
+	if x != nil {
+		return x.Width
+	}
+	return 0
+}
+
+func (x *NewsVideo) GetHeight() int32 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+func (x *NewsVideo) GetDurationSeconds() int32 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
 type NewsPost struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -1643,14 +1722,16 @@ type NewsPost struct {
 	Language    string                 `protobuf:"bytes,9,opt,name=language,proto3" json:"language,omitempty"`
 	PublishedAt *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
 	// Unset for a post never edited.
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// GetPicture reads their covers by their index.
+	Videos        []*NewsVideo `protobuf:"bytes,12,rep,name=videos,proto3" json:"videos,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *NewsPost) Reset() {
 	*x = NewsPost{}
-	mi := &file_api_federation_v1_federation_proto_msgTypes[31]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1662,7 +1743,7 @@ func (x *NewsPost) String() string {
 func (*NewsPost) ProtoMessage() {}
 
 func (x *NewsPost) ProtoReflect() protoreflect.Message {
-	mi := &file_api_federation_v1_federation_proto_msgTypes[31]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1675,7 +1756,7 @@ func (x *NewsPost) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewsPost.ProtoReflect.Descriptor instead.
 func (*NewsPost) Descriptor() ([]byte, []int) {
-	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{31}
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *NewsPost) GetId() string {
@@ -1755,6 +1836,13 @@ func (x *NewsPost) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *NewsPost) GetVideos() []*NewsVideo {
+	if x != nil {
+		return x.Videos
+	}
+	return nil
+}
+
 type ListNewsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Posts         []*NewsPost            `protobuf:"bytes,1,rep,name=posts,proto3" json:"posts,omitempty"`
@@ -1764,7 +1852,7 @@ type ListNewsResponse struct {
 
 func (x *ListNewsResponse) Reset() {
 	*x = ListNewsResponse{}
-	mi := &file_api_federation_v1_federation_proto_msgTypes[32]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1776,7 +1864,7 @@ func (x *ListNewsResponse) String() string {
 func (*ListNewsResponse) ProtoMessage() {}
 
 func (x *ListNewsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_federation_v1_federation_proto_msgTypes[32]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1789,7 +1877,7 @@ func (x *ListNewsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListNewsResponse.ProtoReflect.Descriptor instead.
 func (*ListNewsResponse) Descriptor() ([]byte, []int) {
-	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{32}
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ListNewsResponse) GetPosts() []*NewsPost {
@@ -1807,7 +1895,7 @@ type ListFeaturedRequest struct {
 
 func (x *ListFeaturedRequest) Reset() {
 	*x = ListFeaturedRequest{}
-	mi := &file_api_federation_v1_federation_proto_msgTypes[33]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1819,7 +1907,7 @@ func (x *ListFeaturedRequest) String() string {
 func (*ListFeaturedRequest) ProtoMessage() {}
 
 func (x *ListFeaturedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_federation_v1_federation_proto_msgTypes[33]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1832,7 +1920,7 @@ func (x *ListFeaturedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeaturedRequest.ProtoReflect.Descriptor instead.
 func (*ListFeaturedRequest) Descriptor() ([]byte, []int) {
-	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{33}
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{34}
 }
 
 type ListFeaturedResponse struct {
@@ -1844,7 +1932,7 @@ type ListFeaturedResponse struct {
 
 func (x *ListFeaturedResponse) Reset() {
 	*x = ListFeaturedResponse{}
-	mi := &file_api_federation_v1_federation_proto_msgTypes[34]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1856,7 +1944,7 @@ func (x *ListFeaturedResponse) String() string {
 func (*ListFeaturedResponse) ProtoMessage() {}
 
 func (x *ListFeaturedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_federation_v1_federation_proto_msgTypes[34]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1869,7 +1957,7 @@ func (x *ListFeaturedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeaturedResponse.ProtoReflect.Descriptor instead.
 func (*ListFeaturedResponse) Descriptor() ([]byte, []int) {
-	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{34}
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *ListFeaturedResponse) GetAccounts() []*Account {
@@ -1888,7 +1976,7 @@ type FeatureRequest struct {
 
 func (x *FeatureRequest) Reset() {
 	*x = FeatureRequest{}
-	mi := &file_api_federation_v1_federation_proto_msgTypes[35]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1900,7 +1988,7 @@ func (x *FeatureRequest) String() string {
 func (*FeatureRequest) ProtoMessage() {}
 
 func (x *FeatureRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_federation_v1_federation_proto_msgTypes[35]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1913,7 +2001,7 @@ func (x *FeatureRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeatureRequest.ProtoReflect.Descriptor instead.
 func (*FeatureRequest) Descriptor() ([]byte, []int) {
-	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{35}
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *FeatureRequest) GetAddress() string {
@@ -1932,7 +2020,7 @@ type FeatureResponse struct {
 
 func (x *FeatureResponse) Reset() {
 	*x = FeatureResponse{}
-	mi := &file_api_federation_v1_federation_proto_msgTypes[36]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1944,7 +2032,7 @@ func (x *FeatureResponse) String() string {
 func (*FeatureResponse) ProtoMessage() {}
 
 func (x *FeatureResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_federation_v1_federation_proto_msgTypes[36]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1957,7 +2045,7 @@ func (x *FeatureResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeatureResponse.ProtoReflect.Descriptor instead.
 func (*FeatureResponse) Descriptor() ([]byte, []int) {
-	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{36}
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *FeatureResponse) GetAccount() *Account {
@@ -1976,7 +2064,7 @@ type UnfeatureRequest struct {
 
 func (x *UnfeatureRequest) Reset() {
 	*x = UnfeatureRequest{}
-	mi := &file_api_federation_v1_federation_proto_msgTypes[37]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1988,7 +2076,7 @@ func (x *UnfeatureRequest) String() string {
 func (*UnfeatureRequest) ProtoMessage() {}
 
 func (x *UnfeatureRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_federation_v1_federation_proto_msgTypes[37]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2001,7 +2089,7 @@ func (x *UnfeatureRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnfeatureRequest.ProtoReflect.Descriptor instead.
 func (*UnfeatureRequest) Descriptor() ([]byte, []int) {
-	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{37}
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *UnfeatureRequest) GetId() string {
@@ -2017,14 +2105,16 @@ type GetPictureRequest struct {
 	PostId string `protobuf:"bytes,1,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
 	Index  int32  `protobuf:"varint,2,opt,name=index,proto3" json:"index,omitempty"`
 	// Or the photo of an account, by the address of its actor.
-	AccountId     string `protobuf:"bytes,3,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	AccountId string `protobuf:"bytes,3,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	// The cover of the video index of the post instead of the image.
+	Video         bool `protobuf:"varint,4,opt,name=video,proto3" json:"video,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetPictureRequest) Reset() {
 	*x = GetPictureRequest{}
-	mi := &file_api_federation_v1_federation_proto_msgTypes[38]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2036,7 +2126,7 @@ func (x *GetPictureRequest) String() string {
 func (*GetPictureRequest) ProtoMessage() {}
 
 func (x *GetPictureRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_federation_v1_federation_proto_msgTypes[38]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2049,7 +2139,7 @@ func (x *GetPictureRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPictureRequest.ProtoReflect.Descriptor instead.
 func (*GetPictureRequest) Descriptor() ([]byte, []int) {
-	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{38}
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *GetPictureRequest) GetPostId() string {
@@ -2073,6 +2163,13 @@ func (x *GetPictureRequest) GetAccountId() string {
 	return ""
 }
 
+func (x *GetPictureRequest) GetVideo() bool {
+	if x != nil {
+		return x.Video
+	}
+	return false
+}
+
 type GetPictureResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Body          []byte                 `protobuf:"bytes,1,opt,name=body,proto3" json:"body,omitempty"`
@@ -2083,7 +2180,7 @@ type GetPictureResponse struct {
 
 func (x *GetPictureResponse) Reset() {
 	*x = GetPictureResponse{}
-	mi := &file_api_federation_v1_federation_proto_msgTypes[39]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2095,7 +2192,7 @@ func (x *GetPictureResponse) String() string {
 func (*GetPictureResponse) ProtoMessage() {}
 
 func (x *GetPictureResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_federation_v1_federation_proto_msgTypes[39]
+	mi := &file_api_federation_v1_federation_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2108,7 +2205,7 @@ func (x *GetPictureResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPictureResponse.ProtoReflect.Descriptor instead.
 func (*GetPictureResponse) Descriptor() ([]byte, []int) {
-	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{39}
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *GetPictureResponse) GetBody() []byte {
@@ -2211,7 +2308,13 @@ const file_api_federation_v1_federation_proto_rawDesc = "" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12%\n" +
 	"\x0ehide_sensitive\x18\x04 \x01(\bR\rhideSensitive\"-\n" +
 	"\tNewsImage\x12 \n" +
-	"\vdescription\x18\x01 \x01(\tR\vdescription\"\x8b\x03\n" +
+	"\vdescription\x18\x01 \x01(\tR\vdescription\"\xa2\x01\n" +
+	"\tNewsVideo\x12 \n" +
+	"\vdescription\x18\x01 \x01(\tR\vdescription\x12\x1a\n" +
+	"\bblurhash\x18\x02 \x01(\tR\bblurhash\x12\x14\n" +
+	"\x05width\x18\x03 \x01(\x05R\x05width\x12\x16\n" +
+	"\x06height\x18\x04 \x01(\x05R\x06height\x12)\n" +
+	"\x10duration_seconds\x18\x05 \x01(\x05R\x0fdurationSeconds\"\xbd\x03\n" +
 	"\bNewsPost\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x19\n" +
@@ -2225,7 +2328,8 @@ const file_api_federation_v1_federation_proto_rawDesc = "" +
 	"\fpublished_at\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\vpublishedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"A\n" +
+	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x120\n" +
+	"\x06videos\x18\f \x03(\v2\x18.federation.v1.NewsVideoR\x06videos\"A\n" +
 	"\x10ListNewsResponse\x12-\n" +
 	"\x05posts\x18\x01 \x03(\v2\x17.federation.v1.NewsPostR\x05posts\"\x15\n" +
 	"\x13ListFeaturedRequest\"J\n" +
@@ -2236,12 +2340,13 @@ const file_api_federation_v1_federation_proto_rawDesc = "" +
 	"\x0fFeatureResponse\x120\n" +
 	"\aaccount\x18\x01 \x01(\v2\x16.federation.v1.AccountR\aaccount\"\"\n" +
 	"\x10UnfeatureRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"a\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"w\n" +
 	"\x11GetPictureRequest\x12\x17\n" +
 	"\apost_id\x18\x01 \x01(\tR\x06postId\x12\x14\n" +
 	"\x05index\x18\x02 \x01(\x05R\x05index\x12\x1d\n" +
 	"\n" +
-	"account_id\x18\x03 \x01(\tR\taccountId\"K\n" +
+	"account_id\x18\x03 \x01(\tR\taccountId\x12\x14\n" +
+	"\x05video\x18\x04 \x01(\bR\x05video\"K\n" +
 	"\x12GetPictureResponse\x12\x12\n" +
 	"\x04body\x18\x01 \x01(\fR\x04body\x12!\n" +
 	"\fcontent_type\x18\x02 \x01(\tR\vcontentType*u\n" +
@@ -2291,7 +2396,7 @@ func file_api_federation_v1_federation_proto_rawDescGZIP() []byte {
 }
 
 var file_api_federation_v1_federation_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_api_federation_v1_federation_proto_msgTypes = make([]protoimpl.MessageInfo, 41)
+var file_api_federation_v1_federation_proto_msgTypes = make([]protoimpl.MessageInfo, 42)
 var file_api_federation_v1_federation_proto_goTypes = []any{
 	(PostChange)(0),                   // 0: federation.v1.PostChange
 	(NewsScope)(0),                    // 1: federation.v1.NewsScope
@@ -2326,24 +2431,25 @@ var file_api_federation_v1_federation_proto_goTypes = []any{
 	(*UnsubscribeRequest)(nil),        // 30: federation.v1.UnsubscribeRequest
 	(*ListNewsRequest)(nil),           // 31: federation.v1.ListNewsRequest
 	(*NewsImage)(nil),                 // 32: federation.v1.NewsImage
-	(*NewsPost)(nil),                  // 33: federation.v1.NewsPost
-	(*ListNewsResponse)(nil),          // 34: federation.v1.ListNewsResponse
-	(*ListFeaturedRequest)(nil),       // 35: federation.v1.ListFeaturedRequest
-	(*ListFeaturedResponse)(nil),      // 36: federation.v1.ListFeaturedResponse
-	(*FeatureRequest)(nil),            // 37: federation.v1.FeatureRequest
-	(*FeatureResponse)(nil),           // 38: federation.v1.FeatureResponse
-	(*UnfeatureRequest)(nil),          // 39: federation.v1.UnfeatureRequest
-	(*GetPictureRequest)(nil),         // 40: federation.v1.GetPictureRequest
-	(*GetPictureResponse)(nil),        // 41: federation.v1.GetPictureResponse
-	nil,                               // 42: federation.v1.ReceiveRequest.HeadersEntry
-	(*timestamppb.Timestamp)(nil),     // 43: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),             // 44: google.protobuf.Empty
+	(*NewsVideo)(nil),                 // 33: federation.v1.NewsVideo
+	(*NewsPost)(nil),                  // 34: federation.v1.NewsPost
+	(*ListNewsResponse)(nil),          // 35: federation.v1.ListNewsResponse
+	(*ListFeaturedRequest)(nil),       // 36: federation.v1.ListFeaturedRequest
+	(*ListFeaturedResponse)(nil),      // 37: federation.v1.ListFeaturedResponse
+	(*FeatureRequest)(nil),            // 38: federation.v1.FeatureRequest
+	(*FeatureResponse)(nil),           // 39: federation.v1.FeatureResponse
+	(*UnfeatureRequest)(nil),          // 40: federation.v1.UnfeatureRequest
+	(*GetPictureRequest)(nil),         // 41: federation.v1.GetPictureRequest
+	(*GetPictureResponse)(nil),        // 42: federation.v1.GetPictureResponse
+	nil,                               // 43: federation.v1.ReceiveRequest.HeadersEntry
+	(*timestamppb.Timestamp)(nil),     // 44: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),             // 45: google.protobuf.Empty
 }
 var file_api_federation_v1_federation_proto_depIdxs = []int32{
 	2,  // 0: federation.v1.GetFederationResponse.status:type_name -> federation.v1.FederationStatus
 	2,  // 1: federation.v1.OpenFederationResponse.status:type_name -> federation.v1.FederationStatus
 	2,  // 2: federation.v1.CloseFederationResponse.status:type_name -> federation.v1.FederationStatus
-	42, // 3: federation.v1.ReceiveRequest.headers:type_name -> federation.v1.ReceiveRequest.HeadersEntry
+	43, // 3: federation.v1.ReceiveRequest.headers:type_name -> federation.v1.ReceiveRequest.HeadersEntry
 	0,  // 4: federation.v1.PostChangedRequest.change:type_name -> federation.v1.PostChange
 	23, // 5: federation.v1.LookupAccountResponse.account:type_name -> federation.v1.Account
 	23, // 6: federation.v1.ListSubscriptionsResponse.accounts:type_name -> federation.v1.Account
@@ -2351,56 +2457,57 @@ var file_api_federation_v1_federation_proto_depIdxs = []int32{
 	1,  // 8: federation.v1.ListNewsRequest.scope:type_name -> federation.v1.NewsScope
 	23, // 9: federation.v1.NewsPost.author:type_name -> federation.v1.Account
 	32, // 10: federation.v1.NewsPost.images:type_name -> federation.v1.NewsImage
-	43, // 11: federation.v1.NewsPost.published_at:type_name -> google.protobuf.Timestamp
-	43, // 12: federation.v1.NewsPost.updated_at:type_name -> google.protobuf.Timestamp
-	33, // 13: federation.v1.ListNewsResponse.posts:type_name -> federation.v1.NewsPost
-	23, // 14: federation.v1.ListFeaturedResponse.accounts:type_name -> federation.v1.Account
-	23, // 15: federation.v1.FeatureResponse.account:type_name -> federation.v1.Account
-	3,  // 16: federation.v1.FederationService.GetFederation:input_type -> federation.v1.GetFederationRequest
-	5,  // 17: federation.v1.FederationService.OpenFederation:input_type -> federation.v1.OpenFederationRequest
-	7,  // 18: federation.v1.FederationService.CloseFederation:input_type -> federation.v1.CloseFederationRequest
-	9,  // 19: federation.v1.FederationService.Finger:input_type -> federation.v1.FingerRequest
-	11, // 20: federation.v1.FederationService.GetActor:input_type -> federation.v1.GetActorRequest
-	13, // 21: federation.v1.FederationService.GetNote:input_type -> federation.v1.GetNoteRequest
-	15, // 22: federation.v1.FederationService.GetFollowers:input_type -> federation.v1.GetFollowersRequest
-	17, // 23: federation.v1.FederationService.GetOutbox:input_type -> federation.v1.GetOutboxRequest
-	19, // 24: federation.v1.FederationService.Receive:input_type -> federation.v1.ReceiveRequest
-	20, // 25: federation.v1.FederationService.PostChanged:input_type -> federation.v1.PostChangedRequest
-	21, // 26: federation.v1.FederationService.GetSiteActor:input_type -> federation.v1.GetSiteActorRequest
-	24, // 27: federation.v1.FederationService.LookupAccount:input_type -> federation.v1.LookupAccountRequest
-	26, // 28: federation.v1.FederationService.ListSubscriptions:input_type -> federation.v1.ListSubscriptionsRequest
-	28, // 29: federation.v1.FederationService.Subscribe:input_type -> federation.v1.SubscribeRequest
-	30, // 30: federation.v1.FederationService.Unsubscribe:input_type -> federation.v1.UnsubscribeRequest
-	31, // 31: federation.v1.FederationService.ListNews:input_type -> federation.v1.ListNewsRequest
-	35, // 32: federation.v1.FederationService.ListFeatured:input_type -> federation.v1.ListFeaturedRequest
-	37, // 33: federation.v1.FederationService.Feature:input_type -> federation.v1.FeatureRequest
-	39, // 34: federation.v1.FederationService.Unfeature:input_type -> federation.v1.UnfeatureRequest
-	40, // 35: federation.v1.FederationService.GetPicture:input_type -> federation.v1.GetPictureRequest
-	4,  // 36: federation.v1.FederationService.GetFederation:output_type -> federation.v1.GetFederationResponse
-	6,  // 37: federation.v1.FederationService.OpenFederation:output_type -> federation.v1.OpenFederationResponse
-	8,  // 38: federation.v1.FederationService.CloseFederation:output_type -> federation.v1.CloseFederationResponse
-	10, // 39: federation.v1.FederationService.Finger:output_type -> federation.v1.FingerResponse
-	12, // 40: federation.v1.FederationService.GetActor:output_type -> federation.v1.GetActorResponse
-	14, // 41: federation.v1.FederationService.GetNote:output_type -> federation.v1.GetNoteResponse
-	16, // 42: federation.v1.FederationService.GetFollowers:output_type -> federation.v1.GetFollowersResponse
-	18, // 43: federation.v1.FederationService.GetOutbox:output_type -> federation.v1.GetOutboxResponse
-	44, // 44: federation.v1.FederationService.Receive:output_type -> google.protobuf.Empty
-	44, // 45: federation.v1.FederationService.PostChanged:output_type -> google.protobuf.Empty
-	22, // 46: federation.v1.FederationService.GetSiteActor:output_type -> federation.v1.GetSiteActorResponse
-	25, // 47: federation.v1.FederationService.LookupAccount:output_type -> federation.v1.LookupAccountResponse
-	27, // 48: federation.v1.FederationService.ListSubscriptions:output_type -> federation.v1.ListSubscriptionsResponse
-	29, // 49: federation.v1.FederationService.Subscribe:output_type -> federation.v1.SubscribeResponse
-	44, // 50: federation.v1.FederationService.Unsubscribe:output_type -> google.protobuf.Empty
-	34, // 51: federation.v1.FederationService.ListNews:output_type -> federation.v1.ListNewsResponse
-	36, // 52: federation.v1.FederationService.ListFeatured:output_type -> federation.v1.ListFeaturedResponse
-	38, // 53: federation.v1.FederationService.Feature:output_type -> federation.v1.FeatureResponse
-	44, // 54: federation.v1.FederationService.Unfeature:output_type -> google.protobuf.Empty
-	41, // 55: federation.v1.FederationService.GetPicture:output_type -> federation.v1.GetPictureResponse
-	36, // [36:56] is the sub-list for method output_type
-	16, // [16:36] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	44, // 11: federation.v1.NewsPost.published_at:type_name -> google.protobuf.Timestamp
+	44, // 12: federation.v1.NewsPost.updated_at:type_name -> google.protobuf.Timestamp
+	33, // 13: federation.v1.NewsPost.videos:type_name -> federation.v1.NewsVideo
+	34, // 14: federation.v1.ListNewsResponse.posts:type_name -> federation.v1.NewsPost
+	23, // 15: federation.v1.ListFeaturedResponse.accounts:type_name -> federation.v1.Account
+	23, // 16: federation.v1.FeatureResponse.account:type_name -> federation.v1.Account
+	3,  // 17: federation.v1.FederationService.GetFederation:input_type -> federation.v1.GetFederationRequest
+	5,  // 18: federation.v1.FederationService.OpenFederation:input_type -> federation.v1.OpenFederationRequest
+	7,  // 19: federation.v1.FederationService.CloseFederation:input_type -> federation.v1.CloseFederationRequest
+	9,  // 20: federation.v1.FederationService.Finger:input_type -> federation.v1.FingerRequest
+	11, // 21: federation.v1.FederationService.GetActor:input_type -> federation.v1.GetActorRequest
+	13, // 22: federation.v1.FederationService.GetNote:input_type -> federation.v1.GetNoteRequest
+	15, // 23: federation.v1.FederationService.GetFollowers:input_type -> federation.v1.GetFollowersRequest
+	17, // 24: federation.v1.FederationService.GetOutbox:input_type -> federation.v1.GetOutboxRequest
+	19, // 25: federation.v1.FederationService.Receive:input_type -> federation.v1.ReceiveRequest
+	20, // 26: federation.v1.FederationService.PostChanged:input_type -> federation.v1.PostChangedRequest
+	21, // 27: federation.v1.FederationService.GetSiteActor:input_type -> federation.v1.GetSiteActorRequest
+	24, // 28: federation.v1.FederationService.LookupAccount:input_type -> federation.v1.LookupAccountRequest
+	26, // 29: federation.v1.FederationService.ListSubscriptions:input_type -> federation.v1.ListSubscriptionsRequest
+	28, // 30: federation.v1.FederationService.Subscribe:input_type -> federation.v1.SubscribeRequest
+	30, // 31: federation.v1.FederationService.Unsubscribe:input_type -> federation.v1.UnsubscribeRequest
+	31, // 32: federation.v1.FederationService.ListNews:input_type -> federation.v1.ListNewsRequest
+	36, // 33: federation.v1.FederationService.ListFeatured:input_type -> federation.v1.ListFeaturedRequest
+	38, // 34: federation.v1.FederationService.Feature:input_type -> federation.v1.FeatureRequest
+	40, // 35: federation.v1.FederationService.Unfeature:input_type -> federation.v1.UnfeatureRequest
+	41, // 36: federation.v1.FederationService.GetPicture:input_type -> federation.v1.GetPictureRequest
+	4,  // 37: federation.v1.FederationService.GetFederation:output_type -> federation.v1.GetFederationResponse
+	6,  // 38: federation.v1.FederationService.OpenFederation:output_type -> federation.v1.OpenFederationResponse
+	8,  // 39: federation.v1.FederationService.CloseFederation:output_type -> federation.v1.CloseFederationResponse
+	10, // 40: federation.v1.FederationService.Finger:output_type -> federation.v1.FingerResponse
+	12, // 41: federation.v1.FederationService.GetActor:output_type -> federation.v1.GetActorResponse
+	14, // 42: federation.v1.FederationService.GetNote:output_type -> federation.v1.GetNoteResponse
+	16, // 43: federation.v1.FederationService.GetFollowers:output_type -> federation.v1.GetFollowersResponse
+	18, // 44: federation.v1.FederationService.GetOutbox:output_type -> federation.v1.GetOutboxResponse
+	45, // 45: federation.v1.FederationService.Receive:output_type -> google.protobuf.Empty
+	45, // 46: federation.v1.FederationService.PostChanged:output_type -> google.protobuf.Empty
+	22, // 47: federation.v1.FederationService.GetSiteActor:output_type -> federation.v1.GetSiteActorResponse
+	25, // 48: federation.v1.FederationService.LookupAccount:output_type -> federation.v1.LookupAccountResponse
+	27, // 49: federation.v1.FederationService.ListSubscriptions:output_type -> federation.v1.ListSubscriptionsResponse
+	29, // 50: federation.v1.FederationService.Subscribe:output_type -> federation.v1.SubscribeResponse
+	45, // 51: federation.v1.FederationService.Unsubscribe:output_type -> google.protobuf.Empty
+	35, // 52: federation.v1.FederationService.ListNews:output_type -> federation.v1.ListNewsResponse
+	37, // 53: federation.v1.FederationService.ListFeatured:output_type -> federation.v1.ListFeaturedResponse
+	39, // 54: federation.v1.FederationService.Feature:output_type -> federation.v1.FeatureResponse
+	45, // 55: federation.v1.FederationService.Unfeature:output_type -> google.protobuf.Empty
+	42, // 56: federation.v1.FederationService.GetPicture:output_type -> federation.v1.GetPictureResponse
+	37, // [37:57] is the sub-list for method output_type
+	17, // [17:37] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_api_federation_v1_federation_proto_init() }
@@ -2414,7 +2521,7 @@ func file_api_federation_v1_federation_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_federation_v1_federation_proto_rawDesc), len(file_api_federation_v1_federation_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   41,
+			NumMessages:   42,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

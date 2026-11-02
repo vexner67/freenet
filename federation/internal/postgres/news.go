@@ -252,6 +252,17 @@ type imageJSON struct {
 	Description string `json:"description"`
 }
 
+// videoJSON is a video of a remote post in the videos column.
+type videoJSON struct {
+	URL         string        `json:"url"`
+	Cover       string        `json:"cover,omitempty"`
+	Blurhash    string        `json:"blurhash,omitempty"`
+	Width       int           `json:"width,omitempty"`
+	Height      int           `json:"height,omitempty"`
+	Duration    time.Duration `json:"duration,omitempty"`
+	Description string        `json:"description,omitempty"`
+}
+
 const remotePostColumns = `
 		p.id,
 		p.uri,
@@ -260,6 +271,7 @@ const remotePostColumns = `
 		p.text,
 		p.summary,
 		p.images,
+		p.videos,
 		p.sensitive,
 		p.language,
 		p.published,
@@ -270,13 +282,13 @@ func scanRemotePost(row pgx.Row) (*fedi.RemotePost, error) {
 	var (
 		id                                   uuid.UUID
 		uri, actor, page, text, summary, lng string
-		imagesJSON                           []byte
+		imagesJSON, videosJSON               []byte
 		sensitive                            bool
 		published                            time.Time
 		updated                              *time.Time
 	)
 
-	if err := row.Scan(&id, &uri, &actor, &page, &text, &summary, &imagesJSON, &sensitive, &lng, &published, &updated); err != nil {
+	if err := row.Scan(&id, &uri, &actor, &page, &text, &summary, &imagesJSON, &videosJSON, &sensitive, &lng, &published, &updated); err != nil {
 		return nil, err
 	}
 
@@ -290,12 +302,47 @@ func scanRemotePost(row pgx.Row) (*fedi.RemotePost, error) {
 		images[i] = fedi.Image{URL: fedi.URL(im.URL), Description: im.Description}
 	}
 
+	videos, err := scanVideos(videosJSON)
+	if err != nil {
+		return nil, err
+	}
+
 	var edited time.Time
 	if updated != nil {
 		edited = *updated
 	}
 
-	return fedi.RestoreRemotePost(id, fedi.URL(uri), fedi.URL(actor), fedi.URL(page), text, summary, images, sensitive, lng, published, edited), nil
+	return fedi.RestoreRemotePost(id, fedi.URL(uri), fedi.URL(actor), fedi.URL(page), text, summary, images, videos, sensitive, lng, published, edited), nil
+}
+
+func scanVideos(data []byte) ([]fedi.Video, error) {
+	var stored []videoJSON
+	if err := json.Unmarshal(data, &stored); err != nil {
+		return nil, errs.Wrap("json.Unmarshal", err)
+	}
+
+	videos := make([]fedi.Video, len(stored))
+	for i, v := range stored {
+		videos[i] = fedi.Video{
+			URL: fedi.URL(v.URL), Cover: fedi.URL(v.Cover), Blurhash: v.Blurhash,
+			Width: v.Width, Height: v.Height, Duration: v.Duration, Description: v.Description,
+		}
+	}
+
+	return videos, nil
+}
+
+func videosJSON(videos []fedi.Video) ([]byte, error) {
+	stored := make([]videoJSON, len(videos))
+	for i, v := range videos {
+		stored[i] = videoJSON{
+			URL: v.URL.String(), Cover: v.Cover.String(), Blurhash: v.Blurhash,
+			Width: v.Width, Height: v.Height, Duration: v.Duration, Description: v.Description,
+		}
+	}
+
+	data, err := json.Marshal(stored)
+	return data, errs.Wrap("json.Marshal", err)
 }
 
 const getRemotePostQuery = `
@@ -339,17 +386,19 @@ const saveRemotePostQuery = `
 		text,
 		summary,
 		images,
+		videos,
 		sensitive,
 		language,
 		published,
 		updated
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 	ON CONFLICT (uri) DO UPDATE
 	SET page = EXCLUDED.page,
 		text = EXCLUDED.text,
 		summary = EXCLUDED.summary,
 		images = EXCLUDED.images,
+		videos = EXCLUDED.videos,
 		sensitive = EXCLUDED.sensitive,
 		language = EXCLUDED.language,
 		updated = EXCLUDED.updated
@@ -366,13 +415,18 @@ func (r *RemotePostRepository) Save(ctx context.Context, p *fedi.RemotePost) err
 		return errs.Wrap("json.Marshal", err)
 	}
 
+	videos, err := videosJSON(p.Videos())
+	if err != nil {
+		return err
+	}
+
 	var updated *time.Time
 	if t := p.Updated(); !t.IsZero() {
 		updated = &t
 	}
 
 	_, err = r.conn(ctx).Exec(ctx, saveRemotePostQuery,
-		p.ID(), p.URI().String(), p.Actor().String(), p.Page().String(), p.Text(), p.Summary(), imagesJSON,
+		p.ID(), p.URI().String(), p.Actor().String(), p.Page().String(), p.Text(), p.Summary(), imagesJSON, videos,
 		p.Sensitive(), p.Language(), p.Published(), updated)
 	if err != nil {
 		return errs.Wrap("Exec", err)
@@ -469,4 +523,60 @@ func (r *RemotePostRepository) DeleteBefore(ctx context.Context, t time.Time) (i
 	}
 
 	return int(tag.RowsAffected()), nil
+}
+
+type CoverRepository struct {
+	pool *pgxpool.Pool
+}
+
+func NewCoverRepository(pool *pgxpool.Pool) *CoverRepository {
+	return &CoverRepository{
+		pool: pool,
+	}
+}
+
+const getCoverQuery = `
+	SELECT frame
+	FROM remote_video_covers
+	WHERE post_id = $1
+		AND video = $2
+`
+
+func (r *CoverRepository) Get(ctx context.Context, postID uuid.UUID, video fedi.URL) ([]byte, error) {
+	var frame []byte
+
+	err := r.pool.QueryRow(ctx, getCoverQuery, postID, video.String()).Scan(&frame)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fedi.ErrNotFound
+	}
+	if err != nil {
+		return nil, errs.Wrap("Scan", err)
+	}
+
+	return frame, nil
+}
+
+// saveCoverQuery keeps nothing for a post deleted while its frame was cut.
+const saveCoverQuery = `
+	INSERT INTO remote_video_covers (
+		post_id,
+		video,
+		frame
+	)
+	SELECT $1, $2, $3
+	WHERE EXISTS (SELECT 1 FROM remote_posts WHERE id = $1)
+	ON CONFLICT (post_id, video) DO UPDATE
+	SET frame = EXCLUDED.frame
+`
+
+func (r *CoverRepository) Save(ctx context.Context, postID uuid.UUID, video fedi.URL, frame []byte) error {
+	if frame == nil {
+		frame = []byte{}
+	}
+
+	if _, err := r.pool.Exec(ctx, saveCoverQuery, postID, video.String(), frame); err != nil {
+		return errs.Wrap("Exec", err)
+	}
+
+	return nil
 }

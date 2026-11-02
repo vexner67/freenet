@@ -12,6 +12,7 @@ import (
 	"github.com/vexner67/freenet/federation/internal/config"
 	"github.com/vexner67/freenet/federation/internal/delivery"
 	"github.com/vexner67/freenet/federation/internal/fedi"
+	"github.com/vexner67/freenet/federation/internal/ffmpeg"
 	federationgrpc "github.com/vexner67/freenet/federation/internal/grpc"
 	"github.com/vexner67/freenet/federation/internal/httpsig"
 	"github.com/vexner67/freenet/federation/internal/inmem"
@@ -172,6 +173,8 @@ func (a *App) build(cfg config.Config) error {
 		News:          repos.news,
 		Finder:        client,
 		Media:         client,
+		Covers:        repos.covers,
+		Frames:        ffmpeg.New(cfg.FFmpegPath, cfg.FrameTimeout, client),
 		Languages:     cfg.FeedLanguages,
 		Retention:     cfg.NewsRetention,
 	})
@@ -230,11 +233,13 @@ type repositories struct {
 	following     service.FollowingRepository
 	subscriptions service.SubscriptionRepository
 	news          service.RemotePostRepository
+	covers        service.CoverRepository
 }
 
 func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	if cfg.Storage == config.StorageInmem {
 		following, subscriptions := inmem.NewFollowingRepository(), inmem.NewSubscriptionRepository()
+		news := inmem.NewRemotePostRepository(following, subscriptions)
 
 		return repositories{
 			accounts:  inmem.NewAccountRepository(),
@@ -245,7 +250,8 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 
 			following:     following,
 			subscriptions: subscriptions,
-			news:          inmem.NewRemotePostRepository(following, subscriptions),
+			news:          news,
+			covers:        inmem.NewCoverRepository(news),
 		}, nil
 	}
 
@@ -283,6 +289,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		following:     postgres.NewFollowingRepository(a.pool),
 		subscriptions: postgres.NewSubscriptionRepository(a.pool),
 		news:          postgres.NewRemotePostRepository(a.pool),
+		covers:        postgres.NewCoverRepository(a.pool),
 	}, nil
 }
 

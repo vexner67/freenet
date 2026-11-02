@@ -40,6 +40,9 @@ type Deps struct {
 	News          RemotePostRepository
 	Finder        Finder
 	Media         MediaFetcher
+	// Covers keep the first frames Frames cut of videos with no cover.
+	Covers CoverRepository
+	Frames Framer
 	// Languages are those the news of everyone show posts in.
 	Languages []string
 	// Retention is how long remote posts are kept.
@@ -68,6 +71,8 @@ type Service struct {
 	news          RemotePostRepository
 	finder        Finder
 	media         MediaFetcher
+	covers        CoverRepository
+	frames        Framer
 	languages     []string
 	retention     time.Duration
 }
@@ -98,6 +103,8 @@ func New(d Deps) *Service {
 		news:          d.News,
 		finder:        d.Finder,
 		media:         d.Media,
+		covers:        d.Covers,
+		frames:        d.Frames,
 		languages:     d.Languages,
 		retention:     d.Retention,
 	}

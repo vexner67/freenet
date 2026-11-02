@@ -220,6 +220,40 @@ const maxPictureSize = 8 << 20
 // all, and none of them runs a script, as SVG can.
 var pictures = map[string]bool{"image/jpeg": true, "image/png": true, "image/gif": true, "image/webp": true}
 
+// VideoHeadSize is how much of a video the site reads to cut its first
+// frame: servers put what tells how to play it first ("faststart"), and
+// the first frame soon after.
+const VideoHeadSize = 4 << 20
+
+// VideoHead is the beginning of a video of another server, at most
+// VideoHeadSize; one that is no video is fedi.ErrNotFound.
+func (c *Client) VideoHead(ctx context.Context, u fedi.URL) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, errs.Wrap("http.NewRequestWithContext", err)
+	}
+
+	req.Header.Set("Accept", "video/*")
+	req.Header.Set("User-Agent", userAgent)
+	// A server that does not serve a part sends the whole: only the head
+	// of it is read.
+	req.Header.Set("Range", fmt.Sprintf("bytes=0-%d", VideoHeadSize-1))
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, errs.Wrap("c.http.Do", err)
+	}
+	defer func() { _ = resp.Body.Close() }() // what is not read is not needed
+
+	contentType, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent || !strings.HasPrefix(contentType, "video/") {
+		return nil, fedi.ErrNotFound
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, VideoHeadSize))
+	return body, errs.Wrap("io.ReadAll", err)
+}
+
 type fingerLink struct {
 	Rel  string `json:"rel"`
 	Type string `json:"type"`

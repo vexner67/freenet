@@ -436,6 +436,57 @@ func (s *Service) Picture(ctx context.Context, postID uuid.UUID, index int) (Med
 	return m, errs.Wrap("s.media.Fetch", err)
 }
 
+// VideoCover is the cover of the video index of a remote post: the one
+// its author chose, or else its first frame, cut once and kept.
+func (s *Service) VideoCover(ctx context.Context, postID uuid.UUID, index int) (Media, error) {
+	p, err := s.news.Get(ctx, postID)
+	if err != nil {
+		return Media{}, errs.Wrap("s.news.Get", err)
+	}
+
+	videos := p.Videos()
+	if index < 0 || index >= len(videos) {
+		return Media{}, fedi.ErrNotFound
+	}
+
+	v := videos[index]
+	if v.Cover != "" {
+		m, err := s.media.Fetch(ctx, v.Cover)
+		return m, errs.Wrap("s.media.Fetch", err)
+	}
+
+	frame, err := s.covers.Get(ctx, postID, v.URL)
+	switch {
+	case errors.Is(err, fedi.ErrNotFound):
+		if frame, err = s.cut(ctx, postID, v.URL); err != nil {
+			return Media{}, err
+		}
+	case err != nil:
+		return Media{}, errs.Wrap("s.covers.Get", err)
+	}
+
+	if len(frame) == 0 {
+		return Media{}, fedi.ErrNotFound
+	}
+
+	return Media{Body: frame, ContentType: "image/jpeg"}, nil
+}
+
+// cut cuts the first frame of a video and keeps it, or that it has none,
+// so that it is cut once.
+func (s *Service) cut(ctx context.Context, postID uuid.UUID, video fedi.URL) ([]byte, error) {
+	frame, err := s.frames.Frame(ctx, video)
+	if err != nil && !errors.Is(err, fedi.ErrNotFound) {
+		return nil, errs.Wrap("s.frames.Frame", err)
+	}
+
+	if err = s.covers.Save(ctx, postID, video, frame); err != nil {
+		return nil, errs.Wrap("s.covers.Save", err)
+	}
+
+	return frame, nil
+}
+
 // Avatar is the photo of an account of another server the site knows,
 // read from its server: only those, so that the site is no proxy of any
 // address.

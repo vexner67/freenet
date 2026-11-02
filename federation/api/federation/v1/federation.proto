@@ -232,6 +232,17 @@ message NewsImage {
   string description = 1;
 }
 
+// A video, shown as its cover, which opens the post on its server.
+message NewsVideo {
+  string description = 1;
+  // A blurred cover, drawn until GetPicture reads the cover.
+  string blurhash = 2;
+  // Zero when the server did not tell.
+  int32 width = 3;
+  int32 height = 4;
+  int32 duration_seconds = 5;
+}
+
 message NewsPost {
   string id = 1;
   // The address of the note.
@@ -250,6 +261,8 @@ message NewsPost {
   google.protobuf.Timestamp published_at = 10;
   // Unset for a post never edited.
   google.protobuf.Timestamp updated_at = 11;
+  // GetPicture reads their covers by their index.
+  repeated NewsVideo videos = 12;
 }
 
 message ListNewsResponse {
@@ -280,6 +293,8 @@ message GetPictureRequest {
   int32 index = 2;
   // Or the photo of an account, by the address of its actor.
   string account_id = 3;
+  // The cover of the video index of the post instead of the image.
+  bool video = 4;
 }
 
 message GetPictureResponse {

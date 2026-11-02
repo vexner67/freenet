@@ -331,6 +331,66 @@ func TestLookupLimit(t *testing.T) {
 	}
 }
 
+func TestVideoCover(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	f := newFixture(t)
+
+	if _, err := f.svc.Subscribe(ctx, uuid.New(), "@anya@m.example"); err != nil {
+		t.Fatalf("Subscribe: %v", err)
+	}
+
+	doc := note("1", "en", f.now)
+	doc.Attachments = []fedi.AttachmentDoc{
+		{URL: "https://m.example/covered.mp4", MediaType: "video/mp4", Cover: "https://m.example/cover.jpg"},
+		{URL: "https://m.example/plain.mp4", MediaType: "video/mp4"},
+		{URL: "https://m.example/broken.mp4", MediaType: "video/mp4"},
+	}
+	f.send(t, fedi.TypeCreate, doc)
+	f.frames.frames["https://m.example/plain.mp4"] = []byte("jpeg")
+	f.frames.fail = errors.New("ffmpeg failed")
+
+	p, err := f.news.ByURI(ctx, "https://m.example/notes/1")
+	if err != nil {
+		t.Fatalf("ByURI: %v", err)
+	}
+
+	if m, err := f.svc.VideoCover(ctx, p.ID(), 0); err != nil || m.ContentType != "image/png" || f.media.fetched != "https://m.example/cover.jpg" {
+		t.Fatalf("cover the author chose = %+v, %v; fetched %s", m, err, f.media.fetched)
+	}
+
+	// A failure is no answer: the next read cuts again.
+	if _, err := f.svc.VideoCover(ctx, p.ID(), 1); !errors.Is(err, f.frames.fail) {
+		t.Fatalf("a failed cut = %v, want its error", err)
+	}
+	f.frames.fail, f.frames.cuts = nil, 0
+
+	for range 2 {
+		if m, err := f.svc.VideoCover(ctx, p.ID(), 1); err != nil || string(m.Body) != "jpeg" || m.ContentType != "image/jpeg" {
+			t.Fatalf("first frame = %+v, %v", m, err)
+		}
+
+		if _, err := f.svc.VideoCover(ctx, p.ID(), 2); !errors.Is(err, fedi.ErrNotFound) {
+			t.Fatalf("a video with no frame = %v, want ErrNotFound", err)
+		}
+	}
+
+	if f.frames.cuts != 2 {
+		t.Errorf("%d cuts, want each video cut once", f.frames.cuts)
+	}
+
+	for _, index := range []int{-1, 3} {
+		if _, err := f.svc.VideoCover(ctx, p.ID(), index); !errors.Is(err, fedi.ErrNotFound) {
+			t.Errorf("VideoCover %d = %v, want ErrNotFound", index, err)
+		}
+	}
+
+	if _, err := f.svc.VideoCover(ctx, uuid.New(), 0); !errors.Is(err, fedi.ErrNotFound) {
+		t.Errorf("a cover of no post = %v, want ErrNotFound", err)
+	}
+}
+
 func TestPictures(t *testing.T) {
 	t.Parallel()
 

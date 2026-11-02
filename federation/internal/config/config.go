@@ -62,6 +62,10 @@ type Config struct {
 	// how often older ones are forgotten.
 	NewsRetention   time.Duration `env:"NEWS_RETENTION" envDefault:"2160h"`
 	CleanupInterval time.Duration `env:"CLEANUP_INTERVAL" envDefault:"1h"`
+	// FFmpegPath is the program that cuts the first frames of videos with
+	// no cover, each within FrameTimeout.
+	FFmpegPath   string        `env:"FFMPEG_PATH" envDefault:"ffmpeg"`
+	FrameTimeout time.Duration `env:"FRAME_TIMEOUT" envDefault:"20s"`
 
 	// Access tokens are issued by the auth service; federation only
 	// verifies them.

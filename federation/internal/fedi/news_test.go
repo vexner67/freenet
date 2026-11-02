@@ -141,6 +141,10 @@ func TestRemotePostContent(t *testing.T) {
 		t.Errorf("images %+v, want the first four pictures", images)
 	}
 
+	if videos := p.Videos(); len(videos) != 1 || videos[0].URL != "https://m.example/v.mp4" {
+		t.Errorf("videos %+v, want the video", videos)
+	}
+
 	edited := publicNote()
 	edited.Text = "edited"
 	edited.Updated = now.Add(-time.Minute)
@@ -153,6 +157,68 @@ func TestRemotePostContent(t *testing.T) {
 	edited.InReplyTo = "https://m.example/notes/0"
 	if _, err = p.Edited(edited, now); !errors.Is(err, fedi.ErrNotForNews) {
 		t.Errorf("an edit into a reply = %v, want ErrNotForNews", err)
+	}
+}
+
+func TestRemotePost_Videos(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)
+	video := fedi.AttachmentDoc{
+		URL: "https://m.example/v.mp4", MediaType: "video/mp4", Description: " cat ",
+		Cover: "https://m.example/cover.jpg", Blurhash: "LEHV6nWB2yk8pyo0adR*.7kCMdnj",
+		Width: 1280, Height: 720, Duration: 84 * time.Second,
+	}
+
+	tests := []struct {
+		name string
+		edit func(d *fedi.AttachmentDoc)
+		want fedi.Video
+	}{
+		{
+			name: "everything told",
+			edit: func(*fedi.AttachmentDoc) {},
+			want: fedi.Video{
+				URL: "https://m.example/v.mp4", Cover: "https://m.example/cover.jpg", Description: "cat",
+				Blurhash: "LEHV6nWB2yk8pyo0adR*.7kCMdnj", Width: 1280, Height: 720, Duration: 84 * time.Second,
+			},
+		},
+		{
+			name: "nothing sound but the video",
+			edit: func(d *fedi.AttachmentDoc) {
+				d.Cover, d.Blurhash, d.Width, d.Height, d.Duration = "http://m.example/c.jpg", "LEHV6nWB2yk8pyo0adR*.7kCMdn", 20000, 720, -time.Second
+			},
+			want: fedi.Video{URL: "https://m.example/v.mp4", Description: "cat"},
+		},
+		{
+			name: "a blurhash of a strange character",
+			edit: func(d *fedi.AttachmentDoc) { d.Blurhash = "LEHV6nWB2yk8pyo0adR*.7kCMd\\" },
+			want: fedi.Video{
+				URL: "https://m.example/v.mp4", Cover: "https://m.example/cover.jpg", Description: "cat",
+				Width: 1280, Height: 720, Duration: 84 * time.Second,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			doc := publicNote()
+			doc.Text = ""
+			v := video
+			tt.edit(&v)
+			doc.Attachments = []fedi.AttachmentDoc{v}
+
+			p, err := fedi.NewRemotePost(doc, ann, now)
+			if err != nil {
+				t.Fatalf("NewRemotePost: %v, want a post of a video alone", err)
+			}
+
+			if videos := p.Videos(); len(videos) != 1 || videos[0] != tt.want {
+				t.Errorf("videos %+v, want %+v", videos, tt.want)
+			}
+		})
 	}
 }
 

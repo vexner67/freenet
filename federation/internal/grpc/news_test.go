@@ -19,13 +19,24 @@ import (
 type newsFake struct {
 	fake
 
-	query service.NewsQuery
-	posts []service.NewsPost
+	query   service.NewsQuery
+	posts   []service.NewsPost
+	picture string
 }
 
 func (f *newsFake) News(_ context.Context, q service.NewsQuery) ([]service.NewsPost, error) {
 	f.query = q
 	return f.posts, f.err
+}
+
+func (f *newsFake) Picture(_ context.Context, _ uuid.UUID, index int) (service.Media, error) {
+	f.picture = fmt.Sprintf("picture %d", index)
+	return service.Media{Body: []byte("png"), ContentType: "image/png"}, f.err
+}
+
+func (f *newsFake) VideoCover(_ context.Context, _ uuid.UUID, index int) (service.Media, error) {
+	f.picture = fmt.Sprintf("cover %d", index)
+	return service.Media{Body: []byte("jpeg"), ContentType: "image/jpeg"}, f.err
 }
 
 func (f *newsFake) Subscribe(context.Context, uuid.UUID, string) (service.Account, error) {
@@ -51,6 +62,8 @@ func TestListNews(t *testing.T) {
 	published := time.Date(2026, 11, 1, 10, 0, 0, 0, time.UTC)
 	post := fedi.RestoreRemotePost(uuid.New(), "https://m.example/notes/1", author.ID(), "", "hello", "", []fedi.Image{
 		{URL: "https://m.example/1.png", Description: "a cat"},
+	}, []fedi.Video{
+		{URL: "https://m.example/v.mp4", Blurhash: "LEHV6nWB2yk8pyo0adR*.7kCMdnj", Width: 1280, Height: 720, Duration: 84600 * time.Millisecond, Description: "a dog"},
 	}, false, "en", published, time.Time{})
 
 	reader := uuid.New()
@@ -78,6 +91,11 @@ func TestListNews(t *testing.T) {
 		!got.GetAuthor().GetHasAvatar() || got.GetImages()[0].GetDescription() != "a cat" || got.GetUpdatedAt() != nil ||
 		!got.GetPublishedAt().AsTime().Equal(published) {
 		t.Errorf("post = %+v", got)
+	}
+
+	if v := got.GetVideos(); len(v) != 1 || v[0].GetBlurhash() != "LEHV6nWB2yk8pyo0adR*.7kCMdnj" || v[0].GetWidth() != 1280 ||
+		v[0].GetHeight() != 720 || v[0].GetDurationSeconds() != 85 || v[0].GetDescription() != "a dog" {
+		t.Errorf("videos = %+v", v)
 	}
 
 	for name, req := range map[string]*federationv1.ListNewsRequest{
@@ -126,6 +144,30 @@ func TestNewsErrors(t *testing.T) {
 			st, _ := status.FromError(err)
 			if st.Code() != tt.code || st.Message() != tt.msg {
 				t.Errorf("status = %v %q, want %v %q", st.Code(), st.Message(), tt.code, tt.msg)
+			}
+		})
+	}
+}
+
+func TestGetPicture(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		req  *federationv1.GetPictureRequest
+		want string
+	}{
+		{"image", &federationv1.GetPictureRequest{PostId: uuid.NewString(), Index: 1}, "picture 1"},
+		{"cover of a video", &federationv1.GetPictureRequest{PostId: uuid.NewString(), Index: 2, Video: true}, "cover 2"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			f := &newsFake{}
+			if _, err := newsHandler(t, f).GetPicture(context.Background(), tt.req); err != nil || f.picture != tt.want {
+				t.Fatalf("GetPicture read %q, %v; want %q", f.picture, err, tt.want)
 			}
 		})
 	}

@@ -16,6 +16,9 @@ const (
 	maxRemoteTextLen = 60000
 	maxSummaryLen    = 500
 	maxImages        = 4
+	maxVideos        = 4
+	maxVideoSide     = 10000
+	maxVideoDuration = 24 * time.Hour
 	maxDescription   = 1500
 	maxLanguageLen   = 8
 )
@@ -47,11 +50,32 @@ type AttachmentDoc struct {
 	URL         string
 	MediaType   string
 	Description string
+	// Cover is the picture the author chose for a video.
+	Cover    string
+	Blurhash string
+	Width    int
+	Height   int
+	Duration time.Duration
 }
 
 // Image is a picture of a remote post, on its server.
 type Image struct {
 	URL         URL
+	Description string
+}
+
+// Video is a video of a remote post, on its server. The site shows its
+// cover, which opens the post on its server.
+type Video struct {
+	URL URL
+	// Cover is the picture its author chose for it; without one the site
+	// cuts the first frame.
+	Cover URL
+	// Blurhash is a blurred cover, drawn until the cover is read.
+	Blurhash    string
+	Width       int
+	Height      int
+	Duration    time.Duration
 	Description string
 }
 
@@ -66,6 +90,7 @@ type RemotePost struct {
 	text      string
 	summary   string
 	images    []Image
+	videos    []Video
 	sensitive bool
 	language  string
 	published time.Time
@@ -126,13 +151,14 @@ func (p *RemotePost) fill(doc NoteDoc, now time.Time) error {
 	p.sensitive = doc.Sensitive || p.summary != ""
 	p.language = language(doc.Language)
 	p.images = images(doc.Attachments)
+	p.videos = videos(doc.Attachments)
 
 	p.page = ""
 	if page, err := NewURL(doc.URL); err == nil {
 		p.page = page
 	}
 
-	if p.text == "" && len(p.images) == 0 {
+	if p.text == "" && len(p.images) == 0 && len(p.videos) == 0 {
 		return ErrNotForNews
 	}
 
@@ -157,6 +183,54 @@ func images(docs []AttachmentDoc) []Image {
 	}
 
 	return out
+}
+
+// videos are the videos among the attachments, at most four.
+func videos(docs []AttachmentDoc) []Video {
+	var out []Video
+
+	for _, d := range docs {
+		u, err := NewURL(d.URL)
+		if err != nil || !strings.HasPrefix(d.MediaType, "video/") {
+			continue
+		}
+
+		v := Video{URL: u, Description: cut(strings.TrimSpace(d.Description), maxDescription)}
+		if cover, err := NewURL(d.Cover); err == nil {
+			v.Cover = cover
+		}
+		if validBlurhash(d.Blurhash) {
+			v.Blurhash = d.Blurhash
+		}
+		if d.Width > 0 && d.Width <= maxVideoSide && d.Height > 0 && d.Height <= maxVideoSide {
+			v.Width, v.Height = d.Width, d.Height
+		}
+		if d.Duration > 0 && d.Duration <= maxVideoDuration {
+			v.Duration = d.Duration
+		}
+
+		out = append(out, v)
+		if len(out) == maxVideos {
+			break
+		}
+	}
+
+	return out
+}
+
+const base83 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~"
+
+// validBlurhash: s is a blurhash a browser can draw. Its first character
+// tells how many components follow, and so its length.
+func validBlurhash(s string) bool {
+	if len(s) < 6 || strings.Trim(s, base83) != "" {
+		return false
+	}
+
+	size := strings.IndexByte(base83, s[0])
+	x, y := size%9+1, size/9+1
+
+	return len(s) == 4+2*x*y
 }
 
 // language is the primary language tag of a note: "ru" of "ru-RU".
@@ -187,9 +261,9 @@ func idAt(t time.Time) (uuid.UUID, error) {
 	return id, nil
 }
 
-func RestoreRemotePost(id uuid.UUID, uri, actor, page URL, text, summary string, images []Image, sensitive bool, language string, published, updated time.Time) *RemotePost {
+func RestoreRemotePost(id uuid.UUID, uri, actor, page URL, text, summary string, images []Image, videos []Video, sensitive bool, language string, published, updated time.Time) *RemotePost {
 	return &RemotePost{
-		id: id, uri: uri, actor: actor, page: page, text: text, summary: summary, images: images,
+		id: id, uri: uri, actor: actor, page: page, text: text, summary: summary, images: images, videos: videos,
 		sensitive: sensitive, language: language, published: published, updated: updated,
 	}
 }
@@ -200,6 +274,7 @@ func (p *RemotePost) Actor() URL           { return p.actor }
 func (p *RemotePost) Text() string         { return p.text }
 func (p *RemotePost) Summary() string      { return p.summary }
 func (p *RemotePost) Images() []Image      { return slices.Clone(p.images) }
+func (p *RemotePost) Videos() []Video      { return slices.Clone(p.videos) }
 func (p *RemotePost) Sensitive() bool      { return p.sensitive }
 func (p *RemotePost) Language() string     { return p.language }
 func (p *RemotePost) Published() time.Time { return p.published }
