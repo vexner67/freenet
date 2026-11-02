@@ -33,6 +33,8 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, fedi.ErrInvalidAddress.Error()), true
 	case errors.Is(err, fedi.ErrTooManyLookups):
 		return status.New(codes.ResourceExhausted, fedi.ErrTooManyLookups.Error()), true
+	case errors.Is(err, fedi.ErrTooManyLikes):
+		return status.New(codes.ResourceExhausted, fedi.ErrTooManyLikes.Error()), true
 	case errors.Is(err, fedi.ErrTooManySubscriptions):
 		return status.New(codes.FailedPrecondition, fedi.ErrTooManySubscriptions.Error()), true
 	case errors.Is(err, fedi.ErrNotFound), errors.Is(err, fedi.ErrNotFederated):

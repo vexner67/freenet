@@ -276,6 +276,7 @@ func newFixture(t *testing.T) *fixture {
 		Finder:        f.finder,
 		Media:         f.media,
 		Covers:        inmem.NewCoverRepository(f.news),
+		Likes:         inmem.NewLikeRepository(f.news),
 		Frames:        f.frames,
 		Channels:      f.channels,
 		Languages:     []string{"ru", "en"},

@@ -157,6 +157,8 @@ type RemotePostRepository interface {
 	Delete(ctx context.Context, uri fedi.URL) error
 	DeleteActor(ctx context.Context, actor fedi.URL) error
 	List(ctx context.Context, q NewsQuery) ([]*fedi.RemotePost, error)
+	// URIsOf are the notes kept of actor.
+	URIsOf(ctx context.Context, actor fedi.URL) ([]fedi.URL, error)
 	// DeleteBefore forgets the notes published before t, telling how many.
 	DeleteBefore(ctx context.Context, t time.Time) (int, error)
 }
@@ -197,4 +199,30 @@ type Framer interface {
 // no such channel is fedi.ErrNotFound.
 type Channels interface {
 	Channel(ctx context.Context, name string) (fedi.ChannelDoc, error)
+}
+
+// Liker is a like of a remote post: its ID, a UUIDv7, is the cursor of
+// the likers.
+type Liker struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+// Likes are how many like a remote post, and whether the reader does.
+type Likes struct {
+	Count int
+	Liked bool
+}
+
+// LikeRepository keeps who here like remote posts; the likes go with
+// their post. Add of a like already there is fine, as is Remove of one
+// gone.
+type LikeRepository interface {
+	Add(ctx context.Context, postID uuid.UUID, l Liker, now time.Time) error
+	Remove(ctx context.Context, postID, userID uuid.UUID) error
+	// Of are the likes of each of posts, those liked by none left out.
+	Of(ctx context.Context, postIDs []uuid.UUID, reader uuid.UUID) (map[uuid.UUID]Likes, error)
+	// Likers are who like a post, the latest first; with before, those
+	// who liked it before that like.
+	Likers(ctx context.Context, postID, before uuid.UUID, limit int) ([]Liker, error)
 }

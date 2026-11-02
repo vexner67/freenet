@@ -31,10 +31,11 @@ type Account struct {
 	Accepted bool
 }
 
-// NewsPost is a remote post with its author.
+// NewsPost is a remote post with its author and its likes here.
 type NewsPost struct {
 	Post   *fedi.RemotePost
 	Author *fedi.Remote
+	Likes  Likes
 }
 
 // site is the account of the site itself, made the first time it is
@@ -430,6 +431,24 @@ func (s *Service) News(ctx context.Context, q NewsQuery) ([]NewsPost, error) {
 		out = append(out, NewsPost{Post: p, Author: author})
 	}
 
+	if len(out) == 0 {
+		return out, nil
+	}
+
+	ids := make([]uuid.UUID, len(out))
+	for i, p := range out {
+		ids[i] = p.Post.ID()
+	}
+
+	likes, err := s.likes.Of(ctx, ids, q.Reader)
+	if err != nil {
+		return nil, errs.Wrap("s.likes.Of", err)
+	}
+
+	for i := range out {
+		out[i].Likes = likes[out[i].Post.ID()]
+	}
+
 	return out, nil
 }
 
@@ -446,6 +465,22 @@ func (s *Service) Picture(ctx context.Context, postID uuid.UUID, index int) (Med
 	}
 
 	m, err := s.media.Fetch(ctx, images[index].URL)
+	return m, errs.Wrap("s.media.Fetch", err)
+}
+
+// LinkPicture is the picture of the card of the page a remote post links
+// to, read from the server of the post.
+func (s *Service) LinkPicture(ctx context.Context, postID uuid.UUID) (Media, error) {
+	p, err := s.news.Get(ctx, postID)
+	if err != nil {
+		return Media{}, errs.Wrap("s.news.Get", err)
+	}
+
+	if p.Link().Image == "" {
+		return Media{}, fedi.ErrNotFound
+	}
+
+	m, err := s.media.Fetch(ctx, p.Link().Image)
 	return m, errs.Wrap("s.media.Fetch", err)
 }
 

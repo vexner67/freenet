@@ -3,6 +3,7 @@ package inmem
 import (
 	"cmp"
 	"context"
+	"errors"
 	"slices"
 	"sync"
 	"time"
@@ -219,7 +220,7 @@ func (r *RemotePostRepository) Save(_ context.Context, p *fedi.RemotePost) error
 	if i := slices.IndexFunc(r.posts, func(q fedi.RemotePost) bool { return q.URI() == p.URI() }); i >= 0 {
 		kept := r.posts[i]
 		r.posts[i] = *fedi.RestoreRemotePost(kept.ID(), p.URI(), kept.Actor(), p.Page(), p.Text(), p.Summary(), p.Images(), p.Videos(),
-			p.Sensitive(), p.Language(), kept.Published(), p.Updated())
+			p.Sensitive(), p.Language(), kept.Published(), p.Updated()).WithLink(p.Link())
 		return nil
 	}
 
@@ -276,6 +277,20 @@ func (r *RemotePostRepository) List(_ context.Context, q service.NewsQuery) ([]*
 	return out, nil
 }
 
+func (r *RemotePostRepository) URIsOf(_ context.Context, actor fedi.URL) ([]fedi.URL, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var out []fedi.URL
+	for _, p := range r.posts {
+		if p.Actor() == actor {
+			out = append(out, p.URI())
+		}
+	}
+
+	return out, nil
+}
+
 func (r *RemotePostRepository) DeleteBefore(_ context.Context, t time.Time) (int, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -326,4 +341,92 @@ func (r *CoverRepository) Save(_ context.Context, postID uuid.UUID, video fedi.U
 	r.frames[coverKey{postID, video}] = slices.Clone(frame)
 
 	return nil
+}
+
+type likeKey struct {
+	postID uuid.UUID
+	userID uuid.UUID
+}
+
+// LikeRepository keeps the likes of remote posts; those of a post the
+// posts no longer keep are gone, as in PostgreSQL.
+type LikeRepository struct {
+	mu    sync.Mutex
+	likes map[likeKey]service.Liker
+	posts *RemotePostRepository
+}
+
+func NewLikeRepository(posts *RemotePostRepository) *LikeRepository {
+	return &LikeRepository{likes: map[likeKey]service.Liker{}, posts: posts}
+}
+
+func (r *LikeRepository) Add(ctx context.Context, postID uuid.UUID, l service.Liker, _ time.Time) error {
+	if _, err := r.posts.Get(ctx, postID); err != nil {
+		return err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	key := likeKey{postID, l.UserID}
+	if _, ok := r.likes[key]; !ok {
+		r.likes[key] = l
+	}
+
+	return nil
+}
+
+func (r *LikeRepository) Remove(_ context.Context, postID, userID uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	delete(r.likes, likeKey{postID, userID})
+
+	return nil
+}
+
+func (r *LikeRepository) Of(ctx context.Context, postIDs []uuid.UUID, reader uuid.UUID) (map[uuid.UUID]service.Likes, error) {
+	out := map[uuid.UUID]service.Likes{}
+
+	for _, id := range postIDs {
+		likers, err := r.Likers(ctx, id, uuid.Nil, 0)
+		if err != nil {
+			return nil, err
+		}
+		if len(likers) == 0 {
+			continue
+		}
+
+		likes := service.Likes{Count: len(likers)}
+		for _, l := range likers {
+			likes.Liked = likes.Liked || l.UserID == reader
+		}
+		out[id] = likes
+	}
+
+	return out, nil
+}
+
+// Likers with limit 0 are all of them.
+func (r *LikeRepository) Likers(ctx context.Context, postID, before uuid.UUID, limit int) ([]service.Liker, error) {
+	// The likes of a post gone are gone.
+	if _, err := r.posts.Get(ctx, postID); errors.Is(err, fedi.ErrNotFound) {
+		return nil, nil
+	}
+
+	r.mu.Lock()
+	var likers []service.Liker
+	for key, l := range r.likes {
+		if key.postID == postID && (before == uuid.Nil || l.ID.String() < before.String()) {
+			likers = append(likers, l)
+		}
+	}
+	r.mu.Unlock()
+
+	slices.SortFunc(likers, func(a, b service.Liker) int { return cmp.Compare(b.ID.String(), a.ID.String()) })
+	if limit > 0 && len(likers) > limit {
+		likers = likers[:limit]
+	}
+
+	return likers, nil
 }

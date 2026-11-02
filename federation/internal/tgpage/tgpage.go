@@ -93,7 +93,27 @@ func message(m *html.Node, actor fedi.URL) (fedi.NoteDoc, bool) {
 		note.Attachments = append(note.Attachments, video(v, id))
 	}
 
+	if preview := find(m, withClass("tgme_widget_message_link_preview")); preview != nil {
+		note.Link = card(preview)
+	}
+
 	return note, true
+}
+
+// card is the card Telegram made of the page a post links to.
+func card(n *html.Node) fedi.LinkDoc {
+	image := find(n, withClass("link_preview_image"))
+	if image == nil {
+		image = find(n, withClass("link_preview_right_image"))
+	}
+
+	return fedi.LinkDoc{
+		URL:         attr(n, "href"),
+		Site:        tidy(text(find(n, withClass("link_preview_site_name")))),
+		Title:       tidy(text(find(n, withClass("link_preview_title")))),
+		Description: tidy(text(find(n, withClass("link_preview_description")))),
+		Image:       background(image),
+	}
 }
 
 // video is a video of a post: its cover, its shape and how long it
@@ -173,6 +193,9 @@ func plain(n *html.Node) string {
 			b.WriteString(n.Data)
 		case n.Type == html.ElementNode && n.Data == "br":
 			b.WriteString("\n")
+		case n.Type == html.ElementNode && n.Data == "a":
+			b.WriteString(linkText(n))
+			return
 		}
 
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
@@ -182,6 +205,34 @@ func plain(n *html.Node) string {
 	walk(n)
 
 	return tidy(b.String())
+}
+
+// linkText is a link of a post as plain text, its address there for the
+// site to make it a link again: the address alone when the link shows
+// it, after the words otherwise ("за день (https://…)"). Mentions,
+// hashtags and links of Telegram's own stay words.
+func linkText(a *html.Node) string {
+	words := text(a)
+	href := attr(a, "href")
+
+	if !strings.HasPrefix(href, "https://") && !strings.HasPrefix(href, "http://") ||
+		strings.HasPrefix(strings.TrimSpace(words), "@") || strings.HasPrefix(strings.TrimSpace(words), "#") {
+		return words
+	}
+
+	// Words with no dot are no address, though "me" begins "meduza.io".
+	shown := bare(strings.TrimRight(strings.TrimSpace(words), "…."))
+	if shown == "" || strings.Contains(shown, ".") && strings.HasPrefix(bare(href), shown) {
+		return href
+	}
+
+	return words + " (" + href + ")"
+}
+
+// bare is an address without its scheme and "www.".
+func bare(s string) string {
+	s = strings.TrimPrefix(strings.TrimPrefix(s, "https://"), "http://")
+	return strings.TrimPrefix(s, "www.")
 }
 
 // tidy drops the spaces at the ends of lines and more than one empty

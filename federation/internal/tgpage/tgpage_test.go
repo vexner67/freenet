@@ -38,8 +38,19 @@ func TestParse(t *testing.T) {
 	if want := time.Date(2026, 11, 2, 16, 1, 8, 0, time.UTC); !first.Published.Equal(want) {
 		t.Errorf("published = %v, want %v", first.Published, want)
 	}
-	if want := "Главное за день\n\nВторая строка 🔥"; first.Text != want {
+	if want := "Главное за день (https://bit.ly/x) https://www.meduza.io/x @meduzalive #news\n\nВторая строка 🔥"; first.Text != want {
 		t.Errorf("text = %q, want %q", first.Text, want)
+	}
+
+	card := fedi.LinkDoc{
+		URL: "https://example.com/news", Site: "Example", Title: "Новость дня", Description: "Что случилось",
+		Image: "https://cdn4.telesco.pe/file/preview.jpg",
+	}
+	if first.Link != card {
+		t.Errorf("link = %+v, want %+v", first.Link, card)
+	}
+	if doc.Posts[1].Link != (fedi.LinkDoc{}) {
+		t.Errorf("a post with no card has %+v", doc.Posts[1].Link)
 	}
 
 	photos := []fedi.AttachmentDoc{

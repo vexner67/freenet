@@ -123,3 +123,68 @@ func TestLookupChannel(t *testing.T) {
 		t.Fatalf("Lookup of a page of another channel: %v", err)
 	}
 }
+
+func TestReadChannelsDeleted(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	f := newFixture(t)
+	// Later posts have greater numbers.
+	at := func(minutes int) time.Time { return f.now.Add(time.Duration(minutes-60) * time.Minute) }
+	f.meduzaPage(channelPost("1", "first", at(1)), channelPost("2", "second", at(2)), channelPost("3", "third", at(3)))
+
+	if _, err := f.svc.Subscribe(ctx, f.user, "@meduzalive"); err != nil {
+		t.Fatalf("Subscribe: %v", err)
+	}
+
+	// 2 and 3 deleted in the channel, 1 just out of sight of the page.
+	f.meduzaPage(channelPost("4", "fourth", at(4)), channelPost("5", "fifth", at(5)))
+	if _, err := f.svc.ReadChannels(ctx); err != nil {
+		t.Fatalf("ReadChannels: %v", err)
+	}
+
+	f.meduzaPage(channelPost("1", "first", at(1)), channelPost("5", "fifth", at(5)))
+	if _, err := f.svc.ReadChannels(ctx); err != nil {
+		t.Fatalf("ReadChannels: %v", err)
+	}
+
+	if texts := f.newsTexts(t, service.NewsQuery{Reader: f.user}); len(texts) != 2 || texts[0] != "fifth" || texts[1] != "first" {
+		t.Fatalf("news = %v, want 2, 3 and 4 deleted", texts)
+	}
+}
+
+func TestLinkPicture(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	f := newFixture(t)
+
+	post := channelPost("1", "news", f.now.Add(-time.Hour))
+	post.Link = fedi.LinkDoc{URL: "https://meduza.io/news/1", Title: "Новость", Image: "https://cdn4.telesco.pe/file/card.jpg"}
+	bare := channelPost("2", "no picture", f.now.Add(-time.Minute))
+	bare.Link = fedi.LinkDoc{URL: "https://meduza.io/news/2", Title: "Новость"}
+	f.meduzaPage(post, bare)
+
+	if _, err := f.svc.Subscribe(ctx, f.user, "@meduzalive"); err != nil {
+		t.Fatalf("Subscribe: %v", err)
+	}
+
+	withPicture, err := f.news.ByURI(ctx, "https://t.me/meduzalive/1")
+	if err != nil {
+		t.Fatalf("ByURI: %v", err)
+	}
+
+	m, err := f.svc.LinkPicture(ctx, withPicture.ID())
+	if err != nil || m.ContentType != "image/png" || f.media.fetched != "https://cdn4.telesco.pe/file/card.jpg" {
+		t.Fatalf("LinkPicture = %+v, %v; fetched %s", m, err, f.media.fetched)
+	}
+
+	without, err := f.news.ByURI(ctx, "https://t.me/meduzalive/2")
+	if err != nil {
+		t.Fatalf("ByURI: %v", err)
+	}
+
+	if _, err = f.svc.LinkPicture(ctx, without.ID()); !errors.Is(err, fedi.ErrNotFound) {
+		t.Fatalf("LinkPicture of a card with no picture = %v", err)
+	}
+}

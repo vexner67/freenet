@@ -13,8 +13,12 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-// maxNews is the most remote posts one ListNews gives.
-const maxNews = 100
+// maxNews is the most remote posts one ListNews gives, maxLikers the
+// most likers one ListNewsLikers gives.
+const (
+	maxNews   = 100
+	maxLikers = 100
+)
 
 type NewsService interface {
 	SiteActor(ctx context.Context) (fedi.Person, error)
@@ -28,7 +32,11 @@ type NewsService interface {
 	Unfeature(ctx context.Context, actor fedi.URL) error
 	Picture(ctx context.Context, postID uuid.UUID, index int) (service.Media, error)
 	VideoCover(ctx context.Context, postID uuid.UUID, index int) (service.Media, error)
+	LinkPicture(ctx context.Context, postID uuid.UUID) (service.Media, error)
 	Avatar(ctx context.Context, actor fedi.URL) (service.Media, error)
+	Like(ctx context.Context, userID, postID uuid.UUID) (int, error)
+	Unlike(ctx context.Context, userID, postID uuid.UUID) (int, error)
+	Likers(ctx context.Context, postID, before uuid.UUID, limit int) (service.LikerPage, error)
 }
 
 func (h *FederationHandler) GetSiteActor(ctx context.Context, _ *federationv1.GetSiteActorRequest) (*federationv1.GetSiteActorResponse, error) {
@@ -130,6 +138,81 @@ func (h *FederationHandler) ListNews(ctx context.Context, req *federationv1.List
 	return &federationv1.ListNewsResponse{Posts: out}, nil
 }
 
+func (h *FederationHandler) LikeNews(ctx context.Context, req *federationv1.LikeNewsRequest) (*federationv1.LikeNewsResponse, error) {
+	likes, err := h.setLike(ctx, req.GetPostId(), h.news.Like)
+	if err != nil {
+		return nil, err
+	}
+
+	return &federationv1.LikeNewsResponse{Likes: likes}, nil
+}
+
+func (h *FederationHandler) UnlikeNews(ctx context.Context, req *federationv1.UnlikeNewsRequest) (*federationv1.UnlikeNewsResponse, error) {
+	likes, err := h.setLike(ctx, req.GetPostId(), h.news.Unlike)
+	if err != nil {
+		return nil, err
+	}
+
+	return &federationv1.UnlikeNewsResponse{Likes: likes}, nil
+}
+
+func (h *FederationHandler) setLike(
+	ctx context.Context, id string, set func(ctx context.Context, userID, postID uuid.UUID) (int, error),
+) (int32, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	postID, err := parseID(id, "post id")
+	if err != nil {
+		return 0, err
+	}
+
+	likes, err := set(ctx, userID, postID)
+	if err != nil {
+		return 0, err
+	}
+
+	return int32(likes), nil //nolint:gosec // one like a person
+}
+
+func (h *FederationHandler) ListNewsLikers(ctx context.Context, req *federationv1.ListNewsLikersRequest) (*federationv1.ListNewsLikersResponse, error) {
+	postID, err := parseID(req.GetPostId(), "post id")
+	if err != nil {
+		return nil, err
+	}
+
+	if req.GetLimit() < 1 || req.GetLimit() > maxLikers {
+		return nil, status.Error(codes.InvalidArgument, "invalid limit")
+	}
+
+	before := uuid.Nil
+	if req.GetCursor() != "" {
+		if before, err = parseID(req.GetCursor(), "cursor"); err != nil {
+			return nil, err
+		}
+	}
+
+	page, err := h.news.Likers(ctx, postID, before, int(req.GetLimit()))
+	if err != nil {
+		return nil, err
+	}
+
+	out := &federationv1.ListNewsLikersResponse{
+		UserIds: make([]string, len(page.UserIDs)),
+		Total:   int32(page.Total), //nolint:gosec // one like a person
+	}
+	for i, id := range page.UserIDs {
+		out.UserIds[i] = id.String()
+	}
+	if page.Next != uuid.Nil {
+		out.NextCursor = page.Next.String()
+	}
+
+	return out, nil
+}
+
 func (h *FederationHandler) ListFeatured(ctx context.Context, _ *federationv1.ListFeaturedRequest) (*federationv1.ListFeaturedResponse, error) {
 	accounts, err := h.news.Featured(ctx)
 	if err != nil {
@@ -187,6 +270,10 @@ func (h *FederationHandler) picture(ctx context.Context, req *federationv1.GetPi
 
 	if req.GetVideo() {
 		return h.news.VideoCover(ctx, postID, int(req.GetIndex()))
+	}
+
+	if req.GetLink() {
+		return h.news.LinkPicture(ctx, postID)
 	}
 
 	return h.news.Picture(ctx, postID, int(req.GetIndex()))

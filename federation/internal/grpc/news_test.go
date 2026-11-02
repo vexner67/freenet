@@ -22,6 +22,29 @@ type newsFake struct {
 	query   service.NewsQuery
 	posts   []service.NewsPost
 	picture string
+	liked   map[uuid.UUID]bool
+	likers  service.LikerPage
+	before  uuid.UUID
+}
+
+func (f *newsFake) LinkPicture(context.Context, uuid.UUID) (service.Media, error) {
+	f.picture = "card"
+	return service.Media{Body: []byte("jpeg"), ContentType: "image/jpeg"}, f.err
+}
+
+func (f *newsFake) Like(_ context.Context, userID, _ uuid.UUID) (int, error) {
+	f.liked[userID] = true
+	return len(f.liked), f.err
+}
+
+func (f *newsFake) Unlike(_ context.Context, userID, _ uuid.UUID) (int, error) {
+	delete(f.liked, userID)
+	return len(f.liked), f.err
+}
+
+func (f *newsFake) Likers(_ context.Context, _, before uuid.UUID, _ int) (service.LikerPage, error) {
+	f.before = before
+	return f.likers, f.err
 }
 
 func (f *newsFake) News(_ context.Context, q service.NewsQuery) ([]service.NewsPost, error) {
@@ -70,7 +93,8 @@ func TestListNews(t *testing.T) {
 	before := uuid.New()
 	ctx := jwtauth.ContextWithIdentity(context.Background(), jwtauth.Identity{UserID: reader})
 
-	f := &newsFake{posts: []service.NewsPost{{Post: post, Author: author}}}
+	post = post.WithLink(fedi.Link{URL: "https://meduza.io/1", Site: "Meduza", Title: "News", Image: "https://cdn4.telesco.pe/c.jpg"})
+	f := &newsFake{posts: []service.NewsPost{{Post: post, Author: author, Likes: service.Likes{Count: 3, Liked: true}}}}
 	h := newsHandler(t, f)
 
 	resp, err := h.ListNews(ctx, &federationv1.ListNewsRequest{
@@ -91,6 +115,14 @@ func TestListNews(t *testing.T) {
 		!got.GetAuthor().GetHasAvatar() || got.GetAuthor().GetTelegram() || got.GetImages()[0].GetDescription() != "a cat" || got.GetUpdatedAt() != nil ||
 		!got.GetPublishedAt().AsTime().Equal(published) {
 		t.Errorf("post = %+v", got)
+	}
+
+	if got.GetLikes() != 3 || !got.GetLiked() {
+		t.Errorf("likes = %d, liked %v", got.GetLikes(), got.GetLiked())
+	}
+
+	if l := got.GetLink(); l.GetUrl() != "https://meduza.io/1" || l.GetSite() != "Meduza" || l.GetTitle() != "News" || !l.GetHasImage() {
+		t.Errorf("link = %+v", l)
 	}
 
 	if v := got.GetVideos(); len(v) != 1 || v[0].GetBlurhash() != "LEHV6nWB2yk8pyo0adR*.7kCMdnj" || v[0].GetWidth() != 1280 ||
@@ -130,6 +162,7 @@ func TestNewsErrors(t *testing.T) {
 		{"not found", fmt.Errorf("%w: %w", fedi.ErrAccountNotFound, fedi.ErrGone), codes.NotFound, "fediverse account not found"},
 		{"too many lookups", fedi.ErrTooManyLookups, codes.ResourceExhausted, "too many fediverse lookups"},
 		{"too many", fedi.ErrTooManySubscriptions, codes.FailedPrecondition, "too many fediverse subscriptions"},
+		{"too many likes", fedi.ErrTooManyLikes, codes.ResourceExhausted, "too many likes"},
 	}
 
 	for _, tt := range tests {
@@ -159,6 +192,7 @@ func TestGetPicture(t *testing.T) {
 	}{
 		{"image", &federationv1.GetPictureRequest{PostId: uuid.NewString(), Index: 1}, "picture 1"},
 		{"cover of a video", &federationv1.GetPictureRequest{PostId: uuid.NewString(), Index: 2, Video: true}, "cover 2"},
+		{"picture of the card", &federationv1.GetPictureRequest{PostId: uuid.NewString(), Link: true}, "card"},
 	}
 
 	for _, tt := range tests {
@@ -194,5 +228,64 @@ func TestChannelAccount(t *testing.T) {
 	a := resp.GetPosts()[0].GetAuthor()
 	if !a.GetTelegram() || a.GetHandle() != "@meduzalive" || a.GetPageUrl() != "https://t.me/meduzalive" {
 		t.Fatalf("author = %+v, want the channel", a)
+	}
+}
+
+func TestLikeNews(t *testing.T) {
+	t.Parallel()
+
+	reader := uuid.New()
+	ctx := jwtauth.ContextWithIdentity(context.Background(), jwtauth.Identity{UserID: reader})
+	f := &newsFake{liked: map[uuid.UUID]bool{uuid.New(): true}}
+	h := newsHandler(t, f)
+	postID := uuid.NewString()
+
+	liked, err := h.LikeNews(ctx, &federationv1.LikeNewsRequest{PostId: postID})
+	if err != nil || liked.GetLikes() != 2 || !f.liked[reader] {
+		t.Fatalf("LikeNews = %v, %v; liked by %v", liked, err, f.liked)
+	}
+
+	unliked, err := h.UnlikeNews(ctx, &federationv1.UnlikeNewsRequest{PostId: postID})
+	if err != nil || unliked.GetLikes() != 1 || f.liked[reader] {
+		t.Fatalf("UnlikeNews = %v, %v", unliked, err)
+	}
+
+	if _, err = h.LikeNews(ctx, &federationv1.LikeNewsRequest{PostId: "x"}); status.Code(err) != codes.InvalidArgument {
+		t.Errorf("a bad post id: code %v", status.Code(err))
+	}
+	if _, err = h.LikeNews(context.Background(), &federationv1.LikeNewsRequest{PostId: postID}); status.Code(err) != codes.Unauthenticated {
+		t.Errorf("without a token: code %v", status.Code(err))
+	}
+}
+
+func TestListNewsLikers(t *testing.T) {
+	t.Parallel()
+
+	liker, next, cursor := uuid.New(), uuid.New(), uuid.New()
+	f := &newsFake{likers: service.LikerPage{UserIDs: []uuid.UUID{liker}, Next: next, Total: 7}}
+	h := newsHandler(t, f)
+	ctx := context.Background()
+
+	resp, err := h.ListNewsLikers(ctx, &federationv1.ListNewsLikersRequest{PostId: uuid.NewString(), Cursor: cursor.String(), Limit: 6})
+	if err != nil || len(resp.GetUserIds()) != 1 || resp.GetUserIds()[0] != liker.String() || resp.GetNextCursor() != next.String() ||
+		resp.GetTotal() != 7 || f.before != cursor {
+		t.Fatalf("ListNewsLikers = %v, %v; cursor %v", resp, err, f.before)
+	}
+
+	f.likers.Next = uuid.Nil
+	if resp, err = h.ListNewsLikers(ctx, &federationv1.ListNewsLikersRequest{PostId: uuid.NewString(), Limit: 6}); err != nil ||
+		resp.GetNextCursor() != "" || f.before != uuid.Nil {
+		t.Fatalf("the last page = %v, %v", resp, err)
+	}
+
+	for name, req := range map[string]*federationv1.ListNewsLikersRequest{
+		"bad post":  {PostId: "x", Limit: 6},
+		"no limit":  {PostId: uuid.NewString()},
+		"big limit": {PostId: uuid.NewString(), Limit: 101},
+		"cursor":    {PostId: uuid.NewString(), Limit: 6, Cursor: "x"},
+	} {
+		if _, err := h.ListNewsLikers(ctx, req); status.Code(err) != codes.InvalidArgument {
+			t.Errorf("%s: code %v, want InvalidArgument", name, status.Code(err))
+		}
 	}
 }

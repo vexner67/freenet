@@ -45,6 +45,8 @@ type Deps struct {
 	Frames Framer
 	// Channels read the pages of the channels of Telegram.
 	Channels Channels
+	// Likes keep who here like remote posts.
+	Likes LikeRepository
 	// Languages are those the news of everyone show posts in.
 	Languages []string
 	// Retention is how long remote posts are kept.
@@ -76,6 +78,7 @@ type Service struct {
 	covers        CoverRepository
 	frames        Framer
 	channels      Channels
+	likes         LikeRepository
 	languages     []string
 	retention     time.Duration
 }
@@ -109,6 +112,7 @@ func New(d Deps) *Service {
 		covers:        d.Covers,
 		frames:        d.Frames,
 		channels:      d.Channels,
+		likes:         d.Likes,
 		languages:     d.Languages,
 		retention:     d.Retention,
 	}

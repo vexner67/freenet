@@ -287,6 +287,16 @@ type videoJSON struct {
 	Description string        `json:"description,omitempty"`
 }
 
+// linkJSON is the card of the page a remote post links to, in the link
+// column; NULL for none.
+type linkJSON struct {
+	URL         string `json:"url"`
+	Site        string `json:"site,omitempty"`
+	Title       string `json:"title"`
+	Description string `json:"description,omitempty"`
+	Image       string `json:"image,omitempty"`
+}
+
 const remotePostColumns = `
 		p.id,
 		p.uri,
@@ -299,20 +309,21 @@ const remotePostColumns = `
 		p.sensitive,
 		p.language,
 		p.published,
-		p.updated
+		p.updated,
+		p.link
 `
 
 func scanRemotePost(row pgx.Row) (*fedi.RemotePost, error) {
 	var (
 		id                                   uuid.UUID
 		uri, actor, page, text, summary, lng string
-		imagesJSON, videosJSON               []byte
+		imagesJSON, videosJSON, cardJSON     []byte
 		sensitive                            bool
 		published                            time.Time
 		updated                              *time.Time
 	)
 
-	if err := row.Scan(&id, &uri, &actor, &page, &text, &summary, &imagesJSON, &videosJSON, &sensitive, &lng, &published, &updated); err != nil {
+	if err := row.Scan(&id, &uri, &actor, &page, &text, &summary, &imagesJSON, &videosJSON, &sensitive, &lng, &published, &updated, &cardJSON); err != nil {
 		return nil, err
 	}
 
@@ -336,7 +347,31 @@ func scanRemotePost(row pgx.Row) (*fedi.RemotePost, error) {
 		edited = *updated
 	}
 
-	return fedi.RestoreRemotePost(id, fedi.URL(uri), fedi.URL(actor), fedi.URL(page), text, summary, images, videos, sensitive, lng, published, edited), nil
+	var card fedi.Link
+	if cardJSON != nil {
+		var stored linkJSON
+		if err := json.Unmarshal(cardJSON, &stored); err != nil {
+			return nil, errs.Wrap("json.Unmarshal", err)
+		}
+		card = fedi.Link{
+			URL: fedi.URL(stored.URL), Site: stored.Site, Title: stored.Title, Description: stored.Description, Image: fedi.URL(stored.Image),
+		}
+	}
+
+	return fedi.RestoreRemotePost(id, fedi.URL(uri), fedi.URL(actor), fedi.URL(page), text, summary, images, videos, sensitive, lng, published, edited).
+		WithLink(card), nil
+}
+
+// cardJSON is the link column of a card: NULL for none.
+func cardJSON(l fedi.Link) ([]byte, error) {
+	if l.URL == "" {
+		return nil, nil
+	}
+
+	data, err := json.Marshal(linkJSON{
+		URL: l.URL.String(), Site: l.Site, Title: l.Title, Description: l.Description, Image: l.Image.String(),
+	})
+	return data, errs.Wrap("json.Marshal", err)
 }
 
 func scanVideos(data []byte) ([]fedi.Video, error) {
@@ -414,9 +449,10 @@ const saveRemotePostQuery = `
 		sensitive,
 		language,
 		published,
-		updated
+		updated,
+		link
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 	ON CONFLICT (uri) DO UPDATE
 	SET page = EXCLUDED.page,
 		text = EXCLUDED.text,
@@ -425,7 +461,8 @@ const saveRemotePostQuery = `
 		videos = EXCLUDED.videos,
 		sensitive = EXCLUDED.sensitive,
 		language = EXCLUDED.language,
-		updated = EXCLUDED.updated
+		updated = EXCLUDED.updated,
+		link = EXCLUDED.link
 `
 
 func (r *RemotePostRepository) Save(ctx context.Context, p *fedi.RemotePost) error {
@@ -444,6 +481,11 @@ func (r *RemotePostRepository) Save(ctx context.Context, p *fedi.RemotePost) err
 		return err
 	}
 
+	card, err := cardJSON(p.Link())
+	if err != nil {
+		return err
+	}
+
 	var updated *time.Time
 	if t := p.Updated(); !t.IsZero() {
 		updated = &t
@@ -451,7 +493,7 @@ func (r *RemotePostRepository) Save(ctx context.Context, p *fedi.RemotePost) err
 
 	_, err = r.conn(ctx).Exec(ctx, saveRemotePostQuery,
 		p.ID(), p.URI().String(), p.Actor().String(), p.Page().String(), p.Text(), p.Summary(), imagesJSON, videos,
-		p.Sensitive(), p.Language(), p.Published(), updated)
+		p.Sensitive(), p.Language(), p.Published(), updated, card)
 	if err != nil {
 		return errs.Wrap("Exec", err)
 	}
@@ -533,6 +575,26 @@ func (r *RemotePostRepository) List(ctx context.Context, q service.NewsQuery) ([
 	}
 
 	return posts, nil
+}
+
+const listActorPostsQuery = `
+	SELECT uri
+	FROM remote_posts
+	WHERE actor = $1
+`
+
+func (r *RemotePostRepository) URIsOf(ctx context.Context, actor fedi.URL) ([]fedi.URL, error) {
+	rows, err := r.conn(ctx).Query(ctx, listActorPostsQuery, actor.String())
+	if err != nil {
+		return nil, errs.Wrap("Query", err)
+	}
+
+	uris, err := pgx.CollectRows(rows, pgx.RowTo[fedi.URL])
+	if err != nil {
+		return nil, errs.Wrap("pgx.CollectRows", err)
+	}
+
+	return uris, nil
 }
 
 const deleteOldPostsQuery = `

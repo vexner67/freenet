@@ -2,6 +2,7 @@ package fedi
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -56,6 +57,56 @@ type ChannelDoc struct {
 	Username string
 	Photo    string
 	Posts    []NoteDoc
+}
+
+// Deleted are the posts among kept, of this channel, that its page no
+// longer shows though it shows older ones: they were deleted in the
+// channel. The page shows the latest posts, so one missing among them is
+// gone; one older than all it shows is just out of sight.
+func (d ChannelDoc) Deleted(kept []URL) []URL {
+	shown := map[int64]bool{}
+	oldest := int64(-1)
+
+	for _, p := range d.Posts {
+		n, ok := channelPostNumber(URL(p.ID))
+		if !ok {
+			continue
+		}
+
+		shown[n] = true
+		if oldest < 0 || n < oldest {
+			oldest = n
+		}
+	}
+
+	if oldest < 0 {
+		return nil
+	}
+
+	var out []URL
+	for _, u := range kept {
+		if n, ok := channelPostNumber(u); ok && n > oldest && !shown[n] {
+			out = append(out, u)
+		}
+	}
+
+	return out
+}
+
+// channelPostNumber is the number of a post of a channel,
+// https://t.me/<channel>/<number>.
+func channelPostNumber(u URL) (int64, bool) {
+	if !IsChannel(u) {
+		return 0, false
+	}
+
+	_, number, ok := strings.Cut(ChannelName(u), "/")
+	if !ok {
+		return 0, false
+	}
+
+	n, err := strconv.ParseInt(number, 10, 64)
+	return n, err == nil && n > 0
 }
 
 // NewChannel is the account of the channel name as its page tells it; a

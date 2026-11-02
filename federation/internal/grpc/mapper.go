@@ -67,10 +67,18 @@ func toProtoNewsPost(n service.NewsPost) *federationv1.NewsPost {
 		Videos:      videos,
 		Language:    p.Language(),
 		PublishedAt: timestamppb.New(p.Published()),
+		Likes:       int32(n.Likes.Count), //nolint:gosec // one like a person
+		Liked:       n.Likes.Liked,
 	}
 
 	if !p.Updated().IsZero() {
 		out.UpdatedAt = timestamppb.New(p.Updated())
+	}
+
+	if l := p.Link(); l.URL != "" {
+		out.Link = &federationv1.NewsLink{
+			Url: l.URL.String(), Site: l.Site, Title: l.Title, Description: l.Description, HasImage: l.Image != "",
+		}
 	}
 
 	return out

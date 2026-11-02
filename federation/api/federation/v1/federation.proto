@@ -49,6 +49,13 @@ service FederationService {
   // Remote posts for the news, newest first: of the accounts the caller
   // reads, or of those in the news of everyone.
   rpc ListNews(ListNewsRequest) returns (ListNewsResponse);
+  // The hearts of people here on remote posts; their servers do not learn
+  // of them. A post not kept is NotFound, too many likes at once
+  // ResourceExhausted.
+  rpc LikeNews(LikeNewsRequest) returns (LikeNewsResponse);
+  rpc UnlikeNews(UnlikeNewsRequest) returns (UnlikeNewsResponse);
+  // Who here like a remote post, the latest first.
+  rpc ListNewsLikers(ListNewsLikersRequest) returns (ListNewsLikersResponse);
 
   // Internal, for the gateway, which lets only administrators call them:
   // the accounts in the news of everyone.
@@ -266,6 +273,51 @@ message NewsPost {
   google.protobuf.Timestamp updated_at = 11;
   // GetPicture reads their covers by their index.
   repeated NewsVideo videos = 12;
+  // How many here like it, and whether the caller does.
+  int32 likes = 13;
+  bool liked = 14;
+  // The card of the page it links to; unset for none.
+  NewsLink link = 15;
+}
+
+// The card of a page a remote post links to, as its server tells it.
+message NewsLink {
+  string url = 1;
+  string site = 2;
+  string title = 3;
+  string description = 4;
+  // GetPicture reads it with link.
+  bool has_image = 5;
+}
+
+message LikeNewsRequest {
+  string post_id = 1;
+}
+
+message LikeNewsResponse {
+  int32 likes = 1;
+}
+
+message UnlikeNewsRequest {
+  string post_id = 1;
+}
+
+message UnlikeNewsResponse {
+  int32 likes = 1;
+}
+
+message ListNewsLikersRequest {
+  string post_id = 1;
+  // The next_cursor of the page before; empty for the first.
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message ListNewsLikersResponse {
+  repeated string user_ids = 1;
+  // Empty after the last page.
+  string next_cursor = 2;
+  int32 total = 3;
 }
 
 message ListNewsResponse {
@@ -298,6 +350,8 @@ message GetPictureRequest {
   string account_id = 3;
   // The cover of the video index of the post instead of the image.
   bool video = 4;
+  // The picture of the card of the page the post links to instead.
+  bool link = 5;
 }
 
 message GetPictureResponse {

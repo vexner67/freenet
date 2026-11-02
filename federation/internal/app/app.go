@@ -176,6 +176,7 @@ func (a *App) build(cfg config.Config) error {
 		Finder:        client,
 		Media:         client,
 		Covers:        repos.covers,
+		Likes:         repos.likes,
 		Frames:        ffmpeg.New(cfg.FFmpegPath, cfg.FrameTimeout, client),
 		Channels:      client,
 		Languages:     cfg.FeedLanguages,
@@ -237,6 +238,7 @@ type repositories struct {
 	subscriptions service.SubscriptionRepository
 	news          service.RemotePostRepository
 	covers        service.CoverRepository
+	likes         service.LikeRepository
 }
 
 func (a *App) newRepositories(cfg config.Config) (repositories, error) {
@@ -255,6 +257,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			subscriptions: subscriptions,
 			news:          news,
 			covers:        inmem.NewCoverRepository(news),
+			likes:         inmem.NewLikeRepository(news),
 		}, nil
 	}
 
@@ -293,6 +296,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		subscriptions: postgres.NewSubscriptionRepository(a.pool),
 		news:          postgres.NewRemotePostRepository(a.pool),
 		covers:        postgres.NewCoverRepository(a.pool),
+		likes:         postgres.NewLikeRepository(a.pool),
 	}, nil
 }
 

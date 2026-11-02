@@ -36,6 +36,9 @@ const (
 	FederationService_Subscribe_FullMethodName         = "/federation.v1.FederationService/Subscribe"
 	FederationService_Unsubscribe_FullMethodName       = "/federation.v1.FederationService/Unsubscribe"
 	FederationService_ListNews_FullMethodName          = "/federation.v1.FederationService/ListNews"
+	FederationService_LikeNews_FullMethodName          = "/federation.v1.FederationService/LikeNews"
+	FederationService_UnlikeNews_FullMethodName        = "/federation.v1.FederationService/UnlikeNews"
+	FederationService_ListNewsLikers_FullMethodName    = "/federation.v1.FederationService/ListNewsLikers"
 	FederationService_ListFeatured_FullMethodName      = "/federation.v1.FederationService/ListFeatured"
 	FederationService_Feature_FullMethodName           = "/federation.v1.FederationService/Feature"
 	FederationService_Unfeature_FullMethodName         = "/federation.v1.FederationService/Unfeature"
@@ -84,6 +87,13 @@ type FederationServiceClient interface {
 	// Remote posts for the news, newest first: of the accounts the caller
 	// reads, or of those in the news of everyone.
 	ListNews(ctx context.Context, in *ListNewsRequest, opts ...grpc.CallOption) (*ListNewsResponse, error)
+	// The hearts of people here on remote posts; their servers do not learn
+	// of them. A post not kept is NotFound, too many likes at once
+	// ResourceExhausted.
+	LikeNews(ctx context.Context, in *LikeNewsRequest, opts ...grpc.CallOption) (*LikeNewsResponse, error)
+	UnlikeNews(ctx context.Context, in *UnlikeNewsRequest, opts ...grpc.CallOption) (*UnlikeNewsResponse, error)
+	// Who here like a remote post, the latest first.
+	ListNewsLikers(ctx context.Context, in *ListNewsLikersRequest, opts ...grpc.CallOption) (*ListNewsLikersResponse, error)
 	// Internal, for the gateway, which lets only administrators call them:
 	// the accounts in the news of everyone.
 	ListFeatured(ctx context.Context, in *ListFeaturedRequest, opts ...grpc.CallOption) (*ListFeaturedResponse, error)
@@ -263,6 +273,36 @@ func (c *federationServiceClient) ListNews(ctx context.Context, in *ListNewsRequ
 	return out, nil
 }
 
+func (c *federationServiceClient) LikeNews(ctx context.Context, in *LikeNewsRequest, opts ...grpc.CallOption) (*LikeNewsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LikeNewsResponse)
+	err := c.cc.Invoke(ctx, FederationService_LikeNews_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *federationServiceClient) UnlikeNews(ctx context.Context, in *UnlikeNewsRequest, opts ...grpc.CallOption) (*UnlikeNewsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnlikeNewsResponse)
+	err := c.cc.Invoke(ctx, FederationService_UnlikeNews_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *federationServiceClient) ListNewsLikers(ctx context.Context, in *ListNewsLikersRequest, opts ...grpc.CallOption) (*ListNewsLikersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListNewsLikersResponse)
+	err := c.cc.Invoke(ctx, FederationService_ListNewsLikers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *federationServiceClient) ListFeatured(ctx context.Context, in *ListFeaturedRequest, opts ...grpc.CallOption) (*ListFeaturedResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListFeaturedResponse)
@@ -345,6 +385,13 @@ type FederationServiceServer interface {
 	// Remote posts for the news, newest first: of the accounts the caller
 	// reads, or of those in the news of everyone.
 	ListNews(context.Context, *ListNewsRequest) (*ListNewsResponse, error)
+	// The hearts of people here on remote posts; their servers do not learn
+	// of them. A post not kept is NotFound, too many likes at once
+	// ResourceExhausted.
+	LikeNews(context.Context, *LikeNewsRequest) (*LikeNewsResponse, error)
+	UnlikeNews(context.Context, *UnlikeNewsRequest) (*UnlikeNewsResponse, error)
+	// Who here like a remote post, the latest first.
+	ListNewsLikers(context.Context, *ListNewsLikersRequest) (*ListNewsLikersResponse, error)
 	// Internal, for the gateway, which lets only administrators call them:
 	// the accounts in the news of everyone.
 	ListFeatured(context.Context, *ListFeaturedRequest) (*ListFeaturedResponse, error)
@@ -411,6 +458,15 @@ func (UnimplementedFederationServiceServer) Unsubscribe(context.Context, *Unsubs
 }
 func (UnimplementedFederationServiceServer) ListNews(context.Context, *ListNewsRequest) (*ListNewsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListNews not implemented")
+}
+func (UnimplementedFederationServiceServer) LikeNews(context.Context, *LikeNewsRequest) (*LikeNewsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LikeNews not implemented")
+}
+func (UnimplementedFederationServiceServer) UnlikeNews(context.Context, *UnlikeNewsRequest) (*UnlikeNewsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnlikeNews not implemented")
+}
+func (UnimplementedFederationServiceServer) ListNewsLikers(context.Context, *ListNewsLikersRequest) (*ListNewsLikersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListNewsLikers not implemented")
 }
 func (UnimplementedFederationServiceServer) ListFeatured(context.Context, *ListFeaturedRequest) (*ListFeaturedResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListFeatured not implemented")
@@ -733,6 +789,60 @@ func _FederationService_ListNews_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FederationService_LikeNews_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LikeNewsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).LikeNews(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_LikeNews_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).LikeNews(ctx, req.(*LikeNewsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FederationService_UnlikeNews_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnlikeNewsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).UnlikeNews(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_UnlikeNews_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).UnlikeNews(ctx, req.(*UnlikeNewsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FederationService_ListNewsLikers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListNewsLikersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).ListNewsLikers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_ListNewsLikers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).ListNewsLikers(ctx, req.(*ListNewsLikersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _FederationService_ListFeatured_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListFeaturedRequest)
 	if err := dec(in); err != nil {
@@ -875,6 +985,18 @@ var FederationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListNews",
 			Handler:    _FederationService_ListNews_Handler,
+		},
+		{
+			MethodName: "LikeNews",
+			Handler:    _FederationService_LikeNews_Handler,
+		},
+		{
+			MethodName: "UnlikeNews",
+			Handler:    _FederationService_UnlikeNews_Handler,
+		},
+		{
+			MethodName: "ListNewsLikers",
+			Handler:    _FederationService_ListNewsLikers_Handler,
 		},
 		{
 			MethodName: "ListFeatured",

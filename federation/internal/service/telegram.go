@@ -98,7 +98,24 @@ func (s *Service) readChannel(ctx context.Context, actor fedi.URL) (int, error) 
 		}
 	}
 
-	return added, nil
+	return added, s.forgetDeleted(ctx, r.ID(), doc)
+}
+
+// forgetDeleted forgets the posts of a channel deleted there: those its
+// page no longer shows among the others.
+func (s *Service) forgetDeleted(ctx context.Context, actor fedi.URL, doc fedi.ChannelDoc) error {
+	kept, err := s.news.URIsOf(ctx, actor)
+	if err != nil {
+		return errs.Wrap("s.news.URIsOf", err)
+	}
+
+	for _, uri := range doc.Deleted(kept) {
+		if err = s.news.Delete(ctx, uri); err != nil {
+			return errs.Wrap("s.news.Delete", err)
+		}
+	}
+
+	return nil
 }
 
 // keepChannelPost keeps a post of a channel: p if it is new, the kept one

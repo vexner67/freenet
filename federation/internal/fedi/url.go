@@ -36,6 +36,9 @@ var (
 	// ErrTooManyLookups: a person looks up accounts of other servers more
 	// often than one may; each costs requests to them.
 	ErrTooManyLookups = errors.New("too many fediverse lookups")
+	// ErrTooManyLikes: a person likes and unlikes remote posts more often
+	// than one may.
+	ErrTooManyLikes = errors.New("too many likes")
 	// ErrAccountNotFound: the server of an address names no such account,
 	// or does not answer.
 	ErrAccountNotFound = errors.New("fediverse account not found")

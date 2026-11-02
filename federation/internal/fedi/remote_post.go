@@ -20,6 +20,8 @@ const (
 	maxVideoSide     = 10000
 	maxVideoDuration = 24 * time.Hour
 	maxDescription   = 1500
+	maxLinkTitle     = 300
+	maxLinkSite      = 100
 	maxLanguageLen   = 8
 )
 
@@ -44,6 +46,18 @@ type NoteDoc struct {
 	Published   time.Time
 	Updated     time.Time
 	Attachments []AttachmentDoc
+	// Link is the card of the page the note links to, when its server
+	// tells one.
+	Link LinkDoc
+}
+
+// LinkDoc is the card of a page as a server tells it.
+type LinkDoc struct {
+	URL         string
+	Site        string
+	Title       string
+	Description string
+	Image       string
 }
 
 type AttachmentDoc struct {
@@ -79,6 +93,16 @@ type Video struct {
 	Description string
 }
 
+// Link is the card of the page a remote post links to: its picture is on
+// the server of the post. The zero Link is none.
+type Link struct {
+	URL         URL
+	Site        string
+	Title       string
+	Description string
+	Image       URL
+}
+
 // RemotePost is a note of an account of another server the site follows,
 // kept for the news. Its ID is a UUIDv7 of the time it was published, so
 // it takes its place among the posts of the site.
@@ -91,6 +115,7 @@ type RemotePost struct {
 	summary   string
 	images    []Image
 	videos    []Video
+	link      Link
 	sensitive bool
 	language  string
 	published time.Time
@@ -155,7 +180,7 @@ func (p *RemotePost) Reread(doc NoteDoc, now time.Time) (*RemotePost, bool, erro
 	}
 
 	changed := again.text != p.text || again.summary != p.summary || again.page != p.page || !again.updated.Equal(p.updated) ||
-		!slices.Equal(again.images, p.images) || !slices.Equal(again.videos, p.videos)
+		!slices.Equal(again.images, p.images) || !slices.Equal(again.videos, p.videos) || again.link != p.link
 
 	return again, changed, nil
 }
@@ -171,6 +196,7 @@ func (p *RemotePost) fill(doc NoteDoc, now time.Time) error {
 	p.language = language(doc.Language)
 	p.images = images(doc.Attachments)
 	p.videos = videos(doc.Attachments)
+	p.link = linkCard(doc.Link)
 
 	p.page = ""
 	if page, err := NewURL(doc.URL); err == nil {
@@ -202,6 +228,27 @@ func images(docs []AttachmentDoc) []Image {
 	}
 
 	return out
+}
+
+// linkCard is the card of a page with an address and a title, or none.
+func linkCard(d LinkDoc) Link {
+	u, err := NewURL(d.URL)
+	title := cut(strings.TrimSpace(d.Title), maxLinkTitle)
+	if err != nil || title == "" {
+		return Link{}
+	}
+
+	l := Link{
+		URL:         u,
+		Site:        cut(strings.TrimSpace(d.Site), maxLinkSite),
+		Title:       title,
+		Description: cut(strings.TrimSpace(d.Description), maxDescription),
+	}
+	if image, err := NewURL(d.Image); err == nil {
+		l.Image = image
+	}
+
+	return l
 }
 
 // videos are the videos among the attachments, at most four.
@@ -287,6 +334,14 @@ func RestoreRemotePost(id uuid.UUID, uri, actor, page URL, text, summary string,
 	}
 }
 
+// WithLink is the post restored with the card of the page it links to.
+func (p *RemotePost) WithLink(l Link) *RemotePost {
+	with := *p
+	with.link = l
+
+	return &with
+}
+
 func (p *RemotePost) ID() uuid.UUID        { return p.id }
 func (p *RemotePost) URI() URL             { return p.uri }
 func (p *RemotePost) Actor() URL           { return p.actor }
@@ -294,6 +349,7 @@ func (p *RemotePost) Text() string         { return p.text }
 func (p *RemotePost) Summary() string      { return p.summary }
 func (p *RemotePost) Images() []Image      { return slices.Clone(p.images) }
 func (p *RemotePost) Videos() []Video      { return slices.Clone(p.videos) }
+func (p *RemotePost) Link() Link           { return p.link }
 func (p *RemotePost) Sensitive() bool      { return p.sensitive }
 func (p *RemotePost) Language() string     { return p.language }
 func (p *RemotePost) Published() time.Time { return p.published }
