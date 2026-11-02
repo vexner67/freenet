@@ -62,6 +62,9 @@ type Config struct {
 	// how often older ones are forgotten.
 	NewsRetention   time.Duration `env:"NEWS_RETENTION" envDefault:"2160h"`
 	CleanupInterval time.Duration `env:"CLEANUP_INTERVAL" envDefault:"1h"`
+	// TelegramInterval is how often the pages of the channels of Telegram
+	// the site follows are read.
+	TelegramInterval time.Duration `env:"TELEGRAM_INTERVAL" envDefault:"5m"`
 	// FFmpegPath is the program that cuts the first frames of videos with
 	// no cover, each within FrameTimeout.
 	FFmpegPath   string        `env:"FFMPEG_PATH" envDefault:"ffmpeg"`
@@ -92,8 +95,9 @@ func (c Config) Validate() error {
 		return fmt.Errorf("PUBLIC_URL %q is not the address of a site, e.g. https://example.com", c.PublicURL)
 	}
 
-	if c.ServicesTimeout <= 0 || c.RemoteTimeout <= 0 || c.DeliveryMaxAge <= 0 || c.NewsRetention <= 0 || c.CleanupInterval <= 0 {
-		return errors.New("SERVICES_TIMEOUT, REMOTE_TIMEOUT, DELIVERY_MAX_AGE, NEWS_RETENTION and CLEANUP_INTERVAL must be positive")
+	if c.ServicesTimeout <= 0 || c.RemoteTimeout <= 0 || c.DeliveryMaxAge <= 0 || c.NewsRetention <= 0 || c.CleanupInterval <= 0 ||
+		c.TelegramInterval <= 0 {
+		return errors.New("SERVICES_TIMEOUT, REMOTE_TIMEOUT, DELIVERY_MAX_AGE, NEWS_RETENTION, CLEANUP_INTERVAL and TELEGRAM_INTERVAL must be positive")
 	}
 
 	if err := c.Tracing.Validate(); err != nil {

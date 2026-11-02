@@ -43,6 +43,8 @@ type Deps struct {
 	// Covers keep the first frames Frames cut of videos with no cover.
 	Covers CoverRepository
 	Frames Framer
+	// Channels read the pages of the channels of Telegram.
+	Channels Channels
 	// Languages are those the news of everyone show posts in.
 	Languages []string
 	// Retention is how long remote posts are kept.
@@ -73,6 +75,7 @@ type Service struct {
 	media         MediaFetcher
 	covers        CoverRepository
 	frames        Framer
+	channels      Channels
 	languages     []string
 	retention     time.Duration
 }
@@ -105,6 +108,7 @@ func New(d Deps) *Service {
 		media:         d.Media,
 		covers:        d.Covers,
 		frames:        d.Frames,
+		channels:      d.Channels,
 		languages:     d.Languages,
 		retention:     d.Retention,
 	}

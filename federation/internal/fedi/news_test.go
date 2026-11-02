@@ -29,6 +29,12 @@ func TestNewAddress(t *testing.T) {
 		{"@ann@localhost", fedi.Address{}, fedi.ErrInvalidAddress},
 		{"http://m.example/users/ann", fedi.Address{}, fedi.ErrInvalidAddress},
 		{"", fedi.Address{}, fedi.ErrInvalidAddress},
+		{"t.me/MeduzaLive", fedi.Address{Channel: "meduzalive"}, nil},
+		{"https://t.me/s/meduzalive/", fedi.Address{Channel: "meduzalive"}, nil},
+		{"http://telegram.me/meduzalive", fedi.Address{Channel: "meduzalive"}, nil},
+		{"@meduzalive", fedi.Address{Channel: "meduzalive"}, nil},
+		{"https://t.me/meduzalive/150024", fedi.Address{URL: "https://t.me/meduzalive/150024"}, nil},
+		{"@abc", fedi.Address{}, fedi.ErrInvalidAddress},
 	}
 
 	for _, tt := range tests {

@@ -58,9 +58,11 @@ type App struct {
 	queue   *outbox.Postgres
 	limiter *ratelimit.Memory
 	conns   []*grpc.ClientConn
-	// news forgets old remote posts every cleanup.
-	news    *service.Service
-	cleanup time.Duration
+	// news forgets old remote posts every cleanup and reads the channels
+	// of Telegram every telegram.
+	news     *service.Service
+	cleanup  time.Duration
+	telegram time.Duration
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -175,10 +177,11 @@ func (a *App) build(cfg config.Config) error {
 		Media:         client,
 		Covers:        repos.covers,
 		Frames:        ffmpeg.New(cfg.FFmpegPath, cfg.FrameTimeout, client),
+		Channels:      client,
 		Languages:     cfg.FeedLanguages,
 		Retention:     cfg.NewsRetention,
 	})
-	a.news, a.cleanup = federation, cfg.CleanupInterval
+	a.news, a.cleanup, a.telegram = federation, cfg.CleanupInterval, cfg.TelegramInterval
 
 	federationv1.RegisterFederationServiceServer(a.server.Registrar(), federationgrpc.NewFederationHandler(federation, federation, site))
 
@@ -317,6 +320,11 @@ func (a *App) Run(ctx context.Context) error {
 		return nil
 	})
 
+	g.Go(func() error {
+		a.readChannels(ctx)
+		return nil
+	})
+
 	return g.Wait()
 }
 
@@ -341,6 +349,31 @@ func (a *App) forgetOldNews(ctx context.Context) {
 
 		if n > 0 {
 			a.logger.InfoContext(ctx, "old news forgotten", "count", n)
+		}
+	}
+}
+
+// readChannels reads the channels of Telegram the site follows at once
+// and then every telegram interval until ctx is cancelled; a failure
+// waits for the next.
+func (a *App) readChannels(ctx context.Context) {
+	ticker := time.NewTicker(a.telegram)
+	defer ticker.Stop()
+
+	for {
+		n, err := a.news.ReadChannels(ctx)
+		if err != nil && ctx.Err() == nil {
+			a.logger.WarnContext(ctx, "read telegram channels", "error", err)
+		}
+
+		if n > 0 {
+			a.logger.InfoContext(ctx, "telegram posts read", "count", n)
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
 		}
 	}
 }

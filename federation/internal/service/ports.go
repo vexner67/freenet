@@ -118,6 +118,8 @@ type FollowingRepository interface {
 	// Featured are the accounts the administrators chose for the news of
 	// everyone, the earliest chosen first.
 	Featured(ctx context.Context) ([]*fedi.Following, error)
+	// Channels are the channels of Telegram the site reads.
+	Channels(ctx context.Context) ([]fedi.URL, error)
 }
 
 // SubscriptionRepository keeps whom of other servers the people here
@@ -189,4 +191,10 @@ type CoverRepository interface {
 // video it finds no frame in is fedi.ErrNotFound.
 type Framer interface {
 	Frame(ctx context.Context, video fedi.URL) ([]byte, error)
+}
+
+// Channels read the pages of the public channels of Telegram; a name of
+// no such channel is fedi.ErrNotFound.
+type Channels interface {
+	Channel(ctx context.Context, name string) (fedi.ChannelDoc, error)
 }

@@ -126,9 +126,13 @@ func (r *Remote) Profile() Profile {
 	return r.profile
 }
 
-// Handle is the address people know the actor by: @username@host, or
-// its ID without a user name.
+// Handle is the address people know the actor by: @username@host, @name
+// of a channel of Telegram, or its ID without a user name.
 func (r *Remote) Handle() string {
+	if r.Channel() {
+		return "@" + ChannelName(r.id)
+	}
+
 	if r.profile.Username == "" {
 		return r.id.String()
 	}
@@ -138,6 +142,11 @@ func (r *Remote) Handle() string {
 
 func (r *Remote) ID() URL {
 	return r.id
+}
+
+// Channel: the actor is a channel of Telegram, read from its page.
+func (r *Remote) Channel() bool {
+	return IsChannel(r.id)
 }
 
 func (r *Remote) Inbox() URL {

@@ -23,6 +23,7 @@ func toProtoRemote(r *fedi.Remote, accepted bool) *federationv1.Account {
 		PageUrl:   p.Page.String(),
 		HasAvatar: p.Icon != "",
 		Accepted:  accepted,
+		Telegram:  r.Channel(),
 	}
 }
 

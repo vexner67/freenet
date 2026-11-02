@@ -173,6 +173,27 @@ func (f *frames) Frame(_ context.Context, video fedi.URL) ([]byte, error) {
 	return frame, nil
 }
 
+// channels are the pages of the channels of Telegram, by name.
+type channels struct {
+	pages map[string]fedi.ChannelDoc
+	reads int
+	fail  error
+}
+
+func (c *channels) Channel(_ context.Context, name string) (fedi.ChannelDoc, error) {
+	c.reads++
+	if c.fail != nil {
+		return fedi.ChannelDoc{}, c.fail
+	}
+
+	doc, ok := c.pages[name]
+	if !ok {
+		return fedi.ChannelDoc{}, fedi.ErrNotFound
+	}
+
+	return doc, nil
+}
+
 type fixture struct {
 	svc       *service.Service
 	site      fedi.Site
@@ -192,6 +213,7 @@ type fixture struct {
 	finder        finder
 	media         *media
 	frames        *frames
+	channels      *channels
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -229,6 +251,7 @@ func newFixture(t *testing.T) *fixture {
 		finder:        finder{"anya@m.example": remoteActor},
 		media:         &media{},
 		frames:        &frames{frames: map[fedi.URL][]byte{}},
+		channels:      &channels{pages: map[string]fedi.ChannelDoc{}},
 	}
 	f.news = inmem.NewRemotePostRepository(f.following, f.subscriptions)
 
@@ -254,6 +277,7 @@ func newFixture(t *testing.T) *fixture {
 		Media:         f.media,
 		Covers:        inmem.NewCoverRepository(f.news),
 		Frames:        f.frames,
+		Channels:      f.channels,
 		Languages:     []string{"ru", "en"},
 		Retention:     90 * 24 * time.Hour,
 	})

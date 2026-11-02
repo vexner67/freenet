@@ -88,7 +88,7 @@ func TestListNews(t *testing.T) {
 
 	got := resp.GetPosts()[0]
 	if got.GetText() != "hello" || got.GetPageUrl() != "https://m.example/notes/1" || got.GetAuthor().GetHandle() != "@ann@m.example" ||
-		!got.GetAuthor().GetHasAvatar() || got.GetImages()[0].GetDescription() != "a cat" || got.GetUpdatedAt() != nil ||
+		!got.GetAuthor().GetHasAvatar() || got.GetAuthor().GetTelegram() || got.GetImages()[0].GetDescription() != "a cat" || got.GetUpdatedAt() != nil ||
 		!got.GetPublishedAt().AsTime().Equal(published) {
 		t.Errorf("post = %+v", got)
 	}
@@ -170,5 +170,29 @@ func TestGetPicture(t *testing.T) {
 				t.Fatalf("GetPicture read %q, %v; want %q", f.picture, err, tt.want)
 			}
 		})
+	}
+}
+
+func TestChannelAccount(t *testing.T) {
+	t.Parallel()
+
+	author, err := fedi.NewChannel("meduzalive", fedi.ChannelDoc{Title: "Медуза", Username: "meduzalive"}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	post := fedi.RestoreRemotePost(uuid.New(), "https://t.me/meduzalive/1", author.ID(), "", "news", "", nil, nil, false, "",
+		time.Now(), time.Time{})
+
+	ctx := jwtauth.ContextWithIdentity(context.Background(), jwtauth.Identity{UserID: uuid.New()})
+	h := newsHandler(t, &newsFake{posts: []service.NewsPost{{Post: post, Author: author}}})
+
+	resp, err := h.ListNews(ctx, &federationv1.ListNewsRequest{Scope: federationv1.NewsScope_NEWS_SCOPE_FEATURED, Limit: 20})
+	if err != nil {
+		t.Fatalf("ListNews: %v", err)
+	}
+
+	a := resp.GetPosts()[0].GetAuthor()
+	if !a.GetTelegram() || a.GetHandle() != "@meduzalive" || a.GetPageUrl() != "https://t.me/meduzalive" {
+		t.Fatalf("author = %+v, want the channel", a)
 	}
 }

@@ -96,6 +96,15 @@ func (s *Service) Lookup(ctx context.Context, address string) (*fedi.Remote, err
 		return nil, err
 	}
 
+	if addr.Channel != "" {
+		r, _, err := s.channel(ctx, addr.Channel)
+		if err != nil {
+			return nil, unreachable(ctx, err)
+		}
+
+		return r, nil
+	}
+
 	signer, err := s.siteAccount(ctx)
 	if err != nil {
 		return nil, err
@@ -305,6 +314,10 @@ func (s *Service) followRemote(ctx context.Context, r *fedi.Remote, featured boo
 
 	if f, err = fedi.NewFollowing(r.ID(), featured, s.now()); err != nil {
 		return errs.Wrap("fedi.NewFollowing", err)
+	}
+
+	if r.Channel() {
+		return s.followChannel(ctx, f)
 	}
 
 	follow := fedi.Outgoing{

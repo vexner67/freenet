@@ -131,6 +131,30 @@ func (r *FollowingRepository) Featured(ctx context.Context) ([]*fedi.Following, 
 	return out, nil
 }
 
+// listChannelsQuery: the account of a channel of Telegram is its address
+// there, https://t.me/<name>.
+const listChannelsQuery = `
+	SELECT
+		actor
+	FROM following
+	WHERE actor LIKE 'https://t.me/%'
+	ORDER BY actor
+`
+
+func (r *FollowingRepository) Channels(ctx context.Context) ([]fedi.URL, error) {
+	rows, err := r.conn(ctx).Query(ctx, listChannelsQuery)
+	if err != nil {
+		return nil, errs.Wrap("Query", err)
+	}
+
+	out, err := pgx.CollectRows(rows, pgx.RowTo[fedi.URL])
+	if err != nil {
+		return nil, errs.Wrap("pgx.CollectRows", err)
+	}
+
+	return out, nil
+}
+
 type SubscriptionRepository struct {
 	pool *pgxpool.Pool
 }

@@ -141,6 +141,25 @@ func (p *RemotePost) Edited(doc NoteDoc, now time.Time) (*RemotePost, error) {
 	return &edited, nil
 }
 
+// Reread is the post as a page read again tells it, and whether anything
+// changed. Only another text or another number of pictures and videos is
+// an edit: the addresses of pictures on such pages change by themselves.
+func (p *RemotePost) Reread(doc NoteDoc, now time.Time) (*RemotePost, bool, error) {
+	again, err := p.Edited(doc, now)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if again.text == p.text && again.summary == p.summary && len(again.images) == len(p.images) && len(again.videos) == len(p.videos) {
+		again.updated = p.updated
+	}
+
+	changed := again.text != p.text || again.summary != p.summary || again.page != p.page || !again.updated.Equal(p.updated) ||
+		!slices.Equal(again.images, p.images) || !slices.Equal(again.videos, p.videos)
+
+	return again, changed, nil
+}
+
 func (p *RemotePost) fill(doc NoteDoc, now time.Time) error {
 	if !doc.Public || doc.InReplyTo != "" {
 		return ErrNotForNews

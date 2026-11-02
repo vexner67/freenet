@@ -24,6 +24,7 @@ import (
 	"github.com/vexner67/freenet/federation/internal/fedi"
 	"github.com/vexner67/freenet/federation/internal/httpsig"
 	"github.com/vexner67/freenet/federation/internal/service"
+	"github.com/vexner67/freenet/federation/internal/tgpage"
 	"github.com/vexner67/freenet/pkg/errs"
 )
 
@@ -327,6 +328,21 @@ func (c *Client) Fetch(ctx context.Context, u fedi.URL) (service.Media, error) {
 	}
 
 	return service.Media{Body: body, ContentType: contentType}, nil
+}
+
+// maxChannelPageSize is the most of the page of a channel read: such a
+// page of twenty posts is under 200 KB.
+const maxChannelPageSize = 4 << 20
+
+// Channel reads the page of the public channel name of Telegram.
+func (c *Client) Channel(ctx context.Context, name string) (fedi.ChannelDoc, error) {
+	page, err := c.get(ctx, "https://"+fedi.TelegramHost+"/s/"+url.PathEscape(name), "text/html", maxChannelPageSize)
+	if err != nil {
+		return fedi.ChannelDoc{}, errs.Wrap("c.get", err)
+	}
+
+	doc, err := tgpage.Parse(page, name)
+	return doc, errs.Wrap("tgpage.Parse", err)
 }
 
 // get reads a document of at most limit bytes.

@@ -72,6 +72,24 @@ func (r *FollowingRepository) Featured(context.Context) ([]*fedi.Following, erro
 	return out, nil
 }
 
+// Channels are the channels of Telegram followed, in the order of their
+// addresses, as the database gives them.
+func (r *FollowingRepository) Channels(context.Context) ([]fedi.URL, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var out []fedi.URL
+	for actor := range r.following {
+		if fedi.IsChannel(actor) {
+			out = append(out, actor)
+		}
+	}
+
+	slices.Sort(out)
+
+	return out, nil
+}
+
 func (r *FollowingRepository) featured(actor fedi.URL) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()

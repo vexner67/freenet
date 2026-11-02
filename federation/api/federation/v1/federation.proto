@@ -177,10 +177,13 @@ message Account {
   // Its server took the follow of the site; until then its posts may not
   // come.
   bool accepted = 6;
+  // A public channel of Telegram, read from its page t.me/s/<name>.
+  bool telegram = 7;
 }
 
 message LookupAccountRequest {
-  // @username@host, username@host or the https address of the account.
+  // @username@host, username@host or the https address of the account;
+  // t.me/name or @name of a channel of Telegram.
   string address = 1;
 }
 

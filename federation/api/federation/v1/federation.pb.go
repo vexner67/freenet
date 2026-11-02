@@ -1122,7 +1122,9 @@ type Account struct {
 	HasAvatar bool   `protobuf:"varint,5,opt,name=has_avatar,json=hasAvatar,proto3" json:"has_avatar,omitempty"`
 	// Its server took the follow of the site; until then its posts may not
 	// come.
-	Accepted      bool `protobuf:"varint,6,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	Accepted bool `protobuf:"varint,6,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	// A public channel of Telegram, read from its page t.me/s/<name>.
+	Telegram      bool `protobuf:"varint,7,opt,name=telegram,proto3" json:"telegram,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1199,9 +1201,17 @@ func (x *Account) GetAccepted() bool {
 	return false
 }
 
+func (x *Account) GetTelegram() bool {
+	if x != nil {
+		return x.Telegram
+	}
+	return false
+}
+
 type LookupAccountRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// @username@host, username@host or the https address of the account.
+	// @username@host, username@host or the https address of the account;
+	// t.me/name or @name of a channel of Telegram.
 	Address       string `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2277,7 +2287,7 @@ const file_api_federation_v1_federation_proto_rawDesc = "" +
 	"\tauthor_id\x18\x03 \x01(\tR\bauthorId\"\x15\n" +
 	"\x13GetSiteActorRequest\"2\n" +
 	"\x14GetSiteActorResponse\x12\x1a\n" +
-	"\bdocument\x18\x01 \x01(\fR\bdocument\"\x9b\x01\n" +
+	"\bdocument\x18\x01 \x01(\fR\bdocument\"\xb7\x01\n" +
 	"\aAccount\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
 	"\x06handle\x18\x02 \x01(\tR\x06handle\x12\x12\n" +
@@ -2285,7 +2295,8 @@ const file_api_federation_v1_federation_proto_rawDesc = "" +
 	"\bpage_url\x18\x04 \x01(\tR\apageUrl\x12\x1d\n" +
 	"\n" +
 	"has_avatar\x18\x05 \x01(\bR\thasAvatar\x12\x1a\n" +
-	"\baccepted\x18\x06 \x01(\bR\baccepted\"0\n" +
+	"\baccepted\x18\x06 \x01(\bR\baccepted\x12\x1a\n" +
+	"\btelegram\x18\a \x01(\bR\btelegram\"0\n" +
 	"\x14LookupAccountRequest\x12\x18\n" +
 	"\aaddress\x18\x01 \x01(\tR\aaddress\"i\n" +
 	"\x15LookupAccountResponse\x120\n" +
