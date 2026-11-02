@@ -103,7 +103,7 @@ freenet/
 | `docs/features/admin.md` | Верификация, админ-панель, блокировки, метка, реклама и новогоднее оформление |
 | `docs/features/messages.md` | Личные сообщения, шифрование, беседы, чёрный список, живые события, ответы и реакции, «печатает...» |
 | `docs/features/notifications.md` | Уведомления и push |
-| `docs/features/federation.md` | Федерация: страницы в Fediverse (ActivityPub), подписчики с других серверов, новости из Fediverse |
+| `docs/features/federation.md` | Федерация: страницы в Fediverse (ActivityPub), подписчики с других серверов, новости из Fediverse и каналов Telegram |
 | `docs/features/profile.md` | Приглашения, анкета, приватность, сессии, присутствие, фон страницы, удаление страницы, языки, поиск людей, знакомства |
 | `docs/web.md` | страницы и скрипты сайта, адреса, которые раздаёт gateway |
 | `docs/deviations.md` | известные отклонения и технический долг (бывший §9) |
