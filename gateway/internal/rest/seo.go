@@ -96,11 +96,11 @@ func siteOrigin(r *http.Request, trustProxy bool) string {
 }
 
 // noIndex keeps search engines from listing what is no page: the answers
-// of the API, which a crawler still reads to render the pages, and the
-// documents people attach.
+// of the API, which a crawler still reads to render the pages, the
+// documents of the Fediverse and the documents people attach.
 func noIndex(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/media/documents/") {
+		if isData(r.URL.Path) || strings.HasPrefix(r.URL.Path, "/media/documents/") {
 			w.Header().Set("X-Robots-Tag", "noindex")
 		}
 

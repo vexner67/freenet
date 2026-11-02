@@ -576,6 +576,8 @@ type Backends struct {
 	Stories       Stories
 	Canvas        Canvas
 	Dating        Dating
+	// Federation opens pages to the Fediverse; nil serves none of it.
+	Federation Federation
 	// Previews reads the cards of the pages posts link to; nil makes
 	// posts without cards.
 	Previews Previews
@@ -624,6 +626,7 @@ type api struct {
 	paints            *pubsub.Hub[struct{}, canvasPaintRequest]
 	canvasStreams     atomic.Int64
 	dating            Dating
+	federation        Federation
 	previews          Previews
 	logger            *slog.Logger
 	trustForwardedFor bool
@@ -1047,6 +1050,10 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /media/photos/{userID}/{photoID}/{file}", a.servePhoto)
 	mux.HandleFunc("GET /media/stickers/{sticker}", a.serveSticker)
 	mux.HandleFunc("GET /media/documents/{id}", a.serveDocument)
+
+	if a.federation != nil {
+		a.registerFederation(mux)
+	}
 
 	if a.webDir != "" {
 		registerPages(mux, a.webDir)

@@ -144,12 +144,18 @@ func secureHeaders(next http.Handler) http.Handler {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
-		if strings.HasPrefix(r.URL.Path, "/api/") {
+		if isData(r.URL.Path) {
 			w.Header().Set("Content-Security-Policy", apiCSP)
 		}
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// isData tells the answers that are data, not pages: of the API and the
+// documents of the Fediverse.
+func isData(path string) bool {
+	return strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/ap/") || strings.HasPrefix(path, "/.well-known/")
 }
 
 // uploadReadTimeout is how long the body of a request may take to come:

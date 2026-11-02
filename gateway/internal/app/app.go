@@ -9,6 +9,7 @@ import (
 
 	authv1 "github.com/vexner67/freenet/auth/api/auth/v1"
 	clubv1 "github.com/vexner67/freenet/club/api/club/v1"
+	federationv1 "github.com/vexner67/freenet/federation/api/federation/v1"
 	"github.com/vexner67/freenet/gateway/internal/backend"
 	"github.com/vexner67/freenet/gateway/internal/config"
 	"github.com/vexner67/freenet/gateway/internal/preview"
@@ -39,6 +40,7 @@ type App struct {
 	notificationConn *grpc.ClientConn
 	messageConn      *grpc.ClientConn
 	clubConn         *grpc.ClientConn
+	federationConn   *grpc.ClientConn
 	server           *rest.Server
 	metrics          *metrics.Server
 }
@@ -117,6 +119,16 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("a.dial", err)
 	}
 
+	var federation rest.Federation
+	if cfg.FederationServiceAddr != "" {
+		a.federationConn, err = a.dial(cfg.FederationServiceAddr, creds)
+		if err != nil {
+			return errs.Wrap("a.dial", err)
+		}
+
+		federation = backend.NewFederation(federationv1.NewFederationServiceClient(a.federationConn))
+	}
+
 	reg := metrics.NewRegistry()
 
 	a.server, err = rest.NewServer(
@@ -159,6 +171,7 @@ func (a *App) build(cfg config.Config) error {
 			Pets:          backend.NewPets(userv1.NewUserServiceClient(a.userConn)),
 			Canvas:        backend.NewCanvas(userv1.NewUserServiceClient(a.userConn)),
 			Dating:        backend.NewDating(userv1.NewUserServiceClient(a.userConn)),
+			Federation:    federation,
 			Bets:          backend.NewBets(userv1.NewUserServiceClient(a.userConn)),
 			Faves:         backend.NewFaves(postv1.NewPostServiceClient(a.postConn)),
 			Previews:      previews(cfg.LinkPreviewTimeout),
@@ -246,6 +259,7 @@ func (a *App) Close() {
 		"notification": a.notificationConn,
 		"message":      a.messageConn,
 		"club":         a.clubConn,
+		"federation":   a.federationConn,
 	}
 
 	for name, conn := range conns {

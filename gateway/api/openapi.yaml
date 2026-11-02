@@ -6443,6 +6443,106 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/me/federation:
+    get:
+      summary: Your page in the Fediverse
+      description: 'Whether your page is open to the Fediverse (Mastodon and other servers of ActivityPub), how many people there follow it and the domain of its address there, @nickname@domain. 404 when the site has no federation.'
+      security: [{ bearer: [] }]
+      responses:
+        "200": { description: The status, content: { application/json: { schema: { $ref: "#/components/schemas/Federation" } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      summary: Open your page to the Fediverse
+      description: 'Other servers find the page by its address, read it and the posts of your own wall that everyone may see (not reposts, paid or archived ones) and follow it; what you post, edit and delete afterwards goes to them. 409 for a page that only some may see.'
+      security: [{ bearer: [] }]
+      responses:
+        "200": { description: The status, content: { application/json: { schema: { $ref: "#/components/schemas/Federation" } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      summary: Close your page to the Fediverse
+      description: 'The servers of the followers are told the page is gone, and the followers are forgotten.'
+      security: [{ bearer: [] }]
+      responses:
+        "200": { description: The status, content: { application/json: { schema: { $ref: "#/components/schemas/Federation" } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /.well-known/webfinger:
+    get:
+      summary: Find a page by its Fediverse address
+      description: 'WebFinger (RFC 7033) for other servers: the JSON Resource Descriptor of a page open to the Fediverse, linking its actor. 404 for a page that is not open.'
+      parameters:
+        - { name: resource, in: query, required: true, schema: { type: string }, description: 'acct:nickname@domain or the address of the page' }
+      responses:
+        "200": { description: The descriptor, content: { application/jrd+json: { schema: { type: object } } } }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /ap/users/{id}:
+    get:
+      summary: The actor of a page
+      description: 'The ActivityPub Person of a page open to the Fediverse, by the ID of its user. A browser asking for HTML is sent to the page (302).'
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: The actor, content: { application/activity+json: { schema: { type: object } } } }
+        "302": { description: To the page, for a browser }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /ap/users/{id}/followers:
+    get:
+      summary: The followers of an actor
+      description: 'An OrderedCollection with their number only.'
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: The collection, content: { application/activity+json: { schema: { type: object } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /ap/users/{id}/outbox:
+    get:
+      summary: The outbox of an actor
+      description: 'An empty OrderedCollection: the posts go to the followers as they are made.'
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: The collection, content: { application/activity+json: { schema: { type: object } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /ap/posts/{id}:
+    get:
+      summary: A post as an ActivityPub Note
+      description: 'Of a post that goes to the Fediverse. A browser asking for HTML is sent to the page of the post (302).'
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: The note, content: { application/activity+json: { schema: { type: object } } } }
+        "302": { description: To the page of the post, for a browser }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /ap/inbox:
+    post:
+      summary: The shared inbox
+      description: 'Activities of other servers, signed with HTTP Signatures (rsa-sha256 over (request-target), host, date and digest). Follow, Undo of a Follow and Delete of an actor are acted on; the rest are taken and dropped. 401 for a request not signed by its actor; 429 when a server sends too much.'
+      requestBody: { required: true, content: { application/activity+json: { schema: { type: object } } } }
+      responses:
+        "202": { description: Taken }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /ap/users/{id}/inbox:
+    post:
+      summary: The inbox of an actor
+      description: 'As the shared inbox.'
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/activity+json: { schema: { type: object } } } }
+      responses:
+        "202": { description: Taken }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/me/pets/{id}/stance:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
@@ -9382,6 +9482,12 @@ components:
         large: { type: string, example: "/media/avatars/<user>/<avatar>/large.jpg" }
         small: { type: string, example: "/media/avatars/<user>/<avatar>/small.jpg" }
 
+    Federation:
+      type: object
+      properties:
+        open: { type: boolean }
+        followers: { type: integer, description: People of other servers who follow the page }
+        domain: { type: string, description: 'The address of the page in the Fediverse is @nickname@domain' }
     DatingCard:
       type: object
       properties:

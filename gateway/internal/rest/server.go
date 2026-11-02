@@ -65,6 +65,7 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger, reg prometheu
 		canvas:            backends.Canvas,
 		paints:            pubsub.New[struct{}, canvasPaintRequest](canvasLag),
 		dating:            backends.Dating,
+		federation:        backends.Federation,
 		previews:          backends.Previews,
 		votes:             backends.Votes,
 		ads:               backends.Ads,

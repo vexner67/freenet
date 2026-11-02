@@ -1606,6 +1606,7 @@ type harness struct {
 	stories       *fakeStories
 	canvas        *fakeCanvas
 	dating        *fakeDating
+	federation    *fakeFederation
 	previews      *fakePreviews
 }
 
@@ -1646,6 +1647,7 @@ func newHarness(cfg rest.Config) harness {
 		stories:       &fakeStories{},
 		canvas:        &fakeCanvas{},
 		dating:        &fakeDating{},
+		federation:    &fakeFederation{},
 		previews:      &fakePreviews{},
 	}
 	h.metrics = prometheus.NewRegistry()
@@ -1681,6 +1683,7 @@ func newHarness(cfg rest.Config) harness {
 		Stories:       h.stories,
 		Canvas:        h.canvas,
 		Dating:        h.dating,
+		Federation:    h.federation,
 		Previews:      h.previews,
 	}, h.metrics).Handler()
 

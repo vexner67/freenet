@@ -27,6 +27,9 @@ type Config struct {
 	NotificationServiceAddr string `env:"NOTIFICATION_SERVICE_ADDR,required,notEmpty"`
 	MessageServiceAddr      string `env:"MESSAGE_SERVICE_ADDR,required,notEmpty"`
 	ClubServiceAddr         string `env:"CLUB_SERVICE_ADDR,required,notEmpty"`
+	// FederationServiceAddr opens pages to the Fediverse; without it the
+	// site serves none of it.
+	FederationServiceAddr string `env:"FEDERATION_SERVICE_ADDR"`
 
 	// mTLS to the internal services: TLS_CA_PATH, TLS_CERT_PATH, TLS_KEY_PATH.
 	TLS mtls.Config `envPrefix:"TLS_"`
