@@ -5,6 +5,7 @@ package federation.v1;
 option go_package = "github.com/vexner67/freenet/federation/api/federation/v1;federationv1";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 
 // FederationService opens pages to the Fediverse (ActivityPub): other
 // servers read their documents and posts, follow them and get what they
@@ -32,6 +33,32 @@ service FederationService {
   // Internal, for post: a post was published, edited or deleted.
   // Idempotent enough: the servers take an activity twice.
   rpc PostChanged(PostChangedRequest) returns (google.protobuf.Empty);
+
+  // Public: the document of the site itself, which follows accounts of
+  // other servers for the news.
+  rpc GetSiteActor(GetSiteActorRequest) returns (GetSiteActorResponse);
+
+  // Require an access token. An address that is not one is
+  // InvalidArgument; an account its server does not give is NotFound.
+  rpc LookupAccount(LookupAccountRequest) returns (LookupAccountResponse);
+  // The accounts of other servers the caller reads; more than one may is
+  // FailedPrecondition.
+  rpc ListSubscriptions(ListSubscriptionsRequest) returns (ListSubscriptionsResponse);
+  rpc Subscribe(SubscribeRequest) returns (SubscribeResponse);
+  rpc Unsubscribe(UnsubscribeRequest) returns (google.protobuf.Empty);
+  // Remote posts for the news, newest first: of the accounts the caller
+  // reads, or of those in the news of everyone.
+  rpc ListNews(ListNewsRequest) returns (ListNewsResponse);
+
+  // Internal, for the gateway, which lets only administrators call them:
+  // the accounts in the news of everyone.
+  rpc ListFeatured(ListFeaturedRequest) returns (ListFeaturedResponse);
+  rpc Feature(FeatureRequest) returns (FeatureResponse);
+  rpc Unfeature(UnfeatureRequest) returns (google.protobuf.Empty);
+  // Internal, for the gateway: a picture of a remote post or the photo of
+  // an account, read from its server for the site to show. Anything but
+  // a picture is NotFound.
+  rpc GetPicture(GetPictureRequest) returns (GetPictureResponse);
 }
 
 message FederationStatus {
@@ -129,4 +156,133 @@ message PostChangedRequest {
   PostChange change = 1;
   string post_id = 2;
   string author_id = 3;
+}
+
+message GetSiteActorRequest {}
+
+message GetSiteActorResponse {
+  bytes document = 1;
+}
+
+// Account is an account of another server.
+message Account {
+  // The address of its actor.
+  string id = 1;
+  // @username@host.
+  string handle = 2;
+  string name = 3;
+  // Its page, for a browser.
+  string page_url = 4;
+  bool has_avatar = 5;
+  // Its server took the follow of the site; until then its posts may not
+  // come.
+  bool accepted = 6;
+}
+
+message LookupAccountRequest {
+  // @username@host, username@host or the https address of the account.
+  string address = 1;
+}
+
+message LookupAccountResponse {
+  Account account = 1;
+  // The caller reads it.
+  bool subscribed = 2;
+}
+
+message ListSubscriptionsRequest {}
+
+message ListSubscriptionsResponse {
+  repeated Account accounts = 1;
+}
+
+message SubscribeRequest {
+  string address = 1;
+}
+
+message SubscribeResponse {
+  Account account = 1;
+}
+
+message UnsubscribeRequest {
+  // The address of the actor.
+  string id = 1;
+}
+
+// NewsScope is whose posts the news are of.
+enum NewsScope {
+  NEWS_SCOPE_UNSPECIFIED = 0;
+  // The accounts the caller reads.
+  NEWS_SCOPE_SUBSCRIBED = 1;
+  // The accounts in the news of everyone.
+  NEWS_SCOPE_FEATURED = 2;
+}
+
+message ListNewsRequest {
+  NewsScope scope = 1;
+  // Posts before this ID; empty for the newest. Remote posts have
+  // UUIDv7 IDs by the time they were published, so one cursor pages them
+  // together with the posts of the site.
+  string before = 2;
+  int32 limit = 3;
+  bool hide_sensitive = 4;
+}
+
+message NewsImage {
+  string description = 1;
+}
+
+message NewsPost {
+  string id = 1;
+  // The address of the note.
+  string url = 2;
+  // The post itself, for a browser.
+  string page_url = 3;
+  Account author = 4;
+  // Plain text, made from the HTML of the note.
+  string text = 5;
+  // The content warning; the post is sensitive with one.
+  string summary = 6;
+  bool sensitive = 7;
+  // GetPicture reads them by their index.
+  repeated NewsImage images = 8;
+  string language = 9;
+  google.protobuf.Timestamp published_at = 10;
+  // Unset for a post never edited.
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message ListNewsResponse {
+  repeated NewsPost posts = 1;
+}
+
+message ListFeaturedRequest {}
+
+message ListFeaturedResponse {
+  repeated Account accounts = 1;
+}
+
+message FeatureRequest {
+  string address = 1;
+}
+
+message FeatureResponse {
+  Account account = 1;
+}
+
+message UnfeatureRequest {
+  string id = 1;
+}
+
+message GetPictureRequest {
+  // A picture of a remote post: its ID and the index of the image.
+  string post_id = 1;
+  int32 index = 2;
+  // Or the photo of an account, by the address of its actor.
+  string account_id = 3;
+}
+
+message GetPictureResponse {
+  bytes body = 1;
+  string content_type = 2;
 }

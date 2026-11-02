@@ -55,6 +55,14 @@ type Config struct {
 	RemoteTimeout  time.Duration `env:"REMOTE_TIMEOUT" envDefault:"10s"`
 	DeliveryMaxAge time.Duration `env:"DELIVERY_MAX_AGE" envDefault:"48h"`
 
+	// FeedLanguages are the languages of the remote posts in the news of
+	// everyone; a post that does not say its language is there too.
+	FeedLanguages []string `env:"FEED_LANGUAGES" envDefault:"ru,en"`
+	// NewsRetention is how long remote posts are kept; CleanupInterval,
+	// how often older ones are forgotten.
+	NewsRetention   time.Duration `env:"NEWS_RETENTION" envDefault:"2160h"`
+	CleanupInterval time.Duration `env:"CLEANUP_INTERVAL" envDefault:"1h"`
+
 	// Access tokens are issued by the auth service; federation only
 	// verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`
@@ -80,8 +88,8 @@ func (c Config) Validate() error {
 		return fmt.Errorf("PUBLIC_URL %q is not the address of a site, e.g. https://example.com", c.PublicURL)
 	}
 
-	if c.ServicesTimeout <= 0 || c.RemoteTimeout <= 0 || c.DeliveryMaxAge <= 0 {
-		return errors.New("SERVICES_TIMEOUT, REMOTE_TIMEOUT and DELIVERY_MAX_AGE must be positive")
+	if c.ServicesTimeout <= 0 || c.RemoteTimeout <= 0 || c.DeliveryMaxAge <= 0 || c.NewsRetention <= 0 || c.CleanupInterval <= 0 {
+		return errors.New("SERVICES_TIMEOUT, REMOTE_TIMEOUT, DELIVERY_MAX_AGE, NEWS_RETENTION and CLEANUP_INTERVAL must be positive")
 	}
 
 	if err := c.Tracing.Validate(); err != nil {

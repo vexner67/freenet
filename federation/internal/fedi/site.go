@@ -37,7 +37,13 @@ func (s Site) at(path string) URL {
 	return URL(s.base.String() + path)
 }
 
+// Actor is the actor of a page; uuid.Nil is the actor of the site
+// itself, which follows the accounts of other servers for the news.
 func (s Site) Actor(userID uuid.UUID) URL {
+	if userID == uuid.Nil {
+		return s.at("/ap/actor")
+	}
+
 	return s.at("/ap/users/" + userID.String())
 }
 
@@ -77,6 +83,16 @@ func (s Site) Accept(userID, id uuid.UUID) URL {
 	return s.Actor(userID) + URL("#accept-"+id.String())
 }
 
+// Follow is a follow the site sends, one of its own per follow; Unfollow
+// undoes it.
+func (s Site) Follow(id uuid.UUID) URL {
+	return s.Actor(uuid.Nil) + URL("#follow-"+id.String())
+}
+
+func (s Site) Unfollow(id uuid.UUID) URL {
+	return s.Actor(uuid.Nil) + URL("#undo-"+id.String())
+}
+
 // Deletion is the activity that deletes the actor for the Fediverse.
 func (s Site) Deletion(userID uuid.UUID, at time.Time) URL {
 	return s.Actor(userID) + URL("#delete-"+strconv.FormatInt(at.UnixMilli(), 10))
@@ -99,8 +115,13 @@ func (s Site) Avatar(userID uuid.UUID, avatarID string) URL {
 	return s.at("/media/avatars/" + userID.String() + "/" + url.PathEscape(avatarID) + "/large.jpg")
 }
 
-// UserOf is the user whose actor address u is, if it is one of ours.
+// UserOf is the user whose actor address u is, if it is one of ours:
+// uuid.Nil for the actor of the site.
 func (s Site) UserOf(u URL) (uuid.UUID, bool) {
+	if u == s.Actor(uuid.Nil) {
+		return uuid.Nil, true
+	}
+
 	rest, ok := strings.CutPrefix(string(u), string(s.at("/ap/users/")))
 	if !ok {
 		return uuid.Nil, false

@@ -34,6 +34,16 @@ type Deps struct {
 	Limiter    Limiter
 	Tx         TxManager
 	Now        func() time.Time
+
+	Following     FollowingRepository
+	Subscriptions SubscriptionRepository
+	News          RemotePostRepository
+	Finder        Finder
+	Media         MediaFetcher
+	// Languages are those the news of everyone show posts in.
+	Languages []string
+	// Retention is how long remote posts are kept.
+	Retention time.Duration
 }
 
 // Service opens pages to the Fediverse, tells other servers about them
@@ -52,6 +62,14 @@ type Service struct {
 	limiter    Limiter
 	tx         TxManager
 	now        func() time.Time
+
+	following     FollowingRepository
+	subscriptions SubscriptionRepository
+	news          RemotePostRepository
+	finder        Finder
+	media         MediaFetcher
+	languages     []string
+	retention     time.Duration
 }
 
 func New(d Deps) *Service {
@@ -74,6 +92,14 @@ func New(d Deps) *Service {
 		limiter:    d.Limiter,
 		tx:         d.Tx,
 		now:        now,
+
+		following:     d.Following,
+		subscriptions: d.Subscriptions,
+		news:          d.News,
+		finder:        d.Finder,
+		media:         d.Media,
+		languages:     d.Languages,
+		retention:     d.Retention,
 	}
 }
 

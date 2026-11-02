@@ -57,6 +57,9 @@ type App struct {
 	queue   *outbox.Postgres
 	limiter *ratelimit.Memory
 	conns   []*grpc.ClientConn
+	// news forgets old remote posts every cleanup.
+	news    *service.Service
+	cleanup time.Duration
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -163,9 +166,18 @@ func (a *App) build(cfg config.Config) error {
 		Keys:       httpsig.Keys{},
 		Limiter:    a.limiter,
 		Tx:         repos.tx,
-	})
 
-	federationv1.RegisterFederationServiceServer(a.server.Registrar(), federationgrpc.NewFederationHandler(federation, site))
+		Following:     repos.following,
+		Subscriptions: repos.subscriptions,
+		News:          repos.news,
+		Finder:        client,
+		Media:         client,
+		Languages:     cfg.FeedLanguages,
+		Retention:     cfg.NewsRetention,
+	})
+	a.news, a.cleanup = federation, cfg.CleanupInterval
+
+	federationv1.RegisterFederationServiceServer(a.server.Registrar(), federationgrpc.NewFederationHandler(federation, federation, site))
 
 	if cfg.MetricsPort == 0 {
 		a.logger.Info("METRICS_PORT is not set: metrics are not served")
@@ -214,16 +226,26 @@ type repositories struct {
 	remotes   service.RemoteRepository
 	tx        service.TxManager
 	queue     outboxQueue
+
+	following     service.FollowingRepository
+	subscriptions service.SubscriptionRepository
+	news          service.RemotePostRepository
 }
 
 func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	if cfg.Storage == config.StorageInmem {
+		following, subscriptions := inmem.NewFollowingRepository(), inmem.NewSubscriptionRepository()
+
 		return repositories{
 			accounts:  inmem.NewAccountRepository(),
 			followers: inmem.NewFollowerRepository(),
 			remotes:   inmem.NewRemoteRepository(),
 			tx:        inmem.TxManager{},
 			queue:     outbox.NewMemory(),
+
+			following:     following,
+			subscriptions: subscriptions,
+			news:          inmem.NewRemotePostRepository(following, subscriptions),
 		}, nil
 	}
 
@@ -257,6 +279,10 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		remotes:   postgres.NewRemoteRepository(a.pool),
 		tx:        pgpool.NewTxManager(a.pool),
 		queue:     a.queue,
+
+		following:     postgres.NewFollowingRepository(a.pool),
+		subscriptions: postgres.NewSubscriptionRepository(a.pool),
+		news:          postgres.NewRemotePostRepository(a.pool),
 	}, nil
 }
 
@@ -279,7 +305,37 @@ func (a *App) Run(ctx context.Context) error {
 		return errs.Wrap("a.relay.Run", a.relay.Run(ctx))
 	})
 
+	g.Go(func() error {
+		a.forgetOldNews(ctx)
+		return nil
+	})
+
 	return g.Wait()
+}
+
+// forgetOldNews forgets the remote posts older than the news keep, every
+// cleanup interval until ctx is cancelled; a failure waits for the next.
+func (a *App) forgetOldNews(ctx context.Context) {
+	ticker := time.NewTicker(a.cleanup)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+
+		n, err := a.news.Cleanup(ctx)
+		if err != nil {
+			a.logger.ErrorContext(ctx, "forget old news", "error", err)
+			continue
+		}
+
+		if n > 0 {
+			a.logger.InfoContext(ctx, "old news forgotten", "count", n)
+		}
+	}
 }
 
 // Healthcheck asks the service running with cfg on this host whether it

@@ -10,6 +10,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -73,6 +74,58 @@ func (x PostChange) Number() protoreflect.EnumNumber {
 // Deprecated: Use PostChange.Descriptor instead.
 func (PostChange) EnumDescriptor() ([]byte, []int) {
 	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{0}
+}
+
+// NewsScope is whose posts the news are of.
+type NewsScope int32
+
+const (
+	NewsScope_NEWS_SCOPE_UNSPECIFIED NewsScope = 0
+	// The accounts the caller reads.
+	NewsScope_NEWS_SCOPE_SUBSCRIBED NewsScope = 1
+	// The accounts in the news of everyone.
+	NewsScope_NEWS_SCOPE_FEATURED NewsScope = 2
+)
+
+// Enum value maps for NewsScope.
+var (
+	NewsScope_name = map[int32]string{
+		0: "NEWS_SCOPE_UNSPECIFIED",
+		1: "NEWS_SCOPE_SUBSCRIBED",
+		2: "NEWS_SCOPE_FEATURED",
+	}
+	NewsScope_value = map[string]int32{
+		"NEWS_SCOPE_UNSPECIFIED": 0,
+		"NEWS_SCOPE_SUBSCRIBED":  1,
+		"NEWS_SCOPE_FEATURED":    2,
+	}
+)
+
+func (x NewsScope) Enum() *NewsScope {
+	p := new(NewsScope)
+	*p = x
+	return p
+}
+
+func (x NewsScope) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (NewsScope) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_federation_v1_federation_proto_enumTypes[1].Descriptor()
+}
+
+func (NewsScope) Type() protoreflect.EnumType {
+	return &file_api_federation_v1_federation_proto_enumTypes[1]
+}
+
+func (x NewsScope) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use NewsScope.Descriptor instead.
+func (NewsScope) EnumDescriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{1}
 }
 
 type FederationStatus struct {
@@ -976,11 +1029,1107 @@ func (x *PostChangedRequest) GetAuthorId() string {
 	return ""
 }
 
+type GetSiteActorRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSiteActorRequest) Reset() {
+	*x = GetSiteActorRequest{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSiteActorRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSiteActorRequest) ProtoMessage() {}
+
+func (x *GetSiteActorRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSiteActorRequest.ProtoReflect.Descriptor instead.
+func (*GetSiteActorRequest) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{19}
+}
+
+type GetSiteActorResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Document      []byte                 `protobuf:"bytes,1,opt,name=document,proto3" json:"document,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSiteActorResponse) Reset() {
+	*x = GetSiteActorResponse{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSiteActorResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSiteActorResponse) ProtoMessage() {}
+
+func (x *GetSiteActorResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSiteActorResponse.ProtoReflect.Descriptor instead.
+func (*GetSiteActorResponse) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *GetSiteActorResponse) GetDocument() []byte {
+	if x != nil {
+		return x.Document
+	}
+	return nil
+}
+
+// Account is an account of another server.
+type Account struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The address of its actor.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// @username@host.
+	Handle string `protobuf:"bytes,2,opt,name=handle,proto3" json:"handle,omitempty"`
+	Name   string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Its page, for a browser.
+	PageUrl   string `protobuf:"bytes,4,opt,name=page_url,json=pageUrl,proto3" json:"page_url,omitempty"`
+	HasAvatar bool   `protobuf:"varint,5,opt,name=has_avatar,json=hasAvatar,proto3" json:"has_avatar,omitempty"`
+	// Its server took the follow of the site; until then its posts may not
+	// come.
+	Accepted      bool `protobuf:"varint,6,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Account) Reset() {
+	*x = Account{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Account) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Account) ProtoMessage() {}
+
+func (x *Account) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Account.ProtoReflect.Descriptor instead.
+func (*Account) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *Account) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Account) GetHandle() string {
+	if x != nil {
+		return x.Handle
+	}
+	return ""
+}
+
+func (x *Account) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Account) GetPageUrl() string {
+	if x != nil {
+		return x.PageUrl
+	}
+	return ""
+}
+
+func (x *Account) GetHasAvatar() bool {
+	if x != nil {
+		return x.HasAvatar
+	}
+	return false
+}
+
+func (x *Account) GetAccepted() bool {
+	if x != nil {
+		return x.Accepted
+	}
+	return false
+}
+
+type LookupAccountRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// @username@host, username@host or the https address of the account.
+	Address       string `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LookupAccountRequest) Reset() {
+	*x = LookupAccountRequest{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LookupAccountRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LookupAccountRequest) ProtoMessage() {}
+
+func (x *LookupAccountRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LookupAccountRequest.ProtoReflect.Descriptor instead.
+func (*LookupAccountRequest) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *LookupAccountRequest) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+type LookupAccountResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Account *Account               `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	// The caller reads it.
+	Subscribed    bool `protobuf:"varint,2,opt,name=subscribed,proto3" json:"subscribed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LookupAccountResponse) Reset() {
+	*x = LookupAccountResponse{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LookupAccountResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LookupAccountResponse) ProtoMessage() {}
+
+func (x *LookupAccountResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LookupAccountResponse.ProtoReflect.Descriptor instead.
+func (*LookupAccountResponse) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *LookupAccountResponse) GetAccount() *Account {
+	if x != nil {
+		return x.Account
+	}
+	return nil
+}
+
+func (x *LookupAccountResponse) GetSubscribed() bool {
+	if x != nil {
+		return x.Subscribed
+	}
+	return false
+}
+
+type ListSubscriptionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSubscriptionsRequest) Reset() {
+	*x = ListSubscriptionsRequest{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSubscriptionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSubscriptionsRequest) ProtoMessage() {}
+
+func (x *ListSubscriptionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSubscriptionsRequest.ProtoReflect.Descriptor instead.
+func (*ListSubscriptionsRequest) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{24}
+}
+
+type ListSubscriptionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Accounts      []*Account             `protobuf:"bytes,1,rep,name=accounts,proto3" json:"accounts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSubscriptionsResponse) Reset() {
+	*x = ListSubscriptionsResponse{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSubscriptionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSubscriptionsResponse) ProtoMessage() {}
+
+func (x *ListSubscriptionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSubscriptionsResponse.ProtoReflect.Descriptor instead.
+func (*ListSubscriptionsResponse) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ListSubscriptionsResponse) GetAccounts() []*Account {
+	if x != nil {
+		return x.Accounts
+	}
+	return nil
+}
+
+type SubscribeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Address       string                 `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscribeRequest) Reset() {
+	*x = SubscribeRequest{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscribeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscribeRequest) ProtoMessage() {}
+
+func (x *SubscribeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscribeRequest.ProtoReflect.Descriptor instead.
+func (*SubscribeRequest) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *SubscribeRequest) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+type SubscribeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Account       *Account               `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscribeResponse) Reset() {
+	*x = SubscribeResponse{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscribeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscribeResponse) ProtoMessage() {}
+
+func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscribeResponse.ProtoReflect.Descriptor instead.
+func (*SubscribeResponse) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *SubscribeResponse) GetAccount() *Account {
+	if x != nil {
+		return x.Account
+	}
+	return nil
+}
+
+type UnsubscribeRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The address of the actor.
+	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnsubscribeRequest) Reset() {
+	*x = UnsubscribeRequest{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnsubscribeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnsubscribeRequest) ProtoMessage() {}
+
+func (x *UnsubscribeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnsubscribeRequest.ProtoReflect.Descriptor instead.
+func (*UnsubscribeRequest) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *UnsubscribeRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type ListNewsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Scope NewsScope              `protobuf:"varint,1,opt,name=scope,proto3,enum=federation.v1.NewsScope" json:"scope,omitempty"`
+	// Posts before this ID; empty for the newest. Remote posts have
+	// UUIDv7 IDs by the time they were published, so one cursor pages them
+	// together with the posts of the site.
+	Before        string `protobuf:"bytes,2,opt,name=before,proto3" json:"before,omitempty"`
+	Limit         int32  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	HideSensitive bool   `protobuf:"varint,4,opt,name=hide_sensitive,json=hideSensitive,proto3" json:"hide_sensitive,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListNewsRequest) Reset() {
+	*x = ListNewsRequest{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListNewsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListNewsRequest) ProtoMessage() {}
+
+func (x *ListNewsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListNewsRequest.ProtoReflect.Descriptor instead.
+func (*ListNewsRequest) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *ListNewsRequest) GetScope() NewsScope {
+	if x != nil {
+		return x.Scope
+	}
+	return NewsScope_NEWS_SCOPE_UNSPECIFIED
+}
+
+func (x *ListNewsRequest) GetBefore() string {
+	if x != nil {
+		return x.Before
+	}
+	return ""
+}
+
+func (x *ListNewsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListNewsRequest) GetHideSensitive() bool {
+	if x != nil {
+		return x.HideSensitive
+	}
+	return false
+}
+
+type NewsImage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Description   string                 `protobuf:"bytes,1,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NewsImage) Reset() {
+	*x = NewsImage{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NewsImage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NewsImage) ProtoMessage() {}
+
+func (x *NewsImage) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NewsImage.ProtoReflect.Descriptor instead.
+func (*NewsImage) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *NewsImage) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+type NewsPost struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The address of the note.
+	Url string `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	// The post itself, for a browser.
+	PageUrl string   `protobuf:"bytes,3,opt,name=page_url,json=pageUrl,proto3" json:"page_url,omitempty"`
+	Author  *Account `protobuf:"bytes,4,opt,name=author,proto3" json:"author,omitempty"`
+	// Plain text, made from the HTML of the note.
+	Text string `protobuf:"bytes,5,opt,name=text,proto3" json:"text,omitempty"`
+	// The content warning; the post is sensitive with one.
+	Summary   string `protobuf:"bytes,6,opt,name=summary,proto3" json:"summary,omitempty"`
+	Sensitive bool   `protobuf:"varint,7,opt,name=sensitive,proto3" json:"sensitive,omitempty"`
+	// GetPicture reads them by their index.
+	Images      []*NewsImage           `protobuf:"bytes,8,rep,name=images,proto3" json:"images,omitempty"`
+	Language    string                 `protobuf:"bytes,9,opt,name=language,proto3" json:"language,omitempty"`
+	PublishedAt *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
+	// Unset for a post never edited.
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NewsPost) Reset() {
+	*x = NewsPost{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NewsPost) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NewsPost) ProtoMessage() {}
+
+func (x *NewsPost) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NewsPost.ProtoReflect.Descriptor instead.
+func (*NewsPost) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *NewsPost) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *NewsPost) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *NewsPost) GetPageUrl() string {
+	if x != nil {
+		return x.PageUrl
+	}
+	return ""
+}
+
+func (x *NewsPost) GetAuthor() *Account {
+	if x != nil {
+		return x.Author
+	}
+	return nil
+}
+
+func (x *NewsPost) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *NewsPost) GetSummary() string {
+	if x != nil {
+		return x.Summary
+	}
+	return ""
+}
+
+func (x *NewsPost) GetSensitive() bool {
+	if x != nil {
+		return x.Sensitive
+	}
+	return false
+}
+
+func (x *NewsPost) GetImages() []*NewsImage {
+	if x != nil {
+		return x.Images
+	}
+	return nil
+}
+
+func (x *NewsPost) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
+func (x *NewsPost) GetPublishedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.PublishedAt
+	}
+	return nil
+}
+
+func (x *NewsPost) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+type ListNewsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Posts         []*NewsPost            `protobuf:"bytes,1,rep,name=posts,proto3" json:"posts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListNewsResponse) Reset() {
+	*x = ListNewsResponse{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListNewsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListNewsResponse) ProtoMessage() {}
+
+func (x *ListNewsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListNewsResponse.ProtoReflect.Descriptor instead.
+func (*ListNewsResponse) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *ListNewsResponse) GetPosts() []*NewsPost {
+	if x != nil {
+		return x.Posts
+	}
+	return nil
+}
+
+type ListFeaturedRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListFeaturedRequest) Reset() {
+	*x = ListFeaturedRequest{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListFeaturedRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListFeaturedRequest) ProtoMessage() {}
+
+func (x *ListFeaturedRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListFeaturedRequest.ProtoReflect.Descriptor instead.
+func (*ListFeaturedRequest) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{33}
+}
+
+type ListFeaturedResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Accounts      []*Account             `protobuf:"bytes,1,rep,name=accounts,proto3" json:"accounts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListFeaturedResponse) Reset() {
+	*x = ListFeaturedResponse{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListFeaturedResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListFeaturedResponse) ProtoMessage() {}
+
+func (x *ListFeaturedResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListFeaturedResponse.ProtoReflect.Descriptor instead.
+func (*ListFeaturedResponse) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *ListFeaturedResponse) GetAccounts() []*Account {
+	if x != nil {
+		return x.Accounts
+	}
+	return nil
+}
+
+type FeatureRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Address       string                 `protobuf:"bytes,1,opt,name=address,proto3" json:"address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FeatureRequest) Reset() {
+	*x = FeatureRequest{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FeatureRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FeatureRequest) ProtoMessage() {}
+
+func (x *FeatureRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FeatureRequest.ProtoReflect.Descriptor instead.
+func (*FeatureRequest) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *FeatureRequest) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+type FeatureResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Account       *Account               `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FeatureResponse) Reset() {
+	*x = FeatureResponse{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FeatureResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FeatureResponse) ProtoMessage() {}
+
+func (x *FeatureResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FeatureResponse.ProtoReflect.Descriptor instead.
+func (*FeatureResponse) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *FeatureResponse) GetAccount() *Account {
+	if x != nil {
+		return x.Account
+	}
+	return nil
+}
+
+type UnfeatureRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnfeatureRequest) Reset() {
+	*x = UnfeatureRequest{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnfeatureRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnfeatureRequest) ProtoMessage() {}
+
+func (x *UnfeatureRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnfeatureRequest.ProtoReflect.Descriptor instead.
+func (*UnfeatureRequest) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *UnfeatureRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type GetPictureRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A picture of a remote post: its ID and the index of the image.
+	PostId string `protobuf:"bytes,1,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
+	Index  int32  `protobuf:"varint,2,opt,name=index,proto3" json:"index,omitempty"`
+	// Or the photo of an account, by the address of its actor.
+	AccountId     string `protobuf:"bytes,3,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPictureRequest) Reset() {
+	*x = GetPictureRequest{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPictureRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPictureRequest) ProtoMessage() {}
+
+func (x *GetPictureRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPictureRequest.ProtoReflect.Descriptor instead.
+func (*GetPictureRequest) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *GetPictureRequest) GetPostId() string {
+	if x != nil {
+		return x.PostId
+	}
+	return ""
+}
+
+func (x *GetPictureRequest) GetIndex() int32 {
+	if x != nil {
+		return x.Index
+	}
+	return 0
+}
+
+func (x *GetPictureRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+type GetPictureResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Body          []byte                 `protobuf:"bytes,1,opt,name=body,proto3" json:"body,omitempty"`
+	ContentType   string                 `protobuf:"bytes,2,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPictureResponse) Reset() {
+	*x = GetPictureResponse{}
+	mi := &file_api_federation_v1_federation_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPictureResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPictureResponse) ProtoMessage() {}
+
+func (x *GetPictureResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_federation_v1_federation_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPictureResponse.ProtoReflect.Descriptor instead.
+func (*GetPictureResponse) Descriptor() ([]byte, []int) {
+	return file_api_federation_v1_federation_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *GetPictureResponse) GetBody() []byte {
+	if x != nil {
+		return x.Body
+	}
+	return nil
+}
+
+func (x *GetPictureResponse) GetContentType() string {
+	if x != nil {
+		return x.ContentType
+	}
+	return ""
+}
+
 var File_api_federation_v1_federation_proto protoreflect.FileDescriptor
 
 const file_api_federation_v1_federation_proto_rawDesc = "" +
 	"\n" +
-	"\"api/federation/v1/federation.proto\x12\rfederation.v1\x1a\x1bgoogle/protobuf/empty.proto\"\\\n" +
+	"\"api/federation/v1/federation.proto\x12\rfederation.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\\\n" +
 	"\x10FederationStatus\x12\x12\n" +
 	"\x04open\x18\x01 \x01(\bR\x04open\x12\x1c\n" +
 	"\tfollowers\x18\x02 \x01(\x05R\tfollowers\x12\x16\n" +
@@ -1028,13 +2177,84 @@ const file_api_federation_v1_federation_proto_rawDesc = "" +
 	"\x12PostChangedRequest\x121\n" +
 	"\x06change\x18\x01 \x01(\x0e2\x19.federation.v1.PostChangeR\x06change\x12\x17\n" +
 	"\apost_id\x18\x02 \x01(\tR\x06postId\x12\x1b\n" +
-	"\tauthor_id\x18\x03 \x01(\tR\bauthorId*u\n" +
+	"\tauthor_id\x18\x03 \x01(\tR\bauthorId\"\x15\n" +
+	"\x13GetSiteActorRequest\"2\n" +
+	"\x14GetSiteActorResponse\x12\x1a\n" +
+	"\bdocument\x18\x01 \x01(\fR\bdocument\"\x9b\x01\n" +
+	"\aAccount\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06handle\x18\x02 \x01(\tR\x06handle\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x19\n" +
+	"\bpage_url\x18\x04 \x01(\tR\apageUrl\x12\x1d\n" +
+	"\n" +
+	"has_avatar\x18\x05 \x01(\bR\thasAvatar\x12\x1a\n" +
+	"\baccepted\x18\x06 \x01(\bR\baccepted\"0\n" +
+	"\x14LookupAccountRequest\x12\x18\n" +
+	"\aaddress\x18\x01 \x01(\tR\aaddress\"i\n" +
+	"\x15LookupAccountResponse\x120\n" +
+	"\aaccount\x18\x01 \x01(\v2\x16.federation.v1.AccountR\aaccount\x12\x1e\n" +
+	"\n" +
+	"subscribed\x18\x02 \x01(\bR\n" +
+	"subscribed\"\x1a\n" +
+	"\x18ListSubscriptionsRequest\"O\n" +
+	"\x19ListSubscriptionsResponse\x122\n" +
+	"\baccounts\x18\x01 \x03(\v2\x16.federation.v1.AccountR\baccounts\",\n" +
+	"\x10SubscribeRequest\x12\x18\n" +
+	"\aaddress\x18\x01 \x01(\tR\aaddress\"E\n" +
+	"\x11SubscribeResponse\x120\n" +
+	"\aaccount\x18\x01 \x01(\v2\x16.federation.v1.AccountR\aaccount\"$\n" +
+	"\x12UnsubscribeRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x96\x01\n" +
+	"\x0fListNewsRequest\x12.\n" +
+	"\x05scope\x18\x01 \x01(\x0e2\x18.federation.v1.NewsScopeR\x05scope\x12\x16\n" +
+	"\x06before\x18\x02 \x01(\tR\x06before\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12%\n" +
+	"\x0ehide_sensitive\x18\x04 \x01(\bR\rhideSensitive\"-\n" +
+	"\tNewsImage\x12 \n" +
+	"\vdescription\x18\x01 \x01(\tR\vdescription\"\x8b\x03\n" +
+	"\bNewsPost\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
+	"\x03url\x18\x02 \x01(\tR\x03url\x12\x19\n" +
+	"\bpage_url\x18\x03 \x01(\tR\apageUrl\x12.\n" +
+	"\x06author\x18\x04 \x01(\v2\x16.federation.v1.AccountR\x06author\x12\x12\n" +
+	"\x04text\x18\x05 \x01(\tR\x04text\x12\x18\n" +
+	"\asummary\x18\x06 \x01(\tR\asummary\x12\x1c\n" +
+	"\tsensitive\x18\a \x01(\bR\tsensitive\x120\n" +
+	"\x06images\x18\b \x03(\v2\x18.federation.v1.NewsImageR\x06images\x12\x1a\n" +
+	"\blanguage\x18\t \x01(\tR\blanguage\x12=\n" +
+	"\fpublished_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\vpublishedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"A\n" +
+	"\x10ListNewsResponse\x12-\n" +
+	"\x05posts\x18\x01 \x03(\v2\x17.federation.v1.NewsPostR\x05posts\"\x15\n" +
+	"\x13ListFeaturedRequest\"J\n" +
+	"\x14ListFeaturedResponse\x122\n" +
+	"\baccounts\x18\x01 \x03(\v2\x16.federation.v1.AccountR\baccounts\"*\n" +
+	"\x0eFeatureRequest\x12\x18\n" +
+	"\aaddress\x18\x01 \x01(\tR\aaddress\"C\n" +
+	"\x0fFeatureResponse\x120\n" +
+	"\aaccount\x18\x01 \x01(\v2\x16.federation.v1.AccountR\aaccount\"\"\n" +
+	"\x10UnfeatureRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"a\n" +
+	"\x11GetPictureRequest\x12\x17\n" +
+	"\apost_id\x18\x01 \x01(\tR\x06postId\x12\x14\n" +
+	"\x05index\x18\x02 \x01(\x05R\x05index\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x03 \x01(\tR\taccountId\"K\n" +
+	"\x12GetPictureResponse\x12\x12\n" +
+	"\x04body\x18\x01 \x01(\fR\x04body\x12!\n" +
+	"\fcontent_type\x18\x02 \x01(\tR\vcontentType*u\n" +
 	"\n" +
 	"PostChange\x12\x1b\n" +
 	"\x17POST_CHANGE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15POST_CHANGE_PUBLISHED\x10\x01\x12\x16\n" +
 	"\x12POST_CHANGE_EDITED\x10\x02\x12\x17\n" +
-	"\x13POST_CHANGE_DELETED\x10\x032\xc3\x06\n" +
+	"\x13POST_CHANGE_DELETED\x10\x03*[\n" +
+	"\tNewsScope\x12\x1a\n" +
+	"\x16NEWS_SCOPE_UNSPECIFIED\x10\x00\x12\x19\n" +
+	"\x15NEWS_SCOPE_SUBSCRIBED\x10\x01\x12\x17\n" +
+	"\x13NEWS_SCOPE_FEATURED\x10\x022\x83\r\n" +
 	"\x11FederationService\x12Z\n" +
 	"\rGetFederation\x12#.federation.v1.GetFederationRequest\x1a$.federation.v1.GetFederationResponse\x12]\n" +
 	"\x0eOpenFederation\x12$.federation.v1.OpenFederationRequest\x1a%.federation.v1.OpenFederationResponse\x12`\n" +
@@ -1045,7 +2265,18 @@ const file_api_federation_v1_federation_proto_rawDesc = "" +
 	"\fGetFollowers\x12\".federation.v1.GetFollowersRequest\x1a#.federation.v1.GetFollowersResponse\x12N\n" +
 	"\tGetOutbox\x12\x1f.federation.v1.GetOutboxRequest\x1a .federation.v1.GetOutboxResponse\x12@\n" +
 	"\aReceive\x12\x1d.federation.v1.ReceiveRequest\x1a\x16.google.protobuf.Empty\x12H\n" +
-	"\vPostChanged\x12!.federation.v1.PostChangedRequest\x1a\x16.google.protobuf.EmptyBGZEgithub.com/vexner67/freenet/federation/api/federation/v1;federationv1b\x06proto3"
+	"\vPostChanged\x12!.federation.v1.PostChangedRequest\x1a\x16.google.protobuf.Empty\x12W\n" +
+	"\fGetSiteActor\x12\".federation.v1.GetSiteActorRequest\x1a#.federation.v1.GetSiteActorResponse\x12Z\n" +
+	"\rLookupAccount\x12#.federation.v1.LookupAccountRequest\x1a$.federation.v1.LookupAccountResponse\x12f\n" +
+	"\x11ListSubscriptions\x12'.federation.v1.ListSubscriptionsRequest\x1a(.federation.v1.ListSubscriptionsResponse\x12N\n" +
+	"\tSubscribe\x12\x1f.federation.v1.SubscribeRequest\x1a .federation.v1.SubscribeResponse\x12H\n" +
+	"\vUnsubscribe\x12!.federation.v1.UnsubscribeRequest\x1a\x16.google.protobuf.Empty\x12K\n" +
+	"\bListNews\x12\x1e.federation.v1.ListNewsRequest\x1a\x1f.federation.v1.ListNewsResponse\x12W\n" +
+	"\fListFeatured\x12\".federation.v1.ListFeaturedRequest\x1a#.federation.v1.ListFeaturedResponse\x12H\n" +
+	"\aFeature\x12\x1d.federation.v1.FeatureRequest\x1a\x1e.federation.v1.FeatureResponse\x12D\n" +
+	"\tUnfeature\x12\x1f.federation.v1.UnfeatureRequest\x1a\x16.google.protobuf.Empty\x12Q\n" +
+	"\n" +
+	"GetPicture\x12 .federation.v1.GetPictureRequest\x1a!.federation.v1.GetPictureResponseBGZEgithub.com/vexner67/freenet/federation/api/federation/v1;federationv1b\x06proto3"
 
 var (
 	file_api_federation_v1_federation_proto_rawDescOnce sync.Once
@@ -1059,63 +2290,117 @@ func file_api_federation_v1_federation_proto_rawDescGZIP() []byte {
 	return file_api_federation_v1_federation_proto_rawDescData
 }
 
-var file_api_federation_v1_federation_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_api_federation_v1_federation_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_api_federation_v1_federation_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_api_federation_v1_federation_proto_msgTypes = make([]protoimpl.MessageInfo, 41)
 var file_api_federation_v1_federation_proto_goTypes = []any{
-	(PostChange)(0),                 // 0: federation.v1.PostChange
-	(*FederationStatus)(nil),        // 1: federation.v1.FederationStatus
-	(*GetFederationRequest)(nil),    // 2: federation.v1.GetFederationRequest
-	(*GetFederationResponse)(nil),   // 3: federation.v1.GetFederationResponse
-	(*OpenFederationRequest)(nil),   // 4: federation.v1.OpenFederationRequest
-	(*OpenFederationResponse)(nil),  // 5: federation.v1.OpenFederationResponse
-	(*CloseFederationRequest)(nil),  // 6: federation.v1.CloseFederationRequest
-	(*CloseFederationResponse)(nil), // 7: federation.v1.CloseFederationResponse
-	(*FingerRequest)(nil),           // 8: federation.v1.FingerRequest
-	(*FingerResponse)(nil),          // 9: federation.v1.FingerResponse
-	(*GetActorRequest)(nil),         // 10: federation.v1.GetActorRequest
-	(*GetActorResponse)(nil),        // 11: federation.v1.GetActorResponse
-	(*GetNoteRequest)(nil),          // 12: federation.v1.GetNoteRequest
-	(*GetNoteResponse)(nil),         // 13: federation.v1.GetNoteResponse
-	(*GetFollowersRequest)(nil),     // 14: federation.v1.GetFollowersRequest
-	(*GetFollowersResponse)(nil),    // 15: federation.v1.GetFollowersResponse
-	(*GetOutboxRequest)(nil),        // 16: federation.v1.GetOutboxRequest
-	(*GetOutboxResponse)(nil),       // 17: federation.v1.GetOutboxResponse
-	(*ReceiveRequest)(nil),          // 18: federation.v1.ReceiveRequest
-	(*PostChangedRequest)(nil),      // 19: federation.v1.PostChangedRequest
-	nil,                             // 20: federation.v1.ReceiveRequest.HeadersEntry
-	(*emptypb.Empty)(nil),           // 21: google.protobuf.Empty
+	(PostChange)(0),                   // 0: federation.v1.PostChange
+	(NewsScope)(0),                    // 1: federation.v1.NewsScope
+	(*FederationStatus)(nil),          // 2: federation.v1.FederationStatus
+	(*GetFederationRequest)(nil),      // 3: federation.v1.GetFederationRequest
+	(*GetFederationResponse)(nil),     // 4: federation.v1.GetFederationResponse
+	(*OpenFederationRequest)(nil),     // 5: federation.v1.OpenFederationRequest
+	(*OpenFederationResponse)(nil),    // 6: federation.v1.OpenFederationResponse
+	(*CloseFederationRequest)(nil),    // 7: federation.v1.CloseFederationRequest
+	(*CloseFederationResponse)(nil),   // 8: federation.v1.CloseFederationResponse
+	(*FingerRequest)(nil),             // 9: federation.v1.FingerRequest
+	(*FingerResponse)(nil),            // 10: federation.v1.FingerResponse
+	(*GetActorRequest)(nil),           // 11: federation.v1.GetActorRequest
+	(*GetActorResponse)(nil),          // 12: federation.v1.GetActorResponse
+	(*GetNoteRequest)(nil),            // 13: federation.v1.GetNoteRequest
+	(*GetNoteResponse)(nil),           // 14: federation.v1.GetNoteResponse
+	(*GetFollowersRequest)(nil),       // 15: federation.v1.GetFollowersRequest
+	(*GetFollowersResponse)(nil),      // 16: federation.v1.GetFollowersResponse
+	(*GetOutboxRequest)(nil),          // 17: federation.v1.GetOutboxRequest
+	(*GetOutboxResponse)(nil),         // 18: federation.v1.GetOutboxResponse
+	(*ReceiveRequest)(nil),            // 19: federation.v1.ReceiveRequest
+	(*PostChangedRequest)(nil),        // 20: federation.v1.PostChangedRequest
+	(*GetSiteActorRequest)(nil),       // 21: federation.v1.GetSiteActorRequest
+	(*GetSiteActorResponse)(nil),      // 22: federation.v1.GetSiteActorResponse
+	(*Account)(nil),                   // 23: federation.v1.Account
+	(*LookupAccountRequest)(nil),      // 24: federation.v1.LookupAccountRequest
+	(*LookupAccountResponse)(nil),     // 25: federation.v1.LookupAccountResponse
+	(*ListSubscriptionsRequest)(nil),  // 26: federation.v1.ListSubscriptionsRequest
+	(*ListSubscriptionsResponse)(nil), // 27: federation.v1.ListSubscriptionsResponse
+	(*SubscribeRequest)(nil),          // 28: federation.v1.SubscribeRequest
+	(*SubscribeResponse)(nil),         // 29: federation.v1.SubscribeResponse
+	(*UnsubscribeRequest)(nil),        // 30: federation.v1.UnsubscribeRequest
+	(*ListNewsRequest)(nil),           // 31: federation.v1.ListNewsRequest
+	(*NewsImage)(nil),                 // 32: federation.v1.NewsImage
+	(*NewsPost)(nil),                  // 33: federation.v1.NewsPost
+	(*ListNewsResponse)(nil),          // 34: federation.v1.ListNewsResponse
+	(*ListFeaturedRequest)(nil),       // 35: federation.v1.ListFeaturedRequest
+	(*ListFeaturedResponse)(nil),      // 36: federation.v1.ListFeaturedResponse
+	(*FeatureRequest)(nil),            // 37: federation.v1.FeatureRequest
+	(*FeatureResponse)(nil),           // 38: federation.v1.FeatureResponse
+	(*UnfeatureRequest)(nil),          // 39: federation.v1.UnfeatureRequest
+	(*GetPictureRequest)(nil),         // 40: federation.v1.GetPictureRequest
+	(*GetPictureResponse)(nil),        // 41: federation.v1.GetPictureResponse
+	nil,                               // 42: federation.v1.ReceiveRequest.HeadersEntry
+	(*timestamppb.Timestamp)(nil),     // 43: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),             // 44: google.protobuf.Empty
 }
 var file_api_federation_v1_federation_proto_depIdxs = []int32{
-	1,  // 0: federation.v1.GetFederationResponse.status:type_name -> federation.v1.FederationStatus
-	1,  // 1: federation.v1.OpenFederationResponse.status:type_name -> federation.v1.FederationStatus
-	1,  // 2: federation.v1.CloseFederationResponse.status:type_name -> federation.v1.FederationStatus
-	20, // 3: federation.v1.ReceiveRequest.headers:type_name -> federation.v1.ReceiveRequest.HeadersEntry
+	2,  // 0: federation.v1.GetFederationResponse.status:type_name -> federation.v1.FederationStatus
+	2,  // 1: federation.v1.OpenFederationResponse.status:type_name -> federation.v1.FederationStatus
+	2,  // 2: federation.v1.CloseFederationResponse.status:type_name -> federation.v1.FederationStatus
+	42, // 3: federation.v1.ReceiveRequest.headers:type_name -> federation.v1.ReceiveRequest.HeadersEntry
 	0,  // 4: federation.v1.PostChangedRequest.change:type_name -> federation.v1.PostChange
-	2,  // 5: federation.v1.FederationService.GetFederation:input_type -> federation.v1.GetFederationRequest
-	4,  // 6: federation.v1.FederationService.OpenFederation:input_type -> federation.v1.OpenFederationRequest
-	6,  // 7: federation.v1.FederationService.CloseFederation:input_type -> federation.v1.CloseFederationRequest
-	8,  // 8: federation.v1.FederationService.Finger:input_type -> federation.v1.FingerRequest
-	10, // 9: federation.v1.FederationService.GetActor:input_type -> federation.v1.GetActorRequest
-	12, // 10: federation.v1.FederationService.GetNote:input_type -> federation.v1.GetNoteRequest
-	14, // 11: federation.v1.FederationService.GetFollowers:input_type -> federation.v1.GetFollowersRequest
-	16, // 12: federation.v1.FederationService.GetOutbox:input_type -> federation.v1.GetOutboxRequest
-	18, // 13: federation.v1.FederationService.Receive:input_type -> federation.v1.ReceiveRequest
-	19, // 14: federation.v1.FederationService.PostChanged:input_type -> federation.v1.PostChangedRequest
-	3,  // 15: federation.v1.FederationService.GetFederation:output_type -> federation.v1.GetFederationResponse
-	5,  // 16: federation.v1.FederationService.OpenFederation:output_type -> federation.v1.OpenFederationResponse
-	7,  // 17: federation.v1.FederationService.CloseFederation:output_type -> federation.v1.CloseFederationResponse
-	9,  // 18: federation.v1.FederationService.Finger:output_type -> federation.v1.FingerResponse
-	11, // 19: federation.v1.FederationService.GetActor:output_type -> federation.v1.GetActorResponse
-	13, // 20: federation.v1.FederationService.GetNote:output_type -> federation.v1.GetNoteResponse
-	15, // 21: federation.v1.FederationService.GetFollowers:output_type -> federation.v1.GetFollowersResponse
-	17, // 22: federation.v1.FederationService.GetOutbox:output_type -> federation.v1.GetOutboxResponse
-	21, // 23: federation.v1.FederationService.Receive:output_type -> google.protobuf.Empty
-	21, // 24: federation.v1.FederationService.PostChanged:output_type -> google.protobuf.Empty
-	15, // [15:25] is the sub-list for method output_type
-	5,  // [5:15] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	23, // 5: federation.v1.LookupAccountResponse.account:type_name -> federation.v1.Account
+	23, // 6: federation.v1.ListSubscriptionsResponse.accounts:type_name -> federation.v1.Account
+	23, // 7: federation.v1.SubscribeResponse.account:type_name -> federation.v1.Account
+	1,  // 8: federation.v1.ListNewsRequest.scope:type_name -> federation.v1.NewsScope
+	23, // 9: federation.v1.NewsPost.author:type_name -> federation.v1.Account
+	32, // 10: federation.v1.NewsPost.images:type_name -> federation.v1.NewsImage
+	43, // 11: federation.v1.NewsPost.published_at:type_name -> google.protobuf.Timestamp
+	43, // 12: federation.v1.NewsPost.updated_at:type_name -> google.protobuf.Timestamp
+	33, // 13: federation.v1.ListNewsResponse.posts:type_name -> federation.v1.NewsPost
+	23, // 14: federation.v1.ListFeaturedResponse.accounts:type_name -> federation.v1.Account
+	23, // 15: federation.v1.FeatureResponse.account:type_name -> federation.v1.Account
+	3,  // 16: federation.v1.FederationService.GetFederation:input_type -> federation.v1.GetFederationRequest
+	5,  // 17: federation.v1.FederationService.OpenFederation:input_type -> federation.v1.OpenFederationRequest
+	7,  // 18: federation.v1.FederationService.CloseFederation:input_type -> federation.v1.CloseFederationRequest
+	9,  // 19: federation.v1.FederationService.Finger:input_type -> federation.v1.FingerRequest
+	11, // 20: federation.v1.FederationService.GetActor:input_type -> federation.v1.GetActorRequest
+	13, // 21: federation.v1.FederationService.GetNote:input_type -> federation.v1.GetNoteRequest
+	15, // 22: federation.v1.FederationService.GetFollowers:input_type -> federation.v1.GetFollowersRequest
+	17, // 23: federation.v1.FederationService.GetOutbox:input_type -> federation.v1.GetOutboxRequest
+	19, // 24: federation.v1.FederationService.Receive:input_type -> federation.v1.ReceiveRequest
+	20, // 25: federation.v1.FederationService.PostChanged:input_type -> federation.v1.PostChangedRequest
+	21, // 26: federation.v1.FederationService.GetSiteActor:input_type -> federation.v1.GetSiteActorRequest
+	24, // 27: federation.v1.FederationService.LookupAccount:input_type -> federation.v1.LookupAccountRequest
+	26, // 28: federation.v1.FederationService.ListSubscriptions:input_type -> federation.v1.ListSubscriptionsRequest
+	28, // 29: federation.v1.FederationService.Subscribe:input_type -> federation.v1.SubscribeRequest
+	30, // 30: federation.v1.FederationService.Unsubscribe:input_type -> federation.v1.UnsubscribeRequest
+	31, // 31: federation.v1.FederationService.ListNews:input_type -> federation.v1.ListNewsRequest
+	35, // 32: federation.v1.FederationService.ListFeatured:input_type -> federation.v1.ListFeaturedRequest
+	37, // 33: federation.v1.FederationService.Feature:input_type -> federation.v1.FeatureRequest
+	39, // 34: federation.v1.FederationService.Unfeature:input_type -> federation.v1.UnfeatureRequest
+	40, // 35: federation.v1.FederationService.GetPicture:input_type -> federation.v1.GetPictureRequest
+	4,  // 36: federation.v1.FederationService.GetFederation:output_type -> federation.v1.GetFederationResponse
+	6,  // 37: federation.v1.FederationService.OpenFederation:output_type -> federation.v1.OpenFederationResponse
+	8,  // 38: federation.v1.FederationService.CloseFederation:output_type -> federation.v1.CloseFederationResponse
+	10, // 39: federation.v1.FederationService.Finger:output_type -> federation.v1.FingerResponse
+	12, // 40: federation.v1.FederationService.GetActor:output_type -> federation.v1.GetActorResponse
+	14, // 41: federation.v1.FederationService.GetNote:output_type -> federation.v1.GetNoteResponse
+	16, // 42: federation.v1.FederationService.GetFollowers:output_type -> federation.v1.GetFollowersResponse
+	18, // 43: federation.v1.FederationService.GetOutbox:output_type -> federation.v1.GetOutboxResponse
+	44, // 44: federation.v1.FederationService.Receive:output_type -> google.protobuf.Empty
+	44, // 45: federation.v1.FederationService.PostChanged:output_type -> google.protobuf.Empty
+	22, // 46: federation.v1.FederationService.GetSiteActor:output_type -> federation.v1.GetSiteActorResponse
+	25, // 47: federation.v1.FederationService.LookupAccount:output_type -> federation.v1.LookupAccountResponse
+	27, // 48: federation.v1.FederationService.ListSubscriptions:output_type -> federation.v1.ListSubscriptionsResponse
+	29, // 49: federation.v1.FederationService.Subscribe:output_type -> federation.v1.SubscribeResponse
+	44, // 50: federation.v1.FederationService.Unsubscribe:output_type -> google.protobuf.Empty
+	34, // 51: federation.v1.FederationService.ListNews:output_type -> federation.v1.ListNewsResponse
+	36, // 52: federation.v1.FederationService.ListFeatured:output_type -> federation.v1.ListFeaturedResponse
+	38, // 53: federation.v1.FederationService.Feature:output_type -> federation.v1.FeatureResponse
+	44, // 54: federation.v1.FederationService.Unfeature:output_type -> google.protobuf.Empty
+	41, // 55: federation.v1.FederationService.GetPicture:output_type -> federation.v1.GetPictureResponse
+	36, // [36:56] is the sub-list for method output_type
+	16, // [16:36] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_api_federation_v1_federation_proto_init() }
@@ -1128,8 +2413,8 @@ func file_api_federation_v1_federation_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_federation_v1_federation_proto_rawDesc), len(file_api_federation_v1_federation_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   20,
+			NumEnums:      2,
+			NumMessages:   41,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -20,16 +20,26 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	FederationService_GetFederation_FullMethodName   = "/federation.v1.FederationService/GetFederation"
-	FederationService_OpenFederation_FullMethodName  = "/federation.v1.FederationService/OpenFederation"
-	FederationService_CloseFederation_FullMethodName = "/federation.v1.FederationService/CloseFederation"
-	FederationService_Finger_FullMethodName          = "/federation.v1.FederationService/Finger"
-	FederationService_GetActor_FullMethodName        = "/federation.v1.FederationService/GetActor"
-	FederationService_GetNote_FullMethodName         = "/federation.v1.FederationService/GetNote"
-	FederationService_GetFollowers_FullMethodName    = "/federation.v1.FederationService/GetFollowers"
-	FederationService_GetOutbox_FullMethodName       = "/federation.v1.FederationService/GetOutbox"
-	FederationService_Receive_FullMethodName         = "/federation.v1.FederationService/Receive"
-	FederationService_PostChanged_FullMethodName     = "/federation.v1.FederationService/PostChanged"
+	FederationService_GetFederation_FullMethodName     = "/federation.v1.FederationService/GetFederation"
+	FederationService_OpenFederation_FullMethodName    = "/federation.v1.FederationService/OpenFederation"
+	FederationService_CloseFederation_FullMethodName   = "/federation.v1.FederationService/CloseFederation"
+	FederationService_Finger_FullMethodName            = "/federation.v1.FederationService/Finger"
+	FederationService_GetActor_FullMethodName          = "/federation.v1.FederationService/GetActor"
+	FederationService_GetNote_FullMethodName           = "/federation.v1.FederationService/GetNote"
+	FederationService_GetFollowers_FullMethodName      = "/federation.v1.FederationService/GetFollowers"
+	FederationService_GetOutbox_FullMethodName         = "/federation.v1.FederationService/GetOutbox"
+	FederationService_Receive_FullMethodName           = "/federation.v1.FederationService/Receive"
+	FederationService_PostChanged_FullMethodName       = "/federation.v1.FederationService/PostChanged"
+	FederationService_GetSiteActor_FullMethodName      = "/federation.v1.FederationService/GetSiteActor"
+	FederationService_LookupAccount_FullMethodName     = "/federation.v1.FederationService/LookupAccount"
+	FederationService_ListSubscriptions_FullMethodName = "/federation.v1.FederationService/ListSubscriptions"
+	FederationService_Subscribe_FullMethodName         = "/federation.v1.FederationService/Subscribe"
+	FederationService_Unsubscribe_FullMethodName       = "/federation.v1.FederationService/Unsubscribe"
+	FederationService_ListNews_FullMethodName          = "/federation.v1.FederationService/ListNews"
+	FederationService_ListFeatured_FullMethodName      = "/federation.v1.FederationService/ListFeatured"
+	FederationService_Feature_FullMethodName           = "/federation.v1.FederationService/Feature"
+	FederationService_Unfeature_FullMethodName         = "/federation.v1.FederationService/Unfeature"
+	FederationService_GetPicture_FullMethodName        = "/federation.v1.FederationService/GetPicture"
 )
 
 // FederationServiceClient is the client API for FederationService service.
@@ -60,6 +70,29 @@ type FederationServiceClient interface {
 	// Internal, for post: a post was published, edited or deleted.
 	// Idempotent enough: the servers take an activity twice.
 	PostChanged(ctx context.Context, in *PostChangedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Public: the document of the site itself, which follows accounts of
+	// other servers for the news.
+	GetSiteActor(ctx context.Context, in *GetSiteActorRequest, opts ...grpc.CallOption) (*GetSiteActorResponse, error)
+	// Require an access token. An address that is not one is
+	// InvalidArgument; an account its server does not give is NotFound.
+	LookupAccount(ctx context.Context, in *LookupAccountRequest, opts ...grpc.CallOption) (*LookupAccountResponse, error)
+	// The accounts of other servers the caller reads; more than one may is
+	// FailedPrecondition.
+	ListSubscriptions(ctx context.Context, in *ListSubscriptionsRequest, opts ...grpc.CallOption) (*ListSubscriptionsResponse, error)
+	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (*SubscribeResponse, error)
+	Unsubscribe(ctx context.Context, in *UnsubscribeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Remote posts for the news, newest first: of the accounts the caller
+	// reads, or of those in the news of everyone.
+	ListNews(ctx context.Context, in *ListNewsRequest, opts ...grpc.CallOption) (*ListNewsResponse, error)
+	// Internal, for the gateway, which lets only administrators call them:
+	// the accounts in the news of everyone.
+	ListFeatured(ctx context.Context, in *ListFeaturedRequest, opts ...grpc.CallOption) (*ListFeaturedResponse, error)
+	Feature(ctx context.Context, in *FeatureRequest, opts ...grpc.CallOption) (*FeatureResponse, error)
+	Unfeature(ctx context.Context, in *UnfeatureRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Internal, for the gateway: a picture of a remote post or the photo of
+	// an account, read from its server for the site to show. Anything but
+	// a picture is NotFound.
+	GetPicture(ctx context.Context, in *GetPictureRequest, opts ...grpc.CallOption) (*GetPictureResponse, error)
 }
 
 type federationServiceClient struct {
@@ -170,6 +203,106 @@ func (c *federationServiceClient) PostChanged(ctx context.Context, in *PostChang
 	return out, nil
 }
 
+func (c *federationServiceClient) GetSiteActor(ctx context.Context, in *GetSiteActorRequest, opts ...grpc.CallOption) (*GetSiteActorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSiteActorResponse)
+	err := c.cc.Invoke(ctx, FederationService_GetSiteActor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *federationServiceClient) LookupAccount(ctx context.Context, in *LookupAccountRequest, opts ...grpc.CallOption) (*LookupAccountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LookupAccountResponse)
+	err := c.cc.Invoke(ctx, FederationService_LookupAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *federationServiceClient) ListSubscriptions(ctx context.Context, in *ListSubscriptionsRequest, opts ...grpc.CallOption) (*ListSubscriptionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListSubscriptionsResponse)
+	err := c.cc.Invoke(ctx, FederationService_ListSubscriptions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *federationServiceClient) Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (*SubscribeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SubscribeResponse)
+	err := c.cc.Invoke(ctx, FederationService_Subscribe_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *federationServiceClient) Unsubscribe(ctx context.Context, in *UnsubscribeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, FederationService_Unsubscribe_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *federationServiceClient) ListNews(ctx context.Context, in *ListNewsRequest, opts ...grpc.CallOption) (*ListNewsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListNewsResponse)
+	err := c.cc.Invoke(ctx, FederationService_ListNews_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *federationServiceClient) ListFeatured(ctx context.Context, in *ListFeaturedRequest, opts ...grpc.CallOption) (*ListFeaturedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListFeaturedResponse)
+	err := c.cc.Invoke(ctx, FederationService_ListFeatured_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *federationServiceClient) Feature(ctx context.Context, in *FeatureRequest, opts ...grpc.CallOption) (*FeatureResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FeatureResponse)
+	err := c.cc.Invoke(ctx, FederationService_Feature_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *federationServiceClient) Unfeature(ctx context.Context, in *UnfeatureRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, FederationService_Unfeature_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *federationServiceClient) GetPicture(ctx context.Context, in *GetPictureRequest, opts ...grpc.CallOption) (*GetPictureResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPictureResponse)
+	err := c.cc.Invoke(ctx, FederationService_GetPicture_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FederationServiceServer is the server API for FederationService service.
 // All implementations must embed UnimplementedFederationServiceServer
 // for forward compatibility.
@@ -198,6 +331,29 @@ type FederationServiceServer interface {
 	// Internal, for post: a post was published, edited or deleted.
 	// Idempotent enough: the servers take an activity twice.
 	PostChanged(context.Context, *PostChangedRequest) (*emptypb.Empty, error)
+	// Public: the document of the site itself, which follows accounts of
+	// other servers for the news.
+	GetSiteActor(context.Context, *GetSiteActorRequest) (*GetSiteActorResponse, error)
+	// Require an access token. An address that is not one is
+	// InvalidArgument; an account its server does not give is NotFound.
+	LookupAccount(context.Context, *LookupAccountRequest) (*LookupAccountResponse, error)
+	// The accounts of other servers the caller reads; more than one may is
+	// FailedPrecondition.
+	ListSubscriptions(context.Context, *ListSubscriptionsRequest) (*ListSubscriptionsResponse, error)
+	Subscribe(context.Context, *SubscribeRequest) (*SubscribeResponse, error)
+	Unsubscribe(context.Context, *UnsubscribeRequest) (*emptypb.Empty, error)
+	// Remote posts for the news, newest first: of the accounts the caller
+	// reads, or of those in the news of everyone.
+	ListNews(context.Context, *ListNewsRequest) (*ListNewsResponse, error)
+	// Internal, for the gateway, which lets only administrators call them:
+	// the accounts in the news of everyone.
+	ListFeatured(context.Context, *ListFeaturedRequest) (*ListFeaturedResponse, error)
+	Feature(context.Context, *FeatureRequest) (*FeatureResponse, error)
+	Unfeature(context.Context, *UnfeatureRequest) (*emptypb.Empty, error)
+	// Internal, for the gateway: a picture of a remote post or the photo of
+	// an account, read from its server for the site to show. Anything but
+	// a picture is NotFound.
+	GetPicture(context.Context, *GetPictureRequest) (*GetPictureResponse, error)
 	mustEmbedUnimplementedFederationServiceServer()
 }
 
@@ -237,6 +393,36 @@ func (UnimplementedFederationServiceServer) Receive(context.Context, *ReceiveReq
 }
 func (UnimplementedFederationServiceServer) PostChanged(context.Context, *PostChangedRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PostChanged not implemented")
+}
+func (UnimplementedFederationServiceServer) GetSiteActor(context.Context, *GetSiteActorRequest) (*GetSiteActorResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSiteActor not implemented")
+}
+func (UnimplementedFederationServiceServer) LookupAccount(context.Context, *LookupAccountRequest) (*LookupAccountResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LookupAccount not implemented")
+}
+func (UnimplementedFederationServiceServer) ListSubscriptions(context.Context, *ListSubscriptionsRequest) (*ListSubscriptionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListSubscriptions not implemented")
+}
+func (UnimplementedFederationServiceServer) Subscribe(context.Context, *SubscribeRequest) (*SubscribeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Subscribe not implemented")
+}
+func (UnimplementedFederationServiceServer) Unsubscribe(context.Context, *UnsubscribeRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method Unsubscribe not implemented")
+}
+func (UnimplementedFederationServiceServer) ListNews(context.Context, *ListNewsRequest) (*ListNewsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListNews not implemented")
+}
+func (UnimplementedFederationServiceServer) ListFeatured(context.Context, *ListFeaturedRequest) (*ListFeaturedResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListFeatured not implemented")
+}
+func (UnimplementedFederationServiceServer) Feature(context.Context, *FeatureRequest) (*FeatureResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Feature not implemented")
+}
+func (UnimplementedFederationServiceServer) Unfeature(context.Context, *UnfeatureRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method Unfeature not implemented")
+}
+func (UnimplementedFederationServiceServer) GetPicture(context.Context, *GetPictureRequest) (*GetPictureResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPicture not implemented")
 }
 func (UnimplementedFederationServiceServer) mustEmbedUnimplementedFederationServiceServer() {}
 func (UnimplementedFederationServiceServer) testEmbeddedByValue()                           {}
@@ -439,6 +625,186 @@ func _FederationService_PostChanged_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FederationService_GetSiteActor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSiteActorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).GetSiteActor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_GetSiteActor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).GetSiteActor(ctx, req.(*GetSiteActorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FederationService_LookupAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LookupAccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).LookupAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_LookupAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).LookupAccount(ctx, req.(*LookupAccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FederationService_ListSubscriptions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSubscriptionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).ListSubscriptions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_ListSubscriptions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).ListSubscriptions(ctx, req.(*ListSubscriptionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FederationService_Subscribe_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubscribeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).Subscribe(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_Subscribe_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).Subscribe(ctx, req.(*SubscribeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FederationService_Unsubscribe_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsubscribeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).Unsubscribe(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_Unsubscribe_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).Unsubscribe(ctx, req.(*UnsubscribeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FederationService_ListNews_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListNewsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).ListNews(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_ListNews_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).ListNews(ctx, req.(*ListNewsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FederationService_ListFeatured_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListFeaturedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).ListFeatured(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_ListFeatured_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).ListFeatured(ctx, req.(*ListFeaturedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FederationService_Feature_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FeatureRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).Feature(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_Feature_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).Feature(ctx, req.(*FeatureRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FederationService_Unfeature_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnfeatureRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).Unfeature(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_Unfeature_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).Unfeature(ctx, req.(*UnfeatureRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FederationService_GetPicture_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPictureRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).GetPicture(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_GetPicture_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).GetPicture(ctx, req.(*GetPictureRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // FederationService_ServiceDesc is the grpc.ServiceDesc for FederationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -485,6 +851,46 @@ var FederationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PostChanged",
 			Handler:    _FederationService_PostChanged_Handler,
+		},
+		{
+			MethodName: "GetSiteActor",
+			Handler:    _FederationService_GetSiteActor_Handler,
+		},
+		{
+			MethodName: "LookupAccount",
+			Handler:    _FederationService_LookupAccount_Handler,
+		},
+		{
+			MethodName: "ListSubscriptions",
+			Handler:    _FederationService_ListSubscriptions_Handler,
+		},
+		{
+			MethodName: "Subscribe",
+			Handler:    _FederationService_Subscribe_Handler,
+		},
+		{
+			MethodName: "Unsubscribe",
+			Handler:    _FederationService_Unsubscribe_Handler,
+		},
+		{
+			MethodName: "ListNews",
+			Handler:    _FederationService_ListNews_Handler,
+		},
+		{
+			MethodName: "ListFeatured",
+			Handler:    _FederationService_ListFeatured_Handler,
+		},
+		{
+			MethodName: "Feature",
+			Handler:    _FederationService_Feature_Handler,
+		},
+		{
+			MethodName: "Unfeature",
+			Handler:    _FederationService_Unfeature_Handler,
+		},
+		{
+			MethodName: "GetPicture",
+			Handler:    _FederationService_GetPicture_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -130,6 +130,28 @@ func (l *limiter) Allow(context.Context, string, int, time.Duration) (bool, erro
 	return l.left >= 0, nil
 }
 
+// finder knows the actors of addresses username@host.
+type finder map[string]fedi.URL
+
+func (f finder) Finger(_ context.Context, username, host string) (fedi.URL, error) {
+	id, ok := f[username+"@"+host]
+	if !ok {
+		return "", fedi.ErrNotFound
+	}
+
+	return id, nil
+}
+
+// media serves any address as a picture and remembers the last one.
+type media struct {
+	fetched fedi.URL
+}
+
+func (m *media) Fetch(_ context.Context, u fedi.URL) (service.Media, error) {
+	m.fetched = u
+	return service.Media{Body: []byte("png"), ContentType: "image/png"}, nil
+}
+
 type fixture struct {
 	svc       *service.Service
 	site      fedi.Site
@@ -142,6 +164,12 @@ type fixture struct {
 	accounts  *inmem.AccountRepository
 	limiter   *limiter
 	now       time.Time
+
+	following     *inmem.FollowingRepository
+	subscriptions *inmem.SubscriptionRepository
+	news          *inmem.RemotePostRepository
+	finder        finder
+	media         *media
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -173,7 +201,13 @@ func newFixture(t *testing.T) *fixture {
 		accounts:  inmem.NewAccountRepository(),
 		limiter:   &limiter{left: 1000},
 		now:       time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC),
+
+		following:     inmem.NewFollowingRepository(),
+		subscriptions: inmem.NewSubscriptionRepository(),
+		finder:        finder{"anya@m.example": remoteActor},
+		media:         &media{},
 	}
+	f.news = inmem.NewRemotePostRepository(f.following, f.subscriptions)
 
 	f.svc = service.New(service.Deps{
 		Site:       site,
@@ -189,6 +223,14 @@ func newFixture(t *testing.T) *fixture {
 		Limiter:    f.limiter,
 		Tx:         inmem.TxManager{},
 		Now:        func() time.Time { return f.now },
+
+		Following:     f.following,
+		Subscriptions: f.subscriptions,
+		News:          f.news,
+		Finder:        f.finder,
+		Media:         f.media,
+		Languages:     []string{"ru", "en"},
+		Retention:     90 * 24 * time.Hour,
 	})
 
 	return f

@@ -34,12 +34,14 @@ type FederationHandler struct {
 	federationv1.UnimplementedFederationServiceServer
 
 	service FederationService
+	news    NewsService
 	site    fedi.Site
 }
 
-func NewFederationHandler(s FederationService, site fedi.Site) *FederationHandler {
+func NewFederationHandler(s FederationService, news NewsService, site fedi.Site) *FederationHandler {
 	return &FederationHandler{
 		service: s,
+		news:    news,
 		site:    site,
 	}
 }

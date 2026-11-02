@@ -7,18 +7,23 @@ package remote
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net"
 	"net/http"
 	"net/netip"
+	"net/url"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/vexner67/freenet/federation/internal/apjson"
 	"github.com/vexner67/freenet/federation/internal/fedi"
 	"github.com/vexner67/freenet/federation/internal/httpsig"
+	"github.com/vexner67/freenet/federation/internal/service"
 	"github.com/vexner67/freenet/pkg/errs"
 )
 
@@ -206,4 +211,113 @@ func publicAddr(ip netip.Addr) bool {
 	}
 
 	return true
+}
+
+// maxPictureSize is the largest picture of another server the site shows.
+const maxPictureSize = 8 << 20
+
+// pictures are the types of pictures the site shows: browsers show them
+// all, and none of them runs a script, as SVG can.
+var pictures = map[string]bool{"image/jpeg": true, "image/png": true, "image/gif": true, "image/webp": true}
+
+type fingerLink struct {
+	Rel  string `json:"rel"`
+	Type string `json:"type"`
+	Href string `json:"href"`
+}
+
+// Finger finds the actor of @username@host by WebFinger.
+func (c *Client) Finger(ctx context.Context, username, host string) (fedi.URL, error) {
+	u := url.URL{
+		Scheme:   "https",
+		Host:     host,
+		Path:     "/.well-known/webfinger",
+		RawQuery: url.Values{"resource": {"acct:" + username + "@" + host}}.Encode(),
+	}
+
+	body, err := c.get(ctx, u.String(), "application/jrd+json, application/json", maxDocumentSize)
+	if err != nil {
+		return "", err
+	}
+
+	var doc struct {
+		Links []fingerLink `json:"links"`
+	}
+	if err = json.Unmarshal(body, &doc); err != nil {
+		return "", errs.Wrap("json.Unmarshal", err)
+	}
+
+	for _, l := range doc.Links {
+		if l.Rel != "self" || !strings.Contains(l.Type, "activity+json") && !strings.Contains(l.Type, "ld+json") {
+			continue
+		}
+
+		id, err := fedi.NewURL(l.Href)
+		if err != nil {
+			return "", errs.Wrap("fedi.NewURL", err)
+		}
+		return id, nil
+	}
+
+	return "", fedi.ErrNotFound
+}
+
+// Fetch reads a picture; anything else is fedi.ErrNotFound.
+func (c *Client) Fetch(ctx context.Context, u fedi.URL) (service.Media, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return service.Media{}, errs.Wrap("http.NewRequestWithContext", err)
+	}
+
+	req.Header.Set("Accept", "image/webp, image/png, image/jpeg, image/gif")
+	req.Header.Set("User-Agent", userAgent)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return service.Media{}, errs.Wrap("c.http.Do", err)
+	}
+	defer func() { _ = resp.Body.Close() }() // a read body has nothing more to tell
+
+	contentType, _, _ := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+	if resp.StatusCode != http.StatusOK || !pictures[contentType] || resp.ContentLength > maxPictureSize {
+		return service.Media{}, fedi.ErrNotFound
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxPictureSize+1))
+	if err != nil {
+		return service.Media{}, errs.Wrap("io.ReadAll", err)
+	}
+
+	if len(body) > maxPictureSize {
+		return service.Media{}, fedi.ErrNotFound
+	}
+
+	return service.Media{Body: body, ContentType: contentType}, nil
+}
+
+// get reads a document of at most limit bytes.
+func (c *Client) get(ctx context.Context, u, accept string, limit int64) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, errs.Wrap("http.NewRequestWithContext", err)
+	}
+
+	req.Header.Set("Accept", accept)
+	req.Header.Set("User-Agent", userAgent)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, errs.Wrap("c.http.Do", err)
+	}
+	defer func() { _ = resp.Body.Close() }() // a read body has nothing more to tell
+
+	switch {
+	case resp.StatusCode == http.StatusGone || resp.StatusCode == http.StatusNotFound:
+		return nil, fedi.ErrNotFound
+	case resp.StatusCode != http.StatusOK:
+		return nil, StatusError{Code: resp.StatusCode}
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, limit))
+	return body, errs.Wrap("io.ReadAll", err)
 }

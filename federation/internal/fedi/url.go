@@ -27,6 +27,18 @@ var (
 	ErrInvalidActivity = errors.New("invalid activity")
 	// ErrTooMany: a remote server sends more than it may.
 	ErrTooMany = errors.New("too many activities")
+	// ErrInvalidAddress: not an address of an account of another server:
+	// @username@host or the https address of the account.
+	ErrInvalidAddress = errors.New("invalid fediverse address")
+	// ErrTooManySubscriptions: a person reads as many accounts of other
+	// servers as one may.
+	ErrTooManySubscriptions = errors.New("too many fediverse subscriptions")
+	// ErrTooManyLookups: a person looks up accounts of other servers more
+	// often than one may; each costs requests to them.
+	ErrTooManyLookups = errors.New("too many fediverse lookups")
+	// ErrAccountNotFound: the server of an address names no such account,
+	// or does not answer.
+	ErrAccountNotFound = errors.New("fediverse account not found")
 )
 
 // URL is an absolute https address of an object of the Fediverse: an

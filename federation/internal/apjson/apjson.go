@@ -107,6 +107,10 @@ func Person(p fedi.Person) ([]byte, error) {
 		Published:         timestamp(p.Published),
 	}
 
+	if p.Service {
+		doc.Type = "Application"
+	}
+
 	if p.Avatar != "" {
 		doc.Icon = &image{Type: "Image", MediaType: "image/jpeg", URL: p.Avatar.String()}
 	}

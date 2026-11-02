@@ -108,3 +108,71 @@ type KeyMaker interface {
 type Limiter interface {
 	Allow(ctx context.Context, key string, limit int, period time.Duration) (bool, error)
 }
+
+// FollowingRepository keeps the accounts of other servers the site
+// follows; Get of one it does not is fedi.ErrNotFound.
+type FollowingRepository interface {
+	Get(ctx context.Context, actor fedi.URL) (*fedi.Following, error)
+	Save(ctx context.Context, f *fedi.Following) error
+	Delete(ctx context.Context, actor fedi.URL) error
+	// Featured are the accounts the administrators chose for the news of
+	// everyone, the earliest chosen first.
+	Featured(ctx context.Context) ([]*fedi.Following, error)
+}
+
+// SubscriptionRepository keeps whom of other servers the people here
+// read. Add of one already there is fine, as is Remove of one gone.
+type SubscriptionRepository interface {
+	Add(ctx context.Context, userID uuid.UUID, actor fedi.URL, now time.Time) error
+	Remove(ctx context.Context, userID uuid.UUID, actor fedi.URL) error
+	// RemoveActor forgets an account deleted on its server.
+	RemoveActor(ctx context.Context, actor fedi.URL) error
+	// Of are whom userID reads, the latest first.
+	Of(ctx context.Context, userID uuid.UUID) ([]fedi.URL, error)
+	// Read: somebody here reads actor.
+	Read(ctx context.Context, actor fedi.URL) (bool, error)
+}
+
+// NewsQuery is which remote posts to read: those of the featured accounts
+// in Languages, or those of the accounts Reader subscribed to; with
+// Before, older than it.
+type NewsQuery struct {
+	Featured      bool
+	Reader        uuid.UUID
+	Languages     []string
+	HideSensitive bool
+	Before        uuid.UUID
+	Limit         int
+}
+
+// RemotePostRepository keeps the notes of the accounts the site follows,
+// newest first; Get and ByURI of one it does not keep are
+// fedi.ErrNotFound. Save keeps a note anew or as edited, by its URI.
+type RemotePostRepository interface {
+	Get(ctx context.Context, id uuid.UUID) (*fedi.RemotePost, error)
+	ByURI(ctx context.Context, uri fedi.URL) (*fedi.RemotePost, error)
+	Save(ctx context.Context, p *fedi.RemotePost) error
+	Delete(ctx context.Context, uri fedi.URL) error
+	DeleteActor(ctx context.Context, actor fedi.URL) error
+	List(ctx context.Context, q NewsQuery) ([]*fedi.RemotePost, error)
+	// DeleteBefore forgets the notes published before t, telling how many.
+	DeleteBefore(ctx context.Context, t time.Time) (int, error)
+}
+
+// Finder finds the actor of an address on another server by WebFinger:
+// @username@host.
+type Finder interface {
+	Finger(ctx context.Context, username, host string) (fedi.URL, error)
+}
+
+// Media is a picture of another server, read for the site to show.
+type Media struct {
+	Body        []byte
+	ContentType string
+}
+
+// MediaFetcher reads a picture of another server; one that is not a
+// picture, or too big, is fedi.ErrNotFound.
+type MediaFetcher interface {
+	Fetch(ctx context.Context, u fedi.URL) (Media, error)
+}

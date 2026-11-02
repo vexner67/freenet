@@ -12,8 +12,9 @@ import (
 // Receive takes an activity another server sent to an inbox here: the
 // one of the page to (uuid.Nil for the shared inbox). Only what the
 // service acts on is checked, as a check costs a request to the sender's
-// server: following and unfollowing a page, and an actor deleted.
-// Anything else is taken and dropped.
+// server: following and unfollowing a page, an actor deleted, a follow of
+// the site accepted or rejected, and the notes of the accounts the site
+// follows. Anything else is taken and dropped.
 func (s *Service) Receive(ctx context.Context, r SignedRequest, a fedi.Incoming, to uuid.UUID) error {
 	ok, err := s.limiter.Allow(ctx, "inbox:"+a.Actor.Host(), inboxLimit, inboxPeriod)
 	if err != nil {
@@ -31,9 +32,132 @@ func (s *Service) Receive(ctx context.Context, r SignedRequest, a fedi.Incoming,
 		return s.unfollow(ctx, r, a)
 	case a.DeletesActor():
 		return s.forget(ctx, r, a, to)
+	case a.Type == fedi.TypeAccept || a.Type == fedi.TypeReject:
+		return s.answered(ctx, r, a)
+	case a.Type == fedi.TypeCreate && a.Note != nil:
+		return s.noted(ctx, r, a)
+	case a.Type == fedi.TypeUpdate && a.Note != nil:
+		return s.edited(ctx, r, a)
+	case a.Type == fedi.TypeDelete:
+		return s.unnoted(ctx, r, a)
 	default:
 		return nil
 	}
+}
+
+// answered is the answer of a server to a follow of the site.
+func (s *Service) answered(ctx context.Context, r SignedRequest, a fedi.Incoming) error {
+	f, err := s.following.Get(ctx, a.Actor)
+	if errors.Is(err, fedi.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return errs.Wrap("s.following.Get", err)
+	}
+
+	if fedi.URL(a.Object) != s.site.Follow(f.FollowID()) {
+		return nil
+	}
+
+	if _, err = s.verifiedBySite(ctx, r, a); err != nil {
+		return err
+	}
+
+	return errs.Wrap("s.following.Save", s.following.Save(ctx, f.WithAccepted(a.Type == fedi.TypeAccept)))
+}
+
+// noted keeps a new note of an account the site follows.
+func (s *Service) noted(ctx context.Context, r SignedRequest, a fedi.Incoming) error {
+	if _, err := s.following.Get(ctx, a.Actor); err != nil {
+		if errors.Is(err, fedi.ErrNotFound) {
+			return nil
+		}
+		return errs.Wrap("s.following.Get", err)
+	}
+
+	p, err := fedi.NewRemotePost(*a.Note, a.Actor, s.now())
+	if errors.Is(err, fedi.ErrNotForNews) {
+		return nil
+	}
+	if err != nil {
+		return errs.Wrap("fedi.NewRemotePost", err)
+	}
+
+	// A note sent again is taken as it is kept.
+	if _, err = s.news.ByURI(ctx, p.URI()); err == nil {
+		return nil
+	}
+	if !errors.Is(err, fedi.ErrNotFound) {
+		return errs.Wrap("s.news.ByURI", err)
+	}
+
+	if _, err = s.verifiedBySite(ctx, r, a); err != nil {
+		return err
+	}
+
+	return errs.Wrap("s.news.Save", s.news.Save(ctx, p))
+}
+
+// edited changes a note kept: an edit that makes it no note for the news
+// forgets it.
+func (s *Service) edited(ctx context.Context, r SignedRequest, a fedi.Incoming) error {
+	kept, err := s.news.ByURI(ctx, fedi.URL(a.Note.ID))
+	if errors.Is(err, fedi.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return errs.Wrap("s.news.ByURI", err)
+	}
+
+	if kept.Actor() != a.Actor {
+		return nil
+	}
+
+	if _, err = s.verifiedBySite(ctx, r, a); err != nil {
+		return err
+	}
+
+	p, err := kept.Edited(*a.Note, s.now())
+	if errors.Is(err, fedi.ErrNotForNews) {
+		return errs.Wrap("s.news.Delete", s.news.Delete(ctx, kept.URI()))
+	}
+	if err != nil {
+		return errs.Wrap("kept.Edited", err)
+	}
+
+	return errs.Wrap("s.news.Save", s.news.Save(ctx, p))
+}
+
+// unnoted forgets a note deleted on its server.
+func (s *Service) unnoted(ctx context.Context, r SignedRequest, a fedi.Incoming) error {
+	kept, err := s.news.ByURI(ctx, fedi.URL(a.Object))
+	if errors.Is(err, fedi.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return errs.Wrap("s.news.ByURI", err)
+	}
+
+	if kept.Actor() != a.Actor {
+		return nil
+	}
+
+	if _, err = s.verifiedBySite(ctx, r, a); err != nil {
+		return err
+	}
+
+	return errs.Wrap("s.news.Delete", s.news.Delete(ctx, kept.URI()))
+}
+
+// verifiedBySite is verified with the reads of the actor signed by the
+// site, as servers that want signed reads require.
+func (s *Service) verifiedBySite(ctx context.Context, r SignedRequest, a fedi.Incoming) (*fedi.Remote, error) {
+	signer, err := s.siteAccount(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.verified(ctx, r, a, signer)
 }
 
 func (s *Service) follow(ctx context.Context, r SignedRequest, a fedi.Incoming) error {
@@ -113,6 +237,18 @@ func (s *Service) forget(ctx context.Context, r SignedRequest, a fedi.Incoming, 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.followers.RemoveActor(ctx, a.Actor); err != nil {
 			return errs.Wrap("s.followers.RemoveActor", err)
+		}
+
+		if err := s.subscriptions.RemoveActor(ctx, a.Actor); err != nil {
+			return errs.Wrap("s.subscriptions.RemoveActor", err)
+		}
+
+		if err := s.following.Delete(ctx, a.Actor); err != nil {
+			return errs.Wrap("s.following.Delete", err)
+		}
+
+		if err := s.news.DeleteActor(ctx, a.Actor); err != nil {
+			return errs.Wrap("s.news.DeleteActor", err)
 		}
 
 		return errs.Wrap("s.remotes.Delete", s.remotes.Delete(ctx, a.Actor))

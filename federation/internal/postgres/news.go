@@ -1,0 +1,472 @@
+package postgres
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/vexner67/freenet/federation/internal/fedi"
+	"github.com/vexner67/freenet/federation/internal/service"
+	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/pgpool"
+)
+
+type FollowingRepository struct {
+	pool *pgxpool.Pool
+}
+
+func NewFollowingRepository(pool *pgxpool.Pool) *FollowingRepository {
+	return &FollowingRepository{
+		pool: pool,
+	}
+}
+
+func (r *FollowingRepository) conn(ctx context.Context) pgpool.Querier {
+	return pgpool.Conn(ctx, r.pool)
+}
+
+const getFollowingQuery = `
+	SELECT
+		actor,
+		follow_id,
+		accepted,
+		featured,
+		created_at
+	FROM following
+	WHERE actor = $1
+`
+
+func (r *FollowingRepository) Get(ctx context.Context, actor fedi.URL) (*fedi.Following, error) {
+	f, err := scanFollowing(r.conn(ctx).QueryRow(ctx, getFollowingQuery, actor.String()))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fedi.ErrNotFound
+	}
+	if err != nil {
+		return nil, errs.Wrap("scanFollowing", err)
+	}
+
+	return f, nil
+}
+
+func scanFollowing(row pgx.Row) (*fedi.Following, error) {
+	var (
+		actor              string
+		followID           uuid.UUID
+		accepted, featured bool
+		createdAt          time.Time
+	)
+
+	if err := row.Scan(&actor, &followID, &accepted, &featured, &createdAt); err != nil {
+		return nil, err
+	}
+
+	return fedi.RestoreFollowing(fedi.URL(actor), followID, accepted, featured, createdAt), nil
+}
+
+const saveFollowingQuery = `
+	INSERT INTO following (
+		actor,
+		follow_id,
+		accepted,
+		featured,
+		created_at
+	)
+	VALUES ($1, $2, $3, $4, $5)
+	ON CONFLICT (actor) DO UPDATE
+	SET accepted = EXCLUDED.accepted,
+		featured = EXCLUDED.featured
+`
+
+func (r *FollowingRepository) Save(ctx context.Context, f *fedi.Following) error {
+	_, err := r.conn(ctx).Exec(ctx, saveFollowingQuery, f.Actor().String(), f.FollowID(), f.Accepted(), f.Featured(), f.CreatedAt())
+	if err != nil {
+		return errs.Wrap("Exec", err)
+	}
+
+	return nil
+}
+
+const deleteFollowingQuery = `
+	DELETE FROM following
+	WHERE actor = $1
+`
+
+func (r *FollowingRepository) Delete(ctx context.Context, actor fedi.URL) error {
+	if _, err := r.conn(ctx).Exec(ctx, deleteFollowingQuery, actor.String()); err != nil {
+		return errs.Wrap("Exec", err)
+	}
+
+	return nil
+}
+
+const listFeaturedQuery = `
+	SELECT
+		actor,
+		follow_id,
+		accepted,
+		featured,
+		created_at
+	FROM following
+	WHERE featured
+	ORDER BY created_at
+`
+
+func (r *FollowingRepository) Featured(ctx context.Context) ([]*fedi.Following, error) {
+	rows, err := r.conn(ctx).Query(ctx, listFeaturedQuery)
+	if err != nil {
+		return nil, errs.Wrap("Query", err)
+	}
+
+	out, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*fedi.Following, error) {
+		return scanFollowing(row)
+	})
+	if err != nil {
+		return nil, errs.Wrap("pgx.CollectRows", err)
+	}
+
+	return out, nil
+}
+
+type SubscriptionRepository struct {
+	pool *pgxpool.Pool
+}
+
+func NewSubscriptionRepository(pool *pgxpool.Pool) *SubscriptionRepository {
+	return &SubscriptionRepository{
+		pool: pool,
+	}
+}
+
+func (r *SubscriptionRepository) conn(ctx context.Context) pgpool.Querier {
+	return pgpool.Conn(ctx, r.pool)
+}
+
+const addSubscriptionQuery = `
+	INSERT INTO subscriptions (
+		user_id,
+		actor,
+		created_at
+	)
+	VALUES ($1, $2, $3)
+	ON CONFLICT (user_id, actor) DO NOTHING
+`
+
+func (r *SubscriptionRepository) Add(ctx context.Context, userID uuid.UUID, actor fedi.URL, now time.Time) error {
+	if _, err := r.conn(ctx).Exec(ctx, addSubscriptionQuery, userID, actor.String(), now.UTC()); err != nil {
+		return errs.Wrap("Exec", err)
+	}
+
+	return nil
+}
+
+const removeSubscriptionQuery = `
+	DELETE FROM subscriptions
+	WHERE user_id = $1
+		AND actor = $2
+`
+
+func (r *SubscriptionRepository) Remove(ctx context.Context, userID uuid.UUID, actor fedi.URL) error {
+	if _, err := r.conn(ctx).Exec(ctx, removeSubscriptionQuery, userID, actor.String()); err != nil {
+		return errs.Wrap("Exec", err)
+	}
+
+	return nil
+}
+
+const removeSubscribedActorQuery = `
+	DELETE FROM subscriptions
+	WHERE actor = $1
+`
+
+func (r *SubscriptionRepository) RemoveActor(ctx context.Context, actor fedi.URL) error {
+	if _, err := r.conn(ctx).Exec(ctx, removeSubscribedActorQuery, actor.String()); err != nil {
+		return errs.Wrap("Exec", err)
+	}
+
+	return nil
+}
+
+const listSubscriptionsQuery = `
+	SELECT actor
+	FROM subscriptions
+	WHERE user_id = $1
+	ORDER BY created_at DESC
+`
+
+func (r *SubscriptionRepository) Of(ctx context.Context, userID uuid.UUID) ([]fedi.URL, error) {
+	rows, err := r.conn(ctx).Query(ctx, listSubscriptionsQuery, userID)
+	if err != nil {
+		return nil, errs.Wrap("Query", err)
+	}
+
+	actors, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (fedi.URL, error) {
+		var actor string
+		err := row.Scan(&actor)
+		return fedi.URL(actor), err
+	})
+	if err != nil {
+		return nil, errs.Wrap("pgx.CollectRows", err)
+	}
+
+	return actors, nil
+}
+
+const actorReadQuery = `
+	SELECT EXISTS (
+		SELECT 1
+		FROM subscriptions
+		WHERE actor = $1
+	)
+`
+
+func (r *SubscriptionRepository) Read(ctx context.Context, actor fedi.URL) (bool, error) {
+	var read bool
+	if err := r.conn(ctx).QueryRow(ctx, actorReadQuery, actor.String()).Scan(&read); err != nil {
+		return false, errs.Wrap("QueryRow", err)
+	}
+
+	return read, nil
+}
+
+type RemotePostRepository struct {
+	pool *pgxpool.Pool
+}
+
+func NewRemotePostRepository(pool *pgxpool.Pool) *RemotePostRepository {
+	return &RemotePostRepository{
+		pool: pool,
+	}
+}
+
+func (r *RemotePostRepository) conn(ctx context.Context) pgpool.Querier {
+	return pgpool.Conn(ctx, r.pool)
+}
+
+// imageJSON is a picture of a remote post in the images column.
+type imageJSON struct {
+	URL         string `json:"url"`
+	Description string `json:"description"`
+}
+
+const remotePostColumns = `
+		p.id,
+		p.uri,
+		p.actor,
+		p.page,
+		p.text,
+		p.summary,
+		p.images,
+		p.sensitive,
+		p.language,
+		p.published,
+		p.updated
+`
+
+func scanRemotePost(row pgx.Row) (*fedi.RemotePost, error) {
+	var (
+		id                                   uuid.UUID
+		uri, actor, page, text, summary, lng string
+		imagesJSON                           []byte
+		sensitive                            bool
+		published                            time.Time
+		updated                              *time.Time
+	)
+
+	if err := row.Scan(&id, &uri, &actor, &page, &text, &summary, &imagesJSON, &sensitive, &lng, &published, &updated); err != nil {
+		return nil, err
+	}
+
+	var stored []imageJSON
+	if err := json.Unmarshal(imagesJSON, &stored); err != nil {
+		return nil, errs.Wrap("json.Unmarshal", err)
+	}
+
+	images := make([]fedi.Image, len(stored))
+	for i, im := range stored {
+		images[i] = fedi.Image{URL: fedi.URL(im.URL), Description: im.Description}
+	}
+
+	var edited time.Time
+	if updated != nil {
+		edited = *updated
+	}
+
+	return fedi.RestoreRemotePost(id, fedi.URL(uri), fedi.URL(actor), fedi.URL(page), text, summary, images, sensitive, lng, published, edited), nil
+}
+
+const getRemotePostQuery = `
+	SELECT` + remotePostColumns + `
+	FROM remote_posts p
+	WHERE p.id = $1
+`
+
+func (r *RemotePostRepository) Get(ctx context.Context, id uuid.UUID) (*fedi.RemotePost, error) {
+	return r.one(ctx, getRemotePostQuery, id)
+}
+
+const getRemotePostByURIQuery = `
+	SELECT` + remotePostColumns + `
+	FROM remote_posts p
+	WHERE p.uri = $1
+`
+
+func (r *RemotePostRepository) ByURI(ctx context.Context, uri fedi.URL) (*fedi.RemotePost, error) {
+	return r.one(ctx, getRemotePostByURIQuery, uri.String())
+}
+
+func (r *RemotePostRepository) one(ctx context.Context, query string, arg any) (*fedi.RemotePost, error) {
+	p, err := scanRemotePost(r.conn(ctx).QueryRow(ctx, query, arg))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, fedi.ErrNotFound
+	}
+	if err != nil {
+		return nil, errs.Wrap("scanRemotePost", err)
+	}
+
+	return p, nil
+}
+
+const saveRemotePostQuery = `
+	INSERT INTO remote_posts (
+		id,
+		uri,
+		actor,
+		page,
+		text,
+		summary,
+		images,
+		sensitive,
+		language,
+		published,
+		updated
+	)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	ON CONFLICT (uri) DO UPDATE
+	SET page = EXCLUDED.page,
+		text = EXCLUDED.text,
+		summary = EXCLUDED.summary,
+		images = EXCLUDED.images,
+		sensitive = EXCLUDED.sensitive,
+		language = EXCLUDED.language,
+		updated = EXCLUDED.updated
+`
+
+func (r *RemotePostRepository) Save(ctx context.Context, p *fedi.RemotePost) error {
+	images := make([]imageJSON, 0, len(p.Images()))
+	for _, im := range p.Images() {
+		images = append(images, imageJSON{URL: im.URL.String(), Description: im.Description})
+	}
+
+	imagesJSON, err := json.Marshal(images)
+	if err != nil {
+		return errs.Wrap("json.Marshal", err)
+	}
+
+	var updated *time.Time
+	if t := p.Updated(); !t.IsZero() {
+		updated = &t
+	}
+
+	_, err = r.conn(ctx).Exec(ctx, saveRemotePostQuery,
+		p.ID(), p.URI().String(), p.Actor().String(), p.Page().String(), p.Text(), p.Summary(), imagesJSON,
+		p.Sensitive(), p.Language(), p.Published(), updated)
+	if err != nil {
+		return errs.Wrap("Exec", err)
+	}
+
+	return nil
+}
+
+const deleteRemotePostQuery = `
+	DELETE FROM remote_posts
+	WHERE uri = $1
+`
+
+func (r *RemotePostRepository) Delete(ctx context.Context, uri fedi.URL) error {
+	if _, err := r.conn(ctx).Exec(ctx, deleteRemotePostQuery, uri.String()); err != nil {
+		return errs.Wrap("Exec", err)
+	}
+
+	return nil
+}
+
+const deleteActorPostsQuery = `
+	DELETE FROM remote_posts
+	WHERE actor = $1
+`
+
+func (r *RemotePostRepository) DeleteActor(ctx context.Context, actor fedi.URL) error {
+	if _, err := r.conn(ctx).Exec(ctx, deleteActorPostsQuery, actor.String()); err != nil {
+		return errs.Wrap("Exec", err)
+	}
+
+	return nil
+}
+
+// The news of everyone: the featured accounts, in the languages; $2 is
+// whether sensitive posts are left out, $3 the cursor or NULL.
+const listFeaturedNewsQuery = `
+	SELECT` + remotePostColumns + `
+	FROM remote_posts p
+	JOIN following f ON f.actor = p.actor AND f.featured
+	WHERE (p.language = '' OR p.language = ANY($1))
+		AND NOT ($2 AND p.sensitive)
+		AND ($3::uuid IS NULL OR p.id < $3)
+	ORDER BY p.id DESC
+	LIMIT $4
+`
+
+// The news of a reader: the accounts they subscribed to.
+const listSubscribedNewsQuery = `
+	SELECT` + remotePostColumns + `
+	FROM remote_posts p
+	JOIN subscriptions s ON s.actor = p.actor AND s.user_id = $1
+	WHERE NOT ($2 AND p.sensitive)
+		AND ($3::uuid IS NULL OR p.id < $3)
+	ORDER BY p.id DESC
+	LIMIT $4
+`
+
+func (r *RemotePostRepository) List(ctx context.Context, q service.NewsQuery) ([]*fedi.RemotePost, error) {
+	var before *uuid.UUID
+	if q.Before != uuid.Nil {
+		before = &q.Before
+	}
+
+	query, first := listSubscribedNewsQuery, any(q.Reader)
+	if q.Featured {
+		query, first = listFeaturedNewsQuery, q.Languages
+	}
+
+	rows, err := r.conn(ctx).Query(ctx, query, first, q.HideSensitive, before, q.Limit)
+	if err != nil {
+		return nil, errs.Wrap("Query", err)
+	}
+
+	posts, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*fedi.RemotePost, error) {
+		return scanRemotePost(row)
+	})
+	if err != nil {
+		return nil, errs.Wrap("pgx.CollectRows", err)
+	}
+
+	return posts, nil
+}
+
+const deleteOldPostsQuery = `
+	DELETE FROM remote_posts
+	WHERE published < $1
+`
+
+func (r *RemotePostRepository) DeleteBefore(ctx context.Context, t time.Time) (int, error) {
+	tag, err := r.conn(ctx).Exec(ctx, deleteOldPostsQuery, t.UTC())
+	if err != nil {
+		return 0, errs.Wrap("Exec", err)
+	}
+
+	return int(tag.RowsAffected()), nil
+}

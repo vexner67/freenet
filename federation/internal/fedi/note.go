@@ -26,6 +26,8 @@ type Person struct {
 	// Avatar is empty without a photo.
 	Avatar    URL
 	Published time.Time
+	// Service: the actor is the site itself, not a person.
+	Service bool
 }
 
 // Note is a post as the Fediverse sees it.

@@ -18,6 +18,7 @@ import (
 
 type fake struct {
 	federationgrpc.FederationService
+	federationgrpc.NewsService
 
 	err      error
 	received service.SignedRequest
@@ -47,7 +48,7 @@ func newHandler(t *testing.T, f *fake) *federationgrpc.FederationHandler {
 		t.Fatal(err)
 	}
 
-	return federationgrpc.NewFederationHandler(f, site)
+	return federationgrpc.NewFederationHandler(f, f, site)
 }
 
 // call runs fn through the error interceptor, as the server does.

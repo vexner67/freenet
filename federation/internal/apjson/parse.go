@@ -13,6 +13,8 @@ type ref struct {
 	Type   string
 	Actor  string
 	Object *ref
+	// Raw is the object itself, for a note to be read whole.
+	Raw json.RawMessage
 }
 
 func (r *ref) UnmarshalJSON(data []byte) error {
@@ -33,13 +35,14 @@ func (r *ref) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	r.ID, r.Type, r.Actor, r.Object = obj.ID, obj.Type, obj.Actor.ID, obj.Object
+	r.ID, r.Type, r.Actor, r.Object, r.Raw = obj.ID, obj.Type, obj.Actor.ID, obj.Object, data
 
 	return nil
 }
 
 // Incoming reads an activity another server sent. An Undo carries the
-// activity it undoes; other embedded objects are known by their IDs.
+// activity it undoes, a Create or an Update the note it makes; other
+// embedded objects are known by their IDs.
 func Incoming(body []byte) (fedi.Incoming, error) {
 	var doc struct {
 		ID     string `json:"id"`
@@ -79,7 +82,16 @@ func Incoming(body []byte) (fedi.Incoming, error) {
 		}
 	}
 
-	return fedi.NewIncoming(doc.Type, doc.ID, doc.Actor.ID, object, inner)
+	in, err := fedi.NewIncoming(doc.Type, doc.ID, doc.Actor.ID, object, inner)
+	if err != nil {
+		return fedi.Incoming{}, err
+	}
+
+	if (doc.Type == fedi.TypeCreate || doc.Type == fedi.TypeUpdate) && doc.Object != nil && doc.Object.Raw != nil {
+		in.Note = toNoteDoc(doc.Object.Raw)
+	}
+
+	return in, nil
 }
 
 // Actor reads the document of a remote actor.
@@ -94,6 +106,12 @@ func Actor(body []byte) (fedi.RemoteDoc, error) {
 			ID           string `json:"id"`
 			PublicKeyPem string `json:"publicKeyPem"`
 		} `json:"publicKey"`
+		Name              string   `json:"name"`
+		PreferredUsername string   `json:"preferredUsername"`
+		URL               flexible `json:"url"`
+		Icon              struct {
+			URL flexible `json:"url"`
+		} `json:"icon"`
 	}
 
 	if err := json.Unmarshal(body, &doc); err != nil {
@@ -106,5 +124,9 @@ func Actor(body []byte) (fedi.RemoteDoc, error) {
 		SharedInbox: doc.Endpoints.SharedInbox,
 		KeyID:       doc.PublicKey.ID,
 		PublicKey:   doc.PublicKey.PublicKeyPem,
+		Name:        doc.Name,
+		Username:    doc.PreferredUsername,
+		Icon:        doc.Icon.URL.first(),
+		Page:        doc.URL.first(),
 	}, nil
 }

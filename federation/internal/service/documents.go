@@ -17,6 +17,12 @@ func (s *Service) Finger(ctx context.Context, resource string) (fedi.Person, err
 		return fedi.Person{}, fedi.ErrNotFound
 	}
 
+	// Mastodon checks the actor of the site by WebFinger too, under the
+	// name it gives: the domain.
+	if nickname == s.site.Domain() {
+		return s.SiteActor(ctx)
+	}
+
 	p, err := s.people.ByNickname(ctx, nickname)
 	if errors.Is(err, fedi.ErrNotFound) {
 		return fedi.Person{}, fedi.ErrNotFederated

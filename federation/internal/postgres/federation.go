@@ -216,6 +216,10 @@ const getRemoteQuery = `
 		shared_inbox,
 		key_id,
 		public_key,
+		name,
+		username,
+		icon,
+		page,
 		fetched_at
 	FROM remote_actors
 	WHERE id = $1
@@ -224,10 +228,13 @@ const getRemoteQuery = `
 func (r *RemoteRepository) Get(ctx context.Context, id fedi.URL) (*fedi.Remote, error) {
 	var (
 		inbox, shared, keyID, publicKey string
+		icon, page                      string
+		profile                         fedi.Profile
 		fetchedAt                       time.Time
 	)
 
-	err := r.conn(ctx).QueryRow(ctx, getRemoteQuery, id.String()).Scan(&inbox, &shared, &keyID, &publicKey, &fetchedAt)
+	err := r.conn(ctx).QueryRow(ctx, getRemoteQuery, id.String()).Scan(
+		&inbox, &shared, &keyID, &publicKey, &profile.Name, &profile.Username, &icon, &page, &fetchedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, fedi.ErrNotFound
 	}
@@ -235,7 +242,9 @@ func (r *RemoteRepository) Get(ctx context.Context, id fedi.URL) (*fedi.Remote, 
 		return nil, errs.Wrap("QueryRow", err)
 	}
 
-	return fedi.RestoreRemote(id, fedi.URL(inbox), fedi.URL(shared), fedi.URL(keyID), publicKey, fetchedAt), nil
+	profile.Icon, profile.Page = fedi.URL(icon), fedi.URL(page)
+
+	return fedi.RestoreRemote(id, fedi.URL(inbox), fedi.URL(shared), fedi.URL(keyID), publicKey, profile, fetchedAt), nil
 }
 
 const saveRemoteQuery = `
@@ -245,20 +254,31 @@ const saveRemoteQuery = `
 		shared_inbox,
 		key_id,
 		public_key,
+		name,
+		username,
+		icon,
+		page,
 		fetched_at
 	)
-	VALUES ($1, $2, $3, $4, $5, $6)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	ON CONFLICT (id) DO UPDATE
 	SET inbox = EXCLUDED.inbox,
 		shared_inbox = EXCLUDED.shared_inbox,
 		key_id = EXCLUDED.key_id,
 		public_key = EXCLUDED.public_key,
+		name = EXCLUDED.name,
+		username = EXCLUDED.username,
+		icon = EXCLUDED.icon,
+		page = EXCLUDED.page,
 		fetched_at = EXCLUDED.fetched_at
 `
 
 func (r *RemoteRepository) Save(ctx context.Context, a *fedi.Remote) error {
+	p := a.Profile()
+
 	_, err := r.conn(ctx).Exec(ctx, saveRemoteQuery,
-		a.ID().String(), a.Inbox().String(), a.SharedInbox().String(), a.KeyID().String(), a.PublicKey(), a.FetchedAt())
+		a.ID().String(), a.Inbox().String(), a.SharedInbox().String(), a.KeyID().String(), a.PublicKey(),
+		p.Name, p.Username, p.Icon.String(), p.Page.String(), a.FetchedAt())
 	if err != nil {
 		return errs.Wrap("Exec", err)
 	}

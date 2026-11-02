@@ -26,8 +26,10 @@ type Account struct {
 	createdAt time.Time
 }
 
+// NewAccount is a page opened to the Fediverse; uuid.Nil is the site
+// itself, whose account is always open.
 func NewAccount(userID uuid.UUID, keys KeyPair, now time.Time) (*Account, error) {
-	if userID == uuid.Nil || keys.Public == "" || keys.Private == "" {
+	if keys.Public == "" || keys.Private == "" {
 		return nil, ErrNoKeys
 	}
 

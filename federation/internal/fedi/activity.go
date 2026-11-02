@@ -8,6 +8,7 @@ const (
 	TypeCreate = "Create"
 	TypeUpdate = "Update"
 	TypeDelete = "Delete"
+	TypeReject = "Reject"
 )
 
 // Public is the audience of everyone: what is addressed to it may be
@@ -23,6 +24,8 @@ type Incoming struct {
 	Actor  URL
 	Object string
 	Inner  *Incoming
+	// Note is the note a Create or an Update makes, nil for others.
+	Note *NoteDoc
 }
 
 // NewIncoming checks what every activity needs: who did it.
@@ -41,7 +44,8 @@ func (a Incoming) DeletesActor() bool {
 }
 
 // Outgoing is an activity a page here sends. Exactly one of Note,
-// Tombstone, Follow and Person is its object.
+// Tombstone, Follow and Person is its object; Follow is the follow an
+// Accept accepts or an Undo undoes.
 type Outgoing struct {
 	Type  string
 	ID    URL
@@ -53,6 +57,7 @@ type Outgoing struct {
 	Tombstone URL
 	// Follow is the follow an Accept accepts, as its sender told it.
 	Follow *Incoming
-	// Person is the deleted actor itself.
+	// Person is the actor the activity is about: the one deleted, or
+	// the one followed.
 	Person URL
 }

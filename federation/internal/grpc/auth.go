@@ -19,6 +19,11 @@ func PublicMethods() []string {
 		federationv1.FederationService_GetOutbox_FullMethodName,
 		federationv1.FederationService_Receive_FullMethodName,
 		federationv1.FederationService_PostChanged_FullMethodName,
+		federationv1.FederationService_GetSiteActor_FullMethodName,
+		federationv1.FederationService_ListFeatured_FullMethodName,
+		federationv1.FederationService_Feature_FullMethodName,
+		federationv1.FederationService_Unfeature_FullMethodName,
+		federationv1.FederationService_GetPicture_FullMethodName,
 	}
 }
 
@@ -26,7 +31,11 @@ func PublicMethods() []string {
 // (see mtls.RestrictMethods).
 func InternalMethods() map[string][]string {
 	return map[string][]string{
-		federationv1.FederationService_Receive_FullMethodName:     {mtls.Gateway},
-		federationv1.FederationService_PostChanged_FullMethodName: {mtls.Post},
+		federationv1.FederationService_Receive_FullMethodName:      {mtls.Gateway},
+		federationv1.FederationService_PostChanged_FullMethodName:  {mtls.Post},
+		federationv1.FederationService_ListFeatured_FullMethodName: {mtls.Gateway},
+		federationv1.FederationService_Feature_FullMethodName:      {mtls.Gateway},
+		federationv1.FederationService_Unfeature_FullMethodName:    {mtls.Gateway},
+		federationv1.FederationService_GetPicture_FullMethodName:   {mtls.Gateway},
 	}
 }
