@@ -55,6 +55,11 @@ type Config struct {
 	// delete their posts and comments on community walls.
 	ClubServiceAddr string `env:"CLUB_SERVICE_ADDR"`
 
+	// FederationServiceAddr is whom post tells, within NOTIFY_TIMEOUT too,
+	// of the posts on their authors' own walls, for the Fediverse.
+	// Without it no post goes there.
+	FederationServiceAddr string `env:"FEDERATION_SERVICE_ADDR"`
+
 	// Spam protection, per user. REDIS_ADDR shares the counters between
 	// replicas; without it they are kept in memory, per replica. Posts and
 	// reposts both follow RATE_LIMIT_POSTS, each counted on its own.

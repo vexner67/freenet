@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 	clubv1 "github.com/vexner67/freenet/club/api/club/v1"
+	federationv1 "github.com/vexner67/freenet/federation/api/federation/v1"
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -25,6 +26,7 @@ import (
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
 	"github.com/vexner67/freenet/post/internal/clubclient"
 	"github.com/vexner67/freenet/post/internal/config"
+	"github.com/vexner67/freenet/post/internal/fediclient"
 	postgrpc "github.com/vexner67/freenet/post/internal/grpc"
 	"github.com/vexner67/freenet/post/internal/inmem"
 	"github.com/vexner67/freenet/post/internal/mediaclient"
@@ -118,6 +120,11 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("a.newModerators", err)
 	}
 
+	federator, err := a.newFederator(cfg, repos.newQueue, reg)
+	if err != nil {
+		return errs.Wrap("a.newFederator", err)
+	}
+
 	limiter, err := a.newLimiter(cfg)
 	if err != nil {
 		return errs.Wrap("a.newLimiter", err)
@@ -164,7 +171,7 @@ func (a *App) build(cfg config.Config) error {
 	posts := service.NewPostService(service.PostDeps{
 		Posts: repos.posts, Pins: repos.posts, Comments: repos.comments, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
 		Moderators: moderators, AlbumPhotos: repos.albumPhotos, WallPhotos: albums, Switches: repos.posts, Walls: repos.sources,
-		Polls: repos.polls, Pages: repos.pages,
+		Polls: repos.polls, Pages: repos.pages, Federator: federator,
 	})
 	a.postponed = service.NewPostponedService(service.PostponedDeps{
 		Postponed: repos.postponed, Poster: posts, Tx: repos.tx, Photos: photos, Moderators: moderators,
@@ -339,6 +346,24 @@ func (a *App) newNotifier(cfg config.Config, newQueue func(stream string) outbox
 	}
 
 	return notifyclient.NewOutbox(q), nil
+}
+
+// newFederator records the posts for the Fediverse in the outbox and
+// sets up the relay that tells the federation service of them.
+func (a *App) newFederator(cfg config.Config, newQueue func(stream string) outboxQueue, reg prometheus.Registerer) (service.Federator, error) {
+	if cfg.FederationServiceAddr == "" {
+		a.logger.Warn("FEDERATION_SERVICE_ADDR is not set: no post goes to the Fediverse")
+		return fediclient.Nop{}, nil
+	}
+
+	q, err := a.stream(cfg, fediclient.Stream, cfg.FederationServiceAddr, newQueue, reg, func(conn *grpc.ClientConn) outbox.Deliver {
+		return fediclient.NewDeliverer(federationv1.NewFederationServiceClient(conn), cfg.NotifyTimeout).Deliver
+	}, outbox.Keyed(fediclient.Key))
+	if err != nil {
+		return nil, err
+	}
+
+	return fediclient.NewOutbox(q), nil
 }
 
 // newModerators asks the club service about the walls of communities. The

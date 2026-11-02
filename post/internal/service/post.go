@@ -232,6 +232,33 @@ type PostService struct {
 	polls       PollSaver
 	walls       Walls
 	pages       Pages
+	federator   Federator
+}
+
+// Federator tells the federation service about the posts authors write
+// on their own walls, which may go to the Fediverse: in the transaction
+// of ctx.
+type Federator interface {
+	Published(ctx context.Context, p *post.Post) error
+	Edited(ctx context.Context, p *post.Post) error
+	Deleted(ctx context.Context, p *post.Post) error
+}
+
+// noFederator tells nobody: no federation service.
+type noFederator struct{}
+
+func (noFederator) Published(context.Context, *post.Post) error { return nil }
+func (noFederator) Edited(context.Context, *post.Post) error    { return nil }
+func (noFederator) Deleted(context.Context, *post.Post) error   { return nil }
+
+// federate tells the federator of p by tell, if p is on its author's own
+// wall: what is written elsewhere never goes to the Fediverse.
+func federate(ctx context.Context, p *post.Post, tell func(context.Context, *post.Post) error) error {
+	if !p.OnOwnWall() {
+		return nil
+	}
+
+	return tell(ctx, p)
 }
 
 // PollSaver keeps the poll a new post asks, in the transaction that saves
@@ -263,6 +290,9 @@ type PostDeps struct {
 	Polls PollSaver
 	// Walls tells the walls closed to a viewer; nil: none is.
 	Walls Walls
+	// Federator hears of the posts on their authors' own walls; nil:
+	// nobody does.
+	Federator Federator
 }
 
 // WallPhotoKeeper keeps the photos people post on their own walls in
@@ -279,7 +309,13 @@ type AlbumPhotoGetter interface {
 }
 
 func NewPostService(d PostDeps) *PostService {
+	var federator Federator = noFederator{}
+	if d.Federator != nil {
+		federator = d.Federator
+	}
+
 	return &PostService{
+		federator:   federator,
 		postRepo:    d.Posts,
 		pinRepo:     d.Pins,
 		commentRepo: d.Comments,
@@ -374,6 +410,10 @@ func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, e
 			return errs.Wrap("s.publishPhotos", err)
 		}
 
+		if err := federate(ctx, p, s.federator.Published); err != nil {
+			return errs.Wrap("federate", err)
+		}
+
 		for _, e := range postEvents(p, in.ClubWall, in.Mentions) {
 			if err := s.notifier.Notify(ctx, e); err != nil {
 				return errs.Wrap("s.notifier.Notify", err)
@@ -448,6 +488,10 @@ func (s *PostService) Posted(ctx context.Context, p *post.Post, mentions post.Me
 
 		if err := s.keepWallPhotos(ctx, p, album, photos); err != nil {
 			return errs.Wrap("s.keepWallPhotos", err)
+		}
+
+		if err := federate(ctx, p, s.federator.Published); err != nil {
+			return errs.Wrap("federate", err)
 		}
 
 		for _, e := range postEvents(p, p.FromWall(), mentions) {
@@ -651,6 +695,10 @@ func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID)
 
 		if err := s.forgetReposts(ctx, p); err != nil {
 			return errs.Wrap("s.forgetReposts", err)
+		}
+
+		if err := federate(ctx, p, s.federator.Deleted); err != nil {
+			return errs.Wrap("federate", err)
 		}
 
 		if photos := p.Content().OwnPhotos(); len(photos) > 0 {
@@ -863,6 +911,10 @@ func (s *PostService) Edit(ctx context.Context, requesterID, postID uuid.UUID, e
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.postRepo.Update(ctx, edited); err != nil {
 			return errs.Wrap("s.postRepo.Update", err)
+		}
+
+		if err := federate(ctx, edited, s.federator.Edited); err != nil {
+			return errs.Wrap("federate", err)
 		}
 
 		if err := s.publishPhotos(ctx, p, album, added); err != nil {
