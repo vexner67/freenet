@@ -24,7 +24,7 @@
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, handsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, bankVotes, firmKindName, goodName, formatDateTime, titleIconPath, titleIcons, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, handsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, bankVotes, firmKindName, goodName, formatDateTime, handleOf, titleIconPath, titleIcons, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 import { countUp, deed, lookReady } from './admin-look.js';
 import { remember } from './newyear.js';
@@ -1777,7 +1777,7 @@ async function fediverse(answered) {
         account.avatar ? el('img', { className: 'admin-fediverse-photo', src: account.avatar, alt: '' }) : '',
         el('a', { href: account.url, target: '_blank', rel: 'noopener noreferrer nofollow', textContent: account.name || account.handle }),
       )),
-      el('td', { textContent: account.handle }),
+      el('td', { textContent: handleOf(account) }),
       el('td', { textContent: account.accepted ? tr('принята') : tr('ждём ответа') }),
       el('td', {}, remove),
     );

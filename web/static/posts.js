@@ -281,21 +281,22 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   return node;
 }
 
-// remotePostNode is a post of another server of the Fediverse in the
-// news: its author and the date lead there, its pictures come through the
-// site, and it has no likes, comments or reposts here — only the way to
-// it. The warning its author put before it (summary) shows above the
+// remotePostNode is a post of another server of the Fediverse, or of a
+// channel of Telegram, in the news: its author and the date lead there,
+// its pictures come through the site, and it has no likes, comments or
+// reposts here — only the way to it. The warning its author put before it (summary) shows above the
 // blurred text, as the servers of Mastodon show it.
 export function remotePostNode(post) {
   const remote = post.fediverse;
   const author = remote.author;
   const name = author.name || author.handle;
   const photos = remote.images.map((image) => ({ large: image.url, small: image.url }));
+  const telegram = author.telegram;
 
   const content = el('div', { className: 'post-content' },
     post.text ? textNode(post.text, { whole: false }) : '',
     photosNode(photos) ?? '',
-    videosNode(remote.videos ?? [], remote.url) ?? '',
+    videosNode(remote.videos ?? [], remote.url, telegram) ?? '',
   );
 
   const node = el('div', { className: 'post post-remote' + (post.nsfw ? ' post-nsfw' : '') },
@@ -315,8 +316,8 @@ export function remotePostNode(post) {
       remote.summary ? el('div', { className: 'post-summary', textContent: remote.summary }) : null,
       content,
       el('div', { className: 'post-menu post-bar' },
-        el('span', { className: 'post-from', textContent: tr('Из Fediverse') }),
-        externalLink(remote.url, [tr('Открыть в Fediverse')]),
+        el('span', { className: 'post-from', textContent: telegram ? tr('Из Telegram') : tr('Из Fediverse') }),
+        externalLink(remote.url, [telegram ? tr('Открыть в Telegram') : tr('Открыть в Fediverse')]),
       ),
     ),
   );
@@ -614,7 +615,7 @@ export function photosNode(photos) {
 // covers, which open the post there: the site does not play them. Until
 // the cover comes, or when there is none, its blurhash is drawn; the
 // canvas keeps the shape of the video, so nothing moves when it comes.
-function videosNode(videos, url) {
+function videosNode(videos, url, telegram) {
   if (videos.length === 0) return null;
 
   return el('div', { className: 'post-videos' }, ...videos.map((video) => {
@@ -628,7 +629,7 @@ function videosNode(videos, url) {
 
     const duration = videoDuration(video.duration);
 
-    return el('a', { className: 'post-video', href: url, target: '_blank', rel: 'noopener noreferrer nofollow ugc', title: tr('Смотреть в Fediverse') },
+    return el('a', { className: 'post-video', href: url, target: '_blank', rel: 'noopener noreferrer nofollow ugc', title: telegram ? tr('Смотреть в Telegram') : tr('Смотреть в Fediverse') },
       blur,
       cover,
       el('span', { className: 'post-video-play' }),

@@ -6,7 +6,7 @@ import { MAX_PARKED, accountName, onAccountChange, park, parkedAccounts, signedI
 import { api, idle } from './api.js';
 import { ensureKey } from './e2ee.js';
 import { connectEvents, onEvent } from './events.js';
-import { activeSection, errorText, foundParts, hashtagPath, isLongText, pushOfferText, pushStateTexts, safeURL, setTimezone, textParts, unreadCountText } from './labels.js';
+import { activeSection, errorText, foundParts, handleOf, hashtagPath, isLongText, pushOfferText, pushStateTexts, safeURL, setTimezone, textParts, unreadCountText } from './labels.js';
 import { acceptInvite } from './invite.js';
 import { nicknameLookup } from './nicknames.js';
 import { closePushes, endPushOffer, enablePush, forgetPushAccount, pushOffer, showUnread, syncPush } from './push.js';
@@ -164,8 +164,8 @@ export function externalLink(url, children) {
   return el('a', { className: 'text-link', href: url, target: '_blank', rel: 'noopener noreferrer nofollow ugc', title: url }, ...children);
 }
 
-// fediverseAccountNode is an account of another server of the Fediverse
-// in a list: its photo and name lead there, its address there is gray,
+// fediverseAccountNode is an account of another server of the Fediverse,
+// or a channel of Telegram, in a list: its photo and name lead there, its address there is gray,
 // and the link on the right does action (run); until its server accepts
 // the follow of the site, it says its posts are yet to come.
 export function fediverseAccountNode(account, { action, run, onError }) {
@@ -189,7 +189,7 @@ export function fediverseAccountNode(account, { action, run, onError }) {
       el('img', { src: account.avatar || '/static/avatar.svg', alt: '', width: 30, height: 30 })),
     el('div', { className: 'fediverse-account-name' },
       externalLink(account.url, [account.name || account.handle]),
-      el('div', { className: 'post-handle', textContent: account.handle }),
+      el('div', { className: 'post-handle', textContent: handleOf(account) }),
       account.accepted ? null : el('div', { className: 'hint', textContent: tr('Ждём ответа сервера: записи придут после него.') }),
     ),
     link,

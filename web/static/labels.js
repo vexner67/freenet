@@ -258,6 +258,12 @@ function onClock(date) {
 
 const two = (n) => String(n).padStart(2, '0');
 
+// handleOf is the address of an account of another server as the site
+// writes it: a channel of Telegram says so.
+export function handleOf(account) {
+  return account.telegram ? tr('{0} в Telegram', account.handle) : account.handle;
+}
+
 // videoDuration is how long a video plays, as players write it: "0:07",
 // "1:24", "1:02:03"; empty when it is not known.
 export function videoDuration(seconds) {
@@ -2496,8 +2502,8 @@ const errorTexts = {
   'network error': tr('Нет связи с сервером. Проверьте подключение.'),
   'invalid email': tr('Похоже, в адресе почты опечатка.'),
   'invalid or expired code': tr('Неверный или устаревший код.'),
-  'invalid fediverse address': tr('Адрес в Fediverse пишется как @имя@сервер, например @anna@mastodon.social.'),
-  'fediverse account not found': tr('Такого аккаунта в Fediverse нет или его сервер не отвечает.'),
+  'invalid fediverse address': tr('Адрес в Fediverse пишется как @имя@сервер, например @anna@mastodon.social, а канала Telegram — как t.me/канал.'),
+  'fediverse account not found': tr('Такого аккаунта в Fediverse или канала в Telegram нет, или его сервер не отвечает.'),
   'too many fediverse subscriptions': tr('Вы подписаны на слишком многих в Fediverse.'),
   'too many fediverse lookups': tr('Слишком много поисков в Fediverse, попробуйте через минуту.'),
   'a hidden page cannot be opened to the fediverse': tr('Открыть для Fediverse можно только страницу, которую в интернете видят все: это меняется в «Кому в интернете видно мою страницу».'),
