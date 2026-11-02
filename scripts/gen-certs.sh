@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Creates a development CA and mTLS certificates for the services in certs/.
 # Each certificate's common name is the service identity checked by
-# pkg/mtls (auth, user, post, media, notification, message, club,
+# pkg/mtls (auth, user, post, media, notification, message, club, federation,
 # gateway); SANs cover localhost and the service name. Also the RSA key
 # pair auth signs access tokens with (jwt-private.pem, PKCS#1) and the
 # others verify them with (jwt-public.pem), and the P-256 key notification
@@ -14,7 +14,7 @@ set -euo pipefail
 out="${1:-certs}"
 days=825
 ca_days=3650
-services=(auth user post media notification message club gateway)
+services=(auth user post media notification message club federation gateway)
 
 mkdir -p "$out"
 cd "$out"

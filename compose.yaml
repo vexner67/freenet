@@ -162,6 +162,25 @@ services:
       timeout: 5s
       retries: 5
 
+  federation-postgres:
+    image: postgres:18
+    logging: *logging
+    environment:
+      POSTGRES_USER: ${FEDERATION_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${FEDERATION_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${FEDERATION_POSTGRES_DB}
+    ports:
+      - "${FEDERATION_POSTGRES_PORT}:5432"
+    volumes:
+      - federation_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${FEDERATION_POSTGRES_USER} -d $${FEDERATION_POSTGRES_DB}"]
+      interval: 30s
+      start_period: 60s
+      start_interval: 1s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     logging: *logging
@@ -250,6 +269,28 @@ services:
       redis: { condition: service_healthy }
       notification: { condition: service_healthy }
 
+  federation:
+    <<: *service
+    image: freenet-federation
+    build: { context: ., args: { SERVICE: federation } }
+    environment:
+      <<: *env
+      GRPC_PORT: 7058
+      METRICS_PORT: 9058
+      TLS_CERT_PATH: /certs/federation.pem
+      TLS_KEY_PATH: /certs/federation-key.pem
+      STORAGE: persistent
+      DATABASE_URL: postgres://${FEDERATION_POSTGRES_USER}:${FEDERATION_POSTGRES_PASSWORD}@federation-postgres:5432/${FEDERATION_POSTGRES_DB}?sslmode=disable
+      # Where the site is on the web: the addresses of pages and posts in
+      # the Fediverse begin with it.
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      # Not in depends_on: post tells federation of its posts and waits
+      # for it through its outbox.
+      USER_SERVICE_ADDR: user:7052
+      POST_SERVICE_ADDR: post:7053
+    depends_on:
+      federation-postgres: { condition: service_healthy }
+
   user:
     <<: *service
     image: freenet-user
@@ -293,6 +334,7 @@ services:
       NOTIFICATION_SERVICE_ADDR: notification:7055
       MEDIA_SERVICE_ADDR: media:7054
       CLUB_SERVICE_ADDR: club:7057
+      FEDERATION_SERVICE_ADDR: federation:7058
     depends_on:
       post-postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -374,6 +416,7 @@ services:
       NOTIFICATION_SERVICE_ADDR: notification:7055
       MESSAGE_SERVICE_ADDR: message:7056
       CLUB_SERVICE_ADDR: club:7057
+      FEDERATION_SERVICE_ADDR: federation:7058
     ports:
       - "${GATEWAY_PORT:-8080}:8080"
     depends_on:
@@ -384,6 +427,7 @@ services:
       notification: { condition: service_healthy }
       message: { condition: service_healthy }
       club: { condition: service_healthy }
+      federation: { condition: service_healthy }
 
   auth-postgres-exporter:
     <<: *postgres-exporter
@@ -438,6 +482,15 @@ services:
       DATA_SOURCE_PASS: ${CLUB_POSTGRES_PASSWORD}
     depends_on:
       club-postgres: { condition: service_healthy }
+
+  federation-postgres-exporter:
+    <<: *postgres-exporter
+    environment:
+      DATA_SOURCE_URI: federation-postgres:5432/${FEDERATION_POSTGRES_DB}?sslmode=disable
+      DATA_SOURCE_USER: ${FEDERATION_POSTGRES_USER}
+      DATA_SOURCE_PASS: ${FEDERATION_POSTGRES_PASSWORD}
+    depends_on:
+      federation-postgres: { condition: service_healthy }
 
   redis-exporter:
     profiles: [app]
@@ -600,6 +653,7 @@ volumes:
   notification_postgres_data:
   message_postgres_data:
   club_postgres_data:
+  federation_postgres_data:
   redis_data:
   alertmanager_data:
   victorialogs_data:

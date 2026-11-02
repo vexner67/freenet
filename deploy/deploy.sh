@@ -27,6 +27,17 @@ grep -q '^GRAFANA_ADMIN_PASSWORD=.' .env || echo "GRAFANA_ADMIN_PASSWORD=$(opens
 grep -q '^TURN_SECRET=.' .env || echo "TURN_SECRET=$(openssl rand -hex 32)" >> .env
 grep -q '^TURN_HOST=.' .env || echo "TURN_HOST=$(ip -4 route get 1.1.1.1 | awk '{for (i = 1; i < NF; i++) if ($i == "src") print $(i + 1)}')" >> .env
 
+# The database of the federation service, which came after the server
+# was set up.
+if ! grep -q '^FEDERATION_POSTGRES_PASSWORD=.' .env; then
+	{
+		echo "FEDERATION_POSTGRES_USER=freenet"
+		echo "FEDERATION_POSTGRES_PASSWORD=$(openssl rand -hex 24)"
+		echo "FEDERATION_POSTGRES_DB=freenet"
+		echo "FEDERATION_POSTGRES_PORT=5439"
+	} >> .env
+fi
+
 docker login ghcr.io --username "$user" --password-stdin >/dev/null
 trap 'docker logout ghcr.io >/dev/null' EXIT
 
