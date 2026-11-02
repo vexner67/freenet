@@ -38,6 +38,7 @@ type Federation interface {
 	Feature(ctx context.Context, address string) (model.FediverseAccount, error)
 	Unfeature(ctx context.Context, id string) error
 	PostPicture(ctx context.Context, postID string, index int) (model.Picture, error)
+	VideoCover(ctx context.Context, postID string, index int) (model.Picture, error)
 	AccountPicture(ctx context.Context, accountID string) (model.Picture, error)
 }
 

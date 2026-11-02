@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"time"
 
 	federationv1 "github.com/vexner67/freenet/federation/api/federation/v1"
 	"github.com/vexner67/freenet/gateway/internal/model"
@@ -205,6 +206,10 @@ func (f *Federation) PostPicture(ctx context.Context, postID string, index int) 
 	return f.picture(ctx, &federationv1.GetPictureRequest{PostId: postID, Index: int32(index)}) //nolint:gosec // an index of at most four
 }
 
+func (f *Federation) VideoCover(ctx context.Context, postID string, index int) (model.Picture, error) {
+	return f.picture(ctx, &federationv1.GetPictureRequest{PostId: postID, Index: int32(index), Video: true}) //nolint:gosec // an index of at most four
+}
+
 func (f *Federation) AccountPicture(ctx context.Context, accountID string) (model.Picture, error) {
 	return f.picture(ctx, &federationv1.GetPictureRequest{AccountId: accountID})
 }
@@ -244,6 +249,17 @@ func fromProtoNewsPost(p *federationv1.NewsPost) model.FediversePost {
 		descriptions[i] = img.GetDescription()
 	}
 
+	videos := make([]model.FediverseVideo, len(p.GetVideos()))
+	for i, v := range p.GetVideos() {
+		videos[i] = model.FediverseVideo{
+			Description: v.GetDescription(),
+			Blurhash:    v.GetBlurhash(),
+			Width:       int(v.GetWidth()),
+			Height:      int(v.GetHeight()),
+			Duration:    time.Duration(v.GetDurationSeconds()) * time.Second,
+		}
+	}
+
 	post := model.FediversePost{
 		ID:                p.GetId(),
 		URL:               p.GetUrl(),
@@ -253,6 +269,7 @@ func fromProtoNewsPost(p *federationv1.NewsPost) model.FediversePost {
 		Summary:           p.GetSummary(),
 		Sensitive:         p.GetSensitive(),
 		ImageDescriptions: descriptions,
+		Videos:            videos,
 		PublishedAt:       p.GetPublishedAt().AsTime(),
 	}
 

@@ -6660,6 +6660,17 @@ paths:
         "200": { description: The picture, content: { image/*: { schema: { type: string, format: binary } } } }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /media/fediverse/posts/{id}/videos/{index}:
+    get:
+      summary: The cover of a video of a post of another server
+      description: 'The one its author chose, read from its server through the site, or else its first frame, cut once (JPEG).'
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: index, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: The picture, content: { image/*: { schema: { type: string, format: binary } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /media/fediverse/accounts:
     get:
       summary: The photo of an account of another server
@@ -10030,6 +10041,18 @@ components:
             images:
               type: array
               items: { type: object, properties: { url: { type: string }, description: { type: string } } }
+            videos:
+              type: array
+              description: 'Shown as their covers, which open the post on its server'
+              items:
+                type: object
+                properties:
+                  cover: { type: string, description: 'The cover through the site; 404 when there is none, and blurhash is to be drawn instead' }
+                  blurhash: { type: string, description: 'A blurred cover; empty when its server told none' }
+                  width: { type: integer, description: '0 when its server did not tell' }
+                  height: { type: integer }
+                  duration: { type: integer, description: 'In seconds; 0 when its server did not tell' }
+                  description: { type: string }
         signer:
           description: "Who wrote a post for a community that names its author (\"Автор: ...\"); null otherwise"
           oneOf:

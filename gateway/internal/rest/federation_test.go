@@ -266,6 +266,11 @@ func (f *fakeFederation) Unfeature(_ context.Context, id string) error {
 	return f.err
 }
 
+func (f *fakeFederation) VideoCover(_ context.Context, postID string, index int) (model.Picture, error) {
+	f.read = "cover " + postID + " " + strconv.Itoa(index)
+	return f.picture, f.err
+}
+
 func (f *fakeFederation) PostPicture(_ context.Context, postID string, index int) (model.Picture, error) {
 	f.read = "picture " + postID + " " + strconv.Itoa(index)
 	return f.picture, f.err
@@ -301,6 +306,13 @@ type fediversePosts struct {
 				URL         string `json:"url"`
 				Description string `json:"description"`
 			} `json:"images"`
+			Videos []struct {
+				Cover    string `json:"cover"`
+				Blurhash string `json:"blurhash"`
+				Width    int    `json:"width"`
+				Height   int    `json:"height"`
+				Duration int    `json:"duration"`
+			} `json:"videos"`
 		} `json:"fediverse"`
 	} `json:"posts"`
 	NextCursor string `json:"nextCursor"`
@@ -314,6 +326,7 @@ func TestFeed_Fediverse(t *testing.T) {
 	h.federation.remote = []model.FediversePost{{
 		ID: "p2", URL: "https://m.example/notes/1", Author: anna, Text: "from afar", Summary: "cw", Sensitive: true,
 		ImageDescriptions: []string{"a cat"}, PublishedAt: time.Date(2026, 11, 1, 10, 0, 0, 0, time.UTC),
+		Videos: []model.FediverseVideo{{Blurhash: "LEHV6nWB2yk8pyo0adR*.7kCMdnj", Width: 1280, Height: 720, Duration: 84 * time.Second}},
 	}}
 
 	w := h.do("GET", "/api/v1/feed?type=all&cursor=p9", "", "Authorization", "Bearer tok")
@@ -334,6 +347,11 @@ func TestFeed_Fediverse(t *testing.T) {
 		p.Fediverse.Author.Avatar != "/media/fediverse/accounts?id=https%3A%2F%2Fm.example%2Fusers%2Fanna" ||
 		len(p.Fediverse.Images) != 1 || p.Fediverse.Images[0].URL != "/media/fediverse/posts/p2/0" {
 		t.Fatalf("remote post %+v", p)
+	}
+
+	if v := p.Fediverse.Videos; len(v) != 1 || v[0].Cover != "/media/fediverse/posts/p2/videos/0" ||
+		v[0].Blurhash != "LEHV6nWB2yk8pyo0adR*.7kCMdnj" || v[0].Width != 1280 || v[0].Height != 720 || v[0].Duration != 84 {
+		t.Fatalf("videos %+v", v)
 	}
 
 	// A page as long as the limit ends with the remote post.
@@ -426,6 +444,16 @@ func TestFediversePictures(t *testing.T) {
 	if w.Code != http.StatusOK || w.Body.String() != "png" || w.Header().Get("Content-Type") != "image/png" ||
 		w.Header().Get("Cache-Control") != "public, max-age=86400" || h.federation.read != "picture p2 1" {
 		t.Fatalf("post picture: %d %v, read %q", w.Code, w.Header(), h.federation.read)
+	}
+
+	h.federation.picture = model.Picture{Body: []byte("jpeg"), ContentType: "image/jpeg"}
+	if w = h.do("GET", "/media/fediverse/posts/p2/videos/1", ""); w.Code != http.StatusOK || w.Body.String() != "jpeg" ||
+		w.Header().Get("Cache-Control") != "public, max-age=86400" || h.federation.read != "cover p2 1" {
+		t.Fatalf("video cover: %d %v, read %q", w.Code, w.Header(), h.federation.read)
+	}
+
+	if w = h.do("GET", "/media/fediverse/posts/p2/videos/x", ""); w.Code != http.StatusNotFound {
+		t.Fatalf("a cover with no index: %d", w.Code)
 	}
 
 	if w = h.do("GET", "/media/fediverse/accounts?id=https%3A%2F%2Fm.example%2Fusers%2Fanna", ""); w.Code != http.StatusOK || h.federation.read != "avatar "+anna.ID {

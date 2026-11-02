@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
@@ -52,10 +53,22 @@ type fediverseJSON struct {
 	URL     string               `json:"url"`
 	Summary string               `json:"summary"`
 	Images  []fediverseImageJSON `json:"images"`
+	Videos  []fediverseVideoJSON `json:"videos"`
 }
 
 type fediverseImageJSON struct {
 	URL         string `json:"url"`
+	Description string `json:"description"`
+}
+
+// fediverseVideoJSON is a video shown as its cover; Width, Height and
+// Duration (in seconds) are 0 when its server did not tell them.
+type fediverseVideoJSON struct {
+	Cover       string `json:"cover"`
+	Blurhash    string `json:"blurhash"`
+	Width       int    `json:"width"`
+	Height      int    `json:"height"`
+	Duration    int    `json:"duration"`
 	Description string `json:"description"`
 }
 
@@ -73,6 +86,7 @@ func (a *api) registerFediverse(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/v1/admin/fediverse", a.unfeatureFediverse)
 
 	mux.HandleFunc("GET /media/fediverse/posts/{id}/{index}", a.fediversePostPicture)
+	mux.HandleFunc("GET /media/fediverse/posts/{id}/videos/{index}", a.fediverseVideoCover)
 	mux.HandleFunc("GET /media/fediverse/accounts", a.fediverseAccountPicture)
 }
 
@@ -239,6 +253,24 @@ func (a *api) fediversePostPicture(w http.ResponseWriter, r *http.Request) {
 	servePicture(w, p)
 }
 
+// fediverseVideoCover is the cover of a video of a post of another
+// server: the one its author chose, or its first frame.
+func (a *api) fediverseVideoCover(w http.ResponseWriter, r *http.Request) {
+	index, err := strconv.Atoi(r.PathValue("index"))
+	if err != nil {
+		a.writeError(w, r, failure.New(failure.NotFound, "picture not found"))
+		return
+	}
+
+	p, err := a.federation.VideoCover(r.Context(), r.PathValue("id"), index)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	servePicture(w, p)
+}
+
 func (a *api) fediverseAccountPicture(w http.ResponseWriter, r *http.Request) {
 	p, err := a.federation.AccountPicture(r.Context(), r.URL.Query().Get("id"))
 	if err != nil {
@@ -310,6 +342,18 @@ func toFediversePostResponse(p model.FediversePost) postResponse {
 		}
 	}
 
+	videos := make([]fediverseVideoJSON, len(p.Videos))
+	for i, v := range p.Videos {
+		videos[i] = fediverseVideoJSON{
+			Cover:       "/media/fediverse/posts/" + url.PathEscape(p.ID) + "/videos/" + strconv.Itoa(i),
+			Blurhash:    v.Blurhash,
+			Width:       v.Width,
+			Height:      v.Height,
+			Duration:    int(v.Duration / time.Second),
+			Description: v.Description,
+		}
+	}
+
 	page := p.PageURL
 	if page == "" {
 		page = p.URL
@@ -328,6 +372,7 @@ func toFediversePostResponse(p model.FediversePost) postResponse {
 			URL:     page,
 			Summary: p.Summary,
 			Images:  images,
+			Videos:  videos,
 		},
 	}
 }

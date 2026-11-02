@@ -77,9 +77,23 @@ type FediversePost struct {
 	// ImageDescriptions describe its pictures, which the site shows
 	// through itself by their index.
 	ImageDescriptions []string
-	PublishedAt       time.Time
+	// Videos are shown as their covers, which the site serves by their
+	// index too.
+	Videos      []FediverseVideo
+	PublishedAt time.Time
 	// UpdatedAt is zero for a post never edited.
 	UpdatedAt time.Time
+}
+
+// FediverseVideo is a video of a post of another server.
+type FediverseVideo struct {
+	Description string
+	// Blurhash is a blurred cover, drawn until the cover is read.
+	Blurhash string
+	// Width and Height are zero when the server did not tell.
+	Width    int
+	Height   int
+	Duration time.Duration
 }
 
 // Picture is a picture of another server, read for the site to show.
