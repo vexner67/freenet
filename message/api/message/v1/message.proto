@@ -191,6 +191,9 @@ message Message {
   Quote reply_to = 19;
   // The reactions to it, the oldest first; none once taken back.
   repeated Reaction reactions = 20;
+  // Songs of "Аудиозаписи" the message attaches, which the post service
+  // keeps; a deleted one is gone.
+  repeated string audio_ids = 21;
 }
 
 // A message as another one carries it on: a copy of what it showed. One
@@ -213,6 +216,8 @@ message ForwardedMessage {
   string sticker = 8;
   // The documents it attached.
   repeated string document_ids = 9;
+  // The songs it attached.
+  repeated string audio_ids = 10;
 }
 
 // What a message answering another shows of it ("Ответить"): who wrote it
@@ -237,6 +242,7 @@ message Quote {
   bool found = 11;
   // text says more.
   bool text_cut = 12;
+  int32 audio_count = 13;
 }
 
 // One person's reaction to a message.
@@ -287,6 +293,9 @@ message SendMessageRequest {
   // there or was taken back fails with InvalidArgument "replied message
   // not found".
   string reply_to_id = 10;
+  // Songs of "Аудиозаписи", at most 10, which the caller has found: with
+  // them, too, the message may say nothing else.
+  repeated string audio_ids = 11;
 }
 
 message SendMessageResponse {
@@ -611,6 +620,8 @@ message ChatMessage {
   Quote reply_to = 20;
   // The reactions to it, the oldest first.
   repeated Reaction reactions = 21;
+  // The songs the message attaches.
+  repeated string audio_ids = 22;
 }
 
 message CreateChatRequest {
@@ -711,6 +722,8 @@ message SendChatMessageRequest {
   // A message of the chat shown to the caller to answer, as in a dialog;
   // not an action.
   string reply_to_id = 9;
+  // Songs, as in a dialog.
+  repeated string audio_ids = 10;
 }
 
 message SendChatMessageResponse {

@@ -56,9 +56,10 @@ const saveMessageQuery = `
 			sealed,
 			sticker,
 			document_ids,
+			audio_ids,
 			reply_to_id
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING id, sender_id, recipient_id
 	)
 	INSERT INTO dialogs (
@@ -89,7 +90,7 @@ func (r *MessageRepository) Save(ctx context.Context, m *message.Message) error 
 		return errs.Wrap("forwardedToDB", err)
 	}
 
-	_, err = r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.CreatedAt(), m.Sealed().Bytes(), m.Sticker().String(), documentIDs(m.Documents()), postIDToDB(m.ReplyTo()))
+	_, err = r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.CreatedAt(), m.Sealed().Bytes(), m.Sticker().String(), documentIDs(m.Documents()), audioIDs(m.Audios()), postIDToDB(m.ReplyTo()))
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -115,6 +116,7 @@ const getMessageQuery = `
 		sealed,
 		sticker,
 		document_ids,
+		audio_ids,
 		reply_to_id
 	FROM messages
 	WHERE id = $1
@@ -164,6 +166,7 @@ const getMessagesQuery = `
 		sealed,
 		sticker,
 		document_ids,
+		audio_ids,
 		reply_to_id
 	FROM messages
 	WHERE id = ANY($1)
@@ -203,6 +206,7 @@ const (
 			sealed,
 			sticker,
 			document_ids,
+			audio_ids,
 			reply_to_id
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
@@ -230,6 +234,7 @@ const (
 			sealed,
 			sticker,
 			document_ids,
+			audio_ids,
 			reply_to_id
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
@@ -296,6 +301,7 @@ type scanned struct {
 	sealed      []byte
 	sticker     string
 	documents   []uuid.UUID
+	audios      []uuid.UUID
 	// replyTo is NULL for a message answering none.
 	replyTo *uuid.UUID
 }
@@ -304,7 +310,7 @@ type scanned struct {
 func (s *scanned) dest() []any {
 	return []any{
 		&s.stored.ID, &s.stored.SenderID, &s.stored.RecipientID, &s.text, &s.photos, &s.post, &s.sharedPhoto, &s.stored.CreatedAt,
-		&s.editedAt, &s.stored.HiddenFromSender, &s.stored.HiddenFromRecipient, &s.forwarded, &s.deletedAt, &s.sealed, &s.sticker, &s.documents, &s.replyTo,
+		&s.editedAt, &s.stored.HiddenFromSender, &s.stored.HiddenFromRecipient, &s.forwarded, &s.deletedAt, &s.sealed, &s.sticker, &s.documents, &s.audios, &s.replyTo,
 	}
 }
 
@@ -338,7 +344,7 @@ func (s *scanned) message() (*message.Message, error) {
 
 	stored := s.stored
 	stored.Content = message.RestoreContent(message.Text(s.text), photos, postID, forwarded).WithSealed(message.Sealed(s.sealed)).WithSticker(message.Sticker(s.sticker)).
-		WithDocuments(documentsFromDB(s.documents)).Answering(orNil(s.replyTo))
+		WithDocuments(documentsFromDB(s.documents)).WithAudios(audiosFromDB(s.audios)).Answering(orNil(s.replyTo))
 	if s.sharedPhoto != nil {
 		stored.Content = stored.Content.WithSharedPhoto(*s.sharedPhoto)
 	}
@@ -364,6 +370,7 @@ type forwardedJSON struct {
 	Photo     *uuid.UUID  `json:"photo,omitempty"`
 	Sticker   string      `json:"sticker,omitempty"`
 	Documents []uuid.UUID `json:"documents,omitempty"`
+	Audios    []uuid.UUID `json:"audios,omitempty"`
 	CreatedAt time.Time   `json:"created_at"`
 	// Depth is absent for a message forwarded itself, as all were before
 	// forwards nested.
@@ -381,6 +388,7 @@ func forwardedToDB(forwarded message.Forwards) ([]byte, error) {
 			Photo:     postIDToDB(f.SharedPhoto),
 			Sticker:   f.Sticker.String(),
 			Documents: f.Documents,
+			Audios:    f.Audios,
 			CreatedAt: f.CreatedAt,
 			Depth:     f.Depth,
 		}
@@ -413,6 +421,7 @@ func forwardedFromDB(data []byte) (message.Forwards, error) {
 			Depth:     row.Depth,
 			Sticker:   message.Sticker(row.Sticker),
 			Documents: documentsFromDB(row.Documents),
+			Audios:    audiosFromDB(row.Audios),
 		}
 		if len(row.Photos) > 0 {
 			forwarded[i].Photos = row.Photos
@@ -476,6 +485,25 @@ func documentsFromDB(ids []uuid.UUID) message.Documents {
 	return ids
 }
 
+// audioIDs is audios for the audio_ids column, which wants an empty
+// array rather than NULL.
+func audioIDs(audios message.Audios) []uuid.UUID {
+	if audios == nil {
+		return []uuid.UUID{}
+	}
+
+	return audios
+}
+
+// audiosFromDB is nil for none, as a new message has them.
+func audiosFromDB(ids []uuid.UUID) message.Audios {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	return ids
+}
+
 type DialogRepository struct {
 	pool *pgxpool.Pool
 }
@@ -510,6 +538,7 @@ const listDialogsQuery = `
 		m.sealed,
 		m.sticker,
 		m.document_ids,
+		m.audio_ids,
 		m.reply_to_id
 	FROM dialogs d
 	JOIN messages m ON m.id = d.last_message_id
@@ -733,6 +762,7 @@ const retractMessageQuery = `
 		sealed = NULL,
 		sticker = '',
 		document_ids = '{}',
+		audio_ids = '{}',
 		edited_at = NULL,
 		deleted_at = $2
 	WHERE id = $1
@@ -871,6 +901,7 @@ const deleteUserDialogsQuery = `
 			m.sealed,
 			m.sticker,
 			m.document_ids,
+			m.audio_ids,
 			m.reply_to_id
 	), gone_dialogs AS (
 		DELETE FROM dialogs
@@ -898,6 +929,7 @@ const deleteUserDialogsQuery = `
 		sealed,
 		sticker,
 		document_ids,
+		audio_ids,
 		reply_to_id
 	FROM gone_messages
 	WHERE cardinality(photo_ids) > 0

@@ -204,7 +204,10 @@ type Message struct {
 	// The message of the dialog it answers; unset for none.
 	ReplyTo *Quote `protobuf:"bytes,19,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
 	// The reactions to it, the oldest first; none once taken back.
-	Reactions     []*Reaction `protobuf:"bytes,20,rep,name=reactions,proto3" json:"reactions,omitempty"`
+	Reactions []*Reaction `protobuf:"bytes,20,rep,name=reactions,proto3" json:"reactions,omitempty"`
+	// Songs of "Аудиозаписи" the message attaches, which the post service
+	// keeps; a deleted one is gone.
+	AudioIds      []string `protobuf:"bytes,21,rep,name=audio_ids,json=audioIds,proto3" json:"audio_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -379,6 +382,13 @@ func (x *Message) GetReactions() []*Reaction {
 	return nil
 }
 
+func (x *Message) GetAudioIds() []string {
+	if x != nil {
+		return x.AudioIds
+	}
+	return nil
+}
+
 // A message as another one carries it on: a copy of what it showed. One
 // carried on in a dialog says nothing here: its words are sealed with the
 // message, in the order of the list.
@@ -399,7 +409,9 @@ type ForwardedMessage struct {
 	// The sticker it was; empty for none.
 	Sticker string `protobuf:"bytes,8,opt,name=sticker,proto3" json:"sticker,omitempty"`
 	// The documents it attached.
-	DocumentIds   []string `protobuf:"bytes,9,rep,name=document_ids,json=documentIds,proto3" json:"document_ids,omitempty"`
+	DocumentIds []string `protobuf:"bytes,9,rep,name=document_ids,json=documentIds,proto3" json:"document_ids,omitempty"`
+	// The songs it attached.
+	AudioIds      []string `protobuf:"bytes,10,rep,name=audio_ids,json=audioIds,proto3" json:"audio_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -497,6 +509,13 @@ func (x *ForwardedMessage) GetDocumentIds() []string {
 	return nil
 }
 
+func (x *ForwardedMessage) GetAudioIds() []string {
+	if x != nil {
+		return x.AudioIds
+	}
+	return nil
+}
+
 // What a message answering another shows of it ("Ответить"): who wrote it
 // and what it is now, in short.
 type Quote struct {
@@ -519,7 +538,8 @@ type Quote struct {
 	Deleted bool `protobuf:"varint,10,opt,name=deleted,proto3" json:"deleted,omitempty"`
 	Found   bool `protobuf:"varint,11,opt,name=found,proto3" json:"found,omitempty"`
 	// text says more.
-	TextCut       bool `protobuf:"varint,12,opt,name=text_cut,json=textCut,proto3" json:"text_cut,omitempty"`
+	TextCut       bool  `protobuf:"varint,12,opt,name=text_cut,json=textCut,proto3" json:"text_cut,omitempty"`
+	AudioCount    int32 `protobuf:"varint,13,opt,name=audio_count,json=audioCount,proto3" json:"audio_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -636,6 +656,13 @@ func (x *Quote) GetTextCut() bool {
 		return x.TextCut
 	}
 	return false
+}
+
+func (x *Quote) GetAudioCount() int32 {
+	if x != nil {
+		return x.AudioCount
+	}
+	return 0
 }
 
 // One person's reaction to a message.
@@ -787,7 +814,10 @@ type SendMessageRequest struct {
 	// A message of the dialog the caller sees to answer; one that is not
 	// there or was taken back fails with InvalidArgument "replied message
 	// not found".
-	ReplyToId     string `protobuf:"bytes,10,opt,name=reply_to_id,json=replyToId,proto3" json:"reply_to_id,omitempty"`
+	ReplyToId string `protobuf:"bytes,10,opt,name=reply_to_id,json=replyToId,proto3" json:"reply_to_id,omitempty"`
+	// Songs of "Аудиозаписи", at most 10, which the caller has found: with
+	// them, too, the message may say nothing else.
+	AudioIds      []string `protobuf:"bytes,11,rep,name=audio_ids,json=audioIds,proto3" json:"audio_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -890,6 +920,13 @@ func (x *SendMessageRequest) GetReplyToId() string {
 		return x.ReplyToId
 	}
 	return ""
+}
+
+func (x *SendMessageRequest) GetAudioIds() []string {
+	if x != nil {
+		return x.AudioIds
+	}
+	return nil
 }
 
 type SendMessageResponse struct {
@@ -2981,7 +3018,9 @@ type ChatMessage struct {
 	// The message of the chat it answers; unset for none.
 	ReplyTo *Quote `protobuf:"bytes,20,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
 	// The reactions to it, the oldest first.
-	Reactions     []*Reaction `protobuf:"bytes,21,rep,name=reactions,proto3" json:"reactions,omitempty"`
+	Reactions []*Reaction `protobuf:"bytes,21,rep,name=reactions,proto3" json:"reactions,omitempty"`
+	// The songs the message attaches.
+	AudioIds      []string `protobuf:"bytes,22,rep,name=audio_ids,json=audioIds,proto3" json:"audio_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3159,6 +3198,13 @@ func (x *ChatMessage) GetReplyTo() *Quote {
 func (x *ChatMessage) GetReactions() []*Reaction {
 	if x != nil {
 		return x.Reactions
+	}
+	return nil
+}
+
+func (x *ChatMessage) GetAudioIds() []string {
+	if x != nil {
+		return x.AudioIds
 	}
 	return nil
 }
@@ -3938,7 +3984,9 @@ type SendChatMessageRequest struct {
 	DocumentIds []string `protobuf:"bytes,8,rep,name=document_ids,json=documentIds,proto3" json:"document_ids,omitempty"`
 	// A message of the chat shown to the caller to answer, as in a dialog;
 	// not an action.
-	ReplyToId     string `protobuf:"bytes,9,opt,name=reply_to_id,json=replyToId,proto3" json:"reply_to_id,omitempty"`
+	ReplyToId string `protobuf:"bytes,9,opt,name=reply_to_id,json=replyToId,proto3" json:"reply_to_id,omitempty"`
+	// Songs, as in a dialog.
+	AudioIds      []string `protobuf:"bytes,10,rep,name=audio_ids,json=audioIds,proto3" json:"audio_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4034,6 +4082,13 @@ func (x *SendChatMessageRequest) GetReplyToId() string {
 		return x.ReplyToId
 	}
 	return ""
+}
+
+func (x *SendChatMessageRequest) GetAudioIds() []string {
+	if x != nil {
+		return x.AudioIds
+	}
+	return nil
 }
 
 type SendChatMessageResponse struct {
@@ -4719,7 +4774,7 @@ var File_api_message_v1_message_proto protoreflect.FileDescriptor
 const file_api_message_v1_message_proto_rawDesc = "" +
 	"\n" +
 	"\x1capi/message/v1/message.proto\x12\n" +
-	"message.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x97\x06\n" +
+	"message.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb4\x06\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12!\n" +
@@ -4743,7 +4798,8 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\asticker\x18\x11 \x01(\tR\asticker\x12!\n" +
 	"\fdocument_ids\x18\x12 \x03(\tR\vdocumentIds\x12,\n" +
 	"\breply_to\x18\x13 \x01(\v2\x11.message.v1.QuoteR\areplyTo\x122\n" +
-	"\treactions\x18\x14 \x03(\v2\x14.message.v1.ReactionR\treactions\"\xa2\x02\n" +
+	"\treactions\x18\x14 \x03(\v2\x14.message.v1.ReactionR\treactions\x12\x1b\n" +
+	"\taudio_ids\x18\x15 \x03(\tR\baudioIds\"\xbf\x02\n" +
 	"\x10ForwardedMessage\x12\x1b\n" +
 	"\tsender_id\x18\x01 \x01(\tR\bsenderId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
@@ -4754,7 +4810,9 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\bphoto_id\x18\x06 \x01(\tR\aphotoId\x12\x14\n" +
 	"\x05depth\x18\a \x01(\x05R\x05depth\x12\x18\n" +
 	"\asticker\x18\b \x01(\tR\asticker\x12!\n" +
-	"\fdocument_ids\x18\t \x03(\tR\vdocumentIds\"\xc8\x02\n" +
+	"\fdocument_ids\x18\t \x03(\tR\vdocumentIds\x12\x1b\n" +
+	"\taudio_ids\x18\n" +
+	" \x03(\tR\baudioIds\"\xe9\x02\n" +
 	"\x05Quote\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12\x12\n" +
@@ -4769,14 +4827,16 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\adeleted\x18\n" +
 	" \x01(\bR\adeleted\x12\x14\n" +
 	"\x05found\x18\v \x01(\bR\x05found\x12\x19\n" +
-	"\btext_cut\x18\f \x01(\bR\atextCut\"?\n" +
+	"\btext_cut\x18\f \x01(\bR\atextCut\x12\x1f\n" +
+	"\vaudio_count\x18\r \x01(\x05R\n" +
+	"audioCount\"?\n" +
 	"\bReaction\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\breaction\x18\x02 \x01(\tR\breaction\"q\n" +
 	"\x06Dialog\x12\x17\n" +
 	"\apeer_id\x18\x01 \x01(\tR\x06peerId\x126\n" +
 	"\flast_message\x18\x02 \x01(\v2\x13.message.v1.MessageR\vlastMessage\x12\x16\n" +
-	"\x06unread\x18\x03 \x01(\bR\x06unread\"\xb2\x02\n" +
+	"\x06unread\x18\x03 \x01(\bR\x06unread\"\xcf\x02\n" +
 	"\x12SendMessageRequest\x12!\n" +
 	"\frecipient_id\x18\x01 \x01(\tR\vrecipientId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
@@ -4789,7 +4849,8 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\asticker\x18\b \x01(\tR\asticker\x12!\n" +
 	"\fdocument_ids\x18\t \x03(\tR\vdocumentIds\x12\x1e\n" +
 	"\vreply_to_id\x18\n" +
-	" \x01(\tR\treplyToId\"D\n" +
+	" \x01(\tR\treplyToId\x12\x1b\n" +
+	"\taudio_ids\x18\v \x03(\tR\baudioIds\"D\n" +
 	"\x13SendMessageResponse\x12-\n" +
 	"\amessage\x18\x01 \x01(\v2\x13.message.v1.MessageR\amessage\"a\n" +
 	"\x12ListDialogsRequest\x12\x16\n" +
@@ -4924,7 +4985,7 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\n" +
 	"ChatMember\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x127\n" +
-	"\tjoined_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\"\xca\x06\n" +
+	"\tjoined_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\"\xe7\x06\n" +
 	"\vChatMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\achat_id\x18\x02 \x01(\tR\x06chatId\x12\x1b\n" +
@@ -4949,7 +5010,8 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\asticker\x18\x12 \x01(\tR\asticker\x12!\n" +
 	"\fdocument_ids\x18\x13 \x03(\tR\vdocumentIds\x12,\n" +
 	"\breply_to\x18\x14 \x01(\v2\x11.message.v1.QuoteR\areplyTo\x122\n" +
-	"\treactions\x18\x15 \x03(\v2\x14.message.v1.ReactionR\treactions\"H\n" +
+	"\treactions\x18\x15 \x03(\v2\x14.message.v1.ReactionR\treactions\x12\x1b\n" +
+	"\taudio_ids\x18\x16 \x03(\tR\baudioIds\"H\n" +
 	"\x11CreateChatRequest\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x1d\n" +
 	"\n" +
@@ -4994,7 +5056,7 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\x11DeleteChatRequest\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\".\n" +
 	"\x13ReturnToChatRequest\x12\x17\n" +
-	"\achat_id\x18\x01 \x01(\tR\x06chatId\"\x94\x02\n" +
+	"\achat_id\x18\x01 \x01(\tR\x06chatId\"\xb1\x02\n" +
 	"\x16SendChatMessageRequest\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
@@ -5005,7 +5067,9 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\bphoto_id\x18\x06 \x01(\tR\aphotoId\x12\x18\n" +
 	"\asticker\x18\a \x01(\tR\asticker\x12!\n" +
 	"\fdocument_ids\x18\b \x03(\tR\vdocumentIds\x12\x1e\n" +
-	"\vreply_to_id\x18\t \x01(\tR\treplyToId\"L\n" +
+	"\vreply_to_id\x18\t \x01(\tR\treplyToId\x12\x1b\n" +
+	"\taudio_ids\x18\n" +
+	" \x03(\tR\baudioIds\"L\n" +
 	"\x17SendChatMessageResponse\x121\n" +
 	"\amessage\x18\x01 \x01(\v2\x17.message.v1.ChatMessageR\amessage\"\xad\x01\n" +
 	"\x17ListChatMessagesRequest\x12\x17\n" +

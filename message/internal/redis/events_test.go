@@ -261,7 +261,7 @@ func TestEventCodec_Documents(t *testing.T) {
 	sent := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
 	docs := message.Documents{uuid.New()}
 
-	content, err := message.NewDocumentContent(docs)
+	content, err := message.NewAttachedContent(docs, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,7 +289,7 @@ func TestEventCodec_Documents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if worded, err = worded.Attaching(docs); err != nil {
+	if worded, err = worded.Attaching(docs, nil); err != nil {
 		t.Fatal(err)
 	}
 	inChat := message.RestoreChatMessage(message.StoredChatMessage{ID: uuid.New(), ChatID: uuid.New(), SenderID: ann, Content: worded, CreatedAt: sent})

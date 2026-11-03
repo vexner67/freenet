@@ -25,6 +25,7 @@ func toProtoMessage(m *message.Message, read bool) *messagev1.Message {
 		Sealed:      m.Sealed().Bytes(),
 		Sticker:     m.Sticker().String(),
 		DocumentIds: idStrings(m.Documents()),
+		AudioIds:    idStrings(m.Audios()),
 		ReplyTo:     toProtoQuote(m.Quote()),
 		Reactions:   toProtoReactions(m.Reactions()),
 	}
@@ -59,6 +60,7 @@ func toProtoForwarded(forwarded message.Forwards) []*messagev1.ForwardedMessage 
 			Depth:       int32(f.Depth), //nolint:gosec // at most MaxForwarded
 			Sticker:     f.Sticker.String(),
 			DocumentIds: idStrings(f.Documents),
+			AudioIds:    idStrings(f.Audios),
 		}
 	}
 
@@ -85,6 +87,7 @@ func toProtoQuote(q message.Quote, ok bool) *messagev1.Quote {
 	pq.PhotoCount = int32(q.Photos)        //nolint:gosec // at most MaxPhotos
 	pq.ForwardedCount = int32(q.Forwarded) //nolint:gosec // at most MaxForwarded
 	pq.DocumentCount = int32(q.Documents)  //nolint:gosec // at most MaxDocuments
+	pq.AudioCount = int32(q.Audios)        //nolint:gosec // at most 10
 	pq.Sticker = q.Sticker.String()
 	pq.Post = q.Post
 	pq.Photo = q.SharedPhoto
@@ -131,6 +134,7 @@ type draftRequest interface {
 	GetForwardIds() []string
 	GetSticker() string
 	GetDocumentIds() []string
+	GetAudioIds() []string
 	GetReplyToId() string
 }
 
@@ -190,6 +194,16 @@ func fromProtoDraft(req draftRequest) (service.Draft, error) {
 		return service.Draft{}, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	ids, err = parseIDs(req.GetAudioIds(), message.ErrInvalidAudio.Error())
+	if err != nil {
+		return service.Draft{}, err
+	}
+
+	audios, err := message.NewAudios(ids)
+	if err != nil {
+		return service.Draft{}, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	var replyTo uuid.UUID
 	if req.GetReplyToId() != "" {
 		if replyTo, err = uuid.Parse(req.GetReplyToId()); err != nil {
@@ -199,7 +213,7 @@ func fromProtoDraft(req draftRequest) (service.Draft, error) {
 
 	return service.Draft{
 		Text: text, Photos: photos, Post: post, SharedPhoto: sharedPhoto, Forward: forward, Sticker: sticker, Documents: documents,
-		ReplyTo: replyTo,
+		Audios: audios, ReplyTo: replyTo,
 	}, nil
 }
 

@@ -43,25 +43,25 @@ func TestDocumentContent(t *testing.T) {
 
 	docs := message.Documents{uuid.New()}
 
-	if _, err := message.NewDocumentContent(nil); !errors.Is(err, message.ErrTextEmpty) {
+	if _, err := message.NewAttachedContent(nil, nil); !errors.Is(err, message.ErrTextEmpty) {
 		t.Fatalf("no documents: %v", err)
 	}
 
-	content, err := message.NewDocumentContent(docs)
+	content, err := message.NewAttachedContent(docs, nil)
 	if err != nil || len(content.Documents()) != 1 {
 		t.Fatalf("NewDocumentContent = %+v, %v", content, err)
 	}
 
 	sticker, _ := message.NewStickerContent("cat_hi")
-	if _, err = sticker.Attaching(docs); !errors.Is(err, message.ErrStickerAlone) {
+	if _, err = sticker.Attaching(docs, nil); !errors.Is(err, message.ErrStickerAlone) {
 		t.Fatalf("a sticker with documents: %v", err)
 	}
-	if same, err := sticker.Attaching(nil); err != nil || same.Sticker() != "cat_hi" {
+	if same, err := sticker.Attaching(nil, nil); err != nil || same.Sticker() != "cat_hi" {
 		t.Fatalf("a sticker with no documents = %+v, %v", same, err)
 	}
 
 	worded, _ := message.NewContent("вот", nil, uuid.Nil, nil)
-	if worded, err = worded.Attaching(docs); err != nil || len(worded.Documents()) != 1 || worded.Text() != "вот" {
+	if worded, err = worded.Attaching(docs, nil); err != nil || len(worded.Documents()) != 1 || worded.Text() != "вот" {
 		t.Fatalf("words with documents = %+v, %v", worded, err)
 	}
 }

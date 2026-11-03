@@ -391,6 +391,8 @@ type Forwarded struct {
 	Sticker Sticker
 	// Documents are the documents it attached.
 	Documents Documents
+	// Audios are the songs it attached.
+	Audios    Audios
 	CreatedAt time.Time
 	// Depth is how deep it is carried: 0 for a message forwarded itself,
 	// 1 for one that message carried on, and so on, as VK nests them.
@@ -446,6 +448,8 @@ type Content struct {
 	sticker Sticker
 	// documents are files of "Мои Документы" the message attaches.
 	documents Documents
+	// audios are songs of "Аудиозаписи" the message attaches.
+	audios Audios
 	// replyTo is the message it answers, uuid.Nil for none.
 	replyTo uuid.UUID
 }
@@ -591,18 +595,18 @@ func (c Content) revisedWith(rev Revision, photos Photos) (Content, error) {
 	switch {
 	case c.sharedPhoto == uuid.Nil:
 		revised, err := newContent(rev.Text, rev.Sealed, photos, c.post, c.forwarded)
-		if errors.Is(err, ErrTextEmpty) && len(c.documents) > 0 {
-			// The documents stay: they are enough.
+		if errors.Is(err, ErrTextEmpty) && c.attached() {
+			// The documents and songs stay: they are enough.
 			revised, err = Content{text: rev.Text, sealed: rev.Sealed, photos: photos}, nil
 		}
-		revised.documents = c.documents
+		revised.documents, revised.audios = c.documents, c.audios
 
 		return revised, err
 	case len(photos) > 0:
 		return Content{}, ErrSharedPhotoAlone
 	default:
 		// It shares the photo still: the words are what changes.
-		return Content{text: rev.Text, sealed: rev.Sealed, sharedPhoto: c.sharedPhoto, documents: c.documents}, nil
+		return Content{text: rev.Text, sealed: rev.Sealed, sharedPhoto: c.sharedPhoto, documents: c.documents, audios: c.audios}, nil
 	}
 }
 
@@ -618,6 +622,7 @@ func (c Content) carried(senderID uuid.UUID, createdAt time.Time) []Forwarded {
 		SharedPhoto: c.sharedPhoto,
 		Sticker:     c.sticker,
 		Documents:   c.documents,
+		Audios:      c.audios,
 		CreatedAt:   createdAt,
 	})
 
@@ -909,6 +914,11 @@ func (m *Message) Sticker() Sticker {
 // Documents are the documents m attaches, nil for none.
 func (m *Message) Documents() Documents {
 	return m.content.documents
+}
+
+// Audios are the songs m attaches, nil for none.
+func (m *Message) Audios() Audios {
+	return m.content.audios
 }
 
 func (m *Message) CreatedAt() time.Time {

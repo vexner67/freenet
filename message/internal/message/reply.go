@@ -33,10 +33,11 @@ type Quote struct {
 	ID       uuid.UUID
 	SenderID uuid.UUID
 	Text     Text
-	// Photos, Forwarded and Documents are how many it shows.
+	// Photos, Forwarded, Documents and Audios are how many it shows.
 	Photos      int
 	Forwarded   int
 	Documents   int
+	Audios      int
 	Sticker     Sticker
 	Post        bool
 	SharedPhoto bool
@@ -54,6 +55,7 @@ func quoteOf(id, senderID uuid.UUID, c Content, deleted bool) Quote {
 		Photos:      len(c.photos),
 		Forwarded:   len(c.forwarded),
 		Documents:   len(c.documents),
+		Audios:      len(c.audios),
 		Sticker:     c.sticker,
 		Post:        c.post != uuid.Nil,
 		SharedPhoto: c.sharedPhoto != uuid.Nil,

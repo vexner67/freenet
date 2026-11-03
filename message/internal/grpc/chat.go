@@ -598,6 +598,7 @@ func toProtoChatMessage(m *message.ChatMessage) *messagev1.ChatMessage {
 		Forwarded:   toProtoForwarded(m.Forwarded()),
 		Sticker:     m.Sticker().String(),
 		DocumentIds: idStrings(m.Documents()),
+		AudioIds:    idStrings(m.Audios()),
 		ReplyTo:     toProtoQuote(m.Quote()),
 		Reactions:   toProtoReactions(m.Reactions()),
 	}

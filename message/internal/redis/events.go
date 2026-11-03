@@ -74,6 +74,7 @@ type chatMessageJSON struct {
 	Forwarded   []forwardedJSON `json:"forwarded,omitempty"`
 	Sticker     string          `json:"sticker,omitempty"`
 	Documents   []uuid.UUID     `json:"documents,omitempty"`
+	Audios      []uuid.UUID     `json:"audios,omitempty"`
 	ReplyTo     uuid.UUID       `json:"reply_to"`
 	Quote       *quoteJSON      `json:"quote,omitempty"`
 	Reactions   []reactionJSON  `json:"reactions,omitempty"`
@@ -87,6 +88,7 @@ type quoteJSON struct {
 	Photos      int       `json:"photos,omitempty"`
 	Forwarded   int       `json:"forwarded,omitempty"`
 	Documents   int       `json:"documents,omitempty"`
+	Audios      int       `json:"audios,omitempty"`
 	Sticker     string    `json:"sticker,omitempty"`
 	Post        bool      `json:"post,omitempty"`
 	SharedPhoto bool      `json:"shared_photo,omitempty"`
@@ -105,7 +107,7 @@ func toQuoteJSON(q message.Quote, ok bool) *quoteJSON {
 	}
 
 	return &quoteJSON{
-		ID: q.ID, SenderID: q.SenderID, Text: q.Text.String(), Photos: q.Photos, Forwarded: q.Forwarded, Documents: q.Documents,
+		ID: q.ID, SenderID: q.SenderID, Text: q.Text.String(), Photos: q.Photos, Forwarded: q.Forwarded, Documents: q.Documents, Audios: q.Audios,
 		Sticker: q.Sticker.String(), Post: q.Post, SharedPhoto: q.SharedPhoto, Deleted: q.Deleted, Found: q.Found,
 	}
 }
@@ -122,7 +124,7 @@ func (q *quoteJSON) quote() (message.Quote, error) {
 	}
 
 	return message.Quote{
-		ID: q.ID, SenderID: q.SenderID, Text: text, Photos: q.Photos, Forwarded: q.Forwarded, Documents: q.Documents,
+		ID: q.ID, SenderID: q.SenderID, Text: text, Photos: q.Photos, Forwarded: q.Forwarded, Documents: q.Documents, Audios: q.Audios,
 		Sticker: message.Sticker(q.Sticker), Post: q.Post, SharedPhoto: q.SharedPhoto, Deleted: q.Deleted, Found: true,
 	}, nil
 }
@@ -200,6 +202,7 @@ func toChatMessageJSON(m *message.ChatMessage) *chatMessageJSON {
 		Forwarded:   toForwardedJSON(m.Forwarded()),
 		Sticker:     m.Sticker().String(),
 		Documents:   m.Documents(),
+		Audios:      m.Audios(),
 		ReplyTo:     m.ReplyTo(),
 		Quote:       toQuoteJSON(m.Quote()),
 		Reactions:   toReactionsJSON(m.Reactions()),
@@ -238,7 +241,7 @@ func (m *chatMessageJSON) message() (*message.ChatMessage, error) {
 	}
 
 	content, err := contentOf(m.Text, m.Photos, m.Post, m.SharedPhoto, m.Forwarded, m.Sticker)
-	if content, err = documented(content, err, m.Documents); err != nil {
+	if content, err = documented(content, err, m.Documents, m.Audios); err != nil {
 		return nil, errs.Wrap("contentOf", err)
 	}
 
@@ -303,6 +306,7 @@ type messageJSON struct {
 	Sealed    []byte         `json:"sealed,omitempty"`
 	Sticker   string         `json:"sticker,omitempty"`
 	Documents []uuid.UUID    `json:"documents,omitempty"`
+	Audios    []uuid.UUID    `json:"audios,omitempty"`
 	ReplyTo   uuid.UUID      `json:"reply_to"`
 	Quote     *quoteJSON     `json:"quote,omitempty"`
 	Reactions []reactionJSON `json:"reactions,omitempty"`
@@ -318,6 +322,7 @@ type forwardedJSON struct {
 	Depth     int         `json:"depth,omitempty"`
 	Sticker   string      `json:"sticker,omitempty"`
 	Documents []uuid.UUID `json:"documents,omitempty"`
+	Audios    []uuid.UUID `json:"audios,omitempty"`
 }
 
 func toForwardedJSON(carried message.Forwards) []forwardedJSON {
@@ -325,7 +330,7 @@ func toForwardedJSON(carried message.Forwards) []forwardedJSON {
 	for i, f := range carried {
 		forwarded[i] = forwardedJSON{
 			SenderID: f.SenderID, Text: f.Text.String(), Photos: f.Photos, Post: f.Post, Photo: f.SharedPhoto, CreatedAt: f.CreatedAt, Depth: f.Depth,
-			Sticker: f.Sticker.String(), Documents: f.Documents,
+			Sticker: f.Sticker.String(), Documents: f.Documents, Audios: f.Audios,
 		}
 	}
 
@@ -348,6 +353,7 @@ func toMessageJSON(m *message.Message) *messageJSON {
 		Sealed:      m.Sealed().Bytes(),
 		Sticker:     m.Sticker().String(),
 		Documents:   m.Documents(),
+		Audios:      m.Audios(),
 		ReplyTo:     m.ReplyTo(),
 		Quote:       toQuoteJSON(m.Quote()),
 		Reactions:   toReactionsJSON(m.Reactions()),
@@ -372,7 +378,7 @@ func (m *messageJSON) message() (*message.Message, error) {
 	}
 
 	content, err := sealedContentOf(sealed, m.Photos, m.Post, m.SharedPhoto, m.Forwarded, m.Sticker)
-	if content, err = documented(content, err, m.Documents); err != nil {
+	if content, err = documented(content, err, m.Documents, m.Audios); err != nil {
 		return nil, errs.Wrap("sealedContentOf", err)
 	}
 
@@ -448,27 +454,32 @@ func contentOf(said string, photoIDs []uuid.UUID, post, sharedPhoto uuid.UUID, c
 }
 
 // documented is content, or the error of making it, with the documents
-// of a message: with them it may say nothing else.
-func documented(content message.Content, err error, ids []uuid.UUID) (message.Content, error) {
-	if len(ids) == 0 {
+// and songs of a message: with them it may say nothing else.
+func documented(content message.Content, err error, documentIDs, audioIDs []uuid.UUID) (message.Content, error) {
+	if len(documentIDs) == 0 && len(audioIDs) == 0 {
 		return content, err
 	}
 
-	documents, derr := message.NewDocuments(ids)
+	documents, derr := message.NewDocuments(documentIDs)
 	if derr != nil {
 		return message.Content{}, errs.Wrap("message.NewDocuments", derr)
 	}
 
+	audios, aerr := message.NewAudios(audioIDs)
+	if aerr != nil {
+		return message.Content{}, errs.Wrap("message.NewAudios", aerr)
+	}
+
 	if errors.Is(err, message.ErrTextEmpty) {
-		content, err = message.NewDocumentContent(documents)
-		return content, errs.Wrap("message.NewDocumentContent", err)
+		content, err = message.NewAttachedContent(documents, audios)
+		return content, errs.Wrap("message.NewAttachedContent", err)
 	}
 
 	if err != nil {
 		return message.Content{}, err
 	}
 
-	content, err = content.Attaching(documents)
+	content, err = content.Attaching(documents, audios)
 
 	return content, errs.Wrap("content.Attaching", err)
 }
@@ -510,6 +521,9 @@ func forwardsOf(raw []forwardedJSON) (message.Forwards, error) {
 
 		if carried[i].Documents, err = message.NewDocuments(f.Documents); err != nil {
 			return nil, errs.Wrap("message.NewDocuments", err)
+		}
+		if carried[i].Audios, err = message.NewAudios(f.Audios); err != nil {
+			return nil, errs.Wrap("message.NewAudios", err)
 		}
 	}
 

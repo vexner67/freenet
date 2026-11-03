@@ -491,6 +491,11 @@ func (m *ChatMessage) Documents() Documents {
 	return m.content.documents
 }
 
+// Audios are the songs m attaches, nil for none.
+func (m *ChatMessage) Audios() Audios {
+	return m.content.audios
+}
+
 // Forwarded are the messages m carries on, nil for none.
 func (m *ChatMessage) Forwarded() Forwards {
 	return m.content.forwarded

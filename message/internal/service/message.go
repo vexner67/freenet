@@ -121,7 +121,7 @@ type PhotoCopy struct {
 // goes with text alone. A message of a dialog says Sealed instead of
 // Text: its words and those of what it carries on, sealed by the sender's
 // browser. A Sticker goes alone. Documents of the sender's "Мои
-// Документы" go with anything else, or alone.
+// Документы" and songs of "Аудиозаписи" go with anything else, or alone.
 type Draft struct {
 	Text        message.Text
 	Sealed      message.Sealed
@@ -131,6 +131,7 @@ type Draft struct {
 	Forward     []uuid.UUID
 	Sticker     message.Sticker
 	Documents   message.Documents
+	Audios      message.Audios
 	// ReplyTo is the message it answers ("Ответить"), uuid.Nil for none:
 	// an earlier one of the same dialog or chat.
 	ReplyTo uuid.UUID
@@ -159,23 +160,23 @@ func (d Draft) sealedContent(forwarded message.Forwards) (message.Content, error
 	return d.attach(d.sealedSaid(forwarded))
 }
 
-// attach is content, or the error of making it, with the documents of the
-// draft: with them it may say nothing else.
+// attach is content, or the error of making it, with the documents and
+// songs of the draft: with them it may say nothing else.
 func (d Draft) attach(content message.Content, err error) (message.Content, error) {
-	if len(d.Documents) == 0 {
+	if len(d.Documents) == 0 && len(d.Audios) == 0 {
 		return content, err
 	}
 
 	if errors.Is(err, message.ErrTextEmpty) {
-		content, err = message.NewDocumentContent(d.Documents)
-		return content, errs.Wrap("message.NewDocumentContent", err)
+		content, err = message.NewAttachedContent(d.Documents, d.Audios)
+		return content, errs.Wrap("message.NewAttachedContent", err)
 	}
 
 	if err != nil {
 		return message.Content{}, err
 	}
 
-	content, err = content.Attaching(d.Documents)
+	content, err = content.Attaching(d.Documents, d.Audios)
 
 	return content, errs.Wrap("content.Attaching", err)
 }

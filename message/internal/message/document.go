@@ -44,24 +44,31 @@ func NewDocuments(ids []uuid.UUID) (Documents, error) {
 	return Documents(ids), nil
 }
 
-// NewDocumentContent is the content of a message of documents alone.
-func NewDocumentContent(documents Documents) (Content, error) {
-	if len(documents) == 0 {
+// NewAttachedContent is the content of a message of documents and songs
+// alone.
+func NewAttachedContent(documents Documents, audios Audios) (Content, error) {
+	if len(documents) == 0 && len(audios) == 0 {
 		return Content{}, ErrTextEmpty
 	}
 
-	return Content{documents: documents}, nil
+	return Content{documents: documents, audios: audios}, nil
 }
 
-// Attaching is c with documents: anything but a sticker, which goes alone.
-func (c Content) Attaching(documents Documents) (Content, error) {
-	if len(documents) > 0 && c.sticker != "" {
+// Attaching is c with documents and songs: anything but a sticker, which
+// goes alone.
+func (c Content) Attaching(documents Documents, audios Audios) (Content, error) {
+	if (len(documents) > 0 || len(audios) > 0) && c.sticker != "" {
 		return Content{}, ErrStickerAlone
 	}
 
-	c.documents = documents
+	c.documents, c.audios = documents, audios
 
 	return c, nil
+}
+
+// attached tells whether c attaches documents or songs.
+func (c Content) attached() bool {
+	return len(c.documents) > 0 || len(c.audios) > 0
 }
 
 // WithDocuments is c attaching documents, restored from storage.

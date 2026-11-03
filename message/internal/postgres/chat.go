@@ -140,7 +140,8 @@ const chatViewColumns = `
 		msg.shared_photo_id,
 		msg.forwarded,
 		msg.sticker,
-		msg.document_ids`
+		msg.document_ids,
+		msg.audio_ids`
 
 const chatViewQuery = `
 	SELECT` + chatViewColumns + `
@@ -227,6 +228,7 @@ func scanChatView(row pgx.Row) (message.ChatView, error) {
 			forwarded  []byte
 			sticker    *string
 			documents  []uuid.UUID
+			audios     []uuid.UUID
 		}
 	)
 
@@ -234,7 +236,7 @@ func scanChatView(row pgx.Row) (message.ChatView, error) {
 		&id, &title, &owner, &createdAt, &photo, &pinnedID, &view.Members,
 		&view.Me.UserID, &state, &view.Me.JoinedAt, &view.Me.SeenUpTo, &view.Me.LastIncomingID, &view.Me.ReadUpTo,
 		&last.id, &last.sender, &last.text, &last.photos, &last.action, &last.target, &last.createdAt, &last.editedAt, &last.deletedAt,
-		&last.post, &last.shared, &last.forwarded, &last.sticker, &last.documents,
+		&last.post, &last.shared, &last.forwarded, &last.sticker, &last.documents, &last.audios,
 	)
 	if err != nil {
 		return message.ChatView{}, err
@@ -256,6 +258,7 @@ func scanChatView(row pgx.Row) (message.ChatView, error) {
 			stored: message.StoredChatMessage{ID: *last.id, ChatID: id, SenderID: *last.sender, CreatedAt: *last.createdAt},
 			text:   *last.text, photos: last.photos, action: *last.action, target: last.target, editedAt: last.editedAt, deletedAt: last.deletedAt,
 			post: last.post, sharedPhoto: last.shared, forwarded: last.forwarded, sticker: *last.sticker, documents: last.documents,
+			audios: last.audios,
 		}
 
 		if view.LastMessage, err = s.message(); err != nil {
@@ -592,9 +595,10 @@ const saveChatMessageQuery = `
 			forwarded,
 			sticker,
 			document_ids,
+			audio_ids,
 			reply_to_id
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		RETURNING id, chat_id, sender_id
 	)
 	UPDATE chat_members m
@@ -616,7 +620,7 @@ func (r *ChatMessageRepository) Save(ctx context.Context, m *message.ChatMessage
 
 	_, err = r.conn(ctx).Exec(ctx, saveChatMessageQuery,
 		m.ID(), m.ChatID(), m.SenderID(), m.Text().String(), photoIDs(m.Photos()), string(m.Action()), postIDToDB(m.TargetID()), m.CreatedAt(),
-		postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.Sticker().String(), documentIDs(m.Documents()), postIDToDB(m.ReplyTo()))
+		postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.Sticker().String(), documentIDs(m.Documents()), audioIDs(m.Audios()), postIDToDB(m.ReplyTo()))
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -640,6 +644,7 @@ const chatMessageColumns = `
 		forwarded,
 		sticker,
 		document_ids,
+		audio_ids,
 		reply_to_id`
 
 const getChatMessageQuery = `
@@ -771,6 +776,7 @@ const searchChatMessagesQuery = `
 		msg.forwarded,
 		msg.sticker,
 		msg.document_ids,
+		msg.audio_ids,
 		msg.reply_to_id
 	FROM chat_members m
 	JOIN chat_messages msg ON msg.chat_id = m.chat_id
@@ -820,6 +826,7 @@ type scannedChatMessage struct {
 	forwarded   []byte
 	sticker     string
 	documents   []uuid.UUID
+	audios      []uuid.UUID
 	// replyTo is NULL for a message answering none.
 	replyTo *uuid.UUID
 }
@@ -829,7 +836,7 @@ func scanChatMessage(row pgx.Row) (*message.ChatMessage, error) {
 
 	err := row.Scan(
 		&s.stored.ID, &s.stored.ChatID, &s.stored.SenderID, &s.text, &s.photos, &s.action, &s.target, &s.stored.CreatedAt, &s.editedAt, &s.deletedAt,
-		&s.post, &s.sharedPhoto, &s.forwarded, &s.sticker, &s.documents, &s.replyTo,
+		&s.post, &s.sharedPhoto, &s.forwarded, &s.sticker, &s.documents, &s.audios, &s.replyTo,
 	)
 	if err != nil {
 		return nil, err
@@ -858,7 +865,7 @@ func (s *scannedChatMessage) message() (*message.ChatMessage, error) {
 
 	stored := s.stored
 	stored.Content = message.RestoreContent(message.Text(s.text), photos, postID, forwarded).WithSticker(message.Sticker(s.sticker)).
-		WithDocuments(documentsFromDB(s.documents)).Answering(orNil(s.replyTo))
+		WithDocuments(documentsFromDB(s.documents)).WithAudios(audiosFromDB(s.audios)).Answering(orNil(s.replyTo))
 	if s.sharedPhoto != nil {
 		stored.Content = stored.Content.WithSharedPhoto(*s.sharedPhoto)
 	}
@@ -917,6 +924,7 @@ const retractChatMessageQuery = `
 		forwarded = '[]',
 		sticker = '',
 		document_ids = '{}',
+		audio_ids = '{}',
 		edited_at = NULL,
 		deleted_at = $2
 	WHERE id = $1
