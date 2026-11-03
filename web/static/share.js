@@ -16,8 +16,9 @@ const MAX_LENGTH = 60000;
 
 // openShare shares post, or with share a photo of an album (api.sharePhoto,
 // which takes no photos of yours); onShared(repost) runs once it is on a
-// wall.
-export function openShare(post, onShared, { share = api.repost } = {}) {
+// wall. A post of another server, which the site cannot repost, goes with
+// link, its address: after your words, where the card of the page shows it.
+export function openShare(post, onShared, { share = api.repost, link = '' } = {}) {
   const ofPhoto = share !== api.repost;
   const modal = openModal(tr('Поделиться'), { tag: 'form' });
   const text = el('textarea', { maxLength: MAX_LENGTH, placeholder: '…', ariaLabel: tr('Ваш комментарий') });
@@ -87,6 +88,18 @@ export function openShare(post, onShared, { share = api.repost } = {}) {
     const photos = attachments?.ids() ?? [];
 
     try {
+      if (link) {
+        const repost = await shareLink(target(), target() === 'club' ? clubs.value : chats.value, withLink(text.value, link),
+          { photos, fromClub: fromClub.checked, signed: signed.checked });
+        if (target() === 'chat') {
+          done(tr('Запись отправлена в переписку.'), conversationPath(chats.value));
+          return;
+        }
+        onShared(repost);
+        done(target() === 'club' ? tr('Запись опубликована в группе.') : tr('Запись опубликована на вашей стене.'), postPath(repost));
+        return;
+      }
+
       if (target() === 'chat') {
         if (!chats.value) throw tr('Выберите переписку.');
         await sendTo(chats.value, text.value, ofPhoto ? { albumPhoto: post.id } : { photos, post: post.id });
@@ -110,6 +123,30 @@ export function openShare(post, onShared, { share = api.repost } = {}) {
   });
 
   text.focus();
+}
+
+// withLink puts the address of a post of another server after your words.
+function withLink(text, link) {
+  const words = text.trim();
+  return words ? words + '\n\n' + link : link;
+}
+
+// shareLink writes text, the address of a post of another server with your
+// words, as a post on your wall or of a community where, or as a message
+// to the conversation where.
+async function shareLink(to, where, text, { photos, fromClub, signed }) {
+  if (to === 'chat') {
+    if (!where) throw tr('Выберите переписку.');
+    return sendTo(where, text, { photos });
+  }
+
+  if (to === 'club') {
+    if (!where) throw tr('Выберите группу.');
+    return api.createClubPost(where, text, photos, { fromClub, signed });
+  }
+
+  const me = await api.me();
+  return api.createPost(me.nickname, text, photos);
 }
 
 // fillClubs lists the communities you run, as openvk offers them, once.

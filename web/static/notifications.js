@@ -12,7 +12,7 @@
 import { photoPath } from './albums.js';
 import { api, currentUser, started } from './api.js';
 import { onEvent } from './events.js';
-import { formatPostDate, guestCame, notificationVerb, plainMentions, snippet } from './labels.js';
+import { callLength, conversationPath, formatPostDate, guestCame, notificationVerb, plainMentions, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, guestsSeen, pagePath, profilePath, renderChrome, setCounter, showError, hideError, verifiedMark } from './layout.js';
 import { postPath } from './posts.js';
 import { topicPath } from './topics.js';
@@ -37,6 +37,7 @@ const kinds = [
   { key: 'mentions', icon: '/static/icons/game/who.svg', name: () => tr('Упоминания'), types: ['post_mention', 'comment_mention', 'topic_mention', 'photo_mention'] },
   { key: 'people', icon: '/static/icons/game/people.svg', name: () => tr('Люди'), types: ['follow', 'invite', 'match'] },
   { key: 'gifts', icon: '/static/icons/game/gift.svg', name: () => tr('Подарки'), types: ['gift', 'prime', 'votes'] },
+  { key: 'calls', icon: '/static/icons/game/phone.svg', name: () => tr('Звонки'), types: ['call', 'missed_call'] },
   { key: 'other', icon: '/static/icons/game/star.svg', name: () => tr('Важное'), types: [] },
 ];
 const kindOf = (type) => kinds.find((k) => k.types.includes(type)) ?? kinds[kinds.length - 1];
@@ -302,6 +303,15 @@ function notificationText(n) {
   // A like of "Знакомства" answered with a like; the matches are there.
   if (n.type === 'match') {
     return [name, tr(' — взаимная симпатия в '), el('a', { href: '/dating' }, el('b', { textContent: tr('знакомствах') })), '.'];
+  }
+
+  // Calls are told here, not in the dialog, which keeps only its button;
+  // the link opens the dialog, to call back.
+  if (n.type === 'missed_call' || n.type === 'call') {
+    const dialog = el('a', { href: conversationPath(`user:${n.actor.nickname}`) },
+      el('b', { textContent: n.type === 'call' ? tr('звонок') : tr('пропущенный звонок') }));
+
+    return n.type === 'call' ? [name, ' — ', dialog, tr(', {0}.', callLength(n.seconds))] : [name, ' — ', dialog, '.'];
   }
 
   // openvk's "передал вам голоса"; the balance is in the settings.

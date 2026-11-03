@@ -276,6 +276,19 @@ export function videoDuration(seconds) {
   return hours > 0 ? `${hours}:${two(minutes)}:${rest}` : `${minutes}:${rest}`;
 }
 
+// callLength is how long a call lasted, as phones write it in their
+// lists: "45 сек", "5 мин 23 сек", "1 ч 2 мин".
+export function callLength(seconds) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor(seconds / 60) % 60;
+  const rest = seconds % 60;
+
+  if (hours > 0) return minutes ? tr('{0} ч {1} мин', hours, minutes) : tr('{0} ч', hours);
+  if (minutes > 0) return rest ? tr('{0} мин {1} сек', minutes, rest) : tr('{0} мин', minutes);
+
+  return tr('{0} сек', rest);
+}
+
 // formatPostDate turns an ISO time into "сегодня в 9:05", "вчера в 18:30",
 // "17 мая в 10:00" or, for other years, "17 мая 2025 в 10:00".
 export function formatPostDate(iso, now = new Date()) {
@@ -3055,10 +3068,35 @@ export function hashtagPath(tag) {
   return '/search?section=posts&q=' + encodeURIComponent('#' + tag);
 }
 
+// namedLinkPattern finds a link of VK's wiki markup, "[https://…|words]",
+// which the posts of Telegram carry for a link put on words.
+const namedLinkPattern = /\[(https?:\/\/[^\s|[\]]+)\|([^[\]|\n]{1,300})\]/g;
+
+// namedLinkParts cuts text into strings and the links of words it says,
+// { url, text } with the words as text.
+function namedLinkParts(text) {
+  const parts = [];
+  let from = 0;
+
+  for (const m of text.matchAll(namedLinkPattern)) {
+    if (m.index > from) parts.push(text.slice(from, m.index));
+    parts.push({ url: m[1], text: m[2] });
+    from = m.index + m[0].length;
+  }
+  if (from < text.length) parts.push(text.slice(from));
+
+  return parts;
+}
+
 // textParts is mentionParts with the web addresses and the tags too: the
 // strings say { url, text } of each address and { hashtag, text } of each
-// tag, without "#". Inside an address "#" and "@" are its own.
-export function textParts(text) {
+// tag, without "#". Inside an address "#" and "@" are its own. named:
+// the text comes from another network, whose links of words are
+// "[https://…|words]" (only there: on the site anyone could dress an
+// address in other words).
+export function textParts(text, { named = false } = {}) {
+  if (named) return namedLinkParts(text).flatMap((p) => (typeof p === 'string' ? textParts(p) : [p]));
+
   return mentionParts(text).flatMap((part, i) => {
     if (typeof part !== 'string') return [part];
 
@@ -3396,15 +3434,7 @@ export const feedPageSizes = [1, 5, 10, 20, 30, 40, 50];
 // Ten posts a page, and the posts on the walls of others are there unless
 // left out (openvk leaves them out by default; the owner of the site
 // wants them).
-export const defaultFeedSettings = Object.freeze({ posts: 10, alien: true, order: 'interesting' });
-
-// feedOrders are how the news stand: by how interesting the posts of the
-// week are to the reader (likes, comments, reposts, whom they like, how
-// fresh), then the older ones newest first; or newest first only.
-export const feedOrders = Object.freeze([
-  { value: 'interesting', label: tr('сначала интересные') },
-  { value: 'time', label: tr('по времени') },
-]);
+export const defaultFeedSettings = Object.freeze({ posts: 10, alien: true });
 
 // feedSettings reads what the browser kept; anything else is the default.
 export function feedSettings(raw) {
@@ -3419,7 +3449,6 @@ export function feedSettings(raw) {
   return {
     posts: feedPageSizes.includes(kept?.posts) ? kept.posts : defaultFeedSettings.posts,
     alien: typeof kept?.alien === 'boolean' ? kept.alien : defaultFeedSettings.alien,
-    order: feedOrders.some((o) => o.value === kept?.order) ? kept.order : defaultFeedSettings.order,
   };
 }
 

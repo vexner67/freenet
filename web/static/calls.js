@@ -13,7 +13,7 @@
 // answers. The one who was called is the polite side of perfect negotiation.
 
 import { api } from './api.js';
-import { ensureKey, KEY_READY, NO_PEER_KEY, open as unseal, seal, sendSealed } from './e2ee.js';
+import { ensureKey, KEY_READY, NO_PEER_KEY, open as unseal, seal } from './e2ee.js';
 import { onEvent } from './events.js';
 import { helpButton } from './game.js';
 import { tr } from './i18n.js';
@@ -166,10 +166,18 @@ function leavingGuard(event) {
   event.preventDefault();
 }
 
+// report tells the server how the call of the caller ended: the seconds
+// they talked, 0 when the peer did not answer. Both see it in
+// "Уведомления"; the dialog keeps only the button of a call.
+function report(c, seconds) {
+  if (c.role === 'caller') api.reportCall(c.peer.nickname, seconds).catch(() => {});
+}
+
 function finish(text) {
   const c = call;
   if (!c) return;
   call = null;
+  if (c.startedAt) report(c, Math.max(1, Math.round((Date.now() - c.startedAt) / 1000)));
 
   c.stopRing?.();
   clearTimeout(c.ringTimer);
@@ -196,7 +204,7 @@ function hangUp() {
   const c = call;
   if (!c) return;
   send(c, { k: c.started ? 'end' : 'cancel' });
-  if (!c.started && c.role === 'caller') sendSealed(me.id, c.peer.nickname, tr('Пропущенный звонок')).catch(() => {});
+  if (!c.started) report(c, 0);
   finish(tr('Звонок завершён'));
 }
 
@@ -478,7 +486,7 @@ export async function startCall(peer) {
   c.ringTimer = setTimeout(() => {
     if (call !== c || c.started) return;
     send(c, { k: 'cancel' });
-    sendSealed(me.id, peer.nickname, tr('Пропущенный звонок')).catch(() => {});
+    report(c, 0);
     finish(tr('Нет ответа'));
   }, RING_FOR);
 }

@@ -821,7 +821,6 @@ a.poll-result-name { cursor: pointer; }
 .feed-settings { display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
 .feed-settings-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .feed-settings-row select { display: inline-block; width: 70px; margin: 0; }
-.feed-settings-row select.feed-order { width: 150px; }
 .ignored-list { max-height: 260px; overflow-y: auto; }
 .ignored-row { display: flex; align-items: center; gap: 8px; padding: 4px 2px; border-bottom: 1px solid var(--line-eee); cursor: pointer; }
 .ignored-row:last-child { border-bottom: 0; }

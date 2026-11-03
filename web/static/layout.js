@@ -142,8 +142,8 @@ const knownNickname = nicknameLookup((nicknames) => api.knownNicknames(nicknames
 // the server says so, and stays if it cannot be asked; the link to a
 // verified page gets the checkmark after it. found is what a
 // search looked for: the words that say it are highlighted, as on openvk.
-export function mentionNodes(text, found = '') {
-  return textParts(text).flatMap((p) => {
+export function mentionNodes(text, found = '', named = false) {
+  return textParts(text, { named }).flatMap((p) => {
     if (typeof p === 'string') return foundNodes(p, found);
     if (p.hashtag) return el('a', { href: hashtagPath(p.hashtag) }, ...foundNodes(p.text, found));
     if (p.url) return externalLink(p.url, foundNodes(p.text, found));
@@ -207,9 +207,10 @@ function foundNodes(text, query) {
 // with openvk's "Показать больше", unless whole. A list carries only the
 // beginning of a text of thousands of characters: rest, if given, loads
 // all of it when asked to show more. found: the words of a search to
-// highlight.
-export function textNode(text, { whole = false, rest = null, found = '' } = {}) {
-  const node = el('div', { className: 'post-text' }, ...mentionNodes(text, found));
+// highlight. named: the text comes from another network, with its links
+// of words (textParts).
+export function textNode(text, { whole = false, rest = null, found = '', named = false } = {}) {
+  const node = el('div', { className: 'post-text' }, ...mentionNodes(text, found, named));
   if (whole || !(rest || isLongText(text))) return node;
 
   node.classList.add('collapsed');
@@ -218,7 +219,7 @@ export function textNode(text, { whole = false, rest = null, found = '' } = {}) 
   more.addEventListener('click', async () => {
     if (rest) {
       try {
-        node.replaceChildren(...mentionNodes(await rest(), found));
+        node.replaceChildren(...mentionNodes(await rest(), found, named));
       } catch {
         // The link stays to try again.
         return;

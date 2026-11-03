@@ -35,13 +35,18 @@ const tickGap = 60;
 const pingGap = 120;
 const liveWindow = 60_000;
 const countKey = 'freenet.canvas.count';
+// How long the brush rests after the server says too many cells.
+const limitRest = 15_000;
 
 let me = null;
 let size = 100;
 let cells = null;
 let color = 3;
-// What a press on the canvas does: brush, hand, pick or look.
+// What a press on the canvas does: brush, eraser, hand, pick or look.
 let tool = 'brush';
+const tools = ['brush', 'eraser', 'hand', 'pick', 'look'];
+// The eraser paints the colour of a cell never painted.
+const blank = 0;
 // The colours used last, the latest first.
 let recent = [];
 const recentSize = 9;
@@ -89,6 +94,8 @@ let lastPing = 0;
 let others = [];
 // What the undo button puts back.
 const strokes = [];
+// Until when the brush rests: the server refused a cell for the limit.
+let restUntil = 0;
 
 function hudCell(id, icon, name, tag = 'div') {
   const node = el(tag, { className: 'game-hud-cell', id: `hud-${id}`, type: tag === 'button' ? 'button' : undefined },
@@ -234,7 +241,7 @@ function ring(x, y, className) {
 
 function showStatus() {
   $('status').replaceChildren(...(me
-    ? [{ brush: tr('Рисуйте: нажмите и ведите по холсту.'), hand: tr('Двигайте холст, зажав его.'), pick: tr('Нажмите на клетку, чтобы взять её цвет.'), look: tr('Нажмите на клетку, чтобы узнать, кто её закрасил.') }[tool]]
+    ? [{ brush: tr('Рисуйте: нажмите и ведите по холсту.'), eraser: tr('Стирайте: нажмите и ведите по холсту.'), hand: tr('Двигайте холст, зажав его.'), pick: tr('Нажмите на клетку, чтобы взять её цвет.'), look: tr('Нажмите на клетку, чтобы узнать, кто её закрасил.') }[tool]]
     : [el('a', { href: '/', textContent: tr('Войдите') }), tr(', чтобы рисовать.')]));
 }
 
@@ -257,7 +264,7 @@ function swatch(i) {
 function showPalette() {
   $('palette').replaceChildren(...canvasPalette().map(swatch));
   $('current').style.backgroundColor = canvasColors[color];
-  cursor.style.backgroundColor = canvasColors[color];
+  cursor.style.backgroundColor = canvasColors[inHand()];
   // The places of the recent colours stay, filled or not.
   $('recent').replaceChildren(...Array.from({ length: recentSize }, (_, i) => (i < recent.length ? swatch(recent[i]) : el('span', { className: 'canvas-swatch empty' }))));
 }
@@ -274,9 +281,20 @@ function remember(i) {
   showPalette();
 }
 
+// inHand is the colour a press paints: the eraser's or the chosen one.
+function inHand() {
+  return tool === 'eraser' ? blank : color;
+}
+
+// painting says whether a press paints: the brush or the eraser.
+function painting() {
+  return (tool === 'brush' || tool === 'eraser') && me;
+}
+
 function setTool(next) {
   tool = next;
-  for (const name of ['brush', 'hand', 'pick', 'look']) $(`tool-${name}`).classList.toggle('active', name === tool);
+  cursor.style.backgroundColor = canvasColors[inHand()];
+  for (const name of tools) $(`tool-${name}`).classList.toggle('active', name === tool);
   frame.dataset.tool = tool;
   cursor.hidden = true;
   hideTip();
@@ -372,7 +390,7 @@ async function tell({ x, y }, at, pinned) {
 }
 
 // paint colors the cell at once and asks the server; a refusal puts the
-// cell back.
+// cell back. It says whether the server took the cell.
 async function paint({ x, y }, value = color, undoable = true) {
   const before = cellColor(x, y);
   if (before === value) return false;
@@ -384,13 +402,16 @@ async function paint({ x, y }, value = color, undoable = true) {
   cells = setCell(cells, x, y, value);
   context.fillStyle = canvasColors[value];
   context.fillRect(x, y, 1, 1);
-  if (undoable) strokes.push({ x, y, before });
-  if (strokes.length > undoSize) strokes.shift();
 
+  let taken = true;
   try {
     await api.paintCanvas(x, y, value);
     hideError($('error'));
+    if (undoable) strokes.push({ x, y, before });
+    if (strokes.length > undoSize) strokes.shift();
   } catch (e) {
+    taken = false;
+    if (e.status === 429) restUntil = Date.now() + limitRest;
     if (unanswered.get(key) === mark) {
       cells = setCell(cells, x, y, before);
       draw();
@@ -399,22 +420,23 @@ async function paint({ x, y }, value = color, undoable = true) {
   }
   if (unanswered.get(key) === mark) unanswered.delete(key);
 
-  return true;
+  return taken;
 }
 
 function cellColor(x, y) {
   return atob(cells).charCodeAt(y * size + x);
 }
 
-// brush paints a cell and answers with the rewards at once: the server
-// is asked after the cell is on the canvas.
+// brush paints a cell at once, and the server is asked after the cell is
+// on the canvas; the rewards come when it takes the cell, so a cell the
+// limit refused counts for nothing. While the limit lasts the brush rests.
 function brush(cell) {
-  if (cellColor(cell.x, cell.y) === color) return;
+  const value = inHand();
+  if (cellColor(cell.x, cell.y) === value || Date.now() < restUntil) return;
 
-  remember(color);
-  rewarded();
+  if (tool === 'brush') remember(value);
   ring(cell.x, cell.y, 'canvas-pop');
-  paint(cell).catch((e) => showError($('error'), e));
+  paint(cell, value).then((taken) => { if (taken) rewarded(); }).catch((e) => showError($('error'), e));
 }
 
 // stroke paints the cells between the last one and this one: a fast hand
@@ -454,7 +476,7 @@ function act(event) {
     tell(cell, { x: event.clientX, y: event.clientY }, true).catch((e) => showError($('error'), e));
     return;
   }
-  if (tool === 'brush') brush(cell);
+  if (painting()) brush(cell);
 }
 
 // The pointers on the frame: one drags or clicks, two pinch.
@@ -503,7 +525,7 @@ frame.addEventListener('pointermove', (event) => {
   }
 
   press.moved ||= Math.hypot(event.clientX - press.x, event.clientY - press.y) >= dragFrom;
-  if (press.moved && tool === 'brush' && me && !press.pinched) {
+  if (press.moved && painting() && !press.pinched) {
     stroke(cellOf(event));
     return;
   }
@@ -545,7 +567,7 @@ let hoverTimer = 0;
 function hover(event) {
   const cell = cellOf(event);
 
-  if (tool === 'brush' && me) {
+  if (painting()) {
     const side = cellPixels();
 
     cursor.hidden = false;
@@ -578,7 +600,7 @@ document.addEventListener('pointerdown', (event) => {
   if (tip.classList.contains('pinned') && !tip.contains(event.target)) hideTip();
 });
 
-for (const name of ['brush', 'hand', 'pick', 'look']) $(`tool-${name}`).addEventListener('click', () => setTool(name));
+for (const name of tools) $(`tool-${name}`).addEventListener('click', () => setTool(name));
 $('zoom-in').addEventListener('click', () => zoomByButton(buttonZoom));
 $('zoom-out').addEventListener('click', () => zoomByButton(1 / buttonZoom));
 $('undo').addEventListener('click', undo);
@@ -592,7 +614,7 @@ $('zoom-fit').addEventListener('click', fit);
 
 // The keys of the tools, as in the paint programs.
 const keys = {
-  b: () => setTool('brush'), h: () => setTool('hand'), i: () => setTool('pick'), w: () => setTool('look'),
+  b: () => setTool('brush'), e: () => setTool('eraser'), h: () => setTool('hand'), i: () => setTool('pick'), w: () => setTool('look'),
   '+': () => zoomByButton(buttonZoom), '=': () => zoomByButton(buttonZoom), '-': () => zoomByButton(1 / buttonZoom), 0: fit, z: undo,
 };
 

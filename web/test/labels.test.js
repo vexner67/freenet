@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { cardCovers, cardNumber, grownDeposit, declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, balanceVotes, balanceAmount, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale, primePeriods, primeSaving, primeTerms, titleIcons, titleIconPath, titleGroups, topValue, isBirthdayToday, primeNameClass, videoDuration, handleOf } from '../static/labels.js';
+import {
+  callLength, cardCovers, cardNumber, grownDeposit, declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, balanceVotes, balanceAmount, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale, primePeriods, primeSaving, primeTerms, titleIcons, titleIconPath, titleGroups, topValue, isBirthdayToday, primeNameClass, videoDuration, handleOf } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -648,10 +649,10 @@ test('errorText knows what a poll refuses', () => {
 });
 
 test('feedSettings takes what the browser kept and the defaults for the rest', () => {
-  const by = (posts, alien, order = 'interesting') => ({ posts, alien, order });
+  const by = (posts, alien) => ({ posts, alien });
   assert.deepEqual(feedSettings(null), by(10, true));
   assert.deepEqual(feedSettings('{"posts":5,"alien":true}'), by(5, true));
-  assert.deepEqual(feedSettings('{"posts":5,"alien":false,"order":"time"}'), by(5, false, 'time'));
+  assert.deepEqual(feedSettings('{"posts":5,"alien":false,"order":"time"}'), by(5, false));
   assert.deepEqual(feedSettings('{"posts":7,"alien":"no","order":"random"}'), by(10, true));
   assert.deepEqual(feedSettings('not json'), by(10, true));
   assert.deepEqual(feedSettings('[]'), by(10, true));
@@ -1532,4 +1533,22 @@ test('videoDuration writes how long a video plays as players do', () => {
 test('handleOf says a channel is one of Telegram', () => {
   assert.equal(handleOf({ handle: '@anna@mastodon.social' }), '@anna@mastodon.social');
   assert.equal(handleOf({ handle: '@meduzalive', telegram: true }), '@meduzalive в Telegram');
+});
+
+test('callLength writes how long a call lasted as phones do', () => {
+  assert.equal(callLength(45), '45 сек');
+  assert.equal(callLength(60), '1 мин');
+  assert.equal(callLength(323), '5 мин 23 сек');
+  assert.equal(callLength(3600), '1 ч');
+  assert.equal(callLength(3725), '1 ч 2 мин');
+});
+
+test('textParts shows the links of words of another network as the words', () => {
+  const text = 'Главное [https://bit.ly/x|за день] и https://meduza.io';
+  assert.deepEqual(textParts(text, { named: true }), [
+    'Главное ', { url: 'https://bit.ly/x', text: 'за день' }, ' и ', { url: 'https://meduza.io', text: 'meduza.io' },
+  ]);
+  // On the site such a link is no link of words.
+  assert.ok(!textParts(text).some((p) => p.text === 'за день'));
+  assert.deepEqual(textParts('[javascript:alert(1)|x]', { named: true }), ['[javascript:alert(1)|x]']);
 });

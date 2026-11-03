@@ -288,7 +288,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
 // — but no comments or reposts here, only the way to it. The warning its
 // author put before it (summary) shows above the blurred text, as the
 // servers of Mastodon show it. onError(e) shows a failed like.
-export function remotePostNode(post, { onError } = {}) {
+export function remotePostNode(post, { onError, withCommentsLink = true } = {}) {
   const remote = post.fediverse;
   const author = remote.author;
   const name = author.name || author.handle;
@@ -296,7 +296,7 @@ export function remotePostNode(post, { onError } = {}) {
   const telegram = author.telegram;
 
   const content = el('div', { className: 'post-content' },
-    post.text ? textNode(post.text, { whole: false }) : '',
+    post.text ? textNode(post.text, { whole: false, named: true }) : '',
     photosNode(photos) ?? '',
     videosNode(remote.videos ?? [], remote.url, telegram) ?? '',
     linkCardNode(post.link) ?? '',
@@ -320,6 +320,9 @@ export function remotePostNode(post, { onError } = {}) {
       content,
       el('div', { className: 'post-menu post-bar' },
         likeButton(post, { canLike: true, onError, like: api.likeFediverse, unlike: api.unlikeFediverse, likers: api.fediverseLikers }),
+        withCommentsLink ? el('a', { className: 'like post-comments-link', href: postPath(post), title: tr('Комментарии') },
+          bubble(), el('span', { className: 'like-count', textContent: post.comments > 0 ? String(post.comments) : '' })) : null,
+        remoteShareButton(post),
         el('span', { className: 'post-from', textContent: telegram ? tr('Из Telegram') : tr('Из Fediverse') }),
         externalLink(remote.url, [telegram ? tr('Открыть в Telegram') : tr('Открыть в Fediverse')]),
       ),
@@ -548,6 +551,17 @@ function shareButton(post, canShare) {
   // repost.
   attachLikers(button, post, api.reposts, sharers);
   render();
+
+  return button;
+}
+
+// remoteShareButton is "Поделиться" of a post of another server: the site
+// cannot repost it, so its address goes to the wall, the community or the
+// conversation, with the card of its page. It has no number: the site
+// does not count where its address went.
+function remoteShareButton(post) {
+  const button = el('a', { className: 'like share-icon', title: tr('Поделиться') }, arrow());
+  button.addEventListener('click', () => openShare(post, () => {}, { link: post.fediverse.url }));
 
   return button;
 }

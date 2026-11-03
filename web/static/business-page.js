@@ -876,8 +876,11 @@ function workshop(f, spec, workers) {
 
 function goodTile(f, spec, s) {
   const badges = [];
-  if (buys(spec, s.good)) badges.push(el('span', { className: s.autoBuy ? 'firm-badge on' : 'firm-badge', textContent: s.autoBuy ? tr('закупает до {0}', hundredths(s.buyMax)) : tr('не закупает') }));
-  if (sells(spec, s.good)) badges.push(el('span', { className: s.autoSell ? 'firm-badge on' : 'firm-badge', textContent: s.autoSell ? tr('продаёт от {0}', hundredths(s.sellMin)) : tr('не продаёт') }));
+  // What a shop sells it buys and sells at the prices of the city by
+  // itself: the server follows them every hour.
+  const city = spec.sells.includes(s.good);
+  if (buys(spec, s.good)) badges.push(el('span', { className: s.autoBuy ? 'firm-badge on' : 'firm-badge', textContent: !s.autoBuy ? tr('не закупает') : city ? tr('закупает по цене города') : tr('закупает до {0}', hundredths(s.buyMax)) }));
+  if (sells(spec, s.good)) badges.push(el('span', { className: s.autoSell ? 'firm-badge on' : 'firm-badge', textContent: !s.autoSell ? tr('не продаёт') : city ? tr('продаёт по цене города') : tr('продаёт от {0}', hundredths(s.sellMin)) }));
 
   const tile = el(directs(f) ? 'button' : 'div', { className: directs(f) ? 'firm-good-tile clickable' : 'firm-good-tile' },
     goodIcon(s.good, 32),
@@ -932,8 +935,16 @@ function stockBox(anchor, f, spec, s) {
     row(units.node, chips([['10', () => units.set(10)], ['100', () => units.set(100)], [tr('весь склад'), () => units.set(s.units)]])),
     popActions(buy, sell),
     el('div', { className: 'biz-subtitle', textContent: tr('Склад сам') }),
-    canBuy ? row(el('label', { className: 'firm-check' }, autoBuy, tr('закупать до')), buyMax.node) : null,
-    sells(spec, s.good) ? row(el('label', { className: 'firm-check' }, autoSell, spec.sells.includes(s.good) ? tr('продавать городу от') : tr('продавать от')), sellMin.node) : null,
+    ...(spec.sells.includes(s.good)
+      ? [
+        row(el('label', { className: 'firm-check' }, autoBuy, tr('закупать')), el('span', { className: 'hint', textContent: tr('не дороже {0}', money(Math.floor(q.cityPrice * 0.9))) })),
+        row(el('label', { className: 'firm-check' }, autoSell, tr('продавать городу')), el('span', { className: 'hint', textContent: tr('по цене города') })),
+        popNote(tr('Магазин сам следит за ценой города: закупает, только пока город платит на десятую больше, и продаёт не дешевле, чем покупает государство.')),
+      ]
+      : [
+        canBuy ? row(el('label', { className: 'firm-check' }, autoBuy, tr('закупать до')), buyMax.node) : null,
+        sells(spec, s.good) ? row(el('label', { className: 'firm-check' }, autoSell, tr('продавать от')), sellMin.node) : null,
+      ]),
     popActions(save));
   pop.place();
 }

@@ -6,8 +6,8 @@ import { initAttachments } from './attach.js';
 import { initGraffiti } from './graffiti.js';
 import { commentNode } from './comments.js';
 import { genitiveName, replyMention } from './labels.js';
-import { $, clubRef, el, fullName, pagePath, renderChrome, showError, hideError, autosize } from './layout.js';
-import { postNode } from './posts.js';
+import { $, clubRef, el, externalLink, fullName, pagePath, renderChrome, showError, hideError, autosize } from './layout.js';
+import { postNode, remotePostNode } from './posts.js';
 import { tr } from './i18n.js';
 
 // openvk's limit of a post or a comment; the counter shows near the end.
@@ -35,6 +35,33 @@ function renderTitle(post) {
   );
 }
 
+// renderRemoteTitle is "Автор » Запись" of a post of another server: its
+// author is there, not on a wall here.
+function renderRemoteTitle(post) {
+  const author = post.fediverse.author;
+  const name = author.name || author.handle;
+
+  document.title = tr('Запись {0} | Freenet', name);
+  $('title').replaceChildren(externalLink(author.url, [name]), tr(' » Запись'));
+}
+
+// localComments are the comments of a post here; remoteComments those of
+// a post of another server, which are text only, with no hearts and no
+// answers, and which only their author deletes.
+const localComments = {
+  list: api.comments,
+  create: (id, text, photos, extra) => api.createComment(id, text, photos, extra),
+  remove: api.deleteComment,
+  remote: false,
+};
+
+const remoteComments = {
+  list: api.fediverseComments,
+  create: (id, text) => api.commentFediverse(id, text),
+  remove: api.deleteFediverseComment,
+  remote: true,
+};
+
 // moderatesWall tells whether the viewer keeps the wall of the post clean:
 // its owner, or an admin of the community whose wall it is, who also
 // comments for it ("От имени сообщества").
@@ -48,7 +75,7 @@ async function moderatesWall(post, me) {
   return club?.role === 'admin' || club?.role === 'owner';
 }
 
-function initComments(post, me, moderates) {
+function initComments(post, me, moderates, source = localComments) {
   const list = $('comments');
   const error = $('comments-error');
 
@@ -66,13 +93,16 @@ function initComments(post, me, moderates) {
   // The author of a comment, the author of the post and whoever keeps the
   // wall clean may delete it; mine tells the author a comment for the
   // community.
-  const canDelete = (comment) => Boolean(me) && (moderates || post.mine || comment.mine || comment.author.id === me.id);
+  const canDelete = (comment) => Boolean(me) && (source.remote
+    ? Boolean(comment.mine)
+    : moderates || post.mine || comment.mine || comment.author.id === me.id);
   // The admins of a community comment for it, if they tick the box.
   const speaksForClub = moderates && Boolean(wallOf(post).club);
   const commentNodeFor = (comment) => commentNode(comment, {
     onDelete: canDelete(comment) && remove,
-    onReply: me?.profileCompleted && reply,
+    onReply: me?.profileCompleted && !source.remote && reply,
     canLike: Boolean(me),
+    withLike: !source.remote,
     onError: (e) => showError(error, e),
   });
 
@@ -103,7 +133,7 @@ function initComments(post, me, moderates) {
     hideError(error);
 
     try {
-      await api.deleteComment(comment.id);
+      await source.remove(comment.id);
     } catch (e) {
       showError(error, e);
       return;
@@ -118,7 +148,7 @@ function initComments(post, me, moderates) {
     hideError(error);
 
     try {
-      const page = await api.comments(post.id, cursor);
+      const page = await source.list(post.id, cursor);
       const fresh = page.comments.filter((c) => !sent.has(c.id));
       const firstSent = list.querySelector('[data-sent]');
 
@@ -151,7 +181,7 @@ function initComments(post, me, moderates) {
     button.disabled = true;
 
     try {
-      const comment = await api.createComment(post.id, $('comment-text').value, attachments.ids(), {
+      const comment = await source.create(post.id, $('comment-text').value, attachments.ids(), {
         replyTo: replyTo?.id,
         fromClub: speaksForClub && $('comment-from-club').checked,
       });
@@ -197,6 +227,8 @@ function initComments(post, me, moderates) {
       onChange: () => {},
     });
     initGraffiti({ link: $('comment-graffiti'), attachments });
+    // Comments of a post of another server are text only.
+    $('comment-attach').hidden = $('comment-graffiti').hidden = source.remote;
 
     $('comment-from-club-label').hidden = !speaksForClub;
     form.hidden = false;
@@ -232,29 +264,49 @@ async function removePost(post) {
   }
 }
 
+// showRemote shows a post of another server: the site keeps no post of
+// its own of that ID, the news do.
+async function showRemote(me) {
+  const post = await api.fediversePost(postID);
+
+  renderRemoteTitle(post);
+  $('post').append(remotePostNode(post, { onError: (e) => showError($('error'), e), withCommentsLink: false }));
+  $('content').hidden = false;
+
+  await initComments(post, me, false, remoteComments);
+}
+
 // The page is asked for with who is signed in, in one round trip.
 const wanted = started(api.post(postID));
 const me = await currentUser().catch(() => null);
 renderChrome(me);
 
 try {
-  const post = await wanted;
+  const post = await wanted.catch((e) => {
+    // No post here may be one of another server, seen by who signed in.
+    if (e.status === 404 && me) return null;
+    throw e;
+  });
 
-  renderTitle(post);
-  const moderates = await moderatesWall(post, me);
-  $('post').append(postNode(post, {
-    viewer: me,
-    moderates,
-    onDelete: (moderates || post.mine) && removePost,
-    // The post stays on its page, which says where it is now.
-    onArchived: () => {},
-    canLike: Boolean(me),
-    onError: (e) => showError($('error'), e),
-    withCommentsLink: false,
-  }));
-  $('content').hidden = false;
+  if (post) {
+    renderTitle(post);
+    const moderates = await moderatesWall(post, me);
+    $('post').append(postNode(post, {
+      viewer: me,
+      moderates,
+      onDelete: (moderates || post.mine) && removePost,
+      // The post stays on its page, which says where it is now.
+      onArchived: () => {},
+      canLike: Boolean(me),
+      onError: (e) => showError($('error'), e),
+      withCommentsLink: false,
+    }));
+    $('content').hidden = false;
 
-  await initComments(post, me, moderates);
+    await initComments(post, me, moderates);
+  } else {
+    await showRemote(me);
+  }
 } catch (e) {
   const notFound = e.status === 404 || e.status === 400;
   $('title').textContent = notFound ? tr('Запись не найдена') : tr('Ошибка');

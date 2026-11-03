@@ -347,6 +347,12 @@ export const api = {
   likeFediverse: (id) => authorized('PUT', `/api/v1/fediverse/posts/${encodeURIComponent(id)}/like`),
   unlikeFediverse: (id) => authorized('DELETE', `/api/v1/fediverse/posts/${encodeURIComponent(id)}/like`),
   fediverseLikers: (id, cursor = '', limit = 0) => authorized('GET', page(`/api/v1/fediverse/posts/${encodeURIComponent(id)}/likes`, cursor, limit)),
+  // A post of another server for its page, and the comments people here
+  // write under it, text only.
+  fediversePost: (id) => authorized('GET', `/api/v1/fediverse/posts/${encodeURIComponent(id)}`),
+  fediverseComments: (id, cursor = '') => authorized('GET', page(`/api/v1/fediverse/posts/${encodeURIComponent(id)}/comments`, cursor)),
+  commentFediverse: (id, text) => authorized('POST', `/api/v1/fediverse/posts/${encodeURIComponent(id)}/comments`, { text }),
+  deleteFediverseComment: (id) => authorized('DELETE', `/api/v1/fediverse/comments/${encodeURIComponent(id)}`),
   lookupFediverse: (address) => authorized('GET', '/api/v1/fediverse/lookup?' + new URLSearchParams({ address })),
   featuredFediverse: () => authorized('GET', '/api/v1/admin/fediverse'),
   featureFediverse: (address) => authorized('POST', '/api/v1/admin/fediverse', { address }),
@@ -595,6 +601,7 @@ export const api = {
   deleteChatMessage: (id) => authorized('DELETE', `/api/v1/chat-messages/${encodeURIComponent(id)}`),
   markDialogRead: (nickname, upTo) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/read`, { upTo }),
   callSignal: (nickname, sealed) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/call`, { sealed }),
+  reportCall: (nickname, seconds) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/call/report`, { seconds }),
   callServers: () => authorized('GET', '/api/v1/call-servers'),
   dialogTyping: (nickname) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/typing`),
   // Your own message, from both sides, within a day of sending: it stays
@@ -987,10 +994,9 @@ function withType(path, type, q = '', comments = false, year = 0) {
 
 // feedPath is the request of a page of the news with its settings; what
 // is as the server has it by default is not said.
-function feedPath(cursor, comments, all, { limit = 0, alien = true, ignored = false, ranked = false }) {
+function feedPath(cursor, comments, all, { limit = 0, alien = true, ignored = false }) {
   let path = withType(page('/api/v1/feed', cursor, limit), all ? 'all' : '', '', comments);
   if (!alien) path = withQuery(path, 'alien=false');
-  if (ranked) path = withQuery(path, 'ranked=true');
   if (ignored) path = withQuery(path, 'ignored=true');
 
   return path;
