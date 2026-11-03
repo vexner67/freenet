@@ -119,7 +119,7 @@ func (f *fakeChats) Send(_ context.Context, token, id string, d model.MessageDra
 
 	m := model.ChatMessage{
 		ID: "m9", ChatID: id, SenderID: "u1", Text: d.Text, PhotoIDs: d.PhotoIDs, CreatedAt: chatTime, DeletableUntil: chatTime, EditableUntil: chatTime,
-		PostID: d.PostID, SharedPhotoID: d.SharedPhotoID, Sticker: d.Sticker, DocumentIDs: d.DocumentIDs,
+		PostID: d.PostID, SharedPhotoID: d.SharedPhotoID, Sticker: d.Sticker, DocumentIDs: d.DocumentIDs, AudioIDs: d.AudioIDs,
 	}
 	for range d.ForwardIDs {
 		m.Forwarded = append(m.Forwarded, model.ForwardedMessage{SenderID: "u2", Text: "дальше", CreatedAt: chatTime})

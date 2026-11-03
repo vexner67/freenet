@@ -29,6 +29,9 @@ type postRequest struct {
 	// Documents are IDs of the caller's documents a new post attaches;
 	// an edit keeps those the post has.
 	Documents []string `json:"documents"`
+	// Audios are IDs of songs a new post attaches, anyone's; an edit
+	// keeps those the post has.
+	Audios []string `json:"audios"`
 	// Price: a new post on the caller's own wall shows its photos and
 	// documents to others for so many votes; 0 for free.
 	Price int64 `json:"price"`
@@ -85,6 +88,8 @@ type postResponse struct {
 	// Documents are the documents of its author it attaches, those that
 	// are still there.
 	Documents []documentJSON `json:"documents,omitempty"`
+	// Audios are the songs it attaches, those that are still there.
+	Audios []audioJSON `json:"audios,omitempty"`
 	// Link is the card of the page the text links to, as it was when the
 	// post was written; null for none.
 	Link *linkJSON `json:"link"`
@@ -166,6 +171,7 @@ type repostJSON struct {
 	// Poll is the poll the shared post asks, null for none.
 	Poll      *pollJSON      `json:"poll"`
 	Documents []documentJSON `json:"documents,omitempty"`
+	Audios    []audioJSON    `json:"audios,omitempty"`
 	// Link is the card of the shared post, null for none.
 	Link *linkJSON `json:"link"`
 	paidJSON
@@ -450,6 +456,11 @@ func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, e
 		return nil, err
 	}
 
+	songs, err := a.postAudios(r, slices.Concat(posts, slices.Collect(maps.Values(shared)))...)
+	if err != nil {
+		return nil, err
+	}
+
 	if err = a.unsign(r, posts); err != nil {
 		return nil, err
 	}
@@ -464,6 +475,7 @@ func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, e
 		resp.SharedPhoto = a.sharedPhoto(r, p.SharedPhotoID)
 		resp.Poll = polls[p.ID]
 		resp.Documents = documentsJSON(p.DocumentIDs, docs)
+		resp.Audios = audiosJSON(p.AudioIDs, songs)
 
 		if p.RepostOf != "" {
 			resp.Repost = &repostJSON{ID: p.RepostOf, Deleted: true}
@@ -471,6 +483,7 @@ func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, e
 				resp.Repost = toRepostJSON(s)
 				resp.Repost.Poll = polls[s.ID]
 				resp.Repost.Documents = documentsJSON(s.DocumentIDs, docs)
+				resp.Repost.Audios = audiosJSON(s.AudioIDs, songs)
 			}
 		}
 
@@ -826,6 +839,11 @@ func (a *api) writePost(w http.ResponseWriter, r *http.Request, nickname string)
 		return
 	}
 
+	if err = a.checkAudios(r.Context(), req.Audios); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	if err = a.claimPhotos(r, token, req.Photos); err != nil {
 		a.writeError(w, r, err)
 		return
@@ -835,7 +853,7 @@ func (a *api) writePost(w http.ResponseWriter, r *http.Request, nickname string)
 
 	p, err := a.posts.Create(r.Context(), token, model.NewPost{
 		WallID: wall.ID, Text: req.Text, PhotoIDs: req.Photos, NSFW: req.NSFW != nil && *req.NSFW, Mentions: mentions,
-		Poll: toNewPoll(req.Poll), DocumentIDs: req.Documents, Link: link, Price: req.Price,
+		Poll: toNewPoll(req.Poll), DocumentIDs: req.Documents, AudioIDs: req.Audios, Link: link, Price: req.Price,
 	})
 	if err != nil {
 		a.releasePhotos(r, token, req.Photos, err)
@@ -1073,6 +1091,11 @@ func (a *api) repostsByID(r *http.Request, ids []string) (map[string]*repostJSON
 		return nil, err
 	}
 
+	songs, err := a.postAudios(r, found...)
+	if err != nil {
+		return nil, err
+	}
+
 	shown := make(map[string]*repostJSON, len(ids))
 	for _, id := range ids {
 		shown[id] = &repostJSON{ID: id, Deleted: true}
@@ -1082,6 +1105,7 @@ func (a *api) repostsByID(r *http.Request, ids []string) (map[string]*repostJSON
 			shown[p.ID] = toRepostJSON(p)
 			shown[p.ID].Poll = polls[p.ID]
 			shown[p.ID].Documents = documentsJSON(p.DocumentIDs, docs)
+			shown[p.ID].Audios = audiosJSON(p.AudioIDs, songs)
 		}
 	}
 
@@ -1126,7 +1150,7 @@ func (a *api) editPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Documents != nil {
+	if req.Documents != nil || req.Audios != nil {
 		a.writeError(w, r, failure.New(failure.InvalidArgument, "the documents of a post cannot be changed"))
 		return
 	}

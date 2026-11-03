@@ -14,9 +14,12 @@ const MaxAvatarBytes = 8 << 20
 // MaxDocumentBytes is the largest document the media service accepts.
 const MaxDocumentBytes = 10 << 20
 
-// maxMessageBytes lets an upload or a document through; gRPC allows 4 MB
-// by default.
-const maxMessageBytes = max(MaxAvatarBytes, MaxDocumentBytes) + 1<<20
+// MaxAudioBytes is the largest MP3 the media service accepts.
+const MaxAudioBytes = 20 << 20
+
+// maxMessageBytes lets an upload, a document or a song through; gRPC
+// allows 4 MB by default.
+const maxMessageBytes = max(MaxAvatarBytes, MaxDocumentBytes, MaxAudioBytes) + 1<<20
 
 type Media struct {
 	api mediav1.MediaServiceClient
@@ -239,6 +242,45 @@ func (m *Media) Document(ctx context.Context, ownerID, documentID string) ([]byt
 func (m *Media) DeleteDocuments(ctx context.Context, ownerID string, documentIDs []string) error {
 	if _, err := m.api.DeleteDocuments(ctx, &mediav1.DeleteDocumentsRequest{OwnerId: ownerID, DocumentIds: documentIDs}); err != nil {
 		return errs.Wrap("m.api.DeleteDocuments", fromStatus(err))
+	}
+
+	return nil
+}
+
+// UploadAudio stores an MP3 of the caller for "Аудиозаписи" and returns
+// its ID.
+func (m *Media) UploadAudio(ctx context.Context, accessToken string, data []byte) (string, error) {
+	resp, err := m.api.UploadAudio(
+		withToken(ctx, accessToken),
+		&mediav1.UploadAudioRequest{Data: data},
+		grpc.MaxCallSendMsgSize(maxMessageBytes),
+	)
+	if err != nil {
+		return "", errs.Wrap("m.api.UploadAudio", fromStatus(err))
+	}
+
+	return resp.GetAudioId(), nil
+}
+
+// Audio returns the bytes of an MP3 of ownerID.
+func (m *Media) Audio(ctx context.Context, ownerID, audioID string) ([]byte, error) {
+	resp, err := m.api.GetAudio(
+		ctx,
+		&mediav1.GetAudioRequest{OwnerId: ownerID, AudioId: audioID},
+		grpc.MaxCallRecvMsgSize(maxMessageBytes),
+	)
+	if err != nil {
+		return nil, errs.Wrap("m.api.GetAudio", fromStatus(err))
+	}
+
+	return resp.GetData(), nil
+}
+
+// DeleteAudio deletes MP3s of ownerID: one stored that the post service
+// then refused.
+func (m *Media) DeleteAudio(ctx context.Context, ownerID string, audioIDs []string) error {
+	if _, err := m.api.DeleteAudio(ctx, &mediav1.DeleteAudioRequest{OwnerId: ownerID, AudioIds: audioIDs}); err != nil {
+		return errs.Wrap("m.api.DeleteAudio", fromStatus(err))
 	}
 
 	return nil

@@ -159,7 +159,8 @@ func (c *Chats) Return(ctx context.Context, accessToken, id string) error {
 func (c *Chats) Send(ctx context.Context, accessToken, id string, d model.MessageDraft) (model.ChatMessage, error) {
 	resp, err := c.api.SendChatMessage(withToken(ctx, accessToken), &messagev1.SendChatMessageRequest{
 		ChatId: id, Text: d.Text, PhotoIds: d.PhotoIDs, PostId: d.PostID, PhotoId: d.SharedPhotoID, ForwardIds: d.ForwardIDs, DocumentIds: d.DocumentIDs,
-		Sticker: d.Sticker, ReplyToId: d.ReplyToID,
+		AudioIds: d.AudioIDs,
+		Sticker:  d.Sticker, ReplyToId: d.ReplyToID,
 	})
 	if err != nil {
 		return model.ChatMessage{}, errs.Wrap("c.api.SendChatMessage", fromStatus(err))
@@ -273,6 +274,7 @@ func toChatMessage(pm *messagev1.ChatMessage) model.ChatMessage {
 		TextCut:        pm.GetTextCut(),
 		PhotoIDs:       pm.GetPhotoIds(),
 		DocumentIDs:    pm.GetDocumentIds(),
+		AudioIDs:       pm.GetAudioIds(),
 		TargetID:       pm.GetTargetId(),
 		CreatedAt:      fromTimestamp(pm.GetCreatedAt()),
 		EditedAt:       fromTimestamp(pm.GetEditedAt()),

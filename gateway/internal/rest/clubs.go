@@ -44,6 +44,8 @@ type clubPostRequest struct {
 	Poll *pollRequest `json:"poll"`
 	// Documents are IDs of the caller's documents the post attaches.
 	Documents []string `json:"documents"`
+	// Audios are IDs of songs the post attaches.
+	Audios []string `json:"audios"`
 }
 
 type clubJSON struct {
@@ -1048,6 +1050,11 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err = a.checkAudios(r.Context(), req.Audios); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	if err = a.claimPhotos(r, token, req.Photos); err != nil {
 		a.writeError(w, r, err)
 		return
@@ -1058,6 +1065,7 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 	p, err := a.posts.Create(r.Context(), token, model.NewPost{
 		Link:        link,
 		DocumentIDs: req.Documents,
+		AudioIDs:    req.Audios,
 		WallID:      c.Club.ID,
 		Text:        req.Text,
 		PhotoIDs:    req.Photos,

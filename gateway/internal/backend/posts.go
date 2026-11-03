@@ -33,6 +33,7 @@ func (p *Posts) Create(ctx context.Context, accessToken string, np model.NewPost
 		ClubWall: np.ClubWall,
 
 		DocumentIds: np.DocumentIDs,
+		AudioIds:    np.AudioIDs,
 		FromWall:    np.FromWall,
 		Signed:      np.Signed,
 		Nsfw:        np.NSFW,
@@ -685,6 +686,7 @@ func toPost(p *postv1.Post) model.Post {
 		Likes:     int(p.GetLikeCount()),
 
 		DocumentIDs: p.GetDocumentIds(),
+		AudioIDs:    p.GetAudioIds(),
 		Comments:    int(p.GetCommentCount()),
 		Reposts:     int(p.GetRepostCount()),
 		Liked:       p.GetLiked(),

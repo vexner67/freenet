@@ -23,6 +23,7 @@ func NewMessages(api messagev1.MessageServiceClient) *Messages {
 func (m *Messages) Send(ctx context.Context, accessToken, recipientID string, d model.MessageDraft) (model.Message, error) {
 	resp, err := m.api.SendMessage(withToken(ctx, accessToken), &messagev1.SendMessageRequest{
 		RecipientId: recipientID, Text: d.Text, Sealed: d.Sealed, PhotoIds: d.PhotoIDs, PostId: d.PostID, PhotoId: d.SharedPhotoID, DocumentIds: d.DocumentIDs,
+		AudioIds:   d.AudioIDs,
 		ForwardIds: d.ForwardIDs, Sticker: d.Sticker, ReplyToId: d.ReplyToID,
 	})
 	if err != nil {
@@ -293,6 +294,7 @@ func toForwarded(carried []*messagev1.ForwardedMessage) []model.ForwardedMessage
 			Depth:         int(f.GetDepth()),
 			Sticker:       f.GetSticker(),
 			DocumentIDs:   f.GetDocumentIds(),
+			AudioIDs:      f.GetAudioIds(),
 		})
 	}
 
@@ -308,7 +310,8 @@ func toQuote(pq *messagev1.Quote) *model.Quote {
 	return &model.Quote{
 		ID: pq.GetId(), SenderID: pq.GetSenderId(), Text: pq.GetText(), TextCut: pq.GetTextCut(),
 		PhotoCount: int(pq.GetPhotoCount()), ForwardedCount: int(pq.GetForwardedCount()), DocumentCount: int(pq.GetDocumentCount()),
-		Sticker: pq.GetSticker(), Post: pq.GetPost(), SharedPhoto: pq.GetPhoto(), Deleted: pq.GetDeleted(), Found: pq.GetFound(),
+		AudioCount: int(pq.GetAudioCount()),
+		Sticker:    pq.GetSticker(), Post: pq.GetPost(), SharedPhoto: pq.GetPhoto(), Deleted: pq.GetDeleted(), Found: pq.GetFound(),
 	}
 }
 
@@ -333,6 +336,7 @@ func toMessage(pm *messagev1.Message) model.Message {
 		Sealed:         pm.GetSealed(),
 		PhotoIDs:       pm.GetPhotoIds(),
 		DocumentIDs:    pm.GetDocumentIds(),
+		AudioIDs:       pm.GetAudioIds(),
 		CreatedAt:      pm.GetCreatedAt().AsTime(),
 		Read:           pm.GetRead(),
 		DeletableUntil: fromTimestamp(pm.GetDeletableUntil()),

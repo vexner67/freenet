@@ -93,11 +93,15 @@ func TestEvents(t *testing.T) {
 
 	// u1 is the caller (GetMe), u2 is bob.
 	h.messages.events <- model.MessageEvent{Message: &model.Message{
-		ID: "m1", SenderID: "u2", RecipientID: "u1", Sealed: []byte("privet"), CreatedAt: time.Now(),
+		ID: "m1", SenderID: "u2", RecipientID: "u1", Sealed: []byte("privet"), AudioIDs: []string{"a1"}, CreatedAt: time.Now(),
 	}}
 
 	if e := next(t, conn); e.Type != "message" || e.Peer["nickname"] != "bob" || e.Message["sealed"] != "cHJpdmV0" || e.Message["out"] != false {
 		t.Fatalf("message event = %+v", e)
+	} else if songs, _ := e.Message["audios"].([]any); len(songs) != 1 || songs[0].(map[string]any)["added"] != true {
+		// The songs are told as to the one connected, whose token came in
+		// the first message.
+		t.Fatalf("songs of a live message = %v", e.Message["audios"])
 	}
 	if e := next(t, conn); e.Type != "counters" || e.Messages == nil || *e.Messages != 2 || e.Notifications != nil {
 		t.Fatalf("after a message = %+v, want the messages counter only", e)

@@ -12,6 +12,7 @@ import (
 	federationv1 "github.com/vexner67/freenet/federation/api/federation/v1"
 	"github.com/vexner67/freenet/gateway/internal/backend"
 	"github.com/vexner67/freenet/gateway/internal/config"
+	"github.com/vexner67/freenet/gateway/internal/oembed"
 	"github.com/vexner67/freenet/gateway/internal/preview"
 	"github.com/vexner67/freenet/gateway/internal/rest"
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
@@ -155,6 +156,7 @@ func (a *App) build(cfg config.Config) error {
 			Gifts:         backend.NewGifts(userv1.NewUserServiceClient(a.userConn)),
 			Stickers:      backend.NewStickers(userv1.NewUserServiceClient(a.userConn)),
 			Documents:     backend.NewDocuments(postv1.NewPostServiceClient(a.postConn)),
+			Audio:         backend.NewAudio(postv1.NewPostServiceClient(a.postConn)),
 			Articles:      backend.NewArticles(postv1.NewPostServiceClient(a.postConn)),
 			Stories:       backend.NewStories(postv1.NewPostServiceClient(a.postConn)),
 			Votes:         backend.NewVotes(userv1.NewUserServiceClient(a.userConn)),
@@ -175,6 +177,7 @@ func (a *App) build(cfg config.Config) error {
 			Bets:          backend.NewBets(userv1.NewUserServiceClient(a.userConn)),
 			Faves:         backend.NewFaves(postv1.NewPostServiceClient(a.postConn)),
 			Previews:      previews(cfg.LinkPreviewTimeout),
+			Tracks:        tracks(cfg.LinkPreviewTimeout),
 		},
 		a.logger,
 		reg,
@@ -281,4 +284,14 @@ func previews(timeout time.Duration) rest.Previews {
 	}
 
 	return preview.New(timeout)
+}
+
+// tracks tells what tracks of other sites are, nil when reading links is
+// off.
+func tracks(timeout time.Duration) rest.Tracks {
+	if timeout == 0 {
+		return nil
+	}
+
+	return oembed.New(timeout, oembed.Sites)
 }

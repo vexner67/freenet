@@ -181,7 +181,12 @@ func (a *api) streamEvents(ctx context.Context, conn *websocket.Conn, r *http.Re
 	out := make(chan any, 16)
 	done := make(chan error, 3)
 
-	s := &eventSession{api: a, r: r, token: token, me: me.ID, out: out, peers: make(map[string]authorJSON)}
+	// The token came in the first message, not in a header: what live
+	// messages attach is shown as to the one connected, as their pages do.
+	viewer := r.Clone(ctx)
+	viewer.Header.Set("Authorization", "Bearer "+token)
+
+	s := &eventSession{api: a, r: viewer, token: token, me: me.ID, out: out, peers: make(map[string]authorJSON)}
 
 	go func() { done <- s.forwardMessages(ctx, messages) }()
 	go func() { done <- s.forwardNotifications(ctx, notifications) }()

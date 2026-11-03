@@ -109,7 +109,7 @@ func toChatMessageJSON(m model.ChatMessage, me string, people map[string]model.A
 
 		attachedJSON: toAttachedJSON(attachment{
 			PostID: m.PostID, SharedPhotoID: m.SharedPhotoID, Sticker: m.Sticker, Forwarded: m.Forwarded, DocumentIDs: m.DocumentIDs,
-			ReplyTo: m.ReplyTo, Reactions: m.Reactions,
+			AudioIDs: m.AudioIDs, ReplyTo: m.ReplyTo, Reactions: m.Reactions,
 		}),
 	}
 

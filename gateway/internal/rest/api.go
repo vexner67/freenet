@@ -159,6 +159,11 @@ type Media interface {
 	UploadDocument(ctx context.Context, accessToken string, data []byte) (string, error)
 	Document(ctx context.Context, ownerID, documentID string) ([]byte, error)
 	DeleteDocuments(ctx context.Context, ownerID string, documentIDs []string) error
+
+	// The bytes of uploaded songs, as of documents.
+	UploadAudio(ctx context.Context, accessToken string, data []byte) (string, error)
+	Audio(ctx context.Context, ownerID, audioID string) ([]byte, error)
+	DeleteAudio(ctx context.Context, ownerID string, audioIDs []string) error
 }
 
 // Documents are openvk's "Мои Документы", which the post service keeps:
@@ -575,6 +580,7 @@ type Backends struct {
 	Holdem        Holdem
 	Bets          Bets
 	Documents     Documents
+	Audio         Audio
 	Articles      Articles
 	Stories       Stories
 	Canvas        Canvas
@@ -584,6 +590,9 @@ type Backends struct {
 	// Previews reads the cards of the pages posts link to; nil makes
 	// posts without cards.
 	Previews Previews
+	// Tracks tells what tracks of SoundCloud and YouTube are; nil adds
+	// none.
+	Tracks Tracks
 }
 
 // Previews reads what a web page says of itself for the card of a post;
@@ -620,6 +629,8 @@ type api struct {
 	holdems       Holdem
 	bets          Bets
 	documents     Documents
+	audio         Audio
+	tracks        Tracks
 	articles      Articles
 	stories       Stories
 	canvas        Canvas
@@ -896,6 +907,27 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PATCH /api/v1/documents/{id}", a.renameDocument)
 	mux.HandleFunc("DELETE /api/v1/documents/{id}", a.deleteDocument)
 
+	mux.HandleFunc("GET /api/v1/audio", a.searchAudios)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/audio", a.listAudios)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/music", a.getMusic)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/playlists", a.listPlaylists)
+	mux.HandleFunc("POST /api/v1/me/audio", a.uploadAudio)
+	mux.HandleFunc("POST /api/v1/me/audio/links", a.addTrack)
+	mux.HandleFunc("PUT /api/v1/me/audio/{id}", a.keepAudio)
+	mux.HandleFunc("DELETE /api/v1/me/audio/{id}", a.forgetAudio)
+	mux.HandleFunc("PATCH /api/v1/audio/{id}", a.editAudio)
+	mux.HandleFunc("DELETE /api/v1/audio/{id}", a.deleteAudio)
+	mux.HandleFunc("PUT /api/v1/me/listening", a.setListening)
+	mux.HandleFunc("DELETE /api/v1/me/listening", a.stopListening)
+	mux.HandleFunc("PUT /api/v1/me/page-audio", a.setPageAudio)
+	mux.HandleFunc("DELETE /api/v1/me/page-audio", a.removePageAudio)
+	mux.HandleFunc("POST /api/v1/me/playlists", a.createPlaylist)
+	mux.HandleFunc("GET /api/v1/playlists/{id}", a.getPlaylist)
+	mux.HandleFunc("PATCH /api/v1/playlists/{id}", a.renamePlaylist)
+	mux.HandleFunc("DELETE /api/v1/playlists/{id}", a.deletePlaylist)
+	mux.HandleFunc("PUT /api/v1/playlists/{id}/audio/{audioID}", a.addToPlaylist)
+	mux.HandleFunc("DELETE /api/v1/playlists/{id}/audio/{audioID}", a.removeFromPlaylist)
+
 	mux.HandleFunc("POST /api/v1/articles", a.createArticle)
 	mux.HandleFunc("GET /api/v1/articles/{id}", a.getArticle)
 	mux.HandleFunc("PUT /api/v1/articles/{id}", a.editArticle)
@@ -1054,6 +1086,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /media/photos/{userID}/{photoID}/{file}", a.servePhoto)
 	mux.HandleFunc("GET /media/stickers/{sticker}", a.serveSticker)
 	mux.HandleFunc("GET /media/documents/{id}", a.serveDocument)
+	mux.HandleFunc("GET /media/audio/{id}", a.serveAudio)
 
 	if a.federation != nil {
 		a.registerFederation(mux)

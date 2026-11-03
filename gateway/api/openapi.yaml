@@ -1096,6 +1096,9 @@ paths:
                   documents:
                     type: array
                     items: { $ref: "#/components/schemas/Document" }
+                  audios:
+                    type: array
+                    items: { $ref: "#/components/schemas/Audio" }
                   nextCursor: { type: string, description: "Empty on the last page" }
                   total: { type: integer, description: How many documents you have }
         "401": { $ref: "#/components/responses/Unauthenticated" }
@@ -1123,6 +1126,337 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/audio:
+    get:
+      summary: Search songs ("Поиск"); without q, every song, newest first ("Новое")
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        "200":
+          description: A page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AudioPage" }
+
+  /api/v1/users/{nickname}/audio:
+    get:
+      summary: The songs a person keeps ("Аудиозаписи"), the last added first
+      parameters:
+        - { name: nickname, in: path, required: true, schema: { type: string } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        "200":
+          description: A page
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AudioPage" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/users/{nickname}/music:
+    get:
+      summary: What a person listens to now ("слушает"), the song of their page and how many songs they keep
+      parameters:
+        - { name: nickname, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Their music
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [listening, pageAudio, count]
+                properties:
+                  listening: { nullable: true, allOf: [{ $ref: "#/components/schemas/Audio" }], description: "Null when nothing plays, or it played over 10 minutes ago" }
+                  pageAudio: { nullable: true, allOf: [{ $ref: "#/components/schemas/Audio" }] }
+                  count: { type: integer }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/users/{nickname}/playlists:
+    get:
+      summary: The playlists of a person, newest first
+      parameters:
+        - { name: nickname, in: path, required: true, schema: { type: string } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        "200":
+          description: A page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [playlists, nextCursor, total]
+                properties:
+                  playlists:
+                    type: array
+                    items: { $ref: "#/components/schemas/Playlist" }
+                  nextCursor: { type: string }
+                  total: { type: integer }
+
+  /api/v1/me/audio:
+    post:
+      summary: Upload an MP3 ("Загрузить аудио")
+      description: The body is the MP3 itself, up to 20 MB; it goes to your library.
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: artist, in: query, schema: { type: string, maxLength: 128 } }
+        - { name: title, in: query, schema: { type: string, maxLength: 128 } }
+        - { name: duration, in: query, schema: { type: integer, minimum: 0, maximum: 10800 }, description: Seconds, as the browser read them }
+      requestBody:
+        required: true
+        content:
+          audio/mpeg:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: Uploaded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Audio" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/audio/links:
+    post:
+      summary: Add a track of SoundCloud or YouTube by its link
+      description: |
+        The site tells what the track is (oEmbed). A track its owner keeps
+        to their site answers 409: it plays only there. Added once, the same
+        link is the same song for everyone.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [link]
+              properties:
+                link: { type: string, description: "https://soundcloud.com/artist/track or a YouTube video" }
+      responses:
+        "201":
+          description: Added to your library
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Audio" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "503": { description: "The site of the track does not answer" }
+
+  /api/v1/me/audio/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      summary: Keep a song in your library ("Добавить к себе")
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Kept }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Take a song out of your library
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Taken out }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/audio/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      summary: Edit a song you uploaded
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                artist: { type: string, maxLength: 128 }
+                title: { type: string, maxLength: 128 }
+      responses:
+        "200":
+          description: Edited
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Audio" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Delete a song you uploaded; it leaves every library, playlist, post and message
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/me/listening:
+    put:
+      summary: Say what you play now ("слушает" under your name)
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [audio]
+              properties:
+                audio: { type: string, format: uuid }
+      responses:
+        "204": { description: Told }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Stop playing
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Stopped }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/page-audio:
+    put:
+      summary: Put a song on your page
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [audio]
+              properties:
+                audio: { type: string, format: uuid }
+      responses:
+        "204": { description: Put }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Take the song off your page
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Taken off }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/playlists:
+    post:
+      summary: Create a playlist ("Новый плейлист")
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Playlist" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/playlists/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: A playlist with a page of its songs, the last added first
+      parameters:
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        "200":
+          description: The playlist
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: "#/components/schemas/Playlist" }
+                  - { $ref: "#/components/schemas/AudioPage" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      summary: Rename your playlist
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        "200":
+          description: Renamed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Playlist" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Delete your playlist; its songs stay where else they are
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/playlists/{id}/audio/{audioID}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+      - { name: audioID, in: path, required: true, schema: { type: string } }
+    put:
+      summary: Put a song in your playlist
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Put }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      summary: Take a song out of your playlist
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Taken out }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+
+  /media/audio/{id}:
+    get:
+      summary: Play an uploaded song; answers ranges
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The MP3
+          content:
+            audio/mpeg:
+              schema: { type: string, format: binary }
+        "206": { description: A range of it }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/documents/{id}:
     parameters:
@@ -8596,6 +8930,7 @@ paths:
                 post: { type: string, format: uuid }
                 albumPhoto: { type: string, format: uuid }
                 documents: { $ref: "#/components/schemas/DocumentIDs" }
+                audios: { $ref: "#/components/schemas/AudioIDs" }
                 sticker: { type: string, description: "A sticker of a pack among your stickers (GET /stickers); it goes alone, with nothing else" }
                 forward:
                   type: array
@@ -8854,6 +9189,7 @@ paths:
                 post: { type: string, format: uuid }
                 albumPhoto: { type: string, format: uuid }
                 documents: { $ref: "#/components/schemas/DocumentIDs" }
+                audios: { $ref: "#/components/schemas/AudioIDs" }
                 sticker: { type: string, description: "A sticker of a pack among your stickers (GET /stickers); it goes alone, with nothing else" }
                 forward:
                   type: array
@@ -9913,6 +10249,7 @@ components:
         nsfw: { type: boolean, description: "Marks the post as adult (\"Содержит NSFW-контент\")" }
         poll: { $ref: "#/components/schemas/NewPoll" }
         documents: { $ref: "#/components/schemas/DocumentIDs" }
+        audios: { $ref: "#/components/schemas/AudioIDs" }
 
     NewPost:
       type: object
@@ -9924,6 +10261,10 @@ components:
           description: "Documents of yours to attach (GET /me/documents). Only when writing: an edit that carries them is refused (400)"
           allOf:
             - { $ref: "#/components/schemas/DocumentIDs" }
+        audios:
+          description: "Songs of anyone to attach. Only when writing, as documents"
+          allOf:
+            - { $ref: "#/components/schemas/AudioIDs" }
         nsfw: { type: boolean, description: "Marks the post as adult (\"Содержит NSFW-контент\"); an edit that leaves it out keeps the mark" }
         poll:
           description: "The poll a new post asks; with it `text` and `photos` may be empty. Only when writing: the poll of a post stays as asked, and an edit that carries one is refused (400)"
@@ -9980,6 +10321,13 @@ components:
 
     DocumentIDs:
       description: IDs of your documents (GET /api/v1/me/documents), in the order shown
+      type: array
+      maxItems: 10
+      uniqueItems: true
+      items: { type: string, format: uuid }
+
+    AudioIDs:
+      description: IDs of songs (GET /api/v1/audio), anyone's, in the order shown
       type: array
       maxItems: 10
       uniqueItems: true
@@ -10094,6 +10442,42 @@ components:
         url: { type: string, description: "Where it is downloaded: /media/documents/{id}" }
         createdAt: { type: string, format: date-time }
 
+    Audio:
+      type: object
+      description: A song of "Аудиозаписи"
+      required: [id, ownerId, kind, artist, title, duration, added, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        ownerId: { type: string, format: uuid, description: Who uploaded it or added the track first }
+        kind: { type: string, enum: [file, soundcloud, youtube] }
+        url: { type: string, description: "Where an uploaded song plays: /media/audio/{id}; absent for a track" }
+        link: { type: string, description: The page of a track on its site; absent for a file }
+        cover: { type: string, description: "The https picture of a track; may be absent" }
+        artist: { type: string, description: "Empty for \"Неизвестный\"" }
+        title: { type: string, description: "Empty for \"Без названия\"" }
+        duration: { type: integer, description: "Seconds; 0 when unknown" }
+        added: { type: boolean, description: You keep it in your library }
+        createdAt: { type: string, format: date-time }
+
+    AudioPage:
+      type: object
+      required: [audios, nextCursor, total]
+      properties:
+        audios:
+          type: array
+          items: { $ref: "#/components/schemas/Audio" }
+        nextCursor: { type: string, description: "Empty on the last page" }
+        total: { type: integer, description: "All the songs of a library or a playlist; 0 for a search" }
+
+    Playlist:
+      type: object
+      required: [id, ownerId, title, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        ownerId: { type: string, format: uuid }
+        title: { type: string, maxLength: 128 }
+        createdAt: { type: string, format: date-time }
+
     PhotoIDs:
       description: IDs from `POST /api/v1/me/photos`, yours, in the order shown
       type: array
@@ -10138,6 +10522,10 @@ components:
           type: array
           description: The documents it attaches that are still there; absent for none
           items: { $ref: "#/components/schemas/Document" }
+        audios:
+          type: array
+          description: The songs it attaches that are still there; absent for none
+          items: { $ref: "#/components/schemas/Audio" }
         poll:
           description: The poll the post asks; null for a post without one
           oneOf:
@@ -10234,6 +10622,10 @@ components:
           type: array
           description: The documents it attaches that are still there; absent for none
           items: { $ref: "#/components/schemas/Document" }
+        audios:
+          type: array
+          description: The songs it attaches that are still there; absent for none
+          items: { $ref: "#/components/schemas/Audio" }
         poll:
           description: "The poll the shared post asks, as Post's poll; in a message and in live events without `voted`"
           oneOf:
@@ -10456,10 +10848,15 @@ components:
           $ref: "#/components/schemas/SharedPhoto"
         sticker: { type: string, description: "The sticker the message is, alone; empty for none" }
         documentCount: { type: integer, description: "How many documents it attached" }
+        audioCount: { type: integer, description: "How many songs it attached" }
         documents:
           type: array
           description: The documents it attaches that are still there; absent in the list of dialogs and without any
           items: { $ref: "#/components/schemas/Document" }
+        audios:
+          type: array
+          description: The songs it attaches that are still there; absent in the list of dialogs and without any
+          items: { $ref: "#/components/schemas/Audio" }
         forwardedCount: { type: integer, description: "How many messages it carries on from dialogs and chats" }
         forwarded:
           type: array
@@ -10492,6 +10889,7 @@ components:
         photoCount: { type: integer }
         forwardedCount: { type: integer }
         documentCount: { type: integer }
+        audioCount: { type: integer }
         sticker: { type: string }
         post: { type: boolean, description: It shares a post }
         albumPhoto: { type: boolean, description: It shares a photo of an album }
@@ -10525,6 +10923,9 @@ components:
         documents:
           type: array
           items: { $ref: "#/components/schemas/Document" }
+        audios:
+          type: array
+          items: { $ref: "#/components/schemas/Audio" }
 
     SharedPhoto:
       type: object
@@ -10619,10 +11020,15 @@ components:
           $ref: "#/components/schemas/SharedPhoto"
         sticker: { type: string, description: "The sticker the message is, alone; empty for none" }
         documentCount: { type: integer, description: "How many documents it attached" }
+        audioCount: { type: integer, description: "How many songs it attached" }
         documents:
           type: array
           description: The documents it attaches that are still there; absent in the list of dialogs and without any
           items: { $ref: "#/components/schemas/Document" }
+        audios:
+          type: array
+          description: The songs it attaches that are still there; absent in the list of dialogs and without any
+          items: { $ref: "#/components/schemas/Audio" }
         forwardedCount: { type: integer, description: "How many messages it carries on from dialogs and chats" }
         forwarded:
           type: array

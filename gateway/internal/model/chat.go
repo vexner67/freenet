@@ -73,6 +73,7 @@ type ChatMessage struct {
 	// Sticker is the sticker the message is, "" for none.
 	Sticker     string
 	DocumentIDs []string
+	AudioIDs    []string
 	// ReplyTo and Reactions: as a message of a dialog's.
 	ReplyTo   *Quote
 	Reactions []Reaction

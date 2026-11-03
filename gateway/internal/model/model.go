@@ -406,6 +406,8 @@ type Post struct {
 	// DocumentIDs are documents of its author it attaches, in order; a
 	// deleted one is gone from it.
 	DocumentIDs []string
+	// AudioIDs are songs it attaches, in order; a deleted one is gone.
+	AudioIDs []string
 	// Link is the card of the page the text links to, nil for none.
 	Link *Link
 	// Price is what the photos and documents cost to see, 0 for free; a
@@ -490,9 +492,11 @@ type NewPost struct {
 	PhotoIDs []string
 	// DocumentIDs are documents of the caller the post attaches.
 	DocumentIDs []string
-	ClubWall    bool
-	FromWall    bool
-	Signed      bool
+	// AudioIDs are songs the post attaches.
+	AudioIDs []string
+	ClubWall bool
+	FromWall bool
+	Signed   bool
 	// NSFW marks the post as adult ("Содержит NSFW-контент").
 	NSFW bool
 	// Mentions are the IDs of the people the text names, who hear of it.
@@ -724,6 +728,8 @@ type Message struct {
 	DeletedAt time.Time
 	// DocumentIDs are documents of the sender it attaches.
 	DocumentIDs []string
+	// AudioIDs are songs it attaches.
+	AudioIDs []string
 	// ReplyTo is what it shows of the message it answers, nil for none.
 	ReplyTo *Quote
 	// Reactions are those to it, the oldest first.
@@ -738,10 +744,12 @@ type Quote struct {
 	SenderID string
 	Text     string
 	TextCut  bool
-	// PhotoCount, ForwardedCount and DocumentCount are how many it shows.
+	// PhotoCount, ForwardedCount, DocumentCount and AudioCount are how
+	// many it shows.
 	PhotoCount     int
 	ForwardedCount int
 	DocumentCount  int
+	AudioCount     int
 	Sticker        string
 	// Post and SharedPhoto: it shares a post, a photo of an album.
 	Post        bool
@@ -774,6 +782,7 @@ type ForwardedMessage struct {
 	// Sticker is the sticker it was, "" for none.
 	Sticker     string
 	DocumentIDs []string
+	AudioIDs    []string
 }
 
 // MessageDraft is a message to send, into a dialog or a chat: text,
@@ -792,6 +801,8 @@ type MessageDraft struct {
 	Sticker       string
 	// DocumentIDs are documents of the caller the message attaches.
 	DocumentIDs []string
+	// AudioIDs are songs the message attaches.
+	AudioIDs []string
 	// ReplyToID is the message of the dialog or chat it answers, "" for
 	// none.
 	ReplyToID string
@@ -1590,6 +1601,82 @@ type Document struct {
 // DocumentPage is one screen of the caller's documents, newest first.
 type DocumentPage struct {
 	Documents  []Document
+	NextCursor string
+	Total      int
+}
+
+// Audio is a song of "Аудиозаписи": an MP3 its owner uploaded (Kind
+// "file"), whose bytes the media service keeps, or a track of SoundCloud
+// or YouTube played in their player, Link. Added: the viewer keeps it.
+type Audio struct {
+	ID        string
+	OwnerID   string
+	Kind      string
+	Link      string
+	Cover     string
+	Artist    string
+	Title     string
+	Duration  int
+	CreatedAt time.Time
+	Added     bool
+}
+
+// Audio kinds.
+const (
+	AudioFile       = "file"
+	AudioSoundCloud = "soundcloud"
+	AudioYouTube    = "youtube"
+)
+
+// AudioPage is one screen of songs; Total counts all of a library or a
+// playlist.
+type AudioPage struct {
+	Audios     []Audio
+	NextCursor string
+	Total      int
+}
+
+// NewAudio is a song to add: an uploaded MP3 (FileID) or a track (Kind,
+// Link) as its site told of it.
+type NewAudio struct {
+	FileID   string
+	Kind     string
+	Link     string
+	Cover    string
+	Artist   string
+	Title    string
+	Duration int
+}
+
+// Track is what SoundCloud or YouTube tells of a track by its link.
+// Playable is false for a track its owner does not let others embed.
+type Track struct {
+	Kind     string
+	Link     string
+	Title    string
+	Artist   string
+	Cover    string
+	Playable bool
+}
+
+// Music is what a page says of music: what its owner listens to now and
+// the song of the page, nil for none, and how many songs they keep.
+type Music struct {
+	Listening *Audio
+	PageAudio *Audio
+	Count     int
+}
+
+// Playlist is a list of songs of its owner.
+type Playlist struct {
+	ID        string
+	OwnerID   string
+	Title     string
+	CreatedAt time.Time
+}
+
+type PlaylistPage struct {
+	Playlists  []Playlist
 	NextCursor string
 	Total      int
 }

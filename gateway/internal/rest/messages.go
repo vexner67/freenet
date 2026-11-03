@@ -50,6 +50,8 @@ type messageRequest struct {
 	Sticker string `json:"sticker"`
 	// Documents are IDs of the caller's documents the message attaches.
 	Documents []string `json:"documents"`
+	// Audios are IDs of songs the message attaches, anyone's.
+	Audios []string `json:"audios"`
 	// ReplyTo is a message of the same dialog or chat it answers
 	// ("Ответить"); the words it quotes of a dialog's go in Sealed.
 	ReplyTo string `json:"replyTo"`
@@ -101,15 +103,19 @@ type attachedJSON struct {
 	// those that are still there, except in the list of dialogs.
 	DocumentCount int            `json:"documentCount"`
 	Documents     []documentJSON `json:"documents,omitempty"`
+	// AudioCount and Audios: the same of songs.
+	AudioCount int         `json:"audioCount"`
+	Audios     []audioJSON `json:"audios,omitempty"`
 	// ReplyTo is what it shows of the message it answers; absent for none.
 	ReplyTo *replyJSON `json:"replyTo,omitempty"`
 	// Reactions are those to it, the oldest first.
 	Reactions []reactionJSON `json:"reactions"`
 
 	// carried is what Forwarded is made of, documentIDs what Documents is,
-	// quote what ReplyTo is (showAttached).
+	// audioIDs what Audios is, quote what ReplyTo is (showAttached).
 	carried     []model.ForwardedMessage
 	documentIDs []string
+	audioIDs    []string
 	quote       *model.Quote
 }
 
@@ -126,6 +132,7 @@ type replyJSON struct {
 	PhotoCount     int         `json:"photoCount"`
 	ForwardedCount int         `json:"forwardedCount"`
 	DocumentCount  int         `json:"documentCount"`
+	AudioCount     int         `json:"audioCount"`
 	Sticker        string      `json:"sticker"`
 	Post           bool        `json:"post"`
 	AlbumPhoto     bool        `json:"albumPhoto"`
@@ -157,6 +164,7 @@ type attachment struct {
 	Sticker       string
 	Forwarded     []model.ForwardedMessage
 	DocumentIDs   []string
+	AudioIDs      []string
 	ReplyTo       *model.Quote
 	Reactions     []model.Reaction
 }
@@ -164,7 +172,8 @@ type attachment struct {
 func toAttachedJSON(at attachment) attachedJSON {
 	return attachedJSON{
 		Post: at.PostID, AlbumPhoto: at.SharedPhotoID, Sticker: at.Sticker, ForwardedCount: len(at.Forwarded), carried: at.Forwarded,
-		DocumentCount: len(at.DocumentIDs), documentIDs: at.DocumentIDs, quote: at.ReplyTo, Reactions: toReactionsJSON(at.Reactions),
+		DocumentCount: len(at.DocumentIDs), documentIDs: at.DocumentIDs, AudioCount: len(at.AudioIDs), audioIDs: at.AudioIDs,
+		quote: at.ReplyTo, Reactions: toReactionsJSON(at.Reactions),
 	}
 }
 
@@ -176,7 +185,7 @@ func toReplyJSON(q *model.Quote, author *authorJSON) *replyJSON {
 
 	return &replyJSON{
 		ID: q.ID, Author: author, Text: q.Text, TextCut: q.TextCut, PhotoCount: q.PhotoCount, ForwardedCount: q.ForwardedCount,
-		DocumentCount: q.DocumentCount, Sticker: q.Sticker, Post: q.Post, AlbumPhoto: q.SharedPhoto, Deleted: q.Deleted,
+		DocumentCount: q.DocumentCount, AudioCount: q.AudioCount, Sticker: q.Sticker, Post: q.Post, AlbumPhoto: q.SharedPhoto, Deleted: q.Deleted,
 	}
 }
 
@@ -209,6 +218,7 @@ type forwardedJSON struct {
 	SharedPhoto *sharedPhotoJSON `json:"sharedPhoto,omitempty"`
 	Sticker     string           `json:"sticker"`
 	Documents   []documentJSON   `json:"documents,omitempty"`
+	Audios      []audioJSON      `json:"audios,omitempty"`
 }
 
 // dialogJSON is a row of "Мои Сообщения": the dialog with Peer or, with
@@ -253,7 +263,7 @@ func toMessageJSON(m model.Message, peerID string) messageJSON {
 
 		attachedJSON: toAttachedJSON(attachment{
 			PostID: m.PostID, SharedPhotoID: m.SharedPhotoID, Sticker: m.Sticker, Forwarded: m.Forwarded, DocumentIDs: m.DocumentIDs,
-			ReplyTo: m.ReplyTo, Reactions: m.Reactions,
+			AudioIDs: m.AudioIDs, ReplyTo: m.ReplyTo, Reactions: m.Reactions,
 		}),
 		Deleted: !m.DeletedAt.IsZero(),
 	}
@@ -614,6 +624,10 @@ func (a *api) draft(r *http.Request, token, meID string, req messageRequest) (mo
 		return model.MessageDraft{}, err
 	}
 
+	if err := a.checkAudios(r.Context(), req.Audios); err != nil {
+		return model.MessageDraft{}, err
+	}
+
 	if err := a.checkSharedPost(r, token, req.Post); err != nil {
 		return model.MessageDraft{}, err
 	}
@@ -639,7 +653,7 @@ func (a *api) draft(r *http.Request, token, meID string, req messageRequest) (mo
 
 	return model.MessageDraft{
 		Text: req.Text, Sealed: req.Sealed, PhotoIDs: req.Photos, PostID: req.Post, SharedPhotoID: req.AlbumPhoto, ForwardIDs: req.Forward,
-		Sticker: req.Sticker, DocumentIDs: req.Documents, ReplyToID: req.ReplyTo,
+		Sticker: req.Sticker, DocumentIDs: req.Documents, AudioIDs: req.Audios, ReplyToID: req.ReplyTo,
 	}, nil
 }
 
@@ -663,12 +677,13 @@ func (a *api) checkSharedPost(r *http.Request, token, postID string) error {
 // is gone is left out, as what they wrote is everywhere, with what it
 // carried on.
 func (a *api) showAttached(r *http.Request, messages []*attachedJSON) error {
-	var posts, people, documents []string
+	var posts, people, documents, audios []string
 	for _, m := range messages {
 		if m.Post != "" {
 			posts = append(posts, m.Post)
 		}
 		documents = append(documents, m.documentIDs...)
+		audios = append(audios, m.audioIDs...)
 
 		if m.quote != nil && m.quote.Found {
 			people = append(people, m.quote.SenderID)
@@ -677,6 +692,7 @@ func (a *api) showAttached(r *http.Request, messages []*attachedJSON) error {
 		for _, f := range m.carried {
 			people = append(people, f.SenderID)
 			documents = append(documents, f.DocumentIDs...)
+			audios = append(audios, f.AudioIDs...)
 			if f.PostID != "" {
 				posts = append(posts, f.PostID)
 			}
@@ -684,6 +700,11 @@ func (a *api) showAttached(r *http.Request, messages []*attachedJSON) error {
 	}
 
 	docs, err := a.documentsOf(r.Context(), documents)
+	if err != nil {
+		return err
+	}
+
+	songs, err := a.audiosOf(r.Context(), viewerToken(r), audios)
 	if err != nil {
 		return err
 	}
@@ -718,6 +739,7 @@ func (a *api) showAttached(r *http.Request, messages []*attachedJSON) error {
 		}
 		m.SharedPhoto = sharedPhoto(m.AlbumPhoto)
 		m.Documents = documentsJSON(m.documentIDs, docs)
+		m.Audios = audiosJSON(m.audioIDs, songs)
 
 		if m.quote != nil {
 			var shown *authorJSON
@@ -757,6 +779,7 @@ func (a *api) showAttached(r *http.Request, messages []*attachedJSON) error {
 				SharedPhoto: sharedPhoto(f.SharedPhotoID),
 				Sticker:     f.Sticker,
 				Documents:   documentsJSON(f.DocumentIDs, docs),
+				Audios:      audiosJSON(f.AudioIDs, songs),
 			}
 			if f.PostID != "" {
 				fj.Repost = shown[f.PostID]

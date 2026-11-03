@@ -20,8 +20,12 @@ import (
 // markup that slips into a page cannot run. Pages and API share the origin.
 // Trusted Types close the sinks that turn a string into markup or a script
 // (innerHTML and the like) but to the two named policies of the site: the
-// theme's link (theme.js) and the service worker (push.js).
-const pageCSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; " +
+// theme's link (theme.js) and the service worker (push.js). The players of
+// SoundCloud and YouTube play their tracks in frames, with the covers of
+// those tracks.
+const pageCSP = "default-src 'self'; script-src 'self'; style-src 'self'; " +
+	"img-src 'self' data: https://*.sndcdn.com https://i.ytimg.com; " +
+	"frame-src https://w.soundcloud.com https://www.youtube-nocookie.com; " +
 	"connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; " +
 	"require-trusted-types-for 'script'; trusted-types freenet-theme freenet-sw"
 
@@ -102,6 +106,10 @@ func registerPages(mux *http.ServeMux, dir string) {
 	mux.Handle("GET /shop", site.page(dir, "stickers.html"))
 	mux.Handle("GET /stickers", site.page(dir, "stickers.html"))
 	mux.Handle("GET /docs", site.page(dir, "docs.html"))
+	mux.Handle("GET /audio", site.page(dir, "audio.html"))
+	mux.Handle("GET /audio/{nickname}", site.page(dir, "audio.html"))
+	mux.Handle("GET /playlist/{id}", site.page(dir, "audio.html"))
+	mux.Handle("GET /player", site.page(dir, "player.html"))
 	mux.Handle("GET /articles", site.page(dir, "articles.html"))
 	mux.Handle("GET /article/new", site.page(dir, "article-edit.html"))
 	mux.Handle("GET /article/{id}", site.page(dir, "article.html"))

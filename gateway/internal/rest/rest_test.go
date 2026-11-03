@@ -800,7 +800,7 @@ func (f *fakePosts) DeletePostponed(_ context.Context, token, id string) error {
 
 func (f *fakePosts) Create(_ context.Context, token string, np model.NewPost) (model.Post, error) {
 	f.token, f.wall, f.created, f.photos, f.newPost = token, np.WallID, np.Text, np.PhotoIDs, np
-	return model.Post{ID: "p9", Text: np.Text, PhotoIDs: np.PhotoIDs, FromWall: np.FromWall, Signed: np.Signed, NSFW: np.NSFW, Mine: true, Polled: np.Poll != nil, DocumentIDs: np.DocumentIDs, Link: np.Link, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
+	return model.Post{ID: "p9", Text: np.Text, PhotoIDs: np.PhotoIDs, FromWall: np.FromWall, Signed: np.Signed, NSFW: np.NSFW, Mine: true, Polled: np.Poll != nil, DocumentIDs: np.DocumentIDs, AudioIDs: np.AudioIDs, Link: np.Link, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
 }
 
 // Edit edits the posts Get knows.
@@ -1155,8 +1155,10 @@ type fakeMedia struct {
 	claimed, released []string
 	// releaseFails is how many releases fail before one goes through.
 	releaseFails int
-	// droppedDocuments are the documents deleted, "owner/id,id".
+	// droppedDocuments and droppedAudio are the documents and songs
+	// deleted, "owner/id,id".
 	droppedDocuments []string
+	droppedAudio     []string
 	// chatPhotos are the uploads and clean-ups of chat photos, "upload
 	// chat" and "keep chat photo".
 	chatPhotos []string
@@ -1177,6 +1179,23 @@ func (f *fakeMedia) Document(_ context.Context, ownerID, documentID string) ([]b
 
 func (f *fakeMedia) DeleteDocuments(_ context.Context, ownerID string, ids []string) error {
 	f.droppedDocuments = append(f.droppedDocuments, ownerID+"/"+strings.Join(ids, ","))
+	return nil
+}
+
+func (f *fakeMedia) UploadAudio(_ context.Context, _ string, data []byte) (string, error) {
+	f.uploaded = data
+	return "a9", f.err
+}
+
+func (f *fakeMedia) Audio(_ context.Context, ownerID, audioID string) ([]byte, error) {
+	if ownerID != "u1" || audioID != "a1" {
+		return nil, failure.New(failure.NotFound, "audio not found")
+	}
+	return []byte("ID3-song-bytes"), nil
+}
+
+func (f *fakeMedia) DeleteAudio(_ context.Context, ownerID string, ids []string) error {
+	f.droppedAudio = append(f.droppedAudio, ownerID+"/"+strings.Join(ids, ","))
 	return nil
 }
 
@@ -1462,7 +1481,7 @@ func (f *fakeMessages) Send(_ context.Context, token, recipientID string, d mode
 
 	m := model.Message{
 		ID: "m9", SenderID: "u1", RecipientID: recipientID, Sealed: d.Sealed, PhotoIDs: d.PhotoIDs, PostID: d.PostID, Forwarded: forwarded,
-		SharedPhotoID: d.SharedPhotoID, Sticker: d.Sticker, DocumentIDs: d.DocumentIDs,
+		SharedPhotoID: d.SharedPhotoID, Sticker: d.Sticker, DocumentIDs: d.DocumentIDs, AudioIDs: d.AudioIDs,
 		CreatedAt: time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC),
 	}
 	// A reply quotes a photo of bob's.
@@ -1608,6 +1627,8 @@ type harness struct {
 	holdem        *fakeHoldem
 	bets          *fakeBets
 	documents     *fakeDocuments
+	audio         *fakeAudio
+	tracks        *fakeTracks
 	articles      *fakeArticles
 	stories       *fakeStories
 	canvas        *fakeCanvas
@@ -1649,6 +1670,8 @@ func newHarness(cfg rest.Config) harness {
 		bets:          &fakeBets{},
 		faves:         &fakeFaves{},
 		documents:     &fakeDocuments{},
+		audio:         &fakeAudio{},
+		tracks:        &fakeTracks{},
 		articles:      &fakeArticles{},
 		stories:       &fakeStories{},
 		canvas:        &fakeCanvas{},
@@ -1685,6 +1708,8 @@ func newHarness(cfg rest.Config) harness {
 		Bets:          h.bets,
 		Faves:         h.faves,
 		Documents:     h.documents,
+		Audio:         h.audio,
+		Tracks:        h.tracks,
 		Articles:      h.articles,
 		Stories:       h.stories,
 		Canvas:        h.canvas,
