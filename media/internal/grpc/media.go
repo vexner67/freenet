@@ -43,6 +43,7 @@ type MediaHandler struct {
 	avatars   AvatarService
 	photos    PhotoService
 	documents DocumentService
+	audio     AudioService
 	purges    PurgeService
 	logger    *slog.Logger
 }
@@ -52,6 +53,7 @@ type Services struct {
 	Avatars   AvatarService
 	Photos    PhotoService
 	Documents DocumentService
+	Audio     AudioService
 	Purges    PurgeService
 }
 
@@ -60,6 +62,7 @@ func NewMediaHandler(s Services, logger *slog.Logger) *MediaHandler {
 		avatars:   s.Avatars,
 		photos:    s.Photos,
 		documents: s.Documents,
+		audio:     s.Audio,
 		purges:    s.Purges,
 		logger:    logger,
 	}

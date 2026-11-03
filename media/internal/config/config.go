@@ -74,6 +74,8 @@ type Config struct {
 	AvatarLimits ratelimit.Rules `env:"RATE_LIMIT_AVATARS" envDefault:"5/1m,30/24h"`
 	// DocumentLimits is how often a user uploads to "Мои Документы".
 	DocumentLimits ratelimit.Rules `env:"RATE_LIMIT_DOCUMENTS" envDefault:"10/1m,100/24h"`
+	// AudioLimits is how often a user uploads to "Аудиозаписи".
+	AudioLimits ratelimit.Rules `env:"RATE_LIMIT_AUDIO" envDefault:"20/1m,200/24h"`
 
 	// Access tokens are issued by the auth service; media only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`

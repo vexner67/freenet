@@ -73,8 +73,20 @@ service MediaService {
   // owner_id go. Idempotent; missing documents are fine.
   rpc DeleteDocuments(DeleteDocumentsRequest) returns (google.protobuf.Empty);
 
+  // Require an access token; the song belongs to the caller. An MP3 of
+  // "Аудиозаписи", kept for good at once as a document: the gateway adds
+  // it to the post service, which knows its artist and title, and deletes
+  // it here when that fails.
+  rpc UploadAudio(UploadAudioRequest) returns (UploadAudioResponse);
+  // Public: a song as it was uploaded.
+  rpc GetAudio(GetAudioRequest) returns (GetAudioResponse);
+  // Internal, for post (songs deleted by their owner) and the gateway (an
+  // upload the post service refused): the songs of owner_id go.
+  // Idempotent; missing songs are fine.
+  rpc DeleteAudio(DeleteAudioRequest) returns (google.protobuf.Empty);
+
   // Internal, for user: the user's page was deleted and not restored in
-  // time; all their avatars, photos and documents go. For post: the
+  // time; all their avatars, photos, documents and songs go. For post: the
   // community of this ID is gone, and its photo and backdrop go.
   // Idempotent.
   rpc PurgeUser(PurgeUserRequest) returns (google.protobuf.Empty);
@@ -239,4 +251,27 @@ message GetDocumentResponse {
 message DeleteDocumentsRequest {
   string owner_id = 1;
   repeated string document_ids = 2;
+}
+
+message UploadAudioRequest {
+  // An MP3 file of at most 20 MB.
+  bytes data = 1;
+}
+
+message UploadAudioResponse {
+  string audio_id = 1;
+}
+
+message GetAudioRequest {
+  string owner_id = 1;
+  string audio_id = 2;
+}
+
+message GetAudioResponse {
+  bytes data = 1;
+}
+
+message DeleteAudioRequest {
+  string owner_id = 1;
+  repeated string audio_ids = 2;
 }

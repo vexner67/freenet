@@ -7,6 +7,7 @@ import (
 	"time"
 
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
+	"github.com/vexner67/freenet/media/internal/audio"
 	"github.com/vexner67/freenet/media/internal/config"
 	"github.com/vexner67/freenet/media/internal/document"
 	"github.com/vexner67/freenet/media/internal/fs"
@@ -30,9 +31,10 @@ import (
 const (
 	// probeTimeout bounds the healthcheck.
 	probeTimeout = 3 * time.Second
-	// maxMessageBytes fits an upload of imaging.MaxUploadBytes or
-	// document.MaxBytes with headroom; gRPC allows 4 MB by default.
-	maxMessageBytes = max(imaging.MaxUploadBytes, document.MaxBytes) + 1<<20
+	// maxMessageBytes fits an upload of imaging.MaxUploadBytes,
+	// document.MaxBytes or audio.MaxBytes with headroom; gRPC allows 4 MB
+	// by default.
+	maxMessageBytes = max(imaging.MaxUploadBytes, document.MaxBytes, audio.MaxBytes) + 1<<20
 
 	connectTimeout = 5 * time.Second
 )
@@ -130,7 +132,8 @@ func (a *App) build(cfg config.Config) error {
 			Avatars:   service.NewAvatarService(stores.avatars),
 			Photos:    a.photos,
 			Documents: service.NewDocumentService(stores.documents),
-			Purges:    service.NewPurgeService(stores.avatars, stores.photos, stores.documents),
+			Audio:     service.NewAudioService(stores.audio),
+			Purges:    service.NewPurgeService(stores.avatars, stores.photos, stores.documents, stores.audio),
 		}, a.logger),
 	)
 
@@ -169,6 +172,7 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		// A backdrop is as rare as a photo of the page, with its own count.
 		mediav1.MediaService_UploadClubPhoto_FullMethodName: cfg.AvatarLimits,
 		mediav1.MediaService_UploadDocument_FullMethodName:  cfg.DocumentLimits,
+		mediav1.MediaService_UploadAudio_FullMethodName:     cfg.AudioLimits,
 	}
 }
 
@@ -196,12 +200,13 @@ type stores struct {
 	avatars   service.AvatarStore
 	photos    service.PhotoStore
 	documents service.DocumentStore
+	audio     service.AudioStore
 }
 
 func newStores(cfg config.Config) (stores, error) {
 	switch cfg.Storage {
 	case config.StorageInmem:
-		return stores{avatars: inmem.NewAvatarStore(), photos: inmem.NewPhotoStore(), documents: inmem.NewDocumentStore()}, nil
+		return stores{avatars: inmem.NewAvatarStore(), photos: inmem.NewPhotoStore(), documents: inmem.NewDocumentStore(), audio: inmem.NewAudioStore()}, nil
 	case config.StorageS3:
 		return newBucketStores(cfg)
 	}
@@ -221,7 +226,12 @@ func newStores(cfg config.Config) (stores, error) {
 		return stores{}, errs.Wrap("fs.NewDocumentStore", err)
 	}
 
-	return stores{avatars: avatars, photos: photos, documents: documents}, nil
+	audioStore, err := fs.NewAudioStore(cfg.MediaDir)
+	if err != nil {
+		return stores{}, errs.Wrap("fs.NewAudioStore", err)
+	}
+
+	return stores{avatars: avatars, photos: photos, documents: documents, audio: audioStore}, nil
 }
 
 func newBucketStores(cfg config.Config) (stores, error) {
@@ -241,7 +251,7 @@ func newBucketStores(cfg config.Config) (stores, error) {
 		return stores{}, errs.Wrap("s3.Open", err)
 	}
 
-	return stores{avatars: s3.NewAvatarStore(bucket), photos: s3.NewPhotoStore(bucket), documents: s3.NewDocumentStore(bucket)}, nil
+	return stores{avatars: s3.NewAvatarStore(bucket), photos: s3.NewPhotoStore(bucket), documents: s3.NewDocumentStore(bucket), audio: s3.NewAudioStore(bucket)}, nil
 }
 
 // Run serves and deletes unpublished photos until ctx is cancelled or the

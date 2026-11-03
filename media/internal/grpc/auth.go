@@ -20,6 +20,8 @@ func PublicMethods() []string {
 		mediav1.MediaService_PurgeUser_FullMethodName,
 		mediav1.MediaService_GetDocument_FullMethodName,
 		mediav1.MediaService_DeleteDocuments_FullMethodName,
+		mediav1.MediaService_GetAudio_FullMethodName,
+		mediav1.MediaService_DeleteAudio_FullMethodName,
 	}
 }
 
@@ -38,5 +40,6 @@ func InternalMethods() map[string][]string {
 		mediav1.MediaService_UploadClubPhoto_FullMethodName:       {mtls.Gateway},
 		mediav1.MediaService_DeleteClubPhotos_FullMethodName:      {mtls.Gateway},
 		mediav1.MediaService_DeleteDocuments_FullMethodName:       {mtls.Post, mtls.Gateway},
+		mediav1.MediaService_DeleteAudio_FullMethodName:           {mtls.Post, mtls.Gateway},
 	}
 }

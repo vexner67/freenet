@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 
+	"github.com/vexner67/freenet/media/internal/audio"
 	"github.com/vexner67/freenet/media/internal/avatar"
 	"github.com/vexner67/freenet/media/internal/document"
 	"github.com/vexner67/freenet/media/internal/imaging"
@@ -21,7 +22,7 @@ func ErrorInterceptor(log *slog.Logger) grpc.UnaryServerInterceptor {
 }
 
 func toStatus(err error) (*status.Status, bool) {
-	for _, invalid := range []error{imaging.ErrTooLarge, imaging.ErrNotImage, imaging.ErrTooManyPixels, avatar.ErrTooSmall, document.ErrEmpty, document.ErrTooBig} {
+	for _, invalid := range []error{imaging.ErrTooLarge, imaging.ErrNotImage, imaging.ErrTooManyPixels, avatar.ErrTooSmall, document.ErrEmpty, document.ErrTooBig, audio.ErrEmpty, audio.ErrTooBig, audio.ErrNotMP3} {
 		if errors.Is(err, invalid) {
 			return status.New(codes.InvalidArgument, invalid.Error()), true
 		}
@@ -29,6 +30,10 @@ func toStatus(err error) (*status.Status, bool) {
 
 	if errors.Is(err, avatar.ErrNotFound) {
 		return status.New(codes.NotFound, "avatar not found"), true
+	}
+
+	if errors.Is(err, audio.ErrNotFound) {
+		return status.New(codes.NotFound, "audio not found"), true
 	}
 
 	if errors.Is(err, document.ErrNotFound) {

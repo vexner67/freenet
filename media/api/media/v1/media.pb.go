@@ -1501,6 +1501,243 @@ func (x *DeleteDocumentsRequest) GetDocumentIds() []string {
 	return nil
 }
 
+type UploadAudioRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// An MP3 file of at most 20 MB.
+	Data          []byte `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UploadAudioRequest) Reset() {
+	*x = UploadAudioRequest{}
+	mi := &file_api_media_v1_media_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UploadAudioRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UploadAudioRequest) ProtoMessage() {}
+
+func (x *UploadAudioRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_media_v1_media_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UploadAudioRequest.ProtoReflect.Descriptor instead.
+func (*UploadAudioRequest) Descriptor() ([]byte, []int) {
+	return file_api_media_v1_media_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *UploadAudioRequest) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+type UploadAudioResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AudioId       string                 `protobuf:"bytes,1,opt,name=audio_id,json=audioId,proto3" json:"audio_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UploadAudioResponse) Reset() {
+	*x = UploadAudioResponse{}
+	mi := &file_api_media_v1_media_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UploadAudioResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UploadAudioResponse) ProtoMessage() {}
+
+func (x *UploadAudioResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_media_v1_media_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UploadAudioResponse.ProtoReflect.Descriptor instead.
+func (*UploadAudioResponse) Descriptor() ([]byte, []int) {
+	return file_api_media_v1_media_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *UploadAudioResponse) GetAudioId() string {
+	if x != nil {
+		return x.AudioId
+	}
+	return ""
+}
+
+type GetAudioRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OwnerId       string                 `protobuf:"bytes,1,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	AudioId       string                 `protobuf:"bytes,2,opt,name=audio_id,json=audioId,proto3" json:"audio_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAudioRequest) Reset() {
+	*x = GetAudioRequest{}
+	mi := &file_api_media_v1_media_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAudioRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAudioRequest) ProtoMessage() {}
+
+func (x *GetAudioRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_media_v1_media_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAudioRequest.ProtoReflect.Descriptor instead.
+func (*GetAudioRequest) Descriptor() ([]byte, []int) {
+	return file_api_media_v1_media_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *GetAudioRequest) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *GetAudioRequest) GetAudioId() string {
+	if x != nil {
+		return x.AudioId
+	}
+	return ""
+}
+
+type GetAudioResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Data          []byte                 `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAudioResponse) Reset() {
+	*x = GetAudioResponse{}
+	mi := &file_api_media_v1_media_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAudioResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAudioResponse) ProtoMessage() {}
+
+func (x *GetAudioResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_media_v1_media_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAudioResponse.ProtoReflect.Descriptor instead.
+func (*GetAudioResponse) Descriptor() ([]byte, []int) {
+	return file_api_media_v1_media_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *GetAudioResponse) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+type DeleteAudioRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OwnerId       string                 `protobuf:"bytes,1,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	AudioIds      []string               `protobuf:"bytes,2,rep,name=audio_ids,json=audioIds,proto3" json:"audio_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteAudioRequest) Reset() {
+	*x = DeleteAudioRequest{}
+	mi := &file_api_media_v1_media_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteAudioRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteAudioRequest) ProtoMessage() {}
+
+func (x *DeleteAudioRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_media_v1_media_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteAudioRequest.ProtoReflect.Descriptor instead.
+func (*DeleteAudioRequest) Descriptor() ([]byte, []int) {
+	return file_api_media_v1_media_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *DeleteAudioRequest) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *DeleteAudioRequest) GetAudioIds() []string {
+	if x != nil {
+		return x.AudioIds
+	}
+	return nil
+}
+
 var File_api_media_v1_media_proto protoreflect.FileDescriptor
 
 const file_api_media_v1_media_proto_rawDesc = "" +
@@ -1579,7 +1816,19 @@ const file_api_media_v1_media_proto_rawDesc = "" +
 	"\x04data\x18\x01 \x01(\fR\x04data\"V\n" +
 	"\x16DeleteDocumentsRequest\x12\x19\n" +
 	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12!\n" +
-	"\fdocument_ids\x18\x02 \x03(\tR\vdocumentIds*W\n" +
+	"\fdocument_ids\x18\x02 \x03(\tR\vdocumentIds\"(\n" +
+	"\x12UploadAudioRequest\x12\x12\n" +
+	"\x04data\x18\x01 \x01(\fR\x04data\"0\n" +
+	"\x13UploadAudioResponse\x12\x19\n" +
+	"\baudio_id\x18\x01 \x01(\tR\aaudioId\"G\n" +
+	"\x0fGetAudioRequest\x12\x19\n" +
+	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x19\n" +
+	"\baudio_id\x18\x02 \x01(\tR\aaudioId\"&\n" +
+	"\x10GetAudioResponse\x12\x12\n" +
+	"\x04data\x18\x01 \x01(\fR\x04data\"L\n" +
+	"\x12DeleteAudioRequest\x12\x19\n" +
+	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x1b\n" +
+	"\taudio_ids\x18\x02 \x03(\tR\baudioIds*W\n" +
 	"\n" +
 	"AvatarSize\x12\x1b\n" +
 	"\x17AVATAR_SIZE_UNSPECIFIED\x10\x00\x12\x15\n" +
@@ -1588,7 +1837,7 @@ const file_api_media_v1_media_proto_rawDesc = "" +
 	"\tPhotoSize\x12\x1a\n" +
 	"\x16PHOTO_SIZE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10PHOTO_SIZE_LARGE\x10\x01\x12\x14\n" +
-	"\x10PHOTO_SIZE_SMALL\x10\x022\x97\f\n" +
+	"\x10PHOTO_SIZE_SMALL\x10\x022\xeb\r\n" +
 	"\fMediaService\x12M\n" +
 	"\fUploadAvatar\x12\x1d.media.v1.UploadAvatarRequest\x1a\x1e.media.v1.UploadAvatarResponse\x12G\n" +
 	"\rDeleteAvatars\x12\x1e.media.v1.DeleteAvatarsRequest\x1a\x16.google.protobuf.Empty\x12D\n" +
@@ -1609,7 +1858,10 @@ const file_api_media_v1_media_proto_rawDesc = "" +
 	"CopyPhotos\x12\x1b.media.v1.CopyPhotosRequest\x1a\x16.google.protobuf.Empty\x12S\n" +
 	"\x0eUploadDocument\x12\x1f.media.v1.UploadDocumentRequest\x1a .media.v1.UploadDocumentResponse\x12J\n" +
 	"\vGetDocument\x12\x1c.media.v1.GetDocumentRequest\x1a\x1d.media.v1.GetDocumentResponse\x12K\n" +
-	"\x0fDeleteDocuments\x12 .media.v1.DeleteDocumentsRequest\x1a\x16.google.protobuf.Empty\x12?\n" +
+	"\x0fDeleteDocuments\x12 .media.v1.DeleteDocumentsRequest\x1a\x16.google.protobuf.Empty\x12J\n" +
+	"\vUploadAudio\x12\x1c.media.v1.UploadAudioRequest\x1a\x1d.media.v1.UploadAudioResponse\x12A\n" +
+	"\bGetAudio\x12\x19.media.v1.GetAudioRequest\x1a\x1a.media.v1.GetAudioResponse\x12C\n" +
+	"\vDeleteAudio\x12\x1c.media.v1.DeleteAudioRequest\x1a\x16.google.protobuf.Empty\x12?\n" +
 	"\tPurgeUser\x12\x1a.media.v1.PurgeUserRequest\x1a\x16.google.protobuf.EmptyB8Z6github.com/vexner67/freenet/media/api/media/v1;mediav1b\x06proto3"
 
 var (
@@ -1625,7 +1877,7 @@ func file_api_media_v1_media_proto_rawDescGZIP() []byte {
 }
 
 var file_api_media_v1_media_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_api_media_v1_media_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
+var file_api_media_v1_media_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
 var file_api_media_v1_media_proto_goTypes = []any{
 	(AvatarSize)(0),                      // 0: media.v1.AvatarSize
 	(PhotoSize)(0),                       // 1: media.v1.PhotoSize
@@ -1657,7 +1909,12 @@ var file_api_media_v1_media_proto_goTypes = []any{
 	(*GetDocumentRequest)(nil),           // 27: media.v1.GetDocumentRequest
 	(*GetDocumentResponse)(nil),          // 28: media.v1.GetDocumentResponse
 	(*DeleteDocumentsRequest)(nil),       // 29: media.v1.DeleteDocumentsRequest
-	(*emptypb.Empty)(nil),                // 30: google.protobuf.Empty
+	(*UploadAudioRequest)(nil),           // 30: media.v1.UploadAudioRequest
+	(*UploadAudioResponse)(nil),          // 31: media.v1.UploadAudioResponse
+	(*GetAudioRequest)(nil),              // 32: media.v1.GetAudioRequest
+	(*GetAudioResponse)(nil),             // 33: media.v1.GetAudioResponse
+	(*DeleteAudioRequest)(nil),           // 34: media.v1.DeleteAudioRequest
+	(*emptypb.Empty)(nil),                // 35: google.protobuf.Empty
 }
 var file_api_media_v1_media_proto_depIdxs = []int32{
 	0,  // 0: media.v1.GetAvatarRequest.size:type_name -> media.v1.AvatarSize
@@ -1682,29 +1939,35 @@ var file_api_media_v1_media_proto_depIdxs = []int32{
 	25, // 19: media.v1.MediaService.UploadDocument:input_type -> media.v1.UploadDocumentRequest
 	27, // 20: media.v1.MediaService.GetDocument:input_type -> media.v1.GetDocumentRequest
 	29, // 21: media.v1.MediaService.DeleteDocuments:input_type -> media.v1.DeleteDocumentsRequest
-	24, // 22: media.v1.MediaService.PurgeUser:input_type -> media.v1.PurgeUserRequest
-	3,  // 23: media.v1.MediaService.UploadAvatar:output_type -> media.v1.UploadAvatarResponse
-	30, // 24: media.v1.MediaService.DeleteAvatars:output_type -> google.protobuf.Empty
-	12, // 25: media.v1.MediaService.GetAvatar:output_type -> media.v1.GetAvatarResponse
-	3,  // 26: media.v1.MediaService.UploadClubAvatar:output_type -> media.v1.UploadAvatarResponse
-	30, // 27: media.v1.MediaService.DeleteClubAvatars:output_type -> google.protobuf.Empty
-	3,  // 28: media.v1.MediaService.UploadChatAvatar:output_type -> media.v1.UploadAvatarResponse
-	30, // 29: media.v1.MediaService.DeleteChatAvatars:output_type -> google.protobuf.Empty
-	14, // 30: media.v1.MediaService.UploadClubPhoto:output_type -> media.v1.UploadPhotoResponse
-	30, // 31: media.v1.MediaService.DeleteClubPhotos:output_type -> google.protobuf.Empty
-	14, // 32: media.v1.MediaService.UploadPhoto:output_type -> media.v1.UploadPhotoResponse
-	16, // 33: media.v1.MediaService.ClaimPhotos:output_type -> media.v1.ClaimPhotosResponse
-	30, // 34: media.v1.MediaService.ReleasePhotos:output_type -> google.protobuf.Empty
-	23, // 35: media.v1.MediaService.GetPhoto:output_type -> media.v1.GetPhotoResponse
-	30, // 36: media.v1.MediaService.PublishPhotos:output_type -> google.protobuf.Empty
-	30, // 37: media.v1.MediaService.DeletePublishedPhotos:output_type -> google.protobuf.Empty
-	30, // 38: media.v1.MediaService.CopyPhotos:output_type -> google.protobuf.Empty
-	26, // 39: media.v1.MediaService.UploadDocument:output_type -> media.v1.UploadDocumentResponse
-	28, // 40: media.v1.MediaService.GetDocument:output_type -> media.v1.GetDocumentResponse
-	30, // 41: media.v1.MediaService.DeleteDocuments:output_type -> google.protobuf.Empty
-	30, // 42: media.v1.MediaService.PurgeUser:output_type -> google.protobuf.Empty
-	23, // [23:43] is the sub-list for method output_type
-	3,  // [3:23] is the sub-list for method input_type
+	30, // 22: media.v1.MediaService.UploadAudio:input_type -> media.v1.UploadAudioRequest
+	32, // 23: media.v1.MediaService.GetAudio:input_type -> media.v1.GetAudioRequest
+	34, // 24: media.v1.MediaService.DeleteAudio:input_type -> media.v1.DeleteAudioRequest
+	24, // 25: media.v1.MediaService.PurgeUser:input_type -> media.v1.PurgeUserRequest
+	3,  // 26: media.v1.MediaService.UploadAvatar:output_type -> media.v1.UploadAvatarResponse
+	35, // 27: media.v1.MediaService.DeleteAvatars:output_type -> google.protobuf.Empty
+	12, // 28: media.v1.MediaService.GetAvatar:output_type -> media.v1.GetAvatarResponse
+	3,  // 29: media.v1.MediaService.UploadClubAvatar:output_type -> media.v1.UploadAvatarResponse
+	35, // 30: media.v1.MediaService.DeleteClubAvatars:output_type -> google.protobuf.Empty
+	3,  // 31: media.v1.MediaService.UploadChatAvatar:output_type -> media.v1.UploadAvatarResponse
+	35, // 32: media.v1.MediaService.DeleteChatAvatars:output_type -> google.protobuf.Empty
+	14, // 33: media.v1.MediaService.UploadClubPhoto:output_type -> media.v1.UploadPhotoResponse
+	35, // 34: media.v1.MediaService.DeleteClubPhotos:output_type -> google.protobuf.Empty
+	14, // 35: media.v1.MediaService.UploadPhoto:output_type -> media.v1.UploadPhotoResponse
+	16, // 36: media.v1.MediaService.ClaimPhotos:output_type -> media.v1.ClaimPhotosResponse
+	35, // 37: media.v1.MediaService.ReleasePhotos:output_type -> google.protobuf.Empty
+	23, // 38: media.v1.MediaService.GetPhoto:output_type -> media.v1.GetPhotoResponse
+	35, // 39: media.v1.MediaService.PublishPhotos:output_type -> google.protobuf.Empty
+	35, // 40: media.v1.MediaService.DeletePublishedPhotos:output_type -> google.protobuf.Empty
+	35, // 41: media.v1.MediaService.CopyPhotos:output_type -> google.protobuf.Empty
+	26, // 42: media.v1.MediaService.UploadDocument:output_type -> media.v1.UploadDocumentResponse
+	28, // 43: media.v1.MediaService.GetDocument:output_type -> media.v1.GetDocumentResponse
+	35, // 44: media.v1.MediaService.DeleteDocuments:output_type -> google.protobuf.Empty
+	31, // 45: media.v1.MediaService.UploadAudio:output_type -> media.v1.UploadAudioResponse
+	33, // 46: media.v1.MediaService.GetAudio:output_type -> media.v1.GetAudioResponse
+	35, // 47: media.v1.MediaService.DeleteAudio:output_type -> google.protobuf.Empty
+	35, // 48: media.v1.MediaService.PurgeUser:output_type -> google.protobuf.Empty
+	26, // [26:49] is the sub-list for method output_type
+	3,  // [3:26] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
 	3,  // [3:3] is the sub-list for extension extendee
 	0,  // [0:3] is the sub-list for field type_name
@@ -1721,7 +1984,7 @@ func file_api_media_v1_media_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_media_v1_media_proto_rawDesc), len(file_api_media_v1_media_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   28,
+			NumMessages:   33,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

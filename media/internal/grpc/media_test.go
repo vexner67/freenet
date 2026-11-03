@@ -45,7 +45,7 @@ func newServer(t *testing.T) testServer {
 	}
 
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	avatars, photos, documents := inmem.NewAvatarStore(), inmem.NewPhotoStore(), inmem.NewDocumentStore()
+	avatars, photos, documents, songs := inmem.NewAvatarStore(), inmem.NewPhotoStore(), inmem.NewDocumentStore(), inmem.NewAudioStore()
 	lis := bufconn.Listen(1 << 20)
 	srv := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		mediagrpc.ErrorInterceptor(log),
@@ -55,7 +55,8 @@ func newServer(t *testing.T) testServer {
 		Avatars:   service.NewAvatarService(avatars),
 		Photos:    service.NewPhotoService(photos, time.Hour, 24*time.Hour, 0),
 		Documents: service.NewDocumentService(documents),
-		Purges:    service.NewPurgeService(avatars, photos, documents),
+		Audio:     service.NewAudioService(songs),
+		Purges:    service.NewPurgeService(avatars, photos, documents, songs),
 	}, log))
 
 	go func() { _ = srv.Serve(lis) }()
@@ -468,5 +469,40 @@ func TestDocuments(t *testing.T) {
 	}
 	if _, err = s.client.GetDocument(context.Background(), &mediav1.GetDocumentRequest{OwnerId: ann.String(), DocumentId: uploaded.GetDocumentId()}); status.Code(err) != codes.NotFound {
 		t.Fatalf("a deleted document: %v", err)
+	}
+}
+
+func TestAudio(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann := uuid.New()
+	song := []byte("ID3\x04\x00 a song")
+
+	if _, err := s.client.UploadAudio(context.Background(), &mediav1.UploadAudioRequest{Data: song}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("upload without a token: %v", err)
+	}
+	if _, err := s.client.UploadAudio(s.as(t, ann), &mediav1.UploadAudioRequest{Data: []byte("%PDF")}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("not an MP3: %v", err)
+	}
+
+	uploaded, err := s.client.UploadAudio(s.as(t, ann), &mediav1.UploadAudioRequest{Data: song})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Anyone plays it by its address.
+	got, err := s.client.GetAudio(context.Background(), &mediav1.GetAudioRequest{OwnerId: ann.String(), AudioId: uploaded.GetAudioId()})
+	if err != nil || string(got.GetData()) != string(song) {
+		t.Fatalf("GetAudio = %q, %v", got.GetData(), err)
+	}
+
+	for range 2 {
+		if _, err = s.client.DeleteAudio(context.Background(), &mediav1.DeleteAudioRequest{OwnerId: ann.String(), AudioIds: []string{uploaded.GetAudioId()}}); err != nil {
+			t.Fatalf("DeleteAudio: %v", err)
+		}
+	}
+	if _, err = s.client.GetAudio(context.Background(), &mediav1.GetAudioRequest{OwnerId: ann.String(), AudioId: uploaded.GetAudioId()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("a deleted song: %v", err)
 	}
 }

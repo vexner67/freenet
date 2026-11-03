@@ -39,6 +39,9 @@ const (
 	MediaService_UploadDocument_FullMethodName        = "/media.v1.MediaService/UploadDocument"
 	MediaService_GetDocument_FullMethodName           = "/media.v1.MediaService/GetDocument"
 	MediaService_DeleteDocuments_FullMethodName       = "/media.v1.MediaService/DeleteDocuments"
+	MediaService_UploadAudio_FullMethodName           = "/media.v1.MediaService/UploadAudio"
+	MediaService_GetAudio_FullMethodName              = "/media.v1.MediaService/GetAudio"
+	MediaService_DeleteAudio_FullMethodName           = "/media.v1.MediaService/DeleteAudio"
 	MediaService_PurgeUser_FullMethodName             = "/media.v1.MediaService/PurgeUser"
 )
 
@@ -105,8 +108,19 @@ type MediaServiceClient interface {
 	// gateway (an upload the post service refused): the documents of
 	// owner_id go. Idempotent; missing documents are fine.
 	DeleteDocuments(ctx context.Context, in *DeleteDocumentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Require an access token; the song belongs to the caller. An MP3 of
+	// "Аудиозаписи", kept for good at once as a document: the gateway adds
+	// it to the post service, which knows its artist and title, and deletes
+	// it here when that fails.
+	UploadAudio(ctx context.Context, in *UploadAudioRequest, opts ...grpc.CallOption) (*UploadAudioResponse, error)
+	// Public: a song as it was uploaded.
+	GetAudio(ctx context.Context, in *GetAudioRequest, opts ...grpc.CallOption) (*GetAudioResponse, error)
+	// Internal, for post (songs deleted by their owner) and the gateway (an
+	// upload the post service refused): the songs of owner_id go.
+	// Idempotent; missing songs are fine.
+	DeleteAudio(ctx context.Context, in *DeleteAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
-	// time; all their avatars, photos and documents go. For post: the
+	// time; all their avatars, photos, documents and songs go. For post: the
 	// community of this ID is gone, and its photo and backdrop go.
 	// Idempotent.
 	PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -310,6 +324,36 @@ func (c *mediaServiceClient) DeleteDocuments(ctx context.Context, in *DeleteDocu
 	return out, nil
 }
 
+func (c *mediaServiceClient) UploadAudio(ctx context.Context, in *UploadAudioRequest, opts ...grpc.CallOption) (*UploadAudioResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UploadAudioResponse)
+	err := c.cc.Invoke(ctx, MediaService_UploadAudio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mediaServiceClient) GetAudio(ctx context.Context, in *GetAudioRequest, opts ...grpc.CallOption) (*GetAudioResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAudioResponse)
+	err := c.cc.Invoke(ctx, MediaService_GetAudio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mediaServiceClient) DeleteAudio(ctx context.Context, in *DeleteAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MediaService_DeleteAudio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *mediaServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -383,8 +427,19 @@ type MediaServiceServer interface {
 	// gateway (an upload the post service refused): the documents of
 	// owner_id go. Idempotent; missing documents are fine.
 	DeleteDocuments(context.Context, *DeleteDocumentsRequest) (*emptypb.Empty, error)
+	// Require an access token; the song belongs to the caller. An MP3 of
+	// "Аудиозаписи", kept for good at once as a document: the gateway adds
+	// it to the post service, which knows its artist and title, and deletes
+	// it here when that fails.
+	UploadAudio(context.Context, *UploadAudioRequest) (*UploadAudioResponse, error)
+	// Public: a song as it was uploaded.
+	GetAudio(context.Context, *GetAudioRequest) (*GetAudioResponse, error)
+	// Internal, for post (songs deleted by their owner) and the gateway (an
+	// upload the post service refused): the songs of owner_id go.
+	// Idempotent; missing songs are fine.
+	DeleteAudio(context.Context, *DeleteAudioRequest) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
-	// time; all their avatars, photos and documents go. For post: the
+	// time; all their avatars, photos, documents and songs go. For post: the
 	// community of this ID is gone, and its photo and backdrop go.
 	// Idempotent.
 	PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error)
@@ -454,6 +509,15 @@ func (UnimplementedMediaServiceServer) GetDocument(context.Context, *GetDocument
 }
 func (UnimplementedMediaServiceServer) DeleteDocuments(context.Context, *DeleteDocumentsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteDocuments not implemented")
+}
+func (UnimplementedMediaServiceServer) UploadAudio(context.Context, *UploadAudioRequest) (*UploadAudioResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UploadAudio not implemented")
+}
+func (UnimplementedMediaServiceServer) GetAudio(context.Context, *GetAudioRequest) (*GetAudioResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAudio not implemented")
+}
+func (UnimplementedMediaServiceServer) DeleteAudio(context.Context, *DeleteAudioRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteAudio not implemented")
 }
 func (UnimplementedMediaServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
@@ -821,6 +885,60 @@ func _MediaService_DeleteDocuments_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MediaService_UploadAudio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UploadAudioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).UploadAudio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_UploadAudio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).UploadAudio(ctx, req.(*UploadAudioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MediaService_GetAudio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAudioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).GetAudio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_GetAudio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).GetAudio(ctx, req.(*GetAudioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MediaService_DeleteAudio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteAudioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).DeleteAudio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_DeleteAudio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).DeleteAudio(ctx, req.(*DeleteAudioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MediaService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PurgeUserRequest)
 	if err := dec(in); err != nil {
@@ -921,6 +1039,18 @@ var MediaService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteDocuments",
 			Handler:    _MediaService_DeleteDocuments_Handler,
+		},
+		{
+			MethodName: "UploadAudio",
+			Handler:    _MediaService_UploadAudio_Handler,
+		},
+		{
+			MethodName: "GetAudio",
+			Handler:    _MediaService_GetAudio_Handler,
+		},
+		{
+			MethodName: "DeleteAudio",
+			Handler:    _MediaService_DeleteAudio_Handler,
 		},
 		{
 			MethodName: "PurgeUser",

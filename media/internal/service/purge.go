@@ -12,17 +12,19 @@ type PurgeService struct {
 	avatars   AvatarStore
 	photos    PhotoStore
 	documents DocumentStore
+	audio     AudioStore
 }
 
-func NewPurgeService(avatars AvatarStore, photos PhotoStore, documents DocumentStore) *PurgeService {
+func NewPurgeService(avatars AvatarStore, photos PhotoStore, documents DocumentStore, audio AudioStore) *PurgeService {
 	return &PurgeService{
 		avatars:   avatars,
 		photos:    photos,
 		documents: documents,
+		audio:     audio,
 	}
 }
 
-// PurgeUser removes all avatars, photos and documents of userID; nothing
+// PurgeUser removes all avatars, photos, documents and songs of userID; nothing
 // left is fine.
 func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 	if err := s.avatars.DeleteExcept(ctx, userID, uuid.Nil); err != nil {
@@ -35,6 +37,10 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 
 	if err := s.documents.DeleteAll(ctx, userID); err != nil {
 		return errs.Wrap("s.documents.DeleteAll", err)
+	}
+
+	if err := s.audio.DeleteAll(ctx, userID); err != nil {
+		return errs.Wrap("s.audio.DeleteAll", err)
 	}
 
 	return nil

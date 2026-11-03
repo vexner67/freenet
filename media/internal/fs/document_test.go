@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/vexner67/freenet/media/internal/audio"
 	"github.com/vexner67/freenet/media/internal/document"
 	"github.com/vexner67/freenet/media/internal/fs"
 	"github.com/vexner67/freenet/media/internal/inmem"
@@ -76,6 +77,43 @@ func TestDocumentStore(t *testing.T) {
 			}
 			if err = store.DeleteAll(ctx, uuid.New()); err != nil {
 				t.Fatalf("nothing to delete is fine: %v", err)
+			}
+		})
+	}
+}
+
+// The songs share the stores of the documents, in a folder of their own.
+func TestAudioStore(t *testing.T) {
+	t.Parallel()
+
+	disk, err := fs.NewAudioStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	stores := map[string]service.AudioStore{"fs": disk, "inmem": inmem.NewAudioStore()}
+	if b := bucket(t); b != nil {
+		stores["s3"] = s3.NewAudioStore(b)
+	}
+
+	for name, store := range stores {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			ann, song := uuid.New(), uuid.New()
+
+			if err := store.Save(ctx, ann, song, []byte("ID3")); err != nil {
+				t.Fatal(err)
+			}
+			if data, err := store.Load(ctx, ann, song); err != nil || string(data) != "ID3" {
+				t.Fatalf("Load = %q, %v", data, err)
+			}
+			if err := store.DeleteAll(ctx, ann); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := store.Load(ctx, ann, song); !errors.Is(err, audio.ErrNotFound) {
+				t.Fatalf("after DeleteAll: %v", err)
 			}
 		})
 	}
