@@ -432,6 +432,41 @@ func TestShopSellsToTheCity(t *testing.T) {
 	}
 }
 
+// TestShopsFollowTheCity: shops that crowd the city lower what it pays,
+// and they buy and sell at its prices, so each of them still earns.
+func TestShopsFollowTheCity(t *testing.T) {
+	t.Parallel()
+
+	rules := user.DefaultFirmRules()
+	c := newCity()
+	owner := uuid.New()
+	var shops []*user.Firm
+	for range 6 {
+		shops = append(shops, found(t, c, rules, owner, user.FirmShop))
+	}
+
+	// A price of the director's is the city's for a shop.
+	if err := c.SetAuto(owner, shops[0].ID(), user.GoodBread, user.Auto{Buy: true, BuyMax: 100_000, Sell: true, SellMin: 100_000}); err != nil {
+		t.Fatal(err)
+	}
+	if a := shops[0].Auto(user.GoodBread); a.BuyMax != 0 || a.SellMin != 0 {
+		t.Errorf("a shop keeps its prices: %+v", a)
+	}
+
+	c.Tick(rules, cityStart.Add(48*time.Hour))
+
+	for i, f := range shops {
+		var profit, sold int64
+		for _, h := range f.Hours() {
+			profit += h.Profit()
+			sold += h.Sold
+		}
+		if sold == 0 || profit <= 0 {
+			t.Errorf("shop %d of 6: sold %d, profit %d", i, sold, profit)
+		}
+	}
+}
+
 func TestRestoreCity(t *testing.T) {
 	t.Parallel()
 

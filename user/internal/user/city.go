@@ -486,6 +486,10 @@ func (c *City) SetAuto(userID, firmID uuid.UUID, g Good, a Auto) error {
 	if a.BuyMax < 0 || a.BuyMax > MaxFirmPrice || a.SellMin < 0 || a.SellMin > MaxFirmPrice {
 		return ErrFirmAuto
 	}
+	// What a shop sells it buys and sells at the prices of the city.
+	if slices.Contains(spec.Sells, g) {
+		a.BuyMax, a.SellMin = 0, 0
+	}
 
 	f.auto[g] = a
 
@@ -1275,7 +1279,8 @@ func (c *City) supplyPrice(rules FirmRules, g Good, at time.Time) int64 {
 func (c *City) supply(rules FirmRules, buyer, seller *Firm, g Good, want int64, at time.Time) int64 {
 	b, s := buyer.auto[g], seller.auto[g]
 	price := c.supplyPrice(rules, g, at)
-	if buyer == seller || !b.Buy || !s.Sell || price == 0 || (b.BuyMax > 0 && price > b.BuyMax) || price < s.SellMin {
+	most := c.buyMax(rules, buyer, g, at)
+	if buyer == seller || !b.Buy || !s.Sell || price == 0 || (most > 0 && price > most) || price < s.SellMin {
 		return 0
 	}
 
@@ -1333,7 +1338,8 @@ func (c *City) restock(rules FirmRules, f *Firm, g Good, want int64, at time.Tim
 	// no dearer than the state and the limit, then the storages of those
 	// that sell it by themselves.
 	most := int64(ask.at(sold))
-	if limit := f.auto[g].BuyMax; limit > 0 {
+	limit := c.buyMax(rules, f, g, at)
+	if limit > 0 {
 		most = min(most, limit)
 	}
 	want -= c.fromExchange(rules, f, g, min(want, c.room(rules, f, g)), most, at)
@@ -1346,7 +1352,7 @@ func (c *City) restock(rules FirmRules, f *Firm, g Good, want int64, at time.Tim
 		}
 	}
 
-	units := min(want, c.room(rules, f, g), ask.within(sold, f.auto[g].BuyMax))
+	units := min(want, c.room(rules, f, g), ask.within(sold, limit))
 	cost := func(u int64) int64 { return int64(math.Ceil(ask.sum(sold, u))) }
 
 	// The most the cash pays for: the cost grows with the units.
@@ -1411,8 +1417,43 @@ func (c *City) retail(rules FirmRules, f *Firm, g Good, workers, city float64, a
 		return
 	}
 
-	c.autoSell(cv.scaled(f.sales()*city), f, g, min(served, f.stock[g]), a.SellMin, at, cityBought,
+	c.autoSell(cv.scaled(f.sales()*city), f, g, min(served, f.stock[g]), c.shopSellMin(rules, g, at), at, cityBought,
 		func(m *MarketHour, u int64) { m.City += u })
+}
+
+// shopMargin is the percent of the price of the city a shop keeps: it
+// buys a good at most at the rest, to pay its workers and upkeep.
+const shopMargin = 10
+
+// buyMax is the most the enterprise pays for a unit of g by itself at at,
+// 0 for no limit. A shop follows the city, which changes its price every
+// hour as the shops sell: it buys at most at what the city pays now, less
+// shopMargin; the others keep the limit of their director.
+func (c *City) buyMax(rules FirmRules, f *Firm, g Good, at time.Time) int64 {
+	if !slices.Contains(f.spec().Sells, g) {
+		return f.auto[g].BuyMax
+	}
+
+	cv, err := rules.CityBuys(g)
+	if err != nil {
+		return 0
+	}
+	_, events := c.effects(f.kind, at)
+
+	return max(int64(cv.scaled(f.sales()*events).at(c.volume(g, at, cityBought)))*(100-shopMargin)/100, 1)
+}
+
+// shopSellMin is the least a shop takes from the city for a unit of g at
+// at: what the state pays for it now, so that a shop never sells below
+// what its goods are worth, and what it bought dear goes as soon as the
+// city pays that.
+func (c *City) shopSellMin(rules FirmRules, g Good, at time.Time) int64 {
+	bid, err := rules.StateBuys(g)
+	if err != nil {
+		return 0
+	}
+
+	return int64(bid.at(c.volume(g, at, stateBought)))
 }
 
 // autoSell sells up to units of g the enterprise has on the curve, while

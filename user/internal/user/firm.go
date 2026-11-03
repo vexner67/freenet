@@ -318,8 +318,8 @@ func (f *Firm) hour(at time.Time) *FirmHour {
 
 // defaultAuto is what a new enterprise does by itself: buys what it works
 // with at up to the price of the state with a fifth on top and sells what
-// it makes for any price; a shop buys and sells about what the state asks
-// with a tenth on top, so as not to sell at a loss.
+// it makes for any price; a shop buys and sells at the prices of the
+// city (City.buyMax, City.shopSellMin).
 func defaultAuto(spec FirmSpec, rules FirmRules) map[Good]Auto {
 	auto := map[Good]Auto{}
 	for _, in := range spec.Inputs {
@@ -330,9 +330,7 @@ func defaultAuto(spec FirmSpec, rules FirmRules) map[Good]Auto {
 		auto[spec.Output] = Auto{Sell: true}
 	}
 	for _, g := range spec.Sells {
-		p, _ := rules.Good(g)
-		margin := p.Base * int64(rules.Ceiling) * 11 / 1000
-		auto[g] = Auto{Buy: true, BuyMax: margin, Sell: true, SellMin: margin}
+		auto[g] = Auto{Buy: true, Sell: true}
 	}
 
 	return auto
