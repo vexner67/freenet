@@ -31,7 +31,7 @@ a { color: #5d3496; }
 .completeness-gauge > div { background: #c3a8eb; }
 
 /* The dark frames of the site wear the header of the theme. */
-.page-audio-head, .player-top, .player-controls, .game-window-title, .pet-window-title, .story-head, .call-title, .tabs.game-tabs a.active, .tabs.game-tabs a.active:hover, .pet-tab-chosen, .pet-tab-chosen:hover { background: linear-gradient(#8a63c9, #5b3496); border-color: #45247a; }
-.page-audio, .player-full, .player-bar, .audio-play, .playlist-cover, .game-window, .game-hud, .casino-game, .casino-balance, .pet-window, .story-box, .call-window, .call-clock, .call-stage { border-color: #45247a; }
+.player-bar, .player-queue-title, .game-window-title, .pet-window-title, .story-head, .call-title, .tabs.game-tabs a.active, .tabs.game-tabs a.active:hover, .pet-tab-chosen, .pet-tab-chosen:hover { background: linear-gradient(#8a63c9, #5b3496); border-color: #45247a; }
+.player-bar, .player-embed, .player-queue-box, .audio-row:not(.playing) .audio-play, .playlist-cover, .game-window, .game-hud, .casino-game, .casino-balance, .pet-window, .story-box, .call-window, .call-clock, .call-stage { border-color: #45247a; }
 .game-hud { background: #45247a; }
 .game-tabs { border-bottom-color: #45247a; }

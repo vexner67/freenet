@@ -215,28 +215,47 @@ async function showMusic(profile, me, isOwner) {
       el('span', { className: 'listening-icon' }),
       tr('слушает:'), ' ',
       el('a', { textContent: `${audioArtist(now)} — ${audioTitle(now)}`, onclick: () => play(now) }));
-    $('listening').hidden = false;
   }
+  $('listening').hidden = !now;
 
+  const box = $('page-audio');
   if (!music.pageAudio && !music.count) {
-    $('page-audio').hidden = true;
+    box.hidden = true;
     return;
   }
 
+  // openvk's block of a page: "Аудиозаписи", how many and "Все", then the
+  // song of the page and the last songs added, each playing the rest.
+  let songs = [];
+  if (music.count) {
+    try {
+      songs = (await api.audios(profile.nickname)).audios ?? [];
+    } catch {
+      songs = [];
+    }
+  }
   const song = music.pageAudio;
-  const box = $('page-audio');
-  box.replaceChildren(
-    el('div', { className: 'page-audio-head' },
-      el('a', { href: '/audio/' + encodeURIComponent(profile.nickname), textContent: tr('Аудиозаписи') }),
-      el('span', { className: 'page-audio-count', textContent: audiosCount(music.count) })),
-    song ? audioNode(song, { tools: me && !isOwner && !song.added ? [addButton(song)] : [] }) : null,
-    song && isOwner ? el('a', {
-      className: 'page-audio-remove', textContent: tr('Убрать песню страницы'),
+  const list = [song, ...songs.filter((a) => a.id !== song?.id)].filter(Boolean).slice(0, 4);
+  const all = '/audio/' + encodeURIComponent(profile.nickname);
+  const links = [el('a', { href: all, textContent: tr('Все') })];
+  if (song && isOwner) {
+    links.unshift(el('a', {
+      textContent: tr('Убрать песню страницы'),
       onclick: async () => {
         await api.setPageAudio('').catch(() => {});
         showMusic(profile, me, isOwner);
       },
-    }) : null);
+    }), ' | ');
+  }
+
+  box.replaceChildren(
+    el('div', { className: 'section-title', textContent: tr('Аудиозаписи') }),
+    el('div', { className: 'subtitle' }, el('span', { textContent: audiosCount(music.count) }), el('span', {}, ...links)),
+    el('div', { className: 'audio-list page-audio-list' }, ...list.map((a) => {
+      const row = audioNode(a, { queue: () => list, tools: me && !isOwner && !a.added ? [addButton(a)] : [] });
+      if (a.id === song?.id) row.classList.add('page-audio-song');
+      return row;
+    })));
   box.hidden = false;
 }
 

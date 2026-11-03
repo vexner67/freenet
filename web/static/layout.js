@@ -765,6 +765,18 @@ export function applyInterface(me) {
 }
 
 // renderChrome fills the header and the sidebar for a signed-in user or a guest.
+// resumePlayer opens the bar of the player on a page of the tab after one
+// that played a song (audio.js opens it where the last page left it).
+function resumePlayer() {
+  let kept = null;
+  try {
+    kept = sessionStorage.getItem('freenet.player');
+  } catch {
+    return;
+  }
+  if (kept) import('/static/audio.js').catch(() => {});
+}
+
 export function renderChrome(me) {
   const links = $('header-links');
   const menu = $('menu');
@@ -772,6 +784,7 @@ export function renderChrome(me) {
   addHeaderSearch();
   addBackLink();
   addVersionSwitch();
+  resumePlayer();
   // A phone has the links of a signed-in user in the bar of sections and
   // the menu, not in its header (m.css).
   links.classList.toggle('signed-in', Boolean(me) && !me.deactivated && !me.ban);
