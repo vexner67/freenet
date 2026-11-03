@@ -11,7 +11,7 @@ import { api, currentUser, started } from './api.js';
 import { clubsCount, myClubsCount } from './labels.js';
 import { $, clubRef, el, fullName, pagePath, renderChrome, showPinnedClubs, showError, hideError } from './layout.js';
 import { clubRow } from './clubs.js';
-import { countTo, flash, floatText, gameIcon } from './game.js';
+import { flash, floatText } from './game.js';
 import { coins, dealTick } from './sounds.js';
 import { tr } from './i18n.js';
 
@@ -117,7 +117,6 @@ async function load(list, node, summary) {
     first = null;
 
     if (!cursor) $('summary').textContent = summary(page.total);
-    if (!cursor) showHUD(page.total);
     $('clubs').append(...page.clubs.map((club) => node(club)));
     applySearch();
     cursor = page.nextCursor;
@@ -125,27 +124,6 @@ async function load(list, node, summary) {
   } catch (e) {
     showError($('error'), e);
   }
-}
-
-// showHUD is the plates over the list: how many and "Создать группу" close at
-// hand.
-function showHUD(all) {
-  const sum = el('b', { className: 'game-hud-sum' });
-  const shown = !other || other === me?.nickname;
-
-  countTo(sum, 0, all, String, 500);
-  $('groups-hud').hidden = !shown;
-  $('groups-hud').replaceChildren(
-    el('div', { className: 'game-hud-cell' },
-      el('span', { className: 'game-hud-name' }, gameIcon(managed ? '/static/icons/game/crown.svg' : '/static/icons/game/group.svg'), managed ? tr('Управляете') : tr('Вы состоите')),
-      sum, el('span', { className: 'hint', textContent: tr('групп') })),
-    el('a', { className: 'game-hud-cell', href: '/search?section=groups' },
-      el('span', { className: 'game-hud-name' }, gameIcon('/static/icons/game/loupe.svg'), tr('Поиск')),
-      el('b', { className: 'game-hud-sum', textContent: '→' }), el('span', { className: 'hint', textContent: tr('найти новые группы') })),
-    el('a', { className: 'game-hud-cell', href: '/groups/create' },
-      el('span', { className: 'game-hud-name' }, gameIcon('/static/icons/game/plus.svg'), tr('Своя группа')),
-      el('b', { className: 'game-hud-sum', textContent: '+' }), el('span', { className: 'hint', textContent: tr('создать за минуту') })),
-  );
 }
 
 // applySearch leaves the groups shown whose names have the words typed.

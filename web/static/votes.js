@@ -1,6 +1,7 @@
-// "Мои Голоса" at /votes, a small bank of votes in the look of the games of
-// money: "Счёт" (the card, the balance, the daily bonus, what came in and
-// went out in 30 days and the statement, all of it or ?flow=in|out), "Карта"
+// "Мои Голоса" at /votes, a small bank of votes in the look of the profile:
+// "Счёт" (the card and, as the lines of "Информация", the balance, the
+// deposit, the debt, the rating and what came in and went out in 30 days;
+// the daily bonus and the statement, all of it or ?flow=in|out), "Карта"
 // (?act=card: the virtual card and its covers), "Перевести" (?act=transfer,
 // ?to=<nickname> names the recipient; the fee is shown as the votes are
 // typed), "Пополнить" (?act=top-up: a voucher), "Получить" (?act=receive: the
@@ -9,10 +10,10 @@
 // too) and "Кредит" (?act=loan).
 
 import { api, currentUser, started } from './api.js';
-import { balanceVotes, balanceWord, balanceAmount, MAX_RATING, RATING_PRICE, bankRate, bankVotes, cardCovers, cardNumber, grownDeposit, groupedVotes, TRANSFER_FEE_PERCENT, formatDateTime, isEndless, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, votesFontSize, voucherGave } from './labels.js';
+import { balanceAmount, MAX_RATING, RATING_PRICE, bankRate, bankVotes, cardCovers, cardNumber, grownDeposit, groupedVotes, TRANSFER_FEE_PERCENT, formatDateTime, isEndless, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, voucherGave } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError, verifiedMark } from './layout.js';
 import { chips, meter } from './controls.js';
-import { countTo, flash, floatText, gameIcon, helpButton } from './game.js';
+import { countTo, flash, floatText, helpButton } from './game.js';
 import { notify, toast } from './modal.js';
 import { coins, dealTick, fanfare } from './sounds.js';
 import { tr } from './i18n.js';
@@ -48,24 +49,21 @@ let shownVotes = null;
 let rated = 0;
 
 // showBalance runs the balance up to votes wherever the page shows it: the
-// strip on top, the big number and the card.
+// line "На счету" and the card.
 function showBalance(votes) {
   const from = shownVotes ?? votes;
   const whole = isEndless(from) || isEndless(votes);
   shownVotes = votes;
 
-  countTo($('hud-votes'), whole ? votes : from, votes, balanceVotes);
-  countTo($('votes'), whole ? votes : from, votes, balanceVotes);
-  $('votes').style.fontSize = `${votesFontSize(votes)}px`;
-  $('votes-word').textContent = balanceWord(votes);
+  countTo($('votes'), whole ? votes : from, votes, balanceAmount);
   // The endless balance of an administrator is worth no sum.
   $('votes-rubles').textContent = rated && !isEndless(votes) ? `≈ ${rubles(votes * rated)}` : '';
   for (const sum of document.querySelectorAll('.bank-card-sum')) sum.textContent = balanceAmount(votes);
 }
 
-// showRating is the rating of the page on the strip on top.
+// showRating is the line "Рейтинг" of the account.
 function showRating(me) {
-  $('hud-rating').textContent = `${me.completeness ?? me.rating ?? 0} %`;
+  $('info-rating').textContent = `${me.completeness ?? me.rating ?? 0} %`;
 }
 
 // reward is the answer of the page to money moved: a number flying up from
@@ -145,7 +143,7 @@ function rollNumber(node, number, done) {
 
 // blankNode stands for a card not issued yet, with the button that issues it.
 function blankNode(me, place) {
-  const issue = el('button', { type: 'button', className: 'button game-go', textContent: tr('Оформить карту') });
+  const issue = el('button', { type: 'button', className: 'button', textContent: tr('Оформить карту') });
 
   issue.addEventListener('click', async () => {
     hideError(error);
@@ -167,7 +165,6 @@ function blankNode(me, place) {
 
   return el('div', { className: 'bank-card blank' },
     el('div', { className: 'bank-card-blank' },
-      gameIcon('/static/icons/game/card.svg', 24),
       el('b', { textContent: tr('Виртуальная карта Freenet') }),
       el('span', { textContent: tr('Свой номер и обложка на выбор. Бесплатно.') }),
       issue));
@@ -197,7 +194,6 @@ function operationRow(op, me) {
   about.push(el('div', { className: 'bank-op-date', textContent: formatDateTime(op.createdAt) }));
 
   return el('div', { className: 'bank-op' },
-    gameIcon(op.amount < 0 ? '/static/icons/game/out.svg' : '/static/icons/game/in.svg', 24),
     el('div', { className: 'bank-op-about' }, ...about),
     el('div', { className: 'bank-op-sum' },
       el('b', { className: op.amount < 0 ? 'bank-out' : 'bank-in', textContent: signedVotes(op.amount) }),
@@ -241,13 +237,6 @@ function showBonus(state, me) {
       claim.disabled = false;
     }
   };
-}
-
-// showFlows is the strip of what came in against what went out.
-function showFlows(income, expense) {
-  if (!income && !expense) return;
-  $('flow-bar-in').style.width = `${(income / (income + expense)) * 100}%`;
-  $('flow-bar').hidden = false;
 }
 
 // initCard is the card with its tools and the covers to choose from: a
@@ -317,8 +306,8 @@ async function initAccount(me) {
   rate.then((kopecks) => {
     if (!kopecks) return;
     rated = kopecks;
-    $('vote-rate').textContent = tr('Курс: {0}.', voteRate(kopecks));
-    $('vote-rate').hidden = false;
+    $('vote-rate').textContent = voteRate(kopecks);
+    $('vote-rate-row').hidden = false;
     showBalance(me.votes ?? 0);
   });
 
@@ -334,7 +323,6 @@ async function initAccount(me) {
     $('income').textContent = signedVotes(page.income);
     $('expense').textContent = signedVotes(-page.expense);
     $('operations-empty').hidden = page.operations.length > 0;
-    showFlows(page.income, page.expense);
     show(page);
   } catch (e) {
     showError(error, e);
@@ -500,8 +488,8 @@ function showBank(bank) {
   const { settings: s, account: a } = bank;
   const owed = Math.ceil(a.debt / 100);
 
-  $('hud-deposit').textContent = groupedVotes(Math.floor(a.deposit / 100));
-  $('hud-debt').textContent = groupedVotes(owed);
+  $('info-deposit').textContent = a.deposit ? bankVotes(a.deposit) : tr('нет');
+  $('info-debt').textContent = a.debt ? bankVotes(a.debt) : tr('нет');
   $('deposit-state').textContent = a.deposit
     ? tr('На вкладе {0}.', bankVotes(a.deposit))
     : tr('Вклада пока нет.');
@@ -708,7 +696,6 @@ if (!me) {
   $('tab-' + act).classList.add('active');
   $(act).hidden = false;
   $('loading').hidden = true;
-  $('bank-hud').hidden = false;
   showBalance(me.votes ?? 0);
   showRating(me);
   bankState.then(showBank, () => {});

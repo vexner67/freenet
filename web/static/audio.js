@@ -1,12 +1,12 @@
-// Songs, as openvk's "Аудиозаписи": a song is a row with a round play
+// Songs, as openvk's "Аудиозаписи": a song is a row with a grey play
 // button, "Исполнитель — Название" and its length; "⋯" at its right end
 // keeps what may be done with it. Posts and messages attach songs
 // ("Прикрепить" → "Аудиозапись"), picked from one's library, uploaded or
 // added by a link of SoundCloud or YouTube there and then.
 //
-// The songs play in the player (player.js): a bar over the bottom of the
-// page in the same tab, which the next page of the tab opens again where
-// it was.
+// The songs play in the player (player.js), made at the first song of
+// the tab; while it plays, the pages opened from this one open in the
+// frame of shell.js, and their songs play in the player of the tab.
 
 import { api, currentUser, signedIn } from './api.js';
 import { MAX_AUDIOS, MAX_AUDIO_BYTES, audioArtist, audioNames, audioSite, audioTime, audioTitle, errorText } from './labels.js';
@@ -17,19 +17,63 @@ import { tr } from './i18n.js';
 // What plays now and the songs that would not, as the player last said.
 const playing = { id: '', on: false };
 const broken = new Set();
-// player is the bar, made at the first song of the tab.
+
+// outer is the player of the tab when this page is in the frame of
+// shell.js: songs and what plays go to it and from it as JSON, so that
+// nothing of a page that goes away stays in it.
+const outer = (() => {
+  try {
+    return window.parent !== window ? window.parent.freenetPlayer ?? null : null;
+  } catch {
+    return null;
+  }
+})();
+
+// player is the player of this tab, made at its first song.
 let player = null;
 
 async function bar() {
-  player ??= (await import('/static/player.js')).createPlayer(document.body, { onState: showState });
+  if (outer) return outer;
+  if (player) return player;
+
+  const [{ createPlayer }, shell] = await Promise.all([import('/static/player.js'), import('/static/shell.js')]);
+  let state = playing;
+  const made = createPlayer(document.body, {
+    onState: (next) => {
+      state = next;
+      showState(next);
+      shell.tellFrame({ freenetPlayer: next });
+    },
+    // × in the shell leaves it for the page of the frame, as it is.
+    onStop: () => {
+      const page = shell.framePage();
+      if (page) location.replace(page);
+    },
+  });
+  shell.startShell(made.active);
+  player = {
+    play: (audio, queue) => made.play(JSON.parse(audio), JSON.parse(queue)),
+    toggle: () => made.toggle(),
+    state: () => JSON.stringify(state),
+    restore: (saved) => made.restore(saved),
+  };
+  window.freenetPlayer = player;
   return player;
 }
 
-// A song the last page of the tab played plays on here.
-import('/static/player.js').then(({ saved }) => {
-  const state = saved();
-  if (state) bar().then((p) => p.restore(state));
-}).catch(() => {});
+if (outer) {
+  // The page in the frame hears what plays from the tab.
+  window.addEventListener('message', (event) => {
+    if (event.origin === location.origin && event.source === window.parent && event.data?.freenetPlayer) showState(event.data.freenetPlayer);
+  });
+  showState(JSON.parse(outer.state()));
+} else {
+  // A song the last page of the tab played plays on here.
+  import('/static/player.js').then(({ saved }) => {
+    const state = saved();
+    if (state) bar().then((p) => p.restore(state));
+  }).catch(() => {});
+}
 
 // showState marks the rows of the song that plays and of those that
 // would not.
@@ -53,7 +97,7 @@ function markRow(row) {
 export async function play(audio, queue = [audio]) {
   const p = await bar();
   if (audio.id === playing.id) p.toggle();
-  else p.play(audio, queue);
+  else p.play(JSON.stringify(audio), JSON.stringify(queue));
 }
 
 // audioNode is a song as a row. queue gives the list it plays in; pick,
@@ -74,7 +118,6 @@ export function audioNode(audio, { queue = () => [audio], pick = null, tools = [
     pick
       ? el('a', { className: 'audio-pick', onclick: () => pick(audio) }, name)
       : el('span', { className: 'audio-label', onclick: () => play(audio, queue()) }, name),
-    el('span', { className: 'audio-eq', ariaHidden: 'true' }, el('i'), el('i'), el('i')),
     el('span', { className: 'audio-broken', textContent: tr('Трек недоступен') }),
     length,
     ...tools,

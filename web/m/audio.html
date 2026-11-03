@@ -34,20 +34,22 @@
           <a id="tab-new" href="/audio?section=new">Новое</a>
           <a id="tab-playlists" href="/audio?section=playlists">Плейлисты</a>
         </div>
-        <div class="audio-toolbar">
-          <form class="audio-search" id="search-form" role="search">
+        <div class="gray-bar">
+          <form class="gray-bar-search audio-search" id="search-form" role="search">
             <input type="search" id="search" placeholder="Поиск аудиозаписей" aria-label="Поиск аудиозаписей">
           </form>
-          <a class="audio-action audio-upload" id="upload" hidden>Загрузить аудио</a>
-          <a class="audio-action audio-by-link" id="add-link" hidden>Добавить по ссылке</a>
-          <a class="audio-action audio-new-playlist" id="new-playlist" hidden>Новый плейлист</a>
+          <span class="audio-links">
+            <a id="upload" hidden>Загрузить аудио</a>
+            <a id="add-link" hidden>Добавить по ссылке</a>
+            <a id="new-playlist" hidden>Новый плейлист</a>
+          </span>
         </div>
         <div class="error" id="error" hidden></div>
         <div class="playlist-tools" id="playlist-tools" hidden><a id="rename-playlist">Переименовать</a><a id="delete-playlist">Удалить плейлист</a></div>
-        <p class="audio-summary" id="summary" hidden></p>
+        <div class="summary-bar" id="summary" hidden></div>
         <div class="audio-list" id="audios"></div>
         <div class="playlist-list" id="playlists" hidden></div>
-        <p class="audio-empty" id="empty" hidden>Здесь пока нет аудиозаписей.</p>
+        <p class="hint center audio-empty" id="empty" hidden>Здесь пока нет аудиозаписей.</p>
         <a class="wall-more" id="more" hidden>Показать ещё</a>
       </div>
     </div>

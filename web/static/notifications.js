@@ -16,7 +16,7 @@ import { callLength, conversationPath, formatPostDate, guestCame, notificationVe
 import { $, avatarURL, el, fullName, guestsSeen, pagePath, profilePath, renderChrome, setCounter, showError, hideError, verifiedMark } from './layout.js';
 import { postPath } from './posts.js';
 import { topicPath } from './topics.js';
-import { countTo, flash, gameIcon } from './game.js';
+import { flash } from './game.js';
 import { coins, dealTick } from './sounds.js';
 import { tr } from './i18n.js';
 
@@ -32,19 +32,18 @@ const shownIDs = new Set();
 // kinds are the plates over the list: what each shows and the icon its rows
 // wear. A type none lists is under "Важное".
 const kinds = [
-  { key: 'likes', icon: '/static/icons/game/heart.svg', name: () => tr('Лайки'), types: ['like', 'comment_like', 'topic_message_like', 'photo_like', 'story_like'] },
-  { key: 'comments', icon: '/static/icons/game/note.svg', name: () => tr('Комментарии'), types: ['comment', 'comment_reply', 'topic_message', 'photo_comment', 'story_comment', 'wall_post', 'repost'] },
-  { key: 'mentions', icon: '/static/icons/game/who.svg', name: () => tr('Упоминания'), types: ['post_mention', 'comment_mention', 'topic_mention', 'photo_mention'] },
-  { key: 'people', icon: '/static/icons/game/people.svg', name: () => tr('Люди'), types: ['follow', 'invite', 'match'] },
-  { key: 'gifts', icon: '/static/icons/game/gift.svg', name: () => tr('Подарки'), types: ['gift', 'prime', 'votes'] },
-  { key: 'calls', icon: '/static/icons/game/phone.svg', name: () => tr('Звонки'), types: ['call', 'missed_call'] },
-  { key: 'other', icon: '/static/icons/game/star.svg', name: () => tr('Важное'), types: [] },
+  { key: 'likes', name: () => tr('Лайки'), types: ['like', 'comment_like', 'topic_message_like', 'photo_like', 'story_like'] },
+  { key: 'comments', name: () => tr('Комментарии'), types: ['comment', 'comment_reply', 'topic_message', 'photo_comment', 'story_comment', 'wall_post', 'repost'] },
+  { key: 'mentions', name: () => tr('Упоминания'), types: ['post_mention', 'comment_mention', 'topic_mention', 'photo_mention'] },
+  { key: 'people', name: () => tr('Люди'), types: ['follow', 'invite', 'match'] },
+  { key: 'gifts', name: () => tr('Подарки'), types: ['gift', 'prime', 'votes'] },
+  { key: 'calls', name: () => tr('Звонки'), types: ['call', 'missed_call'] },
+  { key: 'other', name: () => tr('Важное'), types: [] },
 ];
 const kindOf = (type) => kinds.find((k) => k.types.includes(type)) ?? kinds[kinds.length - 1];
 
 let filter = '';
 let total = 0;
-let today = 0;
 const counted = {};
 
 function nodesOf(notifications) {
@@ -80,7 +79,7 @@ function withDays(nodes) {
 }
 
 function showFilters() {
-  $('notify-filters').replaceChildren(...[{ key: '', icon: '/static/icons/game/index.svg', name: () => tr('Всё') }, ...kinds].map((k) => el('button', {
+  $('notify-filters').replaceChildren(...[{ key: '', name: () => tr('Всё') }, ...kinds].map((k) => el('button', {
     className: k.key === filter ? 'notify-filter active' : 'notify-filter',
     type: 'button',
     disabled: Boolean(k.key) && !counted[k.key],
@@ -90,7 +89,7 @@ function showFilters() {
       showFilters();
       applyFilter();
     },
-  }, gameIcon(k.icon), k.name(), el('b', { textContent: String(k.key ? counted[k.key] ?? 0 : total) }))));
+  }, k.name(), el('b', { textContent: String(k.key ? counted[k.key] ?? 0 : total) }))));
 }
 
 // applyFilter hides what the plate does not show, and the days left empty.
@@ -108,32 +107,12 @@ function applyFilter() {
   });
 }
 
-function hudCell(icon, name, id, hint) {
-  return el('div', { className: 'game-hud-cell' },
-    el('span', { className: 'game-hud-name' }, gameIcon(icon), name),
-    el('b', { className: 'game-hud-sum', id, textContent: '0' }),
-    el('span', { className: 'hint', textContent: hint }));
-}
-
-function showHUD() {
-  $('notify-hud').replaceChildren(
-    hudCell('/static/icons/game/flame.svg', tr('За сегодня'), 'hud-today', tr('новых событий')),
-    hudCell('/static/icons/game/index.svg', tr('Показано'), 'hud-total', tr('событий на странице')),
-    hudCell('/static/icons/game/who.svg', tr('Гости'), 'hud-guests', tr('за последние 30 дней')),
-  );
-}
-
 // count takes in the rows added and runs the plates up.
 function count(nodes) {
-  const was = [total, today];
-
   for (const node of nodes) {
     total += 1;
     counted[node.dataset.kind] = (counted[node.dataset.kind] ?? 0) + 1;
-    if (dayOf(node.dataset.date) === dayOf(Date.now())) today += 1;
   }
-  countTo($('hud-total'), was[0], total, String);
-  countTo($('hud-today'), was[1], today, String);
   showFilters();
 }
 
@@ -401,7 +380,6 @@ function showGuests(page) {
   $('guests-more').hidden = !guestsCursor;
 
   const guestRows = $('guests-list').children.length;
-  countTo($('hud-guests'), Number($('hud-guests').textContent) || 0, Math.max(guestRows, page.guests.length), String);
   $('guests').hidden = guestRows === 0;
   // The archive is all notifications at once: guests there go untitled.
   $('guests-title').hidden = !unreadTab;
@@ -472,7 +450,6 @@ if (!me) {
   location.replace('/');
 } else {
   renderChrome(me);
-  showHUD();
   showFilters();
 
   $('title').replaceChildren(

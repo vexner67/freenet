@@ -90,7 +90,6 @@ h1.page-title { font-size: inherit; }
    hat on the "f" of the logo, a fir tree with a greeting under the menu
    and a few flakes of snow, the colour of which is the canvas's. */
 
-.festive .header { position: relative; }
 .festive .header::after {
   content: "";
   position: absolute;
@@ -2933,10 +2932,6 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
    a line per operation, what it brought green, what it took red. */
 .bank-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 4px; }
 .bank-form input { width: 140px; }
-.bank-totals { display: flex; gap: 10px; margin: 0 0 12px; }
-.bank-totals > div { flex: 1; padding: 8px 10px; border: 1px solid var(--line-dedede); background: var(--back-fff); }
-.bank-totals span { display: block; color: var(--text-626262); }
-.bank-totals b { font-size: 17px; }
 .bank-in { color: var(--text-43a047); }
 .bank-out { color: var(--text-d94c4c); }
 .bank-flows { margin: 0 0 8px; padding: 6px; }
@@ -2997,121 +2992,48 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .doc-attached { margin-top: 6px; }
 .doc-attached .doc-item { padding: 4px; }
 
-/* Songs in the look of the players of the 2000s: rows striped and lit
-   under the mouse, a glossy round ▶ that turns green with an equalizer
-   beside the name while its song plays, small glossy "+" and "⋯". */
+/* Songs, as openvk's audioEntry: a row with a small dark-grey ▶ (‖ while
+   its song plays), "Исполнитель — Название" and the length; the row of the
+   song that plays is grey, "+" and "⋯" are grey signs. */
 .audio-list { padding: 2px 0; }
-.audio-row { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-bottom: 1px solid var(--line-eee); transition: background-color 0.12s; }
-.audio-row:last-child { border-bottom: none; }
-.audio-list .audio-row:nth-child(even) { background: var(--back-fafafa); }
-.audio-list .audio-row:hover { background: var(--back-eef1f4); }
-.audio-list .audio-row.playing, .audio-list .audio-row.playing:hover { background: linear-gradient(var(--back-dcefd9), var(--back-f2f5f8)); }
-.audio-play {
-  flex: none;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 1px solid var(--line-333);
-  border-radius: 50%;
-  background: url("/static/icons/play.svg") no-repeat center / 14px, linear-gradient(rgb(255 255 255 / 30%), rgb(255 255 255 / 6%) 50%, rgb(0 0 0 / 0%) 51%), linear-gradient(var(--back-8b8b8b), var(--back-444));
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 30%), 1px 1px 0 var(--back-d4d4d4);
-  cursor: pointer;
-  transition: transform 0.12s ease-out;
-}
-.audio-row:hover .audio-play { transform: scale(1.12); }
-.audio-play:active, .audio-row:hover .audio-play:active { transform: scale(0.9); }
-.audio-row.playing .audio-play {
-  border-color: var(--back-1e5c36);
-  background: url("/static/icons/play.svg") no-repeat center / 14px, linear-gradient(rgb(255 255 255 / 40%), rgb(255 255 255 / 8%) 50%, rgb(0 0 0 / 0%) 51%), linear-gradient(var(--back-8bd86a), var(--back-2f7a4b));
-}
-.audio-row.playing:not(.paused) .audio-play { background: url("/static/icons/pause.svg") no-repeat center / 14px, linear-gradient(rgb(255 255 255 / 40%), rgb(255 255 255 / 8%) 50%, rgb(0 0 0 / 0%) 51%), linear-gradient(var(--back-8bd86a), var(--back-2f7a4b)); }
+.audio-row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 2px; }
+.audio-row:hover { background: var(--back-f2f2f2); }
+.audio-row.playing, .audio-row.playing:hover { background: var(--back-e6e6e6); }
+.audio-play { flex: none; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 2px; background: var(--back-595959) url("/static/icons/play.svg") no-repeat center / 10px; cursor: pointer; }
+.audio-play:hover { background-color: var(--back-707070); }
+.audio-row.playing:not(.paused) .audio-play { background-image: url("/static/icons/pause.svg"); }
 .audio-label, .audio-pick { flex: 1; min-width: 0; overflow: hidden; color: var(--text-000); text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .audio-label:hover, .audio-pick:hover { text-decoration: none; }
-.audio-artist { color: var(--text-45688e); }
-.audio-row.playing .audio-artist { color: var(--text-0c7a3c); }
-/* The equalizer has its place in every row: only the playing one shows it. */
-.audio-eq { display: flex; flex: none; align-items: flex-end; gap: 1px; width: 11px; height: 10px; visibility: hidden; }
-.audio-eq i { width: 3px; height: 100%; background: linear-gradient(var(--back-8bd86a), var(--back-2f7a4b)); transform: scaleY(0.35); transform-origin: bottom; }
-.audio-row.playing .audio-eq { visibility: visible; }
-.audio-row.playing:not(.paused) .audio-eq i { animation: audio-eq 0.7s ease-in-out infinite alternate; }
-.audio-row.playing:not(.paused) .audio-eq i:nth-child(2) { animation-duration: 0.5s; animation-delay: -0.2s; }
-.audio-row.playing:not(.paused) .audio-eq i:nth-child(3) { animation-duration: 0.9s; animation-delay: -0.4s; }
-@keyframes audio-eq { from { transform: scaleY(0.25); } to { transform: scaleY(1); } }
+.audio-artist { color: var(--text-2b587a); }
 .audio-time { flex: none; color: var(--text-626262); font-variant-numeric: tabular-nums; }
 .audio-site { font-size: 10px; }
 .audio-broken { display: none; flex: none; color: var(--text-626262); font-style: italic; }
 .audio-row.broken .audio-label, .audio-row.broken .audio-artist { color: var(--text-aaa); }
 .audio-row.broken .audio-broken { display: inline; }
 .audio-row.broken .audio-play { opacity: 0.5; }
-.audio-add, .audio-more {
-  flex: none;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border: 1px solid var(--line-bbb);
-  border-radius: 3px;
-  background: linear-gradient(var(--back-fff), var(--back-fff) 50%, var(--back-e6e6e6) 51%, var(--back-f2f2f2));
-  color: var(--text-555);
-  font-weight: bold;
-  line-height: 16px;
-  cursor: pointer;
-  transition: transform 0.12s ease-out;
-}
-.audio-add:hover, .audio-more:hover { border-color: var(--line-808080); transform: scale(1.1); }
-.audio-add:active, .audio-more:active { transform: scale(0.9); }
-.audio-add.done { border-color: var(--back-2f7a4b); background: linear-gradient(var(--back-dcefd9), var(--back-8bd86a)); color: var(--text-0c7a3c); }
+.audio-add, .audio-more { flex: none; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 2px; background: none; color: var(--text-626262); font: bold 12px tahoma, verdana, arial, sans-serif; line-height: 18px; cursor: pointer; }
+.audio-add:hover, .audio-more:hover { background: var(--back-dfe3e8); color: var(--text-333); }
+.audio-add.done { color: var(--text-aaa); }
 .audio-attached { margin-top: 6px; }
 .audio-picker { max-height: 360px; margin-top: 6px; overflow-y: auto; }
 .audio-search { margin: 8px 0; }
 .audio-search input { box-sizing: border-box; width: 100%; }
+.gray-bar .audio-search { margin: 0; }
+.gray-bar:has(.audio-links) { align-items: center; }
 .audio-refused { margin-bottom: 8px; padding: 8px; border: 1px solid var(--line-ddd09a); background: var(--back-f9f6e7); }
-/* "Аудиозаписи": under the tabs a grey strip with the search, round as
-   the fields of the 2000s, and glossy buttons with icons — upload, add by
-   a link, a new playlist. */
-.audio-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; padding: 6px; border: 1px solid var(--line-dae1e8); border-radius: 3px; background: linear-gradient(var(--back-f7f7f7), var(--back-e9edf1)); }
-.audio-toolbar .audio-search { flex: 1 1 200px; margin: 0; }
-.audio-toolbar .audio-search input { height: 24px; padding: 2px 8px 2px 24px; border: 1px solid var(--line-9aa3ae); border-radius: 12px; background: var(--back-fff) url("/static/icons/search.svg") no-repeat 7px center / 12px; box-shadow: inset 0 1px 2px rgb(0 0 0 / 12%); }
-.audio-action {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 5px;
-  height: 24px;
-  padding: 0 9px 0 7px;
-  border: 1px solid var(--line-9aa3ae);
-  border-radius: 3px;
-  background: linear-gradient(var(--back-fff), var(--back-fff) 50%, var(--back-e9e9e9) 51%, var(--back-f6f6f6));
-  box-shadow: 1px 1px 0 var(--back-d4d4d4);
-  color: var(--text-333);
-  font-weight: bold;
-  cursor: pointer;
-  transition: transform 0.12s ease-out;
-}
-.audio-action::before { width: 16px; height: 16px; background: no-repeat center / 16px; content: ""; }
-.audio-action:hover { border-color: var(--line-7d8792); color: var(--text-000); text-decoration: none; transform: translateY(-1px); }
-.audio-action:active { transform: translateY(1px); }
-.audio-upload::before { background-image: url("/static/icons/upload.svg"); }
-.audio-by-link::before { background-image: url("/static/icons/link.svg"); }
-.audio-new-playlist::before { background-image: url("/static/icons/playlist-add.svg"); }
-/* How many songs: a plate with the note, as the counters of the site. */
-.audio-summary { display: inline-flex; align-items: center; gap: 5px; margin: 0 0 6px; padding: 2px 8px 2px 6px; border: 1px solid var(--line-d7cf9e); border-radius: 10px; background: linear-gradient(var(--back-f7f1d6), var(--back-eee5b8)); color: var(--text-58462a); font-weight: bold; }
-.audio-summary::before { width: 14px; height: 14px; background: url("/static/icons/audio.svg") no-repeat center / 14px; content: ""; }
-.audio-empty { margin: 20px 0; padding: 50px 0 0; background: url("/static/icons/audio.svg") no-repeat center top / 40px; color: var(--text-626262); text-align: center; }
+/* "Аудиозаписи": the grey strip of the search under the tabs, and what
+   may be done as plain links at its right. */
+.audio-links { display: flex; flex: none; gap: 10px; align-items: center; }
+.audio-links a { cursor: pointer; }
 .playlist-tools { display: flex; gap: 12px; margin: 6px 0; }
 .playlist-tools a { cursor: pointer; }
-/* Playlists are glossy covers that rise under the mouse. */
+/* Playlists: a grey square with the note, the title and the date. */
 .playlist-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 6px 0; }
-.playlist-item { display: flex; flex-direction: column; gap: 3px; min-width: 0; color: var(--text-000); transition: transform 0.15s ease-out; }
-.playlist-item:hover { text-decoration: none; transform: translateY(-3px); }
-.playlist-cover {
-  aspect-ratio: 1;
-  border: 1px solid var(--line-333);
-  border-radius: 3px;
-  background: linear-gradient(155deg, rgb(255 255 255 / 55%), rgb(255 255 255 / 0%) 45%), url("/static/icons/audio.svg") no-repeat center / 40%, linear-gradient(var(--back-f2f5f8), var(--back-c5cbd3));
-  box-shadow: 2px 2px 0 var(--back-d4d4d4);
-}
-.playlist-item:hover .playlist-cover { box-shadow: 3px 4px 0 var(--back-c9cfd6); }
-.playlist-name { overflow: hidden; font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
+.playlist-item { display: flex; flex-direction: column; gap: 3px; min-width: 0; color: var(--text-000); }
+.playlist-item:hover { text-decoration: none; }
+.playlist-item:hover .playlist-name { text-decoration: underline; }
+.playlist-cover { aspect-ratio: 1; border: 1px solid var(--line-ddd); background: var(--back-f0f0f0) url("/static/icons/audio.svg") no-repeat center / 40%; }
+.playlist-name { overflow: hidden; color: var(--text-2b587a); font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
 .playlist-date { color: var(--text-626262); }
 .playlist-picker { display: flex; flex-direction: column; max-height: 300px; overflow-y: auto; }
 .playlist-pick { padding: 6px; border-bottom: 1px solid var(--line-eee); cursor: pointer; }
@@ -3124,119 +3046,71 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .page-audio-list { margin: 4px 8px 10px; }
 .page-audio-song { background: var(--back-f2f2f2); }
 
-/* The player (player.js): a dark glossy bar over the bottom of the page,
-   as the header, with round glossy buttons of a player of the 2000s — the
-   big ▶ green and breathing while a song plays, a lit button for shuffle,
-   repeat and no sound — and, over the bar, the player of SoundCloud or
-   YouTube at the left and the list it plays at the right. Every part has
-   its place from the start: nothing moves when the song changes. */
-.player-bar {
+/* The player (player.js), openvk's mini player: a dark box seen through,
+   white signs, the line of the song and of loudness thin white lines with
+   a small white block, × in its corner; the list it plays opens over it
+   under the pointer. The players of SoundCloud and YouTube play in it,
+   out of sight. */
+.player {
   position: fixed;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  right: 20px;
+  bottom: 20px;
   z-index: 45;
-  border-top: 1px solid var(--line-333);
-  background: linear-gradient(var(--back-636363), var(--back-3e3e3e));
-  box-shadow: 0 -2px 0 rgb(0 0 0 / 12%);
+  box-sizing: border-box;
+  width: 500px;
+  max-width: calc(100vw - 40px);
+  padding: 1px;
+  border-radius: 3px;
+  background: rgb(44 44 44 / 85%);
   color: var(--text-fff);
-  animation: player-in 0.2s ease-out;
 }
-@keyframes player-in { from { opacity: 0; transform: translateY(100%); } }
-body:has(.player-bar:not([hidden])) .layout { padding-bottom: 64px; }
-.player-inner { display: flex; align-items: center; gap: 10px; box-sizing: border-box; max-width: 791px; height: 54px; margin: 0 auto; padding: 0 8px; }
-.player-buttons { display: flex; flex: none; align-items: center; gap: 4px; }
-.player-btn {
-  position: relative;
-  flex: none;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 1px solid var(--line-2f2f2f);
-  border-radius: 50%;
-  background-color: var(--back-595959);
-  background-image: var(--player-icon), linear-gradient(rgb(255 255 255 / 32%), rgb(255 255 255 / 6%) 50%, rgb(0 0 0 / 0%) 51%, rgb(0 0 0 / 18%)), linear-gradient(var(--back-8b8b8b), var(--back-444));
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 14px, 100%, 100%;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 30%), 0 1px 2px rgb(0 0 0 / 40%);
-  cursor: pointer;
-  transition: transform 0.12s ease-out;
-}
-.player-btn:hover { transform: scale(1.08); }
-.player-btn:active { transform: scale(0.9); }
-.player-btn.active { background-image: var(--player-icon), linear-gradient(rgb(255 255 255 / 40%), rgb(255 255 255 / 8%) 50%, rgb(0 0 0 / 0%) 51%, rgb(0 0 0 / 15%)), linear-gradient(var(--back-5b7aa1), var(--back-34568b)); }
+.player-main { display: flex; gap: 8px; align-items: center; height: 35px; padding: 0 22px 0 8px; }
+.player-btn { flex: none; width: 16px; height: 16px; padding: 0; border: 0; background: var(--player-icon) no-repeat center / 14px; opacity: 0.85; cursor: pointer; }
+.player-btn:hover, .player-btn.active { opacity: 1; }
+.player-btn.active { background-color: rgb(255 255 255 / 20%); border-radius: 2px; }
+.player-toggle { --player-icon: url("/static/icons/play.svg"); width: 18px; height: 18px; opacity: 1; background-size: 16px; }
+.player-toggle.on { --player-icon: url("/static/icons/pause.svg"); }
 .player-prev { --player-icon: url("/static/icons/prev.svg"); }
 .player-next { --player-icon: url("/static/icons/next.svg"); }
-.player-toggle { --player-icon: url("/static/icons/play.svg"); }
-.player-toggle.on { --player-icon: url("/static/icons/pause.svg"); }
-.player-shuffle { --player-icon: url("/static/icons/shuffle.svg"); }
 .player-repeat { --player-icon: url("/static/icons/repeat.svg"); }
-.player-mute { --player-icon: url("/static/icons/volume.svg"); }
-.player-mute.active { --player-icon: url("/static/icons/mute.svg"); }
-.player-list { --player-icon: url("/static/icons/queue.svg"); }
-.player-toggle {
-  width: 38px;
-  height: 38px;
-  border-color: var(--back-1e5c36);
-  background-image: var(--player-icon), linear-gradient(rgb(255 255 255 / 45%), rgb(255 255 255 / 10%) 50%, rgb(0 0 0 / 0%) 51%, rgb(0 0 0 / 15%)), linear-gradient(var(--back-8bd86a), var(--back-2f7a4b));
-  background-size: 18px, 100%, 100%;
-}
-/* While a song plays a ring of light leaves the big button again and again. */
-.player-toggle::after {
-  position: absolute;
-  inset: -3px;
-  border: 2px solid var(--back-8bd86a);
-  border-radius: 50%;
-  opacity: 0;
-  content: "";
-  pointer-events: none;
-}
-.player-bar.playing .player-toggle::after { animation: player-pulse 1.6s ease-out infinite; }
-@keyframes player-pulse { from { opacity: 0.8; transform: scale(0.9); } to { opacity: 0; transform: scale(1.35); } }
-.player-cover { flex: none; width: 38px; height: 38px; border: 1px solid var(--line-2f2f2f); border-radius: 2px; background: var(--back-1f1f1f); object-fit: cover; }
-.player-middle { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
-.player-names { overflow: hidden; color: var(--text-e8e8e8); text-overflow: ellipsis; white-space: nowrap; }
-.player-artist { color: var(--text-fff); }
-.player-broken { margin-left: 6px; color: var(--text-d94c4c); }
-.player-site { margin-left: 6px; font-size: 10px; }
-.player-site a { color: var(--text-b4c6da); }
-.player-timeline { display: flex; align-items: center; gap: 6px; color: var(--text-e8e8e8); font-size: 10px; }
-.player-now, .player-total { flex: none; min-width: 28px; font-variant-numeric: tabular-nums; }
-.player-total { text-align: right; }
-.player-seek { flex: 1; min-width: 0; height: 12px; margin: 0; accent-color: var(--back-8bd86a); cursor: pointer; }
-.player-off { visibility: hidden; }
-.player-extra { display: flex; flex: none; align-items: center; gap: 4px; }
-.player-extra .player-btn { width: 24px; height: 24px; background-size: 12px, 100%, 100%; }
-.player-loud { display: flex; align-items: center; gap: 4px; }
-.player-volume { width: 64px; height: 12px; margin: 0; accent-color: var(--back-d4d4d4); cursor: pointer; }
-.player-close { flex: none; width: 24px; height: 24px; padding: 0; border: none; border-radius: 3px; background: none; color: var(--text-e8e8e8); font-size: 18px; line-height: 1; cursor: pointer; }
-.player-close:hover { background: rgb(255 255 255 / 10%); color: var(--text-fff); }
-.player-embed, .player-queue-box {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  overflow: hidden;
-  border: 1px solid var(--line-333);
-  border-radius: 3px;
-  background: var(--back-1f1f1f);
-  box-shadow: 2px 2px 0 var(--back-d4d4d4);
-}
-.player-embed { left: max(8px, calc(50% - 387px)); width: 320px; }
-.player-frame { display: block; width: 100%; border: 0; }
-.player-frame.soundcloud { height: 120px; }
-.player-frame.youtube { height: 180px; }
-.player-queue-box { right: max(8px, calc(50% - 387px)); width: 360px; background: var(--back-fff); color: var(--text-000); animation: player-pop 0.15s ease-out; }
-@keyframes player-pop { from { opacity: 0; transform: translateY(8px); } }
-.player-queue-title { padding: 4px 8px; background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); color: var(--text-fff); font-weight: bold; }
-.player-queue { max-height: 300px; overflow-y: auto; }
-.player-row { display: flex; gap: 6px; padding: 5px 8px; border-bottom: 1px solid var(--line-eee); color: var(--text-000); cursor: pointer; }
-.player-row:hover { background: var(--back-f7f7f7); text-decoration: none; }
-.player-row-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.player-row b { color: var(--text-45688e); }
-.player-row-time { flex: none; color: var(--text-626262); }
-.player-row.playing { background: var(--back-dcefd9); }
-.player-row.playing b::before { content: "▶ "; color: var(--text-43a047); }
-.player-row.broken, .player-row.broken b { color: var(--text-aaa); }
+.player-shuffle { --player-icon: url("/static/icons/shuffle.svg"); }
+.player-list { --player-icon: url("/static/icons/queue.svg"); display: none; }
+.player-track { flex: 1; min-width: 0; }
+.player-line { display: flex; gap: 6px; justify-content: space-between; line-height: 14px; }
+.player-name { min-width: 0; overflow: hidden; color: var(--text-fff); text-overflow: ellipsis; white-space: nowrap; }
+.player-name[href]:hover { text-decoration: underline; }
+.player-broken { margin-left: 6px; color: var(--text-ccc); font-style: italic; }
+.player-time { flex: none; min-width: 28px; text-align: right; font-variant-numeric: tabular-nums; cursor: pointer; }
+.player-time:hover { text-decoration: underline; }
+/* openvk's lines: a white line one pixel thick and a white block on it. */
+.player-seek, .player-volume { display: block; height: 8px; margin: 2px 0 0; background: none; cursor: pointer; appearance: none; }
+.player-seek { width: 100%; }
+.player-volume { flex: none; width: 60px; margin-top: 14px; }
+.player-seek::-webkit-slider-runnable-track, .player-volume::-webkit-slider-runnable-track { height: 1px; background: var(--back-fff); }
+.player-seek::-moz-range-track, .player-volume::-moz-range-track { height: 1px; background: var(--back-fff); }
+.player-seek::-webkit-slider-thumb, .player-volume::-webkit-slider-thumb { width: 11px; height: 6px; margin-top: 0; border: 0; border-radius: 0; background: var(--back-fff); appearance: none; }
+.player-seek::-moz-range-thumb, .player-volume::-moz-range-thumb { width: 11px; height: 6px; border: 0; border-radius: 0; background: var(--back-fff); transform: translateY(3px); }
+.player-buttons { display: flex; flex: none; gap: 8px; align-items: center; }
+.player-close { position: absolute; top: 2px; right: 2px; width: 14px; height: 14px; padding: 0; border: 0; background: none; color: var(--text-fff); font: 14px/14px tahoma, verdana, arial, sans-serif; opacity: 0.6; cursor: pointer; }
+.player-close::before { content: "×"; }
+.player-close:hover { opacity: 1; }
+.player-queue { position: absolute; right: 0; bottom: 100%; left: 0; display: none; max-height: 200px; margin-bottom: 2px; overflow-y: auto; border-radius: 2px; background: rgb(44 44 44 / 85%); }
+.player:hover .player-queue, .player.queue-open .player-queue { display: block; }
+.player-row { display: block; padding: 3px 10px; overflow: hidden; color: var(--text-ccc); text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.player-row:hover { background: rgb(0 0 0 / 20%); text-decoration: none; }
+.player-row.playing { background: rgb(0 0 0 / 45%); color: var(--text-fff); }
+.player-row.broken { color: var(--text-626262); }
+/* The player of SoundCloud or YouTube: in the page, as their players must
+   be to play, but in a pixel of the box and unseen. */
+.player-embed { position: absolute; bottom: 0; left: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.player-embed iframe { width: 300px; height: 200px; border: 0; }
+.with-player .layout, .framed .layout { padding-bottom: 60px; }
+
+/* The tab while a song plays (shell.js): the page opened from it in a
+   frame over the whole tab, the page the song started on under it. */
+.shell, .shell body { height: 100%; overflow: hidden; }
+.shell body > :not(.player, .shell-frame) { display: none; }
+.shell-frame { position: fixed; inset: 0; z-index: 1; width: 100%; height: 100%; border: 0; background: var(--back-fff); }
 
 /* Phones have pages of their own (web/m/, m.css): the bar of sections
    at the bottom and the search in the header are only theirs. */
@@ -4131,14 +4005,8 @@ button.game-hud-cell:hover { background: var(--back-f2f5f8); }
 
 /* The bank of "Мои Голоса": the card, its covers and the rewards around them. */
 .bank-tabs a { padding: 4px 6px; }
-#bank-hud a.game-hud-cell { color: inherit; text-decoration: none; }
-#bank-hud a.game-hud-cell:hover { background: var(--back-f2f5f8); }
-#bank-hud .game-hud-sum { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bank-top { display: flex; gap: 12px; align-items: stretch; margin: 0 0 12px; }
 .bank-top > .bank-card-place { flex: 0 0 56%; }
-.bank-top-side { display: flex; flex: 1; flex-direction: column; gap: 8px; min-width: 0; }
-.bank-top-side .finance-balance { width: auto; }
-.bank-top-side .finance-rate { display: block; margin: 2px 0 0; font-weight: normal; }
 .bank-card-place { container-type: inline-size; min-width: 0; }
 .bank-card-place.big { max-width: 400px; margin: 0 auto 10px; }
 .bank-card { position: relative; display: block; width: 100%; aspect-ratio: 340 / 214; padding: 0; border: 0; background: none; color: rgb(255 255 255); font: inherit; text-align: left; cursor: pointer; perspective: 900px; transition: transform 0.15s; }
@@ -4165,23 +4033,13 @@ button.bank-card:hover { transform: translateY(-2px) rotate(-0.5deg); }
 .bank-card.blank { cursor: default; }
 .bank-card-blank { display: flex; flex-direction: column; gap: 5px; align-items: center; justify-content: center; height: 100%; padding: 8px; box-sizing: border-box; border: 2px dashed var(--line-bbb); border-radius: 4.5cqw; background: var(--back-f2f5f8); color: var(--text-626262); text-align: center; }
 .bank-card-blank b { color: var(--text-45688e); }
-.bank-card-blank .button.game-go { width: auto; padding: 0 16px; }
 .bank-card-tools { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
-.bank-card-tools .button { display: inline-flex; gap: 4px; align-items: center; }
-.bank-tiles { display: grid; flex: 1; grid-template-columns: 1fr 1fr; gap: 4px; }
-.bank-tile { display: flex; flex-direction: column; gap: 2px; align-items: center; justify-content: center; min-width: 0; padding: 4px 2px; background: linear-gradient(var(--back-fff), var(--back-e4e4e4)); border: 1px solid var(--line-bbb); border-radius: 4px; color: var(--text-2b587a); text-align: center; }
-.bank-tile:hover { background: var(--back-f2f5f8); text-decoration: none; }
-.bank-tile:hover img { transform: scale(1.15); }
 .bank-pips { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; margin: 0 0 6px; }
 .bank-pip { padding: 5px 0; background: linear-gradient(var(--back-fff), var(--back-e4e4e4)); border: 1px solid var(--line-bbb); border-radius: 3px; color: var(--text-626262); font-weight: bold; text-align: center; }
 .bank-pip.done { background: linear-gradient(rgb(255 255 255 / 30%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--back-3f8f35); border-color: var(--back-3f8f35); color: var(--text-fff); }
 .bank-pip.next { border-color: var(--back-3f8f35); color: var(--back-3f8f35); animation: bank-pip 1.2s ease-in-out infinite; }
-@keyframes bank-pip { 50% { transform: scale(1.08); } }
 .bank-bonus-text { margin: 0 0 6px; font-weight: bold; text-align: center; }
 .bank-bonus .hint { margin: 4px 0 0; text-align: center; }
-.bank-flowbar { height: 8px; margin: -6px 0 12px; overflow: hidden; background: var(--text-d94c4c); border: 1px solid var(--line-bbb); border-radius: 3px; }
-.bank-flowbar-in { display: block; height: 100%; background: var(--text-43a047); transition: width 0.6s; }
-.bank-totals span { display: flex; gap: 4px; align-items: center; }
 .bank-op > .game-icon { flex: none; }
 .bank-covers { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 .bank-cover { display: flex; flex-direction: column; gap: 3px; align-items: center; min-width: 0; padding: 3px; background: none; border: 2px solid transparent; border-radius: 6px; color: inherit; font: inherit; cursor: pointer; transition: transform 0.12s; }
@@ -4549,3 +4407,64 @@ a.game-hud-cell:hover { background: var(--back-f2f5f8); }
 .post-video-play::before { content: ""; position: absolute; top: 15px; left: 20px; border-style: solid; border-width: 10px 0 10px 17px; border-color: transparent transparent transparent var(--text-fff); }
 .post-video:hover .post-video-play { opacity: 1; transform: scale(1.08); }
 .post-video-time { position: absolute; right: 6px; bottom: 6px; padding: 1px 5px; border-radius: 3px; background: rgb(0 0 0 / 75%); color: var(--text-fff); }
+
+/* The look of the profile everywhere (the owner's word, 2026-11): a block
+   of a page is the grey bar of the profile over its content, tabs are
+   words, buttons are the grey buttons of openvk, and numbers stand as the
+   lines of "Информация" — no icons, frames and colours only for beauty.
+   It comes last, over what the pages of games and money drew before. */
+.game-window, .pet-window, .casino-game { margin: 0 0 12px; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; }
+.game-window-title, .pet-window-title, .casino-game > .game-window-title {
+  margin: 0 0 8px;
+  padding: 3px 8px 3px 24px;
+  background: var(--back-e6e6e6) url("/static/icons/block-arrow.svg") no-repeat 0 0;
+  border: 0;
+  border-top: 1px solid var(--line-8b8b8b);
+  border-radius: 0;
+  color: var(--text-626262);
+  line-height: 13px;
+  text-shadow: none;
+}
+.game-window-title > img:first-child, .game-window-title > .game-icon:first-child,
+.pet-window-title > img:first-child, .pet-window-title > .game-icon:first-child { display: none; }
+.game-window-body, .pet-window-body { padding: 0 8px 8px; }
+.game-help img { display: none; }
+.game-help::before { color: var(--text-626262); font-weight: bold; content: "?"; }
+.game-help:hover::before { color: var(--text-000); }
+
+.tabs.game-tabs { gap: 0; margin: 0 -10px 10px; padding: 0 10px; border-bottom: 1px solid var(--line-707070); }
+.tabs.game-tabs a { display: inline-block; margin: 0 3px 0 0; padding: 5px 10px; background: none; border: 0; border-radius: 3px 3px 0 0; color: var(--text-2b587a); }
+.tabs.game-tabs a:hover { background: var(--back-e4e4e4); }
+.tabs.game-tabs a.active, .tabs.game-tabs a.active:hover { background: var(--back-707070); color: var(--text-fff); font-weight: normal; }
+.tabs img, .tabs.game-tabs img, .tabs.game-tabs .game-icon, .mb-tabs img { display: none; }
+.pet-tab, .pet-tab:hover { background: none; border-color: transparent; border-radius: 3px; }
+.pet-tab:hover { background: var(--back-e4e4e4); }
+.pet-tab-chosen, .pet-tab-chosen:hover { background: var(--back-707070); border-color: var(--line-707070); color: var(--text-fff); }
+
+.game-hud, .game-hud.four { gap: 0; margin: 0 0 10px; background: none; border: 0; border-bottom: 1px solid var(--line-e8ebee); border-radius: 0; box-shadow: none; }
+.game-hud-cell { gap: 1px; padding: 4px 8px 6px; background: none; }
+a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f2); text-decoration: none; }
+.game-hud-name { color: var(--text-626262); font-weight: normal; }
+.game-hud-name img, .game-hud-name .game-icon { display: none; }
+.game-hud-sum { color: var(--text-000); font-size: 13px; font-weight: bold; line-height: 16px; }
+
+.button.game-go, .button.game-go.sell { display: inline-block; width: auto; min-height: 0; background: var(--back-595959); font-size: 12px; font-weight: normal; }
+.button.game-go:active { background: var(--back-444); }
+.button > img, .button > .game-icon { display: none; }
+.casino-balance { background: none; border: 0; border-radius: 0; box-shadow: none; }
+
+/* "Мои Голоса": the card and, beside it, the lines of the account; the
+   days of the bonus grey squares, the ones taken darker. */
+.bank-top { align-items: flex-start; }
+.bank-top > .bank-card-place { flex: 0 0 46%; }
+.bank-info th { width: 90px; }
+.bank-pip { background: none; border: 1px solid var(--line-ddd); border-radius: 2px; color: var(--text-626262); font-weight: normal; }
+.bank-pip.done { background: var(--back-e6e6e6); border-color: var(--line-ccc); color: var(--text-000); }
+.bank-pip.next { border-color: var(--line-707070); color: var(--text-000); font-weight: bold; animation: none; }
+.bank-bonus-text, .bank-bonus .hint { font-weight: normal; text-align: left; }
+.bank-card-blank { border-width: 1px; background: var(--back-f7f7f7); }
+.bank-card-blank b { color: var(--text-000); }
+/* "Как начать" of the business: three numbered steps as plain text. */
+.firm-step { padding: 0; background: none; border: 0; }
+.firm-step-head .firm-icon { display: none; }
+.pet-tab-more { padding: 3px 9px; }

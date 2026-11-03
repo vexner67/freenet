@@ -14,7 +14,7 @@ import { initPhoto } from './photo.js';
 import { boardPath, topicPath } from './topics.js';
 import { initIgnoreLink } from './feedsettings.js';
 import { initWall } from './wall.js';
-import { countTo, flash, floatText, gameIcon } from './game.js';
+import { floatText } from './game.js';
 import { coins } from './sounds.js';
 import { tr } from './i18n.js';
 
@@ -69,31 +69,7 @@ function render(club, me) {
   renderOwner(club.adminsDisplay === 'creator' ? club.owner : null, club.ownerTitle);
   if (club.adminsDisplay === 'all') showAdmins(club);
   renderJoin(club, me);
-  showClubHUD(club);
   $('club').hidden = false;
-}
-
-// showClubHUD is the plates over the group: the people, the kind of group
-// and your place in it.
-function showClubHUD(club) {
-  const people = el('b', { className: 'game-hud-sum' });
-  const roles = { owner: tr('Создатель'), admin: tr('Руководитель'), member: tr('Участник') };
-
-  countTo(people, 0, club.members, String);
-  $('club-hud').replaceChildren(
-    el('a', { className: 'game-hud-cell', href: `/club/${encodeURIComponent(clubRef(club))}/members` },
-      el('span', { className: 'game-hud-name' }, gameIcon('/static/icons/game/people.svg'), tr('Участники')), people,
-      el('span', { className: 'hint', textContent: tr('все участники') })),
-    el('div', { className: 'game-hud-cell' },
-      el('span', { className: 'game-hud-name' }, gameIcon(club.closed ? '/static/icons/game/lock.svg' : '/static/icons/game/group.svg'), tr('Тип')),
-      el('b', { className: 'game-hud-sum', textContent: club.closed ? tr('Закрытая') : tr('Открытая') }),
-      el('span', { className: 'hint', textContent: tr('группа') })),
-    el('div', { className: 'game-hud-cell' },
-      el('span', { className: 'game-hud-name' }, gameIcon('/static/icons/game/crown.svg'), tr('Вы здесь')),
-      el('b', { className: 'game-hud-sum', textContent: roles[club.role] ?? '—' }),
-      el('span', { className: 'hint', textContent: club.role ? tr('ваша роль') : tr('вы не в группе') })),
-  );
-  $('club-hud').hidden = false;
 }
 
 // showRequests is the link to "Заявки" for those who run a closed group
@@ -240,10 +216,8 @@ function renderJoin(club, me) {
         return;
       }
       renderJoin(club, me);
-      showClubHUD(club);
-      if (club.role) {
+          if (club.role) {
         coins();
-        flash($('club-hud'), 'gold');
         floatText(button, tr('+1 группа'));
       }
       if (admitted(club)) showMembers(club);

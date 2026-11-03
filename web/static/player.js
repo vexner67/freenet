@@ -1,20 +1,24 @@
-// The player of songs: a bar over the bottom of the page, in the tab the
-// song was started in, with the buttons of a player of the 2000s — back,
-// a big ▶, forward, the song with its cover, the time line, shuffle,
-// repeat, loudness, the list it plays and ×. An uploaded MP3 plays in an
-// <audio> of its own; a track of SoundCloud or YouTube plays in the
-// player of its site, shown over the bar and told what to do by
-// postMessage, as their widget APIs have it — no scripts of theirs run
-// here. A song that does not play is grey, "Трек недоступен", and the
-// next one plays.
+// The player of songs, as openvk's mini player (#ajax_audio_player): a
+// small dark box over the corner of the page — ▶, "Исполнитель — Название"
+// with the time, the line of the song under them, the line of loudness,
+// back, repeat, shuffle and forward, and × in its corner; the list it
+// plays opens over it under the pointer. On a phone it is a strip over the
+// bar of sections.
+//
+// An uploaded MP3 plays in an <audio> of its own. A track of SoundCloud or
+// YouTube plays in the player of its site, kept out of sight and told what
+// to do by postMessage, as their widget APIs have it — no scripts of
+// theirs run here: the time, the line and the loudness are ours. A song
+// that does not play is grey, "Трек недоступен", and the next one plays.
 //
 // What plays, where in it and how loud is kept for the tab
-// (sessionStorage): the next page of the site opens the bar where the
-// last one left it and plays on, if the browser lets it play by itself.
+// (sessionStorage): a page opened anew (a reload) opens the player where
+// the last one left it. Pages opened from it do not stop the song at all:
+// they open in the frame of shell.js.
 
 import { api, signedIn } from './api.js';
 import { audioArtist, audioSite, audioTime, audioTitle } from './labels.js';
-import { el, externalLink } from './layout.js';
+import { el } from './layout.js';
 import { tr } from './i18n.js';
 
 const SOUNDCLOUD = 'https://w.soundcloud.com';
@@ -39,7 +43,7 @@ function embedURL(audio, { autoplay, from }) {
   if (audio.kind === 'soundcloud') {
     const query = new URLSearchParams({
       url: audio.link, auto_play: String(autoplay), hide_related: 'true', show_comments: 'false',
-      show_reposts: 'false', show_teaser: 'false', visual: 'false', color: '#595959',
+      show_reposts: 'false', show_teaser: 'false', visual: 'false',
     });
     return `${SOUNDCLOUD}/player/?${query}`;
   }
@@ -67,14 +71,13 @@ function forget() {
   }
 }
 
-// iconButton is a round glossy button of the bar.
 function iconButton(className, label, onclick) {
   return el('button', { type: 'button', className: 'player-btn ' + className, title: label, ariaLabel: label, onclick });
 }
 
-// createPlayer puts the bar into root; onState hears what plays (the id,
-// whether it plays, the songs that would not).
-export function createPlayer(root, { onState = () => {} } = {}) {
+// createPlayer puts the player into root. onState hears what plays (the
+// id, whether it plays, the songs that would not); onStop hears the ×.
+export function createPlayer(root, { onState = () => {}, onStop = () => {} } = {}) {
   const media = new Audio();
   media.preload = 'auto';
 
@@ -84,60 +87,63 @@ export function createPlayer(root, { onState = () => {} } = {}) {
   let frame = null;
   let told = '';
   let position = 0;
+  let length = 0;
+  let left = false;
   let shuffle = false;
   let repeat = false;
-  let muted = false;
   let loudness = 80;
   // resumeAt is where a song restored from the last page goes on from.
   let resumeAt = 0;
   const broken = new Set();
 
-  const cover = el('img', { className: 'player-cover', alt: '', hidden: true });
-  const artist = el('b', { className: 'player-artist' });
-  const title = el('span', { className: 'player-title' });
+  const artist = el('b');
+  const title = el('span');
   const gone = el('span', { className: 'player-broken', hidden: true, textContent: tr('Трек недоступен') });
-  const site = el('span', { className: 'player-site' });
-  const embed = el('div', { className: 'player-embed', hidden: true });
+  const name = el('a', { className: 'player-name' }, artist, ' — ', title, gone);
+  const time = el('span', {
+    className: 'player-time', title: tr('Сколько осталось'), textContent: '0:00',
+    onclick: () => {
+      left = !left;
+      showTime();
+    },
+  });
+  const seek = el('input', { type: 'range', className: 'player-seek', min: 0, max: 1000, value: 0, ariaLabel: tr('Перемотка') });
+  const volume = el('input', { type: 'range', className: 'player-volume', min: 0, max: 100, value: 80, ariaLabel: tr('Громкость') });
   const toggle = iconButton('player-toggle', tr('Слушать'), () => togglePlay());
   const prev = iconButton('player-prev', tr('Предыдущая'), () => step(-1));
   const next = iconButton('player-next', tr('Следующая'), () => step(1));
-  const now = el('span', { className: 'player-now', textContent: '0:00' });
-  const total = el('span', { className: 'player-total', textContent: '0:00' });
-  const seek = el('input', { type: 'range', className: 'player-seek', min: 0, max: 1000, value: 0, ariaLabel: tr('Перемотка') });
-  const timeline = el('div', { className: 'player-timeline' }, now, seek, total);
-  const shuffleButton = iconButton('player-shuffle', tr('Перемешать'), () => setShuffle(!shuffle));
   const repeatButton = iconButton('player-repeat', tr('Повторять песню'), () => setRepeat(!repeat));
-  const muteButton = iconButton('player-mute', tr('Без звука'), () => setMuted(!muted));
-  const volume = el('input', { type: 'range', className: 'player-volume', min: 0, max: 100, value: 80, ariaLabel: tr('Громкость') });
-  const loud = el('span', { className: 'player-loud' }, muteButton, volume);
+  const shuffleButton = iconButton('player-shuffle', tr('Перемешать'), () => setShuffle(!shuffle));
   const list = el('div', { className: 'player-queue' });
-  const queueBox = el('div', { className: 'player-queue-box', hidden: true },
-    el('div', { className: 'player-queue-title', textContent: tr('Список воспроизведения') }), list);
-  const queueButton = iconButton('player-list', tr('Список воспроизведения'), () => showQueue(queueBox.hidden));
-  const close = el('button', { type: 'button', className: 'player-close', title: tr('Закрыть'), ariaLabel: tr('Закрыть'), textContent: '×', onclick: stop });
+  const listButton = iconButton('player-list', tr('Список воспроизведения'), () => box.classList.toggle('queue-open'));
+  const close = el('button', { type: 'button', className: 'player-close', title: tr('Закрыть'), ariaLabel: tr('Закрыть'), onclick: stop });
+  // The player of SoundCloud or YouTube: it plays, but is not seen.
+  const embed = el('div', { className: 'player-embed', ariaHidden: 'true' });
 
-  const box = el('div', { className: 'player player-bar', hidden: true },
-    embed,
-    queueBox,
-    el('div', { className: 'player-inner' },
-      el('div', { className: 'player-buttons' }, prev, toggle, next),
-      cover,
-      el('div', { className: 'player-middle' },
-        el('div', { className: 'player-names' }, artist, ' — ', title, gone, site),
-        timeline),
-      el('div', { className: 'player-extra' }, shuffleButton, repeatButton, loud, queueButton),
-      close));
+  const box = el('div', { className: 'player', hidden: true },
+    list,
+    el('div', { className: 'player-main' },
+      toggle,
+      el('div', { className: 'player-track' },
+        el('div', { className: 'player-line' }, name, time),
+        seek),
+      volume,
+      el('div', { className: 'player-buttons' }, prev, repeatButton, shuffleButton, next, listButton)),
+    close,
+    embed);
   root.append(box);
 
   volume.addEventListener('input', () => setLoudness(Number(volume.value)));
-  seek.addEventListener('input', () => {
-    if (media.duration) media.currentTime = (Number(seek.value) / 1000) * media.duration;
+  seek.addEventListener('input', () => seekTo((Number(seek.value) / 1000) * length));
+  media.addEventListener('timeupdate', () => {
+    position = media.currentTime;
+    showTime();
   });
-  media.addEventListener('timeupdate', () => showTime(media.currentTime, media.duration));
   media.addEventListener('loadedmetadata', () => {
-    if (resumeAt > 0 && resumeAt < media.duration) media.currentTime = resumeAt;
+    if (Number.isFinite(media.duration)) length = media.duration;
+    if (resumeAt > 0 && resumeAt < length) media.currentTime = resumeAt;
     resumeAt = 0;
-    showTime(media.currentTime, media.duration);
+    showTime();
   });
   media.addEventListener('playing', () => setOn(true));
   media.addEventListener('pause', () => setOn(false));
@@ -149,21 +155,17 @@ export function createPlayer(root, { onState = () => {} } = {}) {
   window.addEventListener('message', onFrameMessage);
   window.addEventListener('pagehide', keep);
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !queueBox.hidden) showQueue(false);
+    if (event.key === 'Escape') box.classList.remove('queue-open');
   });
   document.addEventListener('click', (event) => {
-    if (!queueBox.hidden && !queueBox.contains(event.target) && event.target !== queueButton) showQueue(false);
+    if (!box.contains(event.target)) box.classList.remove('queue-open');
   });
 
   const current = () => queue[index] ?? null;
 
-  function showTime(at, length) {
-    position = at;
-    now.textContent = audioTime(at);
-    if (Number.isFinite(length) && length > 0) {
-      total.textContent = audioTime(length);
-      seek.value = String(Math.round((at / length) * 1000));
-    }
+  function showTime() {
+    time.textContent = left && length ? '-' + audioTime(Math.max(0, length - position)) : audioTime(position);
+    seek.value = length ? String(Math.round((position / length) * 1000)) : '0';
   }
 
   function setOn(value) {
@@ -171,7 +173,6 @@ export function createPlayer(root, { onState = () => {} } = {}) {
     toggle.classList.toggle('on', on);
     toggle.title = on ? tr('Пауза') : tr('Слушать');
     toggle.ariaLabel = toggle.title;
-    box.classList.toggle('playing', on);
     if (on) tell();
     say();
   }
@@ -191,22 +192,21 @@ export function createPlayer(root, { onState = () => {} } = {}) {
   function setLoudness(value) {
     loudness = value;
     volume.value = String(value);
-    if (value > 0 && muted) setMuted(false);
-    media.volume = muted ? 0 : value / 100;
+    media.volume = value / 100;
+    const audio = current();
+    if (audio?.kind === 'soundcloud') post({ method: 'setVolume', value });
+    if (audio?.kind === 'youtube') post({ event: 'command', func: 'setVolume', args: [value] });
   }
 
-  function setMuted(value) {
-    muted = value;
-    muteButton.classList.toggle('active', muted);
-    muteButton.title = muted ? tr('Включить звук') : tr('Без звука');
-    muteButton.ariaLabel = muteButton.title;
-    media.volume = muted ? 0 : loudness / 100;
-  }
+  function seekTo(at) {
+    const audio = current();
+    if (!audio || !length) return;
 
-  function showQueue(show) {
-    queueBox.hidden = !show;
-    queueButton.classList.toggle('active', show);
-    if (show) list.querySelector('.playing')?.scrollIntoView({ block: 'nearest' });
+    position = at;
+    showTime();
+    if (audio.kind === 'file') media.currentTime = at;
+    else if (audio.kind === 'soundcloud') post({ method: 'seekTo', value: Math.round(at * 1000) });
+    else post({ event: 'command', func: 'seekTo', args: [at, true] });
   }
 
   // tell is "слушает: …" under the name of the one who listens, once a
@@ -219,7 +219,7 @@ export function createPlayer(root, { onState = () => {} } = {}) {
     api.listen(audio.id).catch(() => {});
   }
 
-  // say tells the page what plays.
+  // say tells the pages what plays.
   function say() {
     onState({ id: current()?.id ?? '', on, broken: [...broken] });
   }
@@ -232,7 +232,7 @@ export function createPlayer(root, { onState = () => {} } = {}) {
     try {
       sessionStorage.setItem(STORE, JSON.stringify({
         queue: queue.slice(from, from + KEEP), index: index - from, position, on, told,
-        shuffle, repeat, loudness, muted, broken: [...broken],
+        shuffle, repeat, loudness, broken: [...broken],
       }));
     } catch {
       // A tab that keeps nothing starts with no song.
@@ -242,14 +242,20 @@ export function createPlayer(root, { onState = () => {} } = {}) {
   function show(audio) {
     artist.textContent = audioArtist(audio);
     title.textContent = audioTitle(audio);
-    cover.hidden = !audio.cover;
-    if (audio.cover) cover.src = audio.cover;
     gone.hidden = !broken.has(audio.id);
-    site.replaceChildren(...(audio.link ? [externalLink(audio.link, [audioSite(audio)])] : []));
-    now.textContent = '0:00';
-    total.textContent = audioTime(audio.duration);
-    seek.value = '0';
+    // A track names its site: the name opens it there.
+    if (audio.link) {
+      name.href = audio.link;
+      name.target = '_blank';
+      name.rel = 'noopener noreferrer';
+      name.title = tr('Слушать на {0}', audioSite(audio));
+    } else {
+      name.removeAttribute('href');
+      name.removeAttribute('title');
+    }
     position = 0;
+    length = audio.duration || 0;
+    showTime();
 
     if ('mediaSession' in navigator && typeof MediaMetadata === 'function') {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -271,18 +277,14 @@ export function createPlayer(root, { onState = () => {} } = {}) {
     if (!audio) return;
 
     box.hidden = false;
+    document.body.classList.add('with-player');
     show(audio);
     media.pause();
     frame?.remove();
     frame = null;
     resumeAt = from;
 
-    const file = audio.kind === 'file';
-    embed.hidden = file;
-    box.classList.toggle('with-embed', !file);
-    timeline.classList.toggle('player-off', !file);
-    loud.classList.toggle('player-off', !file);
-    if (file) {
+    if (audio.kind === 'file') {
       media.src = audio.url;
       // A page that opened without a click may not play by itself: then ▶
       // waits for one.
@@ -292,11 +294,11 @@ export function createPlayer(root, { onState = () => {} } = {}) {
       media.removeAttribute('src');
       media.load();
       frame = el('iframe', {
-        className: 'player-frame ' + audio.kind,
         src: embedURL(audio, { autoplay, from }),
         allow: 'autoplay; encrypted-media',
         referrerPolicy: 'strict-origin-when-cross-origin',
         title: `${audioArtist(audio)} — ${audioTitle(audio)}`,
+        tabIndex: -1,
       });
       frame.addEventListener('load', () => listenTo(audio));
       embed.append(frame);
@@ -305,12 +307,14 @@ export function createPlayer(root, { onState = () => {} } = {}) {
     say();
   }
 
-  // listenTo asks the player of the site to tell what it does.
+  // listenTo asks the player of YouTube to tell what it does (SoundCloud's
+  // says it is ready by itself).
   function listenTo(audio) {
     if (audio.kind === 'youtube') {
       post({ event: 'listening', id: 'freenet', channel: 'widget' });
       post({ event: 'command', func: 'addEventListener', args: ['onStateChange'] });
       post({ event: 'command', func: 'addEventListener', args: ['onError'] });
+      post({ event: 'command', func: 'setVolume', args: [loudness] });
     }
   }
 
@@ -339,11 +343,21 @@ export function createPlayer(root, { onState = () => {} } = {}) {
 
   function onSoundCloud({ method, value }) {
     if (method === 'ready') {
-      for (const name of ['play', 'pause', 'finish', 'error', 'playProgress']) post({ method: 'addEventListener', value: name });
+      for (const event of ['play', 'pause', 'finish', 'error', 'playProgress']) post({ method: 'addEventListener', value: event });
+      post({ method: 'getDuration' });
+      post({ method: 'setVolume', value: loudness });
       if (resumeAt > 0) post({ method: 'seekTo', value: resumeAt * 1000 });
       resumeAt = 0;
     }
-    if (method === 'playProgress' && typeof value?.currentPosition === 'number') position = value.currentPosition / 1000;
+    if (method === 'getDuration' && value > 0) {
+      length = value / 1000;
+      showTime();
+    }
+    if (method === 'playProgress' && typeof value?.currentPosition === 'number') {
+      position = value.currentPosition / 1000;
+      if (!length && value.relativePosition > 0) length = position / value.relativePosition;
+      showTime();
+    }
     if (method === 'play') setOn(true);
     if (method === 'pause') setOn(false);
     if (method === 'finish') ended();
@@ -352,7 +366,11 @@ export function createPlayer(root, { onState = () => {} } = {}) {
 
   function onYouTube({ event, info }) {
     const state = event === 'onStateChange' ? info : event === 'infoDelivery' ? info?.playerState : undefined;
-    if (event === 'infoDelivery' && typeof info?.currentTime === 'number') position = info.currentTime;
+    if (event === 'infoDelivery') {
+      if (info?.duration > 0) length = info.duration;
+      if (typeof info?.currentTime === 'number') position = info.currentTime;
+      showTime();
+    }
     if (state === 1) setOn(true);
     if (state === 2) setOn(false);
     if (state === 0) ended();
@@ -430,18 +448,19 @@ export function createPlayer(root, { onState = () => {} } = {}) {
     index = -1;
     queue = [];
     box.hidden = true;
-    showQueue(false);
+    box.classList.remove('queue-open');
+    document.body.classList.remove('with-player');
     setOn(false);
     forget();
     if (signedIn()) api.listen('').catch(() => {});
     told = '';
+    onStop();
   }
 
   function renderQueue() {
     list.replaceChildren(...queue.map((a, i) => {
       const row = el('a', { className: 'player-row', onclick: () => start(i) },
-        el('span', { className: 'player-row-name' }, el('b', { textContent: audioArtist(a) }), ' — ', el('span', { textContent: audioTitle(a) })),
-        el('span', { className: 'player-row-time', textContent: a.duration ? audioTime(a.duration) : audioSite(a) }));
+        el('b', { textContent: audioArtist(a) }), ' — ', el('span', { textContent: audioTitle(a) }));
       row.dataset.audio = a.id;
       return row;
     }));
@@ -453,7 +472,7 @@ export function createPlayer(root, { onState = () => {} } = {}) {
     start(queue.findIndex((a) => a.id === audio.id));
   }
 
-  // restore opens the bar where the last page of the tab left it.
+  // restore opens the player where the last page of the tab left it.
   function restore(state) {
     queue = state.queue;
     for (const id of state.broken ?? []) broken.add(id);
@@ -461,7 +480,6 @@ export function createPlayer(root, { onState = () => {} } = {}) {
     setShuffle(Boolean(state.shuffle));
     setRepeat(Boolean(state.repeat));
     setLoudness(Number.isFinite(state.loudness) ? state.loudness : 80);
-    setMuted(Boolean(state.muted));
     renderQueue();
     start(state.index, { autoplay: Boolean(state.on), from: Number(state.position) || 0 });
   }
@@ -471,5 +489,5 @@ export function createPlayer(root, { onState = () => {} } = {}) {
     navigator.mediaSession.setActionHandler('nexttrack', () => step(1));
   }
 
-  return { play, toggle: togglePlay, restore };
+  return { play, toggle: togglePlay, restore, active: () => Boolean(current()) };
 }

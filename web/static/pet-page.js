@@ -407,15 +407,15 @@ function showTabs() {
     tab.addEventListener('click', () => { if (!busy) showPet(p); });
     return tab;
   });
-  const pageTab = (icon, title, chosen, open) => {
+  const pageTab = (title, chosen, open) => {
     const tab = el('button', { type: 'button', className: chosen ? 'pet-tab pet-tab-more pet-tab-chosen' : 'pet-tab pet-tab-more' },
-      el('img', { src: icon, alt: '', width: 24, height: 24 }), el('span', { textContent: title }));
+      el('span', { textContent: title }));
     tab.addEventListener('click', () => { if (!busy) open(); });
     return tab;
   };
-  tabs.push(pageTab('/static/icons/pet/arena.svg', tr('Арена'), league, showLeague));
-  if (pets.length < maxPets) tabs.push(pageTab('/static/icons/pet/more.svg', tr('Завести ещё'), !pet && !league && !rules, showShop));
-  tabs.push(pageTab('/static/icons/pet/rules.svg', tr('Правила'), rules, showRules));
+  tabs.push(pageTab(tr('Арена'), league, showLeague));
+  if (pets.length < maxPets) tabs.push(pageTab(tr('Завести ещё'), !pet && !league && !rules, showShop));
+  tabs.push(pageTab(tr('Правила'), rules, showRules));
   $('pet-tabs').replaceChildren(...tabs);
   $('pet-tabs').hidden = false;
   $('pets-count').replaceChildren(...countNodes());

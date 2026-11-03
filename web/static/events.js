@@ -14,6 +14,11 @@ const RETRY_MS = [1000, 2000, 5000, 10000, 30000];
 const handlers = new Map();
 let live = false;
 let started = false;
+// paused is a page left behind the frame of the player (shell.js): it
+// keeps still, and the page in the frame has the events.
+let paused = false;
+let socket = null;
+let reopen = () => {};
 
 // onEvent calls fn with every event of type: "ready" (connected, with
 // both counters), "counters", "message", "read", "notification".
@@ -24,7 +29,21 @@ export function onEvent(type, fn) {
 
 // isLive tells whether events are coming: pages poll only when not.
 export function isLive() {
-  return live;
+  return live || paused;
+}
+
+// pauseEvents closes the connection of a page that stays behind the
+// frame of the player, so that a message or a call is not heard twice;
+// resumeEvents opens it again when the page comes back.
+export function pauseEvents() {
+  paused = true;
+  socket?.close(1000);
+}
+
+export function resumeEvents() {
+  if (!paused) return;
+  paused = false;
+  if (started) reopen();
 }
 
 function dispatch(event) {
@@ -49,10 +68,11 @@ export function connectEvents() {
 
   function open() {
     const tokens = session.get();
-    if (!tokens) return; // signed out
+    if (!tokens || paused) return; // signed out, or left behind
 
     const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
     const ws = new WebSocket(`${scheme}://${location.host}/api/v1/events`);
+    socket = ws;
 
     ws.addEventListener('open', () => ws.send(JSON.stringify({ token: tokens.accessToken })));
 
@@ -67,6 +87,8 @@ export function connectEvents() {
 
     ws.addEventListener('close', async (event) => {
       live = false;
+      if (socket === ws) socket = null;
+      if (paused) return;
 
       if (event.code !== TOKEN_EXPIRED) {
         retry();
@@ -86,5 +108,6 @@ export function connectEvents() {
     });
   }
 
+  reopen = open;
   open();
 }

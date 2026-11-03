@@ -765,9 +765,21 @@ export function applyInterface(me) {
 }
 
 // renderChrome fills the header and the sidebar for a signed-in user or a guest.
-// resumePlayer opens the bar of the player on a page of the tab after one
-// that played a song (audio.js opens it where the last page left it).
+// framed is a page in the frame of shell.js: the player is the tab's,
+// out of the frame.
+export const framed = (() => {
+  try {
+    return window.parent !== window && Boolean(window.parent.freenetPlayer);
+  } catch {
+    return false;
+  }
+})();
+if (framed) document.documentElement.classList.add('framed');
+
+// resumePlayer opens the player on a page opened anew in a tab that
+// played a song (audio.js opens it where the last page left it).
 function resumePlayer() {
+  if (framed) return;
   let kept = null;
   try {
     kept = sessionStorage.getItem('freenet.player');
