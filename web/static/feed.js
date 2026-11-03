@@ -4,6 +4,7 @@ import { postNode, remotePostNode, wallOwnerID } from './posts.js';
 import { initAttachments } from './attach.js';
 import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
+import { initAudios } from './audio.js';
 import { initPollDraft } from './poll.js';
 import { initTimer, postponedNotice } from './postponed.js';
 import { openFeedSettings, readFeedSettings } from './feedsettings.js';
@@ -144,6 +145,14 @@ function initForm(me) {
     },
   });
 
+  const audios = initAudios({
+    link: $('post-audio'),
+    list: $('post-audios'),
+    onChange: () => {
+      if (audios.count()) form.classList.add('expanded');
+    },
+  });
+
   let poll = null;
 
   poll = initPollDraft({
@@ -193,7 +202,7 @@ function initForm(me) {
       return;
     }
 
-    if (timer.active() && documents.count()) {
+    if (timer.active() && (documents.count() || audios.count())) {
       showError(error, tr('К отложенной записи нельзя прикрепить документ.'));
       return;
     }
@@ -206,7 +215,7 @@ function initForm(me) {
         $('posts').prepend(postponedNotice(p, me));
         timer.clear();
       } else {
-        $('posts').prepend(feedNode(await api.createPost(me.nickname, text.value, attachments.ids(), $('post-nsfw').checked, poll.value(), documents.ids(), price()), me));
+        $('posts').prepend(feedNode(await api.createPost(me.nickname, text.value, attachments.ids(), $('post-nsfw').checked, poll.value(), documents.ids(), price(), audios.ids()), me));
       }
       showEmpty();
       text.value = '';
@@ -216,6 +225,7 @@ function initForm(me) {
       text.blur();
       attachments.clear();
       documents.clear();
+      audios.clear();
       poll.clear();
       form.classList.remove('expanded');
       updateCounter();

@@ -1,6 +1,6 @@
 import { api, currentUser, started } from './api.js';
 import { celebrate } from './birthday.js';
-import { isBirthdayToday, relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, plural, MAX_RATING, firmLine, firmPictures, titleGroups, titleIconPath } from './labels.js';
+import { isBirthdayToday, relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, audioArtist, audioTitle, audiosCount, plural, MAX_RATING, firmLine, firmPictures, titleGroups, titleIconPath } from './labels.js';
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark, whenShown } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
@@ -13,6 +13,7 @@ import { showBackdrop } from './backdrop.js';
 import { personCell } from './people.js';
 import { openStories } from './stories.js';
 import { petImage } from './pet.js';
+import { addButton, audioNode, play } from './audio.js';
 import { tr } from './i18n.js';
 
 const nickname = decodeURIComponent(location.pathname.slice(1));
@@ -195,6 +196,48 @@ function showStatus(text, isOwner) {
   status.classList.toggle('status-editable', isOwner);
   status.textContent = text || (isOwner ? tr('[ изменить статус ]') : '');
   status.onclick = isOwner ? () => editStatus(text) : null;
+}
+
+// showMusic is "слушает: …" under the status, for the song its owner
+// plays now, and over the information the song of the page with the link
+// to their music, "Аудиозаписи".
+async function showMusic(profile, me, isOwner) {
+  let music;
+  try {
+    music = await api.music(profile.nickname);
+  } catch {
+    return;
+  }
+
+  const now = music.listening;
+  if (now) {
+    $('listening').replaceChildren(
+      el('span', { className: 'listening-icon' }),
+      tr('слушает:'), ' ',
+      el('a', { textContent: `${audioArtist(now)} — ${audioTitle(now)}`, onclick: () => play(now) }));
+    $('listening').hidden = false;
+  }
+
+  if (!music.pageAudio && !music.count) {
+    $('page-audio').hidden = true;
+    return;
+  }
+
+  const song = music.pageAudio;
+  const box = $('page-audio');
+  box.replaceChildren(
+    el('div', { className: 'page-audio-head' },
+      el('a', { href: '/audio/' + encodeURIComponent(profile.nickname), textContent: tr('Аудиозаписи') }),
+      el('span', { className: 'page-audio-count', textContent: audiosCount(music.count) })),
+    song ? audioNode(song, { tools: me && !isOwner && !song.added ? [addButton(song)] : [] }) : null,
+    song && isOwner ? el('a', {
+      className: 'page-audio-remove', textContent: tr('Убрать песню страницы'),
+      onclick: async () => {
+        await api.setPageAudio('').catch(() => {});
+        showMusic(profile, me, isOwner);
+      },
+    }) : null);
+  box.hidden = false;
 }
 
 // editStatus is openvk's box under the name: the status in a field and
@@ -607,6 +650,7 @@ try {
     showPet(profile, me, isOwner);
     showFirms(profile, isOwner);
     showTitles(profile);
+    showMusic(profile, me, isOwner);
     if (me) showStories(profile);
     // "Гости": the owner learns of the visit, unless it leaves no trace.
     if (me && !isOwner) api.visitPage(profile.nickname).catch(() => {});

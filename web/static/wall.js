@@ -8,6 +8,7 @@ import { postNode as renderPost } from './posts.js';
 import { initAttachments } from './attach.js';
 import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
+import { initAudios } from './audio.js';
 import { initPollDraft } from './poll.js';
 import { initTimer, postponedNotice, showPostponedLink } from './postponed.js';
 import { tr } from './i18n.js';
@@ -42,11 +43,13 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
   // openvk.
   const fromClub = () => owner.wall !== 'open' || $('post-from-club').checked;
   const create = owner.club
-    ? (text, photos) => api.createClubPost(clubRef(owner), text, photos, { fromClub: fromClub(), signed: fromClub() && $('post-signed').checked, nsfw: $('post-nsfw').checked, poll: poll.value(), documents: documents.ids() })
-    : (text, photos) => api.createPost(owner.nickname, text, photos, $('post-nsfw').checked, poll.value(), documents.ids(), isOwner ? price() : 0);
+    ? (text, photos) => api.createClubPost(clubRef(owner), text, photos, { fromClub: fromClub(), signed: fromClub() && $('post-signed').checked, nsfw: $('post-nsfw').checked, poll: poll.value(), documents: documents.ids(), audios: audios.ids() })
+    : (text, photos) => api.createPost(owner.nickname, text, photos, $('post-nsfw').checked, poll.value(), documents.ids(), isOwner ? price() : 0, audios.ids());
   let attachments;
   // documents are those of "Мои Документы" attached to the post.
   let documents;
+  // audios are songs attached to the post.
+  let audios;
   // poll is the poll attached to the post being written ("Опрос").
   let poll;
   // timer is VK's "Таймер": the post waits for its time.
@@ -157,7 +160,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       return;
     }
 
-    if ((timer?.active() || suggesting) && documents.count()) {
+    if ((timer?.active() || suggesting) && (documents.count() || audios.count())) {
       showError(error, suggesting ? tr('К предложенной записи нельзя прикрепить документ.') : tr('К отложенной записи нельзя прикрепить документ.'));
       return;
     }
@@ -192,6 +195,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       $('post-text').blur();
       attachments.clear();
       documents.clear();
+      audios.clear();
       poll.clear();
       $('post-form').classList.remove('expanded');
       updateCount();
@@ -265,8 +269,15 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
         if (documents.count()) form.classList.add('expanded');
       },
     });
-    // A suggested post attaches no documents.
-    if (suggest) $('post-doc').hidden = true;
+    audios = initAudios({
+      link: $('post-audio'),
+      list: $('post-audios'),
+      onChange: () => {
+        if (audios.count()) form.classList.add('expanded');
+      },
+    });
+    // A suggested post attaches no documents and no songs.
+    if (suggest) $('post-doc').hidden = $('post-audio').hidden = true;
     // "Статья" opens the editor of an article for one's own wall: the
     // article comes back to it as a post that links to it.
     $('post-article').hidden = !(isOwner && !owner.club && !suggest);

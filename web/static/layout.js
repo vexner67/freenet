@@ -723,6 +723,7 @@ export function applyInterface(me) {
     // user keeps — photos, documents, posts, words — is kept there.
     me.nickname && el('a', { href: savedPath(me), textContent: tr('Избранное') }),
     menuLink(me, 'groups', '/groups', tr('Группы')),
+    el('a', { href: '/audio', textContent: tr('Аудиозаписи') }),
     menuLink(me, 'feed', '/feed', tr('Новости')),
     menuLink(me, 'notifications', '/notifications', tr('Уведомления'), 'notifications-count'),
     el('a', { href: '/settings', textContent: tr('Настройки') }),

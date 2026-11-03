@@ -13,6 +13,7 @@ import { lastComments } from './postcomments.js';
 import { pollNode } from './poll.js';
 import { button, openMenu, openModal, openSheet, toast } from './modal.js';
 import { documentsNode } from './docs.js';
+import { audiosNode } from './audio.js';
 import { articleCardNode, articleIn } from './articles.js';
 import { tr } from './i18n.js';
 import { drawBlurhash } from './blurhash.js';
@@ -88,6 +89,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       article ? articleCardNode(article) : '',
       linkCardNode(post.link) ?? '',
       documentsNode(post.documents) ?? '',
+      audiosNode(post.audios) ?? '',
       paidNode(post, { canBuy: canLike, onBought: render }) ?? '',
       post.poll ? pollNode(post, { canVote: canLike, onError }) : '',
       signatureNode(post.signer) ?? '',
@@ -447,6 +449,7 @@ export function sharedNode(shared, { canVote = false, onError } = {}) {
     photosNode(shared.photos ?? []) ?? '',
     linkCardNode(shared.link) ?? '',
     documentsNode(shared.documents) ?? '',
+    audiosNode(shared.audios) ?? '',
     paidNode(shared, { canBuy: canVote, onBought: fill }) ?? '',
     shared.poll ? pollNode(shared, { canVote, onError }) : '',
   );

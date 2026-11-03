@@ -2315,6 +2315,51 @@ export function haveDocuments(n) {
   return tr('У Вас ') + documentsCount(n);
 }
 
+// Songs ("Аудиозаписи" openvk). MAX_AUDIO_BYTES is what the server
+// takes of an MP3; MAX_AUDIOS what a post or a message attaches.
+export const MAX_AUDIO_BYTES = 20 << 20;
+export const MAX_AUDIOS = 10;
+
+// audioArtist and audioTitle are openvk's: a song without them is by
+// "Неизвестный" and "Без названия".
+export function audioArtist(a) {
+  return a.artist || tr('Неизвестный');
+}
+
+export function audioTitle(a) {
+  return a.title || tr('Без названия');
+}
+
+// audioTime is a length in seconds as a player shows it: "3:05", "1:02:03".
+export function audioTime(seconds) {
+  const s = Math.max(0, Math.floor(seconds || 0));
+  const two = (n) => String(n).padStart(2, '0');
+  const h = Math.floor(s / 3600);
+  const m = Math.floor(s / 60) % 60;
+
+  return h ? `${h}:${two(m)}:${two(s % 60)}` : `${m}:${two(s % 60)}`;
+}
+
+// audioNames reads the artist and the title of a song from its file
+// name, as "Artist - Title.mp3"; without a dash it is the title only.
+export function audioNames(fileName) {
+  const name = fileName.replace(/\.mp3$/i, '').replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+  const dash = name.search(/\s[-–—]\s/);
+  if (dash < 0) return { artist: '', title: name };
+
+  return { artist: name.slice(0, dash).trim(), title: name.slice(dash + 3).trim() };
+}
+
+// audioSite names the site of a song added by a link: "Слушать на …".
+export function audioSite(a) {
+  return a.kind === 'youtube' ? 'YouTube' : 'SoundCloud';
+}
+
+// audiosCount is openvk's "3 аудиозаписи" over a library.
+export function audiosCount(n) {
+  return `${n} ${plural(n, ['аудиозапись', 'аудиозаписи', 'аудиозаписей'])}`;
+}
+
 // fileSize is openvk's readable_filesize: "512 Б", "1,5 КБ", "10 МБ".
 export function fileSize(bytes) {
   const units = [tr('Б'), tr('КБ'), tr('МБ'), tr('ГБ')];
@@ -2873,6 +2918,27 @@ const errorTexts = {
   'you do not have this sticker': tr('Набор с этим стикером не добавлен.'),
   'a sticker goes alone': tr('Стикер отправляется отдельным сообщением.'),
   'document not found': tr('Документ не найден.'),
+  'audio not found': tr('Аудиозапись не найдена.'),
+  'invalid audio id': tr('Аудиозапись не найдена.'),
+  'playlist not found': tr('Плейлист не найден.'),
+  'audio is larger than 20 MB': tr('Файл слишком большой: не больше 20 МБ.'),
+  'audio is empty': tr('Файл пустой.'),
+  'audio is not an MP3 file': tr('Можно загрузить только файл MP3.'),
+  'invalid audio duration': tr('Не удалось узнать длительность аудиозаписи.'),
+  'artist or title is too long': tr('Исполнитель и название — не длиннее 128 символов.'),
+  'only the owner can change the audio': tr('Это не ваша аудиозапись.'),
+  'only the owner can change the playlist': tr('Это не ваш плейлист.'),
+  'playlist title is empty': tr('Введите название плейлиста.'),
+  'playlist title is too long': tr('Название плейлиста слишком длинное: не больше 128 символов.'),
+  'a playlist has at most 1000 audios': tr('В плейлисте может быть не больше 1000 аудиозаписей.'),
+  'too many audios': tr('Можно прикрепить не больше 10 аудиозаписей.'),
+  'a post has at most 10 audios': tr('Можно прикрепить не больше 10 аудиозаписей.'),
+  'a message has at most 10 audios': tr('Можно прикрепить не больше 10 аудиозаписей.'),
+  'the same audio is attached twice': tr('Эта аудиозапись уже прикреплена.'),
+  'this is not a link to a track': tr('Это не ссылка на трек SoundCloud или YouTube.'),
+  'unknown audio source': tr('Это не ссылка на трек SoundCloud или YouTube.'),
+  'this track cannot be played on other sites': tr('Этот трек нельзя слушать на Freenet.'),
+  'the site of the track does not answer': tr('Сайт трека не отвечает. Попробуйте позже.'),
   'article not found': tr('Статья не найдена.'),
   'article title is empty': tr('Введите заголовок статьи.'),
   'article title is too long': tr('Заголовок статьи не может быть длиннее 256 символов.'),
@@ -3254,6 +3320,7 @@ export function messagePreview(m) {
   if (m.photos?.length || m.albumPhoto) return tr('Фотография');
   if (m.post) return tr('Запись');
   if (m.documentCount || m.documents?.length) return tr('Документ');
+  if (m.audioCount || m.audios?.length) return tr('Аудиозапись');
   if (m.forwardedCount) return forwardedCount(m.forwardedCount);
 
   return '';
@@ -3278,7 +3345,7 @@ export function quoteText(q, text = q.text) {
 
   return messagePreview({
     deleted: q.deleted, sticker: q.sticker, text: text ? quoteSnippet(text) : '', photos: q.photoCount ? [q.id] : [],
-    albumPhoto: q.albumPhoto, post: q.post, documentCount: q.documentCount, forwardedCount: q.forwardedCount,
+    albumPhoto: q.albumPhoto, post: q.post, documentCount: q.documentCount, audioCount: q.audioCount, forwardedCount: q.forwardedCount,
   }) || tr('Сообщение');
 }
 

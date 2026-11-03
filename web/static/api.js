@@ -391,8 +391,8 @@ export const api = {
   // locked, days }), null for none. documents are IDs of your documents.
   // price: the votes others pay to see the photos and documents of a post
   // on your own wall, 0 for free.
-  createPost: (nickname, text, photos = [], nsfw = false, poll = null, documents = [], price = 0) =>
-    authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/posts`, { text, photos, nsfw, documents, ...(poll && { poll }), ...(price > 0 && { price }) }),
+  createPost: (nickname, text, photos = [], nsfw = false, poll = null, documents = [], price = 0, audios = []) =>
+    authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/posts`, { text, photos, nsfw, documents, audios, ...(poll && { poll }), ...(price > 0 && { price }) }),
   // Opens the paid photos and documents of a post: { balance, post }.
   buyPost: (id) => authorized('POST', '/api/v1/posts/' + encodeURIComponent(id) + '/purchase'),
   // VK's "Таймер": a post kept to come out at publishAt (ISO) on your own
@@ -431,6 +431,36 @@ export const api = {
   uploadDocument: (file) => authorized('POST', '/api/v1/me/documents?name=' + encodeURIComponent(file.name), file),
   renameDocument: (id, name) => authorized('PATCH', `/api/v1/documents/${encodeURIComponent(id)}`, { name }),
   deleteDocument: (id) => authorized('DELETE', `/api/v1/documents/${encodeURIComponent(id)}`),
+  // "Аудиозаписи": songs uploaded as MP3 (up to 20 MB) or added by a link
+  // of SoundCloud or YouTube. The library of anyone is open to anyone;
+  // posts and messages attach songs by ID.
+  audios: (nickname, cursor = '') => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/audio`, cursor, 0)),
+  // Without q it is "Новое": every song, the newest first.
+  searchAudios: (q = '', cursor = '') => optional('GET', withQuery(page('/api/v1/audio', cursor, 0), q ? 'q=' + encodeURIComponent(q) : '')),
+  uploadAudio: (file, { artist = '', title = '', duration = 0 } = {}) => authorized('POST', '/api/v1/me/audio?' +
+    new URLSearchParams({ artist, title, duration: String(duration) }), file),
+  addTrack: (link) => authorized('POST', '/api/v1/me/audio/links', { link }),
+  keepAudio: (id) => authorized('PUT', `/api/v1/me/audio/${encodeURIComponent(id)}`),
+  forgetAudio: (id) => authorized('DELETE', `/api/v1/me/audio/${encodeURIComponent(id)}`),
+  editAudio: (id, artist, title) => authorized('PATCH', `/api/v1/audio/${encodeURIComponent(id)}`, { artist, title }),
+  deleteAudio: (id) => authorized('DELETE', `/api/v1/audio/${encodeURIComponent(id)}`),
+  // "слушает: …" under your name for a while; '' says nothing plays.
+  listen: (id) => (id
+    ? authorized('PUT', '/api/v1/me/listening', { audio: id })
+    : authorized('DELETE', '/api/v1/me/listening')),
+  setPageAudio: (id) => (id
+    ? authorized('PUT', '/api/v1/me/page-audio', { audio: id })
+    : authorized('DELETE', '/api/v1/me/page-audio')),
+  // { listening, pageAudio, count } of a page.
+  music: (nickname) => optional('GET', `/api/v1/users/${encodeURIComponent(nickname)}/music`),
+  playlists: (nickname, cursor = '') => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/playlists`, cursor, 0)),
+  // A playlist with a page of its songs.
+  playlist: (id, cursor = '') => optional('GET', page(`/api/v1/playlists/${encodeURIComponent(id)}`, cursor, 0)),
+  createPlaylist: (title) => authorized('POST', '/api/v1/me/playlists', { title }),
+  renamePlaylist: (id, title) => authorized('PATCH', `/api/v1/playlists/${encodeURIComponent(id)}`, { title }),
+  deletePlaylist: (id) => authorized('DELETE', `/api/v1/playlists/${encodeURIComponent(id)}`),
+  addToPlaylist: (id, audio) => authorized('PUT', `/api/v1/playlists/${encodeURIComponent(id)}/audio/${encodeURIComponent(audio)}`),
+  removeFromPlaylist: (id, audio) => authorized('DELETE', `/api/v1/playlists/${encodeURIComponent(id)}/audio/${encodeURIComponent(audio)}`),
   // Articles of the editor: anybody reads one, brief without its blocks
   // (for the card of a post); article is { title, cover, blocks }.
   article: (id, brief = false) => optional('GET', withQuery('/api/v1/articles/' + encodeURIComponent(id), brief ? 'brief=true' : '')),
@@ -548,8 +578,8 @@ export const api = {
   // answers a message of the dialog ("Ответить").
   // price: the votes a message to nickname costs, as the dialog said —
   // another price is refused.
-  sendMessage: (nickname, { sealed = null, photos = [], post = '', forward = [], albumPhoto = '', documents = [], replyTo = '', price = 0 } = {}) =>
-    authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sealed, photos, post, forward, albumPhoto, documents, replyTo, ...(price > 0 && { price }) }),
+  sendMessage: (nickname, { sealed = null, photos = [], post = '', forward = [], albumPhoto = '', documents = [], audios = [], replyTo = '', price = 0 } = {}) =>
+    authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sealed, photos, post, forward, albumPhoto, documents, audios, replyTo, ...(price > 0 && { price }) }),
   // One reaction a person on a message of a dialog (heart, like, laugh,
   // wow, sad, fire); '' takes yours away.
   reactToMessage: (id, reaction) => (reaction
@@ -583,8 +613,8 @@ export const api = {
   },
   // As a message of a dialog, it may share a post or a photo of an album
   // and carry messages on.
-  sendChatMessage: (id, text, photos = [], post = '', forward = [], albumPhoto = '', documents = [], replyTo = '') =>
-    authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { text, photos, post, forward, albumPhoto, documents, replyTo }),
+  sendChatMessage: (id, text, photos = [], post = '', forward = [], albumPhoto = '', documents = [], replyTo = '', audios = []) =>
+    authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { text, photos, post, forward, albumPhoto, documents, audios, replyTo }),
   reactToChatMessage: (id, reaction) => (reaction
     ? authorized('PUT', `/api/v1/chat-messages/${encodeURIComponent(id)}/reaction`, { reaction })
     : authorized('DELETE', `/api/v1/chat-messages/${encodeURIComponent(id)}/reaction`)),
@@ -699,8 +729,8 @@ export const api = {
     withQuery(`/api/v1/clubs/${encodeURIComponent(ref)}/posts/archive`, year ? 'year=' + year : '')),
   // fromClub: the post speaks for the club ("От имени сообщества"),
   // signed: naming you under it ("Подпись автора").
-  createClubPost: (ref, text, photos = [], { fromClub = false, signed = false, nsfw = false, poll = null, documents = [] } = {}) =>
-    authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/posts`, { text, photos, fromClub, signed, nsfw, documents, ...(poll && { poll }) }),
+  createClubPost: (ref, text, photos = [], { fromClub = false, signed = false, nsfw = false, poll = null, documents = [], audios = [] } = {}) =>
+    authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/posts`, { text, photos, fromClub, signed, nsfw, documents, audios, ...(poll && { poll }) }),
   // "Предложка": a post suggested for the admins of a club to publish.
   suggestClubPost: (ref, text, photos = []) => authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/suggestions`, { text, photos }),
   // mine: only yours ("Предложенные вами записи"); all of them for the admins.
@@ -1012,6 +1042,12 @@ function page(path, cursor, limit) {
   if (cursor) query.set('cursor', cursor);
   if (limit) query.set('limit', String(limit));
   return query.size ? `${path}?${query}` : path;
+}
+
+// signedIn tells whether this browser keeps a session, without asking
+// the server.
+export function signedIn() {
+  return Boolean(session.get());
 }
 
 // currentUser is the signed-in user, or null when signed out or the

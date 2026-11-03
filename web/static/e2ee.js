@@ -437,12 +437,12 @@ async function withKeys(userID, nickname, payload, write) {
 // (their words sealed with it) and photos, a post or a photo of an album;
 // replyTo answers a message of the dialog, whose words the answer quotes
 // sealed (the server cannot). price is what a message to nickname costs.
-export async function sendSealed(userID, nickname, text, { forward = [], photos = [], post = '', albumPhoto = '', documents = [], replyTo = null, price = 0 } = {}) {
+export async function sendSealed(userID, nickname, text, { forward = [], photos = [], post = '', albumPhoto = '', documents = [], audios = [], replyTo = null, price = 0 } = {}) {
   const payload = { t: text, f: await carriedWords(forward) };
   if (replyTo) payload.r = quoteSnippet(replyTo.text ?? '');
 
   const m = await withKeys(userID, nickname, payload, (sealed) =>
-    api.sendMessage(nickname, { sealed, photos, post, albumPhoto, documents, forward: forward.map((f) => f.id), replyTo: replyTo?.id ?? '', price }));
+    api.sendMessage(nickname, { sealed, photos, post, albumPhoto, documents, audios, forward: forward.map((f) => f.id), replyTo: replyTo?.id ?? '', price }));
 
   return (await openMessages(userID, [m]))[0];
 }

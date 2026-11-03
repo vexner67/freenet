@@ -18,6 +18,7 @@ import { api, currentUser, started } from './api.js';
 import { initAttachments } from './attach.js';
 import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
+import { initAudios } from './audio.js';
 import { startCall } from './calls.js';
 import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, openMessages, ownKey, safetyCode, sendSealed } from './e2ee.js';
 import { isLive, onEvent } from './events.js';
@@ -59,6 +60,8 @@ let loadingNewer = false;
 let attachments;
 // documents are those of "Мои Документы" attached to the message.
 let documents;
+// audios are songs attached to the message.
+let audios;
 // messagePrice: the votes a message to the peer costs, 0 — free.
 let messagePrice = 0;
 // typingWatch tells the peer while the user types.
@@ -321,9 +324,12 @@ function startEdit(m) {
   attachments.set(m.photos ?? []);
   $('editing').hidden = false;
   $('send').textContent = tr('Сохранить');
-  // An edit changes the words and the photos; the documents stay.
+  // An edit changes the words and the photos; the documents and the
+  // songs stay.
   documents.clear();
+  audios.clear();
   $('doc').hidden = true;
+  $('audio').hidden = true;
   if (m.sharedPhoto) $('attach').hidden = $('graffiti').hidden = true;
   text.focus();
   text.setSelectionRange(text.value.length, text.value.length);
@@ -588,7 +594,7 @@ async function send(event) {
     return;
   }
 
-  if (!text.value.trim() && attachments.count() === 0 && documents.count() === 0) return;
+  if (!text.value.trim() && attachments.count() === 0 && documents.count() === 0 && audios.count() === 0) return;
 
   if (attachments.busy()) {
     showError($('error'), tr('Дождитесь, пока загрузятся фотографии.'));
@@ -598,14 +604,16 @@ async function send(event) {
   button.disabled = true;
 
   try {
-    const m = await sendSealed(me.id, nickname, text.value, { photos: attachments.ids(), documents: documents.ids(), replyTo: replies.replyingTo(), price: messagePrice });
+    const m = await sendSealed(me.id, nickname, text.value, { photos: attachments.ids(), documents: documents.ids(), audios: audios.ids(), replyTo: replies.replyingTo(), price: messagePrice });
 
     text.value = '';
     autosize(text);
     replies.cancel();
-    typingWatch.sent();
+    // «Избранное» has no one to tell of typing.
+    typingWatch?.sent();
     attachments.clear();
     documents.clear();
+    audios.clear();
     showSent(m);
   } catch (e) {
     showError($('error'), e);
@@ -668,6 +676,7 @@ async function setUpInput({ canWrite, primeOnly, messagePrice: price = 0 }) {
   attachments = initAttachments({ link: $('attach'), also: [$('graffiti')], input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
   initGraffiti({ link: $('graffiti'), attachments });
   documents = initDocuments({ link: $('doc'), list: $('documents') });
+  audios = initAudios({ link: $('audio'), list: $('audios') });
   initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
   initSmileys({ link: $('smileys-link'), panel: $('smileys'), input: $('text'), rival: { link: $('stickers-link'), panel: $('stickers') } });
   $('form').addEventListener('submit', send);

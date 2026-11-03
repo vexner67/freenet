@@ -19,6 +19,7 @@ import { api, currentUser, started } from './api.js';
 import { initAttachments } from './attach.js';
 import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
+import { initAudios } from './audio.js';
 import { openAddMembers } from './chats.js';
 import { isLive, onEvent } from './events.js';
 import { openAvatarDialog } from './avatar.js';
@@ -58,6 +59,8 @@ let loadingNewer = false;
 let attachments;
 // documents are those of "Мои Документы" attached to the message.
 let documents;
+// audios are songs attached to the message.
+let audios;
 // typingWatch tells the others while the user types.
 let typingWatch;
 let editing = null;
@@ -270,9 +273,12 @@ async function startEdit(m) {
   attachments.set(m.photos ?? []);
   $('editing').hidden = false;
   if (m.sharedPhoto) $('attach').hidden = $('graffiti').hidden = true;
-  // An edit changes the words and the photos; the documents stay.
+  // An edit changes the words and the photos; the documents and the
+  // songs stay.
   documents.clear();
+  audios.clear();
   $('doc').hidden = true;
+  $('audio').hidden = true;
   $('send').textContent = tr('Сохранить');
   text.focus();
   text.setSelectionRange(text.value.length, text.value.length);
@@ -493,7 +499,7 @@ async function send(event) {
   const text = $('text');
   const sendButton = $('send');
 
-  if (!editing && !text.value.trim() && attachments.count() === 0 && documents.count() === 0) return;
+  if (!editing && !text.value.trim() && attachments.count() === 0 && documents.count() === 0 && audios.count() === 0) return;
 
   if (attachments.busy()) {
     showError($('error'), tr('Дождитесь, пока загрузятся фотографии.'));
@@ -507,7 +513,7 @@ async function send(event) {
       edited(await api.editChatMessage(editing.id, text.value, { ...photoChanges(editing.photos, attachments.ids()), base: editingBase }));
       cancelEdit();
     } else {
-      const m = await api.sendChatMessage(chatID, text.value, attachments.ids(), '', [], '', documents.ids(), replies.replyingTo()?.id ?? '');
+      const m = await api.sendChatMessage(chatID, text.value, attachments.ids(), '', [], '', documents.ids(), replies.replyingTo()?.id ?? '', audios.ids());
 
       text.value = '';
       autosize(text);
@@ -515,6 +521,7 @@ async function send(event) {
       typingWatch.sent();
       attachments.clear();
       documents.clear();
+      audios.clear();
       showSent(m);
     }
   } catch (e) {
@@ -790,6 +797,7 @@ function setUpInput() {
   attachments = initAttachments({ link: $('attach'), also: [$('graffiti')], input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
   initGraffiti({ link: $('graffiti'), attachments });
   documents = initDocuments({ link: $('doc'), list: $('documents') });
+  audios = initAudios({ link: $('audio'), list: $('audios') });
   initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
   initSmileys({ link: $('smileys-link'), panel: $('smileys'), input: $('text'), rival: { link: $('stickers-link'), panel: $('stickers') } });
   $('form').addEventListener('submit', send);
