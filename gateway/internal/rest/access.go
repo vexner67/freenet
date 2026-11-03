@@ -16,6 +16,7 @@ var (
 	friendsPart = pagePartRule{func(a model.Access) bool { return a.Friends }, "this user's follows are hidden"}
 	clubsPart   = pagePartRule{func(a model.Access) bool { return a.Clubs }, "this user's clubs are hidden"}
 	giftsPart   = pagePartRule{func(a model.Access) bool { return a.Gifts }, "this user's gifts are hidden"}
+	audiosPart  = pagePartRule{func(a model.Access) bool { return a.Audios }, "this user's songs are hidden"}
 )
 
 type pagePartRule struct {

@@ -202,6 +202,10 @@ type privacyJSON struct {
 	OnlineRead         string `json:"onlineRead"`
 	// GiftsRead: who sees the gifts; "" is everyone.
 	GiftsRead string `json:"giftsRead"`
+	// AudiosRead: who sees the songs and playlists, ListeningRead: who
+	// sees the song playing now; "" is everyone.
+	AudiosRead    string `json:"audiosRead"`
+	ListeningRead string `json:"listeningRead"`
 	// ChatsInvite: who may add the user to chats; "" leaves the default.
 	ChatsInvite string `json:"chatsInvite"`
 	// Closed is "Тип профиля: закрытый".
@@ -227,6 +231,8 @@ func (p privacyJSON) toModel() model.Privacy {
 		FriendsRead:        p.FriendsRead,
 		OnlineRead:         p.OnlineRead,
 		GiftsRead:          p.GiftsRead,
+		AudiosRead:         p.AudiosRead,
+		ListeningRead:      p.ListeningRead,
 		ChatsInvite:        p.ChatsInvite,
 		Closed:             p.Closed,
 		MessagesPrime:      p.MessagesPrime,
@@ -345,6 +351,8 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 			FriendsRead:        u.Privacy.FriendsRead,
 			OnlineRead:         u.Privacy.OnlineRead,
 			GiftsRead:          u.Privacy.GiftsRead,
+			AudiosRead:         u.Privacy.AudiosRead,
+			ListeningRead:      u.Privacy.ListeningRead,
 			ChatsInvite:        u.Privacy.ChatsInvite,
 			Closed:             u.Privacy.Closed,
 			MessagesPrime:      u.Privacy.MessagesPrime,

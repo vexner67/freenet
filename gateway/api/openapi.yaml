@@ -1144,6 +1144,7 @@ paths:
   /api/v1/users/{nickname}/audio:
     get:
       summary: The songs a person keeps ("Аудиозаписи"), the last added first
+      description: 403 when the person's `audiosRead` hides them from you.
       parameters:
         - { name: nickname, in: path, required: true, schema: { type: string } }
         - { name: cursor, in: query, schema: { type: string } }
@@ -1160,6 +1161,9 @@ paths:
   /api/v1/users/{nickname}/music:
     get:
       summary: What a person listens to now ("слушает"), the song of their page and how many songs they keep
+      description: >-
+        What the person's `listeningRead` hides from you is null, and what
+        their `audiosRead` hides is null and 0, as on a page without music.
       parameters:
         - { name: nickname, in: path, required: true, schema: { type: string } }
       responses:
@@ -1180,6 +1184,7 @@ paths:
   /api/v1/users/{nickname}/playlists:
     get:
       summary: The playlists of a person, newest first
+      description: 403 when the person's `audiosRead` hides them from you.
       parameters:
         - { name: nickname, in: path, required: true, schema: { type: string } }
         - { name: cursor, in: query, schema: { type: string } }
@@ -10011,6 +10016,14 @@ components:
           type: string
           enum: [everyone, users, following, only_me]
           description: "Who sees the gifts sent to you (\"Кому видны мои подарки\"); everyone when left out"
+        audiosRead:
+          type: string
+          enum: [everyone, users, following, only_me]
+          description: "Who sees your songs, playlists and the song of your page (\"Кто видит мои аудиозаписи\"); everyone when left out"
+        listeningRead:
+          type: string
+          enum: [everyone, users, following, only_me]
+          description: "Who sees the song you play now (\"Кто видит, что я слушаю\"); everyone when left out"
         chatsInvite:
           type: string
           enum: [everyone, following, nobody]
@@ -11286,12 +11299,13 @@ components:
     Access:
       type: object
       description: Which blocks of a page you may see, as its owner's privacy allows
-      required: [photos, friends, clubs, gifts]
+      required: [photos, friends, clubs, gifts, audios]
       properties:
         photos: { type: boolean, description: "The albums (`photosRead`)" }
         friends: { type: boolean, description: "The follows, either way (`friendsRead`)" }
         clubs: { type: boolean, description: "The communities (`clubsRead`)" }
         gifts: { type: boolean, description: "The gifts (`giftsRead`)" }
+        audios: { type: boolean, description: "The songs and playlists (`audiosRead`)" }
 
     Gift:
       type: object

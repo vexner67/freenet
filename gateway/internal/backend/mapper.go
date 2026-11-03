@@ -221,6 +221,8 @@ func toUser(u *userv1.User) model.User {
 			FriendsRead:        enumName(u.GetPrivacy().GetFriendsRead().String(), audiencePrefix),
 			OnlineRead:         enumName(u.GetPrivacy().GetOnlineRead().String(), audiencePrefix),
 			GiftsRead:          enumName(u.GetPrivacy().GetGiftsRead().String(), audiencePrefix),
+			AudiosRead:         enumName(u.GetPrivacy().GetAudiosRead().String(), audiencePrefix),
+			ListeningRead:      enumName(u.GetPrivacy().GetListeningRead().String(), audiencePrefix),
 			ChatsInvite:        enumName(u.GetPrivacy().GetChatsInvite().String(), messagesWritePrefix),
 			Closed:             u.GetPrivacy().GetClosed(),
 			MessagesPrime:      u.GetPrivacy().GetMessagesPrime(),

@@ -244,7 +244,7 @@ func (a *api) listAudios(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	owner, err := a.visiblePage(r, token, pagePart)
+	owner, err := a.visiblePage(r, token, audiosPart)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -528,10 +528,25 @@ func (a *api) getMusic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	access, err := a.users.Access(r.Context(), token, owner.ID)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	m, err := a.audio.Music(r.Context(), owner.ID)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
+	}
+
+	// The owner's privacy hides the songs or what plays: the page then
+	// tells nothing of them, as of a page without music.
+	if !access.Audios {
+		m.PageAudio, m.Count = nil, 0
+	}
+	if !access.Listening {
+		m.Listening = nil
 	}
 
 	resp := musicResponse{Count: m.Count}
@@ -560,7 +575,7 @@ func (a *api) listPlaylists(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	owner, err := a.visiblePage(r, token, pagePart)
+	owner, err := a.visiblePage(r, token, audiosPart)
 	if err != nil {
 		a.writeError(w, r, err)
 		return

@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -290,6 +291,21 @@ func TestAudioLibrary(t *testing.T) {
 	}](t, h.do("GET", "/api/v1/users/ann/music", ""))
 	if music.Listening == nil || music.Listening.ID != "a2" || music.PageAudio != nil || music.Count != 2 {
 		t.Fatalf("music = %+v", music)
+	}
+
+	// The owner hides what plays, then the songs: the page tells nothing of them.
+	h.users.hiddenListening = true
+	if w = h.do("GET", "/api/v1/users/ann/music", ""); w.Code != http.StatusOK || strings.Contains(w.Body.String(), `"a2"`) || !strings.Contains(w.Body.String(), `"count":2`) {
+		t.Fatalf("listening hidden: %d %s", w.Code, w.Body)
+	}
+	h.users.hiddenAudios = true
+	if w = h.do("GET", "/api/v1/users/ann/music", ""); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"count":0`) {
+		t.Fatalf("songs hidden: %d %s", w.Code, w.Body)
+	}
+	for _, path := range []string{"/api/v1/users/ann/audio", "/api/v1/users/ann/playlists"} {
+		if w = h.do("GET", path, ""); w.Code != http.StatusForbidden {
+			t.Errorf("%s hidden: %d", path, w.Code)
+		}
 	}
 }
 

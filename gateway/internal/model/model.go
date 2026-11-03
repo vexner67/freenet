@@ -156,13 +156,17 @@ type Privacy struct {
 	// PageRead ("everyone" or "users"), InfoRead, PhotosRead and
 	// FriendsRead are openvk's "Кому видно …": "everyone", "users",
 	// "following" or "only_me"; OnlineRead is "Кто видит мою
-	// неактивность" and GiftsRead "Кому видны мои подарки", the same.
-	PageRead    string
-	InfoRead    string
-	PhotosRead  string
-	FriendsRead string
-	OnlineRead  string
-	GiftsRead   string
+	// неактивность", GiftsRead "Кому видны мои подарки", AudiosRead "Кто
+	// видит мои аудиозаписи" and ListeningRead "Кто видит, что я слушаю",
+	// the same.
+	PageRead      string
+	InfoRead      string
+	PhotosRead    string
+	FriendsRead   string
+	OnlineRead    string
+	GiftsRead     string
+	AudiosRead    string
+	ListeningRead string
 	// ChatsInvite is "Кто может добавлять меня в чаты": "everyone",
 	// "following" or "nobody"; "" leaves the default.
 	ChatsInvite string
@@ -200,14 +204,16 @@ type People struct {
 }
 
 // Access is what of a page the viewer may see: the page, its information,
-// albums, follows, communities and gifts.
+// albums, follows, communities, gifts, songs and the song playing now.
 type Access struct {
-	Page    bool
-	Info    bool
-	Photos  bool
-	Friends bool
-	Clubs   bool
-	Gifts   bool
+	Page      bool
+	Info      bool
+	Photos    bool
+	Friends   bool
+	Clubs     bool
+	Gifts     bool
+	Audios    bool
+	Listening bool
 }
 
 // Relation is who of the viewer and a user blacklisted the other.
