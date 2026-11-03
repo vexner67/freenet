@@ -508,10 +508,10 @@ function renderDeactivated(profile, isOwner) {
   }
 }
 
-// renderBanned is a page the administrators of the site blocked: others
-// read openvk's "К сожалению, нам пришлось заблокировать страницу
-// пользователя …" with the reason, its owner openvk's "вы были
-// верискокнуты" with the way out; an administrator may lift the block.
+// renderBanned is a page the administrators of the site blocked: a stern
+// notice on a red title, with the reason and the term, as a notice of the
+// 2000s; its owner reads it addressed to them, an administrator may lift
+// the block.
 function renderBanned(profile, isOwner) {
   const name = fullName(profile);
   const ban = profile.ban;
@@ -524,25 +524,24 @@ function renderBanned(profile, isOwner) {
   $('status').classList.add('empty');
   $('profile').hidden = false;
 
-  if (isOwner) {
-    $('profile-content').replaceChildren(el('div', { className: 'banned-info' },
-      el('p', {}, tr('Извините, '), el('b', { textContent: name }), tr(', но вы были верискокнуты.')),
-      el('p', {}, tr('А причина этому проста: '), el('b', { textContent: ban.reason }), '.'),
-      ban.until
-        ? el('p', {}, tr('На этот раз нам пришлось заблокировать вас до '), el('b', { textContent: formatDateTime(ban.until) }), '.')
-        : el('p', { textContent: tr('К сожалению, на этот раз нам пришлось заблокировать вас навсегда.') }),
-      el('p', {}, tr('Вы всё ещё можете '), el('a', { href: '/', textContent: tr('выйти'), onclick: logout }), '.'),
-    ));
-    return;
-  }
-
+  const lead = isOwner
+    ? el('p', {}, el('b', { textContent: name }), tr(', ваша страница заблокирована администрацией Freenet за нарушение правил сайта.'))
+    : el('p', {}, tr('Страница пользователя '), el('b', { textContent: genitiveName(profile) }), tr(' заблокирована администрацией Freenet за нарушение правил сайта.'));
   const info = el('div', { className: 'banned-info' },
-    el('p', {}, tr('К сожалению, нам пришлось заблокировать страницу пользователя '), el('b', { textContent: genitiveName(profile) }), '.'),
-    el('p', {}, tr('Комментарий модератора: '), el('b', { textContent: ban.reason }), '.'),
-    el('p', {}, tr('Пользователь заблокирован '), el('b', { textContent: banEnd(ban) }), '.'),
+    el('div', { className: 'banned-head' },
+      el('img', { src: '/static/icons/game/ban.svg', alt: '', width: 20, height: 20 }),
+      el('span', { textContent: tr('Доступ к странице закрыт') })),
+    el('div', { className: 'banned-tape' }),
+    el('div', { className: 'banned-body' },
+      lead,
+      el('table', { className: 'ban-facts' },
+        el('tr', {}, el('th', { textContent: tr('Основание:') }), el('td', {}, el('div', { className: 'ban-reason', textContent: ban.reason }))),
+        el('tr', {}, el('th', { textContent: tr('Срок:') }), el('td', { textContent: banEnd(ban) })))),
   );
 
-  if (me?.admin) {
+  if (isOwner) {
+    info.lastChild.append(el('p', {}, el('a', { href: '/', textContent: tr('Выйти'), onclick: logout })));
+  } else if (me?.admin) {
     const lift = el('a', { textContent: tr('Разблокировать пользователя') });
     lift.addEventListener('click', async () => {
       try {
@@ -552,7 +551,7 @@ function renderBanned(profile, isOwner) {
         showError($('error'), e);
       }
     });
-    info.append(el('p', {}, lift));
+    info.lastChild.append(el('p', {}, lift));
   }
 
   $('profile-content').replaceChildren(info);

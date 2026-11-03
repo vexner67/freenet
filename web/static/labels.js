@@ -3502,6 +3502,13 @@ export function newYearGreeting(date) {
   return date.getMonth() >= 6 ? tr('С наступающим Новым годом!') : tr('С Новым годом!');
 }
 
+// untilNewYear is how long, in milliseconds, is left to the midnight of
+// the coming New Year on the visitor's clock; 0 in January, when it came.
+export function untilNewYear(date) {
+  if (date.getMonth() === 0) return 0;
+  return new Date(date.getFullYear() + 1, 0, 1).getTime() - date.getTime();
+}
+
 // canvasColors are the 64 colors of the shared canvas, by their numbers in
 // the user service: the picture is data, not the theme of the site. New
 // colors go to the end, or the cells already painted would change.

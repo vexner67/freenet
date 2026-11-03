@@ -3,7 +3,8 @@
 // and each game starts from one; nothing sounds with reduced motion, as
 // nothing moves then.
 
-const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// Outside a browser (the tests) there is nothing to sound.
+const still = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? true;
 const loudness = 0.08;
 
 let audio = null;
@@ -129,6 +130,20 @@ export function digCollapse() {
 // fanfare is a new thing opened or a round number reached.
 export function fanfare() {
   [523, 659, 784, 1047].forEach((freq, i) => tone({ type: 'square', freq, seconds: 0.22, delay: i * 0.1, volume: 0.6 }));
+}
+
+// jingle is a sleigh bell: three high notes, quick and bright.
+export function jingle(pitch = 0) {
+  const up = 2 ** (pitch / 12);
+  tone({ type: 'triangle', freq: 1318 * up, seconds: 0.25, volume: 0.7 });
+  tone({ type: 'triangle', freq: 1568 * up, seconds: 0.25, volume: 0.6, delay: 0.06 });
+  tone({ type: 'sine', freq: 2093 * up, seconds: 0.4, volume: 0.5, delay: 0.12 });
+}
+
+// denied is a request turned down: two low buzzes, as an old alarm panel.
+export function denied() {
+  tone({ type: 'square', freq: 196, end: 150, seconds: 0.18, volume: 0.9 });
+  tone({ type: 'square', freq: 196, end: 140, seconds: 0.26, volume: 0.9, delay: 0.22 });
 }
 
 // coins is money coming in.
