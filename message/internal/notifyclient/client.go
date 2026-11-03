@@ -1,6 +1,6 @@
 // Package notifyclient tells the notification service of new messages, to
-// push them to the browsers of their recipients. It is the only place in
-// message that knows the notification proto contract.
+// push them to the browsers of their recipients, and of calls. It is the
+// only place in message that knows the notification proto contract.
 package notifyclient
 
 import (
@@ -23,11 +23,13 @@ type Pusher struct {
 	logger  *slog.Logger
 }
 
-// job is a push to tell. ctx is of the request that sent the message,
-// without its end: its ID goes with the call and into the logs.
+// job is a push or a notification to tell. ctx is of the request that
+// sent the message, without its end: its ID goes with the call and into
+// the logs.
 type job struct {
-	ctx context.Context //nolint:containedctx // the request's values outlive it in the queue
-	req *notificationv1.PushMessageRequest
+	ctx    context.Context //nolint:containedctx // the request's values outlive it in the queue
+	push   *notificationv1.PushMessageRequest
+	notify *notificationv1.NotifyRequest
 }
 
 func New(api notificationv1.NotificationServiceClient, timeout time.Duration, size int, logger *slog.Logger) *Pusher {
@@ -55,10 +57,35 @@ func (p *Pusher) Push(ctx context.Context, m service.Pushed) {
 		req.ChatId = m.ChatID.String()
 	}
 
+	p.enqueue(ctx, job{push: req})
+}
+
+// Called tells notification of a call: a missed one to the peer, or one
+// they talked in to both of them, each naming the other.
+func (p *Pusher) Called(ctx context.Context, c service.Call) {
+	caller, peer := c.CallerID.String(), c.PeerID.String()
+	if c.Seconds == 0 {
+		p.enqueue(ctx, job{notify: &notificationv1.NotifyRequest{Event: &notificationv1.Event{
+			Kind: notificationv1.Kind_KIND_MISSED_CALL, RecipientId: peer, ActorId: caller,
+		}}})
+
+		return
+	}
+
+	seconds := int32(c.Seconds) //nolint:gosec // at most message.MaxCallSeconds
+	for _, pair := range [][2]string{{peer, caller}, {caller, peer}} {
+		p.enqueue(ctx, job{notify: &notificationv1.NotifyRequest{Event: &notificationv1.Event{
+			Kind: notificationv1.Kind_KIND_CALL, RecipientId: pair[0], ActorId: pair[1], Seconds: seconds,
+		}}})
+	}
+}
+
+func (p *Pusher) enqueue(ctx context.Context, j job) {
+	j.ctx = context.WithoutCancel(ctx)
 	select {
-	case p.queue <- job{ctx: context.WithoutCancel(ctx), req: req}:
+	case p.queue <- j:
 	default:
-		p.logger.WarnContext(ctx, "push queue is full, push dropped", "message_id", m.ID)
+		p.logger.WarnContext(ctx, "push queue is full, push dropped")
 	}
 }
 
@@ -78,7 +105,15 @@ func (p *Pusher) tell(j job) {
 	ctx, cancel := context.WithTimeout(j.ctx, p.timeout)
 	defer cancel()
 
-	if _, err := p.api.PushMessage(ctx, j.req); err != nil {
-		p.logger.WarnContext(ctx, "push a message", "error", err, "message_id", j.req.GetMessageId())
+	if j.notify != nil {
+		if _, err := p.api.Notify(ctx, j.notify); err != nil {
+			p.logger.WarnContext(ctx, "notify of a call", "error", err)
+		}
+
+		return
+	}
+
+	if _, err := p.api.PushMessage(ctx, j.push); err != nil {
+		p.logger.WarnContext(ctx, "push a message", "error", err, "message_id", j.push.GetMessageId())
 	}
 }

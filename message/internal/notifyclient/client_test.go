@@ -2,6 +2,7 @@ package notifyclient_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"testing"
@@ -17,7 +18,13 @@ import (
 
 type fakeAPI struct {
 	notificationv1.NotificationServiceClient
-	got chan *notificationv1.PushMessageRequest
+	got      chan *notificationv1.PushMessageRequest
+	notified chan *notificationv1.Event
+}
+
+func (f fakeAPI) Notify(_ context.Context, req *notificationv1.NotifyRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.notified <- req.GetEvent()
+	return &emptypb.Empty{}, nil
 }
 
 func (f fakeAPI) PushMessage(_ context.Context, req *notificationv1.PushMessageRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
@@ -63,5 +70,36 @@ func TestPusher(t *testing.T) {
 	case req := <-api.got:
 		t.Fatalf("the dropped push was told: %v", req)
 	default:
+	}
+}
+
+func TestPusher_Called(t *testing.T) {
+	t.Parallel()
+
+	api := fakeAPI{notified: make(chan *notificationv1.Event, 4)}
+	p := notifyclient.New(api, time.Second, 4, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	ann, bob := uuid.New(), uuid.New()
+
+	p.Called(context.Background(), service.Call{CallerID: ann, PeerID: bob})
+	p.Called(context.Background(), service.Call{CallerID: ann, PeerID: bob, Seconds: 95})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go p.Run(ctx)
+
+	want := []string{
+		"KIND_MISSED_CALL " + bob.String() + " " + ann.String() + " 0",
+		"KIND_CALL " + bob.String() + " " + ann.String() + " 95",
+		"KIND_CALL " + ann.String() + " " + bob.String() + " 95",
+	}
+	for _, w := range want {
+		select {
+		case e := <-api.notified:
+			if got := fmt.Sprintf("%s %s %s %d", e.GetKind(), e.GetRecipientId(), e.GetActorId(), e.GetSeconds()); got != w {
+				t.Fatalf("told %s, want %s", got, w)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("not told %s", w)
+		}
 	}
 }

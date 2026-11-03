@@ -30,6 +30,11 @@ service MessageService {
   // the caller's other pages. Nothing is kept and the server cannot read
   // it.
   rpc SendCallSignal(SendCallSignalRequest) returns (google.protobuf.Empty);
+  // ReportCall is the end of a call the caller made to peer_id, told by
+  // the caller's page: seconds they talked, 0 when the peer did not
+  // answer. Both hear of it in "Уведомления" (notification), not in the
+  // dialog. Whether the caller may write to the peer, the gateway checks.
+  rpc ReportCall(ReportCallRequest) returns (google.protobuf.Empty);
   // GetCallServers are the STUN and TURN servers of a call, with
   // credentials of a limited time.
   rpc GetCallServers(GetCallServersRequest) returns (GetCallServersResponse);
@@ -345,6 +350,12 @@ message MarkDialogReadRequest {
 message SendCallSignalRequest {
   string peer_id = 1;
   string sealed = 2;
+}
+
+message ReportCallRequest {
+  string peer_id = 1;
+  // 0 to 86400.
+  int32 seconds = 2;
 }
 
 message GetCallServersRequest {}

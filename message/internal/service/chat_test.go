@@ -25,10 +25,15 @@ type chatFixture struct {
 // fakePusher remembers what was pushed.
 type fakePusher struct {
 	pushed []service.Pushed
+	calls  []service.Call
 }
 
 func (f *fakePusher) Push(_ context.Context, p service.Pushed) {
 	f.pushed = append(f.pushed, p)
+}
+
+func (f *fakePusher) Called(_ context.Context, c service.Call) {
+	f.calls = append(f.calls, c)
 }
 
 func newChats() chatFixture {

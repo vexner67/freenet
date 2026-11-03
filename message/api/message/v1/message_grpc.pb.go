@@ -27,6 +27,7 @@ const (
 	MessageService_MarkDialogRead_FullMethodName     = "/message.v1.MessageService/MarkDialogRead"
 	MessageService_SetTyping_FullMethodName          = "/message.v1.MessageService/SetTyping"
 	MessageService_SendCallSignal_FullMethodName     = "/message.v1.MessageService/SendCallSignal"
+	MessageService_ReportCall_FullMethodName         = "/message.v1.MessageService/ReportCall"
 	MessageService_GetCallServers_FullMethodName     = "/message.v1.MessageService/GetCallServers"
 	MessageService_DeleteMessage_FullMethodName      = "/message.v1.MessageService/DeleteMessage"
 	MessageService_HideMessage_FullMethodName        = "/message.v1.MessageService/HideMessage"
@@ -88,6 +89,11 @@ type MessageServiceClient interface {
 	// the caller's other pages. Nothing is kept and the server cannot read
 	// it.
 	SendCallSignal(ctx context.Context, in *SendCallSignalRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ReportCall is the end of a call the caller made to peer_id, told by
+	// the caller's page: seconds they talked, 0 when the peer did not
+	// answer. Both hear of it in "Уведомления" (notification), not in the
+	// dialog. Whether the caller may write to the peer, the gateway checks.
+	ReportCall(ctx context.Context, in *ReportCallRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// GetCallServers are the STUN and TURN servers of a call, with
 	// credentials of a limited time.
 	GetCallServers(ctx context.Context, in *GetCallServersRequest, opts ...grpc.CallOption) (*GetCallServersResponse, error)
@@ -267,6 +273,16 @@ func (c *messageServiceClient) SendCallSignal(ctx context.Context, in *SendCallS
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, MessageService_SendCallSignal_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) ReportCall(ctx context.Context, in *ReportCallRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_ReportCall_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -629,6 +645,11 @@ type MessageServiceServer interface {
 	// the caller's other pages. Nothing is kept and the server cannot read
 	// it.
 	SendCallSignal(context.Context, *SendCallSignalRequest) (*emptypb.Empty, error)
+	// ReportCall is the end of a call the caller made to peer_id, told by
+	// the caller's page: seconds they talked, 0 when the peer did not
+	// answer. Both hear of it in "Уведомления" (notification), not in the
+	// dialog. Whether the caller may write to the peer, the gateway checks.
+	ReportCall(context.Context, *ReportCallRequest) (*emptypb.Empty, error)
 	// GetCallServers are the STUN and TURN servers of a call, with
 	// credentials of a limited time.
 	GetCallServers(context.Context, *GetCallServersRequest) (*GetCallServersResponse, error)
@@ -764,6 +785,9 @@ func (UnimplementedMessageServiceServer) SetTyping(context.Context, *SetTypingRe
 }
 func (UnimplementedMessageServiceServer) SendCallSignal(context.Context, *SendCallSignalRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SendCallSignal not implemented")
+}
+func (UnimplementedMessageServiceServer) ReportCall(context.Context, *ReportCallRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReportCall not implemented")
 }
 func (UnimplementedMessageServiceServer) GetCallServers(context.Context, *GetCallServersRequest) (*GetCallServersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetCallServers not implemented")
@@ -1004,6 +1028,24 @@ func _MessageService_SendCallSignal_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MessageServiceServer).SendCallSignal(ctx, req.(*SendCallSignalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_ReportCall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReportCallRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).ReportCall(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_ReportCall_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).ReportCall(ctx, req.(*ReportCallRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1611,6 +1653,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendCallSignal",
 			Handler:    _MessageService_SendCallSignal_Handler,
+		},
+		{
+			MethodName: "ReportCall",
+			Handler:    _MessageService_ReportCall_Handler,
 		},
 		{
 			MethodName: "GetCallServers",

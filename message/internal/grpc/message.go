@@ -26,6 +26,7 @@ type MessageService interface {
 	MarkRead(ctx context.Context, userID, peerID, upTo uuid.UUID) error
 	Typing(ctx context.Context, userID, peerID uuid.UUID) error
 	CallSignal(ctx context.Context, userID, peerID uuid.UUID, sealed string) error
+	ReportCall(ctx context.Context, userID, peerID uuid.UUID, seconds int) error
 	CallServers(userID uuid.UUID, now time.Time) service.CallServers
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	Hide(ctx context.Context, userID, id uuid.UUID) error
@@ -306,6 +307,24 @@ func (h *MessageHandler) SendCallSignal(ctx context.Context, req *messagev1.Send
 	}
 
 	if err = h.messageService.CallSignal(ctx, userID, peerID, req.GetSealed()); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *MessageHandler) ReportCall(ctx context.Context, req *messagev1.ReportCallRequest) (*emptypb.Empty, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	peerID, err := parseID(req.GetPeerId(), "invalid peer id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.messageService.ReportCall(ctx, userID, peerID, int(req.GetSeconds())); err != nil {
 		return nil, err
 	}
 

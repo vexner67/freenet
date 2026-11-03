@@ -53,6 +53,24 @@ func (s *MessageService) CallSignal(ctx context.Context, userID, peerID uuid.UUI
 	return nil
 }
 
+// ReportCall is the end of a call userID made to peerID, told by the page
+// of userID: they talked seconds, or peerID did not answer (0). Both hear
+// of it in "Уведомления" rather than in the dialog, which keeps only the
+// button of a call. Whether userID may write to peerID the caller has
+// checked.
+func (s *MessageService) ReportCall(ctx context.Context, userID, peerID uuid.UUID, seconds int) error {
+	if userID == peerID {
+		return message.ErrToYourself
+	}
+	if seconds < 0 || seconds > message.MaxCallSeconds {
+		return message.ErrCallLength
+	}
+
+	s.pusher.Called(ctx, Call{CallerID: userID, PeerID: peerID, Seconds: seconds})
+
+	return nil
+}
+
 // CallServers gives userID the servers of a call: the time-limited
 // credentials coturn checks with its use-auth-secret.
 func (s *MessageService) CallServers(userID uuid.UUID, now time.Time) CallServers {

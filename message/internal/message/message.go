@@ -42,6 +42,9 @@ const (
 // session with video is some kilobytes.
 const MaxCallSignal = 64 << 10
 
+// MaxCallSeconds bounds how long a call is told to have lasted: a day.
+const MaxCallSeconds = 24 * 60 * 60
+
 var (
 	// ErrTextEmpty: neither text nor photos. The message keeps the words
 	// it had before messages took photos: clients know it.
@@ -49,6 +52,7 @@ var (
 	ErrTextTooLong    = errors.New("message text is too long")
 	ErrToYourself     = errors.New("you cannot write to yourself")
 	ErrCallSignal     = errors.New("a call signal is empty or too long")
+	ErrCallLength     = errors.New("a call cannot have lasted so long")
 	ErrNotFound       = errors.New("message not found")
 	ErrTooManyPhotos  = errors.New("a message has at most 10 photos")
 	ErrDuplicatePhoto = errors.New("the same photo is attached twice")

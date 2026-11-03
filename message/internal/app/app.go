@@ -294,7 +294,9 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		// Typing tells others nothing to keep, but it is told to them.
 		messagev1.MessageService_SetTyping_FullMethodName:      cfg.TypingLimits,
 		messagev1.MessageService_SendCallSignal_FullMethodName: cfg.CallLimits,
-		messagev1.MessageService_SetChatTyping_FullMethodName:  cfg.TypingLimits,
+		// The end of a call is told to both of its sides.
+		messagev1.MessageService_ReportCall_FullMethodName:    cfg.CallLimits,
+		messagev1.MessageService_SetChatTyping_FullMethodName: cfg.TypingLimits,
 		// A reaction is told to the others too.
 		messagev1.MessageService_ReactToMessage_FullMethodName:     cfg.ReactionLimits,
 		messagev1.MessageService_ReactToChatMessage_FullMethodName: cfg.ReactionLimits,

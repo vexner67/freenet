@@ -78,16 +78,28 @@ type Pushed struct {
 	ChatTitle    string
 }
 
+// Call is a call CallerID made to PeerID: Seconds they talked, 0 when
+// PeerID did not answer.
+type Call struct {
+	CallerID uuid.UUID
+	PeerID   uuid.UUID
+	Seconds  int
+}
+
 // Pusher tells the notification service of new messages, to push them to
-// browsers. Best effort, as live events are: it does not fail the send.
+// browsers, and of calls, for "Уведомления". Best effort, as live events
+// are: it does not fail the send.
 type Pusher interface {
 	Push(ctx context.Context, p Pushed)
+	Called(ctx context.Context, c Call)
 }
 
 // noPushes is the Pusher of services given none.
 type noPushes struct{}
 
 func (noPushes) Push(context.Context, Pushed) {}
+
+func (noPushes) Called(context.Context, Call) {}
 
 func pusherOr(p Pusher) Pusher {
 	if p == nil {
