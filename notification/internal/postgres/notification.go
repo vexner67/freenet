@@ -37,9 +37,10 @@ const saveNotificationQuery = `
 		actor_id,
 		post_id,
 		comment_id,
+		seconds,
 		created_at
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	ON CONFLICT DO NOTHING
 `
 
@@ -47,7 +48,7 @@ func (r *NotificationRepository) Save(ctx context.Context, n *notification.Notif
 	e := n.Event()
 
 	tag, err := r.pool.Exec(ctx, saveNotificationQuery,
-		n.ID(), string(e.Kind), e.RecipientID, e.ActorID, nullable(e.PostID), nullable(e.CommentID), n.CreatedAt())
+		n.ID(), string(e.Kind), e.RecipientID, e.ActorID, nullable(e.PostID), nullable(e.CommentID), e.Seconds, n.CreatedAt())
 	if err != nil {
 		return false, errs.Wrap("r.pool.Exec", err)
 	}
@@ -63,6 +64,7 @@ const getNotificationQuery = `
 		actor_id,
 		post_id,
 		comment_id,
+		seconds,
 		created_at
 	FROM notifications
 	WHERE id = $1
@@ -309,6 +311,7 @@ const (
 			actor_id,
 			post_id,
 			comment_id,
+			seconds,
 			created_at
 		FROM notifications
 		WHERE recipient_id = $1
@@ -325,6 +328,7 @@ const (
 			actor_id,
 			post_id,
 			comment_id,
+			seconds,
 			created_at
 		FROM notifications
 		WHERE recipient_id = $1
@@ -406,10 +410,11 @@ func scanNotification(row pgx.Row) (*notification.Notification, error) {
 		id, recipientID, actorID uuid.UUID
 		kind                     string
 		postID, commentID        *uuid.UUID
+		seconds                  int
 		createdAt                time.Time
 	)
 
-	if err := row.Scan(&id, &kind, &recipientID, &actorID, &postID, &commentID, &createdAt); err != nil {
+	if err := row.Scan(&id, &kind, &recipientID, &actorID, &postID, &commentID, &seconds, &createdAt); err != nil {
 		return nil, err
 	}
 
@@ -417,6 +422,7 @@ func scanNotification(row pgx.Row) (*notification.Notification, error) {
 		Kind:        notification.Kind(kind),
 		RecipientID: recipientID,
 		ActorID:     actorID,
+		Seconds:     seconds,
 	}
 	if postID != nil {
 		e.PostID = *postID

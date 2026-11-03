@@ -61,6 +61,9 @@ const clubTexts = {
 // A match of "Знакомства", said of the person who liked back.
 const matchText = 'Взаимная симпатия в знакомствах.';
 
+// Calls, said of the other side; a click opens the dialog, to call back.
+const callTexts = { call: 'Звонок завершён.', missed_call: 'Пропущенный звонок.' };
+
 // The same in English (i18n.js), when the pages are English: a verb has
 // one form, whoever did it.
 const english = {
@@ -99,6 +102,7 @@ const english = {
     club_verified: 'The community is verified: its name has a check mark now.',
   },
   match: 'You liked each other in dating.',
+  calls: { call: 'The call is over.', missed_call: 'Missed call.' },
   community: 'Community',
   chat: 'Chat',
   message: 'New message.',
@@ -152,6 +156,10 @@ function notificationOf(p, lang = 'ru') {
 
   if (p.kind === 'match') {
     return { title: name, body: en ? english.match : matchText, url: '/dating', tag };
+  }
+
+  if (callTexts[p.kind]) {
+    return { title: name, body: en ? english.calls[p.kind] : callTexts[p.kind], url: '/im/' + encodeURIComponent(actor.nickname), tag };
   }
 
   const text = pushTexts[p.kind];

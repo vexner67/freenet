@@ -122,6 +122,11 @@ enum Kind {
   // The actor and the recipient liked each other in "Знакомства"; each
   // gets one, the other the actor.
   KIND_MATCH = 29;
+  // The recipient talked with the actor for seconds; each of the two gets
+  // one, the other the actor.
+  KIND_CALL = 30;
+  // The actor called the recipient, who did not answer.
+  KIND_MISSED_CALL = 31;
 }
 
 // Event: post_id is set for all but follows, invitations, appointments
@@ -134,6 +139,8 @@ message Event {
   string actor_id = 3;
   string post_id = 4;
   string comment_id = 5;
+  // How long a call lasted, for KIND_CALL only: 1 to 86400.
+  int32 seconds = 6;
 }
 
 message NotifyRequest {
@@ -164,6 +171,8 @@ message Notification {
   string post_id = 4;
   string comment_id = 5;
   google.protobuf.Timestamp created_at = 6;
+  // How long a call lasted, for KIND_CALL.
+  int32 seconds = 7;
 }
 
 enum Box {

@@ -908,3 +908,44 @@ func TestRepositories_DeleteOlder(t *testing.T) {
 		t.Fatalf("the one of today: %v", err)
 	}
 }
+
+func TestRepositories_Calls(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	repo := postgres.NewNotificationRepository(pool)
+	ann, bob := uuid.New(), uuid.New()
+
+	// Every call is kept, with how long it lasted.
+	var call *notification.Notification
+	for _, e := range []notification.Event{
+		{Kind: notification.KindMissedCall, RecipientID: ann, ActorID: bob},
+		{Kind: notification.KindMissedCall, RecipientID: ann, ActorID: bob},
+		{Kind: notification.KindCall, RecipientID: ann, ActorID: bob, Seconds: 95},
+	} {
+		if call, err = notification.New(e, time.Now()); err != nil {
+			t.Fatal(err)
+		}
+		if isNew, err := repo.Save(ctx, call); err != nil || !isNew {
+			t.Fatalf("Save(%v) = %v, %v", e, isNew, err)
+		}
+	}
+
+	if n, err := repo.CountNewer(ctx, ann, uuid.Nil, 10); err != nil || n != 3 {
+		t.Fatalf("calls = %d, %v", n, err)
+	}
+	if got, err := repo.Get(ctx, call.ID()); err != nil || got.Event() != call.Event() {
+		t.Fatalf("Get = %+v, %v; want %+v", got, err, call.Event())
+	}
+}

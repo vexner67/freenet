@@ -166,6 +166,42 @@ func TestNotifications(t *testing.T) {
 	}
 }
 
+// TestCalls: every call is its own notification, with how long it lasted.
+func TestCalls(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	for _, e := range []*notificationv1.Event{
+		{Kind: notificationv1.Kind_KIND_MISSED_CALL, RecipientId: ann.String(), ActorId: bob.String()},
+		{Kind: notificationv1.Kind_KIND_MISSED_CALL, RecipientId: ann.String(), ActorId: bob.String()},
+		{Kind: notificationv1.Kind_KIND_CALL, RecipientId: ann.String(), ActorId: bob.String(), Seconds: 95},
+	} {
+		if _, err := s.client.Notify(context.Background(), &notificationv1.NotifyRequest{Event: e}); err != nil {
+			t.Fatalf("Notify(%v): %v", e, err)
+		}
+	}
+
+	page, err := s.client.ListNotifications(s.as(t, ann), &notificationv1.ListNotificationsRequest{Box: notificationv1.Box_BOX_UNREAD})
+	if err != nil || len(page.GetNotifications()) != 3 {
+		t.Fatalf("calls = %v, %v", page, err)
+	}
+	if c := page.GetNotifications()[0]; c.GetKind() != notificationv1.Kind_KIND_CALL || c.GetSeconds() != 95 {
+		t.Fatalf("the call: %v", c)
+	}
+	if c := page.GetNotifications()[1]; c.GetKind() != notificationv1.Kind_KIND_MISSED_CALL || c.GetSeconds() != 0 {
+		t.Fatalf("the missed call: %v", c)
+	}
+
+	_, err = s.client.Notify(context.Background(), &notificationv1.NotifyRequest{Event: &notificationv1.Event{
+		Kind: notificationv1.Kind_KIND_CALL, RecipientId: ann.String(), ActorId: bob.String(),
+	}})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a call of no time: %v", err)
+	}
+}
+
 func TestErrors(t *testing.T) {
 	t.Parallel()
 

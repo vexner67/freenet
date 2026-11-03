@@ -26,7 +26,8 @@ func toStatus(err error) (*status.Status, bool) {
 		errors.Is(err, notification.ErrNoRecipient),
 		errors.Is(err, notification.ErrNoActor),
 		errors.Is(err, notification.ErrActorRecipient),
-		errors.Is(err, notification.ErrTargetMismatch):
+		errors.Is(err, notification.ErrTargetMismatch),
+		errors.Is(err, notification.ErrCallSeconds):
 		return status.New(codes.InvalidArgument, err.Error()), true
 	case errors.Is(err, push.ErrEndpointInvalid),
 		errors.Is(err, push.ErrKeysInvalid),

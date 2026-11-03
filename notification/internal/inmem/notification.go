@@ -52,6 +52,9 @@ func sameEvent(a, b notification.Event) bool {
 		return a.RecipientID == b.RecipientID
 	case notification.KindClubVerified:
 		return a.ActorID == b.ActorID
+	case notification.KindCall, notification.KindMissedCall:
+		// Every call is its own.
+		return false
 	default:
 		return a.ActorID == b.ActorID && a.RecipientID == b.RecipientID
 	}

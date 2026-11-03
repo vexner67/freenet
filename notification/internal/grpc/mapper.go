@@ -43,6 +43,8 @@ var (
 		notification.KindStoryComment: notificationv1.Kind_KIND_STORY_COMMENT,
 		notification.KindPrime:        notificationv1.Kind_KIND_PRIME,
 		notification.KindMatch:        notificationv1.Kind_KIND_MATCH,
+		notification.KindCall:         notificationv1.Kind_KIND_CALL,
+		notification.KindMissedCall:   notificationv1.Kind_KIND_MISSED_CALL,
 	}
 	kindFromProto = map[notificationv1.Kind]notification.Kind{
 		notificationv1.Kind_KIND_LIKE:      notification.KindLike,
@@ -77,6 +79,8 @@ var (
 		notificationv1.Kind_KIND_STORY_COMMENT: notification.KindStoryComment,
 		notificationv1.Kind_KIND_PRIME:         notification.KindPrime,
 		notificationv1.Kind_KIND_MATCH:         notification.KindMatch,
+		notificationv1.Kind_KIND_CALL:          notification.KindCall,
+		notificationv1.Kind_KIND_MISSED_CALL:   notification.KindMissedCall,
 	}
 )
 
@@ -88,7 +92,7 @@ func fromProtoEvent(e *notificationv1.Event) (notification.Event, error) {
 		return notification.Event{}, status.Error(codes.InvalidArgument, "unknown notification kind")
 	}
 
-	event := notification.Event{Kind: kind}
+	event := notification.Event{Kind: kind, Seconds: int(e.GetSeconds())}
 
 	ids := []struct {
 		raw      string
@@ -126,6 +130,7 @@ func toProtoNotification(n *notification.Notification) *notificationv1.Notificat
 		PostId:    optionalID(e.PostID),
 		CommentId: optionalID(e.CommentID),
 		CreatedAt: timestamppb.New(n.CreatedAt()),
+		Seconds:   int32(e.Seconds), //nolint:gosec // at most notification.MaxCallSeconds
 	}
 }
 

@@ -91,7 +91,15 @@ const (
 	// KindMatch: the actor and the recipient liked each other in
 	// "Знакомства". One per pair and recipient.
 	KindMatch Kind = "match"
+	// KindCall: the recipient talked with the actor for Seconds; each of
+	// the two gets one naming the other.
+	KindCall Kind = "call"
+	// KindMissedCall: the actor called the recipient, who did not answer.
+	KindMissedCall Kind = "missed_call"
 )
+
+// MaxCallSeconds bounds how long a call is told to have lasted: a day.
+const MaxCallSeconds = 24 * 60 * 60
 
 var (
 	ErrUnknownKind    = errors.New("unknown notification kind")
@@ -99,6 +107,7 @@ var (
 	ErrNoActor        = errors.New("notification has no actor")
 	ErrActorRecipient = errors.New("nobody is notified about their own actions")
 	ErrTargetMismatch = errors.New("notification target does not match its kind")
+	ErrCallSeconds    = errors.New("invalid length of a call")
 	ErrNotFound       = errors.New("notification not found")
 )
 
@@ -107,13 +116,15 @@ var (
 // the topic for theirs),
 // CommentID for comments, replies, comment likes, messages of topics and
 // their likes, comments of photos and mentions in comments and topics;
-// unused IDs are uuid.Nil.
+// unused IDs are uuid.Nil. Seconds is how long a call lasted, for
+// KindCall only.
 type Event struct {
 	Kind        Kind
 	RecipientID uuid.UUID
 	ActorID     uuid.UUID
 	PostID      uuid.UUID
 	CommentID   uuid.UUID
+	Seconds     int
 }
 
 // Validate checks that the event names exactly what its kind needs.
@@ -132,6 +143,10 @@ func (e Event) Validate() error {
 
 	hasPost, hasComment := e.PostID != uuid.Nil, e.CommentID != uuid.Nil
 
+	if (e.Kind == KindCall) != (e.Seconds != 0) || e.Seconds < 0 || e.Seconds > MaxCallSeconds {
+		return ErrCallSeconds
+	}
+
 	var ok bool
 
 	switch e.Kind {
@@ -142,7 +157,7 @@ func (e Event) Validate() error {
 		KindPhotoComment, KindTopicMessageLike, KindPhotoMention,
 		KindStoryComment:
 		ok = hasPost && hasComment
-	case KindFollow, KindClubAdmin, KindInvite, KindVerified, KindClubVerified, KindMatch:
+	case KindFollow, KindClubAdmin, KindInvite, KindVerified, KindClubVerified, KindMatch, KindCall, KindMissedCall:
 		ok = !hasPost && !hasComment
 	default:
 		return ErrUnknownKind

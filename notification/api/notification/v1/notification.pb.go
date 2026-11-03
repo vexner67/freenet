@@ -93,6 +93,11 @@ const (
 	// The actor and the recipient liked each other in "Знакомства"; each
 	// gets one, the other the actor.
 	Kind_KIND_MATCH Kind = 29
+	// The recipient talked with the actor for seconds; each of the two gets
+	// one, the other the actor.
+	Kind_KIND_CALL Kind = 30
+	// The actor called the recipient, who did not answer.
+	Kind_KIND_MISSED_CALL Kind = 31
 )
 
 // Enum value maps for Kind.
@@ -126,6 +131,8 @@ var (
 		27: "KIND_STORY_COMMENT",
 		28: "KIND_PRIME",
 		29: "KIND_MATCH",
+		30: "KIND_CALL",
+		31: "KIND_MISSED_CALL",
 	}
 	Kind_value = map[string]int32{
 		"KIND_UNSPECIFIED":        0,
@@ -156,6 +163,8 @@ var (
 		"KIND_STORY_COMMENT":      27,
 		"KIND_PRIME":              28,
 		"KIND_MATCH":              29,
+		"KIND_CALL":               30,
+		"KIND_MISSED_CALL":        31,
 	}
 )
 
@@ -297,12 +306,14 @@ func (Change) EnumDescriptor() ([]byte, []int) {
 // comment_id for comments, replies, comment likes, messages of topics
 // and mentions in comments and topics.
 type Event struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Kind          Kind                   `protobuf:"varint,1,opt,name=kind,proto3,enum=notification.v1.Kind" json:"kind,omitempty"`
-	RecipientId   string                 `protobuf:"bytes,2,opt,name=recipient_id,json=recipientId,proto3" json:"recipient_id,omitempty"`
-	ActorId       string                 `protobuf:"bytes,3,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
-	PostId        string                 `protobuf:"bytes,4,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
-	CommentId     string                 `protobuf:"bytes,5,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Kind        Kind                   `protobuf:"varint,1,opt,name=kind,proto3,enum=notification.v1.Kind" json:"kind,omitempty"`
+	RecipientId string                 `protobuf:"bytes,2,opt,name=recipient_id,json=recipientId,proto3" json:"recipient_id,omitempty"`
+	ActorId     string                 `protobuf:"bytes,3,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
+	PostId      string                 `protobuf:"bytes,4,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
+	CommentId   string                 `protobuf:"bytes,5,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
+	// How long a call lasted, for KIND_CALL only: 1 to 86400.
+	Seconds       int32 `protobuf:"varint,6,opt,name=seconds,proto3" json:"seconds,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -370,6 +381,13 @@ func (x *Event) GetCommentId() string {
 		return x.CommentId
 	}
 	return ""
+}
+
+func (x *Event) GetSeconds() int32 {
+	if x != nil {
+		return x.Seconds
+	}
+	return 0
 }
 
 type NotifyRequest struct {
@@ -598,9 +616,11 @@ type Notification struct {
 	Kind    Kind                   `protobuf:"varint,2,opt,name=kind,proto3,enum=notification.v1.Kind" json:"kind,omitempty"`
 	ActorId string                 `protobuf:"bytes,3,opt,name=actor_id,json=actorId,proto3" json:"actor_id,omitempty"`
 	// Empty when the kind has no post or comment.
-	PostId        string                 `protobuf:"bytes,4,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
-	CommentId     string                 `protobuf:"bytes,5,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	PostId    string                 `protobuf:"bytes,4,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
+	CommentId string                 `protobuf:"bytes,5,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// How long a call lasted, for KIND_CALL.
+	Seconds       int32 `protobuf:"varint,7,opt,name=seconds,proto3" json:"seconds,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -675,6 +695,13 @@ func (x *Notification) GetCreatedAt() *timestamppb.Timestamp {
 		return x.CreatedAt
 	}
 	return nil
+}
+
+func (x *Notification) GetSeconds() int32 {
+	if x != nil {
+		return x.Seconds
+	}
+	return 0
 }
 
 type ListNotificationsRequest struct {
@@ -1268,14 +1295,15 @@ var File_api_notification_v1_notification_proto protoreflect.FileDescriptor
 
 const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\n" +
-	"&api/notification/v1/notification.proto\x12\x0fnotification.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa8\x01\n" +
+	"&api/notification/v1/notification.proto\x12\x0fnotification.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc2\x01\n" +
 	"\x05Event\x12)\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x15.notification.v1.KindR\x04kind\x12!\n" +
 	"\frecipient_id\x18\x02 \x01(\tR\vrecipientId\x12\x19\n" +
 	"\bactor_id\x18\x03 \x01(\tR\aactorId\x12\x17\n" +
 	"\apost_id\x18\x04 \x01(\tR\x06postId\x12\x1d\n" +
 	"\n" +
-	"comment_id\x18\x05 \x01(\tR\tcommentId\"=\n" +
+	"comment_id\x18\x05 \x01(\tR\tcommentId\x12\x18\n" +
+	"\aseconds\x18\x06 \x01(\x05R\aseconds\"=\n" +
 	"\rNotifyRequest\x12,\n" +
 	"\x05event\x18\x01 \x01(\v2\x16.notification.v1.EventR\x05event\">\n" +
 	"\x0eRetractRequest\x12,\n" +
@@ -1286,7 +1314,7 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\n" +
 	"comment_id\x18\x01 \x01(\tR\tcommentId\"+\n" +
 	"\x10PurgeUserRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"\xd7\x01\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\xf1\x01\n" +
 	"\fNotification\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12)\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x15.notification.v1.KindR\x04kind\x12\x19\n" +
@@ -1295,7 +1323,8 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\n" +
 	"comment_id\x18\x05 \x01(\tR\tcommentId\x129\n" +
 	"\n" +
-	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"p\n" +
+	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x18\n" +
+	"\aseconds\x18\a \x01(\x05R\aseconds\"p\n" +
 	"\x18ListNotificationsRequest\x12&\n" +
 	"\x03box\x18\x01 \x01(\x0e2\x14.notification.v1.BoxR\x03box\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
@@ -1329,7 +1358,7 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\rrecipient_ids\x18\x03 \x03(\tR\frecipientIds\x12\x17\n" +
 	"\achat_id\x18\x04 \x01(\tR\x06chatId\x12\x1d\n" +
 	"\n" +
-	"chat_title\x18\x05 \x01(\tR\tchatTitle*\x87\x05\n" +
+	"chat_title\x18\x05 \x01(\tR\tchatTitle*\xac\x05\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tKIND_LIKE\x10\x01\x12\x10\n" +
@@ -1362,7 +1391,9 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\n" +
 	"KIND_PRIME\x10\x1c\x12\x0e\n" +
 	"\n" +
-	"KIND_MATCH\x10\x1d\"\x04\b\x12\x10\x12\"\x04\b\x14\x10\x14*\x13KIND_EVENT_REMINDER*\x11KIND_NOTE_COMMENT*;\n" +
+	"KIND_MATCH\x10\x1d\x12\r\n" +
+	"\tKIND_CALL\x10\x1e\x12\x14\n" +
+	"\x10KIND_MISSED_CALL\x10\x1f\"\x04\b\x12\x10\x12\"\x04\b\x14\x10\x14*\x13KIND_EVENT_REMINDER*\x11KIND_NOTE_COMMENT*;\n" +
 	"\x03Box\x12\x13\n" +
 	"\x0fBOX_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
