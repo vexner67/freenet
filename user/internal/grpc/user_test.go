@@ -292,11 +292,15 @@ func TestPrivacyFlow(t *testing.T) {
 		Privacy: &userv1.PrivacySettings{
 			ShowWorldview: true, WallWrite: userv1.WallWrite_WALL_WRITE_EVERYONE, MessagesWrite: userv1.MessagesWrite_MESSAGES_WRITE_FOLLOWING, ClubsRead: userv1.ClubsRead_CLUBS_READ_FOLLOWING,
 			PageRead: userv1.Audience_AUDIENCE_EVERYONE, InfoRead: userv1.Audience_AUDIENCE_EVERYONE, PhotosRead: userv1.Audience_AUDIENCE_USERS, FriendsRead: userv1.Audience_AUDIENCE_ONLY_ME, OnlineRead: userv1.Audience_AUDIENCE_EVERYONE,
-			GiftsRead: userv1.Audience_AUDIENCE_ONLY_ME,
+			GiftsRead: userv1.Audience_AUDIENCE_ONLY_ME, ListeningRead: userv1.Audience_AUDIENCE_FOLLOWING,
 		},
 	})
 	if err != nil {
 		t.Fatalf("UpdatePrivacy: %v", err)
+	}
+	// Left out, the songs are everyone's; set, what plays is the people's Ann follows.
+	if pr := updated.GetUser().GetPrivacy(); pr.GetAudiosRead() != userv1.Audience_AUDIENCE_EVERYONE || pr.GetListeningRead() != userv1.Audience_AUDIENCE_FOLLOWING {
+		t.Fatalf("music settings = %v, %v", pr.GetAudiosRead(), pr.GetListeningRead())
 	}
 	// A client that does not know the group chats leaves the default.
 	if got := updated.GetUser().GetPrivacy().GetChatsInvite(); got != userv1.MessagesWrite_MESSAGES_WRITE_FOLLOWING {
@@ -310,10 +314,10 @@ func TestPrivacyFlow(t *testing.T) {
 	// Public: an anonymous viewer is not among the people Ann follows; Ann
 	// herself sees her clubs.
 	annID := updated.GetUser().GetId()
-	if can, err := s.client.GetAccess(context.Background(), &userv1.GetAccessRequest{UserId: annID}); err != nil || can.GetClubs() || can.GetGifts() || !can.GetPage() {
+	if can, err := s.client.GetAccess(context.Background(), &userv1.GetAccessRequest{UserId: annID}); err != nil || can.GetClubs() || can.GetGifts() || !can.GetPage() || !can.GetAudios() || can.GetListening() {
 		t.Fatalf("GetAccess anonymously = %v, %v", can, err)
 	}
-	if can, err := s.client.GetAccess(ann, &userv1.GetAccessRequest{UserId: annID}); err != nil || !can.GetClubs() || !can.GetGifts() {
+	if can, err := s.client.GetAccess(ann, &userv1.GetAccessRequest{UserId: annID}); err != nil || !can.GetClubs() || !can.GetGifts() || !can.GetListening() {
 		t.Fatalf("GetAccess by ann = %v, %v", can, err)
 	}
 

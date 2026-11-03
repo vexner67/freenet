@@ -760,6 +760,13 @@ message PrivacySettings {
   // Votes each message to the user costs, 0 for free, up to 1 000 000;
   // the user gets them (less the tax of sticker packs).
   int64 message_price = 18;
+  // "Кто видит мои аудиозаписи": the songs and playlists of the page and
+  // its song; unspecified, from a client that does not know it, is
+  // everyone.
+  Audience audios_read = 19;
+  // "Кто видит, что я слушаю": the song playing now; unspecified is
+  // everyone.
+  Audience listening_read = 20;
 }
 
 // Who sees a part of a page.
@@ -1165,6 +1172,10 @@ message GetAccessResponse {
   reserved "notes";
   // The gifts.
   bool gifts = 7;
+  // The songs and playlists.
+  bool audios = 8;
+  // The song playing now.
+  bool listening = 9;
 }
 
 message CanMessageRequest {

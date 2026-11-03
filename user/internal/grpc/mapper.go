@@ -240,6 +240,8 @@ func toProtoPrivacy(p user.Privacy) *userv1.PrivacySettings {
 		FriendsRead:        toProtoAudience(p.FriendsRead),
 		OnlineRead:         toProtoAudience(p.OnlineRead),
 		GiftsRead:          toProtoAudience(p.GiftsRead),
+		AudiosRead:         toProtoAudience(p.AudiosRead),
+		ListeningRead:      toProtoAudience(p.ListeningRead),
 		Closed:             p.Closed,
 		ChatsInvite:        toProtoMessagesWrite(p.ChatsInvite),
 		MessagesPrime:      p.MessagesPrime,
@@ -298,10 +300,11 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		}
 	}
 
-	// A client that does not know the gifts leaves them to everyone.
-	giftsRead := user.AudienceEveryone
-	if p.GetGiftsRead() != userv1.Audience_AUDIENCE_UNSPECIFIED {
-		if giftsRead, err = user.NewAudience(fromProtoAudience(p.GetGiftsRead())); err != nil {
+	// A client that does not know the gifts or the songs leaves them to
+	// everyone.
+	var optional [3]user.Audience
+	for i, a := range []userv1.Audience{p.GetGiftsRead(), p.GetAudiosRead(), p.GetListeningRead()} {
+		if optional[i], err = optionalAudience(a); err != nil {
 			return user.Privacy{}, err
 		}
 	}
@@ -334,10 +337,20 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		PhotosRead:         reads[1],
 		FriendsRead:        reads[2],
 		OnlineRead:         reads[3],
-		GiftsRead:          giftsRead,
+		GiftsRead:          optional[0],
+		AudiosRead:         optional[1],
+		ListeningRead:      optional[2],
 		ChatsInvite:        chatsInvite,
 		Closed:             p.GetClosed(),
 	}, nil
+}
+
+// optionalAudience is everyone for a setting the client left unspecified.
+func optionalAudience(a userv1.Audience) (user.Audience, error) {
+	if a == userv1.Audience_AUDIENCE_UNSPECIFIED {
+		return user.AudienceEveryone, nil
+	}
+	return user.NewAudience(fromProtoAudience(a))
 }
 
 func toProtoClubsRead(r user.ClubsRead) userv1.ClubsRead {

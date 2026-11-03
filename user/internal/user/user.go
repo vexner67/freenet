@@ -69,6 +69,11 @@ type Privacy struct {
 	// GiftsRead is "Кому видны мои подарки"; empty in UpdatePrivacy, as
 	// from a client that does not know it, means everyone.
 	GiftsRead Audience
+	// AudiosRead is "Кто видит мои аудиозаписи" and ListeningRead "Кто
+	// видит, что я слушаю"; empty in UpdatePrivacy, as from a client that
+	// does not know them, means everyone.
+	AudiosRead    Audience
+	ListeningRead Audience
 	// Closed is openvk's "Тип профиля: закрытый": only the owner and the
 	// people the owner follows see the page (see AccessFor).
 	Closed bool
@@ -202,6 +207,7 @@ func New(email Email) (*User, error) {
 			WallWrite: DefaultWallWrite, MessagesWrite: DefaultMessagesWrite, ClubsRead: DefaultClubsRead,
 			PageRead: AudienceEveryone, InfoRead: AudienceEveryone, PhotosRead: AudienceEveryone, FriendsRead: AudienceEveryone,
 			OnlineRead: AudienceEveryone, GiftsRead: AudienceEveryone,
+			AudiosRead: AudienceEveryone, ListeningRead: AudienceEveryone,
 			ChatsInvite: DefaultChatsInvite,
 		},
 		ui:         DefaultInterface(),
@@ -315,8 +321,10 @@ func (u *User) UpdatePrivacy(privacy Privacy) error {
 		return err
 	}
 
-	if privacy.GiftsRead == "" {
-		privacy.GiftsRead = AudienceEveryone
+	for _, a := range []*Audience{&privacy.GiftsRead, &privacy.AudiosRead, &privacy.ListeningRead} {
+		if *a == "" {
+			*a = AudienceEveryone
+		}
 	}
 
 	if privacy.ChatsInvite == "" {
@@ -331,7 +339,7 @@ func (u *User) UpdatePrivacy(privacy Privacy) error {
 		return err
 	}
 
-	for _, a := range []Audience{privacy.InfoRead, privacy.PhotosRead, privacy.FriendsRead, privacy.OnlineRead, privacy.GiftsRead} {
+	for _, a := range []Audience{privacy.InfoRead, privacy.PhotosRead, privacy.FriendsRead, privacy.OnlineRead, privacy.GiftsRead, privacy.AudiosRead, privacy.ListeningRead} {
 		if _, err := NewAudience(a.String()); err != nil {
 			return err
 		}

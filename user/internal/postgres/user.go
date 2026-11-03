@@ -153,6 +153,8 @@ const updateUserQuery = `
 		gifts_read = $54,
 		messages_prime = $55,
 		message_price = $56,
+		audios_read = $57,
+		listening_read = $58,
 		updated_at = now()
 	WHERE id = $1
 `
@@ -229,6 +231,8 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		pr.GiftsRead.String(),
 		pr.MessagesPrime,
 		pr.MessagePrice.Int64(),
+		pr.AudiosRead.String(),
+		pr.ListeningRead.String(),
 	)
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", translateError(err))
@@ -425,6 +429,8 @@ const userColumns = `
 		chats_invite,
 		closed,
 		gifts_read,
+		audios_read,
+		listening_read,
 		votes,
 		rating,
 		verified,
@@ -501,6 +507,8 @@ const qualifiedUserColumns = `
 		u.chats_invite,
 		u.closed,
 		u.gifts_read,
+		u.audios_read,
+		u.listening_read,
 		u.votes,
 		u.rating,
 		u.verified,
@@ -654,6 +662,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		hideBirthYear                              bool
 		reads                                      [5]string
 		chatsInvite, giftsRead                     string
+		audiosRead, listeningRead                  string
 		lastSeen                                   *time.Time
 		backdrop                                   [2]*uuid.UUID
 		avatarStyle, mainPage                      string
@@ -709,6 +718,8 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&chatsInvite,
 		&privacy.Closed,
 		&giftsRead,
+		&audiosRead,
+		&listeningRead,
 		&wallet.Votes,
 		&wallet.Rating,
 		&verified,
@@ -737,6 +748,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 	privacy.PhotosRead, privacy.FriendsRead = user.Audience(reads[2]), user.Audience(reads[3])
 	privacy.OnlineRead = user.Audience(reads[4])
 	privacy.GiftsRead = user.Audience(giftsRead)
+	privacy.AudiosRead, privacy.ListeningRead = user.Audience(audiosRead), user.Audience(listeningRead)
 	privacy.ChatsInvite = user.MessagesWrite(chatsInvite)
 
 	fields, err := extraFieldsFromDB(extraFields)
