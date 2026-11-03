@@ -38,7 +38,7 @@ func TestParse(t *testing.T) {
 	if want := time.Date(2026, 11, 2, 16, 1, 8, 0, time.UTC); !first.Published.Equal(want) {
 		t.Errorf("published = %v, want %v", first.Published, want)
 	}
-	if want := "Главное за день (https://bit.ly/x) https://www.meduza.io/x @meduzalive #news\n\nВторая строка 🔥"; first.Text != want {
+	if want := "Главное [https://bit.ly/x|за день] https://www.meduza.io/x @meduzalive #news\n\nВторая строка 🔥"; first.Text != want {
 		t.Errorf("text = %q, want %q", first.Text, want)
 	}
 

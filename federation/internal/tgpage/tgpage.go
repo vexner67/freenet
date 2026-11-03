@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/vexner67/freenet/federation/internal/fedi"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -207,10 +208,16 @@ func plain(n *html.Node) string {
 	return tidy(b.String())
 }
 
+// maxLinkWords bounds the words of a link the site shows as the link.
+const maxLinkWords = 300
+
 // linkText is a link of a post as plain text, its address there for the
 // site to make it a link again: the address alone when the link shows
-// it, after the words otherwise ("за день (https://…)"). Mentions,
-// hashtags and links of Telegram's own stay words.
+// it, the words of the link as VK's wiki links write them otherwise
+// ("[https://…|за день]"), which the site shows as the words leading to
+// the address. Words that cannot be put so go before the address in
+// brackets ("за день (https://…)"). Mentions, hashtags and links of
+// Telegram's own stay words.
 func linkText(a *html.Node) string {
 	words := text(a)
 	href := attr(a, "href")
@@ -226,7 +233,12 @@ func linkText(a *html.Node) string {
 		return href
 	}
 
-	return words + " (" + href + ")"
+	named := strings.TrimSpace(words)
+	if strings.ContainsAny(named, "[]|\n") || strings.ContainsAny(href, "[]| \t\n") || utf8.RuneCountInString(named) > maxLinkWords {
+		return words + " (" + href + ")"
+	}
+
+	return "[" + href + "|" + named + "]"
 }
 
 // bare is an address without its scheme and "www.".
