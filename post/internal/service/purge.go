@@ -57,6 +57,14 @@ type DocumentEraser interface {
 	DeleteByUser(ctx context.Context, userID uuid.UUID) error
 }
 
+// AudioEraser deletes the songs a user uploaded, their library and
+// playlists and what their page says of music; media erases the bytes
+// with the rest of the user, and the tracks of other sites stay for those
+// who keep them.
+type AudioEraser interface {
+	DeleteByUser(ctx context.Context, userID uuid.UUID) error
+}
+
 // ArticleEraser deletes the articles a user wrote; media erases their
 // photos with the rest of the user.
 type ArticleEraser interface {
@@ -82,6 +90,7 @@ type PurgeService struct {
 	topics       TopicEraser
 	albums       AlbumEraser
 	documents    DocumentEraser
+	audio        AudioEraser
 	articles     ArticleEraser
 	stories      StoryEraser
 	held         []ReactionHolder
@@ -105,6 +114,8 @@ type PurgeDeps struct {
 	Albums      AlbumEraser
 	// Documents are the files of people; nil: none kept.
 	Documents DocumentEraser
+	// Audio is the music of people; nil: none kept.
+	Audio AudioEraser
 	// Articles are what people write in the editor; nil: none kept.
 	Articles ArticleEraser
 	// Stories are what people show for a day; nil: none kept.
@@ -130,6 +141,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 		topics:       d.Topics,
 		albums:       d.Albums,
 		documents:    d.Documents,
+		audio:        d.Audio,
 		articles:     d.Articles,
 		stories:      d.Stories,
 		held:         d.Held,
@@ -143,7 +155,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 // PurgeUser deletes, in one transaction, the user's likes and comments on
 // others' posts, their votes in polls, what they suggested and postponed, their topics and the messages they
 // wrote in topics, their albums and the photos they put in others', their
-// documents and articles, their
+// documents, music and articles, their
 // stories and their views of others', the posts they wrote and those on their wall (others' on it included, as a
 // deleted post takes its comments). The notifications
 // about the deleted posts and suggestions and the photos of the posts go
@@ -212,6 +224,12 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 		if s.documents != nil {
 			if err = s.documents.DeleteByUser(ctx, userID); err != nil {
 				return errs.Wrap("s.documents.DeleteByUser", err)
+			}
+		}
+
+		if s.audio != nil {
+			if err = s.audio.DeleteByUser(ctx, userID); err != nil {
+				return errs.Wrap("s.audio.DeleteByUser", err)
 			}
 		}
 

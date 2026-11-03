@@ -53,6 +53,8 @@ type Content struct {
 	polled bool
 	// documents are files of "Мои Документы" the post attaches.
 	documents Documents
+	// audios are songs of "Аудиозаписи" the post attaches.
+	audios Audios
 	// link is the card of the page the text links to; zero for none.
 	link Link
 }
@@ -68,11 +70,17 @@ func NewContent(text Text, photos Photos) (Content, error) {
 // NewDocumented is the content of a post with documents: with them the
 // text and the photos may be none.
 func NewDocumented(text Text, photos Photos, documents Documents) (Content, error) {
-	if len(documents) == 0 {
+	return NewAttached(text, photos, documents, nil)
+}
+
+// NewAttached is the content of a post with documents or songs: with any
+// of them the text and the photos may be none.
+func NewAttached(text Text, photos Photos, documents Documents, audios Audios) (Content, error) {
+	if len(documents) == 0 && len(audios) == 0 {
 		return NewContent(text, photos)
 	}
 
-	return Content{text: text, photos: photos, documents: documents}, nil
+	return Content{text: text, photos: photos, documents: documents, audios: audios}, nil
 }
 
 // WithDocuments is c attaching documents, restored from storage or of a
@@ -80,6 +88,18 @@ func NewDocumented(text Text, photos Photos, documents Documents) (Content, erro
 func (c Content) WithDocuments(documents Documents) Content {
 	c.documents = documents
 	return c
+}
+
+// WithAudios is c attaching songs, restored from storage or of a post
+// that asks a poll.
+func (c Content) WithAudios(audios Audios) Content {
+	c.audios = audios
+	return c
+}
+
+// Audios are the songs the post attaches.
+func (c Content) Audios() Audios {
+	return c.audios
 }
 
 // WithLink is c showing the card of the page its text links to; the

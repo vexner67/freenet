@@ -268,7 +268,10 @@ type Post struct {
 	Link *Link `protobuf:"bytes,26,opt,name=link,proto3" json:"link,omitempty"`
 	// Votes others pay to see its photos and documents, 0 for free; the
 	// caller hides them from those who have not paid.
-	Price         int64 `protobuf:"varint,27,opt,name=price,proto3" json:"price,omitempty"`
+	Price int64 `protobuf:"varint,27,opt,name=price,proto3" json:"price,omitempty"`
+	// Songs the post attaches, in the order shown; GetAudios tells what they
+	// are, and a deleted one is gone.
+	AudioIds      []string `protobuf:"bytes,28,rep,name=audio_ids,json=audioIds,proto3" json:"audio_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -483,6 +486,13 @@ func (x *Post) GetPrice() int64 {
 		return x.Price
 	}
 	return 0
+}
+
+func (x *Post) GetAudioIds() []string {
+	if x != nil {
+		return x.AudioIds
+	}
+	return nil
 }
 
 // Link is the card of a page a post links to, as the page tells it.
@@ -1972,7 +1982,9 @@ type CreatePostRequest struct {
 	Link *Link `protobuf:"bytes,12,opt,name=link,proto3" json:"link,omitempty"`
 	// Votes others pay to see its photos and documents, 0 for free: only
 	// on the author's own wall, with photos or documents.
-	Price         int64 `protobuf:"varint,13,opt,name=price,proto3" json:"price,omitempty"`
+	Price int64 `protobuf:"varint,13,opt,name=price,proto3" json:"price,omitempty"`
+	// Songs, at most 10: with them the text and the photos may be none.
+	AudioIds      []string `protobuf:"bytes,14,rep,name=audio_ids,json=audioIds,proto3" json:"audio_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2089,6 +2101,13 @@ func (x *CreatePostRequest) GetPrice() int64 {
 		return x.Price
 	}
 	return 0
+}
+
+func (x *CreatePostRequest) GetAudioIds() []string {
+	if x != nil {
+		return x.AudioIds
+	}
+	return nil
 }
 
 // PollDraft is a poll as its author asks it.
@@ -11341,6 +11360,1775 @@ func (x *DeleteDocumentRequest) GetId() string {
 	return ""
 }
 
+// A song of "Аудиозаписи".
+type Audio struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Who uploaded the file or first added the track.
+	OwnerId string `protobuf:"bytes,2,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	// "file", "soundcloud" or "youtube".
+	Kind string `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
+	// The page of the track; empty for a file.
+	Link string `protobuf:"bytes,4,opt,name=link,proto3" json:"link,omitempty"`
+	// The https picture of the track; may be empty.
+	Cover string `protobuf:"bytes,5,opt,name=cover,proto3" json:"cover,omitempty"`
+	// Either may be empty: "Неизвестный", "Без названия".
+	Artist string `protobuf:"bytes,6,opt,name=artist,proto3" json:"artist,omitempty"`
+	Title  string `protobuf:"bytes,7,opt,name=title,proto3" json:"title,omitempty"`
+	// Seconds; 0 when nobody knows.
+	Duration  int32                  `protobuf:"varint,8,opt,name=duration,proto3" json:"duration,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// The caller keeps the song in their library; false without a token.
+	Added         bool `protobuf:"varint,10,opt,name=added,proto3" json:"added,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Audio) Reset() {
+	*x = Audio{}
+	mi := &file_api_post_v1_post_proto_msgTypes[188]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Audio) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Audio) ProtoMessage() {}
+
+func (x *Audio) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[188]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Audio.ProtoReflect.Descriptor instead.
+func (*Audio) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{188}
+}
+
+func (x *Audio) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Audio) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *Audio) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *Audio) GetLink() string {
+	if x != nil {
+		return x.Link
+	}
+	return ""
+}
+
+func (x *Audio) GetCover() string {
+	if x != nil {
+		return x.Cover
+	}
+	return ""
+}
+
+func (x *Audio) GetArtist() string {
+	if x != nil {
+		return x.Artist
+	}
+	return ""
+}
+
+func (x *Audio) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *Audio) GetDuration() int32 {
+	if x != nil {
+		return x.Duration
+	}
+	return 0
+}
+
+func (x *Audio) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Audio) GetAdded() bool {
+	if x != nil {
+		return x.Added
+	}
+	return false
+}
+
+type AddAudioRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ID the media service gave the caller's MP3.
+	Id            string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Artist        string `protobuf:"bytes,2,opt,name=artist,proto3" json:"artist,omitempty"`
+	Title         string `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	Duration      int32  `protobuf:"varint,4,opt,name=duration,proto3" json:"duration,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddAudioRequest) Reset() {
+	*x = AddAudioRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[189]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddAudioRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddAudioRequest) ProtoMessage() {}
+
+func (x *AddAudioRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[189]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddAudioRequest.ProtoReflect.Descriptor instead.
+func (*AddAudioRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{189}
+}
+
+func (x *AddAudioRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AddAudioRequest) GetArtist() string {
+	if x != nil {
+		return x.Artist
+	}
+	return ""
+}
+
+func (x *AddAudioRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *AddAudioRequest) GetDuration() int32 {
+	if x != nil {
+		return x.Duration
+	}
+	return 0
+}
+
+type AddAudioResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Audio         *Audio                 `protobuf:"bytes,1,opt,name=audio,proto3" json:"audio,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddAudioResponse) Reset() {
+	*x = AddAudioResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[190]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddAudioResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddAudioResponse) ProtoMessage() {}
+
+func (x *AddAudioResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[190]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddAudioResponse.ProtoReflect.Descriptor instead.
+func (*AddAudioResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{190}
+}
+
+func (x *AddAudioResponse) GetAudio() *Audio {
+	if x != nil {
+		return x.Audio
+	}
+	return nil
+}
+
+type AddAudioTrackRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// "soundcloud" or "youtube".
+	Kind          string `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	Link          string `protobuf:"bytes,2,opt,name=link,proto3" json:"link,omitempty"`
+	Cover         string `protobuf:"bytes,3,opt,name=cover,proto3" json:"cover,omitempty"`
+	Artist        string `protobuf:"bytes,4,opt,name=artist,proto3" json:"artist,omitempty"`
+	Title         string `protobuf:"bytes,5,opt,name=title,proto3" json:"title,omitempty"`
+	Duration      int32  `protobuf:"varint,6,opt,name=duration,proto3" json:"duration,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddAudioTrackRequest) Reset() {
+	*x = AddAudioTrackRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[191]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddAudioTrackRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddAudioTrackRequest) ProtoMessage() {}
+
+func (x *AddAudioTrackRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[191]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddAudioTrackRequest.ProtoReflect.Descriptor instead.
+func (*AddAudioTrackRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{191}
+}
+
+func (x *AddAudioTrackRequest) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *AddAudioTrackRequest) GetLink() string {
+	if x != nil {
+		return x.Link
+	}
+	return ""
+}
+
+func (x *AddAudioTrackRequest) GetCover() string {
+	if x != nil {
+		return x.Cover
+	}
+	return ""
+}
+
+func (x *AddAudioTrackRequest) GetArtist() string {
+	if x != nil {
+		return x.Artist
+	}
+	return ""
+}
+
+func (x *AddAudioTrackRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *AddAudioTrackRequest) GetDuration() int32 {
+	if x != nil {
+		return x.Duration
+	}
+	return 0
+}
+
+type AddAudioTrackResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Audio         *Audio                 `protobuf:"bytes,1,opt,name=audio,proto3" json:"audio,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddAudioTrackResponse) Reset() {
+	*x = AddAudioTrackResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[192]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddAudioTrackResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddAudioTrackResponse) ProtoMessage() {}
+
+func (x *AddAudioTrackResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[192]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddAudioTrackResponse.ProtoReflect.Descriptor instead.
+func (*AddAudioTrackResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{192}
+}
+
+func (x *AddAudioTrackResponse) GetAudio() *Audio {
+	if x != nil {
+		return x.Audio
+	}
+	return nil
+}
+
+type ListAudiosRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	OwnerId string                 `protobuf:"bytes,1,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	// Empty for the first page, else next_cursor of the previous one.
+	Cursor        string `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	Limit         int32  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAudiosRequest) Reset() {
+	*x = ListAudiosRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[193]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAudiosRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAudiosRequest) ProtoMessage() {}
+
+func (x *ListAudiosRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[193]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAudiosRequest.ProtoReflect.Descriptor instead.
+func (*ListAudiosRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{193}
+}
+
+func (x *ListAudiosRequest) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *ListAudiosRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *ListAudiosRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListAudiosResponse struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Audios     []*Audio               `protobuf:"bytes,1,rep,name=audios,proto3" json:"audios,omitempty"`
+	NextCursor string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	// Songs on all pages.
+	Total         int32 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAudiosResponse) Reset() {
+	*x = ListAudiosResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[194]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAudiosResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAudiosResponse) ProtoMessage() {}
+
+func (x *ListAudiosResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[194]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAudiosResponse.ProtoReflect.Descriptor instead.
+func (*ListAudiosResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{194}
+}
+
+func (x *ListAudiosResponse) GetAudios() []*Audio {
+	if x != nil {
+		return x.Audios
+	}
+	return nil
+}
+
+func (x *ListAudiosResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+func (x *ListAudiosResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type SearchAudiosRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Query         string                 `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchAudiosRequest) Reset() {
+	*x = SearchAudiosRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[195]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchAudiosRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchAudiosRequest) ProtoMessage() {}
+
+func (x *SearchAudiosRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[195]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchAudiosRequest.ProtoReflect.Descriptor instead.
+func (*SearchAudiosRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{195}
+}
+
+func (x *SearchAudiosRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *SearchAudiosRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *SearchAudiosRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type SearchAudiosResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Audios        []*Audio               `protobuf:"bytes,1,rep,name=audios,proto3" json:"audios,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchAudiosResponse) Reset() {
+	*x = SearchAudiosResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[196]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchAudiosResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchAudiosResponse) ProtoMessage() {}
+
+func (x *SearchAudiosResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[196]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchAudiosResponse.ProtoReflect.Descriptor instead.
+func (*SearchAudiosResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{196}
+}
+
+func (x *SearchAudiosResponse) GetAudios() []*Audio {
+	if x != nil {
+		return x.Audios
+	}
+	return nil
+}
+
+func (x *SearchAudiosResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+type GetAudiosRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// At most 50.
+	Ids           []string `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAudiosRequest) Reset() {
+	*x = GetAudiosRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[197]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAudiosRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAudiosRequest) ProtoMessage() {}
+
+func (x *GetAudiosRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[197]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAudiosRequest.ProtoReflect.Descriptor instead.
+func (*GetAudiosRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{197}
+}
+
+func (x *GetAudiosRequest) GetIds() []string {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
+}
+
+type GetAudiosResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Audios        []*Audio               `protobuf:"bytes,1,rep,name=audios,proto3" json:"audios,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAudiosResponse) Reset() {
+	*x = GetAudiosResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[198]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAudiosResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAudiosResponse) ProtoMessage() {}
+
+func (x *GetAudiosResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[198]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAudiosResponse.ProtoReflect.Descriptor instead.
+func (*GetAudiosResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{198}
+}
+
+func (x *GetAudiosResponse) GetAudios() []*Audio {
+	if x != nil {
+		return x.Audios
+	}
+	return nil
+}
+
+type KeepAudioRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AudioId       string                 `protobuf:"bytes,1,opt,name=audio_id,json=audioId,proto3" json:"audio_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KeepAudioRequest) Reset() {
+	*x = KeepAudioRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[199]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KeepAudioRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KeepAudioRequest) ProtoMessage() {}
+
+func (x *KeepAudioRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[199]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KeepAudioRequest.ProtoReflect.Descriptor instead.
+func (*KeepAudioRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{199}
+}
+
+func (x *KeepAudioRequest) GetAudioId() string {
+	if x != nil {
+		return x.AudioId
+	}
+	return ""
+}
+
+type ForgetAudioRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AudioId       string                 `protobuf:"bytes,1,opt,name=audio_id,json=audioId,proto3" json:"audio_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ForgetAudioRequest) Reset() {
+	*x = ForgetAudioRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[200]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ForgetAudioRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ForgetAudioRequest) ProtoMessage() {}
+
+func (x *ForgetAudioRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[200]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ForgetAudioRequest.ProtoReflect.Descriptor instead.
+func (*ForgetAudioRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{200}
+}
+
+func (x *ForgetAudioRequest) GetAudioId() string {
+	if x != nil {
+		return x.AudioId
+	}
+	return ""
+}
+
+type EditAudioRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Artist        string                 `protobuf:"bytes,2,opt,name=artist,proto3" json:"artist,omitempty"`
+	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EditAudioRequest) Reset() {
+	*x = EditAudioRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[201]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EditAudioRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EditAudioRequest) ProtoMessage() {}
+
+func (x *EditAudioRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[201]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EditAudioRequest.ProtoReflect.Descriptor instead.
+func (*EditAudioRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{201}
+}
+
+func (x *EditAudioRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *EditAudioRequest) GetArtist() string {
+	if x != nil {
+		return x.Artist
+	}
+	return ""
+}
+
+func (x *EditAudioRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+type EditAudioResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Audio         *Audio                 `protobuf:"bytes,1,opt,name=audio,proto3" json:"audio,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EditAudioResponse) Reset() {
+	*x = EditAudioResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[202]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EditAudioResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EditAudioResponse) ProtoMessage() {}
+
+func (x *EditAudioResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[202]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EditAudioResponse.ProtoReflect.Descriptor instead.
+func (*EditAudioResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{202}
+}
+
+func (x *EditAudioResponse) GetAudio() *Audio {
+	if x != nil {
+		return x.Audio
+	}
+	return nil
+}
+
+type DeleteAudioRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteAudioRequest) Reset() {
+	*x = DeleteAudioRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[203]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteAudioRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteAudioRequest) ProtoMessage() {}
+
+func (x *DeleteAudioRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[203]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteAudioRequest.ProtoReflect.Descriptor instead.
+func (*DeleteAudioRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{203}
+}
+
+func (x *DeleteAudioRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type ListenAudioRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AudioId       string                 `protobuf:"bytes,1,opt,name=audio_id,json=audioId,proto3" json:"audio_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListenAudioRequest) Reset() {
+	*x = ListenAudioRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[204]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListenAudioRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListenAudioRequest) ProtoMessage() {}
+
+func (x *ListenAudioRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[204]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListenAudioRequest.ProtoReflect.Descriptor instead.
+func (*ListenAudioRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{204}
+}
+
+func (x *ListenAudioRequest) GetAudioId() string {
+	if x != nil {
+		return x.AudioId
+	}
+	return ""
+}
+
+type SetPageAudioRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AudioId       string                 `protobuf:"bytes,1,opt,name=audio_id,json=audioId,proto3" json:"audio_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetPageAudioRequest) Reset() {
+	*x = SetPageAudioRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[205]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetPageAudioRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetPageAudioRequest) ProtoMessage() {}
+
+func (x *SetPageAudioRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[205]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetPageAudioRequest.ProtoReflect.Descriptor instead.
+func (*SetPageAudioRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{205}
+}
+
+func (x *SetPageAudioRequest) GetAudioId() string {
+	if x != nil {
+		return x.AudioId
+	}
+	return ""
+}
+
+type GetMusicRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMusicRequest) Reset() {
+	*x = GetMusicRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[206]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMusicRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMusicRequest) ProtoMessage() {}
+
+func (x *GetMusicRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[206]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMusicRequest.ProtoReflect.Descriptor instead.
+func (*GetMusicRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{206}
+}
+
+func (x *GetMusicRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type GetMusicResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Unset when the person listens to nothing now.
+	Listening *Audio `protobuf:"bytes,1,opt,name=listening,proto3" json:"listening,omitempty"`
+	// Unset for none.
+	PageAudio *Audio `protobuf:"bytes,2,opt,name=page_audio,json=pageAudio,proto3" json:"page_audio,omitempty"`
+	// Songs in the library.
+	Count         int32 `protobuf:"varint,3,opt,name=count,proto3" json:"count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMusicResponse) Reset() {
+	*x = GetMusicResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[207]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMusicResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMusicResponse) ProtoMessage() {}
+
+func (x *GetMusicResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[207]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMusicResponse.ProtoReflect.Descriptor instead.
+func (*GetMusicResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{207}
+}
+
+func (x *GetMusicResponse) GetListening() *Audio {
+	if x != nil {
+		return x.Listening
+	}
+	return nil
+}
+
+func (x *GetMusicResponse) GetPageAudio() *Audio {
+	if x != nil {
+		return x.PageAudio
+	}
+	return nil
+}
+
+func (x *GetMusicResponse) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+type Playlist struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	OwnerId       string                 `protobuf:"bytes,2,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Playlist) Reset() {
+	*x = Playlist{}
+	mi := &file_api_post_v1_post_proto_msgTypes[208]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Playlist) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Playlist) ProtoMessage() {}
+
+func (x *Playlist) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[208]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Playlist.ProtoReflect.Descriptor instead.
+func (*Playlist) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{208}
+}
+
+func (x *Playlist) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Playlist) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *Playlist) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *Playlist) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+type CreatePlaylistRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Title         string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreatePlaylistRequest) Reset() {
+	*x = CreatePlaylistRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[209]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatePlaylistRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatePlaylistRequest) ProtoMessage() {}
+
+func (x *CreatePlaylistRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[209]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatePlaylistRequest.ProtoReflect.Descriptor instead.
+func (*CreatePlaylistRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{209}
+}
+
+func (x *CreatePlaylistRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+type CreatePlaylistResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Playlist      *Playlist              `protobuf:"bytes,1,opt,name=playlist,proto3" json:"playlist,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreatePlaylistResponse) Reset() {
+	*x = CreatePlaylistResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[210]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreatePlaylistResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreatePlaylistResponse) ProtoMessage() {}
+
+func (x *CreatePlaylistResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[210]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreatePlaylistResponse.ProtoReflect.Descriptor instead.
+func (*CreatePlaylistResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{210}
+}
+
+func (x *CreatePlaylistResponse) GetPlaylist() *Playlist {
+	if x != nil {
+		return x.Playlist
+	}
+	return nil
+}
+
+type RenamePlaylistRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RenamePlaylistRequest) Reset() {
+	*x = RenamePlaylistRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[211]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RenamePlaylistRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RenamePlaylistRequest) ProtoMessage() {}
+
+func (x *RenamePlaylistRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[211]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RenamePlaylistRequest.ProtoReflect.Descriptor instead.
+func (*RenamePlaylistRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{211}
+}
+
+func (x *RenamePlaylistRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *RenamePlaylistRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+type RenamePlaylistResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Playlist      *Playlist              `protobuf:"bytes,1,opt,name=playlist,proto3" json:"playlist,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RenamePlaylistResponse) Reset() {
+	*x = RenamePlaylistResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[212]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RenamePlaylistResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RenamePlaylistResponse) ProtoMessage() {}
+
+func (x *RenamePlaylistResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[212]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RenamePlaylistResponse.ProtoReflect.Descriptor instead.
+func (*RenamePlaylistResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{212}
+}
+
+func (x *RenamePlaylistResponse) GetPlaylist() *Playlist {
+	if x != nil {
+		return x.Playlist
+	}
+	return nil
+}
+
+type DeletePlaylistRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeletePlaylistRequest) Reset() {
+	*x = DeletePlaylistRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[213]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeletePlaylistRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeletePlaylistRequest) ProtoMessage() {}
+
+func (x *DeletePlaylistRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[213]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeletePlaylistRequest.ProtoReflect.Descriptor instead.
+func (*DeletePlaylistRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{213}
+}
+
+func (x *DeletePlaylistRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type ListPlaylistsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OwnerId       string                 `protobuf:"bytes,1,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPlaylistsRequest) Reset() {
+	*x = ListPlaylistsRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[214]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPlaylistsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPlaylistsRequest) ProtoMessage() {}
+
+func (x *ListPlaylistsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[214]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPlaylistsRequest.ProtoReflect.Descriptor instead.
+func (*ListPlaylistsRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{214}
+}
+
+func (x *ListPlaylistsRequest) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *ListPlaylistsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *ListPlaylistsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListPlaylistsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Playlists     []*Playlist            `protobuf:"bytes,1,rep,name=playlists,proto3" json:"playlists,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	Total         int32                  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPlaylistsResponse) Reset() {
+	*x = ListPlaylistsResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[215]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPlaylistsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPlaylistsResponse) ProtoMessage() {}
+
+func (x *ListPlaylistsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[215]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPlaylistsResponse.ProtoReflect.Descriptor instead.
+func (*ListPlaylistsResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{215}
+}
+
+func (x *ListPlaylistsResponse) GetPlaylists() []*Playlist {
+	if x != nil {
+		return x.Playlists
+	}
+	return nil
+}
+
+func (x *ListPlaylistsResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+func (x *ListPlaylistsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type GetPlaylistRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Of its songs.
+	Cursor        string `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	Limit         int32  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPlaylistRequest) Reset() {
+	*x = GetPlaylistRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[216]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPlaylistRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPlaylistRequest) ProtoMessage() {}
+
+func (x *GetPlaylistRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[216]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPlaylistRequest.ProtoReflect.Descriptor instead.
+func (*GetPlaylistRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{216}
+}
+
+func (x *GetPlaylistRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *GetPlaylistRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *GetPlaylistRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type GetPlaylistResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Playlist      *Playlist              `protobuf:"bytes,1,opt,name=playlist,proto3" json:"playlist,omitempty"`
+	Audios        []*Audio               `protobuf:"bytes,2,rep,name=audios,proto3" json:"audios,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,3,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	Total         int32                  `protobuf:"varint,4,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPlaylistResponse) Reset() {
+	*x = GetPlaylistResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[217]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPlaylistResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPlaylistResponse) ProtoMessage() {}
+
+func (x *GetPlaylistResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[217]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPlaylistResponse.ProtoReflect.Descriptor instead.
+func (*GetPlaylistResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{217}
+}
+
+func (x *GetPlaylistResponse) GetPlaylist() *Playlist {
+	if x != nil {
+		return x.Playlist
+	}
+	return nil
+}
+
+func (x *GetPlaylistResponse) GetAudios() []*Audio {
+	if x != nil {
+		return x.Audios
+	}
+	return nil
+}
+
+func (x *GetPlaylistResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+func (x *GetPlaylistResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type AddPlaylistAudioRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlaylistId    string                 `protobuf:"bytes,1,opt,name=playlist_id,json=playlistId,proto3" json:"playlist_id,omitempty"`
+	AudioId       string                 `protobuf:"bytes,2,opt,name=audio_id,json=audioId,proto3" json:"audio_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddPlaylistAudioRequest) Reset() {
+	*x = AddPlaylistAudioRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[218]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddPlaylistAudioRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddPlaylistAudioRequest) ProtoMessage() {}
+
+func (x *AddPlaylistAudioRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[218]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddPlaylistAudioRequest.ProtoReflect.Descriptor instead.
+func (*AddPlaylistAudioRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{218}
+}
+
+func (x *AddPlaylistAudioRequest) GetPlaylistId() string {
+	if x != nil {
+		return x.PlaylistId
+	}
+	return ""
+}
+
+func (x *AddPlaylistAudioRequest) GetAudioId() string {
+	if x != nil {
+		return x.AudioId
+	}
+	return ""
+}
+
+type RemovePlaylistAudioRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PlaylistId    string                 `protobuf:"bytes,1,opt,name=playlist_id,json=playlistId,proto3" json:"playlist_id,omitempty"`
+	AudioId       string                 `protobuf:"bytes,2,opt,name=audio_id,json=audioId,proto3" json:"audio_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemovePlaylistAudioRequest) Reset() {
+	*x = RemovePlaylistAudioRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[219]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemovePlaylistAudioRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemovePlaylistAudioRequest) ProtoMessage() {}
+
+func (x *RemovePlaylistAudioRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[219]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemovePlaylistAudioRequest.ProtoReflect.Descriptor instead.
+func (*RemovePlaylistAudioRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{219}
+}
+
+func (x *RemovePlaylistAudioRequest) GetPlaylistId() string {
+	if x != nil {
+		return x.PlaylistId
+	}
+	return ""
+}
+
+func (x *RemovePlaylistAudioRequest) GetAudioId() string {
+	if x != nil {
+		return x.AudioId
+	}
+	return ""
+}
+
 // Story is a photo with a few words shown for a day.
 type Story struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
@@ -11369,7 +13157,7 @@ type Story struct {
 
 func (x *Story) Reset() {
 	*x = Story{}
-	mi := &file_api_post_v1_post_proto_msgTypes[188]
+	mi := &file_api_post_v1_post_proto_msgTypes[220]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11381,7 +13169,7 @@ func (x *Story) String() string {
 func (*Story) ProtoMessage() {}
 
 func (x *Story) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[188]
+	mi := &file_api_post_v1_post_proto_msgTypes[220]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11394,7 +13182,7 @@ func (x *Story) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Story.ProtoReflect.Descriptor instead.
 func (*Story) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{188}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{220}
 }
 
 func (x *Story) GetId() string {
@@ -11492,7 +13280,7 @@ type CreateStoryRequest struct {
 
 func (x *CreateStoryRequest) Reset() {
 	*x = CreateStoryRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[189]
+	mi := &file_api_post_v1_post_proto_msgTypes[221]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11504,7 +13292,7 @@ func (x *CreateStoryRequest) String() string {
 func (*CreateStoryRequest) ProtoMessage() {}
 
 func (x *CreateStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[189]
+	mi := &file_api_post_v1_post_proto_msgTypes[221]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11517,7 +13305,7 @@ func (x *CreateStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateStoryRequest.ProtoReflect.Descriptor instead.
 func (*CreateStoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{189}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{221}
 }
 
 func (x *CreateStoryRequest) GetPhotoId() string {
@@ -11543,7 +13331,7 @@ type CreateStoryResponse struct {
 
 func (x *CreateStoryResponse) Reset() {
 	*x = CreateStoryResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[190]
+	mi := &file_api_post_v1_post_proto_msgTypes[222]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11555,7 +13343,7 @@ func (x *CreateStoryResponse) String() string {
 func (*CreateStoryResponse) ProtoMessage() {}
 
 func (x *CreateStoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[190]
+	mi := &file_api_post_v1_post_proto_msgTypes[222]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11568,7 +13356,7 @@ func (x *CreateStoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateStoryResponse.ProtoReflect.Descriptor instead.
 func (*CreateStoryResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{190}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{222}
 }
 
 func (x *CreateStoryResponse) GetStory() *Story {
@@ -11590,7 +13378,7 @@ type ListFeedStoriesRequest struct {
 
 func (x *ListFeedStoriesRequest) Reset() {
 	*x = ListFeedStoriesRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[191]
+	mi := &file_api_post_v1_post_proto_msgTypes[223]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11602,7 +13390,7 @@ func (x *ListFeedStoriesRequest) String() string {
 func (*ListFeedStoriesRequest) ProtoMessage() {}
 
 func (x *ListFeedStoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[191]
+	mi := &file_api_post_v1_post_proto_msgTypes[223]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11615,7 +13403,7 @@ func (x *ListFeedStoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeedStoriesRequest.ProtoReflect.Descriptor instead.
 func (*ListFeedStoriesRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{191}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{223}
 }
 
 func (x *ListFeedStoriesRequest) GetHiddenAuthorIds() []string {
@@ -11641,7 +13429,7 @@ type ListFeedStoriesResponse struct {
 
 func (x *ListFeedStoriesResponse) Reset() {
 	*x = ListFeedStoriesResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[192]
+	mi := &file_api_post_v1_post_proto_msgTypes[224]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11653,7 +13441,7 @@ func (x *ListFeedStoriesResponse) String() string {
 func (*ListFeedStoriesResponse) ProtoMessage() {}
 
 func (x *ListFeedStoriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[192]
+	mi := &file_api_post_v1_post_proto_msgTypes[224]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11666,7 +13454,7 @@ func (x *ListFeedStoriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeedStoriesResponse.ProtoReflect.Descriptor instead.
 func (*ListFeedStoriesResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{192}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{224}
 }
 
 func (x *ListFeedStoriesResponse) GetStories() []*Story {
@@ -11687,7 +13475,7 @@ type ListUserStoriesRequest struct {
 
 func (x *ListUserStoriesRequest) Reset() {
 	*x = ListUserStoriesRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[193]
+	mi := &file_api_post_v1_post_proto_msgTypes[225]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11699,7 +13487,7 @@ func (x *ListUserStoriesRequest) String() string {
 func (*ListUserStoriesRequest) ProtoMessage() {}
 
 func (x *ListUserStoriesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[193]
+	mi := &file_api_post_v1_post_proto_msgTypes[225]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11712,7 +13500,7 @@ func (x *ListUserStoriesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUserStoriesRequest.ProtoReflect.Descriptor instead.
 func (*ListUserStoriesRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{193}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{225}
 }
 
 func (x *ListUserStoriesRequest) GetUserId() string {
@@ -11738,7 +13526,7 @@ type ListUserStoriesResponse struct {
 
 func (x *ListUserStoriesResponse) Reset() {
 	*x = ListUserStoriesResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[194]
+	mi := &file_api_post_v1_post_proto_msgTypes[226]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11750,7 +13538,7 @@ func (x *ListUserStoriesResponse) String() string {
 func (*ListUserStoriesResponse) ProtoMessage() {}
 
 func (x *ListUserStoriesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[194]
+	mi := &file_api_post_v1_post_proto_msgTypes[226]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11763,7 +13551,7 @@ func (x *ListUserStoriesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListUserStoriesResponse.ProtoReflect.Descriptor instead.
 func (*ListUserStoriesResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{194}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{226}
 }
 
 func (x *ListUserStoriesResponse) GetStories() []*Story {
@@ -11782,7 +13570,7 @@ type GetStoryRequest struct {
 
 func (x *GetStoryRequest) Reset() {
 	*x = GetStoryRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[195]
+	mi := &file_api_post_v1_post_proto_msgTypes[227]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11794,7 +13582,7 @@ func (x *GetStoryRequest) String() string {
 func (*GetStoryRequest) ProtoMessage() {}
 
 func (x *GetStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[195]
+	mi := &file_api_post_v1_post_proto_msgTypes[227]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11807,7 +13595,7 @@ func (x *GetStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStoryRequest.ProtoReflect.Descriptor instead.
 func (*GetStoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{195}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{227}
 }
 
 func (x *GetStoryRequest) GetId() string {
@@ -11826,7 +13614,7 @@ type GetStoryResponse struct {
 
 func (x *GetStoryResponse) Reset() {
 	*x = GetStoryResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[196]
+	mi := &file_api_post_v1_post_proto_msgTypes[228]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11838,7 +13626,7 @@ func (x *GetStoryResponse) String() string {
 func (*GetStoryResponse) ProtoMessage() {}
 
 func (x *GetStoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[196]
+	mi := &file_api_post_v1_post_proto_msgTypes[228]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11851,7 +13639,7 @@ func (x *GetStoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStoryResponse.ProtoReflect.Descriptor instead.
 func (*GetStoryResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{196}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{228}
 }
 
 func (x *GetStoryResponse) GetStory() *Story {
@@ -11873,7 +13661,7 @@ type ViewStoryRequest struct {
 
 func (x *ViewStoryRequest) Reset() {
 	*x = ViewStoryRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[197]
+	mi := &file_api_post_v1_post_proto_msgTypes[229]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11885,7 +13673,7 @@ func (x *ViewStoryRequest) String() string {
 func (*ViewStoryRequest) ProtoMessage() {}
 
 func (x *ViewStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[197]
+	mi := &file_api_post_v1_post_proto_msgTypes[229]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11898,7 +13686,7 @@ func (x *ViewStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ViewStoryRequest.ProtoReflect.Descriptor instead.
 func (*ViewStoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{197}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{229}
 }
 
 func (x *ViewStoryRequest) GetId() string {
@@ -11928,7 +13716,7 @@ type ListStoryViewersRequest struct {
 
 func (x *ListStoryViewersRequest) Reset() {
 	*x = ListStoryViewersRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[198]
+	mi := &file_api_post_v1_post_proto_msgTypes[230]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11940,7 +13728,7 @@ func (x *ListStoryViewersRequest) String() string {
 func (*ListStoryViewersRequest) ProtoMessage() {}
 
 func (x *ListStoryViewersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[198]
+	mi := &file_api_post_v1_post_proto_msgTypes[230]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11953,7 +13741,7 @@ func (x *ListStoryViewersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListStoryViewersRequest.ProtoReflect.Descriptor instead.
 func (*ListStoryViewersRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{198}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{230}
 }
 
 func (x *ListStoryViewersRequest) GetId() string {
@@ -11988,7 +13776,7 @@ type StoryViewer struct {
 
 func (x *StoryViewer) Reset() {
 	*x = StoryViewer{}
-	mi := &file_api_post_v1_post_proto_msgTypes[199]
+	mi := &file_api_post_v1_post_proto_msgTypes[231]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12000,7 +13788,7 @@ func (x *StoryViewer) String() string {
 func (*StoryViewer) ProtoMessage() {}
 
 func (x *StoryViewer) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[199]
+	mi := &file_api_post_v1_post_proto_msgTypes[231]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12013,7 +13801,7 @@ func (x *StoryViewer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StoryViewer.ProtoReflect.Descriptor instead.
 func (*StoryViewer) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{199}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{231}
 }
 
 func (x *StoryViewer) GetUserId() string {
@@ -12043,7 +13831,7 @@ type ListStoryViewersResponse struct {
 
 func (x *ListStoryViewersResponse) Reset() {
 	*x = ListStoryViewersResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[200]
+	mi := &file_api_post_v1_post_proto_msgTypes[232]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12055,7 +13843,7 @@ func (x *ListStoryViewersResponse) String() string {
 func (*ListStoryViewersResponse) ProtoMessage() {}
 
 func (x *ListStoryViewersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[200]
+	mi := &file_api_post_v1_post_proto_msgTypes[232]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12068,7 +13856,7 @@ func (x *ListStoryViewersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListStoryViewersResponse.ProtoReflect.Descriptor instead.
 func (*ListStoryViewersResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{200}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{232}
 }
 
 func (x *ListStoryViewersResponse) GetViewers() []*StoryViewer {
@@ -12101,7 +13889,7 @@ type DeleteStoryRequest struct {
 
 func (x *DeleteStoryRequest) Reset() {
 	*x = DeleteStoryRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[201]
+	mi := &file_api_post_v1_post_proto_msgTypes[233]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12113,7 +13901,7 @@ func (x *DeleteStoryRequest) String() string {
 func (*DeleteStoryRequest) ProtoMessage() {}
 
 func (x *DeleteStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[201]
+	mi := &file_api_post_v1_post_proto_msgTypes[233]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12126,7 +13914,7 @@ func (x *DeleteStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteStoryRequest.ProtoReflect.Descriptor instead.
 func (*DeleteStoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{201}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{233}
 }
 
 func (x *DeleteStoryRequest) GetId() string {
@@ -12145,7 +13933,7 @@ type LikeStoryRequest struct {
 
 func (x *LikeStoryRequest) Reset() {
 	*x = LikeStoryRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[202]
+	mi := &file_api_post_v1_post_proto_msgTypes[234]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12157,7 +13945,7 @@ func (x *LikeStoryRequest) String() string {
 func (*LikeStoryRequest) ProtoMessage() {}
 
 func (x *LikeStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[202]
+	mi := &file_api_post_v1_post_proto_msgTypes[234]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12170,7 +13958,7 @@ func (x *LikeStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikeStoryRequest.ProtoReflect.Descriptor instead.
 func (*LikeStoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{202}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{234}
 }
 
 func (x *LikeStoryRequest) GetId() string {
@@ -12189,7 +13977,7 @@ type UnlikeStoryRequest struct {
 
 func (x *UnlikeStoryRequest) Reset() {
 	*x = UnlikeStoryRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[203]
+	mi := &file_api_post_v1_post_proto_msgTypes[235]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12201,7 +13989,7 @@ func (x *UnlikeStoryRequest) String() string {
 func (*UnlikeStoryRequest) ProtoMessage() {}
 
 func (x *UnlikeStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[203]
+	mi := &file_api_post_v1_post_proto_msgTypes[235]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12214,7 +14002,7 @@ func (x *UnlikeStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnlikeStoryRequest.ProtoReflect.Descriptor instead.
 func (*UnlikeStoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{203}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{235}
 }
 
 func (x *UnlikeStoryRequest) GetId() string {
@@ -12240,7 +14028,7 @@ type StoryComment struct {
 
 func (x *StoryComment) Reset() {
 	*x = StoryComment{}
-	mi := &file_api_post_v1_post_proto_msgTypes[204]
+	mi := &file_api_post_v1_post_proto_msgTypes[236]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12252,7 +14040,7 @@ func (x *StoryComment) String() string {
 func (*StoryComment) ProtoMessage() {}
 
 func (x *StoryComment) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[204]
+	mi := &file_api_post_v1_post_proto_msgTypes[236]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12265,7 +14053,7 @@ func (x *StoryComment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StoryComment.ProtoReflect.Descriptor instead.
 func (*StoryComment) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{204}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{236}
 }
 
 func (x *StoryComment) GetId() string {
@@ -12321,7 +14109,7 @@ type CreateStoryCommentRequest struct {
 
 func (x *CreateStoryCommentRequest) Reset() {
 	*x = CreateStoryCommentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[205]
+	mi := &file_api_post_v1_post_proto_msgTypes[237]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12333,7 +14121,7 @@ func (x *CreateStoryCommentRequest) String() string {
 func (*CreateStoryCommentRequest) ProtoMessage() {}
 
 func (x *CreateStoryCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[205]
+	mi := &file_api_post_v1_post_proto_msgTypes[237]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12346,7 +14134,7 @@ func (x *CreateStoryCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateStoryCommentRequest.ProtoReflect.Descriptor instead.
 func (*CreateStoryCommentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{205}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{237}
 }
 
 func (x *CreateStoryCommentRequest) GetStoryId() string {
@@ -12372,7 +14160,7 @@ type CreateStoryCommentResponse struct {
 
 func (x *CreateStoryCommentResponse) Reset() {
 	*x = CreateStoryCommentResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[206]
+	mi := &file_api_post_v1_post_proto_msgTypes[238]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12384,7 +14172,7 @@ func (x *CreateStoryCommentResponse) String() string {
 func (*CreateStoryCommentResponse) ProtoMessage() {}
 
 func (x *CreateStoryCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[206]
+	mi := &file_api_post_v1_post_proto_msgTypes[238]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12397,7 +14185,7 @@ func (x *CreateStoryCommentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateStoryCommentResponse.ProtoReflect.Descriptor instead.
 func (*CreateStoryCommentResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{206}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{238}
 }
 
 func (x *CreateStoryCommentResponse) GetComment() *StoryComment {
@@ -12420,7 +14208,7 @@ type ListStoryCommentsRequest struct {
 
 func (x *ListStoryCommentsRequest) Reset() {
 	*x = ListStoryCommentsRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[207]
+	mi := &file_api_post_v1_post_proto_msgTypes[239]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12432,7 +14220,7 @@ func (x *ListStoryCommentsRequest) String() string {
 func (*ListStoryCommentsRequest) ProtoMessage() {}
 
 func (x *ListStoryCommentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[207]
+	mi := &file_api_post_v1_post_proto_msgTypes[239]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12445,7 +14233,7 @@ func (x *ListStoryCommentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListStoryCommentsRequest.ProtoReflect.Descriptor instead.
 func (*ListStoryCommentsRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{207}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{239}
 }
 
 func (x *ListStoryCommentsRequest) GetStoryId() string {
@@ -12482,7 +14270,7 @@ type ListStoryCommentsResponse struct {
 
 func (x *ListStoryCommentsResponse) Reset() {
 	*x = ListStoryCommentsResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[208]
+	mi := &file_api_post_v1_post_proto_msgTypes[240]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12494,7 +14282,7 @@ func (x *ListStoryCommentsResponse) String() string {
 func (*ListStoryCommentsResponse) ProtoMessage() {}
 
 func (x *ListStoryCommentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[208]
+	mi := &file_api_post_v1_post_proto_msgTypes[240]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12507,7 +14295,7 @@ func (x *ListStoryCommentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListStoryCommentsResponse.ProtoReflect.Descriptor instead.
 func (*ListStoryCommentsResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{208}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{240}
 }
 
 func (x *ListStoryCommentsResponse) GetComments() []*StoryComment {
@@ -12540,7 +14328,7 @@ type DeleteStoryCommentRequest struct {
 
 func (x *DeleteStoryCommentRequest) Reset() {
 	*x = DeleteStoryCommentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[209]
+	mi := &file_api_post_v1_post_proto_msgTypes[241]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12552,7 +14340,7 @@ func (x *DeleteStoryCommentRequest) String() string {
 func (*DeleteStoryCommentRequest) ProtoMessage() {}
 
 func (x *DeleteStoryCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[209]
+	mi := &file_api_post_v1_post_proto_msgTypes[241]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12565,7 +14353,7 @@ func (x *DeleteStoryCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteStoryCommentRequest.ProtoReflect.Descriptor instead.
 func (*DeleteStoryCommentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{209}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{241}
 }
 
 func (x *DeleteStoryCommentRequest) GetId() string {
@@ -12590,7 +14378,7 @@ type ArticleSpan struct {
 
 func (x *ArticleSpan) Reset() {
 	*x = ArticleSpan{}
-	mi := &file_api_post_v1_post_proto_msgTypes[210]
+	mi := &file_api_post_v1_post_proto_msgTypes[242]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12602,7 +14390,7 @@ func (x *ArticleSpan) String() string {
 func (*ArticleSpan) ProtoMessage() {}
 
 func (x *ArticleSpan) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[210]
+	mi := &file_api_post_v1_post_proto_msgTypes[242]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12615,7 +14403,7 @@ func (x *ArticleSpan) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArticleSpan.ProtoReflect.Descriptor instead.
 func (*ArticleSpan) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{210}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{242}
 }
 
 func (x *ArticleSpan) GetText() string {
@@ -12667,7 +14455,7 @@ type ArticleBlock struct {
 
 func (x *ArticleBlock) Reset() {
 	*x = ArticleBlock{}
-	mi := &file_api_post_v1_post_proto_msgTypes[211]
+	mi := &file_api_post_v1_post_proto_msgTypes[243]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12679,7 +14467,7 @@ func (x *ArticleBlock) String() string {
 func (*ArticleBlock) ProtoMessage() {}
 
 func (x *ArticleBlock) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[211]
+	mi := &file_api_post_v1_post_proto_msgTypes[243]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12692,7 +14480,7 @@ func (x *ArticleBlock) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArticleBlock.ProtoReflect.Descriptor instead.
 func (*ArticleBlock) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{211}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{243}
 }
 
 func (x *ArticleBlock) GetKind() ArticleBlockKind {
@@ -12745,7 +14533,7 @@ type Article struct {
 
 func (x *Article) Reset() {
 	*x = Article{}
-	mi := &file_api_post_v1_post_proto_msgTypes[212]
+	mi := &file_api_post_v1_post_proto_msgTypes[244]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12757,7 +14545,7 @@ func (x *Article) String() string {
 func (*Article) ProtoMessage() {}
 
 func (x *Article) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[212]
+	mi := &file_api_post_v1_post_proto_msgTypes[244]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12770,7 +14558,7 @@ func (x *Article) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Article.ProtoReflect.Descriptor instead.
 func (*Article) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{212}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{244}
 }
 
 func (x *Article) GetId() string {
@@ -12847,7 +14635,7 @@ type CreateArticleRequest struct {
 
 func (x *CreateArticleRequest) Reset() {
 	*x = CreateArticleRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[213]
+	mi := &file_api_post_v1_post_proto_msgTypes[245]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12859,7 +14647,7 @@ func (x *CreateArticleRequest) String() string {
 func (*CreateArticleRequest) ProtoMessage() {}
 
 func (x *CreateArticleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[213]
+	mi := &file_api_post_v1_post_proto_msgTypes[245]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12872,7 +14660,7 @@ func (x *CreateArticleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateArticleRequest.ProtoReflect.Descriptor instead.
 func (*CreateArticleRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{213}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{245}
 }
 
 func (x *CreateArticleRequest) GetTitle() string {
@@ -12905,7 +14693,7 @@ type CreateArticleResponse struct {
 
 func (x *CreateArticleResponse) Reset() {
 	*x = CreateArticleResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[214]
+	mi := &file_api_post_v1_post_proto_msgTypes[246]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12917,7 +14705,7 @@ func (x *CreateArticleResponse) String() string {
 func (*CreateArticleResponse) ProtoMessage() {}
 
 func (x *CreateArticleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[214]
+	mi := &file_api_post_v1_post_proto_msgTypes[246]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12930,7 +14718,7 @@ func (x *CreateArticleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateArticleResponse.ProtoReflect.Descriptor instead.
 func (*CreateArticleResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{214}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{246}
 }
 
 func (x *CreateArticleResponse) GetArticle() *Article {
@@ -12952,7 +14740,7 @@ type EditArticleRequest struct {
 
 func (x *EditArticleRequest) Reset() {
 	*x = EditArticleRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[215]
+	mi := &file_api_post_v1_post_proto_msgTypes[247]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12964,7 +14752,7 @@ func (x *EditArticleRequest) String() string {
 func (*EditArticleRequest) ProtoMessage() {}
 
 func (x *EditArticleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[215]
+	mi := &file_api_post_v1_post_proto_msgTypes[247]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12977,7 +14765,7 @@ func (x *EditArticleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EditArticleRequest.ProtoReflect.Descriptor instead.
 func (*EditArticleRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{215}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{247}
 }
 
 func (x *EditArticleRequest) GetId() string {
@@ -13017,7 +14805,7 @@ type EditArticleResponse struct {
 
 func (x *EditArticleResponse) Reset() {
 	*x = EditArticleResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[216]
+	mi := &file_api_post_v1_post_proto_msgTypes[248]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13029,7 +14817,7 @@ func (x *EditArticleResponse) String() string {
 func (*EditArticleResponse) ProtoMessage() {}
 
 func (x *EditArticleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[216]
+	mi := &file_api_post_v1_post_proto_msgTypes[248]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13042,7 +14830,7 @@ func (x *EditArticleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EditArticleResponse.ProtoReflect.Descriptor instead.
 func (*EditArticleResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{216}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{248}
 }
 
 func (x *EditArticleResponse) GetArticle() *Article {
@@ -13061,7 +14849,7 @@ type DeleteArticleRequest struct {
 
 func (x *DeleteArticleRequest) Reset() {
 	*x = DeleteArticleRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[217]
+	mi := &file_api_post_v1_post_proto_msgTypes[249]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13073,7 +14861,7 @@ func (x *DeleteArticleRequest) String() string {
 func (*DeleteArticleRequest) ProtoMessage() {}
 
 func (x *DeleteArticleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[217]
+	mi := &file_api_post_v1_post_proto_msgTypes[249]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13086,7 +14874,7 @@ func (x *DeleteArticleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteArticleRequest.ProtoReflect.Descriptor instead.
 func (*DeleteArticleRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{217}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{249}
 }
 
 func (x *DeleteArticleRequest) GetId() string {
@@ -13106,7 +14894,7 @@ type GetArticleRequest struct {
 
 func (x *GetArticleRequest) Reset() {
 	*x = GetArticleRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[218]
+	mi := &file_api_post_v1_post_proto_msgTypes[250]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13118,7 +14906,7 @@ func (x *GetArticleRequest) String() string {
 func (*GetArticleRequest) ProtoMessage() {}
 
 func (x *GetArticleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[218]
+	mi := &file_api_post_v1_post_proto_msgTypes[250]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13131,7 +14919,7 @@ func (x *GetArticleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetArticleRequest.ProtoReflect.Descriptor instead.
 func (*GetArticleRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{218}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{250}
 }
 
 func (x *GetArticleRequest) GetId() string {
@@ -13157,7 +14945,7 @@ type GetArticleResponse struct {
 
 func (x *GetArticleResponse) Reset() {
 	*x = GetArticleResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[219]
+	mi := &file_api_post_v1_post_proto_msgTypes[251]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13169,7 +14957,7 @@ func (x *GetArticleResponse) String() string {
 func (*GetArticleResponse) ProtoMessage() {}
 
 func (x *GetArticleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[219]
+	mi := &file_api_post_v1_post_proto_msgTypes[251]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13182,7 +14970,7 @@ func (x *GetArticleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetArticleResponse.ProtoReflect.Descriptor instead.
 func (*GetArticleResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{219}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{251}
 }
 
 func (x *GetArticleResponse) GetArticle() *Article {
@@ -13204,7 +14992,7 @@ type ListArticlesRequest struct {
 
 func (x *ListArticlesRequest) Reset() {
 	*x = ListArticlesRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[220]
+	mi := &file_api_post_v1_post_proto_msgTypes[252]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13216,7 +15004,7 @@ func (x *ListArticlesRequest) String() string {
 func (*ListArticlesRequest) ProtoMessage() {}
 
 func (x *ListArticlesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[220]
+	mi := &file_api_post_v1_post_proto_msgTypes[252]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13229,7 +15017,7 @@ func (x *ListArticlesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListArticlesRequest.ProtoReflect.Descriptor instead.
 func (*ListArticlesRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{220}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{252}
 }
 
 func (x *ListArticlesRequest) GetAuthorId() string {
@@ -13265,7 +15053,7 @@ type ListArticlesResponse struct {
 
 func (x *ListArticlesResponse) Reset() {
 	*x = ListArticlesResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[221]
+	mi := &file_api_post_v1_post_proto_msgTypes[253]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13277,7 +15065,7 @@ func (x *ListArticlesResponse) String() string {
 func (*ListArticlesResponse) ProtoMessage() {}
 
 func (x *ListArticlesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[221]
+	mi := &file_api_post_v1_post_proto_msgTypes[253]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13290,7 +15078,7 @@ func (x *ListArticlesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListArticlesResponse.ProtoReflect.Descriptor instead.
 func (*ListArticlesResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{221}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{253}
 }
 
 func (x *ListArticlesResponse) GetArticles() []*Article {
@@ -13318,7 +15106,7 @@ var File_api_post_v1_post_proto protoreflect.FileDescriptor
 
 const file_api_post_v1_post_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd4\x06\n" +
+	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf1\x06\n" +
 	"\x04Post\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\tR\bauthorId\x12\x12\n" +
@@ -13348,7 +15136,8 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x06polled\x18\x18 \x01(\bR\x06polled\x12!\n" +
 	"\fdocument_ids\x18\x19 \x03(\tR\vdocumentIds\x12!\n" +
 	"\x04link\x18\x1a \x01(\v2\r.post.v1.LinkR\x04link\x12\x14\n" +
-	"\x05price\x18\x1b \x01(\x03R\x05priceJ\x04\b\x12\x10\x13R\ravatar_update\"\x7f\n" +
+	"\x05price\x18\x1b \x01(\x03R\x05price\x12\x1b\n" +
+	"\taudio_ids\x18\x1c \x03(\tR\baudioIdsJ\x04\b\x12\x10\x13R\ravatar_update\"\x7f\n" +
 	"\x04Link\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
@@ -13461,7 +15250,7 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x18PublishPostponedResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\"(\n" +
 	"\x16DeletePostponedRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x81\x03\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x9e\x03\n" +
 	"\x11CreatePostRequest\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\x12\x17\n" +
@@ -13475,7 +15264,8 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	" \x01(\v2\x12.post.v1.PollDraftR\x04poll\x12!\n" +
 	"\fdocument_ids\x18\v \x03(\tR\vdocumentIds\x12!\n" +
 	"\x04link\x18\f \x01(\v2\r.post.v1.LinkR\x04link\x12\x14\n" +
-	"\x05price\x18\r \x01(\x03R\x05priceJ\x04\b\a\x10\bR\ravatar_update\"\xa1\x01\n" +
+	"\x05price\x18\r \x01(\x03R\x05price\x12\x1b\n" +
+	"\taudio_ids\x18\x0e \x03(\tR\baudioIdsJ\x04\b\a\x10\bR\ravatar_update\"\xa1\x01\n" +
 	"\tPollDraft\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x18\n" +
 	"\aoptions\x18\x02 \x03(\tR\aoptions\x12\x1c\n" +
@@ -14112,7 +15902,124 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x16RenameDocumentResponse\x12-\n" +
 	"\bdocument\x18\x01 \x01(\v2\x11.post.v1.DocumentR\bdocument\"'\n" +
 	"\x15DeleteDocumentRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xf5\x02\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x8b\x02\n" +
+	"\x05Audio\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
+	"\bowner_id\x18\x02 \x01(\tR\aownerId\x12\x12\n" +
+	"\x04kind\x18\x03 \x01(\tR\x04kind\x12\x12\n" +
+	"\x04link\x18\x04 \x01(\tR\x04link\x12\x14\n" +
+	"\x05cover\x18\x05 \x01(\tR\x05cover\x12\x16\n" +
+	"\x06artist\x18\x06 \x01(\tR\x06artist\x12\x14\n" +
+	"\x05title\x18\a \x01(\tR\x05title\x12\x1a\n" +
+	"\bduration\x18\b \x01(\x05R\bduration\x129\n" +
+	"\n" +
+	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x14\n" +
+	"\x05added\x18\n" +
+	" \x01(\bR\x05added\"k\n" +
+	"\x0fAddAudioRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06artist\x18\x02 \x01(\tR\x06artist\x12\x14\n" +
+	"\x05title\x18\x03 \x01(\tR\x05title\x12\x1a\n" +
+	"\bduration\x18\x04 \x01(\x05R\bduration\"8\n" +
+	"\x10AddAudioResponse\x12$\n" +
+	"\x05audio\x18\x01 \x01(\v2\x0e.post.v1.AudioR\x05audio\"\x9e\x01\n" +
+	"\x14AddAudioTrackRequest\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x12\n" +
+	"\x04link\x18\x02 \x01(\tR\x04link\x12\x14\n" +
+	"\x05cover\x18\x03 \x01(\tR\x05cover\x12\x16\n" +
+	"\x06artist\x18\x04 \x01(\tR\x06artist\x12\x14\n" +
+	"\x05title\x18\x05 \x01(\tR\x05title\x12\x1a\n" +
+	"\bduration\x18\x06 \x01(\x05R\bduration\"=\n" +
+	"\x15AddAudioTrackResponse\x12$\n" +
+	"\x05audio\x18\x01 \x01(\v2\x0e.post.v1.AudioR\x05audio\"\\\n" +
+	"\x11ListAudiosRequest\x12\x19\n" +
+	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"s\n" +
+	"\x12ListAudiosResponse\x12&\n" +
+	"\x06audios\x18\x01 \x03(\v2\x0e.post.v1.AudioR\x06audios\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"Y\n" +
+	"\x13SearchAudiosRequest\x12\x14\n" +
+	"\x05query\x18\x01 \x01(\tR\x05query\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"_\n" +
+	"\x14SearchAudiosResponse\x12&\n" +
+	"\x06audios\x18\x01 \x03(\v2\x0e.post.v1.AudioR\x06audios\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\"$\n" +
+	"\x10GetAudiosRequest\x12\x10\n" +
+	"\x03ids\x18\x01 \x03(\tR\x03ids\";\n" +
+	"\x11GetAudiosResponse\x12&\n" +
+	"\x06audios\x18\x01 \x03(\v2\x0e.post.v1.AudioR\x06audios\"-\n" +
+	"\x10KeepAudioRequest\x12\x19\n" +
+	"\baudio_id\x18\x01 \x01(\tR\aaudioId\"/\n" +
+	"\x12ForgetAudioRequest\x12\x19\n" +
+	"\baudio_id\x18\x01 \x01(\tR\aaudioId\"P\n" +
+	"\x10EditAudioRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06artist\x18\x02 \x01(\tR\x06artist\x12\x14\n" +
+	"\x05title\x18\x03 \x01(\tR\x05title\"9\n" +
+	"\x11EditAudioResponse\x12$\n" +
+	"\x05audio\x18\x01 \x01(\v2\x0e.post.v1.AudioR\x05audio\"$\n" +
+	"\x12DeleteAudioRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"/\n" +
+	"\x12ListenAudioRequest\x12\x19\n" +
+	"\baudio_id\x18\x01 \x01(\tR\aaudioId\"0\n" +
+	"\x13SetPageAudioRequest\x12\x19\n" +
+	"\baudio_id\x18\x01 \x01(\tR\aaudioId\"*\n" +
+	"\x0fGetMusicRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x85\x01\n" +
+	"\x10GetMusicResponse\x12,\n" +
+	"\tlistening\x18\x01 \x01(\v2\x0e.post.v1.AudioR\tlistening\x12-\n" +
+	"\n" +
+	"page_audio\x18\x02 \x01(\v2\x0e.post.v1.AudioR\tpageAudio\x12\x14\n" +
+	"\x05count\x18\x03 \x01(\x05R\x05count\"\x86\x01\n" +
+	"\bPlaylist\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
+	"\bowner_id\x18\x02 \x01(\tR\aownerId\x12\x14\n" +
+	"\x05title\x18\x03 \x01(\tR\x05title\x129\n" +
+	"\n" +
+	"created_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"-\n" +
+	"\x15CreatePlaylistRequest\x12\x14\n" +
+	"\x05title\x18\x01 \x01(\tR\x05title\"G\n" +
+	"\x16CreatePlaylistResponse\x12-\n" +
+	"\bplaylist\x18\x01 \x01(\v2\x11.post.v1.PlaylistR\bplaylist\"=\n" +
+	"\x15RenamePlaylistRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\"G\n" +
+	"\x16RenamePlaylistResponse\x12-\n" +
+	"\bplaylist\x18\x01 \x01(\v2\x11.post.v1.PlaylistR\bplaylist\"'\n" +
+	"\x15DeletePlaylistRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"_\n" +
+	"\x14ListPlaylistsRequest\x12\x19\n" +
+	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"\x7f\n" +
+	"\x15ListPlaylistsResponse\x12/\n" +
+	"\tplaylists\x18\x01 \x03(\v2\x11.post.v1.PlaylistR\tplaylists\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"R\n" +
+	"\x12GetPlaylistRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"\xa3\x01\n" +
+	"\x13GetPlaylistResponse\x12-\n" +
+	"\bplaylist\x18\x01 \x01(\v2\x11.post.v1.PlaylistR\bplaylist\x12&\n" +
+	"\x06audios\x18\x02 \x03(\v2\x0e.post.v1.AudioR\x06audios\x12\x1f\n" +
+	"\vnext_cursor\x18\x03 \x01(\tR\n" +
+	"nextCursor\x12\x14\n" +
+	"\x05total\x18\x04 \x01(\x05R\x05total\"U\n" +
+	"\x17AddPlaylistAudioRequest\x12\x1f\n" +
+	"\vplaylist_id\x18\x01 \x01(\tR\n" +
+	"playlistId\x12\x19\n" +
+	"\baudio_id\x18\x02 \x01(\tR\aaudioId\"X\n" +
+	"\x1aRemovePlaylistAudioRequest\x12\x1f\n" +
+	"\vplaylist_id\x18\x01 \x01(\tR\n" +
+	"playlistId\x12\x19\n" +
+	"\baudio_id\x18\x02 \x01(\tR\aaudioId\"\xf5\x02\n" +
 	"\x05Story\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\tR\bauthorId\x12\x19\n" +
@@ -14265,7 +16172,7 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x19ARTICLE_BLOCK_KIND_NUMBER\x10\x06\x12\x1b\n" +
 	"\x17ARTICLE_BLOCK_KIND_CODE\x10\a\x12\x1c\n" +
 	"\x18ARTICLE_BLOCK_KIND_PHOTO\x10\b\x12\x1e\n" +
-	"\x1aARTICLE_BLOCK_KIND_DIVIDER\x10\t2\xa4G\n" +
+	"\x1aARTICLE_BLOCK_KIND_DIVIDER\x10\t2\x90R\n" +
 	"\vPostService\x12E\n" +
 	"\n" +
 	"CreatePost\x12\x1a.post.v1.CreatePostRequest\x1a\x1b.post.v1.CreatePostResponse\x12@\n" +
@@ -14376,7 +16283,27 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\rListDocuments\x12\x1d.post.v1.ListDocumentsRequest\x1a\x1e.post.v1.ListDocumentsResponse\x12K\n" +
 	"\fGetDocuments\x12\x1c.post.v1.GetDocumentsRequest\x1a\x1d.post.v1.GetDocumentsResponse\x12Q\n" +
 	"\x0eRenameDocument\x12\x1e.post.v1.RenameDocumentRequest\x1a\x1f.post.v1.RenameDocumentResponse\x12H\n" +
-	"\x0eDeleteDocument\x12\x1e.post.v1.DeleteDocumentRequest\x1a\x16.google.protobuf.Empty\x12N\n" +
+	"\x0eDeleteDocument\x12\x1e.post.v1.DeleteDocumentRequest\x1a\x16.google.protobuf.Empty\x12?\n" +
+	"\bAddAudio\x12\x18.post.v1.AddAudioRequest\x1a\x19.post.v1.AddAudioResponse\x12N\n" +
+	"\rAddAudioTrack\x12\x1d.post.v1.AddAudioTrackRequest\x1a\x1e.post.v1.AddAudioTrackResponse\x12E\n" +
+	"\n" +
+	"ListAudios\x12\x1a.post.v1.ListAudiosRequest\x1a\x1b.post.v1.ListAudiosResponse\x12K\n" +
+	"\fSearchAudios\x12\x1c.post.v1.SearchAudiosRequest\x1a\x1d.post.v1.SearchAudiosResponse\x12B\n" +
+	"\tGetAudios\x12\x19.post.v1.GetAudiosRequest\x1a\x1a.post.v1.GetAudiosResponse\x12>\n" +
+	"\tKeepAudio\x12\x19.post.v1.KeepAudioRequest\x1a\x16.google.protobuf.Empty\x12B\n" +
+	"\vForgetAudio\x12\x1b.post.v1.ForgetAudioRequest\x1a\x16.google.protobuf.Empty\x12B\n" +
+	"\tEditAudio\x12\x19.post.v1.EditAudioRequest\x1a\x1a.post.v1.EditAudioResponse\x12B\n" +
+	"\vDeleteAudio\x12\x1b.post.v1.DeleteAudioRequest\x1a\x16.google.protobuf.Empty\x12B\n" +
+	"\vListenAudio\x12\x1b.post.v1.ListenAudioRequest\x1a\x16.google.protobuf.Empty\x12D\n" +
+	"\fSetPageAudio\x12\x1c.post.v1.SetPageAudioRequest\x1a\x16.google.protobuf.Empty\x12?\n" +
+	"\bGetMusic\x12\x18.post.v1.GetMusicRequest\x1a\x19.post.v1.GetMusicResponse\x12Q\n" +
+	"\x0eCreatePlaylist\x12\x1e.post.v1.CreatePlaylistRequest\x1a\x1f.post.v1.CreatePlaylistResponse\x12Q\n" +
+	"\x0eRenamePlaylist\x12\x1e.post.v1.RenamePlaylistRequest\x1a\x1f.post.v1.RenamePlaylistResponse\x12H\n" +
+	"\x0eDeletePlaylist\x12\x1e.post.v1.DeletePlaylistRequest\x1a\x16.google.protobuf.Empty\x12N\n" +
+	"\rListPlaylists\x12\x1d.post.v1.ListPlaylistsRequest\x1a\x1e.post.v1.ListPlaylistsResponse\x12H\n" +
+	"\vGetPlaylist\x12\x1b.post.v1.GetPlaylistRequest\x1a\x1c.post.v1.GetPlaylistResponse\x12L\n" +
+	"\x10AddPlaylistAudio\x12 .post.v1.AddPlaylistAudioRequest\x1a\x16.google.protobuf.Empty\x12R\n" +
+	"\x13RemovePlaylistAudio\x12#.post.v1.RemovePlaylistAudioRequest\x1a\x16.google.protobuf.Empty\x12N\n" +
 	"\rCreateArticle\x12\x1d.post.v1.CreateArticleRequest\x1a\x1e.post.v1.CreateArticleResponse\x12H\n" +
 	"\vEditArticle\x12\x1b.post.v1.EditArticleRequest\x1a\x1c.post.v1.EditArticleResponse\x12F\n" +
 	"\rDeleteArticle\x12\x1d.post.v1.DeleteArticleRequest\x1a\x16.google.protobuf.Empty\x12E\n" +
@@ -14406,7 +16333,7 @@ func file_api_post_v1_post_proto_rawDescGZIP() []byte {
 }
 
 var file_api_post_v1_post_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_api_post_v1_post_proto_msgTypes = make([]protoimpl.MessageInfo, 222)
+var file_api_post_v1_post_proto_msgTypes = make([]protoimpl.MessageInfo, 254)
 var file_api_post_v1_post_proto_goTypes = []any{
 	(WallFilter)(0),                        // 0: post.v1.WallFilter
 	(AlbumKind)(0),                         // 1: post.v1.AlbumKind
@@ -14599,66 +16526,98 @@ var file_api_post_v1_post_proto_goTypes = []any{
 	(*RenameDocumentRequest)(nil),          // 188: post.v1.RenameDocumentRequest
 	(*RenameDocumentResponse)(nil),         // 189: post.v1.RenameDocumentResponse
 	(*DeleteDocumentRequest)(nil),          // 190: post.v1.DeleteDocumentRequest
-	(*Story)(nil),                          // 191: post.v1.Story
-	(*CreateStoryRequest)(nil),             // 192: post.v1.CreateStoryRequest
-	(*CreateStoryResponse)(nil),            // 193: post.v1.CreateStoryResponse
-	(*ListFeedStoriesRequest)(nil),         // 194: post.v1.ListFeedStoriesRequest
-	(*ListFeedStoriesResponse)(nil),        // 195: post.v1.ListFeedStoriesResponse
-	(*ListUserStoriesRequest)(nil),         // 196: post.v1.ListUserStoriesRequest
-	(*ListUserStoriesResponse)(nil),        // 197: post.v1.ListUserStoriesResponse
-	(*GetStoryRequest)(nil),                // 198: post.v1.GetStoryRequest
-	(*GetStoryResponse)(nil),               // 199: post.v1.GetStoryResponse
-	(*ViewStoryRequest)(nil),               // 200: post.v1.ViewStoryRequest
-	(*ListStoryViewersRequest)(nil),        // 201: post.v1.ListStoryViewersRequest
-	(*StoryViewer)(nil),                    // 202: post.v1.StoryViewer
-	(*ListStoryViewersResponse)(nil),       // 203: post.v1.ListStoryViewersResponse
-	(*DeleteStoryRequest)(nil),             // 204: post.v1.DeleteStoryRequest
-	(*LikeStoryRequest)(nil),               // 205: post.v1.LikeStoryRequest
-	(*UnlikeStoryRequest)(nil),             // 206: post.v1.UnlikeStoryRequest
-	(*StoryComment)(nil),                   // 207: post.v1.StoryComment
-	(*CreateStoryCommentRequest)(nil),      // 208: post.v1.CreateStoryCommentRequest
-	(*CreateStoryCommentResponse)(nil),     // 209: post.v1.CreateStoryCommentResponse
-	(*ListStoryCommentsRequest)(nil),       // 210: post.v1.ListStoryCommentsRequest
-	(*ListStoryCommentsResponse)(nil),      // 211: post.v1.ListStoryCommentsResponse
-	(*DeleteStoryCommentRequest)(nil),      // 212: post.v1.DeleteStoryCommentRequest
-	(*ArticleSpan)(nil),                    // 213: post.v1.ArticleSpan
-	(*ArticleBlock)(nil),                   // 214: post.v1.ArticleBlock
-	(*Article)(nil),                        // 215: post.v1.Article
-	(*CreateArticleRequest)(nil),           // 216: post.v1.CreateArticleRequest
-	(*CreateArticleResponse)(nil),          // 217: post.v1.CreateArticleResponse
-	(*EditArticleRequest)(nil),             // 218: post.v1.EditArticleRequest
-	(*EditArticleResponse)(nil),            // 219: post.v1.EditArticleResponse
-	(*DeleteArticleRequest)(nil),           // 220: post.v1.DeleteArticleRequest
-	(*GetArticleRequest)(nil),              // 221: post.v1.GetArticleRequest
-	(*GetArticleResponse)(nil),             // 222: post.v1.GetArticleResponse
-	(*ListArticlesRequest)(nil),            // 223: post.v1.ListArticlesRequest
-	(*ListArticlesResponse)(nil),           // 224: post.v1.ListArticlesResponse
-	(*timestamppb.Timestamp)(nil),          // 225: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                  // 226: google.protobuf.Empty
+	(*Audio)(nil),                          // 191: post.v1.Audio
+	(*AddAudioRequest)(nil),                // 192: post.v1.AddAudioRequest
+	(*AddAudioResponse)(nil),               // 193: post.v1.AddAudioResponse
+	(*AddAudioTrackRequest)(nil),           // 194: post.v1.AddAudioTrackRequest
+	(*AddAudioTrackResponse)(nil),          // 195: post.v1.AddAudioTrackResponse
+	(*ListAudiosRequest)(nil),              // 196: post.v1.ListAudiosRequest
+	(*ListAudiosResponse)(nil),             // 197: post.v1.ListAudiosResponse
+	(*SearchAudiosRequest)(nil),            // 198: post.v1.SearchAudiosRequest
+	(*SearchAudiosResponse)(nil),           // 199: post.v1.SearchAudiosResponse
+	(*GetAudiosRequest)(nil),               // 200: post.v1.GetAudiosRequest
+	(*GetAudiosResponse)(nil),              // 201: post.v1.GetAudiosResponse
+	(*KeepAudioRequest)(nil),               // 202: post.v1.KeepAudioRequest
+	(*ForgetAudioRequest)(nil),             // 203: post.v1.ForgetAudioRequest
+	(*EditAudioRequest)(nil),               // 204: post.v1.EditAudioRequest
+	(*EditAudioResponse)(nil),              // 205: post.v1.EditAudioResponse
+	(*DeleteAudioRequest)(nil),             // 206: post.v1.DeleteAudioRequest
+	(*ListenAudioRequest)(nil),             // 207: post.v1.ListenAudioRequest
+	(*SetPageAudioRequest)(nil),            // 208: post.v1.SetPageAudioRequest
+	(*GetMusicRequest)(nil),                // 209: post.v1.GetMusicRequest
+	(*GetMusicResponse)(nil),               // 210: post.v1.GetMusicResponse
+	(*Playlist)(nil),                       // 211: post.v1.Playlist
+	(*CreatePlaylistRequest)(nil),          // 212: post.v1.CreatePlaylistRequest
+	(*CreatePlaylistResponse)(nil),         // 213: post.v1.CreatePlaylistResponse
+	(*RenamePlaylistRequest)(nil),          // 214: post.v1.RenamePlaylistRequest
+	(*RenamePlaylistResponse)(nil),         // 215: post.v1.RenamePlaylistResponse
+	(*DeletePlaylistRequest)(nil),          // 216: post.v1.DeletePlaylistRequest
+	(*ListPlaylistsRequest)(nil),           // 217: post.v1.ListPlaylistsRequest
+	(*ListPlaylistsResponse)(nil),          // 218: post.v1.ListPlaylistsResponse
+	(*GetPlaylistRequest)(nil),             // 219: post.v1.GetPlaylistRequest
+	(*GetPlaylistResponse)(nil),            // 220: post.v1.GetPlaylistResponse
+	(*AddPlaylistAudioRequest)(nil),        // 221: post.v1.AddPlaylistAudioRequest
+	(*RemovePlaylistAudioRequest)(nil),     // 222: post.v1.RemovePlaylistAudioRequest
+	(*Story)(nil),                          // 223: post.v1.Story
+	(*CreateStoryRequest)(nil),             // 224: post.v1.CreateStoryRequest
+	(*CreateStoryResponse)(nil),            // 225: post.v1.CreateStoryResponse
+	(*ListFeedStoriesRequest)(nil),         // 226: post.v1.ListFeedStoriesRequest
+	(*ListFeedStoriesResponse)(nil),        // 227: post.v1.ListFeedStoriesResponse
+	(*ListUserStoriesRequest)(nil),         // 228: post.v1.ListUserStoriesRequest
+	(*ListUserStoriesResponse)(nil),        // 229: post.v1.ListUserStoriesResponse
+	(*GetStoryRequest)(nil),                // 230: post.v1.GetStoryRequest
+	(*GetStoryResponse)(nil),               // 231: post.v1.GetStoryResponse
+	(*ViewStoryRequest)(nil),               // 232: post.v1.ViewStoryRequest
+	(*ListStoryViewersRequest)(nil),        // 233: post.v1.ListStoryViewersRequest
+	(*StoryViewer)(nil),                    // 234: post.v1.StoryViewer
+	(*ListStoryViewersResponse)(nil),       // 235: post.v1.ListStoryViewersResponse
+	(*DeleteStoryRequest)(nil),             // 236: post.v1.DeleteStoryRequest
+	(*LikeStoryRequest)(nil),               // 237: post.v1.LikeStoryRequest
+	(*UnlikeStoryRequest)(nil),             // 238: post.v1.UnlikeStoryRequest
+	(*StoryComment)(nil),                   // 239: post.v1.StoryComment
+	(*CreateStoryCommentRequest)(nil),      // 240: post.v1.CreateStoryCommentRequest
+	(*CreateStoryCommentResponse)(nil),     // 241: post.v1.CreateStoryCommentResponse
+	(*ListStoryCommentsRequest)(nil),       // 242: post.v1.ListStoryCommentsRequest
+	(*ListStoryCommentsResponse)(nil),      // 243: post.v1.ListStoryCommentsResponse
+	(*DeleteStoryCommentRequest)(nil),      // 244: post.v1.DeleteStoryCommentRequest
+	(*ArticleSpan)(nil),                    // 245: post.v1.ArticleSpan
+	(*ArticleBlock)(nil),                   // 246: post.v1.ArticleBlock
+	(*Article)(nil),                        // 247: post.v1.Article
+	(*CreateArticleRequest)(nil),           // 248: post.v1.CreateArticleRequest
+	(*CreateArticleResponse)(nil),          // 249: post.v1.CreateArticleResponse
+	(*EditArticleRequest)(nil),             // 250: post.v1.EditArticleRequest
+	(*EditArticleResponse)(nil),            // 251: post.v1.EditArticleResponse
+	(*DeleteArticleRequest)(nil),           // 252: post.v1.DeleteArticleRequest
+	(*GetArticleRequest)(nil),              // 253: post.v1.GetArticleRequest
+	(*GetArticleResponse)(nil),             // 254: post.v1.GetArticleResponse
+	(*ListArticlesRequest)(nil),            // 255: post.v1.ListArticlesRequest
+	(*ListArticlesResponse)(nil),           // 256: post.v1.ListArticlesResponse
+	(*timestamppb.Timestamp)(nil),          // 257: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                  // 258: google.protobuf.Empty
 }
 var file_api_post_v1_post_proto_depIdxs = []int32{
-	225, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
-	225, // 1: post.v1.Post.edited_at:type_name -> google.protobuf.Timestamp
-	225, // 2: post.v1.Post.editable_until:type_name -> google.protobuf.Timestamp
+	257, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
+	257, // 1: post.v1.Post.edited_at:type_name -> google.protobuf.Timestamp
+	257, // 2: post.v1.Post.editable_until:type_name -> google.protobuf.Timestamp
 	4,   // 3: post.v1.Post.link:type_name -> post.v1.Link
-	225, // 4: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
-	225, // 5: post.v1.Suggestion.created_at:type_name -> google.protobuf.Timestamp
+	257, // 4: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
+	257, // 5: post.v1.Suggestion.created_at:type_name -> google.protobuf.Timestamp
 	6,   // 6: post.v1.SuggestPostResponse.suggestion:type_name -> post.v1.Suggestion
 	6,   // 7: post.v1.ListSuggestionsResponse.suggestions:type_name -> post.v1.Suggestion
 	3,   // 8: post.v1.PublishSuggestionResponse.post:type_name -> post.v1.Post
-	225, // 9: post.v1.PostponedPost.publish_at:type_name -> google.protobuf.Timestamp
-	225, // 10: post.v1.PostponedPost.created_at:type_name -> google.protobuf.Timestamp
-	225, // 11: post.v1.PostponePostRequest.publish_at:type_name -> google.protobuf.Timestamp
+	257, // 9: post.v1.PostponedPost.publish_at:type_name -> google.protobuf.Timestamp
+	257, // 10: post.v1.PostponedPost.created_at:type_name -> google.protobuf.Timestamp
+	257, // 11: post.v1.PostponePostRequest.publish_at:type_name -> google.protobuf.Timestamp
 	14,  // 12: post.v1.PostponePostResponse.postponed:type_name -> post.v1.PostponedPost
 	14,  // 13: post.v1.ListPostponedResponse.postponed:type_name -> post.v1.PostponedPost
 	14,  // 14: post.v1.GetPostponedResponse.postponed:type_name -> post.v1.PostponedPost
-	225, // 15: post.v1.EditPostponedRequest.publish_at:type_name -> google.protobuf.Timestamp
+	257, // 15: post.v1.EditPostponedRequest.publish_at:type_name -> google.protobuf.Timestamp
 	14,  // 16: post.v1.EditPostponedResponse.postponed:type_name -> post.v1.PostponedPost
 	3,   // 17: post.v1.PublishPostponedResponse.post:type_name -> post.v1.Post
 	27,  // 18: post.v1.CreatePostRequest.poll:type_name -> post.v1.PollDraft
 	4,   // 19: post.v1.CreatePostRequest.link:type_name -> post.v1.Link
 	29,  // 20: post.v1.Poll.options:type_name -> post.v1.PollOption
-	225, // 21: post.v1.Poll.ends_at:type_name -> google.protobuf.Timestamp
+	257, // 21: post.v1.Poll.ends_at:type_name -> google.protobuf.Timestamp
 	28,  // 22: post.v1.GetPollsResponse.polls:type_name -> post.v1.Poll
 	28,  // 23: post.v1.VotePollResponse.poll:type_name -> post.v1.Poll
 	28,  // 24: post.v1.RetractPollVoteResponse.poll:type_name -> post.v1.Poll
@@ -14680,10 +16639,10 @@ var file_api_post_v1_post_proto_depIdxs = []int32{
 	5,   // 40: post.v1.ListCommentsResponse.comments:type_name -> post.v1.Comment
 	5,   // 41: post.v1.GetCommentsResponse.comments:type_name -> post.v1.Comment
 	5,   // 42: post.v1.ListLastCommentsResponse.comments:type_name -> post.v1.Comment
-	225, // 43: post.v1.Topic.created_at:type_name -> google.protobuf.Timestamp
-	225, // 44: post.v1.Topic.updated_at:type_name -> google.protobuf.Timestamp
+	257, // 43: post.v1.Topic.created_at:type_name -> google.protobuf.Timestamp
+	257, // 44: post.v1.Topic.updated_at:type_name -> google.protobuf.Timestamp
 	105, // 45: post.v1.Topic.last_message:type_name -> post.v1.TopicMessage
-	225, // 46: post.v1.TopicMessage.created_at:type_name -> google.protobuf.Timestamp
+	257, // 46: post.v1.TopicMessage.created_at:type_name -> google.protobuf.Timestamp
 	105, // 47: post.v1.GetTopicMessagesResponse.messages:type_name -> post.v1.TopicMessage
 	104, // 48: post.v1.CreateTopicResponse.topic:type_name -> post.v1.Topic
 	104, // 49: post.v1.GetTopicResponse.topic:type_name -> post.v1.Topic
@@ -14691,11 +16650,11 @@ var file_api_post_v1_post_proto_depIdxs = []int32{
 	104, // 51: post.v1.EditTopicResponse.topic:type_name -> post.v1.Topic
 	105, // 52: post.v1.CreateTopicMessageResponse.message:type_name -> post.v1.TopicMessage
 	105, // 53: post.v1.ListTopicMessagesResponse.messages:type_name -> post.v1.TopicMessage
-	225, // 54: post.v1.Album.created_at:type_name -> google.protobuf.Timestamp
-	225, // 55: post.v1.Album.updated_at:type_name -> google.protobuf.Timestamp
+	257, // 54: post.v1.Album.created_at:type_name -> google.protobuf.Timestamp
+	257, // 55: post.v1.Album.updated_at:type_name -> google.protobuf.Timestamp
 	129, // 56: post.v1.Album.cover:type_name -> post.v1.AlbumPhoto
 	1,   // 57: post.v1.Album.kind:type_name -> post.v1.AlbumKind
-	225, // 58: post.v1.AlbumPhoto.created_at:type_name -> google.protobuf.Timestamp
+	257, // 58: post.v1.AlbumPhoto.created_at:type_name -> google.protobuf.Timestamp
 	128, // 59: post.v1.CreateAlbumResponse.album:type_name -> post.v1.Album
 	128, // 60: post.v1.GetAlbumResponse.album:type_name -> post.v1.Album
 	128, // 61: post.v1.ListAlbumsResponse.albums:type_name -> post.v1.Album
@@ -14707,279 +16666,332 @@ var file_api_post_v1_post_proto_depIdxs = []int32{
 	129, // 67: post.v1.GetAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
 	128, // 68: post.v1.GetAlbumPhotoResponse.album:type_name -> post.v1.Album
 	129, // 69: post.v1.EditAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
-	225, // 70: post.v1.PhotoComment.created_at:type_name -> google.protobuf.Timestamp
+	257, // 70: post.v1.PhotoComment.created_at:type_name -> google.protobuf.Timestamp
 	159, // 71: post.v1.GetPhotoCommentsResponse.comments:type_name -> post.v1.PhotoComment
 	159, // 72: post.v1.CreatePhotoCommentResponse.comment:type_name -> post.v1.PhotoComment
 	159, // 73: post.v1.ListPhotoCommentsResponse.comments:type_name -> post.v1.PhotoComment
 	6,   // 74: post.v1.GetSuggestionResponse.suggestion:type_name -> post.v1.Suggestion
 	105, // 75: post.v1.GetTopicMessageResponse.message:type_name -> post.v1.TopicMessage
 	159, // 76: post.v1.GetPhotoCommentResponse.comment:type_name -> post.v1.PhotoComment
-	225, // 77: post.v1.Document.created_at:type_name -> google.protobuf.Timestamp
+	257, // 77: post.v1.Document.created_at:type_name -> google.protobuf.Timestamp
 	181, // 78: post.v1.AddDocumentResponse.document:type_name -> post.v1.Document
 	181, // 79: post.v1.ListDocumentsResponse.documents:type_name -> post.v1.Document
 	181, // 80: post.v1.GetDocumentsResponse.documents:type_name -> post.v1.Document
 	181, // 81: post.v1.RenameDocumentResponse.document:type_name -> post.v1.Document
-	225, // 82: post.v1.Story.created_at:type_name -> google.protobuf.Timestamp
-	225, // 83: post.v1.Story.expires_at:type_name -> google.protobuf.Timestamp
-	191, // 84: post.v1.CreateStoryResponse.story:type_name -> post.v1.Story
-	191, // 85: post.v1.ListFeedStoriesResponse.stories:type_name -> post.v1.Story
-	191, // 86: post.v1.ListUserStoriesResponse.stories:type_name -> post.v1.Story
-	191, // 87: post.v1.GetStoryResponse.story:type_name -> post.v1.Story
-	225, // 88: post.v1.StoryViewer.viewed_at:type_name -> google.protobuf.Timestamp
-	202, // 89: post.v1.ListStoryViewersResponse.viewers:type_name -> post.v1.StoryViewer
-	225, // 90: post.v1.StoryComment.created_at:type_name -> google.protobuf.Timestamp
-	207, // 91: post.v1.CreateStoryCommentResponse.comment:type_name -> post.v1.StoryComment
-	207, // 92: post.v1.ListStoryCommentsResponse.comments:type_name -> post.v1.StoryComment
-	2,   // 93: post.v1.ArticleBlock.kind:type_name -> post.v1.ArticleBlockKind
-	213, // 94: post.v1.ArticleBlock.spans:type_name -> post.v1.ArticleSpan
-	214, // 95: post.v1.Article.blocks:type_name -> post.v1.ArticleBlock
-	225, // 96: post.v1.Article.created_at:type_name -> google.protobuf.Timestamp
-	225, // 97: post.v1.Article.edited_at:type_name -> google.protobuf.Timestamp
-	214, // 98: post.v1.CreateArticleRequest.blocks:type_name -> post.v1.ArticleBlock
-	215, // 99: post.v1.CreateArticleResponse.article:type_name -> post.v1.Article
-	214, // 100: post.v1.EditArticleRequest.blocks:type_name -> post.v1.ArticleBlock
-	215, // 101: post.v1.EditArticleResponse.article:type_name -> post.v1.Article
-	215, // 102: post.v1.GetArticleResponse.article:type_name -> post.v1.Article
-	215, // 103: post.v1.ListArticlesResponse.articles:type_name -> post.v1.Article
-	26,  // 104: post.v1.PostService.CreatePost:input_type -> post.v1.CreatePostRequest
-	41,  // 105: post.v1.PostService.DeletePost:input_type -> post.v1.DeletePostRequest
-	39,  // 106: post.v1.PostService.RepostPost:input_type -> post.v1.RepostPostRequest
-	42,  // 107: post.v1.PostService.EditPost:input_type -> post.v1.EditPostRequest
-	44,  // 108: post.v1.PostService.PinPost:input_type -> post.v1.PinPostRequest
-	45,  // 109: post.v1.PostService.UnpinPost:input_type -> post.v1.UnpinPostRequest
-	46,  // 110: post.v1.PostService.ArchivePost:input_type -> post.v1.ArchivePostRequest
-	51,  // 111: post.v1.PostService.UnarchivePost:input_type -> post.v1.UnarchivePostRequest
-	47,  // 112: post.v1.PostService.ArchiveWall:input_type -> post.v1.ArchiveWallRequest
-	49,  // 113: post.v1.PostService.ListWallYears:input_type -> post.v1.ListWallYearsRequest
-	52,  // 114: post.v1.PostService.CloseComments:input_type -> post.v1.CloseCommentsRequest
-	53,  // 115: post.v1.PostService.OpenComments:input_type -> post.v1.OpenCommentsRequest
-	54,  // 116: post.v1.PostService.GetPost:input_type -> post.v1.GetPostRequest
-	56,  // 117: post.v1.PostService.GetPosts:input_type -> post.v1.GetPostsRequest
-	179, // 118: post.v1.PostService.CountPosts:input_type -> post.v1.CountPostsRequest
-	58,  // 119: post.v1.PostService.ListPosts:input_type -> post.v1.ListPostsRequest
-	60,  // 120: post.v1.PostService.ListFeed:input_type -> post.v1.ListFeedRequest
-	62,  // 121: post.v1.PostService.LikePost:input_type -> post.v1.LikePostRequest
-	64,  // 122: post.v1.PostService.UnlikePost:input_type -> post.v1.UnlikePostRequest
-	66,  // 123: post.v1.PostService.ListPostLikers:input_type -> post.v1.ListPostLikersRequest
-	78,  // 124: post.v1.PostService.ListReposts:input_type -> post.v1.ListRepostsRequest
-	80,  // 125: post.v1.PostService.ListCommentLikers:input_type -> post.v1.ListCommentLikersRequest
-	68,  // 126: post.v1.PostService.ListLikedPosts:input_type -> post.v1.ListLikedPostsRequest
-	70,  // 127: post.v1.PostService.ListLikedComments:input_type -> post.v1.ListLikedCommentsRequest
-	72,  // 128: post.v1.PostService.ListLikedAlbumPhotos:input_type -> post.v1.ListLikedAlbumPhotosRequest
-	74,  // 129: post.v1.PostService.ListOwnPosts:input_type -> post.v1.ListOwnPostsRequest
-	76,  // 130: post.v1.PostService.SearchPosts:input_type -> post.v1.SearchPostsRequest
-	30,  // 131: post.v1.PostService.GetPolls:input_type -> post.v1.GetPollsRequest
-	32,  // 132: post.v1.PostService.VotePoll:input_type -> post.v1.VotePollRequest
-	34,  // 133: post.v1.PostService.RetractPollVote:input_type -> post.v1.RetractPollVoteRequest
-	36,  // 134: post.v1.PostService.ListPollVoters:input_type -> post.v1.ListPollVotersRequest
-	82,  // 135: post.v1.PostService.CreateComment:input_type -> post.v1.CreateCommentRequest
-	84,  // 136: post.v1.PostService.DeleteComment:input_type -> post.v1.DeleteCommentRequest
-	85,  // 137: post.v1.PostService.LikeComment:input_type -> post.v1.LikeCommentRequest
-	87,  // 138: post.v1.PostService.UnlikeComment:input_type -> post.v1.UnlikeCommentRequest
-	89,  // 139: post.v1.PostService.ListComments:input_type -> post.v1.ListCommentsRequest
-	91,  // 140: post.v1.PostService.GetComments:input_type -> post.v1.GetCommentsRequest
-	93,  // 141: post.v1.PostService.ListLastComments:input_type -> post.v1.ListLastCommentsRequest
-	7,   // 142: post.v1.PostService.SuggestPost:input_type -> post.v1.SuggestPostRequest
-	9,   // 143: post.v1.PostService.ListSuggestions:input_type -> post.v1.ListSuggestionsRequest
-	173, // 144: post.v1.PostService.GetSuggestion:input_type -> post.v1.GetSuggestionRequest
-	11,  // 145: post.v1.PostService.PublishSuggestion:input_type -> post.v1.PublishSuggestionRequest
-	13,  // 146: post.v1.PostService.DeleteSuggestion:input_type -> post.v1.DeleteSuggestionRequest
-	15,  // 147: post.v1.PostService.PostponePost:input_type -> post.v1.PostponePostRequest
-	17,  // 148: post.v1.PostService.ListPostponed:input_type -> post.v1.ListPostponedRequest
-	19,  // 149: post.v1.PostService.GetPostponed:input_type -> post.v1.GetPostponedRequest
-	21,  // 150: post.v1.PostService.EditPostponed:input_type -> post.v1.EditPostponedRequest
-	23,  // 151: post.v1.PostService.PublishPostponed:input_type -> post.v1.PublishPostponedRequest
-	25,  // 152: post.v1.PostService.DeletePostponed:input_type -> post.v1.DeletePostponedRequest
-	192, // 153: post.v1.PostService.CreateStory:input_type -> post.v1.CreateStoryRequest
-	194, // 154: post.v1.PostService.ListFeedStories:input_type -> post.v1.ListFeedStoriesRequest
-	196, // 155: post.v1.PostService.ListUserStories:input_type -> post.v1.ListUserStoriesRequest
-	198, // 156: post.v1.PostService.GetStory:input_type -> post.v1.GetStoryRequest
-	200, // 157: post.v1.PostService.ViewStory:input_type -> post.v1.ViewStoryRequest
-	201, // 158: post.v1.PostService.ListStoryViewers:input_type -> post.v1.ListStoryViewersRequest
-	204, // 159: post.v1.PostService.DeleteStory:input_type -> post.v1.DeleteStoryRequest
-	205, // 160: post.v1.PostService.LikeStory:input_type -> post.v1.LikeStoryRequest
-	206, // 161: post.v1.PostService.UnlikeStory:input_type -> post.v1.UnlikeStoryRequest
-	208, // 162: post.v1.PostService.CreateStoryComment:input_type -> post.v1.CreateStoryCommentRequest
-	210, // 163: post.v1.PostService.ListStoryComments:input_type -> post.v1.ListStoryCommentsRequest
-	212, // 164: post.v1.PostService.DeleteStoryComment:input_type -> post.v1.DeleteStoryCommentRequest
-	114, // 165: post.v1.PostService.CreateTopic:input_type -> post.v1.CreateTopicRequest
-	116, // 166: post.v1.PostService.GetTopic:input_type -> post.v1.GetTopicRequest
-	118, // 167: post.v1.PostService.ListTopics:input_type -> post.v1.ListTopicsRequest
-	120, // 168: post.v1.PostService.EditTopic:input_type -> post.v1.EditTopicRequest
-	122, // 169: post.v1.PostService.DeleteTopic:input_type -> post.v1.DeleteTopicRequest
-	123, // 170: post.v1.PostService.CreateTopicMessage:input_type -> post.v1.CreateTopicMessageRequest
-	125, // 171: post.v1.PostService.ListTopicMessages:input_type -> post.v1.ListTopicMessagesRequest
-	175, // 172: post.v1.PostService.GetTopicMessage:input_type -> post.v1.GetTopicMessageRequest
-	127, // 173: post.v1.PostService.DeleteTopicMessage:input_type -> post.v1.DeleteTopicMessageRequest
-	106, // 174: post.v1.PostService.LikeTopicMessage:input_type -> post.v1.LikeTopicMessageRequest
-	108, // 175: post.v1.PostService.UnlikeTopicMessage:input_type -> post.v1.UnlikeTopicMessageRequest
-	110, // 176: post.v1.PostService.ListTopicMessageLikers:input_type -> post.v1.ListTopicMessageLikersRequest
-	112, // 177: post.v1.PostService.GetTopicMessages:input_type -> post.v1.GetTopicMessagesRequest
-	130, // 178: post.v1.PostService.CreateAlbum:input_type -> post.v1.CreateAlbumRequest
-	132, // 179: post.v1.PostService.GetAlbum:input_type -> post.v1.GetAlbumRequest
-	134, // 180: post.v1.PostService.ListAlbums:input_type -> post.v1.ListAlbumsRequest
-	136, // 181: post.v1.PostService.EditAlbum:input_type -> post.v1.EditAlbumRequest
-	138, // 182: post.v1.PostService.DeleteAlbum:input_type -> post.v1.DeleteAlbumRequest
-	140, // 183: post.v1.PostService.AddAlbumPhotos:input_type -> post.v1.AddAlbumPhotosRequest
-	142, // 184: post.v1.PostService.AddAvatarPhoto:input_type -> post.v1.AddAvatarPhotoRequest
-	144, // 185: post.v1.PostService.ListAlbumPhotos:input_type -> post.v1.ListAlbumPhotosRequest
-	146, // 186: post.v1.PostService.GetAlbumPhoto:input_type -> post.v1.GetAlbumPhotoRequest
-	148, // 187: post.v1.PostService.EditAlbumPhoto:input_type -> post.v1.EditAlbumPhotoRequest
-	150, // 188: post.v1.PostService.DeleteAlbumPhoto:input_type -> post.v1.DeleteAlbumPhotoRequest
-	151, // 189: post.v1.PostService.SetAlbumCover:input_type -> post.v1.SetAlbumCoverRequest
-	152, // 190: post.v1.PostService.MoveAlbumPhoto:input_type -> post.v1.MoveAlbumPhotoRequest
-	153, // 191: post.v1.PostService.LikeAlbumPhoto:input_type -> post.v1.LikeAlbumPhotoRequest
-	155, // 192: post.v1.PostService.UnlikeAlbumPhoto:input_type -> post.v1.UnlikeAlbumPhotoRequest
-	157, // 193: post.v1.PostService.ListAlbumPhotoLikers:input_type -> post.v1.ListAlbumPhotoLikersRequest
-	160, // 194: post.v1.PostService.CreatePhotoComment:input_type -> post.v1.CreatePhotoCommentRequest
-	170, // 195: post.v1.PostService.DeletePhotoComment:input_type -> post.v1.DeletePhotoCommentRequest
-	171, // 196: post.v1.PostService.ListPhotoComments:input_type -> post.v1.ListPhotoCommentsRequest
-	177, // 197: post.v1.PostService.GetPhotoComment:input_type -> post.v1.GetPhotoCommentRequest
-	161, // 198: post.v1.PostService.GetPhotoComments:input_type -> post.v1.GetPhotoCommentsRequest
-	163, // 199: post.v1.PostService.LikePhotoComment:input_type -> post.v1.LikePhotoCommentRequest
-	165, // 200: post.v1.PostService.UnlikePhotoComment:input_type -> post.v1.UnlikePhotoCommentRequest
-	167, // 201: post.v1.PostService.ListPhotoCommentLikers:input_type -> post.v1.ListPhotoCommentLikersRequest
-	182, // 202: post.v1.PostService.AddDocument:input_type -> post.v1.AddDocumentRequest
-	184, // 203: post.v1.PostService.ListDocuments:input_type -> post.v1.ListDocumentsRequest
-	186, // 204: post.v1.PostService.GetDocuments:input_type -> post.v1.GetDocumentsRequest
-	188, // 205: post.v1.PostService.RenameDocument:input_type -> post.v1.RenameDocumentRequest
-	190, // 206: post.v1.PostService.DeleteDocument:input_type -> post.v1.DeleteDocumentRequest
-	216, // 207: post.v1.PostService.CreateArticle:input_type -> post.v1.CreateArticleRequest
-	218, // 208: post.v1.PostService.EditArticle:input_type -> post.v1.EditArticleRequest
-	220, // 209: post.v1.PostService.DeleteArticle:input_type -> post.v1.DeleteArticleRequest
-	221, // 210: post.v1.PostService.GetArticle:input_type -> post.v1.GetArticleRequest
-	223, // 211: post.v1.PostService.ListArticles:input_type -> post.v1.ListArticlesRequest
-	95,  // 212: post.v1.PostService.PurgeUser:input_type -> post.v1.PurgeUserRequest
-	96,  // 213: post.v1.PostService.PurgeClub:input_type -> post.v1.PurgeClubRequest
-	97,  // 214: post.v1.PostService.HoldUserReactions:input_type -> post.v1.HoldUserReactionsRequest
-	103, // 215: post.v1.PostService.ReleaseUserReactions:input_type -> post.v1.ReleaseUserReactionsRequest
-	98,  // 216: post.v1.PostService.FollowSource:input_type -> post.v1.FollowSourceRequest
-	99,  // 217: post.v1.PostService.UnfollowSource:input_type -> post.v1.UnfollowSourceRequest
-	100, // 218: post.v1.PostService.SyncSources:input_type -> post.v1.SyncSourcesRequest
-	101, // 219: post.v1.PostService.CloseWall:input_type -> post.v1.CloseWallRequest
-	102, // 220: post.v1.PostService.OpenWall:input_type -> post.v1.OpenWallRequest
-	38,  // 221: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
-	226, // 222: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
-	40,  // 223: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
-	43,  // 224: post.v1.PostService.EditPost:output_type -> post.v1.EditPostResponse
-	226, // 225: post.v1.PostService.PinPost:output_type -> google.protobuf.Empty
-	226, // 226: post.v1.PostService.UnpinPost:output_type -> google.protobuf.Empty
-	226, // 227: post.v1.PostService.ArchivePost:output_type -> google.protobuf.Empty
-	226, // 228: post.v1.PostService.UnarchivePost:output_type -> google.protobuf.Empty
-	48,  // 229: post.v1.PostService.ArchiveWall:output_type -> post.v1.ArchiveWallResponse
-	50,  // 230: post.v1.PostService.ListWallYears:output_type -> post.v1.ListWallYearsResponse
-	226, // 231: post.v1.PostService.CloseComments:output_type -> google.protobuf.Empty
-	226, // 232: post.v1.PostService.OpenComments:output_type -> google.protobuf.Empty
-	55,  // 233: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
-	57,  // 234: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
-	180, // 235: post.v1.PostService.CountPosts:output_type -> post.v1.CountPostsResponse
-	59,  // 236: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
-	61,  // 237: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
-	63,  // 238: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
-	65,  // 239: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
-	67,  // 240: post.v1.PostService.ListPostLikers:output_type -> post.v1.ListPostLikersResponse
-	79,  // 241: post.v1.PostService.ListReposts:output_type -> post.v1.ListRepostsResponse
-	81,  // 242: post.v1.PostService.ListCommentLikers:output_type -> post.v1.ListCommentLikersResponse
-	69,  // 243: post.v1.PostService.ListLikedPosts:output_type -> post.v1.ListLikedPostsResponse
-	71,  // 244: post.v1.PostService.ListLikedComments:output_type -> post.v1.ListLikedCommentsResponse
-	73,  // 245: post.v1.PostService.ListLikedAlbumPhotos:output_type -> post.v1.ListLikedAlbumPhotosResponse
-	75,  // 246: post.v1.PostService.ListOwnPosts:output_type -> post.v1.ListOwnPostsResponse
-	77,  // 247: post.v1.PostService.SearchPosts:output_type -> post.v1.SearchPostsResponse
-	31,  // 248: post.v1.PostService.GetPolls:output_type -> post.v1.GetPollsResponse
-	33,  // 249: post.v1.PostService.VotePoll:output_type -> post.v1.VotePollResponse
-	35,  // 250: post.v1.PostService.RetractPollVote:output_type -> post.v1.RetractPollVoteResponse
-	37,  // 251: post.v1.PostService.ListPollVoters:output_type -> post.v1.ListPollVotersResponse
-	83,  // 252: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
-	226, // 253: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
-	86,  // 254: post.v1.PostService.LikeComment:output_type -> post.v1.LikeCommentResponse
-	88,  // 255: post.v1.PostService.UnlikeComment:output_type -> post.v1.UnlikeCommentResponse
-	90,  // 256: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
-	92,  // 257: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
-	94,  // 258: post.v1.PostService.ListLastComments:output_type -> post.v1.ListLastCommentsResponse
-	8,   // 259: post.v1.PostService.SuggestPost:output_type -> post.v1.SuggestPostResponse
-	10,  // 260: post.v1.PostService.ListSuggestions:output_type -> post.v1.ListSuggestionsResponse
-	174, // 261: post.v1.PostService.GetSuggestion:output_type -> post.v1.GetSuggestionResponse
-	12,  // 262: post.v1.PostService.PublishSuggestion:output_type -> post.v1.PublishSuggestionResponse
-	226, // 263: post.v1.PostService.DeleteSuggestion:output_type -> google.protobuf.Empty
-	16,  // 264: post.v1.PostService.PostponePost:output_type -> post.v1.PostponePostResponse
-	18,  // 265: post.v1.PostService.ListPostponed:output_type -> post.v1.ListPostponedResponse
-	20,  // 266: post.v1.PostService.GetPostponed:output_type -> post.v1.GetPostponedResponse
-	22,  // 267: post.v1.PostService.EditPostponed:output_type -> post.v1.EditPostponedResponse
-	24,  // 268: post.v1.PostService.PublishPostponed:output_type -> post.v1.PublishPostponedResponse
-	226, // 269: post.v1.PostService.DeletePostponed:output_type -> google.protobuf.Empty
-	193, // 270: post.v1.PostService.CreateStory:output_type -> post.v1.CreateStoryResponse
-	195, // 271: post.v1.PostService.ListFeedStories:output_type -> post.v1.ListFeedStoriesResponse
-	197, // 272: post.v1.PostService.ListUserStories:output_type -> post.v1.ListUserStoriesResponse
-	199, // 273: post.v1.PostService.GetStory:output_type -> post.v1.GetStoryResponse
-	226, // 274: post.v1.PostService.ViewStory:output_type -> google.protobuf.Empty
-	203, // 275: post.v1.PostService.ListStoryViewers:output_type -> post.v1.ListStoryViewersResponse
-	226, // 276: post.v1.PostService.DeleteStory:output_type -> google.protobuf.Empty
-	226, // 277: post.v1.PostService.LikeStory:output_type -> google.protobuf.Empty
-	226, // 278: post.v1.PostService.UnlikeStory:output_type -> google.protobuf.Empty
-	209, // 279: post.v1.PostService.CreateStoryComment:output_type -> post.v1.CreateStoryCommentResponse
-	211, // 280: post.v1.PostService.ListStoryComments:output_type -> post.v1.ListStoryCommentsResponse
-	226, // 281: post.v1.PostService.DeleteStoryComment:output_type -> google.protobuf.Empty
-	115, // 282: post.v1.PostService.CreateTopic:output_type -> post.v1.CreateTopicResponse
-	117, // 283: post.v1.PostService.GetTopic:output_type -> post.v1.GetTopicResponse
-	119, // 284: post.v1.PostService.ListTopics:output_type -> post.v1.ListTopicsResponse
-	121, // 285: post.v1.PostService.EditTopic:output_type -> post.v1.EditTopicResponse
-	226, // 286: post.v1.PostService.DeleteTopic:output_type -> google.protobuf.Empty
-	124, // 287: post.v1.PostService.CreateTopicMessage:output_type -> post.v1.CreateTopicMessageResponse
-	126, // 288: post.v1.PostService.ListTopicMessages:output_type -> post.v1.ListTopicMessagesResponse
-	176, // 289: post.v1.PostService.GetTopicMessage:output_type -> post.v1.GetTopicMessageResponse
-	226, // 290: post.v1.PostService.DeleteTopicMessage:output_type -> google.protobuf.Empty
-	107, // 291: post.v1.PostService.LikeTopicMessage:output_type -> post.v1.LikeTopicMessageResponse
-	109, // 292: post.v1.PostService.UnlikeTopicMessage:output_type -> post.v1.UnlikeTopicMessageResponse
-	111, // 293: post.v1.PostService.ListTopicMessageLikers:output_type -> post.v1.ListTopicMessageLikersResponse
-	113, // 294: post.v1.PostService.GetTopicMessages:output_type -> post.v1.GetTopicMessagesResponse
-	131, // 295: post.v1.PostService.CreateAlbum:output_type -> post.v1.CreateAlbumResponse
-	133, // 296: post.v1.PostService.GetAlbum:output_type -> post.v1.GetAlbumResponse
-	135, // 297: post.v1.PostService.ListAlbums:output_type -> post.v1.ListAlbumsResponse
-	137, // 298: post.v1.PostService.EditAlbum:output_type -> post.v1.EditAlbumResponse
-	226, // 299: post.v1.PostService.DeleteAlbum:output_type -> google.protobuf.Empty
-	141, // 300: post.v1.PostService.AddAlbumPhotos:output_type -> post.v1.AddAlbumPhotosResponse
-	143, // 301: post.v1.PostService.AddAvatarPhoto:output_type -> post.v1.AddAvatarPhotoResponse
-	145, // 302: post.v1.PostService.ListAlbumPhotos:output_type -> post.v1.ListAlbumPhotosResponse
-	147, // 303: post.v1.PostService.GetAlbumPhoto:output_type -> post.v1.GetAlbumPhotoResponse
-	149, // 304: post.v1.PostService.EditAlbumPhoto:output_type -> post.v1.EditAlbumPhotoResponse
-	226, // 305: post.v1.PostService.DeleteAlbumPhoto:output_type -> google.protobuf.Empty
-	226, // 306: post.v1.PostService.SetAlbumCover:output_type -> google.protobuf.Empty
-	226, // 307: post.v1.PostService.MoveAlbumPhoto:output_type -> google.protobuf.Empty
-	154, // 308: post.v1.PostService.LikeAlbumPhoto:output_type -> post.v1.LikeAlbumPhotoResponse
-	156, // 309: post.v1.PostService.UnlikeAlbumPhoto:output_type -> post.v1.UnlikeAlbumPhotoResponse
-	158, // 310: post.v1.PostService.ListAlbumPhotoLikers:output_type -> post.v1.ListAlbumPhotoLikersResponse
-	169, // 311: post.v1.PostService.CreatePhotoComment:output_type -> post.v1.CreatePhotoCommentResponse
-	226, // 312: post.v1.PostService.DeletePhotoComment:output_type -> google.protobuf.Empty
-	172, // 313: post.v1.PostService.ListPhotoComments:output_type -> post.v1.ListPhotoCommentsResponse
-	178, // 314: post.v1.PostService.GetPhotoComment:output_type -> post.v1.GetPhotoCommentResponse
-	162, // 315: post.v1.PostService.GetPhotoComments:output_type -> post.v1.GetPhotoCommentsResponse
-	164, // 316: post.v1.PostService.LikePhotoComment:output_type -> post.v1.LikePhotoCommentResponse
-	166, // 317: post.v1.PostService.UnlikePhotoComment:output_type -> post.v1.UnlikePhotoCommentResponse
-	168, // 318: post.v1.PostService.ListPhotoCommentLikers:output_type -> post.v1.ListPhotoCommentLikersResponse
-	183, // 319: post.v1.PostService.AddDocument:output_type -> post.v1.AddDocumentResponse
-	185, // 320: post.v1.PostService.ListDocuments:output_type -> post.v1.ListDocumentsResponse
-	187, // 321: post.v1.PostService.GetDocuments:output_type -> post.v1.GetDocumentsResponse
-	189, // 322: post.v1.PostService.RenameDocument:output_type -> post.v1.RenameDocumentResponse
-	226, // 323: post.v1.PostService.DeleteDocument:output_type -> google.protobuf.Empty
-	217, // 324: post.v1.PostService.CreateArticle:output_type -> post.v1.CreateArticleResponse
-	219, // 325: post.v1.PostService.EditArticle:output_type -> post.v1.EditArticleResponse
-	226, // 326: post.v1.PostService.DeleteArticle:output_type -> google.protobuf.Empty
-	222, // 327: post.v1.PostService.GetArticle:output_type -> post.v1.GetArticleResponse
-	224, // 328: post.v1.PostService.ListArticles:output_type -> post.v1.ListArticlesResponse
-	226, // 329: post.v1.PostService.PurgeUser:output_type -> google.protobuf.Empty
-	226, // 330: post.v1.PostService.PurgeClub:output_type -> google.protobuf.Empty
-	226, // 331: post.v1.PostService.HoldUserReactions:output_type -> google.protobuf.Empty
-	226, // 332: post.v1.PostService.ReleaseUserReactions:output_type -> google.protobuf.Empty
-	226, // 333: post.v1.PostService.FollowSource:output_type -> google.protobuf.Empty
-	226, // 334: post.v1.PostService.UnfollowSource:output_type -> google.protobuf.Empty
-	226, // 335: post.v1.PostService.SyncSources:output_type -> google.protobuf.Empty
-	226, // 336: post.v1.PostService.CloseWall:output_type -> google.protobuf.Empty
-	226, // 337: post.v1.PostService.OpenWall:output_type -> google.protobuf.Empty
-	221, // [221:338] is the sub-list for method output_type
-	104, // [104:221] is the sub-list for method input_type
-	104, // [104:104] is the sub-list for extension type_name
-	104, // [104:104] is the sub-list for extension extendee
-	0,   // [0:104] is the sub-list for field type_name
+	257, // 82: post.v1.Audio.created_at:type_name -> google.protobuf.Timestamp
+	191, // 83: post.v1.AddAudioResponse.audio:type_name -> post.v1.Audio
+	191, // 84: post.v1.AddAudioTrackResponse.audio:type_name -> post.v1.Audio
+	191, // 85: post.v1.ListAudiosResponse.audios:type_name -> post.v1.Audio
+	191, // 86: post.v1.SearchAudiosResponse.audios:type_name -> post.v1.Audio
+	191, // 87: post.v1.GetAudiosResponse.audios:type_name -> post.v1.Audio
+	191, // 88: post.v1.EditAudioResponse.audio:type_name -> post.v1.Audio
+	191, // 89: post.v1.GetMusicResponse.listening:type_name -> post.v1.Audio
+	191, // 90: post.v1.GetMusicResponse.page_audio:type_name -> post.v1.Audio
+	257, // 91: post.v1.Playlist.created_at:type_name -> google.protobuf.Timestamp
+	211, // 92: post.v1.CreatePlaylistResponse.playlist:type_name -> post.v1.Playlist
+	211, // 93: post.v1.RenamePlaylistResponse.playlist:type_name -> post.v1.Playlist
+	211, // 94: post.v1.ListPlaylistsResponse.playlists:type_name -> post.v1.Playlist
+	211, // 95: post.v1.GetPlaylistResponse.playlist:type_name -> post.v1.Playlist
+	191, // 96: post.v1.GetPlaylistResponse.audios:type_name -> post.v1.Audio
+	257, // 97: post.v1.Story.created_at:type_name -> google.protobuf.Timestamp
+	257, // 98: post.v1.Story.expires_at:type_name -> google.protobuf.Timestamp
+	223, // 99: post.v1.CreateStoryResponse.story:type_name -> post.v1.Story
+	223, // 100: post.v1.ListFeedStoriesResponse.stories:type_name -> post.v1.Story
+	223, // 101: post.v1.ListUserStoriesResponse.stories:type_name -> post.v1.Story
+	223, // 102: post.v1.GetStoryResponse.story:type_name -> post.v1.Story
+	257, // 103: post.v1.StoryViewer.viewed_at:type_name -> google.protobuf.Timestamp
+	234, // 104: post.v1.ListStoryViewersResponse.viewers:type_name -> post.v1.StoryViewer
+	257, // 105: post.v1.StoryComment.created_at:type_name -> google.protobuf.Timestamp
+	239, // 106: post.v1.CreateStoryCommentResponse.comment:type_name -> post.v1.StoryComment
+	239, // 107: post.v1.ListStoryCommentsResponse.comments:type_name -> post.v1.StoryComment
+	2,   // 108: post.v1.ArticleBlock.kind:type_name -> post.v1.ArticleBlockKind
+	245, // 109: post.v1.ArticleBlock.spans:type_name -> post.v1.ArticleSpan
+	246, // 110: post.v1.Article.blocks:type_name -> post.v1.ArticleBlock
+	257, // 111: post.v1.Article.created_at:type_name -> google.protobuf.Timestamp
+	257, // 112: post.v1.Article.edited_at:type_name -> google.protobuf.Timestamp
+	246, // 113: post.v1.CreateArticleRequest.blocks:type_name -> post.v1.ArticleBlock
+	247, // 114: post.v1.CreateArticleResponse.article:type_name -> post.v1.Article
+	246, // 115: post.v1.EditArticleRequest.blocks:type_name -> post.v1.ArticleBlock
+	247, // 116: post.v1.EditArticleResponse.article:type_name -> post.v1.Article
+	247, // 117: post.v1.GetArticleResponse.article:type_name -> post.v1.Article
+	247, // 118: post.v1.ListArticlesResponse.articles:type_name -> post.v1.Article
+	26,  // 119: post.v1.PostService.CreatePost:input_type -> post.v1.CreatePostRequest
+	41,  // 120: post.v1.PostService.DeletePost:input_type -> post.v1.DeletePostRequest
+	39,  // 121: post.v1.PostService.RepostPost:input_type -> post.v1.RepostPostRequest
+	42,  // 122: post.v1.PostService.EditPost:input_type -> post.v1.EditPostRequest
+	44,  // 123: post.v1.PostService.PinPost:input_type -> post.v1.PinPostRequest
+	45,  // 124: post.v1.PostService.UnpinPost:input_type -> post.v1.UnpinPostRequest
+	46,  // 125: post.v1.PostService.ArchivePost:input_type -> post.v1.ArchivePostRequest
+	51,  // 126: post.v1.PostService.UnarchivePost:input_type -> post.v1.UnarchivePostRequest
+	47,  // 127: post.v1.PostService.ArchiveWall:input_type -> post.v1.ArchiveWallRequest
+	49,  // 128: post.v1.PostService.ListWallYears:input_type -> post.v1.ListWallYearsRequest
+	52,  // 129: post.v1.PostService.CloseComments:input_type -> post.v1.CloseCommentsRequest
+	53,  // 130: post.v1.PostService.OpenComments:input_type -> post.v1.OpenCommentsRequest
+	54,  // 131: post.v1.PostService.GetPost:input_type -> post.v1.GetPostRequest
+	56,  // 132: post.v1.PostService.GetPosts:input_type -> post.v1.GetPostsRequest
+	179, // 133: post.v1.PostService.CountPosts:input_type -> post.v1.CountPostsRequest
+	58,  // 134: post.v1.PostService.ListPosts:input_type -> post.v1.ListPostsRequest
+	60,  // 135: post.v1.PostService.ListFeed:input_type -> post.v1.ListFeedRequest
+	62,  // 136: post.v1.PostService.LikePost:input_type -> post.v1.LikePostRequest
+	64,  // 137: post.v1.PostService.UnlikePost:input_type -> post.v1.UnlikePostRequest
+	66,  // 138: post.v1.PostService.ListPostLikers:input_type -> post.v1.ListPostLikersRequest
+	78,  // 139: post.v1.PostService.ListReposts:input_type -> post.v1.ListRepostsRequest
+	80,  // 140: post.v1.PostService.ListCommentLikers:input_type -> post.v1.ListCommentLikersRequest
+	68,  // 141: post.v1.PostService.ListLikedPosts:input_type -> post.v1.ListLikedPostsRequest
+	70,  // 142: post.v1.PostService.ListLikedComments:input_type -> post.v1.ListLikedCommentsRequest
+	72,  // 143: post.v1.PostService.ListLikedAlbumPhotos:input_type -> post.v1.ListLikedAlbumPhotosRequest
+	74,  // 144: post.v1.PostService.ListOwnPosts:input_type -> post.v1.ListOwnPostsRequest
+	76,  // 145: post.v1.PostService.SearchPosts:input_type -> post.v1.SearchPostsRequest
+	30,  // 146: post.v1.PostService.GetPolls:input_type -> post.v1.GetPollsRequest
+	32,  // 147: post.v1.PostService.VotePoll:input_type -> post.v1.VotePollRequest
+	34,  // 148: post.v1.PostService.RetractPollVote:input_type -> post.v1.RetractPollVoteRequest
+	36,  // 149: post.v1.PostService.ListPollVoters:input_type -> post.v1.ListPollVotersRequest
+	82,  // 150: post.v1.PostService.CreateComment:input_type -> post.v1.CreateCommentRequest
+	84,  // 151: post.v1.PostService.DeleteComment:input_type -> post.v1.DeleteCommentRequest
+	85,  // 152: post.v1.PostService.LikeComment:input_type -> post.v1.LikeCommentRequest
+	87,  // 153: post.v1.PostService.UnlikeComment:input_type -> post.v1.UnlikeCommentRequest
+	89,  // 154: post.v1.PostService.ListComments:input_type -> post.v1.ListCommentsRequest
+	91,  // 155: post.v1.PostService.GetComments:input_type -> post.v1.GetCommentsRequest
+	93,  // 156: post.v1.PostService.ListLastComments:input_type -> post.v1.ListLastCommentsRequest
+	7,   // 157: post.v1.PostService.SuggestPost:input_type -> post.v1.SuggestPostRequest
+	9,   // 158: post.v1.PostService.ListSuggestions:input_type -> post.v1.ListSuggestionsRequest
+	173, // 159: post.v1.PostService.GetSuggestion:input_type -> post.v1.GetSuggestionRequest
+	11,  // 160: post.v1.PostService.PublishSuggestion:input_type -> post.v1.PublishSuggestionRequest
+	13,  // 161: post.v1.PostService.DeleteSuggestion:input_type -> post.v1.DeleteSuggestionRequest
+	15,  // 162: post.v1.PostService.PostponePost:input_type -> post.v1.PostponePostRequest
+	17,  // 163: post.v1.PostService.ListPostponed:input_type -> post.v1.ListPostponedRequest
+	19,  // 164: post.v1.PostService.GetPostponed:input_type -> post.v1.GetPostponedRequest
+	21,  // 165: post.v1.PostService.EditPostponed:input_type -> post.v1.EditPostponedRequest
+	23,  // 166: post.v1.PostService.PublishPostponed:input_type -> post.v1.PublishPostponedRequest
+	25,  // 167: post.v1.PostService.DeletePostponed:input_type -> post.v1.DeletePostponedRequest
+	224, // 168: post.v1.PostService.CreateStory:input_type -> post.v1.CreateStoryRequest
+	226, // 169: post.v1.PostService.ListFeedStories:input_type -> post.v1.ListFeedStoriesRequest
+	228, // 170: post.v1.PostService.ListUserStories:input_type -> post.v1.ListUserStoriesRequest
+	230, // 171: post.v1.PostService.GetStory:input_type -> post.v1.GetStoryRequest
+	232, // 172: post.v1.PostService.ViewStory:input_type -> post.v1.ViewStoryRequest
+	233, // 173: post.v1.PostService.ListStoryViewers:input_type -> post.v1.ListStoryViewersRequest
+	236, // 174: post.v1.PostService.DeleteStory:input_type -> post.v1.DeleteStoryRequest
+	237, // 175: post.v1.PostService.LikeStory:input_type -> post.v1.LikeStoryRequest
+	238, // 176: post.v1.PostService.UnlikeStory:input_type -> post.v1.UnlikeStoryRequest
+	240, // 177: post.v1.PostService.CreateStoryComment:input_type -> post.v1.CreateStoryCommentRequest
+	242, // 178: post.v1.PostService.ListStoryComments:input_type -> post.v1.ListStoryCommentsRequest
+	244, // 179: post.v1.PostService.DeleteStoryComment:input_type -> post.v1.DeleteStoryCommentRequest
+	114, // 180: post.v1.PostService.CreateTopic:input_type -> post.v1.CreateTopicRequest
+	116, // 181: post.v1.PostService.GetTopic:input_type -> post.v1.GetTopicRequest
+	118, // 182: post.v1.PostService.ListTopics:input_type -> post.v1.ListTopicsRequest
+	120, // 183: post.v1.PostService.EditTopic:input_type -> post.v1.EditTopicRequest
+	122, // 184: post.v1.PostService.DeleteTopic:input_type -> post.v1.DeleteTopicRequest
+	123, // 185: post.v1.PostService.CreateTopicMessage:input_type -> post.v1.CreateTopicMessageRequest
+	125, // 186: post.v1.PostService.ListTopicMessages:input_type -> post.v1.ListTopicMessagesRequest
+	175, // 187: post.v1.PostService.GetTopicMessage:input_type -> post.v1.GetTopicMessageRequest
+	127, // 188: post.v1.PostService.DeleteTopicMessage:input_type -> post.v1.DeleteTopicMessageRequest
+	106, // 189: post.v1.PostService.LikeTopicMessage:input_type -> post.v1.LikeTopicMessageRequest
+	108, // 190: post.v1.PostService.UnlikeTopicMessage:input_type -> post.v1.UnlikeTopicMessageRequest
+	110, // 191: post.v1.PostService.ListTopicMessageLikers:input_type -> post.v1.ListTopicMessageLikersRequest
+	112, // 192: post.v1.PostService.GetTopicMessages:input_type -> post.v1.GetTopicMessagesRequest
+	130, // 193: post.v1.PostService.CreateAlbum:input_type -> post.v1.CreateAlbumRequest
+	132, // 194: post.v1.PostService.GetAlbum:input_type -> post.v1.GetAlbumRequest
+	134, // 195: post.v1.PostService.ListAlbums:input_type -> post.v1.ListAlbumsRequest
+	136, // 196: post.v1.PostService.EditAlbum:input_type -> post.v1.EditAlbumRequest
+	138, // 197: post.v1.PostService.DeleteAlbum:input_type -> post.v1.DeleteAlbumRequest
+	140, // 198: post.v1.PostService.AddAlbumPhotos:input_type -> post.v1.AddAlbumPhotosRequest
+	142, // 199: post.v1.PostService.AddAvatarPhoto:input_type -> post.v1.AddAvatarPhotoRequest
+	144, // 200: post.v1.PostService.ListAlbumPhotos:input_type -> post.v1.ListAlbumPhotosRequest
+	146, // 201: post.v1.PostService.GetAlbumPhoto:input_type -> post.v1.GetAlbumPhotoRequest
+	148, // 202: post.v1.PostService.EditAlbumPhoto:input_type -> post.v1.EditAlbumPhotoRequest
+	150, // 203: post.v1.PostService.DeleteAlbumPhoto:input_type -> post.v1.DeleteAlbumPhotoRequest
+	151, // 204: post.v1.PostService.SetAlbumCover:input_type -> post.v1.SetAlbumCoverRequest
+	152, // 205: post.v1.PostService.MoveAlbumPhoto:input_type -> post.v1.MoveAlbumPhotoRequest
+	153, // 206: post.v1.PostService.LikeAlbumPhoto:input_type -> post.v1.LikeAlbumPhotoRequest
+	155, // 207: post.v1.PostService.UnlikeAlbumPhoto:input_type -> post.v1.UnlikeAlbumPhotoRequest
+	157, // 208: post.v1.PostService.ListAlbumPhotoLikers:input_type -> post.v1.ListAlbumPhotoLikersRequest
+	160, // 209: post.v1.PostService.CreatePhotoComment:input_type -> post.v1.CreatePhotoCommentRequest
+	170, // 210: post.v1.PostService.DeletePhotoComment:input_type -> post.v1.DeletePhotoCommentRequest
+	171, // 211: post.v1.PostService.ListPhotoComments:input_type -> post.v1.ListPhotoCommentsRequest
+	177, // 212: post.v1.PostService.GetPhotoComment:input_type -> post.v1.GetPhotoCommentRequest
+	161, // 213: post.v1.PostService.GetPhotoComments:input_type -> post.v1.GetPhotoCommentsRequest
+	163, // 214: post.v1.PostService.LikePhotoComment:input_type -> post.v1.LikePhotoCommentRequest
+	165, // 215: post.v1.PostService.UnlikePhotoComment:input_type -> post.v1.UnlikePhotoCommentRequest
+	167, // 216: post.v1.PostService.ListPhotoCommentLikers:input_type -> post.v1.ListPhotoCommentLikersRequest
+	182, // 217: post.v1.PostService.AddDocument:input_type -> post.v1.AddDocumentRequest
+	184, // 218: post.v1.PostService.ListDocuments:input_type -> post.v1.ListDocumentsRequest
+	186, // 219: post.v1.PostService.GetDocuments:input_type -> post.v1.GetDocumentsRequest
+	188, // 220: post.v1.PostService.RenameDocument:input_type -> post.v1.RenameDocumentRequest
+	190, // 221: post.v1.PostService.DeleteDocument:input_type -> post.v1.DeleteDocumentRequest
+	192, // 222: post.v1.PostService.AddAudio:input_type -> post.v1.AddAudioRequest
+	194, // 223: post.v1.PostService.AddAudioTrack:input_type -> post.v1.AddAudioTrackRequest
+	196, // 224: post.v1.PostService.ListAudios:input_type -> post.v1.ListAudiosRequest
+	198, // 225: post.v1.PostService.SearchAudios:input_type -> post.v1.SearchAudiosRequest
+	200, // 226: post.v1.PostService.GetAudios:input_type -> post.v1.GetAudiosRequest
+	202, // 227: post.v1.PostService.KeepAudio:input_type -> post.v1.KeepAudioRequest
+	203, // 228: post.v1.PostService.ForgetAudio:input_type -> post.v1.ForgetAudioRequest
+	204, // 229: post.v1.PostService.EditAudio:input_type -> post.v1.EditAudioRequest
+	206, // 230: post.v1.PostService.DeleteAudio:input_type -> post.v1.DeleteAudioRequest
+	207, // 231: post.v1.PostService.ListenAudio:input_type -> post.v1.ListenAudioRequest
+	208, // 232: post.v1.PostService.SetPageAudio:input_type -> post.v1.SetPageAudioRequest
+	209, // 233: post.v1.PostService.GetMusic:input_type -> post.v1.GetMusicRequest
+	212, // 234: post.v1.PostService.CreatePlaylist:input_type -> post.v1.CreatePlaylistRequest
+	214, // 235: post.v1.PostService.RenamePlaylist:input_type -> post.v1.RenamePlaylistRequest
+	216, // 236: post.v1.PostService.DeletePlaylist:input_type -> post.v1.DeletePlaylistRequest
+	217, // 237: post.v1.PostService.ListPlaylists:input_type -> post.v1.ListPlaylistsRequest
+	219, // 238: post.v1.PostService.GetPlaylist:input_type -> post.v1.GetPlaylistRequest
+	221, // 239: post.v1.PostService.AddPlaylistAudio:input_type -> post.v1.AddPlaylistAudioRequest
+	222, // 240: post.v1.PostService.RemovePlaylistAudio:input_type -> post.v1.RemovePlaylistAudioRequest
+	248, // 241: post.v1.PostService.CreateArticle:input_type -> post.v1.CreateArticleRequest
+	250, // 242: post.v1.PostService.EditArticle:input_type -> post.v1.EditArticleRequest
+	252, // 243: post.v1.PostService.DeleteArticle:input_type -> post.v1.DeleteArticleRequest
+	253, // 244: post.v1.PostService.GetArticle:input_type -> post.v1.GetArticleRequest
+	255, // 245: post.v1.PostService.ListArticles:input_type -> post.v1.ListArticlesRequest
+	95,  // 246: post.v1.PostService.PurgeUser:input_type -> post.v1.PurgeUserRequest
+	96,  // 247: post.v1.PostService.PurgeClub:input_type -> post.v1.PurgeClubRequest
+	97,  // 248: post.v1.PostService.HoldUserReactions:input_type -> post.v1.HoldUserReactionsRequest
+	103, // 249: post.v1.PostService.ReleaseUserReactions:input_type -> post.v1.ReleaseUserReactionsRequest
+	98,  // 250: post.v1.PostService.FollowSource:input_type -> post.v1.FollowSourceRequest
+	99,  // 251: post.v1.PostService.UnfollowSource:input_type -> post.v1.UnfollowSourceRequest
+	100, // 252: post.v1.PostService.SyncSources:input_type -> post.v1.SyncSourcesRequest
+	101, // 253: post.v1.PostService.CloseWall:input_type -> post.v1.CloseWallRequest
+	102, // 254: post.v1.PostService.OpenWall:input_type -> post.v1.OpenWallRequest
+	38,  // 255: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
+	258, // 256: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
+	40,  // 257: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
+	43,  // 258: post.v1.PostService.EditPost:output_type -> post.v1.EditPostResponse
+	258, // 259: post.v1.PostService.PinPost:output_type -> google.protobuf.Empty
+	258, // 260: post.v1.PostService.UnpinPost:output_type -> google.protobuf.Empty
+	258, // 261: post.v1.PostService.ArchivePost:output_type -> google.protobuf.Empty
+	258, // 262: post.v1.PostService.UnarchivePost:output_type -> google.protobuf.Empty
+	48,  // 263: post.v1.PostService.ArchiveWall:output_type -> post.v1.ArchiveWallResponse
+	50,  // 264: post.v1.PostService.ListWallYears:output_type -> post.v1.ListWallYearsResponse
+	258, // 265: post.v1.PostService.CloseComments:output_type -> google.protobuf.Empty
+	258, // 266: post.v1.PostService.OpenComments:output_type -> google.protobuf.Empty
+	55,  // 267: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
+	57,  // 268: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
+	180, // 269: post.v1.PostService.CountPosts:output_type -> post.v1.CountPostsResponse
+	59,  // 270: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
+	61,  // 271: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
+	63,  // 272: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
+	65,  // 273: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
+	67,  // 274: post.v1.PostService.ListPostLikers:output_type -> post.v1.ListPostLikersResponse
+	79,  // 275: post.v1.PostService.ListReposts:output_type -> post.v1.ListRepostsResponse
+	81,  // 276: post.v1.PostService.ListCommentLikers:output_type -> post.v1.ListCommentLikersResponse
+	69,  // 277: post.v1.PostService.ListLikedPosts:output_type -> post.v1.ListLikedPostsResponse
+	71,  // 278: post.v1.PostService.ListLikedComments:output_type -> post.v1.ListLikedCommentsResponse
+	73,  // 279: post.v1.PostService.ListLikedAlbumPhotos:output_type -> post.v1.ListLikedAlbumPhotosResponse
+	75,  // 280: post.v1.PostService.ListOwnPosts:output_type -> post.v1.ListOwnPostsResponse
+	77,  // 281: post.v1.PostService.SearchPosts:output_type -> post.v1.SearchPostsResponse
+	31,  // 282: post.v1.PostService.GetPolls:output_type -> post.v1.GetPollsResponse
+	33,  // 283: post.v1.PostService.VotePoll:output_type -> post.v1.VotePollResponse
+	35,  // 284: post.v1.PostService.RetractPollVote:output_type -> post.v1.RetractPollVoteResponse
+	37,  // 285: post.v1.PostService.ListPollVoters:output_type -> post.v1.ListPollVotersResponse
+	83,  // 286: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
+	258, // 287: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
+	86,  // 288: post.v1.PostService.LikeComment:output_type -> post.v1.LikeCommentResponse
+	88,  // 289: post.v1.PostService.UnlikeComment:output_type -> post.v1.UnlikeCommentResponse
+	90,  // 290: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
+	92,  // 291: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
+	94,  // 292: post.v1.PostService.ListLastComments:output_type -> post.v1.ListLastCommentsResponse
+	8,   // 293: post.v1.PostService.SuggestPost:output_type -> post.v1.SuggestPostResponse
+	10,  // 294: post.v1.PostService.ListSuggestions:output_type -> post.v1.ListSuggestionsResponse
+	174, // 295: post.v1.PostService.GetSuggestion:output_type -> post.v1.GetSuggestionResponse
+	12,  // 296: post.v1.PostService.PublishSuggestion:output_type -> post.v1.PublishSuggestionResponse
+	258, // 297: post.v1.PostService.DeleteSuggestion:output_type -> google.protobuf.Empty
+	16,  // 298: post.v1.PostService.PostponePost:output_type -> post.v1.PostponePostResponse
+	18,  // 299: post.v1.PostService.ListPostponed:output_type -> post.v1.ListPostponedResponse
+	20,  // 300: post.v1.PostService.GetPostponed:output_type -> post.v1.GetPostponedResponse
+	22,  // 301: post.v1.PostService.EditPostponed:output_type -> post.v1.EditPostponedResponse
+	24,  // 302: post.v1.PostService.PublishPostponed:output_type -> post.v1.PublishPostponedResponse
+	258, // 303: post.v1.PostService.DeletePostponed:output_type -> google.protobuf.Empty
+	225, // 304: post.v1.PostService.CreateStory:output_type -> post.v1.CreateStoryResponse
+	227, // 305: post.v1.PostService.ListFeedStories:output_type -> post.v1.ListFeedStoriesResponse
+	229, // 306: post.v1.PostService.ListUserStories:output_type -> post.v1.ListUserStoriesResponse
+	231, // 307: post.v1.PostService.GetStory:output_type -> post.v1.GetStoryResponse
+	258, // 308: post.v1.PostService.ViewStory:output_type -> google.protobuf.Empty
+	235, // 309: post.v1.PostService.ListStoryViewers:output_type -> post.v1.ListStoryViewersResponse
+	258, // 310: post.v1.PostService.DeleteStory:output_type -> google.protobuf.Empty
+	258, // 311: post.v1.PostService.LikeStory:output_type -> google.protobuf.Empty
+	258, // 312: post.v1.PostService.UnlikeStory:output_type -> google.protobuf.Empty
+	241, // 313: post.v1.PostService.CreateStoryComment:output_type -> post.v1.CreateStoryCommentResponse
+	243, // 314: post.v1.PostService.ListStoryComments:output_type -> post.v1.ListStoryCommentsResponse
+	258, // 315: post.v1.PostService.DeleteStoryComment:output_type -> google.protobuf.Empty
+	115, // 316: post.v1.PostService.CreateTopic:output_type -> post.v1.CreateTopicResponse
+	117, // 317: post.v1.PostService.GetTopic:output_type -> post.v1.GetTopicResponse
+	119, // 318: post.v1.PostService.ListTopics:output_type -> post.v1.ListTopicsResponse
+	121, // 319: post.v1.PostService.EditTopic:output_type -> post.v1.EditTopicResponse
+	258, // 320: post.v1.PostService.DeleteTopic:output_type -> google.protobuf.Empty
+	124, // 321: post.v1.PostService.CreateTopicMessage:output_type -> post.v1.CreateTopicMessageResponse
+	126, // 322: post.v1.PostService.ListTopicMessages:output_type -> post.v1.ListTopicMessagesResponse
+	176, // 323: post.v1.PostService.GetTopicMessage:output_type -> post.v1.GetTopicMessageResponse
+	258, // 324: post.v1.PostService.DeleteTopicMessage:output_type -> google.protobuf.Empty
+	107, // 325: post.v1.PostService.LikeTopicMessage:output_type -> post.v1.LikeTopicMessageResponse
+	109, // 326: post.v1.PostService.UnlikeTopicMessage:output_type -> post.v1.UnlikeTopicMessageResponse
+	111, // 327: post.v1.PostService.ListTopicMessageLikers:output_type -> post.v1.ListTopicMessageLikersResponse
+	113, // 328: post.v1.PostService.GetTopicMessages:output_type -> post.v1.GetTopicMessagesResponse
+	131, // 329: post.v1.PostService.CreateAlbum:output_type -> post.v1.CreateAlbumResponse
+	133, // 330: post.v1.PostService.GetAlbum:output_type -> post.v1.GetAlbumResponse
+	135, // 331: post.v1.PostService.ListAlbums:output_type -> post.v1.ListAlbumsResponse
+	137, // 332: post.v1.PostService.EditAlbum:output_type -> post.v1.EditAlbumResponse
+	258, // 333: post.v1.PostService.DeleteAlbum:output_type -> google.protobuf.Empty
+	141, // 334: post.v1.PostService.AddAlbumPhotos:output_type -> post.v1.AddAlbumPhotosResponse
+	143, // 335: post.v1.PostService.AddAvatarPhoto:output_type -> post.v1.AddAvatarPhotoResponse
+	145, // 336: post.v1.PostService.ListAlbumPhotos:output_type -> post.v1.ListAlbumPhotosResponse
+	147, // 337: post.v1.PostService.GetAlbumPhoto:output_type -> post.v1.GetAlbumPhotoResponse
+	149, // 338: post.v1.PostService.EditAlbumPhoto:output_type -> post.v1.EditAlbumPhotoResponse
+	258, // 339: post.v1.PostService.DeleteAlbumPhoto:output_type -> google.protobuf.Empty
+	258, // 340: post.v1.PostService.SetAlbumCover:output_type -> google.protobuf.Empty
+	258, // 341: post.v1.PostService.MoveAlbumPhoto:output_type -> google.protobuf.Empty
+	154, // 342: post.v1.PostService.LikeAlbumPhoto:output_type -> post.v1.LikeAlbumPhotoResponse
+	156, // 343: post.v1.PostService.UnlikeAlbumPhoto:output_type -> post.v1.UnlikeAlbumPhotoResponse
+	158, // 344: post.v1.PostService.ListAlbumPhotoLikers:output_type -> post.v1.ListAlbumPhotoLikersResponse
+	169, // 345: post.v1.PostService.CreatePhotoComment:output_type -> post.v1.CreatePhotoCommentResponse
+	258, // 346: post.v1.PostService.DeletePhotoComment:output_type -> google.protobuf.Empty
+	172, // 347: post.v1.PostService.ListPhotoComments:output_type -> post.v1.ListPhotoCommentsResponse
+	178, // 348: post.v1.PostService.GetPhotoComment:output_type -> post.v1.GetPhotoCommentResponse
+	162, // 349: post.v1.PostService.GetPhotoComments:output_type -> post.v1.GetPhotoCommentsResponse
+	164, // 350: post.v1.PostService.LikePhotoComment:output_type -> post.v1.LikePhotoCommentResponse
+	166, // 351: post.v1.PostService.UnlikePhotoComment:output_type -> post.v1.UnlikePhotoCommentResponse
+	168, // 352: post.v1.PostService.ListPhotoCommentLikers:output_type -> post.v1.ListPhotoCommentLikersResponse
+	183, // 353: post.v1.PostService.AddDocument:output_type -> post.v1.AddDocumentResponse
+	185, // 354: post.v1.PostService.ListDocuments:output_type -> post.v1.ListDocumentsResponse
+	187, // 355: post.v1.PostService.GetDocuments:output_type -> post.v1.GetDocumentsResponse
+	189, // 356: post.v1.PostService.RenameDocument:output_type -> post.v1.RenameDocumentResponse
+	258, // 357: post.v1.PostService.DeleteDocument:output_type -> google.protobuf.Empty
+	193, // 358: post.v1.PostService.AddAudio:output_type -> post.v1.AddAudioResponse
+	195, // 359: post.v1.PostService.AddAudioTrack:output_type -> post.v1.AddAudioTrackResponse
+	197, // 360: post.v1.PostService.ListAudios:output_type -> post.v1.ListAudiosResponse
+	199, // 361: post.v1.PostService.SearchAudios:output_type -> post.v1.SearchAudiosResponse
+	201, // 362: post.v1.PostService.GetAudios:output_type -> post.v1.GetAudiosResponse
+	258, // 363: post.v1.PostService.KeepAudio:output_type -> google.protobuf.Empty
+	258, // 364: post.v1.PostService.ForgetAudio:output_type -> google.protobuf.Empty
+	205, // 365: post.v1.PostService.EditAudio:output_type -> post.v1.EditAudioResponse
+	258, // 366: post.v1.PostService.DeleteAudio:output_type -> google.protobuf.Empty
+	258, // 367: post.v1.PostService.ListenAudio:output_type -> google.protobuf.Empty
+	258, // 368: post.v1.PostService.SetPageAudio:output_type -> google.protobuf.Empty
+	210, // 369: post.v1.PostService.GetMusic:output_type -> post.v1.GetMusicResponse
+	213, // 370: post.v1.PostService.CreatePlaylist:output_type -> post.v1.CreatePlaylistResponse
+	215, // 371: post.v1.PostService.RenamePlaylist:output_type -> post.v1.RenamePlaylistResponse
+	258, // 372: post.v1.PostService.DeletePlaylist:output_type -> google.protobuf.Empty
+	218, // 373: post.v1.PostService.ListPlaylists:output_type -> post.v1.ListPlaylistsResponse
+	220, // 374: post.v1.PostService.GetPlaylist:output_type -> post.v1.GetPlaylistResponse
+	258, // 375: post.v1.PostService.AddPlaylistAudio:output_type -> google.protobuf.Empty
+	258, // 376: post.v1.PostService.RemovePlaylistAudio:output_type -> google.protobuf.Empty
+	249, // 377: post.v1.PostService.CreateArticle:output_type -> post.v1.CreateArticleResponse
+	251, // 378: post.v1.PostService.EditArticle:output_type -> post.v1.EditArticleResponse
+	258, // 379: post.v1.PostService.DeleteArticle:output_type -> google.protobuf.Empty
+	254, // 380: post.v1.PostService.GetArticle:output_type -> post.v1.GetArticleResponse
+	256, // 381: post.v1.PostService.ListArticles:output_type -> post.v1.ListArticlesResponse
+	258, // 382: post.v1.PostService.PurgeUser:output_type -> google.protobuf.Empty
+	258, // 383: post.v1.PostService.PurgeClub:output_type -> google.protobuf.Empty
+	258, // 384: post.v1.PostService.HoldUserReactions:output_type -> google.protobuf.Empty
+	258, // 385: post.v1.PostService.ReleaseUserReactions:output_type -> google.protobuf.Empty
+	258, // 386: post.v1.PostService.FollowSource:output_type -> google.protobuf.Empty
+	258, // 387: post.v1.PostService.UnfollowSource:output_type -> google.protobuf.Empty
+	258, // 388: post.v1.PostService.SyncSources:output_type -> google.protobuf.Empty
+	258, // 389: post.v1.PostService.CloseWall:output_type -> google.protobuf.Empty
+	258, // 390: post.v1.PostService.OpenWall:output_type -> google.protobuf.Empty
+	255, // [255:391] is the sub-list for method output_type
+	119, // [119:255] is the sub-list for method input_type
+	119, // [119:119] is the sub-list for extension type_name
+	119, // [119:119] is the sub-list for extension extendee
+	0,   // [0:119] is the sub-list for field type_name
 }
 
 func init() { file_api_post_v1_post_proto_init() }
@@ -14994,7 +17006,7 @@ func file_api_post_v1_post_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_post_v1_post_proto_rawDesc), len(file_api_post_v1_post_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   222,
+			NumMessages:   254,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

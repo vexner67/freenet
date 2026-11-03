@@ -182,6 +182,7 @@ func (a *App) build(cfg config.Config) error {
 		Tx: repos.tx, Photos: photos, Notifier: notifier,
 	})
 	a.storiesEvery = cfg.StoryCleanupInterval
+	audio := service.NewAudioService(repos.audios, repos.audioLists, repos.music, repos.tx, photos)
 
 	postv1.RegisterPostServiceServer(
 		a.server.Registrar(),
@@ -202,6 +203,8 @@ func (a *App) build(cfg config.Config) error {
 			Albums:    albums,
 			Polls:     service.NewPollService(service.PollDeps{Polls: repos.polls, Posts: repos.posts, Moderators: moderators, Walls: repos.sources, Tx: repos.tx}),
 			Documents: service.NewDocumentService(repos.documents, repos.tx, photos),
+			Audio:     audio,
+			Playlists: service.NewPlaylistService(repos.playlists, repos.audioLists, audio),
 			Articles: service.NewArticleService(service.ArticleDeps{
 				Articles: repos.articles, Tx: repos.tx, Photos: photos, Pages: repos.pages, Posts: repos.posts, Eraser: posts,
 			}),
@@ -215,7 +218,7 @@ func (a *App) build(cfg config.Config) error {
 				Votes:  repos.polls,
 				Topics: repos.topics, Albums: repos.albums, Tx: repos.tx, Notifier: notifier, Photos: photos,
 				Held: repos.held, Sources: repos.sources, Postponed: repos.postponed, Documents: repos.documents,
-				Stories: repos.stories, Articles: repos.articles,
+				Stories: repos.stories, Articles: repos.articles, Audio: repos.audios,
 			}),
 			ClubPurge: service.NewClubPurgeService(service.ClubPurgeDeps{
 				Posts: repos.posts, Comments: repos.comments, Suggestions: repos.suggestions, Postponed: repos.postponed,
@@ -297,6 +300,19 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		// A document is added after every upload, which media counts too.
 		postv1.PostService_AddDocument_FullMethodName:    cfg.PostLimits,
 		postv1.PostService_RenameDocument_FullMethodName: cfg.EditLimits,
+		// An uploaded song is added after its upload, which media counts too;
+		// keeping and playing songs is as quick as a heart.
+		postv1.PostService_AddAudio_FullMethodName:            cfg.PostLimits,
+		postv1.PostService_AddAudioTrack_FullMethodName:       cfg.PostLimits,
+		postv1.PostService_KeepAudio_FullMethodName:           cfg.LikeLimits,
+		postv1.PostService_ForgetAudio_FullMethodName:         cfg.LikeLimits,
+		postv1.PostService_EditAudio_FullMethodName:           cfg.EditLimits,
+		postv1.PostService_ListenAudio_FullMethodName:         cfg.LikeLimits,
+		postv1.PostService_SetPageAudio_FullMethodName:        cfg.LikeLimits,
+		postv1.PostService_CreatePlaylist_FullMethodName:      cfg.PostLimits,
+		postv1.PostService_RenamePlaylist_FullMethodName:      cfg.EditLimits,
+		postv1.PostService_AddPlaylistAudio_FullMethodName:    cfg.LikeLimits,
+		postv1.PostService_RemovePlaylistAudio_FullMethodName: cfg.LikeLimits,
 		// An article is a long post.
 		postv1.PostService_CreateArticle_FullMethodName: cfg.PostLimits,
 		postv1.PostService_EditArticle_FullMethodName:   cfg.EditLimits,
@@ -389,10 +405,11 @@ func (a *App) newModerators(cfg config.Config) (service.SuggestionModerators, er
 }
 
 // mediaKeeper records what media has to do with the photos of posts and
-// the documents of people.
+// the documents and songs of people.
 type mediaKeeper interface {
 	service.MediaPurger
 	service.DocumentKeeper
+	service.AudioKeeper
 }
 
 // newPhotoKeeper records in the outbox what media has to do with the
@@ -503,7 +520,14 @@ type repositories struct {
 		service.DocumentRepository
 		service.DocumentEraser
 	}
-	articles interface {
+	audios interface {
+		service.AudioRepository
+		service.AudioEraser
+	}
+	audioLists service.AudioListRepository
+	music      service.MusicRepository
+	playlists  service.PlaylistRepository
+	articles   interface {
 		service.ArticleRepository
 		service.ArticleEraser
 	}
@@ -542,6 +566,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		store := inmem.NewStore()
 		topics := inmem.NewTopicRepository()
 		albums := inmem.NewAlbumRepository()
+		music := inmem.NewMusic()
 		return repositories{
 			posts:        store.Posts(),
 			likes:        store.Likes(),
@@ -559,8 +584,9 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			photoLikes:    albums.PhotoLikes(),
 			photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
 			documents: inmem.NewDocumentRepository(),
-			articles:  inmem.NewArticleRepository(),
-			stories:   store.Stories(), storyViews: store.StoryViews(),
+			audios:    music.Audios, audioLists: music.Lists, music: music.Profiles, playlists: music.Playlists,
+			articles: inmem.NewArticleRepository(),
+			stories:  store.Stories(), storyViews: store.StoryViews(),
 			storyLikes: store.StoryLikes(), storyComments: store.StoryComments(),
 			held: []service.ReactionHolder{store.Holds(), topics, albums},
 			// Every store is told of a deleted page; one answers for all.
@@ -597,6 +623,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	topics := postgres.NewTopicRepository(a.pool)
 	albums := postgres.NewAlbumRepository(a.pool)
 	held := postgres.NewHoldRepository(a.pool)
+	audios := postgres.NewAudioRepository(a.pool)
 
 	return repositories{
 		posts:        postgres.NewPostRepository(a.pool),
@@ -615,8 +642,9 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		photoLikes:    albums.PhotoLikes(),
 		photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
 		documents: postgres.NewDocumentRepository(a.pool),
-		articles:  postgres.NewArticleRepository(a.pool),
-		stories:   postgres.NewStoryRepository(a.pool), storyViews: postgres.NewStoryViewRepository(a.pool),
+		audios:    audios, audioLists: audios.AudioLists(), music: audios.Music(), playlists: postgres.NewPlaylistRepository(a.pool),
+		articles: postgres.NewArticleRepository(a.pool),
+		stories:  postgres.NewStoryRepository(a.pool), storyViews: postgres.NewStoryViewRepository(a.pool),
 		storyLikes: postgres.NewStoryLikeRepository(a.pool), storyComments: postgres.NewStoryCommentRepository(a.pool),
 		held:    []service.ReactionHolder{held},
 		pages:   held,

@@ -23,6 +23,11 @@ func fromProtoContent(req *postv1.CreatePostRequest) (post.Content, *post.PollDr
 		return post.Content{}, nil, err
 	}
 
+	audios, err := fromProtoAudios(req.GetAudioIds())
+	if err != nil {
+		return post.Content{}, nil, err
+	}
+
 	link, err := fromProtoLink(req.GetLink())
 	if err != nil {
 		return post.Content{}, nil, err
@@ -34,10 +39,10 @@ func fromProtoContent(req *postv1.CreatePostRequest) (post.Content, *post.PollDr
 			return post.Content{}, nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 
-		return post.NewPolled(text, photos).WithDocuments(documents).WithLink(link), &poll, nil
+		return post.NewPolled(text, photos).WithDocuments(documents).WithAudios(audios).WithLink(link), &poll, nil
 	}
 
-	content, err := post.NewDocumented(text, photos, documents)
+	content, err := post.NewAttached(text, photos, documents, audios)
 	if err != nil {
 		return post.Content{}, nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -248,6 +253,7 @@ func toProtoPost(p *post.Post, liked bool, viewerID uuid.UUID) *postv1.Post {
 		Nsfw:           p.NSFW(),
 		Polled:         p.Content().Polled(),
 		DocumentIds:    idStrings(p.Content().Documents()),
+		AudioIds:       idStrings(p.Content().Audios()),
 		Link:           toProtoLink(p.Content().Link()),
 		Price:          p.Price().Int64(),
 	}

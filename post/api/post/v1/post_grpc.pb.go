@@ -123,6 +123,25 @@ const (
 	PostService_GetDocuments_FullMethodName           = "/post.v1.PostService/GetDocuments"
 	PostService_RenameDocument_FullMethodName         = "/post.v1.PostService/RenameDocument"
 	PostService_DeleteDocument_FullMethodName         = "/post.v1.PostService/DeleteDocument"
+	PostService_AddAudio_FullMethodName               = "/post.v1.PostService/AddAudio"
+	PostService_AddAudioTrack_FullMethodName          = "/post.v1.PostService/AddAudioTrack"
+	PostService_ListAudios_FullMethodName             = "/post.v1.PostService/ListAudios"
+	PostService_SearchAudios_FullMethodName           = "/post.v1.PostService/SearchAudios"
+	PostService_GetAudios_FullMethodName              = "/post.v1.PostService/GetAudios"
+	PostService_KeepAudio_FullMethodName              = "/post.v1.PostService/KeepAudio"
+	PostService_ForgetAudio_FullMethodName            = "/post.v1.PostService/ForgetAudio"
+	PostService_EditAudio_FullMethodName              = "/post.v1.PostService/EditAudio"
+	PostService_DeleteAudio_FullMethodName            = "/post.v1.PostService/DeleteAudio"
+	PostService_ListenAudio_FullMethodName            = "/post.v1.PostService/ListenAudio"
+	PostService_SetPageAudio_FullMethodName           = "/post.v1.PostService/SetPageAudio"
+	PostService_GetMusic_FullMethodName               = "/post.v1.PostService/GetMusic"
+	PostService_CreatePlaylist_FullMethodName         = "/post.v1.PostService/CreatePlaylist"
+	PostService_RenamePlaylist_FullMethodName         = "/post.v1.PostService/RenamePlaylist"
+	PostService_DeletePlaylist_FullMethodName         = "/post.v1.PostService/DeletePlaylist"
+	PostService_ListPlaylists_FullMethodName          = "/post.v1.PostService/ListPlaylists"
+	PostService_GetPlaylist_FullMethodName            = "/post.v1.PostService/GetPlaylist"
+	PostService_AddPlaylistAudio_FullMethodName       = "/post.v1.PostService/AddPlaylistAudio"
+	PostService_RemovePlaylistAudio_FullMethodName    = "/post.v1.PostService/RemovePlaylistAudio"
 	PostService_CreateArticle_FullMethodName          = "/post.v1.PostService/CreateArticle"
 	PostService_EditArticle_FullMethodName            = "/post.v1.PostService/EditArticle"
 	PostService_DeleteArticle_FullMethodName          = "/post.v1.PostService/DeleteArticle"
@@ -423,6 +442,48 @@ type PostServiceClient interface {
 	// The media service deletes the bytes after; what attached the
 	// document loses it.
 	DeleteDocument(ctx context.Context, in *DeleteDocumentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Audio ("Аудиозаписи" of openvk): songs people keep in their libraries
+	// and playlists, and posts and messages attach. An MP3 the media service
+	// keeps under the same ID is its uploader's to edit and delete; a track
+	// of SoundCloud or YouTube is everyone's, one per link.
+	AddAudio(ctx context.Context, in *AddAudioRequest, opts ...grpc.CallOption) (*AddAudioResponse, error)
+	// A track the caller has checked can be played embedded; added once,
+	// the next person to add the link gets the same song. Both put it in
+	// the caller's library.
+	AddAudioTrack(ctx context.Context, in *AddAudioTrackRequest, opts ...grpc.CallOption) (*AddAudioTrackResponse, error)
+	// Public: the songs a person keeps, the last added first.
+	ListAudios(ctx context.Context, in *ListAudiosRequest, opts ...grpc.CallOption) (*ListAudiosResponse, error)
+	// Public: the songs of everyone whose artist or title has the query,
+	// newest first; an empty query lists them all ("Новое").
+	SearchAudios(ctx context.Context, in *SearchAudiosRequest, opts ...grpc.CallOption) (*SearchAudiosResponse, error)
+	// Public: the songs with these IDs that exist, in no particular order.
+	GetAudios(ctx context.Context, in *GetAudiosRequest, opts ...grpc.CallOption) (*GetAudiosResponse, error)
+	// Puts a song in the caller's library ("Добавить к себе"). Idempotent.
+	KeepAudio(ctx context.Context, in *KeepAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Takes a song out of the caller's library. Idempotent.
+	ForgetAudio(ctx context.Context, in *ForgetAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Only the uploader edits and deletes an uploaded song; deleted, it
+	// leaves every library, playlist, post and message.
+	EditAudio(ctx context.Context, in *EditAudioRequest, opts ...grpc.CallOption) (*EditAudioResponse, error)
+	DeleteAudio(ctx context.Context, in *DeleteAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The song the caller plays now ("слушает"); empty audio_id stops it.
+	ListenAudio(ctx context.Context, in *ListenAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The song of the caller's page; empty audio_id takes it off.
+	SetPageAudio(ctx context.Context, in *SetPageAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Public: what a person listens to, the song of their page and how many
+	// songs they keep.
+	GetMusic(ctx context.Context, in *GetMusicRequest, opts ...grpc.CallOption) (*GetMusicResponse, error)
+	// Playlists of a person; only the owner changes them.
+	CreatePlaylist(ctx context.Context, in *CreatePlaylistRequest, opts ...grpc.CallOption) (*CreatePlaylistResponse, error)
+	RenamePlaylist(ctx context.Context, in *RenamePlaylistRequest, opts ...grpc.CallOption) (*RenamePlaylistResponse, error)
+	DeletePlaylist(ctx context.Context, in *DeletePlaylistRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Public: the playlists of a person, newest first.
+	ListPlaylists(ctx context.Context, in *ListPlaylistsRequest, opts ...grpc.CallOption) (*ListPlaylistsResponse, error)
+	// Public: a playlist with a page of its songs, the last added first.
+	GetPlaylist(ctx context.Context, in *GetPlaylistRequest, opts ...grpc.CallOption) (*GetPlaylistResponse, error)
+	// Idempotent, both.
+	AddPlaylistAudio(ctx context.Context, in *AddPlaylistAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RemovePlaylistAudio(ctx context.Context, in *RemovePlaylistAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Articles: long reads with headings, quotes, lists and photos, written
 	// in the editor, as "Статьи" of VK. The photos are the author's, as the
 	// caller has checked; media keeps them while the article shows them.
@@ -1512,6 +1573,196 @@ func (c *postServiceClient) DeleteDocument(ctx context.Context, in *DeleteDocume
 	return out, nil
 }
 
+func (c *postServiceClient) AddAudio(ctx context.Context, in *AddAudioRequest, opts ...grpc.CallOption) (*AddAudioResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddAudioResponse)
+	err := c.cc.Invoke(ctx, PostService_AddAudio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) AddAudioTrack(ctx context.Context, in *AddAudioTrackRequest, opts ...grpc.CallOption) (*AddAudioTrackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddAudioTrackResponse)
+	err := c.cc.Invoke(ctx, PostService_AddAudioTrack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListAudios(ctx context.Context, in *ListAudiosRequest, opts ...grpc.CallOption) (*ListAudiosResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAudiosResponse)
+	err := c.cc.Invoke(ctx, PostService_ListAudios_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) SearchAudios(ctx context.Context, in *SearchAudiosRequest, opts ...grpc.CallOption) (*SearchAudiosResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchAudiosResponse)
+	err := c.cc.Invoke(ctx, PostService_SearchAudios_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetAudios(ctx context.Context, in *GetAudiosRequest, opts ...grpc.CallOption) (*GetAudiosResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAudiosResponse)
+	err := c.cc.Invoke(ctx, PostService_GetAudios_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) KeepAudio(ctx context.Context, in *KeepAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_KeepAudio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ForgetAudio(ctx context.Context, in *ForgetAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_ForgetAudio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) EditAudio(ctx context.Context, in *EditAudioRequest, opts ...grpc.CallOption) (*EditAudioResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EditAudioResponse)
+	err := c.cc.Invoke(ctx, PostService_EditAudio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) DeleteAudio(ctx context.Context, in *DeleteAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_DeleteAudio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListenAudio(ctx context.Context, in *ListenAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_ListenAudio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) SetPageAudio(ctx context.Context, in *SetPageAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_SetPageAudio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetMusic(ctx context.Context, in *GetMusicRequest, opts ...grpc.CallOption) (*GetMusicResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMusicResponse)
+	err := c.cc.Invoke(ctx, PostService_GetMusic_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) CreatePlaylist(ctx context.Context, in *CreatePlaylistRequest, opts ...grpc.CallOption) (*CreatePlaylistResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreatePlaylistResponse)
+	err := c.cc.Invoke(ctx, PostService_CreatePlaylist_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) RenamePlaylist(ctx context.Context, in *RenamePlaylistRequest, opts ...grpc.CallOption) (*RenamePlaylistResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RenamePlaylistResponse)
+	err := c.cc.Invoke(ctx, PostService_RenamePlaylist_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) DeletePlaylist(ctx context.Context, in *DeletePlaylistRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_DeletePlaylist_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListPlaylists(ctx context.Context, in *ListPlaylistsRequest, opts ...grpc.CallOption) (*ListPlaylistsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPlaylistsResponse)
+	err := c.cc.Invoke(ctx, PostService_ListPlaylists_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetPlaylist(ctx context.Context, in *GetPlaylistRequest, opts ...grpc.CallOption) (*GetPlaylistResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPlaylistResponse)
+	err := c.cc.Invoke(ctx, PostService_GetPlaylist_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) AddPlaylistAudio(ctx context.Context, in *AddPlaylistAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_AddPlaylistAudio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) RemovePlaylistAudio(ctx context.Context, in *RemovePlaylistAudioRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_RemovePlaylistAudio_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) CreateArticle(ctx context.Context, in *CreateArticleRequest, opts ...grpc.CallOption) (*CreateArticleResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateArticleResponse)
@@ -1936,6 +2187,48 @@ type PostServiceServer interface {
 	// The media service deletes the bytes after; what attached the
 	// document loses it.
 	DeleteDocument(context.Context, *DeleteDocumentRequest) (*emptypb.Empty, error)
+	// Audio ("Аудиозаписи" of openvk): songs people keep in their libraries
+	// and playlists, and posts and messages attach. An MP3 the media service
+	// keeps under the same ID is its uploader's to edit and delete; a track
+	// of SoundCloud or YouTube is everyone's, one per link.
+	AddAudio(context.Context, *AddAudioRequest) (*AddAudioResponse, error)
+	// A track the caller has checked can be played embedded; added once,
+	// the next person to add the link gets the same song. Both put it in
+	// the caller's library.
+	AddAudioTrack(context.Context, *AddAudioTrackRequest) (*AddAudioTrackResponse, error)
+	// Public: the songs a person keeps, the last added first.
+	ListAudios(context.Context, *ListAudiosRequest) (*ListAudiosResponse, error)
+	// Public: the songs of everyone whose artist or title has the query,
+	// newest first; an empty query lists them all ("Новое").
+	SearchAudios(context.Context, *SearchAudiosRequest) (*SearchAudiosResponse, error)
+	// Public: the songs with these IDs that exist, in no particular order.
+	GetAudios(context.Context, *GetAudiosRequest) (*GetAudiosResponse, error)
+	// Puts a song in the caller's library ("Добавить к себе"). Idempotent.
+	KeepAudio(context.Context, *KeepAudioRequest) (*emptypb.Empty, error)
+	// Takes a song out of the caller's library. Idempotent.
+	ForgetAudio(context.Context, *ForgetAudioRequest) (*emptypb.Empty, error)
+	// Only the uploader edits and deletes an uploaded song; deleted, it
+	// leaves every library, playlist, post and message.
+	EditAudio(context.Context, *EditAudioRequest) (*EditAudioResponse, error)
+	DeleteAudio(context.Context, *DeleteAudioRequest) (*emptypb.Empty, error)
+	// The song the caller plays now ("слушает"); empty audio_id stops it.
+	ListenAudio(context.Context, *ListenAudioRequest) (*emptypb.Empty, error)
+	// The song of the caller's page; empty audio_id takes it off.
+	SetPageAudio(context.Context, *SetPageAudioRequest) (*emptypb.Empty, error)
+	// Public: what a person listens to, the song of their page and how many
+	// songs they keep.
+	GetMusic(context.Context, *GetMusicRequest) (*GetMusicResponse, error)
+	// Playlists of a person; only the owner changes them.
+	CreatePlaylist(context.Context, *CreatePlaylistRequest) (*CreatePlaylistResponse, error)
+	RenamePlaylist(context.Context, *RenamePlaylistRequest) (*RenamePlaylistResponse, error)
+	DeletePlaylist(context.Context, *DeletePlaylistRequest) (*emptypb.Empty, error)
+	// Public: the playlists of a person, newest first.
+	ListPlaylists(context.Context, *ListPlaylistsRequest) (*ListPlaylistsResponse, error)
+	// Public: a playlist with a page of its songs, the last added first.
+	GetPlaylist(context.Context, *GetPlaylistRequest) (*GetPlaylistResponse, error)
+	// Idempotent, both.
+	AddPlaylistAudio(context.Context, *AddPlaylistAudioRequest) (*emptypb.Empty, error)
+	RemovePlaylistAudio(context.Context, *RemovePlaylistAudioRequest) (*emptypb.Empty, error)
 	// Articles: long reads with headings, quotes, lists and photos, written
 	// in the editor, as "Статьи" of VK. The photos are the author's, as the
 	// caller has checked; media keeps them while the article shows them.
@@ -2303,6 +2596,63 @@ func (UnimplementedPostServiceServer) RenameDocument(context.Context, *RenameDoc
 }
 func (UnimplementedPostServiceServer) DeleteDocument(context.Context, *DeleteDocumentRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteDocument not implemented")
+}
+func (UnimplementedPostServiceServer) AddAudio(context.Context, *AddAudioRequest) (*AddAudioResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddAudio not implemented")
+}
+func (UnimplementedPostServiceServer) AddAudioTrack(context.Context, *AddAudioTrackRequest) (*AddAudioTrackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddAudioTrack not implemented")
+}
+func (UnimplementedPostServiceServer) ListAudios(context.Context, *ListAudiosRequest) (*ListAudiosResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAudios not implemented")
+}
+func (UnimplementedPostServiceServer) SearchAudios(context.Context, *SearchAudiosRequest) (*SearchAudiosResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchAudios not implemented")
+}
+func (UnimplementedPostServiceServer) GetAudios(context.Context, *GetAudiosRequest) (*GetAudiosResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAudios not implemented")
+}
+func (UnimplementedPostServiceServer) KeepAudio(context.Context, *KeepAudioRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method KeepAudio not implemented")
+}
+func (UnimplementedPostServiceServer) ForgetAudio(context.Context, *ForgetAudioRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ForgetAudio not implemented")
+}
+func (UnimplementedPostServiceServer) EditAudio(context.Context, *EditAudioRequest) (*EditAudioResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EditAudio not implemented")
+}
+func (UnimplementedPostServiceServer) DeleteAudio(context.Context, *DeleteAudioRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteAudio not implemented")
+}
+func (UnimplementedPostServiceServer) ListenAudio(context.Context, *ListenAudioRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListenAudio not implemented")
+}
+func (UnimplementedPostServiceServer) SetPageAudio(context.Context, *SetPageAudioRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetPageAudio not implemented")
+}
+func (UnimplementedPostServiceServer) GetMusic(context.Context, *GetMusicRequest) (*GetMusicResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMusic not implemented")
+}
+func (UnimplementedPostServiceServer) CreatePlaylist(context.Context, *CreatePlaylistRequest) (*CreatePlaylistResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreatePlaylist not implemented")
+}
+func (UnimplementedPostServiceServer) RenamePlaylist(context.Context, *RenamePlaylistRequest) (*RenamePlaylistResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RenamePlaylist not implemented")
+}
+func (UnimplementedPostServiceServer) DeletePlaylist(context.Context, *DeletePlaylistRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeletePlaylist not implemented")
+}
+func (UnimplementedPostServiceServer) ListPlaylists(context.Context, *ListPlaylistsRequest) (*ListPlaylistsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPlaylists not implemented")
+}
+func (UnimplementedPostServiceServer) GetPlaylist(context.Context, *GetPlaylistRequest) (*GetPlaylistResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPlaylist not implemented")
+}
+func (UnimplementedPostServiceServer) AddPlaylistAudio(context.Context, *AddPlaylistAudioRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddPlaylistAudio not implemented")
+}
+func (UnimplementedPostServiceServer) RemovePlaylistAudio(context.Context, *RemovePlaylistAudioRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemovePlaylistAudio not implemented")
 }
 func (UnimplementedPostServiceServer) CreateArticle(context.Context, *CreateArticleRequest) (*CreateArticleResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateArticle not implemented")
@@ -4221,6 +4571,348 @@ func _PostService_DeleteDocument_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_AddAudio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddAudioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).AddAudio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_AddAudio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).AddAudio(ctx, req.(*AddAudioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_AddAudioTrack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddAudioTrackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).AddAudioTrack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_AddAudioTrack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).AddAudioTrack(ctx, req.(*AddAudioTrackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListAudios_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAudiosRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListAudios(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListAudios_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListAudios(ctx, req.(*ListAudiosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_SearchAudios_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchAudiosRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).SearchAudios(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_SearchAudios_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).SearchAudios(ctx, req.(*SearchAudiosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetAudios_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAudiosRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetAudios(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetAudios_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetAudios(ctx, req.(*GetAudiosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_KeepAudio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(KeepAudioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).KeepAudio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_KeepAudio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).KeepAudio(ctx, req.(*KeepAudioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ForgetAudio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ForgetAudioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ForgetAudio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ForgetAudio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ForgetAudio(ctx, req.(*ForgetAudioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_EditAudio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EditAudioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).EditAudio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_EditAudio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).EditAudio(ctx, req.(*EditAudioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_DeleteAudio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteAudioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).DeleteAudio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_DeleteAudio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).DeleteAudio(ctx, req.(*DeleteAudioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListenAudio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListenAudioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListenAudio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListenAudio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListenAudio(ctx, req.(*ListenAudioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_SetPageAudio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetPageAudioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).SetPageAudio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_SetPageAudio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).SetPageAudio(ctx, req.(*SetPageAudioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetMusic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMusicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetMusic(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetMusic_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetMusic(ctx, req.(*GetMusicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_CreatePlaylist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePlaylistRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).CreatePlaylist(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_CreatePlaylist_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).CreatePlaylist(ctx, req.(*CreatePlaylistRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_RenamePlaylist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RenamePlaylistRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).RenamePlaylist(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_RenamePlaylist_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).RenamePlaylist(ctx, req.(*RenamePlaylistRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_DeletePlaylist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeletePlaylistRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).DeletePlaylist(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_DeletePlaylist_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).DeletePlaylist(ctx, req.(*DeletePlaylistRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListPlaylists_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPlaylistsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListPlaylists(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListPlaylists_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListPlaylists(ctx, req.(*ListPlaylistsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetPlaylist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPlaylistRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetPlaylist(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetPlaylist_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetPlaylist(ctx, req.(*GetPlaylistRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_AddPlaylistAudio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddPlaylistAudioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).AddPlaylistAudio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_AddPlaylistAudio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).AddPlaylistAudio(ctx, req.(*AddPlaylistAudioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_RemovePlaylistAudio_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemovePlaylistAudioRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).RemovePlaylistAudio(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_RemovePlaylistAudio_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).RemovePlaylistAudio(ctx, req.(*RemovePlaylistAudioRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_CreateArticle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateArticleRequest)
 	if err := dec(in); err != nil {
@@ -4891,6 +5583,82 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteDocument",
 			Handler:    _PostService_DeleteDocument_Handler,
+		},
+		{
+			MethodName: "AddAudio",
+			Handler:    _PostService_AddAudio_Handler,
+		},
+		{
+			MethodName: "AddAudioTrack",
+			Handler:    _PostService_AddAudioTrack_Handler,
+		},
+		{
+			MethodName: "ListAudios",
+			Handler:    _PostService_ListAudios_Handler,
+		},
+		{
+			MethodName: "SearchAudios",
+			Handler:    _PostService_SearchAudios_Handler,
+		},
+		{
+			MethodName: "GetAudios",
+			Handler:    _PostService_GetAudios_Handler,
+		},
+		{
+			MethodName: "KeepAudio",
+			Handler:    _PostService_KeepAudio_Handler,
+		},
+		{
+			MethodName: "ForgetAudio",
+			Handler:    _PostService_ForgetAudio_Handler,
+		},
+		{
+			MethodName: "EditAudio",
+			Handler:    _PostService_EditAudio_Handler,
+		},
+		{
+			MethodName: "DeleteAudio",
+			Handler:    _PostService_DeleteAudio_Handler,
+		},
+		{
+			MethodName: "ListenAudio",
+			Handler:    _PostService_ListenAudio_Handler,
+		},
+		{
+			MethodName: "SetPageAudio",
+			Handler:    _PostService_SetPageAudio_Handler,
+		},
+		{
+			MethodName: "GetMusic",
+			Handler:    _PostService_GetMusic_Handler,
+		},
+		{
+			MethodName: "CreatePlaylist",
+			Handler:    _PostService_CreatePlaylist_Handler,
+		},
+		{
+			MethodName: "RenamePlaylist",
+			Handler:    _PostService_RenamePlaylist_Handler,
+		},
+		{
+			MethodName: "DeletePlaylist",
+			Handler:    _PostService_DeletePlaylist_Handler,
+		},
+		{
+			MethodName: "ListPlaylists",
+			Handler:    _PostService_ListPlaylists_Handler,
+		},
+		{
+			MethodName: "GetPlaylist",
+			Handler:    _PostService_GetPlaylist_Handler,
+		},
+		{
+			MethodName: "AddPlaylistAudio",
+			Handler:    _PostService_AddPlaylistAudio_Handler,
+		},
+		{
+			MethodName: "RemovePlaylistAudio",
+			Handler:    _PostService_RemovePlaylistAudio_Handler,
 		},
 		{
 			MethodName: "CreateArticle",

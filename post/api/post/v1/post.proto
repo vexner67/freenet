@@ -300,6 +300,49 @@ service PostService {
   // document loses it.
   rpc DeleteDocument(DeleteDocumentRequest) returns (google.protobuf.Empty);
 
+  // Audio ("Аудиозаписи" of openvk): songs people keep in their libraries
+  // and playlists, and posts and messages attach. An MP3 the media service
+  // keeps under the same ID is its uploader's to edit and delete; a track
+  // of SoundCloud or YouTube is everyone's, one per link.
+  rpc AddAudio(AddAudioRequest) returns (AddAudioResponse);
+  // A track the caller has checked can be played embedded; added once,
+  // the next person to add the link gets the same song. Both put it in
+  // the caller's library.
+  rpc AddAudioTrack(AddAudioTrackRequest) returns (AddAudioTrackResponse);
+  // Public: the songs a person keeps, the last added first.
+  rpc ListAudios(ListAudiosRequest) returns (ListAudiosResponse);
+  // Public: the songs of everyone whose artist or title has the query,
+  // newest first; an empty query lists them all ("Новое").
+  rpc SearchAudios(SearchAudiosRequest) returns (SearchAudiosResponse);
+  // Public: the songs with these IDs that exist, in no particular order.
+  rpc GetAudios(GetAudiosRequest) returns (GetAudiosResponse);
+  // Puts a song in the caller's library ("Добавить к себе"). Idempotent.
+  rpc KeepAudio(KeepAudioRequest) returns (google.protobuf.Empty);
+  // Takes a song out of the caller's library. Idempotent.
+  rpc ForgetAudio(ForgetAudioRequest) returns (google.protobuf.Empty);
+  // Only the uploader edits and deletes an uploaded song; deleted, it
+  // leaves every library, playlist, post and message.
+  rpc EditAudio(EditAudioRequest) returns (EditAudioResponse);
+  rpc DeleteAudio(DeleteAudioRequest) returns (google.protobuf.Empty);
+  // The song the caller plays now ("слушает"); empty audio_id stops it.
+  rpc ListenAudio(ListenAudioRequest) returns (google.protobuf.Empty);
+  // The song of the caller's page; empty audio_id takes it off.
+  rpc SetPageAudio(SetPageAudioRequest) returns (google.protobuf.Empty);
+  // Public: what a person listens to, the song of their page and how many
+  // songs they keep.
+  rpc GetMusic(GetMusicRequest) returns (GetMusicResponse);
+  // Playlists of a person; only the owner changes them.
+  rpc CreatePlaylist(CreatePlaylistRequest) returns (CreatePlaylistResponse);
+  rpc RenamePlaylist(RenamePlaylistRequest) returns (RenamePlaylistResponse);
+  rpc DeletePlaylist(DeletePlaylistRequest) returns (google.protobuf.Empty);
+  // Public: the playlists of a person, newest first.
+  rpc ListPlaylists(ListPlaylistsRequest) returns (ListPlaylistsResponse);
+  // Public: a playlist with a page of its songs, the last added first.
+  rpc GetPlaylist(GetPlaylistRequest) returns (GetPlaylistResponse);
+  // Idempotent, both.
+  rpc AddPlaylistAudio(AddPlaylistAudioRequest) returns (google.protobuf.Empty);
+  rpc RemovePlaylistAudio(RemovePlaylistAudioRequest) returns (google.protobuf.Empty);
+
   // Articles: long reads with headings, quotes, lists and photos, written
   // in the editor, as "Статьи" of VK. The photos are the author's, as the
   // caller has checked; media keeps them while the article shows them.
@@ -414,6 +457,9 @@ message Post {
   // Votes others pay to see its photos and documents, 0 for free; the
   // caller hides them from those who have not paid.
   int64 price = 27;
+  // Songs the post attaches, in the order shown; GetAudios tells what they
+  // are, and a deleted one is gone.
+  repeated string audio_ids = 28;
 }
 
 // Link is the card of a page a post links to, as the page tells it.
@@ -648,6 +694,8 @@ message CreatePostRequest {
   // Votes others pay to see its photos and documents, 0 for free: only
   // on the author's own wall, with photos or documents.
   int64 price = 13;
+  // Songs, at most 10: with them the text and the photos may be none.
+  repeated string audio_ids = 14;
 }
 
 // PollDraft is a poll as its author asks it.
@@ -1765,6 +1813,194 @@ message RenameDocumentResponse {
 
 message DeleteDocumentRequest {
   string id = 1;
+}
+
+// A song of "Аудиозаписи".
+message Audio {
+  string id = 1;
+  // Who uploaded the file or first added the track.
+  string owner_id = 2;
+  // "file", "soundcloud" or "youtube".
+  string kind = 3;
+  // The page of the track; empty for a file.
+  string link = 4;
+  // The https picture of the track; may be empty.
+  string cover = 5;
+  // Either may be empty: "Неизвестный", "Без названия".
+  string artist = 6;
+  string title = 7;
+  // Seconds; 0 when nobody knows.
+  int32 duration = 8;
+  google.protobuf.Timestamp created_at = 9;
+  // The caller keeps the song in their library; false without a token.
+  bool added = 10;
+}
+
+message AddAudioRequest {
+  // The ID the media service gave the caller's MP3.
+  string id = 1;
+  string artist = 2;
+  string title = 3;
+  int32 duration = 4;
+}
+
+message AddAudioResponse {
+  Audio audio = 1;
+}
+
+message AddAudioTrackRequest {
+  // "soundcloud" or "youtube".
+  string kind = 1;
+  string link = 2;
+  string cover = 3;
+  string artist = 4;
+  string title = 5;
+  int32 duration = 6;
+}
+
+message AddAudioTrackResponse {
+  Audio audio = 1;
+}
+
+message ListAudiosRequest {
+  string owner_id = 1;
+  // Empty for the first page, else next_cursor of the previous one.
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message ListAudiosResponse {
+  repeated Audio audios = 1;
+  string next_cursor = 2;
+  // Songs on all pages.
+  int32 total = 3;
+}
+
+message SearchAudiosRequest {
+  string query = 1;
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message SearchAudiosResponse {
+  repeated Audio audios = 1;
+  string next_cursor = 2;
+}
+
+message GetAudiosRequest {
+  // At most 50.
+  repeated string ids = 1;
+}
+
+message GetAudiosResponse {
+  repeated Audio audios = 1;
+}
+
+message KeepAudioRequest {
+  string audio_id = 1;
+}
+
+message ForgetAudioRequest {
+  string audio_id = 1;
+}
+
+message EditAudioRequest {
+  string id = 1;
+  string artist = 2;
+  string title = 3;
+}
+
+message EditAudioResponse {
+  Audio audio = 1;
+}
+
+message DeleteAudioRequest {
+  string id = 1;
+}
+
+message ListenAudioRequest {
+  string audio_id = 1;
+}
+
+message SetPageAudioRequest {
+  string audio_id = 1;
+}
+
+message GetMusicRequest {
+  string user_id = 1;
+}
+
+message GetMusicResponse {
+  // Unset when the person listens to nothing now.
+  Audio listening = 1;
+  // Unset for none.
+  Audio page_audio = 2;
+  // Songs in the library.
+  int32 count = 3;
+}
+
+message Playlist {
+  string id = 1;
+  string owner_id = 2;
+  string title = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message CreatePlaylistRequest {
+  string title = 1;
+}
+
+message CreatePlaylistResponse {
+  Playlist playlist = 1;
+}
+
+message RenamePlaylistRequest {
+  string id = 1;
+  string title = 2;
+}
+
+message RenamePlaylistResponse {
+  Playlist playlist = 1;
+}
+
+message DeletePlaylistRequest {
+  string id = 1;
+}
+
+message ListPlaylistsRequest {
+  string owner_id = 1;
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message ListPlaylistsResponse {
+  repeated Playlist playlists = 1;
+  string next_cursor = 2;
+  int32 total = 3;
+}
+
+message GetPlaylistRequest {
+  string id = 1;
+  // Of its songs.
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message GetPlaylistResponse {
+  Playlist playlist = 1;
+  repeated Audio audios = 2;
+  string next_cursor = 3;
+  int32 total = 4;
+}
+
+message AddPlaylistAudioRequest {
+  string playlist_id = 1;
+  string audio_id = 2;
+}
+
+message RemovePlaylistAudioRequest {
+  string playlist_id = 1;
+  string audio_id = 2;
 }
 
 // Story is a photo with a few words shown for a day.

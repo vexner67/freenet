@@ -32,6 +32,8 @@ const (
 	kindCopy    = "copy_photos"
 	// kindDeleteDocuments deletes the bytes of deleted documents.
 	kindDeleteDocuments = "delete_documents"
+	// kindDeleteAudio deletes the bytes of deleted songs.
+	kindDeleteAudio = "delete_audio"
 	// kindPurge erases everything kept under an ID: the photo and the
 	// backdrop of a community that is gone.
 	kindPurge = "purge_owner"
@@ -42,7 +44,8 @@ type Recorder interface {
 	Add(ctx context.Context, kind string, payload []byte) error
 }
 
-// Outbox is the service.PhotoKeeper and the service.DocumentKeeper: it records the requests to make.
+// Outbox is the service.PhotoKeeper, the service.DocumentKeeper and the
+// service.AudioKeeper: it records the requests to make.
 type Outbox struct {
 	recorder Recorder
 }
@@ -72,6 +75,10 @@ func (o *Outbox) Copy(ctx context.Context, ownerID uuid.UUID, copies []service.P
 
 func (o *Outbox) DeleteDocuments(ctx context.Context, ownerID uuid.UUID, documentIDs []uuid.UUID) error {
 	return o.add(ctx, kindDeleteDocuments, &mediav1.DeleteDocumentsRequest{OwnerId: ownerID.String(), DocumentIds: toStrings(documentIDs)})
+}
+
+func (o *Outbox) DeleteAudio(ctx context.Context, ownerID uuid.UUID, audioIDs []uuid.UUID) error {
+	return o.add(ctx, kindDeleteAudio, &mediav1.DeleteAudioRequest{OwnerId: ownerID.String(), AudioIds: toStrings(audioIDs)})
 }
 
 func (o *Outbox) Purge(ctx context.Context, ownerID uuid.UUID) error {
@@ -123,6 +130,8 @@ func (d *Deliverer) Deliver(ctx context.Context, m outbox.Message) error {
 		return call(ctx, m.Payload, &mediav1.CopyPhotosRequest{}, d.api.CopyPhotos)
 	case kindDeleteDocuments:
 		return call(ctx, m.Payload, &mediav1.DeleteDocumentsRequest{}, d.api.DeleteDocuments)
+	case kindDeleteAudio:
+		return call(ctx, m.Payload, &mediav1.DeleteAudioRequest{}, d.api.DeleteAudio)
 	case kindPurge:
 		return call(ctx, m.Payload, &mediav1.PurgeUserRequest{}, d.api.PurgeUser)
 	default:
@@ -151,7 +160,7 @@ func call[Req proto.Message](ctx context.Context, payload []byte, req Req, fn rp
 	}
 }
 
-// Nop is the PhotoKeeper, the MediaPurger and the DocumentKeeper when no media service is configured.
+// Nop is the PhotoKeeper, the MediaPurger, the DocumentKeeper and the AudioKeeper when no media service is configured.
 type Nop struct{}
 
 func (Nop) Publish(context.Context, uuid.UUID, []uuid.UUID) error      { return nil }
@@ -161,3 +170,5 @@ func (Nop) Purge(context.Context, uuid.UUID) error                     { return 
 func (Nop) DeleteDocuments(context.Context, uuid.UUID, []uuid.UUID) error {
 	return nil
 }
+
+func (Nop) DeleteAudio(context.Context, uuid.UUID, []uuid.UUID) error { return nil }

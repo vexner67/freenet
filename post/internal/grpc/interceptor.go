@@ -138,6 +138,21 @@ func topicStatus(err error) (*status.Status, bool) {
 		{post.ErrCannotChangeDocument, codes.PermissionDenied},
 		{post.ErrInvalidDocument, codes.InvalidArgument},
 		{post.ErrInvalidDocumentSize, codes.InvalidArgument},
+		{post.ErrAudioNotFound, codes.NotFound},
+		{post.ErrAudioNameTooLong, codes.InvalidArgument},
+		{post.ErrInvalidDuration, codes.InvalidArgument},
+		{post.ErrInvalidAudio, codes.InvalidArgument},
+		{post.ErrAudioKind, codes.InvalidArgument},
+		{post.ErrAudioLink, codes.InvalidArgument},
+		{post.ErrAudioCover, codes.InvalidArgument},
+		{post.ErrCannotChangeAudio, codes.PermissionDenied},
+		{post.ErrTooManyAudios, codes.InvalidArgument},
+		{post.ErrDuplicateAudio, codes.InvalidArgument},
+		{post.ErrPlaylistNotFound, codes.NotFound},
+		{post.ErrPlaylistTitleEmpty, codes.InvalidArgument},
+		{post.ErrPlaylistTitleTooLong, codes.InvalidArgument},
+		{post.ErrCannotChangePlaylist, codes.PermissionDenied},
+		{post.ErrPlaylistFull, codes.FailedPrecondition},
 	} {
 		if errors.Is(err, known.err) {
 			return status.New(known.code, known.err.Error()), true

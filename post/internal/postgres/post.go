@@ -53,9 +53,10 @@ const savePostQuery = `
 		price,
 		polled,
 		document_ids,
+		audio_ids,
 		link
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 `
 
 // saveRepostQuery counts the repost in the shared post and adds it in one
@@ -95,7 +96,7 @@ func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 	}
 
 	if content.RepostOf() == uuid.Nil {
-		if _, err := r.conn(ctx).Exec(ctx, savePostQuery, append(args, p.NSFW(), p.Price().Int64(), content.Polled(), documentIDs(content.Documents()), linkToDB(content.Link()))...); err != nil {
+		if _, err := r.conn(ctx).Exec(ctx, savePostQuery, append(args, p.NSFW(), p.Price().Int64(), content.Polled(), documentIDs(content.Documents()), audioIDs(content.Audios()), linkToDB(content.Link()))...); err != nil {
 			return errs.Wrap("r.conn.Exec", err)
 		}
 
@@ -138,6 +139,7 @@ const getPostQuery = `
 		price,
 		polled,
 		document_ids,
+		audio_ids,
 		link,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
@@ -179,6 +181,7 @@ const getPostsQuery = `
 		price,
 		polled,
 		document_ids,
+		audio_ids,
 		link,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
@@ -315,6 +318,7 @@ const getPinnedPostQuery = `
 		price,
 		polled,
 		document_ids,
+		audio_ids,
 		link,
 		true AS pinned
 	FROM posts
@@ -356,6 +360,7 @@ const postsByWallSelect = `
 		price,
 		polled,
 		document_ids,
+		audio_ids,
 		link,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
@@ -474,6 +479,7 @@ const listFeedQuery = `
 		price,
 		polled,
 		document_ids,
+		audio_ids,
 		link,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
@@ -528,6 +534,7 @@ const listGlobalFeedQuery = `
 		price,
 		polled,
 		document_ids,
+		audio_ids,
 		link,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
@@ -593,6 +600,7 @@ const listRepostsQuery = `
 		price,
 		polled,
 		document_ids,
+		audio_ids,
 		link,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
@@ -717,6 +725,7 @@ const (
 		price,
 		polled,
 		document_ids,
+		audio_ids,
 		link,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
@@ -899,6 +908,16 @@ func documentIDs(documents post.Documents) []uuid.UUID {
 	return documents
 }
 
+// audioIDs is songs for the audio_ids column, which wants an empty array
+// rather than NULL.
+func audioIDs(audios post.Audios) []uuid.UUID {
+	if audios == nil {
+		return []uuid.UUID{}
+	}
+
+	return audios
+}
+
 // photoIDs is photos for the photo_ids column: pgx writes a nil slice as
 // NULL, the column wants an empty array.
 func photoIDs(photos post.Photos) []uuid.UUID {
@@ -939,12 +958,13 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 		photo    *uuid.UUID
 		polled   bool
 		docs     []uuid.UUID
+		audios   []uuid.UUID
 		link     []byte
 	)
 
 	err := row.Scan(&s.ID, &s.WallID, &s.AuthorID, &text, &photos, &s.CreatedAt, &repostOf,
 		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.FromWall, &s.Signed, &s.Suggested,
-		&photo, &s.Archived, &s.CommentsClosed, &s.NSFW, &s.Price, &polled, &docs, &link, &s.Pinned)
+		&photo, &s.Archived, &s.CommentsClosed, &s.NSFW, &s.Price, &polled, &docs, &audios, &link, &s.Pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -968,6 +988,9 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 	}
 	if len(docs) > 0 {
 		s.Content = s.Content.WithDocuments(post.Documents(docs))
+	}
+	if len(audios) > 0 {
+		s.Content = s.Content.WithAudios(post.Audios(audios))
 	}
 	if link != nil {
 		card, err := linkFromDB(link)
@@ -1015,6 +1038,7 @@ const deletePostsByUserQuery = `
 			price,
 			polled,
 			document_ids,
+			audio_ids,
 			link,
 			EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	), uncounted AS (
@@ -1052,6 +1076,7 @@ const deletePostsByUserQuery = `
 		price,
 		polled,
 		document_ids,
+		audio_ids,
 		link,
 		pinned
 	FROM deleted
