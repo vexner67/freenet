@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math/rand/v2"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -270,9 +271,12 @@ func TestPetRepository(t *testing.T) {
 	if err != nil || !hasTop(miners, ann, 40) {
 		t.Fatalf("Earned = %+v, %v", miners, err)
 	}
-	rich, err := tops.Rich(ctx, now, 1_000_000)
+	rich, err := tops.Rich(ctx, now, nil, 1_000_000)
 	if err != nil || !hasTop(rich, ann, 42) {
 		t.Fatalf("Rich = %+v, %v", rich, err)
+	}
+	if rich, err = tops.Rich(ctx, now, []string{emailOf(t, repo, ann)}, 1_000_000); err != nil || hasTop(rich, ann, 42) {
+		t.Fatalf("Rich without ann = %+v, %v", rich, err)
 	}
 
 	if err = pets.DeletePet(ctx, ann, hamster.ID()); !errors.Is(err, user.ErrPetNotFound) {
@@ -297,6 +301,18 @@ func hasTop(entries []user.TopEntry, id uuid.UUID, value int64) bool {
 	}
 
 	return false
+}
+
+// emailOf is the email of a saved user, in lower case.
+func emailOf(t *testing.T, repo *postgres.UserRepository, id uuid.UUID) string {
+	t.Helper()
+
+	u, err := repo.GetByID(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return strings.ToLower(u.Email().String())
 }
 
 // savedUser is a new saved user.

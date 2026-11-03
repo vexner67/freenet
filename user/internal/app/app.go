@@ -259,7 +259,7 @@ func (a *App) build(cfg config.Config) error {
 			BetEvents:   service.NewBetEventService(store.users, store.betEvents, store.wallets, store.tx, admins),
 			Paid:        service.NewPaidService(store.users, store.wallets, store.purchases, store.economy, permissions, store.tx),
 			Guests:      service.NewGuestService(store.users, store.guests),
-			Tops:        service.NewTopService(store.tops),
+			Tops:        service.NewTopService(store.tops, admins),
 			Pets:        service.NewPetService(store.users, service.PetStores{Pets: store.pets, Keepers: store.pets, Battles: store.pets, Events: store.pets, Seasons: store.pets, Quests: store.pets, Market: store.pets}, store.wallets, store.tx, admins),
 			Titles:      service.NewTitleService(store.users, store.titles, admins),
 			Permissions: permissions,

@@ -117,7 +117,7 @@ func TestPetService(t *testing.T) {
 	}
 
 	// The board of pets puts the dragon first, each pet in its place.
-	tops := service.NewTopService(inmem.NewTopRepository(w.users, repo))
+	tops := service.NewTopService(inmem.NewTopRepository(w.users, repo), nil)
 	board, err := tops.Top(ctx, user.TopPets, now)
 	if err != nil || len(board) != 3 || board[0].UserID != ann || board[0].PetName != "Дрого" {
 		t.Fatalf("Top of pets = %+v, %v", board, err)
@@ -164,7 +164,7 @@ func TestTopService(t *testing.T) {
 	ctx := context.Background()
 	w := newWalletWorld(t)
 	ann, bob := w.person(t, "ann"), w.person(t, "bob")
-	tops := service.NewTopService(inmem.NewTopRepository(w.users, inmem.NewPetRepository(w.users)))
+	tops := service.NewTopService(inmem.NewTopRepository(w.users, inmem.NewPetRepository(w.users)), nil)
 	now := time.Now()
 
 	if _, err := w.users.Credit(ctx, ann, 300, 0, user.Entry(user.VoteMine, uuid.Nil, "stone")); err != nil {
@@ -194,6 +194,16 @@ func TestTopService(t *testing.T) {
 	}
 	if business, err := tops.Top(ctx, user.TopBusiness, now); err != nil || len(business) != 0 {
 		t.Fatalf("Top of business = %+v, %v", business, err)
+	}
+
+	// The votes of the administrators are endless: Forbes leaves them out.
+	admins, err := user.NewAdmins([]string{"Bob@example.com"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tops = service.NewTopService(inmem.NewTopRepository(w.users, inmem.NewPetRepository(w.users)), admins)
+	if rich, err = tops.Top(ctx, user.TopRich, now); err != nil || len(rich) != 1 || rich[0].UserID != ann {
+		t.Fatalf("Top of the rich without the administrator = %+v, %v", rich, err)
 	}
 }
 

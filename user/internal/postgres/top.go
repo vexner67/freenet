@@ -38,12 +38,18 @@ const richTopQuery = `
 	FROM users AS u
 	WHERE u.votes > 0
 		AND ` + shownUser + `
+		AND NOT lower(u.email) = ANY ($3)
 	ORDER BY u.votes DESC, u.id
 	LIMIT $2
 `
 
-func (r *TopRepository) Rich(ctx context.Context, now time.Time, limit int) ([]user.TopEntry, error) {
-	entries, err := r.entries(ctx, richTopQuery, now, limit)
+func (r *TopRepository) Rich(ctx context.Context, now time.Time, except []string, limit int) ([]user.TopEntry, error) {
+	// NULL would leave nobody: no one is excepted from an empty array.
+	if except == nil {
+		except = []string{}
+	}
+
+	entries, err := r.entries(ctx, richTopQuery, now, limit, except)
 
 	return entries, errs.Wrap("r.entries", err)
 }

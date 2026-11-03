@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/vexner67/freenet/pkg/errs"
@@ -50,14 +51,16 @@ func (r *TopRepository) shown(now time.Time) []user.User {
 	return shown
 }
 
-func (r *TopRepository) Rich(ctx context.Context, now time.Time, limit int) ([]user.TopEntry, error) {
+func (r *TopRepository) Rich(ctx context.Context, now time.Time, except []string, limit int) ([]user.TopEntry, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
 	}
 
 	var entries []user.TopEntry
 	for _, u := range r.shown(now) {
-		entries = append(entries, user.TopEntry{UserID: u.ID(), Value: u.Wallet().Votes})
+		if !slices.Contains(except, strings.ToLower(u.Email().String())) {
+			entries = append(entries, user.TopEntry{UserID: u.ID(), Value: u.Wallet().Votes})
+		}
 	}
 
 	return top(entries, limit), nil

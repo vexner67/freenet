@@ -11,8 +11,9 @@ import (
 // TopRepository counts the boards of "Рейтинги" among pages neither
 // deleted nor banned at now, the greatest first, only above zero.
 type TopRepository interface {
-	// Rich are those who hold the most votes.
-	Rich(ctx context.Context, now time.Time, limit int) ([]user.TopEntry, error)
+	// Rich are those who hold the most votes, but for the pages whose
+	// email is one of except (in lower case).
+	Rich(ctx context.Context, now time.Time, except []string, limit int) ([]user.TopEntry, error)
 	// Earned are those whose lines of kinds since add up to the most.
 	Earned(ctx context.Context, kinds []user.VoteKind, since, now time.Time, limit int) ([]user.TopEntry, error)
 	// Pets are those whose pets have the highest rating.
@@ -22,18 +23,21 @@ type TopRepository interface {
 // TopService is "Рейтинги": the richest, the best miners, businessmen and
 // players of the week and the strongest pets.
 type TopService struct {
-	tops TopRepository
+	tops   TopRepository
+	admins user.Admins
 }
 
-func NewTopService(tops TopRepository) *TopService {
-	return &TopService{tops: tops}
+// NewTopService: the administrators are not among the richest, as their
+// votes are endless (EndlessService).
+func NewTopService(tops TopRepository, admins user.Admins) *TopService {
+	return &TopService{tops: tops, admins: admins}
 }
 
 // Top is board at now.
 func (s *TopService) Top(ctx context.Context, board user.TopBoard, now time.Time) ([]user.TopEntry, error) {
 	switch {
 	case board == user.TopRich:
-		entries, err := s.tops.Rich(ctx, now, user.MaxTop)
+		entries, err := s.tops.Rich(ctx, now, s.admins.Emails(), user.MaxTop)
 
 		return entries, errs.Wrap("s.tops.Rich", err)
 	case board == user.TopPets:
