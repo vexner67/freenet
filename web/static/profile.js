@@ -508,8 +508,8 @@ function renderDeactivated(profile, isOwner) {
   }
 }
 
-// renderBanned is a page the administrators of the site blocked: a stern
-// notice on a red title, with the reason and the term, as a notice of the
+// renderBanned is a page the administrators of the site blocked: a plain
+// window of the site with the reason and the term, as a notice of the
 // 2000s; its owner reads it addressed to them, an administrator may lift
 // the block.
 function renderBanned(profile, isOwner) {
@@ -527,15 +527,14 @@ function renderBanned(profile, isOwner) {
   const lead = isOwner
     ? el('p', {}, el('b', { textContent: name }), tr(', ваша страница заблокирована администрацией Freenet за нарушение правил сайта.'))
     : el('p', {}, tr('Страница пользователя '), el('b', { textContent: genitiveName(profile) }), tr(' заблокирована администрацией Freenet за нарушение правил сайта.'));
-  const info = el('div', { className: 'banned-info' },
-    el('div', { className: 'banned-head' },
-      el('img', { src: '/static/icons/game/ban.svg', alt: '', width: 20, height: 20 }),
-      el('span', { textContent: tr('Доступ к странице закрыт') })),
-    el('div', { className: 'banned-tape' }),
+  const info = el('div', { className: 'game-window banned-info' },
+    el('div', { className: 'game-window-title' },
+      el('img', { src: '/static/icons/game/ban.svg', alt: '', width: 16, height: 16 }),
+      el('span', { textContent: tr('Страница заблокирована') })),
     el('div', { className: 'banned-body' },
       lead,
       el('table', { className: 'ban-facts' },
-        el('tr', {}, el('th', { textContent: tr('Основание:') }), el('td', {}, el('div', { className: 'ban-reason', textContent: ban.reason }))),
+        el('tr', {}, el('th', { textContent: tr('Причина:') }), el('td', {}, el('div', { className: 'ban-reason', textContent: ban.reason }))),
         el('tr', {}, el('th', { textContent: tr('Срок:') }), el('td', { textContent: banEnd(ban) })))),
   );
 

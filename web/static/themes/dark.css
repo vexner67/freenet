@@ -5,19 +5,18 @@
 :root {
   --back-14103a: #14103a;
   --back-3f2bb8: #3f2bb8;
-  --back-f7cf4c: #f7cf4c;
+  --back-d8dde3: #d8dde3;
   --text-23e0ff: #23e0ff;
   /* Backgrounds */
   --back-fff: #1a1a1a;
   --back-c7b2ee: #6b4fa6;
-  --back-f0d878: #8a6d12;
-  --line-a8800f: #d9b440;
+  --back-c9cfd6: #59616b;
   --back-dfe3e8: #59616b;
   --line-7d8792: #b8c0c9;
   --text-b3122e: #ff7088;
   --text-0c7a3c: #5fd38d;
   --text-1d4fb5: #82abff;
-  --text-a87a00: #f0c64a;
+  --text-6e7782: #b6bec8;
   --text-e0650a: #ff9a4a;
   --back-fafafa: #202020;
   --back-f9f9f9: #222222;
@@ -28,17 +27,15 @@
   --back-f2f2f2: #262626;
   --back-ffefe8: #3a2320;
   --back-dcefd9: #203424;
-  --back-fbf3c3: #2e2c22;
   --back-f7f1d6: #2e2b1c;
   --back-f0f0f0: #242424;
   --back-f6f0d2: #3a3522;
   --back-ededed: #2a2a2a;
   --back-e9edf1: #2a2f35;
   --back-e4e4e4: #2c2c2c;
-  --back-f6ebbb: #3a3520;
   --back-e9e9e9: #2e2e2e;
   --back-e6e6e6: #2a2a2a;
-  --back-ffe58a: #6b5a14;
+  --back-dde2e8: #3d434b;
   --back-eee5b8: #2e2c22;
   --back-f3ddbd: #3d2f1c;
   --back-dae1e8: #2c3642;
@@ -121,15 +118,15 @@
   color-scheme: dark;
   --back-7a0f1d: #5c0b16;
   --back-a01e28: #8a1922;
-  --back-ffd54a: #f2c53d;
+  --back-c5cbd3: #8d96a2;
   --back-f7a02c: #d98a1f;
-  --back-fff3c4: #3a3420;
-  --line-e2b24a: #c99a33;
-  --text-ffd54a: #f2c53d;
+  --back-eef1f4: #2c3036;
+  --line-9aa3ae: #6f7883;
+  --text-dfe3e8: #dfe3e8;
   --text-7a0f1d: #ffd9a0;
   --back-43a047: #3b8f3f;
   --back-2e7dd7: #3a7fd0;
-  --text-fff3c4: #fff3c4;
+  --text-f4f4f4: #f4f4f4;
   --text-6b0d19: #3a0810;
   --back-2b1055: #1e0b3d;
   --back-6a3fd8: #5a34b8;
@@ -144,8 +141,6 @@
   --line-b8b8a8: #8a8a7c;
   --back-34568b: #2a4670;
   --back-0d0d0d: #0d0d0d;
-  --back-b30000: #9e0000;
-  --text-ff3b30: #ff3b30;
 }
 
 /* The pictures shown for a missing photo are drawn light: in the dark they

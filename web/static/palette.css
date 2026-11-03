@@ -10,19 +10,18 @@
 :root {
   --back-14103a: #14103a;
   --back-3f2bb8: #3f2bb8;
-  --back-f7cf4c: #f7cf4c;
+  --back-d8dde3: #d8dde3;
   --text-23e0ff: #23e0ff;
   /* Backgrounds */
   --back-fff: #fff;
   --back-c7b2ee: #c7b2ee;
-  --back-f0d878: #f0d878;
-  --line-a8800f: #a8800f;
+  --back-c9cfd6: #c9cfd6;
   --back-dfe3e8: #dfe3e8;
   --line-7d8792: #7d8792;
   --text-b3122e: #b3122e;
   --text-0c7a3c: #0c7a3c;
   --text-1d4fb5: #1d4fb5;
-  --text-a87a00: #a87a00;
+  --text-6e7782: #6e7782;
   --text-e0650a: #e0650a;
   --back-fafafa: #fafafa;
   --back-f9f9f9: #f9f9f9;
@@ -33,17 +32,15 @@
   --back-f2f2f2: #f2f2f2;
   --back-ffefe8: #ffefe8;
   --back-dcefd9: #dcefd9;
-  --back-fbf3c3: #fbf3c3;
   --back-f7f1d6: #f7f1d6;
   --back-f0f0f0: #f0f0f0;
   --back-f6f0d2: #f6f0d2;
   --back-ededed: #ededed;
   --back-e9edf1: #e9edf1;
   --back-e4e4e4: #e4e4e4;
-  --back-f6ebbb: #f6ebbb;
   --back-e9e9e9: #e9e9e9;
   --back-e6e6e6: #e6e6e6;
-  --back-ffe58a: #ffe58a;
+  --back-dde2e8: #dde2e8;
   --back-eee5b8: #eee5b8;
   --back-f3ddbd: #f3ddbd;
   --back-dae1e8: #dae1e8;
@@ -125,15 +122,15 @@
   --line-2f2f2f: #2f2f2f;
   --back-7a0f1d: #7a0f1d;
   --back-a01e28: #a01e28;
-  --back-ffd54a: #ffd54a;
+  --back-c5cbd3: #c5cbd3;
   --back-f7a02c: #f7a02c;
-  --back-fff3c4: #fff3c4;
-  --line-e2b24a: #e2b24a;
-  --text-ffd54a: #ffd54a;
+  --back-eef1f4: #eef1f4;
+  --line-9aa3ae: #9aa3ae;
+  --text-dfe3e8: #dfe3e8;
   --text-7a0f1d: #7a0f1d;
   --back-43a047: #43a047;
   --back-2e7dd7: #2e7dd7;
-  --text-fff3c4: #fff3c4;
+  --text-f4f4f4: #f4f4f4;
   --text-6b0d19: #6b0d19;
   --back-2b1055: #2b1055;
   --back-6a3fd8: #6a3fd8;
@@ -148,6 +145,4 @@
   --line-b8b8a8: #b8b8a8;
   --back-34568b: #34568b;
   --back-0d0d0d: #0d0d0d;
-  --back-b30000: #b30000;
-  --text-ff3b30: #ff3b30;
 }

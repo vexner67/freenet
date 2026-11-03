@@ -17,7 +17,7 @@ import { openMessages } from './e2ee.js';
 import { onEvent } from './events.js';
 import { openNewChat, chatPath } from './chats.js';
 import { chatPreview, chatTitle, formatPostDate, foundParts, foundSnippet, foundText, messagePreview, snippet } from './labels.js';
-import { $, avatarURL, chatPhotoURL, el, fullName, renderChrome, showError, hideError, verifiedMark } from './layout.js';
+import { $, avatarURL, chatPhotoURL, el, fullName, renderChrome, showError, hideError, smileyNodes, verifiedMark } from './layout.js';
 import { typingLine } from './typing.js';
 import { tr } from './i18n.js';
 
@@ -54,7 +54,9 @@ function typistsOf(key) {
 function textNode(d, preview) {
   const now = typingNow.get(keyOf(d));
 
-  return el('div', { className: now ? 'dialog-text dialog-typing' : 'dialog-text', textContent: now ?? snippet(preview, PREVIEW) });
+  if (now) return el('div', { className: 'dialog-text dialog-typing', textContent: now });
+
+  return el('div', { className: 'dialog-text' }, ...smileyNodes(snippet(preview, PREVIEW)));
 }
 
 // chatNode is a chat of several people as a row: its name, when it was

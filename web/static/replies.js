@@ -2,10 +2,11 @@
 // "Ответить" puts a line over the form with whom one answers, the answer
 // shows over its words the message it answers, a click leading to it; and
 // anyone in the conversation puts one reaction of six on a message, shown
-// under it with how many put each.
+// under it with how many put each. The reactions are smileys of the site,
+// the same as those of the words.
 
 import { REACTIONS, genitiveName, primeNameClass, quoteText, reactionCounts, reacted } from './labels.js';
-import { $, el, fullName, showError } from './layout.js';
+import { $, el, fullName, showError, smileyImage, smileyNodes } from './layout.js';
 import { tr } from './i18n.js';
 
 // quoteNode is the block over an answer's words; text is the words of the
@@ -19,7 +20,7 @@ export function quoteNode(q, text, open) {
     onclick: () => open(q.id),
   },
   q.author && el('span', { className: ['im-quote-name', primeNameClass(q.author)].filter(Boolean).join(' '), textContent: fullName(q.author) }),
-  el('span', { className: 'im-quote-text', textContent: quoteText(q, text) }));
+  el('span', { className: 'im-quote-text' }, ...smileyNodes(quoteText(q, text))));
 }
 
 // replyBar runs the line over the form: start(m, author, text) answers m,
@@ -37,7 +38,7 @@ export function replyBar() {
     start(m, author, text) {
       replying = m;
       $('replying-name').textContent = genitiveName(author);
-      $('replying-text').textContent = quoteText({ ...m, author, photoCount: m.photos?.length ?? 0, albumPhoto: Boolean(m.albumPhoto), post: Boolean(m.post) }, text);
+      $('replying-text').replaceChildren(...smileyNodes(quoteText({ ...m, author, photoCount: m.photos?.length ?? 0, albumPhoto: Boolean(m.albumPhoto), post: Boolean(m.post) }, text)));
       $('replying').hidden = false;
       $('text').focus();
     },
@@ -51,17 +52,16 @@ export function replyBar() {
 export function reactionNodes(m, userID, picking, react) {
   const counts = reactionCounts(m.reactions, userID);
   const mine = (m.reactions ?? []).find((r) => r.userId === userID)?.reaction ?? '';
-  const chip = (r, label) => el('button', {
+  const chip = (r, count) => el('button', {
     type: 'button',
     className: r.name === mine ? 'im-reaction mine' : 'im-reaction',
     title: r.title,
-    textContent: label,
     onclick: () => react(m, r.name === mine ? '' : r.name),
-  });
+  }, smileyImage(r), count ? el('span', { textContent: count }) : null);
 
   return [
-    counts.length > 0 && el('div', { className: 'im-reactions' }, ...counts.map((r) => chip(r, `${r.emoji} ${r.count}`))),
-    picking && el('div', { className: 'im-reaction-picker' }, ...REACTIONS.map((r) => chip(r, r.emoji))),
+    counts.length > 0 && el('div', { className: 'im-reactions' }, ...counts.map((r) => chip(r, String(r.count)))),
+    picking && el('div', { className: 'im-reaction-picker' }, ...REACTIONS.map((r) => chip(r, ''))),
   ].filter(Boolean);
 }
 

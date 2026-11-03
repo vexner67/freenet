@@ -24,10 +24,11 @@ import { isLive, onEvent } from './events.js';
 import { openAvatarDialog } from './avatar.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
 import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, photoChanges, primeNameClass, selectedCount, snippet } from './labels.js';
-import { $, avatarURL, chatPhotoURL, el, fullName, keepFocus, whenShown, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
+import { $, avatarURL, chatPhotoURL, el, fullName, keepFocus, whenShown, mentionNodes, renderChrome, smileyNodes, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
 import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
+import { initSmileys } from './smileys.js';
 import { initStickers } from './stickers.js';
 import { typingLine, watchTyping } from './typing.js';
 import { tr } from './i18n.js';
@@ -160,7 +161,7 @@ const CUT_LENGTH = 1000;
 function textOf(text, node) {
   const m = node.message;
   const marked = m.id === foundID && foundQuery;
-  const body = el('div', { className: 'im-message-text' }, ...mentionNodes(text, marked ? foundQuery : ''));
+  const body = el('div', { className: 'im-message-text' }, ...mentionNodes(text, marked ? foundQuery : '', false, true));
   const cut = m.textCut && [...text].length >= CUT_LENGTH;
   if (node.opened || !(cut || isLongText(text))) return body;
 
@@ -611,7 +612,7 @@ function showPinned() {
   $('pinned').replaceChildren(
     el('div', { className: 'chat-pinned-body', title: tr('Перейти к сообщению'), onclick: () => goTo(m.id) },
       el('span', { className: 'chat-pinned-head', textContent: tr('Закреплённое сообщение') }),
-      el('b', { textContent: fullName(m.author) }), ': ', snippet(messagePreview(m), 200)),
+      el('b', { textContent: fullName(m.author) }), ': ', ...smileyNodes(snippet(messagePreview(m), 200))),
     chat.state === 'active' && el('a', {
       className: 'chat-pinned-remove',
       title: tr('Открепить сообщение'),
@@ -790,6 +791,7 @@ function setUpInput() {
   initGraffiti({ link: $('graffiti'), attachments });
   documents = initDocuments({ link: $('doc'), list: $('documents') });
   initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
+  initSmileys({ link: $('smileys-link'), panel: $('smileys'), input: $('text'), rival: { link: $('stickers-link'), panel: $('stickers') } });
   $('form').addEventListener('submit', send);
   keepFocus($('send'));
   $('editing-cancel').addEventListener('click', cancelEdit);

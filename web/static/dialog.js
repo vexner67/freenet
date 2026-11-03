@@ -27,6 +27,7 @@ import { $, avatarURL, el, fullName, keepFocus, whenShown, mentionNodes, renderC
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
 import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
+import { initSmileys } from './smileys.js';
 import { initStickers } from './stickers.js';
 import { typingLine, watchTyping } from './typing.js';
 import { tr } from './i18n.js';
@@ -138,7 +139,7 @@ function messageNode(m) {
 // a message comes whole.
 function textOf(text, node) {
   const marked = node.message?.id === foundID && foundQuery;
-  const body = el('div', { className: 'im-message-text' }, ...mentionNodes(text, marked ? foundQuery : ''));
+  const body = el('div', { className: 'im-message-text' }, ...mentionNodes(text, marked ? foundQuery : '', false, true));
   if (node.opened || !isLongText(text)) return body;
 
   body.classList.add('collapsed');
@@ -668,6 +669,7 @@ async function setUpInput({ canWrite, primeOnly, messagePrice: price = 0 }) {
   initGraffiti({ link: $('graffiti'), attachments });
   documents = initDocuments({ link: $('doc'), list: $('documents') });
   initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
+  initSmileys({ link: $('smileys-link'), panel: $('smileys'), input: $('text'), rival: { link: $('stickers-link'), panel: $('stickers') } });
   $('form').addEventListener('submit', send);
   keepFocus($('send'));
   $('editing-cancel').addEventListener('click', cancelEdit);

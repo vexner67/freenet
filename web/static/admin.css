@@ -17,7 +17,7 @@ html.aui {
   --aui-title-line: #d7cf9e;
   --aui-gloss: rgba(255, 255, 255, 0.3);
   --aui-tile: #ededed;
-  --aui-gold: #ffd54a;
+  --aui-flash: #9aa3ae;
   --aui-body: #f0f0f0;
   --aui-panel: #ffffff;
   --aui-sidebar: #f7f7f7;
@@ -27,8 +27,8 @@ html.aui {
   --aui-subtle: #626262;
   --aui-icon: #595959;
   --aui-link: #2b587a;
-  --aui-hover: #fbf3c3;
-  --aui-active: #ffe58a;
+  --aui-hover: #f2f5f8;
+  --aui-active: #dde2e8;
   --aui-primary: #3f8f35;
   --aui-primary-end: #2f6f28;
   --aui-primary-hover: #4aa33f;
@@ -61,7 +61,7 @@ html.aui.aui-theme-dark {
   --aui-title-line: #4d4628;
   --aui-gloss: rgba(255, 255, 255, 0.14);
   --aui-tile: #2a2a2a;
-  --aui-gold: #ffd54a;
+  --aui-flash: #9aa3ae;
   --aui-body: #181818;
   --aui-panel: #222222;
   --aui-sidebar: #1e1e1e;
@@ -71,8 +71,8 @@ html.aui.aui-theme-dark {
   --aui-subtle: #a0a0a0;
   --aui-icon: #b0b0b0;
   --aui-link: #9cc0e6;
-  --aui-hover: #33302a;
-  --aui-active: #4a4020;
+  --aui-hover: #2a2f35;
+  --aui-active: #3d434b;
   --aui-primary: #3f8f35;
   --aui-primary-end: #2f6f28;
   --aui-primary-hover: #4aa33f;
@@ -105,7 +105,7 @@ body {
   flex-direction: column;
   background: var(--aui-body);
   color: var(--aui-text);
-  font: 12px/18px tahoma, verdana, arial, sans-serif;
+  font: 13px/19px tahoma, verdana, arial, sans-serif;
 }
 
 a { color: var(--aui-link); text-decoration: none; }
@@ -136,7 +136,7 @@ a:hover { text-decoration: underline; }
   gap: 10px;
   margin-right: auto;
   color: var(--aui-header-text);
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
   line-height: 24px;
 }
@@ -152,7 +152,7 @@ a:hover { text-decoration: underline; }
   border-radius: 9px;
   background: linear-gradient(135deg, var(--aui-primary), var(--aui-primary-end));
   color: var(--aui-primary-text);
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 800;
   box-shadow: inset 0 0 0 1px var(--aui-ring);
 }
@@ -161,7 +161,7 @@ a:hover { text-decoration: underline; }
   padding-left: 10px;
   border-left: 1px solid var(--aui-header-subtle);
   color: var(--aui-header-subtle);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
 }
 
@@ -214,7 +214,7 @@ a:hover { text-decoration: underline; }
   right: 9px;
   top: 4px;
   color: var(--aui-knob);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 20px;
 }
 
@@ -261,7 +261,7 @@ a:hover { text-decoration: underline; }
 .aui-nav-heading {
   padding: 0 12px 4px;
   color: var(--aui-subtle);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.06em;
   line-height: 18px;
@@ -366,7 +366,7 @@ a:hover { text-decoration: underline; }
 h1 {
   margin: 22px 0 12px;
   color: var(--aui-text);
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
   line-height: 24px;
 }
@@ -384,7 +384,7 @@ h2 {
   padding-top: 20px;
   border-top: 1px solid var(--aui-line);
   color: var(--aui-text);
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   line-height: 22px;
 }
@@ -468,7 +468,7 @@ table.aui th {
   background: var(--aui-hover);
   border-bottom: 1px solid var(--aui-line);
   color: var(--aui-subtle);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-align: left;
@@ -487,7 +487,7 @@ table.aui tbody tr:hover { background: var(--aui-hover); }
 
 .admin-code {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 13px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
@@ -525,7 +525,7 @@ form.aui.admin-rate .description { flex-basis: 100%; max-width: none; margin-top
 .admin-ad { display: flex; align-items: center; gap: 12px; }
 .admin-ad-cover { width: 72px; height: 44px; border-radius: 8px; object-fit: cover; }
 .admin-fediverse-photo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
-.admin-ad-site { color: var(--aui-subtle); font-size: 12px; }
+.admin-ad-site { color: var(--aui-subtle); font-size: 13px; }
 .admin-ad-text { min-width: 140px; max-width: 320px; color: var(--aui-subtle); white-space: pre-wrap; overflow-wrap: break-word; }
 .admin-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .admin-bet-outcome { display: flex; gap: 6px; margin: 0 0 6px; }
@@ -542,7 +542,7 @@ form.aui.admin-bet-odds-form { display: flex; flex-wrap: wrap; gap: 8px; align-i
   display: inline-block;
   padding: 3px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.03em;
   line-height: 14px;
@@ -587,7 +587,7 @@ form.aui.admin-bet-odds-form { display: flex; flex-wrap: wrap; gap: 8px; align-i
 .aui-button-subtle { background: transparent; }
 .aui-button-link { background: transparent; color: var(--aui-link); }
 .aui-button-link:hover { background: transparent; text-decoration: underline; }
-.aui-button-compact { height: 28px; padding: 0 10px; border-radius: 8px; font-size: 13px; line-height: 28px; }
+.aui-button-compact { height: 28px; padding: 0 10px; border-radius: 8px; font-size: 14px; line-height: 28px; }
 
 /* Messages over the page. */
 .aui-message {
@@ -660,7 +660,7 @@ form.aui .description {
   margin-top: 6px;
   max-width: 500px;
   color: var(--aui-subtle);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 17px;
 }
 
@@ -682,7 +682,7 @@ form.aui .description {
 .admin-alert { display: flex; align-items: center; gap: 8px; }
 .admin-alert-text { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .admin-alert-text.empty { color: var(--aui-subtle); }
-.admin-ban-until { color: var(--aui-subtle); font-size: 12px; }
+.admin-ban-until { color: var(--aui-subtle); font-size: 13px; }
 
 /* "Титулы": the titles a person holds, each with "Убрать", and the badges
    to choose from for a new one. */
@@ -691,7 +691,7 @@ form.aui .description {
 .admin-titles li span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .admin-titles img { flex: none; }
 .admin-title-icons { display: flex; flex-wrap: wrap; gap: 6px; }
-.admin-title-icons label { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; border: 1px solid transparent; border-radius: 10px; cursor: pointer; font-size: 12px; }
+.admin-title-icons label { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; border: 1px solid transparent; border-radius: 10px; cursor: pointer; font-size: 13px; }
 .admin-title-icons label:has(input:checked) { border-color: var(--aui-link); background: var(--aui-active); }
 .admin-title-icons input { position: absolute; opacity: 0; pointer-events: none; }
 
@@ -719,7 +719,7 @@ form.aui .description {
 }
 
 .aui-dialog-header { padding: 20px 24px 0; }
-.aui-dialog-header h2 { margin: 0; padding: 0; border: 0; font-size: 20px; font-weight: 700; }
+.aui-dialog-header h2 { margin: 0; padding: 0; border: 0; font-size: 21px; font-weight: 700; }
 form.aui.aui-dialog-content { margin: 0; padding: 12px 24px 24px; }
 .aui-dialog .field-group { padding-left: 170px; }
 .aui-dialog .field-group > label { width: 155px; margin-left: -170px; }
@@ -732,9 +732,9 @@ form.aui.aui-dialog-content { margin: 0; padding: 12px 24px 24px; }
 .logo-mark rect { fill: var(--aui-knob); }
 .logo-mark path { fill: none; stroke: var(--aui-header-end); }
 .logo-word { display: block; width: 81px; height: 26px; fill: none; stroke: currentColor; }
-.aui-header-sub { margin-left: 10px; font-size: 12px; font-weight: bold; }
+.aui-header-sub { margin-left: 10px; font-size: 13px; font-weight: bold; }
 .aui-toggle { width: 46px; height: 22px; border: 1px solid var(--aui-frame); border-radius: 11px; }
-.aui-toggle::after { top: 0; right: 7px; font-size: 11px; }
+.aui-toggle::after { top: 0; right: 7px; font-size: 12px; }
 .aui-toggle-knob { top: 2px; left: 2px; width: 16px; height: 16px; }
 .aui-toggle[aria-checked="true"] .aui-toggle-knob { left: 26px; }
 .aui-toggle:active { transform: scale(0.95); }
@@ -744,7 +744,7 @@ form.aui.aui-dialog-content { margin: 0; padding: 12px 24px 24px; }
 .admin-nav-filter:focus { outline: 0; border-color: var(--aui-frame); box-shadow: 0 0 0 2px var(--aui-ring); }
 .aui-collapsed .admin-nav-filter { display: none; }
 .aui-sidebar-group + .aui-sidebar-group { margin-top: 8px; }
-.aui-nav-heading { padding: 3px 6px; background: linear-gradient(var(--aui-header), var(--aui-header-end)); border-radius: 3px 3px 0 0; color: var(--aui-header-text); font-size: 11px; font-weight: bold; letter-spacing: 0; text-transform: none; }
+.aui-nav-heading { padding: 3px 6px; background: linear-gradient(var(--aui-header), var(--aui-header-end)); border-radius: 3px 3px 0 0; color: var(--aui-header-text); font-size: 12px; font-weight: bold; letter-spacing: 0; text-transform: none; }
 .aui-nav-item { gap: 6px; margin: 0; padding: 4px 6px; border-bottom: 1px solid var(--aui-line); border-radius: 0; font-weight: normal; }
 .aui-nav-item:hover { background: var(--aui-hover); }
 .aui-nav-item:hover .aui-icon { transform: scale(1.2); }
@@ -753,9 +753,9 @@ form.aui.aui-dialog-content { margin: 0; padding: 12px 24px 24px; }
 .aui-icon { width: 16px; height: 16px; transition: transform 0.12s; }
 .aui-page-panel { padding: 10px 12px 24px; }
 .aui-page-panel > section { max-width: 1040px; padding: 0 10px 12px; border: 1px solid var(--aui-frame); border-radius: 4px; box-shadow: 2px 2px 0 var(--aui-hard-shadow); }
-h1.aui-page-heading { display: flex; gap: 6px; align-items: center; margin: 0 -10px 10px; padding: 5px 10px; background: var(--aui-title); border-bottom: 1px solid var(--aui-title-line); border-radius: 3px 3px 0 0; font-size: 13px; font-weight: bold; letter-spacing: 0; line-height: 18px; }
-h1 { margin: 12px 0 6px; font-size: 12px; }
-h2 { margin: 14px 0 0; padding: 4px 8px; background: linear-gradient(var(--aui-header), var(--aui-header-end)); border: 1px solid var(--aui-frame); border-radius: 4px 4px 0 0; color: var(--aui-header-text); font-size: 12px; line-height: 16px; text-shadow: 0 1px 0 var(--aui-shadow); }
+h1.aui-page-heading { display: flex; gap: 6px; align-items: center; margin: 0 -10px 10px; padding: 5px 10px; background: var(--aui-title); border-bottom: 1px solid var(--aui-title-line); border-radius: 3px 3px 0 0; font-size: 14px; font-weight: bold; letter-spacing: 0; line-height: 18px; }
+h1 { margin: 12px 0 6px; font-size: 13px; }
+h2 { margin: 14px 0 0; padding: 4px 8px; background: linear-gradient(var(--aui-header), var(--aui-header-end)); border: 1px solid var(--aui-frame); border-radius: 4px 4px 0 0; color: var(--aui-header-text); font-size: 13px; line-height: 16px; text-shadow: 0 1px 0 var(--aui-shadow); }
 h2:empty { display: none; }
 form.aui { margin-top: 8px; }
 h2 ~ form.aui:not(.admin-price, .admin-rate, .admin-search, .admin-bet-odds-form, .aui-dialog-content) { margin-top: 0; margin-bottom: 8px; padding: 6px 8px; border: 1px solid var(--aui-rule); border-top: 0; border-radius: 0 0 4px 4px; }
@@ -764,7 +764,7 @@ h2 ~ form.aui:not(.admin-price, .admin-rate, .admin-search, .admin-bet-odds-form
 .aui-page-header .aui-button { float: none; }
 .admin-lead { margin: 6px 0; line-height: 16px; }
 .admin-launchers { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 4px; margin: 0 0 8px; }
-.admin-launch { display: flex; flex-direction: column; gap: 3px; align-items: center; min-width: 0; padding: 6px 2px; background: linear-gradient(var(--aui-panel), var(--aui-tile)); border: 1px solid var(--aui-rule); border-radius: 4px; color: var(--aui-text); font-size: 11px; line-height: 13px; text-align: center; }
+.admin-launch { display: flex; flex-direction: column; gap: 3px; align-items: center; min-width: 0; padding: 6px 2px; background: linear-gradient(var(--aui-panel), var(--aui-tile)); border: 1px solid var(--aui-rule); border-radius: 4px; color: var(--aui-text); font-size: 12px; line-height: 13px; text-align: center; }
 .admin-launch:hover { background: var(--aui-hover); border-color: var(--aui-frame); text-decoration: none; }
 .admin-launch:hover .aui-icon { transform: scale(1.15) rotate(-4deg); }
 .admin-launch:active { transform: translateY(1px); }
@@ -782,49 +782,49 @@ h2 ~ form.aui:not(.admin-price, .admin-rate, .admin-search, .admin-bet-odds-form
 .admin-online b::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 4px; background: var(--aui-primary-hover); border-radius: 50%; animation: admin-pulse 1.6s ease-in-out infinite; }
 @keyframes admin-pulse { 50% { opacity: 0.3; } }
 .admin-bump { animation: admin-bump 0.5s; }
-@keyframes admin-bump { from { box-shadow: 0 0 0 3px var(--aui-gold); } }
+@keyframes admin-bump { from { box-shadow: 0 0 0 3px var(--aui-flash); } }
 .aui-table-wrap { margin: 0 0 8px; border: 1px solid var(--aui-frame); border-radius: 0 0 4px 4px; }
 h1 + .aui-table-wrap, .aui-page-header + .aui-table-wrap, p + .aui-table-wrap, form + .aui-table-wrap { border-radius: 4px; margin-top: 8px; }
-table.aui th { padding: 4px 8px; background: linear-gradient(var(--aui-panel), var(--aui-tile)); border-bottom: 1px solid var(--aui-rule); color: var(--aui-text); font-size: 11px; letter-spacing: 0; text-transform: none; }
+table.aui th { padding: 4px 8px; background: linear-gradient(var(--aui-panel), var(--aui-tile)); border-bottom: 1px solid var(--aui-rule); color: var(--aui-text); font-size: 12px; letter-spacing: 0; text-transform: none; }
 table.aui td { padding: 5px 8px; }
 table.aui tbody tr:hover { background: var(--aui-hover); }
-.admin-code { font-size: 11px; }
+.admin-code { font-size: 12px; }
 .admin-person img.admin-avatar { width: 28px; height: 28px; border-radius: 3px; }
 .admin-person img.admin-avatar.admin-club { border-radius: 3px; }
 .admin-search { position: relative; max-width: none; margin-bottom: 8px; }
 .admin-casino-stats { padding: 6px 8px; background: var(--aui-hover); border: 1px solid var(--aui-title-line); border-radius: 3px; }
-.aui-lozenge { padding: 1px 6px; border: 1px solid currentColor; border-radius: 3px; font-size: 10px; letter-spacing: 0; text-transform: none; }
+.aui-lozenge { padding: 1px 6px; border: 1px solid currentColor; border-radius: 3px; font-size: 11px; letter-spacing: 0; text-transform: none; }
 .aui-button { height: 26px; padding: 0 10px; border: 1px solid var(--aui-frame); border-radius: 3px; font-weight: normal; line-height: 24px; text-shadow: 0 1px 0 var(--aui-shadow); transition: background-color 0.1s; }
 .aui-button:hover { color: var(--aui-button-text); }
 .aui-button-primary { background: linear-gradient(var(--aui-gloss), transparent 50%), var(--aui-primary); font-weight: bold; box-shadow: none; }
 .aui-button-primary:hover { background: linear-gradient(var(--aui-gloss), transparent 50%), var(--aui-primary-hover); }
 .aui-button-subtle, .aui-button-link { border-color: transparent; color: var(--aui-link); text-shadow: none; }
 .aui-button-subtle:hover, .aui-button-link:hover { color: var(--aui-link); background: var(--aui-hover); }
-.aui-button-compact { height: 22px; padding: 0 7px; border-radius: 3px; font-size: 11px; line-height: 20px; }
+.aui-button-compact { height: 22px; padding: 0 7px; border-radius: 3px; font-size: 12px; line-height: 20px; }
 .aui-message { margin-bottom: 8px; padding: 6px 10px; border: 1px solid currentColor; border-radius: 3px; }
 /* What was saved flies in over the page: nothing under it moves. */
 .aui-message-success:not(#created), #error { position: fixed; top: 52px; right: 16px; z-index: 90; max-width: 360px; box-shadow: 2px 2px 0 var(--aui-shadow); font-weight: bold; animation: admin-toast 0.22s cubic-bezier(0.2, 1.4, 0.4, 1); }
 #error { animation: admin-shake 0.3s; }
 @keyframes admin-toast { from { opacity: 0; transform: translateX(40px); } }
 @keyframes admin-shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-.admin-float { position: fixed; z-index: 95; color: var(--aui-added); font-size: 18px; font-weight: bold; pointer-events: none; animation: admin-float 0.9s ease-out forwards; }
+.admin-float { position: fixed; z-index: 95; color: var(--aui-added); font-size: 19px; font-weight: bold; pointer-events: none; animation: admin-float 0.9s ease-out forwards; }
 @keyframes admin-float { to { opacity: 0; transform: translateY(-50px); } }
 form.aui .field-group { min-height: 34px; padding: 3px 0 3px 200px; }
 form.aui .field-group > label { width: 190px; margin-left: -200px; padding: 5px 0; }
 form.aui .text, form.aui .select { height: 26px; padding: 2px 6px; border-radius: 3px; }
 form.aui .textarea { padding: 4px 6px; border-radius: 3px; }
-form.aui .description { margin-top: 2px; font-size: 11px; line-height: 14px; }
+form.aui .description { margin-top: 2px; font-size: 12px; line-height: 14px; }
 form.aui .admin-dirty .text, form.aui .admin-dirty .select, form.aui .admin-dirty .textarea { background: var(--aui-hover); border-color: var(--aui-frame); }
 .buttons-container { position: sticky; bottom: 0; z-index: 5; padding: 6px 0 6px 200px; background: var(--aui-panel); }
 .aui-dialog .buttons-container { position: static; }
 .admin-title-icons label:has(input:checked) { background: var(--aui-active); border-color: var(--aui-frame); }
 .admin-titles li { padding: 3px 0; }
-.admin-deeds { display: flex; gap: 4px; align-items: center; height: 24px; margin-right: 8px; padding: 0 8px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--aui-frame); border-radius: 3px; color: var(--aui-header-text); font: bold 12px tahoma, verdana, sans-serif; cursor: help; }
+.admin-deeds { display: flex; gap: 4px; align-items: center; height: 24px; margin-right: 8px; padding: 0 8px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--aui-frame); border-radius: 3px; color: var(--aui-header-text); font: bold 13px tahoma, verdana, sans-serif; cursor: help; }
 .aui-blanket { backdrop-filter: none; }
 .aui-dialog { border: 1px solid var(--aui-frame); border-radius: 4px; box-shadow: 3px 3px 0 var(--aui-shadow); animation: admin-toast-in 0.14s ease-out; }
 @keyframes admin-toast-in { from { opacity: 0; transform: translateY(-6px); } }
 .aui-dialog-header { padding: 6px 10px; background: linear-gradient(var(--aui-header), var(--aui-header-end)); }
-.aui-dialog-header h2 { background: none; border: 0; color: var(--aui-header-text); font-size: 13px; }
+.aui-dialog-header h2 { background: none; border: 0; color: var(--aui-header-text); font-size: 14px; }
 form.aui.aui-dialog-content { padding: 10px 12px 12px; }
 .aui-dialog .field-group { padding-left: 130px; }
 .aui-dialog .field-group > label { width: 120px; margin-left: -130px; }
@@ -860,9 +860,9 @@ form.aui.aui-dialog-content { padding: 10px 12px 12px; }
   .aui-collapsed .aui-sidebar-body { padding: 14px 12px; }
   .aui-collapsed .aui-nav-item-label { display: inline; }
   .aui-collapsed .aui-nav-item { justify-content: flex-start; padding: 8px 12px; }
-  .aui-collapsed .aui-nav-heading { height: auto; margin: 0; padding: 0 12px 4px; overflow: visible; background: none; font-size: 11px; }
+  .aui-collapsed .aui-nav-heading { height: auto; margin: 0; padding: 0 12px 4px; overflow: visible; background: none; font-size: 12px; }
   .aui-collapsed .aui-sidebar-group:first-child .aui-nav-heading { display: block; }
-  .aui-nav-item { padding: 11px 12px; font-size: 15px; }
+  .aui-nav-item { padding: 11px 12px; font-size: 16px; }
 
   .aui-nav-open .aui-nav-blanket {
     position: fixed;
@@ -877,7 +877,7 @@ form.aui.aui-dialog-content { padding: 10px 12px 12px; }
   h1.aui-page-heading { margin: 0 -8px 8px; padding: 6px 8px; }
   .admin-cards { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   .admin-card { min-height: 0; }
-  .admin-card-digit { font-size: 20px; line-height: 24px; }
+  .admin-card-digit { font-size: 21px; line-height: 24px; }
   .admin-launchers { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .aui-button { height: 34px; line-height: 32px; }
   .aui-message-success:not(#created), #error { top: 50px; right: 8px; left: 8px; max-width: none; }
@@ -895,7 +895,7 @@ form.aui.aui-dialog-content { padding: 10px 12px 12px; }
 
   form.aui .text,
   form.aui .textarea,
-  form.aui .select { font-size: 16px; }
+  form.aui .select { font-size: 17px; }
   form.aui .text, form.aui .textarea { max-width: none; }
   .buttons-container,
   .aui-dialog .buttons-container,

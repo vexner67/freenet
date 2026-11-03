@@ -6,7 +6,7 @@ import { MAX_PARKED, accountName, onAccountChange, park, parkedAccounts, signedI
 import { api, idle } from './api.js';
 import { ensureKey } from './e2ee.js';
 import { connectEvents, onEvent } from './events.js';
-import { activeSection, errorText, foundParts, handleOf, hashtagPath, isLongText, pushOfferText, pushStateTexts, safeURL, setTimezone, textParts, unreadCountText } from './labels.js';
+import { activeSection, errorText, foundParts, handleOf, hashtagPath, isLongText, pushOfferText, pushStateTexts, safeURL, setTimezone, smileyParts, textParts, unreadCountText } from './labels.js';
 import { acceptInvite } from './invite.js';
 import { nicknameLookup } from './nicknames.js';
 import { closePushes, endPushOffer, enablePush, forgetPushAccount, pushOffer, showUnread, syncPush } from './push.js';
@@ -142,9 +142,11 @@ const knownNickname = nicknameLookup((nicknames) => api.knownNicknames(nicknames
 // the server says so, and stays if it cannot be asked; the link to a
 // verified page gets the checkmark after it. found is what a
 // search looked for: the words that say it are highlighted, as on openvk.
-export function mentionNodes(text, found = '', named = false) {
+// smileys: the text is of a message, and its codes of smileys are their
+// pictures.
+export function mentionNodes(text, found = '', named = false, smileys = false) {
   return textParts(text, { named }).flatMap((p) => {
-    if (typeof p === 'string') return foundNodes(p, found);
+    if (typeof p === 'string') return smileys ? smileyNodes(p, found) : foundNodes(p, found);
     if (p.hashtag) return el('a', { href: hashtagPath(p.hashtag) }, ...foundNodes(p.text, found));
     if (p.url) return externalLink(p.url, foundNodes(p.text, found));
 
@@ -197,6 +199,17 @@ export function fediverseAccountNode(account, { action, run, onError }) {
 }
 
 // foundNodes are text with what says query highlighted.
+// smileyNodes are words of a message with its smileys as pictures; found
+// is highlighted in the words between them.
+export function smileyNodes(text, found = '') {
+  return smileyParts(text).flatMap((p) => (typeof p === 'string' ? foundNodes(p, found) : smileyImage(p.smiley, p.code)));
+}
+
+// smileyImage is a smiley in words: copied, it is its code again.
+export function smileyImage(smiley, code = smiley.codes[0]) {
+  return el('img', { className: 'smiley', src: smiley.src, alt: code, title: smiley.title, draggable: false });
+}
+
 function foundNodes(text, query) {
   if (!query) return [text];
 

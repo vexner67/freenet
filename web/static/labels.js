@@ -2046,14 +2046,16 @@ export const primeNames = [
   ['ruby', tr('рубиновое')],
   ['emerald', tr('изумрудное')],
   ['sapphire', tr('сапфировое')],
-  ['gold', tr('золотое')],
+  // Its value is still gold, as the user service keeps it.
+  ['gold', tr('стальное')],
   ['rainbow', tr('радужное')],
   ['none', tr('без цвета')],
 ];
 
 export const primeFrames = [
   ['amethyst', tr('аметистовая')],
-  ['gold', tr('золотая')],
+  // Its value is still gold, as the user service keeps it.
+  ['gold', tr('рубиновая')],
   ['silver', tr('серебряная')],
   ['glitter', tr('блёстки')],
   ['hearts', tr('сердечки')],
@@ -3280,15 +3282,73 @@ export function quoteText(q, text = q.text) {
   }) || tr('Сообщение');
 }
 
-// Reactions to messages, as on VK: one a person, of these.
-export const REACTIONS = [
-  { name: 'heart', emoji: '❤️', title: tr('Сердечко') },
-  { name: 'like', emoji: '👍', title: tr('Нравится') },
-  { name: 'laugh', emoji: '😂', title: tr('Смешно') },
-  { name: 'wow', emoji: '😮', title: tr('Удивительно') },
-  { name: 'sad', emoji: '😢', title: tr('Грустно') },
-  { name: 'fire', emoji: '🔥', title: tr('Огонь') },
+// The smileys of dialogs and chats, the site's own, as the glossy ones of
+// ICQ and QIP: each is put in the words of a message by its code, the
+// first of codes, and any of its codes is shown as its picture.
+export const SMILEYS = [
+  { name: 'smile', codes: [':)', ':-)'], src: '/static/smileys/smile.svg', title: tr('Улыбка') },
+  { name: 'grin', codes: [':D', ':-D'], src: '/static/smileys/grin.svg', title: tr('Радость') },
+  { name: 'laugh', codes: ['xD', 'XD'], src: '/static/smileys/laugh.svg', title: tr('Смешно') },
+  { name: 'wink', codes: [';)', ';-)'], src: '/static/smileys/wink.svg', title: tr('Подмигивание') },
+  { name: 'tongue', codes: [':P', ':-P', ':p'], src: '/static/smileys/tongue.svg', title: tr('Язык') },
+  { name: 'cool', codes: ['B-)'], src: '/static/smileys/cool.svg', title: tr('Круто') },
+  { name: 'blush', codes: [':$', ':-$'], src: '/static/smileys/blush.svg', title: tr('Смущение') },
+  { name: 'kiss', codes: [':*', ':-*'], src: '/static/smileys/kiss.svg', title: tr('Поцелуй') },
+  { name: 'angel', codes: ['O:)', 'O:-)'], src: '/static/smileys/angel.svg', title: tr('Ангел') },
+  { name: 'wow', codes: [':O', ':-O', ':o'], src: '/static/smileys/wow.svg', title: tr('Удивительно') },
+  { name: 'neutral', codes: [':|', ':-|'], src: '/static/smileys/neutral.svg', title: tr('Без слов') },
+  { name: 'think', codes: [':-/'], src: '/static/smileys/think.svg', title: tr('Задумчиво') },
+  { name: 'sad', codes: [':(', ':-('], src: '/static/smileys/sad.svg', title: tr('Грустно') },
+  { name: 'cry', codes: [":'(", ":'-("], src: '/static/smileys/cry.svg', title: tr('Слёзы') },
+  { name: 'angry', codes: ['>:(', '>:-('], src: '/static/smileys/angry.svg', title: tr('Злость') },
+  { name: 'devil', codes: [']:->', ']:>'], src: '/static/smileys/devil.svg', title: tr('Чертёнок') },
+  { name: 'sleep', codes: ['|-)'], src: '/static/smileys/sleep.svg', title: tr('Сплю') },
+  { name: 'heart', codes: ['<3'], src: '/static/smileys/heart.svg', title: tr('Сердечко') },
+  { name: 'like', codes: ['(y)', '(Y)'], src: '/static/smileys/like.svg', title: tr('Нравится') },
+  { name: 'fire', codes: ['(fire)'], src: '/static/smileys/fire.svg', title: tr('Огонь') },
 ];
+
+const smileyByName = new Map(SMILEYS.map((s) => [s.name, s]));
+// The longest code first: ">:(" is not ":(" after ">".
+const smileyCodes = SMILEYS.flatMap((s) => s.codes.map((code) => [code, s])).sort(([a], [b]) => b.length - a.length);
+const wordChar = /[\p{L}\p{N}]/u;
+
+// smileyParts cuts a string of words into strings and the smileys it
+// says by their codes. A code that starts or ends with a letter, as "xD",
+// is one only apart from the word around it: "boxDrop" has none.
+export function smileyParts(s) {
+  const parts = [];
+  let from = 0;
+  let i = 0;
+
+  while (i < s.length) {
+    const found = smileyCodes.find(([code]) => s.startsWith(code, i) && apart(s, i, code));
+    if (!found) {
+      i++;
+      continue;
+    }
+
+    const [code, smiley] = found;
+    if (i > from) parts.push(s.slice(from, i));
+    parts.push({ smiley, code });
+    i += code.length;
+    from = i;
+  }
+
+  if (from < s.length) parts.push(s.slice(from));
+
+  return parts;
+}
+
+function apart(s, at, code) {
+  const end = at + code.length;
+  if (wordChar.test(code[0]) && at > 0 && wordChar.test(s[at - 1])) return false;
+  return !(wordChar.test(code.at(-1)) && end < s.length && wordChar.test(s[end]));
+}
+
+// Reactions to messages, as on VK: one a person, of these; each is the
+// smiley of its name.
+export const REACTIONS = ['heart', 'like', 'laugh', 'wow', 'sad', 'fire'].map((name) => smileyByName.get(name));
 
 // reactionCounts are the reactions put on a message, in the order of
 // REACTIONS: how many of each and whether one is userID's.

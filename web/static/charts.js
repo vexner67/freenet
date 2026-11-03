@@ -238,7 +238,7 @@ export function candleChart(candles, { height = 260, format = String, when, tick
 }
 
 function grid(ctx, c, values, y, width, right, format) {
-  ctx.font = '10px Tahoma, Verdana, sans-serif';
+  ctx.font = '11px Tahoma, Verdana, sans-serif';
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'left';
   for (const v of values) {
@@ -270,7 +270,7 @@ function lastLabel(ctx, c, text, at, width, right, up) {
   ctx.fillStyle = c.labelText;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.font = 'bold 10px Tahoma, Verdana, sans-serif';
+  ctx.font = 'bold 11px Tahoma, Verdana, sans-serif';
   ctx.fillText(text, width - right + 4, at);
 }
 

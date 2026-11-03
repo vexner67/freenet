@@ -1,9 +1,9 @@
 // Run: make web-test (node --test web/test/*.test.js)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
-import { QUOTE_LENGTH, REACTIONS, quoteSnippet, quoteText, reactionCounts, reacted } from '../static/labels.js';
+import { QUOTE_LENGTH, REACTIONS, SMILEYS, quoteSnippet, quoteText, reactionCounts, reacted, smileyParts } from '../static/labels.js';
 
 const bob = { id: 'u2', name: 'Бо', nickname: 'bob' };
 
@@ -45,4 +45,33 @@ test('a new reaction takes the place of mine', () => {
   assert.deepEqual(reacted(reactions, 'u1', 'sad'), [{ userId: 'u2', reaction: 'fire' }, { userId: 'u1', reaction: 'sad' }]);
   assert.deepEqual(reacted(reactions, 'u1', ''), [{ userId: 'u2', reaction: 'fire' }]);
   assert.deepEqual(reacted(undefined, 'u1', 'like'), [{ userId: 'u1', reaction: 'like' }]);
+});
+
+test('the reactions are smileys of the site', () => {
+  for (const r of REACTIONS) {
+    assert.ok(SMILEYS.includes(r), r.name);
+    assert.ok(existsSync(new URL(`../static/smileys/${r.name}.svg`, import.meta.url)), r.name);
+  }
+});
+
+test('every smiley has its picture and its own codes', () => {
+  const codes = SMILEYS.flatMap((s) => s.codes);
+
+  assert.equal(new Set(codes).size, codes.length);
+  for (const s of SMILEYS) {
+    assert.equal(s.src, `/static/smileys/${s.name}.svg`);
+    assert.ok(existsSync(new URL(`../static${s.src.slice('/static'.length)}`, import.meta.url)), s.name);
+  }
+});
+
+test('the codes of smileys in words are their smileys', () => {
+  const said = (s) => smileyParts(s).map((p) => (typeof p === 'string' ? p : p.smiley.name));
+
+  assert.deepEqual(said('привет :) как дела?'), ['привет ', 'smile', ' как дела?']);
+  assert.deepEqual(said('ну:-)'), ['ну', 'smile']);
+  assert.deepEqual(said('>:( O:) :(('), ['angry', ' ', 'angel', ' ', 'sad', '(']);
+  assert.deepEqual(said("плачу :'( <3 (y)(fire)"), ['плачу ', 'cry', ' ', 'heart', ' ', 'like', 'fire']);
+  assert.deepEqual(said('xD а boxDrop и :Dima — нет, :D — да'), ['laugh', ' а boxDrop и :Dima — нет, ', 'grin', ' — да']);
+  assert.deepEqual(said('без смайлов'), ['без смайлов']);
+  assert.deepEqual(smileyParts(':P').map((p) => p.code), [':P']);
 });

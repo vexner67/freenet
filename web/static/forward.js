@@ -6,7 +6,7 @@
 import { api } from './api.js';
 import { sendSealed } from './e2ee.js';
 import { chatTitle, conversationOf, conversationPath, conversationValue, formatPostDate, forwardTree, messagePreview, snippet } from './labels.js';
-import { el, fullName, isPhone, showError, hideError } from './layout.js';
+import { el, fullName, isPhone, showError, hideError, smileyNodes } from './layout.js';
 import { button, openModal, openSheet } from './modal.js';
 import { dots, photosNode, sharedNode, sharedPhotoNode } from './posts.js';
 import { stickerNode } from './stickers.js';
@@ -142,7 +142,7 @@ export function openForward({ me, messages, here, authorOf, onSent, onDone = () 
   modal.body.append(
     error,
     el('div', { className: 'forward-list' }, ...forward.map((m) => el('div', {},
-      el('b', { textContent: fullName(authorOf(m)) + ': ' }), snippet(messagePreview(m), 80)))),
+      el('b', { textContent: fullName(authorOf(m)) + ': ' }), ...smileyNodes(snippet(messagePreview(m), 80))))),
     el('b', { textContent: tr('Кому') }),
     ...(sealed ? [el('div', { className: 'hint', textContent: tr('Сообщения диалогов зашифрованы: переслать их можно только в диалог.') })] : []),
     person,
