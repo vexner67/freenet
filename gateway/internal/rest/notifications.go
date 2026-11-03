@@ -33,6 +33,8 @@ type notificationJSON struct {
 	// Photo is the photo of an album a photo_like or a photo_comment is
 	// about.
 	Photo *photoJSON `json:"photo,omitempty"`
+	// Seconds is how long a call lasted, for "call".
+	Seconds int `json:"seconds,omitempty"`
 }
 
 type notificationTopicJSON struct {
@@ -362,6 +364,7 @@ func toNotificationJSON(n model.Notification, t targets) (notificationJSON, bool
 		Type:      n.Kind,
 		CreatedAt: n.CreatedAt.UTC().Format(time.RFC3339),
 		Actor:     toAuthorJSON(actor),
+		Seconds:   n.Seconds,
 	}
 
 	if namesTopic(n.Kind) {

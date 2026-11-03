@@ -47,6 +47,7 @@ func (n *Notifications) List(ctx context.Context, accessToken string, unread boo
 			PostID:    pn.GetPostId(),
 			CommentID: pn.GetCommentId(),
 			CreatedAt: pn.GetCreatedAt().AsTime(),
+			Seconds:   int(pn.GetSeconds()),
 		})
 	}
 

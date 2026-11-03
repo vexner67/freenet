@@ -357,6 +357,9 @@ type Messages interface {
 	MarkRead(ctx context.Context, accessToken, peerID, upTo string) error
 	// CallSignal hands a sealed signal of a call to the peer.
 	CallSignal(ctx context.Context, accessToken, peerID, sealed string) error
+	// ReportCall tells of the end of a call to the peer: seconds they
+	// talked, 0 when the peer did not answer.
+	ReportCall(ctx context.Context, accessToken, peerID string, seconds int) error
 	// CallServers are the STUN and TURN servers of a call.
 	CallServers(ctx context.Context, accessToken string) (model.CallServers, error)
 	// Typing tells the peer the caller is writing to them.
@@ -750,6 +753,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/read", a.markDialogRead)
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/typing", a.dialogTyping)
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/call", a.dialogCall)
+	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/call/report", a.reportCall)
 	mux.HandleFunc("GET /api/v1/call-servers", a.callServers)
 	mux.HandleFunc("GET /api/v1/messages/search", a.searchMessages)
 	mux.HandleFunc("PATCH /api/v1/messages/{id}", a.editMessage)

@@ -243,6 +243,62 @@ func (f *Federation) NewsLikers(ctx context.Context, accessToken, postID, cursor
 	return model.LikerPage{UserIDs: resp.GetUserIds(), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
 }
 
+func (f *Federation) NewsPost(ctx context.Context, accessToken, postID string) (model.FediversePost, error) {
+	resp, err := f.api.GetNewsPost(withToken(ctx, accessToken), &federationv1.GetNewsPostRequest{Id: postID})
+	if err != nil {
+		return model.FediversePost{}, errs.Wrap("f.api.GetNewsPost", fromStatus(err))
+	}
+
+	return fromProtoNewsPost(resp.GetPost()), nil
+}
+
+func (f *Federation) CommentNews(ctx context.Context, accessToken, postID, text string) (model.FediverseComment, error) {
+	resp, err := f.api.CommentNews(withToken(ctx, accessToken), &federationv1.CommentNewsRequest{PostId: postID, Text: text})
+	if err != nil {
+		return model.FediverseComment{}, errs.Wrap("f.api.CommentNews", fromStatus(err))
+	}
+
+	return fromProtoNewsComment(resp.GetComment()), nil
+}
+
+func (f *Federation) NewsComments(ctx context.Context, accessToken, postID, cursor string, limit int) (model.FediverseCommentPage, error) {
+	resp, err := f.api.ListNewsComments(withToken(ctx, accessToken), &federationv1.ListNewsCommentsRequest{
+		PostId: postID, Cursor: cursor, Limit: int32(limit), //nolint:gosec // a page size
+	})
+	if err != nil {
+		return model.FediverseCommentPage{}, errs.Wrap("f.api.ListNewsComments", fromStatus(err))
+	}
+
+	page := model.FediverseCommentPage{
+		Comments:   make([]model.FediverseComment, len(resp.GetComments())),
+		NextCursor: resp.GetNextCursor(),
+		Total:      int(resp.GetTotal()),
+	}
+	for i, c := range resp.GetComments() {
+		page.Comments[i] = fromProtoNewsComment(c)
+	}
+
+	return page, nil
+}
+
+func (f *Federation) DeleteNewsComment(ctx context.Context, accessToken, id string) error {
+	if _, err := f.api.DeleteNewsComment(withToken(ctx, accessToken), &federationv1.DeleteNewsCommentRequest{Id: id}); err != nil {
+		return errs.Wrap("f.api.DeleteNewsComment", fromStatus(err))
+	}
+
+	return nil
+}
+
+func fromProtoNewsComment(c *federationv1.NewsComment) model.FediverseComment {
+	return model.FediverseComment{
+		ID:        c.GetId(),
+		PostID:    c.GetPostId(),
+		AuthorID:  c.GetAuthorId(),
+		Text:      c.GetText(),
+		CreatedAt: c.GetCreatedAt().AsTime(),
+	}
+}
+
 func (f *Federation) AccountPicture(ctx context.Context, accountID string) (model.Picture, error) {
 	return f.picture(ctx, &federationv1.GetPictureRequest{AccountId: accountID})
 }
@@ -307,6 +363,7 @@ func fromProtoNewsPost(p *federationv1.NewsPost) model.FediversePost {
 		PublishedAt:       p.GetPublishedAt().AsTime(),
 		Likes:             int(p.GetLikes()),
 		Liked:             p.GetLiked(),
+		Comments:          int(p.GetComments()),
 	}
 
 	if p.GetUpdatedAt() != nil {

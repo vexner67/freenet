@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"math"
 
 	"github.com/vexner67/freenet/gateway/internal/model"
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
@@ -101,6 +102,16 @@ func (m *Messages) MarkRead(ctx context.Context, accessToken, peerID, upTo strin
 func (m *Messages) CallSignal(ctx context.Context, accessToken, peerID, sealed string) error {
 	if _, err := m.api.SendCallSignal(withToken(ctx, accessToken), &messagev1.SendCallSignalRequest{PeerId: peerID, Sealed: sealed}); err != nil {
 		return errs.Wrap("m.api.SendCallSignal", fromStatus(err))
+	}
+
+	return nil
+}
+
+// ReportCall tells of the end of a call to peerID.
+func (m *Messages) ReportCall(ctx context.Context, accessToken, peerID string, seconds int) error {
+	req := &messagev1.ReportCallRequest{PeerId: peerID, Seconds: int32(min(max(seconds, -1), math.MaxInt32))} //nolint:gosec // bounded above
+	if _, err := m.api.ReportCall(withToken(ctx, accessToken), req); err != nil {
+		return errs.Wrap("m.api.ReportCall", fromStatus(err))
 	}
 
 	return nil

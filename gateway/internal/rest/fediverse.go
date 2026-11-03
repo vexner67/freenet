@@ -18,10 +18,6 @@ import (
 // a photo of an account may change at the same address.
 const pictureMaxAge = "public, max-age=86400"
 
-// rankedCursorPrefix starts the cursors of the ranked news, which post
-// makes: they are no ID to page remote posts by.
-const rankedCursorPrefix = "r:"
-
 // fediverseAccountJSON is an account of another server. Avatar is the
 // address the site shows its photo at, "" for none.
 type fediverseAccountJSON struct {
@@ -90,6 +86,10 @@ func (a *api) registerFediverse(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/v1/fediverse/posts/{id}/like", a.likeFediversePost)
 	mux.HandleFunc("DELETE /api/v1/fediverse/posts/{id}/like", a.unlikeFediversePost)
 	mux.HandleFunc("GET /api/v1/fediverse/posts/{id}/likes", a.listFediverseLikers)
+	mux.HandleFunc("GET /api/v1/fediverse/posts/{id}", a.fediversePost)
+	mux.HandleFunc("GET /api/v1/fediverse/posts/{id}/comments", a.listFediverseComments)
+	mux.HandleFunc("POST /api/v1/fediverse/posts/{id}/comments", a.commentFediversePost)
+	mux.HandleFunc("DELETE /api/v1/fediverse/comments/{id}", a.deleteFediverseComment)
 
 	mux.HandleFunc("GET /media/fediverse/posts/{id}/{index}", a.fediversePostPicture)
 	mux.HandleFunc("GET /media/fediverse/posts/{id}/link", a.fediverseLinkPicture)
@@ -332,8 +332,148 @@ func (a *api) listFediverseLikers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.listLikers(w, r, func(ctx context.Context, id, cursor string, limit int) (model.LikerPage, error) {
-		return a.federation.NewsLikers(ctx, token, id, cursor, limit)
+		return a.federation.NewsLikers(ctx, token, id, cursor, cmp.Or(limit, defaultPageSize))
 	})
+}
+
+// fediversePost is the page of a post of another server, as the news
+// show it.
+func (a *api) fediversePost(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	p, err := a.federation.NewsPost(r.Context(), token, r.PathValue("id"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toFediversePostResponse(p))
+}
+
+// listFediverseComments are the comments people here wrote under a post
+// of another server, oldest first, shown as those of a post here.
+func (a *api) listFediverseComments(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	limit, err := pageLimit(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	page, err := a.federation.NewsComments(r.Context(), token, r.PathValue("id"), r.URL.Query().Get("cursor"), cmp.Or(limit, defaultPageSize))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	me, err := a.users.GetMe(r.Context(), token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	ids := make([]string, len(page.Comments))
+	for i, c := range page.Comments {
+		ids[i] = c.AuthorID
+	}
+
+	authors, err := a.authors(r, ids)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	resp := commentPageResponse{
+		Comments:   make([]commentResponse, 0, len(page.Comments)),
+		NextCursor: page.NextCursor,
+		Total:      page.Total,
+	}
+	for _, c := range page.Comments {
+		// An author who deleted the page meanwhile is left out.
+		if shown, ok := authors[c.AuthorID]; ok {
+			resp.Comments = append(resp.Comments, toFediverseCommentResponse(c, shown, me.ID))
+		}
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// commentFediversePost needs a filled-in profile, as a comment here does.
+func (a *api) commentFediversePost(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req commentRequest
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	me, err := a.users.GetMe(r.Context(), token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if !me.ProfileCompleted {
+		a.writeError(w, r, failure.New(failure.InvalidArgument, "fill in your profile before commenting"))
+		return
+	}
+
+	c, err := a.federation.CommentNews(r.Context(), token, r.PathValue("id"), req.Text)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	authors, err := a.authors(r, []string{me.ID})
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, toFediverseCommentResponse(c, authors[me.ID], me.ID))
+}
+
+func (a *api) deleteFediverseComment(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.federation.DeleteNewsComment(r.Context(), token, r.PathValue("id")); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// toFediverseCommentResponse is a comment of a post of another server in
+// the shape of one here: text only, with no hearts and no answers.
+func toFediverseCommentResponse(c model.FediverseComment, author model.Author, viewerID string) commentResponse {
+	return commentResponse{
+		ID:        c.ID,
+		PostID:    c.PostID,
+		Author:    toAuthorJSON(author),
+		Text:      c.Text,
+		Photos:    []photoJSON{},
+		CreatedAt: c.CreatedAt.UTC().Format(time.RFC3339),
+		Mine:      c.AuthorID == viewerID,
+	}
 }
 
 func (a *api) fediverseAccountPicture(w http.ResponseWriter, r *http.Request) {
@@ -361,11 +501,9 @@ func servePicture(w http.ResponseWriter, p model.Picture) {
 // withFediverse puts the posts of other servers among the news of the
 // site, by time: their IDs are UUIDv7 of the time they were published, as
 // are those of the posts here, and the cursor is the ID of the last post
-// shown. The ranked news ("Сначала интересные") have none of them: posts
-// there have no likes to be ranked by. A failure of federation leaves the
-// news of the site as they are.
+// shown. A failure of federation leaves the news of the site as they are.
 func (a *api) withFediverse(r *http.Request, token string, q model.FediverseNews, page postPageResponse) postPageResponse {
-	if a.federation == nil || strings.HasPrefix(q.Before, rankedCursorPrefix) {
+	if a.federation == nil {
 		return page
 	}
 
@@ -393,78 +531,6 @@ func (a *api) withFediverse(r *http.Request, token string, q model.FediverseNews
 	page.Posts, page.NextCursor = posts, ""
 	if more {
 		page.NextCursor = posts[len(posts)-1].ID
-	}
-
-	return page
-}
-
-// The cursor of the ranked news carries, after remoteCursorMark, where the
-// posts of other servers among them go on: the ID of the last one shown,
-// or remoteNewsDone when they ended. siteNewsDone stands for the cursor of
-// post when the posts of the site ended before them.
-const (
-	remoteCursorMark = "|f:"
-	remoteNewsDone   = "-"
-	siteNewsDone     = "end"
-)
-
-// remoteShare is how many posts of the site a post of another server
-// comes after in the ranked news: one in three.
-const remoteShare = 2
-
-// splitRankedCursor is the cursor of post and that of the posts of other
-// servers in a cursor of the ranked news.
-func splitRankedCursor(cursor string) (site, remote string) {
-	site, remote, _ = strings.Cut(cursor, remoteCursorMark)
-	return site, remote
-}
-
-// withRankedFediverse puts the posts of other servers (Fediverse,
-// Telegram) among the ranked news ("Сначала интересные"): they have no
-// likes to be ranked by, so a page shows its posts of the site and after
-// every remoteShare of them the next of those, newest first, by their
-// own cursor; once the posts of the site end, those fill the page. A
-// failure of federation leaves the news of the site.
-func (a *api) withRankedFediverse(
-	r *http.Request, token string, sources model.FeedSources, remoteCursor string, limit int, page postPageResponse,
-) postPageResponse {
-	siteNext := cmp.Or(page.NextCursor, siteNewsDone)
-
-	var remote []model.FediversePost
-	if a.federation != nil && remoteCursor != remoteNewsDone {
-		size := cmp.Or(limit, defaultPageSize)
-		take := max(1, size/(remoteShare+1))
-		// The posts of the site ended: those of other servers fill the page.
-		if siteNext == siteNewsDone {
-			take = max(take, size-len(page.Posts))
-		}
-
-		var err error
-		if remote, err = a.federation.News(r.Context(), token, fediverseNewsOf(sources, remoteCursor, take)); err != nil {
-			a.logger.WarnContext(r.Context(), "fediverse news", "error", err)
-			remote, remoteCursor = nil, remoteNewsDone
-		} else {
-			remoteCursor = remoteNewsDone
-			if len(remote) == take {
-				remoteCursor = remote[len(remote)-1].ID
-			}
-		}
-	}
-
-	posts := make([]postResponse, 0, len(page.Posts)+len(remote))
-	for i, p := range page.Posts {
-		posts = append(posts, p)
-		if (i+1)%remoteShare == 0 && len(remote) > 0 {
-			posts, remote = append(posts, toFediversePostResponse(remote[0])), remote[1:]
-		}
-	}
-	for _, p := range remote {
-		posts = append(posts, toFediversePostResponse(p))
-	}
-
-	page.Posts, page.NextCursor = posts, ""
-	if siteNext != siteNewsDone || (remoteCursor != remoteNewsDone && remoteCursor != "") {
-		page.NextCursor = siteNext + remoteCursorMark + cmp.Or(remoteCursor, remoteNewsDone)
 	}
 
 	return page
@@ -506,6 +572,7 @@ func toFediversePostResponse(p model.FediversePost) postResponse {
 		NSFW:      p.Sensitive,
 		Likes:     p.Likes,
 		Liked:     p.Liked,
+		Comments:  p.Comments,
 		Link:      toFediverseLinkJSON(p.ID, p.Link),
 		Fediverse: &fediverseJSON{
 			Author:  toFediverseAccountJSON(p.Author),

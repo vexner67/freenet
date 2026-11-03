@@ -380,6 +380,15 @@ func TestDialogCall(t *testing.T) {
 	if w := h.do("POST", "/api/v1/dialogs/bob/call", `{"sealed":"s"}`, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden || h.messages.callPeer != "" {
 		t.Fatalf("closed: %d %+v", w.Code, h.messages)
 	}
+	if w := h.do("POST", "/api/v1/dialogs/bob/call/report", `{"seconds":95}`, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden || h.messages.callPeer != "" {
+		t.Fatalf("closed report: %d %+v", w.Code, h.messages)
+	}
+
+	// The end of a call goes to "Уведомления" of both.
+	h = newHarness(rest.Config{})
+	if w := h.do("POST", "/api/v1/dialogs/bob/call/report", `{"seconds":95}`, "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.messages.callPeer != "u2" || h.messages.callSeconds != 95 {
+		t.Fatalf("report: %d %+v", w.Code, h.messages)
+	}
 }
 
 func TestDialogTyping(t *testing.T) {

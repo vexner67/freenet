@@ -796,10 +796,6 @@ paths:
           in: query
           description: 'The posts written in this year (UTC) only, as the years of openvk''s "Архив записей"; the pinned post is then in its place. The first page of the archive tells in `years` which there are'
           schema: { type: integer, minimum: 1970, maximum: 9999 }
-        - name: ranked
-          in: query
-          description: "`true` puts the posts of the last week by how interesting they are to you (\"Сначала интересные\": likes, comments, reposts, photos, whom you like and comment on, how fresh), then the older ones newest first; the next pages follow the cursor, which says so itself"
-          schema: { type: boolean, default: false }
         - name: comments
           in: query
           description: "`last` brings each post with `lastComments`, its three newest comments (\"Микроблог\")"
@@ -6245,6 +6241,24 @@ paths:
       responses:
         "204":
           description: Handed over
+  /api/v1/dialogs/{nickname}/call/report:
+    post:
+      summary: Tells of the end of a call you made to the peer, who may get your messages
+      description: 'The page of the caller tells it when the call ends: `seconds` you talked, 0 when the peer did not answer. Both hear of it in "Уведомления" (`call` to each, or `missed_call` to the peer) rather than in the dialog, which keeps only the button of a call. 403 as a message would be. Rate limited as the signals of calls.'
+      parameters:
+        - { name: nickname, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [seconds]
+              properties:
+                seconds: { type: integer, minimum: 0, maximum: 86400 }
+      responses:
+        "204":
+          description: Told
   /api/v1/call-servers:
     get:
       summary: The STUN and TURN servers of a call, with credentials of a limited time
@@ -6687,6 +6701,77 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/UserPage" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/fediverse/posts/{id}:
+    get:
+      summary: One post of another server, as the news show it
+      description: 'For its page: `comments` counts the comments people here wrote under it.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: The post
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Post" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/fediverse/posts/{id}/comments:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Comments people here wrote under a post of another server, oldest first
+      description: 'They stay here: its server does not learn of them. Text only, with no hearts and no answers; people whose page is deleted are left out, still counted.'
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        "200":
+          description: One page of comments
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommentPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Comment on a post of another server
+      description: 'Your profile must be filled in first. Text only, up to 60 000 characters; 20 a minute.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string }
+      responses:
+        "201":
+          description: The comment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Comment" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/fediverse/comments/{id}:
+    delete:
+      summary: Delete your comment under a post of another server
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /media/fediverse/posts/{id}/link:
@@ -9082,9 +9167,7 @@ paths:
         Telegram come among them by time, with `fediverse` set: those of the
         accounts you read (`/api/v1/me/fediverse`), or with `type=all` those
         the administrators put in the news of everyone, in Russian, English
-        or no language said. In the ranked news, which have no likes of
-        them to rank them by, one comes after every two posts of the site,
-        newest first, and the cursor carries where they go on.
+        or no language said. The news always stand newest first.
 
         "Настройки ленты" of openvk come with the request and are not
         kept by the server. The walls you ignore
@@ -10272,8 +10355,8 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, gift, votes, prime, invite, verified, club_verified, story_like, story_comment]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; prime: the actor gave you Freenet Prime; invite: the actor signed up by your invitation link and follows you; verified: the actor, an administrator, gave your page the checkmark (until it is taken); club_verified: the actor, a community you own, got the checkmark (until it is taken); story_like, story_comment: the actor liked or commented your story (until the like is taken back, the comment deleted or the story gone)"
+          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, gift, votes, prime, invite, verified, club_verified, story_like, story_comment, match, call, missed_call]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; prime: the actor gave you Freenet Prime; invite: the actor signed up by your invitation link and follows you; verified: the actor, an administrator, gave your page the checkmark (until it is taken); club_verified: the actor, a community you own, got the checkmark (until it is taken); story_like, story_comment: the actor liked or commented your story (until the like is taken back, the comment deleted or the story gone); match: you and the actor liked each other in \"Знакомства\"; call: you talked with the actor for `seconds` (each side gets one); missed_call: the actor called you and you did not answer"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:
@@ -10303,6 +10386,11 @@ components:
         photo:
           description: Only for photo_like, photo_comment and photo_mention; absent otherwise
           allOf: [{ $ref: "#/components/schemas/Photo" }]
+        seconds:
+          type: integer
+          minimum: 1
+          maximum: 86400
+          description: How long the call lasted; only for call, absent otherwise
 
     NotificationPage:
       type: object

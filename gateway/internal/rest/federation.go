@@ -45,6 +45,11 @@ type Federation interface {
 	LikeNews(ctx context.Context, accessToken, postID string) (int, error)
 	UnlikeNews(ctx context.Context, accessToken, postID string) (int, error)
 	NewsLikers(ctx context.Context, accessToken, postID, cursor string, limit int) (model.LikerPage, error)
+	NewsPost(ctx context.Context, accessToken, postID string) (model.FediversePost, error)
+	// The comments of people here under posts of other servers.
+	CommentNews(ctx context.Context, accessToken, postID, text string) (model.FediverseComment, error)
+	NewsComments(ctx context.Context, accessToken, postID, cursor string, limit int) (model.FediverseCommentPage, error)
+	DeleteNewsComment(ctx context.Context, accessToken, id string) error
 }
 
 const (

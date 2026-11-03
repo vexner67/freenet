@@ -33,6 +33,8 @@ type fakeFederation struct {
 	likes   int
 	liked   string
 	cursor  string
+	written string
+	deleted string
 }
 
 func (f *fakeFederation) status() model.Federation {
@@ -305,6 +307,34 @@ func (f *fakeFederation) NewsLikers(_ context.Context, token, postID, cursor str
 	return model.LikerPage{UserIDs: []string{"x1", "x2"}, NextCursor: "c2", Total: 5}, f.err
 }
 
+func (f *fakeFederation) NewsPost(_ context.Context, token, postID string) (model.FediversePost, error) {
+	f.token = token
+	return model.FediversePost{ID: postID, Author: meduza, Text: "news", Comments: 2}, f.err
+}
+
+func (f *fakeFederation) CommentNews(_ context.Context, token, postID, text string) (model.FediverseComment, error) {
+	f.token, f.written = token, postID+" "+text
+	return model.FediverseComment{ID: "c9", PostID: postID, AuthorID: "u1", Text: text, CreatedAt: time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)}, f.err
+}
+
+func (f *fakeFederation) NewsComments(_ context.Context, token, postID, cursor string, limit int) (model.FediverseCommentPage, error) {
+	f.token, f.cursor = token, postID+" "+cursor+"/"+strconv.Itoa(limit)
+	return model.FediverseCommentPage{
+		Comments: []model.FediverseComment{
+			{ID: "c1", PostID: postID, AuthorID: "u1", Text: "мой"},
+			{ID: "c2", PostID: postID, AuthorID: "x1", Text: "чужой"},
+			{ID: "c3", PostID: postID, AuthorID: "gone", Text: "удалённого"},
+		},
+		NextCursor: "c3",
+		Total:      7,
+	}, f.err
+}
+
+func (f *fakeFederation) DeleteNewsComment(_ context.Context, token, id string) error {
+	f.token, f.deleted = token, id
+	return f.err
+}
+
 func (f *fakeFederation) AccountPicture(_ context.Context, id string) (model.Picture, error) {
 	f.read = "avatar " + id
 	return f.picture, f.err
@@ -420,48 +450,6 @@ func TestFeed_Fediverse(t *testing.T) {
 	h.federation.newsErr = failure.New(failure.Unavailable, "down")
 	if w = h.do("GET", "/api/v1/feed", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || len(decode[fediversePosts](t, w).Posts) != 2 {
 		t.Fatalf("news without federation: %d", w.Code)
-	}
-}
-
-func TestFeed_RankedFediverse(t *testing.T) {
-	t.Parallel()
-
-	h := newHarness(rest.Config{})
-	h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
-	h.federation.remote = []model.FediversePost{{ID: "f1", URL: "https://t.me/meduzalive/1", Author: meduza, Text: "из канала"}}
-
-	// After every two posts of the site, a post of another server.
-	w := h.do("GET", "/api/v1/feed?ranked=true", "", "Authorization", "Bearer tok")
-	got := decode[fediversePosts](t, w)
-	if w.Code != http.StatusOK || len(got.Posts) != 3 || got.Posts[0].ID != "p3" || got.Posts[1].ID != "p1" || got.Posts[2].ID != "f1" ||
-		!got.Posts[2].Fediverse.Author.Telegram || got.NextCursor != "p1|f:-" {
-		t.Fatalf("ranked news %+v", got)
-	}
-
-	if q := h.federation.news; q == nil || q.Before != "" || q.Limit != 6 {
-		t.Fatalf("asked for %+v, want a third of a page", q)
-	}
-
-	// The posts of other servers ended: the site goes on alone.
-	h.federation.news = nil
-	got = decode[fediversePosts](t, h.do("GET", "/api/v1/feed?ranked=true&cursor=p1%7Cf%3A-", "", "Authorization", "Bearer tok"))
-	if h.posts.cursor != "p1" || h.federation.news != nil || len(got.Posts) != 2 {
-		t.Fatalf("site alone: post asked from %q, federation %+v, news %+v", h.posts.cursor, h.federation.news, got)
-	}
-
-	// The posts of the site ended: those of other servers go on alone.
-	h.posts.cursor = "untouched"
-	got = decode[fediversePosts](t, h.do("GET", "/api/v1/feed?ranked=true&cursor=end%7Cf%3Af9", "", "Authorization", "Bearer tok"))
-	if h.posts.cursor != "untouched" || h.federation.news == nil || h.federation.news.Before != "f9" || h.federation.news.Limit != 20 ||
-		len(got.Posts) != 1 || got.Posts[0].ID != "f1" || got.NextCursor != "" {
-		t.Fatalf("remote alone: post asked from %q, federation %+v, news %+v", h.posts.cursor, h.federation.news, got)
-	}
-
-	// A failing federation leaves the news of the site.
-	h.federation.newsErr = failure.New(failure.Unavailable, "down")
-	got = decode[fediversePosts](t, h.do("GET", "/api/v1/feed?ranked=true", "", "Authorization", "Bearer tok"))
-	if len(got.Posts) != 2 || got.NextCursor != "p1|f:-" {
-		t.Fatalf("ranked news without federation %+v", got)
 	}
 }
 
@@ -617,5 +605,75 @@ func TestFediverseLikes(t *testing.T) {
 	h.federation.err = failure.New(failure.TooManyRequests, "too many likes")
 	if w = h.do("PUT", "/api/v1/fediverse/posts/p2/like", "", auth...); w.Code != http.StatusTooManyRequests {
 		t.Errorf("too many likes: %d", w.Code)
+	}
+}
+
+func TestFediverseComments(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	auth := []string{"Authorization", "Bearer tok"}
+
+	w := h.do("GET", "/api/v1/fediverse/posts/p2", "", auth...)
+	if got := decode[map[string]any](t, w); w.Code != http.StatusOK || got["id"] != "p2" || got["comments"] != float64(2) || got["fediverse"] == nil {
+		t.Fatalf("post: %d %v", w.Code, got)
+	}
+
+	w = h.do("GET", "/api/v1/fediverse/posts/p2/comments?cursor=c0&limit=6", "", auth...)
+	type comment struct {
+		ID     string `json:"id"`
+		Author struct {
+			Name string `json:"name"`
+		} `json:"author"`
+		Text string `json:"text"`
+		Mine bool   `json:"mine"`
+	}
+	page := decode[struct {
+		Comments   []comment `json:"comments"`
+		NextCursor string    `json:"nextCursor"`
+		Total      int       `json:"total"`
+	}](t, w)
+	if w.Code != http.StatusOK || len(page.Comments) != 2 || !page.Comments[0].Mine || page.Comments[1].Mine ||
+		page.Comments[1].Author.Name != "x1" || page.NextCursor != "c3" || page.Total != 7 || h.federation.cursor != "p2 c0/6" {
+		t.Fatalf("comments: %d %+v, %q", w.Code, page, h.federation.cursor)
+	}
+
+	// Federation takes no page of 0: the gateway asks for the usual page.
+	if w = h.do("GET", "/api/v1/fediverse/posts/p2/comments", "", auth...); w.Code != http.StatusOK || h.federation.cursor != "p2 /20" {
+		t.Fatalf("comments without a limit: %d, %q", w.Code, h.federation.cursor)
+	}
+	if w = h.do("GET", "/api/v1/fediverse/posts/p2/likes", "", auth...); w.Code != http.StatusOK || h.federation.cursor != "/20" {
+		t.Fatalf("likers without a limit: %d, %q", w.Code, h.federation.cursor)
+	}
+
+	if w = h.do("POST", "/api/v1/fediverse/posts/p2/comments", `{"text":"привет"}`, auth...); w.Code != http.StatusBadRequest {
+		t.Fatalf("comment without a profile: %d", w.Code)
+	}
+
+	h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+	w = h.do("POST", "/api/v1/fediverse/posts/p2/comments", `{"text":"привет"}`, auth...)
+	if got := decode[comment](t, w); w.Code != http.StatusCreated || got.ID != "c9" || !got.Mine || got.Author.Name != "Ann" ||
+		h.federation.written != "p2 привет" {
+		t.Fatalf("comment: %d %+v, %q", w.Code, got, h.federation.written)
+	}
+
+	if w = h.do("DELETE", "/api/v1/fediverse/comments/c1", "", auth...); w.Code != http.StatusNoContent || h.federation.deleted != "c1" {
+		t.Fatalf("delete: %d, %q", w.Code, h.federation.deleted)
+	}
+
+	for _, call := range [][2]string{
+		{"GET", "/api/v1/fediverse/posts/p2"},
+		{"GET", "/api/v1/fediverse/posts/p2/comments"},
+		{"POST", "/api/v1/fediverse/posts/p2/comments"},
+		{"DELETE", "/api/v1/fediverse/comments/c1"},
+	} {
+		if w = h.do(call[0], call[1], `{"text":"a"}`); w.Code != http.StatusUnauthorized {
+			t.Errorf("%s %s without a token: %d", call[0], call[1], w.Code)
+		}
+	}
+
+	h.federation.err = failure.New(failure.PermissionDenied, "not your comment")
+	if w = h.do("DELETE", "/api/v1/fediverse/comments/c2", "", auth...); w.Code != http.StatusForbidden {
+		t.Errorf("delete of another: %d", w.Code)
 	}
 }

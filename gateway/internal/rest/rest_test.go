@@ -615,7 +615,6 @@ type fakePosts struct {
 	searched string
 	// ownOnly and ignored: the feed settings the gateway passed on.
 	ownOnly                bool
-	ranked                 bool
 	ignored                []string
 	newPost                model.NewPost
 	token, cursor, deleted string
@@ -950,7 +949,7 @@ func (f *fakePosts) CommentsByID(_ context.Context, ids []string) ([]model.Comme
 func (f *fakePosts) Feed(_ context.Context, token string, sources model.FeedSources, cursor string, _ int) (model.PostPage, error) {
 	f.token, f.cursor, f.hideNSFW = token, cursor, sources.HideNSFW
 	f.everyone, f.hidden = sources.Everyone, sources.Hidden
-	f.ownOnly, f.ignored, f.ranked = sources.OwnOnly, sources.Ignored, sources.Ranked
+	f.ownOnly, f.ignored = sources.OwnOnly, sources.Ignored
 	return model.PostPage{
 		Posts: append([]model.Post{
 			{ID: "p3", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u2"}, Text: "от боба", Likes: 1, Liked: true},
@@ -1386,6 +1385,7 @@ func (f *fakeNotifications) UnsubscribePush(_ context.Context, token, endpoint s
 // account that is gone.
 type fakeMessages struct {
 	callPeer, callSealed string
+	callSeconds          int
 	// sent is what the last message sent said, sealed.
 	token, peerID, cursor, after, sent, markedUpTo, deleted string
 	// hidden is the message deleted for the caller alone, edited
@@ -1559,6 +1559,12 @@ func (f *fakeMessages) MarkRead(_ context.Context, token, peerID, upTo string) e
 
 func (f *fakeMessages) CallSignal(_ context.Context, _, peerID, sealed string) error {
 	f.callPeer, f.callSealed = peerID, sealed
+
+	return nil
+}
+
+func (f *fakeMessages) ReportCall(_ context.Context, _, peerID string, seconds int) error {
+	f.callPeer, f.callSeconds = peerID, seconds
 
 	return nil
 }

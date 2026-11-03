@@ -90,6 +90,8 @@ type FediversePost struct {
 	// its server does not learn of them.
 	Likes int
 	Liked bool
+	// Comments are how many comments people here wrote under it.
+	Comments int
 	// Link is the card of the page it links to; nil for none.
 	Link *FediverseLink
 }
@@ -119,4 +121,22 @@ type FediverseVideo struct {
 type Picture struct {
 	Body        []byte
 	ContentType string
+}
+
+// FediverseComment is what a person here wrote under a post of another
+// server; it stays here.
+type FediverseComment struct {
+	ID        string
+	PostID    string
+	AuthorID  string
+	Text      string
+	CreatedAt time.Time
+}
+
+// FediverseCommentPage is one screen of the comments of a post of another
+// server, oldest first; Total counts them all.
+type FediverseCommentPage struct {
+	Comments   []FediverseComment
+	NextCursor string
+	Total      int
 }

@@ -189,8 +189,7 @@ const feedAll = "all"
 // also follows its people to the walls of others. "Настройки ленты" of
 // openvk come with the request: alien=false takes away what people wrote
 // on the walls of others, ignored=true brings back the walls the reader
-// ignores, ranked=true puts the posts of the week by how interesting they
-// are ("Сначала интересные"; the cursor of such news says so itself).
+// ignores. The news always stand newest first.
 func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -221,7 +220,7 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 
 	// "Не показывать в ленте" of the reader's settings.
 	sources := model.FeedSources{
-		HideNSFW: me.Interface.NSFW == nsfwHide, Hidden: blocked, OwnOnly: !alien, Ranked: r.URL.Query().Get("ranked") == "true",
+		HideNSFW: me.Interface.NSFW == nsfwHide, Hidden: blocked, OwnOnly: !alien,
 	}
 
 	if !withIgnored {
@@ -242,17 +241,12 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cursor, remoteCursor := r.URL.Query().Get("cursor"), ""
-	if sources.Ranked {
-		cursor, remoteCursor = splitRankedCursor(cursor)
-	}
+	cursor := r.URL.Query().Get("cursor")
 
-	page := model.PostPage{}
-	if cursor != siteNewsDone {
-		if page, err = a.posts.Feed(r.Context(), token, sources, cursor, limit); err != nil {
-			a.writeError(w, r, err)
-			return
-		}
+	page, err := a.posts.Feed(r.Context(), token, sources, cursor, limit)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
 	}
 
 	resp := postPageResponse{NextCursor: page.NextCursor}
@@ -267,11 +261,7 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if sources.Ranked {
-		resp = a.withRankedFediverse(r, token, sources, remoteCursor, limit, resp)
-	} else {
-		resp = a.withFediverse(r, token, fediverseNewsOf(sources, cursor, limit), resp)
-	}
+	resp = a.withFediverse(r, token, fediverseNewsOf(sources, cursor, limit), resp)
 
 	writeJSON(w, http.StatusOK, resp)
 }
