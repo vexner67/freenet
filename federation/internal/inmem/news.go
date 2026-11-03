@@ -430,3 +430,94 @@ func (r *LikeRepository) Likers(ctx context.Context, postID, before uuid.UUID, l
 
 	return likers, nil
 }
+
+// CommentRepository keeps the comments of remote posts; those of a post
+// the posts no longer keep are gone, as in PostgreSQL.
+type CommentRepository struct {
+	mu       sync.Mutex
+	comments map[uuid.UUID]*fedi.RemoteComment
+	posts    *RemotePostRepository
+}
+
+func NewCommentRepository(posts *RemotePostRepository) *CommentRepository {
+	return &CommentRepository{comments: map[uuid.UUID]*fedi.RemoteComment{}, posts: posts}
+}
+
+func (r *CommentRepository) AddComment(ctx context.Context, c *fedi.RemoteComment) error {
+	if _, err := r.posts.Get(ctx, c.PostID()); err != nil {
+		return err
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.comments[c.ID()] = c
+
+	return nil
+}
+
+func (r *CommentRepository) Comment(ctx context.Context, id uuid.UUID) (*fedi.RemoteComment, error) {
+	r.mu.Lock()
+	c, ok := r.comments[id]
+	r.mu.Unlock()
+
+	if !ok || r.gone(ctx, c.PostID()) {
+		return nil, fedi.ErrNotFound
+	}
+
+	return c, nil
+}
+
+func (r *CommentRepository) DeleteComment(_ context.Context, id uuid.UUID) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	delete(r.comments, id)
+
+	return nil
+}
+
+// Comments with limit 0 are all of them.
+func (r *CommentRepository) Comments(ctx context.Context, postID, after uuid.UUID, limit int) ([]*fedi.RemoteComment, error) {
+	if r.gone(ctx, postID) {
+		return nil, nil
+	}
+
+	r.mu.Lock()
+	var out []*fedi.RemoteComment
+	for _, c := range r.comments {
+		if c.PostID() == postID && c.ID().String() > after.String() {
+			out = append(out, c)
+		}
+	}
+	r.mu.Unlock()
+
+	slices.SortFunc(out, func(a, b *fedi.RemoteComment) int { return cmp.Compare(a.ID().String(), b.ID().String()) })
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+
+	return out, nil
+}
+
+func (r *CommentRepository) CommentCounts(ctx context.Context, postIDs []uuid.UUID) (map[uuid.UUID]int, error) {
+	out := map[uuid.UUID]int{}
+
+	for _, id := range postIDs {
+		comments, err := r.Comments(ctx, id, uuid.Nil, 0)
+		if err != nil {
+			return nil, err
+		}
+		if len(comments) > 0 {
+			out[id] = len(comments)
+		}
+	}
+
+	return out, nil
+}
+
+// gone: the comments of a post gone are gone.
+func (r *CommentRepository) gone(ctx context.Context, postID uuid.UUID) bool {
+	_, err := r.posts.Get(ctx, postID)
+	return errors.Is(err, fedi.ErrNotFound)
+}

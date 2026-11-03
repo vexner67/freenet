@@ -69,6 +69,7 @@ func toProtoNewsPost(n service.NewsPost) *federationv1.NewsPost {
 		PublishedAt: timestamppb.New(p.Published()),
 		Likes:       int32(n.Likes.Count), //nolint:gosec // one like a person
 		Liked:       n.Likes.Liked,
+		Comments:    int32(n.Comments), //nolint:gosec // comments are limited a person
 	}
 
 	if !p.Updated().IsZero() {
@@ -82,4 +83,14 @@ func toProtoNewsPost(n service.NewsPost) *federationv1.NewsPost {
 	}
 
 	return out
+}
+
+func toProtoNewsComment(c *fedi.RemoteComment) *federationv1.NewsComment {
+	return &federationv1.NewsComment{
+		Id:        c.ID().String(),
+		PostId:    c.PostID().String(),
+		AuthorId:  c.AuthorID().String(),
+		Text:      c.Text(),
+		CreatedAt: timestamppb.New(c.CreatedAt()),
+	}
 }

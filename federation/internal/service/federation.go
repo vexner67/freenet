@@ -47,6 +47,8 @@ type Deps struct {
 	Channels Channels
 	// Likes keep who here like remote posts.
 	Likes LikeRepository
+	// Comments keep what people here write under remote posts.
+	Comments CommentRepository
 	// Languages are those the news of everyone show posts in.
 	Languages []string
 	// Retention is how long remote posts are kept.
@@ -79,6 +81,7 @@ type Service struct {
 	frames        Framer
 	channels      Channels
 	likes         LikeRepository
+	comments      CommentRepository
 	languages     []string
 	retention     time.Duration
 }
@@ -113,6 +116,7 @@ func New(d Deps) *Service {
 		frames:        d.Frames,
 		channels:      d.Channels,
 		likes:         d.Likes,
+		comments:      d.Comments,
 		languages:     d.Languages,
 		retention:     d.Retention,
 	}

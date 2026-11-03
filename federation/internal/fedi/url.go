@@ -39,6 +39,12 @@ var (
 	// ErrTooManyLikes: a person likes and unlikes remote posts more often
 	// than one may.
 	ErrTooManyLikes = errors.New("too many likes")
+	// ErrTooManyComments: a person comments remote posts more often than
+	// one may.
+	ErrTooManyComments = errors.New("too many comments")
+	// ErrNotYourComment: only its author deletes a comment of a remote
+	// post.
+	ErrNotYourComment = errors.New("not your comment")
 	// ErrAccountNotFound: the server of an address names no such account,
 	// or does not answer.
 	ErrAccountNotFound = errors.New("fediverse account not found")

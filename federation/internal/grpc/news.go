@@ -16,8 +16,9 @@ import (
 // maxNews is the most remote posts one ListNews gives, maxLikers the
 // most likers one ListNewsLikers gives.
 const (
-	maxNews   = 100
-	maxLikers = 100
+	maxNews     = 100
+	maxLikers   = 100
+	maxComments = 100
 )
 
 type NewsService interface {
@@ -37,6 +38,10 @@ type NewsService interface {
 	Like(ctx context.Context, userID, postID uuid.UUID) (int, error)
 	Unlike(ctx context.Context, userID, postID uuid.UUID) (int, error)
 	Likers(ctx context.Context, postID, before uuid.UUID, limit int) (service.LikerPage, error)
+	NewsPost(ctx context.Context, id, reader uuid.UUID) (service.NewsPost, error)
+	Comment(ctx context.Context, userID, postID uuid.UUID, text string) (*fedi.RemoteComment, error)
+	Comments(ctx context.Context, postID, after uuid.UUID, limit int) (service.CommentPage, error)
+	DeleteComment(ctx context.Context, userID, id uuid.UUID) error
 }
 
 func (h *FederationHandler) GetSiteActor(ctx context.Context, _ *federationv1.GetSiteActorRequest) (*federationv1.GetSiteActorResponse, error) {
@@ -211,6 +216,98 @@ func (h *FederationHandler) ListNewsLikers(ctx context.Context, req *federationv
 	}
 
 	return out, nil
+}
+
+func (h *FederationHandler) GetNewsPost(ctx context.Context, req *federationv1.GetNewsPostRequest) (*federationv1.GetNewsPostResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := parseID(req.GetId(), "post id")
+	if err != nil {
+		return nil, err
+	}
+
+	p, err := h.news.NewsPost(ctx, id, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &federationv1.GetNewsPostResponse{Post: toProtoNewsPost(p)}, nil
+}
+
+func (h *FederationHandler) CommentNews(ctx context.Context, req *federationv1.CommentNewsRequest) (*federationv1.CommentNewsResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	postID, err := parseID(req.GetPostId(), "post id")
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := h.news.Comment(ctx, userID, postID, req.GetText())
+	if err != nil {
+		return nil, err
+	}
+
+	return &federationv1.CommentNewsResponse{Comment: toProtoNewsComment(c)}, nil
+}
+
+func (h *FederationHandler) ListNewsComments(ctx context.Context, req *federationv1.ListNewsCommentsRequest) (*federationv1.ListNewsCommentsResponse, error) {
+	postID, err := parseID(req.GetPostId(), "post id")
+	if err != nil {
+		return nil, err
+	}
+
+	if req.GetLimit() < 1 || req.GetLimit() > maxComments {
+		return nil, status.Error(codes.InvalidArgument, "invalid limit")
+	}
+
+	after := uuid.Nil
+	if req.GetCursor() != "" {
+		if after, err = parseID(req.GetCursor(), "cursor"); err != nil {
+			return nil, err
+		}
+	}
+
+	page, err := h.news.Comments(ctx, postID, after, int(req.GetLimit()))
+	if err != nil {
+		return nil, err
+	}
+
+	out := &federationv1.ListNewsCommentsResponse{
+		Comments: make([]*federationv1.NewsComment, len(page.Comments)),
+		Total:    int32(page.Total), //nolint:gosec // comments are limited a person
+	}
+	for i, c := range page.Comments {
+		out.Comments[i] = toProtoNewsComment(c)
+	}
+	if page.Next != uuid.Nil {
+		out.NextCursor = page.Next.String()
+	}
+
+	return out, nil
+}
+
+func (h *FederationHandler) DeleteNewsComment(ctx context.Context, req *federationv1.DeleteNewsCommentRequest) (*emptypb.Empty, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := parseID(req.GetId(), "comment id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.news.DeleteComment(ctx, userID, id); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func (h *FederationHandler) ListFeatured(ctx context.Context, _ *federationv1.ListFeaturedRequest) (*federationv1.ListFeaturedResponse, error) {

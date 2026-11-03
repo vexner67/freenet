@@ -56,6 +56,13 @@ service FederationService {
   rpc UnlikeNews(UnlikeNewsRequest) returns (UnlikeNewsResponse);
   // Who here like a remote post, the latest first.
   rpc ListNewsLikers(ListNewsLikersRequest) returns (ListNewsLikersResponse);
+  // One remote post, as the caller sees it.
+  rpc GetNewsPost(GetNewsPostRequest) returns (GetNewsPostResponse);
+  // What people here write under remote posts; their servers do not
+  // learn of it. Only its author deletes a comment.
+  rpc CommentNews(CommentNewsRequest) returns (CommentNewsResponse);
+  rpc ListNewsComments(ListNewsCommentsRequest) returns (ListNewsCommentsResponse);
+  rpc DeleteNewsComment(DeleteNewsCommentRequest) returns (google.protobuf.Empty);
 
   // Internal, for the gateway, which lets only administrators call them:
   // the accounts in the news of everyone.
@@ -278,6 +285,8 @@ message NewsPost {
   bool liked = 14;
   // The card of the page it links to; unset for none.
   NewsLink link = 15;
+  // How many comments people here wrote under it.
+  int32 comments = 16;
 }
 
 // The card of a page a remote post links to, as its server tells it.
@@ -318,6 +327,50 @@ message ListNewsLikersResponse {
   // Empty after the last page.
   string next_cursor = 2;
   int32 total = 3;
+}
+
+message GetNewsPostRequest {
+  string id = 1;
+}
+
+message GetNewsPostResponse {
+  NewsPost post = 1;
+}
+
+message NewsComment {
+  string id = 1;
+  string post_id = 2;
+  string author_id = 3;
+  string text = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message CommentNewsRequest {
+  string post_id = 1;
+  string text = 2;
+}
+
+message CommentNewsResponse {
+  NewsComment comment = 1;
+}
+
+message ListNewsCommentsRequest {
+  string post_id = 1;
+  // The next_cursor of the page before; empty for the first.
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message ListNewsCommentsResponse {
+  // The oldest first.
+  repeated NewsComment comments = 1;
+  // Empty after the last page.
+  string next_cursor = 2;
+  int32 total = 3;
+}
+
+message DeleteNewsCommentRequest {
+  string id = 1;
 }
 
 message ListNewsResponse {

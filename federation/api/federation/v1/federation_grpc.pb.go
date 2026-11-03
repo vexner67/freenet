@@ -39,6 +39,10 @@ const (
 	FederationService_LikeNews_FullMethodName          = "/federation.v1.FederationService/LikeNews"
 	FederationService_UnlikeNews_FullMethodName        = "/federation.v1.FederationService/UnlikeNews"
 	FederationService_ListNewsLikers_FullMethodName    = "/federation.v1.FederationService/ListNewsLikers"
+	FederationService_GetNewsPost_FullMethodName       = "/federation.v1.FederationService/GetNewsPost"
+	FederationService_CommentNews_FullMethodName       = "/federation.v1.FederationService/CommentNews"
+	FederationService_ListNewsComments_FullMethodName  = "/federation.v1.FederationService/ListNewsComments"
+	FederationService_DeleteNewsComment_FullMethodName = "/federation.v1.FederationService/DeleteNewsComment"
 	FederationService_ListFeatured_FullMethodName      = "/federation.v1.FederationService/ListFeatured"
 	FederationService_Feature_FullMethodName           = "/federation.v1.FederationService/Feature"
 	FederationService_Unfeature_FullMethodName         = "/federation.v1.FederationService/Unfeature"
@@ -94,6 +98,13 @@ type FederationServiceClient interface {
 	UnlikeNews(ctx context.Context, in *UnlikeNewsRequest, opts ...grpc.CallOption) (*UnlikeNewsResponse, error)
 	// Who here like a remote post, the latest first.
 	ListNewsLikers(ctx context.Context, in *ListNewsLikersRequest, opts ...grpc.CallOption) (*ListNewsLikersResponse, error)
+	// One remote post, as the caller sees it.
+	GetNewsPost(ctx context.Context, in *GetNewsPostRequest, opts ...grpc.CallOption) (*GetNewsPostResponse, error)
+	// What people here write under remote posts; their servers do not
+	// learn of it. Only its author deletes a comment.
+	CommentNews(ctx context.Context, in *CommentNewsRequest, opts ...grpc.CallOption) (*CommentNewsResponse, error)
+	ListNewsComments(ctx context.Context, in *ListNewsCommentsRequest, opts ...grpc.CallOption) (*ListNewsCommentsResponse, error)
+	DeleteNewsComment(ctx context.Context, in *DeleteNewsCommentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for the gateway, which lets only administrators call them:
 	// the accounts in the news of everyone.
 	ListFeatured(ctx context.Context, in *ListFeaturedRequest, opts ...grpc.CallOption) (*ListFeaturedResponse, error)
@@ -303,6 +314,46 @@ func (c *federationServiceClient) ListNewsLikers(ctx context.Context, in *ListNe
 	return out, nil
 }
 
+func (c *federationServiceClient) GetNewsPost(ctx context.Context, in *GetNewsPostRequest, opts ...grpc.CallOption) (*GetNewsPostResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetNewsPostResponse)
+	err := c.cc.Invoke(ctx, FederationService_GetNewsPost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *federationServiceClient) CommentNews(ctx context.Context, in *CommentNewsRequest, opts ...grpc.CallOption) (*CommentNewsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CommentNewsResponse)
+	err := c.cc.Invoke(ctx, FederationService_CommentNews_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *federationServiceClient) ListNewsComments(ctx context.Context, in *ListNewsCommentsRequest, opts ...grpc.CallOption) (*ListNewsCommentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListNewsCommentsResponse)
+	err := c.cc.Invoke(ctx, FederationService_ListNewsComments_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *federationServiceClient) DeleteNewsComment(ctx context.Context, in *DeleteNewsCommentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, FederationService_DeleteNewsComment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *federationServiceClient) ListFeatured(ctx context.Context, in *ListFeaturedRequest, opts ...grpc.CallOption) (*ListFeaturedResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListFeaturedResponse)
@@ -392,6 +443,13 @@ type FederationServiceServer interface {
 	UnlikeNews(context.Context, *UnlikeNewsRequest) (*UnlikeNewsResponse, error)
 	// Who here like a remote post, the latest first.
 	ListNewsLikers(context.Context, *ListNewsLikersRequest) (*ListNewsLikersResponse, error)
+	// One remote post, as the caller sees it.
+	GetNewsPost(context.Context, *GetNewsPostRequest) (*GetNewsPostResponse, error)
+	// What people here write under remote posts; their servers do not
+	// learn of it. Only its author deletes a comment.
+	CommentNews(context.Context, *CommentNewsRequest) (*CommentNewsResponse, error)
+	ListNewsComments(context.Context, *ListNewsCommentsRequest) (*ListNewsCommentsResponse, error)
+	DeleteNewsComment(context.Context, *DeleteNewsCommentRequest) (*emptypb.Empty, error)
 	// Internal, for the gateway, which lets only administrators call them:
 	// the accounts in the news of everyone.
 	ListFeatured(context.Context, *ListFeaturedRequest) (*ListFeaturedResponse, error)
@@ -467,6 +525,18 @@ func (UnimplementedFederationServiceServer) UnlikeNews(context.Context, *UnlikeN
 }
 func (UnimplementedFederationServiceServer) ListNewsLikers(context.Context, *ListNewsLikersRequest) (*ListNewsLikersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListNewsLikers not implemented")
+}
+func (UnimplementedFederationServiceServer) GetNewsPost(context.Context, *GetNewsPostRequest) (*GetNewsPostResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetNewsPost not implemented")
+}
+func (UnimplementedFederationServiceServer) CommentNews(context.Context, *CommentNewsRequest) (*CommentNewsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CommentNews not implemented")
+}
+func (UnimplementedFederationServiceServer) ListNewsComments(context.Context, *ListNewsCommentsRequest) (*ListNewsCommentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListNewsComments not implemented")
+}
+func (UnimplementedFederationServiceServer) DeleteNewsComment(context.Context, *DeleteNewsCommentRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteNewsComment not implemented")
 }
 func (UnimplementedFederationServiceServer) ListFeatured(context.Context, *ListFeaturedRequest) (*ListFeaturedResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListFeatured not implemented")
@@ -843,6 +913,78 @@ func _FederationService_ListNewsLikers_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FederationService_GetNewsPost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNewsPostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).GetNewsPost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_GetNewsPost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).GetNewsPost(ctx, req.(*GetNewsPostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FederationService_CommentNews_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommentNewsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).CommentNews(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_CommentNews_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).CommentNews(ctx, req.(*CommentNewsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FederationService_ListNewsComments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListNewsCommentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).ListNewsComments(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_ListNewsComments_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).ListNewsComments(ctx, req.(*ListNewsCommentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FederationService_DeleteNewsComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteNewsCommentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FederationServiceServer).DeleteNewsComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FederationService_DeleteNewsComment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FederationServiceServer).DeleteNewsComment(ctx, req.(*DeleteNewsCommentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _FederationService_ListFeatured_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListFeaturedRequest)
 	if err := dec(in); err != nil {
@@ -997,6 +1139,22 @@ var FederationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListNewsLikers",
 			Handler:    _FederationService_ListNewsLikers_Handler,
+		},
+		{
+			MethodName: "GetNewsPost",
+			Handler:    _FederationService_GetNewsPost_Handler,
+		},
+		{
+			MethodName: "CommentNews",
+			Handler:    _FederationService_CommentNews_Handler,
+		},
+		{
+			MethodName: "ListNewsComments",
+			Handler:    _FederationService_ListNewsComments_Handler,
+		},
+		{
+			MethodName: "DeleteNewsComment",
+			Handler:    _FederationService_DeleteNewsComment_Handler,
 		},
 		{
 			MethodName: "ListFeatured",

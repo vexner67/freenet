@@ -226,3 +226,19 @@ type LikeRepository interface {
 	// who liked it before that like.
 	Likers(ctx context.Context, postID, before uuid.UUID, limit int) ([]Liker, error)
 }
+
+// CommentRepository keeps what people here wrote under remote posts;
+// those of a post the posts no longer keep are gone.
+type CommentRepository interface {
+	// AddComment keeps c; fedi.ErrNotFound when its post is gone.
+	AddComment(ctx context.Context, c *fedi.RemoteComment) error
+	// Comment is the comment id; fedi.ErrNotFound.
+	Comment(ctx context.Context, id uuid.UUID) (*fedi.RemoteComment, error)
+	DeleteComment(ctx context.Context, id uuid.UUID) error
+	// Comments are the comments of a post, the oldest first, up to limit
+	// after the cursor after (uuid.Nil: from the first).
+	Comments(ctx context.Context, postID, after uuid.UUID, limit int) ([]*fedi.RemoteComment, error)
+	// CommentCounts are how many comments each of postIDs has; a post
+	// with none is not there.
+	CommentCounts(ctx context.Context, postIDs []uuid.UUID) (map[uuid.UUID]int, error)
+}

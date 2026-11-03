@@ -36,6 +36,8 @@ type NewsPost struct {
 	Post   *fedi.RemotePost
 	Author *fedi.Remote
 	Likes  Likes
+	// Comments are how many comments people here wrote under it.
+	Comments int
 }
 
 // site is the account of the site itself, made the first time it is
@@ -431,25 +433,56 @@ func (s *Service) News(ctx context.Context, q NewsQuery) ([]NewsPost, error) {
 		out = append(out, NewsPost{Post: p, Author: author})
 	}
 
-	if len(out) == 0 {
-		return out, nil
+	return out, s.counted(ctx, out, q.Reader)
+}
+
+// NewsPost is the remote post id, as reader sees it.
+func (s *Service) NewsPost(ctx context.Context, id, reader uuid.UUID) (NewsPost, error) {
+	p, err := s.news.Get(ctx, id)
+	if err != nil {
+		return NewsPost{}, errs.Wrap("s.news.Get", err)
 	}
 
-	ids := make([]uuid.UUID, len(out))
-	for i, p := range out {
+	author, err := s.known(ctx, p.Actor())
+	if err != nil {
+		return NewsPost{}, err
+	}
+
+	out := []NewsPost{{Post: p, Author: author}}
+	if err = s.counted(ctx, out, reader); err != nil {
+		return NewsPost{}, err
+	}
+
+	return out[0], nil
+}
+
+// counted fills the likes and the comments of posts, as reader sees them.
+func (s *Service) counted(ctx context.Context, posts []NewsPost, reader uuid.UUID) error {
+	if len(posts) == 0 {
+		return nil
+	}
+
+	ids := make([]uuid.UUID, len(posts))
+	for i, p := range posts {
 		ids[i] = p.Post.ID()
 	}
 
-	likes, err := s.likes.Of(ctx, ids, q.Reader)
+	likes, err := s.likes.Of(ctx, ids, reader)
 	if err != nil {
-		return nil, errs.Wrap("s.likes.Of", err)
+		return errs.Wrap("s.likes.Of", err)
 	}
 
-	for i := range out {
-		out[i].Likes = likes[out[i].Post.ID()]
+	comments, err := s.comments.CommentCounts(ctx, ids)
+	if err != nil {
+		return errs.Wrap("s.comments.CommentCounts", err)
 	}
 
-	return out, nil
+	for i := range posts {
+		posts[i].Likes = likes[posts[i].Post.ID()]
+		posts[i].Comments = comments[posts[i].Post.ID()]
+	}
+
+	return nil
 }
 
 // Picture is the image index of a remote post, read from its server.

@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"slices"
 	"strings"
@@ -128,6 +129,47 @@ func TestChannelPostsAndLikes(t *testing.T) {
 		t.Fatalf("Likers after the cursor = %+v, %v", likers, err)
 	}
 
+	comments := postgres.NewCommentRepository(pool)
+	var written []*fedi.RemoteComment
+	for _, text := range []string{"первый", "второй"} {
+		c, err := fedi.NewRemoteComment(saved[0].ID(), reader, text, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = comments.AddComment(ctx, c); err != nil {
+			t.Fatalf("AddComment: %v", err)
+		}
+		written = append(written, c)
+	}
+
+	stray, _ := fedi.NewRemoteComment(uuid.New(), reader, "мимо", now)
+	if err = comments.AddComment(ctx, stray); !errors.Is(err, fedi.ErrNotFound) {
+		t.Fatalf("AddComment to no post = %v", err)
+	}
+
+	page, err := comments.Comments(ctx, saved[0].ID(), uuid.Nil, 1)
+	if err != nil || len(page) != 1 || page[0].Text() != "первый" || !page[0].CreatedAt().Equal(now) {
+		t.Fatalf("Comments = %+v, %v; want the oldest first", page, err)
+	}
+	if page, err = comments.Comments(ctx, saved[0].ID(), page[0].ID(), 10); err != nil || len(page) != 1 || page[0].ID() != written[1].ID() {
+		t.Fatalf("Comments after the cursor = %+v, %v", page, err)
+	}
+
+	counts, err := comments.CommentCounts(ctx, []uuid.UUID{saved[0].ID(), saved[1].ID()})
+	if err != nil || len(counts) != 1 || counts[saved[0].ID()] != 2 {
+		t.Fatalf("CommentCounts = %v, %v", counts, err)
+	}
+
+	if err = comments.DeleteComment(ctx, written[0].ID()); err != nil {
+		t.Fatalf("DeleteComment: %v", err)
+	}
+	if _, err = comments.Comment(ctx, written[0].ID()); !errors.Is(err, fedi.ErrNotFound) {
+		t.Fatalf("Comment deleted = %v", err)
+	}
+	if c, err := comments.Comment(ctx, written[1].ID()); err != nil || c.AuthorID() != reader {
+		t.Fatalf("Comment = %+v, %v", c, err)
+	}
+
 	if err = likes.Remove(ctx, saved[0].ID(), reader); err != nil {
 		t.Fatalf("Remove: %v", err)
 	}
@@ -136,6 +178,9 @@ func TestChannelPostsAndLikes(t *testing.T) {
 	}
 	if of, err = likes.Of(ctx, []uuid.UUID{saved[0].ID()}, reader); err != nil || len(of) != 0 {
 		t.Fatalf("Of a post deleted = %+v, %v; the likes go with it", of, err)
+	}
+	if counts, err = comments.CommentCounts(ctx, []uuid.UUID{saved[0].ID()}); err != nil || len(counts) != 0 {
+		t.Fatalf("CommentCounts of a post deleted = %v, %v; the comments go with it", counts, err)
 	}
 
 	if err = posts.DeleteActor(ctx, channel); err != nil {

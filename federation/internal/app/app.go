@@ -177,6 +177,7 @@ func (a *App) build(cfg config.Config) error {
 		Media:         client,
 		Covers:        repos.covers,
 		Likes:         repos.likes,
+		Comments:      repos.comments,
 		Frames:        ffmpeg.New(cfg.FFmpegPath, cfg.FrameTimeout, client),
 		Channels:      client,
 		Languages:     cfg.FeedLanguages,
@@ -239,6 +240,7 @@ type repositories struct {
 	news          service.RemotePostRepository
 	covers        service.CoverRepository
 	likes         service.LikeRepository
+	comments      service.CommentRepository
 }
 
 func (a *App) newRepositories(cfg config.Config) (repositories, error) {
@@ -258,6 +260,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			news:          news,
 			covers:        inmem.NewCoverRepository(news),
 			likes:         inmem.NewLikeRepository(news),
+			comments:      inmem.NewCommentRepository(news),
 		}, nil
 	}
 
@@ -297,6 +300,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		news:          postgres.NewRemotePostRepository(a.pool),
 		covers:        postgres.NewCoverRepository(a.pool),
 		likes:         postgres.NewLikeRepository(a.pool),
+		comments:      postgres.NewCommentRepository(a.pool),
 	}, nil
 }
 
