@@ -22,11 +22,13 @@ import (
 // (innerHTML and the like) but to the two named policies of the site: the
 // theme's link (theme.js) and the service worker (push.js). The players of
 // SoundCloud and YouTube play their tracks in frames, with the covers of
-// those tracks.
+// those tracks. A page may be framed by a page of the site alone: while a
+// song plays, the pages opened go into a frame and the player stays
+// (web/static/shell.js).
 const pageCSP = "default-src 'self'; script-src 'self'; style-src 'self'; " +
 	"img-src 'self' data: https://*.sndcdn.com https://i.ytimg.com; " +
-	"frame-src https://w.soundcloud.com https://www.youtube-nocookie.com; " +
-	"connect-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; " +
+	"frame-src 'self' https://w.soundcloud.com https://www.youtube-nocookie.com; " +
+	"connect-src 'self'; object-src 'none'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'; " +
 	"require-trusted-types-for 'script'; trusted-types freenet-theme freenet-sw"
 
 // The website holds nothing of a person, so, unlike the API, it may be

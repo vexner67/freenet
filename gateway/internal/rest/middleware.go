@@ -138,14 +138,18 @@ func cors(allowedOrigins []string) middleware {
 const apiCSP = "default-src 'none'; frame-ancestors 'none'; sandbox"
 
 // secureHeaders: responses carry tokens and personal data, so they must not
-// be cached, sniffed or framed by another site.
+// be cached, sniffed or framed by another site. Data is framed by nobody;
+// a page, by a page of the site (the player keeps playing over the pages
+// opened in its frame).
 func secureHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("X-Frame-Options", "DENY")
 		if isData(r.URL.Path) {
+			w.Header().Set("X-Frame-Options", "DENY")
 			w.Header().Set("Content-Security-Policy", apiCSP)
+		} else {
+			w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 		}
 
 		next.ServeHTTP(w, r)

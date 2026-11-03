@@ -169,6 +169,17 @@ func TestPages(t *testing.T) {
 		}
 	})
 
+	// A page may be framed by the site alone: the player keeps playing
+	// over the pages opened in its frame.
+	t.Run("pages are framed by the site alone", func(t *testing.T) {
+		w := get("/")
+		csp := w.Header().Get("Content-Security-Policy")
+		if w.Header().Get("X-Frame-Options") != "SAMEORIGIN" || !strings.Contains(csp, "frame-ancestors 'self'") ||
+			!strings.Contains(csp, "frame-src 'self' ") {
+			t.Fatalf("page headers = %v", w.Header())
+		}
+	})
+
 	// Pages take markup and scripts only from the named policies.
 	t.Run("pages close the sinks of markup", func(t *testing.T) {
 		csp := get("/").Header().Get("Content-Security-Policy")
