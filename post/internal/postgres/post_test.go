@@ -371,3 +371,31 @@ func TestSourceRepository(t *testing.T) {
 		t.Fatalf("the erased reads %d posts, want only her own", got)
 	}
 }
+
+func TestSaveRemoteRepost(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	repo := postgres.NewPostRepository(newPool(t))
+	source, author := uuid.New(), uuid.New()
+	content, err := post.NewRepost(source, "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := post.New(author, author, content, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.Save(ctx, p); !errors.Is(err, post.ErrNotFound) {
+		t.Fatalf("local reference must exist: %v", err)
+	}
+	if err := repo.SaveRemoteRepost(ctx, p); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.Get(ctx, p.ID())
+	if err != nil || got.Content().RepostOf() != source {
+		t.Fatalf("round trip: %v, %v", got, err)
+	}
+	if err := repo.Delete(ctx, p.ID()); err != nil {
+		t.Fatal(err)
+	}
+}

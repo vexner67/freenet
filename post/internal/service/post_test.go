@@ -1281,3 +1281,47 @@ func TestPostService_Likers(t *testing.T) {
 		t.Fatalf("a missing post: %v", err)
 	}
 }
+
+type remotePosts struct {
+	id  uuid.UUID
+	err error
+}
+
+func (f remotePosts) Check(_ context.Context, id uuid.UUID) error {
+	if f.err != nil {
+		return f.err
+	}
+	if id != f.id {
+		return post.ErrNotFound
+	}
+	return nil
+}
+
+func TestRepostRemotePost(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := inmem.NewStore()
+	id, author := uuid.New(), uuid.New()
+	notifier := &fakeNotifier{}
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}, Moderators: fakeModerators{}, RemotePosts: remotePosts{id: id}})
+	first, err := svc.Repost(ctx, service.RepostInput{AuthorID: author, PostID: id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Content().RepostOf() != id || len(notifier.notified) != 0 {
+		t.Fatal("external repost lost its source or notified a local author")
+	}
+	second, err := svc.Repost(ctx, service.RepostInput{AuthorID: author, PostID: first.ID()})
+	if err != nil || second.Content().RepostOf() != id {
+		t.Fatalf("repost of repost: %v, %v", second, err)
+	}
+	if _, err := svc.Repost(ctx, service.RepostInput{AuthorID: author, PostID: uuid.New()}); !errors.Is(err, post.ErrNotFound) {
+		t.Fatalf("missing post: %v", err)
+	}
+	if err := svc.Delete(ctx, author, first.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Posts().Get(ctx, second.ID()); err != nil {
+		t.Fatal(err)
+	}
+}

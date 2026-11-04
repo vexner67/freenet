@@ -125,6 +125,11 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("a.newFederator", err)
 	}
 
+	remotePosts, err := a.newRemotePosts(cfg)
+	if err != nil {
+		return errs.Wrap("a.newRemotePosts", err)
+	}
+
 	limiter, err := a.newLimiter(cfg)
 	if err != nil {
 		return errs.Wrap("a.newLimiter", err)
@@ -171,7 +176,7 @@ func (a *App) build(cfg config.Config) error {
 	posts := service.NewPostService(service.PostDeps{
 		Posts: repos.posts, Pins: repos.posts, Comments: repos.comments, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
 		Moderators: moderators, AlbumPhotos: repos.albumPhotos, WallPhotos: albums, Switches: repos.posts, Walls: repos.sources,
-		Polls: repos.polls, Pages: repos.pages, Federator: federator,
+		Polls: repos.polls, Pages: repos.pages, Federator: federator, RemotePosts: remotePosts,
 	})
 	a.postponed = service.NewPostponedService(service.PostponedDeps{
 		Postponed: repos.postponed, Poster: posts, Tx: repos.tx, Photos: photos, Moderators: moderators,
@@ -760,4 +765,20 @@ func (a *App) Close() {
 	if a.pool != nil {
 		a.pool.Close()
 	}
+}
+
+func (a *App) newRemotePosts(cfg config.Config) (service.RemotePosts, error) {
+	if cfg.FederationServiceAddr == "" {
+		return nil, nil
+	}
+	creds, err := mtls.ClientCredentials(cfg.TLS)
+	if err != nil {
+		return nil, errs.Wrap("mtls.ClientCredentials", err)
+	}
+	conn, err := grpcclient.New(cfg.FederationServiceAddr, creds, a.tracer.DialOption())
+	if err != nil {
+		return nil, errs.Wrap("grpcclient.New", err)
+	}
+	a.conns = append(a.conns, conn)
+	return fediclient.NewNews(federationv1.NewFederationServiceClient(conn), cfg.NotifyTimeout), nil
 }

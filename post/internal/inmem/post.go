@@ -139,6 +139,15 @@ type PostRepository struct {
 }
 
 func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
+	return errs.Wrap("r.save", r.save(ctx, p, false))
+}
+
+// SaveRemoteRepost stores a reference checked by the federation service.
+func (r *PostRepository) SaveRemoteRepost(ctx context.Context, p *post.Post) error {
+	return errs.Wrap("r.save", r.save(ctx, p, true))
+}
+
+func (r *PostRepository) save(ctx context.Context, p *post.Post, remote bool) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
 	}
@@ -146,7 +155,7 @@ func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 	r.s.mu.Lock()
 	defer r.s.mu.Unlock()
 
-	if shared := p.Content().RepostOf(); shared != uuid.Nil {
+	if shared := p.Content().RepostOf(); shared != uuid.Nil && !remote {
 		if _, ok := r.s.posts[shared]; !ok {
 			return post.ErrNotFound
 		}

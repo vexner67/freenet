@@ -86,7 +86,34 @@ const saveRepostQuery = `
 	FROM shared
 `
 
+const saveRemoteRepostQuery = `
+	INSERT INTO posts (
+		id,
+		wall_id,
+		author_id,
+		text,
+		photo_ids,
+		created_at,
+		from_wall,
+		signed,
+		suggested,
+		shared_photo_id,
+		hashtags,
+		repost_of
+	)
+	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+`
+
 func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
+	return errs.Wrap("r.save", r.save(ctx, p, false))
+}
+
+// SaveRemoteRepost stores a reference checked by the federation service.
+func (r *PostRepository) SaveRemoteRepost(ctx context.Context, p *post.Post) error {
+	return errs.Wrap("r.save", r.save(ctx, p, true))
+}
+
+func (r *PostRepository) save(ctx context.Context, p *post.Post, remote bool) error {
 	content := p.Content()
 
 	args := []any{
@@ -104,7 +131,11 @@ func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 	}
 
 	// A repost is never marked as adult: the post it shares is.
-	tag, err := r.conn(ctx).Exec(ctx, saveRepostQuery, append(args, content.RepostOf())...)
+	query := saveRepostQuery
+	if remote {
+		query = saveRemoteRepostQuery
+	}
+	tag, err := r.conn(ctx).Exec(ctx, query, append(args, content.RepostOf())...)
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}

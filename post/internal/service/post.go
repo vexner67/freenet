@@ -35,6 +35,7 @@ type PostRepository interface {
 	// Save counts a repost in the post it shares and returns
 	// post.ErrNotFound when that post is gone; Delete uncounts it.
 	Save(ctx context.Context, p *post.Post) error
+	SaveRemoteRepost(ctx context.Context, p *post.Post) error
 	// Get and Delete return post.ErrNotFound.
 	Get(ctx context.Context, id uuid.UUID) (*post.Post, error)
 	// GetMany returns the posts that exist, in no particular order.
@@ -179,6 +180,7 @@ type Page struct {
 }
 
 type PostService struct {
+	remotePosts RemotePosts
 	postRepo    PostRepository
 	pinRepo     PinRepository
 	commentRepo PostCommentEraser
@@ -229,8 +231,14 @@ type PollSaver interface {
 	Save(ctx context.Context, p *post.Poll) error
 }
 
+// RemotePosts checks whether an imported post is available to share.
+type RemotePosts interface {
+	Check(ctx context.Context, id uuid.UUID) error
+}
+
 // PostDeps are what PostService works with.
 type PostDeps struct {
+	RemotePosts RemotePosts
 	// Pages knows the deleted pages, whose posts are not found; nil: none.
 	Pages      Pages
 	Posts      PostRepository
@@ -278,6 +286,7 @@ func NewPostService(d PostDeps) *PostService {
 
 	return &PostService{
 		federator:   federator,
+		remotePosts: d.RemotePosts,
 		postRepo:    d.Posts,
 		pinRepo:     d.Pins,
 		commentRepo: d.Comments,
@@ -497,7 +506,7 @@ type RepostInput struct {
 func (s *PostService) Repost(ctx context.Context, in RepostInput) (*post.Post, error) {
 	authorID := in.AuthorID
 
-	content, recipient, err := s.repostContent(ctx, in)
+	content, recipient, remote, err := s.repostContent(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -525,8 +534,11 @@ func (s *PostService) Repost(ctx context.Context, in RepostInput) (*post.Post, e
 	}
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		// Save still reports a shared post deleted in between.
-		if err := s.postRepo.Save(ctx, repost); err != nil {
+		if remote {
+			if err := s.postRepo.SaveRemoteRepost(ctx, repost); err != nil {
+				return errs.Wrap("s.postRepo.SaveRemoteRepost", err)
+			}
+		} else if err := s.postRepo.Save(ctx, repost); err != nil {
 			return errs.Wrap("s.postRepo.Save", err)
 		}
 
@@ -580,41 +592,52 @@ func speaker(p *post.Post) uuid.UUID {
 // repostContent is what a repost shows and whom to notify: the shared
 // post, or its original when it passes it on, and that post's author; or
 // a shared photo of an album, of which nobody hears.
-func (s *PostService) repostContent(ctx context.Context, in RepostInput) (post.Content, uuid.UUID, error) {
+func (s *PostService) repostContent(ctx context.Context, in RepostInput) (post.Content, uuid.UUID, bool, error) {
 	if in.PhotoID != uuid.Nil {
 		if s.albumPhotos == nil {
-			return post.Content{}, uuid.Nil, post.ErrAlbumPhotoNotFound
+			return post.Content{}, uuid.Nil, false, post.ErrAlbumPhotoNotFound
 		}
 
 		if _, err := s.albumPhotos.Get(ctx, in.PhotoID); err != nil {
-			return post.Content{}, uuid.Nil, errs.Wrap("s.albumPhotos.Get", err)
+			return post.Content{}, uuid.Nil, false, errs.Wrap("s.albumPhotos.Get", err)
 		}
 
 		if len(in.Photos) > 0 {
-			return post.Content{}, uuid.Nil, post.ErrRepostPhotos
+			return post.Content{}, uuid.Nil, false, post.ErrRepostPhotos
 		}
 
 		content, err := post.NewPhotoShare(in.PhotoID, in.Text)
-		return content, uuid.Nil, errs.Wrap("post.NewPhotoShare", err)
+		return content, uuid.Nil, false, errs.Wrap("post.NewPhotoShare", err)
 	}
 
 	shared, err := s.seen(ctx, in.AuthorID, in.PostID)
 	if err != nil {
-		return post.Content{}, uuid.Nil, err
+		return s.remoteRepost(ctx, in, in.PostID, err)
 	}
 
 	if id := shared.Shared(); id != shared.ID() {
 		if shared, err = s.seen(ctx, in.AuthorID, id); err != nil {
-			return post.Content{}, uuid.Nil, err
+			return s.remoteRepost(ctx, in, id, err)
 		}
 	}
 
 	content, err := post.NewRepost(shared.ID(), in.Text, in.Photos)
 	if err != nil {
-		return post.Content{}, uuid.Nil, errs.Wrap("post.NewRepost", err)
+		return post.Content{}, uuid.Nil, false, errs.Wrap("post.NewRepost", err)
 	}
 
-	return content, shared.Notified(), nil
+	return content, shared.Notified(), false, nil
+}
+
+func (s *PostService) remoteRepost(ctx context.Context, in RepostInput, id uuid.UUID, missing error) (post.Content, uuid.UUID, bool, error) {
+	if !errors.Is(missing, post.ErrNotFound) || s.remotePosts == nil {
+		return post.Content{}, uuid.Nil, false, missing
+	}
+	if err := s.remotePosts.Check(ctx, id); err != nil {
+		return post.Content{}, uuid.Nil, false, errs.Wrap("s.remotePosts.Check", err)
+	}
+	content, err := post.NewRepost(id, in.Text, in.Photos)
+	return content, uuid.Nil, true, errs.Wrap("post.NewRepost", err)
 }
 
 // Delete removes a post with its comments and all their photos, whoever
