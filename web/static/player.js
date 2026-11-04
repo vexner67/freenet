@@ -16,6 +16,7 @@
 // the last one left it. Pages opened from it do not stop the song at all:
 // they open in the frame of shell.js.
 
+import { dragPlayer } from './player-drag.js';
 import { api, signedIn } from './api.js';
 import { audioArtist, audioSite, audioTime, audioTitle } from './labels.js';
 import { el } from './layout.js';
@@ -132,6 +133,7 @@ export function createPlayer(root, { onState = () => {}, onStop = () => {} } = {
     close,
     embed);
   root.append(box);
+  const placePlayer = dragPlayer(box);
 
   volume.addEventListener('input', () => setLoudness(Number(volume.value)));
   seek.addEventListener('input', () => seekTo((Number(seek.value) / 1000) * length));
@@ -277,6 +279,7 @@ export function createPlayer(root, { onState = () => {}, onStop = () => {} } = {
     if (!audio) return;
 
     box.hidden = false;
+    placePlayer();
     document.body.classList.add('with-player');
     show(audio);
     media.pause();

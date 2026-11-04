@@ -34,15 +34,6 @@ export function startShell(isPlaying) {
   window.addEventListener('popstate', onPopState);
 }
 
-// framePage is the address of the page in the frame, '' for none.
-export function framePage() {
-  try {
-    return frame?.contentWindow?.location.href ?? '';
-  } catch {
-    return '';
-  }
-}
-
 // tellFrame sends the page in the frame a message of the player.
 export function tellFrame(message) {
   frame?.contentWindow?.postMessage(message, location.origin);

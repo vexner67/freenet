@@ -44,11 +44,6 @@ async function bar() {
       showState(next);
       shell.tellFrame({ freenetPlayer: next });
     },
-    // × in the shell leaves it for the page of the frame, as it is.
-    onStop: () => {
-      const page = shell.framePage();
-      if (page) location.replace(page);
-    },
   });
   shell.startShell(made.active);
   player = {

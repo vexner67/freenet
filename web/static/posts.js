@@ -287,10 +287,10 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
 // channel of Telegram, in the news: its author and the date lead there,
 // its pictures and the card of the page it links to come through the
 // site, and it has a heart of the site — its server does not learn of it
-// — but no comments or reposts here, only the way to it. The warning its
+// — with local comments and reposts. The warning its
 // author put before it (summary) shows above the blurred text, as the
 // servers of Mastodon show it. onError(e) shows a failed like.
-export function remotePostNode(post, { onError, withCommentsLink = true } = {}) {
+export function remotePostNode(post, { onError, withCommentsLink = true, shared = false } = {}) {
   const remote = post.fediverse;
   const author = remote.author;
   const name = author.name || author.handle;
@@ -304,7 +304,7 @@ export function remotePostNode(post, { onError, withCommentsLink = true } = {}) 
     linkCardNode(post.link) ?? '',
   );
 
-  const node = el('div', { className: 'post post-remote' + (post.nsfw ? ' post-nsfw' : '') },
+  const node = el('div', { className: (shared ? 'post-shared post-remote' : 'post post-remote') + (post.nsfw ? ' post-nsfw' : '') },
     el('a', { className: 'post-avatar', href: author.url, target: '_blank', rel: 'noopener noreferrer nofollow ugc' },
       el('img', { src: author.avatar || '/static/avatar.svg', alt: '' }),
     ),
@@ -314,13 +314,13 @@ export function remotePostNode(post, { onError, withCommentsLink = true } = {}) 
         ' ',
         el('span', { className: 'post-handle', textContent: author.handle }),
         el('div', { className: 'post-date' },
-          externalLink(remote.url, [formatPostDate(post.createdAt)]),
+          el('a', { href: postPath(post), textContent: formatPostDate(post.createdAt) }),
           post.editedAt ? el('span', { className: 'post-edited', title: tr('Отредактировано'), textContent: tr(' (ред.)') }) : '',
         ),
       ),
       remote.summary ? el('div', { className: 'post-summary', textContent: remote.summary }) : null,
       content,
-      el('div', { className: 'post-menu post-bar' },
+      shared ? null : el('div', { className: 'post-menu post-bar' },
         likeButton(post, { canLike: true, onError, like: api.likeFediverse, unlike: api.unlikeFediverse, likers: api.fediverseLikers }),
         withCommentsLink ? el('a', { className: 'like post-comments-link', href: postPath(post), title: tr('Комментарии') },
           bubble(), el('span', { className: 'like-count', textContent: post.comments > 0 ? String(post.comments) : '' })) : null,
@@ -442,6 +442,8 @@ export function sharedNode(shared, { canVote = false, onError } = {}) {
     return el('div', { className: 'post-shared deleted', textContent: tr('Запись удалена.') });
   }
 
+  if (shared.fediverse) return remotePostNode(shared, { shared: true, onError });
+
   const path = pagePath(shared.author);
   const content = el('div', { className: 'shared-content' });
   const fill = () => content.replaceChildren(
@@ -558,13 +560,11 @@ function shareButton(post, canShare) {
   return button;
 }
 
-// remoteShareButton is "Поделиться" of a post of another server: the site
-// cannot repost it, so its address goes to the wall, the community or the
-// conversation, with the card of its page. It has no number: the site
-// does not count where its address went.
+// remoteShareButton shares the imported post by its Freenet ID, with
+// the same destinations as local posts, without a local repost counter.
 function remoteShareButton(post) {
   const button = el('a', { className: 'like share-icon', title: tr('Поделиться') }, arrow());
-  button.addEventListener('click', () => openShare(post, () => {}, { link: post.fediverse.url }));
+  button.addEventListener('click', () => openShare(post, () => {}));
 
   return button;
 }
