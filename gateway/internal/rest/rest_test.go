@@ -842,7 +842,7 @@ func (f *fakePosts) Unpin(ctx context.Context, token, id string) error {
 // Repost shares p1 only, as u1's repost p7.
 func (f *fakePosts) Repost(_ context.Context, token, postID string, nr model.NewRepost) (model.Post, error) {
 	f.token, f.shared, f.created, f.repost = token, postID, nr.Text, nr
-	if postID != "p1" && nr.PhotoID == "" {
+	if postID != "p1" && postID != "remote" && nr.PhotoID == "" {
 		return model.Post{}, failure.New(failure.NotFound, "post not found")
 	}
 	ann, wall := model.Author{ID: "u1"}, model.Author{ID: "u1"}
@@ -850,7 +850,7 @@ func (f *fakePosts) Repost(_ context.Context, token, postID string, nr model.New
 		wall = model.Author{ID: nr.WallID}
 	}
 	return model.Post{
-		ID: "p7", Author: ann, Wall: wall, Text: nr.Text, PhotoIDs: nr.PhotoIDs, RepostOf: "p1", FromWall: nr.FromWall,
+		ID: "p7", Author: ann, Wall: wall, Text: nr.Text, PhotoIDs: nr.PhotoIDs, RepostOf: postID, FromWall: nr.FromWall,
 		CreatedAt: time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC),
 	}, f.err
 }

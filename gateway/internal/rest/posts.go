@@ -157,15 +157,16 @@ type sharedPhotoJSON struct {
 // leaves only the ID. RepostOf is set when the shared post is itself a
 // repost with words of its own: the site links to it instead of nesting.
 type repostJSON struct {
-	ID        string      `json:"id"`
-	Deleted   bool        `json:"deleted"`
-	Author    *authorJSON `json:"author"`
-	Wall      *authorJSON `json:"wall"`
-	Text      string      `json:"text"`
-	TextCut   bool        `json:"textCut,omitempty"`
-	Photos    []photoJSON `json:"photos"`
-	CreatedAt string      `json:"createdAt"`
-	RepostOf  string      `json:"repostOf"`
+	Fediverse *fediverseJSON `json:"fediverse,omitempty"`
+	ID        string         `json:"id"`
+	Deleted   bool           `json:"deleted"`
+	Author    *authorJSON    `json:"author"`
+	Wall      *authorJSON    `json:"wall"`
+	Text      string         `json:"text"`
+	TextCut   bool           `json:"textCut,omitempty"`
+	Photos    []photoJSON    `json:"photos"`
+	CreatedAt string         `json:"createdAt"`
+	RepostOf  string         `json:"repostOf"`
 	// NSFW: the author of the shared post marked it as adult.
 	NSFW bool `json:"nsfw"`
 	// Poll is the poll the shared post asks, null for none.
@@ -487,6 +488,12 @@ func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, e
 			}
 		}
 
+		if resp.Repost != nil && resp.Repost.Deleted {
+			resp.Repost, err = a.remoteRepost(r, p.RepostOf)
+			if err != nil {
+				return nil, err
+			}
+		}
 		shown = append(shown, resp)
 	}
 
@@ -1106,6 +1113,15 @@ func (a *api) repostsByID(r *http.Request, ids []string) (map[string]*repostJSON
 			shown[p.ID].Poll = polls[p.ID]
 			shown[p.ID].Documents = documentsJSON(p.DocumentIDs, docs)
 			shown[p.ID].Audios = audiosJSON(p.AudioIDs, songs)
+		}
+	}
+
+	for _, id := range ids {
+		if shown[id].Deleted {
+			shown[id], err = a.remoteRepost(r, id)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 

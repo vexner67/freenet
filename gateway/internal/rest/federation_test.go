@@ -2,6 +2,7 @@ package rest_test
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -309,6 +310,9 @@ func (f *fakeFederation) NewsLikers(_ context.Context, token, postID, cursor str
 
 func (f *fakeFederation) NewsPost(_ context.Context, token, postID string) (model.FediversePost, error) {
 	f.token = token
+	if postID != "p2" && postID != "remote" {
+		return model.FediversePost{}, failure.New(failure.NotFound, "post not found")
+	}
 	return model.FediversePost{ID: postID, Author: meduza, Text: "news", Comments: 2}, f.err
 }
 
@@ -675,5 +679,61 @@ func TestFediverseComments(t *testing.T) {
 	h.federation.err = failure.New(failure.PermissionDenied, "not your comment")
 	if w = h.do("DELETE", "/api/v1/fediverse/comments/c2", "", auth...); w.Code != http.StatusForbidden {
 		t.Errorf("delete of another: %d", w.Code)
+	}
+}
+
+func TestSendRemotePost(t *testing.T) {
+	t.Parallel()
+	for _, path := range []string{"/api/v1/dialogs/bob/messages", "/api/v1/chats/c1/messages"} {
+		t.Run(path, func(t *testing.T) {
+			h := newHarness(rest.Config{})
+			h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+			w := h.do("POST", path, `{"post":"remote"}`, "Authorization", "Bearer tok")
+			if w.Code != http.StatusCreated {
+				t.Fatalf("send: %d %s", w.Code, w.Body)
+			}
+			var got struct {
+				Post   string `json:"post"`
+				Repost struct {
+					ID        string `json:"id"`
+					Text      string `json:"text"`
+					Fediverse *struct {
+						Author struct {
+							Name string `json:"name"`
+						} `json:"author"`
+					} `json:"fediverse"`
+				} `json:"repost"`
+			}
+			if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+				t.Fatal(err)
+			}
+			if got.Post != "remote" || got.Repost.ID != "remote" || got.Repost.Text != "news" || got.Repost.Fediverse == nil {
+				t.Fatalf("shared post: %s", w.Body)
+			}
+		})
+	}
+}
+
+func TestRemoteRepostOnWall(t *testing.T) {
+	t.Parallel()
+	h := newHarness(rest.Config{})
+	h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+	w := h.do("POST", "/api/v1/posts/remote/reposts", `{"text":"look"}`, "Authorization", "Bearer tok")
+	if w.Code != http.StatusCreated {
+		t.Fatalf("repost: %d %s", w.Code, w.Body)
+	}
+	var got struct {
+		Text   string `json:"text"`
+		Repost struct {
+			ID        string          `json:"id"`
+			Text      string          `json:"text"`
+			Fediverse json.RawMessage `json:"fediverse"`
+		} `json:"repost"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Text != "look" || got.Repost.ID != "remote" || got.Repost.Text != "news" || len(got.Repost.Fediverse) == 0 {
+		t.Fatalf("repost: %s", w.Body)
 	}
 }

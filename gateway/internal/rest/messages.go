@@ -664,6 +664,9 @@ func (a *api) checkSharedPost(r *http.Request, token, postID string) error {
 	}
 
 	_, err := a.posts.Get(r.Context(), token, postID)
+	if failure.From(err).Kind == failure.NotFound && a.federation != nil {
+		_, err = a.federation.NewsPost(r.Context(), token, postID)
+	}
 	if failure.From(err).Kind == failure.NotFound || failure.From(err).Kind == failure.InvalidArgument {
 		return failure.New(failure.InvalidArgument, "post not found")
 	}

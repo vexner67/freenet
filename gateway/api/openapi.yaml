@@ -10570,7 +10570,7 @@ components:
         moderated: { type: boolean, description: "Only in the feed: the post is on the wall of a community you run" }
         fediverse:
           type: object
-          description: 'Only in the feed: a post of another server of the Fediverse or of a channel of Telegram, with likes here (`/api/v1/fediverse/posts/{id}/like`) and no comments or reposts; author holds only its name, `link` is the card its server made, with the picture from `/media/fediverse/posts/{id}/link`'
+          description: 'An imported post of another server of the Fediverse or of a channel of Telegram, with likes here (`/api/v1/fediverse/posts/{id}/like`) and local comments and reposts; author holds only its name, `link` is the card its server made, with the picture from `/media/fediverse/posts/{id}/link`'
           properties:
             author: { $ref: "#/components/schemas/FediverseAccount" }
             url: { type: string, description: The post on its server }
@@ -10608,6 +10608,8 @@ components:
         is set when the shared post is itself a repost: link to it.
       required: [id, deleted, author, wall, text, photos, createdAt, repostOf]
       properties:
+        fediverse:
+          $ref: "#/components/schemas/Post/properties/fediverse"
         id: { type: string, format: uuid }
         deleted: { type: boolean }
         nsfw: { type: boolean, description: "Its author marked it as adult, as Post's nsfw" }

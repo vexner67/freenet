@@ -633,3 +633,20 @@ func fediverseNewsOf(sources model.FeedSources, cursor string, limit int) model.
 		Featured: sources.Everyone, Before: cursor, Limit: cmp.Or(limit, defaultPageSize), HideSensitive: sources.HideNSFW,
 	}
 }
+
+// remoteRepost uses the same local post card in walls and conversations.
+func (a *api) remoteRepost(r *http.Request, id string) (*repostJSON, error) {
+	missing := &repostJSON{ID: id, Deleted: true}
+	if a.federation == nil || viewerToken(r) == "" {
+		return missing, nil
+	}
+	p, err := a.federation.NewsPost(r.Context(), viewerToken(r), id)
+	if failure.From(err).Kind == failure.NotFound {
+		return missing, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	shown := toFediversePostResponse(p)
+	return &repostJSON{ID: id, Text: shown.Text, CreatedAt: shown.CreatedAt, NSFW: shown.NSFW, Link: shown.Link, Fediverse: shown.Fediverse}, nil
+}
