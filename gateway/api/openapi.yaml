@@ -10177,6 +10177,7 @@ components:
         hideRating: { type: boolean, description: "Takes \"Заполненность страницы\" off the pages its owner reads (\"Рейтинг\")" }
         nsfw: { type: string, enum: [blur, hide, show], description: "Posts marked as adult: blurred until clicked (the default), blurred and left out of the news, or shown as any other" }
         postView: { type: string, enum: [old, microblog], description: "How posts are laid out (\"Вид постов\"); old by default" }
+        design: { type: string, enum: [classic, modern], description: "The whole look of the site (\"Оформление\"): the site of 2010 (classic, the default when left out) or the modern one" }
         timezone:
           type: [integer, "null"]
           description: The clock dates are shown by, minutes east of UTC (-720..840 in steps of 15); null for the browser's own
