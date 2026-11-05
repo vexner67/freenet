@@ -2,11 +2,10 @@
 // the one script of the site that is not a module: a module runs after
 // the page is parsed, and a dark page would flash light until then. It
 // runs where the parser meets it, right after the stylesheet of the page
-// (style.css, or m.css on a phone), and writes the stylesheets of the
-// theme and of "Оформление" into the document there, so the browser waits
-// for them as it waits for the page's. layout.js keeps the same links
-// once the settings are known; the keys and the files are the ones it
-// names.
+// (style.css, or m.css on a phone), and writes the stylesheet of the theme
+// into the document there, so the browser waits for it as it waits for
+// the page's. layout.js keeps the same link once
+// the settings are known; the keys and the themes are the ones it names.
 // The stylesheets are named whole: the server puts their versions into
 // the paths, the same ones layout.js gets.
 //
@@ -57,36 +56,20 @@
     dark: '/static/themes/dark.css',
     gold: '/static/themes/gold.css',
   };
-  // "Оформление": the site of 2010 needs nothing; the modern one is a
-  // stylesheet over the page and its theme, and a class of the page.
-  const designs = {
-    modern: '/static/modern.css',
-  };
 
   let theme = null;
-  let design = null;
   try {
-    theme = localStorage.getItem('freenet.theme');
-    design = localStorage.getItem('freenet.design');
-    const ui = JSON.parse(localStorage.getItem('freenet.interface'));
-    theme ??= ui?.theme;
-    design ??= ui?.design;
+    theme = localStorage.getItem('freenet.theme')
+      ?? JSON.parse(localStorage.getItem('freenet.interface'))?.theme;
   } catch {
-    // Without storage the page wears the look layout.js gives it.
+    // Without storage the page wears the theme layout.js gives it.
   }
 
-  const known = (map, key) => typeof key === 'string' && Object.hasOwn(map, key);
-  let markup = '';
-  if (known(themes, theme)) markup += `<link id="theme" rel="stylesheet" href="${themes[theme]}">`;
-  if (known(designs, design)) {
-    root.classList.add(design);
-    if (theme === 'dark') root.classList.add('theme-dark');
-    markup += `<link id="design" rel="stylesheet" href="${designs[design]}">`;
-  }
-  if (!markup) return;
+  if (typeof theme !== 'string' || !Object.hasOwn(themes, theme)) return;
 
   // The pages let only named policies make markup (Trusted Types in the
-  // CSP of the gateway): this one writes nothing but the links above.
+  // CSP of the gateway): this one writes nothing but a theme's link.
+  const markup = `<link id="theme" rel="stylesheet" href="${themes[theme]}">`;
   const policy = globalThis.trustedTypes?.createPolicy('freenet-theme', {
     createHTML: (html) => {
       if (html !== markup) throw new TypeError('not a theme link');

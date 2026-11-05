@@ -52,7 +52,6 @@ test('the bar of sections lights the section the page is in', () => {
   assert.equal(activeSection('/im/petr', '/ann'), 'messages');
   assert.equal(activeSection('/im/chat/1', '/ann'), 'messages');
   assert.equal(activeSection('/notifications', '/ann'), 'notifications');
-  assert.equal(activeSection('/search', '/ann'), 'search');
   assert.equal(activeSection('/ann', '/ann'), 'page');
   assert.equal(activeSection('/petr', '/ann'), '');
   assert.equal(activeSection('/imogen', '/ann'), '');

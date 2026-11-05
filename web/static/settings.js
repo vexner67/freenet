@@ -11,8 +11,8 @@
 // a saved form answers over the page and the fields not saved yet are yellow.
 
 import { api, currentUser } from './api.js';
-import { deviceName, formatDateTime, keyStateText, sessionsCount, audiences, avatarStyles, designs, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes, pushStateTexts } from './labels.js';
-import { $, applyInterface, deviceDesign, deviceTheme, el, fediverseAccountNode, setDeviceDesign, setDeviceTheme, profilePath, renderChrome, showError, hideError } from './layout.js';
+import { deviceName, formatDateTime, keyStateText, sessionsCount, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes, pushStateTexts } from './labels.js';
+import { $, applyInterface, deviceTheme, el, fediverseAccountNode, setDeviceTheme, profilePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { openDeactivate } from './deactivate.js';
 import { disablePush, enablePush, pushState } from './push.js';
@@ -259,20 +259,18 @@ function openCloseFediverse(done) {
 function initInterface(me) {
   const ui = me.interface;
   const device = deviceTheme();
-  const deviceLook = deviceDesign();
 
   fill($('avatar-style'), avatarStyles, ui.avatarStyle);
   // The gold style is Prime's: offered with it, and kept by one
   // who chose it before Prime ended.
   const chosen = device ?? ui.theme;
   fill($('theme-select'), themes.filter(([v]) => v !== 'gold' || me.prime || chosen === 'gold'), chosen);
-  fill($('design-select'), designs, deviceLook ?? ui.design ?? 'classic');
   fill($('rating'), ratings, ui.hideRating ? 'hide' : 'show');
   fill($('nsfw'), nsfwContents, ui.nsfw);
   fill($('post-view'), postViews, ui.postView);
   fill($('main-page'), mainPages, ui.mainPage);
   fill($('timezone'), timezones, ui.timezone === null ? '' : String(ui.timezone));
-  $('theme-device').checked = device !== null || deviceLook !== null;
+  $('theme-device').checked = device !== null;
   // As openvk's: the box where the label would be, the name beside it.
   $('menu-items').replaceChildren(...menuItems.map(([item, text]) => el('tr', {},
     el('th', { className: 'check-cell' },
@@ -288,7 +286,6 @@ function initInterface(me) {
     const updated = await api.updateInterface({
       avatarStyle: $('avatar-style').value,
       theme: onDevice ? me.interface.theme : $('theme-select').value,
-      design: onDevice ? me.interface.design ?? 'classic' : $('design-select').value,
       hideRating: $('rating').value === 'hide',
       nsfw: $('nsfw').value,
       postView: $('post-view').value,
@@ -298,7 +295,6 @@ function initInterface(me) {
     });
 
     setDeviceTheme(onDevice ? $('theme-select').value : null);
-    setDeviceDesign(onDevice ? $('design-select').value : null);
     Object.assign(me, updated);
     applyInterface(me);
   });

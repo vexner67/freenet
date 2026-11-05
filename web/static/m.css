@@ -131,8 +131,6 @@ b, strong { font-weight: bold; }
   opacity: 0.7;
 }
 .tabbar-item img { display: block; width: 22px; height: 22px; }
-/* The sections and icons of the modern design (modern.css). */
-.tabbar-modern, .tabbar-item img.tab-modern { display: none; }
 .tabbar-item span:not(.tabbar-count) { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .tabbar-item.active { background: rgba(255, 255, 255, 0.1); opacity: 1; font-weight: bold; }
 /* While the menu is open, it is the section lit. */

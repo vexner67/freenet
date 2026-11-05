@@ -78,31 +78,6 @@ test('nothing is written for the default theme, an unknown one or broken storage
   assert.equal(written({ 'freenet.theme': 'dark' }, true), '');
 });
 
-test('the modern design is put on with its class, over the theme', () => {
-  const { html, classes } = run({ 'freenet.interface': JSON.stringify({ theme: 'dark', design: 'modern' }) });
-
-  assert.equal(html, '<link id="theme" rel="stylesheet" href="/static/themes/dark.css"><link id="design" rel="stylesheet" href="/static/modern.css">');
-  assert.ok(classes.has('modern') && classes.has('theme-dark'));
-});
-
-test('the design of the device wins over the one of the settings', () => {
-  const device = run({ 'freenet.design': 'modern', 'freenet.interface': JSON.stringify({ design: 'classic' }) });
-  assert.equal(device.html, '<link id="design" rel="stylesheet" href="/static/modern.css">');
-  assert.ok(device.classes.has('modern') && !device.classes.has('theme-dark'));
-
-  const classic = run({ 'freenet.design': 'classic', 'freenet.interface': JSON.stringify({ design: 'modern' }) });
-  assert.equal(classic.html, '');
-  assert.ok(!classic.classes.has('modern'));
-});
-
-test('nothing is put on for the classic design or an unknown one', () => {
-  for (const design of ['classic', 'constructor', '"><script>']) {
-    const { html, classes } = run({ 'freenet.design': design });
-    assert.equal(html, '', design);
-    assert.ok(![...classes].some((c) => c !== 'pending'), design);
-  }
-});
-
 test('the admin panel wears its own dark mode and no theme of the site', () => {
   const admin = (items, options) => run(items, false, { start: ['aui'], ...options });
 

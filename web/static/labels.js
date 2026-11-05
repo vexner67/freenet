@@ -435,13 +435,6 @@ export const nsfwContents = [
   ['show', tr('показывать')],
 ];
 
-// designs are the looks of "Оформление": the site of 2010 and the modern
-// one, of a single column and icons.
-export const designs = [
-  ['classic', tr('2010 (по умолчанию)')],
-  ['modern', tr('современное')],
-];
-
 export const postViews = [
   ['old', tr('старый')],
   ['microblog', tr('микроблог')],
@@ -3720,7 +3713,6 @@ export function activeSection(path, ownPath) {
   if (path === '/feed' || path.startsWith('/feed/')) return 'feed';
   if (path === '/im' || path.startsWith('/im/')) return 'messages';
   if (path === '/notifications') return 'notifications';
-  if (path === '/search') return 'search';
   if (ownPath && decodeURIComponent(path) === ownPath) return 'page';
 
   return '';

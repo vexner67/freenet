@@ -412,8 +412,6 @@ if (typeof window !== 'undefined') onAccountChange(() => location.reload());
 // theme.js reads the same keys to put the theme on before the first paint.
 const LOOK_KEY = 'freenet.interface';
 const THEME_KEY = 'freenet.theme';
-// DESIGN_KEY is "Оформление" chosen for this device alone, with the theme.
-const DESIGN_KEY = 'freenet.design';
 // The stylesheets of the themes. A file of /static/ is named in a script
 // whole, as one string: the server puts the version of the file into such
 // a path, and the browser keeps the file for good.
@@ -421,12 +419,6 @@ const THEMES = {
   blue: '/static/themes/blue.css',
   dark: '/static/themes/dark.css',
   gold: '/static/themes/gold.css',
-};
-
-// "Оформление": the site of 2010 has no stylesheet of its own; the modern
-// one lies over the page and its theme (modern.css).
-const DESIGNS = {
-  modern: '/static/modern.css',
 };
 
 function stored(key) {
@@ -448,7 +440,6 @@ function storedLook() {
 function forgetLook() {
   try {
     localStorage.removeItem(LOOK_KEY);
-    localStorage.removeItem(OWN_PAGE_KEY);
   } catch {
     // The look is a nicety.
   }
@@ -469,61 +460,23 @@ export function setDeviceTheme(theme) {
   }
 }
 
-// deviceDesign is "Оформление" of this device alone, null when it wears
-// the one of the settings; it goes with the theme of the device.
-export function deviceDesign() {
-  return stored(DESIGN_KEY);
-}
-
-export function setDeviceDesign(design) {
-  try {
-    if (design) localStorage.setItem(DESIGN_KEY, design);
-    else localStorage.removeItem(DESIGN_KEY);
-  } catch {
-    // Without storage the device wears the design of the settings.
-  }
-}
-
-// putStylesheet keeps the link of id at href, or takes it away for none;
-// a new one goes before the link named next, so the design lies over the
-// theme as theme.js writes them.
-function putStylesheet(id, href, next = null) {
-  let link = $(id);
-  if (!href) {
-    link?.remove();
-    return;
-  }
-  if (!link) {
-    link = el('link', { id, rel: 'stylesheet' });
-    const after = next && $(next);
-    if (after) after.before(link);
-    else document.head.append(link);
-  }
-  if (link.getAttribute('href') !== href) link.href = href;
-}
-
-// The colour of the browser's bar over the page: the header's.
-function paintBrowserBar(modern, dark) {
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (!meta) return;
-  if (!meta.dataset.classic) meta.dataset.classic = meta.content;
-  meta.content = !modern ? meta.dataset.classic : dark ? '#101010' : '#ffffff';
-}
-
 // applyLook dresses the page as "Интерфейс" of the settings says: the
 // theme, the shape of the photos, the view of the posts, whether adult
 // posts are blurred and the gauge of a page shown, and the clock.
 function applyLook(ui) {
   const theme = deviceTheme() ?? ui.theme;
-  const design = deviceDesign() ?? ui.design;
-  const modern = design === 'modern';
+  let link = $('theme');
 
-  putStylesheet('theme', Object.hasOwn(THEMES, theme) ? THEMES[theme] : null, 'design');
-  putStylesheet('design', Object.hasOwn(DESIGNS, design) ? DESIGNS[design] : null);
-  const root = document.documentElement.classList;
-  root.toggle('modern', modern);
-  root.toggle('theme-dark', modern && theme === 'dark');
-  paintBrowserBar(modern, theme === 'dark');
+  if (Object.hasOwn(THEMES, theme)) {
+    const href = THEMES[theme];
+    if (!link) {
+      link = el('link', { id: 'theme', rel: 'stylesheet' });
+      document.head.append(link);
+    }
+    if (link.getAttribute('href') !== href) link.href = href;
+  } else {
+    link?.remove();
+  }
 
   const { classList } = document.body;
   classList.toggle('avatars-round', ui.avatarStyle === 'round');
@@ -928,105 +881,42 @@ async function offerPush(me) {
 
 // The sections of the bar at the bottom of a phone (m.css), as the
 // first apps had them: the page, the news, the messages and the
-// notifications with their counters, and the whole menu. The modern
-// design (modern.css) has the bar on a computer too, as a column of
-// icons at the left, and two sections more: the search and "Создать";
-// it orders them its own way and wears the icons of "nav".
-function tabSections(own) {
+// notifications with their counters, and the whole menu.
+function tabSections(me) {
   return [
-    { name: 'page', href: own, icon: '/static/icons/tab-page.svg', nav: '/static/icons/nav-profile.svg', label: tr('Страница') },
-    { name: 'feed', href: '/feed', icon: '/static/icons/tab-feed.svg', nav: '/static/icons/nav-home.svg', label: tr('Новости') },
-    { name: 'search', href: '/search', nav: '/static/icons/nav-search.svg', label: tr('Поиск'), modern: true },
-    { name: 'create', href: '/feed#write', nav: '/static/icons/nav-create.svg', label: tr('Создать'), modern: true, onclick: compose },
-    { name: 'messages', href: '/im', icon: '/static/icons/tab-messages.svg', nav: '/static/icons/nav-messages.svg', label: tr('Сообщения'), counter: 'messages' },
-    { name: 'notifications', href: '/notifications', icon: '/static/icons/tab-notifications.svg', nav: '/static/icons/nav-activity.svg', label: tr('Уведомления'), counter: 'notifications' },
+    { name: 'page', href: profilePath(me), icon: '/static/icons/tab-page.svg', label: tr('Страница') },
+    { name: 'feed', href: '/feed', icon: '/static/icons/tab-feed.svg', label: tr('Новости') },
+    { name: 'messages', href: '/im', icon: '/static/icons/tab-messages.svg', label: tr('Сообщения'), counter: 'messages' },
+    { name: 'notifications', href: '/notifications', icon: '/static/icons/tab-notifications.svg', label: tr('Уведомления'), counter: 'notifications' },
   ];
-}
-
-// compose is "Создать": the form of a new post on the page, or the one
-// over the news when the page has none.
-function compose(event) {
-  const form = $('post-form');
-  if (!form || form.hidden) return;
-  event.preventDefault();
-  openComposer(form);
-}
-
-function openComposer(form) {
-  form.classList.add('expanded');
-  form.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-  $('post-text')?.focus({ preventScroll: true });
-}
-
-// The news opened by "Создать" from another page: its form, once shown.
-if (typeof document !== 'undefined' && location.hash === '#write') {
-  whenShown().then(() => {
-    const form = $('post-form');
-    if (form && !form.hidden) openComposer(form);
-  });
 }
 
 // addTabBar puts the bar of sections at the bottom of the page, which
 // only a phone shows (style.css hides it on a wide screen). The owner of
 // a deleted or blocked page gets only "Меню", when it has anything.
 function addTabBar(me, { menuOnly = false } = {}) {
-  const own = profilePath(me);
-  try {
-    localStorage.setItem(OWN_PAGE_KEY, own);
-  } catch {
-    // The next page draws its bar once the server answers.
-  }
-  drawTabBar(own, { menuOnly });
-}
-
-// The page of the one signed in, kept for the bar the modern design
-// draws before the server answers: the column of icons stays in its
-// place from page to page.
-const OWN_PAGE_KEY = 'freenet.own';
-
-function drawTabBar(own, { menuOnly = false } = {}) {
   document.querySelector('.tabbar')?.remove();
 
-  const active = activeSection(location.pathname, own);
-  const items = menuOnly ? [] : tabSections(own).map((section) => el('a', {
-    className: `tabbar-item tabbar-${section.name}` + (section.modern ? ' tabbar-modern' : '') + (section.name === active ? ' active' : ''),
-    href: section.href, title: section.label, onclick: section.onclick ?? null,
+  const active = activeSection(location.pathname, profilePath(me));
+  const items = menuOnly ? [] : tabSections(me).map((section) => el('a', {
+    className: 'tabbar-item' + (section.name === active ? ' active' : ''), href: section.href,
   },
-  section.icon && el('img', { className: 'tab-classic', src: section.icon, alt: '' }),
-  el('img', { className: 'tab-modern', src: section.nav, alt: '' }),
-  el('span', { className: 'tabbar-label', textContent: section.label }),
+  el('img', { src: section.icon, alt: '' }),
+  el('span', { textContent: section.label }),
   section.counter ? el('span', { className: 'tabbar-count', id: counters[section.counter].id + '-tab', hidden: true }) : null,
   ));
 
-  const toggle = el('a', { className: 'tabbar-item tabbar-menu', ariaExpanded: 'false', title: tr('Меню') },
-    el('img', { className: 'tab-classic', src: '/static/icons/tab-menu.svg', alt: '' }),
-    el('img', { className: 'tab-modern', src: '/static/icons/nav-menu.svg', alt: '' }),
-    el('span', { className: 'tabbar-label', textContent: tr('Меню') }));
+  const toggle = el('a', { className: 'tabbar-item tabbar-menu', ariaExpanded: 'false' },
+    el('img', { src: '/static/icons/tab-menu.svg', alt: '' }),
+    el('span', { textContent: tr('Меню') }));
   toggle.setAttribute('role', 'button');
-  toggle.addEventListener('click', () => setMenuOpen(!document.body.classList.contains('menu-open')));
+  toggle.addEventListener('click', () => {
+    const open = document.body.classList.toggle('menu-open');
+    toggle.ariaExpanded = String(open);
+    toggle.classList.toggle('active', open);
+  });
 
   document.querySelector('.layout')?.append(el('nav', { className: 'tabbar', ariaLabel: tr('Меню') }, ...items, toggle));
-}
-
-// setMenuOpen opens or closes "Меню" of the bar.
-function setMenuOpen(open) {
-  document.body.classList.toggle('menu-open', open);
-  const toggle = document.querySelector('.tabbar-menu');
-  if (!toggle) return;
-  toggle.ariaExpanded = String(open);
-  toggle.classList.toggle('active', open);
-}
-
-// The menu over the page closes as a list does: a click beside it or Esc.
-if (typeof document !== 'undefined') {
-  document.addEventListener('click', (event) => {
-    if (!document.body.classList.contains('menu-open')) return;
-    if (event.target.closest?.('.tabbar-menu, .sidebar')) return;
-    setMenuOpen(false);
-  });
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && document.body.classList.contains('menu-open')) setMenuOpen(false);
-  });
 }
 
 // addHeaderSearch puts the search into the header of a phone, where the
@@ -1212,16 +1102,4 @@ export function showError(container, error) {
 
 export function hideError(container) {
   container.hidden = true;
-}
-
-// The modern design has its column of icons from the first paint: drawn
-// here, once all the module is read, for the one signed in last.
-if (typeof document !== 'undefined' && document.documentElement.classList.contains('modern')) {
-  let own = null;
-  try {
-    own = localStorage.getItem(OWN_PAGE_KEY);
-  } catch {
-    // The bar comes with the answer of the server.
-  }
-  if (own && document.querySelector('.layout')) drawTabBar(own);
 }
