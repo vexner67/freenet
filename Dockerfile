@@ -21,9 +21,18 @@ WORKDIR /src
 RUN test -n "$SERVICE" || (echo "pass --build-arg SERVICE=<auth|user|post|media|notification|message|club|federation|gateway>" && exit 1)
 
 # Static binary without debug info; -trimpath keeps local paths out of it.
-RUN --mount=type=bind,target=. \
+#
+# The go.mod files require each other at pseudo-versions, and Go reads the
+# go.mod of every such version even in a workspace. The repository is
+# private, so no proxy can serve them: each required version is replaced by
+# its directory here. The bind mount is writable only for this step, and
+# the edit of go.work is gone after it.
+RUN --mount=type=bind,target=.,rw \
     --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
+    for r in $(sed -n 's|^[[:space:]]*\(require[[:space:]]*\)\{0,1\}\(github\.com/vexner67/freenet/[^[:space:]]*\)[[:space:]]\{1,\}\(v[^[:space:]]*\).*|\2@\3|p' */go.mod pkg/*/go.mod | sort -u); do \
+      m=${r%@*}; go work edit -replace="$r=./${m#github.com/vexner67/freenet/}" || exit 1; \
+    done && \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /out/service ./${SERVICE}/cmd/${SERVICE}
 
 RUN mkdir /out/data
