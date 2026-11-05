@@ -280,7 +280,7 @@ func (u User) HasPrime(now time.Time) bool {
 // settings): AvatarStyle is "square" or "round", MainPage "page" or
 // "feed", HiddenMenu the links taken out of the left menu, Theme
 // "default", "blue" or "dark", NSFW "blur", "hide" or "show", PostView
-// "old" or "microblog", Design "classic" or "modern"; HideRating takes "Заполненность страницы" away,
+// "old" or "microblog"; HideRating takes "Заполненность страницы" away,
 // and Timezone is minutes east of UTC, nil for the browser's clock.
 type Interface struct {
 	AvatarStyle string
@@ -290,7 +290,6 @@ type Interface struct {
 	HideRating  bool
 	NSFW        string
 	PostView    string
-	Design      string
 	Timezone    *int
 }
 

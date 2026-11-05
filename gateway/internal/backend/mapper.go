@@ -204,7 +204,6 @@ func toUser(u *userv1.User) model.User {
 			HideRating:  u.GetInterface().GetHideRating(),
 			NSFW:        u.GetInterface().GetNsfw(),
 			PostView:    u.GetInterface().GetPostView(),
-			Design:      u.GetInterface().GetDesign(),
 			Timezone:    fromTimezoneOffset(u.GetInterface()),
 		},
 		PurgeAt: fromTimestamp(u.GetPurgeAt()),

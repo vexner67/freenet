@@ -8,7 +8,6 @@ import (
 
 var (
 	ErrInvalidAvatarStyle = errors.New("invalid avatar style")
-	ErrInvalidDesign      = errors.New("invalid design")
 	ErrInvalidMainPage    = errors.New("invalid main page")
 	ErrInvalidMenuItem    = errors.New("invalid menu item")
 	ErrInvalidTheme       = errors.New("invalid theme")
@@ -151,28 +150,6 @@ func (v PostView) String() string {
 	return string(v)
 }
 
-// Design is the whole look of the site ("Оформление"): the one of 2010,
-// the default, or the modern one with a single column and icons.
-type Design string
-
-const (
-	DesignClassic Design = "classic"
-	DesignModern  Design = "modern"
-)
-
-func NewDesign(s string) (Design, error) {
-	switch Design(s) {
-	case DesignClassic, DesignModern:
-		return Design(s), nil
-	default:
-		return "", ErrInvalidDesign
-	}
-}
-
-func (d Design) String() string {
-	return string(d)
-}
-
 // The clocks of the world run from UTC-12 to UTC+14, in steps of a
 // quarter of an hour.
 const (
@@ -213,7 +190,6 @@ type Interface struct {
 	HideRating bool
 	NSFW       NSFW
 	PostView   PostView
-	Design     Design
 	MainPage   MainPage
 	Timezone   Timezone
 	// HiddenMenu are the links taken out of the left menu, each once, in
@@ -228,7 +204,6 @@ func DefaultInterface() Interface {
 		Theme:       ThemeDefault,
 		NSFW:        NSFWBlur,
 		PostView:    PostViewOld,
-		Design:      DesignClassic,
 		MainPage:    MainPagePage,
 	}
 }
@@ -240,7 +215,6 @@ type InterfaceForm struct {
 	HideRating  bool
 	NSFW        string
 	PostView    string
-	Design      string
 	MainPage    string
 	// Timezone is minutes east of UTC, nil for the browser's clock.
 	Timezone   *int
@@ -270,11 +244,6 @@ func NewInterface(form InterfaceForm) (Interface, error) {
 		return Interface{}, err
 	}
 
-	design, err := NewDesign(form.Design)
-	if err != nil {
-		return Interface{}, err
-	}
-
 	main, err := NewMainPage(form.MainPage)
 	if err != nil {
 		return Interface{}, err
@@ -298,7 +267,6 @@ func NewInterface(form InterfaceForm) (Interface, error) {
 		HideRating:  form.HideRating,
 		NSFW:        nsfw,
 		PostView:    view,
-		Design:      design,
 		MainPage:    main,
 		Timezone:    zone,
 		HiddenMenu:  hidden,

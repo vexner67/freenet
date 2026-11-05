@@ -20,19 +20,19 @@ func TestInterface(t *testing.T) {
 	me, err := s.client.GetMe(ann, &userv1.GetMeRequest{})
 	ui := me.GetUser().GetInterface()
 	if err != nil || ui.GetAvatarStyle() != "square" || ui.GetMainPage() != "page" || len(ui.GetHiddenMenu()) != 0 ||
-		ui.GetTheme() != "default" || ui.GetHideRating() || ui.GetNsfw() != "blur" || ui.GetPostView() != "old" || ui.GetDesign() != "classic" || ui.TimezoneOffset != nil {
+		ui.GetTheme() != "default" || ui.GetHideRating() || ui.GetNsfw() != "blur" || ui.GetPostView() != "old" || ui.TimezoneOffset != nil {
 		t.Fatalf("a new user = %v, %v", ui, err)
 	}
 
 	offset := int32(180)
 	got, err := s.client.UpdateInterface(ann, &userv1.UpdateInterfaceRequest{Interface: &userv1.InterfaceSettings{
 		AvatarStyle: "round", MainPage: "feed", HiddenMenu: []string{"notifications", "groups"},
-		Theme: "dark", HideRating: true, Nsfw: "show", PostView: "microblog", Design: "modern", TimezoneOffset: &offset,
+		Theme: "dark", HideRating: true, Nsfw: "show", PostView: "microblog", TimezoneOffset: &offset,
 	}})
 	ui = got.GetUser().GetInterface()
 	if err != nil || ui.GetAvatarStyle() != "round" || ui.GetMainPage() != "feed" ||
 		!slices.Equal(ui.GetHiddenMenu(), []string{"groups", "notifications"}) ||
-		ui.GetTheme() != "dark" || !ui.GetHideRating() || ui.GetNsfw() != "show" || ui.GetPostView() != "microblog" || ui.GetDesign() != "modern" ||
+		ui.GetTheme() != "dark" || !ui.GetHideRating() || ui.GetNsfw() != "show" || ui.GetPostView() != "microblog" ||
 		ui.TimezoneOffset == nil || ui.GetTimezoneOffset() != 180 {
 		t.Fatalf("UpdateInterface = %v, %v", ui, err)
 	}
@@ -45,21 +45,20 @@ func TestInterface(t *testing.T) {
 		AvatarStyle: "square", MainPage: "page",
 	}})
 	ui = got.GetUser().GetInterface()
-	if err != nil || ui.GetTheme() != "default" || ui.GetNsfw() != "blur" || ui.GetPostView() != "old" || ui.GetDesign() != "classic" || ui.TimezoneOffset != nil {
+	if err != nil || ui.GetTheme() != "default" || ui.GetNsfw() != "blur" || ui.GetPostView() != "old" || ui.TimezoneOffset != nil {
 		t.Fatalf("an older client = %v, %v", ui, err)
 	}
 
 	off := int32(1000)
 	for name, bad := range map[string]*userv1.InterfaceSettings{
-		"no settings":       nil,
-		"an unknown style":  {AvatarStyle: "oval", MainPage: "page"},
-		"an unknown page":   {AvatarStyle: "square", MainPage: "search"},
-		"an unknown link":   {AvatarStyle: "square", MainPage: "page", HiddenMenu: []string{"settings"}},
-		"an unknown theme":  {AvatarStyle: "square", MainPage: "page", Theme: "pink"},
-		"an unknown nsfw":   {AvatarStyle: "square", MainPage: "page", Nsfw: "maybe"},
-		"an unknown view":   {AvatarStyle: "square", MainPage: "page", PostView: "blog"},
-		"an unknown design": {AvatarStyle: "square", MainPage: "page", Design: "2007"},
-		"a clock too far":   {AvatarStyle: "square", MainPage: "page", TimezoneOffset: &off},
+		"no settings":      nil,
+		"an unknown style": {AvatarStyle: "oval", MainPage: "page"},
+		"an unknown page":  {AvatarStyle: "square", MainPage: "search"},
+		"an unknown link":  {AvatarStyle: "square", MainPage: "page", HiddenMenu: []string{"settings"}},
+		"an unknown theme": {AvatarStyle: "square", MainPage: "page", Theme: "pink"},
+		"an unknown nsfw":  {AvatarStyle: "square", MainPage: "page", Nsfw: "maybe"},
+		"an unknown view":  {AvatarStyle: "square", MainPage: "page", PostView: "blog"},
+		"a clock too far":  {AvatarStyle: "square", MainPage: "page", TimezoneOffset: &off},
 	} {
 		if _, err = s.client.UpdateInterface(ann, &userv1.UpdateInterfaceRequest{Interface: bad}); status.Code(err) != codes.InvalidArgument {
 			t.Errorf("%s: %v", name, err)

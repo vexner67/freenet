@@ -11,7 +11,7 @@ import (
 
 // defaultForm is the settings form of a new user.
 func defaultForm() user.InterfaceForm {
-	return user.InterfaceForm{AvatarStyle: "square", Theme: "default", NSFW: "blur", PostView: "old", Design: "classic", MainPage: "page"}
+	return user.InterfaceForm{AvatarStyle: "square", Theme: "default", NSFW: "blur", PostView: "old", MainPage: "page"}
 }
 
 func TestNewInterface(t *testing.T) {
@@ -35,12 +35,12 @@ func TestNewInterface(t *testing.T) {
 				offset := 180
 				*f = user.InterfaceForm{
 					AvatarStyle: "round", Theme: "dark", HideRating: true, NSFW: "show", PostView: "microblog",
-					Design: "modern", MainPage: "feed", Timezone: &offset, HiddenMenu: []string{"notifications", "groups", "photos", "photos"},
+					MainPage: "feed", Timezone: &offset, HiddenMenu: []string{"notifications", "groups", "photos", "photos"},
 				}
 			},
 			user.Interface{
 				AvatarStyle: user.AvatarsRound, Theme: user.ThemeDark, HideRating: true, NSFW: user.NSFWShow,
-				PostView: user.PostViewMicroblog, Design: user.DesignModern, MainPage: user.MainPageFeed, Timezone: moscow,
+				PostView: user.PostViewMicroblog, MainPage: user.MainPageFeed, Timezone: moscow,
 				HiddenMenu: []user.MenuItem{user.MenuPhotos, user.MenuGroups, user.MenuNotifications},
 			},
 			nil,
@@ -50,8 +50,6 @@ func TestNewInterface(t *testing.T) {
 		{"an unknown theme", func(f *user.InterfaceForm) { f.Theme = "pink" }, user.Interface{}, user.ErrInvalidTheme},
 		{"an unknown nsfw setting", func(f *user.InterfaceForm) { f.NSFW = "maybe" }, user.Interface{}, user.ErrInvalidNSFW},
 		{"an unknown view of posts", func(f *user.InterfaceForm) { f.PostView = "blog" }, user.Interface{}, user.ErrInvalidPostView},
-		{"an unknown design", func(f *user.InterfaceForm) { f.Design = "2007" }, user.Interface{}, user.ErrInvalidDesign},
-		{"no design", func(f *user.InterfaceForm) { f.Design = "" }, user.Interface{}, user.ErrInvalidDesign},
 		{"an unknown main page", func(f *user.InterfaceForm) { f.MainPage = "search" }, user.Interface{}, user.ErrInvalidMainPage},
 		{"a clock off the map", func(f *user.InterfaceForm) { f.Timezone = ptr(900) }, user.Interface{}, user.ErrInvalidTimezone},
 		{"a clock between the quarters", func(f *user.InterfaceForm) { f.Timezone = ptr(7) }, user.Interface{}, user.ErrInvalidTimezone},
@@ -129,7 +127,7 @@ func TestUser_GoldTheme(t *testing.T) {
 	t.Parallel()
 
 	now := time.Date(2026, 10, 22, 12, 0, 0, 0, time.UTC)
-	gold, err := user.NewInterface(user.InterfaceForm{AvatarStyle: "square", Theme: "gold", NSFW: "blur", PostView: "old", Design: "classic", MainPage: "page"})
+	gold, err := user.NewInterface(user.InterfaceForm{AvatarStyle: "square", Theme: "gold", NSFW: "blur", PostView: "old", MainPage: "page"})
 	if err != nil {
 		t.Fatal(err)
 	}

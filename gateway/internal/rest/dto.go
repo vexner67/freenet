@@ -316,7 +316,7 @@ const nsfwHide = "hide"
 // interfaceJSON: avatarStyle is "square" or "round", mainPage "page" or
 // "feed", hiddenMenu the links taken out of the left menu, theme
 // "default", "blue", "dark" or "gold" (Freenet Prime), nsfw "blur", "hide" or "show", postView
-// "old" or "microblog", design "classic" or "modern", timezone minutes east of UTC or null for the
+// "old" or "microblog", timezone minutes east of UTC or null for the
 // browser's clock.
 type interfaceJSON struct {
 	AvatarStyle string   `json:"avatarStyle"`
@@ -326,7 +326,6 @@ type interfaceJSON struct {
 	HideRating  bool     `json:"hideRating"`
 	NSFW        string   `json:"nsfw"`
 	PostView    string   `json:"postView"`
-	Design      string   `json:"design"`
 	Timezone    *int     `json:"timezone"`
 }
 
@@ -385,7 +384,6 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 			HideRating:  u.Interface.HideRating,
 			NSFW:        u.Interface.NSFW,
 			PostView:    u.Interface.PostView,
-			Design:      u.Interface.Design,
 			Timezone:    u.Interface.Timezone,
 		},
 	}

@@ -73,7 +73,6 @@ func (u *Users) UpdateInterface(ctx context.Context, accessToken string, ui mode
 	resp, err := u.api.UpdateInterface(withToken(ctx, accessToken), &userv1.UpdateInterfaceRequest{Interface: &userv1.InterfaceSettings{
 		AvatarStyle: ui.AvatarStyle, MainPage: ui.MainPage, HiddenMenu: ui.HiddenMenu,
 		Theme: ui.Theme, HideRating: ui.HideRating, Nsfw: ui.NSFW, PostView: ui.PostView,
-		Design:         ui.Design,
 		TimezoneOffset: toTimezoneOffset(ui.Timezone),
 	}})
 	if err != nil {

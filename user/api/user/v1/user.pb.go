@@ -1213,11 +1213,8 @@ type InterfaceSettings struct {
 	// The clock dates are read by, minutes east of UTC; unset for the
 	// browser's own.
 	TimezoneOffset *int32 `protobuf:"varint,8,opt,name=timezone_offset,json=timezoneOffset,proto3,oneof" json:"timezone_offset,omitempty"`
-	// "classic" (the default, the site of 2010) or "modern" (one column,
-	// icons for the sections): the whole look of the site.
-	Design        string `protobuf:"bytes,9,opt,name=design,proto3" json:"design,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *InterfaceSettings) Reset() {
@@ -1304,13 +1301,6 @@ func (x *InterfaceSettings) GetTimezoneOffset() int32 {
 		return *x.TimezoneOffset
 	}
 	return 0
-}
-
-func (x *InterfaceSettings) GetDesign() string {
-	if x != nil {
-		return x.Design
-	}
-	return ""
 }
 
 type UpdateInterfaceRequest struct {
@@ -25721,7 +25711,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x03Ban\x12\x16\n" +
 	"\x06reason\x18\x01 \x01(\tR\x06reason\x127\n" +
 	"\tbanned_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bbannedAt\x120\n" +
-	"\x05until\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x05until\"\xb6\x02\n" +
+	"\x05until\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x05until\"\xac\x02\n" +
 	"\x11InterfaceSettings\x12!\n" +
 	"\favatar_style\x18\x01 \x01(\tR\vavatarStyle\x12\x1b\n" +
 	"\tmain_page\x18\x02 \x01(\tR\bmainPage\x12\x1f\n" +
@@ -25732,9 +25722,9 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"hideRating\x12\x12\n" +
 	"\x04nsfw\x18\x06 \x01(\tR\x04nsfw\x12\x1b\n" +
 	"\tpost_view\x18\a \x01(\tR\bpostView\x12,\n" +
-	"\x0ftimezone_offset\x18\b \x01(\x05H\x00R\x0etimezoneOffset\x88\x01\x01\x12\x16\n" +
-	"\x06design\x18\t \x01(\tR\x06designB\x12\n" +
-	"\x10_timezone_offset\"R\n" +
+	"\x0ftimezone_offset\x18\b \x01(\x05H\x00R\x0etimezoneOffset\x88\x01\x01B\x12\n" +
+	"\x10_timezone_offsetJ\x04\b\t\x10\n" +
+	"R\x06design\"R\n" +
 	"\x16UpdateInterfaceRequest\x128\n" +
 	"\tinterface\x18\x01 \x01(\v2\x1a.user.v1.InterfaceSettingsR\tinterface\"<\n" +
 	"\x17UpdateInterfaceResponse\x12!\n" +

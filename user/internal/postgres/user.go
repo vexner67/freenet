@@ -155,7 +155,6 @@ const updateUserQuery = `
 		message_price = $56,
 		audios_read = $57,
 		listening_read = $58,
-		design = $59,
 		updated_at = now()
 	WHERE id = $1
 `
@@ -234,7 +233,6 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		pr.MessagePrice.Int64(),
 		pr.AudiosRead.String(),
 		pr.ListeningRead.String(),
-		ui.Design.String(),
 	)
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", translateError(err))
@@ -427,7 +425,6 @@ const userColumns = `
 		hide_rating,
 		nsfw,
 		post_view,
-		design,
 		timezone_offset,
 		chats_invite,
 		closed,
@@ -506,7 +503,6 @@ const qualifiedUserColumns = `
 		u.hide_rating,
 		u.nsfw,
 		u.post_view,
-		u.design,
 		u.timezone_offset,
 		u.chats_invite,
 		u.closed,
@@ -671,7 +667,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		backdrop                                   [2]*uuid.UUID
 		avatarStyle, mainPage                      string
 		hiddenMenu                                 []string
-		theme, nsfw, postView, design              string
+		theme, nsfw, postView                      string
 		hideRating                                 bool
 		timezone                                   *int16
 		wallet                                     user.Wallet
@@ -718,7 +714,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&lastSeen,
 		&backdrop[0], &backdrop[1],
 		&avatarStyle, &mainPage, &hiddenMenu,
-		&theme, &hideRating, &nsfw, &postView, &design, &timezone,
+		&theme, &hideRating, &nsfw, &postView, &timezone,
 		&chatsInvite,
 		&privacy.Closed,
 		&giftsRead,
@@ -810,7 +806,6 @@ func scanUser(row pgx.Row) (*user.User, error) {
 			HideRating:  hideRating,
 			NSFW:        user.NSFW(nsfw),
 			PostView:    user.PostView(postView),
-			Design:      user.Design(design),
 			MainPage:    user.MainPage(mainPage),
 			Timezone:    timezoneFromDB(timezone),
 			HiddenMenu:  hiddenMenuFromDB(hiddenMenu),

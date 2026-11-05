@@ -70,17 +70,16 @@ func TestUpdateInterface(t *testing.T) {
 			HideRating  bool     `json:"hideRating"`
 			NSFW        string   `json:"nsfw"`
 			PostView    string   `json:"postView"`
-			Design      string   `json:"design"`
 			Timezone    *int     `json:"timezone"`
 		} `json:"interface"`
 	}
 
-	body := `{"avatarStyle":"round","mainPage":"feed","hiddenMenu":["events"],"theme":"dark","hideRating":true,"nsfw":"show","postView":"microblog","design":"modern","timezone":180}`
+	body := `{"avatarStyle":"round","mainPage":"feed","hiddenMenu":["events"],"theme":"dark","hideRating":true,"nsfw":"show","postView":"microblog","timezone":180}`
 	w := h.do("PUT", "/api/v1/me/interface", body, "Authorization", "Bearer tok")
 	got := decode[meJSON](t, w).Interface
 	if w.Code != http.StatusOK || got.AvatarStyle != "round" || got.MainPage != "feed" ||
 		len(got.HiddenMenu) != 1 || got.HiddenMenu[0] != "events" || h.users.token != "tok" ||
-		got.Theme != "dark" || !got.HideRating || got.NSFW != "show" || got.PostView != "microblog" || got.Design != "modern" || got.Timezone == nil || *got.Timezone != 180 {
+		got.Theme != "dark" || !got.HideRating || got.NSFW != "show" || got.PostView != "microblog" || got.Timezone == nil || *got.Timezone != 180 {
 		t.Fatalf("%d %s", w.Code, w.Body)
 	}
 
