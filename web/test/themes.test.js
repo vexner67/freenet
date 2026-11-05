@@ -63,3 +63,27 @@ test('the admin panel writes colours only in its two palettes', () => {
   assert.deepEqual([...used].filter((name) => !names(light).includes(name)), []);
   assert.deepEqual(names(light).filter((name) => !used.has(name)), [], 'a colour nothing uses');
 });
+
+// The modern design (modern.css) has a palette of its own, light under
+// :root and dark under :root.theme-dark, and gives the palette of the
+// site its colours by what they paint.
+test('the modern design writes colours only in its palettes', () => {
+  const css = read('modern.css');
+  const block = (selector) => new RegExp(`^${selector}\\s*\\{([^}]*)\\}`, 'm').exec(css)?.[1] ?? '';
+  const names = (body) => [...body.matchAll(/(--mo-[\w-]+)\s*:/g)].map((m) => m[1]);
+  const light = block(':root');
+  const dark = block(':root\\.theme-dark');
+
+  const rules = css.replace(/^:root[^{]*\{[^}]*\}/gm, '');
+  assert.deepEqual(rules.match(/#[0-9a-f]{3,8}\b|(?<![-\w])(?:white|black|gr[ae]y|red|silver)(?![-\w(])/gi) ?? [], []);
+  assert.deepEqual(names(dark).filter((name) => !names(light).includes(name)), [], 'a colour only the dark palette has');
+  assert.deepEqual(names(light).filter((name) => !names(dark).includes(name)), [], 'a colour the dark palette leaves light');
+
+  // The variables of the site it gives are those of palette.css.
+  const given = [...light.matchAll(/(--(?:back|text|line)-[\w]+)\s*:/g)].map((m) => m[1]);
+  assert.ok(given.length > 50);
+  assert.deepEqual(given.filter((name) => !plain.has(name)), []);
+
+  const used = new Set([...css.matchAll(/var\((--mo-[\w-]+)\)/g)].map((m) => m[1]));
+  assert.deepEqual([...used].filter((name) => !names(light).includes(name)), [], 'a colour of no palette');
+});
