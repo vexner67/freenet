@@ -54,17 +54,37 @@ func TestFollows(t *testing.T) {
 		t.Fatalf("anonymous stats: %v, %v", anonymous, err)
 	}
 
-	page, err := s.client.ListFollowers(context.Background(), &userv1.ListFollowsRequest{UserId: annID, Limit: 1})
-	if err != nil {
-		t.Fatal(err)
+	// Ann followed cat back: they are friends; bob's follow is a request.
+	if stats.GetFriendsCount() != 1 || stats.GetRequestsCount() != 0 || stats.GetFollowsCaller() {
+		t.Fatalf("friends seen by bob: %v", stats)
 	}
-	if page.GetTotal() != 2 || len(page.GetUsers()) != 1 || page.GetUsers()[0].GetNickname() != "cat" || page.GetNextCursor() == "" {
-		t.Fatalf("first page of followers (newest first): %v", page)
+	own, err := s.client.GetFollowStats(ann, &userv1.GetFollowStatsRequest{UserId: annID})
+	if err != nil || own.GetRequestsCount() != 1 {
+		t.Fatalf("own stats: %v, %v", own, err)
 	}
 
-	last, err := s.client.ListFollowers(context.Background(), &userv1.ListFollowsRequest{UserId: annID, Limit: 1, Cursor: page.GetNextCursor()})
-	if err != nil || len(last.GetUsers()) != 1 || last.GetUsers()[0].GetNickname() != "bob" || last.GetNextCursor() != "" {
-		t.Fatalf("last page: %v, %v", last, err)
+	friends, err := s.client.ListFriends(context.Background(), &userv1.ListFriendsRequest{UserId: annID})
+	if err != nil || friends.GetTotal() != 1 || friends.GetUsers()[0].GetNickname() != "cat" {
+		t.Fatalf("friends: %v, %v", friends, err)
+	}
+
+	requests := &userv1.ListFriendsRequest{UserId: annID, Section: userv1.FriendSection_FRIEND_SECTION_REQUESTS, Limit: 1}
+	page, err := s.client.ListFriends(ann, requests)
+	if err != nil || page.GetTotal() != 1 || page.GetUsers()[0].GetNickname() != "bob" || page.GetNextCursor() != "" {
+		t.Fatalf("requests: %v, %v", page, err)
+	}
+	if _, err = s.client.ListFriends(bob, requests); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("requests of another: %v", err)
+	}
+
+	if _, err = s.client.DeclineFriend(ann, &userv1.DeclineFriendRequest{UserId: bobID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.DeclineFriend(cat, &userv1.DeclineFriendRequest{UserId: bobID}); status.Code(err) != codes.NotFound {
+		t.Fatalf("decline of no request: %v", err)
+	}
+	if page, err = s.client.ListFriends(ann, requests); err != nil || page.GetTotal() != 0 {
+		t.Fatalf("requests after declining: %v, %v", page, err)
 	}
 
 	if _, err = s.client.Unfollow(bob, &userv1.UnfollowRequest{UserId: annID}); err != nil {
@@ -113,7 +133,7 @@ func TestFollowErrors(t *testing.T) {
 			return err
 		}, codes.InvalidArgument},
 		{"bad cursor", func() error {
-			_, err := s.client.ListFollowing(context.Background(), &userv1.ListFollowsRequest{UserId: annID, Cursor: "x"})
+			_, err := s.client.ListFriends(context.Background(), &userv1.ListFriendsRequest{UserId: annID, Cursor: "x"})
 			return err
 		}, codes.InvalidArgument},
 		{"too many profiles", func() error {
@@ -170,8 +190,14 @@ func TestCanPostOnWall(t *testing.T) {
 	if _, err = s.client.Follow(ann, &userv1.FollowRequest{UserId: bobID}); err != nil {
 		t.Fatal(err)
 	}
+	if canPost(bob, annID) {
+		t.Fatal("ann asked bob to be friends: not friends yet")
+	}
+	if _, err = s.client.Follow(bob, &userv1.FollowRequest{UserId: annID}); err != nil {
+		t.Fatal(err)
+	}
 	if !canPost(bob, annID) {
-		t.Fatal("ann follows bob, so he may post on her wall")
+		t.Fatal("ann and bob are friends, so he may post on her wall")
 	}
 
 	_, err = s.client.CanPostOnWall(context.Background(), &userv1.CanPostOnWallRequest{UserId: annID})

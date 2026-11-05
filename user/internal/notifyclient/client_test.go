@@ -66,14 +66,35 @@ func TestOutboxAndDeliverer(t *testing.T) {
 	}
 
 	queue = outbox.NewMemory()
-	if err := NewOutbox(queue).Unfollowed(context.Background(), follower, followee); err != nil {
+	if err := NewOutbox(queue).Befriended(context.Background(), follower, followee); err != nil {
 		t.Fatal(err)
 	}
 	if errs := deliverAll(t, queue, NewDeliverer(api, time.Second)); len(errs) != 1 || errs[0] != nil {
 		t.Fatalf("deliver = %v", errs)
 	}
-	if e := api.retracted; e.GetKind() != notificationv1.Kind_KIND_FOLLOW || e.GetActorId() != follower.String() {
-		t.Fatalf("unfollow event = %v", e)
+	if e := api.notified; e.GetKind() != notificationv1.Kind_KIND_FRIEND || e.GetActorId() != follower.String() ||
+		e.GetRecipientId() != followee.String() {
+		t.Fatalf("friend event = %v", e)
+	}
+
+	// Unfollowing takes back both the request and its acceptance.
+	queue = outbox.NewMemory()
+	if err := NewOutbox(queue).Unfollowed(context.Background(), follower, followee); err != nil {
+		t.Fatal(err)
+	}
+	messages, _ := queue.Head(context.Background(), 10)
+	if len(messages) != 2 {
+		t.Fatalf("unfollow recorded %d", len(messages))
+	}
+	kinds := make([]notificationv1.Kind, 0, 2)
+	for _, m := range messages {
+		if err := NewDeliverer(api, time.Second).Deliver(context.Background(), m); err != nil {
+			t.Fatal(err)
+		}
+		kinds = append(kinds, api.retracted.GetKind())
+	}
+	if kinds[0] != notificationv1.Kind_KIND_FOLLOW || kinds[1] != notificationv1.Kind_KIND_FRIEND || api.retracted.GetActorId() != follower.String() {
+		t.Fatalf("unfollow events = %v", kinds)
 	}
 }
 

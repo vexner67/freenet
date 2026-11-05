@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/user/internal/postgres"
+	"github.com/vexner67/freenet/user/internal/service"
 	"github.com/vexner67/freenet/user/internal/user"
 )
 
@@ -117,28 +118,31 @@ func TestPresence(t *testing.T) {
 		t.Fatalf("nobody: %v", err)
 	}
 
-	// Whom ann and bob both follow: cat; bob also follows ann.
-	if err = follows.Follow(ctx, bob.ID(), cat.ID()); err != nil {
-		t.Fatal(err)
-	}
-	_ = follows.Follow(ctx, bob.ID(), ann.ID())
-	common, err := follows.ListCommonFollowing(ctx, ann.ID(), bob.ID(), uuid.Nil, 10)
-	if err != nil || len(common) != 1 || common[0].User.ID() != cat.ID() {
-		t.Fatalf("ListCommonFollowing = %d, %v", len(common), err)
-	}
-	if n, err := follows.CountCommonFollowing(ctx, ann.ID(), bob.ID()); err != nil || n != 1 {
-		t.Fatalf("CountCommonFollowing = %d, %v", n, err)
+	// Ann follows bob, cat and dan; all three follow back, and bob and cat
+	// are friends too: cat is a friend of both ann and bob.
+	for _, f := range [][2]uuid.UUID{{bob.ID(), ann.ID()}, {cat.ID(), ann.ID()}, {dan.ID(), ann.ID()}, {bob.ID(), cat.ID()}, {cat.ID(), bob.ID()}} {
+		if err = follows.Follow(ctx, f[0], f[1]); err != nil {
+			t.Fatal(err)
+		}
 	}
 
-	since := now.Add(-user.OnlineFor)
-	online, err := follows.ListOnlineFollowing(ctx, ann.ID(), since, uuid.Nil, 10)
-	if err != nil || len(online) != 1 || online[0].User.ID() != bob.ID() {
-		t.Fatalf("ListOnlineFollowing = %d, %v", len(online), err)
+	common := service.FriendQuery{UserID: ann.ID(), ViewerID: bob.ID(), Section: user.FriendsCommon}
+	if found, err := follows.ListFriends(ctx, common, uuid.Nil, 10); err != nil || len(found) != 1 || found[0].User.ID() != cat.ID() {
+		t.Fatalf("common friends = %d, %v", len(found), err)
 	}
-	if n, err := follows.CountOnlineFollowing(ctx, ann.ID(), since); err != nil || n != 1 {
-		t.Fatalf("CountOnlineFollowing = %d, %v", n, err)
+	if n, err := follows.CountFriends(ctx, common); err != nil || n != 1 {
+		t.Fatalf("common friends counted = %d, %v", n, err)
 	}
-	if online, _ = follows.ListOnlineFollowing(ctx, ann.ID(), since, online[0].FollowID, 10); len(online) != 0 {
-		t.Fatalf("after the cursor: %d", len(online))
+
+	online := service.FriendQuery{UserID: ann.ID(), Section: user.FriendsOnline, Since: now.Add(-user.OnlineFor)}
+	found, err := follows.ListFriends(ctx, online, uuid.Nil, 10)
+	if err != nil || len(found) != 1 || found[0].User.ID() != bob.ID() {
+		t.Fatalf("online friends = %d, %v", len(found), err)
+	}
+	if n, err := follows.CountFriends(ctx, online); err != nil || n != 1 {
+		t.Fatalf("online friends counted = %d, %v", n, err)
+	}
+	if found, _ = follows.ListFriends(ctx, online, found[0].FollowID, 10); len(found) != 0 {
+		t.Fatalf("after the cursor: %d", len(found))
 	}
 }

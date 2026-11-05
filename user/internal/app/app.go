@@ -416,7 +416,7 @@ type storage struct {
 	}
 	follows interface {
 		service.FollowRepository
-		service.FollowListRepository
+		service.FriendListRepository
 		service.FollowBook
 	}
 	blocks  service.BlockRepository

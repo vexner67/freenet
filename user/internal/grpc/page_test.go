@@ -137,14 +137,14 @@ func TestStatusAndCompleteness(t *testing.T) {
 	}
 }
 
-func TestCommonFollowing(t *testing.T) {
+func TestCommonFriends(t *testing.T) {
 	t.Parallel()
 
 	s := newServer(t)
 	ann, annID := s.member(t, "ann")
-	bob, _ := s.member(t, "bob")
-	_, catID := s.member(t, "cat")
-	_, danID := s.member(t, "dan")
+	bob, bobID := s.member(t, "bob")
+	cat, catID := s.member(t, "cat")
+	dan, danID := s.member(t, "dan")
 
 	follow := func(ctx context.Context, ids ...string) {
 		t.Helper()
@@ -154,15 +154,18 @@ func TestCommonFollowing(t *testing.T) {
 			}
 		}
 	}
+	// Cat is a friend of ann and bob, dan of ann only.
 	follow(ann, catID, danID)
 	follow(bob, catID)
+	follow(cat, annID, bobID)
+	follow(dan, annID)
 
-	common, err := s.client.ListFollowing(bob, &userv1.ListFollowsRequest{UserId: annID, Common: true})
+	common, err := s.client.ListFriends(bob, &userv1.ListFriendsRequest{UserId: annID, Section: userv1.FriendSection_FRIEND_SECTION_COMMON})
 	if err != nil || common.GetTotal() != 1 || len(common.GetUsers()) != 1 || common.GetUsers()[0].GetId() != catID {
 		t.Fatalf("common = %v, %v", common, err)
 	}
 
-	if _, err = s.client.ListFollowing(context.Background(), &userv1.ListFollowsRequest{UserId: annID, Common: true}); status.Code(err) != codes.Unauthenticated {
+	if _, err = s.client.ListFriends(context.Background(), &userv1.ListFriendsRequest{UserId: annID, Section: userv1.FriendSection_FRIEND_SECTION_COMMON}); status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("anonymous: %v", err)
 	}
 }

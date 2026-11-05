@@ -218,8 +218,11 @@ func TestPermissionService_CanMessage(t *testing.T) {
 	if err := w.follows.Follow(w.ctx, w.ann, w.bob); err != nil {
 		t.Fatal(err)
 	}
+	if err := w.follows.Follow(w.ctx, w.bob, w.ann); err != nil {
+		t.Fatal(err)
+	}
 	if !canMessage(w.bob, w.ann, false) {
-		t.Fatal("ann follows bob")
+		t.Fatal("ann and bob are friends")
 	}
 
 	// A block either way shuts messages, answers too, and the wall.

@@ -39,8 +39,8 @@ const (
 	UserService_Unfollow_FullMethodName           = "/user.v1.UserService/Unfollow"
 	UserService_AcceptInvite_FullMethodName       = "/user.v1.UserService/AcceptInvite"
 	UserService_GetFollowStats_FullMethodName     = "/user.v1.UserService/GetFollowStats"
-	UserService_ListFollowers_FullMethodName      = "/user.v1.UserService/ListFollowers"
-	UserService_ListFollowing_FullMethodName      = "/user.v1.UserService/ListFollowing"
+	UserService_ListFriends_FullMethodName        = "/user.v1.UserService/ListFriends"
+	UserService_DeclineFriend_FullMethodName      = "/user.v1.UserService/DeclineFriend"
 	UserService_MarkOnline_FullMethodName         = "/user.v1.UserService/MarkOnline"
 	UserService_GetStatistics_FullMethodName      = "/user.v1.UserService/GetStatistics"
 	UserService_CanPostOnWall_FullMethodName      = "/user.v1.UserService/CanPostOnWall"
@@ -256,10 +256,19 @@ type UserServiceClient interface {
 	// as Follow would.
 	AcceptInvite(ctx context.Context, in *AcceptInviteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Public. With an access token GetFollowStats also tells whether the
-	// caller follows the user.
+	// caller follows the user and the user the caller, and to the user their
+	// friend requests.
 	GetFollowStats(ctx context.Context, in *GetFollowStatsRequest, opts ...grpc.CallOption) (*GetFollowStatsResponse, error)
-	ListFollowers(ctx context.Context, in *ListFollowsRequest, opts ...grpc.CallOption) (*ListFollowsResponse, error)
-	ListFollowing(ctx context.Context, in *ListFollowsRequest, opts ...grpc.CallOption) (*ListFollowsResponse, error)
+	// Public: a list of openvk's "Друзья". Friends follow each other; a
+	// follow not followed back is a friend request, and following back
+	// accepts it. The requests, the followers and the outgoing requests are
+	// the caller's own only (PermissionDenied), the common friends need an
+	// access token.
+	ListFriends(ctx context.Context, in *ListFriendsRequest, opts ...grpc.CallOption) (*ListFriendsResponse, error)
+	// Requires an access token: the friend request of the user stays a
+	// follow, out of the caller's requests ("Оставить в подписчиках");
+	// NotFound when the user does not follow the caller.
+	DeclineFriend(ctx context.Context, in *DeclineFriendRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Requires an access token: the caller is on the site now ("Онлайн").
 	MarkOnline(ctx context.Context, in *MarkOnlineRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Public: how many people the site has and how many are on it now, for
@@ -956,20 +965,20 @@ func (c *userServiceClient) GetFollowStats(ctx context.Context, in *GetFollowSta
 	return out, nil
 }
 
-func (c *userServiceClient) ListFollowers(ctx context.Context, in *ListFollowsRequest, opts ...grpc.CallOption) (*ListFollowsResponse, error) {
+func (c *userServiceClient) ListFriends(ctx context.Context, in *ListFriendsRequest, opts ...grpc.CallOption) (*ListFriendsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListFollowsResponse)
-	err := c.cc.Invoke(ctx, UserService_ListFollowers_FullMethodName, in, out, cOpts...)
+	out := new(ListFriendsResponse)
+	err := c.cc.Invoke(ctx, UserService_ListFriends_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *userServiceClient) ListFollowing(ctx context.Context, in *ListFollowsRequest, opts ...grpc.CallOption) (*ListFollowsResponse, error) {
+func (c *userServiceClient) DeclineFriend(ctx context.Context, in *DeclineFriendRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListFollowsResponse)
-	err := c.cc.Invoke(ctx, UserService_ListFollowing_FullMethodName, in, out, cOpts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_DeclineFriend_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -2710,10 +2719,19 @@ type UserServiceServer interface {
 	// as Follow would.
 	AcceptInvite(context.Context, *AcceptInviteRequest) (*emptypb.Empty, error)
 	// Public. With an access token GetFollowStats also tells whether the
-	// caller follows the user.
+	// caller follows the user and the user the caller, and to the user their
+	// friend requests.
 	GetFollowStats(context.Context, *GetFollowStatsRequest) (*GetFollowStatsResponse, error)
-	ListFollowers(context.Context, *ListFollowsRequest) (*ListFollowsResponse, error)
-	ListFollowing(context.Context, *ListFollowsRequest) (*ListFollowsResponse, error)
+	// Public: a list of openvk's "Друзья". Friends follow each other; a
+	// follow not followed back is a friend request, and following back
+	// accepts it. The requests, the followers and the outgoing requests are
+	// the caller's own only (PermissionDenied), the common friends need an
+	// access token.
+	ListFriends(context.Context, *ListFriendsRequest) (*ListFriendsResponse, error)
+	// Requires an access token: the friend request of the user stays a
+	// follow, out of the caller's requests ("Оставить в подписчиках");
+	// NotFound when the user does not follow the caller.
+	DeclineFriend(context.Context, *DeclineFriendRequest) (*emptypb.Empty, error)
 	// Requires an access token: the caller is on the site now ("Онлайн").
 	MarkOnline(context.Context, *MarkOnlineRequest) (*emptypb.Empty, error)
 	// Public: how many people the site has and how many are on it now, for
@@ -3277,11 +3295,11 @@ func (UnimplementedUserServiceServer) AcceptInvite(context.Context, *AcceptInvit
 func (UnimplementedUserServiceServer) GetFollowStats(context.Context, *GetFollowStatsRequest) (*GetFollowStatsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetFollowStats not implemented")
 }
-func (UnimplementedUserServiceServer) ListFollowers(context.Context, *ListFollowsRequest) (*ListFollowsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ListFollowers not implemented")
+func (UnimplementedUserServiceServer) ListFriends(context.Context, *ListFriendsRequest) (*ListFriendsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListFriends not implemented")
 }
-func (UnimplementedUserServiceServer) ListFollowing(context.Context, *ListFollowsRequest) (*ListFollowsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ListFollowing not implemented")
+func (UnimplementedUserServiceServer) DeclineFriend(context.Context, *DeclineFriendRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeclineFriend not implemented")
 }
 func (UnimplementedUserServiceServer) MarkOnline(context.Context, *MarkOnlineRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method MarkOnline not implemented")
@@ -4153,38 +4171,38 @@ func _UserService_GetFollowStats_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UserService_ListFollowers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListFollowsRequest)
+func _UserService_ListFriends_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListFriendsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UserServiceServer).ListFollowers(ctx, in)
+		return srv.(UserServiceServer).ListFriends(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: UserService_ListFollowers_FullMethodName,
+		FullMethod: UserService_ListFriends_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).ListFollowers(ctx, req.(*ListFollowsRequest))
+		return srv.(UserServiceServer).ListFriends(ctx, req.(*ListFriendsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UserService_ListFollowing_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListFollowsRequest)
+func _UserService_DeclineFriend_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeclineFriendRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(UserServiceServer).ListFollowing(ctx, in)
+		return srv.(UserServiceServer).DeclineFriend(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: UserService_ListFollowing_FullMethodName,
+		FullMethod: UserService_DeclineFriend_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).ListFollowing(ctx, req.(*ListFollowsRequest))
+		return srv.(UserServiceServer).DeclineFriend(ctx, req.(*DeclineFriendRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -7315,12 +7333,12 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserService_GetFollowStats_Handler,
 		},
 		{
-			MethodName: "ListFollowers",
-			Handler:    _UserService_ListFollowers_Handler,
+			MethodName: "ListFriends",
+			Handler:    _UserService_ListFriends_Handler,
 		},
 		{
-			MethodName: "ListFollowing",
-			Handler:    _UserService_ListFollowing_Handler,
+			MethodName: "DeclineFriend",
+			Handler:    _UserService_DeclineFriend_Handler,
 		},
 		{
 			MethodName: "MarkOnline",

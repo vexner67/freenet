@@ -269,6 +269,8 @@ type User struct {
 	// NewGuests are the guests who came since the owner last looked at
 	// them ("Гости"), told by GetMe alone.
 	NewGuests int
+	// FriendRequests are the owner's friend requests, told by GetMe alone.
+	FriendRequests int
 }
 
 // HasPrime tells whether u has Freenet Prime at now.
@@ -933,8 +935,35 @@ type MessagePage struct {
 type FollowStats struct {
 	Followers int
 	Following int
+	// Friends follow the user and are followed back.
+	Friends int
+	// Requests are the user's friend requests, told the user only.
+	Requests int
 	// IsFollowing: the viewer follows the user; false for anonymous viewers.
 	IsFollowing bool
+	// FollowsMe: the user follows the viewer. With IsFollowing they are
+	// friends; without it the viewer has the user's friend request.
+	FollowsMe bool
+}
+
+// The lists of openvk's "Друзья": friends follow each other, a follow not
+// followed back is a friend request. The requests, the followers and the
+// outgoing requests are the owner's only.
+const (
+	FriendsAll      = "all"
+	FriendsOnline   = "online"
+	FriendsCommon   = "common"
+	FriendRequests  = "requests"
+	FriendFollowers = "followers"
+	FriendsOutgoing = "outgoing"
+)
+
+// FriendQuery is a page of a section of the friends of UserID.
+type FriendQuery struct {
+	UserID  string
+	Section string
+	Cursor  string
+	Limit   int
 }
 
 // UserPage is one screen of a follow list; NextCursor is empty on the last.

@@ -131,8 +131,8 @@ type fakeUserAPI struct {
 	userv1.UserServiceClient
 	md      metadata.MD
 	privacy *userv1.PrivacySettings
-	// online: ListFollowing was asked for the people online.
-	online bool
+	// section: what ListFriends was asked for.
+	section userv1.FriendSection
 }
 
 func (f *fakeUserAPI) UpdatePrivacy(_ context.Context, req *userv1.UpdatePrivacyRequest, _ ...grpc.CallOption) (*userv1.UpdatePrivacyResponse, error) {
@@ -160,9 +160,10 @@ func (f *fakeUserAPI) MarkOnline(ctx context.Context, _ *userv1.MarkOnlineReques
 	return &emptypb.Empty{}, nil
 }
 
-func (f *fakeUserAPI) ListFollowing(_ context.Context, req *userv1.ListFollowsRequest, _ ...grpc.CallOption) (*userv1.ListFollowsResponse, error) {
-	f.online = req.GetOnline()
-	return &userv1.ListFollowsResponse{Total: 1}, nil
+func (f *fakeUserAPI) ListFriends(ctx context.Context, req *userv1.ListFriendsRequest, _ ...grpc.CallOption) (*userv1.ListFriendsResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	f.section = req.GetSection()
+	return &userv1.ListFriendsResponse{Total: 1}, nil
 }
 
 func (f *fakeUserAPI) CanMessage(ctx context.Context, req *userv1.CanMessageRequest, _ ...grpc.CallOption) (*userv1.CanMessageResponse, error) {
@@ -285,8 +286,12 @@ func TestWallPrivacy(t *testing.T) {
 	if err = users.MarkOnline(context.Background(), "tok"); err != nil || api.md.Get("authorization")[0] != "Bearer tok" {
 		t.Fatalf("MarkOnline: %v", err)
 	}
-	if page, err := users.ListOnlineFollowing(context.Background(), "u1", "", 6); err != nil || !api.online || page.Total != 1 {
-		t.Fatalf("ListOnlineFollowing = %+v, %v (online %v)", page, err, api.online)
+	friends, err := users.ListFriends(context.Background(), "tok", model.FriendQuery{UserID: "u1", Section: model.FriendRequests, Limit: 6})
+	if err != nil || api.section != userv1.FriendSection_FRIEND_SECTION_REQUESTS || friends.Total != 1 || api.md.Get("authorization")[0] != "Bearer tok" {
+		t.Fatalf("ListFriends = %+v, %v (section %v)", friends, err, api.section)
+	}
+	if _, err = users.ListFriends(context.Background(), "", model.FriendQuery{UserID: "u1", Section: "following"}); err == nil {
+		t.Fatal("an unknown section is refused")
 	}
 
 	allowed, err := users.CanPostOnWall(context.Background(), "tok", "u2")

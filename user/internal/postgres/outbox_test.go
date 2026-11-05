@@ -94,7 +94,8 @@ func TestFollowsAndTheirNotifications(t *testing.T) {
 	if err := blockSvc.Block(reqCtx, ann, bob); err != nil {
 		t.Fatalf("Block: %v", err)
 	}
-	if got := recorded(reqid.FromContext(reqCtx)); got != 2 {
-		t.Errorf("recorded %d messages, want the follow and its retraction by the block", got)
+	// The block retracts the follow and the friendship it may have made.
+	if got := recorded(reqid.FromContext(reqCtx)); got != 3 {
+		t.Errorf("recorded %d messages, want the follow and its two retractions by the block", got)
 	}
 }

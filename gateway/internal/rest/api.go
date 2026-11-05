@@ -96,12 +96,12 @@ type Users interface {
 	Unfollow(ctx context.Context, accessToken, userID string) error
 	BlockedIDs(ctx context.Context, accessToken string) ([]string, error)
 	FollowStats(ctx context.Context, accessToken, userID string) (model.FollowStats, error)
-	ListFollowers(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error)
-	ListFollowing(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error)
-	// ListOnlineFollowing is whom userID follows who is online now.
-	ListOnlineFollowing(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error)
-	// ListCommonFollowing is whom both userID and the caller follow.
-	ListCommonFollowing(ctx context.Context, accessToken, userID, cursor string, limit int) (model.UserPage, error)
+	// ListFriends is a section of the friends of a user; accessToken may
+	// be empty for an anonymous viewer.
+	ListFriends(ctx context.Context, accessToken string, q model.FriendQuery) (model.UserPage, error)
+	// DeclineFriend leaves the friend request of userID among the
+	// caller's followers.
+	DeclineFriend(ctx context.Context, accessToken, userID string) error
 	UpdateStatus(ctx context.Context, accessToken, status string) (model.User, error)
 	UpdateNickname(ctx context.Context, accessToken, nickname string) (model.User, error)
 	UpdateInterface(ctx context.Context, accessToken string, ui model.Interface) (model.User, error)
@@ -734,8 +734,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/users/{nickname}/follow", a.follow)
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/follow", a.unfollow)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/invitation", a.acceptInvite)
-	mux.HandleFunc("GET /api/v1/users/{nickname}/followers", a.listFollowers)
-	mux.HandleFunc("GET /api/v1/users/{nickname}/following", a.listFollowing)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/friends", a.listFriends)
+	mux.HandleFunc("POST /api/v1/users/{nickname}/decline", a.declineFriend)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/clubs", a.listUserClubs)
 
 	mux.HandleFunc("GET /api/v1/feed", a.feed)

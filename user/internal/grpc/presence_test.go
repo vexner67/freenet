@@ -15,10 +15,16 @@ func TestPresence(t *testing.T) {
 	s := newServer(t)
 	ann, annID := s.member(t, "ann")
 	bob, bobID := s.member(t, "bob")
-	_, catID := s.member(t, "cat")
+	cat, catID := s.member(t, "cat")
 
+	// Ann is friends with bob and cat.
 	for _, id := range []string{bobID, catID} {
 		if _, err := s.client.Follow(ann, &userv1.FollowRequest{UserId: id}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, friend := range []context.Context{bob, cat} {
+		if _, err := s.client.Follow(friend, &userv1.FollowRequest{UserId: annID}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -49,14 +55,14 @@ func TestPresence(t *testing.T) {
 		t.Fatalf("cat, never seen: %v, %v", got, err)
 	}
 
-	online, err := s.client.ListFollowing(context.Background(), &userv1.ListFollowsRequest{UserId: annID, Online: true})
+	online, err := s.client.ListFriends(context.Background(), &userv1.ListFriendsRequest{UserId: annID, Section: userv1.FriendSection_FRIEND_SECTION_ONLINE})
 	if err != nil || online.GetTotal() != 1 || len(online.GetUsers()) != 1 || online.GetUsers()[0].GetId() != bobID {
-		t.Fatalf("online following = %v, %v", online, err)
+		t.Fatalf("online friends = %v, %v", online, err)
 	}
 
-	all, err := s.client.ListFollowing(context.Background(), &userv1.ListFollowsRequest{UserId: annID})
+	all, err := s.client.ListFriends(context.Background(), &userv1.ListFriendsRequest{UserId: annID})
 	if err != nil || all.GetTotal() != 2 {
-		t.Fatalf("following = %v, %v", all, err)
+		t.Fatalf("friends = %v, %v", all, err)
 	}
 
 	_, err = s.client.UpdatePrivacy(ann, &userv1.UpdatePrivacyRequest{Privacy: &userv1.PrivacySettings{

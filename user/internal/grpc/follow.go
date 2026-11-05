@@ -7,6 +7,7 @@ import (
 	"github.com/vexner67/freenet/pkg/jwtauth"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"github.com/vexner67/freenet/user/internal/service"
+	"github.com/vexner67/freenet/user/internal/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -18,11 +19,15 @@ type FollowService interface {
 	Follow(ctx context.Context, followerID, followeeID uuid.UUID) error
 	AcceptInvite(ctx context.Context, inviteeID, inviterID uuid.UUID) error
 	Unfollow(ctx context.Context, followerID, followeeID uuid.UUID) error
+	Decline(ctx context.Context, ownerID, followerID uuid.UUID) error
 	Stats(ctx context.Context, userID, viewerID uuid.UUID) (service.FollowStats, error)
-	ListFollowers(ctx context.Context, userID, cursor uuid.UUID, size int) (service.FollowPage, error)
-	ListFollowing(ctx context.Context, userID, cursor uuid.UUID, size int) (service.FollowPage, error)
-	ListOnlineFollowing(ctx context.Context, userID, cursor uuid.UUID, size int) (service.FollowPage, error)
-	ListCommonFollowing(ctx context.Context, userID, viewerID, cursor uuid.UUID, size int) (service.FollowPage, error)
+	ListFriends(
+		ctx context.Context,
+		userID, viewerID uuid.UUID,
+		section user.FriendSection,
+		cursor uuid.UUID,
+		size int,
+	) (service.FollowPage, error)
 }
 
 func parseID(s, what string) (uuid.UUID, error) {
@@ -73,6 +78,25 @@ func (h *UserHandler) AcceptInvite(ctx context.Context, req *userv1.AcceptInvite
 	return h.changeFollow(ctx, req.GetUserId(), h.followService.AcceptInvite)
 }
 
+// DeclineFriend leaves the user's request among the caller's followers.
+func (h *UserHandler) DeclineFriend(ctx context.Context, req *userv1.DeclineFriendRequest) (*emptypb.Empty, error) {
+	ownerID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	followerID, err := parseID(req.GetUserId(), "user id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.followService.Decline(ctx, ownerID, followerID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 func (h *UserHandler) changeFollow(
 	ctx context.Context,
 	target string,
@@ -119,43 +143,32 @@ func (h *UserHandler) GetFollowStats(
 		FollowersCount: int32(stats.Followers), //nolint:gosec // counts of people fit in int32
 		FollowingCount: int32(stats.Following), //nolint:gosec // counts of people fit in int32
 		IsFollowing:    stats.IsFollowing,
+		FriendsCount:   int32(stats.Friends),  //nolint:gosec // counts of people fit in int32
+		RequestsCount:  int32(stats.Requests), //nolint:gosec // counts of people fit in int32
+		FollowsCaller:  stats.FollowsViewer,
 	}, nil
 }
 
-func (h *UserHandler) ListFollowers(ctx context.Context, req *userv1.ListFollowsRequest) (*userv1.ListFollowsResponse, error) {
-	return h.listFollows(req, func(userID, cursor uuid.UUID, size int) (service.FollowPage, error) {
-		return h.followService.ListFollowers(ctx, userID, cursor, size)
-	})
-}
-
-// ListFollowing with online is openvk's "Друзья онлайн", with common its
-// "Общие друзья", whom the caller follows too.
-func (h *UserHandler) ListFollowing(ctx context.Context, req *userv1.ListFollowsRequest) (*userv1.ListFollowsResponse, error) {
-	return h.listFollows(req, func(userID, cursor uuid.UUID, size int) (service.FollowPage, error) {
-		if req.GetCommon() {
-			viewer, err := currentUserID(ctx)
-			if err != nil {
-				return service.FollowPage{}, err
-			}
-
-			return h.followService.ListCommonFollowing(ctx, userID, viewer, cursor, size)
-		}
-
-		if req.GetOnline() {
-			return h.followService.ListOnlineFollowing(ctx, userID, cursor, size)
-		}
-
-		return h.followService.ListFollowing(ctx, userID, cursor, size)
-	})
-}
-
-func (h *UserHandler) listFollows(
-	req *userv1.ListFollowsRequest,
-	list func(userID, cursor uuid.UUID, size int) (service.FollowPage, error),
-) (*userv1.ListFollowsResponse, error) {
+// ListFriends is a section of openvk's "Друзья"; the viewer is known only
+// if a token was sent.
+func (h *UserHandler) ListFriends(ctx context.Context, req *userv1.ListFriendsRequest) (*userv1.ListFriendsResponse, error) {
 	userID, err := parseID(req.GetUserId(), "user id")
 	if err != nil {
 		return nil, err
+	}
+
+	section, ok := friendSectionFromProto[req.GetSection()]
+	if !ok {
+		return nil, status.Error(codes.InvalidArgument, user.ErrInvalidFriendSection.Error())
+	}
+
+	var viewerID uuid.UUID
+	if identity, ok := jwtauth.IdentityFromContext(ctx); ok {
+		viewerID = identity.UserID
+	}
+
+	if viewerID == uuid.Nil && (section == user.FriendsCommon || section.OwnOnly()) {
+		return nil, status.Error(codes.Unauthenticated, "access token required")
 	}
 
 	var cursor uuid.UUID
@@ -165,12 +178,12 @@ func (h *UserHandler) listFollows(
 		}
 	}
 
-	page, err := list(userID, cursor, int(req.GetLimit()))
+	page, err := h.followService.ListFriends(ctx, userID, viewerID, section, cursor, int(req.GetLimit()))
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &userv1.ListFollowsResponse{
+	resp := &userv1.ListFriendsResponse{
 		Users: make([]*userv1.PublicProfile, 0, len(page.Users)),
 		Total: int32(page.Total), //nolint:gosec // counts of people fit in int32
 	}

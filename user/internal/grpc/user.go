@@ -210,7 +210,16 @@ func (h *UserHandler) GetMe(ctx context.Context, _ *userv1.GetMeRequest) (*userv
 		return nil, err
 	}
 
-	return &userv1.GetMeResponse{User: me, NewGuests: int32(guests)}, nil //nolint:gosec // at most service.MaxNewGuests
+	stats, err := h.followService.Stats(ctx, userID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.GetMeResponse{
+		User:           me,
+		NewGuests:      int32(guests),         //nolint:gosec // at most service.MaxNewGuests
+		FriendRequests: int32(stats.Requests), //nolint:gosec // counts of people fit in int32
+	}, nil
 }
 
 func (h *UserHandler) UpdateProfile(

@@ -935,3 +935,13 @@ func fromProtoCasinoPrizes(prizes []*userv1.CasinoPrize) []user.CasinoPrize {
 func toProtoPrimePrices(p user.PrimePrices) *userv1.PrimePrices {
 	return &userv1.PrimePrices{Month: p.Month, Quarter: p.Quarter, Year: p.Year}
 }
+
+// friendSectionFromProto are the lists of "Друзья"; unspecified is all.
+var friendSectionFromProto = map[userv1.FriendSection]user.FriendSection{
+	userv1.FriendSection_FRIEND_SECTION_UNSPECIFIED: user.FriendsAll,
+	userv1.FriendSection_FRIEND_SECTION_ONLINE:      user.FriendsOnline,
+	userv1.FriendSection_FRIEND_SECTION_COMMON:      user.FriendsCommon,
+	userv1.FriendSection_FRIEND_SECTION_REQUESTS:    user.FriendRequests,
+	userv1.FriendSection_FRIEND_SECTION_FOLLOWERS:   user.FriendFollowers,
+	userv1.FriendSection_FRIEND_SECTION_OUTGOING:    user.FriendsOutgoing,
+}

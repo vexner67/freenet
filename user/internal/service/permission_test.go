@@ -123,8 +123,14 @@ func TestPermissionService_Access(t *testing.T) {
 	if err = follow.Follow(ctx, ann, bob); err != nil {
 		t.Fatal(err)
 	}
+	if canSee(bob) {
+		t.Fatal("ann asked bob to be friends: not friends yet")
+	}
+	if err = follow.Follow(ctx, bob, ann); err != nil {
+		t.Fatal(err)
+	}
 	if !canSee(bob) || !canSee(ann) {
-		t.Fatal("ann follows bob: he sees her clubs, and she sees them always")
+		t.Fatal("ann and bob are friends: he sees her clubs, and she sees them always")
 	}
 
 	if _, err = svc.Access(ctx, bob, uuid.New()); !errors.Is(err, user.ErrNotFound) {

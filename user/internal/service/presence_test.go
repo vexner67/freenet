@@ -57,9 +57,16 @@ func TestPresenceService(t *testing.T) {
 		t.Fatalf("Flush: %v", err)
 	}
 
-	page, err := followSvc.ListOnlineFollowing(ctx, ann, uuid.Nil, 0)
+	// Bob and cat follow back: both are friends, bob is online.
+	for _, follower := range []uuid.UUID{bob, cat} {
+		if err := followSvc.Follow(ctx, follower, ann); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	page, err := followSvc.ListFriends(ctx, ann, uuid.Nil, user.FriendsOnline, uuid.Nil, 0)
 	if err != nil || page.Total != 1 || len(page.Users) != 1 || page.Users[0].ID != bob {
-		t.Fatalf("ListOnlineFollowing = %+v, %v", page, err)
+		t.Fatalf("online friends = %+v, %v", page, err)
 	}
 
 	// The site counts its people and who of them is on it.

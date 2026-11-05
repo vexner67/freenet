@@ -37,7 +37,7 @@ func (w MessagesWrite) String() string {
 
 // Ties are how another user is tied to u, for what u lets them do.
 type Ties struct {
-	// Followed: u follows them.
+	// Followed: u and they are friends, following each other.
 	Followed bool
 	// Blocked: either of the two has blacklisted the other.
 	Blocked bool

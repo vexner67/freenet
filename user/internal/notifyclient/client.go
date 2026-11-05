@@ -49,8 +49,18 @@ func (o *Outbox) Followed(ctx context.Context, followerID, followeeID uuid.UUID)
 	return o.add(ctx, kindNotify, &notificationv1.NotifyRequest{Event: followEvent(followerID, followeeID)})
 }
 
+func (o *Outbox) Befriended(ctx context.Context, followerID, followeeID uuid.UUID) error {
+	return o.add(ctx, kindNotify, &notificationv1.NotifyRequest{Event: friendEvent(followerID, followeeID)})
+}
+
+// Unfollowed takes back both what a follow may have told: the request and
+// its acceptance.
 func (o *Outbox) Unfollowed(ctx context.Context, followerID, followeeID uuid.UUID) error {
-	return o.add(ctx, kindRetract, &notificationv1.RetractRequest{Event: followEvent(followerID, followeeID)})
+	if err := o.add(ctx, kindRetract, &notificationv1.RetractRequest{Event: followEvent(followerID, followeeID)}); err != nil {
+		return errs.Wrap("o.add", err)
+	}
+
+	return o.add(ctx, kindRetract, &notificationv1.RetractRequest{Event: friendEvent(followerID, followeeID)})
 }
 
 func (o *Outbox) Invited(ctx context.Context, inviteeID, inviterID uuid.UUID) error {
@@ -192,6 +202,15 @@ func followEvent(followerID, followeeID uuid.UUID) *notificationv1.Event {
 	}
 }
 
+// friendEvent is the follow back that accepted the request of the followee.
+func friendEvent(followerID, followeeID uuid.UUID) *notificationv1.Event {
+	return &notificationv1.Event{
+		Kind:        notificationv1.Kind_KIND_FRIEND,
+		RecipientId: followeeID.String(),
+		ActorId:     followerID.String(),
+	}
+}
+
 // giftEvent names the sent gift where other events name a post: one
 // notification per gift, however many one person sends.
 func giftEvent(giftID, senderID, recipientID uuid.UUID) *notificationv1.Event {
@@ -207,6 +226,7 @@ func giftEvent(giftID, senderID, recipientID uuid.UUID) *notificationv1.Event {
 type Nop struct{}
 
 func (Nop) Followed(context.Context, uuid.UUID, uuid.UUID) error   { return nil }
+func (Nop) Befriended(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 func (Nop) Unfollowed(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 func (Nop) Invited(context.Context, uuid.UUID, uuid.UUID) error    { return nil }
 

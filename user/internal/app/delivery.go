@@ -66,6 +66,16 @@ func (n notifiers) Followed(ctx context.Context, followerID, followeeID uuid.UUI
 	return nil
 }
 
+func (n notifiers) Befriended(ctx context.Context, followerID, followeeID uuid.UUID) error {
+	for _, notifier := range n {
+		if err := notifier.Befriended(ctx, followerID, followeeID); err != nil {
+			return errs.Wrap("notifier.Befriended", err)
+		}
+	}
+
+	return nil
+}
+
 func (n notifiers) Unfollowed(ctx context.Context, followerID, followeeID uuid.UUID) error {
 	for _, notifier := range n {
 		if err := notifier.Unfollowed(ctx, followerID, followeeID); err != nil {

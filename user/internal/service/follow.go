@@ -32,19 +32,24 @@ type InviteRepository interface {
 	SetInviter(ctx context.Context, userID, inviterID uuid.UUID) error
 }
 
-// FollowListRepository lists the people on one side of a user's follows,
-// newest follow first. Cursors are follow IDs (UUIDv7).
-type FollowListRepository interface {
-	ListFollowers(ctx context.Context, userID, before uuid.UUID, limit int) ([]Followed, error)
-	ListFollowing(ctx context.Context, userID, before uuid.UUID, limit int) ([]Followed, error)
-	// ListOnlineFollowing and CountOnlineFollowing are whom userID follows
-	// who visited after since, but deleted pages.
-	ListOnlineFollowing(ctx context.Context, userID uuid.UUID, since time.Time, before uuid.UUID, limit int) ([]Followed, error)
-	CountOnlineFollowing(ctx context.Context, userID uuid.UUID, since time.Time) (int, error)
-	// ListCommonFollowing and CountCommonFollowing are whom both userID and
-	// viewerID follow, by userID's follows.
-	ListCommonFollowing(ctx context.Context, userID, viewerID, before uuid.UUID, limit int) ([]Followed, error)
-	CountCommonFollowing(ctx context.Context, userID, viewerID uuid.UUID) (int, error)
+// FriendListRepository lists a section of a user's friends, newest
+// follow first. Cursors are follow IDs (UUIDv7).
+type FriendListRepository interface {
+	ListFriends(ctx context.Context, q FriendQuery, before uuid.UUID, limit int) ([]Followed, error)
+	CountFriends(ctx context.Context, q FriendQuery) (int, error)
+	// Decline leaves the follow of followerID among followeeID's followers,
+	// out of the requests; false when there is no such follow.
+	Decline(ctx context.Context, followerID, followeeID uuid.UUID) (bool, error)
+}
+
+// FriendQuery is which friends of UserID to list: ViewerID is whose
+// friends the common ones are, Since when the online ones visited last
+// (deleted pages are never online).
+type FriendQuery struct {
+	UserID   uuid.UUID
+	ViewerID uuid.UUID
+	Section  user.FriendSection
+	Since    time.Time
 }
 
 // Followed is a user in a follow list with the ID of that follow.
@@ -56,8 +61,15 @@ type Followed struct {
 type FollowStats struct {
 	Followers int
 	Following int
+	// Friends follow the user, who follows them.
+	Friends int
+	// Requests are the user's friend requests, told the user only.
+	Requests int
 	// IsFollowing: the viewer follows the user; false for anonymous viewers.
 	IsFollowing bool
+	// FollowsViewer: the user follows the viewer, who is a friend when
+	// following back and has the user's request otherwise.
+	FollowsViewer bool
 }
 
 // FollowPage is one screen of a follow list; NextCursor is uuid.Nil on the last.
@@ -70,7 +82,7 @@ type FollowPage struct {
 type FollowService struct {
 	userRepo   UserRepository
 	followRepo FollowRepository
-	listRepo   FollowListRepository
+	listRepo   FriendListRepository
 	blockRepo  BlockChecker
 	inviteRepo InviteRepository
 	tx         TxManager
@@ -82,7 +94,7 @@ type FollowService struct {
 type FollowDeps struct {
 	Users    UserRepository
 	Follows  FollowRepository
-	Lists    FollowListRepository
+	Lists    FriendListRepository
 	Blocks   BlockChecker
 	Invites  InviteRepository
 	Tx       TxManager
@@ -118,8 +130,18 @@ func (s *FollowService) Follow(ctx context.Context, followerID, followeeID uuid.
 			return errs.Wrap("s.followRepo.Follow", err)
 		}
 
+		// Following back accepts the friend request ("Принять заявку").
+		accepted, err := s.followRepo.IsFollowing(ctx, followeeID, followerID)
+		if err != nil {
+			return errs.Wrap("s.followRepo.IsFollowing", err)
+		}
+
 		// Following twice notifies once: the notification service keeps
 		// one notification per follow.
+		if accepted {
+			return errs.Wrap("s.notifier.Befriended", s.notifier.Befriended(ctx, followerID, followeeID))
+		}
+
 		return errs.Wrap("s.notifier.Followed", s.notifier.Followed(ctx, followerID, followeeID))
 	})
 	if err != nil {
@@ -212,8 +234,23 @@ func (s *FollowService) Unfollow(ctx context.Context, followerID, followeeID uui
 	return nil
 }
 
-// Stats counts both sides of a user's follows; viewerID is uuid.Nil for an
-// anonymous viewer.
+// Decline leaves the friend request of followerID among ownerID's
+// followers ("Оставить в подписчиках"): the follow stays.
+func (s *FollowService) Decline(ctx context.Context, ownerID, followerID uuid.UUID) error {
+	declined, err := s.listRepo.Decline(ctx, followerID, ownerID)
+	if err != nil {
+		return errs.Wrap("s.listRepo.Decline", err)
+	}
+
+	if !declined {
+		return user.ErrNoFriendRequest
+	}
+
+	return nil
+}
+
+// Stats counts the user's follows and friends, and the requests for the
+// user only; viewerID is uuid.Nil for an anonymous viewer.
 func (s *FollowService) Stats(ctx context.Context, userID, viewerID uuid.UUID) (FollowStats, error) {
 	followers, following, err := s.followRepo.Counts(ctx, userID)
 	if err != nil {
@@ -222,8 +259,22 @@ func (s *FollowService) Stats(ctx context.Context, userID, viewerID uuid.UUID) (
 
 	stats := FollowStats{Followers: followers, Following: following}
 
+	if stats.Friends, err = s.listRepo.CountFriends(ctx, FriendQuery{UserID: userID, Section: user.FriendsAll}); err != nil {
+		return FollowStats{}, errs.Wrap("s.listRepo.CountFriends", err)
+	}
+
+	if viewerID == userID {
+		if stats.Requests, err = s.listRepo.CountFriends(ctx, FriendQuery{UserID: userID, Section: user.FriendRequests}); err != nil {
+			return FollowStats{}, errs.Wrap("s.listRepo.CountFriends", err)
+		}
+	}
+
 	if viewerID != uuid.Nil && viewerID != userID {
 		if stats.IsFollowing, err = s.followRepo.IsFollowing(ctx, viewerID, userID); err != nil {
+			return FollowStats{}, errs.Wrap("s.followRepo.IsFollowing", err)
+		}
+
+		if stats.FollowsViewer, err = s.followRepo.IsFollowing(ctx, userID, viewerID); err != nil {
 			return FollowStats{}, errs.Wrap("s.followRepo.IsFollowing", err)
 		}
 	}
@@ -231,45 +282,37 @@ func (s *FollowService) Stats(ctx context.Context, userID, viewerID uuid.UUID) (
 	return stats, nil
 }
 
-func (s *FollowService) ListFollowers(ctx context.Context, userID, cursor uuid.UUID, size int) (FollowPage, error) {
-	return s.page(ctx, userID, cursor, size, s.listRepo.ListFollowers, func(ctx context.Context) (int, error) {
-		followers, _, err := s.followRepo.Counts(ctx, userID)
-		return followers, errs.Wrap("s.followRepo.Counts", err)
-	})
-}
+// ListFriends is a section of openvk's "Друзья" of userID as viewerID
+// (uuid.Nil: anonymous) sees it: the requests, the followers and the
+// outgoing requests are the owner's only, and the common friends need a
+// viewer.
+func (s *FollowService) ListFriends(
+	ctx context.Context,
+	userID, viewerID uuid.UUID,
+	section user.FriendSection,
+	cursor uuid.UUID,
+	size int,
+) (FollowPage, error) {
+	if section.OwnOnly() && viewerID != userID {
+		return FollowPage{}, user.ErrNotYourRequests
+	}
 
-func (s *FollowService) ListFollowing(ctx context.Context, userID, cursor uuid.UUID, size int) (FollowPage, error) {
-	return s.page(ctx, userID, cursor, size, s.listRepo.ListFollowing, func(ctx context.Context) (int, error) {
-		_, following, err := s.followRepo.Counts(ctx, userID)
-		return following, errs.Wrap("s.followRepo.Counts", err)
-	})
-}
+	q := FriendQuery{UserID: userID, ViewerID: viewerID, Section: section}
+	if section == user.FriendsOnline {
+		q.Since = s.now().UTC().Add(-user.OnlineFor)
+	}
 
-// ListOnlineFollowing is whom userID follows who is online now, openvk's
-// "Друзья онлайн".
-func (s *FollowService) ListOnlineFollowing(ctx context.Context, userID, cursor uuid.UUID, size int) (FollowPage, error) {
-	since := s.now().UTC().Add(-user.OnlineFor)
+	if section == user.FriendsCommon && (viewerID == uuid.Nil || viewerID == userID) {
+		return FollowPage{}, nil
+	}
 
-	list := func(ctx context.Context, userID, before uuid.UUID, limit int) ([]Followed, error) {
-		return s.listRepo.ListOnlineFollowing(ctx, userID, since, before, limit)
+	list := func(ctx context.Context, _, before uuid.UUID, limit int) ([]Followed, error) {
+		return s.listRepo.ListFriends(ctx, q, before, limit)
 	}
 
 	return s.page(ctx, userID, cursor, size, list, func(ctx context.Context) (int, error) {
-		online, err := s.listRepo.CountOnlineFollowing(ctx, userID, since)
-		return online, errs.Wrap("s.listRepo.CountOnlineFollowing", err)
-	})
-}
-
-// ListCommonFollowing is whom both userID and viewerID follow, openvk's
-// "Общие друзья".
-func (s *FollowService) ListCommonFollowing(ctx context.Context, userID, viewerID, cursor uuid.UUID, size int) (FollowPage, error) {
-	list := func(ctx context.Context, userID, before uuid.UUID, limit int) ([]Followed, error) {
-		return s.listRepo.ListCommonFollowing(ctx, userID, viewerID, before, limit)
-	}
-
-	return s.page(ctx, userID, cursor, size, list, func(ctx context.Context) (int, error) {
-		common, err := s.listRepo.CountCommonFollowing(ctx, userID, viewerID)
-		return common, errs.Wrap("s.listRepo.CountCommonFollowing", err)
+		n, err := s.listRepo.CountFriends(ctx, q)
+		return n, errs.Wrap("s.listRepo.CountFriends", err)
 	})
 }
 

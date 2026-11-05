@@ -165,6 +165,11 @@ func (f *Follows) Followed(ctx context.Context, followerID, followeeID uuid.UUID
 	return f.add(ctx, followerID, FollowKind, pair(followerID, followeeID))
 }
 
+// Befriended is a follow to post: the news are of whom one follows.
+func (f *Follows) Befriended(ctx context.Context, followerID, followeeID uuid.UUID) error {
+	return f.Followed(ctx, followerID, followeeID)
+}
+
 // Invited is a follow to post: the news do not tell invitations apart.
 func (f *Follows) Invited(ctx context.Context, inviteeID, inviterID uuid.UUID) error {
 	return f.Followed(ctx, inviteeID, inviterID)

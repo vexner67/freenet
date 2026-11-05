@@ -10,17 +10,26 @@ import (
 	"github.com/vexner67/freenet/gateway/internal/model"
 )
 
+// followStatsJSON are the friends of a page and how the viewer is tied
+// to its owner: friends when isFollowing and followsMe, with a request
+// sent or received when only one of the two.
 type followStatsJSON struct {
 	FollowersCount int  `json:"followersCount"`
 	FollowingCount int  `json:"followingCount"`
+	FriendsCount   int  `json:"friendsCount"`
+	RequestsCount  int  `json:"requestsCount"`
 	IsFollowing    bool `json:"isFollowing"`
+	FollowsMe      bool `json:"followsMe"`
 }
 
 func toFollowStatsJSON(s model.FollowStats) followStatsJSON {
 	return followStatsJSON{
 		FollowersCount: s.Followers,
 		FollowingCount: s.Following,
+		FriendsCount:   s.Friends,
+		RequestsCount:  s.Requests,
 		IsFollowing:    s.IsFollowing,
+		FollowsMe:      s.FollowsMe,
 	}
 }
 
@@ -108,40 +117,47 @@ func (a *api) changeFollow(w http.ResponseWriter, r *http.Request, change func(c
 	writeJSON(w, http.StatusOK, toFollowStatsJSON(stats))
 }
 
-func (a *api) listFollowers(w http.ResponseWriter, r *http.Request) {
-	a.listFollows(w, r, a.users.ListFollowers)
-}
-
-func (a *api) listFollowing(w http.ResponseWriter, r *http.Request) {
-	// "?common=true" is openvk's "Общие друзья": whom the caller follows
-	// too.
-	if r.URL.Query().Get("common") == "true" {
-		token, err := bearerToken(r)
-		if err != nil {
-			a.writeError(w, r, err)
-			return
-		}
-
-		a.listFollows(w, r, func(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error) {
-			return a.users.ListCommonFollowing(ctx, token, userID, cursor, limit)
-		})
+// declineFriend is "Оставить в подписчиках" of openvk: the user's friend
+// request stays a follow, out of the caller's requests. It answers with
+// the fresh counters of the caller's page.
+func (a *api) declineFriend(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
 		return
 	}
 
-	// "?online=true" is openvk's "Друзья онлайн".
-	if r.URL.Query().Get("online") == "true" {
-		a.listFollows(w, r, a.users.ListOnlineFollowing)
+	me, err := a.users.GetMe(r.Context(), token)
+	if err != nil {
+		a.writeError(w, r, err)
 		return
 	}
 
-	a.listFollows(w, r, a.users.ListFollowing)
+	target, err := a.users.GetProfile(r.Context(), "", r.PathValue("nickname"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.users.DeclineFriend(r.Context(), token, target.ID); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	stats, err := a.users.FollowStats(r.Context(), token, me.ID)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toFollowStatsJSON(stats))
 }
 
-func (a *api) listFollows(
-	w http.ResponseWriter,
-	r *http.Request,
-	list func(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error),
-) {
+// listFriends is a list of openvk's "Друзья" of the user of the path,
+// "?section=" one of model.Friends…: all of them by default. The common
+// friends need a session; the requests, the followers and the outgoing
+// requests are the owner's only.
+func (a *api) listFriends(w http.ResponseWriter, r *http.Request) {
 	token, err := optionalBearerToken(r)
 	if err != nil {
 		a.writeError(w, r, err)
@@ -154,14 +170,21 @@ func (a *api) listFollows(
 		return
 	}
 
-	// "Кому видно моих друзей": the follows, either way.
+	section := r.URL.Query().Get("section")
+	if section == "" {
+		section = model.FriendsAll
+	}
+
+	// "Кому видно моих друзей": the friends, the owner's own lists too.
 	owner, err := a.visiblePage(r, token, friendsPart)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	page, err := list(r.Context(), owner.ID, r.URL.Query().Get("cursor"), limit)
+	q := model.FriendQuery{UserID: owner.ID, Section: section, Cursor: r.URL.Query().Get("cursor"), Limit: limit}
+
+	page, err := a.users.ListFriends(r.Context(), token, q)
 	if err != nil {
 		a.writeError(w, r, err)
 		return

@@ -262,8 +262,11 @@ func TestGiftService_Refusals(t *testing.T) {
 	if err = w.follows.Follow(ctx, ann, cat); err != nil {
 		t.Fatal(err)
 	}
+	if err = w.follows.Follow(ctx, cat, ann); err != nil {
+		t.Fatal(err)
+	}
 	if page, err := w.gifts.List(ctx, cat, ann, uuid.Nil, 10); err != nil || page.Total != 1 {
-		t.Fatalf("the followed reads: %+v, %v", page, err)
+		t.Fatalf("a friend reads: %+v, %v", page, err)
 	}
 	if page, err := w.gifts.List(ctx, ann, ann, uuid.Nil, 10); err != nil || page.Total != 1 {
 		t.Fatalf("the owner reads: %+v, %v", page, err)

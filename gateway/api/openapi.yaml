@@ -524,7 +524,7 @@ paths:
       summary: Choose who sees your page and its parts, and who writes to you
       description: |
         "Приватность" of openvk's settings. Sensitive fields are hidden by
-        default; a new wall is open to the people you follow; the page and
+        default; a new wall is open to your friends; the page and
         its parts are open to everyone. All settings are sent at once.
       security: [{ bearer: [] }]
       requestBody:
@@ -9335,7 +9335,11 @@ paths:
         schema: { type: string }
     post:
       summary: Follow the user
-      description: Idempotent. Your profile must be filled in first.
+      description: |
+        "Добавить в друзья": a friend request, or, when the user follows you,
+        its acceptance ("Принять заявку"; the user is notified with
+        `friend`, else with `follow`). Idempotent. Your profile must be
+        filled in first.
       security: [{ bearer: [] }]
       responses:
         "200": { $ref: "#/components/responses/FollowStats" }
@@ -9350,7 +9354,9 @@ paths:
         "429": { $ref: "#/components/responses/TooManyRequests" }
     delete:
       summary: Unfollow the user
-      description: Idempotent.
+      description: |
+        "Удалить из друзей" or "Отменить заявку"; a friend stays your
+        follower. Idempotent.
       security: [{ bearer: [] }]
       responses:
         "200": { $ref: "#/components/responses/FollowStats" }
@@ -9389,12 +9395,20 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
-  /api/v1/users/{nickname}/followers:
+  /api/v1/users/{nickname}/friends:
     get:
-      summary: Who follows the user, newest follow first
+      summary: A list of the user's friends, newest follow first
       description: |
-        No token needed; whether you may see the follows, either way, is
-        the user's `friendsRead`.
+        openvk's "Друзья". Friends follow each other: following someone
+        (`POST …/follow`, "Добавить в друзья") sends a friend request, and
+        following back accepts it. `section` picks the list: `all` (the
+        default), `online` ("Друзья онлайн"), `common` (a token required,
+        "Общие друзья"), and of your own page only `requests` (followers
+        you did not follow back nor left among the followers,
+        "Входящие"), `followers` (every follower you did not follow back)
+        and `outgoing` (whom you follow without being followed back,
+        "Исходящие"). No token needed for the rest; whether you may see
+        them is the user's `friendsRead`. `total` counts the list.
       parameters: &followListParams
         - name: nickname
           in: path
@@ -9406,45 +9420,41 @@ paths:
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
-      responses: &followListResponses
+      responses:
         "200":
           description: One page of people
           content:
             application/json:
               schema: { $ref: "#/components/schemas/UserPage" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: "`this page is deleted`, `this page is hidden` or `this user's follows are hidden`"
+          description: "`this page is deleted`, `this page is hidden`, `this user's follows are hidden` or `only the owner sees the friend requests`"
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/v1/users/{nickname}/following:
-    get:
-      summary: Whom the user follows, newest follow first
+  /api/v1/users/{nickname}/decline:
+    parameters:
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      summary: Leave the user's friend request among your followers
       description: |
-        With `online=true` only those online now, openvk's "Друзья онлайн";
-        with `common=true` (a token required) only whom you follow too, its
-        "Общие друзья"; `total` then counts them.
-      parameters:
-        - name: nickname
-          in: path
-          required: true
-          schema: { type: string }
-        - name: cursor
-          in: query
-          schema: { type: string }
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
-        - name: online
-          in: query
-          schema: { type: boolean, default: false }
-        - name: common
-          in: query
-          schema: { type: boolean, default: false }
-      responses: *followListResponses
+        "Оставить в подписчиках" of openvk: the user still follows you, but
+        is out of your `requests`. Answers with your own counters.
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/FollowStats" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404":
+          description: "`user not found` or `no friend request of this user`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/v1/users/{nickname}/clubs:
     get:
@@ -9983,7 +9993,7 @@ components:
         wallWrite:
           type: string
           enum: [everyone, following, only_me]
-          description: "Who may write on your wall besides you; following: the people you follow"
+          description: "Who may write on your wall besides you; following: your friends, who follow you and whom you follow"
         messagesWrite:
           type: string
           enum: [everyone, following, nobody]
@@ -10027,10 +10037,10 @@ components:
         chatsInvite:
           type: string
           enum: [everyone, following, nobody]
-          description: "Who may add you to chats (\"Кто может добавлять меня в чаты\"): `following` are the people you follow, the default, also when left out"
+          description: "Who may add you to chats (\"Кто может добавлять меня в чаты\"): `following` are your friends, the default, also when left out"
         closed:
           type: boolean
-          description: "A closed profile (\"Тип профиля: закрытый\"): only the people you follow see anything of the page but the names and the photo, whatever the other settings say; false when left out"
+          description: "A closed profile (\"Тип профиля: закрытый\"): only your friends see anything of the page but the names and the photo, whatever the other settings say; false when left out"
         messagesPrime: { type: boolean, description: "Only people with Freenet Prime write to you (\"Писать мне могут только подписчики Freenet Prime\"); those you wrote to first answer all the same" }
         messagePrice: { type: integer, minimum: 0, maximum: 1000000, description: "What a message to you costs, in votes; 0 for free, also when left out. You get them less the tax of sticker packs; those you wrote to first answer freely" }
 
@@ -10094,6 +10104,9 @@ components:
             newGuests:
               type: integer
               description: '"Гости": who came since you last looked, at most 100; told by GET /api/v1/me alone'
+            friendRequests:
+              type: integer
+              description: 'Your friend requests ("Друзья (N)" of the menu); told by GET /api/v1/me alone'
             deactivated:
               type: boolean
               description: "You deleted the page; see POST /api/v1/me/deactivate"
@@ -10762,8 +10775,8 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, gift, votes, prime, invite, verified, club_verified, story_like, story_comment, match, call, missed_call]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; prime: the actor gave you Freenet Prime; invite: the actor signed up by your invitation link and follows you; verified: the actor, an administrator, gave your page the checkmark (until it is taken); club_verified: the actor, a community you own, got the checkmark (until it is taken); story_like, story_comment: the actor liked or commented your story (until the like is taken back, the comment deleted or the story gone); match: you and the actor liked each other in \"Знакомства\"; call: you talked with the actor for `seconds` (each side gets one); missed_call: the actor called you and you did not answer"
+          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, gift, votes, prime, invite, verified, club_verified, story_like, story_comment, match, call, missed_call, friend]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; prime: the actor gave you Freenet Prime; invite: the actor signed up by your invitation link and follows you; verified: the actor, an administrator, gave your page the checkmark (until it is taken); club_verified: the actor, a community you own, got the checkmark (until it is taken); story_like, story_comment: the actor liked or commented your story (until the like is taken back, the comment deleted or the story gone); match: you and the actor liked each other in \"Знакомства\"; call: you talked with the actor for `seconds` (each side gets one); missed_call: the actor called you and you did not answer; follow: the actor sent you a friend request; friend: the actor accepted your friend request"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:
@@ -11102,11 +11115,14 @@ components:
 
     FollowStats:
       type: object
-      required: [followersCount, followingCount, isFollowing]
+      required: [followersCount, followingCount, friendsCount, requestsCount, isFollowing, followsMe]
       properties:
         followersCount: { type: integer }
         followingCount: { type: integer }
+        friendsCount: { type: integer, description: "Who follow the user and are followed back" }
+        requestsCount: { type: integer, description: "The user's friend requests; 0 to anyone but the user" }
         isFollowing: { type: boolean, description: "You follow the user; false without a token" }
+        followsMe: { type: boolean, description: "The user follows you: with isFollowing you are friends, without it you have the user's request" }
 
     UserPage:
       type: object

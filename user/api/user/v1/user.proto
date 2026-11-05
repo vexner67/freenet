@@ -52,10 +52,19 @@ service UserService {
   rpc AcceptInvite(AcceptInviteRequest) returns (google.protobuf.Empty);
 
   // Public. With an access token GetFollowStats also tells whether the
-  // caller follows the user.
+  // caller follows the user and the user the caller, and to the user their
+  // friend requests.
   rpc GetFollowStats(GetFollowStatsRequest) returns (GetFollowStatsResponse);
-  rpc ListFollowers(ListFollowsRequest) returns (ListFollowsResponse);
-  rpc ListFollowing(ListFollowsRequest) returns (ListFollowsResponse);
+  // Public: a list of openvk's "Друзья". Friends follow each other; a
+  // follow not followed back is a friend request, and following back
+  // accepts it. The requests, the followers and the outgoing requests are
+  // the caller's own only (PermissionDenied), the common friends need an
+  // access token.
+  rpc ListFriends(ListFriendsRequest) returns (ListFriendsResponse);
+  // Requires an access token: the friend request of the user stays a
+  // follow, out of the caller's requests ("Оставить в подписчиках");
+  // NotFound when the user does not follow the caller.
+  rpc DeclineFriend(DeclineFriendRequest) returns (google.protobuf.Empty);
 
   // Requires an access token: the caller is on the site now ("Онлайн").
   rpc MarkOnline(MarkOnlineRequest) returns (google.protobuf.Empty);
@@ -946,6 +955,8 @@ message GetMeResponse {
   User user = 1;
   // The guests who came since the caller last looked, at most 100.
   int32 new_guests = 2;
+  // The caller's friend requests, as "Друзья (N)" of openvk's menu.
+  int32 friend_requests = 3;
 }
 
 // Replaces the whole profile: fields left empty are cleared.
@@ -1043,19 +1054,49 @@ message GetFollowStatsResponse {
   int32 following_count = 2;
   // The caller follows the user; false without an access token.
   bool is_following = 3;
+  // Who follows the user and is followed back.
+  int32 friends_count = 4;
+  // The friend requests of the user, to the user only; 0 to anyone else.
+  int32 requests_count = 5;
+  // The user follows the caller; false without an access token.
+  bool follows_caller = 6;
 }
 
-message ListFollowsRequest {
+// FriendSection is one list of openvk's "Друзья".
+enum FriendSection {
+  // All the friends.
+  FRIEND_SECTION_UNSPECIFIED = 0;
+  // The friends online now ("Друзья онлайн").
+  FRIEND_SECTION_ONLINE = 1;
+  // The friends of the caller too ("Общие друзья").
+  FRIEND_SECTION_COMMON = 2;
+  // The followers not followed back nor left among the followers
+  // ("Входящие").
+  FRIEND_SECTION_REQUESTS = 3;
+  // Every follower not followed back ("Подписчики").
+  FRIEND_SECTION_FOLLOWERS = 4;
+  // Whom the user follows without being followed back ("Исходящие").
+  FRIEND_SECTION_OUTGOING = 5;
+}
+
+message ListFriendsRequest {
   string user_id = 1;
+  FriendSection section = 2;
   // Empty for the newest follows, else next_cursor of the previous page.
-  string cursor = 2;
+  string cursor = 3;
   // 1-50; anything else means 20.
-  int32 limit = 3;
-  // Only the people online now ("Друзья онлайн"); total counts them.
-  bool online = 4;
-  // Only whom the caller follows too ("Общие друзья"); requires an
-  // access token.
-  bool common = 5;
+  int32 limit = 4;
+}
+
+message ListFriendsResponse {
+  repeated PublicProfile users = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  int32 total = 3;
+}
+
+message DeclineFriendRequest {
+  string user_id = 1;
 }
 
 message MarkOnlineRequest {}
@@ -1069,13 +1110,6 @@ message GetStatisticsResponse {
   int32 online = 2;
   // Those of them with the checkmark.
   int32 verified = 3;
-}
-
-message ListFollowsResponse {
-  repeated PublicProfile users = 1;
-  // Empty on the last page.
-  string next_cursor = 2;
-  int32 total = 3;
 }
 
 message SetAvatarRequest {

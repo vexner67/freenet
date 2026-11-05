@@ -26,13 +26,16 @@ type edge struct {
 type FollowRepository struct {
 	mu      sync.RWMutex
 	follows map[edge]uuid.UUID // follow ID by edge
-	users   *UserRepository
+	// declined are the follows left among the followers.
+	declined map[edge]bool
+	users    *UserRepository
 }
 
 func NewFollowRepository(users *UserRepository) *FollowRepository {
 	r := &FollowRepository{
-		follows: make(map[edge]uuid.UUID),
-		users:   users,
+		follows:  make(map[edge]uuid.UUID),
+		declined: make(map[edge]bool),
+		users:    users,
 	}
 	users.onDelete(r.forget)
 
@@ -47,6 +50,7 @@ func (r *FollowRepository) forget(userID uuid.UUID) {
 	for e := range r.follows {
 		if e.follower == userID || e.followee == userID {
 			delete(r.follows, e)
+			delete(r.declined, e)
 		}
 	}
 }
@@ -125,6 +129,7 @@ func (r *FollowRepository) Unfollow(ctx context.Context, followerID, followeeID 
 	defer r.mu.Unlock()
 
 	delete(r.follows, edge{followerID, followeeID})
+	delete(r.declined, edge{followerID, followeeID})
 
 	return nil
 }
@@ -162,26 +167,17 @@ func (r *FollowRepository) Counts(ctx context.Context, userID uuid.UUID) (follow
 	return followers, following, nil
 }
 
-func (r *FollowRepository) ListFollowers(ctx context.Context, userID, before uuid.UUID, limit int) ([]service.Followed, error) {
-	return r.list(ctx, before, limit, func(e edge) (uuid.UUID, bool) { return e.follower, e.followee == userID }, nil)
+func (r *FollowRepository) ListFriends(ctx context.Context, q service.FriendQuery, before uuid.UUID, limit int) ([]service.Followed, error) {
+	match, keep, err := r.friendMatch(q)
+	if err != nil {
+		return nil, err
+	}
+
+	return r.list(ctx, before, limit, match, keep)
 }
 
-func (r *FollowRepository) ListFollowing(ctx context.Context, userID, before uuid.UUID, limit int) ([]service.Followed, error) {
-	return r.list(ctx, before, limit, following(userID), nil)
-}
-
-func (r *FollowRepository) ListOnlineFollowing(
-	ctx context.Context,
-	userID uuid.UUID,
-	since time.Time,
-	before uuid.UUID,
-	limit int,
-) ([]service.Followed, error) {
-	return r.list(ctx, before, limit, following(userID), seenAfter(since))
-}
-
-func (r *FollowRepository) CountOnlineFollowing(ctx context.Context, userID uuid.UUID, since time.Time) (int, error) {
-	found, err := r.list(ctx, uuid.Nil, math.MaxInt, following(userID), seenAfter(since))
+func (r *FollowRepository) CountFriends(ctx context.Context, q service.FriendQuery) (int, error) {
+	found, err := r.ListFriends(ctx, q, uuid.Nil, math.MaxInt)
 	if err != nil {
 		return 0, err
 	}
@@ -189,30 +185,60 @@ func (r *FollowRepository) CountOnlineFollowing(ctx context.Context, userID uuid
 	return len(found), nil
 }
 
-func (r *FollowRepository) ListCommonFollowing(ctx context.Context, userID, viewerID, before uuid.UUID, limit int) ([]service.Followed, error) {
-	return r.list(ctx, before, limit, r.commonFollowing(userID, viewerID), nil)
-}
-
-func (r *FollowRepository) CountCommonFollowing(ctx context.Context, userID, viewerID uuid.UUID) (int, error) {
-	found, err := r.list(ctx, uuid.Nil, math.MaxInt, r.commonFollowing(userID, viewerID), nil)
-	if err != nil {
-		return 0, err
+func (r *FollowRepository) Decline(ctx context.Context, followerID, followeeID uuid.UUID) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, errs.Wrap("ctx.Err", err)
 	}
 
-	return len(found), nil
-}
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-// commonFollowing matches userID's follows of people viewerID follows
-// too; list calls it holding the lock.
-func (r *FollowRepository) commonFollowing(userID, viewerID uuid.UUID) func(edge) (uuid.UUID, bool) {
-	return func(e edge) (uuid.UUID, bool) {
-		_, viewerFollows := r.follows[edge{follower: viewerID, followee: e.followee}]
-		return e.followee, e.follower == userID && viewerFollows
+	e := edge{followerID, followeeID}
+	if _, ok := r.follows[e]; !ok {
+		return false, nil
 	}
+
+	r.declined[e] = true
+
+	return true, nil
 }
 
-func following(userID uuid.UUID) func(edge) (uuid.UUID, bool) {
-	return func(e edge) (uuid.UUID, bool) { return e.followee, e.follower == userID }
+// friendMatch picks the follows of a section, as the queries of
+// PostgreSQL do; list calls the match holding the lock.
+func (r *FollowRepository) friendMatch(q service.FriendQuery) (func(edge) (uuid.UUID, bool), func(*user.User) bool, error) {
+	has := func(follower, followee uuid.UUID) bool {
+		_, ok := r.follows[edge{follower, followee}]
+		return ok
+	}
+	friend := func(e edge) (uuid.UUID, bool) {
+		return e.followee, e.follower == q.UserID && has(e.followee, e.follower)
+	}
+
+	switch q.Section {
+	case user.FriendsAll:
+		return friend, nil, nil
+	case user.FriendsOnline:
+		return friend, seenAfter(q.Since), nil
+	case user.FriendsCommon:
+		return func(e edge) (uuid.UUID, bool) {
+			other, ok := friend(e)
+			return other, ok && has(q.ViewerID, other) && has(other, q.ViewerID)
+		}, nil, nil
+	case user.FriendRequests:
+		return func(e edge) (uuid.UUID, bool) {
+			return e.follower, e.followee == q.UserID && !has(q.UserID, e.follower) && !r.declined[e]
+		}, nil, nil
+	case user.FriendFollowers:
+		return func(e edge) (uuid.UUID, bool) {
+			return e.follower, e.followee == q.UserID && !has(q.UserID, e.follower)
+		}, nil, nil
+	case user.FriendsOutgoing:
+		return func(e edge) (uuid.UUID, bool) {
+			return e.followee, e.follower == q.UserID && !has(e.followee, q.UserID)
+		}, nil, nil
+	default:
+		return nil, nil, user.ErrInvalidFriendSection
+	}
 }
 
 // seenAfter keeps the people who visited after since, but deleted pages.

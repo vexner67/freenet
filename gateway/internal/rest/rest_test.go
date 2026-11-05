@@ -472,22 +472,17 @@ func (f *fakeUsers) Unignore(_ context.Context, token string, sourceIDs []string
 
 func (f *fakeUsers) FollowStats(_ context.Context, token, _ string) (model.FollowStats, error) {
 	f.statsToken = token
-	return model.FollowStats{Followers: 3, Following: 1, IsFollowing: token != ""}, nil
+	return model.FollowStats{Followers: 3, Following: 1, Friends: 2, Requests: 1, IsFollowing: token != "", FollowsMe: token != ""}, nil
 }
 
-func (f *fakeUsers) ListFollowers(_ context.Context, userID, cursor string, _ int) (model.UserPage, error) {
-	f.listed = "followers:" + userID + ":" + cursor
-	return model.UserPage{Users: []model.PublicProfile{{ID: "u2", Profile: model.Profile{Nickname: "bob"}}}, Total: 1}, nil
+func (f *fakeUsers) ListFriends(_ context.Context, token string, q model.FriendQuery) (model.UserPage, error) {
+	f.token, f.listed = token, q.Section+":"+q.UserID+":"+q.Cursor
+	return model.UserPage{Users: []model.PublicProfile{{ID: "u2", Profile: model.Profile{Nickname: "bob"}}}, NextCursor: "c2", Total: 1}, f.err
 }
 
-func (f *fakeUsers) ListFollowing(_ context.Context, userID, cursor string, _ int) (model.UserPage, error) {
-	f.listed = "following:" + userID + ":" + cursor
-	return model.UserPage{NextCursor: "c2", Total: 5}, nil
-}
-
-func (f *fakeUsers) ListCommonFollowing(_ context.Context, token, userID, cursor string, _ int) (model.UserPage, error) {
-	f.token, f.listed = token, "common:"+userID+":"+cursor
-	return model.UserPage{Users: []model.PublicProfile{{ID: "u3", Profile: model.Profile{Nickname: "cat"}}}, Total: 1}, nil
+func (f *fakeUsers) DeclineFriend(_ context.Context, token, userID string) error {
+	f.token, f.listed = token, "declined:"+userID
+	return f.err
 }
 
 // UpdateStatus keeps the status in the caller's profile.
@@ -540,11 +535,6 @@ func (f *fakeUsers) SetBackdrop(_ context.Context, token, side, photoID string) 
 	u := f.user()
 	u.Backdrop = f.backdrop
 	return u, old, nil
-}
-
-func (f *fakeUsers) ListOnlineFollowing(_ context.Context, userID, cursor string, _ int) (model.UserPage, error) {
-	f.listed = "online:" + userID + ":" + cursor
-	return model.UserPage{Users: []model.PublicProfile{{ID: "u2", Profile: model.Profile{Nickname: "bob"}}}, Total: 1}, nil
 }
 
 func (f *fakeUsers) Statistics(context.Context) (model.People, error) {

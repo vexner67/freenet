@@ -215,9 +215,17 @@ func (s *PermissionService) tiesOf(ctx context.Context, otherID, ownerID uuid.UU
 		return user.Ties{}, nil
 	}
 
+	// "Друзья" of the settings are friends: the owner and the other follow
+	// each other.
 	followed, err := s.followRepo.IsFollowing(ctx, ownerID, otherID)
 	if err != nil {
 		return user.Ties{}, errs.Wrap("s.followRepo.IsFollowing", err)
+	}
+
+	if followed {
+		if followed, err = s.followRepo.IsFollowing(ctx, otherID, ownerID); err != nil {
+			return user.Ties{}, errs.Wrap("s.followRepo.IsFollowing", err)
+		}
 	}
 
 	byOwner, byOther, err := s.blockRepo.Blocks(ctx, ownerID, otherID)

@@ -12,7 +12,11 @@ import (
 // delivered afterwards, retried while the notification service is down.
 type Notifier interface {
 	Followed(ctx context.Context, followerID, followeeID uuid.UUID) error
-	// Unfollowed takes back the notification of the follow.
+	// Befriended is a follow back: followerID accepted the friend request
+	// of followeeID, who hears so.
+	Befriended(ctx context.Context, followerID, followeeID uuid.UUID) error
+	// Unfollowed takes back the notification of the follow, or of the
+	// accepted request.
 	Unfollowed(ctx context.Context, followerID, followeeID uuid.UUID) error
 	// Invited is a follow of the inviter by the page it invited: the same
 	// follow to whoever keeps follows, an invitation to the inviter.

@@ -52,8 +52,11 @@ func TestClosedPage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Ann follows bob; cat follows ann.
+	// Ann and bob are friends; cat follows ann, who does not follow back.
 	if err := w.follows.Follow(w.ctx, w.ann, w.bob); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.follows.Follow(w.ctx, w.bob, w.ann); err != nil {
 		t.Fatal(err)
 	}
 	if err := w.follows.Follow(w.ctx, w.cat, w.ann); err != nil {
@@ -81,7 +84,7 @@ func TestClosedPage(t *testing.T) {
 	}{
 		{"nobody", uuid.Nil, false},
 		{"a follower", w.cat, false},
-		{"whom ann follows", w.bob, true},
+		{"a friend", w.bob, true},
 		{"ann", w.ann, true},
 	}
 

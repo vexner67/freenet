@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/user/internal/postgres"
+	"github.com/vexner67/freenet/user/internal/service"
 	"github.com/vexner67/freenet/user/internal/user"
 )
 
@@ -187,12 +188,46 @@ func TestUserRepository(t *testing.T) {
 			t.Fatalf("Counts = %d, %d, %v", followers, following, err)
 		}
 
-		list, err := follows.ListFollowers(ctx, u.ID(), uuid.Nil, 10)
+		// Not followed back: a friend request of other, and a follower.
+		requests := service.FriendQuery{UserID: u.ID(), Section: user.FriendRequests}
+		list, err := follows.ListFriends(ctx, requests, uuid.Nil, 10)
 		if err != nil || len(list) != 1 || list[0].User.ID() != other.ID() || list[0].User.Email() != other.Email() {
-			t.Fatalf("ListFollowers = %+v, %v", list, err)
+			t.Fatalf("requests = %+v, %v", list, err)
 		}
-		if after, err := follows.ListFollowers(ctx, u.ID(), list[0].FollowID, 10); err != nil || len(after) != 0 {
+		if after, err := follows.ListFriends(ctx, requests, list[0].FollowID, 10); err != nil || len(after) != 0 {
 			t.Fatalf("after the cursor: %+v, %v", after, err)
+		}
+		outgoing := service.FriendQuery{UserID: other.ID(), Section: user.FriendsOutgoing}
+		if n, err := follows.CountFriends(ctx, outgoing); err != nil || n != 1 {
+			t.Fatalf("outgoing = %d, %v", n, err)
+		}
+
+		// Left among the followers, it is a request no more.
+		if ok, err := follows.Decline(ctx, other.ID(), u.ID()); err != nil || !ok {
+			t.Fatalf("Decline = %v, %v", ok, err)
+		}
+		if ok, err := follows.Decline(ctx, u.ID(), other.ID()); err != nil || ok {
+			t.Fatalf("Decline of no follow = %v, %v", ok, err)
+		}
+		if n, err := follows.CountFriends(ctx, requests); err != nil || n != 0 {
+			t.Fatalf("requests after declining = %d, %v", n, err)
+		}
+		if n, err := follows.CountFriends(ctx, service.FriendQuery{UserID: u.ID(), Section: user.FriendFollowers}); err != nil || n != 1 {
+			t.Fatalf("followers = %d, %v", n, err)
+		}
+
+		// Following back makes them friends.
+		if err = follows.Follow(ctx, u.ID(), other.ID()); err != nil {
+			t.Fatal(err)
+		}
+		if n, err := follows.CountFriends(ctx, service.FriendQuery{UserID: u.ID(), Section: user.FriendsAll}); err != nil || n != 1 {
+			t.Fatalf("friends = %d, %v", n, err)
+		}
+		if n, err := follows.CountFriends(ctx, outgoing); err != nil || n != 0 {
+			t.Fatalf("outgoing of a friend = %d, %v", n, err)
+		}
+		if err = follows.Unfollow(ctx, u.ID(), other.ID()); err != nil {
+			t.Fatal(err)
 		}
 
 		if err = follows.Follow(ctx, other.ID(), uuid.New()); !errors.Is(err, user.ErrNotFound) {

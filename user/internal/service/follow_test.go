@@ -18,6 +18,7 @@ type follow struct{ follower, followee uuid.UUID }
 // fails with err when set.
 type fakeNotifier struct {
 	followed   []follow
+	befriended []follow
 	unfollowed []follow
 	invited    []follow
 	err        error
@@ -36,6 +37,14 @@ func (f *fakeNotifier) Followed(_ context.Context, follower, followee uuid.UUID)
 		return f.err
 	}
 	f.followed = append(f.followed, follow{follower, followee})
+	return nil
+}
+
+func (f *fakeNotifier) Befriended(_ context.Context, follower, followee uuid.UUID) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.befriended = append(f.befriended, follow{follower, followee})
 	return nil
 }
 
@@ -179,5 +188,96 @@ func TestFollowService_AcceptInvite(t *testing.T) {
 
 	if len(notifier.invited) != 1 {
 		t.Fatalf("notified about failed invitations: %+v", notifier.invited)
+	}
+}
+
+// A follow is a friend request: following back accepts it, and the one
+// who asked hears so; the requests are the owner's to see and decline.
+func TestFollowService_Friends(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	users := inmem.NewUserRepository()
+	follows := inmem.NewFollowRepository(users)
+	notifier := &fakeNotifier{}
+
+	userSvc := service.NewUserService(users)
+	svc := service.NewFollowService(service.FollowDeps{
+		Users: users, Follows: follows, Lists: follows, Blocks: inmem.NewBlockRepository(follows), Tx: inmem.TxManager{}, Notifier: notifier,
+	})
+
+	var ids []uuid.UUID
+	for _, email := range []string{"ann@example.com", "bob@example.com", "cat@example.com"} {
+		id, err := userSvc.GetOrCreateByEmail(ctx, mustEmail(t, email))
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids = append(ids, id)
+	}
+	ann, bob, cat := ids[0], ids[1], ids[2]
+
+	total := func(owner, viewer uuid.UUID, section user.FriendSection) int {
+		t.Helper()
+		page, err := svc.ListFriends(ctx, owner, viewer, section, uuid.Nil, 0)
+		if err != nil {
+			t.Fatalf("%s of %v: %v", section, owner, err)
+		}
+		return page.Total
+	}
+
+	// Bob and cat ask ann.
+	for _, follower := range []uuid.UUID{bob, cat} {
+		if err := svc.Follow(ctx, follower, ann); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n := total(ann, ann, user.FriendRequests); n != 2 {
+		t.Fatalf("requests = %d", n)
+	}
+	if n := total(bob, bob, user.FriendsOutgoing); n != 1 {
+		t.Fatalf("outgoing = %d", n)
+	}
+	stats, err := svc.Stats(ctx, ann, bob)
+	if err != nil || stats.Friends != 0 || stats.Requests != 0 || stats.IsFollowing != true || stats.FollowsViewer {
+		t.Fatalf("stats to bob = %+v, %v", stats, err)
+	}
+
+	// Ann accepts bob and leaves cat among the followers.
+	if err = svc.Follow(ctx, ann, bob); err != nil {
+		t.Fatal(err)
+	}
+	if want := (follow{follower: ann, followee: bob}); len(notifier.befriended) != 1 || notifier.befriended[0] != want {
+		t.Fatalf("befriended %+v", notifier.befriended)
+	}
+	if err = svc.Decline(ctx, ann, cat); err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.Decline(ctx, ann, uuid.New()); !errors.Is(err, user.ErrNoFriendRequest) {
+		t.Fatalf("decline of nobody: %v", err)
+	}
+
+	if n := total(ann, uuid.Nil, user.FriendsAll); n != 1 {
+		t.Fatalf("friends = %d", n)
+	}
+	if n := total(ann, ann, user.FriendRequests); n != 0 {
+		t.Fatalf("requests after = %d", n)
+	}
+	if n := total(ann, ann, user.FriendFollowers); n != 1 {
+		t.Fatalf("followers = %d", n)
+	}
+	stats, err = svc.Stats(ctx, ann, ann)
+	if err != nil || stats.Friends != 1 || stats.Requests != 0 {
+		t.Fatalf("own stats = %+v, %v", stats, err)
+	}
+	if stats, err = svc.Stats(ctx, ann, bob); err != nil || !stats.IsFollowing || !stats.FollowsViewer {
+		t.Fatalf("stats to a friend = %+v, %v", stats, err)
+	}
+
+	// The requests are ann's only; common friends need someone else.
+	if _, err = svc.ListFriends(ctx, ann, bob, user.FriendRequests, uuid.Nil, 0); !errors.Is(err, user.ErrNotYourRequests) {
+		t.Fatalf("requests to bob: %v", err)
+	}
+	if n := total(ann, uuid.Nil, user.FriendsCommon); n != 0 {
+		t.Fatalf("common to a guest = %d", n)
 	}
 }

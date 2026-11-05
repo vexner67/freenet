@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
 	"github.com/vexner67/freenet/pkg/errs"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
@@ -39,6 +40,7 @@ func (u *Users) GetMe(ctx context.Context, accessToken string) (model.User, erro
 
 	me := toUser(resp.GetUser())
 	me.NewGuests = int(resp.GetNewGuests())
+	me.FriendRequests = int(resp.GetFriendRequests())
 
 	return me, nil
 }
@@ -260,7 +262,10 @@ func (u *Users) FollowStats(ctx context.Context, accessToken, userID string) (mo
 	return model.FollowStats{
 		Followers:   int(resp.GetFollowersCount()),
 		Following:   int(resp.GetFollowingCount()),
+		Friends:     int(resp.GetFriendsCount()),
+		Requests:    int(resp.GetRequestsCount()),
 		IsFollowing: resp.GetIsFollowing(),
+		FollowsMe:   resp.GetFollowsCaller(),
 	}, nil
 }
 
@@ -437,49 +442,45 @@ func (u *Users) Relation(ctx context.Context, accessToken, userID string) (model
 	return model.Relation{BlockedByMe: resp.GetBlockedByMe(), BlockedMe: resp.GetBlockedMe()}, nil
 }
 
-func (u *Users) ListFollowers(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error) {
-	resp, err := u.api.ListFollowers(ctx, listFollowsRequest(userID, cursor, limit))
+// friendSections are the lists of openvk's "Друзья" by their names in
+// the API.
+var friendSections = map[string]userv1.FriendSection{
+	model.FriendsAll:      userv1.FriendSection_FRIEND_SECTION_UNSPECIFIED,
+	model.FriendsOnline:   userv1.FriendSection_FRIEND_SECTION_ONLINE,
+	model.FriendsCommon:   userv1.FriendSection_FRIEND_SECTION_COMMON,
+	model.FriendRequests:  userv1.FriendSection_FRIEND_SECTION_REQUESTS,
+	model.FriendFollowers: userv1.FriendSection_FRIEND_SECTION_FOLLOWERS,
+	model.FriendsOutgoing: userv1.FriendSection_FRIEND_SECTION_OUTGOING,
+}
+
+// ListFriends is a section of the friends of userID; accessToken may be
+// empty for an anonymous viewer.
+func (u *Users) ListFriends(ctx context.Context, accessToken string, q model.FriendQuery) (model.UserPage, error) {
+	section, ok := friendSections[q.Section]
+	if !ok {
+		return model.UserPage{}, failure.New(failure.InvalidArgument, "invalid friends section")
+	}
+
+	resp, err := u.api.ListFriends(withToken(ctx, accessToken), &userv1.ListFriendsRequest{
+		UserId:  q.UserID,
+		Section: section,
+		Cursor:  q.Cursor,
+		Limit:   int32(min(max(q.Limit, 0), 1<<10)), //nolint:gosec // clamped above
+	})
 	if err != nil {
-		return model.UserPage{}, errs.Wrap("u.api.ListFollowers", fromStatus(err))
+		return model.UserPage{}, errs.Wrap("u.api.ListFriends", fromStatus(err))
 	}
 
 	return toUserPage(resp), nil
 }
 
-func (u *Users) ListFollowing(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error) {
-	resp, err := u.api.ListFollowing(ctx, listFollowsRequest(userID, cursor, limit))
-	if err != nil {
-		return model.UserPage{}, errs.Wrap("u.api.ListFollowing", fromStatus(err))
+// DeclineFriend leaves the request of userID among the caller's followers.
+func (u *Users) DeclineFriend(ctx context.Context, accessToken, userID string) error {
+	if _, err := u.api.DeclineFriend(withToken(ctx, accessToken), &userv1.DeclineFriendRequest{UserId: userID}); err != nil {
+		return errs.Wrap("u.api.DeclineFriend", fromStatus(err))
 	}
 
-	return toUserPage(resp), nil
-}
-
-// ListOnlineFollowing is openvk's "Друзья онлайн".
-func (u *Users) ListOnlineFollowing(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error) {
-	req := listFollowsRequest(userID, cursor, limit)
-	req.Online = true
-
-	resp, err := u.api.ListFollowing(ctx, req)
-	if err != nil {
-		return model.UserPage{}, errs.Wrap("u.api.ListFollowing", fromStatus(err))
-	}
-
-	return toUserPage(resp), nil
-}
-
-// ListCommonFollowing is whom both userID and the caller follow, openvk's
-// "Общие друзья".
-func (u *Users) ListCommonFollowing(ctx context.Context, accessToken, userID, cursor string, limit int) (model.UserPage, error) {
-	req := listFollowsRequest(userID, cursor, limit)
-	req.Common = true
-
-	resp, err := u.api.ListFollowing(withToken(ctx, accessToken), req)
-	if err != nil {
-		return model.UserPage{}, errs.Wrap("u.api.ListFollowing", fromStatus(err))
-	}
-
-	return toUserPage(resp), nil
+	return nil
 }
 
 // Statistics counts the people of the site, those on it now and those
@@ -519,14 +520,6 @@ func (u *Users) MarkOnline(ctx context.Context, accessToken string) error {
 	}
 
 	return nil
-}
-
-func listFollowsRequest(userID, cursor string, limit int) *userv1.ListFollowsRequest {
-	return &userv1.ListFollowsRequest{
-		UserId: userID,
-		Cursor: cursor,
-		Limit:  int32(min(max(limit, 0), 1<<10)), //nolint:gosec // clamped above
-	}
 }
 
 // userPageMessage is implemented by the responses that list people.

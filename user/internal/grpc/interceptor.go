@@ -166,6 +166,12 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, "you cannot follow yourself"), true
 	case errors.Is(err, user.ErrFollowBlocked):
 		return status.New(codes.PermissionDenied, "you cannot follow this user"), true
+	case errors.Is(err, user.ErrNotYourRequests):
+		return status.New(codes.PermissionDenied, user.ErrNotYourRequests.Error()), true
+	case errors.Is(err, user.ErrNoFriendRequest):
+		return status.New(codes.NotFound, user.ErrNoFriendRequest.Error()), true
+	case errors.Is(err, user.ErrInvalidFriendSection):
+		return status.New(codes.InvalidArgument, user.ErrInvalidFriendSection.Error()), true
 	case errors.Is(err, user.ErrInviteExpired):
 		return status.New(codes.FailedPrecondition, user.ErrInviteExpired.Error()), true
 	case errors.Is(err, user.ErrAlreadyInvited):

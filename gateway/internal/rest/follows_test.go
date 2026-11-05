@@ -82,46 +82,45 @@ func TestFollow(t *testing.T) {
 	})
 }
 
-func TestFollowLists(t *testing.T) {
+func TestFriendLists(t *testing.T) {
 	t.Parallel()
 
 	h := newHarness(rest.Config{})
 
-	w := h.do("GET", "/api/v1/users/ann/followers?cursor=c1", "")
+	w := h.do("GET", "/api/v1/users/ann/friends?cursor=c1", "")
 	page := decode[map[string]any](t, w)
-	if w.Code != http.StatusOK || h.users.listed != "followers:u1:c1" || page["total"] != float64(1) {
-		t.Fatalf("followers: %d %v (%s)", w.Code, page, h.users.listed)
+	if w.Code != http.StatusOK || h.users.listed != "all:u1:c1" || page["total"] != float64(1) || page["nextCursor"] != "c2" || h.users.token != "" {
+		t.Fatalf("friends: %d %v (%s)", w.Code, page, h.users.listed)
 	}
 	if users, _ := page["users"].([]any); len(users) != 1 {
 		t.Fatalf("users = %v", page["users"])
 	}
 
-	w = h.do("GET", "/api/v1/users/ann/following", "")
-	page = decode[map[string]any](t, w)
-	if h.users.listed != "following:u1:" || page["nextCursor"] != "c2" {
-		t.Fatalf("following: %v (%s)", page, h.users.listed)
-	}
-	if users, _ := page["users"].([]any); users == nil {
-		t.Fatal("an empty list must be [], not null")
+	// The requests go with the session, which the user service checks.
+	w = h.do("GET", "/api/v1/users/ann/friends?section=requests", "", "Authorization", "Bearer tok")
+	if w.Code != http.StatusOK || h.users.listed != "requests:u1:" || h.users.token != "tok" {
+		t.Fatalf("requests: %d (%s)", w.Code, h.users.listed)
 	}
 
-	// openvk's "Общие друзья": whom the caller follows too.
-	if w = h.do("GET", "/api/v1/users/ann/following?common=true", ""); w.Code != http.StatusUnauthorized {
-		t.Fatalf("common, anonymous: %d", w.Code)
-	}
-	w = h.do("GET", "/api/v1/users/ann/following?common=true", "", "Authorization", "Bearer tok")
-	if page = decode[map[string]any](t, w); h.users.listed != "common:u1:" || page["total"] != float64(1) || h.users.token != "tok" {
-		t.Fatalf("common: %v (%s)", page, h.users.listed)
-	}
-
-	// openvk's "Друзья онлайн".
-	w = h.do("GET", "/api/v1/users/ann/following?online=true", "")
-	if page = decode[map[string]any](t, w); h.users.listed != "online:u1:" || page["total"] != float64(1) {
-		t.Fatalf("online: %v (%s)", page, h.users.listed)
-	}
-
-	if w = h.do("GET", "/api/v1/users/nobody/followers", ""); w.Code != http.StatusNotFound {
+	if w = h.do("GET", "/api/v1/users/nobody/friends", ""); w.Code != http.StatusNotFound {
 		t.Fatalf("unknown nickname: %d", w.Code)
+	}
+}
+
+// "Оставить в подписчиках" answers with the caller's own counters.
+func TestDeclineFriend(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+
+	if w := h.do("POST", "/api/v1/users/bob/decline", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("anonymous: %d", w.Code)
+	}
+
+	w := h.do("POST", "/api/v1/users/bob/decline", "", "Authorization", "Bearer tok")
+	stats := decode[map[string]any](t, w)
+	if w.Code != http.StatusOK || h.users.listed != "declined:u2" || stats["requestsCount"] != float64(1) || stats["friendsCount"] != float64(2) {
+		t.Fatalf("decline: %d %v (%s)", w.Code, stats, h.users.listed)
 	}
 }
 
