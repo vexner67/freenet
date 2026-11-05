@@ -21,14 +21,13 @@
 // first. At the right is the balance, as in
 // "Голоса" of the settings. "Огонёк", "Прицел" and "Ракетка" play by themselves too
 // ("Автоигра"): as many rounds as chosen or while the votes last. A win of
-// the jackpot of the casino takes the whole screen (jackpot.js).
+// the jackpot of the casino gets a message box (jackpot.js).
 
 import { api, currentUser, started } from './api.js';
 import { balanceVotes, balanceWord, aimZone, autoplayNext, betAmount, betChance, betEventOdds, betEventState, betEventShare, betMultiplier, betPrize, betRoll, casinoChance, cellFontSize, casinoPlan, groupedVotes, plural, rocketMultiplier, rocketScale, rocketShown, rocketTime, rocketsCount, signedVotes, spinsCount, typedOdds, votesCount, votesFontSize, wagersCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { tr } from './i18n.js';
-import { countTo, flash, floatText, helpButton } from './game.js';
-import { aimStop, aimSweep, coins, rocketBoom, rocketCash, rocketEngine, wheelStop, wheelTick } from './sounds.js';
+import { helpButton } from './game.js';
 import { jackpot } from './jackpot.js';
 import { poker } from './poker.js';
 import { holdem } from './holdem.js';
@@ -37,7 +36,7 @@ const answered = started(api.casino());
 // The table of poker; a server without it has no poker.
 const pokerTable = started(api.poker()).catch(() => null);
 
-// jackpotFrom is the win that takes the whole screen; the casino says it.
+// jackpotFrom is the win that gets a message box; the casino says it.
 let jackpotFrom = Infinity;
 
 // Without motion the light lands at once.
@@ -169,40 +168,19 @@ function setPlaying(on) {
 // totals are what was played since the page was opened, in all the games.
 const totals = { played: 0, spent: 0, won: 0, streak: 0 };
 
-function showTotal(id, value, from, text = groupedVotes) {
-  countTo($(id), from, value, text);
-}
-
-// score counts a round on the plates over the games and rewards it where it
-// was shown: a win flies up from node with the sound of coins.
-function score(node, cost, won) {
-  const before = { ...totals };
+// score counts a round on the plates over the games.
+function score(cost, won) {
   totals.played++;
   totals.spent += cost;
   totals.won += won;
   totals.streak = won > cost ? totals.streak + 1 : 0;
-  showTotal('hud-played', totals.played, before.played, String);
-  showTotal('hud-won', totals.won, before.won);
-  const net = (t) => t.won - t.spent;
-  showTotal('hud-net', net(totals), net(before), signedVotes);
+  $('hud-played').textContent = String(totals.played);
+  $('hud-won').textContent = groupedVotes(totals.won);
+  $('hud-net').textContent = signedVotes(totals.won - totals.spent);
   $('hud-streak').textContent = String(totals.streak);
-  $('hud-streak').closest('.game-hud-cell').classList.toggle('hot', totals.streak >= 3);
-  if (won > 0) {
-    floatText(node, `+${groupedVotes(won)}`, 'gold');
-    flash(node, 'gold');
-    coins();
-  } else {
-    flash(node, 'bad');
-  }
 }
 
 function showBalance(votes) {
-  // The balance jumps when it grows.
-  if (votes > balance && !$('balance').hidden && !still) {
-    $('votes').classList.remove('bump');
-    void $('votes').offsetWidth;
-    $('votes').classList.add('bump');
-  }
   balance = votes;
   $('votes').textContent = balanceVotes(votes);
   $('votes').style.fontSize = `${votesFontSize(votes)}px`;
@@ -217,51 +195,20 @@ async function run(prize) {
     for (const step of casinoPlan(cells.length, lit, prize)) {
       await sleep(step.delay);
       light(step.cell);
-      wheelTick();
     }
-    wheelStop();
   }
   light(prize);
   cells[prize].classList.add('won');
-}
-
-// cheer celebrates a win in the New Year casino with confetti, the more
-// the bigger the win against what it cost; a big win (five times the cost
-// and more) gets a big plaque.
-let confetti = null;
-
-function cheer(result, won, cost) {
-  result.classList.toggle('casino-big', won >= cost * 5);
-  if (still || !document.documentElement.classList.contains('festive')) return;
-  if (!confetti) {
-    confetti = el('div', { className: 'casino-confetti' });
-    document.body.append(confetti);
-  }
-
-  const count = Math.min(140, 24 + Math.round((won / Math.max(cost, 1)) * 12));
-
-  for (let i = 0; i < count; i++) {
-    const piece = el('span', { className: 'casino-piece' });
-
-    piece.style.left = `${Math.random() * 100}%`;
-    piece.style.animationDelay = `${Math.random() * 0.5}s`;
-    piece.style.setProperty('--dx', `${Math.round((Math.random() - 0.5) * 240)}px`);
-    piece.style.setProperty('--turn', `${Math.round((Math.random() - 0.5) * 1440)}deg`);
-    piece.style.setProperty('--fall', `${(1.8 + Math.random() * 1.6).toFixed(2)}s`);
-    piece.addEventListener('animationend', () => piece.remove());
-    confetti.append(piece);
-  }
 }
 
 function showResult(votes, price) {
   const result = $('result');
 
   result.className = votes > 0 ? 'casino-result casino-win' : 'casino-result';
-  if (votes > 0) cheer(result, votes, price);
   result.textContent = votes > 0 ? tr('Вы выиграли {0}!', votesCount(votes)) : tr('В этот раз ничего. Попробуйте ещё!');
   result.hidden = false;
 
-  score(result, price, votes);
+  score(price, votes);
 }
 
 async function spinOnce(price) {
@@ -482,9 +429,7 @@ function betting(bets, signedIn) {
     }
     mark.style.left = `${to / 100}%`;
     if (!still) {
-      aimSweep(1.1);
       await sleep(1100);
-      aimStop();
     }
     // The number stands over the marker, not past the ends of the strip.
     mark.classList.toggle('near-start', to < 1000);
@@ -542,7 +487,6 @@ function showWager(wager, stake) {
   const result = $('bet-result');
 
   result.className = wager.won ? 'casino-result casino-win' : 'casino-result';
-  if (wager.won) cheer(result, wager.votes, stake);
   const zone = aimZone(wager.chance);
 
   result.textContent = wager.won
@@ -550,7 +494,7 @@ function showWager(wager, stake) {
     : tr('Выпало {0}, а зелёное поле — от {1} до {2}. Ставка проиграна.', betRoll(wager.roll), betRoll(zone.low), betRoll(zone.high));
   result.hidden = false;
 
-  score(result, stake, wager.won ? wager.votes : 0);
+  score(stake, wager.won ? wager.votes : 0);
 }
 
 // sky is what the sky of "Ракетка" shows: the milliseconds of the flight
@@ -599,10 +543,6 @@ function drawSky(ms, cashedAt = -1) {
   ctx.lineTo(pad, height - pad);
   ctx.fill();
   ctx.globalAlpha = 1;
-  // The New Year rocket leaves sparks.
-  if (document.documentElement.classList.contains('festive')) {
-    points.forEach((p, i) => { if (i % 4 === 2) ctx.fillRect(p.x - 1.5, p.y - 6 - (i % 8), 3, 3); });
-  }
   if (cashedAt >= 0) {
     const cash = at(cashedAt);
     ctx.beginPath();
@@ -719,27 +659,20 @@ async function flyOnce(votes, auto) {
   const round = await api.launchRocket(votes, auto);
   let over = round;
   let ms = 0;
-  const silence = rocketEngine();
 
   // The bet is gone at once, the win comes with the cash.
   showBalance(round.balance - round.payout);
   showSky('flying');
   $('rocket-result').hidden = true;
-  try {
-    if (round.state === 'flying') {
-      ({ round: over, ms } = await flyLive(round, votes));
-    } else {
-      // A rocket cashing by itself is over at the launch: its flight is
-      // shown up to the cash or the explosion, at most 10 s.
-      ms = rocketTime(Math.min(round.crash, round.cashed || round.crash));
-      await glide(0, ms, Math.min(ms, 10000));
-    }
-  } finally {
-    silence();
+  if (round.state === 'flying') {
+    ({ round: over, ms } = await flyLive(round, votes));
+  } else {
+    // A rocket cashing by itself is over at the launch: its flight is
+    // shown up to the cash or the explosion, at most 10 s.
+    ms = rocketTime(Math.min(round.crash, round.cashed || round.crash));
+    await glide(0, ms, Math.min(ms, 10000));
   }
-  if (over.state === 'cashed') rocketCash();
   await land(over, ms);
-  rocketBoom();
   $('rocket-launch').hidden = false;
   showBalance(round.state === 'flying' ? (over.balance || balance) : round.balance);
   showFlight(over, votes);
@@ -751,7 +684,6 @@ function showFlight(round, stake) {
   const won = round.state === 'cashed';
 
   result.className = won ? 'casino-result casino-win' : 'casino-result';
-  if (won) cheer(result, round.payout, stake);
   if (won) {
     result.textContent = tr('Вы забрали ставку на {0} и выиграли {1}! Ракета взорвалась на {2}.', rocketShown(round.cashed), votesCount(round.payout), rocketShown(round.crash));
   } else if (round.auto > 0) {
@@ -761,7 +693,7 @@ function showFlight(round, stake) {
   }
   result.hidden = false;
 
-  score(result, stake, won ? round.payout : 0);
+  score(stake, won ? round.payout : 0);
 }
 
 // rocketing is the form of "Ракетка": the bet, the multiplier to cash at
@@ -971,7 +903,6 @@ try {
       playing: () => playing,
       setPlaying,
       showBalance,
-      cheer,
       score,
       jackpotFrom: () => jackpotFrom,
     });

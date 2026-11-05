@@ -128,10 +128,6 @@ function showPreview(me, style) {
   $('style-status').textContent = me.status || tr('Ваш статус');
   $('style-mood').hidden = !icon;
   if (icon) Object.assign($('style-mood'), { src: icon, title: primeMoodText(style.mood) });
-
-  const photo = $('style-photo');
-  photo.querySelectorAll('.prime-sparkles').forEach((s) => s.remove());
-  if (style.frame === 'glitter') photo.append(el('span', { className: 'prime-sparkles' }), el('span', { className: 'prime-sparkles late' }));
 }
 
 // swatch is one choice of the form: a radio with what it looks like.

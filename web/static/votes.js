@@ -13,9 +13,8 @@ import { api, currentUser, started } from './api.js';
 import { balanceAmount, MAX_RATING, RATING_PRICE, bankRate, bankVotes, cardCovers, cardNumber, grownDeposit, groupedVotes, TRANSFER_FEE_PERCENT, formatDateTime, isEndless, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, voucherGave } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError, verifiedMark } from './layout.js';
 import { chips, meter } from './controls.js';
-import { countTo, flash, floatText, helpButton } from './game.js';
+import { helpButton } from './game.js';
 import { notify, toast } from './modal.js';
-import { coins, dealTick, fanfare } from './sounds.js';
 import { tr } from './i18n.js';
 import { isNickname, recipientPicker } from './recipient.js';
 
@@ -33,7 +32,6 @@ const rate = act === 'account' ? api.voteRate().then((r) => r.kopecks, () => 0) 
 const bonus = act === 'account' ? started(api.bonus()) : null;
 const bankState = started(api.bank());
 const cardState = ['account', 'card'].includes(act) ? started(api.bankCard()).then((r) => r.card) : Promise.resolve(null);
-const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const BONUS_DAYS = 7;
 // How far the page looks ahead at a deposit.
 const FORECAST_DAYS = 30;
@@ -45,17 +43,12 @@ function say(title, ...rest) {
   notify($('notice'), title);
 }
 
-let shownVotes = null;
 let rated = 0;
 
-// showBalance runs the balance up to votes wherever the page shows it: the
+// showBalance writes votes wherever the page shows the balance: the
 // line "На счету" and the card.
 function showBalance(votes) {
-  const from = shownVotes ?? votes;
-  const whole = isEndless(from) || isEndless(votes);
-  shownVotes = votes;
-
-  countTo($('votes'), whole ? votes : from, votes, balanceAmount);
+  $('votes').textContent = balanceAmount(votes);
   // The endless balance of an administrator is worth no sum.
   $('votes-rubles').textContent = rated && !isEndless(votes) ? `≈ ${rubles(votes * rated)}` : '';
   for (const sum of document.querySelectorAll('.bank-card-sum')) sum.textContent = balanceAmount(votes);
@@ -66,21 +59,12 @@ function showRating(me) {
   $('info-rating').textContent = `${me.completeness ?? me.rating ?? 0} %`;
 }
 
-// reward is the answer of the page to money moved: a number flying up from
-// what was pressed, a flash and the sound of coins.
-function reward(node, text, tone = 'gold') {
-  floatText(node, text, tone);
-  flash(node.closest('.game-window') ?? node, tone);
-  coins();
-}
-
 // quick fills input from a row of chips [label, amount], the page hearing
 // it as if typed.
 function quick(place, input, list) {
   $(place).replaceChildren(chips(list.map(([label, amount]) => [label, () => {
     input.value = String(amount());
     input.dispatchEvent(new Event('input', { bubbles: true }));
-    dealTick();
   }])));
 }
 
@@ -119,26 +103,6 @@ function cardNode(card, me) {
 
 function turnCard(node) {
   node?.classList.toggle('flipped');
-  dealTick();
-}
-
-// rollNumber spins the digits of a new card and stops them a group at a time.
-function rollNumber(node, number, done) {
-  if (still) {
-    done();
-    return;
-  }
-  const from = performance.now();
-  const timer = setInterval(() => {
-    const fixed = Math.floor((performance.now() - from) / 250);
-    const digits = [...number].map((digit, i) => (i < fixed * 4 ? digit : String(Math.floor(Math.random() * 10))));
-    node.textContent = cardNumber(digits.join(''));
-    dealTick(fixed % 2 === 0);
-    if (fixed >= 4) {
-      clearInterval(timer);
-      done();
-    }
-  }, 70);
 }
 
 // blankNode stands for a card not issued yet, with the button that issues it.
@@ -151,12 +115,6 @@ function blankNode(me, place) {
     try {
       const card = (await api.issueBankCard()).card;
       showCard(card, me, place);
-      const node = place.querySelector('.bank-card');
-      rollNumber(node.querySelector('.bank-card-number'), card.number, () => {
-        fanfare();
-        node.classList.add('shine');
-        floatText(node, tr('Карта ваша!'), 'gold');
-      });
     } catch (e) {
       showError(error, e);
       issue.disabled = false;
@@ -228,7 +186,6 @@ function showBonus(state, me) {
     try {
       const got = await api.claimBonus();
       me.votes = got.balance;
-      reward(claim, `+${groupedVotes(got.votes)}`);
       showBalance(got.balance);
       showBonus({ ...state, taken: true, streak: state.streak + 1 }, me);
     } catch (e) {
@@ -270,8 +227,6 @@ async function initCard(me) {
     hideError(error);
     const before = card;
     showCard({ ...card, cover: cover.id }, me, place);
-    place.querySelector('.bank-card').classList.add('shine');
-    dealTick();
     try {
       card = (await api.setBankCardCover(cover.id)).card;
     } catch (e) {
@@ -400,7 +355,6 @@ function initTransfer(me) {
 
       me.votes = left.votes;
       $('transfer-balance').textContent = balanceAmount(left.votes);
-      reward(submit, `−${groupedVotes(sent)}`, 'bad');
       showBalance(left.votes);
       $('transfer-votes').value = '';
       $('transfer-note').value = '';
@@ -460,13 +414,11 @@ function initRating(me) {
     submit.disabled = true;
 
     try {
-      const before = me.rating ?? 0;
       const raised = await api.raiseRating(Number(percent.value));
       me.votes = raised.balance;
       me.completeness = Math.min(page() + raised.rating - (me.rating ?? 0), MAX_RATING);
       me.rating = raised.rating;
       $('rating-balance').textContent = balanceAmount(raised.balance);
-      reward(submit, `+${raised.rating - before} %`);
       showBalance(raised.balance);
       showRating(me);
       showMeter();
@@ -579,7 +531,6 @@ async function initBank(me) {
       input.value = '';
       showBank(bank);
       showForecast(bank);
-      reward(button, `${['deposit', 'repay'].includes(action) ? '−' : '+'}${groupedVotes(moved.votes)}`, ['deposit', 'repay'].includes(action) ? 'bad' : 'gold');
       showBalance(moved.balance);
       say({
         deposit: tr('Голоса положены на вклад'),
@@ -650,8 +601,6 @@ function initTopUp(me) {
       const got = await api.redeemVoucher(keys.map((key) => key.value).join(''));
 
       me.votes = got.balance;
-      fanfare();
-      flash(submit.closest('.game-window'), 'gold');
       showBalance(got.balance);
       showRating(me);
       for (const key of keys) key.value = '';

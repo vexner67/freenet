@@ -21,9 +21,8 @@ import {
 } from './labels.js';
 import { $, el, renderChrome, replaceInPlace, showError, hideError } from './layout.js';
 import { meter, popover } from './controls.js';
-import { countTo, flash, floatText, gameIcon } from './game.js';
+import { gameIcon } from './game.js';
 import { button, notify, openModal } from './modal.js';
-import { coins, dealTick, fanfare } from './sounds.js';
 import { leagueNodes } from './pet-league.js';
 import { petCaseImage, petImage, petItemImage } from './pet.js';
 import { showNamedPet } from './pet-named.js';
@@ -44,8 +43,6 @@ let me = null;
 let shop = null;
 let catalogue = { kinds: [], cases: [], items: [] };
 let pets = [];
-// shownKeeper are the numbers the plates of the cases show, to run from them.
-const shownKeeper = {};
 let keeper = { shards: 0, pity: 0, pityLimit: 40, cases: 0, casesLimit: 20, dropKind: '', dropCase: '' };
 let battles = [];
 let pet = null;
@@ -203,8 +200,8 @@ function caseCard(box) {
 
 // keeperCell is a plate of the cases: a number that runs to its new value,
 // a strip under it and, on a press, what the number means.
-function keeperCell({ id, icon, name, value, text, part, whole, tone, open }) {
-  const sum = el('span', { className: 'game-hud-sum', textContent: text(shownKeeper[id] ?? value) });
+function keeperCell({ icon, name, value, text, part, whole, tone, open }) {
+  const sum = el('span', { className: 'game-hud-sum', textContent: text(value) });
   const cell = el('button', { type: 'button', className: 'game-hud-cell', title: name },
     el('span', { className: 'game-hud-name' }, gameIcon(icon, 16), name), sum,
     meter(part, whole, '', tone));
@@ -215,10 +212,6 @@ function keeperCell({ id, icon, name, value, text, part, whole, tone, open }) {
     open(pop);
     pop.place();
   });
-  const before = shownKeeper[id];
-  countTo(sum, before ?? value, value, text);
-  if (before !== undefined && before !== value) flash(cell, value > before ? 'gold' : 'good');
-  shownKeeper[id] = value;
   return cell;
 }
 
@@ -284,31 +277,13 @@ async function openCase(box, withShards) {
   if (!opened) return;
   keeper = opened.keeper;
   showCases();
-  showDrop(true);
+  showDrop();
 }
 
-// spinTicks sounds a click for every cell that passes the mark, for as long
-// as the tape moves.
-function spinTicks(tape, cell) {
-  let last = 0;
-  let going = true;
-  const look = () => {
-    if (!going) return;
-    const passed = Math.floor(Math.abs(new DOMMatrixReadOnly(getComputedStyle(tape).transform).m41) / cell);
-    if (passed !== last) dealTick(passed % 2 === 0);
-    last = passed;
-    requestAnimationFrame(look);
-  };
-  requestAnimationFrame(look);
-  return () => { going = false; };
-}
-
-// showDrop is the pet a case gave: the roulette spins to it first when it
-// has just dropped. It is taken with a name or left for its shards, and the
-// window lets go only then. The window is of one size from the first
-// moment: the buttons stand in their places while the tape turns, so that
-// nothing moves from under the mouse when the pet comes out.
-function showDrop(spin) {
+// showDrop is the pet a case gave, under the mark of the tape of the case.
+// It is taken with a name or left for its shards, and the window lets go
+// only then.
+function showDrop() {
   const kind = keeper.dropKind;
   const box = catalogue.cases.find((c) => c.id === keeper.dropCase) ?? catalogue.cases[0];
   if (!kind || !box) return;
@@ -371,9 +346,6 @@ function showDrop(spin) {
     take.disabled = pets.length >= maxPets;
     leave.disabled = false;
     name.disabled = false;
-    if (['epic', 'legendary'].includes(rarity)) fanfare();
-    else if (spin) coins();
-    if (spin) floatText(reveal, petRarityName(rarity), 'gold');
     if (!take.disabled) name.select();
   };
 
@@ -381,20 +353,8 @@ function showDrop(spin) {
   // as a real wheel would.
   const width = wheel.clientWidth || 380;
   const shift = place * cell - width / 2 + cell / 2 + Math.round((Math.random() - 0.5) * cell * 0.6);
-  if (!spin || still) {
-    tape.style.transform = `translateX(${-shift}px)`;
-    show();
-    return;
-  }
-  const stopTicks = spinTicks(tape, cell);
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    tape.classList.add('pet-roulette-spin');
-    tape.style.transform = `translateX(${-shift}px)`;
-  }));
-  tape.addEventListener('transitionend', () => {
-    stopTicks();
-    show();
-  }, { once: true });
+  tape.style.transform = `translateX(${-shift}px)`;
+  show();
 }
 
 // The tabs of the pets: one for each, and "+" for the shop while there is
@@ -1009,7 +969,7 @@ if (!me) {
     if (new URLSearchParams(location.search).has('arena')) showLeague();
     else if (pets.length) showPet(pets.find((p) => p.id === wanted) ?? pets[0]);
     else showShop();
-    if (keeper.dropKind) showDrop(false);
+    if (keeper.dropKind) showDrop();
     showNamedPet(kindOf('big2z'), keep).catch(() => {});
     showFights((await fought).fights);
     const rival = new URLSearchParams(location.search).get('fight');

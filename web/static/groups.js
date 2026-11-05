@@ -11,8 +11,6 @@ import { api, currentUser, started } from './api.js';
 import { clubsCount, myClubsCount } from './labels.js';
 import { $, clubRef, el, fullName, pagePath, renderChrome, showPinnedClubs, showError, hideError } from './layout.js';
 import { clubRow } from './clubs.js';
-import { flash, floatText } from './game.js';
-import { coins, dealTick } from './sounds.js';
 import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
@@ -49,8 +47,6 @@ function pinLink(club, ref) {
       else await api.pinClub(ref);
       club.pinned = !club.pinned;
       render();
-      coins();
-      floatText(link, club.pinned ? tr('В меню') : tr('Убрано'));
       showPinnedClubs($('menu'));
     } catch (e) {
       showError($('error'), e);
@@ -75,8 +71,6 @@ function leftNode(club, ref, row) {
         try {
           await api.joinClub(ref);
           left.replaceWith(row);
-          coins();
-          flash(row);
         } catch (e) {
           showError($('error'), e);
         }
@@ -98,7 +92,6 @@ function leaveLink(club, ref, node) {
       try {
         await api.leaveClub(ref);
         node().replaceWith(leftNode(club, ref, node()));
-        dealTick();
         if (club.pinned) showPinnedClubs($('menu'));
       } catch (e) {
         showError($('error'), e);
@@ -169,8 +162,6 @@ function membershipLink(club) {
       club.role = changed.role;
       club.requested = changed.requested;
       render();
-      coins();
-      flash(link);
     } catch (e) {
       showError($('error'), e);
     }
@@ -209,9 +200,6 @@ async function showTheirs(nickname, me) {
 // Your own clubs are asked for with who is signed in, in one round trip.
 let first = other ? null : started(api.myClubs('', managed));
 const me = await currentUser().catch(() => null);
-if (!other || other === me?.nickname) {
-  for (const tab of ['tab-all', 'tab-managed']) $(tab).addEventListener('click', dealTick);
-}
 if (other && other !== me?.nickname) {
   renderChrome(me);
   await showTheirs(other, me);

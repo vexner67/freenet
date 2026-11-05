@@ -7,7 +7,6 @@ import { currentUser } from './api.js';
 import { formatDateTime } from './labels.js';
 import { avatarURL, el, fullName, logout } from './layout.js';
 import { gameIcon } from './game.js';
-import { fanfare } from './sounds.js';
 import { tr } from './i18n.js';
 
 // How often the block is looked at, and how long "Блокировка снята" stays.
@@ -70,7 +69,6 @@ export function showBanScreen(me, accounts) {
     done = true;
     title.textContent = tr('Блокировка снята');
     gate.replaceChildren(el('b', { textContent: tr('Страницу разблокировали. Открываем её…') }));
-    fanfare();
     setTimeout(() => location.reload(), freeTime);
   };
 

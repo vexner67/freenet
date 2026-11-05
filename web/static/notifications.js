@@ -16,8 +16,6 @@ import { callLength, conversationPath, formatPostDate, guestCame, notificationVe
 import { $, avatarURL, el, fullName, guestsSeen, pagePath, profilePath, renderChrome, setCounter, showError, hideError, verifiedMark } from './layout.js';
 import { postPath } from './posts.js';
 import { topicPath } from './topics.js';
-import { flash } from './game.js';
-import { coins, dealTick } from './sounds.js';
 import { tr } from './i18n.js';
 
 const COMMENT_SNIPPET = 200;
@@ -85,7 +83,6 @@ function showFilters() {
     disabled: Boolean(k.key) && !counted[k.key],
     onclick: () => {
       filter = k.key;
-      dealTick();
       showFilters();
       applyFilter();
     },
@@ -144,8 +141,6 @@ async function showNew() {
     else $('notifications').prepend(el('div', { className: 'notify-day', textContent: tr('Сегодня') }), ...fresh);
     count(fresh);
     applyFilter();
-    if (fresh.length) coins();
-    for (const node of fresh) flash(node, 'gold');
     $('empty').hidden = $('notifications').children.length > 0;
 
     if (page.newestId) await markRead(page.newestId);

@@ -11,9 +11,8 @@
 import { api, currentUser, started } from './api.js';
 import { primeNameClass, topBoardName, topBoardText, topBoards, topValue } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showError, hideError, verifiedMark } from './layout.js';
-import { countTo, flash, gameIcon, helpButton } from './game.js';
+import { gameIcon, helpButton } from './game.js';
 import { petImage } from './pet.js';
-import { dealTick } from './sounds.js';
 import { tr } from './i18n.js';
 
 const asked = new URLSearchParams(location.search).get('board');
@@ -73,7 +72,7 @@ const petOf = (entry, size) => entry.pet && el('div', { className: 'top-pet' }, 
 function step(entry) {
   const sum = el('b', { className: 'top-step-sum' });
 
-  countTo(sum, 0, entry.value, (value) => topValue(board, value), 700);
+  sum.textContent = topValue(board, entry.value);
 
   return el('div', { className: `top-step top-step-${entry.place}${entry.user.id === me?.id ? ' top-me' : ''}` },
     el('a', { className: 'top-step-face', href: pagePath(entry) },
@@ -134,7 +133,6 @@ function goTo(place) {
   const node = place <= medals.length ? document.querySelector(`.top-step-${place}`) : $(`place-${place}`);
 
   node?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  flash(node, 'gold');
 }
 
 function showHUD(entries) {
@@ -145,7 +143,7 @@ function showHUD(entries) {
   let hint = tr('вас нет в этом рейтинге');
 
   if (mine) hint = above ? tr('до {0} места: {1}', above.place, topValue(board, above.value - mine.value)) : tr('вы лидер!');
-  countTo(leader, 0, entries[0]?.value ?? 0, (value) => topValue(board, value), 700);
+  leader.textContent = topValue(board, entries[0]?.value ?? 0);
 
   $('hud').replaceChildren(
     hudCell('/static/icons/game/people.svg', tr('Участников'), el('b', { className: 'game-hud-sum', textContent: String(entries.length) }), tr('в рейтинге')),
@@ -178,7 +176,6 @@ async function open(next, heard = false) {
   showTabs();
   document.title = `${topBoardName(board)} | Freenet`;
   if (heard) {
-    dealTick();
     history.replaceState(null, '', `/top?board=${board}`);
   }
   $('top').classList.toggle('top-loading', shown !== board);

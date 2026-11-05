@@ -18,7 +18,7 @@ import { onEvent } from './events.js';
 import { helpButton } from './game.js';
 import { tr } from './i18n.js';
 import { avatarURL, el, fullName } from './layout.js';
-import { callClick, callDown, callUp, fanfare } from './sounds.js';
+import { callClick, callDown, callUp } from './sounds.js';
 
 const RING_FOR = 45_000;
 const CONNECT_FOR = 30_000;
@@ -26,8 +26,6 @@ const GONE_FOR = 20_000;
 const SAY_FOR = 2_000;
 const AUDIO_BITRATE = 64_000;
 const VIDEO_BITRATE = 1_500_000;
-// The minutes of a call the window celebrates louder than the others.
-const MILESTONES = new Set([5, 10, 15, 30, 60, 90, 120]);
 
 const voice = { echoCancellation: true, noiseSuppression: true, autoGainControl: true };
 const picture = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
@@ -103,7 +101,6 @@ function drawWindow(peer) {
   const ui = {
     status: el('span', { className: 'call-status-text' }),
     clock: el('b', { className: 'call-clock-digits', textContent: timeOf(0) }),
-    pop: el('span', { className: 'call-pop' }),
     bars: el('span', { className: 'call-bars' }, ...[1, 2, 3, 4].map(() => el('i'))),
     digits: el('span', { className: 'call-digits' }),
     buttons: el('div', { className: 'call-buttons' }),
@@ -130,7 +127,7 @@ function drawWindow(peer) {
     el('div', { className: 'call-name', textContent: fullName(peer) }),
     el('div', { className: 'call-plaques' },
       el('span', { className: 'call-status' }, el('i', { className: 'call-lamp' }), ui.status),
-      el('span', { className: 'call-clock' }, ui.clock, ui.pop)),
+      el('span', { className: 'call-clock' }, ui.clock)),
     ui.code, ui.buttons);
   ui.back = el('div', { className: 'call-back' }, ui.window);
   document.body.append(ui.back);
@@ -291,21 +288,9 @@ function meter(c) {
   step();
 }
 
-// tick runs every second of a call: the clock, and every full minute a
-// "+1 мин" flying up from it, louder at round numbers.
+// tick runs every second of a call: the clock.
 function tick(c) {
-  const seconds = Math.floor((Date.now() - c.startedAt) / 1000);
-  c.ui.clock.textContent = timeOf(seconds);
-  if (!seconds || seconds % 60) return;
-
-  const minutes = seconds / 60;
-  const big = MILESTONES.has(minutes);
-  c.ui.pop.textContent = big ? tr('{0} мин!', minutes) : tr('+1 мин');
-  c.ui.pop.classList.toggle('big', big);
-  c.ui.pop.classList.remove('fly');
-  void c.ui.pop.offsetWidth; // the flight starts over every minute
-  c.ui.pop.classList.add('fly');
-  if (big) fanfare();
+  c.ui.clock.textContent = timeOf(Math.floor((Date.now() - c.startedAt) / 1000));
 }
 
 function connected(c) {

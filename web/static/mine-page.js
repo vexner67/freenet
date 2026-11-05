@@ -3,9 +3,8 @@
 // with experience. The ore piles up in the backpack and sells for votes
 // when the player likes. A dig may meet an event — a nugget, a chest of
 // votes, a collapse, an energy drink. The page is a game: the rock face is
-// one big button (and the space bar), each hit answers at once with a
-// number, a sound and a shake, and a series of hits is counted. The series
-// changes nothing on the server: it is only there to be beaten. The energy
+// one big button (and the space bar), and the log under it says what each
+// dig brought. The energy
 // comes back by itself; the page counts it on between the answers of the
 // server. The administrators tune the ores, the energy and the events in
 // the admin panel (/admin/mine).
@@ -13,16 +12,13 @@
 import { api, currentUser, session, started } from './api.js';
 import { balanceVotes, balanceWord, energyWait, experienceCount, groupedVotes, mineDug, mineEnergy, mineSold, oreName, orePrice, oreValue, oreValuePerEnergy, unitsCount, votesAmount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
-import { countTo, flash, floatText, gameIcon, helpButton } from './game.js';
-import { coins, digCollapse, digHit, digRare, fanfare } from './sounds.js';
+import { gameIcon, helpButton } from './game.js';
 import { tr } from './i18n.js';
 
 const answered = session.get() ? started(api.mine()) : null;
 
 // The log keeps the last lines of digs and sales, the newest first.
 const logLength = 5;
-// A hit within this time of the one before goes on the series.
-const seriesGap = 3000;
 const pickedKey = 'freenet.mine.ore';
 
 // mine is the last answer of the server and when it came, so that the
@@ -35,9 +31,6 @@ let busy = false;
 let pressed = false;
 let picked = '';
 let votes = 0;
-let series = 0;
-let lastHit = 0;
-let bestSeries = 0;
 
 function readPicked() {
   try {
@@ -56,7 +49,7 @@ function savePicked() {
 }
 
 function showBalance(next) {
-  countTo($('votes'), votes, next, balanceVotes);
+  $('votes').textContent = balanceVotes(next);
   $('votes-word').textContent = balanceWord(next);
   $('balance').hidden = false;
   votes = next;
@@ -188,53 +181,7 @@ function show(next) {
 
   if (opened) {
     log(tr('Открыта новая руда: {0}!', oreName(picked)), true);
-    fanfare();
-    flash($('face-block'), 'gold');
   }
-}
-
-// hitSeries counts a hit on, with a fanfare every ten.
-function hitSeries() {
-  const now = Date.now();
-  series = now - lastHit < seriesGap ? series + 1 : 1;
-  lastHit = now;
-  bestSeries = Math.max(bestSeries, series);
-
-  $('series').hidden = series < 2;
-  $('series').textContent = tr('Серия: {0}', series);
-  $('series').title = tr('Лучшая серия: {0}', bestSeries);
-  if (series % 10 === 0) {
-    fanfare();
-    floatText($('series'), tr('Серия: {0}', series), 'gold');
-  }
-}
-
-// answer shows on the rock what a dig brought.
-function answer(dug) {
-  const face = $('dig');
-  if (dug.event === 'collapse') {
-    digCollapse();
-    series = 0;
-    $('series').hidden = true;
-    flash(face, 'bad');
-    floatText(face, tr('Обвал!'), 'bad');
-    return;
-  }
-
-  floatText(face, `+${groupedVotes(dug.units)}`, dug.event === 'nugget' ? 'gold' : 'good');
-  if (dug.event === 'nugget' || dug.event === 'chest' || dug.event === 'drink') {
-    digRare();
-    flash(face, 'gold');
-  }
-  if (dug.event === 'chest') floatText(face, `+${votesAmount(dug.votes)}`, 'gold');
-  if (dug.event === 'drink') floatText($('energy'), tr('+{0} энергии', mine.settings.events.drinkEnergy), 'good');
-}
-
-function swing() {
-  const pick = $('face-pick');
-  pick.classList.remove('swing');
-  void pick.offsetWidth;
-  pick.classList.add('swing');
 }
 
 async function digOre() {
@@ -244,22 +191,16 @@ async function digOre() {
     return;
   }
   if (energy().energy < veinOf(picked).energy) {
-    flash($('energy').parentElement, 'bad');
     return;
   }
 
   hideError($('error'));
   busy = true;
-  hitSeries();
-  digHit(series);
-  swing();
-  flash($('dig'), 'hit');
 
   try {
     const ore = picked;
     const dug = await api.digOre(ore);
     log(mineDug(ore, dug, mine.settings), dug.event === 'chest' || dug.event === 'nugget');
-    answer(dug);
     if (dug.balance > 0) showBalance(dug.balance);
     busy = false;
     show(dug.mine);
@@ -282,10 +223,6 @@ async function sellOre(ore, button) {
   try {
     const sold = await api.sellOre(ore);
     log(mineSold(sold), true);
-    coins();
-    floatText(button, `+${votesAmount(sold.votes)}`, 'gold');
-    floatText($('votes'), `+${votesAmount(sold.votes)}`, 'gold');
-    flash($('balance'), 'gold');
     showBalance(sold.balance);
     busy = false;
     show(sold.mine);

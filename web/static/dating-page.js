@@ -1,9 +1,9 @@
 // "Знакомства" (/dating): a person fills in a card — what they look for,
 // whom and a few words about themselves — and is shown the cards of those
-// who would like to meet them, one at a time, in a stack: the buttons, the
-// arrows of the keyboard or a card thrown aside answer it. The card flies
-// off at once and the server is asked behind it; a like answered with a like
-// is a match: both are told, a window with fanfares opens and they may write.
+// who would like to meet them, one at a time: the buttons or the arrows of
+// the keyboard answer it. The card goes at once and the server is asked
+// behind it; a like answered with a like is a match: both are told, a
+// window opens and they may write.
 // Tabs: the cards (/dating), the matches (?tab=matches) and one's own card
 // (?tab=card), which a newcomer starts with.
 
@@ -11,9 +11,8 @@ import { api, currentUser, started } from './api.js';
 import { datingGoalName, datingGoals, datingSeekName, datingSeeks, formatPostDate } from './labels.js';
 import { $, avatarURL, el, fullName, hideError, profilePath, renderChrome, replaceInPlace, showError, verifiedMark } from './layout.js';
 import { button, notify, openModal } from './modal.js';
-import { flash, floatText, gameIcon } from './game.js';
+import { gameIcon } from './game.js';
 import { meter, segmented } from './controls.js';
-import { dealTick, fanfare } from './sounds.js';
 import { tr } from './i18n.js';
 
 const answered = started(api.dating());
@@ -27,12 +26,7 @@ let me = null;
 // them again.
 const unanswered = new Set();
 // How many cards this person has liked in a row of the deck.
-let streak = 0;
 let likedNow = 0;
-// How far a card goes before it counts as thrown.
-const throwAt = 90;
-// How long an answered card takes to fly away (dating-fly in the styles).
-const flyTime = 340;
 
 function showTabs() {
   const names = {
@@ -98,48 +92,8 @@ function stub(picture, ...nodes) {
 // roundButton is one of the two big buttons of the stack, always in one
 // place.
 function roundButton(kind, picture, text, like) {
-  return el('button', { type: 'button', className: `dating-round ${kind}`, title: text, onclick: (event) => answer(like, event.currentTarget) },
+  return el('button', { type: 'button', className: `dating-round ${kind}`, title: text, onclick: () => answer(like) },
     gameIcon(picture, 32), el('span', { textContent: text }));
-}
-
-// thrown lets the first card be dragged aside: past throwAt it answers,
-// short of that it comes back.
-function thrown(node) {
-  let from = null;
-  let moved = 0;
-
-  node.addEventListener('pointerdown', (event) => {
-    if (event.button) return;
-    from = event.clientX;
-    moved = 0;
-    node.setPointerCapture(event.pointerId);
-    node.classList.add('held');
-  });
-  node.addEventListener('pointermove', (event) => {
-    if (from === null) return;
-    moved = event.clientX - from;
-    node.style.transform = `translateX(${moved}px) rotate(${moved / 14}deg)`;
-    node.style.setProperty('--like', String(Math.max(0, Math.min(1, moved / throwAt))));
-    node.style.setProperty('--skip', String(Math.max(0, Math.min(1, -moved / throwAt))));
-  });
-  const letGo = () => {
-    if (from === null) return;
-    from = null;
-    node.classList.remove('held');
-    if (Math.abs(moved) >= throwAt) {
-      answer(moved > 0);
-      return;
-    }
-    node.style.transform = '';
-    node.style.setProperty('--like', '0');
-    node.style.setProperty('--skip', '0');
-  };
-  node.addEventListener('pointerup', letGo);
-  node.addEventListener('pointercancel', letGo);
-  // A drag is no click on the photo.
-  node.addEventListener('click', (event) => {
-    if (Math.abs(moved) > 5) event.preventDefault();
-  }, true);
 }
 
 // deckNodes is the stack of the cards with what to answer the first; the
@@ -160,8 +114,6 @@ function deckNodes() {
 
   const first = cardNode(card, 'dating-first');
 
-  thrown(first);
-
   return [
     el('div', { className: 'dating-stack', id: 'stack' }, next && cardNode(next, 'dating-next'), first),
     el('div', { className: 'dating-actions' },
@@ -175,7 +127,6 @@ function deckNodes() {
 function openMatch(user) {
   const modal = openModal(tr('Взаимная симпатия!'));
 
-  fanfare();
   modal.body.append(el('div', { className: 'dating-match-show' },
     el('img', { src: avatarURL(me, 'small'), alt: '' }),
     gameIcon('/static/icons/game/match.svg', 48),
@@ -187,33 +138,21 @@ function openMatch(user) {
   );
 }
 
-// answer takes the first card off at once: a copy of it flies away and the
-// next one is there to answer; the server hears behind it. A refusal puts
-// the card back.
-async function answer(like, pressed = null) {
+// answer takes the first card off at once and the next one is there to
+// answer; the server hears behind it. A refusal puts the card back.
+async function answer(like) {
   const card = state.deck[0];
   const node = document.querySelector('.dating-first');
   if (!card || !node) return;
 
-  const rest = node.style.transform;
-  node.style.setProperty('--from', rest || 'none');
-  node.classList.remove('dating-first');
-  node.classList.add(like ? 'fly-like' : 'fly-skip');
-  node.style.transform = '';
-  setTimeout(() => node.remove(), flyTime);
+  node.remove();
 
   state.deck = state.deck.slice(1);
   unanswered.add(card.user.id);
   if (like) {
     likedNow += 1;
-    streak += 1;
-    if (pressed) floatText(pressed, '♥', 'bad');
-    if (streak % 5 === 0) floatText($('hud-liked'), tr('Серия ×{0}!', streak), 'gold');
-  } else {
-    streak = 0;
   }
-  dealTick(like);
-  redeck(node);
+  redeck();
 
   try {
     const { matched } = await api.answerDating(card.user.id, like);
@@ -222,7 +161,6 @@ async function answer(like, pressed = null) {
       state.matches = [{ user: card.user, matchedAt: new Date().toISOString() }, ...state.matches];
       showTabs();
       showHUD();
-      flash($('hud-matches'), 'gold');
       openMatch(card.user);
     }
     // The cards come again when these are answered: there may be new ones.
@@ -238,16 +176,12 @@ async function answer(like, pressed = null) {
   }
 }
 
-// redeck draws the deck leaving the card that flies away over it.
-function redeck(flying) {
+// redeck draws the deck again.
+function redeck() {
   showHUD();
   if (tab !== 'deck') return;
 
-  const nodes = deckNodes();
-  const stack = nodes[0];
-
-  replaceInPlace($('dating'), ...nodes);
-  stack.append(flying);
+  replaceInPlace($('dating'), ...deckNodes());
 }
 
 function matchesNodes() {
@@ -293,7 +227,6 @@ function cardNodes() {
       state.card = saved;
       note.textContent = tr('Сохранено.');
       notify(note);
-      dealTick();
       if (first || saved.on) reload();
     } catch (e) {
       showError($('error'), e);

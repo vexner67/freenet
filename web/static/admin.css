@@ -17,7 +17,6 @@ html.aui {
   --aui-title-line: #d7cf9e;
   --aui-gloss: rgba(255, 255, 255, 0.3);
   --aui-tile: #ededed;
-  --aui-flash: #9aa3ae;
   --aui-body: #f0f0f0;
   --aui-panel: #ffffff;
   --aui-sidebar: #f7f7f7;
@@ -61,7 +60,6 @@ html.aui.aui-theme-dark {
   --aui-title-line: #4d4628;
   --aui-gloss: rgba(255, 255, 255, 0.14);
   --aui-tile: #2a2a2a;
-  --aui-flash: #9aa3ae;
   --aui-body: #181818;
   --aui-panel: #222222;
   --aui-sidebar: #1e1e1e;
@@ -728,10 +726,7 @@ form.aui.aui-dialog-content { margin: 0; padding: 12px 24px 24px; }
 /* The dress of 2000–2010, over the layout above. */
 .aui-header { height: 42px; margin: 0 8px; padding: 0 10px; background: linear-gradient(var(--aui-header), var(--aui-header-end)); border: 1px solid var(--aui-frame); border-top: 0; border-radius: 0 0 7px 7px; box-shadow: none; }
 .aui-header-logo { gap: 0; color: var(--aui-header-text); }
-.logo-mark { display: block; width: 26px; height: 26px; }
-.logo-mark rect { fill: var(--aui-knob); }
-.logo-mark path { fill: none; stroke: var(--aui-header-end); }
-.logo-word { display: block; width: 81px; height: 26px; fill: none; stroke: currentColor; }
+.logo-word { font: bold 21px/26px tahoma, verdana, arial, sans-serif; letter-spacing: -1px; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); }
 .aui-header-sub { margin-left: 10px; font-size: 13px; font-weight: bold; }
 .aui-toggle { width: 46px; height: 22px; border: 1px solid var(--aui-frame); border-radius: 11px; }
 .aui-toggle::after { top: 0; right: 7px; font-size: 12px; }
@@ -747,10 +742,9 @@ form.aui.aui-dialog-content { margin: 0; padding: 12px 24px 24px; }
 .aui-nav-heading { padding: 3px 6px; background: linear-gradient(var(--aui-header), var(--aui-header-end)); border-radius: 3px 3px 0 0; color: var(--aui-header-text); font-size: 12px; font-weight: bold; letter-spacing: 0; text-transform: none; }
 .aui-nav-item { gap: 6px; margin: 0; padding: 4px 6px; border-bottom: 1px solid var(--aui-line); border-radius: 0; font-weight: normal; }
 .aui-nav-item:hover { background: var(--aui-hover); }
-.aui-nav-item:hover .aui-icon { transform: scale(1.2); }
 .aui-nav-item.active { background: var(--aui-active); color: var(--aui-text); font-weight: bold; }
 .aui-nav-item.active::before { content: none; }
-.aui-icon { width: 16px; height: 16px; transition: transform 0.12s; }
+.aui-icon { width: 16px; height: 16px; }
 .aui-page-panel { padding: 10px 12px 24px; }
 .aui-page-panel > section { max-width: 1040px; padding: 0 10px 12px; border: 1px solid var(--aui-frame); border-radius: 4px; box-shadow: 2px 2px 0 var(--aui-hard-shadow); }
 h1.aui-page-heading { display: flex; gap: 6px; align-items: center; margin: 0 -10px 10px; padding: 5px 10px; background: var(--aui-title); border-bottom: 1px solid var(--aui-title-line); border-radius: 3px 3px 0 0; font-size: 14px; font-weight: bold; letter-spacing: 0; line-height: 18px; }
@@ -766,7 +760,6 @@ h2 ~ form.aui:not(.admin-price, .admin-rate, .admin-search, .admin-bet-odds-form
 .admin-launchers { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 4px; margin: 0 0 8px; }
 .admin-launch { display: flex; flex-direction: column; gap: 3px; align-items: center; min-width: 0; padding: 6px 2px; background: linear-gradient(var(--aui-panel), var(--aui-tile)); border: 1px solid var(--aui-rule); border-radius: 4px; color: var(--aui-text); font-size: 12px; line-height: 13px; text-align: center; }
 .admin-launch:hover { background: var(--aui-hover); border-color: var(--aui-frame); text-decoration: none; }
-.admin-launch:hover .aui-icon { transform: scale(1.15) rotate(-4deg); }
 .admin-launch:active { transform: translateY(1px); }
 .admin-launch .aui-icon { width: 30px; height: 30px; }
 .admin-cards { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 6px; }
@@ -775,14 +768,10 @@ h2 ~ form.aui:not(.admin-price, .admin-rate, .admin-search, .admin-bet-odds-form
 .admin-card:hover { background: var(--aui-hover); box-shadow: 2px 2px 0 var(--aui-hard-shadow); text-decoration: none; transform: none; }
 .admin-card:active { transform: translateY(1px); }
 .admin-card-icon { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; }
-.admin-card:hover .admin-card-icon { transform: scale(1.2); }
 .admin-card-digit { background: none; color: var(--aui-text); font-size: 24px; font-weight: bold; letter-spacing: 0; line-height: 28px; -webkit-text-fill-color: currentColor; }
 .admin-card ul { margin: 4px 0 0; padding-left: 14px; }
 .admin-online { position: relative; }
-.admin-online b::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 4px; background: var(--aui-primary-hover); border-radius: 50%; animation: admin-pulse 1.6s ease-in-out infinite; }
-@keyframes admin-pulse { 50% { opacity: 0.3; } }
-.admin-bump { animation: admin-bump 0.5s; }
-@keyframes admin-bump { from { box-shadow: 0 0 0 3px var(--aui-flash); } }
+.admin-online b::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 4px; background: var(--aui-primary-hover); border-radius: 50%; }
 .aui-table-wrap { margin: 0 0 8px; border: 1px solid var(--aui-frame); border-radius: 0 0 4px 4px; }
 h1 + .aui-table-wrap, .aui-page-header + .aui-table-wrap, p + .aui-table-wrap, form + .aui-table-wrap { border-radius: 4px; margin-top: 8px; }
 table.aui th { padding: 4px 8px; background: linear-gradient(var(--aui-panel), var(--aui-tile)); border-bottom: 1px solid var(--aui-rule); color: var(--aui-text); font-size: 12px; letter-spacing: 0; text-transform: none; }
@@ -802,13 +791,8 @@ table.aui tbody tr:hover { background: var(--aui-hover); }
 .aui-button-subtle:hover, .aui-button-link:hover { color: var(--aui-link); background: var(--aui-hover); }
 .aui-button-compact { height: 22px; padding: 0 7px; border-radius: 3px; font-size: 12px; line-height: 20px; }
 .aui-message { margin-bottom: 8px; padding: 6px 10px; border: 1px solid currentColor; border-radius: 3px; }
-/* What was saved flies in over the page: nothing under it moves. */
-.aui-message-success:not(#created), #error { position: fixed; top: 52px; right: 16px; z-index: 90; max-width: 360px; box-shadow: 2px 2px 0 var(--aui-shadow); font-weight: bold; animation: admin-toast 0.22s cubic-bezier(0.2, 1.4, 0.4, 1); }
-#error { animation: admin-shake 0.3s; }
-@keyframes admin-toast { from { opacity: 0; transform: translateX(40px); } }
-@keyframes admin-shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-.admin-float { position: fixed; z-index: 95; color: var(--aui-added); font-size: 19px; font-weight: bold; pointer-events: none; animation: admin-float 0.9s ease-out forwards; }
-@keyframes admin-float { to { opacity: 0; transform: translateY(-50px); } }
+/* What was saved stands over the page: nothing under it moves. */
+.aui-message-success:not(#created), #error { position: fixed; top: 52px; right: 16px; z-index: 90; max-width: 360px; box-shadow: 2px 2px 0 var(--aui-shadow); font-weight: bold; }
 form.aui .field-group { min-height: 34px; padding: 3px 0 3px 200px; }
 form.aui .field-group > label { width: 190px; margin-left: -200px; padding: 5px 0; }
 form.aui .text, form.aui .select { height: 26px; padding: 2px 6px; border-radius: 3px; }
@@ -819,20 +803,14 @@ form.aui .admin-dirty .text, form.aui .admin-dirty .select, form.aui .admin-dirt
 .aui-dialog .buttons-container { position: static; }
 .admin-title-icons label:has(input:checked) { background: var(--aui-active); border-color: var(--aui-frame); }
 .admin-titles li { padding: 3px 0; }
-.admin-deeds { display: flex; gap: 4px; align-items: center; height: 24px; margin-right: 8px; padding: 0 8px; background: rgba(0, 0, 0, 0.25); border: 1px solid var(--aui-frame); border-radius: 3px; color: var(--aui-header-text); font: bold 13px tahoma, verdana, sans-serif; cursor: help; }
 .aui-blanket { backdrop-filter: none; }
-.aui-dialog { border: 1px solid var(--aui-frame); border-radius: 4px; box-shadow: 3px 3px 0 var(--aui-shadow); animation: admin-toast-in 0.14s ease-out; }
-@keyframes admin-toast-in { from { opacity: 0; transform: translateY(-6px); } }
+.aui-dialog { border: 1px solid var(--aui-frame); border-radius: 4px; box-shadow: 3px 3px 0 var(--aui-shadow); }
 .aui-dialog-header { padding: 6px 10px; background: linear-gradient(var(--aui-header), var(--aui-header-end)); }
 .aui-dialog-header h2 { background: none; border: 0; color: var(--aui-header-text); font-size: 14px; }
 form.aui.aui-dialog-content { padding: 10px 12px 12px; }
 .aui-dialog .field-group { padding-left: 130px; }
 .aui-dialog .field-group > label { width: 120px; margin-left: -130px; }
 .aui-dialog .buttons-container { padding-left: 130px; }
-@media (prefers-reduced-motion: reduce) {
-  .admin-online b::before, .admin-bump, .aui-message-success, #error, .admin-float, .aui-dialog { animation: none; }
-}
-
 
 /* A phone: the sidebar slides over the page from the menu button, the
    sections lose their margins, labels stand over the fields. */

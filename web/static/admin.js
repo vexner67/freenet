@@ -26,7 +26,7 @@
 import { api, currentUser, idle, started } from './api.js';
 import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, handsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, bankVotes, firmKindName, goodName, formatDateTime, handleOf, titleIconPath, titleIcons, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
-import { countUp, deed, lookReady } from './admin-look.js';
+import { lookReady } from './admin-look.js';
 import { remember } from './newyear.js';
 
 const $ = (id) => document.getElementById(id);
@@ -107,7 +107,7 @@ function showOverview(answer) {
   const words = adminOverview(answer);
 
   for (const key of ['users', 'online', 'verified', 'clubs', 'posts']) {
-    countUp($('count-' + key), answer[key], number);
+    $('count-' + key).textContent = number(answer[key]);
     $(key + '-words').textContent = words[key];
   }
 }
@@ -124,7 +124,7 @@ async function summary({ about, treasury }) {
   if (!economy) return;
   const said = adminEconomy(economy);
   for (const key of Object.keys(said)) {
-    countUp($('count-' + key), key === 'treasury' ? economy.votes : economy[key] ?? 0, number);
+    $('count-' + key).textContent = number(key === 'treasury' ? economy.votes : economy[key] ?? 0);
     $(key + '-words').textContent = said[key];
   }
   $('economy').hidden = false;
@@ -511,7 +511,6 @@ function verifications(kind, query, bans = false) {
       try {
         await k.verify(page, verified);
         toggle.setAttribute('aria-checked', String(verified));
-        deed(toggle);
         const shown = person.querySelector('.name-checkmark');
         if (verified && !shown) person.lastChild.append(checkmark());
         if (!verified) shown?.remove();
@@ -1792,7 +1791,6 @@ async function fediverse(answered) {
         await api.unfeatureFediverse(account.id);
         line.remove();
         showEmpty();
-        deed(remove);
       } catch (e) {
         remove.disabled = false;
         showError(e);
@@ -1822,7 +1820,6 @@ async function fediverse(answered) {
       $('fediverse-rows').prepend(row(account));
       $('fediverse-address').value = '';
       showEmpty();
-      deed(submit);
     } catch (e) {
       showError(e);
     } finally {

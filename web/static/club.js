@@ -14,8 +14,6 @@ import { initPhoto } from './photo.js';
 import { boardPath, topicPath } from './topics.js';
 import { initIgnoreLink } from './feedsettings.js';
 import { initWall } from './wall.js';
-import { floatText } from './game.js';
-import { coins } from './sounds.js';
 import { tr } from './i18n.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length));
@@ -216,10 +214,6 @@ function renderJoin(club, me) {
         return;
       }
       renderJoin(club, me);
-          if (club.role) {
-        coins();
-        floatText(button, tr('+1 группа'));
-      }
       if (admitted(club)) showMembers(club);
     } catch (e) {
       showError(error, e);

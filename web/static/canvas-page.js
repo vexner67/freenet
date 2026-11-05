@@ -12,9 +12,8 @@
 import { api, currentUser, started } from './api.js';
 import { avatarURL, $, el, fullName, profilePath, renderChrome, showError, hideError, verifiedMark } from './layout.js';
 import { canvasCellAt, canvasColors, canvasPalette, canvasPicture, formatPostDate, primeNameClass } from './labels.js';
-import { helpButton, countTo, flash, floatText, gameIcon } from './game.js';
+import { helpButton, gameIcon } from './game.js';
 import { popover } from './controls.js';
-import { dealTick, fanfare } from './sounds.js';
 import { tr } from './i18n.js';
 
 const answered = started(api.canvas());
@@ -28,10 +27,7 @@ const hoverDelay = 120;
 const reconnectAfter = 2_000;
 // A cell painted this soon after another goes on the combo.
 const comboGap = 1_500;
-// Cells of a combo that a flying number salutes.
-const comboStep = 10;
 const undoSize = 200;
-const tickGap = 60;
 const pingGap = 120;
 const liveWindow = 60_000;
 const countKey = 'freenet.canvas.count';
@@ -88,7 +84,6 @@ function savedCount() {
 let count = savedCount();
 let combo = 0;
 let lastPaint = 0;
-let lastTick = 0;
 let lastPing = 0;
 // Cells others painted in the last minute, as times.
 let others = [];
@@ -151,8 +146,6 @@ function showLive() {
 // then, a rank.
 function rewarded() {
   const now = Date.now();
-  const rank = rankAt(count);
-
   combo = now - lastPaint < comboGap ? combo + 1 : 1;
   lastPaint = now;
   count += 1;
@@ -164,19 +157,6 @@ function rewarded() {
   $('count-sum').textContent = String(count);
   $('combo-sum').textContent = tr('×{0}', combo);
   showRankHint();
-  if (now - lastTick > tickGap) {
-    lastTick = now;
-    dealTick(combo % 2 === 0);
-  }
-  if (combo % comboStep === 0) {
-    floatText($('hud-combo'), tr('Комбо ×{0}!', combo), 'gold');
-    flash($('hud-combo'), 'gold');
-  }
-  if (rankAt(count) > rank) {
-    fanfare();
-    floatText($('hud-rank'), ranks[rankAt(count)][1](), 'gold');
-    flash($('hud-rank'), 'gold');
-  }
 }
 
 function draw() {

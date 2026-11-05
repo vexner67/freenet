@@ -49,7 +49,7 @@ function table(hand) {
 
 // poker sets up the game with the table of the casino and the hand left
 // dealt; the casino gives its own parts: whether one is signed in, the
-// balance, the lock of all the games, the cheer and the jackpot.
+// balance, the lock of all the games and the jackpot.
 export function poker(settings, dealt, casino) {
   const amount = $('poker-amount');
   // shown is what each row shows, so that only new cards fly in.
@@ -145,9 +145,8 @@ export function poker(settings, dealt, casino) {
     result.className = won ? 'casino-result casino-win' : 'casino-result';
     result.textContent = pokerOutcome(hand);
     result.hidden = false;
-    if (won) casino.cheer(result, hand.payout, hand.ante * 3);
 
-    casino.score(result, hand.ante * 3, won ? hand.payout : 0);
+    casino.score(hand.ante * 3, won ? hand.payout : 0);
   }
 
   // play runs a request to the server with all the games locked.

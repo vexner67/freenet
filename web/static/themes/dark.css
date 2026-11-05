@@ -4,7 +4,6 @@
 
 :root {
   --back-14103a: #14103a;
-  --back-3f2bb8: #3f2bb8;
   --back-d8dde3: #d8dde3;
   --text-23e0ff: #23e0ff;
   /* Backgrounds */
@@ -63,7 +62,6 @@
   --text-e8e8e8: #d8d8d8;
   --text-c00: #e06060;
   --text-333: #d6d6d6;
-  --text-3e3e3e: #222222;
   --text-404036: #b0b0b0;
   --text-464646: #a6a6a6;
   --text-2b587a: #9cc0e6;
@@ -153,7 +151,6 @@ img.name-checkmark { filter: brightness(2.4); }
 /* What the palette does not give: a block that is not its plain self in
    another colour. */
 a { color: #7fa9d4; }
-.logo-mark rect { fill: #d4d4d4; }
 .page-title { color: #e6dfb6; }
 .menu .counter { background: #333; }
 .section-title::before { border-top-color: #777; }

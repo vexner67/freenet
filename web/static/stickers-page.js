@@ -13,9 +13,7 @@ import { api, currentUser } from './api.js';
 import { balanceAmount, STICKER_SECTIONS, STICKER_TAX_PERCENT, installsCount, stickerIncome, shopPacks, stickerImage, stickerPackAction, stickerPackName, stickerPackPrice, stickersCount, votesCount } from './labels.js';
 import { pickPath } from './gifts.js';
 import { $, el, fullName, pagePath, replaceInPlace, renderChrome, showError, hideError } from './layout.js';
-import { countTo, flash, floatText } from './game.js';
 import { button, openModal } from './modal.js';
-import { coins, dealTick, fanfare } from './sounds.js';
 import { meter } from './controls.js';
 import { stickerNode } from './stickers.js';
 import { tr } from './i18n.js';
@@ -71,8 +69,6 @@ function quickAdd(pack) {
     hideError($('error'));
     try {
       await take(pack);
-      floatText(go, `+${pack.stickers.length}`, 'gold');
-      coins();
       render();
     } catch (e) {
       go.disabled = false;
@@ -91,8 +87,6 @@ async function take(pack) {
 
 const refused = (e) => (e.message === 'not enough votes' ? tr('Недостаточно голосов для покупки.') : e);
 
-// shownScore are the numbers on the plates, to run from them.
-const shownScore = { packs: null, stickers: null };
 
 // showScore is the plates over the cards: what one has of the shop, a strip
 // to the whole of it, and the votes.
@@ -100,10 +94,7 @@ function showScore() {
   if (!me || act === 'author') return;
   const mine = packs.filter((p) => p.added);
   const count = (id, value) => {
-    const before = shownScore[id] ?? value;
-    countTo($(`score-${id}`), before, value, String);
-    if (before !== value) flash($(`score-${id}`).closest('.game-hud-cell'), 'gold');
-    shownScore[id] = value;
+    $(`score-${id}`).textContent = String(value);
   };
   count('packs', mine.length);
   count('stickers', mine.reduce((sum, p) => sum + p.stickers.length, 0));
@@ -116,7 +107,6 @@ function showScore() {
 function lucky() {
   const left = packs.filter((p) => p.published && !p.added);
   if (!left.length) return;
-  fanfare();
   openPack(left[Math.floor(Math.random() * left.length)]);
 }
 
@@ -128,7 +118,6 @@ function pickSection(name) {
   const url = new URL(location.href);
   url.searchParams.set('section', name);
   history.replaceState(null, '', url);
-  dealTick();
   render();
 }
 
@@ -217,11 +206,7 @@ function openPack(pack) {
       el('span', { className: 'stickers-modal-count', textContent: stickersCount(pack.stickers.length) }),
       copy),
     el('div', { className: 'stickers-modal-grid' },
-      ...pack.stickers.map((sticker, i) => {
-        const item = el('div', { className: 'stickers-modal-item', onclick: () => { item.classList.remove('jump'); void item.offsetWidth; item.classList.add('jump'); dealTick(); } }, stickerNode(sticker));
-        item.style.animationDelay = `${Math.min(i, 20) * 25}ms`;
-        return item;
-      })),
+      ...pack.stickers.map((sticker) => el('div', { className: 'stickers-modal-item' }, stickerNode(sticker)))),
   );
   modal.actions.append(button(tr('Закрыть'), modal.close));
 }
@@ -239,8 +224,6 @@ async function add(pack, action, error) {
 
   try {
     await take(pack);
-    floatText(action, `+${pack.stickers.length}`, 'gold');
-    coins();
     action.textContent = stickerPackAction(pack);
     action.nextElementSibling?.remove();
     render();

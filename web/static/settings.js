@@ -18,8 +18,7 @@ import { openDeactivate } from './deactivate.js';
 import { disablePush, enablePush, pushState } from './push.js';
 import { ensureKey, exportKeys, forgetKeys, hasKeys, importKeys, KEY_READY, newCode, newKey } from './e2ee.js';
 import { showTwoFactor } from './twofactor.js';
-import { countTo, flash, floatText, gameIcon, helpButton } from './game.js';
-import { coins, dealTick, fanfare } from './sounds.js';
+import { gameIcon, helpButton } from './game.js';
 import { tr } from './i18n.js';
 
 const error = $('error');
@@ -44,7 +43,7 @@ function onSubmit(form, save) {
 
     try {
       await save();
-      saved(button);
+      saved();
     } catch (e) {
       showError(error, e);
     } finally {
@@ -64,13 +63,10 @@ function showNotice() {
   noticeTimer = setTimeout(() => { $('notice').hidden = true; }, noticeTime);
 }
 
-// saved is what a saved form answers: the coins, the green button and the
-// yellow fields back to normal.
-function saved(from) {
+// saved is what a saved form answers: the notice and the yellow fields
+// back to normal.
+function saved() {
   showNotice();
-  coins();
-  flash(from);
-  floatText(from, tr('Сохранено'));
   for (const field of document.querySelectorAll('.field-changed')) field.classList.remove('field-changed');
 }
 
@@ -170,7 +166,6 @@ async function showFediverse(me) {
     hideError(error);
     try {
       await turn();
-      flash($('fediverse-state'));
     } catch (e) {
       showError(error, e);
     }
@@ -213,7 +208,6 @@ function initFediverseReading() {
       await api.subscribeFediverse(address);
       field.value = '';
       await showSubscriptions();
-      flash($('fediverse-subscriptions'));
     } catch (e) {
       showError(error, e);
     } finally {
@@ -470,7 +464,6 @@ function openForget(me, done) {
 function say(title, ...rest) {
   $('notice').replaceChildren(el('b', { textContent: title }), ...(rest.length ? [el('br'), ...rest] : []));
   showNotice();
-  coins();
   checkSafety(me);
 }
 
@@ -483,10 +476,7 @@ const guards = [
   { key: 'key', icon: '/static/icons/game/vault.svg', act: 'security', name: () => tr('Ключ сообщений') },
 ];
 
-let guardsDone = -1;
-
-// showSafety draws what is set up; a new step gets the coins, all of them a
-// fanfare.
+// showSafety draws what is set up.
 function showSafety(state) {
   const done = guards.filter((g) => state[g.key]).length;
   const share = done / guards.length;
@@ -494,7 +484,7 @@ function showSafety(state) {
   const fill = el('span', { className: 'settings-hud-fill' });
 
   fill.style.transform = `scaleX(${share})`;
-  countTo(sum, Math.max(0, guardsDone) * 25, share * 100, (value) => `${value} %`);
+  sum.textContent = `${share * 100} %`;
   $('safety').replaceChildren(
     el('div', { className: 'settings-hud-head' }, gameIcon('/static/icons/game/star.svg'), el('span', { textContent: tr('Защита страницы') }), sum,
       helpButton(tr('Чем больше здесь отмечено, тем труднее чужому войти на вашу страницу и прочесть вашу переписку.'))),
@@ -505,12 +495,6 @@ function showSafety(state) {
       onclick: () => openTab(g.act, true),
     }, gameIcon(g.icon), g.name()))),
   );
-  if (guardsDone >= 0 && done > guardsDone) {
-    if (done === guards.length) fanfare();
-    else coins();
-    flash($('safety'), 'gold');
-  }
-  guardsDone = done;
 }
 
 async function checkSafety(me) {
@@ -533,7 +517,6 @@ function openTab(act, heard = false) {
     tabs[act](me);
   }
   if (heard) {
-    dealTick();
     history.replaceState(null, '', act === 'main' ? '/settings' : `/settings?act=${act}`);
   }
 }

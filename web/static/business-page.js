@@ -26,8 +26,7 @@ import { $, el, fullName, onScreen, pagePath, replaceInPlace, renderChrome, show
 import { button, openModal, toast } from './modal.js';
 import { lineChart, sparkline } from './charts.js';
 import { chips, isOpen, meter, popover, segmented, slider, stepper } from './controls.js';
-import { countTo, flash, floatText, gameWindow } from './game.js';
-import { coins, dealTick } from './sounds.js';
+import { gameWindow } from './game.js';
 import { tr } from './i18n.js';
 
 const answered = session.get() ? started(api.firms()) : null;
@@ -41,7 +40,7 @@ let asked = 0; // when refresh last asked for the city
 let chosen = '';
 
 function showBalance(votes) {
-  countTo($('votes'), balance, votes, balanceVotes);
+  $('votes').textContent = balanceVotes(votes);
   balance = votes;
   $('votes-word').textContent = balanceWord(votes);
   $('balance').hidden = false;
@@ -199,14 +198,12 @@ const submit = (text) => button(text, null, { type: 'submit' });
 async function act(action, body, text, box = null) {
   if (busy) return false;
   busy = true;
-  const pressed = lastPress;
   const error = box ?? $('error');
   hideError(error);
   said('');
 
   try {
     const done = await api.runFirms(action, body);
-    reward(done, pressed);
     if (done.spent > 0 || done.got > 0) showBalance(done.balance);
     state = done.firms;
     // What an action leads to takes the place of the page it was done on:
@@ -229,27 +226,6 @@ async function act(action, body, text, box = null) {
   }
 }
 
-// lastPress is what was pressed last: the rewards of an action fly up from it.
-let lastPress = null;
-document.addEventListener('click', (event) => {
-  lastPress = event.target.closest?.('button, a') ?? null;
-}, true);
-
-// reward answers an action done: money coming in rings and flies up to the
-// strip of the page, anything else ticks.
-function reward(done, node) {
-  if (done.got > 0) {
-    coins();
-    floatText(node, `+${votesAmount(done.got)}`, 'gold');
-    flash($('balance'), 'gold');
-  } else if (done.spent > 0) {
-    dealTick(false);
-    floatText(node, `−${votesAmount(done.spent)}`, 'bad');
-  } else {
-    dealTick();
-    flash(node, 'good');
-  }
-}
 
 // dialog opens a box of an action with its own place for errors.
 function dialog(heading, ...body) {
@@ -312,21 +288,6 @@ const profits = (f) => [...f.hours].sort((a, b) => a.hour.localeCompare(b.hour))
 // trend is a sparkline of the profits of the last hours.
 const trend = (f, width) => (f.hours.length > 1 ? sparkline(profits(f), { width, height: 22 }) : null);
 
-// watched marks a number the page compares with what it showed before:
-// one that changed blinks once.
-const watched = (key, node) => {
-  node.dataset.watch = key;
-  return node;
-};
-const seen = new Map();
-
-function blink() {
-  for (const node of document.querySelectorAll('[data-watch]')) {
-    const before = seen.get(node.dataset.watch);
-    if (before !== undefined && before !== node.textContent) node.classList.add('firm-changed');
-    seen.set(node.dataset.watch, node.textContent);
-  }
-}
 
 // The hour going on comes minute by minute: the city counts it only when
 // it ends, but forecast tells how it ends if nothing changes, and the page
@@ -488,9 +449,9 @@ function tile(f) {
       el('b', { textContent: f.name }),
       el('span', { className: 'firm-tile-kind', textContent: `${firmKindName(f.kind)} · ${tr('{0} ур.', f.level)}${directs(f) ? ` · ${tr('директор')}` : ''}` }),
       el('table', { className: 'firm-tile-facts' },
-        fact(tr('Касса'), watched(`${f.id}:cash`, cashNow(f))),
+        fact(tr('Касса'), cashNow(f)),
         f.forecast ? fact(tr('Сейчас'), hourProfit(f)) : null,
-        fact(tr('За сутки'), watched(`${f.id}:profit`, el('span', {}, signed(f.profit)))),
+        fact(tr('За сутки'), el('span', {}, signed(f.profit))),
         fact(tr('Акции'), `${held(f)} (${sharePercent(held(f), f.shares)})`),
         fact(tr('Станки'), idle(f) ? el('span', { className: 'firm-down', textContent: tr('забастовка') }) : meter(100 - f.wear, 100, tr('{0} %', Math.round(100 - f.wear)), wearTone(f.wear))))));
 }
@@ -654,11 +615,11 @@ function header(f, plan) {
 }
 
 // plaque is a plaque of the card; onclick opens its mini window.
-function plaque(picture, name, value, sub, onclick = null, key = '') {
+function plaque(picture, name, value, sub, onclick = null) {
   const shown = el('div', { className: 'firm-stat-value' }, value);
   const node = el(onclick ? 'button' : 'div', { className: onclick ? 'firm-stat clickable' : 'firm-stat' },
     el('div', { className: 'firm-stat-name' }, el('span', {}, el('img', { className: 'game-icon', src: pictures[picture], alt: '', width: 16, height: 16 }), ` ${name}`), onclick ? el('span', { className: 'firm-stat-more', textContent: '▾' }) : null),
-    key ? watched(key, shown) : shown,
+    shown,
     el('div', { className: 'firm-stat-sub' }, sub));
   if (onclick) {
     node.type = 'button';
@@ -670,9 +631,9 @@ function plaque(picture, name, value, sub, onclick = null, key = '') {
 function stats(f, plan) {
   const own = directs(f);
   return el('div', { className: 'firm-stats' },
-    plaque('wallet', tr('Касса'), cashNow(f), f.forecast ? hourProfit(f) : f.escrow > 0 ? tr('и {0} в заявках', money(f.escrow)) : tr('расходы {0} в час', money(f.upkeep + f.workers * f.wage)), own ? (a) => cashBox(a, f) : null, `${f.id}:cash`),
-    plaque('profit', tr('За сутки'), el('span', { className: 'firm-stat-trend' }, signed(f.profit), trend(f, 64)), tr('прибыль за {0} ч.', f.hours.length), null, `${f.id}:profit`),
-    plaque('workers', tr('Рабочие'), `${f.workers} / ${f.wanted}`, f.wanted > f.workers ? tr('ищет ещё {0}, выработка {1} %', f.wanted - f.workers, Math.round(f.productivity * 100)) : tr('выработка {0} %', Math.round(f.productivity * 100)), own ? (a) => staffBox(a, f) : null, `${f.id}:workers`),
+    plaque('wallet', tr('Касса'), cashNow(f), f.forecast ? hourProfit(f) : f.escrow > 0 ? tr('и {0} в заявках', money(f.escrow)) : tr('расходы {0} в час', money(f.upkeep + f.workers * f.wage)), own ? (a) => cashBox(a, f) : null),
+    plaque('profit', tr('За сутки'), el('span', { className: 'firm-stat-trend' }, signed(f.profit), trend(f, 64)), tr('прибыль за {0} ч.', f.hours.length), null),
+    plaque('workers', tr('Рабочие'), `${f.workers} / ${f.wanted}`, f.wanted > f.workers ? tr('ищет ещё {0}, выработка {1} %', f.wanted - f.workers, Math.round(f.productivity * 100)) : tr('выработка {0} %', Math.round(f.productivity * 100)), own ? (a) => staffBox(a, f) : null),
     plaque('level', tr('Уровень'), `${f.level} / ${plan.levels}`, f.upgradeCost ? tr('следующий — {0}', money(f.upgradeCost * 100)) : tr('высший'), own ? (a) => levelBox(a, f, plan) : null),
     plaque('gear', tr('Станки'), meter(100 - f.wear, 100, tr('{0} %', Math.round(100 - f.wear)), wearTone(f.wear)), f.wear >= 30 ? tr('изношены — делают меньше') : tr('в порядке'), own ? (a) => repairBox(a, f) : null),
     plaque('share', tr('Акция'), money(shareOf(f)), f.float > 0 ? tr('{0} новых на бирже', groupedVotes(f.float)) : tr('торгуется в «Акциях»'), (a) => shareBox(a, f)),
@@ -1417,7 +1378,6 @@ function show() {
   else if (tab === 'guide') nodes = guide();
   else nodes = myFirms();
   replaceInPlace($('firm-view'), ...nodes.filter(Boolean));
-  blink();
   showStrip();
 }
 
@@ -1436,8 +1396,6 @@ function refresh() {
     .then((city) => {
       state = city;
       show();
-      coins();
-      flash($('balance'), 'gold');
     })
     .catch(() => {}) // the next tick tries again
     .finally(() => {

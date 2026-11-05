@@ -18,8 +18,7 @@ import { $, el, fullName, onScreen, pagePath, replaceInPlace, renderChrome, show
 import { toast } from './modal.js';
 import { candleChart, lineChart, sparkline } from './charts.js';
 import { chips, isOpen, popover, segmented, stepper } from './controls.js';
-import { flash, floatText, gameIcon, gameWindow } from './game.js';
-import { coins, dealTick } from './sounds.js';
+import { gameIcon, gameWindow } from './game.js';
 import { tr } from './i18n.js';
 
 const firmOfAddress = () => new URLSearchParams(location.search).get('firm') ?? '';
@@ -99,10 +98,8 @@ const link = (text, href, className = '') => el('a', { href, className, textCont
 async function load(firm) {
   busy = true;
   try {
-    const before = new Map(state?.companies.map((c) => [c.firm, c.price]));
     state = await api.stocks(firm);
     show();
-    blink(before);
   } catch (e) {
     showError($('error'), e);
   } finally {
@@ -110,41 +107,11 @@ async function load(firm) {
   }
 }
 
-// blink flashes the rows of the companies whose price moved.
-function blink(before) {
-  for (const row of document.querySelectorAll('.stock-row')) {
-    const was = before.get(row.dataset.firm);
-    const now = companyOf(row.dataset.firm)?.price;
-    if (was && now && was !== now) flash(row, now > was ? 'good' : 'bad');
-  }
-}
-
-// lastPress is what was pressed last: the rewards of a deal fly up from it.
-let lastPress = null;
-document.addEventListener('click', (event) => {
-  lastPress = event.target.closest?.('button, a') ?? null;
-}, true);
-
-// reward answers a deal done: shares bought tick, money coming in rings.
-function reward(done, body, node) {
-  if (!done.shares) {
-    dealTick();
-    return;
-  }
-  if (body.buy) {
-    dealTick();
-    floatText(node, `+${tr('{0} акц.', groupedVotes(done.shares))}`, 'good');
-    return;
-  }
-  coins();
-  floatText(node, `+${money(done.money)}`, 'gold');
-}
 
 // act does an action and shows the exchange it left.
 async function act(action, body, text, box = null) {
   if (busy) return false;
   busy = true;
-  const pressed = lastPress;
   const error = box ?? $('error');
   hideError(error);
   said('');
@@ -152,7 +119,6 @@ async function act(action, body, text, box = null) {
   try {
     const done = await api.runStocks(action, { firm: firmOfAddress(), ...body });
     if (done.spent > 0 || done.got > 0) showBalance(done.balance);
-    reward(done, body, pressed);
     state = done.stocks;
     show();
     const message = typeof text === 'function' ? text(done) : text;
