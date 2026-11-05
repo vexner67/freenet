@@ -671,6 +671,9 @@ message InterfaceSettings {
   // The clock dates are read by, minutes east of UTC; unset for the
   // browser's own.
   optional int32 timezone_offset = 8;
+  // "classic" (the default, the site of 2010) or "modern" (one column,
+  // icons for the sections): the whole look of the site.
+  string design = 9;
 }
 
 message UpdateInterfaceRequest {

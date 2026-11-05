@@ -768,6 +768,7 @@ func toProtoInterface(ui user.Interface) *userv1.InterfaceSettings {
 		HideRating:  ui.HideRating,
 		Nsfw:        ui.NSFW.String(),
 		PostView:    ui.PostView.String(),
+		Design:      ui.Design.String(),
 	}
 	if minutes, fixed := ui.Timezone.Offset(); fixed {
 		offset := int32(minutes)
@@ -788,6 +789,7 @@ func fromProtoInterface(in *userv1.InterfaceSettings) user.InterfaceForm {
 		HideRating:  in.GetHideRating(),
 		NSFW:        cmp.Or(in.GetNsfw(), defaults.NSFW.String()),
 		PostView:    cmp.Or(in.GetPostView(), defaults.PostView.String()),
+		Design:      cmp.Or(in.GetDesign(), defaults.Design.String()),
 		MainPage:    in.GetMainPage(),
 		HiddenMenu:  in.GetHiddenMenu(),
 	}

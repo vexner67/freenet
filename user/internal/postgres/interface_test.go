@@ -31,7 +31,7 @@ func TestInterface(t *testing.T) {
 
 	offset := -210
 	ui, err := user.NewInterface(user.InterfaceForm{
-		AvatarStyle: "round", Theme: "dark", HideRating: true, NSFW: "hide", PostView: "microblog",
+		AvatarStyle: "round", Theme: "dark", HideRating: true, NSFW: "hide", PostView: "microblog", Design: "modern",
 		MainPage: "feed", Timezone: &offset, HiddenMenu: []string{"groups", "photos"},
 	})
 	if err != nil {

@@ -85,7 +85,7 @@ func TestPrimeRepository(t *testing.T) {
 	}
 
 	// The gold theme of Prime is stored.
-	gold, err := user.NewInterface(user.InterfaceForm{AvatarStyle: "square", Theme: "gold", NSFW: "blur", PostView: "old", MainPage: "page"})
+	gold, err := user.NewInterface(user.InterfaceForm{AvatarStyle: "square", Theme: "gold", NSFW: "blur", PostView: "old", MainPage: "page", Design: "classic"})
 	if err != nil {
 		t.Fatal(err)
 	}
