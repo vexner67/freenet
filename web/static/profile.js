@@ -1,5 +1,5 @@
 import { api, currentUser, started } from './api.js';
-import { isBirthdayToday, relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, audioArtist, audioTitle, audiosCount, plural, MAX_RATING, firmLine, firmPictures, titleGroups, titleIconPath } from './labels.js';
+import { isBirthdayToday, relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, accusativeName, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, audioArtist, audioTitle, audiosCount, plural, MAX_RATING, firmLine, firmPictures, titleGroups, titleIconPath } from './labels.js';
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
@@ -492,10 +492,12 @@ function renderHidden(profile) {
 }
 
 // renderClosed is openvk's closed profile ("Закрытая страница") for those
-// its owner does not follow: the photo, the name and how to ask for more.
+// its owner is not friends with: the photo, the name and how to ask for
+// more.
 function renderClosed(profile) {
   const name = fullName(profile);
   const whose = { male: tr('его'), female: tr('её') }[profile.gender] ?? tr('его(её)');
+  const whom = accusativeName(profile);
 
   document.title = `${name} | Freenet`;
   $('title').replaceChildren(name, verifiedMark(profile));
@@ -506,7 +508,7 @@ function renderClosed(profile) {
   $('limited').replaceChildren(
     el('b', { textContent: tr('{0} {1} доступ к своей странице.', name, limitedAccess(profile.gender)) }), el('br'),
     me
-      ? tr('Страницу видят те, на кого {0} {1}. Вы можете подписаться на {2} обновления.', name, closedFollows(profile.gender), whose)
+      ? tr('Страницу видят только друзья. Добавьте {0} в друзья, чтобы видеть {1} обновления.', whom, whose)
       : tr('Зарегистрируйтесь, чтобы получить доступ к {0} странице.', whose),
   );
   $('limited').hidden = false;

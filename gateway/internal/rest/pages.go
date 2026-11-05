@@ -68,7 +68,9 @@ func registerPages(mux *http.ServeMux, dir string) {
 	mux.Handle("GET /settings/blacklist", site.page(dir, "blacklist.html"))
 	mux.Handle("GET /feed", site.page(dir, "feed.html"))
 	mux.Handle("GET /feed/all", site.page(dir, "feed.html"))
-	mux.Handle("GET /follows", site.page(dir, "follows.html"))
+	mux.Handle("GET /friends", site.page(dir, "friends.html"))
+	// The old address of the lists, when they were follows.
+	mux.Handle("GET /follows", site.page(dir, "friends.html"))
 	mux.Handle("GET /search", site.page(dir, "search.html"))
 	mux.Handle("GET /post/{id}", site.page(dir, "post.html"))
 	mux.Handle("GET /notifications", site.page(dir, "notifications.html"))

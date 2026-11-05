@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
 import {
-  callLength, cardCovers, cardNumber, grownDeposit, declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, untilNewYear, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, balanceVotes, balanceAmount, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale, primePeriods, primeSaving, primeTerms, titleIcons, titleIconPath, titleGroups, topValue, isBirthdayToday, primeNameClass, videoDuration, handleOf, audioTime, audioNames, audioArtist, audioTitle, audiosCount } from '../static/labels.js';
+  callLength, cardCovers, cardNumber, grownDeposit, declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, friendsCount, friendsSummary, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, untilNewYear, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, balanceVotes, balanceAmount, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale, primePeriods, primeSaving, primeTerms, titleIcons, titleIconPath, titleGroups, topValue, isBirthdayToday, primeNameClass, videoDuration, handleOf, audioTime, audioNames, audioArtist, audioTitle, audiosCount } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -56,8 +56,17 @@ test('follow counters agree with numbers', () => {
   assert.equal(followersCount(1), '1 подписчик');
   assert.equal(followersCount(3), '3 подписчика');
   assert.equal(followersCount(12), '12 подписчиков');
-  assert.equal(followingCount(21), '21 подписка');
-  assert.equal(followingCount(5), '5 подписок');
+  assert.equal(friendsCount(0), 'Ни одного друга');
+  assert.equal(friendsCount(1), '1 друг');
+  assert.equal(friendsCount(3), '3 друга');
+  assert.equal(friendsCount(21), '21 друг');
+  assert.equal(friendsCount(5), '5 друзей');
+  assert.equal(friendsSummary('all', 3, true), 'У Вас 3 друга');
+  assert.equal(friendsSummary('all', 0, true), 'У Вас пока нет друзей');
+  assert.equal(friendsSummary('online', 2, false), '2 друга онлайн');
+  assert.equal(friendsSummary('common', 1, false), '1 общий друг');
+  assert.equal(friendsSummary('requests', 2, true), 'Найдено 2 заявки');
+  assert.equal(friendsSummary('followers', 0, true), 'Ни одного подписчика');
 });
 
 test('a comment of someone without a page is refused', () => {
@@ -67,7 +76,7 @@ test('a comment of someone without a page is refused', () => {
 test('notification verbs agree with the gender of who did it', () => {
   assert.equal(notificationVerb('like', { gender: 'female' }), 'оценила');
   assert.equal(notificationVerb('comment', { gender: 'male' }), 'оставил');
-  assert.equal(notificationVerb('follow', { gender: '' }), 'подписался(-ась)');
+  assert.equal(notificationVerb('friend', { gender: '' }), 'принял(а)');
   assert.equal(notificationVerb('comment_reply', { gender: 'female' }), 'ответила');
   assert.equal(notificationVerb('comment_like', { gender: '' }), 'оценил(а)');
   assert.equal(notificationVerb('verified', { gender: 'female' }), 'подтвердила');
@@ -331,7 +340,7 @@ test('presence is told as openvk tells it', () => {
   assert.equal(presence({ lastSeenAt: new Date(2026, 9, 8, 9, 30).toISOString(), gender: 'female' }, now), 'была в сети вчера в 9:30');
   assert.equal(presence({ lastSeenAt: new Date(2026, 8, 1, 9, 30).toISOString() }, now), 'был в сети 1 сентября в 9:30');
   assert.equal(presence({ lastSeenAt: null }, now), '');
-  assert.deepEqual(onlineReads.map(([, text]) => text), ['все', 'пользователи Freenet', 'те, на кого я подписан(а)', 'никто']);
+  assert.deepEqual(onlineReads.map(([, text]) => text), ['все', 'пользователи Freenet', 'друзья', 'никто']);
 });
 
 test('an album the site keeps refuses changes in words', () => {
@@ -755,7 +764,6 @@ test('closed profiles and groups speak as openvk does', () => {
   assert.equal(requestsCount(3), 'Найдено 3 заявки');
   assert.equal(requestsCount(5), 'Найдено 5 заявок');
   assert.equal(requestsLink(2), '2 заявки на вступление');
-  assert.equal(closedFollows('female'), 'подписана сама');
   assert.equal(errorText({ message: 'this club is closed' }), clubTypeHints.closed);
 });
 

@@ -240,10 +240,13 @@ export function textNode(text, { whole = false, rest = null, found = '', named =
     }
 
     node.classList.remove('collapsed');
+    wrap.classList.remove('post-text-long');
     more.remove();
   });
 
-  const wrap = el('div', {}, node, more);
+  // While cut short the line under the text goes under the link, which
+  // starts where the text does, as openvk's.
+  const wrap = el('div', { className: 'post-text-long' }, node, more);
 
   return wrap;
 }
@@ -718,6 +721,9 @@ export function applyInterface(me) {
   menu?.replaceChildren(...[
     el('a', { className: 'menu-edit', href: '/edit', textContent: tr('ред.'), title: tr('Редактировать страницу') }),
     el('a', { href: profilePath(me), textContent: tr('Страница') }),
+    // "Мои Друзья" of openvk, with the friend requests beside.
+    me.nickname && el('a', { href: '/friends', textContent: tr('Друзья') },
+      el('span', { className: 'counter', id: 'friends-count-menu', hidden: true })),
     menuLink(me, 'messages', '/im', tr('Сообщения'), 'messages-count'),
     // «Избранное» is the dialog with oneself, sealed as any: what the
     // user keeps — photos, documents, posts, words — is kept there.
@@ -752,6 +758,7 @@ export function applyInterface(me) {
   // The guests who came since the owner last looked, told by /me, count
   // with the notifications: they are shown among them.
   newGuests = me.newGuests ?? 0;
+  if (me.friendRequests !== undefined) setFriendRequests(me.friendRequests);
   showCounter('messages');
   showCounter('notifications');
   // The accounts that wait are looked after though the menu does not
@@ -1054,6 +1061,16 @@ export function setCounter(name, n) {
     counter.textContent = unreadCountText(shown);
     counter.hidden = shown <= 0;
   }
+}
+
+// setFriendRequests shows the friend requests beside "Друзья" of the
+// menu; /me tells them, and the page of friends as it answers them.
+export function setFriendRequests(n) {
+  const counter = $('friends-count-menu');
+  if (!counter) return;
+
+  counter.textContent = unreadCountText(n);
+  counter.hidden = n <= 0;
 }
 
 // avatarURL is the photo of a user, author or profile, or the placeholder;

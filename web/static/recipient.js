@@ -43,7 +43,7 @@ export function recipientPicker({ to, people, shown, me, picked = () => {} }) {
     return found;
   }
 
-  // The people to pick from: those you follow while the field is empty,
+  // The people to pick from: your friends while the field is empty,
   // those whose name or nickname has the words otherwise.
   let asked = 0;
   async function suggest() {
@@ -53,8 +53,8 @@ export function recipientPicker({ to, people, shown, me, picked = () => {} }) {
     let title = '';
     try {
       if (!text) {
-        list = (await api.following(me.nickname, '', 20)).users ?? [];
-        title = tr('Ваши подписки');
+        list = (await api.friends(me.nickname, 'all', '', 20)).users ?? [];
+        title = tr('Ваши друзья');
       } else if (!/[/?]/.test(text)) {
         list = (await api.search(text.replace(/^@/, ''))).users ?? [];
         title = tr('Найденные люди');

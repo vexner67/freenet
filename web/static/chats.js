@@ -15,8 +15,8 @@ export function chatPath(id) {
   return '/im/chat/' + encodeURIComponent(id);
 }
 
-// peoplePicker is a list of people to tick: those who follow me, whom
-// their default privacy lets me add, or, with words in the field, whoever
+// peoplePicker is a list of people to tick: my friends, whom their
+// default privacy lets me add, or, with words in the field, whoever
 // the search of people finds. Without are nicknames not to offer; picked
 // are the people ticked, in the order ticked.
 function peoplePicker(me, without = new Set()) {
@@ -24,7 +24,7 @@ function peoplePicker(me, without = new Set()) {
   const list = el('div', { className: 'chat-people' });
   const count = el('div', { className: 'hint' });
   const search = el('input', { type: 'search', maxLength: 64, placeholder: tr('Найти человека: имя, фамилия или никнейм'), ariaLabel: tr('Найти человека') });
-  let followers = [];
+  let friends = [];
   let timer;
 
   function showCount() {
@@ -49,19 +49,19 @@ function peoplePicker(me, without = new Set()) {
     list.replaceChildren(...(offered.length > 0 ? offered.map(row) : [el('p', { className: 'hint', textContent: nobody })]));
   }
 
-  const showFollowers = () => show(followers, tr('У вас пока нет подписчиков — найдите человека по имени.'));
+  const showFriends = () => show(friends, tr('У вас пока нет друзей — найдите человека по имени.'));
 
-  api.followers(me.nickname, '', 50).then((page) => {
-    followers = page.users;
-    if (!search.value.trim()) showFollowers();
-  }).catch(() => showFollowers());
+  api.friends(me.nickname, 'all', '', 50).then((page) => {
+    friends = page.users;
+    if (!search.value.trim()) showFriends();
+  }).catch(() => showFriends());
 
   search.addEventListener('input', () => {
     clearTimeout(timer);
     timer = setTimeout(async () => {
       const q = search.value.trim();
       if (!q) {
-        showFollowers();
+        showFriends();
         return;
       }
 

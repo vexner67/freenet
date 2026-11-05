@@ -505,8 +505,12 @@ export const api = {
   unlikeComment: (id) => authorized('DELETE', `/api/v1/comments/${encodeURIComponent(id)}/like`),
   deleteComment: (id) => authorized('DELETE', '/api/v1/comments/' + encodeURIComponent(id)),
 
+  // follow is "Добавить в друзья" or "Принять заявку", unfollow "Удалить из
+  // друзей" or "Отменить заявку": friends follow each other.
   follow: (nickname) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/follow`),
   unfollow: (nickname) => authorized('DELETE', `/api/v1/users/${encodeURIComponent(nickname)}/follow`),
+  // declineFriend is "Оставить в подписчиках": the request stays a follow.
+  declineFriend: (nickname) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/decline`),
   // acceptInvite follows the one whose invitation link you signed up by;
   // they hear of the invitation ("Пригласить" of openvk).
   acceptInvite: (nickname) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/invitation`),
@@ -514,17 +518,12 @@ export const api = {
   block: (nickname) => authorized('PUT', `/api/v1/me/blacklist/${encodeURIComponent(nickname)}`),
   unblock: (nickname) => authorized('DELETE', `/api/v1/me/blacklist/${encodeURIComponent(nickname)}`),
   blacklist: (cursor = '') => authorized('GET', page('/api/v1/me/blacklist', cursor, 0)),
-  followers: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/followers`, cursor, limit)),
-  following: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/following`, cursor, limit)),
-  // online is openvk's "Друзья онлайн": whom the user follows who is online now.
-  online: (nickname, cursor = '', limit = 0) => {
-    const path = page(`/api/v1/users/${encodeURIComponent(nickname)}/following`, cursor, limit);
-    return optional('GET', path + (path.includes('?') ? '&' : '?') + 'online=true');
-  },
-  // common is openvk's "Общие друзья": whom the user and you both follow.
-  common: (nickname, cursor = '', limit = 0) => {
-    const path = page(`/api/v1/users/${encodeURIComponent(nickname)}/following`, cursor, limit);
-    return authorized('GET', path + (path.includes('?') ? '&' : '?') + 'common=true');
+  // friends is a list of openvk's "Друзья": section is all, online,
+  // common, or of your own page requests, followers and outgoing.
+  friends: (nickname, section = 'all', cursor = '', limit = 0) => {
+    const path = page(`/api/v1/users/${encodeURIComponent(nickname)}/friends`, cursor, limit);
+    const listed = section === 'all' ? path : path + (path.includes('?') ? '&' : '?') + 'section=' + section;
+    return section === 'all' || section === 'online' ? optional('GET', listed) : authorized('GET', listed);
   },
   // feed: your news, or with all those of everyone ("Все новости").
   // settings are "Настройки ленты": limit posts a page, alien (posts on

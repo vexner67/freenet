@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=820">
-  <title>Подписки | Freenet</title>
+  <title>Друзья | Freenet</title>
   <link rel="icon" href="/static/favicon.png" sizes="32x32">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="/static/palette.css">
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/theme.js"></script>
-  <script type="module" src="/static/follows.js"></script>
+  <script type="module" src="/static/friends.js"></script>
 </head>
 <body>
 <div class="layout">
@@ -30,12 +30,21 @@
       <div class="page-title"><span id="title">Загрузка…</span><a class="aside" id="back"></a></div>
       <div class="page-body">
         <div class="tabs" id="tabs" hidden>
-          <a id="tab-followers"></a>
-          <a id="tab-following"></a>
-          <a id="tab-online"></a>
-          <a id="tab-common" hidden></a>
+          <a id="tab-all">Все друзья</a>
+          <a id="tab-online">Друзья онлайн</a>
+          <a id="tab-requests" hidden>Заявки</a>
+          <a id="tab-common" hidden>Общие друзья</a>
+        </div>
+        <div class="mb-tabs friend-sections" id="sections" hidden>
+          <div class="mb-tab-row">
+            <a class="mb-tab" id="section-requests">Входящие</a>
+            <a class="mb-tab" id="section-followers">Подписчики</a>
+            <a class="mb-tab" id="section-outgoing">Исходящие</a>
+          </div>
         </div>
         <div class="error" id="error" hidden></div>
+        <div class="notice" id="notice" hidden></div>
+        <p class="hint" id="summary" hidden></p>
         <div id="people"></div>
         <p class="hint" id="empty" hidden></p>
         <a class="wall-more" id="more" hidden>Показать ещё</a>

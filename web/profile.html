@@ -57,7 +57,7 @@
               <a class="profile-link" id="stories" hidden>Смотреть историю</a>
               <a class="profile-link" id="gift" hidden>Отправить подарок</a>
               <a class="profile-link" id="write" hidden>Отправить сообщение</a>
-              <button class="profile-link" type="button" id="follow" hidden>Подписаться</button>
+              <button class="profile-link" type="button" id="follow" hidden>Добавить в друзья</button>
               <a class="profile-link" id="blacklist" hidden>Добавить в чёрный список</a>
               <a class="profile-link" id="ignore" hidden>Игнорировать пользователя</a>
             </div>
@@ -70,16 +70,10 @@
               <div class="title-side" id="titles-list"></div>
             </div>
 
-            <div class="side-block" id="followers-block" hidden>
-              <div class="section-title">Подписчики</div>
-              <div class="subtitle"><span id="followers-count"></span><a id="followers-all">Все</a></div>
-              <div class="people-grid" id="followers-grid"></div>
-            </div>
-
-            <div class="side-block" id="following-block" hidden>
-              <div class="section-title">Подписки</div>
-              <div class="subtitle"><span id="following-count"></span><a id="following-all">Все</a></div>
-              <div class="people-grid" id="following-grid"></div>
+            <div class="side-block" id="friends-block" hidden>
+              <div class="section-title">Друзья</div>
+              <div class="subtitle"><span id="friends-count"></span><a id="friends-all">Все</a></div>
+              <div class="people-grid" id="friends-grid"></div>
             </div>
 
             <div class="side-block" id="albums-block" hidden></div>
@@ -115,7 +109,7 @@
             <div class="notice" id="limited" hidden></div>
 
             <div id="profile-content">
-            <table class="info basic-info" id="info"></table>
+            <div class="basic-info-box"><table class="info basic-info" id="info"></table></div>
 
             <div id="about-block">
             <div class="section-title">Информация</div>
@@ -131,8 +125,8 @@
             </div>
             </div>
 
-            <div id="gifts-block" hidden></div>
             <div class="page-audio" id="page-audio" hidden></div>
+            <div id="gifts-block" hidden></div>
 
             <div class="sugglist" id="postponed" hidden><a id="postponed-link"></a></div>
             <div class="section-title">Стена<span class="count" id="wall-count"></span><a class="title-link" id="wall-all">Все</a></div>

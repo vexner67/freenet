@@ -33,7 +33,7 @@ const kinds = [
   { key: 'likes', name: () => tr('Лайки'), types: ['like', 'comment_like', 'topic_message_like', 'photo_like', 'story_like'] },
   { key: 'comments', name: () => tr('Комментарии'), types: ['comment', 'comment_reply', 'topic_message', 'photo_comment', 'story_comment', 'wall_post', 'repost'] },
   { key: 'mentions', name: () => tr('Упоминания'), types: ['post_mention', 'comment_mention', 'topic_mention', 'photo_mention'] },
-  { key: 'people', name: () => tr('Люди'), types: ['follow', 'invite', 'match'] },
+  { key: 'people', name: () => tr('Люди'), types: ['follow', 'friend', 'invite', 'match'] },
   { key: 'gifts', name: () => tr('Подарки'), types: ['gift', 'prime', 'votes'] },
   { key: 'calls', name: () => tr('Звонки'), types: ['call', 'missed_call'] },
   { key: 'other', name: () => tr('Важное'), types: [] },
@@ -264,6 +264,14 @@ function notificationText(n) {
     return [name, tr(' {0} вам ', notificationVerb('gift', n.actor)), el('a', { href: '/gifts' }, el('b', { textContent: tr('подарок') })), '.'];
   }
 
+  // A follow is a friend request, a follow back its acceptance, as the
+  // requests of openvk's "Друзья".
+  if (n.type === 'follow') {
+    return [name, tr(' хочет добавить вас в '), el('a', { href: '/friends?section=requests' }, el('b', { textContent: tr('друзья') })), '.'];
+  }
+  if (n.type === 'friend') {
+    return [name, tr(' {0} вашу заявку в ', notificationVerb('friend', n.actor)), el('a', { href: '/friends' }, el('b', { textContent: tr('друзья') })), '.'];
+  }
   // Signed up by your link of "Пригласить" and follows you now.
   if (n.type === 'invite') {
     return [name, tr(' {0} по вашему ', notificationVerb('invite', n.actor)), el('a', { href: '/invite' }, el('b', { textContent: tr('приглашению') })), '.'];
@@ -307,8 +315,6 @@ function notificationText(n) {
     case 'comment_like':
       return [name, tr(' {0} ваш комментарий под ', verb), postLink(n.post, tr('записью')),
         tr(' от {0}: «{1}».', formatPostDate(n.post.createdAt), quote(n.comment.text))];
-    case 'follow':
-      return [name, tr(' {0} на вас.', verb)];
     case 'repost':
       return [name, tr(' {0} вашей ', verb), postLink(n.post, tr('записью')),
         ...(n.post.text ? [`: «${quote(n.post.text)}».`] : ['.'])];

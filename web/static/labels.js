@@ -92,20 +92,20 @@ export const politicalViews = [
   ['radical_islamism', tr('радикальный исламизм')],
 ];
 
-// wallWrites is "Кто может писать у меня на стене" of openvk. There are no
-// friends here: openvk's "Друзья" are the people you follow.
+// wallWrites is "Кто может писать у меня на стене" of openvk; friends
+// follow each other.
 export const wallWrites = [
   ['everyone', tr('все желающие')],
-  ['following', tr('те, на кого я подписан(а)')],
+  ['following', tr('друзья')],
   ['only_me', tr('только я')],
 ];
 
-// messagesWrites is "Кто может писать мне сообщения" of openvk, with its
-// "Друзья" as the people you follow; whoever you wrote to may answer.
+// messagesWrites is "Кто может писать мне сообщения" of openvk; whoever
+// you wrote to may answer.
 // chatsInvites are "Кто может добавлять меня в чаты" of openvk.
 export const chatsInvites = [
   ['everyone', tr('все желающие')],
-  ['following', tr('те, на кого я подписан(а)')],
+  ['following', tr('друзья')],
   ['nobody', tr('никто')],
 ];
 
@@ -140,17 +140,17 @@ export function requestsLink(n) {
 
 export const messagesWrites = [
   ['everyone', tr('все желающие')],
-  ['following', tr('те, на кого я подписан(а)')],
+  ['following', tr('друзья')],
   ['nobody', tr('никто')],
 ];
 
 // audiences are who sees a part of a page ("Кому видно мои группы",
 // "… мои фотографии", "… моих друзей", "… основную информацию моей
-// страницы" of openvk), with its "Друзьям" as the people you follow.
+// страницы" of openvk).
 export const audiences = [
   ['everyone', tr('всем желающим')],
   ['users', tr('пользователям Freenet')],
-  ['following', tr('тем, на кого я подписан(а)')],
+  ['following', tr('друзьям')],
   ['only_me', tr('только мне')],
 ];
 
@@ -161,7 +161,7 @@ export const pageReads = audiences.slice(0, 2);
 export const onlineReads = [
   ['everyone', tr('все')],
   ['users', tr('пользователи Freenet')],
-  ['following', tr('те, на кого я подписан(а)')],
+  ['following', tr('друзья')],
   ['only_me', tr('никто')],
 ];
 
@@ -523,11 +523,6 @@ export function limitedAccess(gender) {
   return { male: tr('ограничил'), female: tr('ограничила') }[gender] ?? tr('ограничил(а)');
 }
 
-// closedFollows says whom the owner of a closed profile lets in.
-export function closedFollows(gender) {
-  return { male: tr('подписан сам'), female: tr('подписана сама') }[gender] ?? tr('подписан(а)');
-}
-
 // blacklistCount is the head of the blacklist, as on openvk.
 export function blacklistCount(n) {
   if (n <= 0) return tr('В вашем чёрном списке ещё нет пользователей.');
@@ -723,6 +718,29 @@ export function followersCount(n) {
   return `${n} ${plural(n, ['подписчик', 'подписчика', 'подписчиков'])}`;
 }
 
+// friendsCount is openvk's "friends": "Ни одного друга", "3 друга".
+export function friendsCount(n) {
+  return n === 0 ? tr('Ни одного друга') : `${n} ${plural(n, ['друг', 'друга', 'друзей'])}`;
+}
+
+// friendsSummary is the line over a list of openvk's "Друзья": of one's
+// own page "У Вас 3 друга", "Найдено 2 заявки"; of another's "3 друга",
+// "1 общий друг".
+export function friendsSummary(section, n, own) {
+  if (section === 'requests' || section === 'outgoing') return requestsCount(n);
+  if (section === 'followers') return n === 0 ? tr('Ни одного подписчика') : followersCount(n);
+  if (section === 'common') {
+    return n === 0 ? tr('Ни одного общего друга') : `${n} ${plural(n, ['общий друг', 'общих друга', 'общих друзей'])}`;
+  }
+  const online = section === 'online';
+  if (!own) {
+    if (n === 0) return online ? tr('Ни одного друга онлайн') : tr('Ни одного друга');
+    return online ? tr('{0} онлайн', friendsCount(n)) : friendsCount(n);
+  }
+  if (n === 0) return online ? tr('У Вас пока нет друзей онлайн') : tr('У Вас пока нет друзей');
+  return online ? tr('У Вас {0} онлайн', friendsCount(n)) : tr('У Вас {0}', friendsCount(n));
+}
+
 // presence is openvk's "Онлайн" or "была в сети сегодня в 12:00" of a
 // page, '' when it is not told.
 export function presence(user, now = new Date()) {
@@ -730,10 +748,6 @@ export function presence(user, now = new Date()) {
   if (!user.lastSeenAt) return '';
 
   return tr('{0} в сети {1}', byGender(user.gender, tr('был'), tr('была')), formatPostDate(user.lastSeenAt, now));
-}
-
-export function followingCount(n) {
-  return `${n} ${plural(n, ['подписка', 'подписки', 'подписок'])}`;
 }
 
 // membersCount is openvk's "participants": "Ни одного участника", "3 участника".
@@ -2475,7 +2489,7 @@ export const completenessHints = {
 const notificationVerbs = {
   like: [tr('оценил'), tr('оценила'), tr('оценил(а)'), tr('оценило')],
   comment: [tr('оставил'), tr('оставила'), tr('оставил(а)'), tr('оставило')],
-  follow: [tr('подписался'), tr('подписалась'), tr('подписался(-ась)'), tr('подписалось')],
+  friend: [tr('принял'), tr('приняла'), tr('принял(а)'), tr('приняло')],
   wall_post: [tr('написал'), tr('написала'), tr('написал(а)'), tr('написало')],
   repost: [tr('поделился'), tr('поделилась'), tr('поделился(-лась)'), tr('поделилось')],
   comment_reply: [tr('ответил'), tr('ответила'), tr('ответил(а)'), tr('ответило')],
