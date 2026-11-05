@@ -96,6 +96,9 @@ const (
 	KindCall Kind = "call"
 	// KindMissedCall: the actor called the recipient, who did not answer.
 	KindMissedCall Kind = "missed_call"
+	// KindFriend: the actor accepted the recipient's friend request,
+	// following back the recipient. One per pair, as a follow.
+	KindFriend Kind = "friend"
 )
 
 // MaxCallSeconds bounds how long a call is told to have lasted: a day.
@@ -157,7 +160,7 @@ func (e Event) Validate() error {
 		KindPhotoComment, KindTopicMessageLike, KindPhotoMention,
 		KindStoryComment:
 		ok = hasPost && hasComment
-	case KindFollow, KindClubAdmin, KindInvite, KindVerified, KindClubVerified, KindMatch, KindCall, KindMissedCall:
+	case KindFollow, KindFriend, KindClubAdmin, KindInvite, KindVerified, KindClubVerified, KindMatch, KindCall, KindMissedCall:
 		ok = !hasPost && !hasComment
 	default:
 		return ErrUnknownKind

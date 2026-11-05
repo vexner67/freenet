@@ -98,6 +98,9 @@ const (
 	Kind_KIND_CALL Kind = 30
 	// The actor called the recipient, who did not answer.
 	Kind_KIND_MISSED_CALL Kind = 31
+	// The actor accepted the recipient's friend request: followed back the
+	// recipient, who followed the actor ("Принять заявку" of openvk).
+	Kind_KIND_FRIEND Kind = 32
 )
 
 // Enum value maps for Kind.
@@ -133,6 +136,7 @@ var (
 		29: "KIND_MATCH",
 		30: "KIND_CALL",
 		31: "KIND_MISSED_CALL",
+		32: "KIND_FRIEND",
 	}
 	Kind_value = map[string]int32{
 		"KIND_UNSPECIFIED":        0,
@@ -165,6 +169,7 @@ var (
 		"KIND_MATCH":              29,
 		"KIND_CALL":               30,
 		"KIND_MISSED_CALL":        31,
+		"KIND_FRIEND":             32,
 	}
 )
 
@@ -1358,7 +1363,7 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\rrecipient_ids\x18\x03 \x03(\tR\frecipientIds\x12\x17\n" +
 	"\achat_id\x18\x04 \x01(\tR\x06chatId\x12\x1d\n" +
 	"\n" +
-	"chat_title\x18\x05 \x01(\tR\tchatTitle*\xac\x05\n" +
+	"chat_title\x18\x05 \x01(\tR\tchatTitle*\xbd\x05\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tKIND_LIKE\x10\x01\x12\x10\n" +
@@ -1393,7 +1398,8 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\n" +
 	"KIND_MATCH\x10\x1d\x12\r\n" +
 	"\tKIND_CALL\x10\x1e\x12\x14\n" +
-	"\x10KIND_MISSED_CALL\x10\x1f\"\x04\b\x12\x10\x12\"\x04\b\x14\x10\x14*\x13KIND_EVENT_REMINDER*\x11KIND_NOTE_COMMENT*;\n" +
+	"\x10KIND_MISSED_CALL\x10\x1f\x12\x0f\n" +
+	"\vKIND_FRIEND\x10 \"\x04\b\x12\x10\x12\"\x04\b\x14\x10\x14*\x13KIND_EVENT_REMINDER*\x11KIND_NOTE_COMMENT*;\n" +
 	"\x03Box\x12\x13\n" +
 	"\x0fBOX_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +

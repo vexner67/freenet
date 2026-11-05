@@ -11,7 +11,8 @@
 const notificationVerbs = {
   like: ['оценил', 'оценила', 'оценил(а)', 'оценило'],
   comment: ['оставил', 'оставила', 'оставил(а)', 'оставило'],
-  follow: ['подписался', 'подписалась', 'подписался(-ась)', 'подписалось'],
+  follow: ['хочет', 'хочет', 'хочет', 'хочет'],
+  friend: ['принял', 'приняла', 'принял(а)', 'приняло'],
   wall_post: ['написал', 'написала', 'написал(а)', 'написало'],
   repost: ['поделился', 'поделилась', 'поделился(-лась)', 'поделилось'],
   comment_reply: ['ответил', 'ответила', 'ответил(а)', 'ответило'],
@@ -28,7 +29,8 @@ const notificationVerbs = {
 const pushTexts = {
   like: ['like', 'вашу запись'],
   comment: ['comment', 'комментарий под вашей записью'],
-  follow: ['follow', 'на вас'],
+  follow: ['follow', 'добавить вас в друзья'],
+  friend: ['friend', 'вашу заявку в друзья'],
   wall_post: ['wall_post', 'на вашей стене'],
   repost: ['repost', 'вашей записью'],
   comment_reply: ['comment_reply', 'на ваш комментарий'],
@@ -68,13 +70,14 @@ const callTexts = { call: 'Звонок завершён.', missed_call: 'Про
 // one form, whoever did it.
 const english = {
   verbs: {
-    like: 'liked', comment: 'left', follow: 'followed', wall_post: 'wrote', repost: 'shared', comment_reply: 'replied',
+    like: 'liked', comment: 'left', follow: 'wants', friend: 'accepted', wall_post: 'wrote', repost: 'shared', comment_reply: 'replied',
     mention: 'mentioned', gift: 'sent', votes: 'gave', prime: 'gave', invite: 'joined', verified: 'verified',
   },
   texts: {
     like: 'your post',
     comment: 'a comment under your post',
-    follow: 'you',
+    follow: 'to add you as a friend',
+    friend: 'your friend request',
     wall_post: 'on your wall',
     repost: 'your post',
     comment_reply: 'to your comment',
@@ -165,7 +168,7 @@ function notificationOf(p, lang = 'ru') {
   const text = pushTexts[p.kind];
   if (!text) return null;
 
-  const url = { gift: '/gifts', votes: '/votes', prime: '/prime' }[p.kind] ?? '/notifications';
+  const url = { gift: '/gifts', votes: '/votes', prime: '/prime', follow: '/friends?section=requests', friend: '/friends' }[p.kind] ?? '/notifications';
   const said = en ? english.texts[p.kind] : text[1];
 
   return { title: name, body: capitalized(verbOf(text[0], actor, lang) + ' ' + said + '.'), url, tag };

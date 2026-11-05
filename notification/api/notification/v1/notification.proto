@@ -127,6 +127,9 @@ enum Kind {
   KIND_CALL = 30;
   // The actor called the recipient, who did not answer.
   KIND_MISSED_CALL = 31;
+  // The actor accepted the recipient's friend request: followed back the
+  // recipient, who followed the actor ("Принять заявку" of openvk).
+  KIND_FRIEND = 32;
 }
 
 // Event: post_id is set for all but follows, invitations, appointments
