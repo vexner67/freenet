@@ -1,7 +1,8 @@
 # The checks of scripts/check.sh and the Docker stack with its smoke test,
 # the same as locally: make check-integration, make stack, make smoke.
-# A push to main that passes them is deployed: the images go to GHCR and
-# the server runs them (deploy/deploy.sh).
+# On main the images are built first, once, with the build cache of
+# GitHub Actions, and go to GHCR under the commit; the stack runs those
+# very images, and a push that passes is deployed (deploy/deploy.sh).
 name: CI
 
 on:
@@ -12,11 +13,12 @@ on:
 permissions:
   contents: read
 
+# A newer push to a pull request supersedes its checks. On main every run
+# goes at once instead of waiting for the one before: the deployments
+# still go one at a time, and an outdated one is skipped (deploy).
 concurrency:
-  group: ci-${{ github.ref }}
-  # A newer push to a pull request supersedes its checks; on main the runs
-  # wait their turn, so a deployment is never cut off halfway.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.event_name == 'pull_request' && format('ci-{0}', github.ref) || format('ci-{0}', github.run_id) }}
+  cancel-in-progress: true
 
 env:
   GOLANGCI_LINT_VERSION: v2.13.2
@@ -63,8 +65,14 @@ jobs:
 
   stack:
     name: Docker stack
+    # On main the images of the commit, on a pull request a local build.
+    needs: images
+    if: ${{ !cancelled() && needs.images.result != 'failure' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v5
 
@@ -82,7 +90,20 @@ jobs:
           echo "HASH_SECRET=$(openssl rand -hex 32)" >> .env
           make certs
 
-      - name: Build and start
+      # Pulled side by side and named as compose names its own builds, so
+      # make stack starts them without building anything.
+      - name: Images of the commit
+        if: needs.images.result == 'success'
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          printf '%s' "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+          printf '%s\n' auth user post media notification message club federation gateway \
+            | xargs -P 9 -I{} sh -c 'docker pull -q "ghcr.io/vexner67/freenet-{}:$GITHUB_SHA" >/dev/null && docker tag "ghcr.io/vexner67/freenet-{}:$GITHUB_SHA" "freenet-{}"'
+          echo "STACK_BUILD=--no-build" >> "$GITHUB_ENV"
+
+      - name: Start
         run: make stack
 
       - run: make smoke
@@ -98,7 +119,6 @@ jobs:
   images:
     name: Images
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [check, stack]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -126,9 +146,9 @@ jobs:
           build-args: SERVICE=${{ matrix.service }}
           target: ${{ contains(fromJSON('["gateway","federation"]'), matrix.service) && matrix.service || '' }}
           push: true
-          tags: |
-            ghcr.io/vexner67/freenet-${{ matrix.service }}:${{ github.sha }}
-            ghcr.io/vexner67/freenet-${{ matrix.service }}:latest
+          # Only the commit: these images are not checked yet, and the
+          # server runs a commit's images by its tag.
+          tags: ghcr.io/vexner67/freenet-${{ matrix.service }}:${{ github.sha }}
           # Links the package to the repository, so the deploy job's token
           # may pull it.
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
@@ -137,7 +157,8 @@ jobs:
 
   deploy:
     name: Deploy
-    needs: images
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [check, images, stack]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -150,9 +171,22 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # Runs on main do not wait for each other, so a newer commit may be
+      # deployed already or may come next: only the head of main goes out,
+      # and the one checked here after taking the turn of the group.
+      - name: Still the head of main
+        id: head
+        run: |
+          head=$(git ls-remote origin refs/heads/main | cut -f1)
+          if [ "$head" != "$GITHUB_SHA" ]; then
+            echo "main is at $head now: its own run deploys it"
+            echo "outdated=true" >> "$GITHUB_OUTPUT"
+          fi
+
       # DEPLOY_HOST, the deploy user's key and the server's host key, so
       # that nobody in the middle gets the token.
       - name: SSH
+        if: steps.head.outputs.outdated != 'true'
         env:
           SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
@@ -163,6 +197,7 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
 
       - name: Copy the configuration
+        if: steps.head.outputs.outdated != 'true'
         env:
           HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
@@ -170,6 +205,7 @@ jobs:
             compose.yaml deploy monitoring "freenet@$HOST:/opt/freenet/"
 
       - name: Run the commit
+        if: steps.head.outputs.outdated != 'true'
         env:
           HOST: ${{ secrets.DEPLOY_HOST }}
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -178,6 +214,7 @@ jobs:
             "/opt/freenet/deploy/deploy.sh ${{ github.sha }} ${{ github.actor }}"
 
       - name: The website answers
+        if: steps.head.outputs.outdated != 'true'
         env:
           SITE_URL: ${{ vars.SITE_URL }}
         run: curl -fsS --retry 5 --retry-delay 3 --retry-all-errors "$SITE_URL/healthz"

@@ -18,6 +18,10 @@ ps:
 down:
 	docker compose --profile app down
 
+# STACK_BUILD=--no-build starts images that are there already, as CI does
+# with the ones it pulled from GHCR.
+STACK_BUILD ?= --build
+
 # The whole site in Docker: the services built from Dockerfile, with mTLS
 # between them, on the databases of dev-persistent; http://localhost:8080
 # (GATEWAY_PORT). They run as you, to read certs/ and write .data/media.
@@ -26,7 +30,7 @@ stack:
 	@grep -q '^HASH_SECRET=.' .env || { echo 'stack: set HASH_SECRET in .env, e.g. to the output of "openssl rand -hex 32"'; exit 1; }
 	mkdir -p .data/media
 	deploy/certs.sh certs .data/node/certs.prom
-	FREENET_UID=$$(id -u) FREENET_GID=$$(id -g) docker compose --profile app up -d --build --wait
+	FREENET_UID=$$(id -u) FREENET_GID=$$(id -g) docker compose --profile app up -d $(STACK_BUILD) --wait
 
 # Signs a user up through the running stack and touches every service.
 smoke:
