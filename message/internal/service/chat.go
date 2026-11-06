@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"slices"
@@ -85,6 +86,8 @@ type ChatEvent struct {
 	Message *message.ChatMessage
 	Edited  *message.ChatMessage
 	Read    *ChatRead
+	// Seen: someone else in the chat has read it up to UpTo.
+	Seen *ChatRead
 }
 
 // ChatRead: whoever hears it has read the chat up to UpTo.
@@ -115,6 +118,9 @@ type ChatHistoryPage struct {
 	Messages   []*message.ChatMessage
 	Me         message.Member
 	NextCursor uuid.UUID
+	// SeenUpTo is the newest message someone else in the chat has read:
+	// Me's messages up to it are seen.
+	SeenUpTo uuid.UUID
 }
 
 // ChatSearchPage is one screen of found messages of chats, newest first;
@@ -936,6 +942,9 @@ func (s *ChatService) History(ctx context.Context, userID, chatID, cursor uuid.U
 	}
 
 	page := ChatHistoryPage{Messages: newestFirst, Me: me}
+	if page.SeenUpTo, err = s.seenUpTo(ctx, chatID, userID); err != nil {
+		return ChatHistoryPage{}, errs.Wrap("s.seenUpTo", err)
+	}
 
 	if len(newestFirst) > size {
 		page.Messages = newestFirst[:size]
@@ -968,7 +977,12 @@ func (s *ChatService) Newer(ctx context.Context, userID, chatID, after uuid.UUID
 		return ChatHistoryPage{}, errs.Wrap("s.dressed", err)
 	}
 
-	return ChatHistoryPage{Messages: messages, Me: me}, nil
+	seen, err := s.seenUpTo(ctx, chatID, userID)
+	if err != nil {
+		return ChatHistoryPage{}, errs.Wrap("s.seenUpTo", err)
+	}
+
+	return ChatHistoryPage{Messages: messages, Me: me, SeenUpTo: seen}, nil
 }
 
 // Around returns the part of the chat around message id, which userID is
@@ -998,6 +1012,9 @@ func (s *ChatService) Around(ctx context.Context, userID, chatID, id uuid.UUID, 
 	}
 
 	page := ChatHistoryPage{Me: me}
+	if page.SeenUpTo, err = s.seenUpTo(ctx, chatID, userID); err != nil {
+		return ChatHistoryPage{}, errs.Wrap("s.seenUpTo", err)
+	}
 
 	if len(older) > half {
 		older = older[:half]
@@ -1058,7 +1075,37 @@ func (s *ChatService) MarkRead(ctx context.Context, userID, chatID, upTo uuid.UU
 
 	s.events.Publish(ctx, userID, Event{Chat: &ChatEvent{Read: &ChatRead{ChatID: chatID, UpTo: upTo}}})
 
+	members, err := s.memberRepo.Active(ctx, chatID)
+	if err != nil {
+		return errs.Wrap("s.memberRepo.Active", err)
+	}
+
+	// The others learn that their messages up to it are seen.
+	for _, member := range members {
+		if member.UserID != userID {
+			s.events.Publish(ctx, member.UserID, Event{Chat: &ChatEvent{Seen: &ChatRead{ChatID: chatID, UpTo: upTo}}})
+		}
+	}
+
 	return nil
+}
+
+// seenUpTo is the newest message of the chat someone besides userID in it
+// has read.
+func (s *ChatService) seenUpTo(ctx context.Context, chatID, userID uuid.UUID) (uuid.UUID, error) {
+	members, err := s.memberRepo.Active(ctx, chatID)
+	if err != nil {
+		return uuid.Nil, errs.Wrap("s.memberRepo.Active", err)
+	}
+
+	var upTo uuid.UUID
+	for _, member := range members {
+		if member.UserID != userID && bytes.Compare(member.ReadUpTo[:], upTo[:]) > 0 {
+			upTo = member.ReadUpTo
+		}
+	}
+
+	return upTo, nil
 }
 
 // Readers are who of the people in the chat has read a message of it,

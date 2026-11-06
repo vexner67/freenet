@@ -487,6 +487,9 @@ message SubscribeResponse {
     Typing typing = 8;
     // A sealed signal of a call with peer_id.
     CallSignal call_signal = 9;
+    // Someone else in a chat of the caller has read it up to up_to_id:
+    // the caller's messages up to it are seen.
+    ChatRead chat_seen = 10;
   }
 }
 
@@ -625,6 +628,10 @@ message ChatMessage {
   repeated Reaction reactions = 21;
   // The songs the message attaches.
   repeated string audio_ids = 22;
+  // The caller's own message someone else in the chat has read, as
+  // openvk's grey of an unread one going; not told in events (chat_seen
+  // tells it).
+  bool seen = 23;
 }
 
 message CreateChatRequest {

@@ -193,6 +193,13 @@ func TestEventCodec_Chat(t *testing.T) {
 		t.Fatalf("read round trip = %v, %+v, %v", key, e.Chat, err)
 	}
 
+	if data, err = codec.Encode(bob, service.Event{Chat: &service.ChatEvent{Seen: read}}); err != nil {
+		t.Fatal(err)
+	}
+	if key, e, err = codec.Decode(data); err != nil || key != bob || e.Chat == nil || e.Chat.Seen == nil || e.Chat.Read != nil || *e.Chat.Seen != *read {
+		t.Fatalf("seen round trip = %v %+v %v", key, e.Chat, err)
+	}
+
 	// What comes from Redis is checked as any input is.
 	for name, bad := range map[string]string{
 		"an unknown action": `{"user_id":"` + ann.String() + `","chat":{"message":{"action":"explode"}}}`,

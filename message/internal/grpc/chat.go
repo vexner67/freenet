@@ -329,7 +329,10 @@ func (h *MessageHandler) ListChatMessages(ctx context.Context, req *messagev1.Li
 	}
 
 	for _, m := range page.Messages {
-		resp.Messages = append(resp.Messages, shownChatMessage(m, page.Me, req.GetTextLimit()))
+		pm := shownChatMessage(m, page.Me, req.GetTextLimit())
+		id := m.ID()
+		pm.Seen = m.SenderID() == userID && bytes.Compare(id[:], page.SeenUpTo[:]) <= 0
+		resp.Messages = append(resp.Messages, pm)
 	}
 
 	return resp, nil
@@ -671,6 +674,11 @@ func shownChatMessage(m *message.ChatMessage, me message.Member, textLimit int32
 // toProtoChatEvent is what happened in a chat as the stream tells it.
 func toProtoChatEvent(e *service.ChatEvent) *messagev1.SubscribeResponse {
 	switch {
+	case e.Seen != nil:
+		return &messagev1.SubscribeResponse{Event: &messagev1.SubscribeResponse_ChatSeen{ChatSeen: &messagev1.ChatRead{
+			ChatId: e.Seen.ChatID.String(),
+			UpToId: e.Seen.UpTo.String(),
+		}}}
 	case e.Read != nil:
 		return &messagev1.SubscribeResponse{Event: &messagev1.SubscribeResponse_ChatRead{ChatRead: &messagev1.ChatRead{
 			ChatId: e.Read.ChatID.String(),

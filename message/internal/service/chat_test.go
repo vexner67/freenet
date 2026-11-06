@@ -175,6 +175,8 @@ func TestChatService_Messages(t *testing.T) {
 	t.Run("reading", func(t *testing.T) {
 		annEvents, cancel := f.events.Subscribe(ann)
 		defer cancel()
+		catEvents, cancelCat := f.events.Subscribe(cat)
+		defer cancelCat()
 
 		if err := f.svc.MarkRead(ctx, ann, chatID, uuid.Must(uuid.NewV7())); !errors.Is(err, message.ErrNotFound) {
 			t.Fatalf("read up to a message made up: %v", err)
@@ -185,6 +187,17 @@ func TestChatService_Messages(t *testing.T) {
 		}
 		if e := <-annEvents; e.Chat == nil || e.Chat.Read == nil || e.Chat.Read.UpTo != second.ID() || e.Chat.Read.ChatID != chatID {
 			t.Fatalf("the reader's other pages heard %+v", e)
+		}
+		// Cat wrote the message ann read: cat's pages learn it is seen.
+		if e := <-catEvents; e.Chat == nil || e.Chat.Seen == nil || e.Chat.Seen.UpTo != second.ID() || e.Chat.Seen.ChatID != chatID {
+			t.Fatalf("the writer heard %+v", e)
+		}
+		if page, err := f.svc.History(ctx, cat, chatID, uuid.Nil, 20); err != nil || page.SeenUpTo != second.ID() {
+			t.Fatalf("cat's history seen up to %v, %v", page.SeenUpTo, err)
+		}
+		// Ann's own reading is not someone else's.
+		if page, err := f.svc.Newer(ctx, ann, chatID, uuid.Nil, 20); err != nil || page.SeenUpTo == second.ID() {
+			t.Fatalf("ann's history seen up to %v, %v", page.SeenUpTo, err)
 		}
 
 		// The mark never moves back.

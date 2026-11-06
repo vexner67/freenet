@@ -279,6 +279,23 @@ func TestSubscribe_Chat(t *testing.T) {
 	if _, err = s.client.MarkChatRead(s.as(t, cat), &messagev1.MarkChatReadRequest{ChatId: chatID, UpToId: m.GetId()}); err != nil {
 		t.Fatal(err)
 	}
+	// Cat has read bob's message: bob sees it is seen, cat's own list
+	// says nothing of it. (Once cat is removed, cat's reading no longer counts,
+	// as in "Кто прочитал".)
+	for _, who := range []struct {
+		id   uuid.UUID
+		seen bool
+	}{{bob, true}, {cat, false}} {
+		history, err := s.client.ListChatMessages(s.as(t, who.id), &messagev1.ListChatMessagesRequest{ChatId: chatID, Around: m.GetId(), Limit: 2})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, h := range history.GetMessages() {
+			if h.GetId() == m.GetId() && h.GetSeen() != who.seen {
+				t.Fatalf("%v sees bob's message seen: %v", who.id, h.GetSeen())
+			}
+		}
+	}
 	if _, err = s.client.RemoveChatMember(s.as(t, ann), &messagev1.RemoveChatMemberRequest{ChatId: chatID, UserId: cat.String()}); err != nil {
 		t.Fatal(err)
 	}
@@ -299,6 +316,7 @@ func TestSubscribe_Chat(t *testing.T) {
 			t.Fatalf("read mark heard: %v, removal heard: %v", read, kicked)
 		}
 	}
+
 }
 
 func TestChat_ForwardShareAndSearch(t *testing.T) {

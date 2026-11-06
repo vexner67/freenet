@@ -45,11 +45,12 @@ type typingJSON struct {
 	ChatID uuid.UUID `json:"chat_id"`
 }
 
-// chatJSON is what happened in a chat: one of the three.
+// chatJSON is what happened in a chat: one of the four.
 type chatJSON struct {
 	Message *chatMessageJSON `json:"message,omitempty"`
 	Edited  *chatMessageJSON `json:"edited,omitempty"`
 	Read    *chatReadJSON    `json:"read,omitempty"`
+	Seen    *chatReadJSON    `json:"seen,omitempty"`
 }
 
 type chatReadJSON struct {
@@ -260,6 +261,9 @@ func toChatJSON(e *service.ChatEvent) *chatJSON {
 	if e.Read != nil {
 		cj.Read = &chatReadJSON{ChatID: e.Read.ChatID, UpTo: e.Read.UpTo}
 	}
+	if e.Seen != nil {
+		cj.Seen = &chatReadJSON{ChatID: e.Seen.ChatID, UpTo: e.Seen.UpTo}
+	}
 
 	return cj
 }
@@ -277,6 +281,8 @@ func (c *chatJSON) event() (*service.ChatEvent, error) {
 		return &service.ChatEvent{Edited: m}, errs.Wrap("c.Edited.message", err)
 	case c.Read != nil:
 		return &service.ChatEvent{Read: &service.ChatRead{ChatID: c.Read.ChatID, UpTo: c.Read.UpTo}}, nil
+	case c.Seen != nil:
+		return &service.ChatEvent{Seen: &service.ChatRead{ChatID: c.Seen.ChatID, UpTo: c.Seen.UpTo}}, nil
 	default:
 		return nil, errNoEvent
 	}
