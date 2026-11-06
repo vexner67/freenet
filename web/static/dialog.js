@@ -787,7 +787,7 @@ if (!me) {
 
     document.title = saved() ? tr('Избранное') : tr('{0} | Сообщения', fullName(peer));
     $('title').replaceChildren(
-      el('a', { href: '/im', textContent: tr('Мои Сообщения') }),
+      el('a', { href: '/im', textContent: tr('Сообщения') }),
       ' » ',
       ...(saved()
         ? [tr('Избранное')]

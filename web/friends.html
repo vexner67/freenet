@@ -30,8 +30,8 @@
       <div class="page-title"><span id="title">Загрузка…</span><a class="aside" id="back"></a></div>
       <div class="page-body">
         <div class="tabs" id="tabs" hidden>
-          <a id="tab-all">Все друзья</a>
-          <a id="tab-online">Друзья онлайн</a>
+          <a id="tab-all">Все</a>
+          <a id="tab-online">Онлайн</a>
           <a id="tab-requests" hidden>Заявки</a>
           <a id="tab-common" hidden>Общие друзья</a>
         </div>
@@ -44,10 +44,12 @@
         </div>
         <div class="error" id="error" hidden></div>
         <div class="notice" id="notice" hidden></div>
-        <p class="hint" id="summary" hidden></p>
-        <div id="people"></div>
-        <p class="hint" id="empty" hidden></p>
-        <a class="wall-more" id="more" hidden>Показать ещё</a>
+        <div class="summary-bar" id="summary" hidden></div>
+        <div class="list-view" id="list">
+          <div id="people"></div>
+          <div class="nothing" id="empty" hidden>Тут ничего нет... Пока...</div>
+          <a class="wall-more" id="more" hidden>Показать ещё</a>
+        </div>
       </div>
     </div>
   </div>

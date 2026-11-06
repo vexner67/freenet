@@ -788,6 +788,14 @@ a.like:hover svg { opacity: .7; }
 .person img { display: block; width: 50px; height: 50px; }
 .person-status { margin-top: 3px; color: var(--text-555); }
 
+/* openvk's list (@listView.latte): the blue summary bar over a grey
+   container_gray, each person a white box in a grey frame; an empty list
+   says so in a white frame (components/error.latte). */
+.list-view { margin: 0 -10px -10px; padding: 12px; background: var(--back-f6f6f6); }
+.list-view .person { margin-bottom: 6px; padding: 4px; background: var(--back-fff); border: 1px solid var(--line-dedede); }
+.list-view .wall-more { margin-top: 6px; }
+.nothing { padding: 60px 10px; background: var(--back-fff); border: 1px solid var(--line-dedede); color: var(--text-707070); text-align: center; }
+
 /* openvk's .tabs: a dark line under them, the open tab dark over it. */
 .tabs {
   display: flex;
@@ -966,6 +974,18 @@ body.prime-bg.prime-bg-trip::before {
 .dialog-message img { width: 32px; height: 32px; object-fit: cover; border-radius: 3px; }
 .dialog-text { max-height: 40px; overflow: hidden; color: var(--text-404036); overflow-wrap: anywhere; }
 .dialog-text.dialog-typing { color: var(--text-626262); }
+/* The grey bar of openvk's messenger over the dialogs: the search, then
+   "Избранное" and "Новая беседа"; and the one under them, with how many
+   there are and "Только непрочитанные". */
+.im-top { display: flex; gap: 6px; align-items: center; margin: -10px -10px 0; padding: 8px 10px; background: var(--back-f7f7f7); }
+.im-search { flex: 1; }
+.im-search input { width: 100%; box-sizing: border-box; padding: 3px 4px; border: 1px solid var(--line-bbb); font: inherit; }
+.im-top ~ .error, .im-top ~ .hint { margin: 8px 0; }
+.dialogs.unread-only .dialog:not(.unread) { display: none; }
+.dialogs ~ .nothing { margin-top: 10px; }
+.im-bottom { display: flex; justify-content: space-between; margin: 0 -10px -10px; padding: 8px 10px; background: var(--back-f7f7f7); color: var(--text-626262); }
+.nothing:not([hidden]) ~ .im-bottom, .wall-more:not([hidden]) ~ .im-bottom { margin-top: 10px; border-top: 1px solid var(--line-d6d6d6); }
+.im-bottom a { cursor: pointer; }
 
 .messenger { margin: -10px; border-bottom: 1px solid var(--line-bbb); }
 /* The messages take the height of the screen, less the header, the title
@@ -973,23 +993,11 @@ body.prime-bg.prime-bg-trip::before {
 .messenger-messages { height: max(420px, calc(100vh - 290px)); padding: 10px 20px; overflow-y: auto; }
 /* "Печатает...": a line of its own, empty when nobody types, so the form does not jump. */
 .messenger-typing { height: 14px; padding: 0 20px 3px 67px; color: var(--text-626262); line-height: 14px; }
-.im-message { display: flex; gap: 10px; margin-bottom: 3px; padding: 8px 10px; border-radius: 3px; touch-action: manipulation; }
+/* A message, as openvk's: the photo, the name in bold, the words under it
+   and the time at the right; unread ones grey. */
+.im-message { display: flex; gap: 10px; margin-bottom: 1px; padding: 6px 8px; touch-action: manipulation; }
 .im-message.unread { background: var(--back-ededed); }
-/* An unread message also gets a blue stripe at its left edge. */
-.im-message { position: relative; }
-.im-message.unread::after {
-  content: "";
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 0;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--back-3e3e3e);
-  z-index: 1;
-  pointer-events: none;
-}
-.im-message img { display: block; width: 37px; height: 37px; object-fit: cover; border-radius: 3px; }
+.im-message img { display: block; width: 34px; height: 34px; object-fit: cover; }
 .im-message-content { flex: 1; min-width: 0; line-height: 1.45; }
 .im-message-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .im-message-text.collapsed { max-height: 115px; overflow: hidden; }
@@ -1696,7 +1704,7 @@ label.chat-person { cursor: pointer; }
 .post-text.collapsed { max-height: 115px; overflow: hidden; }
 .post-text-long { border-bottom: 1px solid var(--line-ececec); }
 .post-text-long .post-text.collapsed { border-bottom: 0; }
-.post-text-more { display: block; padding: 0 4px 4px; cursor: pointer; }
+.post-text-more { display: block; padding: 6px 4px 4px; cursor: pointer; }
 
 /* "Содержит NSFW-контент": the content of a post marked as adult is
    blurred until clicked, as on openvk; whoever chose "Показывать" in the
@@ -3175,10 +3183,6 @@ img.name-prime.name-prime {
 .pet-fight-story { margin: 0 4px 6px; padding: 4px 6px; background: var(--back-f9f6e7); border: 1px solid var(--line-d7cf9e); }
 
 /* The pet on the profile, under the clubs. */
-.pet-side { padding: 2px 0; }
-.pet-side-row { display: flex; gap: 8px; align-items: center; padding: 2px 0; }
-.pet-side .pet-picture { padding: 2px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
-.pet-side-text { min-width: 0; line-height: 1.5; }
 /* "Титулы": each award a glossy badge with its name, as the forums of the
    2000s hung them under the avatar; one given more than once says ×N. */
 .title-side { padding: 2px 0; }
@@ -3486,85 +3490,6 @@ body.birthday.prime-bg.prime-bg-trip::before { content: none; }
 .graffiti-fill { display: inline-flex; gap: 4px; align-items: center; cursor: pointer; }
 .graffiti-fill::before { content: ""; width: 16px; height: 16px; background: url("/static/icons/fill.svg") no-repeat center; }
 .graffiti-fill.active { font-weight: bold; }
-
-/* Messages in the look of the messengers of the 2000s: a shiny title bar,
-   framed photos, glossy bubbles and a toolbar under them. */
-body:has(.dialogs) .page-title, body:has(.messenger) .page-title {
-  background: linear-gradient(var(--back-636363), var(--back-3e3e3e));
-  color: var(--text-fff);
-  text-shadow: 0 1px 0 rgb(0 0 0 / 40%);
-}
-body:has(.dialogs) .page-title a, body:has(.messenger) .page-title a,
-body:has(.dialogs) .page-title .aside, body:has(.messenger) .page-title .aside { color: var(--text-fff); }
-body:has(.dialogs) .page-title > span:first-child::before, body:has(.messenger) .page-title > span:first-child::before {
-  content: "";
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  margin-right: 6px;
-  vertical-align: -3px;
-  background: url("/static/icons/im-mail.svg") no-repeat center;
-}
-body:has(.messenger) .page-title > span:first-child::before { background-image: url("/static/icons/im-chat.svg"); }
-#call-link::before, #safety-link::before, #search-link::before, #about::before {
-  content: "";
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  margin-right: 3px;
-  vertical-align: -3px;
-  background: no-repeat center / 14px;
-}
-#call-link::before { background-image: url("/static/icons/im-phone.svg"); }
-#safety-link::before { background-image: url("/static/icons/im-lock.svg"); }
-#search-link::before { background-image: url("/static/icons/chat-search.svg"); }
-#about::before { background-image: url("/static/icons/info.svg"); }
-.dialog-avatar, .im-message > a:first-child img, .messenger-avatar {
-  padding: 1px;
-  border: 1px solid var(--line-bbb);
-  border-radius: 2px;
-  background: var(--back-fff);
-  box-sizing: border-box;
-}
-.dialog { background: linear-gradient(var(--back-fff), var(--back-f7f7f7)); }
-.dialog-message.unread { position: relative; padding-right: 24px; border: 1px solid var(--line-9aa3ae); background: var(--back-eef1f4); }
-.dialog-message.unread::after {
-  content: "";
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 16px;
-  height: 16px;
-  background: url("/static/icons/im-mail.svg") no-repeat center;
-}
-.messenger-messages { background: linear-gradient(var(--back-f2f5f8), var(--back-fff) 160px); }
-.im-message {
-  border: 1px solid var(--line-dae1e8);
-  border-radius: 6px;
-  background: linear-gradient(var(--back-fff), var(--back-f7f7f7));
-  box-shadow: 0 1px 1px rgb(0 0 0 / 8%);
-}
-.im-message.out { border-color: var(--line-bbb); background: linear-gradient(var(--back-fff), var(--back-dae1e8)); }
-.im-message.unread { border-color: var(--line-9aa3ae); background: var(--back-eef1f4); }
-.im-message.selected, .im-message.selected.unread { background: var(--back-dae1e8); }
-.im-message.found, .im-message.found.unread { background: var(--back-f6f0d2); }
-.messenger-input { background: linear-gradient(var(--back-f7f7f7), var(--back-e6e6e6)); }
-.messenger-buttons #send {
-  padding-left: 26px;
-  border-color: var(--line-333);
-  background: url("/static/icons/im-send.svg") no-repeat 6px center, linear-gradient(var(--back-636363), var(--back-3e3e3e));
-}
-.messenger-buttons .attach-toggle::before, .messenger-buttons #stickers-link::before, .messenger-buttons #smileys-link::before {
-  content: "";
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  margin-right: 4px;
-  vertical-align: -4px;
-  background: url("/static/icons/attach.svg") no-repeat center;
-}
-.messenger-buttons #stickers-link::before { background-image: url("/static/icons/sticker.svg"); }
-.messenger-buttons #smileys-link::before { background-image: url("/static/icons/smiley.svg"); }
 
 /* The windows of the pages of pets, as the sites of the 2000s drew them:
    a dark title, the gradient of the header, with an icon, a white body, a hard shadow. */

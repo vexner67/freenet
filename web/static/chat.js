@@ -745,7 +745,7 @@ function show(now) {
   const links = active ? [] : chatActions(active).map(link);
 
   document.title = tr('{0} | Сообщения', chatTitle(chat));
-  $('title').replaceChildren(el('a', { href: '/im', textContent: tr('Мои Сообщения') }), ' » ', chatTitle(chat));
+  $('title').replaceChildren(el('a', { href: '/im', textContent: tr('Сообщения') }), ' » ', chatTitle(chat));
   $('members').textContent = chatMembers(chat.memberCount);
   $('chat-avatar').src = chatPhotoURL(chat, 'small');
   showPinned();

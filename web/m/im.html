@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Мои Сообщения | Freenet</title>
+  <title>Сообщения | Freenet</title>
   <link rel="icon" href="/static/favicon.png" sizes="32x32">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
@@ -27,23 +27,31 @@
     </div>
 
     <div class="page">
-      <div class="page-title"><span>Мои Сообщения</span><a class="aside" id="new-chat">Новая беседа</a></div>
+      <div class="page-title"><span>Сообщения</span></div>
       <div class="page-body">
         <div class="tabs">
-          <a class="active" id="tab-all" href="/im">Все сообщения</a>
-          <a id="tab-search" hidden>Поиск</a>
+          <a class="active" id="tab-all" href="/im">Диалоги</a>
+          <a id="tab-search" hidden>Результаты поиска</a>
+          <a class="tabs-side" href="/friends">К списку друзей</a>
         </div>
-        <form class="search-form" id="search" method="get" action="/im">
-          <input type="hidden" name="peer" id="search-peer" disabled>
-          <input type="hidden" name="chat" id="search-chat" disabled>
-          <input type="text" name="q" id="search-text" maxlength="100" autocomplete="off" placeholder="Поиск по сообщениям" aria-label="Поиск по сообщениям">
-          <button class="button" type="submit">Поиск</button>
-        </form>
+        <div class="im-top">
+          <form class="im-search" id="search" method="get" action="/im">
+            <input type="hidden" name="peer" id="search-peer" disabled>
+            <input type="hidden" name="chat" id="search-chat" disabled>
+            <input type="search" name="q" id="search-text" maxlength="100" autocomplete="off" placeholder="Найти сообщения..." aria-label="Найти сообщения">
+          </form>
+          <a class="button" id="saved">Избранное</a>
+          <a class="button" id="new-chat">Новая беседа</a>
+        </div>
         <div class="error" id="error" hidden></div>
         <p class="hint" id="search-hint" hidden>Найдены сообщения бесед. Сообщения диалогов зашифрованы, и сервер их не читает: искать в диалоге можно со страницы диалога — «Поиск по переписке».</p>
         <div class="dialogs" id="dialogs"></div>
-        <p class="hint center" id="empty" hidden>Никто Вам не писал, пока что.</p>
+        <div class="nothing" id="empty" hidden>Тут ничего нет... Пока...</div>
         <a class="wall-more" id="more" hidden>Показать ещё</a>
+        <div class="im-bottom" id="bottom" hidden>
+          <span id="count"></span>
+          <a id="only-unread">Только непрочитанные</a>
+        </div>
       </div>
     </div>
   </div>

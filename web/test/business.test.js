@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
 import {
-  firmActionName, firmEventAbout, firmEventName, firmKindName, firmKinds, firmLine, firmPictures, goodName, goodPictures, goods, hundredths, hundredthsOf,
+  firmActionName, firmEventAbout, firmEventName, firmKindName, firmKinds, firmPictures, goodName, goodPictures, goods, hundredths, hundredthsOf,
   improvements, priceChange, sharePercent, voteOperation,
 } from '../static/labels.js';
 
@@ -35,7 +35,6 @@ test('the enterprises and the goods of the site are those of the user service, w
 });
 
 test('the profile says of an enterprise what it is, its level and the part of the page', () => {
-  assert.equal(firmLine({ kind: 'mill', level: 3, shares: 40, total: 100 }), 'Мельница, 3 ур., 40 % акций');
   assert.equal(sharePercent(1, 8), '12,5 %');
   assert.equal(sharePercent(100, 100), '100 %');
   assert.equal(sharePercent(0, 0), '0 %');

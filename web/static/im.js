@@ -1,4 +1,7 @@
-// "Мои Сообщения", as on openvk: dialogs, the most recently written first.
+// "Сообщения", as openvk's messenger: the tab "Диалоги", a grey bar with
+// the search, "Избранное" and "Новая беседа", the dialogs, the most
+// recently written first, and a grey bar under them with how many there
+// are and "Только непрочитанные", which leaves the unread ones alone.
 // A row shows who, when, and the last message, grey while unread. New
 // messages bring their dialog to the top live (events.js); a deleted last
 // message makes the list load afresh, since only the server knows what is
@@ -16,8 +19,8 @@ import { api, currentUser, started } from './api.js';
 import { openMessages } from './e2ee.js';
 import { onEvent } from './events.js';
 import { openNewChat, chatPath } from './chats.js';
-import { chatPreview, chatTitle, formatPostDate, foundParts, foundSnippet, foundText, messagePreview, snippet } from './labels.js';
-import { $, avatarURL, chatPhotoURL, el, fullName, renderChrome, showError, hideError, smileyNodes, verifiedMark } from './layout.js';
+import { chatPreview, chatTitle, formatPostDate, plural, foundParts, foundSnippet, foundText, messagePreview, snippet } from './labels.js';
+import { $, avatarURL, chatPhotoURL, el, fullName, renderChrome, savedPath, showError, hideError, smileyNodes, verifiedMark } from './layout.js';
 import { typingLine } from './typing.js';
 import { tr } from './i18n.js';
 
@@ -64,7 +67,7 @@ function textNode(d, preview) {
 function chatNode(d) {
   const m = d.chat.lastMessage;
 
-  return el('a', { className: 'dialog', href: chatPath(d.chat.id) },
+  return el('a', { className: d.unread ? 'dialog unread' : 'dialog', href: chatPath(d.chat.id) },
     el('img', { className: 'dialog-avatar', src: chatPhotoURL(d.chat, 'small'), alt: '' }),
     el('div', { className: 'dialog-info' },
       el('b', { className: 'dialog-name', textContent: chatTitle(d.chat) }),
@@ -85,7 +88,7 @@ function dialogNode(d) {
   // or mine the peer has not read yet.
   const unread = m.out ? !m.read : d.unread;
 
-  return el('a', { className: 'dialog', href: '/im/' + encodeURIComponent(d.peer.nickname) },
+  return el('a', { className: unread ? 'dialog unread' : 'dialog', href: '/im/' + encodeURIComponent(d.peer.nickname) },
     el('img', { className: 'dialog-avatar', src: avatarURL(d.peer, 'small'), alt: '' }),
     el('div', { className: 'dialog-info' },
       el('b', { className: 'dialog-name' }, ...(d.peer.id === me.id ? [tr('Избранное')] : [fullName(d.peer), verifiedMark(d.peer)])),
@@ -112,7 +115,7 @@ function show(d, atTop) {
 
   old?.node.remove();
   if (atTop) $('dialogs').prepend(node);
-  $('empty').hidden = true;
+  countShown();
 
   return node;
 }
@@ -221,10 +224,31 @@ async function loadMore() {
     }));
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
-    $('empty').hidden = $('dialogs').children.length > 0;
+    countShown();
   } catch (e) {
     showError($('error'), e);
   }
+}
+
+// countShown says under the list how many dialogs there are, once all are
+// loaded, and says "Тут ничего нет" over an empty list, or one with no
+// unread dialog while only those are shown.
+function countShown() {
+  const rows = $('dialogs').children.length;
+  const unreadOnly = $('dialogs').classList.contains('unread-only');
+  const seen = unreadOnly ? $('dialogs').querySelectorAll('.dialog.unread').length : rows;
+
+  $('bottom').hidden = rows === 0;
+  $('count').textContent = cursor ? '' : `${rows} ${plural(rows, ['переписка', 'переписки', 'переписок'])}`;
+  $('empty').hidden = seen > 0;
+}
+
+// The bar under the list shows the unread dialogs alone, or all again.
+function toggleUnread() {
+  const only = $('dialogs').classList.toggle('unread-only');
+
+  $('only-unread').textContent = only ? tr('Все переписки') : tr('Только непрочитанные');
+  countShown();
 }
 
 const params = new URLSearchParams(location.search);
@@ -339,6 +363,9 @@ if (!me) {
   renderChrome(me);
   showSearch();
   $('new-chat').addEventListener('click', () => openNewChat(me));
+  $('saved').hidden = !me.nickname;
+  if (me.nickname) $('saved').href = savedPath(me);
+  $('only-unread').addEventListener('click', toggleUnread);
 
   if (query) {
     $('more').addEventListener('click', searchMore);

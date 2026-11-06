@@ -833,8 +833,6 @@ export const api = {
   guests: (cursor = '', limit = 0) => authorized('GET', page('/api/v1/me/guests', cursor, limit)),
   top: (board) => optional('GET', '/api/v1/top?board=' + encodeURIComponent(board)),
   pets: () => authorized('GET', '/api/v1/me/pets'),
-  userPets: (nickname) => optional('GET', `/api/v1/users/${encodeURIComponent(nickname)}/pets`),
-  userFirms: (nickname) => optional('GET', `/api/v1/users/${encodeURIComponent(nickname)}/firms`),
   userTitles: (nickname) => optional('GET', `/api/v1/users/${encodeURIComponent(nickname)}/titles`),
   grantTitle: (nickname, name, icon) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/titles`, { name, icon }),
   revokeTitle: (id) => authorized('DELETE', `/api/v1/titles/${encodeURIComponent(id)}`),

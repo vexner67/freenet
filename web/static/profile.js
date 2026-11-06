@@ -1,5 +1,5 @@
 import { api, currentUser, started } from './api.js';
-import { isBirthdayToday, relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, accusativeName, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, petKindName, audioArtist, audioTitle, audiosCount, plural, MAX_RATING, firmLine, firmPictures, titleGroups, titleIconPath } from './labels.js';
+import { isBirthdayToday, relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, accusativeName, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, audioArtist, audioTitle, audiosCount, plural, MAX_RATING, titleGroups, titleIconPath } from './labels.js';
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
@@ -11,7 +11,6 @@ import { initWall } from './wall.js';
 import { showBackdrop } from './backdrop.js';
 import { personCell } from './people.js';
 import { openStories } from './stories.js';
-import { petImage } from './pet.js';
 import { addButton, audioNode, play } from './audio.js';
 import { tr } from './i18n.js';
 
@@ -384,36 +383,6 @@ async function showGifts(user, me, isOwner) {
   }
 }
 
-// showPet is the block "Питомцы" of a page with pets: the picture, name
-// and rating of each; another's pets are challenged from it, one's own
-// are cared for.
-async function showPet(user, me, isOwner) {
-  let pets;
-  try {
-    ({ pets } = await api.userPets(user.nickname));
-  } catch {
-    return; // Not to be had: the page works without it.
-  }
-  if (!pets.length) return;
-
-  $('pet-level').textContent = `${pets.length} ${plural(pets.length, ['питомец', 'питомца', 'питомцев'])}`;
-  if (isOwner) {
-    $('pet-link').textContent = tr('Ухаживать');
-    $('pet-link').href = '/pet';
-  } else if (me) {
-    $('pet-link').textContent = tr('Вызвать на бой');
-    $('pet-link').href = '/pet?fight=' + encodeURIComponent(user.nickname);
-  }
-  $('pet-side').replaceChildren(...pets.map((pet) => el('div', { className: 'pet-side-row' },
-    el('a', { className: 'pet-side-picture', href: isOwner ? '/pet?pet=' + pet.id : '/top?board=pets' }, petImage(pet.kind, pets.length > 1 ? 48 : 64, pet.outfit)),
-    el('div', { className: 'pet-side-text' },
-      el('b', { textContent: pet.name }),
-      el('div', { className: 'hint', textContent: `${petKindName(pet.kind)}, ${tr('{0} ур.', pet.level)}` }),
-      el('div', { textContent: tr('Рейтинг: {0}', pet.rating) }),
-    ))));
-  $('pet-block').hidden = false;
-}
-
 // showTitles is the block "Титулы": the awards the administrators gave the
 // page, each with its picture and, given more than once, how many times.
 async function showTitles(user) {
@@ -433,32 +402,6 @@ async function showTitles(user) {
       g.count > 1 ? el('span', { className: 'title-times', textContent: ' ×' + g.count }) : null,
     ))));
   $('titles-block').hidden = false;
-}
-
-// showFirms is the block "Бизнес" of a page holding shares: each
-// enterprise with its picture, as big as the pets', what it is, its
-// level, the part of the page and whether the page directs it.
-async function showFirms(user, isOwner) {
-  let firms;
-  try {
-    ({ firms } = await api.userFirms(user.nickname));
-  } catch {
-    return; // Not to be had: the page works without it.
-  }
-  if (!firms.length) return;
-
-  $('business-count').textContent = `${firms.length} ${plural(firms.length, ['предприятие', 'предприятия', 'предприятий'])}`;
-  $('business-link').hidden = !isOwner;
-  const size = firms.length > 1 ? 48 : 64;
-  $('business-side').replaceChildren(...firms.map((f) => el('div', { className: 'pet-side-row' },
-    el('a', { className: 'pet-side-picture', href: `/business?firm=${encodeURIComponent(f.id)}` },
-      el('img', { className: 'pet-picture', src: firmPictures[f.kind], alt: '', width: size, height: size })),
-    el('div', { className: 'pet-side-text' },
-      el('a', { href: `/business?firm=${encodeURIComponent(f.id)}` }, el('b', { textContent: f.name })),
-      el('div', { className: 'hint', textContent: firmLine(f) }),
-      f.director ? el('div', { className: 'hint', textContent: tr('директор') }) : null,
-    ))));
-  $('business-block').hidden = false;
 }
 
 // showStories offers "Смотреть историю" under the photo while the user
@@ -657,8 +600,6 @@ try {
     if (profile.access.photos) showAlbums(profile);
     if (profile.access.clubs) showClubs(profile);
     showGifts(profile, me, isOwner);
-    showPet(profile, me, isOwner);
-    showFirms(profile, isOwner);
     showTitles(profile);
     showMusic(profile, me, isOwner);
     if (me) showStories(profile);

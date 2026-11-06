@@ -1002,7 +1002,7 @@ function shortened(s, n) {
 }
 
 // The unread counters of the menu, as on openvk: dialogs with unread
-// messages next to "Мои Сообщения", notifications next to "Мои Ответы".
+// messages next to "Сообщения", notifications next to "Мои Ответы".
 const counters = {
   messages: { id: 'messages-count', count: () => api.unreadDialogs() },
   notifications: { id: 'notifications-count', count: () => api.unreadNotifications() },

@@ -1911,12 +1911,6 @@ export const goodPictures = {
   electronics: '/static/goods/electronics.svg',
 };
 
-// firmLine is what the profile says of an enterprise under its name:
-// "Мельница, 3 ур., 40 % акций".
-export function firmLine(f) {
-  return `${firmKindName(f.kind)}, ${tr('{0} ур.', f.level)}, ${tr('{0} акций', sharePercent(f.shares, f.total))}`;
-}
-
 // sharePercent is the part of shares as percents: "40 %", "12,5 %".
 export function sharePercent(shares, total) {
   const percent = total > 0 ? Math.round((shares * 1000) / total) / 10 : 0;

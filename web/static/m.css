@@ -2013,10 +2013,6 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .pet-reveal-text input { width: 100%; }
 
 /* The pet on the profile, under the clubs. */
-.pet-side { padding: 2px 0; }
-.pet-side-row { display: flex; gap: 8px; align-items: center; padding: 2px 0; }
-.pet-side .pet-picture { padding: 2px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
-.pet-side-text { min-width: 0; line-height: 1.5; }
 /* "Титулы": each award a glossy badge with its name, as the forums of the
    2000s hung them under the avatar; one given more than once says ×N. */
 .title-side { padding: 2px 0; }
@@ -2655,6 +2651,12 @@ body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
 .person img { display: block; width: 50px; height: 50px; object-fit: cover; }
 .person-status { margin-top: 2px; color: var(--text-555); font-size: 13px; }
 .person-online { margin-left: 6px; color: var(--text-626262); font-size: 12px; }
+
+/* openvk's list: the grey container with people in white frames. */
+.list-view { margin: 0 -10px -10px; padding: 10px; background: var(--back-f6f6f6); }
+.list-view .person { margin: 0 0 6px; padding: 8px; background: var(--back-fff); border: 1px solid var(--line-dedede); }
+.list-view .wall-more { margin-top: 6px; }
+.nothing { padding: 48px 10px; background: var(--back-fff); border: 1px solid var(--line-dedede); color: var(--text-707070); text-align: center; }
 .avatar-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
 .avatar-item img { width: 36px; height: 36px; object-fit: cover; }
 
@@ -2691,6 +2693,18 @@ body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
 .dialog-message img { width: 22px; height: 22px; object-fit: cover; border-radius: 3px; }
 .dialog-text { display: -webkit-box; min-width: 0; overflow: hidden; color: var(--text-404036); font-size: 13px; overflow-wrap: anywhere; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .dialog-text.dialog-typing, .dialog-forwarded { color: var(--text-626262); }
+/* The grey bars of openvk's messenger over and under the dialogs. */
+.im-top { display: flex; flex-wrap: wrap; gap: 6px; margin: -10px -10px 0; padding: 8px 10px; background: var(--back-f7f7f7); }
+.im-search { flex: 1 1 100%; }
+.im-search input { width: 100%; box-sizing: border-box; }
+.im-top .button { flex: 1; text-align: center; }
+.im-top ~ .error, .im-top ~ .hint { margin: 8px 0; }
+.dialogs.unread-only .dialog:not(.unread) { display: none; }
+.dialogs ~ .nothing { margin-top: 10px; }
+.im-bottom { display: flex; justify-content: space-between; gap: 8px; margin: 0 -10px -10px; padding: 10px; background: var(--back-f7f7f7); color: var(--text-626262); }
+.nothing:not([hidden]) ~ .im-bottom, .wall-more:not([hidden]) ~ .im-bottom { margin-top: 10px; border-top: 1px solid var(--line-d6d6d6); }
+/* A dialog fills the screen: the tabs over it make way too. */
+.tabs:has(#tab-dialog) { display: none; }
 
 /* A dialog fills the screen: the messages scroll between its plate and
    the form, which stays at the bottom; the bar of sections and the foot
@@ -2768,9 +2782,9 @@ body:has(#peer-avatar) .im-message .name-checkmark,
 .messenger-avatar { display: none; }
 .messenger-box { display: flex; flex: 1; flex-wrap: wrap; align-items: flex-end; gap: 6px; min-width: 0; }
 .messenger-box > * { flex: 1 1 100%; min-width: 0; }
-.messenger-box textarea { order: 2; flex: 1 1 0; height: 40px; min-height: 40px; max-height: 140px; border-radius: 18px; padding: 9px 12px; line-height: 20px; }
+.messenger-box textarea { order: 2; flex: 1 1 0; height: 40px; min-height: 40px; max-height: 140px; border-radius: 2px; padding: 9px 12px; line-height: 20px; }
 .messenger-buttons { display: contents; }
-.messenger-buttons #send { order: 3; flex: none; min-height: 40px; border-radius: 18px; }
+.messenger-buttons #send { order: 3; flex: none; min-height: 40px; }
 .messenger-buttons .attach-menu, .messenger-buttons #stickers-link, .messenger-buttons #smileys-link { order: 1; flex: none; }
 .messenger-buttons .attach-toggle,
 .messenger-buttons #stickers-link,
@@ -3370,77 +3384,6 @@ body.birthday.prime-bg.prime-bg-trip::before { content: none; }
 .graffiti-fill { display: inline-flex; gap: 4px; align-items: center; cursor: pointer; }
 .graffiti-fill::before { content: ""; width: 16px; height: 16px; background: url("/static/icons/fill.svg") no-repeat center; }
 .graffiti-fill.active { font-weight: bold; }
-
-/* Messages in the look of the messengers of the 2000s: a shiny title bar,
-   framed photos, glossy bubbles and a toolbar under them. */
-body:has(.dialogs) .page-title, body:has(.messenger) .page-title {
-  background: linear-gradient(var(--back-636363), var(--back-3e3e3e));
-  color: var(--text-fff);
-  text-shadow: 0 1px 0 rgb(0 0 0 / 40%);
-}
-body:has(.dialogs) .page-title a, body:has(.messenger) .page-title a,
-body:has(.dialogs) .page-title .aside, body:has(.messenger) .page-title .aside { color: var(--text-fff); }
-body:has(.dialogs) .page-title > span:first-child::before, body:has(.messenger) .page-title > span:first-child::before {
-  content: "";
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  margin-right: 6px;
-  vertical-align: -3px;
-  background: url("/static/icons/im-mail.svg") no-repeat center;
-}
-body:has(.messenger) .page-title > span:first-child::before { background-image: url("/static/icons/im-chat.svg"); }
-#call-link::before, #safety-link::before, #search-link::before, #about::before {
-  content: "";
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  margin-right: 3px;
-  vertical-align: -3px;
-  background: no-repeat center / 14px;
-}
-#call-link::before { background-image: url("/static/icons/im-phone.svg"); }
-#safety-link::before { background-image: url("/static/icons/im-lock.svg"); }
-#search-link::before { background-image: url("/static/icons/chat-search.svg"); }
-#about::before { background-image: url("/static/icons/info.svg"); }
-.dialog-avatar, .im-message > a:first-child img, .messenger-avatar {
-  padding: 1px;
-  border: 1px solid var(--line-bbb);
-  border-radius: 2px;
-  background: var(--back-fff);
-  box-sizing: border-box;
-}
-.dialog { background: linear-gradient(var(--back-fff), var(--back-f7f7f7)); }
-.dialog-message.unread { position: relative; padding-right: 24px; border: 1px solid var(--line-9aa3ae); background: var(--back-eef1f4); }
-.dialog-message.unread::after {
-  content: "";
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 16px;
-  height: 16px;
-  background: url("/static/icons/im-mail.svg") no-repeat center;
-}
-.messenger-messages { background: linear-gradient(var(--back-f2f5f8), var(--back-fff) 160px); }
-.im-message {
-  border: 1px solid var(--line-dae1e8);
-  border-radius: 6px;
-  background: linear-gradient(var(--back-fff), var(--back-f7f7f7));
-  box-shadow: 0 1px 1px rgb(0 0 0 / 8%);
-}
-.im-message.out { border-color: var(--line-bbb); background: linear-gradient(var(--back-fff), var(--back-dae1e8)); }
-.im-message.unread { border-color: var(--line-9aa3ae); background: var(--back-eef1f4); }
-.im-message.selected, .im-message.selected.unread { background: var(--back-dae1e8); }
-.im-message.found, .im-message.found.unread { background: var(--back-f6f0d2); }
-.messenger-input { background: linear-gradient(var(--back-f7f7f7), var(--back-e6e6e6)); }
-.messenger-buttons #send {
-  padding-left: 26px;
-  border-color: var(--line-333);
-  background: url("/static/icons/im-send.svg") no-repeat 6px center, linear-gradient(var(--back-636363), var(--back-3e3e3e));
-}
-/* Four things in a row leave the field little room on a phone: "Отправить"
-   is its arrow alone, round, as the send buttons of messengers. */
-.messenger-buttons #send { width: 40px; padding: 0; border-radius: 50%; color: transparent; font-size: 0; text-shadow: none; background-position: center, 0 0; }
 
 /* The windows of the pages of pets, as the sites of the 2000s drew them:
    a dark title, the gradient of the header, with an icon, a white body, a hard shadow. */

@@ -34,9 +34,8 @@ function href(kind) {
 }
 
 function showSummary() {
-  // An empty list says so once, under the tabs.
   $('summary').textContent = friendsSummary(section, total, own);
-  $('summary').hidden = total === 0;
+  $('summary').hidden = false;
 }
 
 // done takes the row away and says what happened, as openvk's messages.
@@ -139,13 +138,13 @@ try {
   const name = fullName(owner);
   own = Boolean(me) && me.id === owner.id;
 
-  $('title').textContent = own ? tr('Мои Друзья') : tr('Друзья: {0}', name);
+  $('title').textContent = own ? tr('Друзья') : tr('Друзья: {0}', name);
   document.title = $('title').textContent + ' | Freenet';
   $('back').textContent = tr('← к странице');
   $('back').href = '/' + owner.nickname;
 
-  tab('tab-all', 'all', tr('Все друзья'));
-  tab('tab-online', 'online', tr('Друзья онлайн'));
+  tab('tab-all', 'all', tr('Все'));
+  tab('tab-online', 'online', tr('Онлайн'));
   $('tab-requests').hidden = !own;
   tab('tab-requests', 'requests', '');
   requestsTab(owner.requestsCount);
@@ -163,14 +162,6 @@ try {
   // Another's requests are not to be seen: their friends instead.
   if (!own && requests.includes(section)) location.replace(href('all'));
 
-  $('empty').textContent = {
-    all: own ? tr('У Вас пока нет друзей.') : tr('Ни одного друга.'),
-    online: tr('Никого из друзей нет онлайн.'),
-    common: tr('Общих друзей нет.'),
-    requests: tr('Не найдено ни одной заявки...'),
-    followers: tr('Ни одного подписчика.'),
-    outgoing: tr('Не найдено ни одной заявки...'),
-  }[section];
   $('more').addEventListener('click', loadMore);
   await loadMore();
 } catch (e) {
