@@ -13,7 +13,9 @@
 // messages (typing.js). Anyone in the chat pins a message above it
 // ("Закрепить", as VK: one at a time) and sets its photo, in "О чате".
 // A message is answered ("Ответить") and reacted to, as on VK
-// (replies.js).
+// (replies.js). The window is openvk's messenger (messenger.js), and "О
+// чате" is its page in place of the messages: the photo and the name, the
+// actions in rows and who is in the chat.
 
 import { api, currentUser, started } from './api.js';
 import { initAttachments } from './attach.js';
@@ -23,13 +25,14 @@ import { initAudios } from './audio.js';
 import { openAddMembers } from './chats.js';
 import { isLive, onEvent } from './events.js';
 import { openAvatarDialog } from './avatar.js';
+import { initEmoji } from './emoji.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
-import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, photoChanges, primeNameClass, selectedCount, snippet } from './labels.js';
-import { $, avatarURL, chatPhotoURL, el, fullName, keepFocus, whenShown, mentionNodes, renderChrome, smileyNodes, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
+import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, messagesCount, messageTime, photoChanges, primeNameClass, selectedCount, snippet } from './labels.js';
+import { $, avatarURL, chatPhotoURL, el, fullName, isPhone, keepFocus, whenShown, mentionNodes, renderChrome, smileyNodes, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
+import { contactInfo, fitHeight, hoverIcons, peerTabs, regroup, selectOnClick, showContact } from './messenger.js';
 import { closePushes } from './push.js';
 import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
-import { initSmileys } from './smileys.js';
 import { initStickers } from './stickers.js';
 import { typingLine, watchTyping } from './typing.js';
 import { tr } from './i18n.js';
@@ -69,6 +72,8 @@ let replies = null;
 // What the message said when its edit began: saving names it, so an edit
 // made in another window meanwhile is not overwritten.
 let editingBase = '';
+// renameTab gives the tab of the chat its new name.
+let renameTab = null;
 // Message ID → node, so polling does not repeat a message.
 const shown = new Map();
 // The messages selected by a click, by ID.
@@ -81,69 +86,104 @@ const personLink = (user, text = fullName(user)) => el('a', { href: '/' + user.n
 function actionNode(m) {
   const [before, whom, after] = chatActionParts(m);
 
-  return el('div', { className: 'chat-action' },
+  const node = el('div', { className: 'chat-action' },
     personLink(m.author), ' ', before, whom && personLink(m.target, whom), after,
-    el('span', { className: 'chat-action-date', textContent: formatPostDate(m.createdAt) }),
+    el('span', { className: 'chat-action-date', title: formatPostDate(m.createdAt), textContent: messageTime(m.createdAt) }),
   );
+  node.message = m;
+  return node;
 }
 
 function messageNode(m) {
   if (m.action) return actionNode(m);
 
   const content = el('div', { className: 'im-message-body' });
-  const date = el('div', { className: 'im-message-date' });
+  const head = el('div', { className: 'im-message-head' });
+  // As on openvk: the mark of a selected message at the left, the photo,
+  // the icons and the time at the right, the name and the words.
   const node = el('div', { className: ['im-message', ...(m.author.id === me.id ? ['out'] : []), ...(m.unread ? ['unread'] : [])].join(' ') },
-    el('a', { href: '/' + m.author.nickname }, el('img', { src: avatarURL(m.author, 'small'), alt: '' })),
+    el('span', { className: 'im-check' }),
+    el('a', { className: 'im-message-avatar', href: '/' + m.author.nickname }, el('img', { src: avatarURL(m.author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
-      el('a', { className: ['post-name', primeNameClass(m.author)].filter(Boolean).join(' '), href: '/' + m.author.nickname, textContent: fullName(m.author) }),
+      head,
+      el('a', { className: ['im-message-sender', primeNameClass(m.author)].filter(Boolean).join(' '), href: '/' + m.author.nickname, textContent: fullName(m.author) }),
       verifiedMark(m.author), content),
-    date,
   );
 
   // render shows what the message is now: an edit changes what it says,
   // and taken back it says nothing.
   node.render = () => {
     const now = node.message;
-    const active = chat.state === 'active';
-    const mine = now.out && !now.deleted && active;
-    const pinned = chat.pinned?.id === now.id;
 
     node.classList.toggle('deleted', now.deleted);
     content.replaceChildren(...[
       !now.deleted && now.replyTo && quoteNode(now.replyTo, now.replyTo.text, goTo),
       now.deleted ? el('div', { className: 'im-message-text', textContent: tr('Сообщение удалено') }) : now.text && textOf(now.text, node),
+      now.editedAt && !now.deleted && el('div', { className: 'im-message-edited', title: tr('Отредактировано'), textContent: tr(' (ред.)') }),
       ...attachedNodes(now),
       forwardedNode(now, (carried) => textOf(carried, node)),
       ...(now.deleted ? [] : reactionNodes(now, me.id, node.picking, react)),
     ].filter(Boolean));
-    date.replaceChildren(...[
-      el('span', { className: 'im-message-time' }, ...[
-        formatPostDate(now.createdAt),
-        now.editedAt && !now.deleted && el('span', { className: 'post-edited', title: tr('Отредактировано'), textContent: tr(' (ред.)') }),
-      ].filter(Boolean)),
-      actionsNode([
-        replies && !now.deleted && active && [tr('Ответить'), () => answer(now)],
-        !now.deleted && active && [tr('Реакция'), () => {
-          node.picking = !node.picking;
-          node.render();
-          // Under the last message the picker would open out of sight.
-          if (node.picking) node.querySelector('.im-reaction-picker')?.scrollIntoView({ block: 'nearest' });
-        }],
-        mine && !now.sticker && now.editableUntil && new Date(now.editableUntil) > new Date() && [tr('Редактировать'), () => startEdit(now)],
-        !now.deleted && [tr('Переслать'), () => forward([now])],
-        !now.deleted && active && [pinned ? tr('Открепить') : tr('Закрепить'), () => change(() => (pinned ? api.unpinChatMessage(chatID) : api.pinChatMessage(chatID, now.id)))],
-        mine && now.deletableUntil && new Date(now.deletableUntil) > new Date() && [tr('Удалить'), () => confirmDelete(now)],
-      ]),
+    head.replaceChildren(...[
+      messageActions(now, node),
+      el('span', { className: 'im-message-time', title: formatPostDate(now.createdAt), textContent: messageTime(now.createdAt) }),
     ].filter(Boolean));
   };
   node.message = m;
   node.render();
 
-  // A double click on the message itself, not on a link or a photo in
-  // it, selects it; then a click selects more.
-  selectOnDoubleClick(node, () => toggleSelected(m.id), () => selected.size > 0);
+  // A click on the message itself, not on a link or a photo in it,
+  // selects it, as on openvk; a phone selects by a double tap and acts
+  // by "⋯".
+  if (isPhone()) selectOnDoubleClick(node, () => toggleSelected(m.id), () => selected.size > 0);
+  else selectOnClick(node, () => toggleSelected(m.id));
 
   return node;
+}
+
+// canEdit: my own message of a chat I am in, until editableUntil; a
+// sticker is not edited.
+function canEdit(m) {
+  return m.out && !m.deleted && chat.state === 'active' && !m.sticker && Boolean(m.editableUntil) && new Date(m.editableUntil) > new Date();
+}
+
+// canDelete: my own message of a chat I am in, until deletableUntil.
+function canDelete(m) {
+  return m.out && !m.deleted && chat.state === 'active' && Boolean(m.deletableUntil) && new Date(m.deletableUntil) > new Date();
+}
+
+// messageActions are what may be done with a message by itself: openvk's
+// icons on hover — answer, react, edit, pin — and on a phone its list
+// under "⋯"; deleting and forwarding go through the selection.
+function messageActions(m, node) {
+  const active = chat.state === 'active';
+  const pinned = chat.pinned?.id === m.id;
+  const canAnswer = replies && !m.deleted && active;
+  const pin = () => change(() => (pinned ? api.unpinChatMessage(chatID) : api.pinChatMessage(chatID, m.id)));
+  const pick = () => {
+    node.picking = !node.picking;
+    node.render();
+    // Under the last message the picker would open out of sight.
+    if (node.picking) node.querySelector('.im-reaction-picker')?.scrollIntoView({ block: 'nearest' });
+  };
+
+  if (!isPhone()) {
+    return hoverIcons([
+      canAnswer && [tr('Ответить'), () => answer(m), 'reply'],
+      !m.deleted && active && [tr('Реакция'), pick, 'react'],
+      canEdit(m) && [tr('Редактировать'), () => startEdit(m), 'edit'],
+      !m.deleted && active && [pinned ? tr('Открепить') : tr('Закрепить'), pin, pinned ? 'pin pinned' : 'pin'],
+    ]);
+  }
+
+  return actionsNode([
+    canAnswer && [tr('Ответить'), () => answer(m)],
+    !m.deleted && active && [tr('Реакция'), pick],
+    canEdit(m) && [tr('Редактировать'), () => startEdit(m)],
+    !m.deleted && [tr('Переслать'), () => forward([m])],
+    !m.deleted && active && [pinned ? tr('Открепить') : tr('Закрепить'), pin],
+    canDelete(m) && [tr('Удалить'), () => confirmDelete([m])],
+  ]);
 }
 
 // answer is "Ответить": the next message sent answers m.
@@ -207,11 +247,20 @@ function clearSelection() {
   showSelection();
 }
 
-// showSelection is the bar over the chat while messages are selected.
+// showSelection is openvk's bar over the chat while messages are
+// selected: how many (a click unselects them), "Удалить" while all are
+// mine and may still be taken back, "Ответить" to one and "Переслать".
 function showSelection() {
+  const messages = selectedMessages();
+
   $('selection').hidden = selected.size === 0;
   $('selection-count').textContent = selectedCount(selected.size);
+  $('selection-delete').hidden = !(messages.length > 0 && messages.every(canDelete));
+  $('selection-reply').hidden = !(replies && messages.length === 1 && !messages[0].deleted && chat.state === 'active');
+  $('selection-forward').hidden = !messages.some((m) => !m.deleted);
 }
+
+const selectedMessages = () => [...selected].map((id) => shown.get(id)?.message).filter(Boolean);
 
 // forward carries messages on ("Переслать"), into this chat or another
 // conversation.
@@ -231,16 +280,20 @@ function showSent(m) {
   toBottom();
 }
 
-function confirmDelete(m) {
-  const modal = openModal(tr('Удаление сообщения'));
+// confirmDelete takes my messages back from everyone in the chat.
+function confirmDelete(messages) {
+  const modal = openModal(messages.length > 1 ? tr('Удаление сообщений') : tr('Удаление сообщения'));
   const error = el('div', { className: 'error', hidden: true });
   const remove = button(tr('Удалить'), async () => {
     hideError(error);
     remove.disabled = true;
 
     try {
-      await api.deleteChatMessage(m.id);
-      edited(takenBack(m));
+      for (const m of messages) {
+        await api.deleteChatMessage(m.id);
+        edited(takenBack(m));
+      }
+      clearSelection();
       modal.close();
     } catch (e) {
       showError(error, e);
@@ -248,7 +301,9 @@ function confirmDelete(m) {
     }
   });
 
-  modal.body.append(error, tr('Сообщение будет удалено у всех участников беседы.'));
+  modal.body.append(error, messages.length > 1
+    ? tr('Вы действительно хотите удалить {0}?', messagesCount(messages.length))
+    : tr('Сообщение будет удалено у всех участников беседы.'));
   modal.actions.append(remove, button(tr('Отмена'), modal.close, { secondary: true }));
 }
 
@@ -329,6 +384,7 @@ function add(messages, atStart) {
   }
 
   $('empty').hidden = shown.size > 0;
+  regroup(list, (m) => (m.action ? null : m.author));
 
   return fresh;
 }
@@ -655,80 +711,63 @@ function openPhoto() {
   });
 }
 
-// chatActions are what may be done with the chat, each [text, the address
-// or what it does, the class of its mark].
-function chatActions(active) {
-  const search = [tr('Поиск по переписке'), '/im?chat=' + encodeURIComponent(chatID), 'chat-action-search'];
-  if (!active) return [search];
-
-  return [
-    search,
-    [tr('Добавить участников'), () => openAddMembers(me, chat, (changed) => { show(changed); catchUp(); }), 'chat-action-add'],
-    [tr('Обновить название'), openRename, 'chat-action-rename'],
-    [tr('Покинуть чат'), confirmLeave, 'chat-action-leave'],
-  ];
-}
-
-// aboutActions are the actions of the chat as rows with their marks, at
-// the top of "О чате"; a row closes the window first.
-function aboutActions(modal) {
-  return el('div', { className: 'chat-about-actions' }, ...chatActions(true).map(([text, run, mark]) => (typeof run === 'string'
-    ? el('a', { className: `chat-about-action ${mark}`, href: run, textContent: text })
-    : el('a', { className: `chat-about-action ${mark}`, textContent: text, onclick: () => { modal.close(); run(); } }))));
-}
-
-// openAbout is "О чате": its photo, who is in it, its creator marked;
-// anyone in it changes the photo, the creator removes the others here.
-function openAbout() {
-  const modal = openModal(tr('О чате'));
+// drawAbout is openvk's "О чате" in place of the messages: the photo, the
+// name and how many are in the chat, the actions in rows with openvk's
+// icons, and who is in it under "Участники (N)", its creator marked; the
+// creator removes the others here and may delete the chat. One who left
+// sees the search and the people only.
+function drawAbout() {
+  const active = chat.state === 'active';
   const error = el('div', { className: 'error', hidden: true });
-  const people = el('div', { className: 'chat-people tall' });
+  const info = contactInfo({
+    photo: chatPhotoURL(chat, 'large'),
+    name: chatTitle(chat),
+    status: chatMembers(chat.memberCount),
+    actions: [
+      active && [tr('Обновить фотографию'), openPhoto, 'photo'],
+      active && chat.photo && [tr('Удалить фотографию'), () => change(() => api.deleteChatPhoto(chatID)), 'photo'],
+      active && [tr('Обновить название'), openRename, 'rename'],
+      [tr('Поиск по переписке'), '/im?chat=' + encodeURIComponent(chatID), 'search'],
+      chat.ownerId === me.id && active && [tr('Удалить беседу'), confirmDeleteChat, 'clean'],
+    ],
+  });
+  const kick = (u) => el('a', {
+    className: 'chat-kick',
+    textContent: tr('Исключить из беседы'),
+    onclick: async () => {
+      hideError(error);
 
-  function fill() {
-    people.replaceChildren(...(chat.members ?? []).map((u) => el('div', { className: 'chat-person' },
-      el('img', { src: avatarURL(u, 'small'), alt: '' }),
-      el('span', {},
-        personLink(u),
-        u.id === chat.ownerId && el('span', { className: 'hint', textContent: tr(' — создатель') }),
-        chat.ownerId === me.id && u.id !== me.id && chat.state === 'active' && el('a', {
-          className: 'chat-kick',
-          textContent: tr('Исключить из беседы'),
-          onclick: async () => {
-            hideError(error);
+      try {
+        show(await api.removeChatMember(chatID, u.nickname));
+        await catchUp();
+      } catch (e) {
+        showError(error, e);
+      }
+    },
+  });
 
-            try {
-              show(await api.removeChatMember(chatID, u.nickname));
-              fill();
-              await catchUp();
-            } catch (e) {
-              showError(error, e);
-            }
-          },
-        }),
-      ),
-    )));
-  }
-
-  const photoLinks = el('div', { className: 'chat-about-links' },
-    el('a', { textContent: tr('Обновить фотографию'), onclick: () => { modal.close(); openPhoto(); } }),
-    chat.photo && ' | ',
-    chat.photo && el('a', { textContent: tr('Удалить фотографию'), onclick: () => { modal.close(); change(() => api.deleteChatPhoto(chatID)); } }),
-  );
-
-  fill();
-  modal.box.classList.add('chat-dialog');
-  modal.body.append(
+  $('contact').replaceChildren(el('div', { className: 'peer-side' },
+    info,
     error,
-    el('img', { className: 'chat-about-photo', src: chatPhotoURL(chat, 'large'), alt: '' }),
-    chat.state === 'active' ? photoLinks : '',
-    el('b', { textContent: chatTitle(chat) }),
-    el('div', { className: 'hint', textContent: chatMembers(chat.memberCount) }),
-    chat.state === 'active' ? aboutActions(modal) : '',
-    people,
-    chat.ownerId === me.id && chat.state === 'active' && el('p', { className: 'album-delete' },
-      tr('Вы также можете '), el('a', { textContent: tr('удалить беседу'), onclick: () => { modal.close(); confirmDeleteChat(); } }), '.'),
-  );
-  modal.actions.append(button(tr('Закрыть'), modal.close, { secondary: true }));
+    el('div', { className: 'peer-members-section' },
+      el('div', { className: 'chat-tab-2-header' },
+        el('b', { textContent: tr('Участники ({0})', chat.memberCount) }),
+        active && el('span', { className: 'chat-header-actions' },
+          el('a', { textContent: tr('Добавить участников'), onclick: () => openAddMembers(me, chat, (changed) => { show(changed); catchUp(); }) }),
+          el('a', { textContent: tr('Покинуть беседу'), onclick: confirmLeave }))),
+      el('div', { className: 'chat-members-list' }, ...(chat.members ?? []).map((u) => el('div', { className: 'chat-member-item' },
+        el('a', { href: '/' + u.nickname }, el('img', { src: avatarURL(u, 'small'), alt: '' })),
+        el('span', { className: 'chat-member-name' },
+          personLink(u),
+          u.id === chat.ownerId && el('span', { className: 'hint', textContent: tr(' — создатель') })),
+        chat.ownerId === me.id && u.id !== me.id && active && kick(u))))),
+  ));
+}
+
+// openAbout shows "О чате".
+function openAbout() {
+  drawAbout();
+  showContact(true);
 }
 
 // show draws what surrounds the messages: the name of the chat, how many
@@ -737,27 +776,22 @@ function show(now) {
   chat = now;
 
   const active = chat.state === 'active';
-  const link = ([text, run, mark]) => (typeof run === 'string'
-    ? el('a', { className: `chat-bar-action ${mark}`, href: run, textContent: text })
-    : el('a', { className: `chat-bar-action ${mark}`, textContent: text, onclick: run }));
-  // An active chat has them in "О чате", in rows; over the messages stays
-  // only the search of a chat one has left.
-  const links = active ? [] : chatActions(active).map(link);
 
   document.title = tr('{0} | Сообщения', chatTitle(chat));
   $('title').replaceChildren(el('a', { href: '/im', textContent: tr('Сообщения') }), ' » ', chatTitle(chat));
-  $('members').textContent = chatMembers(chat.memberCount);
   $('chat-avatar').src = chatPhotoURL(chat, 'small');
+  renameTab?.(chatTitle(chat));
   showPinned();
-  $('actions').replaceChildren(...links);
-  $('about').hidden = !active;
+  if (!$('contact').hidden) drawAbout();
 
   const canWrite = active && me.profileCompleted;
 
   $('form').hidden = !canWrite;
   $('blocked').hidden = canWrite;
   if (!active) {
-    const back = chat.state === 'left' ? [' ', link(tr('Вернуться в чат'), () => change(() => api.returnToChat(chatID)))] : [];
+    const back = chat.state === 'left'
+      ? [' ', el('a', { textContent: tr('Вернуться в чат'), onclick: () => change(() => api.returnToChat(chatID)) })]
+      : [];
 
     $('blocked').replaceChildren(chatStateText(chat.state), ...back);
     cancelEdit();
@@ -798,8 +832,8 @@ function setUpInput() {
   initGraffiti({ link: $('graffiti'), attachments });
   documents = initDocuments({ link: $('doc'), list: $('documents') });
   audios = initAudios({ link: $('audio'), list: $('audios') });
-  initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
-  initSmileys({ link: $('smileys-link'), panel: $('smileys'), input: $('text'), rival: { link: $('stickers-link'), panel: $('stickers') } });
+  const showStickers = initStickers({ panel: $('stickers'), error: $('error'), onPick: sendSticker, onSent: () => closeEmoji() });
+  const closeEmoji = initEmoji({ link: $('smileys-link'), picker: $('smileys'), input: $('text'), bar: $('recent-smiles'), stickersLink: $('stickers-link'), stickersPanel: $('stickers'), showStickers });
   $('form').addEventListener('submit', send);
   keepFocus($('send'));
   $('editing-cancel').addEventListener('click', cancelEdit);
@@ -832,12 +866,23 @@ if (!me) {
 
   try {
     const [found, page] = await Promise.all([wanted, firstPage()]);
-    const selectedMessages = () => [...selected].map((id) => shown.get(id)?.message).filter(Boolean);
 
+    renameTab = peerTabs({ key: 'chat:' + chatID, title: chatTitle(found), href: '/im/chat/' + encodeURIComponent(chatID) });
+    fitHeight();
     setUpInput();
+    $('selection-count').addEventListener('click', clearSelection);
     $('selection-forward').addEventListener('click', () => forward(selectedMessages()));
-    $('selection-cancel').addEventListener('click', clearSelection);
-    $('about').addEventListener('click', openAbout);
+    $('selection-delete').addEventListener('click', () => confirmDelete(selectedMessages()));
+    $('selection-reply').addEventListener('click', () => {
+      const [m] = selectedMessages();
+      clearSelection();
+      answer(m);
+    });
+    // As on openvk, the photo of the chat opens "О чате".
+    $('chat-avatar').addEventListener('click', openAbout);
+    $('contact-link').addEventListener('click', openAbout);
+    $('tab-contact').addEventListener('click', openAbout);
+    $('tab-dialog').addEventListener('click', () => showContact(false));
     $('messenger').hidden = false;
     show(found);
     // A chat is opened to write in it, as messengers do.

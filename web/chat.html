@@ -9,6 +9,7 @@
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <link rel="manifest" href="/static/manifest.json">
   <meta name="theme-color" content="#3e3e3e">
+  <link rel="stylesheet" href="/static/emoji/emoji.css">
   <link rel="stylesheet" href="/static/palette.css">
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/theme.js"></script>
@@ -26,26 +27,27 @@
       <nav class="menu" id="menu"></nav>
     </div>
 
-    <div class="page">
-      <div class="page-title"><span id="title">Сообщения</span><a class="aside" id="about" hidden>О чате</a></div>
+    <div class="page im-page">
+      <div class="page-title"><span id="title">Сообщения</span></div>
       <div class="page-body">
-        <div class="tabs">
+        <div class="tabs im-tabs">
           <a href="/im">Диалоги</a>
           <a class="active" id="tab-dialog">Просмотр диалогов</a>
-          <a class="tabs-side" href="/friends">К списку друзей</a>
+          <a id="tab-contact" hidden>Контакт</a>
+          <span class="tabs-side"><a id="contact-link">О чате</a> | <a href="/friends">К списку друзей</a></span>
         </div>
+        <div class="im-peer-tabs" id="peer-tabs" hidden></div>
         <div class="error" id="error" hidden></div>
-
         <div class="messenger" id="messenger" hidden>
-          <div class="im-selection chat-bar">
-            <b id="members"></b>
-            <span id="actions"></span>
+          <div class="im-actions" id="selection" hidden>
+            <span class="im-actions-tabs">
+              <a class="im-actions-tab im-actions-count" id="selection-count" title="Снять выделение"></a>
+              <a class="im-actions-tab" id="selection-delete">Удалить</a>
+              <a class="im-actions-tab" id="selection-reply">Ответить</a>
+              <a class="im-actions-tab" id="selection-forward">Переслать</a>
+            </span>
           </div>
           <div class="chat-pinned" id="pinned" hidden></div>
-          <div class="im-selection" id="selection" hidden>
-            <b id="selection-count"></b>
-            <span><a id="selection-forward">Переслать</a> | <a id="selection-cancel">Отмена</a></span>
-          </div>
           <div class="messenger-messages" id="messages">
             <p class="hint center" id="empty" hidden>Здесь пока нет сообщений.</p>
           </div>
@@ -53,14 +55,29 @@
           <form class="messenger-input" id="form">
             <img class="messenger-avatar" id="my-avatar" src="/static/avatar.svg" alt="">
             <div class="messenger-box">
-              <textarea id="text" maxlength="60000" placeholder="Сообщение..." aria-label="Сообщение" enterkeyhint="send"></textarea>
+              <div class="messenger-field">
+                <textarea id="text" maxlength="60000" placeholder="Введите сообщение" aria-label="Сообщение" enterkeyhint="send"></textarea>
+                <a class="emoji-entry" id="smileys-link" title="Смайлы"></a>
+                <div class="emoji-picker-wrap" id="smileys" hidden>
+                  <div class="emoji-picker-scroll"><div class="emoji-picker-groups"></div><div class="sticker-panel" id="stickers" hidden></div></div>
+                  <div class="emoji-picker-footer">
+                    <a class="emoji-main-tab active" title="Смайлы"><span class="emoji-icon"></span></a>
+                    <div class="emoji-tabs-nav"><div class="emoji-category-nav"></div></div>
+                    <span class="emoji-tabs-divider"></span>
+                    <a class="s-tab" id="stickers-link" title="Стикеры"><span class="sticker-tab-icon"></span></a>
+                  </div>
+                </div>
+              </div>
               <div class="reply-to" id="editing" hidden>Редактирование сообщения <a class="reply-cancel" id="editing-cancel" title="Не редактировать">×</a></div>
               <div class="reply-to" id="replying" hidden><span>Ответ на сообщение <b id="replying-name"></b>:</span><span id="replying-text"></span><a class="reply-cancel" id="replying-cancel" title="Не отвечать">×</a></div>
               <div class="attachments" id="photos" hidden></div>
               <div class="doc-attached" id="documents" hidden></div>
               <div class="audio-list audio-attached" id="audios" hidden></div>
               <div class="messenger-buttons">
-                <button class="button" type="submit" id="send">Отправить</button>
+                <span class="messenger-buttons-left">
+                  <button class="button" type="submit" id="send">Отправить</button>
+                  <span class="im-recent-smiles-bar" id="recent-smiles"></span>
+                </span>
                 <span class="attach-menu attach-up">
                   <a class="attach-toggle">Прикрепить</a>
                   <span class="attach-list">
@@ -70,17 +87,14 @@
                     <a class="attach-link attach-audio" id="audio">Аудиозапись</a>
                   </span>
                 </span>
-                <a class="attach-link" id="smileys-link">Смайлы</a>
-                <a class="attach-link" id="stickers-link">Стикеры</a>
               </div>
-              <div class="smiley-panel" id="smileys" hidden></div>
-              <div class="sticker-panel" id="stickers" hidden></div>
               <input type="file" id="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
             </div>
-            <img class="messenger-avatar" id="chat-avatar" src="/static/chat.svg" alt="">
+            <img class="messenger-avatar peer-toggler" id="chat-avatar" src="/static/chat.svg" alt="" title="О чате">
           </form>
           <p class="messenger-blocked" id="blocked" hidden></p>
         </div>
+        <div class="peer-window" id="contact" hidden></div>
       </div>
     </div>
   </div>

@@ -452,8 +452,6 @@ b, strong { font-weight: bold; }
 .search-count { margin-bottom: 4px; color: var(--text-626262); }
 .message-actions { display: block; margin: 3px 0 0; }
 .message-actions .attach-list { left: auto; right: 0; min-width: 100px; font-size: 11px; text-align: left; }
-.im-selection { display: flex; justify-content: space-between; padding: 6px 20px; background: var(--back-f7f7f7); border-bottom: 1px solid var(--line-d6d6d6); }
-.im-selection a { cursor: pointer; }
 .safety-code { margin: 8px 0; font: bold 16px monospace; letter-spacing: 1px; text-align: center; }
 /* "Двухфакторная аутентификация" (twofactor.js): the QR code at its own
    pixels in a white frame, the key under it, the code in a form row and
@@ -492,16 +490,12 @@ b, strong { font-weight: bold; }
 .forward-list div { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* Chats of several people: the line of what happened between the
    messages, and the people to tick in "Новая беседа". */
-.chat-bar a { cursor: pointer; }
 .chat-action { margin: 6px 0; color: var(--text-626262); text-align: center; }
 /* The message pinned above a chat, as VK's: a line under the bar. */
 .chat-pinned { display: flex; align-items: center; gap: 8px; padding: 6px 20px; background: var(--back-f7f7f7); border-bottom: 1px solid var(--line-d6d6d6); }
 .chat-pinned-body { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
 .chat-pinned-head { display: block; color: var(--text-626262); }
 .chat-pinned-remove { color: var(--text-626262); font-size: 14px; cursor: pointer; }
-.chat-about-photo { display: block; width: 100px; height: 100px; margin: 0 auto 4px; object-fit: cover; border-radius: 3px; }
-.chat-about-links { margin-bottom: 8px; text-align: center; }
-.chat-about-links a { cursor: pointer; }
 .chat-action-date { margin-left: 8px; font-size: 9px; }
 .modal-box.chat-dialog { width: 440px; }
 .chat-people { max-height: 200px; overflow-y: auto; border: 1px solid var(--line-dae1e8); }
@@ -669,7 +663,8 @@ label.chat-person { cursor: pointer; }
 .side-albums { padding: 5px 0; }
 .side-album { display: flex; gap: 6px; margin-bottom: 8px; overflow-wrap: anywhere; }
 .side-album img { width: 80px; max-height: 72px; object-fit: cover; }
-.about-title .edit-link { margin-left: 4px; color: var(--text-626262); font-weight: normal; }
+.about-title .edit-link, .status.empty.status-editable { margin-left: 4px; color: var(--text-c5c5c5); font-family: verdana, arial, sans-serif; font-weight: bold; }
+.status.empty.status-editable { margin-left: 0; }
 .about-text { white-space: pre-line; overflow-wrap: anywhere; }
 .extra-field { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line-ececec); }
 .extra-field textarea { width: 100%; height: 60px; }
@@ -906,19 +901,14 @@ a.poll-result-name { cursor: pointer; }
 .im-message img.sticker { width: 160px; height: 160px; object-fit: contain; object-position: left top; border-radius: 0; }
 .sticker-panel { margin: 8px 0 0; padding: 8px; max-height: 260px; overflow-y: auto; border: 1px solid var(--line-dedede); background: var(--back-fff); }
 .sticker-pack { margin: 0 0 8px; }
-.sticker-pack-title { display: block; margin: 0 0 4px; color: var(--text-45688e); }
 .sticker-grid { display: flex; flex-wrap: wrap; gap: 4px; }
 .sticker-grid .sticker { width: 72px; height: 72px; margin: 0; }
 .sticker-pick { display: block; padding: 2px; cursor: pointer; }
 .sticker-panel.sending .sticker-pick { opacity: .5; cursor: progress; }
 .sticker-pick:hover { background: var(--back-f6f6f6); }
-/* The smileys of the site (smileys.js): pictures in the words of a
-   message, a panel of them under the form. */
+/* The smileys of the site (SMILEYS in labels.js): the old codes of a
+   message as pictures; its emoji are openvk's (emoji/emoji.css). */
 .smiley, .im-message img.smiley, .dialog-message img.smiley { display: inline-block; width: 18px; height: 18px; margin: 0 1px; vertical-align: -4px; object-fit: contain; border-radius: 0; }
-.smiley-panel { display: flex; flex-wrap: wrap; gap: 2px; margin: 8px 0 0; padding: 6px; border: 1px solid var(--line-dedede); background: var(--back-fff); }
-.smiley-pick { display: block; padding: 3px; border-radius: 3px; cursor: pointer; }
-.smiley-pick img.smiley { display: block; width: 30px; height: 30px; margin: 0; }
-.smiley-pick:hover { background: var(--back-f6f6f6); }
 
 .sticker-store { display: block; padding: 4px 0 0; border-top: 1px solid var(--line-dedede); }
 /* The shop, as openvk's: a grey bar of sections with the search under the
@@ -2059,7 +2049,6 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .list-actions .profile-link { display: flex; align-items: center; min-height: 36px; }
 .message-actions { display: inline-block; margin: 0 0 0 14px; }
 .message-actions .attach-list { left: 0; right: auto; }
-.im-selection, .chat-pinned { flex-wrap: wrap; gap: 4px; padding: 6px 10px; }
 /* Photos and albums */
 .album-cover img { width: 100px; height: 80px; }
 .album-photo { width: 33.33%; }
@@ -2410,7 +2399,7 @@ label { cursor: pointer; }
 
 .post-content { margin-top: 8px; }
 .post-text { line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
-.post-text.collapsed { max-height: 190px; overflow: hidden; }
+.post-text.collapsed .post-text-body { display: block; max-height: 190px; overflow: hidden; }
 .post-text-more { display: inline-block; margin-top: 4px; padding: 4px 0; font-weight: bold; }
 .post-photos { display: grid; gap: 3px; margin: 8px 0 0; }
 .post-photos img { display: block; width: 100%; object-fit: cover; }
@@ -2639,7 +2628,6 @@ body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
 .about { padding: 8px 0 4px; }
 .about > div:not([hidden]) ~ div { margin-top: 12px; }
 .about-title { margin-bottom: 4px; color: var(--text-45688e); font-size: 13px; }
-.about-title .edit-link { margin-left: 4px; color: var(--text-626262); font-weight: normal; }
 .deleted-info { margin: 40px 0; color: var(--text-aaa); font-size: 15px; text-align: center; }
 .banned-info { margin: 20px 10px; line-height: 1.6; }
 .banned-body { padding: 10px 12px; }
@@ -2703,8 +2691,16 @@ body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
 .dialogs ~ .nothing { margin-top: 10px; }
 .im-bottom { display: flex; justify-content: space-between; gap: 8px; margin: 0 -10px -10px; padding: 10px; background: var(--back-f7f7f7); color: var(--text-626262); }
 .nothing:not([hidden]) ~ .im-bottom, .wall-more:not([hidden]) ~ .im-bottom { margin-top: 10px; border-top: 1px solid var(--line-d6d6d6); }
-/* A dialog fills the screen: the tabs over it make way too. */
-.tabs:has(#tab-dialog) { display: none; }
+/* A dialog fills the screen: of the tabs over it stay only "Контакт" ("О
+   чате") and the way back to the friends, and the way back to the
+   messages while "Контакт" is open; the tabs of the conversations make
+   way too. */
+.im-tabs { margin: 0; padding: 0 10px; }
+.im-tabs > a { display: none; }
+.im-tabs:has(#tab-contact:not([hidden])) #tab-dialog { display: block; }
+.im-tabs .tabs-side { color: var(--text-777); }
+.im-tabs .tabs-side a { display: inline-block; padding: 8px 0; }
+.im-peer-tabs { display: none; }
 
 /* A dialog fills the screen: the messages scroll between its plate and
    the form, which stays at the bottom; the bar of sections and the foot
@@ -2723,8 +2719,6 @@ body:has(.messenger:not([hidden])) .page-body { padding: 0; }
 .messenger-price, .messenger-blocked { margin: 0; padding: 10px 12px; background: var(--back-f9f9f9); border-top: 1px solid var(--line-d6d6d6); color: var(--text-555); text-align: center; }
 .messenger-blocked { padding: 16px 12px calc(16px + env(safe-area-inset-bottom)); font-weight: bold; }
 .messenger-blocked a { cursor: pointer; }
-.im-selection, .chat-pinned { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; padding: 8px 12px; background: var(--back-f7f7f7); border-bottom: 1px solid var(--line-d6d6d6); font-size: 13px; }
-.im-selection a { display: inline-block; padding: 4px 0; }
 
 /* A message is a bubble: those of the other at the left with their
    photo, yours at the right without it; the date and "Действия" under the
@@ -2744,20 +2738,26 @@ body:has(.messenger:not([hidden])) .page-body { padding: 0; }
   touch-action: manipulation;
 }
 .im-message.out { margin-left: auto; background: var(--back-dae1e8); border-color: var(--line-bbb); border-radius: 10px 10px 2px 10px; }
-.im-message > a:first-child img { display: block; width: 32px; height: 32px; object-fit: cover; border-radius: 50%; }
-.im-message.out > a:first-child { display: none; }
-.im-message-content { flex: 1; min-width: 0; line-height: 1.4; }
-.im-message .post-name { font-size: 13px; font-weight: bold; }
+.im-check { display: none; }
+.im-message-avatar img { display: block; width: 32px; height: 32px; object-fit: cover; border-radius: 50%; }
+.im-message.out .im-message-avatar, .im-message.same-author .im-message-avatar { display: none; }
+.im-message-content { display: flex; flex: 1; flex-direction: column; min-width: 0; line-height: 1.4; }
+.im-message-sender { font-size: 13px; font-weight: bold; }
 /* In a dialog of two the names say nothing: the side tells who wrote. */
-body:has(#peer-avatar) .im-message > a:first-child,
-body:has(#peer-avatar) .im-message .post-name,
+body:has(#peer-avatar) .im-message-avatar,
+body:has(#peer-avatar) .im-message-sender,
 body:has(#peer-avatar) .im-message .name-checkmark,
-.im-message.out .post-name, .im-message.out .im-message-content > .name-checkmark { display: none; }
+.im-message.same-author .im-message-sender, .im-message.same-author .im-message-content > .name-checkmark,
+.im-message.out .im-message-sender, .im-message.out .im-message-content > .name-checkmark { display: none; }
+.im-message-edited { color: var(--text-aaa); font-size: 11px; }
+/* The day over its messages, as on the computer. */
+.im-day { display: flex; justify-content: center; margin: 6px 0 10px; }
+.im-day b { color: var(--text-777); font-size: 12px; }
 .im-message-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .im-message-text.collapsed { max-height: 190px; overflow: hidden; }
-.im-message-date { display: flex; flex-direction: column; align-items: flex-end; width: 100%; color: var(--text-626262); font-size: 11px; }
-.im-message-date .message-actions { margin: 0; }
-.im-message-date .message-actions .attach-list { left: auto; right: 0; }
+.im-message-head { display: flex; flex-direction: row-reverse; align-items: center; justify-content: flex-start; gap: 8px; order: 9; color: var(--text-626262); font-size: 11px; }
+.im-message-head .message-actions { margin: 0; padding: 0; }
+.im-message-head .message-actions .attach-list { left: auto; right: 0; }
 .im-message-action { padding: 4px 0; color: var(--text-2b587a); font-size: 12px; }
 .im-message-action svg { display: block; width: 20px; height: 18px; fill: var(--text-2b587a); opacity: .5; }
 .im-message.unread::after { content: ""; position: absolute; top: 6px; bottom: 6px; left: -6px; width: 3px; border-radius: 2px; background: var(--back-3e3e3e); }
@@ -2770,9 +2770,9 @@ body:has(#peer-avatar) .im-message .name-checkmark,
 .chat-action { margin: 8px 0; color: var(--text-626262); font-size: 12px; text-align: center; }
 .chat-bar { cursor: default; }
 
-/* The form at the bottom: "Прикрепить" and the stickers as marks, the
-   field growing with its words, "Отправить"; the photos of the people
-   make way. */
+/* The form at the bottom: "Прикрепить" as a mark, the field growing with
+   its words with the face of the emoji in its corner, "Отправить"; the
+   photos of the people and the latest emoji make way. */
 .messenger-input {
   display: flex;
   padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
@@ -2782,13 +2782,14 @@ body:has(#peer-avatar) .im-message .name-checkmark,
 .messenger-avatar { display: none; }
 .messenger-box { display: flex; flex: 1; flex-wrap: wrap; align-items: flex-end; gap: 6px; min-width: 0; }
 .messenger-box > * { flex: 1 1 100%; min-width: 0; }
-.messenger-box textarea { order: 2; flex: 1 1 0; height: 40px; min-height: 40px; max-height: 140px; border-radius: 2px; padding: 9px 12px; line-height: 20px; }
-.messenger-buttons { display: contents; }
+.messenger-field { position: relative; order: 2; flex: 1 1 0; }
+.messenger-box textarea { display: block; box-sizing: border-box; width: 100%; height: 40px; min-height: 40px; max-height: 140px; border-radius: 2px; padding: 9px 36px 9px 12px; line-height: 20px; }
+.messenger-buttons, .messenger-buttons-left { display: contents; }
 .messenger-buttons #send { order: 3; flex: none; min-height: 40px; }
-.messenger-buttons .attach-menu, .messenger-buttons #stickers-link, .messenger-buttons #smileys-link { order: 1; flex: none; }
-.messenger-buttons .attach-toggle,
-.messenger-buttons #stickers-link,
-.messenger-buttons #smileys-link {
+.im-recent-smiles-bar { display: none; }
+.messenger-buttons .attach-menu { order: 1; flex: none; }
+.emoji-entry { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; background: url("/static/icons/smiley.svg") no-repeat center / 22px; opacity: .7; }
+.messenger-buttons .attach-toggle {
   display: block;
   width: 32px;
   height: 40px;
@@ -2798,36 +2799,63 @@ body:has(#peer-avatar) .im-message .name-checkmark,
   font-size: 0;
 }
 .messenger-buttons .attach-toggle { background-image: url("/static/icons/attach.svg"); }
-.messenger-buttons #stickers-link { background-image: url("/static/icons/sticker.svg"); }
-.messenger-buttons #smileys-link { background-image: url("/static/icons/smiley.svg"); }
 .messenger-box .reply-to { margin: 0; font-size: 13px; }
 .messenger-box #replying { display: flex; gap: 4px; white-space: nowrap; }
 .messenger-box #replying-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .messenger-box .attachments, .messenger-box .doc-attached { margin: 0; }
-.messenger-box .sticker-panel, .messenger-box .smiley-panel { order: 4; margin: 0; }
+/* The emoji picker of openvk over the form, the width of the screen. */
+.emoji-picker-wrap { position: fixed; right: 8px; bottom: calc(64px + env(safe-area-inset-bottom)); left: 8px; z-index: 50; display: flex; flex-direction: column; overflow: hidden; background: var(--back-fff); border-radius: 4px; box-shadow: 0 1px 4px var(--line-aaa), 0 0 0 1px var(--line-e0e0e0); user-select: none; }
+.emoji-picker-scroll { position: relative; box-sizing: border-box; height: 230px; padding: 6px 0 8px 8px; overflow-x: hidden; overflow-y: auto; }
+.emoji-picker-group { margin-bottom: 12px; }
+.emoji-picker-wrap .group-title { margin-bottom: 4px; padding: 4px 2px; border-bottom: 1px solid var(--line-eef1f4); color: var(--text-656565); font-size: 13px; }
+.emoji-picker-group-items { display: flex; flex-wrap: wrap; gap: 2px; }
+.emoji-picker-item { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 3px; }
+.emoji-picker-footer { display: flex; flex-shrink: 0; align-items: center; gap: 3px; box-sizing: border-box; height: 40px; padding: 0 4px; background: var(--back-f7f7f7); border-top: 1px solid var(--line-e8ebee); }
+.emoji-main-tab, .s-tab, .emoji-cat-btn { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 3px; }
+.emoji-main-tab.active, .s-tab.active, .emoji-cat-btn.active { background: var(--back-dae1e8); }
+.emoji-icon { width: 18px; height: 18px; background: url("/static/im/emoji_sprite.png"); }
+.sticker-tab-icon { width: 18px; height: 24px; background: url("/static/im/emoji_sprite.png") -18px 3px no-repeat; }
+.emoji-cat-btn-recent { width: 18px; height: 18px; background: url("/static/im/emoji_sprite.png") 18px 0; }
+.emoji-tabs-nav { display: flex; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.emoji-category-nav { display: flex; gap: 2px; }
+.emoji-tabs-divider { flex-shrink: 0; width: 1px; height: 18px; margin: 0 2px; background: var(--line-dedede); }
+.emoji-picker-wrap .sticker-panel { max-height: none; margin: 0; padding: 0 8px 0 0; overflow: visible; border: 0; background: none; }
 
-/* "О чате" of a phone: what may be done with the chat, rows with their
-   marks, as the actions of a post; leaving is red. */
-.chat-about-actions { margin: 4px -14px; border-top: 1px solid var(--line-ececec); }
-.chat-about-action {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 48px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--line-ececec);
-  color: var(--text-2b587a);
-  font-size: 15px;
-}
-.chat-about-action:active { background: var(--back-f0f0f0); }
-.chat-about-action::before { content: ""; flex-shrink: 0; width: 20px; height: 20px; background: no-repeat center / 20px; }
-.chat-action-search::before { background-image: url("/static/icons/chat-search.svg"); }
-.chat-action-add::before { background-image: url("/static/icons/chat-add.svg"); }
-.chat-action-rename::before { background-image: url("/static/icons/edit.svg"); }
-.chat-action-leave::before { background-image: url("/static/icons/chat-leave.svg"); }
-.chat-action-leave { color: var(--text-c33); }
-/* The bar under the plate tells only how many are in the chat. */
-.chat-bar #actions:empty { display: none; }
+/* "Выбрано N сообщений", "Удалить", "Ответить", "Переслать" over the
+   messages while some are selected. */
+.im-actions { display: flex; padding: 8px 10px; background: var(--back-f6f6f6); border-bottom: 1px solid var(--line-d6d6d6); }
+.im-actions-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.im-actions-tab { display: inline-block; padding: 7px 10px; background: var(--back-595959); color: var(--text-fff); font-size: 13px; }
+
+/* "Контакт" and "О чате": the photo and the name in a white box, the
+   actions in rows, then the people of a chat. */
+.peer-window { margin: 0 -10px; padding: 12px 10px 20px; background: var(--back-f7f7f7); }
+.peer-side { display: flex; flex-direction: column; gap: 12px; }
+.peer-info { display: flex; gap: 14px; padding: 12px; background: var(--back-fff); border: 1px solid var(--line-d6d6d6); border-radius: 4px; }
+.peer-avatar { flex-shrink: 0; width: 80px; height: 80px; }
+.peer-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 4px; }
+.peer-name { display: flex; flex: 1; flex-direction: column; gap: 6px; min-width: 0; }
+.peer-name-1 { display: flex; flex-direction: column; gap: 3px; }
+.peer-link { font-size: 15px; font-weight: bold; }
+.peer-status { color: var(--text-777); }
+.peer-actions-1 { display: flex; flex-direction: column; margin: 4px 0 0; padding: 0; list-style: none; }
+.peer-action { position: relative; padding-left: 20px; }
+.peer-action::before { content: ""; position: absolute; top: 8px; left: 0; width: 11px; height: 13px; background: url("/static/im/mono_iconset.gif") no-repeat; }
+.peer-action-search::before { background-position: 0 -265px; }
+.peer-action-call::before { background-position: 0 -307px; }
+.peer-action-safety::before { background-position: 0 -322px; }
+.peer-action-photo::before { background-position: 0 -31px; }
+.peer-action-rename::before { background-position: 0 -134px; }
+.peer-action-clean::before { background-position: 0 -334px; }
+.peer-action a { display: block; padding: 5px 0; }
+.peer-members-section { display: flex; flex-direction: column; padding-top: 6px; border-top: 1px solid var(--line-d6d6d6); }
+.chat-tab-2-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; font-size: 15px; }
+.chat-header-actions { display: flex; gap: 14px; font-size: 13px; }
+.chat-members-list { display: flex; flex-direction: column; background: var(--back-fff); border-top: 1px solid var(--line-d6d6d6); }
+.chat-member-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line-d6d6d6); font-weight: bold; }
+.chat-member-item img { display: block; width: 36px; height: 36px; object-fit: cover; border-radius: 50%; }
+.chat-member-name { flex: 1; min-width: 0; }
+.chat-member-item .chat-kick { display: inline; font-weight: normal; }
 
 /* Windows: a box over the dimmed page, from the top, scrolled when taller
    than the screen; its buttons on a grey band, the size of a finger. */
@@ -4125,3 +4153,22 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 
 .player.queue-below .player-queue { top: 100%; bottom: auto; margin-top: 2px; margin-bottom: 0; }
 .player.player-moved .player-queue { max-height: min(200px, var(--player-queue-room)); }
+
+/* "Отправить сообщение" of a page, openvk's window: the photo with "В
+   диалог" at the left, the name and the field at the right. */
+.send-box-centre { display: grid; grid-template-columns: auto 1fr; gap: 14px; }
+.send-box-left { display: flex; flex-direction: column; gap: 8px; font-size: 13px; text-align: center; }
+.send-box-left img { display: block; width: 72px; height: 72px; object-fit: cover; border-radius: 4px; }
+.send-box-right { min-width: 0; }
+.send-box-name { font-size: 15px; font-weight: bold; }
+.send-box-online { min-height: 16px; color: var(--text-777); font-size: 13px; }
+.send-box .messenger-field { position: relative; margin-top: 10px; }
+.send-box .send-box-text { display: block; box-sizing: border-box; width: 100%; height: 90px; padding: 8px 36px 8px 10px; }
+.send-box .emoji-picker-wrap { position: absolute; top: calc(100% + 4px); right: 0; bottom: auto; left: auto; width: 290px; }
+.send-box-attachments { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.send-box-attach { display: inline-block; width: 32px; height: 32px; background: no-repeat center / 20px; opacity: .7; }
+.send-box-attach.attach-photo { background-image: url("/static/icons/photo.svg"); }
+.send-box-attach.attach-audio { background-image: url("/static/icons/audio.svg"); }
+.send-box-attach.attach-document { background-image: url("/static/icons/document.svg"); }
+.send-box-attach::before { content: none; }
+.modal-box.send-box { overflow: visible; }

@@ -1,6 +1,6 @@
 // Stickers in dialogs and chats, as openvk's: a sticker is a message by
-// itself, shown as a picture, and "Стикеры" under the form opens the packs
-// the user has added, with the way to the "Магазин стикеров".
+// itself, shown as a picture, and the tab "Стикеры" of the emoji picker opens
+// the packs the user has added, with the way to the "Магазин стикеров".
 
 import { api } from './api.js';
 import { stickerImage, stickerPackName } from './labels.js';
@@ -22,14 +22,15 @@ export function stickerNode(sticker, { eager = false } = {}) {
   return image;
 }
 
-// initStickers makes link open the panel of stickers under the form, in
-// panel; a sticker clicked there is sent at once by onPick(sticker), which
-// tells whether it was. Until then the panel stays, dimmed and deaf to
+// initStickers draws the stickers the user has added in panel, the tab
+// "Стикеры" of the emoji picker (emoji.js); a sticker clicked there is
+// sent at once by onPick(sticker), which tells whether it was, and then
+// onSent closes the picker. Until then the panel stays, dimmed and deaf to
 // more clicks, so that a slow server does not look as if nothing
-// happened; sent, the panel closes. The packs are read and drawn soon
-// after the page, out of sight, so that the panel opens at once, with
-// its pictures loaded.
-export function initStickers({ link, panel, error, onPick }) {
+// happened. The packs are read and drawn soon after the page, out of
+// sight, so that the tab opens at once, with its pictures loaded. It
+// returns show, which the tab calls.
+export function initStickers({ panel, error, onPick, onSent }) {
   let loading = null;
   let sending = false;
 
@@ -39,7 +40,7 @@ export function initStickers({ link, panel, error, onPick }) {
     sending = true;
     panel.classList.add('sending');
     try {
-      if (await onPick(sticker)) panel.hidden = true;
+      if (await onPick(sticker)) onSent();
     } finally {
       sending = false;
       panel.classList.remove('sending');
@@ -53,7 +54,7 @@ export function initStickers({ link, panel, error, onPick }) {
 
       panel.replaceChildren(
         ...(added.length ? added.map((pack) => el('div', { className: 'sticker-pack' },
-          el('b', { className: 'sticker-pack-title', textContent: stickerPackName(pack) }),
+          el('div', { className: 'group-title' }, el('b', { textContent: stickerPackName(pack) })),
           el('div', { className: 'sticker-grid' }, ...pack.stickers.map((sticker) => el('a', {
             className: 'sticker-pick',
             title: tr('Отправить стикер'),
@@ -65,16 +66,12 @@ export function initStickers({ link, panel, error, onPick }) {
     } catch (e) {
       loading = null;
       if (!panel.hidden) showError(error, e);
-      panel.hidden = true;
     }
   };
   const show = () => {
     loading ??= load();
   };
 
-  link.addEventListener('click', () => {
-    panel.hidden = !panel.hidden;
-    if (!panel.hidden) show();
-  });
   setTimeout(show, 1500);
+  return show;
 }

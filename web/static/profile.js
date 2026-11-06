@@ -7,6 +7,7 @@ import { initBlacklistLink } from './blacklist.js';
 import { initIgnoreLink } from './feedsettings.js';
 import { initFollow } from './follow.js';
 import { initPhoto } from './photo.js';
+import { openSendBox } from './sendbox.js';
 import { initWall } from './wall.js';
 import { showBackdrop } from './backdrop.js';
 import { personCell } from './people.js';
@@ -136,6 +137,19 @@ function showBirthday(user, isOwner) {
   $('birthday-text').textContent = isOwner ? tr('Желаем счастья!') : tr('Поздравьте и отправьте подарок.');
   $('birthday-hat').hidden = false;
   $('birthday').hidden = false;
+}
+
+// showWrite is "Отправить сообщение" under the photo: as on openvk, it
+// opens a small window to write in; the address leads to the dialog for a
+// new tab.
+function showWrite(profile, me) {
+  $('write').href = '/im/' + encodeURIComponent(profile.nickname);
+  $('write').hidden = false;
+  $('write').addEventListener('click', (event) => {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+    event.preventDefault();
+    openSendBox(profile, me);
+  });
 }
 
 function render(user, isOwner, profile) {
@@ -588,8 +602,7 @@ try {
     initPhoto(profile, false);
     if (me) {
       initFollow(profile, me, false);
-      $('write').href = '/im/' + encodeURIComponent(profile.nickname);
-      $('write').hidden = false;
+      showWrite(profile, me);
     }
   } else {
     render(isOwner ? me : profile, isOwner, profile);
@@ -608,10 +621,7 @@ try {
     showCompleteness(isOwner ? me : profile, isOwner);
 
     // As on openvk: write to anyone but yourself.
-    if (me && !isOwner) {
-      $('write').href = '/im/' + encodeURIComponent(profile.nickname);
-      $('write').hidden = false;
-    }
+    if (me && !isOwner) showWrite(profile, me);
   }
 
   // openvk's orange label above the name with the words the

@@ -1,10 +1,10 @@
 // "Друзья" of openvk (/friends?u=<nickname>&section=…): "Все друзья",
-// "Друзья онлайн", on one's own page "Заявки" with "Входящие",
-// "Подписчики" and "Исходящие" under it, on another's "Общие друзья".
+// "Друзья онлайн", on one's own page "Заявки" with "Входящие" and
+// "Исходящие" under it, on another's "Общие друзья".
 // Friends follow each other; a follow not followed back is a request. On
 // one's own page each person has the links of openvk: a friend "Отправить
 // сообщение" and "Удалить из друзей", a request "Принять заявку" and
-// "Оставить в подписчиках", a follower "Принять заявку", an outgoing
+// "Оставить в подписчиках", an outgoing
 // request "Отменить заявку"; the row goes once done.
 
 import { api, currentUser, started } from './api.js';
@@ -15,9 +15,9 @@ import { separated } from './posts.js';
 import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
-const sections = ['all', 'online', 'common', 'requests', 'followers', 'outgoing'];
+const sections = ['all', 'online', 'common', 'requests', 'outgoing'];
 const section = sections.includes(params.get('section')) ? params.get('section') : 'all';
-const requests = ['requests', 'followers', 'outgoing'];
+const requests = ['requests', 'outgoing'];
 
 let nickname = params.get('u') ?? '';
 let cursor = '';
@@ -79,8 +79,6 @@ function actions(user, row) {
         act(tr('Принять заявку'), api.follow, tr('Теперь вы друзья.')),
         act(tr('Оставить в подписчиках'), api.declineFriend, tr('Вы оставили пользователя в подписчиках.')),
       ];
-    case 'followers':
-      return [act(tr('Принять заявку'), api.follow, tr('Теперь вы друзья.'))];
     case 'outgoing':
       return [act(tr('Отменить заявку'), api.unfollow, tr('Вы отменили заявку.'))];
     default:

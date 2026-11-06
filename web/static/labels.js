@@ -307,6 +307,29 @@ export function formatPostDate(iso, now = new Date()) {
   return date.getUTCFullYear() === today.getUTCFullYear() ? tr('{0} в {1}', day, time) : tr('{0} {1} в {2}', day, date.getUTCFullYear(), time);
 }
 
+// messageTime is the time of a message as openvk's messenger shows it
+// beside the message: "9:05", without seconds; its day is over the
+// messages of the day (messageDay).
+export function messageTime(iso) {
+  const date = onClock(new Date(iso));
+
+  return `${date.getUTCHours()}:${two(date.getUTCMinutes())}`;
+}
+
+// messageDay is the line over the messages of a day, as openvk's
+// messenger writes it: "6 ноября", or "6 ноября 2025" in another year.
+export function messageDay(iso, now = new Date()) {
+  const date = onClock(new Date(iso));
+  const day = dayOfMonth(date.getUTCDate(), date.getUTCMonth());
+
+  return date.getUTCFullYear() === onClock(now).getUTCFullYear() ? day : `${day} ${date.getUTCFullYear()}`;
+}
+
+// sameDay tells whether two times fall on one day where the reader is.
+export function sameDay(a, b) {
+  return onClock(new Date(a)).toISOString().slice(0, 10) === onClock(new Date(b)).toISOString().slice(0, 10);
+}
+
 // storyAge is how long ago a story was told, as VK writes it: "только
 // что", "5 минут назад", "3 часа назад" (a story lives a day).
 export function storyAge(iso, now = new Date()) {
@@ -714,10 +737,6 @@ function sameCase(word, stem) {
   return word === word.toUpperCase() ? stem.toUpperCase() : stem;
 }
 
-export function followersCount(n) {
-  return `${n} ${plural(n, ['подписчик', 'подписчика', 'подписчиков'])}`;
-}
-
 // friendsCount is openvk's "friends": "Ни одного друга", "3 друга".
 export function friendsCount(n) {
   return n === 0 ? tr('Ни одного друга') : `${n} ${plural(n, ['друг', 'друга', 'друзей'])}`;
@@ -728,7 +747,6 @@ export function friendsCount(n) {
 // "1 общий друг".
 export function friendsSummary(section, n, own) {
   if (section === 'requests' || section === 'outgoing') return requestsCount(n);
-  if (section === 'followers') return n === 0 ? tr('Ни одного подписчика') : followersCount(n);
   if (section === 'common') {
     return n === 0 ? tr('Ни одного общего друга') : `${n} ${plural(n, ['общий друг', 'общих друга', 'общих друзей'])}`;
   }
@@ -3419,6 +3437,44 @@ function apart(s, at, code) {
   const end = at + code.length;
   if (wordChar.test(code[0]) && at > 0 && wordChar.test(s[at - 1])) return false;
   return !(wordChar.test(code.at(-1)) && end < s.length && wordChar.test(s[end]));
+}
+
+// emojiPattern finds an emoji as openvk's messenger does (utils.js): a
+// whole sequence, with its joiners, modifiers and flags.
+const emojiPattern = (() => {
+  try {
+    return new RegExp('[\\p{RGI_Emoji}]', 'gv');
+  } catch {
+    return /(?:\p{Regional_Indicator}{2}|[\p{Extended_Pictographic}\p{Emoji_Presentation}](?:[\uFE00-\uFE0F]|\p{Emoji_Modifier})?(?:\u200D[\p{Extended_Pictographic}\p{Emoji_Presentation}](?:[\uFE00-\uFE0F]|\p{Emoji_Modifier})?)*)/gu;
+  }
+})();
+
+// emojiCode is the name of an emoji in the sprites of openvk: its UTF-16
+// units in hex, without the variation selector the sprites leave out.
+export function emojiCode(emoji) {
+  return [...emoji].flatMap((c) => {
+    const code = c.codePointAt(0);
+    if (code === 0xfe0f) return [];
+    return code > 0xffff ? [c.charCodeAt(0), c.charCodeAt(1)] : [code];
+  }).map((u) => u.toString(16).toUpperCase().padStart(4, '0')).join('');
+}
+
+// emojiParts cuts words into strings and the emoji between them, each
+// {emoji}, which the page draws from openvk's sprites.
+export function emojiParts(s) {
+  const parts = [];
+  let from = 0;
+
+  for (const match of s.matchAll(emojiPattern)) {
+    // A digit, "#" or "*" alone is no emoji.
+    if (/^[\d#*]$/.test(match[0])) continue;
+    if (match.index > from) parts.push(s.slice(from, match.index));
+    parts.push({ emoji: match[0] });
+    from = match.index + match[0].length;
+  }
+  if (from < s.length) parts.push(s.slice(from));
+
+  return parts;
 }
 
 // Reactions to messages, as on VK: one a person, of these; each is the

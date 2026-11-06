@@ -21,6 +21,7 @@ import { onEvent } from './events.js';
 import { openNewChat, chatPath } from './chats.js';
 import { chatPreview, chatTitle, formatPostDate, plural, foundParts, foundSnippet, foundText, messagePreview, snippet } from './labels.js';
 import { $, avatarURL, chatPhotoURL, el, fullName, renderChrome, savedPath, showError, hideError, smileyNodes, verifiedMark } from './layout.js';
+import { lastTab } from './messenger.js';
 import { typingLine } from './typing.js';
 import { tr } from './i18n.js';
 
@@ -342,6 +343,14 @@ function showSearch() {
     $('search-chat').disabled = false;
     $('search-chat').value = searchChat;
     $('search-text').placeholder = tr('Поиск по переписке');
+  }
+
+  // "Просмотр диалогов" leads back to the conversation viewed last, as on
+  // openvk.
+  const last = lastTab();
+  if (last) {
+    $('tab-last').href = last;
+    $('tab-last').hidden = false;
   }
 
   if (query || searchPeer || searchChat) {

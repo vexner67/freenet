@@ -6,7 +6,7 @@ import { MAX_PARKED, accountName, onAccountChange, park, parkedAccounts, signedI
 import { api, idle } from './api.js';
 import { ensureKey } from './e2ee.js';
 import { connectEvents, onEvent } from './events.js';
-import { activeSection, errorText, foundParts, handleOf, hashtagPath, isLongText, pushOfferText, pushStateTexts, safeURL, setTimezone, smileyParts, textParts, unreadCountText } from './labels.js';
+import { activeSection, emojiCode, emojiParts, errorText, foundParts, handleOf, hashtagPath, isLongText, pushOfferText, pushStateTexts, safeURL, setTimezone, smileyParts, textParts, unreadCountText } from './labels.js';
 import { acceptInvite } from './invite.js';
 import { nicknameLookup } from './nicknames.js';
 import { closePushes, endPushOffer, enablePush, forgetPushAccount, pushOffer, showUnread, syncPush } from './push.js';
@@ -199,10 +199,20 @@ export function fediverseAccountNode(account, { action, run, onError }) {
 }
 
 // foundNodes are text with what says query highlighted.
-// smileyNodes are words of a message with its smileys as pictures; found
-// is highlighted in the words between them.
+// smileyNodes are words of a message with its smileys as pictures and
+// its emoji drawn as openvk's (emojiNode); found is highlighted in the
+// words between them.
 export function smileyNodes(text, found = '') {
-  return smileyParts(text).flatMap((p) => (typeof p === 'string' ? foundNodes(p, found) : smileyImage(p.smiley, p.code)));
+  return smileyParts(text).flatMap((p) => (typeof p === 'string'
+    ? emojiParts(p).flatMap((e) => (typeof e === 'string' ? foundNodes(e, found) : emojiNode(e.emoji)))
+    : smileyImage(p.smiley, p.code)));
+}
+
+// emojiNode is an emoji as openvk draws it, from its sprites
+// (static/emoji/emoji.css); one they lack stays the character. Copied, it
+// is the character still.
+export function emojiNode(emoji) {
+  return el('span', { className: `emoji emoji_${emojiCode(emoji)}`, textContent: emoji });
 }
 
 // smileyImage is a smiley in words: copied, it is its code again.
@@ -226,13 +236,17 @@ export function textNode(text, { whole = false, rest = null, found = '', named =
   const node = el('div', { className: 'post-text' }, ...mentionNodes(text, found, named));
   if (whole || !(rest || isLongText(text))) return node;
 
+  // As openvk's "really_text": the words are cut inside the padding of
+  // the text, so no line is cut in half by it.
+  const body = el('span', { className: 'post-text-body' }, ...node.childNodes);
+  node.replaceChildren(body);
   node.classList.add('collapsed');
 
   const more = el('a', { className: 'post-text-more', textContent: tr('Показать больше') });
   more.addEventListener('click', async () => {
     if (rest) {
       try {
-        node.replaceChildren(...mentionNodes(await rest(), found, named));
+        body.replaceChildren(...mentionNodes(await rest(), found, named));
       } catch {
         // The link stays to try again.
         return;
@@ -1120,3 +1134,19 @@ export function showError(container, error) {
 export function hideError(container) {
   container.hidden = true;
 }
+
+// widenPastColumn does what openvk's al_despacito_wall.js does: while the
+// narrow column of a page (the photo and blocks of a person, the side of
+// a club) is out of sight, it is taken out of the flow and the wall
+// stands as wide as the page; scrolled back to, it comes back.
+function widenPastColumn() {
+  const column = document.querySelector('.profile-left, .club-side');
+  if (!column || isPhone() || typeof IntersectionObserver === 'undefined') return;
+
+  const page = column.parentElement;
+  new IntersectionObserver(([entry]) => {
+    requestAnimationFrame(() => page.classList.toggle('overscrolled', !entry.isIntersecting && !page.hidden));
+  }).observe(column);
+}
+
+if (typeof document !== 'undefined') widenPastColumn();

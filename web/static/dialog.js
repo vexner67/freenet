@@ -12,7 +12,11 @@
 // dialog opens around that message, as a search leads to it. What the
 // messages say is sealed for the two people (e2ee.js): the page opens it
 // with the key of this browser and seals what it sends; until the peer has
-// a key nobody can write to them.
+// a key nobody can write to them. The window is openvk's messenger
+// (messenger.js): the tabs of the conversations opened over it, the
+// icons of a message on hover, a click selecting it, and "Контакт" — the
+// photo of the peer, the search, the call and the code of the encryption
+// — in place of the messages.
 
 import { api, currentUser, started } from './api.js';
 import { initAttachments } from './attach.js';
@@ -22,13 +26,14 @@ import { initAudios } from './audio.js';
 import { startCall } from './calls.js';
 import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, openMessages, ownKey, safetyCode, sendSealed } from './e2ee.js';
 import { isLive, onEvent } from './events.js';
+import { initEmoji } from './emoji.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
-import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, messagesCount, primeNameClass, selectedCount, votesCount } from './labels.js';
-import { $, avatarURL, el, fullName, keepFocus, whenShown, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
+import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, messageTime, photoChanges, messagesCount, presence, primeNameClass, selectedCount, votesCount } from './labels.js';
+import { $, avatarURL, el, fullName, isPhone, keepFocus, whenShown, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
+import { contactInfo, fitHeight, hoverIcons, peerTabs, regroup, selectOnClick, showContact } from './messenger.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
 import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
-import { initSmileys } from './smileys.js';
 import { initStickers } from './stickers.js';
 import { typingLine, watchTyping } from './typing.js';
 import { tr } from './i18n.js';
@@ -80,16 +85,19 @@ let replies = null;
 function messageNode(m) {
   const author = m.out ? me : peer;
   const content = el('div', { className: 'im-message-body' });
-  const date = el('div', { className: 'im-message-date' });
+  const head = el('div', { className: 'im-message-head' });
 
+  // As on openvk: the mark of a selected message at the left, the photo,
+  // the icons and the time at the right, the name and the words.
   const node = el('div', { className: ['im-message', ...(m.out ? ['out'] : []), ...(m.read ? [] : ['unread'])].join(' ') },
-    el('a', { href: '/' + author.nickname }, el('img', { src: avatarURL(author, 'small'), alt: '' })),
+    el('span', { className: 'im-check' }),
+    el('a', { className: 'im-message-avatar', href: '/' + author.nickname }, el('img', { src: avatarURL(author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
-      el('a', { className: ['post-name', primeNameClass(author)].filter(Boolean).join(' '), href: '/' + author.nickname, textContent: fullName(author) }),
+      head,
+      el('a', { className: ['im-message-sender', primeNameClass(author)].filter(Boolean).join(' '), href: '/' + author.nickname, textContent: fullName(author) }),
       verifiedMark(author),
       content,
     ),
-    date,
   );
 
   // render shows what the message is now: an edit changes what it says,
@@ -103,38 +111,56 @@ function messageNode(m) {
       !shownMessage.deleted && shownMessage.unreadable
         ? el('div', { className: 'im-message-text unreadable', textContent: tr('Не удалось расшифровать сообщение: оно зашифровано ключом, которого нет на этом устройстве.') })
         : text && textOf(text, node),
+      shownMessage.editedAt && !shownMessage.deleted && el('div', { className: 'im-message-edited', title: tr('Отредактировано'), textContent: tr(' (ред.)') }),
       ...attachedNodes(shownMessage),
       forwardedNode(shownMessage, (carried) => textOf(carried, node)),
       ...(shownMessage.deleted ? [] : reactionNodes(shownMessage, me.id, node.picking, react)),
     ].filter(Boolean));
     if (shownMessage.replyTo && !shownMessage.deleted) content.prepend(quoteNode(shownMessage.replyTo, quotedText(shownMessage), goTo));
-    date.replaceChildren(...[
-      el('span', { className: 'im-message-time' }, ...[
-        formatPostDate(shownMessage.createdAt),
-        shownMessage.editedAt && el('span', { className: 'post-edited', title: tr('Отредактировано'), textContent: tr(' (ред.)') }),
-      ].filter(Boolean)),
-      actionsNode([
-        replies && !shownMessage.deleted && !shownMessage.unreadable && [tr('Ответить'), () => answer(shownMessage)],
-        !shownMessage.deleted && [tr('Реакция'), () => {
-          node.picking = !node.picking;
-          node.render();
-          // Under the last message the picker would open out of sight.
-          if (node.picking) node.querySelector('.im-reaction-picker')?.scrollIntoView({ block: 'nearest' });
-        }],
-        canEdit(shownMessage) && [tr('Редактировать'), () => startEdit(shownMessage)],
-        !shownMessage.deleted && !shownMessage.unreadable && [tr('Переслать'), () => forward([shownMessage])],
-        [tr('Удалить'), () => confirmDelete([shownMessage])],
-      ]),
+    head.replaceChildren(...[
+      messageActions(shownMessage, node),
+      el('span', { className: 'im-message-time', title: formatPostDate(shownMessage.createdAt), textContent: messageTime(shownMessage.createdAt) }),
     ].filter(Boolean));
   };
   node.message = m;
   node.render();
 
-  // A double click on the message itself, not on a link or a photo in
-  // it, selects it; then a click selects more.
-  selectOnDoubleClick(node, () => toggleSelected(m.id), () => selected.size > 0);
+  // A click on the message itself, not on a link or a photo in it,
+  // selects it, as on openvk; a phone selects by a double tap and acts
+  // by "⋯".
+  if (isPhone()) selectOnDoubleClick(node, () => toggleSelected(m.id), () => selected.size > 0);
+  else selectOnClick(node, () => toggleSelected(m.id));
 
   return node;
+}
+
+// messageActions are what may be done with a message by itself: openvk's
+// icons on hover — answer, react, edit — and on a phone its list under
+// "⋯"; deleting and forwarding go through the selection.
+function messageActions(m, node) {
+  const canAnswer = replies && !m.deleted && !m.unreadable;
+  const pick = () => {
+    node.picking = !node.picking;
+    node.render();
+    // Under the last message the picker would open out of sight.
+    if (node.picking) node.querySelector('.im-reaction-picker')?.scrollIntoView({ block: 'nearest' });
+  };
+
+  if (!isPhone()) {
+    return hoverIcons([
+      canAnswer && [tr('Ответить'), () => answer(m), 'reply'],
+      !m.deleted && [tr('Реакция'), pick, 'react'],
+      canEdit(m) && [tr('Редактировать'), () => startEdit(m), 'edit'],
+    ]);
+  }
+
+  return actionsNode([
+    canAnswer && [tr('Ответить'), () => answer(m)],
+    !m.deleted && [tr('Реакция'), pick],
+    canEdit(m) && [tr('Редактировать'), () => startEdit(m)],
+    !m.deleted && !m.unreadable && [tr('Переслать'), () => forward([m])],
+    [tr('Удалить'), () => confirmDelete([m])],
+  ]);
 }
 
 // textOf shows a text of a message of node, its own or of one it carries
@@ -227,11 +253,19 @@ function clearSelection() {
   showSelection();
 }
 
-// showSelection is the bar over the dialog while messages are selected.
+// showSelection is openvk's bar over the dialog while messages are
+// selected: how many (a click unselects them), "Удалить", "Ответить" to
+// one and "Переслать".
 function showSelection() {
+  const messages = selectedMessages();
+
   $('selection').hidden = selected.size === 0;
   $('selection-count').textContent = selectedCount(selected.size);
+  $('selection-reply').hidden = !(replies && messages.length === 1 && !messages[0].deleted && !messages[0].unreadable);
+  $('selection-forward').hidden = !messages.some((m) => !m.deleted && !m.unreadable);
 }
+
+const selectedMessages = () => [...selected].map((id) => shown.get(id)?.message).filter(Boolean);
 
 // confirmDelete deletes messages for me, or, with the box ticked, for
 // both: offered while every one of them is mine and still may be taken
@@ -305,6 +339,7 @@ function showSent(m) {
 function drop(id) {
   shown.get(id)?.remove();
   shown.delete(id);
+  regroup(list, (m) => (m.out ? me : peer));
   if (selected.delete(id)) showSelection();
   if (editing?.id === id) cancelEdit();
   if (replies?.replyingTo()?.id === id) replies.cancel();
@@ -381,6 +416,7 @@ function add(messages, atStart) {
   }
 
   $('empty').hidden = shown.size > 0;
+  regroup(list, (m) => (m.out ? me : peer));
 
   return fresh;
 }
@@ -673,12 +709,14 @@ async function setUpInput({ canWrite, primeOnly, messagePrice: price = 0 }) {
 
   $('my-avatar').src = avatarURL(me, 'small');
   $('peer-avatar').src = avatarURL(peer, 'small');
+  // As on openvk, the photo of the peer opens "Контакт".
+  $('peer-avatar').addEventListener('click', openContact);
   attachments = initAttachments({ link: $('attach'), also: [$('graffiti')], input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
   initGraffiti({ link: $('graffiti'), attachments });
   documents = initDocuments({ link: $('doc'), list: $('documents') });
   audios = initAudios({ link: $('audio'), list: $('audios') });
-  initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
-  initSmileys({ link: $('smileys-link'), panel: $('smileys'), input: $('text'), rival: { link: $('stickers-link'), panel: $('stickers') } });
+  const showStickers = initStickers({ panel: $('stickers'), error: $('error'), onPick: sendSticker, onSent: () => closeEmoji() });
+  const closeEmoji = initEmoji({ link: $('smileys-link'), picker: $('smileys'), input: $('text'), bar: $('recent-smiles'), stickersLink: $('stickers-link'), stickersPanel: $('stickers'), showStickers });
   $('form').addEventListener('submit', send);
   keepFocus($('send'));
   $('editing-cancel').addEventListener('click', cancelEdit);
@@ -751,6 +789,36 @@ async function showSafetyCode() {
   modal.actions.append(button(tr('Закрыть'), modal.close));
 }
 
+// openContact is openvk's "Контакт" in place of the messages: the photo and
+// the name of the peer, whether they are online, and the search of the
+// dialog, the call and the code of the encryption. «Избранное» has only
+// the search.
+function openContact() {
+  const search = [tr('Поиск по переписке'), '/im?peer=' + encodeURIComponent(peer.nickname), 'search'];
+  const info = contactInfo({
+    photo: avatarURL(peer, 'large'),
+    href: '/' + peer.nickname,
+    name: saved() ? tr('Избранное') : fullName(peer),
+    status: '',
+    actions: saved() ? [search] : [
+      search,
+      [tr('Позвонить'), () => startCall(peer), 'call'],
+      [tr('Шифрование'), showSafetyCode, 'safety'],
+    ],
+  });
+
+  $('contact').replaceChildren(el('div', { className: 'peer-side' }, info));
+  showContact(true);
+  if (saved()) return;
+
+  // Whether the peer is online the dialog does not tell: their page does.
+  api.profile(peer.nickname).then((profile) => {
+    info.querySelector('.peer-status')?.remove();
+    const status = presence(profile);
+    if (status) info.querySelector('.peer-name-1').append(el('div', { className: 'peer-status', textContent: status }));
+  }, () => {});
+}
+
 // whyNotWrite tells the caller's own blacklist and a deleted page apart
 // from the peer's choice, which openvk words the same for both.
 // primeOnlyHint: only people with Prime write to the peer.
@@ -794,16 +862,19 @@ if (!me) {
         : [el('a', { href: '/' + peer.nickname, textContent: fullName(peer) }), verifiedMark(peer)]),
     );
 
-    $('search-link').href = '/im?peer=' + encodeURIComponent(peer.nickname);
-    $('safety-link').addEventListener('click', showSafetyCode);
-    $('call-link').addEventListener('click', () => startCall(peer));
-    if (saved()) $('dialog-links').replaceChildren($('search-link'));
-    $('dialog-links').hidden = false;
-    const selectedMessages = () => [...selected].map((id) => shown.get(id)?.message).filter(Boolean);
-
+    peerTabs({ key: 'im:' + peer.nickname, title: saved() ? tr('Избранное') : fullName(peer), href: '/im/' + encodeURIComponent(peer.nickname) });
+    fitHeight();
+    $('contact-link').addEventListener('click', openContact);
+    $('tab-contact').addEventListener('click', openContact);
+    $('tab-dialog').addEventListener('click', () => showContact(false));
+    $('selection-count').addEventListener('click', clearSelection);
     $('selection-forward').addEventListener('click', () => forward(selectedMessages()));
     $('selection-delete').addEventListener('click', () => confirmDelete(selectedMessages()));
-    $('selection-cancel').addEventListener('click', clearSelection);
+    $('selection-reply').addEventListener('click', () => {
+      const [m] = selectedMessages();
+      clearSelection();
+      answer(m);
+    });
 
     await showKeys().catch(() => {});
     $('messenger').hidden = false;
