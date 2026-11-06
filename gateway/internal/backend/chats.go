@@ -245,6 +245,17 @@ func (c *Chats) MarkRead(ctx context.Context, accessToken, id, upTo string) erro
 	return nil
 }
 
+// Readers are the IDs of who in the chat has read a message, besides its
+// sender.
+func (c *Chats) Readers(ctx context.Context, accessToken, id, messageID string) ([]string, error) {
+	resp, err := c.api.ListChatMessageReaders(withToken(ctx, accessToken), &messagev1.ListChatMessageReadersRequest{ChatId: id, MessageId: messageID})
+	if err != nil {
+		return nil, errs.Wrap("c.api.ListChatMessageReaders", fromStatus(err))
+	}
+
+	return resp.GetUserIds(), nil
+}
+
 func toChat(pc *messagev1.Chat) model.Chat {
 	c := model.Chat{
 		ID:          pc.GetId(),

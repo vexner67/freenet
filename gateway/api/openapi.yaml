@@ -8979,6 +8979,39 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/chats/{id}/messages/{messageId}/readers:
+    get:
+      summary: Who has read a message of a chat
+      description: >-
+        The people in the chat who have read the message, besides its
+        sender, in the order they joined ("Кто прочитал"). People whose
+        pages are gone are left out.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: messageId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The readers
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [readers]
+                properties:
+                  readers:
+                    type: array
+                    items: { $ref: "#/components/schemas/Author" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/chats/{id}/typing:
     post:
       summary: Tell the others in a chat that you are writing there

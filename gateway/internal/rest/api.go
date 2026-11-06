@@ -417,6 +417,8 @@ type Chats interface {
 	Search(ctx context.Context, accessToken, chatID, query, cursor string, limit int) (model.FoundChatMessages, error)
 	Delete(ctx context.Context, accessToken, id string) error
 	MarkRead(ctx context.Context, accessToken, id, upTo string) error
+	// Readers are who in the chat has read a message, besides its sender.
+	Readers(ctx context.Context, accessToken, id, messageID string) ([]string, error)
 	// Typing tells the others in the chat the caller is writing there.
 	Typing(ctx context.Context, accessToken, id string) error
 }
@@ -791,6 +793,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/chats/{id}/messages", a.listChatMessages)
 	mux.HandleFunc("POST /api/v1/chats/{id}/messages", a.sendChatMessage)
 	mux.HandleFunc("POST /api/v1/chats/{id}/read", a.markChatRead)
+	mux.HandleFunc("GET /api/v1/chats/{id}/messages/{messageId}/readers", a.chatMessageReaders)
 	mux.HandleFunc("POST /api/v1/chats/{id}/typing", a.chatTyping)
 	mux.HandleFunc("GET /api/v1/chat-messages/{id}", a.getChatMessage)
 	mux.HandleFunc("PATCH /api/v1/chat-messages/{id}", a.editChatMessage)

@@ -35,6 +35,11 @@ type (
 // chatJSON is a chat of several people as the caller has it. State is
 // "active", "left" (may come back) or "kicked"; Members are told by the
 // chat itself, not by lists, and to nobody who is not in it anymore.
+// chatReadersJSON are who has read a message of a chat.
+type chatReadersJSON struct {
+	Readers []authorJSON `json:"readers"`
+}
+
 type chatJSON struct {
 	ID string `json:"id"`
 	// Title is "" for a chat called by who is in it.
@@ -720,6 +725,38 @@ func (a *api) markChatRead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// chatMessageReaders are who in the chat has read a message, besides
+// its sender, as openvk's "Кто прочитал": people whose pages are gone are
+// left out.
+func (a *api) chatMessageReaders(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	ids, err := a.chats.Readers(r.Context(), token, r.PathValue("id"), r.PathValue("messageId"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	people, err := a.people(r, ids)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	readers := make([]authorJSON, 0, len(ids))
+	for _, id := range ids {
+		if p, ok := people[id]; ok {
+			readers = append(readers, toAuthorJSON(p))
+		}
+	}
+
+	writeJSON(w, http.StatusOK, chatReadersJSON{Readers: readers})
 }
 
 // chatTyping tells the others in the chat that the caller is writing

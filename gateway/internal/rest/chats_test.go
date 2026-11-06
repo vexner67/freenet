@@ -196,6 +196,11 @@ func (f *fakeChats) MarkRead(_ context.Context, token, id, upTo string) error {
 	return f.err
 }
 
+func (f *fakeChats) Readers(_ context.Context, token, id, messageID string) ([]string, error) {
+	f.did(token, "readers", id, messageID)
+	return []string{"u2", "gone", "u3"}, f.err
+}
+
 func (f *fakeChats) Typing(_ context.Context, token, id string) error {
 	f.did(token, "typing", id)
 	return f.err
@@ -473,11 +478,19 @@ func TestChatMessages(t *testing.T) {
 		t.Fatalf("read: %d", w.Code)
 	}
 
+	w = h.do("GET", "/api/v1/chats/c1/messages/m9/readers", "", "Authorization", annAuth)
+	readers := decode[struct {
+		Readers []map[string]any `json:"readers"`
+	}](t, w)
+	if w.Code != http.StatusOK || len(readers.Readers) != 2 || readers.Readers[0]["nickname"] != "bob" || readers.Readers[1]["nickname"] != "cat" || h.chats.calls[len(h.chats.calls)-1] != "readers c1 m9" {
+		t.Fatalf("readers: %d %+v, calls %q", w.Code, readers, h.chats.calls)
+	}
+
 	if w = h.do("POST", "/api/v1/chats/c1/typing", "", "Authorization", annAuth); w.Code != http.StatusNoContent {
 		t.Fatalf("typing: %d", w.Code)
 	}
 
-	if want := []string{"message m2", "edit m9 пока", "delete m9", "read c1 m2", "typing c1"}; !slices.Equal(h.chats.calls, want) {
+	if want := []string{"message m2", "edit m9 пока", "delete m9", "read c1 m2", "readers c1 m9", "typing c1"}; !slices.Equal(h.chats.calls, want) {
 		t.Fatalf("calls = %q, want %q", h.chats.calls, want)
 	}
 
@@ -566,7 +579,7 @@ func TestChatMessages(t *testing.T) {
 	for _, req := range [][2]string{
 		{"GET", "/api/v1/chats/c1/messages"}, {"POST", "/api/v1/chats/c1/messages"}, {"GET", "/api/v1/chat-messages/m2"},
 		{"PATCH", "/api/v1/chat-messages/m2"}, {"DELETE", "/api/v1/chat-messages/m2"}, {"POST", "/api/v1/chats/c1/read"},
-		{"POST", "/api/v1/chats/c1/typing"},
+		{"POST", "/api/v1/chats/c1/typing"}, {"GET", "/api/v1/chats/c1/messages/m2/readers"},
 	} {
 		if w = newHarness(rest.Config{}).do(req[0], req[1], `{}`); w.Code != http.StatusUnauthorized {
 			t.Fatalf("%s %s without token: %d", req[0], req[1], w.Code)
