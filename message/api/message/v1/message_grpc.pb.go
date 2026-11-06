@@ -20,46 +20,47 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MessageService_SendMessage_FullMethodName        = "/message.v1.MessageService/SendMessage"
-	MessageService_ListDialogs_FullMethodName        = "/message.v1.MessageService/ListDialogs"
-	MessageService_CountUnreadDialogs_FullMethodName = "/message.v1.MessageService/CountUnreadDialogs"
-	MessageService_ListMessages_FullMethodName       = "/message.v1.MessageService/ListMessages"
-	MessageService_MarkDialogRead_FullMethodName     = "/message.v1.MessageService/MarkDialogRead"
-	MessageService_SetTyping_FullMethodName          = "/message.v1.MessageService/SetTyping"
-	MessageService_SendCallSignal_FullMethodName     = "/message.v1.MessageService/SendCallSignal"
-	MessageService_ReportCall_FullMethodName         = "/message.v1.MessageService/ReportCall"
-	MessageService_GetCallServers_FullMethodName     = "/message.v1.MessageService/GetCallServers"
-	MessageService_DeleteMessage_FullMethodName      = "/message.v1.MessageService/DeleteMessage"
-	MessageService_HideMessage_FullMethodName        = "/message.v1.MessageService/HideMessage"
-	MessageService_DeleteMessages_FullMethodName     = "/message.v1.MessageService/DeleteMessages"
-	MessageService_EditMessage_FullMethodName        = "/message.v1.MessageService/EditMessage"
-	MessageService_ReactToMessage_FullMethodName     = "/message.v1.MessageService/ReactToMessage"
-	MessageService_SetKey_FullMethodName             = "/message.v1.MessageService/SetKey"
-	MessageService_GetKey_FullMethodName             = "/message.v1.MessageService/GetKey"
-	MessageService_HasMessagesFrom_FullMethodName    = "/message.v1.MessageService/HasMessagesFrom"
-	MessageService_CreateChat_FullMethodName         = "/message.v1.MessageService/CreateChat"
-	MessageService_GetChat_FullMethodName            = "/message.v1.MessageService/GetChat"
-	MessageService_ListChats_FullMethodName          = "/message.v1.MessageService/ListChats"
-	MessageService_RenameChat_FullMethodName         = "/message.v1.MessageService/RenameChat"
-	MessageService_PinChatMessage_FullMethodName     = "/message.v1.MessageService/PinChatMessage"
-	MessageService_UnpinChatMessage_FullMethodName   = "/message.v1.MessageService/UnpinChatMessage"
-	MessageService_SetChatPhoto_FullMethodName       = "/message.v1.MessageService/SetChatPhoto"
-	MessageService_AddChatMembers_FullMethodName     = "/message.v1.MessageService/AddChatMembers"
-	MessageService_RemoveChatMember_FullMethodName   = "/message.v1.MessageService/RemoveChatMember"
-	MessageService_LeaveChat_FullMethodName          = "/message.v1.MessageService/LeaveChat"
-	MessageService_ReturnToChat_FullMethodName       = "/message.v1.MessageService/ReturnToChat"
-	MessageService_DeleteChat_FullMethodName         = "/message.v1.MessageService/DeleteChat"
-	MessageService_SendChatMessage_FullMethodName    = "/message.v1.MessageService/SendChatMessage"
-	MessageService_ListChatMessages_FullMethodName   = "/message.v1.MessageService/ListChatMessages"
-	MessageService_GetChatMessage_FullMethodName     = "/message.v1.MessageService/GetChatMessage"
-	MessageService_EditChatMessage_FullMethodName    = "/message.v1.MessageService/EditChatMessage"
-	MessageService_ReactToChatMessage_FullMethodName = "/message.v1.MessageService/ReactToChatMessage"
-	MessageService_SearchChatMessages_FullMethodName = "/message.v1.MessageService/SearchChatMessages"
-	MessageService_DeleteChatMessage_FullMethodName  = "/message.v1.MessageService/DeleteChatMessage"
-	MessageService_MarkChatRead_FullMethodName       = "/message.v1.MessageService/MarkChatRead"
-	MessageService_SetChatTyping_FullMethodName      = "/message.v1.MessageService/SetChatTyping"
-	MessageService_Subscribe_FullMethodName          = "/message.v1.MessageService/Subscribe"
-	MessageService_PurgeUser_FullMethodName          = "/message.v1.MessageService/PurgeUser"
+	MessageService_SendMessage_FullMethodName            = "/message.v1.MessageService/SendMessage"
+	MessageService_ListDialogs_FullMethodName            = "/message.v1.MessageService/ListDialogs"
+	MessageService_CountUnreadDialogs_FullMethodName     = "/message.v1.MessageService/CountUnreadDialogs"
+	MessageService_ListMessages_FullMethodName           = "/message.v1.MessageService/ListMessages"
+	MessageService_MarkDialogRead_FullMethodName         = "/message.v1.MessageService/MarkDialogRead"
+	MessageService_SetTyping_FullMethodName              = "/message.v1.MessageService/SetTyping"
+	MessageService_SendCallSignal_FullMethodName         = "/message.v1.MessageService/SendCallSignal"
+	MessageService_ReportCall_FullMethodName             = "/message.v1.MessageService/ReportCall"
+	MessageService_GetCallServers_FullMethodName         = "/message.v1.MessageService/GetCallServers"
+	MessageService_DeleteMessage_FullMethodName          = "/message.v1.MessageService/DeleteMessage"
+	MessageService_HideMessage_FullMethodName            = "/message.v1.MessageService/HideMessage"
+	MessageService_DeleteMessages_FullMethodName         = "/message.v1.MessageService/DeleteMessages"
+	MessageService_EditMessage_FullMethodName            = "/message.v1.MessageService/EditMessage"
+	MessageService_ReactToMessage_FullMethodName         = "/message.v1.MessageService/ReactToMessage"
+	MessageService_SetKey_FullMethodName                 = "/message.v1.MessageService/SetKey"
+	MessageService_GetKey_FullMethodName                 = "/message.v1.MessageService/GetKey"
+	MessageService_HasMessagesFrom_FullMethodName        = "/message.v1.MessageService/HasMessagesFrom"
+	MessageService_CreateChat_FullMethodName             = "/message.v1.MessageService/CreateChat"
+	MessageService_GetChat_FullMethodName                = "/message.v1.MessageService/GetChat"
+	MessageService_ListChats_FullMethodName              = "/message.v1.MessageService/ListChats"
+	MessageService_RenameChat_FullMethodName             = "/message.v1.MessageService/RenameChat"
+	MessageService_PinChatMessage_FullMethodName         = "/message.v1.MessageService/PinChatMessage"
+	MessageService_UnpinChatMessage_FullMethodName       = "/message.v1.MessageService/UnpinChatMessage"
+	MessageService_SetChatPhoto_FullMethodName           = "/message.v1.MessageService/SetChatPhoto"
+	MessageService_AddChatMembers_FullMethodName         = "/message.v1.MessageService/AddChatMembers"
+	MessageService_RemoveChatMember_FullMethodName       = "/message.v1.MessageService/RemoveChatMember"
+	MessageService_LeaveChat_FullMethodName              = "/message.v1.MessageService/LeaveChat"
+	MessageService_ReturnToChat_FullMethodName           = "/message.v1.MessageService/ReturnToChat"
+	MessageService_DeleteChat_FullMethodName             = "/message.v1.MessageService/DeleteChat"
+	MessageService_SendChatMessage_FullMethodName        = "/message.v1.MessageService/SendChatMessage"
+	MessageService_ListChatMessages_FullMethodName       = "/message.v1.MessageService/ListChatMessages"
+	MessageService_GetChatMessage_FullMethodName         = "/message.v1.MessageService/GetChatMessage"
+	MessageService_EditChatMessage_FullMethodName        = "/message.v1.MessageService/EditChatMessage"
+	MessageService_ReactToChatMessage_FullMethodName     = "/message.v1.MessageService/ReactToChatMessage"
+	MessageService_SearchChatMessages_FullMethodName     = "/message.v1.MessageService/SearchChatMessages"
+	MessageService_DeleteChatMessage_FullMethodName      = "/message.v1.MessageService/DeleteChatMessage"
+	MessageService_MarkChatRead_FullMethodName           = "/message.v1.MessageService/MarkChatRead"
+	MessageService_ListChatMessageReaders_FullMethodName = "/message.v1.MessageService/ListChatMessageReaders"
+	MessageService_SetChatTyping_FullMethodName          = "/message.v1.MessageService/SetChatTyping"
+	MessageService_Subscribe_FullMethodName              = "/message.v1.MessageService/Subscribe"
+	MessageService_PurgeUser_FullMethodName              = "/message.v1.MessageService/PurgeUser"
 )
 
 // MessageServiceClient is the client API for MessageService service.
@@ -185,6 +186,9 @@ type MessageServiceClient interface {
 	DeleteChatMessage(ctx context.Context, in *DeleteChatMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// The caller has read the chat up to a message of it.
 	MarkChatRead(ctx context.Context, in *MarkChatReadRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Who of the people in the chat has read a message of it, besides its
+	// sender ("Кто прочитал"); asked by someone who sees the message.
+	ListChatMessageReaders(ctx context.Context, in *ListChatMessageReadersRequest, opts ...grpc.CallOption) (*ListChatMessageReadersResponse, error)
 	// The caller is writing in the chat: the others in it hear a typing
 	// event, nothing is kept.
 	SetChatTyping(ctx context.Context, in *SetChatTypingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -579,6 +583,16 @@ func (c *messageServiceClient) MarkChatRead(ctx context.Context, in *MarkChatRea
 	return out, nil
 }
 
+func (c *messageServiceClient) ListChatMessageReaders(ctx context.Context, in *ListChatMessageReadersRequest, opts ...grpc.CallOption) (*ListChatMessageReadersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListChatMessageReadersResponse)
+	err := c.cc.Invoke(ctx, MessageService_ListChatMessageReaders_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *messageServiceClient) SetChatTyping(ctx context.Context, in *SetChatTypingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -741,6 +755,9 @@ type MessageServiceServer interface {
 	DeleteChatMessage(context.Context, *DeleteChatMessageRequest) (*emptypb.Empty, error)
 	// The caller has read the chat up to a message of it.
 	MarkChatRead(context.Context, *MarkChatReadRequest) (*emptypb.Empty, error)
+	// Who of the people in the chat has read a message of it, besides its
+	// sender ("Кто прочитал"); asked by someone who sees the message.
+	ListChatMessageReaders(context.Context, *ListChatMessageReadersRequest) (*ListChatMessageReadersResponse, error)
 	// The caller is writing in the chat: the others in it hear a typing
 	// event, nothing is kept.
 	SetChatTyping(context.Context, *SetChatTypingRequest) (*emptypb.Empty, error)
@@ -875,6 +892,9 @@ func (UnimplementedMessageServiceServer) DeleteChatMessage(context.Context, *Del
 }
 func (UnimplementedMessageServiceServer) MarkChatRead(context.Context, *MarkChatReadRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method MarkChatRead not implemented")
+}
+func (UnimplementedMessageServiceServer) ListChatMessageReaders(context.Context, *ListChatMessageReadersRequest) (*ListChatMessageReadersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListChatMessageReaders not implemented")
 }
 func (UnimplementedMessageServiceServer) SetChatTyping(context.Context, *SetChatTypingRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetChatTyping not implemented")
@@ -1572,6 +1592,24 @@ func _MessageService_MarkChatRead_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_ListChatMessageReaders_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListChatMessageReadersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).ListChatMessageReaders(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_ListChatMessageReaders_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).ListChatMessageReaders(ctx, req.(*ListChatMessageReadersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MessageService_SetChatTyping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetChatTypingRequest)
 	if err := dec(in); err != nil {
@@ -1773,6 +1811,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MarkChatRead",
 			Handler:    _MessageService_MarkChatRead_Handler,
+		},
+		{
+			MethodName: "ListChatMessageReaders",
+			Handler:    _MessageService_ListChatMessageReaders_Handler,
 		},
 		{
 			MethodName: "SetChatTyping",

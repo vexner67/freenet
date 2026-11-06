@@ -2,6 +2,7 @@ package grpc_test
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -88,6 +89,16 @@ func TestChat(t *testing.T) {
 		got, err := s.client.GetChat(s.as(t, ann), &messagev1.GetChatRequest{ChatId: chat.GetId()})
 		if err != nil || got.GetChat().GetUnread() || len(got.GetMembers()) != 3 || got.GetMembers()[0].GetUserId() != ann.String() {
 			t.Fatalf("GetChat = %v, %v", got, err)
+		}
+
+		readers, err := s.client.ListChatMessageReaders(s.as(t, ann), &messagev1.ListChatMessageReadersRequest{ChatId: chat.GetId(), MessageId: sent.GetMessage().GetId()})
+		if err != nil || !slices.Contains(readers.GetUserIds(), ann.String()) {
+			t.Fatalf("ListChatMessageReaders = %v, %v", readers, err)
+		}
+
+		_, err = s.client.ListChatMessageReaders(s.as(t, ann), &messagev1.ListChatMessageReadersRequest{ChatId: chat.GetId(), MessageId: "nope"})
+		if status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("readers of a bad id: %v", err)
 		}
 	})
 

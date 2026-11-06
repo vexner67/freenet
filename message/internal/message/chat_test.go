@@ -189,6 +189,9 @@ func TestMember(t *testing.T) {
 	if !in.IsActive() || in.CheckActive() != nil || !in.Sees(newer) || in.Bound() != uuid.Max || !in.HasUnread() {
 		t.Errorf("a member in the chat: %+v", in)
 	}
+	if !in.HasRead(older) || in.HasRead(seen) || in.HasRead(newer) {
+		t.Errorf("a member who read up to the oldest: %+v", in)
+	}
 
 	for _, state := range []message.MemberState{message.MemberLeft, message.MemberKicked} {
 		gone := message.Member{State: state, SeenUpTo: seen, LastIncomingID: seen, ReadUpTo: seen}

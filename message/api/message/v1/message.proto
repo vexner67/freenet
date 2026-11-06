@@ -127,6 +127,9 @@ service MessageService {
   rpc DeleteChatMessage(DeleteChatMessageRequest) returns (google.protobuf.Empty);
   // The caller has read the chat up to a message of it.
   rpc MarkChatRead(MarkChatReadRequest) returns (google.protobuf.Empty);
+  // Who of the people in the chat has read a message of it, besides its
+  // sender ("Кто прочитал"); asked by someone who sees the message.
+  rpc ListChatMessageReaders(ListChatMessageReadersRequest) returns (ListChatMessageReadersResponse);
   // The caller is writing in the chat: the others in it hear a typing
   // event, nothing is kept.
   rpc SetChatTyping(SetChatTypingRequest) returns (google.protobuf.Empty);
@@ -806,6 +809,16 @@ message DeleteChatMessageRequest {
 message MarkChatReadRequest {
   string chat_id = 1;
   string up_to_id = 2;
+}
+
+message ListChatMessageReadersRequest {
+  string chat_id = 1;
+  string message_id = 2;
+}
+
+message ListChatMessageReadersResponse {
+  // In the order they joined the chat.
+  repeated string user_ids = 1;
 }
 
 message SetChatTypingRequest {

@@ -201,6 +201,26 @@ func TestChatService_Messages(t *testing.T) {
 		}
 	})
 
+	t.Run("who has read", func(t *testing.T) {
+		readers, err := f.svc.Readers(ctx, bob, chatID, second.ID())
+		if err != nil || !slices.Contains(readers, ann) || slices.Contains(readers, cat) || slices.Contains(readers, bob) {
+			t.Fatalf("readers of cat's message = %v, %v", readers, err)
+		}
+
+		// Bob has not read cat's answer, so of bob's own message only ann
+		// and whoever moved past it count, never bob.
+		if readers, err = f.svc.Readers(ctx, cat, chatID, first.ID()); err != nil || !slices.Contains(readers, ann) || slices.Contains(readers, bob) {
+			t.Fatalf("readers of bob's message = %v, %v", readers, err)
+		}
+
+		if _, err = f.svc.Readers(ctx, bob, uuid.New(), first.ID()); !errors.Is(err, message.ErrNotFound) {
+			t.Fatalf("readers asked of another chat: %v", err)
+		}
+		if _, err = f.svc.Readers(ctx, bob, chatID, uuid.Must(uuid.NewV7())); !errors.Is(err, message.ErrNotFound) {
+			t.Fatalf("readers of a message made up: %v", err)
+		}
+	})
+
 	t.Run("edit and take back", func(t *testing.T) {
 		catEvents, cancel := f.events.Subscribe(cat)
 		defer cancel()

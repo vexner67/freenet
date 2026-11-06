@@ -39,6 +39,7 @@ type ChatService interface {
 	Around(ctx context.Context, userID, chatID, id uuid.UUID, size int) (service.ChatHistoryPage, error)
 	Search(ctx context.Context, userID, chatID uuid.UUID, q message.Query, cursor uuid.UUID, size int) (service.ChatSearchPage, error)
 	MarkRead(ctx context.Context, userID, chatID, upTo uuid.UUID) error
+	Readers(ctx context.Context, userID, chatID, id uuid.UUID) ([]uuid.UUID, error)
 	Typing(ctx context.Context, userID, chatID uuid.UUID) error
 	PurgeUser(ctx context.Context, userID uuid.UUID) error
 }
@@ -508,6 +509,30 @@ func (h *MessageHandler) MarkChatRead(ctx context.Context, req *messagev1.MarkCh
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func (h *MessageHandler) ListChatMessageReaders(ctx context.Context, req *messagev1.ListChatMessageReadersRequest) (*messagev1.ListChatMessageReadersResponse, error) {
+	userID, chatID, err := chatCaller(ctx, req.GetChatId())
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := parseID(req.GetMessageId(), "invalid message id")
+	if err != nil {
+		return nil, err
+	}
+
+	readers, err := h.chatService.Readers(ctx, userID, chatID, id)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]string, len(readers))
+	for i, reader := range readers {
+		ids[i] = reader.String()
+	}
+
+	return &messagev1.ListChatMessageReadersResponse{UserIds: ids}, nil
 }
 
 func (h *MessageHandler) SetChatTyping(ctx context.Context, req *messagev1.SetChatTypingRequest) (*emptypb.Empty, error) {

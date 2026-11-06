@@ -307,6 +307,12 @@ func (m Member) Sees(id uuid.UUID) bool {
 	return m.IsActive() || bytes.Compare(id[:], m.SeenUpTo[:]) <= 0
 }
 
+// HasRead tells whether the member has read a message by someone else
+// with that id: ids grow with time, so the mark covers all before it.
+func (m Member) HasRead(id uuid.UUID) bool {
+	return bytes.Compare(id[:], m.ReadUpTo[:]) <= 0
+}
+
 // Bound is the newest message the member may be shown: uuid.Max while in
 // the chat.
 func (m Member) Bound() uuid.UUID {

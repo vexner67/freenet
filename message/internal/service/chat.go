@@ -1061,6 +1061,34 @@ func (s *ChatService) MarkRead(ctx context.Context, userID, chatID, upTo uuid.UU
 	return nil
 }
 
+// Readers are who of the people in the chat has read a message of it,
+// besides its sender, as openvk's "Кто прочитал"; only someone who sees
+// the message may ask.
+func (s *ChatService) Readers(ctx context.Context, userID, chatID, id uuid.UUID) ([]uuid.UUID, error) {
+	m, _, err := s.shown(ctx, userID, id)
+	if err != nil {
+		return nil, errs.Wrap("s.shown", err)
+	}
+
+	if m.ChatID() != chatID {
+		return nil, message.ErrNotFound
+	}
+
+	members, err := s.memberRepo.Active(ctx, chatID)
+	if err != nil {
+		return nil, errs.Wrap("s.memberRepo.Active", err)
+	}
+
+	readers := make([]uuid.UUID, 0, len(members))
+	for _, member := range members {
+		if member.UserID != m.SenderID() && member.HasRead(id) {
+			readers = append(readers, member.UserID)
+		}
+	}
+
+	return readers, nil
+}
+
 // Typing tells the others in the chat that userID is writing there
 // ("печатает..."): only someone in it may. Nothing is kept.
 func (s *ChatService) Typing(ctx context.Context, userID, chatID uuid.UUID) error {
