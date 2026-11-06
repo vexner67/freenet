@@ -473,10 +473,18 @@ b, strong { font-weight: bold; }
 .im-forwarded-hint { color: var(--text-626262); }
 /* An answer shows the message it answers over its words, as on VK; a
    click leads to it. */
-.im-quote { display: block; margin: 2px 0 4px; padding-left: 8px; border-left: 2px solid var(--line-dae1e8); cursor: pointer; }
-.im-quote:hover { background: var(--back-f7f7f7); text-decoration: none; }
-.im-quote-name { display: block; font-weight: bold; }
-.im-quote-text { display: block; overflow: hidden; color: var(--text-626262); white-space: nowrap; text-overflow: ellipsis; }
+/* The message an answer answers, as openvk's reply-msg-container
+   (messages.css): a grey line at its left, the small photo, the name and
+   the date, the words, and whose message it is under them. */
+.reply-msg-container { display: block; margin: 3px 0; padding: 0 30px 0 15px; border-left: 1px solid var(--line-858585); border-radius: 0 2px 2px 0; color: var(--text-222); cursor: pointer; }
+.reply-msg-container:hover { background: var(--back-f7f7f7); text-decoration: none; }
+.reply-msg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-bottom: 2px; line-height: 1.2; }
+.reply-avatar { display: block; flex-shrink: 0; width: 15px; height: 15px; object-fit: cover; border-radius: 2px; }
+.reply-author-name { color: var(--text-2a5885); font-size: 11px; }
+.reply-date { margin-left: 1px; color: var(--text-777); font-size: 11px; }
+.reply-text { display: block; margin: 0; overflow: hidden; color: var(--text-222); font-size: 11px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.reply-no-text { color: var(--text-777); font-style: italic; }
+.reply-msg-header { display: block; margin: 0 0 2px; color: var(--text-777); font-size: 11px; line-height: 1.25; }
 /* Reactions under a message: one a person, as on VK. */
 .im-reactions, .im-reaction-picker { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .im-reaction { display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px 1px 3px; border: 1px solid var(--line-d6d6d6); border-radius: 10px; background: var(--back-f7f7f7); color: inherit; font: inherit; line-height: 18px; cursor: pointer; }
@@ -490,13 +498,15 @@ b, strong { font-weight: bold; }
 .forward-list div { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 /* Chats of several people: the line of what happened between the
    messages, and the people to tick in "Новая беседа". */
-.chat-action { margin: 6px 0; color: var(--text-626262); text-align: center; }
+.im-special-message { display: flex; justify-content: center; margin: 10px 0 0; text-align: center; }
+.im-special-message strong { color: var(--text-45688e); }
+.im-special-text { color: var(--text-959595); font-weight: bold; }
+.im-special-date { display: inline-block; margin-left: 10px; color: var(--text-959595); font-size: 10px; }
 /* The message pinned above a chat, as VK's: a line under the bar. */
 .chat-pinned { display: flex; align-items: center; gap: 8px; padding: 6px 20px; background: var(--back-f7f7f7); border-bottom: 1px solid var(--line-d6d6d6); }
 .chat-pinned-body { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
 .chat-pinned-head { display: block; color: var(--text-626262); }
 .chat-pinned-remove { color: var(--text-626262); font-size: 14px; cursor: pointer; }
-.chat-action-date { margin-left: 8px; font-size: 9px; }
 .modal-box.chat-dialog { width: 440px; }
 .chat-people { max-height: 200px; overflow-y: auto; border: 1px solid var(--line-dae1e8); }
 .chat-people.tall { max-height: 300px; }
@@ -526,17 +536,50 @@ label.chat-person { cursor: pointer; }
 .modal-box.avatar-dialog { width: 600px; max-width: calc(100vw - 32px); }
 .avatar-crop { display: block; max-width: 100%; height: auto; margin: 4px auto; cursor: move; touch-action: none; }
 /* openvk's "Граффити": a white sheet and the tools under it. */
-.modal-box.graffiti-dialog { width: 600px; max-width: calc(100vw - 32px); }
-.graffiti-canvas { display: block; width: 100%; border: 1px solid var(--line-bbb); cursor: crosshair; touch-action: none; }
-.graffiti-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 8px; }
-.graffiti-tools a { cursor: pointer; }
-.graffiti-tools label { display: flex; align-items: center; gap: 4px; }
-.graffiti-tools input[type="range"] { width: 80px; }
-.graffiti-colors { display: flex; align-items: center; gap: 3px; width: 100%; }
-.graffiti-swatch { width: 18px; height: 18px; border: 1px solid var(--line-bbb); cursor: pointer; }
+/* "Нарисовать граффити", as openvk's #ovkDraw with Literally Canvas: a
+   frame 750px wide; the tools in a grey column at the left, two to a row,
+   each a square with its icon, the one picked darker; the picture in the
+   middle; the colour, thickness and intensity on a grey strip under it. */
+.modal-box.graffiti-dialog { width: 750px; max-width: calc(100vw - 32px); }
+.graffiti-draw { display: flex; height: 530px; border: 1px solid var(--line-707070); }
+.graffiti-picker { display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; width: 61px; padding: 4px; box-sizing: border-box; background: var(--back-f7f7f7); border-right: 1px solid var(--line-cfcfcf); }
+.graffiti-tools { display: flex; flex-wrap: wrap; gap: 3px; }
+.graffiti-tool { display: block; width: 24px; height: 24px; box-sizing: border-box; border: 1px solid transparent; background: no-repeat center; cursor: pointer; }
+.graffiti-tool:hover { border-color: var(--line-cfcfcf); }
+.graffiti-tool.selected { background-color: var(--back-cdcdcd); }
+.graffiti-tool-pencil { background-image: url("/static/icons/draw-pencil.svg"); }
+.graffiti-tool-eraser { background-image: url("/static/icons/draw-eraser.svg"); }
+.graffiti-tool-fill { background-image: url("/static/icons/fill.svg"); }
+.graffiti-tool-pixel { background-image: url("/static/icons/draw-pixel.svg"); }
+.graffiti-tool-undo { background-image: url("/static/icons/draw-undo.svg"); }
+.graffiti-tool-redo { background-image: url("/static/icons/draw-redo.svg"); }
+.graffiti-tool-clear { background-image: url("/static/icons/draw-clear.svg"); }
+.graffiti-main { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.graffiti-surface { display: flex; flex: 1; align-items: center; justify-content: center; min-height: 0; overflow: hidden; background: var(--back-e4e4e4); }
+.graffiti-canvas { display: block; max-width: 100%; max-height: 100%; background: var(--back-fff); cursor: crosshair; touch-action: none; }
+.graffiti-canvas.pouring { cursor: cell; }
+.graffiti-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 8px; background: var(--back-f7f7f7); border-top: 1px solid var(--line-cfcfcf); }
+.graffiti-options label { display: flex; align-items: center; gap: 4px; }
+.graffiti-options input[type="range"] { width: 80px; }
+.graffiti-colors { display: flex; align-items: center; gap: 3px; }
+.graffiti-swatch { width: 16px; height: 16px; border: 1px solid var(--line-bbb); cursor: pointer; }
 .graffiti-swatch.picked { outline: 2px solid var(--text-2b587a); outline-offset: 1px; }
-.graffiti-colors input[type="color"] { width: 26px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
-.avatar-turn { display: flex; justify-content: center; gap: 6px; }
+.graffiti-colors input[type="color"] { width: 26px; height: 20px; padding: 0; border: 0; background: none; cursor: pointer; }
+.graffiti-draw { flex-direction: column; height: auto; }
+.graffiti-picker { flex-direction: row; width: auto; border-right: 0; border-bottom: 1px solid var(--line-cfcfcf); }
+.graffiti-tool { width: 36px; height: 36px; background-size: 20px; }
+.graffiti-surface { flex: none; }
+.modal-box.avatar-dialog.cropping { width: 487px; }
+.avatar-rotate-hint { margin: 0 0 10px; }
+/* The arrows that turn the picture, at its bottom right, as openvk's
+   rotateButtons over Cropper.js. */
+.avatar-crop-box { position: relative; width: fit-content; max-width: 100%; margin: 0 auto; }
+.avatar-crop-box .avatar-crop { margin: 0; }
+.avatar-rotate { position: absolute; right: 5px; bottom: 5px; display: flex; gap: 2px; padding: 3px 5px 3px 2px; border-radius: 3px; background: rgb(0 0 0 / 50%); }
+.avatar-rotate a { width: 20px; height: 18px; background-position: center; background-repeat: no-repeat; opacity: .6; cursor: pointer; }
+.avatar-rotate a:hover { opacity: 1; }
+.avatar-rotate-left { background-image: url("/static/icons/rotate-left.svg"); }
+.avatar-rotate-right { background-image: url("/static/icons/rotate-right.svg"); }
 /* The blacklist page: people with "Удалить из чёрного списка". */
 .blacklist-row { display: flex; justify-content: space-between; align-items: center; }
 .blacklist-row .person { flex: 1; }
@@ -908,7 +951,7 @@ a.poll-result-name { cursor: pointer; }
 .sticker-pick:hover { background: var(--back-f6f6f6); }
 /* The smileys of the site (SMILEYS in labels.js): the old codes of a
    message as pictures; its emoji are openvk's (emoji/emoji.css). */
-.smiley, .im-message img.smiley, .dialog-message img.smiley { display: inline-block; width: 18px; height: 18px; margin: 0 1px; vertical-align: -4px; object-fit: contain; border-radius: 0; }
+.smiley, .im-message img.smiley, .crp-entry img.smiley { display: inline-block; width: 18px; height: 18px; margin: 0 1px; vertical-align: -4px; object-fit: contain; border-radius: 0; }
 
 .sticker-store { display: block; padding: 4px 0 0; border-top: 1px solid var(--line-dedede); }
 /* The shop, as openvk's: a grey bar of sections with the search under the
@@ -2039,7 +2082,7 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .people-grid.wide { grid-template-columns: repeat(4, 1fr); }
 .link-card-photo { width: 90px; height: 68px; }
 /* The small print of posts and messages, large enough for a finger. */
-.im-forwarded-date, .chat-action-date { font-size: 11px; }
+.im-forwarded-date, .im-special-date { font-size: 11px; }
 .posts-microblog .post-menu, .posts-microblog .post-menu .post-date, .chat-kick { font-size: 12px; }
 /* Lists — people, groups, dialogs, notifications — are rows from edge to
    edge of the screen. */
@@ -2352,6 +2395,7 @@ label { cursor: pointer; }
 .attach-graffiti::before { background-image: url("/static/icons/graffiti.svg"); }
 .attach-document::before { background-image: url("/static/icons/document.svg"); }
 .attach-audio::before { background-image: url("/static/icons/audio.svg"); }
+.attach-video::before { background-image: url("/static/icons/video.svg"); }
 .attach-article::before { background-image: url("/static/icons/article.svg"); }
 .attach-poll::before { background-image: url("/static/icons/poll.svg"); }
 .attach-timer::before { background-image: url("/static/icons/timer.svg"); }
@@ -2658,10 +2702,11 @@ body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
 .notification .post-date { margin-top: 2px; }
 .guest-row-new { background: var(--back-f2f5f8); }
 
-/* Messages: the dialogs as rows, the photo, the name with the date at its
-   right and what was said last under them. */
+/* Messages: the dialogs as rows of openvk's ConversationItem (crp-entry)
+   laid out for a finger: the photo, the name with the date at its right
+   and what was said last under them. */
 .dialogs { margin: 0 -10px; border-top: 1px solid var(--line-d6d6d6); }
-.dialog {
+.crp-entry {
   display: grid;
   grid-template-columns: 52px minmax(0, 1fr);
   gap: 2px 12px;
@@ -2671,23 +2716,29 @@ body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
   border-bottom: 1px solid var(--line-ececec);
   color: var(--text-000);
 }
-.dialog:active { background: var(--back-f9f9f9); }
-.dialog-avatar { grid-row: span 2; width: 52px; height: 52px; object-fit: cover; border-radius: 3px; }
-.dialog-info { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
-.dialog-name { min-width: 0; overflow: hidden; color: var(--text-2b587a); text-overflow: ellipsis; white-space: nowrap; }
-.dialog-date { flex: none; color: var(--text-626262); font-size: 12px; }
-.dialog-message { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 2px 4px; border-radius: 3px; }
-.dialog-message.unread { background: var(--back-e6e6e6); }
-.dialog-message img { width: 22px; height: 22px; object-fit: cover; border-radius: 3px; }
-.dialog-text { display: -webkit-box; min-width: 0; overflow: hidden; color: var(--text-404036); font-size: 13px; overflow-wrap: anywhere; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.dialog-text.dialog-typing, .dialog-forwarded { color: var(--text-626262); }
+.crp-entry:active { background: var(--back-f9f9f9); }
+.crp-entry.unread { background: var(--back-eaeae9); }
+.crp-entry--main { display: contents; }
+.crp-entry--image { grid-row: span 2; width: 52px; height: 52px; overflow: hidden; border-radius: 3px; }
+.crp-entry--image img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.crp-entry--info, .crp-entry--info-wrap { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+.crp-entry--info-wrap { flex: 1; }
+.crp-entry--name { min-width: 0; overflow: hidden; color: var(--text-2b587a); text-overflow: ellipsis; white-space: nowrap; }
+.crp-entry--excess { display: flex; flex: none; gap: 6px; color: var(--text-626262); font-size: 12px; }
+.crp-entry--message { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 2px 4px; border-radius: 3px; }
+.crp-entry--message.unread { background: var(--back-e6e6e6); }
+.crp-entry--message---av img { display: block; width: 22px; height: 22px; object-fit: cover; border-radius: 3px; }
+.crp-entry--message---content { min-width: 0; }
+.crp-entry--message---author { overflow: hidden; color: var(--text-2b587a); font-size: 12px; font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
+.crp-entry--message---text { display: -webkit-box; min-width: 0; overflow: hidden; color: var(--text-404036); font-size: 13px; overflow-wrap: anywhere; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.crp-entry--message---text.dialog-typing, .dialog-forwarded { color: var(--text-626262); }
 /* The grey bars of openvk's messenger over and under the dialogs. */
 .im-top { display: flex; flex-wrap: wrap; gap: 6px; margin: -10px -10px 0; padding: 8px 10px; background: var(--back-f7f7f7); }
 .im-search { flex: 1 1 100%; }
 .im-search input { width: 100%; box-sizing: border-box; }
 .im-top .button { flex: 1; text-align: center; }
 .im-top ~ .error, .im-top ~ .hint { margin: 8px 0; }
-.dialogs.unread-only .dialog:not(.unread) { display: none; }
+.dialogs.unread-only .crp-entry:not(.unread) { display: none; }
 .dialogs ~ .nothing { margin-top: 10px; }
 .im-bottom { display: flex; justify-content: space-between; gap: 8px; margin: 0 -10px -10px; padding: 10px; background: var(--back-f7f7f7); color: var(--text-626262); }
 .nothing:not([hidden]) ~ .im-bottom, .wall-more:not([hidden]) ~ .im-bottom { margin-top: 10px; border-top: 1px solid var(--line-d6d6d6); }
@@ -2764,7 +2815,6 @@ body:has(#peer-avatar) .im-sender,
 .im-message.selected { background: var(--back-f6f0d2); border-color: var(--line-d7cf9e); }
 .im-message.found { background: var(--back-f6f0d2); }
 .im-message.deleted .im-message-text, .im-message-text.unreadable { color: var(--text-626262); font-style: italic; }
-.chat-action { margin: 8px 0; color: var(--text-626262); font-size: 12px; text-align: center; }
 .chat-bar { cursor: default; }
 
 /* The form at the bottom: "Прикрепить" as a mark, the field growing with
@@ -2799,9 +2849,6 @@ body:has(#peer-avatar) .im-sender,
   font-size: 0;
 }
 .messenger-buttons .attach-toggle { background-image: url("/static/icons/attach.svg"); }
-.messenger-box .reply-to { margin: 0; font-size: 13px; }
-.messenger-box #replying { display: flex; gap: 4px; white-space: nowrap; }
-.messenger-box #replying-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .messenger-box .attachments, .messenger-box .doc-attached { margin: 0; }
 /* The emoji picker of openvk over the form, the width of the screen. */
 .emoji-picker-wrap { position: fixed; right: 8px; bottom: calc(64px + env(safe-area-inset-bottom)); left: 8px; z-index: 50; display: flex; flex-direction: column; overflow: hidden; background: var(--back-fff); border-radius: 4px; box-shadow: 0 1px 4px var(--line-aaa), 0 0 0 1px var(--line-e0e0e0); user-select: none; }
@@ -2853,7 +2900,7 @@ body:has(#peer-avatar) .im-sender,
 .peer-title-edit-wrap { display: flex; align-items: center; gap: 6px; width: 100%; }
 .peer-title-input { flex: 1; min-width: 0; padding: 6px; border: 1px solid var(--line-c0c0c0); border-radius: 3px; font-size: 16px; }
 .peer-title-cancel-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; }
-.chats-close-icon { display: inline-block; width: 11px; height: 11px; background: url("/static/im/arrows.png") -18px 2px / 50px 16px no-repeat; opacity: .6; }
+.chats-close-icon { display: block; width: 11px; height: 11px; background: url("/static/im/arrows.png") -18px 0 / 50px 16px no-repeat; opacity: .6; }
 .peer-members-section { display: flex; flex-direction: column; padding-top: 6px; border-top: 1px solid var(--line-d6d6d6); }
 .chat-tab-2-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; font-size: 15px; }
 .chat-header-actions { display: flex; gap: 14px; font-size: 13px; }
@@ -2976,6 +3023,10 @@ body:has(#peer-avatar) .im-sender,
 .viewer-prev { left: 0; }
 .viewer-next { right: 0; }
 .viewer-details { max-height: 40vh; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); overflow-y: auto; background: var(--back-fff); }
+.viewer-details[hidden], .viewer-overlay, body.viewer-open .viewer-nav[hidden] { display: none; }
+/* The photo viewer draws its arrows itself; those of stories are text. */
+.viewer-body .viewer-prev::before { content: "‹"; }
+.viewer-body .viewer-next::before { content: "›"; }
 .viewer-description { margin: 0 0 6px; white-space: pre-wrap; }
 .viewer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
 
@@ -3014,8 +3065,39 @@ img.name-prime.name-prime { display: inline; width: 12px; height: 12px; margin: 
 .prime-page.prime-frame-hearts .avatar { border-image-source: url("/static/prime/frame-hearts.svg"); }
 .prime-page.prime-frame-stars .avatar { border-image-source: url("/static/prime/frame-stars.svg"); }
 
+/* The glitter frame shines, as glitter of the 2000s: it glows, its colour
+   runs and sparkles blink around it. The owner asked it back (2026-11-07)
+   when the site was calmed down: the only animation of Prime. */
+.prime-page.prime-frame-glitter .avatar {
+  animation: prime-glow 1.6s ease-in-out infinite alternate, prime-shimmer 4s linear infinite;
+}
 .prime-frame-glitter .avatar-box, .prime-sparkle-box { position: relative; }
 .prime-sparkle-box { display: block; line-height: 0; }
+.prime-sparkles { display: none; }
+.prime-frame-glitter .prime-sparkles {
+  position: absolute;
+  inset: calc(-12px - 12%);
+  display: block;
+  background: url("/static/prime/sparkles.svg") 0 0 / 100% 100% no-repeat;
+  pointer-events: none;
+  animation: prime-twinkle 0.9s steps(2, jump-none) infinite;
+}
+.prime-frame-glitter .prime-sparkles.late { transform: rotate(180deg); animation-delay: 0.45s; }
+@keyframes prime-glow {
+  from { box-shadow: 0 0 4px 1px var(--back-c9cfd6), 0 0 0 0 var(--back-c7b2ee); }
+  to { box-shadow: 0 0 14px 4px var(--back-c9cfd6), 0 0 24px 8px var(--back-c7b2ee); }
+}
+@keyframes prime-shimmer {
+  from { filter: hue-rotate(0deg) saturate(1.3) brightness(1.05); }
+  to { filter: hue-rotate(360deg) saturate(1.3) brightness(1.05); }
+}
+@keyframes prime-twinkle {
+  from { opacity: 1; }
+  to { opacity: 0.15; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .prime-page.prime-frame-glitter .avatar, .prime-frame-glitter .prime-sparkles { animation: none; }
+}
 
 .prime-bg-stars { --prime-pattern: url("/static/prime/bg-stars.svg"); }
 .prime-bg-hearts { --prime-pattern: url("/static/prime/bg-hearts.svg"); }
@@ -3435,10 +3517,6 @@ body.birthday.prime-bg.prime-bg-trip::before { content: none; }
 .canvas-tip.pinned { pointer-events: auto; }
 .canvas-tip img:first-child { flex: none; object-fit: cover; }
 .canvas-tip-date { color: var(--text-626262); font-size: 9px; }
-.graffiti-canvas.pouring { cursor: cell; }
-.graffiti-fill { display: inline-flex; gap: 4px; align-items: center; cursor: pointer; }
-.graffiti-fill::before { content: ""; width: 16px; height: 16px; background: url("/static/icons/fill.svg") no-repeat center; }
-.graffiti-fill.active { font-weight: bold; }
 
 /* The windows of the pages of pets, as the sites of the 2000s drew them:
    a dark title, the gradient of the header, with an icon, a white body, a hard shadow. */
@@ -4215,7 +4293,8 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .msg-makima-grid { display: block; position: relative; max-width: 100%; border-radius: 4px; overflow: hidden; margin: 4px 0; }
 .msg-makima-row { display: flex; gap: 2px; width: 100%; margin-bottom: 2px; }
 .msg-makima-row:last-child { margin-bottom: 0; }
-.msg-media-tile { position: relative; flex: 1; display: flex; min-width: 0; min-height: 0; overflow: hidden; border-radius: 2px; background: var(--back-e9ebed); }
+/* Each tile as wide as photoMosaic says (forward.js): the photo whole. */
+.msg-media-tile { position: relative; display: flex; flex: none; min-width: 0; min-height: 0; overflow: hidden; border-radius: 2px; background: var(--back-e9ebed); }
 .msg-media-tile-link { display: block; width: 100%; height: 100%; }
 .msg-media-tile img.media_makima { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 2px; }
 .im-message .attachments:not(:empty) { margin-top: 3px; }
@@ -4242,3 +4321,78 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .messenger-app--no-messages { display: flex; align-items: center; justify-content: center; min-height: 250px; padding: 40px 20px; box-sizing: border-box; }
 .messenger-app--no-messages[hidden] { display: none; }
 .messenger-app--no-messages p { margin: 0; padding: 12px 24px; color: var(--text-777); font-size: 13px; background: var(--back-f9f9f9); border: 1px solid var(--line-d6d6d6); border-radius: 4px; }
+/* openvk shows the time of only the first of the messages in a row. */
+.im-message.same-author .im-message-time { display: none; }
+
+/* "в ответ на сообщение …:" over the form, as openvk's input-reply: the
+   title bold, the words grey on one line, the cross at the right. */
+.messenger-box .input-reply { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 6px; padding: 6px 0; border-top: 1px solid var(--line-595959); cursor: default; }
+.messenger-box .input-reply[hidden] { display: none; }
+.input-reply-content { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; white-space: nowrap; }
+.input-reply-title { flex-shrink: 0; color: var(--text-2b587a); }
+.input-reply-text { min-width: 0; overflow: hidden; color: var(--text-656565); text-overflow: ellipsis; white-space: nowrap; }
+.input-reply-text img { display: none; }
+.input-close { display: flex; flex-shrink: 0; align-items: center; width: 14px; cursor: pointer; }
+.input-close .cross { display: block; margin: 0; }
+/* openvk's "cross": the grey one of arrows.png. */
+.cross { display: inline-block; width: 11px; height: 11px; background: url("/static/im/arrows.png") -18px 0 no-repeat; opacity: .6; cursor: pointer; }
+
+/* "Прикрепить" of the messenger opens upwards over the link, as openvk's
+   #wallAttachmentMenu.up_direction: the items, and under them the grey
+   "Прикрепить" right where the link was, which closes the list. */
+.attach-header { display: none; }
+.attach-up .attach-list { bottom: -7px; left: -16px; padding: 0; }
+.attach-up .attach-list .attach-link { padding: 2px 6px; }
+.attach-up .attach-list .attach-header { display: block; padding: 6px 15px; background: var(--back-eee); color: var(--text-2b587a); text-align: center; text-decoration: none; }
+
+/* A document that is a picture, in a message: openvk's
+   msg-attach-w-doc-image — the picture in a black box, its name and size
+   in white on a dark band at its bottom. */
+.msg-attach-w-doc-image { display: block; max-width: 100%; margin: 4px 0; }
+.msg-attach-w-doc-image .docGalleryItem { position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; width: 280px; max-width: 100%; height: 190px; border-radius: 3px; background: rgb(0 0 0); text-decoration: none; cursor: pointer; }
+.msg-attach-w-doc-image .docGalleryItem_main_preview { display: block; width: 100%; height: 100%; object-fit: cover; }
+.msg-attach-w-doc-image .doc_bottom_panel { position: absolute; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 3px 6px; background: rgb(1 1 1 / 70%); }
+.msg-attach-w-doc-image .doc_bottom_panel span { overflow: hidden; color: var(--text-fff); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Videos of YouTube in messages, as openvk's msg-attach-j-video: the
+   cover, 150px wide, with the dark play button in the middle; under the
+   form, the covers of those attached, each with a cross. "Загрузить
+   видео" is openvk's window of showFastVideoUpload. */
+.msg-attach-videos { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+.msg-attach-j-video { width: 150px; }
+.compact_video { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: rgb(0 0 0); }
+.compact_video img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.compact_video .play-button { position: absolute; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 2px; background: rgb(0 0 0 / 75%); opacity: .8; }
+.compact_video:hover .play-button { opacity: 1; }
+.compact_video .play-button-ico { width: 0; height: 0; margin-left: 3px; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 12px solid var(--text-fff); opacity: .8; }
+.video-attached { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; }
+.video-attached[hidden] { display: none; }
+.video-attached-item { position: relative; width: 100px; aspect-ratio: 16 / 9; background: rgb(0 0 0); }
+.video-attached-item img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.video-attached-remove { position: absolute; top: 2px; right: 2px; display: flex; align-items: center; justify-content: center; width: 15px; height: 15px; background: var(--back-fff); cursor: pointer; }
+.video-attached-remove .cross { display: block; margin: 0; }
+.modal-box.video-upload { width: 500px; max-width: calc(100vw - 32px); }
+.modal-box.video-upload .modal-body { padding: 0; min-height: 101px; }
+.video-upload .mb-tabs { margin: 0; }
+.video-upload .error { margin: 8px 10px 0; }
+.video-upload-form { width: 80%; margin: 0 auto; border-spacing: 7px; }
+.video-upload-label { width: 120px; vertical-align: top; }
+.video-upload-form input { box-sizing: border-box; width: 100%; }
+.modal-box.video-player { width: 660px; max-width: calc(100vw - 32px); }
+.video-frame { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; }
+
+/* "Выбрать аудиозаписи", as openvk's showAudioAttachment: 580px wide, the
+   search on a grey strip, the songs under it with "Прикрепить
+   аудиозапись" at the right of each, greyed under the pointer. */
+.modal-box.audio-attach { width: 580px; max-width: calc(100vw - 32px); }
+.modal-box.audio-attach .modal-body { display: flex; flex-direction: column; height: 335px; padding: 0; }
+.audio-attach-search { display: flex; flex-shrink: 0; height: 35px; padding: 10px 10px 0; box-sizing: border-box; background: var(--back-e6e6e6); }
+.audio-attach-search input { box-sizing: border-box; width: 100%; height: 24px; }
+.audio-attach .error { margin: 6px 9px 0; }
+.audios-insert { flex: 1; min-height: 0; padding: 9px 5px 9px 9px; overflow-y: auto; }
+.audio-attach-row { display: flex; align-items: center; width: 100%; }
+.audio-attach-player { width: 72%; min-width: 0; }
+.audio-attach-toggle { display: flex; align-items: center; justify-content: center; width: 28%; height: 37px; text-align: center; cursor: pointer; user-select: none; }
+.audio-attach-toggle:hover { background: var(--back-ececec); text-decoration: none; }
+.audios-insert .show-more { display: block; padding: 8px; text-align: center; cursor: pointer; }
+.audios-insert .show-more[hidden] { display: none; }

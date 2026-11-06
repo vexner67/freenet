@@ -19,9 +19,9 @@ import { api, currentUser, started } from './api.js';
 import { openMessages } from './e2ee.js';
 import { onEvent } from './events.js';
 import { openNewChat, chatPath } from './chats.js';
-import { chatPreview, chatTitle, formatPostDate, plural, foundParts, foundSnippet, foundText, messagePreview, snippet } from './labels.js';
+import { chatMembers, chatPreview, chatTitle, formatPostDate, plural, primeNameClass, foundParts, foundSnippet, foundText, messagePreview, snippet } from './labels.js';
 import { $, avatarURL, chatPhotoURL, el, fullName, renderChrome, savedPath, showError, hideError, smileyNodes, verifiedMark } from './layout.js';
-import { lastTab } from './messenger.js';
+import { fitHeight, lastTab } from './messenger.js';
 import { typingLine } from './typing.js';
 import { tr } from './i18n.js';
 
@@ -54,53 +54,75 @@ function typistsOf(key) {
   return typing.get(key);
 }
 
-// textNode is the line under a row: who types, or else the last message.
+// textNode is the line of a row: who types, or else the last message.
 function textNode(d, preview) {
   const now = typingNow.get(keyOf(d));
 
-  if (now) return el('div', { className: 'dialog-text dialog-typing', textContent: now });
+  if (now) return el('div', { className: 'crp-entry--message---text dialog-typing' }, el('span', { textContent: now }));
 
-  return el('div', { className: 'dialog-text' }, ...smileyNodes(snippet(preview, PREVIEW)));
+  return el('div', { className: 'crp-entry--message---text' }, el('span', {}, ...smileyNodes(snippet(preview, PREVIEW))));
 }
 
-// chatNode is a chat of several people as a row: its name, when it was
-// last written to, and who said what.
+// nameNode is the name of a row as on the pages: coloured as its owner
+// dressed it with Prime, the checkmark after it.
+const nameNode = (person) => [el('span', { className: primeNameClass(person), textContent: fullName(person) }), verifiedMark(person)];
+
+// rowNode is a row as openvk's ConversationItem (components/common.js):
+// the photo, the name with how many are in a chat and the date under it,
+// then the last message with the photo of who wrote it (none when the
+// peer did) — the grey box when it is mine and not read yet — and the
+// whole row grey while I have not read it.
+function rowNode({ href, unread, unseen, photo, name, excess, author, authorName, text }) {
+  return el('a', { className: ['crp-entry', unread && 'unread', !author && 'crp-entry-replied-same'].filter(Boolean).join(' '), href },
+    el('div', { className: 'crp-entry--main' },
+      el('div', { className: 'crp-entry--image' }, el('img', { src: photo, alt: '' })),
+      el('div', { className: 'crp-entry--info' },
+        el('div', { className: 'crp-entry--info-wrap' },
+          el('b', { className: 'crp-entry--name' }, ...name),
+          el('div', { className: 'crp-entry--excess' }, ...excess.filter(Boolean).map((t) => el('span', { textContent: t })))))),
+    el('div', { className: unseen ? 'crp-entry--message unread' : 'crp-entry--message' },
+      author && el('div', { className: 'crp-entry--message---av' }, el('img', { src: avatarURL(author, 'small'), alt: '' })),
+      el('div', { className: 'crp-entry--message---content' },
+        authorName && el('div', { className: 'crp-entry--message---author' }, ...authorName),
+        text)),
+  );
+}
+
+// chatNode is a chat of several people as a row: its name, how many are
+// in it, when it was last written to, and who said what.
 function chatNode(d) {
   const m = d.chat.lastMessage;
 
-  return el('a', { className: d.unread ? 'dialog unread' : 'dialog', href: chatPath(d.chat.id) },
-    el('img', { className: 'dialog-avatar', src: chatPhotoURL(d.chat, 'small'), alt: '' }),
-    el('div', { className: 'dialog-info' },
-      el('b', { className: 'dialog-name', textContent: chatTitle(d.chat) }),
-      el('div', { className: 'dialog-date', textContent: formatPostDate(m?.createdAt ?? d.chat.createdAt) }),
-    ),
-    el('div', { className: d.unread ? 'dialog-message unread' : 'dialog-message' },
-      m && el('img', { src: avatarURL(m.author, 'small'), alt: '' }),
-      textNode(d, chatPreview(m)),
-    ),
-  );
+  return rowNode({
+    href: chatPath(d.chat.id),
+    unread: d.unread,
+    photo: chatPhotoURL(d.chat, 'small'),
+    name: [chatTitle(d.chat)],
+    excess: [chatMembers(d.chat.memberCount), formatPostDate(m?.createdAt ?? d.chat.createdAt)],
+    author: m?.author,
+    // What happened in the chat names who did it itself.
+    authorName: m?.author && !m.action ? nameNode(m.author) : null,
+    text: textNode(d, chatPreview(m)),
+  });
 }
 
 function dialogNode(d) {
   if (d.chat) return chatNode(d);
 
   const m = d.lastMessage;
-  // Unread either way, as on openvk: the peer's message I have not read,
-  // or mine the peer has not read yet.
-  const unread = m.out ? !m.read : d.unread;
 
-  return el('a', { className: unread ? 'dialog unread' : 'dialog', href: '/im/' + encodeURIComponent(d.peer.nickname) },
-    el('img', { className: 'dialog-avatar', src: avatarURL(d.peer, 'small'), alt: '' }),
-    el('div', { className: 'dialog-info' },
-      el('b', { className: 'dialog-name' }, ...(d.peer.id === me.id ? [tr('Избранное')] : [fullName(d.peer), verifiedMark(d.peer)])),
-      el('div', { className: 'dialog-date', textContent: formatPostDate(m.createdAt) }),
-    ),
-    el('div', { className: unread ? 'dialog-message unread' : 'dialog-message' },
-      m.out && el('img', { src: avatarURL(me, 'small'), alt: '' }),
-      // A message without words says what it shows, as on VK.
-      textNode(d, messagePreview(m)),
-    ),
-  );
+  return rowNode({
+    href: '/im/' + encodeURIComponent(d.peer.nickname),
+    unread: d.unread,
+    // Mine the peer has not read yet, as on openvk.
+    unseen: m.out && !m.read && d.peer.id !== me.id,
+    photo: avatarURL(d.peer, 'small'),
+    name: d.peer.id === me.id ? [tr('Избранное')] : nameNode(d.peer),
+    excess: [formatPostDate(m.createdAt)],
+    author: m.out ? me : null,
+    // A message without words says what it shows, as on VK.
+    text: textNode(d, messagePreview(m)),
+  });
 }
 
 // show draws a dialog in place of its old row, or at the top.
@@ -237,7 +259,7 @@ async function loadMore() {
 function countShown() {
   const rows = $('dialogs').children.length;
   const unreadOnly = $('dialogs').classList.contains('unread-only');
-  const seen = unreadOnly ? $('dialogs').querySelectorAll('.dialog.unread').length : rows;
+  const seen = unreadOnly ? $('dialogs').querySelectorAll('.crp-entry.unread').length : rows;
 
   $('bottom').hidden = rows === 0;
   $('count').textContent = cursor ? '' : `${rows} ${plural(rows, ['переписка', 'переписки', 'переписок'])}`;
@@ -250,6 +272,21 @@ function toggleUnread() {
 
   $('only-unread').textContent = only ? tr('Все переписки') : tr('Только непрочитанные');
   countShown();
+}
+
+// loadOnScroll pages on as the list, which scrolls inside the window as
+// openvk's crp-list, nears its end.
+function loadOnScroll(more) {
+  let loading = false;
+
+  $('list').addEventListener('scroll', async () => {
+    const list = $('list');
+    if (loading || $('more').hidden || list.scrollHeight - list.scrollTop - list.clientHeight > 250) return;
+
+    loading = true;
+    await more();
+    loading = false;
+  });
 }
 
 const params = new URLSearchParams(location.search);
@@ -269,19 +306,18 @@ function foundNode({ peer, message, chat, chatMessage }) {
   const said = foundText(m, query);
   const parts = foundParts(foundSnippet(said.text, query, PREVIEW), query);
 
-  return el('a', { className: 'dialog', href },
-    el('img', { className: 'dialog-avatar', src: chat ? chatPhotoURL(chat, 'small') : avatarURL(peer, 'small'), alt: '' }),
-    el('div', { className: 'dialog-info' },
-      el('b', { className: 'dialog-name' }, ...(chat ? [chatTitle(chat)] : [fullName(peer), verifiedMark(peer)])),
-      el('div', { className: 'dialog-date', textContent: formatPostDate(m.createdAt) }),
-    ),
-    el('div', { className: 'dialog-message' },
-      chat ? el('img', { src: avatarURL(m.author, 'small'), alt: '' }) : m.out && el('img', { src: avatarURL(me, 'small'), alt: '' }),
-      el('div', { className: 'dialog-text' },
+  return rowNode({
+    href,
+    photo: chat ? chatPhotoURL(chat, 'small') : avatarURL(peer, 'small'),
+    name: chat ? [chatTitle(chat)] : nameNode(peer),
+    excess: [formatPostDate(m.createdAt)],
+    author: chat ? m.author : m.out ? me : null,
+    authorName: chat ? nameNode(m.author) : null,
+    text: el('div', { className: 'crp-entry--message---text' },
+      el('span', {},
         said.forwarded && el('span', { className: 'dialog-forwarded', textContent: tr('Пересланное сообщение: ') }),
-        ...parts.map((p) => (p.found ? el('span', { className: 'found-words', textContent: p.text }) : p.text))),
-    ),
-  );
+        ...parts.map((p) => (p.found ? el('span', { className: 'found-words', textContent: p.text }) : p.text)))),
+  });
 }
 
 async function searchMore() {
@@ -376,13 +412,17 @@ if (!me) {
   if (me.nickname) $('saved').href = savedPath(me);
   $('only-unread').addEventListener('click', toggleUnread);
 
+  fitHeight();
+
   if (query) {
     $('more').addEventListener('click', searchMore);
+    loadOnScroll(searchMore);
     await searchMore();
   } else if (searchPeer || searchChat) {
     $('search-text').focus();
   } else {
     $('more').addEventListener('click', loadMore);
+    loadOnScroll(loadMore);
     await loadMore();
     listenToEvents();
   }

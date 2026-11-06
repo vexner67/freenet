@@ -140,8 +140,10 @@ function openPicker(onPick) {
 
 // initDocuments wires "Прикрепить документ" of a form: link opens the
 // picker, list shows what is attached, each with a cross; onChange runs
-// whenever documents come or go, not when the form is made.
-export function initDocuments({ link, list, onChange = () => {} }) {
+// whenever documents come or go, not when the form is made. upload opens
+// "Загрузка документа" at once, as openvk's messenger does: a message
+// sends a new file, not one of "Мои Документы".
+export function initDocuments({ link, list, onChange = () => {}, upload = false }) {
   let docs = [];
 
   function render(changed = true) {
@@ -158,10 +160,11 @@ export function initDocuments({ link, list, onChange = () => {} }) {
     render();
   }
 
-  link.addEventListener('click', () => openPicker((doc) => {
+  const add = (doc) => {
     if (!docs.some((d) => d.id === doc.id) && docs.length < MAX_DOCUMENTS) docs.push(doc);
     render();
-  }));
+  };
+  link.addEventListener('click', () => (upload ? uploadFile(add) : openPicker(add)));
 
   render(false);
 

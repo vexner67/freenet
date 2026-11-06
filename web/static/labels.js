@@ -3363,14 +3363,74 @@ export function messagePreview(m) {
   if (m.deleted) return tr('Сообщение удалено');
   if (m.sticker) return tr('Стикер');
   if (m.unreadable) return tr('Зашифрованное сообщение');
-  if (m.text) return plainMentions(m.text);
+
+  const { text, videos } = splitVideos(m.text);
+  if (text) return plainMentions(text);
   if (m.photos?.length || m.albumPhoto) return tr('Фотография');
+  if (videos.length) return tr('Видеозапись');
   if (m.post) return tr('Запись');
   if (m.documentCount || m.documents?.length) return tr('Документ');
   if (m.audioCount || m.audios?.length) return tr('Аудиозапись');
   if (m.forwardedCount) return forwardedCount(m.forwardedCount);
 
   return '';
+}
+
+// Videos of YouTube a message attaches ride in its words, a line of their
+// own each, "https://www.youtube.com/watch?v=<id>": so a dialog seals them
+// with its words, and a forward carries them on. The messenger shows such
+// a line as a video (splitVideos), not as words.
+const YOUTUBE_ID = /^[\w-]{11}$/;
+const YOUTUBE_HOSTS = ['youtube.com', 'm.youtube.com', 'music.youtube.com', 'youtube-nocookie.com'];
+export const MAX_VIDEOS = 10;
+
+// youtubeID is the ID of the video a link of YouTube opens, '' for any
+// other text: a link to watch it, a short one, a short video or a player.
+export function youtubeID(link) {
+  let url;
+  try {
+    url = new URL(String(link ?? '').trim());
+  } catch {
+    return '';
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return '';
+
+  const host = url.hostname.replace(/^www\./, '');
+  let id = '';
+  if (host === 'youtu.be') {
+    id = url.pathname.slice(1);
+  } else if (YOUTUBE_HOSTS.includes(host)) {
+    id = url.pathname === '/watch'
+      ? url.searchParams.get('v') ?? ''
+      : /^\/(?:shorts|embed|live)\/([^/]+)$/.exec(url.pathname)?.[1] ?? '';
+  }
+
+  return YOUTUBE_ID.test(id) ? id : '';
+}
+
+// youtubeLink is the line a message carries a video as.
+export function youtubeLink(id) {
+  return `https://www.youtube.com/watch?v=${id}`;
+}
+
+// splitVideos parts the words of a message from the videos it attaches:
+// the lines that are links of YouTube alone, each video once.
+export function splitVideos(text) {
+  const kept = [];
+  const videos = [];
+
+  for (const line of String(text ?? '').split('\n')) {
+    const id = youtubeID(line);
+    if (!id) kept.push(line);
+    else if (!videos.includes(id) && videos.length < MAX_VIDEOS) videos.push(id);
+  }
+
+  return { text: videos.length ? kept.join('\n').trim() : String(text ?? ''), videos };
+}
+
+// withVideos is the words of a message to send with the videos it attaches.
+export function withVideos(text, videos) {
+  return [text.trimEnd(), ...videos.map(youtubeLink)].filter(Boolean).join('\n');
 }
 
 // Answers ("Ответить", as on VK): over its words an answer shows who
@@ -3380,7 +3440,12 @@ export function messagePreview(m) {
 export const QUOTE_LENGTH = 200;
 
 export function quoteSnippet(text) {
-  const line = text.replace(/\s+/g, ' ').trim();
+  // A message of videos alone is quoted as its first; the words say no
+  // more of them.
+  const { text: words, videos } = splitVideos(text);
+  if (!words && videos.length) return youtubeLink(videos[0]);
+
+  const line = words.replace(/\s+/g, ' ').trim();
   const chars = [...line];
   return chars.length <= QUOTE_LENGTH ? line : chars.slice(0, QUOTE_LENGTH).join('').trimEnd() + '…';
 }
@@ -4261,3 +4326,62 @@ export function guestCame(guest) {
   return byGender(guest.user.gender, tr(' заходил на вашу страницу.'), tr(' заходила на вашу страницу.'));
 }
 
+
+// How many photos of a message stand in each row of the mosaic, by how
+// many there are, as openvk's makima grid lays them out.
+const MOSAIC_ROWS = { 4: [2, 2], 5: [2, 3], 6: [3, 3], 7: [2, 2, 3], 8: [2, 3, 3], 9: [3, 3, 3], 10: [3, 3, 4] };
+
+// photoMosaic lays the photos of a message out as openvk's makima grid
+// (makima_grid.js), each with its own shape (ratio = width / height), so
+// that every photo is seen whole, as Telegram shows them: one alone at its
+// size within the box, several in rows as wide as the box, the photos of
+// a row as tall as each other. A row too tall for the box is lowered, one
+// too low is raised, and their photos are cut a little.
+// It returns the width of the mosaic and its rows: their height and the
+// widths of their photos.
+export function photoMosaic(ratios, { width = 380, height = 350, gap = 2 } = {}) {
+  const shape = (r) => (Number.isFinite(r) && r > 0 ? r : 4 / 3);
+  const rs = ratios.slice(0, 10).map(shape);
+
+  if (rs.length === 1) {
+    const r = rs[0];
+    let w = Math.min(width, height * r);
+    let h = w / r;
+    // A strip too thin or too low to see is drawn a little bigger and cut.
+    if (w < 60) w = 60;
+    if (h < 60) h = 60;
+    return { width: Math.round(w), rows: [{ height: Math.round(h), widths: [Math.round(w)] }] };
+  }
+
+  let counts = MOSAIC_ROWS[rs.length];
+  if (rs.length === 2) counts = rs.every((r) => r >= 1.6) ? [1, 1] : [2];
+  if (rs.length === 3) counts = rs[0] >= 1.2 ? [1, 2] : [3];
+
+  // The whole mosaic is about as tall as one photo may be.
+  const cap = Math.min(height * 0.75, (height * 1.15 - gap * (counts.length - 1)) / counts.length);
+  let at = 0;
+  const rows = counts.map((n) => {
+    const row = rs.slice(at, at + n);
+    at += n;
+    const room = width - gap * (n - 1);
+    const sum = row.reduce((total, r) => total + r, 0);
+    // As tall as fills the row with every photo whole, within bounds: a
+    // row kept lower or raised cuts its photos a little.
+    const h = Math.min(cap, Math.max(60, room / sum));
+    const widths = row.map((r) => Math.max(1, Math.round((r / sum) * room)));
+    // Rounding leaves the last photo what is left of the row.
+    widths[widths.length - 1] = Math.max(1, room - widths.slice(0, -1).reduce((total, w) => total + w, 0));
+
+    return { height: Math.round(h), widths };
+  });
+
+  return { width, rows };
+}
+
+// idTime is when an ID of UUIDv7 was made, as ISO: its first 48 bits are
+// the milliseconds since 1970; '' for an ID of no time.
+export function idTime(id) {
+  const ms = parseInt(String(id ?? '').replaceAll('-', '').slice(0, 12), 16);
+
+  return Number.isFinite(ms) && ms > 0 && String(id)[14] === '7' ? new Date(ms).toISOString() : '';
+}

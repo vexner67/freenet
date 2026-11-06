@@ -5,22 +5,31 @@
 // under it with how many put each. The reactions are smileys of the site,
 // the same as those of the words.
 
-import { REACTIONS, genitiveName, primeNameClass, quoteText, reactionCounts, reacted } from './labels.js';
-import { $, el, fullName, showError, smileyImage, smileyNodes } from './layout.js';
+import { REACTIONS, formatDateTime, idTime, primeNameClass, quoteText, reactionCounts, reacted } from './labels.js';
+import { $, avatarURL, el, fullName, showError, smileyImage, smileyNodes } from './layout.js';
 import { tr } from './i18n.js';
 
-// quoteNode is the block over an answer's words; text is the words of the
-// message it answers as the page knows them, open leads to that message.
-// An author with Prime dresses the quote as their messages: the name in
-// its colour, the pattern behind.
+// quoteNode is the block over an answer's words, as openvk's
+// reply-msg-container (components/message.js): the small photo, the name
+// and the date of the message it answers, its words or what it shows, and
+// "в ответ на сообщение" whose; text is its words as the page knows them,
+// open leads to that message. An author with Prime has the name in its
+// colour.
 export function quoteNode(q, text, open) {
+  const said = quoteText(q, text);
+  const when = idTime(q.id);
+
   return el('a', {
-    className: 'im-quote',
+    className: 'reply-msg-container',
     title: tr('Перейти к сообщению'),
     onclick: () => open(q.id),
   },
-  q.author && el('span', { className: ['im-quote-name', primeNameClass(q.author)].filter(Boolean).join(' '), textContent: fullName(q.author) }),
-  el('span', { className: 'im-quote-text' }, ...smileyNodes(quoteText(q, text))));
+  q.author && el('div', { className: 'reply-msg-head' },
+    el('img', { className: 'reply-avatar', src: avatarURL(q.author, 'small'), alt: '' }),
+    el('b', { className: ['reply-author-name', primeNameClass(q.author)].filter(Boolean).join(' '), textContent: fullName(q.author) }),
+    when && el('span', { className: 'reply-date', textContent: formatDateTime(when) })),
+  el('div', { className: q.author ? 'reply-text' : 'reply-text reply-no-text' }, ...smileyNodes(said)),
+  q.author && el('div', { className: 'reply-msg-header', textContent: tr('в ответ на сообщение {0}', fullName(q.author)) }));
 }
 
 // replyBar runs the line over the form: start(m, author, text) answers m,
@@ -37,7 +46,7 @@ export function replyBar() {
   return {
     start(m, author, text) {
       replying = m;
-      $('replying-name').textContent = genitiveName(author);
+      $('replying-name').textContent = tr('в ответ на сообщение {0}', fullName(author)) + ':';
       $('replying-text').replaceChildren(...smileyNodes(quoteText({ ...m, author, photoCount: m.photos?.length ?? 0, albumPhoto: Boolean(m.albumPhoto), post: Boolean(m.post) }, text)));
       $('replying').hidden = false;
       $('text').focus();

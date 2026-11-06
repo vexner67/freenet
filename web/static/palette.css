@@ -8,6 +8,8 @@
    in the stylesheets (web/test/themes.test.js). */
 
 :root {
+  --back-eaeae9: #eaeae9;
+  --line-717171: #717171;
   --back-dbdbdb: #dbdbdb;
   --back-eaeef2: #eaeef2;
   --back-e5460a: #e5460a;
@@ -30,6 +32,7 @@
   --text-c5c5c5: #c5c5c5;
   --text-777: #777;
   --text-656565: #656565;
+  --text-959595: #959595;
   --line-c0cad5: #c0cad5;
   /* Backgrounds */
   --back-fff: #fff;
@@ -53,12 +56,15 @@
   --back-dcefd9: #dcefd9;
   --back-f7f1d6: #f7f1d6;
   --back-f0f0f0: #f0f0f0;
+  --back-eee: #eee;
+  --back-cdcdcd: #cdcdcd;
   --back-f6f0d2: #f6f0d2;
   --back-ededed: #ededed;
   --back-e9edf1: #e9edf1;
   --back-e4e4e4: #e4e4e4;
   --back-e9e9e9: #e9e9e9;
   --back-e6e6e6: #e6e6e6;
+  --back-ececec: #ececec;
   --back-dde2e8: #dde2e8;
   --back-eee5b8: #eee5b8;
   --back-f3ddbd: #f3ddbd;

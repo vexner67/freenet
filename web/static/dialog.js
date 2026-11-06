@@ -23,12 +23,13 @@ import { initAttachments } from './attach.js';
 import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
 import { initAudios } from './audio.js';
+import { initVideos } from './video.js';
 import { startCall } from './calls.js';
 import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, openMessages, ownKey, safetyCode, sendSealed } from './e2ee.js';
 import { isLive, onEvent } from './events.js';
 import { initEmoji } from './emoji.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
-import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, messageTime, photoChanges, messagesCount, offlineBar, presence, primeNameClass, selectedCount, votesCount } from './labels.js';
+import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, messageTime, photoChanges, messagesCount, offlineBar, presence, primeNameClass, selectedCount, splitVideos, votesCount, withVideos } from './labels.js';
 import { $, avatarURL, el, fullName, isPhone, keepFocus, whenShown, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { contactInfo, fitHeight, hoverIcons, peerTabs, regroup, selectOnClick, showContact } from './messenger.js';
 import { button, openModal } from './modal.js';
@@ -81,6 +82,9 @@ let attachments;
 let documents;
 // audios are songs attached to the message.
 let audios;
+// videos are videos of YouTube attached to the message, sent as lines of
+// its words (withVideos).
+let videos;
 // messagePrice: the votes a message to the peer costs, 0 — free.
 let messagePrice = 0;
 // typingWatch tells the peer while the user types.
@@ -119,7 +123,7 @@ function messageNode(m) {
   // and taken back it says nothing.
   node.render = () => {
     const shownMessage = node.message ?? m;
-    const text = shownMessage.deleted ? tr('Сообщение удалено') : shownMessage.text;
+    const text = shownMessage.deleted ? tr('Сообщение удалено') : splitVideos(shownMessage.text).text;
 
     node.classList.toggle('deleted', Boolean(shownMessage.deleted));
     content.replaceChildren(...[
@@ -378,8 +382,10 @@ function startEdit(m) {
   // songs stay.
   documents.clear();
   audios.clear();
+  videos.clear();
   $('doc').hidden = true;
   $('audio').hidden = true;
+  $('video').hidden = true;
   if (m.sharedPhoto) $('attach').hidden = $('graffiti').hidden = true;
   text.focus();
   text.setSelectionRange(text.value.length, text.value.length);
@@ -392,7 +398,7 @@ function cancelEdit() {
   $('text').value = '';
   autosize($('text'));
   attachments.clear();
-  $('doc').hidden = false;
+  $('doc').hidden = $('audio').hidden = $('video').hidden = false;
   $('editing').hidden = true;
   $('send').textContent = tr('Отправить');
 }
@@ -649,7 +655,7 @@ async function send(event) {
     return;
   }
 
-  if (!text.value.trim() && attachments.count() === 0 && documents.count() === 0 && audios.count() === 0) return;
+  if (!text.value.trim() && attachments.count() === 0 && documents.count() === 0 && audios.count() === 0 && videos.count() === 0) return;
 
   if (attachments.busy()) {
     showError($('error'), tr('Дождитесь, пока загрузятся фотографии.'));
@@ -659,7 +665,7 @@ async function send(event) {
   button.disabled = true;
 
   try {
-    const m = await sendSealed(me.id, nickname, text.value, { photos: attachments.ids(), documents: documents.ids(), audios: audios.ids(), replyTo: replies.replyingTo(), price: messagePrice });
+    const m = await sendSealed(me.id, nickname, withVideos(text.value, videos.ids()), { photos: attachments.ids(), documents: documents.ids(), audios: audios.ids(), replyTo: replies.replyingTo(), price: messagePrice });
 
     text.value = '';
     autosize(text);
@@ -669,6 +675,7 @@ async function send(event) {
     attachments.clear();
     documents.clear();
     audios.clear();
+    videos.clear();
     showSent(m);
   } catch (e) {
     showError($('error'), e);
@@ -732,8 +739,9 @@ async function setUpInput({ canWrite, primeOnly, messagePrice: price = 0 }) {
   $('peer-avatar').addEventListener('click', openContact);
   attachments = initAttachments({ link: $('attach'), also: [$('graffiti')], input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
   initGraffiti({ link: $('graffiti'), attachments });
-  documents = initDocuments({ link: $('doc'), list: $('documents') });
+  documents = initDocuments({ link: $('doc'), list: $('documents'), upload: true });
   audios = initAudios({ link: $('audio'), list: $('audios') });
+  videos = initVideos({ link: $('video'), list: $('videos') });
   const showStickers = initStickers({ panel: $('stickers'), error: $('error'), onPick: sendSticker, onSent: () => closeEmoji() });
   const closeEmoji = initEmoji({ link: $('smileys-link'), picker: $('smileys'), input: $('text'), bar: $('recent-smiles'), stickersLink: $('stickers-link'), stickersPanel: $('stickers'), showStickers, stickersEntry: $('stickers-entry') });
   $('form').addEventListener('submit', send);

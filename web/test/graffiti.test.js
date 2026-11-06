@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { canvasPoint, drawStrokes, floodFill, stroke } from '../static/graffiti.js';
+import { PIXEL, addCells, canvasPoint, drawStrokes, floodFill, pixels, stroke } from '../static/graffiti.js';
 
 // recorder is a 2D context that writes down what is drawn.
 function recorder() {
@@ -69,4 +69,27 @@ test('a fill mixes in by its opacity', () => {
   floodFill(pixels, 1, 1, 0, 0, [55, 55, 55], 0.5);
 
   assert.equal(pixels[0], 155);
+});
+
+test('a stroke of pixels paints each square on its way once', () => {
+  const s = pixels('#000', 1, 1, { x: 5, y: 5 });
+  addCells(s, { x: 5, y: 5 }, { x: 5 + PIXEL * 3, y: 5 });
+  addCells(s, { x: 5 + PIXEL * 3, y: 5 }, { x: 5, y: 5 });
+
+  assert.deepEqual(s.cells, [[0, 0], [1, 0], [2, 0], [3, 0]]);
+});
+
+test('a wide pen of pixels paints a square around the point', () => {
+  const s = pixels('#000', 3, 1, { x: PIXEL * 5, y: PIXEL * 5 });
+
+  assert.equal(s.cells.length, 9);
+  assert.deepEqual(s.cells[0], [4, 4]);
+});
+
+test('pixels are drawn as squares, scaled', () => {
+  const { ctx, calls } = recorder();
+
+  drawStrokes(ctx, [pixels('#f00', 1, 1, { x: PIXEL * 2, y: PIXEL })], 2);
+
+  assert.deepEqual(calls.find((c) => c[0] === 'fillRect'), ['fillRect', PIXEL * 4, PIXEL * 2, PIXEL * 2, PIXEL * 2]);
 });

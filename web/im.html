@@ -27,7 +27,7 @@
       <nav class="menu" id="menu"></nav>
     </div>
 
-    <div class="page">
+    <div class="page im-page im-list-page">
       <div class="page-title"><span>Сообщения</span></div>
       <div class="page-body">
         <div class="tabs">
@@ -47,9 +47,11 @@
         </div>
         <div class="error" id="error" hidden></div>
         <p class="hint" id="search-hint" hidden>Найдены сообщения бесед. Сообщения диалогов зашифрованы, и сервер их не читает: искать в диалоге можно со страницы диалога — «Поиск по переписке».</p>
-        <div class="dialogs" id="dialogs"></div>
-        <div class="nothing" id="empty" hidden>Тут ничего нет... Пока...</div>
-        <a class="wall-more" id="more" hidden>Показать ещё</a>
+        <div class="crp-list" id="list">
+          <div class="dialogs" id="dialogs"></div>
+          <div class="nothing" id="empty" hidden>Тут ничего нет... Пока...</div>
+          <a class="wall-more" id="more" hidden>Показать ещё</a>
+        </div>
         <div class="im-bottom" id="bottom" hidden>
           <span id="count"></span>
           <a id="only-unread">Только непрочитанные</a>

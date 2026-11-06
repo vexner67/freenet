@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
 import {
-  callLength, cardCovers, cardNumber, grownDeposit, declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, friendsCount, friendsSummary, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, untilNewYear, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, balanceVotes, balanceAmount, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale, primePeriods, primeSaving, primeTerms, titleIcons, titleIconPath, titleGroups, topValue, isBirthdayToday, primeNameClass, videoDuration, handleOf, audioTime, audioNames, audioArtist, audioTitle, audiosCount, messageTime, messageDay, sameDay, emojiCode, emojiParts, offlineBar } from '../static/labels.js';
+  callLength, cardCovers, cardNumber, grownDeposit, declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, friendsCount, friendsSummary, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, untilNewYear, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, balanceVotes, balanceAmount, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale, primePeriods, primeSaving, primeTerms, titleIcons, titleIconPath, titleGroups, topValue, isBirthdayToday, primeNameClass, videoDuration, handleOf, audioTime, audioNames, audioArtist, audioTitle, audiosCount, messageTime, messageDay, sameDay, emojiCode, emojiParts, offlineBar, photoMosaic, idTime, youtubeID, splitVideos, withVideos, quoteSnippet } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -1618,4 +1618,56 @@ test('offlineBar says when one was online, as openvk under a dialog', () => {
   assert.match(today, /^Анна была в сети сегодня в \d+:05$/);
   assert.match(offlineBar(at('2026-11-05T09:05:00Z'), now), /^Анна была в сети (вчера|сегодня) в \d+:05$/);
   assert.match(offlineBar(at('2026-10-01T09:05:00Z'), now), /^Анна была в сети \d\d\.\d\d в \d+:05$/);
+});
+
+test('a mosaic shows each photo whole, the rows as wide as the box', () => {
+  const one = photoMosaic([2]);
+  assert.equal(one.rows.length, 1);
+  assert.deepEqual(one.rows[0].widths, [380]);
+  assert.equal(one.rows[0].height, 190);
+
+  // Two wide photos lie one over the other; two others side by side.
+  assert.equal(photoMosaic([2, 2]).rows.length, 2);
+  const pair = photoMosaic([1, 1]);
+  assert.equal(pair.rows.length, 1);
+  assert.equal(pair.rows[0].widths.reduce((a, b) => a + b) + 2, 380);
+
+  for (const row of photoMosaic([1.5, 0.7, 1, 1.3]).rows) {
+    assert.equal(Math.round(row.widths.reduce((a, b) => a + b) + 2 * (row.widths.length - 1)), 380);
+    assert.ok(row.height >= 60);
+  }
+});
+
+test('a UUIDv7 tells when it was made', () => {
+  assert.equal(idTime('01a1b2c2-e09a-78b2-a640-b6d786f3b3c9'), new Date(0x01a1b2c2e09a).toISOString());
+  assert.equal(idTime('not an id'), '');
+});
+
+test('a link of YouTube gives its video', () => {
+  for (const link of [
+    'https://www.youtube.com/watch?v=9FWSRQEqhKE',
+    'https://youtube.com/watch?v=9FWSRQEqhKE&t=10',
+    'https://youtu.be/9FWSRQEqhKE',
+    'https://m.youtube.com/watch?v=9FWSRQEqhKE',
+    'https://www.youtube.com/shorts/9FWSRQEqhKE',
+    ' https://www.youtube-nocookie.com/embed/9FWSRQEqhKE ',
+  ]) assert.equal(youtubeID(link), '9FWSRQEqhKE', link);
+
+  for (const text of ['https://vimeo.com/123', 'https://youtu.be/short', 'javascript:alert(1)', 'смотри https://youtu.be/9FWSRQEqhKE', 'https://evil.com/watch?v=9FWSRQEqhKE']) {
+    assert.equal(youtubeID(text), '', text);
+  }
+});
+
+test('the videos of a message are its lines of links of YouTube', () => {
+  const text = withVideos('Смотри ', ['9FWSRQEqhKE', 'dQw4w9WgXcQ']);
+  assert.equal(text, 'Смотри\nhttps://www.youtube.com/watch?v=9FWSRQEqhKE\nhttps://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  assert.deepEqual(splitVideos(text), { text: 'Смотри', videos: ['9FWSRQEqhKE', 'dQw4w9WgXcQ'] });
+
+  // A link among words stays words; a message without videos is as it was.
+  assert.deepEqual(splitVideos('вот https://youtu.be/9FWSRQEqhKE'), { text: 'вот https://youtu.be/9FWSRQEqhKE', videos: [] });
+  assert.deepEqual(splitVideos('  отступ\n'), { text: '  отступ\n', videos: [] });
+
+  assert.equal(messagePreview({ text: withVideos('', ['9FWSRQEqhKE']) }), 'Видеозапись');
+  assert.equal(messagePreview({ text: text }), 'Смотри');
+  assert.equal(quoteSnippet(withVideos('', ['9FWSRQEqhKE'])), 'https://www.youtube.com/watch?v=9FWSRQEqhKE');
 });

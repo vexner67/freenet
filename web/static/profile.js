@@ -122,6 +122,7 @@ function renderHeader(profile, isOwner) {
   document.body.classList.toggle('prime-page', Boolean(profile.prime));
   document.body.classList.add(...primeStyleClasses(profile.primeStyle));
   showMood(profile.primeStyle?.mood ?? '');
+  showSparkles(profile.prime && profile.primeStyle?.frame === 'glitter');
   $('title').replaceChildren(profile.prime ? el('span', { className: primeNameClass(profile), textContent: name }) : name,
     verifiedMark(profile), ...(isOwner ? [' ', el('b', { textContent: tr('(это вы)') })] : []));
   $('title-aside').replaceChildren(isOwner || profile.online ? el('b', { textContent: seen }) : seen || '@' + profile.nickname);
@@ -188,6 +189,13 @@ function showMood(mood) {
 
   smiley.src = primeMoodIcons[mood];
   smiley.title = primeMoodText(mood);
+}
+
+// showSparkles blinks sparkles around the photo in the glitter frame.
+function showSparkles(on) {
+  const box = document.querySelector('.profile .avatar-box');
+  box.querySelectorAll('.prime-sparkles').forEach((s) => s.remove());
+  if (on) box.append(el('span', { className: 'prime-sparkles' }), el('span', { className: 'prime-sparkles late' }));
 }
 
 // showStatus is the status under the name; to the owner it is openvk's

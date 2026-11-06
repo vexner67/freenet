@@ -1,8 +1,9 @@
-// openvk's "Загрузка новой фотографии": pick a picture, choose the square
-// the page shows, turn the picture if it lies on its side and, as openvk
-// offers, post it on the wall. The chosen square is cut here and sent as
-// the photo, as openvk does; the server keeps the middle square of what it
-// gets, which is all of it.
+// openvk's "Загрузка новой фотографии" (OpenAvatarUpdateDialogue in
+// Web/static/js/al_wall.js): a window 600px wide asks for a picture, then
+// one 487px wide chooses the square the page shows, the picture at most
+// 274px high with the arrows that turn it at its bottom right. The chosen
+// square is cut here and sent as the photo, as openvk does; the server
+// keeps the middle square of what it gets, which is all of it.
 //
 // The picture and the square are drawn on one canvas, so nothing needs
 // inline styles (the pages' CSP forbids them).
@@ -18,7 +19,7 @@ const MAX_BYTES = 8 << 20;
 const WORK_SIDE = 1600;
 // What is sent: twice the avatar, so it stays sharp after scaling.
 const UPLOAD_SIDE = 800;
-const VIEW = { width: 440, height: 300 };
+const VIEW = { width: 461, height: 274 };
 // The smallest square, in pixels of the picture worked on: the server's
 // minimum, which a smaller square would be scaled up to anyway.
 const MIN_SIDE = 50;
@@ -39,7 +40,7 @@ export function openAvatarDialog({ club = false, chat = false, upload }) {
     el('p', { textContent: intro(club, chat) }),
     el('p', { textContent: tr('Вы можете загрузить изображение в формате JPG, GIF, PNG или WebP.') }),
     el('p', { className: 'center' }, button(tr('Обзор'), () => file.click()), file),
-    el('p', { className: 'hint', textContent: tr('Если возникают проблемы с загрузкой, попробуйте выбрать фотографию меньшего размера.') }),
+    el('p', { textContent: tr('Если возникают проблемы с загрузкой, попробуйте выбрать фотографию меньшего размера.') }),
     error,
   );
   modal.actions.append(button(tr('Отмена'), modal.close, { secondary: true }));
@@ -205,13 +206,15 @@ function showCropper(modal, img, { club, chat, upload }) {
     }
   }
 
+  modal.box.classList.add('cropping');
   modal.body.replaceChildren(
-    el('p', { textContent: shownWhere(club, chat) }),
-    el('p', { textContent: tr('Если изображение ориентировано неправильно, фотографию можно повернуть.') }),
-    view,
-    el('div', { className: 'avatar-turn' },
-      button(tr('Повернуть влево'), () => turn(-1), { secondary: true }),
-      button(tr('Повернуть вправо'), () => turn(1), { secondary: true })),
+    el('span', { textContent: shownWhere(club, chat) }),
+    el('p', { className: 'avatar-rotate-hint', textContent: tr('Если изображение ориентировано неправильно, фотографию можно повернуть.') }),
+    el('div', { className: 'avatar-crop-box' },
+      view,
+      el('div', { className: 'avatar-rotate' },
+        el('a', { className: 'avatar-rotate-left', title: tr('Повернуть влево'), onclick: () => turn(-1) }),
+        el('a', { className: 'avatar-rotate-right', title: tr('Повернуть вправо'), onclick: () => turn(1) }))),
     error,
   );
 

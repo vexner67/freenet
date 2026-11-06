@@ -5,78 +5,63 @@
 
 import { api } from './api.js';
 import { sendSealed } from './e2ee.js';
-import { chatTitle, conversationOf, conversationPath, conversationValue, formatPostDate, forwardTree, messagePreview, snippet } from './labels.js';
+import { chatTitle, conversationOf, conversationPath, conversationValue, fileSize, formatPostDate, forwardTree, messagePreview, photoMosaic, snippet, splitVideos } from './labels.js';
 import { avatarURL, el, fullName, isPhone, pagePath, showError, hideError, smileyNodes } from './layout.js';
 import { button, openModal, openSheet } from './modal.js';
 import { dots, postPath, sharedNode, sharedPhotoNode } from './posts.js';
 import { openViewer } from './viewer.js';
 import { stickerNode } from './stickers.js';
 import { audiosNode } from './audio.js';
+import { videoNode } from './video.js';
 import { tr } from './i18n.js';
 
 // attachedNodes is what a message shows under its words, as openvk's
 // MessageAttachments (Web/static/js/messages/components/message.js): the
-// sticker it is, its photos in one mosaic (makimaNode), then its
-// documents, songs and the post or the photo of an album it shares.
+// sticker it is, its photos in one mosaic (makimaNode), its videos, then
+// its documents, songs and the post or the photo of an album it shares.
 export function attachedNodes(m) {
   const photos = m.photos ?? [];
   const docs = m.documents ?? [];
+  const { videos } = m.deleted ? { videos: [] } : splitVideos(m.text);
 
   return [
     m.sticker ? stickerNode(m.sticker) : null,
     photos.length ? el('div', { className: 'msg-attachments-container' }, makimaNode(photos)) : null,
-    docs.length ? el('div', { className: 'attachments' }, ...docs.map(docNode)) : null,
+    videos.length ? el('div', { className: 'attachments msg-attach-videos' }, ...videos.map(videoNode)) : null,
+    docs.length ? el('div', { className: 'msg-attach-docs' }, ...docs.map(docNode)) : null,
     m.audios?.length ? el('div', { className: 'msg-attach-audio-player' }, audiosNode(m.audios)) : null,
     m.repost ? wallCardNode(m.repost) : null,
     m.sharedPhoto ? sharedPhotoNode(m.sharedPhoto) : null,
   ];
 }
 
-// The box of openvk's mosaic in a message, and the shape of a photo whose
-// size it does not know: ours carry none, so each is 4 by 3 there too.
-const MAKIMA_WIDTH = 380;
-const MAKIMA_HEIGHT = 350;
-const MAKIMA_RATIO = 4 / 3;
+// The shapes (width / height) of the photos seen on this page, by their
+// address: a photo laid out again on the same page does not move.
+const shapes = new Map();
 
-// makimaLayout is openvk's computeMakimaGrid (makima_grid.js) for photos
-// of one shape: the heights of the rows and how many photos each takes,
-// or, for three, one tall at the left and two at the right.
-export function makimaLayout(count) {
-  const maxW = MAKIMA_WIDTH;
-  const maxH = MAKIMA_HEIGHT;
-  const r = MAKIMA_RATIO;
+// shapeOf resolves with the shape of a photo once its picture is loaded:
+// ours carry no size, so the browser tells it.
+function shapeOf(src) {
+  if (shapes.has(src)) return Promise.resolve(shapes.get(src));
 
-  if (count === 1) {
-    const w = maxW;
-    const h = Math.round(w / r);
-    return { width: w, rows: [{ height: Math.min(h, maxH), count: 1 }] };
-  }
-  if (count === 2) {
-    const h = Math.max(110, Math.min(maxH * 0.75, Math.round((maxW / 2) / r)));
-    return { width: maxW, rows: [{ height: h, count: 2 }] };
-  }
-  if (count === 3) {
-    // Three wide photos: one over two.
-    const top = Math.round(Math.min(maxH * 0.52, maxW / r));
-    const bottom = Math.max(90, Math.round(Math.min(maxH - top - 2, (maxW / 2) / r)));
-    return { width: maxW, rows: [{ height: top, count: 1 }, { height: bottom, count: 2 }] };
-  }
-  if (count === 4) {
-    const h = Math.round(Math.min(maxH * 0.48, Math.max(95, (maxW / 2) * 0.72)));
-    return { width: maxW, rows: [{ height: h, count: 2 }, { height: h, count: 2 }] };
-  }
-
-  const counts = { 5: [2, 3], 6: [3, 3], 7: [3, 2, 2], 8: [2, 3, 3], 9: [3, 3, 3] }[count] ?? [3, 3, 4];
-  const h = Math.round(Math.min(maxH * 0.45, Math.max(85, (maxH - (counts.length - 1) * 2) / counts.length)));
-  return { width: maxW, rows: counts.map((c) => ({ height: h, count: c })) };
+  return new Promise((resolve) => {
+    const probe = new Image();
+    probe.onload = () => {
+      const r = probe.naturalWidth / probe.naturalHeight;
+      shapes.set(src, r);
+      resolve(r);
+    };
+    probe.onerror = () => resolve(NaN);
+    probe.src = src;
+  });
 }
 
-// makimaNode is openvk's MessageMakimaGrid: the photos in rows of the same
-// width, each cut to its tile; a click opens them one by one.
+// makimaNode is openvk's MessageMakimaGrid with the photos seen whole, as
+// Telegram shows them: laid out as 4 by 3 until their pictures tell their
+// shapes, then each at its own (photoMosaic); a click opens them one by one.
 function makimaNode(photos) {
-  const layout = makimaLayout(Math.min(photos.length, 10));
-  let next = 0;
-  const tile = (photo, i) => el('div', { className: 'msg-media-tile' },
+  const shown = photos.slice(0, 10);
+  const tiles = shown.map((photo, i) => el('div', { className: 'msg-media-tile' },
     el('a', {
       className: 'msg-media-tile-link',
       href: photo.large,
@@ -84,28 +69,63 @@ function makimaNode(photos) {
         event.preventDefault();
         openViewer(photos, i);
       },
-    }, el('img', { className: 'media_makima', src: photo.small, alt: '', loading: 'lazy' })));
+    }, el('img', { className: 'media_makima', src: photo.small, alt: '' }))));
+  const grid = el('div', { className: 'msg-makima-grid' });
 
-  const grid = el('div', { className: 'msg-makima-grid' }, ...layout.rows.map((row) => {
-    const shown = photos.slice(next, next + row.count).map((p, k) => tile(p, next + k));
-    next += row.count;
-    const line = el('div', { className: 'msg-makima-row' }, ...shown);
-    line.style.height = `${row.height}px`;
-    return line;
-  }));
-  grid.style.width = `${layout.width}px`;
+  // On a phone the box is what the bubble leaves of the screen.
+  const box = isPhone() ? Math.min(380, innerWidth - 100) : 380;
+  const lay = (ratios) => {
+    const mosaic = photoMosaic(ratios, { width: box });
+    let next = 0;
+    grid.replaceChildren(...mosaic.rows.map((row) => {
+      const line = el('div', { className: 'msg-makima-row' }, ...row.widths.map((w) => {
+        const tile = tiles[next++];
+        // CSSOM, not a style attribute: the pages' CSP forbids those.
+        tile.style.width = `${w}px`;
+        return tile;
+      }));
+      line.style.height = `${row.height}px`;
+      return line;
+    }));
+    grid.style.width = `${mosaic.width}px`;
+  };
+
+  lay(shown.map((p) => shapes.get(p.small)));
+  if (shown.some((p) => !shapes.has(p.small))) Promise.all(shown.map((p) => shapeOf(p.small))).then(lay);
 
   return grid;
 }
 
 // docNode is a document of a message as openvk's msg-attach-w-doc: the
-// sheet with a folded corner and its name, which downloads it.
+// sheet with a folded corner and its name, which downloads it; a picture
+// is shown as one (docImageNode).
 function docNode(doc) {
+  if (doc.preview) return docImageNode(doc);
+
   return el('div', { className: 'msg-attach-w msg-attach-w-doc' },
     el('a', { className: 'attachment_note attachment_doc', href: doc.url, download: doc.name },
       el('span', { className: 'attachment_doc_icon' }),
       el('span', { className: 'attachment_note_content' },
         el('span', { className: 'attachment_note_name', textContent: doc.name }))));
+}
+
+// docImageNode is a document that is a picture, as openvk's
+// DocImageAttachment: the picture in a black box 280 by 190, its name and
+// size on a dark band at its bottom; a click shows it whole.
+function docImageNode(doc) {
+  return el('div', { className: 'msg-attach-w msg-attach-w-doc-image' },
+    el('a', {
+      className: 'docGalleryItem',
+      href: doc.url,
+      onclick: (event) => {
+        event.preventDefault();
+        openViewer([{ large: doc.preview }], 0);
+      },
+    },
+    el('img', { className: 'docGalleryItem_main_preview', src: doc.preview, alt: doc.name, loading: 'lazy' }),
+    el('div', { className: 'doc_bottom_panel' },
+      el('span', { className: 'doc_bottom_panel_name', textContent: doc.name }),
+      el('span', { className: 'doc_bottom_panel_size', textContent: fileSize(doc.size) }))));
 }
 
 // wallCardNode is a post a message shares, as openvk's msg-attach-wall-card:
@@ -151,7 +171,7 @@ export function forwardedNode(m, textOf) {
     ...trees.map(({ message: f, carried: under }) => el('div', { className: 'im-forwarded-message' },
       el('a', { className: 'post-name', href: '/' + f.author.nickname, textContent: fullName(f.author) }),
       el('span', { className: 'im-forwarded-date', textContent: formatPostDate(f.createdAt) }),
-      f.text ? textOf(f.text) : null,
+      splitVideos(f.text).text ? textOf(splitVideos(f.text).text) : null,
       ...attachedNodes(f),
       under.length ? carried(under) : null,
     )));

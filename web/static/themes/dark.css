@@ -3,6 +3,8 @@
    below, so a block written with the variables needs nothing here. */
 
 :root {
+  --back-eaeae9: #2e2e2e;
+  --line-717171: #5a5a5a;
   --back-dbdbdb: #333333;
   --back-eaeef2: #2a3340;
   --back-e5460a: #e5460a;
@@ -25,6 +27,7 @@
   --text-c5c5c5: #6a6a6a;
   --text-777: #9a9a9a;
   --text-656565: #a0a0a0;
+  --text-959595: #8a8a8a;
   --line-c0cad5: #4a5360;
   /* Backgrounds */
   --back-fff: #1a1a1a;
@@ -48,12 +51,15 @@
   --back-dcefd9: #203424;
   --back-f7f1d6: #2e2b1c;
   --back-f0f0f0: #242424;
+  --back-eee: #2a2a2a;
+  --back-cdcdcd: #4a4a4a;
   --back-f6f0d2: #3a3522;
   --back-ededed: #2a2a2a;
   --back-e9edf1: #2a2f35;
   --back-e4e4e4: #2c2c2c;
   --back-e9e9e9: #2e2e2e;
   --back-e6e6e6: #2a2a2a;
+  --back-ececec: #303030;
   --back-dde2e8: #3d434b;
   --back-eee5b8: #2e2c22;
   --back-f3ddbd: #3d2f1c;

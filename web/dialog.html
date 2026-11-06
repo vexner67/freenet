@@ -56,6 +56,8 @@
           <form class="messenger-input" id="form">
             <img class="messenger-avatar" id="my-avatar" src="/static/avatar.svg" alt="">
             <div class="messenger-box">
+              <div class="input-reply" id="editing" hidden><div class="input-reply-content"><b class="input-reply-title">Редактирование сообщения:</b></div><a class="input-close" id="editing-cancel" title="Не редактировать"><span class="cross"></span></a></div>
+              <div class="input-reply" id="replying" hidden><div class="input-reply-content"><b class="input-reply-title" id="replying-name"></b><span class="input-reply-text" id="replying-text"></span></div><a class="input-close" id="replying-cancel" title="Не отвечать"><span class="cross"></span></a></div>
               <div class="messenger-field">
                 <textarea id="text" maxlength="60000" placeholder="Введите сообщение" aria-label="Сообщение" enterkeyhint="send"></textarea>
                 <a class="emoji-entry" id="smileys-link" title="Смайлы"></a>
@@ -70,9 +72,8 @@
                   </div>
                 </div>
               </div>
-              <div class="reply-to" id="editing" hidden>Редактирование сообщения <a class="reply-cancel" id="editing-cancel" title="Не редактировать">×</a></div>
-              <div class="reply-to" id="replying" hidden><span>Ответ на сообщение <b id="replying-name"></b>:</span><span id="replying-text"></span><a class="reply-cancel" id="replying-cancel" title="Не отвечать">×</a></div>
               <div class="attachments" id="photos" hidden></div>
+              <div class="video-attached" id="videos" hidden></div>
               <div class="doc-attached" id="documents" hidden></div>
               <div class="audio-list audio-attached" id="audios" hidden></div>
               <div class="messenger-buttons">
@@ -84,9 +85,11 @@
                   <a class="attach-toggle">Прикрепить</a>
                   <span class="attach-list">
                     <a class="attach-link attach-photo" id="attach">Фотография</a>
-                    <a class="attach-link attach-graffiti" id="graffiti">Граффити</a>
-                    <a class="attach-link attach-document" id="doc">Документ</a>
+                    <a class="attach-link attach-video" id="video">Видеозапись</a>
                     <a class="attach-link attach-audio" id="audio">Аудиозапись</a>
+                    <a class="attach-link attach-document" id="doc">Документ</a>
+                    <a class="attach-link attach-graffiti" id="graffiti">Граффити</a>
+                    <a class="attach-toggle attach-header">Прикрепить</a>
                   </span>
                 </span>
               </div>

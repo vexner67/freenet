@@ -22,12 +22,13 @@ import { initAttachments } from './attach.js';
 import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
 import { initAudios } from './audio.js';
+import { initVideos } from './video.js';
 import { openAddMembers } from './chats.js';
 import { isLive, onEvent } from './events.js';
 import { openAvatarDialog } from './avatar.js';
 import { initEmoji } from './emoji.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
-import { chatActionParts, errorText, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, messagesCount, messageTime, photoChanges, primeNameClass, selectedCount, snippet } from './labels.js';
+import { chatActionParts, errorText, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, messagesCount, messageTime, photoChanges, primeNameClass, selectedCount, snippet, splitVideos, withVideos } from './labels.js';
 import { $, avatarURL, chatPhotoURL, el, fullName, isPhone, keepFocus, whenShown, mentionNodes, renderChrome, smileyNodes, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { contactInfo, fitHeight, hoverIcons, peerTabs, regroup, selectOnClick, showContact } from './messenger.js';
@@ -64,6 +65,9 @@ let attachments;
 let documents;
 // audios are songs attached to the message.
 let audios;
+// videos are videos of YouTube attached to the message, sent as lines of
+// its words (withVideos).
+let videos;
 // typingWatch tells the others while the user types.
 let typingWatch;
 let editing = null;
@@ -79,16 +83,22 @@ const shown = new Map();
 // The messages selected by a click, by ID.
 const selected = new Set();
 
-const personLink = (user, text = fullName(user)) => el('a', { href: '/' + user.nickname, textContent: text });
 
-// actionNode is a line of what happened in the chat: "Анна пригласила
-// Петра Петрова".
+// actionNode is a line of what happened in the chat, as openvk's
+// renderSpecialMessage: "Анна пригласила Петра Петрова 0:27" in the middle,
+// the names bold, the rest grey and bold, the time small after it.
 function actionNode(m) {
   const [before, whom, after] = chatActionParts(m);
+  const name = (user, text) => el('a', { className: 'im-special-name', href: '/' + user.nickname }, el('strong', { textContent: text }));
 
-  const node = el('div', { className: 'chat-action' },
-    personLink(m.author), ' ', before, whom && personLink(m.target, whom), after,
-    el('span', { className: 'chat-action-date', title: formatPostDate(m.createdAt), textContent: messageTime(m.createdAt) }),
+  const node = el('div', { className: 'im-special-message' },
+    el('div', {},
+      name(m.author, fullName(m.author) + ' '),
+      el('span', { className: 'im-special-text', textContent: before }),
+      whom && name(m.target, whom),
+      after && el('span', { className: 'im-special-text', textContent: after }),
+      el('span', { className: 'im-special-date', title: formatPostDate(m.createdAt), textContent: messageTime(m.createdAt) }),
+    ),
   );
   node.message = m;
   return node;
@@ -101,7 +111,10 @@ function messageNode(m) {
   const head = el('div', { className: 'im-message-head' });
   // As on openvk: the mark of a selected message at the left, the photo,
   // the icons and the time at the right, the name and the words.
-  const node = el('div', { className: ['im-message', ...(m.author.id === me.id ? ['out'] : []), ...(m.unread ? ['unread'] : [])].join(' ') },
+  // Grey while unread, as on openvk: someone else's I have not read, or
+  // mine nobody else has read yet.
+  const mine = m.author.id === me.id;
+  const node = el('div', { className: ['im-message', ...(mine ? ['out'] : []), ...((mine ? !m.seen : m.unread) ? ['unread'] : [])].join(' ') },
     el('span', { className: 'im-check' }),
     el('a', { className: 'im-message-avatar', href: '/' + m.author.nickname }, el('img', { src: avatarURL(m.author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
@@ -119,7 +132,7 @@ function messageNode(m) {
     node.classList.toggle('deleted', now.deleted);
     content.replaceChildren(...[
       !now.deleted && now.replyTo && quoteNode(now.replyTo, now.replyTo.text, goTo),
-      now.deleted ? el('div', { className: 'im-message-text', textContent: tr('Сообщение удалено') }) : now.text && textOf(now.text, node),
+      now.deleted ? el('div', { className: 'im-message-text', textContent: tr('Сообщение удалено') }) : splitVideos(now.text).text && textOf(splitVideos(now.text).text, node),
       now.editedAt && !now.deleted && el('div', { className: 'im-message-edited', title: tr('Отредактировано'), textContent: tr(' (ред.)') }),
       ...attachedNodes(now),
       forwardedNode(now, (carried) => textOf(carried, node)),
@@ -370,8 +383,10 @@ async function startEdit(m) {
   // songs stay.
   documents.clear();
   audios.clear();
+  videos.clear();
   $('doc').hidden = true;
   $('audio').hidden = true;
+  $('video').hidden = true;
   $('send').textContent = tr('Сохранить');
   text.focus();
   text.setSelectionRange(text.value.length, text.value.length);
@@ -385,7 +400,7 @@ function cancelEdit() {
   autosize($('text'));
   attachments.clear();
   $('editing').hidden = true;
-  $('doc').hidden = false;
+  $('doc').hidden = $('audio').hidden = $('video').hidden = false;
   $('send').textContent = tr('Отправить');
 }
 
@@ -395,7 +410,7 @@ function edited(m) {
   const node = shown.get(m.id);
   if (!node?.render) return;
 
-  node.message = { ...node.message, textCut: false, ...m, unread: node.message.unread };
+  node.message = { ...node.message, textCut: false, ...m, unread: node.message.unread, seen: node.message.seen };
   node.render();
   if (editing?.id === m.id && m.deleted) cancelEdit();
   if (replies?.replyingTo()?.id === m.id && m.deleted) replies.cancel();
@@ -582,6 +597,16 @@ function listenToEvents() {
   onEvent('chat_edit', (e) => {
     if (e.chat === chatID) edited(e.message);
   });
+  // Someone else read the chat: my messages up to there are seen.
+  onEvent('chat_seen', (e) => {
+    if (e.chat !== chatID) return;
+
+    for (const [id, node] of shown) {
+      if (id > e.upTo || !node.message?.out || node.message.seen) continue;
+      node.message.seen = true;
+      node.classList.remove('unread');
+    }
+  });
   // Whatever happened while disconnected.
   onEvent('ready', catchUp);
 }
@@ -593,7 +618,7 @@ async function send(event) {
   const text = $('text');
   const sendButton = $('send');
 
-  if (!editing && !text.value.trim() && attachments.count() === 0 && documents.count() === 0 && audios.count() === 0) return;
+  if (!editing && !text.value.trim() && attachments.count() === 0 && documents.count() === 0 && audios.count() === 0 && videos.count() === 0) return;
 
   if (attachments.busy()) {
     showError($('error'), tr('Дождитесь, пока загрузятся фотографии.'));
@@ -607,7 +632,7 @@ async function send(event) {
       edited(await api.editChatMessage(editing.id, text.value, { ...photoChanges(editing.photos, attachments.ids()), base: editingBase }));
       cancelEdit();
     } else {
-      const m = await api.sendChatMessage(chatID, text.value, attachments.ids(), '', [], '', documents.ids(), replies.replyingTo()?.id ?? '', audios.ids());
+      const m = await api.sendChatMessage(chatID, withVideos(text.value, videos.ids()), attachments.ids(), '', [], '', documents.ids(), replies.replyingTo()?.id ?? '', audios.ids());
 
       text.value = '';
       autosize(text);
@@ -616,6 +641,7 @@ async function send(event) {
       attachments.clear();
       documents.clear();
       audios.clear();
+      videos.clear();
       showSent(m);
     }
   } catch (e) {
@@ -871,8 +897,9 @@ function setUpInput() {
   $('my-avatar').src = avatarURL(me, 'small');
   attachments = initAttachments({ link: $('attach'), also: [$('graffiti')], input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
   initGraffiti({ link: $('graffiti'), attachments });
-  documents = initDocuments({ link: $('doc'), list: $('documents') });
+  documents = initDocuments({ link: $('doc'), list: $('documents'), upload: true });
   audios = initAudios({ link: $('audio'), list: $('audios') });
+  videos = initVideos({ link: $('video'), list: $('videos') });
   const showStickers = initStickers({ panel: $('stickers'), error: $('error'), onPick: sendSticker, onSent: () => closeEmoji() });
   const closeEmoji = initEmoji({ link: $('smileys-link'), picker: $('smileys'), input: $('text'), bar: $('recent-smiles'), stickersLink: $('stickers-link'), stickersPanel: $('stickers'), showStickers, stickersEntry: $('stickers-entry') });
   $('form').addEventListener('submit', send);

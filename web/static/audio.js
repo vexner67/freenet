@@ -440,23 +440,37 @@ export function confirmDelete(audio, onDone) {
   );
 }
 
-// openPicker is "Выбор аудиозаписи": one's library, a search of all
-// songs, "Загрузить аудио" and "Добавить по ссылке"; a click attaches one.
-async function openPicker(onPick) {
-  const modal = openModal(tr('Выбор аудиозаписи'));
+// openPicker is openvk's "Выбрать аудиозаписи" (showAudioAttachment in
+// Web/static/js/al_music.js): a search over the grey strip at the top,
+// one's library under it — or what is found — and at the right of each song
+// "Прикрепить аудиозапись", which turns into "Открепить аудиозапись"; the
+// window stays open, so several are attached at once. attached tells
+// whether a song is attached, toggle attaches it or takes it off.
+async function openPicker({ attached, toggle }) {
+  const modal = openModal(tr('Выбрать аудиозаписи'));
   const error = el('div', { className: 'error', hidden: true });
-  const search = el('input', { type: 'search', placeholder: tr('Поиск аудиозаписей'), ariaLabel: tr('Поиск аудиозаписей') });
-  const list = el('div', { className: 'audio-list audio-picker' });
-  const more = el('a', { className: 'wall-more', textContent: tr('Показать ещё'), hidden: true });
+  const search = el('input', { type: 'text', maxLength: 50, placeholder: tr('Поиск'), ariaLabel: tr('Поиск аудиозаписей') });
+  const list = el('div', { className: 'audios-insert' });
+  const more = el('a', { className: 'show-more', textContent: tr('Показать больше аудиозаписей'), hidden: true });
   const me = await currentUser().catch(() => null);
   let cursor = '';
   let query = '';
   let asked = 0;
 
-  const pick = (audio) => {
-    modal.close();
-    onPick(audio);
-  };
+  const label = (audio) => (attached(audio) ? tr('Открепить аудиозапись') : tr('Прикрепить аудиозапись'));
+
+  function row(audio, page) {
+    const text = el('span', { textContent: label(audio) });
+    return el('div', { className: 'audio-attach-row' },
+      el('div', { className: 'audio-attach-player' }, audioNode(audio, { queue: () => page.audios })),
+      el('a', {
+        className: 'audio-attach-toggle',
+        onclick: () => {
+          if (!toggle(audio)) return;
+          text.textContent = label(audio);
+        },
+      }, text));
+  }
 
   async function load(fresh) {
     const ask = ++asked;
@@ -468,9 +482,10 @@ async function openPicker(onPick) {
       if (ask !== asked) return;
       if (fresh) list.replaceChildren();
       cursor = page.nextCursor;
-      list.append(...page.audios.map((a) => audioNode(a, { pick, queue: () => page.audios })));
-      if (!list.childElementCount) list.append(el('p', { className: 'hint', textContent: query ? tr('Ничего не найдено.') : tr('У вас пока нет аудиозаписей.') }));
+      list.append(...page.audios.map((a) => row(a, page)));
+      if (!list.childElementCount) list.append(el('p', { className: 'hint', textContent: query ? tr('Результатов нет') : tr('Вы ещё не добавляли аудиозаписей.') }));
       more.hidden = !cursor;
+      list.append(more);
     } catch (e) {
       showError(error, e);
     }
@@ -485,12 +500,9 @@ async function openPicker(onPick) {
     }, 300);
   });
   more.addEventListener('click', () => load(false));
-  modal.body.append(error, search, list, more);
-  modal.actions.append(
-    button(tr('Загрузить аудио'), () => uploadAudio(error, pick)),
-    button(tr('Добавить по ссылке'), () => addByLink(pick)),
-    button(tr('Отмена'), modal.close, { secondary: true }),
-  );
+  modal.box.classList.add('audio-attach');
+  modal.body.append(el('div', { className: 'audio-attach-search' }, search), error, list);
+  modal.actions.append(button(tr('Закрыть'), modal.close, { secondary: true }));
   load(true);
 }
 
@@ -515,9 +527,21 @@ export function initAudios({ link, list, onChange = () => {} }) {
     render();
   }
 
-  link.addEventListener('click', () => openPicker((audio) => {
-    if (!audios.some((a) => a.id === audio.id) && audios.length < MAX_AUDIOS) audios.push(audio);
-    render();
+  link.addEventListener('click', () => openPicker({
+    attached: (audio) => audios.some((a) => a.id === audio.id),
+    // A song more than the form takes is not attached, and says so.
+    toggle(audio) {
+      if (audios.some((a) => a.id === audio.id)) {
+        audios = audios.filter((a) => a.id !== audio.id);
+      } else if (audios.length < MAX_AUDIOS) {
+        audios.push(audio);
+      } else {
+        toast(tr('Можно прикрепить не больше {0} аудиозаписей.', MAX_AUDIOS));
+        return false;
+      }
+      render();
+      return true;
+    },
   }));
 
   render(false);

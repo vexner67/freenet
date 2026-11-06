@@ -117,7 +117,7 @@ export function regroup(list, authorOf) {
   for (const day of list.querySelectorAll(':scope > .im-day')) day.remove();
 
   let before = null;
-  for (const node of list.querySelectorAll(':scope > .im-message, :scope > .chat-action')) {
+  for (const node of list.querySelectorAll(':scope > .im-message, :scope > .im-special-message')) {
     const m = node.message;
     if (!m) continue;
 
