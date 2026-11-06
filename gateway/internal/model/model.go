@@ -870,8 +870,10 @@ type MessageEvent struct {
 	ChatMessage *ChatMessage
 	ChatEdited  *ChatMessage
 	ChatRead    *ChatRead
-	Typing      *Typing
-	Call        *CallSignal
+	// ChatSeen: someone else has read a chat of the caller up to UpTo.
+	ChatSeen *ChatRead
+	Typing   *Typing
+	Call     *CallSignal
 }
 
 // CallSignal is a sealed signal of the call with PeerID.

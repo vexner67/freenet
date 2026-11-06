@@ -151,6 +151,7 @@ func (f *fakeChats) History(_ context.Context, token, id string, at model.Messag
 			{ID: "m3", ChatID: id, SenderID: "gone", Text: "и я", CreatedAt: chatTime},
 			{ID: "m4", ChatID: id, SenderID: "u1", Action: "kick", TargetID: "u3", CreatedAt: chatTime},
 			{ID: "m5", ChatID: id, SenderID: "u1", CreatedAt: chatTime, DeletedAt: chatTime},
+			{ID: "m6", ChatID: id, SenderID: "u1", Text: "кто со мной?", CreatedAt: chatTime, Seen: true},
 		},
 		NextCursor: "m1",
 	}, f.err
@@ -216,6 +217,7 @@ type chatMessageJSON struct {
 	Photos         []map[string]any `json:"photos"`
 	Deleted        bool             `json:"deleted"`
 	Unread         bool             `json:"unread"`
+	Seen           bool             `json:"seen"`
 	EditedAt       *string          `json:"editedAt"`
 	DeletableUntil string           `json:"deletableUntil"`
 	EditableUntil  string           `json:"editableUntil"`
@@ -424,11 +426,11 @@ func TestChatMessages(t *testing.T) {
 	}
 
 	// The message of a page that is gone is left out.
-	if len(page.Messages) != 4 {
+	if len(page.Messages) != 5 {
 		t.Fatalf("messages = %+v", page.Messages)
 	}
 
-	created, said, kicked, taken := page.Messages[0], page.Messages[1], page.Messages[2], page.Messages[3]
+	created, said, kicked, taken, asked := page.Messages[0], page.Messages[1], page.Messages[2], page.Messages[3], page.Messages[4]
 	if created.Action != "create" || created.Text != "Поход" || !created.Out || created.Author["nickname"] != "ann" {
 		t.Fatalf("created = %+v", created)
 	}
@@ -440,6 +442,10 @@ func TestChatMessages(t *testing.T) {
 	}
 	if !taken.Deleted || taken.DeletableUntil != "" {
 		t.Fatalf("taken back = %+v", taken)
+	}
+	// Someone else has read ann's question; bob's answer is not hers.
+	if !asked.Out || !asked.Seen || said.Seen {
+		t.Fatalf("seen: ann's %+v, bob's %+v", asked, said)
 	}
 
 	h = newHarness(rest.Config{})

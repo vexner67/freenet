@@ -249,6 +249,10 @@ func (m *Messages) Subscribe(ctx context.Context, accessToken string) (model.Mes
 			return model.MessageEvent{Typing: &model.Typing{UserID: t.GetUserId(), ChatID: t.GetChatId()}}, nil
 		}
 
+		if cs := resp.GetChatSeen(); cs != nil {
+			return model.MessageEvent{ChatSeen: &model.ChatRead{ChatID: cs.GetChatId(), UpTo: cs.GetUpToId()}}, nil
+		}
+
 		if cr := resp.GetChatRead(); cr != nil {
 			return model.MessageEvent{ChatRead: &model.ChatRead{ChatID: cr.GetChatId(), UpTo: cr.GetUpToId()}}, nil
 		}

@@ -151,6 +151,13 @@ func TestEvents(t *testing.T) {
 	}
 	next(t, conn) // counters
 
+	h.messages.events <- model.MessageEvent{ChatSeen: &model.ChatRead{ChatID: "c1", UpTo: "m5"}}
+
+	if e := next(t, conn); e.Type != "chat_seen" || e.Chat != "c1" || e.UpTo != "m5" {
+		t.Fatalf("chat seen event = %+v", e)
+	}
+	next(t, conn) // counters
+
 	// Bob types to the caller, in their dialog and in the chat; nothing
 	// unread changes.
 	h.messages.events <- model.MessageEvent{Typing: &model.Typing{UserID: "u2"}}

@@ -64,6 +64,8 @@ type ChatMessage struct {
 	EditableUntil  time.Time
 	// Unread: someone else's, which the caller has not read.
 	Unread bool
+	// Seen: the caller's own, which someone else in the chat has read.
+	Seen bool
 	// What a message of a dialog may show besides its words: a shared
 	// post, a shared photo of an album ("" for none) and the messages it
 	// carries on.

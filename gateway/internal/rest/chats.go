@@ -82,6 +82,8 @@ type chatMessageJSON struct {
 	EditableUntil  string      `json:"editableUntil"`
 	// Unread: someone else's, which the caller has not read.
 	Unread bool `json:"unread"`
+	// Seen: the caller's own, which someone else in the chat has read.
+	Seen bool `json:"seen"`
 	attachedJSON
 }
 
@@ -111,6 +113,7 @@ func toChatMessageJSON(m model.ChatMessage, me string, people map[string]model.A
 		EditedAt:  optionalTime(m.EditedAt),
 		Deleted:   !m.DeletedAt.IsZero(),
 		Unread:    m.Unread,
+		Seen:      m.Seen,
 
 		attachedJSON: toAttachedJSON(attachment{
 			PostID: m.PostID, SharedPhotoID: m.SharedPhotoID, Sticker: m.Sticker, Forwarded: m.Forwarded, DocumentIDs: m.DocumentIDs,

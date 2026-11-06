@@ -1077,6 +1077,24 @@ paths:
               schema: { type: string, format: binary }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /media/documents/{id}/preview:
+    get:
+      summary: Show a document that is a picture
+      description: |
+        As `/media/documents/{id}`, but shown in the page (`inline`): only a
+        document whose format is jpg, jpeg, png, gif or webp and whose bytes
+        are what the format says; any other is 404. A message shows such a
+        document as a picture (`preview` of Document).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The picture
+          content:
+            image/*:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/me/documents:
     get:
       summary: Your documents ("Мои Документы"), newest first
@@ -8564,6 +8582,8 @@ paths:
           or nothing: its sender edited it or took it back (`deleted`).
         - `chat_read` — you have read chat `chat` up to `upTo` on another
           page.
+        - `chat_seen` — someone else has read chat `chat` up to `upTo`:
+          your messages up to it are `seen`.
         - `typing` — `user` (Author) is writing to you: in chat `chat` or,
           without it, in your dialog. Show it for a few seconds ("печатает...")
           unless told again, and no more once their message comes.
@@ -10499,6 +10519,7 @@ components:
         ext: { type: string, description: "Its format, the end of the file name in lower case, as `pdf`" }
         size: { type: integer, description: "In bytes, up to 10 MB" }
         url: { type: string, description: "Where it is downloaded: /media/documents/{id}" }
+        preview: { type: string, description: "For a picture (jpg, png, gif, webp): where it is shown, /media/documents/{id}/preview; absent for others" }
         createdAt: { type: string, format: date-time }
 
     Audio:
@@ -11071,6 +11092,7 @@ components:
         deletableUntil: { type: string, description: "Until when you may take your message back, a day; \"\" for others' and for actions" }
         editableUntil: { type: string, description: "Until when you may edit your message, a day" }
         unread: { type: boolean, description: "Someone else's, which you have not read" }
+        seen: { type: boolean, description: "Yours, which someone else in the chat has read; until then it is shown grey, as an unread one" }
         post: { type: string, description: "A post shared in it; empty for none" }
         repost:
           description: The shared post, as inside a repost; absent in the list of dialogs and without one

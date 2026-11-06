@@ -14,7 +14,8 @@ import (
 
 var documentTime = time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)
 
-// fakeDocuments knows d1, Ann's (u1) report.pdf, and d2, Bob's (u2) notes.txt.
+// fakeDocuments knows d1, Ann's (u1) report.pdf, d2, Bob's (u2) notes.txt,
+// and Ann's pictures: d3, cat.png, and d4, fake.png, which is no PNG.
 type fakeDocuments struct {
 	token, added, fileName, renamed, deleted, cursor string
 	size                                             int64
@@ -27,6 +28,8 @@ func (f *fakeDocuments) known() []model.Document {
 	return []model.Document{
 		{ID: "d1", OwnerID: "u1", Name: "report.pdf", Ext: "pdf", Size: 2048, CreatedAt: documentTime},
 		{ID: "d2", OwnerID: "u2", Name: "notes", Ext: "txt", Size: 12, CreatedAt: documentTime},
+		{ID: "d3", OwnerID: "u1", Name: "cat.png", Ext: "png", Size: 12, CreatedAt: documentTime},
+		{ID: "d4", OwnerID: "u1", Name: "fake.png", Ext: "png", Size: 21, CreatedAt: documentTime},
 	}
 }
 
@@ -71,6 +74,7 @@ type documentBody struct {
 	Ext       string `json:"ext"`
 	Size      int64  `json:"size"`
 	URL       string `json:"url"`
+	Preview   string `json:"preview"`
 	CreatedAt string `json:"createdAt"`
 }
 
@@ -160,6 +164,25 @@ func TestServeDocument(t *testing.T) {
 
 	if w = h.do("GET", "/media/documents/nope", ""); w.Code != http.StatusNotFound {
 		t.Fatalf("unknown: %d", w.Code)
+	}
+}
+
+func TestServeDocumentPreview(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	w := h.do("GET", "/media/documents/d3/preview", "")
+	if w.Code != http.StatusOK || w.Header().Get("Content-Type") != "image/png" || w.Header().Get("Content-Disposition") != "inline" ||
+		w.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatalf("picture: %d %v", w.Code, w.Header())
+	}
+
+	// A document that is no picture, or says it is one and is not, is
+	// never shown in the page.
+	for _, id := range []string{"d1", "d4", "nope"} {
+		if w = h.do("GET", "/media/documents/"+id+"/preview", ""); w.Code != http.StatusNotFound {
+			t.Fatalf("%s: %d %v", id, w.Code, w.Header())
+		}
 	}
 }
 

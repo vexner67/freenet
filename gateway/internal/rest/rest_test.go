@@ -1163,10 +1163,15 @@ func (f *fakeMedia) UploadDocument(_ context.Context, _ string, data []byte) (st
 }
 
 func (f *fakeMedia) Document(_ context.Context, ownerID, documentID string) ([]byte, error) {
-	if ownerID != "u1" || documentID != "d1" {
-		return nil, failure.New(failure.NotFound, "document not found")
+	switch {
+	case ownerID == "u1" && documentID == "d1":
+		return []byte("%PDF-1.7"), nil
+	case ownerID == "u1" && documentID == "d3":
+		return []byte("\x89PNG\r\n\x1a\n...."), nil
+	case ownerID == "u1" && documentID == "d4":
+		return []byte("<svg onload=alert(1)>"), nil
 	}
-	return []byte("%PDF-1.7"), nil
+	return nil, failure.New(failure.NotFound, "document not found")
 }
 
 func (f *fakeMedia) DeleteDocuments(_ context.Context, ownerID string, ids []string) error {

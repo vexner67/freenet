@@ -26,14 +26,28 @@ const (
 )
 
 // documentJSON is a document as a list of "Мои Документы", a post or a
-// message shows it; url downloads it.
+// message shows it; url downloads it, preview shows a picture in the page
+// (only a document that is one: a message shows it as openvk's
+// DocImageAttachment).
 type documentJSON struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	Ext       string `json:"ext"`
 	Size      int64  `json:"size"`
 	URL       string `json:"url"`
+	Preview   string `json:"preview,omitempty"`
 	CreatedAt string `json:"createdAt"`
+}
+
+// pictureTypes are the formats of a document shown as a picture, by what
+// its bytes say it is: the browser shows them in an <img>, and none of
+// them runs a script (SVG is not one of them).
+var pictureTypes = map[string]string{
+	"jpg":  "image/jpeg",
+	"jpeg": "image/jpeg",
+	"png":  "image/png",
+	"gif":  "image/gif",
+	"webp": "image/webp",
 }
 
 type documentPageResponse struct {
@@ -47,7 +61,7 @@ type renameDocumentRequest struct {
 }
 
 func toDocumentJSON(d model.Document) documentJSON {
-	return documentJSON{
+	doc := documentJSON{
 		ID:        d.ID,
 		Name:      d.Name,
 		Ext:       d.Ext,
@@ -55,6 +69,11 @@ func toDocumentJSON(d model.Document) documentJSON {
 		URL:       "/media/documents/" + url.PathEscape(d.ID),
 		CreatedAt: d.CreatedAt.UTC().Format(time.RFC3339),
 	}
+	if _, ok := pictureTypes[strings.ToLower(d.Ext)]; ok {
+		doc.Preview = doc.URL + "/preview"
+	}
+
+	return doc
 }
 
 // documentsJSON are the documents of ids that are still there, in order.
@@ -271,26 +290,62 @@ func (a *api) deleteDocument(w http.ResponseWriter, r *http.Request) {
 // serveDocument downloads a document by its ID, as whoever sees what
 // attaches it may: the ID is the secret, as with photos.
 func (a *api) serveDocument(w http.ResponseWriter, r *http.Request) {
-	known, err := a.documentsOf(r.Context(), []string{r.PathValue("id")})
-	if err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	d, ok := known[r.PathValue("id")]
+	d, data, ok := a.documentData(w, r)
 	if !ok {
-		a.writeError(w, r, failure.New(failure.NotFound, "document not found"))
-		return
-	}
-
-	data, err := a.media.Document(r.Context(), d.OwnerID, d.ID)
-	if err != nil {
-		a.writeError(w, r, err)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": fileName(d)}))
+	writeFile(w, data)
+}
+
+// serveDocumentPreview shows a document that is a picture in the page:
+// only when its format is one of pictureTypes and its bytes are what the
+// format says, so nothing else is ever served inline.
+func (a *api) serveDocumentPreview(w http.ResponseWriter, r *http.Request) {
+	d, data, ok := a.documentData(w, r)
+	if !ok {
+		return
+	}
+
+	kind, isPicture := pictureTypes[strings.ToLower(d.Ext)]
+	if !isPicture || http.DetectContentType(data) != kind {
+		a.writeError(w, r, failure.New(failure.NotFound, "document not found"))
+		return
+	}
+
+	w.Header().Set("Content-Type", kind)
+	w.Header().Set("Content-Disposition", "inline")
+	writeFile(w, data)
+}
+
+// documentData is the document of the path and its bytes; false when it
+// is not there, the error written.
+func (a *api) documentData(w http.ResponseWriter, r *http.Request) (model.Document, []byte, bool) {
+	known, err := a.documentsOf(r.Context(), []string{r.PathValue("id")})
+	if err != nil {
+		a.writeError(w, r, err)
+		return model.Document{}, nil, false
+	}
+
+	d, ok := known[r.PathValue("id")]
+	if !ok {
+		a.writeError(w, r, failure.New(failure.NotFound, "document not found"))
+		return model.Document{}, nil, false
+	}
+
+	data, err := a.media.Document(r.Context(), d.OwnerID, d.ID)
+	if err != nil {
+		a.writeError(w, r, err)
+		return model.Document{}, nil, false
+	}
+
+	return d, data, true
+}
+
+// writeFile sends the bytes of a document, never sniffed as anything else.
+func writeFile(w http.ResponseWriter, data []byte) {
 	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	// A deleted document goes away, so it is not cached for good.

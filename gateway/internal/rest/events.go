@@ -92,7 +92,7 @@ type (
 	// chatReadEventJSON: the caller has read the chat up to UpTo, on
 	// another page.
 	chatReadEventJSON struct {
-		Type string `json:"type"` // "chat_read"
+		Type string `json:"type"` // "chat_read" or "chat_seen"
 		Chat string `json:"chat"`
 		UpTo string `json:"upTo"`
 	}
@@ -395,6 +395,12 @@ func (s *eventSession) messageEvent(e model.MessageEvent) (any, error) {
 
 	if e.ChatRead != nil {
 		return chatReadEventJSON{Type: "chat_read", Chat: e.ChatRead.ChatID, UpTo: e.ChatRead.UpTo}, nil
+	}
+
+	// Someone else has read the chat: the caller's messages up to UpTo
+	// stop being grey.
+	if e.ChatSeen != nil {
+		return chatReadEventJSON{Type: "chat_seen", Chat: e.ChatSeen.ChatID, UpTo: e.ChatSeen.UpTo}, nil
 	}
 
 	if e.ChatMessage != nil {

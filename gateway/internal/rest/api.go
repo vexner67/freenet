@@ -1089,6 +1089,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /media/photos/{userID}/{photoID}/{file}", a.servePhoto)
 	mux.HandleFunc("GET /media/stickers/{sticker}", a.serveSticker)
 	mux.HandleFunc("GET /media/documents/{id}", a.serveDocument)
+	mux.HandleFunc("GET /media/documents/{id}/preview", a.serveDocumentPreview)
 	mux.HandleFunc("GET /media/audio/{id}", a.serveAudio)
 
 	if a.federation != nil {

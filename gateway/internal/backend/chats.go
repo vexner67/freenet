@@ -293,6 +293,7 @@ func toChatMessage(pm *messagev1.ChatMessage) model.ChatMessage {
 		DeletableUntil: fromTimestamp(pm.GetDeletableUntil()),
 		EditableUntil:  fromTimestamp(pm.GetEditableUntil()),
 		Unread:         pm.GetUnread(),
+		Seen:           pm.GetSeen(),
 		PostID:         pm.GetPostId(),
 		SharedPhotoID:  pm.GetPhotoId(),
 		Forwarded:      toForwarded(pm.GetForwarded()),
