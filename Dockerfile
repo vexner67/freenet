@@ -64,11 +64,19 @@ ENV WEB_DIR=/web
 FROM alpine:3.22 AS ffmpeg
 ARG FFMPEG_VERSION=7.1.1
 ARG FFMPEG_SHA256=733984395e0dbbe5c046abda2dc49a5544e7e0e1e2366bba849222ae9e3a03b1
-RUN apk add --no-cache build-base nasm
+# The same sources from the mirror on GitHub, when ffmpeg.org fails.
+ARG FFMPEG_MIRROR_SHA256=f117507dc501f2a6c11f9241d8d0c3213846cfad91764361af37befd6b6c523d
+RUN apk add --no-cache build-base nasm curl
 WORKDIR /src
-RUN wget -q https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz \
-    && echo "${FFMPEG_SHA256}  ffmpeg-${FFMPEG_VERSION}.tar.xz" | sha256sum -c - \
-    && tar -xJf ffmpeg-${FFMPEG_VERSION}.tar.xz --strip-components=1
+# ffmpeg.org drops connections now and then: each source is tried a few
+# times, and either must match its checksum.
+RUN get() { curl -fsSL --retry 5 --retry-all-errors --retry-delay 3 --connect-timeout 20 -o "$1" "$2" \
+        && echo "$3  $1" | sha256sum -c -; } \
+    && { get ffmpeg.tar.xz "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" "${FFMPEG_SHA256}" \
+        && tar -xJf ffmpeg.tar.xz --strip-components=1; } \
+    || { get ffmpeg.tar.gz "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n${FFMPEG_VERSION}.tar.gz" "${FFMPEG_MIRROR_SHA256}" \
+        && tar -xzf ffmpeg.tar.gz --strip-components=1; } \
+    && rm -f ffmpeg.tar.xz ffmpeg.tar.gz
 RUN ./configure --disable-everything --disable-autodetect --disable-network --disable-doc --disable-debug \
         --disable-ffplay --disable-ffprobe --enable-static --disable-shared --extra-ldflags=-static \
         --enable-protocol=pipe \
