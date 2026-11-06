@@ -3,6 +3,22 @@
    below, so a block written with the variables needs nothing here. */
 
 :root {
+  --back-dbdbdb: #333333;
+  --back-eaeef2: #2a3340;
+  --back-e5460a: #e5460a;
+  --back-eef2f5: #2c2c2c;
+  --back-f0f1f2: #202020;
+  --line-c0c0c0: #4a4a4a;
+  --line-e7e8ec: #3a3a3a;
+  --text-222: #d4d4d4;
+  --text-2a5885: #9cc0e6;
+  --text-517296: #9cc0e6;
+  --text-828282: #a0a0a0;
+  --text-868686: #9a9a9a;
+  --text-888: #9a9a9a;
+  --text-afafaf: #8a8a8a;
+  --text-d00: #ff6b6b;
+  --text-f0f1f2: #f0f1f2;
   --back-14103a: #14103a;
   --back-d8dde3: #d8dde3;
   --text-23e0ff: #23e0ff;
@@ -144,6 +160,10 @@
   --line-b8b8a8: #8a8a7c;
   --back-34568b: #2a4670;
   --back-0d0d0d: #0d0d0d;
+  --line-f0f0f0: #2e2e2e;
+  --back-e9ebed: #2a2a2a;
+  --line-858585: #6a6a6a;
+  --back-f5f5f5: #2a2a2a;
 }
 
 /* The pictures shown for a missing photo are drawn light: in the dark they

@@ -15,6 +15,7 @@ import { pickPath } from './gifts.js';
 import { $, el, fullName, pagePath, replaceInPlace, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { meter } from './controls.js';
+import { fitSticker } from './sticker-fit.js';
 import { stickerNode } from './stickers.js';
 import { tr } from './i18n.js';
 
@@ -398,7 +399,13 @@ function initForm(pack) {
 
     for (const item of picked) {
       try {
-        item.photo = await api.uploadPhoto(item.file);
+        const fitted = await fitSticker(item.file);
+        if (!fitted) {
+          items = items.filter((i) => i !== item);
+          render();
+          continue;
+        }
+        item.photo = await api.uploadPhoto(new File([fitted], 'sticker.png', { type: 'image/png' }));
       } catch (e) {
         items = items.filter((i) => i !== item);
         showError($('error'), e);

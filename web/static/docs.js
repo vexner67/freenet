@@ -47,16 +47,31 @@ export function checkFile(file) {
   return '';
 }
 
-// uploadFile asks for a file and uploads it as a document; onDone gets
-// the document.
-export function uploadFile(error, onDone) {
+// uploadFile is openvk's "Загрузка документа" (showDocumentUploadDialog
+// in Web/static/js/al_docs.js): the limits first, then "Выбрать файл";
+// the chosen file is uploaded as a document and onDone gets it; a file
+// dropped on the button is taken too.
+export function uploadFile(onDone) {
+  const modal = openModal(tr('Загрузка документа'));
+  const error = el('div', { className: 'error', hidden: true });
   const input = el('input', { type: 'file', accept: ACCEPT, hidden: true });
+  const choose = button(tr('Выбрать файл'), () => input.click());
+  const frame = el('div', { className: 'doc-upload-frame' }, choose, input);
+  // openvk shows ten of the formats, picked anew each time.
+  const formats = [...DOCUMENT_FORMATS].sort(() => Math.random() - 0.59).slice(0, 10).join(', ');
 
-  input.addEventListener('change', async () => {
-    const file = input.files[0];
-    input.remove();
+  modal.box.classList.add('doc-upload');
+  modal.body.append(error,
+    el('b', { textContent: tr('Ограничения') }),
+    el('ul', { className: 'doc-upload-limits' },
+      el('li', { textContent: tr('Файл не должен превышать {0} МБ.', MAX_DOCUMENT_BYTES >> 20) }),
+      el('li', { textContent: tr('Разрешены следующие типы файлов: {0}.', formats) }),
+      el('li', { textContent: tr('Файл не должен нарушать авторские права и правила сайта.') })),
+    frame);
+  modal.actions.append(button(tr('Закрыть'), modal.close, { secondary: true }));
+
+  async function take(file) {
     if (!file) return;
-
     hideError(error);
     const why = checkFile(file);
     if (why) {
@@ -64,15 +79,27 @@ export function uploadFile(error, onDone) {
       return;
     }
 
+    choose.disabled = true;
     try {
-      onDone(await api.uploadDocument(file));
+      const doc = await api.uploadDocument(file);
+      modal.close();
+      onDone(doc);
     } catch (e) {
       showError(error, e);
+      choose.disabled = false;
     }
-  });
+  }
 
-  document.body.append(input);
-  input.click();
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    input.value = '';
+    take(file);
+  });
+  frame.addEventListener('dragover', (e) => e.preventDefault());
+  frame.addEventListener('drop', (e) => {
+    e.preventDefault();
+    take(e.dataTransfer.files[0]);
+  });
 }
 
 // openPicker is openvk's "Выбор документа": one's documents, newest
@@ -105,7 +132,7 @@ function openPicker(onPick) {
   more.addEventListener('click', load);
   modal.body.append(error, list, more);
   modal.actions.append(
-    button(tr('Загрузить документ'), () => uploadFile(error, pick)),
+    button(tr('Загрузить документ'), () => uploadFile(pick)),
     button(tr('Отмена'), modal.close, { secondary: true }),
   );
   load();

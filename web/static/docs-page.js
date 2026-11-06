@@ -101,7 +101,7 @@ if (!me) {
 } else {
   renderChrome(me);
 
-  $('upload').addEventListener('click', () => uploadFile($('error'), (doc) => {
+  $('upload').addEventListener('click', () => uploadFile((doc) => {
     $('docs').prepend(shown(doc));
     total++;
     showSummary();

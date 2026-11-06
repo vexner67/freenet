@@ -768,6 +768,27 @@ export function presence(user, now = new Date()) {
   return tr('{0} в сети {1}', byGender(user.gender, tr('был'), tr('была')), formatPostDate(user.lastSeenAt, now));
 }
 
+// offlineBar is the line under the messages of a dialog while the peer is
+// away, openvk's "im_write_bar_offline": "Анна была в сети сегодня в
+// 9:05", "вчера в 9:05", "06.11 в 9:05"; '' while they are online.
+export function offlineBar(user, now = new Date()) {
+  if (user.online) return '';
+
+  const was = byGender(user.gender, tr('был'), tr('была'));
+  if (!user.lastSeenAt) return tr('{0} {1} в сети недавно', user.name, was);
+
+  const seen = onClock(new Date(user.lastSeenAt));
+  const today = onClock(now);
+  const yesterday = onClock(new Date(now.getTime() - 86_400_000));
+  const time = messageTime(user.lastSeenAt);
+  const day = (d) => d.toISOString().slice(0, 10);
+
+  if (day(seen) === day(today)) return tr('{0} {1} в сети сегодня в {2}', user.name, was, time);
+  if (day(seen) === day(yesterday)) return tr('{0} {1} в сети вчера в {2}', user.name, was, time);
+
+  return tr('{0} {1} в сети {2} в {3}', user.name, was, `${two(seen.getUTCDate())}.${two(seen.getUTCMonth() + 1)}`, time);
+}
+
 // membersCount is openvk's "participants": "Ни одного участника", "3 участника".
 export function membersCount(n) {
   return n === 0 ? tr('Ни одного участника') : `${n} ${plural(n, ['участник', 'участника', 'участников'])}`;

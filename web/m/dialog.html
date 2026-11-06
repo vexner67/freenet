@@ -34,22 +34,22 @@
           <a href="/im">Диалоги</a>
           <a class="active" id="tab-dialog">Просмотр диалогов</a>
           <a id="tab-contact" hidden>Контакт</a>
-          <span class="tabs-side"><a id="contact-link">Контакт</a> | <a href="/friends">К списку друзей</a></span>
+          <span class="tabs-side" id="spec-actions"><span id="contact-actions"><a id="contact-link">Контакт</a><span class="tab-divider">|</span></span><a href="/friends">К списку друзей</a></span>
         </div>
         <div class="im-peer-tabs" id="peer-tabs" hidden></div>
         <div class="error" id="error" hidden></div>
         <div class="notice" id="key-notice" hidden></div>
         <div class="messenger" id="messenger" hidden>
           <div class="im-actions" id="selection" hidden>
-            <span class="im-actions-tabs">
-              <a class="im-actions-tab im-actions-count" id="selection-count" title="Снять выделение"></a>
+            <div><a class="im-actions-tab im-actions-count" id="selection-count" title="Снять выделение"></a></div>
+            <div>
               <a class="im-actions-tab" id="selection-delete">Удалить</a>
               <a class="im-actions-tab" id="selection-reply">Ответить</a>
               <a class="im-actions-tab" id="selection-forward">Переслать</a>
-            </span>
+            </div>
           </div>
           <div class="messenger-messages" id="messages">
-            <p class="hint center" id="empty" hidden>Сообщений пока нет. Напишите первым!</p>
+            <div class="messenger-app--no-messages" id="empty" hidden><p>Здесь пока нет сообщений.</p></div>
           </div>
           <div class="messenger-typing" id="typing" aria-live="polite"></div>
           <p class="messenger-price" id="price-note" hidden></p>
@@ -59,6 +59,7 @@
               <div class="messenger-field">
                 <textarea id="text" maxlength="60000" placeholder="Введите сообщение" aria-label="Сообщение" enterkeyhint="send"></textarea>
                 <a class="emoji-entry" id="smileys-link" title="Смайлы"></a>
+                <a class="stickers-entry" id="stickers-entry" title="Стикеры"></a>
                 <div class="emoji-picker-wrap" id="smileys" hidden>
                   <div class="emoji-picker-scroll"><div class="emoji-picker-groups"></div><div class="sticker-panel" id="stickers" hidden></div></div>
                   <div class="emoji-picker-footer">

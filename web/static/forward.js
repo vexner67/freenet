@@ -6,26 +6,138 @@
 import { api } from './api.js';
 import { sendSealed } from './e2ee.js';
 import { chatTitle, conversationOf, conversationPath, conversationValue, formatPostDate, forwardTree, messagePreview, snippet } from './labels.js';
-import { el, fullName, isPhone, showError, hideError, smileyNodes } from './layout.js';
+import { avatarURL, el, fullName, isPhone, pagePath, showError, hideError, smileyNodes } from './layout.js';
 import { button, openModal, openSheet } from './modal.js';
-import { dots, photosNode, sharedNode, sharedPhotoNode } from './posts.js';
+import { dots, postPath, sharedNode, sharedPhotoNode } from './posts.js';
+import { openViewer } from './viewer.js';
 import { stickerNode } from './stickers.js';
-import { documentsNode } from './docs.js';
 import { audiosNode } from './audio.js';
 import { tr } from './i18n.js';
 
-// attachedNodes is what a message shows under its words: its photos,
-// documents and songs, the post or the photo of an album it shares, or the sticker
-// it is.
+// attachedNodes is what a message shows under its words, as openvk's
+// MessageAttachments (Web/static/js/messages/components/message.js): the
+// sticker it is, its photos in one mosaic (makimaNode), then its
+// documents, songs and the post or the photo of an album it shares.
 export function attachedNodes(m) {
+  const photos = m.photos ?? [];
+  const docs = m.documents ?? [];
+
   return [
     m.sticker ? stickerNode(m.sticker) : null,
-    photosNode(m.photos ?? []),
-    documentsNode(m.documents),
-    audiosNode(m.audios),
-    m.repost ? sharedNode(m.repost, { canVote: true }) : null,
+    photos.length ? el('div', { className: 'msg-attachments-container' }, makimaNode(photos)) : null,
+    docs.length ? el('div', { className: 'attachments' }, ...docs.map(docNode)) : null,
+    m.audios?.length ? el('div', { className: 'msg-attach-audio-player' }, audiosNode(m.audios)) : null,
+    m.repost ? wallCardNode(m.repost) : null,
     m.sharedPhoto ? sharedPhotoNode(m.sharedPhoto) : null,
   ];
+}
+
+// The box of openvk's mosaic in a message, and the shape of a photo whose
+// size it does not know: ours carry none, so each is 4 by 3 there too.
+const MAKIMA_WIDTH = 380;
+const MAKIMA_HEIGHT = 350;
+const MAKIMA_RATIO = 4 / 3;
+
+// makimaLayout is openvk's computeMakimaGrid (makima_grid.js) for photos
+// of one shape: the heights of the rows and how many photos each takes,
+// or, for three, one tall at the left and two at the right.
+export function makimaLayout(count) {
+  const maxW = MAKIMA_WIDTH;
+  const maxH = MAKIMA_HEIGHT;
+  const r = MAKIMA_RATIO;
+
+  if (count === 1) {
+    const w = maxW;
+    const h = Math.round(w / r);
+    return { width: w, rows: [{ height: Math.min(h, maxH), count: 1 }] };
+  }
+  if (count === 2) {
+    const h = Math.max(110, Math.min(maxH * 0.75, Math.round((maxW / 2) / r)));
+    return { width: maxW, rows: [{ height: h, count: 2 }] };
+  }
+  if (count === 3) {
+    // Three wide photos: one over two.
+    const top = Math.round(Math.min(maxH * 0.52, maxW / r));
+    const bottom = Math.max(90, Math.round(Math.min(maxH - top - 2, (maxW / 2) / r)));
+    return { width: maxW, rows: [{ height: top, count: 1 }, { height: bottom, count: 2 }] };
+  }
+  if (count === 4) {
+    const h = Math.round(Math.min(maxH * 0.48, Math.max(95, (maxW / 2) * 0.72)));
+    return { width: maxW, rows: [{ height: h, count: 2 }, { height: h, count: 2 }] };
+  }
+
+  const counts = { 5: [2, 3], 6: [3, 3], 7: [3, 2, 2], 8: [2, 3, 3], 9: [3, 3, 3] }[count] ?? [3, 3, 4];
+  const h = Math.round(Math.min(maxH * 0.45, Math.max(85, (maxH - (counts.length - 1) * 2) / counts.length)));
+  return { width: maxW, rows: counts.map((c) => ({ height: h, count: c })) };
+}
+
+// makimaNode is openvk's MessageMakimaGrid: the photos in rows of the same
+// width, each cut to its tile; a click opens them one by one.
+function makimaNode(photos) {
+  const layout = makimaLayout(Math.min(photos.length, 10));
+  let next = 0;
+  const tile = (photo, i) => el('div', { className: 'msg-media-tile' },
+    el('a', {
+      className: 'msg-media-tile-link',
+      href: photo.large,
+      onclick: (event) => {
+        event.preventDefault();
+        openViewer(photos, i);
+      },
+    }, el('img', { className: 'media_makima', src: photo.small, alt: '', loading: 'lazy' })));
+
+  const grid = el('div', { className: 'msg-makima-grid' }, ...layout.rows.map((row) => {
+    const shown = photos.slice(next, next + row.count).map((p, k) => tile(p, next + k));
+    next += row.count;
+    const line = el('div', { className: 'msg-makima-row' }, ...shown);
+    line.style.height = `${row.height}px`;
+    return line;
+  }));
+  grid.style.width = `${layout.width}px`;
+
+  return grid;
+}
+
+// docNode is a document of a message as openvk's msg-attach-w-doc: the
+// sheet with a folded corner and its name, which downloads it.
+function docNode(doc) {
+  return el('div', { className: 'msg-attach-w msg-attach-w-doc' },
+    el('a', { className: 'attachment_note attachment_doc', href: doc.url, download: doc.name },
+      el('span', { className: 'attachment_doc_icon' }),
+      el('span', { className: 'attachment_note_content' },
+        el('span', { className: 'attachment_note_name', textContent: doc.name }))));
+}
+
+// wallCardNode is a post a message shares, as openvk's msg-attach-wall-card:
+// a grey card with a bar at its left, the photo, name and date of its
+// author, six lines of its words and its photos; a click opens the post.
+function wallCardNode(post) {
+  if (post.deleted) return el('div', { className: 'msg-attach-wall-card wall-card-deleted', textContent: tr('Запись удалена.') });
+  if (post.fediverse) return sharedNode(post, { canVote: true });
+
+  const path = pagePath(post.author);
+  const href = postPath(post);
+  const card = el('div', { className: 'msg-attach-wall-card' },
+    el('div', { className: 'wall-card-head' },
+      el('a', { className: 'wall-card-avatar-link', href: path }, el('img', { className: 'wall-card-avatar', src: avatarURL(post.author, 'small'), alt: '' })),
+      el('div', { className: 'wall-card-author-info' },
+        el('a', { className: 'wall-card-author-name', href: path, textContent: fullName(post.author) }),
+        el('span', { className: 'wall-card-date', textContent: formatPostDate(post.createdAt) }))),
+    post.text
+      ? el('div', { className: 'wall-card-text' }, ...smileyNodes(post.text))
+      : el('div', { className: 'wall-card-text wall-card-empty', textContent: tr('Запись') }),
+    post.photos?.length ? makimaNode(post.photos) : null,
+    post.documents?.length || post.audios?.length
+      ? el('div', { className: 'attachments_m' }, ...(post.documents ?? []).map(docNode), audiosNode(post.audios))
+      : null,
+  );
+
+  card.addEventListener('click', (event) => {
+    if (event.target.closest('a, button, .audio-row')) return;
+    location.href = href;
+  });
+
+  return card;
 }
 
 // forwardedNode shows the messages m carries on, as on VK: under its own

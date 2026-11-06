@@ -76,7 +76,7 @@ function insertEmoji(input, emoji) {
 // emoji; the stickers are a tab of the picker: stickersLink shows
 // stickersPanel in it, and showStickers draws them. It returns close,
 // which the page calls when a sticker is sent.
-export function initEmoji({ link, picker, input, bar, stickersLink, stickersPanel, showStickers }) {
+export function initEmoji({ link, picker, input, bar, stickersLink, stickersPanel, showStickers, stickersEntry = null }) {
   const scroll = picker.querySelector('.emoji-picker-scroll');
   const groups = picker.querySelector('.emoji-picker-groups');
   const nav = picker.querySelector('.emoji-category-nav');
@@ -144,6 +144,7 @@ export function initEmoji({ link, picker, input, bar, stickersLink, stickersPane
   function close() {
     picker.hidden = true;
     link.classList.remove('active');
+    stickersEntry?.classList.remove('active');
   }
 
   // The tab of the group in view is the chosen one.
@@ -155,6 +156,18 @@ export function initEmoji({ link, picker, input, bar, stickersLink, stickersPane
   });
   link.addEventListener('click', () => (picker.hidden ? open() : close()));
   mainTab.addEventListener('click', showEmoji);
+  // The face of the stickers under that of the emoji opens the picker on
+  // them; a sticker there is sent at once.
+  stickersEntry?.addEventListener('click', () => {
+    if (!picker.hidden && !stickersPanel.hidden) {
+      close();
+      return;
+    }
+    if (picker.hidden) open();
+    link.classList.remove('active');
+    stickersEntry.classList.add('active');
+    stickersLink.click();
+  });
   stickersLink.addEventListener('click', () => {
     groups.hidden = true;
     stickersPanel.hidden = false;
@@ -165,7 +178,7 @@ export function initEmoji({ link, picker, input, bar, stickersLink, stickersPane
   });
   // A click elsewhere or Esc closes it, as a menu.
   document.addEventListener('click', (event) => {
-    if (!picker.hidden && !picker.contains(event.target) && !link.contains(event.target)) close();
+    if (!picker.hidden && !picker.contains(event.target) && !link.contains(event.target) && !stickersEntry?.contains(event.target)) close();
   });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !picker.hidden) close();

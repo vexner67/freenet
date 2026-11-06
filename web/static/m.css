@@ -523,7 +523,7 @@ label.chat-person { cursor: pointer; }
 .link-card-site { color: var(--text-626262); }
 .link-card-description { color: var(--text-333); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 /* openvk's "Загрузка новой фотографии" (avatar.js). */
-.modal-box.avatar-dialog { width: 487px; }
+.modal-box.avatar-dialog { width: 600px; max-width: calc(100vw - 32px); }
 .avatar-crop { display: block; max-width: 100%; height: auto; margin: 4px auto; cursor: move; touch-action: none; }
 /* openvk's "Граффити": a white sheet and the tools under it. */
 .modal-box.graffiti-dialog { width: 600px; max-width: calc(100vw - 32px); }
@@ -895,10 +895,10 @@ a.poll-result-name { cursor: pointer; }
 .market-filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
 /* A sticker keeps its shape: one of the studio, a photo of any shape,
    is fitted into the square, not stretched over it. */
-.sticker { display: block; width: 160px; height: 160px; margin: 2px 0; object-fit: contain; }
+.sticker { display: block; width: 128px; height: 128px; margin: 2px 0; object-fit: contain; }
 /* A sticker of any shape starts at the top left corner of its square, so
    that every one comes up at the same place. */
-.im-message img.sticker { width: 160px; height: 160px; object-fit: contain; object-position: left top; border-radius: 0; }
+.im-message img.sticker { width: 128px; height: 128px; object-fit: contain; object-position: left top; border-radius: 0; }
 .sticker-panel { margin: 8px 0 0; padding: 8px; max-height: 260px; overflow-y: auto; border: 1px solid var(--line-dedede); background: var(--back-fff); }
 .sticker-pack { margin: 0 0 8px; }
 .sticker-grid { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -2745,10 +2745,9 @@ body:has(.messenger:not([hidden])) .page-body { padding: 0; }
 .im-message-sender { font-size: 13px; font-weight: bold; }
 /* In a dialog of two the names say nothing: the side tells who wrote. */
 body:has(#peer-avatar) .im-message-avatar,
-body:has(#peer-avatar) .im-message-sender,
-body:has(#peer-avatar) .im-message .name-checkmark,
-.im-message.same-author .im-message-sender, .im-message.same-author .im-message-content > .name-checkmark,
-.im-message.out .im-message-sender, .im-message.out .im-message-content > .name-checkmark { display: none; }
+body:has(#peer-avatar) .im-sender,
+.im-message.same-author .im-sender,
+.im-message.out .im-sender { display: none; }
 .im-message-edited { color: var(--text-aaa); font-size: 11px; }
 /* The day over its messages, as on the computer. */
 .im-day { display: flex; justify-content: center; margin: 6px 0 10px; }
@@ -2765,8 +2764,6 @@ body:has(#peer-avatar) .im-message .name-checkmark,
 .im-message.selected { background: var(--back-f6f0d2); border-color: var(--line-d7cf9e); }
 .im-message.found { background: var(--back-f6f0d2); }
 .im-message.deleted .im-message-text, .im-message-text.unreadable { color: var(--text-626262); font-style: italic; }
-.im-message .post-photos { max-width: 240px; margin-top: 4px; }
-.im-message .post-photos.single img { max-height: 280px; }
 .chat-action { margin: 8px 0; color: var(--text-626262); font-size: 12px; text-align: center; }
 .chat-bar { cursor: default; }
 
@@ -2789,6 +2786,9 @@ body:has(#peer-avatar) .im-message .name-checkmark,
 .im-recent-smiles-bar { display: none; }
 .messenger-buttons .attach-menu { order: 1; flex: none; }
 .emoji-entry { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; background: url("/static/icons/smiley.svg") no-repeat center / 22px; opacity: .7; }
+/* The phone field is one line high: the stickers stand left of the emoji. */
+.stickers-entry { position: absolute; top: 11px; right: 40px; width: 18px; height: 18px; background: url("/static/im/emoji_sprite.png") -18px 0 no-repeat; opacity: .7; }
+.messenger-box:has(.stickers-entry) textarea { padding-right: 64px; }
 .messenger-buttons .attach-toggle {
   display: block;
   width: 32px;
@@ -2821,15 +2821,18 @@ body:has(#peer-avatar) .im-message .name-checkmark,
 .emoji-tabs-divider { flex-shrink: 0; width: 1px; height: 18px; margin: 0 2px; background: var(--line-dedede); }
 .emoji-picker-wrap .sticker-panel { max-height: none; margin: 0; padding: 0 8px 0 0; overflow: visible; border: 0; background: none; }
 
-/* "Выбрано N сообщений", "Удалить", "Ответить", "Переслать" over the
-   messages while some are selected. */
-.im-actions { display: flex; padding: 8px 10px; background: var(--back-f6f6f6); border-bottom: 1px solid var(--line-d6d6d6); }
-.im-actions-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-.im-actions-tab { display: inline-block; padding: 7px 10px; background: var(--back-595959); color: var(--text-fff); font-size: 13px; }
+/* openvk's ActionsBar over the messages while some are selected: the
+   count at the left, "Закрепить", "Кто прочитал", "Удалить", "Ответить",
+   "Переслать" at the right, wrapped on a narrow screen. */
+.im-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; padding: 8px 10px; background: var(--back-f6f6f6); border-bottom: 1px solid var(--line-d6d6d6); }
+.im-actions[hidden] { display: none; }
+.im-actions > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.im-actions-tab { display: inline-block; padding: 7px 10px; background: url("/static/im/button.png") var(--back-595959); border: 1px solid var(--line-595959); color: var(--text-fff); font-size: 13px; }
+.im-actions-count { color: var(--text-f0f1f2); }
 
-/* "Контакт" and "О чате": the photo and the name in a white box, the
-   actions in rows, then the people of a chat. */
-.peer-window { margin: 0 -10px; padding: 12px 10px 20px; background: var(--back-f7f7f7); }
+/* "Контакт" and "О чате", openvk's peer window: the photo and the name,
+   the actions in rows with openvk's icons, then the people of a chat. */
+.peer-window { margin: 0 -10px; padding: 12px 10px 20px; background: var(--back-f0f1f2); }
 .peer-side { display: flex; flex-direction: column; gap: 12px; }
 .peer-info { display: flex; gap: 14px; padding: 12px; background: var(--back-fff); border: 1px solid var(--line-d6d6d6); border-radius: 4px; }
 .peer-avatar { flex-shrink: 0; width: 80px; height: 80px; }
@@ -2838,24 +2841,48 @@ body:has(#peer-avatar) .im-message .name-checkmark,
 .peer-name-1 { display: flex; flex-direction: column; gap: 3px; }
 .peer-link { font-size: 15px; font-weight: bold; }
 .peer-status { color: var(--text-777); }
-.peer-actions-1 { display: flex; flex-direction: column; margin: 4px 0 0; padding: 0; list-style: none; }
-.peer-action { position: relative; padding-left: 20px; }
-.peer-action::before { content: ""; position: absolute; top: 8px; left: 0; width: 11px; height: 13px; background: url("/static/im/mono_iconset.gif") no-repeat; }
-.peer-action-search::before { background-position: 0 -265px; }
-.peer-action-call::before { background-position: 0 -307px; }
-.peer-action-safety::before { background-position: 0 -322px; }
-.peer-action-photo::before { background-position: 0 -31px; }
-.peer-action-rename::before { background-position: 0 -134px; }
-.peer-action-clean::before { background-position: 0 -334px; }
-.peer-action a { display: block; padding: 5px 0; }
+.peer-actions-1 { margin-top: 4px; }
+.peer-actions-1 ul { margin: 0; padding: 0; list-style: none; }
+.peer-actions-1 li { padding: 5px 0 5px 18px; background: url("/static/im/mono_iconset.gif") 0 8px no-repeat; }
+.peer-actions-1 li.peer-action-search { background-position: 0 -257px; }
+.peer-actions-1 li.peer-action-ava { background-position: 0 -23px; }
+.peer-actions-1 li.peer-action-call { background-position: 0 -299px; }
+.peer-actions-1 li.peer-action-safety { background-position: 0 -313px; }
+.peer-actions-1 li.peer-action-clean { background-position: 0 -326px; }
+.peer-actions-1 a { display: block; color: var(--text-2a5885); font-size: 14px; }
+.peer-title-edit-wrap { display: flex; align-items: center; gap: 6px; width: 100%; }
+.peer-title-input { flex: 1; min-width: 0; padding: 6px; border: 1px solid var(--line-c0c0c0); border-radius: 3px; font-size: 16px; }
+.peer-title-cancel-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; }
+.chats-close-icon { display: inline-block; width: 11px; height: 11px; background: url("/static/im/arrows.png") -18px 2px / 50px 16px no-repeat; opacity: .6; }
 .peer-members-section { display: flex; flex-direction: column; padding-top: 6px; border-top: 1px solid var(--line-d6d6d6); }
 .chat-tab-2-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; font-size: 15px; }
 .chat-header-actions { display: flex; gap: 14px; font-size: 13px; }
 .chat-members-list { display: flex; flex-direction: column; background: var(--back-fff); border-top: 1px solid var(--line-d6d6d6); }
-.chat-member-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line-d6d6d6); font-weight: bold; }
+.chat-member-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line-d6d6d6); font-weight: bold; }
+.chat-member-item .inf { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; }
 .chat-member-item img { display: block; width: 36px; height: 36px; object-fit: cover; border-radius: 50%; }
-.chat-member-name { flex: 1; min-width: 0; }
-.chat-member-item .chat-kick { display: inline; font-weight: normal; }
+.chat-member-info { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; }
+.chat-member-name { color: var(--text-2a5885); }
+.chat-member-badge { padding: 1px 5px; background: var(--back-eaeef2); border-radius: 2px; color: var(--text-517296); font-size: 11px; font-weight: normal; }
+.chat-member-online { color: var(--text-afafaf); font-weight: normal; }
+.chat-member-actions { display: flex; flex-shrink: 0; align-items: center; gap: 6px; }
+.chat-member-action-btn { color: var(--text-2a5885); font-weight: normal; }
+.chat-member-action-kick, .chat-member-action-mod { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; }
+.chat-mod-star-icon { display: inline-block; width: 11px; height: 11px; background: url("/static/im/mono_iconset.gif") 0 -119px / 11px auto no-repeat; opacity: .4; }
+
+/* "Просмотрели сообщение": who has read it, with whether they are online. */
+.modal-box.message-viewers .modal-body { padding: 10px 0; }
+.message-viewers-loader { padding: 25px; text-align: center; }
+.message-viewers-empty { padding: 20px; color: var(--text-777); font-size: 13px; text-align: center; }
+.message-viewers-header { padding: 4px 10px 8px; border-bottom: 1px solid var(--line-e7e8ec); color: var(--text-777); font-size: 13px; font-weight: bold; }
+.message-viewers-list { max-height: 360px; overflow-y: auto; }
+.message-viewer-row { display: flex; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line-e7e8ec); }
+.message-viewer-ava-link { position: relative; display: inline-block; margin-right: 10px; }
+.message-viewer-ava { display: block; width: 36px; height: 36px; object-fit: cover; }
+.message-viewer-info { flex: 1; min-width: 0; }
+.message-viewer-name { display: block; overflow: hidden; color: var(--text-222); font-size: 12px; font-weight: bold; white-space: nowrap; text-overflow: ellipsis; text-decoration: none; }
+.message-viewer-time { color: var(--text-777); font-size: 13px; }
+.message-viewers-error { padding: 20px; color: var(--text-d00); text-align: center; }
 
 /* Windows: a box over the dimmed page, from the top, scrolled when taller
    than the screen; its buttons on a grey band, the size of a finger. */
@@ -4172,3 +4199,46 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .send-box-attach.attach-document { background-image: url("/static/icons/document.svg"); }
 .send-box-attach::before { content: none; }
 .modal-box.send-box { overflow: visible; }
+/* openvk's "Загрузка документа" (al_docs.js). */
+.modal-box.doc-upload .modal-body { padding: 15px; }
+.doc-upload-limits { margin: 5px 0; padding-left: 20px; }
+.doc-upload-frame { text-align: center; margin: 10px 0 2px; }
+/* "Размер стикера" of the studio (sticker-fit.js): the picture in the
+   square every sticker is shown in. */
+.sticker-fit-square { width: 128px; margin: 8px auto; border: 1px solid var(--line-c0c0c0); background: var(--back-fff); }
+.sticker-fit-canvas { display: block; width: 128px; height: 128px; cursor: move; touch-action: none; }
+.sticker-fit-size { display: flex; justify-content: center; align-items: center; gap: 8px; }
+/* Attachments of a message, as openvk messages.css: the photos in one
+   mosaic of 380px (msg-makima-grid), a document as a sheet and its name,
+   the songs in a light box, and a shared post as a card with a bar. */
+.msg-attachments-container { max-width: 100%; margin-top: 4px; }
+.msg-makima-grid { display: block; position: relative; max-width: 100%; border-radius: 4px; overflow: hidden; margin: 4px 0; }
+.msg-makima-row { display: flex; gap: 2px; width: 100%; margin-bottom: 2px; }
+.msg-makima-row:last-child { margin-bottom: 0; }
+.msg-media-tile { position: relative; flex: 1; display: flex; min-width: 0; min-height: 0; overflow: hidden; border-radius: 2px; background: var(--back-e9ebed); }
+.msg-media-tile-link { display: block; width: 100%; height: 100%; }
+.msg-media-tile img.media_makima { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 2px; }
+.im-message .attachments:not(:empty) { margin-top: 3px; }
+.msg-attach-w-doc .attachment_doc { display: flex; align-items: center; gap: 1px; padding: 2px 0; user-select: none; }
+.attachment_doc_icon { flex-shrink: 0; width: 8px; height: 10px; margin-top: 2px; background: url("/static/icons/doc-note.svg") no-repeat; }
+.msg-attach-w-doc .attachment_note_content { display: inline-block; margin-left: 2px; }
+.msg-attach-audio-player { max-width: 440px; margin: 4px 0; border: 1px solid var(--line-f0f0f0); border-radius: 3px; background: var(--back-fafafa); overflow: hidden; }
+.msg-attach-audio-player .audio-list { padding: 0; }
+.msg-attach-audio-player .audio-row:hover { background: var(--back-f5f5f5); }
+.msg-attach-wall-card { max-width: 440px; margin: 4px 0; padding: 8px 10px; border-left: 2px solid var(--line-858585); border-radius: 0 4px 4px 0; background: var(--back-f9f9f9); cursor: pointer; }
+.msg-attach-wall-card:hover { background: var(--back-f2f2f2); }
+.msg-attach-wall-card.wall-card-deleted { color: var(--text-888); cursor: default; }
+.wall-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.wall-card-avatar { display: block; flex-shrink: 0; width: 32px; height: 32px; border-radius: 2px; object-fit: cover; }
+.wall-card-author-info { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.wall-card-author-name { overflow: hidden; color: var(--text-2a5885); font-size: 12px; font-weight: bold; white-space: nowrap; text-overflow: ellipsis; }
+.wall-card-date { color: var(--text-888); font-size: 11px; }
+.wall-card-text { display: -webkit-box; margin-bottom: 6px; overflow: hidden; color: var(--text-222); font-size: 12.5px; line-height: 1.4; word-break: break-word; white-space: pre-wrap; -webkit-line-clamp: 6; -webkit-box-orient: vertical; }
+.wall-card-empty { color: var(--text-888); font-style: italic; }
+.msg-attach-wall-card .msg-makima-grid { margin: 6px 0 4px; }
+.msg-attach-wall-card .attachments_m { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.msg-makima-grid, .msg-attach-wall-card, .msg-attach-audio-player { max-width: 100%; }
+/* openvk's "Здесь пока нет сообщений." (messenger-app--no-messages). */
+.messenger-app--no-messages { display: flex; align-items: center; justify-content: center; min-height: 250px; padding: 40px 20px; box-sizing: border-box; }
+.messenger-app--no-messages[hidden] { display: none; }
+.messenger-app--no-messages p { margin: 0; padding: 12px 24px; color: var(--text-777); font-size: 13px; background: var(--back-f9f9f9); border: 1px solid var(--line-d6d6d6); border-radius: 4px; }

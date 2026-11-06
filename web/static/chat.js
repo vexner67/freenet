@@ -27,7 +27,7 @@ import { isLive, onEvent } from './events.js';
 import { openAvatarDialog } from './avatar.js';
 import { initEmoji } from './emoji.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
-import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, messagesCount, messageTime, photoChanges, primeNameClass, selectedCount, snippet } from './labels.js';
+import { chatActionParts, errorText, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, messagesCount, messageTime, photoChanges, primeNameClass, selectedCount, snippet } from './labels.js';
 import { $, avatarURL, chatPhotoURL, el, fullName, isPhone, keepFocus, whenShown, mentionNodes, renderChrome, smileyNodes, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { contactInfo, fitHeight, hoverIcons, peerTabs, regroup, selectOnClick, showContact } from './messenger.js';
@@ -106,8 +106,9 @@ function messageNode(m) {
     el('a', { className: 'im-message-avatar', href: '/' + m.author.nickname }, el('img', { src: avatarURL(m.author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
       head,
-      el('a', { className: ['im-message-sender', primeNameClass(m.author)].filter(Boolean).join(' '), href: '/' + m.author.nickname, textContent: fullName(m.author) }),
-      verifiedMark(m.author), content),
+      el('span', { className: 'im-sender' },
+        el('a', { className: ['im-message-sender', primeNameClass(m.author)].filter(Boolean).join(' '), href: '/' + m.author.nickname, textContent: fullName(m.author) }),
+        verifiedMark(m.author)), content),
   );
 
   // render shows what the message is now: an edit changes what it says,
@@ -153,13 +154,12 @@ function canDelete(m) {
 }
 
 // messageActions are what may be done with a message by itself: openvk's
-// icons on hover — answer, react, edit, pin — and on a phone its list
-// under "⋯"; deleting and forwarding go through the selection.
+// icons on hover — answer, react, edit — and on a phone its list under
+// "⋯"; pinning, who has read it, deleting and forwarding go through the
+// selection, as on openvk.
 function messageActions(m, node) {
   const active = chat.state === 'active';
-  const pinned = chat.pinned?.id === m.id;
   const canAnswer = replies && !m.deleted && active;
-  const pin = () => change(() => (pinned ? api.unpinChatMessage(chatID) : api.pinChatMessage(chatID, m.id)));
   const pick = () => {
     node.picking = !node.picking;
     node.render();
@@ -172,7 +172,6 @@ function messageActions(m, node) {
       canAnswer && [tr('Ответить'), () => answer(m), 'reply'],
       !m.deleted && active && [tr('Реакция'), pick, 'react'],
       canEdit(m) && [tr('Редактировать'), () => startEdit(m), 'edit'],
-      !m.deleted && active && [pinned ? tr('Открепить') : tr('Закрепить'), pin, pinned ? 'pin pinned' : 'pin'],
     ]);
   }
 
@@ -181,7 +180,6 @@ function messageActions(m, node) {
     !m.deleted && active && [tr('Реакция'), pick],
     canEdit(m) && [tr('Редактировать'), () => startEdit(m)],
     !m.deleted && [tr('Переслать'), () => forward([m])],
-    !m.deleted && active && [pinned ? tr('Открепить') : tr('Закрепить'), pin],
     canDelete(m) && [tr('Удалить'), () => confirmDelete([m])],
   ]);
 }
@@ -258,6 +256,46 @@ function showSelection() {
   $('selection-delete').hidden = !(messages.length > 0 && messages.every(canDelete));
   $('selection-reply').hidden = !(replies && messages.length === 1 && !messages[0].deleted && chat.state === 'active');
   $('selection-forward').hidden = !messages.some((m) => !m.deleted);
+  // One message at a time is pinned and asked who has read it, as on
+  // openvk.
+  const one = messages.length === 1 && !messages[0].deleted ? messages[0] : null;
+  $('selection-pin').hidden = !(one && chat.state === 'active');
+  $('selection-pin').textContent = one && chat.pinned?.id === one.id ? tr('Открепить') : tr('Закрепить');
+  $('selection-readers').hidden = !one;
+}
+
+// togglePin pins the message selected, or takes the pin off it.
+function togglePin(m) {
+  clearSelection();
+  change(() => (chat.pinned?.id === m.id ? api.unpinChatMessage(chatID) : api.pinChatMessage(chatID, m.id)));
+}
+
+// showReaders is openvk's window "Просмотрели сообщение": who in the chat
+// has read the message, with whether they are online.
+async function showReaders(m) {
+  clearSelection();
+  const modal = openModal(tr('Просмотрели сообщение'));
+  modal.box.classList.add('message-viewers');
+  modal.body.append(el('div', { className: 'message-viewers-loader', textContent: tr('Загрузка...') }));
+  modal.actions.append(button(tr('Закрыть'), modal.close));
+
+  try {
+    const { readers } = await api.chatMessageReaders(chatID, m.id);
+    if (readers.length === 0) {
+      modal.body.replaceChildren(el('div', { className: 'message-viewers-empty', textContent: tr('Это сообщение ещё никто не прочитал') }));
+      return;
+    }
+
+    modal.body.replaceChildren(el('div', { className: 'message-viewers-list-wrap' },
+      el('div', { className: 'message-viewers-header', textContent: tr('Прочитали: {0}', readers.length) }),
+      el('div', { className: 'message-viewers-list' }, ...readers.map((u) => el('div', { className: 'message-viewer-row' },
+        el('a', { className: 'message-viewer-ava-link', href: '/' + u.nickname }, el('img', { className: 'message-viewer-ava', src: avatarURL(u, 'small'), alt: '' })),
+        el('div', { className: 'message-viewer-info' },
+          el('a', { className: 'message-viewer-name', href: '/' + u.nickname, textContent: fullName(u) }),
+          el('span', { className: 'message-viewer-time', textContent: u.online ? tr('Онлайн') : tr('не в сети') })))))));
+  } catch (e) {
+    modal.body.replaceChildren(el('div', { className: 'message-viewers-error', textContent: errorText(e) }));
+  }
 }
 
 const selectedMessages = () => [...selected].map((id) => shown.get(id)?.message).filter(Boolean);
@@ -601,32 +639,6 @@ async function change(request) {
   }
 }
 
-function openRename() {
-  const modal = openModal(tr('Обновить название'), { tag: 'form' });
-  const error = el('div', { className: 'error', hidden: true });
-  const title = el('input', { type: 'text', maxLength: CHAT_TITLE_MAX, value: chat.title, placeholder: tr('Введите название беседы'), ariaLabel: tr('Название беседы') });
-  const save = button(tr('Сохранить'), null, { type: 'submit' });
-
-  modal.body.append(error, title);
-  modal.actions.append(save, button(tr('Отмена'), modal.close, { secondary: true }));
-  title.focus();
-
-  modal.box.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    hideError(error);
-    save.disabled = true;
-
-    try {
-      show(await api.renameChat(chatID, title.value.trim()));
-      modal.close();
-      await catchUp();
-    } catch (e) {
-      showError(error, e);
-      save.disabled = false;
-    }
-  });
-}
-
 function confirmLeave() {
   const modal = openModal(tr('Покинуть чат'));
 
@@ -718,23 +730,68 @@ function openPhoto() {
 // sees the search and the people only.
 function drawAbout() {
   const active = chat.state === 'active';
+  const owner = chat.ownerId === me.id;
   const error = el('div', { className: 'error', hidden: true });
   const info = contactInfo({
     photo: chatPhotoURL(chat, 'large'),
     name: chatTitle(chat),
     status: chatMembers(chat.memberCount),
+    rename: active && (async (title) => {
+      show(await api.renameChat(chatID, title));
+      await catchUp();
+    }),
     actions: [
-      active && [tr('Обновить фотографию'), openPhoto, 'photo'],
-      active && chat.photo && [tr('Удалить фотографию'), () => change(() => api.deleteChatPhoto(chatID)), 'photo'],
-      active && [tr('Обновить название'), openRename, 'rename'],
-      [tr('Поиск по переписке'), '/im?chat=' + encodeURIComponent(chatID), 'search'],
-      chat.ownerId === me.id && active && [tr('Удалить беседу'), confirmDeleteChat, 'clean'],
+      active && [tr('Обновить аватар'), openPhoto, 'ava'],
+      active && chat.photo && [tr('Удалить аватар'), () => change(() => api.deleteChatPhoto(chatID)), 'ava'],
+      [tr('Поиск по сообщениям'), '/im?chat=' + encodeURIComponent(chatID), 'search'],
+      owner && active && [tr('Удалить беседу'), confirmDeleteChat, 'clean'],
     ],
   });
-  const kick = (u) => el('a', {
-    className: 'chat-kick',
-    textContent: tr('Исключить из беседы'),
-    onclick: async () => {
+
+  // A member as openvk's "chat-member-item": the photo, the name with
+  // "создатель" and "Онлайн", and at the right "Написать сообщение", the
+  // star that would make them an administrator and the cross that removes
+  // them, both the creator's.
+  const member = (u) => {
+    const mine = u.id === me.id;
+    const manages = owner && active && !mine;
+
+    return el('div', { className: 'chat-member-item' },
+      el('div', { className: 'inf' },
+        el('a', { href: '/' + u.nickname }, el('img', { className: 'chat-member-ava', src: avatarURL(u, 'small'), alt: '' })),
+        el('div', { className: 'chat-member-info' },
+          el('a', { className: 'chat-member-name', href: '/' + u.nickname, textContent: fullName(u) }),
+          u.id === chat.ownerId && el('span', { className: 'chat-member-badge', textContent: tr('создатель') }),
+          u.online && el('span', { className: 'chat-member-online', textContent: tr('Онлайн') }))),
+      el('div', { className: 'chat-member-actions' },
+        !mine && el('a', { className: 'chat-member-action-btn', href: '/im/' + encodeURIComponent(u.nickname), textContent: tr('Написать сообщение') }),
+        manages && el('a', { className: 'chat-member-action-mod', title: tr('Назначить администратором') }, el('span', { className: 'chat-mod-star-icon' })),
+        manages && el('a', { className: 'chat-member-action-kick', title: tr('Исключить из беседы'), onclick: () => confirmKick(u, error) }, el('span', { className: 'chats-close-icon' }))));
+  };
+
+  $('contact').replaceChildren(el('div', { className: 'peer-side' },
+    info,
+    error,
+    el('div', { className: 'peer-actions-container' },
+      el('div', { className: 'peer-members-section' },
+        el('div', { className: 'chat-tab-2-header' },
+          el('b', { textContent: tr('Участники ({0})', chat.memberCount) }),
+          active && el('div', { className: 'chat-header-actions' },
+            el('a', { textContent: tr('Добавить участников'), onclick: () => openAddMembers(me, chat, (changed) => { show(changed); catchUp(); }) }),
+            el('a', { textContent: tr('Покинуть чат'), onclick: confirmLeave }))),
+        el('div', { className: 'chat-members-list' }, ...(chat.members ?? []).map(member)))),
+  ));
+}
+
+// confirmKick is openvk's "Подтверждение" before the creator removes
+// someone from the chat.
+function confirmKick(u, error) {
+  const modal = openModal(tr('Подтверждение'));
+
+  modal.body.append(tr('Вы уверены, что хотите исключить '), el('b', { textContent: fullName(u) }), tr(' из беседы?'));
+  modal.actions.append(
+    button(tr('Да'), async () => {
+      modal.close();
       hideError(error);
 
       try {
@@ -743,25 +800,9 @@ function drawAbout() {
       } catch (e) {
         showError(error, e);
       }
-    },
-  });
-
-  $('contact').replaceChildren(el('div', { className: 'peer-side' },
-    info,
-    error,
-    el('div', { className: 'peer-members-section' },
-      el('div', { className: 'chat-tab-2-header' },
-        el('b', { textContent: tr('Участники ({0})', chat.memberCount) }),
-        active && el('span', { className: 'chat-header-actions' },
-          el('a', { textContent: tr('Добавить участников'), onclick: () => openAddMembers(me, chat, (changed) => { show(changed); catchUp(); }) }),
-          el('a', { textContent: tr('Покинуть беседу'), onclick: confirmLeave }))),
-      el('div', { className: 'chat-members-list' }, ...(chat.members ?? []).map((u) => el('div', { className: 'chat-member-item' },
-        el('a', { href: '/' + u.nickname }, el('img', { src: avatarURL(u, 'small'), alt: '' })),
-        el('span', { className: 'chat-member-name' },
-          personLink(u),
-          u.id === chat.ownerId && el('span', { className: 'hint', textContent: tr(' — создатель') })),
-        chat.ownerId === me.id && u.id !== me.id && active && kick(u))))),
-  ));
+    }),
+    button(tr('Нет'), modal.close, { secondary: true }),
+  );
 }
 
 // openAbout shows "О чате".
@@ -833,7 +874,7 @@ function setUpInput() {
   documents = initDocuments({ link: $('doc'), list: $('documents') });
   audios = initAudios({ link: $('audio'), list: $('audios') });
   const showStickers = initStickers({ panel: $('stickers'), error: $('error'), onPick: sendSticker, onSent: () => closeEmoji() });
-  const closeEmoji = initEmoji({ link: $('smileys-link'), picker: $('smileys'), input: $('text'), bar: $('recent-smiles'), stickersLink: $('stickers-link'), stickersPanel: $('stickers'), showStickers });
+  const closeEmoji = initEmoji({ link: $('smileys-link'), picker: $('smileys'), input: $('text'), bar: $('recent-smiles'), stickersLink: $('stickers-link'), stickersPanel: $('stickers'), showStickers, stickersEntry: $('stickers-entry') });
   $('form').addEventListener('submit', send);
   keepFocus($('send'));
   $('editing-cancel').addEventListener('click', cancelEdit);
@@ -873,6 +914,8 @@ if (!me) {
     $('selection-count').addEventListener('click', clearSelection);
     $('selection-forward').addEventListener('click', () => forward(selectedMessages()));
     $('selection-delete').addEventListener('click', () => confirmDelete(selectedMessages()));
+    $('selection-pin').addEventListener('click', () => togglePin(selectedMessages()[0]));
+    $('selection-readers').addEventListener('click', () => showReaders(selectedMessages()[0]));
     $('selection-reply').addEventListener('click', () => {
       const [m] = selectedMessages();
       clearSelection();

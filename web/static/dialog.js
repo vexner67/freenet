@@ -28,7 +28,7 @@ import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, o
 import { isLive, onEvent } from './events.js';
 import { initEmoji } from './emoji.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
-import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, messageTime, photoChanges, messagesCount, presence, primeNameClass, selectedCount, votesCount } from './labels.js';
+import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, messageTime, photoChanges, messagesCount, offlineBar, presence, primeNameClass, selectedCount, votesCount } from './labels.js';
 import { $, avatarURL, el, fullName, isPhone, keepFocus, whenShown, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { contactInfo, fitHeight, hoverIcons, peerTabs, regroup, selectOnClick, showContact } from './messenger.js';
 import { button, openModal } from './modal.js';
@@ -39,7 +39,21 @@ import { typingLine, watchTyping } from './typing.js';
 import { tr } from './i18n.js';
 
 const POLL_MS = 5000;
-const typists = typingLine((text) => { $('typing').textContent = text; });
+// The line under the messages, openvk's "write-bar": who is typing, or
+// when the peer was last here while they are away.
+let away = '';
+let typingNow = '';
+const typists = typingLine((text) => {
+  typingNow = text;
+  showStatus();
+});
+
+function showStatus() {
+  const typing = typingNow;
+  $('typing').textContent = typing || away;
+  $('typing').classList.toggle('is-typing', Boolean(typing));
+  $('typing').classList.toggle('is-offline', !typing && Boolean(away));
+}
 // How many messages one request deletes.
 const DELETED_AT_ONCE = 100;
 // How close to the top, in pixels, loads older messages.
@@ -94,8 +108,9 @@ function messageNode(m) {
     el('a', { className: 'im-message-avatar', href: '/' + author.nickname }, el('img', { src: avatarURL(author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
       head,
-      el('a', { className: ['im-message-sender', primeNameClass(author)].filter(Boolean).join(' '), href: '/' + author.nickname, textContent: fullName(author) }),
-      verifiedMark(author),
+      el('span', { className: 'im-sender' },
+        el('a', { className: ['im-message-sender', primeNameClass(author)].filter(Boolean).join(' '), href: '/' + author.nickname, textContent: fullName(author) }),
+        verifiedMark(author)),
       content,
     ),
   );
@@ -576,7 +591,11 @@ async function poll() {
 function listenToEvents() {
   onEvent('message', async (e) => {
     if (e.peer.id !== peer.id) return;
-    if (!e.message.out) typists.stopped(peer.id);
+    if (!e.message.out) {
+      // Who writes is here now.
+      away = '';
+      typists.stopped(peer.id);
+    }
     if (gap) return;
 
     await openMessages(me.id, [e.message]);
@@ -716,7 +735,7 @@ async function setUpInput({ canWrite, primeOnly, messagePrice: price = 0 }) {
   documents = initDocuments({ link: $('doc'), list: $('documents') });
   audios = initAudios({ link: $('audio'), list: $('audios') });
   const showStickers = initStickers({ panel: $('stickers'), error: $('error'), onPick: sendSticker, onSent: () => closeEmoji() });
-  const closeEmoji = initEmoji({ link: $('smileys-link'), picker: $('smileys'), input: $('text'), bar: $('recent-smiles'), stickersLink: $('stickers-link'), stickersPanel: $('stickers'), showStickers });
+  const closeEmoji = initEmoji({ link: $('smileys-link'), picker: $('smileys'), input: $('text'), bar: $('recent-smiles'), stickersLink: $('stickers-link'), stickersPanel: $('stickers'), showStickers, stickersEntry: $('stickers-entry') });
   $('form').addEventListener('submit', send);
   keepFocus($('send'));
   $('editing-cancel').addEventListener('click', cancelEdit);
@@ -794,7 +813,7 @@ async function showSafetyCode() {
 // dialog, the call and the code of the encryption. «Избранное» has only
 // the search.
 function openContact() {
-  const search = [tr('Поиск по переписке'), '/im?peer=' + encodeURIComponent(peer.nickname), 'search'];
+  const search = [tr('Поиск по сообщениям'), '/im?peer=' + encodeURIComponent(peer.nickname), 'search'];
   const info = contactInfo({
     photo: avatarURL(peer, 'large'),
     href: '/' + peer.nickname,
@@ -864,6 +883,13 @@ if (!me) {
 
     peerTabs({ key: 'im:' + peer.nickname, title: saved() ? tr('Избранное') : fullName(peer), href: '/im/' + encodeURIComponent(peer.nickname) });
     fitHeight();
+    // While the peer is away the line under the messages says since when.
+    if (!saved()) {
+      api.profile(peer.nickname).then((profile) => {
+        away = offlineBar(profile);
+        showStatus();
+      }, () => {});
+    }
     $('contact-link').addEventListener('click', openContact);
     $('tab-contact').addEventListener('click', openContact);
     $('tab-dialog').addEventListener('click', () => showContact(false));

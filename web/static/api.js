@@ -618,6 +618,8 @@ export const api = {
     ? authorized('PUT', `/api/v1/chat-messages/${encodeURIComponent(id)}/reaction`, { reaction })
     : authorized('DELETE', `/api/v1/chat-messages/${encodeURIComponent(id)}/reaction`)),
   sendChatSticker: (id, sticker) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { sticker }),
+  // Who in the chat has read a message, besides its sender ("Кто прочитал").
+  chatMessageReaders: (id, messageId) => authorized('GET', `/api/v1/chats/${encodeURIComponent(id)}/messages/${encodeURIComponent(messageId)}/readers`),
   markChatRead: (id, upTo) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/read`, { upTo }),
   chatTyping: (id) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/typing`),
   // A message of a chat whole; your own is edited and taken back within

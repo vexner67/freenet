@@ -6,7 +6,7 @@
 // chat) in place of the messages.
 
 import { onEvent } from './events.js';
-import { messageDay, sameDay } from './labels.js';
+import { CHAT_TITLE_MAX, messageDay, sameDay } from './labels.js';
 import { $, el, isPhone } from './layout.js';
 import { tr } from './i18n.js';
 
@@ -15,6 +15,9 @@ const TABS_KEY = 'freenet.imTabs';
 const TABS_KEPT = 12;
 // Messages of one author closer than this share one head, as on openvk.
 const SAME_AUTHOR_MS = 10 * 60_000;
+
+// shownContact: the page "Контакт" stands in place of the messages.
+let shownContact = false;
 
 function savedTabs() {
   try {
@@ -51,14 +54,16 @@ export function peerTabs(current) {
     draw(tabs);
   };
 
+  // draw lays the tabs out as openvk's PeerTab: the name, "+N" of what
+  // came there and the cross, white on the one open.
   function draw(tabs) {
     bar.replaceChildren(...tabs.map((t) => {
       const mine = t.key === current.key;
-      const close = el('a', { className: 'im-peer-tab-close', title: tr('Закрыть'), textContent: '×' });
-      const tab = el(mine ? 'span' : 'a', {
-        className: ['im-peer-tab', mine && 'selected', t.unread > 0 && 'unread'].filter(Boolean).join(' '),
-        ...(mine ? {} : { href: t.href }),
-      }, el('span', { className: 'im-peer-tab-name', textContent: t.title }), t.unread > 0 && el('b', { className: 'im-peer-tab-counter', textContent: '+' + t.unread }), close);
+      const close = el('span', { className: 'im-peer-tab-close', title: tr('Закрыть') }, el('div', { className: mine ? 'cross white' : 'cross' }));
+      const tab = el('div', { className: ['im-peer-tab', mine && 'selected', t.unread > 0 && 'unread'].filter(Boolean).join(' ') },
+        el('a', { textContent: t.title, ...(mine ? {} : { href: t.href }) }),
+        el('span', { className: 'im-peer-tab-counter', textContent: '+' + (t.unread ?? 0) }),
+        close);
 
       close.addEventListener('click', (event) => {
         event.preventDefault();
@@ -74,7 +79,7 @@ export function peerTabs(current) {
 
       return tab;
     }));
-    bar.hidden = tabs.length === 0;
+    bar.hidden = tabs.length === 0 || shownContact;
   }
 
   update((tabs) => {
@@ -175,6 +180,10 @@ export function selectOnClick(node, select) {
 // showContact shows the page "Контакт" (open) or the messages: the global
 // tab "Контакт" is there while the page is.
 export function showContact(open) {
+  shownContact = open;
+  $('peer-tabs').hidden = open || $('peer-tabs').childElementCount === 0;
+  // openvk shows only "К списку друзей" while the page is open.
+  $('contact-actions').hidden = open;
   $('contact').hidden = !open;
   $('messenger').hidden = open;
   $('tab-contact').hidden = !open;
@@ -182,20 +191,58 @@ export function showContact(open) {
   $('tab-dialog').classList.toggle('active', !open);
 }
 
-// contactInfo is the head of the page "Контакт": the photo, the name and
-// what is said under it (online, or how many are in a chat), and the
-// actions as rows with openvk's icons, each [text, the address or what
-// it does, its icon].
-export function contactInfo({ photo, href, name, status, actions }) {
-  const row = ([text, run, icon]) => el('li', { className: `peer-action peer-action-${icon}` }, typeof run === 'string'
+// contactInfo is the head of the page "Контакт", openvk's PeerWindow: the
+// photo, the name and what is said under it (online, or how many are in a
+// chat), and the actions as rows with openvk's icons, each [text, the
+// address or what it does, its icon]. rename, when given, makes the name of
+// a chat change in its place, as on openvk.
+export function contactInfo({ photo, href, name, status, actions, rename }) {
+  const row = ([text, run, icon]) => el('li', { className: `peer-action-${icon}` }, typeof run === 'string'
     ? el('a', { href: run, textContent: text })
     : el('a', { textContent: text, onclick: run }));
+  const title = el('div', { className: 'peer-name-1' });
+
+  function showName() {
+    const link = rename
+      ? el('a', { className: 'peer-link peer-title-editable', title: tr('Изменить название беседы'), textContent: name, onclick: editName })
+      : el('a', { className: 'peer-link', href, textContent: name });
+    title.replaceChildren(link, status && el('div', { className: 'peer-status' }, el('span', { textContent: status })));
+  }
+
+  function editName() {
+    const input = el('input', { type: 'text', className: 'peer-title-input', value: name, maxLength: CHAT_TITLE_MAX });
+    const save = async () => {
+      const value = input.value.trim();
+      if (!value || value === name) {
+        showName();
+        return;
+      }
+      save.disabled = true;
+      await rename(value).catch(() => showName());
+    };
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        save();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        showName();
+      }
+    });
+    title.replaceChildren(el('div', { className: 'peer-title-edit-wrap' },
+      input,
+      el('button', { className: 'button peer-title-save-btn', type: 'button', textContent: tr('Сохранить'), onclick: save }),
+      el('a', { className: 'peer-title-cancel-btn', title: tr('Отмена'), onclick: showName }, el('span', { className: 'chats-close-icon' }))));
+    input.focus();
+    input.select();
+  }
+
+  showName();
+  const avatar = el('img', { src: photo, alt: '' });
 
   return el('div', { className: 'peer-info' },
-    el('div', { className: 'peer-avatar' }, href ? el('a', { href }, el('img', { src: photo, alt: '' })) : el('img', { src: photo, alt: '' })),
+    el('div', { className: 'peer-avatar' }, href ? el('a', { href }, avatar) : avatar),
     el('div', { className: 'peer-name' },
-      el('div', { className: 'peer-name-1' },
-        href ? el('a', { className: 'peer-link', href, textContent: name }) : el('b', { className: 'peer-link', textContent: name }),
-        status && el('div', { className: 'peer-status', textContent: status })),
-      el('ul', { className: 'peer-actions-1' }, ...actions.filter(Boolean).map(row))));
+      title,
+      el('div', { className: 'peer-actions-1' }, el('ul', {}, ...actions.filter(Boolean).map(row)))));
 }
