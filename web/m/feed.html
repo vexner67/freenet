@@ -27,14 +27,17 @@
     </div>
 
     <div class="page">
-      <div class="page-title"><span>Новости</span></div>
+      <div class="page-title"><span>Мои Новости</span></div>
       <div class="page-body">
-        <div class="story-bar" id="story-bar" hidden></div>
         <div class="tabs">
-          <a id="tab-mine" href="/feed">Мои новости</a>
-          <a id="tab-all" href="/feed/all">Все новости</a>
+          <a class="active" href="/feed">Новости</a>
           <a class="tabs-side" id="feed-settings">Настройки ленты</a>
         </div>
+        <div class="mb-tabs feed-tabs">
+          <a class="mb-tab" id="tab-mine" href="/feed">Лента</a>
+          <a class="mb-tab" id="tab-all" href="/feed/all">Все новости</a>
+        </div>
+        <div class="story-bar" id="story-bar" hidden></div>
         <form class="wall-form" id="post-form" hidden>
           <textarea id="post-text" maxlength="60000" placeholder="Что у вас нового?" aria-label="Новая запись"></textarea>
           <div class="attachments" id="post-photos" hidden></div>

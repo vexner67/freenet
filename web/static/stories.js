@@ -1,6 +1,7 @@
 // Stories, VK's "истории" (openvk has none): a photo with a few words shown
-// for a day. Above the news is a row of circles, one per person with live
-// stories, a ring around those not viewed yet; a click opens them over
+// for a day. Above the news is a row of square photos, as the block of
+// friends of a page, one per person with live stories, a dark frame and a
+// bold name for those not viewed yet; a click opens them over
 // the whole screen, one after another, as VK plays them. Under each, in a
 // white panel like that of the photo viewer, are the heart of a post and
 // the comments, laid out as those under a post of a wall.
@@ -54,12 +55,12 @@ export async function initStoryBar(bar, me, asked = null) {
   function render() {
     const circles = authors.map((entry, i) => circle(entry.author, entry.viewed, fullName(entry.author), () => {
       openStories(authors, i, { onChange: render });
-    }, verifiedMark(entry.author)));
+    }, verifiedMark(entry.author), [entry.author.name, entry.author.surname].filter(Boolean)));
 
     if (me.profileCompleted) {
       const add = circle(me, true, tr('Добавить историю'), () => openStoryForm(load));
       add.classList.add('story-add');
-      add.prepend(el('img', { className: 'story-plus', src: '/static/icons/game/plus.svg', alt: '' }));
+      add.append(el('b', { className: 'story-plus', textContent: '+' }));
       circles.unshift(add);
     }
 
@@ -81,10 +82,12 @@ export async function initStoryBar(bar, me, asked = null) {
   await load();
 }
 
-function circle(person, viewed, caption, onclick, mark = '') {
+// circle is one photo of the row; the name of its author goes in two
+// lines, the name and the surname, as under the photos of friends.
+function circle(person, viewed, caption, onclick, mark = '', lines = [caption]) {
   return el('a', { className: viewed ? 'story-circle' : 'story-circle story-fresh', title: caption, onclick },
     el('img', { src: avatarURL(person, 'small'), alt: '' }),
-    el('span', {}, caption, mark));
+    el('span', {}, ...lines.flatMap((line, i) => (i ? [el('br'), line] : [line])), mark));
 }
 
 // openStories plays the stories of authors (as the API gives them) from

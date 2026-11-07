@@ -3113,14 +3113,24 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .tabbar, .header-search { display: none; }
 
 /* Stories, VK's: circles above the news and the stories over the screen. */
-.story-bar { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line-e8ebee); }
-.story-circle { flex: none; width: 62px; color: var(--text-333); text-align: center; cursor: pointer; }
-.story-circle:hover { text-decoration: none; }
-.story-circle img { display: block; width: 48px; height: 48px; margin: 0 auto 3px; padding: 2px; border: 2px solid var(--line-ccc); border-radius: 50%; object-fit: cover; }
-.story-fresh img { border-color: var(--line-333); }
-.story-circle span { display: block; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.story-add img { border-style: dashed; }
+/* Over the news, as on openvk: the tabs, the grey bar of the sections
+   touching them, then the stories and the form in its grey box. */
+.tabs:has(+ .feed-tabs) { margin-bottom: 0; }
+.mb-tabs.feed-tabs { margin: 0 -10px; }
+.feed-tabs ~ .wall-form:not(.comment-form, .post-edit) { margin-top: 10px; }
+/* Stories (openvk has none): a row of square photos with names under
+   them, as the block "Друзья" of a page. Those not viewed yet have a dark
+   frame and a bold name; the viewed ones are grey. */
+.story-bar { display: flex; gap: 2px; overflow-x: auto; margin: 0 -10px; padding: 10px 10px 0; }
+.story-circle { position: relative; flex: none; width: 66px; color: var(--text-45688e); text-align: center; cursor: pointer; }
+.story-circle img { display: block; width: 50px; height: 50px; margin: 0 auto 3px; padding: 2px; background: var(--back-fff); border: 1px solid var(--line-ccc); object-fit: cover; }
+.story-fresh img { border-color: var(--line-707070); }
+.story-circle span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.story-fresh span { font-weight: bold; }
+.story-circle:not(.story-fresh, .story-add) span { color: var(--text-828282); }
+.story-add img { border-style: dashed; border-color: var(--line-bbb); }
 .story-add span { white-space: normal; }
+.story-circle .story-plus { position: absolute; top: 40px; left: 44px; width: 14px; height: 14px; background: var(--back-707070); color: var(--text-fff); font-weight: bold; line-height: 14px; }
 .story-viewer {
   position: fixed;
   inset: 0;
@@ -3880,13 +3890,7 @@ button.game-hud-cell:hover { background: var(--back-f2f5f8); }
 .pet-reveal-place .pet-reveal.open { visibility: visible; }
 .pet-reveal-wait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 
-/* Stories in the look of the 2000s. */
-.story-bar { gap: 6px; padding: 6px; background: linear-gradient(var(--back-fff), var(--back-e9edf1)); border: 1px solid var(--line-bbb); border-radius: 4px; box-shadow: 2px 2px 0 var(--back-d4d4d4); }
-.story-circle { position: relative; }
-
-.story-circle img:not(.story-plus) { border-radius: 6px; border-color: var(--line-bbb); box-shadow: 1px 1px 2px rgb(0 0 0 / 30%); }
-.story-fresh img:not(.story-plus) { border-color: var(--back-f7a02c); }
-.story-circle .story-plus { position: absolute; top: 34px; left: 40px; width: 18px; height: 18px; padding: 0; border: 0; }
+/* The viewer of stories in the look of the 2000s. */
 .story-box { overflow: hidden; background: var(--back-fff); border: 1px solid var(--line-333); border-radius: 6px 6px 3px 3px; box-shadow: 3px 3px 0 rgb(0 0 0 / 40%); }
 .story-progress { order: 2; padding: 4px 6px; background: rgb(20 20 24); }
 .story-head { order: 1; padding: 4px 8px; background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); }
