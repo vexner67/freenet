@@ -814,7 +814,7 @@ export function renderChrome(me) {
   const links = $('header-links');
   const menu = $('menu');
 
-  addHeaderSearch();
+  addHeaderSearch(me);
   addBackLink();
   addVersionSwitch();
   resumePlayer();
@@ -940,14 +940,55 @@ function addTabBar(me, { menuOnly = false } = {}) {
   document.querySelector('.layout')?.append(el('nav', { className: 'tabbar', ariaLabel: tr('Меню') }, ...items, toggle));
 }
 
-// addHeaderSearch puts the search into the header of a phone, where the
-// left menu is not at hand (style.css hides it on a wide screen).
-function addHeaderSearch() {
+// addHeaderSearch puts the search into the header: on a phone, where the
+// left menu is not at hand, a loupe leading to it; on a computer, for one
+// signed in, openvk's field right after the logo (headerSearch).
+function addHeaderSearch(me) {
   const header = document.querySelector('.header');
-  if (!header || header.querySelector('.header-search')) return;
+  if (!header || header.querySelector('.header-search, .header-search-box')) return;
 
-  header.append(el('a', { className: 'header-search', href: '/search', title: tr('Поиск'), ariaLabel: tr('Поиск') },
-    el('img', { src: '/static/icons/search.svg', alt: '' })));
+  if (isPhone()) {
+    header.append(el('a', { className: 'header-search', href: '/search', title: tr('Поиск'), ariaLabel: tr('Поиск') },
+      el('img', { src: '/static/icons/search.svg', alt: '' })));
+    return;
+  }
+  if (me && !me.deactivated && !me.ban) header.querySelector('.logo')?.after(headerSearch(header));
+}
+
+// headerSearch is openvk's header-search-box: a press in the field gives it
+// the header, with where to look and, once there are words, "Поиск";
+// Enter opens the search. Leaving an empty field puts the links back.
+function headerSearch(header) {
+  const field = el('input', {
+    type: 'search', name: 'q', maxLength: 79, placeholder: tr('Поиск'), ariaLabel: tr('Поиск'), autocomplete: 'off',
+    title: tr('Поиск') + ' [Alt+Shift+F]', accessKey: 'f',
+  });
+  const section = el('select', { name: 'section', ariaLabel: tr('Где искать') },
+    el('option', { value: 'users', textContent: tr('по людям') }),
+    el('option', { value: 'groups', textContent: tr('по группам') }),
+    el('option', { value: 'posts', textContent: tr('по записям') }));
+  const form = el('form', { className: 'header-search-box', action: '/search', method: 'get', role: 'search' },
+    el('span', { className: 'header-search-wrap' }, field, section),
+    el('button', { className: 'search-box-button', type: 'submit', textContent: tr('Поиск') }));
+  const words = () => header.classList.toggle('search-expanded-at-all', field.value.trim() !== '');
+
+  field.addEventListener('focus', () => header.classList.add('search-expanded'));
+  field.addEventListener('input', words);
+  form.addEventListener('focusout', (event) => {
+    if (form.contains(event.relatedTarget) || field.value.trim()) return;
+    header.classList.remove('search-expanded', 'search-expanded-at-all');
+  });
+  form.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    field.value = '';
+    words();
+    field.blur();
+  });
+  form.addEventListener('submit', (event) => {
+    if (!field.value.trim()) event.preventDefault();
+  });
+
+  return form;
 }
 
 // renderDeactivatedChrome is openvk's for the owner of a deleted page: no

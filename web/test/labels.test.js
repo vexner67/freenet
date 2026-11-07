@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
 import {
-  callLength, cardCovers, cardNumber, grownDeposit, declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, friendsCount, friendsSummary, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, untilNewYear, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, balanceVotes, balanceAmount, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale, primePeriods, primeSaving, primeTerms, titleIcons, titleIconPath, titleGroups, topValue, isBirthdayToday, primeNameClass, videoDuration, handleOf, audioTime, audioNames, audioArtist, audioTitle, audiosCount, messageTime, messageDay, sameDay, emojiCode, emojiParts, offlineBar, photoMosaic, idTime, youtubeID, splitVideos, withVideos, quoteSnippet } from '../static/labels.js';
+  callLength, cardCovers, cardNumber, grownDeposit, declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, friendsCount, friendsSummary, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, untilNewYear, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, balanceVotes, balanceAmount, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale, primePeriods, primeSaving, primeTerms, titleIcons, titleIconPath, titleGroups, topValue, isBirthdayToday, primeNameClass, videoDuration, handleOf, audioTime, audioNames, audioArtist, audioTitle, audiosCount, messageTime, messageDay, sameDay, emojiCode, emojiParts, offlineBar, photoMosaic, idTime, youtubeID, splitVideos, withVideos, quoteSnippet } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -273,13 +273,7 @@ test('the counts of openvk\'s discussions', () => {
   assert.equal(resultsCount(5), '5 результатов');
 });
 
-test('albums are counted as openvk counts them', () => {
-  assert.equal(albumsCount(0), 'Ни одного альбома');
-  assert.equal(albumsCount(1), '1 альбом');
-  assert.equal(albumsCount(3), '3 альбома');
-  assert.equal(albumsCount(11), '11 альбомов');
-  assert.equal(myAlbumsCount(0), 'У Вас нет ни одного альбома');
-  assert.equal(myAlbumsCount(2), 'У Вас 2 альбома');
+test('photos are counted, declined', () => {
   assert.equal(photosCount(1), '1 фотография');
   assert.equal(photosCount(4), '4 фотографии');
   assert.equal(photosCount(25), '25 фотографий');
@@ -339,10 +333,6 @@ test('presence is told as openvk tells it', () => {
   assert.deepEqual(onlineReads.map(([, text]) => text), ['все', 'пользователи Freenet', 'друзья', 'никто']);
 });
 
-test('an album the site keeps refuses changes in words', () => {
-  assert.equal(errorText(new Error('this album is kept by the site')), 'Этот альбом сайт ведёт сам: его нельзя изменить.');
-});
-
 test('a wall is counted as openvk counts it', () => {
   assert.equal(wallCount(0), 'нет записей');
   assert.equal(wallCount(1), '1 запись');
@@ -394,7 +384,6 @@ test('a message without words is named by what it shows', () => {
   assert.equal(messagePreview({ text: 'привет', photos: [{}] }), 'привет');
   assert.equal(messagePreview({ text: '', photos: [{}] }), 'Фотография');
   assert.equal(messagePreview({ text: '', photos: [], post: 'p1' }), 'Запись');
-  assert.equal(messagePreview({ text: '', photos: [], albumPhoto: 'ph1' }), 'Фотография');
   assert.equal(messagePreview({ text: '', photos: [], post: '', forwardedCount: 1 }), 'Пересланное сообщение');
   assert.equal(messagePreview({ text: '', forwardedCount: 3 }), '3 пересланных сообщения');
   assert.equal(messagePreview({ text: '', deleted: true }), 'Сообщение удалено');
@@ -747,7 +736,7 @@ test('chatPreview says what a message of a chat shows without words', () => {
   const author = { name: 'Пётр' };
 
   assert.equal(chatPreview({ action: '', text: '', post: 'p1', author, out: false }), 'Пётр: Запись');
-  assert.equal(chatPreview({ action: '', text: '', albumPhoto: 'f1', author, out: true }), 'Фотография');
+  assert.equal(chatPreview({ action: '', text: '', photos: [{ id: 'f1' }], author, out: true }), 'Фотография');
   assert.equal(chatPreview({ action: '', text: '', forwardedCount: 2, author, out: false }), 'Пётр: 2 пересланных сообщения');
 });
 

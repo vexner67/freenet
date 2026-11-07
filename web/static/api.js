@@ -542,6 +542,8 @@ export const api = {
   // setBackdrop is a side, "left" or "right", of "Фон страницы".
   setBackdrop: (side, file) => authorized('PUT', `/api/v1/me/backdrop/${side}`, file),
   deleteBackdrop: () => authorized('DELETE', '/api/v1/me/backdrop'),
+  // The photo behind the whole page, set with Prime by setBackdrop('cover').
+  deleteBackdropCover: () => authorized('DELETE', '/api/v1/me/backdrop/cover'),
 
   notifications(box, cursor = '') {
     const query = new URLSearchParams({ box });
@@ -572,13 +574,12 @@ export const api = {
   },
   // sealed is what the message says, sealed by e2ee.js (sendSealed):
   // plain words are refused. post shares a post into the dialog
-  // ("Поделиться" "в переписку"), albumPhoto a photo of an album; forward
-  // carries messages of your dialogs and chats on ("Переслать"); replyTo
+  // ("Поделиться" "в переписку"); forward carries messages of your dialogs and chats on ("Переслать"); replyTo
   // answers a message of the dialog ("Ответить").
   // price: the votes a message to nickname costs, as the dialog said —
   // another price is refused.
-  sendMessage: (nickname, { sealed = null, photos = [], post = '', forward = [], albumPhoto = '', documents = [], audios = [], replyTo = '', price = 0 } = {}) =>
-    authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sealed, photos, post, forward, albumPhoto, documents, audios, replyTo, ...(price > 0 && { price }) }),
+  sendMessage: (nickname, { sealed = null, photos = [], post = '', forward = [], documents = [], audios = [], replyTo = '', price = 0 } = {}) =>
+    authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sealed, photos, post, forward, documents, audios, replyTo, ...(price > 0 && { price }) }),
   // One reaction a person on a message of a dialog (heart, like, laugh,
   // wow, sad, fire); '' takes yours away.
   reactToMessage: (id, reaction) => (reaction
@@ -610,10 +611,9 @@ export const api = {
     const path = `/api/v1/chats/${encodeURIComponent(id)}/messages`;
     return authorized('GET', query.size ? `${path}?${query}` : path);
   },
-  // As a message of a dialog, it may share a post or a photo of an album
-  // and carry messages on.
-  sendChatMessage: (id, text, photos = [], post = '', forward = [], albumPhoto = '', documents = [], replyTo = '', audios = []) =>
-    authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { text, photos, post, forward, albumPhoto, documents, audios, replyTo }),
+  // As a message of a dialog, it may share a post and carry messages on.
+  sendChatMessage: (id, text, photos = [], post = '', forward = [], documents = [], replyTo = '', audios = []) =>
+    authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { text, photos, post, forward, documents, audios, replyTo }),
   reactToChatMessage: (id, reaction) => (reaction
     ? authorized('PUT', `/api/v1/chat-messages/${encodeURIComponent(id)}/reaction`, { reaction })
     : authorized('DELETE', `/api/v1/chat-messages/${encodeURIComponent(id)}/reaction`)),
@@ -699,7 +699,7 @@ export const api = {
   // write over another.
   describeAdmin: (ref, nickname, { title, baseTitle, hidden }) =>
     authorized('PATCH', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`, { title, baseTitle, hidden }),
-  // The owner deletes the club with its wall, topics, albums and photos.
+  // The owner deletes the club with its wall, topics and photos.
   deleteClub: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}`),
   // The owner hands the club over to one of its admins ("Назначить владельцем").
   transferClub: (ref, nickname) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/owner/${encodeURIComponent(nickname)}`),
@@ -765,8 +765,8 @@ export const api = {
   unlikeTopicMessage: (id) => authorized('DELETE', `/api/v1/topic-messages/${encodeURIComponent(id)}/like`),
   topicMessageLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/topic-messages/${encodeURIComponent(id)}/likes`, cursor, limit)),
 
-  // "Закладки": what you like — section is 'posts', 'comments' or
-  // 'photos' — newest like first, and ownPosts: what you wrote.
+  // "Закладки": what you like — section is 'posts' or 'comments' —
+  // newest like first, and ownPosts: what you wrote.
   faves: (section, cursor = '') => authorized('GET', page(`/api/v1/me/faves/${section}`, cursor, 0)),
   ownPosts: (cursor = '') => authorized('GET', page('/api/v1/me/posts', cursor, 0)),
 
@@ -957,41 +957,6 @@ export const api = {
   unban: (nickname) => authorized('DELETE', `/api/v1/users/${encodeURIComponent(nickname)}/ban`),
   setClubVerified: (ref, verified) =>
     authorized(verified ? 'PUT' : 'DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/verification`),
-
-  // "Альбомы" of a person (nickname) or of a community (club: its ref).
-  albums({ nickname = '', club = '', cursor = '', limit = 0 } = {}) {
-    const owner = club ? `/api/v1/clubs/${encodeURIComponent(club)}` : `/api/v1/users/${encodeURIComponent(nickname)}`;
-    return optional('GET', page(owner + '/albums', cursor, limit));
-  },
-  // club: an album of the community, its admins only; yours without it.
-  createAlbum: (name, description, { club = '' } = {}) =>
-    authorized('POST', club ? `/api/v1/clubs/${encodeURIComponent(club)}/albums` : '/api/v1/me/albums', { name, description }),
-  album: (id) => optional('GET', `/api/v1/albums/${encodeURIComponent(id)}`),
-  editAlbum: (id, name, description) => authorized('PATCH', `/api/v1/albums/${encodeURIComponent(id)}`, { name, description }),
-  deleteAlbum: (id) => authorized('DELETE', `/api/v1/albums/${encodeURIComponent(id)}`),
-  albumPhotos: (id, cursor = '') => optional('GET', page(`/api/v1/albums/${encodeURIComponent(id)}/photos`, cursor, 0)),
-  // photos are [{ id, description }] uploaded with uploadPhoto, up to 10.
-  addAlbumPhotos: (id, photos) => authorized('POST', `/api/v1/albums/${encodeURIComponent(id)}/photos`, { photos }),
-  albumPhoto: (id) => optional('GET', `/api/v1/album-photos/${encodeURIComponent(id)}`),
-  describeAlbumPhoto: (id, description) => authorized('PATCH', `/api/v1/album-photos/${encodeURIComponent(id)}`, { description }),
-  deleteAlbumPhoto: (id) => authorized('DELETE', `/api/v1/album-photos/${encodeURIComponent(id)}`),
-  // The photo that shows an album instead of its first, and a photo put in
-  // another album of the same owner: whoever may edit the albums.
-  setAlbumCover: (id, photoId) => authorized('PUT', `/api/v1/albums/${encodeURIComponent(id)}/cover`, { photoId }),
-  moveAlbumPhoto: (id, albumId) => authorized('PUT', `/api/v1/album-photos/${encodeURIComponent(id)}/album`, { albumId }),
-  // The heart, likers, comments and "Поделиться" of a photo, as of a post.
-  likePhoto: (id) => authorized('PUT', `/api/v1/album-photos/${encodeURIComponent(id)}/like`),
-  unlikePhoto: (id) => authorized('DELETE', `/api/v1/album-photos/${encodeURIComponent(id)}/like`),
-  photoLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/album-photos/${encodeURIComponent(id)}/likes`, cursor, limit)),
-  photoCommentText: (id) => optional('GET', `/api/v1/photo-comments/${encodeURIComponent(id)}/text`),
-  photoComments: (id, cursor = '') => optional('GET', page(`/api/v1/album-photos/${encodeURIComponent(id)}/comments`, cursor, 0)),
-  // replyTo: the comment under the same photo this one answers.
-  commentPhoto: (id, text, replyTo = '') => authorized('POST', `/api/v1/album-photos/${encodeURIComponent(id)}/comments`, { text, replyTo }),
-  likePhotoComment: (id) => authorized('PUT', `/api/v1/photo-comments/${encodeURIComponent(id)}/like`),
-  unlikePhotoComment: (id) => authorized('DELETE', `/api/v1/photo-comments/${encodeURIComponent(id)}/like`),
-  photoCommentLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/photo-comments/${encodeURIComponent(id)}/likes`, cursor, limit)),
-  deletePhotoComment: (id) => authorized('DELETE', `/api/v1/photo-comments/${encodeURIComponent(id)}`),
-  sharePhoto: (id, text, to = {}) => authorized('POST', `/api/v1/album-photos/${encodeURIComponent(id)}/reposts`, { text, ...to }),
 
   // filters are those openvk's page links to: { hometown, city, film,
   // show, book }; with one, query may be empty.

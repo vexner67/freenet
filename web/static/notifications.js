@@ -9,7 +9,6 @@
 // wears the icon of what happened and opens by a press anywhere; the plates
 // over the tabs filter what is shown, and days are told apart by strips.
 
-import { photoPath } from './albums.js';
 import { api, currentUser, started } from './api.js';
 import { onEvent } from './events.js';
 import { callLength, conversationPath, formatPostDate, guestCame, notificationVerb, plainMentions, snippet } from './labels.js';
@@ -30,9 +29,9 @@ const shownIDs = new Set();
 // kinds are the plates over the list: what each shows and the icon its rows
 // wear. A type none lists is under "Важное".
 const kinds = [
-  { key: 'likes', name: () => tr('Лайки'), types: ['like', 'comment_like', 'topic_message_like', 'photo_like', 'story_like'] },
-  { key: 'comments', name: () => tr('Комментарии'), types: ['comment', 'comment_reply', 'topic_message', 'photo_comment', 'story_comment', 'wall_post', 'repost'] },
-  { key: 'mentions', name: () => tr('Упоминания'), types: ['post_mention', 'comment_mention', 'topic_mention', 'photo_mention'] },
+  { key: 'likes', name: () => tr('Лайки'), types: ['like', 'comment_like', 'topic_message_like', 'story_like'] },
+  { key: 'comments', name: () => tr('Комментарии'), types: ['comment', 'comment_reply', 'topic_message', 'story_comment', 'wall_post', 'repost'] },
+  { key: 'mentions', name: () => tr('Упоминания'), types: ['post_mention', 'comment_mention', 'topic_mention'] },
   { key: 'people', name: () => tr('Люди'), types: ['follow', 'friend', 'invite', 'match'] },
   { key: 'gifts', name: () => tr('Подарки'), types: ['gift', 'prime', 'votes'] },
   { key: 'calls', name: () => tr('Звонки'), types: ['call', 'missed_call'] },
@@ -153,10 +152,6 @@ function postLink(post, text) {
   return el('a', { href: postPath(post) }, el('b', { textContent: text }));
 }
 
-function photoLink(photo, text) {
-  return el('a', { href: photoPath(photo) }, el('b', { textContent: text }));
-}
-
 // quote is what a comment or a post says, cut short, with the people it
 // names in plain words.
 function quote(text) {
@@ -232,21 +227,6 @@ function notificationText(n) {
   if (n.type === 'topic_message_like') {
     return [name, tr(' {0} ваше сообщение в обсуждении ', notificationVerb('like', n.actor)),
       el('a', { href: topicPath(n.topic) }, el('b', { textContent: `«${n.topic.title}»` })), said(n)];
-  }
-
-  // A heart and a comment on a photo of your album; openvk's "оставил
-  // комментарий под вашей фотографией".
-  if (n.type === 'photo_like') {
-    return [name, tr(' {0} вашу ', notificationVerb('like', n.actor)), photoLink(n.photo, tr('фотографию')), '.'];
-  }
-
-  // Named in a comment under a photo, whoever uploaded it.
-  if (n.type === 'photo_mention') {
-    return [name, tr(' {0} вас в комментарии под ', notificationVerb('mention', n.actor)), photoLink(n.photo, tr('фотографией')), said(n)];
-  }
-
-  if (n.type === 'photo_comment') {
-    return [name, tr(' {0} комментарий под вашей ', notificationVerb('comment', n.actor)), photoLink(n.photo, tr('фотографией')), said(n)];
   }
 
   // A like and a comment of your story, as VK tells them; the story lives

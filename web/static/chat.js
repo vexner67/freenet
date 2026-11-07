@@ -33,7 +33,7 @@ import { $, avatarURL, chatPhotoURL, el, fullName, isPhone, keepFocus, whenShown
 import { button, openModal } from './modal.js';
 import { contactInfo, fitHeight, hoverIcons, peerTabs, regroup, selectOnClick, showContact } from './messenger.js';
 import { closePushes } from './push.js';
-import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
+import { quoteNode, reactionNodes, reactWith, replyBar, showEditing, showJumped } from './replies.js';
 import { initStickers } from './stickers.js';
 import { typingLine, watchTyping } from './typing.js';
 import { tr } from './i18n.js';
@@ -274,7 +274,8 @@ function showSelection() {
   const one = messages.length === 1 && !messages[0].deleted ? messages[0] : null;
   $('selection-pin').hidden = !(one && chat.state === 'active');
   $('selection-pin').textContent = one && chat.pinned?.id === one.id ? tr('Открепить') : tr('Закрепить');
-  $('selection-readers').hidden = !one;
+  // Who has read a message only its sender learns.
+  $('selection-readers').hidden = !(one && one.author?.id === me.id);
 }
 
 // togglePin pins the message selected, or takes the pin off it.
@@ -359,8 +360,7 @@ function confirmDelete(messages) {
 }
 
 // startEdit puts what the message says and its photos back in the form:
-// sending saves the edit. A message that shares a photo of an album takes
-// no photos of its own.
+// sending saves the edit.
 async function startEdit(m) {
   const text = $('text');
 
@@ -377,8 +377,7 @@ async function startEdit(m) {
   text.value = m.text;
   autosize(text);
   attachments.set(m.photos ?? []);
-  $('editing').hidden = false;
-  if (m.sharedPhoto) $('attach').hidden = $('graffiti').hidden = true;
+  showEditing(m, me, m.text);
   // An edit changes the words and the photos; the documents and the
   // songs stay.
   documents.clear();
@@ -632,7 +631,7 @@ async function send(event) {
       edited(await api.editChatMessage(editing.id, text.value, { ...photoChanges(editing.photos, attachments.ids()), base: editingBase }));
       cancelEdit();
     } else {
-      const m = await api.sendChatMessage(chatID, withVideos(text.value, videos.ids()), attachments.ids(), '', [], '', documents.ids(), replies.replyingTo()?.id ?? '', audios.ids());
+      const m = await api.sendChatMessage(chatID, withVideos(text.value, videos.ids()), attachments.ids(), '', [], documents.ids(), replies.replyingTo()?.id ?? '', audios.ids());
 
       text.value = '';
       autosize(text);
@@ -732,9 +731,7 @@ function goTo(id) {
     return;
   }
 
-  for (const other of list.querySelectorAll('.im-message.found')) other.classList.remove('found');
-  node.classList.add('found');
-  node.scrollIntoView({ block: 'center' });
+  showJumped(node);
 }
 
 // openPhoto is "Обновить фотографию": a square cut out of a picture, as
@@ -905,7 +902,7 @@ function setUpInput() {
   $('form').addEventListener('submit', send);
   keepFocus($('send'));
   $('editing-cancel').addEventListener('click', cancelEdit);
-  replies = replyBar();
+  replies = replyBar({ nodeOf: (id) => shown.get(id), open: goTo });
   // The messages shown already get "Ответить".
   for (const node of shown.values()) node.render?.();
   $('text').addEventListener('keydown', (event) => {

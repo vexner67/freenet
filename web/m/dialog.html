@@ -53,11 +53,10 @@
           </div>
           <div class="messenger-typing" id="typing" aria-live="polite"></div>
           <p class="messenger-price" id="price-note" hidden></p>
+          <div class="input-reply input-edit" id="editing" hidden><div class="input-reply-content"><b class="input-type">Редактирование сообщения:</b><span class="input-reply-text" id="editing-text"></span></div><a class="input-close" id="editing-cancel" title="Не редактировать"><span class="cross"></span></a></div>
           <form class="messenger-input" id="form">
             <img class="messenger-avatar" id="my-avatar" src="/static/avatar.svg" alt="">
             <div class="messenger-box">
-              <div class="input-reply" id="editing" hidden><div class="input-reply-content"><b class="input-reply-title">Редактирование сообщения:</b></div><a class="input-close" id="editing-cancel" title="Не редактировать"><span class="cross"></span></a></div>
-              <div class="input-reply" id="replying" hidden><div class="input-reply-content"><b class="input-reply-title" id="replying-name"></b><span class="input-reply-text" id="replying-text"></span></div><a class="input-close" id="replying-cancel" title="Не отвечать"><span class="cross"></span></a></div>
               <div class="messenger-field">
                 <textarea id="text" maxlength="60000" placeholder="Введите сообщение" aria-label="Сообщение" enterkeyhint="send"></textarea>
                 <a class="emoji-entry" id="smileys-link" title="Смайлы"></a>
@@ -72,6 +71,7 @@
                   </div>
                 </div>
               </div>
+              <div class="input-reply" id="replying" hidden><div class="input-reply-content"><b class="input-reply-title" id="replying-name"></b><span class="input-reply-text" id="replying-text"></span></div><a class="input-close" id="replying-cancel" title="Не отвечать"><span class="cross"></span></a></div>
               <div class="attachments" id="photos" hidden></div>
               <div class="video-attached" id="videos" hidden></div>
               <div class="doc-attached" id="documents" hidden></div>

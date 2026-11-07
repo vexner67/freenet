@@ -3,14 +3,12 @@
 // "Фотография N из M" and "Закрыть" at its top, the photo under them —
 // its left third shows the one before, its right third the one after —
 // and the white cross at the corner of the screen. A click beside the box
-// closes it; Esc closes, ← and → page. details(photo), if given, is shown
-// under the photo: for a photo of an album its description, heart and
-// comments.
+// closes it; Esc closes, ← and → page.
 
 import { adult, el, revealAdult } from './layout.js';
 import { tr } from './i18n.js';
 
-export function openViewer(photos, start, { details } = {}) {
+export function openViewer(photos, start) {
   let index = start;
 
   const counter = el('b', { className: 'viewer-title' });
@@ -19,11 +17,9 @@ export function openViewer(photos, start, { details } = {}) {
   const next = el('a', { className: 'viewer-nav viewer-next', title: tr('Следующая') });
   const close = el('a', { className: 'viewer-close', textContent: tr('Закрыть') });
 
-  const footer = el('div', { className: 'viewer-details', hidden: !details });
   const box = el('div', { className: 'viewer-box' },
     el('div', { className: 'viewer-header' }, counter, el('div', {}, close)),
     el('div', { className: 'viewer-body' }, prev, next, img),
-    footer,
   );
   // The bands at the sides of the screen close the viewer; the right one
   // carries the cross.
@@ -37,7 +33,6 @@ export function openViewer(photos, start, { details } = {}) {
     img.src = photos[index].large;
     adult(img, photos[index].nsfw);
     counter.textContent = photos.length > 1 ? tr('Фотография {0} из {1}', index + 1, photos.length) : tr('Фотография');
-    if (details) footer.replaceChildren(details(photos[index]));
   }
 
   function onKey(event) {

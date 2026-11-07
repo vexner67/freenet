@@ -1,18 +1,17 @@
-// openvk's "Закладки" (/fave): what I like — posts, comments and photos of
-// albums, newest like first — under "Понравившиеся записи", and at
+// openvk's "Закладки" (/fave): what I like — posts and comments, newest
+// like first — under "Понравившиеся записи", and at
 // /fave/own "Написанные мной записи": what I wrote, on whichever wall.
 // Both are mine alone; the settings lead here, as on openvk.
 
 import { api, currentUser } from './api.js';
 import { favesCount, postsCount } from './labels.js';
-import { $, adult, el, renderChrome, showError, hideError } from './layout.js';
+import { $, renderChrome, showError, hideError } from './layout.js';
 import { postNode, wallOwnerID } from './posts.js';
 import { commentNode } from './comments.js';
-import { photoPath } from './albums.js';
 import { tr } from './i18n.js';
 
 const own = location.pathname.replace(/\/+$/, '') === '/fave/own';
-const SECTIONS = ['posts', 'comments', 'photos'];
+const SECTIONS = ['posts', 'comments'];
 const asked = new URLSearchParams(location.search).get('section');
 const section = SECTIONS.includes(asked) ? asked : 'posts';
 
@@ -20,7 +19,6 @@ const section = SECTIONS.includes(asked) ? asked : 'posts';
 const EMPTY = {
   posts: tr('Здесь будут отображаться понравившиеся Вам записи.'),
   comments: tr('Здесь будут отображаться понравившиеся Вам комментарии.'),
-  photos: tr('Здесь будут отображаться понравившиеся Вам фотографии.'),
 };
 
 let cursor = '';
@@ -75,11 +73,6 @@ function shownComment(comment) {
   });
 }
 
-function shownPhoto(photo) {
-  return el('div', { className: 'album-photo' },
-    el('a', { href: photoPath(photo) }, adult(el('img', { src: photo.small, alt: photo.description, loading: 'lazy' }), photo.nsfw)));
-}
-
 async function loadMore(me) {
   hideError($('error'));
 
@@ -91,11 +84,9 @@ async function loadMore(me) {
       showCount();
     }
 
-    if (page.photos) $('photos').append(...page.photos.map(shownPhoto));
-    else if (page.comments) $('posts').append(...page.comments.map(shownComment));
+    if (page.comments) $('posts').append(...page.comments.map(shownComment));
     else $('posts').append(...page.posts.map((post) => shownPost(post, me)));
 
-    $('photos').hidden = $('photos').children.length === 0;
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
   } catch (e) {

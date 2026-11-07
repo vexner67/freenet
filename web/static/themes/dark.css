@@ -74,6 +74,17 @@
   --back-707070: #4f4f4f;
   --back-595959: #4a4a4a;
   --back-444: #3a3a3a;
+  --line-616161: #4a4a4a;
+  --line-575757: #444444;
+  --line-454545: #333333;
+  --back-8f8f8f: #5a5a5a;
+  --back-757575: #474747;
+  --back-969696: #616161;
+  --back-7a7a7a: #4c4c4c;
+  --back-a8a8a8: #6a6a6a;
+  --back-868686: #545454;
+  --text-696969: #2a2a2a;
+  --text-6b6b6b: #8a8a8a;
   --back-3e3e3e: #222222;
   --back-d23a32: #b03029;
   --back-3f8f35: #2f7a2a;
@@ -212,15 +223,12 @@ input:focus, select:focus, textarea:focus,
 .modal-body input[type="text"], .modal-body input[type="search"] { background: #1c1c1c; color: #ddd; }
 .im-selection, .messenger-input, .messenger-blocked { border-color: #333; }
 .viewer-box, .modal-box { background: #1f1f1f; }
-.viewer-details { background: #1f1f1f; }
 .profile-link { color: #7fa9d4; }
 .profile-link:hover { background: #303030; }
 .faq-content { border-color: #333; }
 .gray-bar, .gray-box, .topic-head { background: #222; }
 .backdrop-dripper { box-shadow: -30px 0 20px 20px #1a1a1a, -70px 0 20px 20px rgb(26 26 26 / 43%), -110px 0 20px 20px rgb(26 26 26 / 28%),
     30px 0 20px 20px #1a1a1a, 70px 0 20px 20px rgb(26 26 26 / 43%), 110px 0 20px 20px rgb(26 26 26 / 28%); }
-.album-item, .white-box { border-color: #333; }
-.album-photo img { background: #242424; }
 .likers-tooltip { background: #1f1f1f; }
 /* Polls. */
 .poll, .post-has-poll { border-color: #3a3a3a; }

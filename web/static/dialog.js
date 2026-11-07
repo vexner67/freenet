@@ -34,7 +34,7 @@ import { $, avatarURL, el, fullName, isPhone, keepFocus, whenShown, mentionNodes
 import { contactInfo, fitHeight, hoverIcons, peerTabs, regroup, selectOnClick, showContact } from './messenger.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
-import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
+import { quoteNode, reactionNodes, reactWith, replyBar, showEditing, showJumped } from './replies.js';
 import { initStickers } from './stickers.js';
 import { typingLine, watchTyping } from './typing.js';
 import { tr } from './i18n.js';
@@ -220,9 +220,7 @@ function goTo(id) {
     return;
   }
 
-  for (const other of list.querySelectorAll('.im-message.found')) other.classList.remove('found');
-  node.classList.add('found');
-  node.scrollIntoView({ block: 'center' });
+  showJumped(node);
 }
 
 // answer is "Ответить": the next message sent answers m.
@@ -366,8 +364,7 @@ function drop(id) {
 }
 
 // startEdit puts what the message says and its photos back in the form:
-// sending saves the edit, as on VK. A message that shares a photo of an
-// album takes no photos of its own.
+// sending saves the edit, as on VK.
 function startEdit(m) {
   const text = $('text');
 
@@ -376,7 +373,7 @@ function startEdit(m) {
   text.value = m.text;
   autosize(text);
   attachments.set(m.photos ?? []);
-  $('editing').hidden = false;
+  showEditing(m, me, m.text);
   $('send').textContent = tr('Сохранить');
   // An edit changes the words and the photos; the documents and the
   // songs stay.
@@ -386,7 +383,6 @@ function startEdit(m) {
   $('doc').hidden = true;
   $('audio').hidden = true;
   $('video').hidden = true;
-  if (m.sharedPhoto) $('attach').hidden = $('graffiti').hidden = true;
   text.focus();
   text.setSelectionRange(text.value.length, text.value.length);
 }
@@ -747,7 +743,7 @@ async function setUpInput({ canWrite, primeOnly, messagePrice: price = 0 }) {
   $('form').addEventListener('submit', send);
   keepFocus($('send'));
   $('editing-cancel').addEventListener('click', cancelEdit);
-  replies = replyBar();
+  replies = replyBar({ nodeOf: (id) => shown.get(id), open: goTo });
   // The messages shown already get "Ответить".
   for (const node of shown.values()) node.render();
   $('text').addEventListener('keydown', (event) => {

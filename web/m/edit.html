@@ -217,6 +217,20 @@
               <button class="button" type="button" id="remove">Удалить фон</button>
             </div>
           </form>
+
+          <form class="backdrop-form" id="cover-form">
+            <h4>Фон из фотографии (Prime)</h4>
+            <p>С Freenet Prime вы можете поставить за всей страницей свою фотографию. Она займёт весь экран, а записи и блоки останутся на белом, чтобы их было удобно читать. Пока она стоит, боковые изображения не показываются.</p>
+            <p class="hint" id="cover-prime" hidden>Фон из фотографии доступен только с <a href="/prime">Freenet Prime</a>.</p>
+            <div class="cover-preview"><img id="cover-preview" alt="" hidden></div>
+            <p class="hint">Лучше всего подойдёт горизонтальная фотография не меньше 1920 пикселей в ширину. Она хранится в высоком качестве — до 2560 пикселей.</p>
+            <div class="center">
+              <button class="button" type="button" id="cover-browse">Обзор</button>
+              <input type="file" id="cover-file" accept="image/jpeg,image/png,image/webp" hidden>
+              <button class="button" type="submit" id="cover-save">Сохранить</button>
+              <button class="button" type="button" id="cover-remove">Удалить</button>
+            </div>
+          </form>
         </div>
 
         <div id="avatar-tab" hidden>

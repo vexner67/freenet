@@ -7,7 +7,7 @@ import { genders, relationships, takesPartner, worldviews, politicalViews, month
 import { $, avatarURL, el, renderChrome, showError, hideError } from './layout.js';
 import { notify } from './modal.js';
 import { openAvatarDialog } from './avatar.js';
-import { initBackdropForm } from './backdrop.js';
+import { initBackdropForm, initCoverForm } from './backdrop.js';
 import { tr } from './i18n.js';
 
 const MAX_FIELDS = 7;
@@ -241,6 +241,10 @@ function initBackdrop(me) {
   initBackdropForm(me.backdrop, {
     upload: async (side, file) => (await api.setBackdrop(side, file)).backdrop,
     remove: async () => (await api.deleteBackdrop()).backdrop,
+  });
+  initCoverForm(me.backdrop, Boolean(me.prime), {
+    upload: async (file) => (await api.setBackdrop('cover', file)).backdrop,
+    remove: async () => (await api.deleteBackdropCover()).backdrop,
   });
 }
 

@@ -1,7 +1,6 @@
 // Editing a post in place, as on openvk's "Редактировать": the text and
 // photos give way to a form with "Сохранить" and "Отмена". A repost edits
-// its own words and photos: the shared post stays as it is. A post
-// sharing a photo of an album edits only its words.
+// its own words and photos: the shared post stays as it is.
 
 import { api } from './api.js';
 import { initAttachments } from './attach.js';
@@ -13,7 +12,6 @@ const MAX_LENGTH = 60000;
 // editPost opens the form in node, the post's; onSaved gets the edited post.
 export function editPost(post, node, { onSaved }) {
   const isRepost = Boolean(post.repost);
-  const withPhotos = !post.sharedPhoto;
 
   const text = el('textarea', { value: post.text, maxLength: MAX_LENGTH, placeholder: tr('Текст записи') });
   const error = el('div', { className: 'error', hidden: true });
@@ -26,18 +24,16 @@ export function editPost(post, node, { onSaved }) {
   const save = el('button', { className: 'button', type: 'submit', textContent: tr('Сохранить') });
   const cancel = el('button', { className: 'button secondary', type: 'button', textContent: tr('Отмена') });
 
-  const attachments = !withPhotos
-    ? null
-    : initAttachments({ link: attachLink, input, list, error, onChange: () => {}, photos: post.photos ?? [] });
+  const attachments = initAttachments({ link: attachLink, input, list, error, onChange: () => {}, photos: post.photos ?? [] });
 
   const form = el('form', { className: 'wall-form expanded post-edit' },
     text,
-    withPhotos ? list : null,
+    list,
     el('div', { className: 'row' },
-      el('span', {}, withPhotos ? attachLink : null),
+      el('span', {}, attachLink),
       el('span', { className: 'post-edit-buttons' }, save, cancel),
     ),
-    isRepost || post.sharedPhoto ? null : el('div', { className: 'post-options' }, el('label', {}, nsfw, tr(' Содержит NSFW-контент'))),
+    isRepost ? null : el('div', { className: 'post-options' }, el('label', {}, nsfw, tr(' Содержит NSFW-контент'))),
     input,
     error,
   );
@@ -51,7 +47,7 @@ export function editPost(post, node, { onSaved }) {
     event.preventDefault();
     hideError(error);
 
-    if (attachments?.busy()) {
+    if (attachments.busy()) {
       showError(error, tr('Дождитесь, пока загрузятся фотографии.'));
       return;
     }
@@ -59,7 +55,7 @@ export function editPost(post, node, { onSaved }) {
     save.disabled = true;
 
     try {
-      const edited = await api.editPost(post.id, text.value, attachments?.ids() ?? [], nsfw.checked);
+      const edited = await api.editPost(post.id, text.value, attachments.ids(), nsfw.checked);
       close();
       onSaved(edited);
     } catch (e) {

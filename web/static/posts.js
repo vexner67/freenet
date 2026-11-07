@@ -265,7 +265,6 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       ),
       content,
       post.repost ? sharedNode(post.repost, { canVote: canLike, onError }) : null,
-      post.sharedPhoto ? sharedPhotoNode(post.sharedPhoto) : null,
       phone || !microblog ? bar() : el('div', { className: 'post-menu' },
         el('span', {}, date, menu),
         el('span', { className: 'post-buttons' },
@@ -605,17 +604,6 @@ export function linkCardNode(link) {
 
 // photosNode lays the photos of a post, comment or message out: one at its
 // own proportions, more as a grid of tiles. A click opens the viewer.
-// sharedPhotoNode is the photo of an album a post shares, leading to its
-// page, as openvk attaches a photo; a deleted one says so.
-export function sharedPhotoNode(shared) {
-  if (shared.deleted) {
-    return el('div', { className: 'post-shared deleted', textContent: tr('Фотография удалена.') });
-  }
-
-  return el('div', { className: 'post-photos single' },
-    el('a', { href: '/photo/' + encodeURIComponent(shared.id) }, adult(el('img', { src: shared.photo.small, alt: '', loading: 'lazy' }), shared.nsfw)));
-}
-
 export function photosNode(photos) {
   if (photos.length === 0) return null;
 

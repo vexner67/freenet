@@ -2,15 +2,15 @@
 // ?section=groups) or posts ("Записи", ?section=posts), by the words of
 // ?q=, a page at a time; a tag ("#поход") finds the posts that say it, and
 // the tags of the texts lead here. People are also found by the links of a
-// page: ?hometown=, ?city=, ?film=, ?show=, ?book=. Results come as the words
-// are typed, and the tabs change without a new page; the earlier searches of
-// this browser wait under the field, one press away, and the next page comes
-// by itself when the end of the list is near.
+// page: ?hometown=, ?city=, ?film=, ?show=, ?book=. As openvk's page: the
+// field with where to look and "Поиск", the grey bar of sections and
+// "Найдено …" over the list. Results come as the words are typed, the
+// sections change without a new page, and the next page comes by itself
+// when the end of the list is near.
 
 import { api, currentUser } from './api.js';
 import { resultsCount } from './labels.js';
 import { $, el, isMicroblog, renderChrome, showError, hideError } from './layout.js';
-import { gameIcon } from './game.js';
 import { clubRow } from './clubs.js';
 import { personRow } from './people.js';
 import { postNode, wallOwnerID } from './posts.js';
@@ -28,8 +28,6 @@ let filters = kind ? {} : Object.fromEntries(Object.keys(filterNames)
 const isFiltered = () => Object.keys(filters).length > 0;
 // How long the field stays quiet before the words are searched for.
 const typingPause = 280;
-const recentKey = 'freenet.searches';
-const recentSize = 8;
 
 const me = await currentUser().catch(() => null);
 
@@ -94,48 +92,6 @@ let loading = false;
 let asked = 0;
 let typing = 0;
 
-function savedSearches() {
-  try {
-    const list = JSON.parse(localStorage.getItem(recentKey));
-
-    return Array.isArray(list) ? list.filter((q) => typeof q === 'string') : [];
-  } catch {
-    return [];
-  }
-}
-
-function showRecent() {
-  const list = savedSearches();
-
-  $('recent').hidden = list.length === 0;
-  $('recent').replaceChildren(
-    gameIcon('/static/icons/game/clock.svg'),
-    ...list.map((q) => el('button', { type: 'button', className: 'chip', textContent: q, onclick: () => searchFor(q) })),
-    el('a', { href: '#', className: 'search-forget', textContent: tr('очистить'), onclick: forgetSearches }),
-  );
-}
-
-function rememberSearch() {
-  if (!query) return;
-
-  try {
-    localStorage.setItem(recentKey, JSON.stringify([query, ...savedSearches().filter((q) => q !== query)].slice(0, recentSize)));
-  } catch {
-    // The list just stays as it was.
-  }
-  showRecent();
-}
-
-function forgetSearches(event) {
-  event.preventDefault();
-  try {
-    localStorage.removeItem(recentKey);
-  } catch {
-    // Nothing is kept then.
-  }
-  showRecent();
-}
-
 function say(text) {
   $('count').textContent = text;
 }
@@ -147,9 +103,7 @@ function showPage(page, items) {
   cursor = page.nextCursor;
   $('more').hidden = !cursor;
   say(section().count ? section().count(total) : (shown === 0 ? section().none : tr('Найдено: {0}{1}', shown, cursor ? '+' : '')));
-  if (shown === 0) {
-    $('people').append(el('div', { className: 'search-none' }, gameIcon('/static/icons/game/loupe.svg', 48), el('p', { className: 'hint', textContent: tr('Попробуйте другие слова или загляните в другой раздел.') })));
-  }
+  if (shown === 0) $('people').append(el('p', { className: 'search-none', textContent: tr('Попробуйте другие слова или загляните в другой раздел.') }));
 }
 
 // loadMore adds the next page of what is found.
@@ -232,7 +186,6 @@ function showTabs() {
 function showSection() {
   $('title').textContent = section().title;
   $('section').value = kind;
-  $('section').disabled = !kind;
   $('q').placeholder = section().placeholder;
   // A post is searched for by at most 100 characters.
   $('q').maxLength = kind === 'posts' ? 100 : 64;
@@ -242,7 +195,6 @@ function showSection() {
 
 function showWords() {
   document.title = query || isFiltered() ? `${query || Object.values(filters)[0]} — ${section().tab} | Freenet` : `${section().title} | Freenet`;
-  $('clear').hidden = !query;
   showTabs();
   history.replaceState(null, '', address());
 }
@@ -252,27 +204,32 @@ function searchFor(words) {
   query = words.trim();
   $('q').value = query;
   showWords();
-  rememberSearch();
   find();
+}
+
+// switchTo shows another section for the same words: a tab or the list
+// by the field.
+function switchTo(tabKind) {
+  clearTimeout(typing);
+  kind = tabKind;
+  if (kind) filters = {};
+  showSection();
+  showWords();
+  find();
+  $('q').focus();
 }
 
 for (const [id, tabKind] of [['tab-people', ''], ['tab-groups', 'groups'], ['tab-posts', 'posts']]) {
   $(id).addEventListener('click', (event) => {
     if (event.button || event.metaKey || event.ctrlKey || event.shiftKey) return;
     event.preventDefault();
-    clearTimeout(typing);
-    kind = tabKind;
-    if (kind) filters = {};
-    showSection();
-    showWords();
-    find();
-    $('q').focus();
+    switchTo(tabKind);
   });
 }
+$('section').addEventListener('change', () => switchTo($('section').value));
 
 $('q').addEventListener('input', () => {
   query = $('q').value.trim();
-  $('clear').hidden = !$('q').value;
   clearTimeout(typing);
   typing = setTimeout(() => {
     showWords();
@@ -285,17 +242,7 @@ $('search-form').addEventListener('submit', (event) => {
   searchFor($('q').value);
 });
 
-$('clear').addEventListener('click', () => {
-  searchFor('');
-  $('q').focus();
-});
-
 $('more').addEventListener('click', loadMore);
-
-// What is pressed in the list was what was looked for.
-$('people').addEventListener('click', (event) => {
-  if (event.target.closest('a')) rememberSearch();
-});
 
 // The examples of the hints are one press from being searched.
 for (const example of document.querySelectorAll('.search-example')) {
@@ -327,7 +274,6 @@ if (isFiltered()) {
 
 $('q').value = query;
 showSection();
-showRecent();
 showWords();
 $('q').focus();
 await find();

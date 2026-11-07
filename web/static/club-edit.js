@@ -72,11 +72,11 @@ async function submit(event, club) {
   }
 }
 
-// confirmDelete asks before the club goes with its wall, topics, albums
-// and photos: nothing brings it back.
+// confirmDelete asks before the club goes with its wall, topics and
+// photos: nothing brings it back.
 function confirmDelete(club) {
   const modal = openModal(tr('Удалить группу'));
-  modal.body.textContent = tr('Вы уверены, что хотите удалить группу «{0}»? Вместе с ней удалятся её участники, стена, обсуждения, альбомы и фотографии. Это нельзя отменить.', club.name);
+  modal.body.textContent = tr('Вы уверены, что хотите удалить группу «{0}»? Вместе с ней удалятся её участники, стена, обсуждения и фотографии. Это нельзя отменить.', club.name);
   modal.actions.append(
     button(tr('Удалить'), async () => {
       try {

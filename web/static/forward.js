@@ -8,7 +8,7 @@ import { sendSealed } from './e2ee.js';
 import { chatTitle, conversationOf, conversationPath, conversationValue, fileSize, formatPostDate, forwardTree, messagePreview, photoMosaic, snippet, splitVideos } from './labels.js';
 import { avatarURL, el, fullName, isPhone, pagePath, showError, hideError, smileyNodes } from './layout.js';
 import { button, openModal, openSheet } from './modal.js';
-import { dots, postPath, sharedNode, sharedPhotoNode } from './posts.js';
+import { dots, postPath, sharedNode } from './posts.js';
 import { openViewer } from './viewer.js';
 import { stickerNode } from './stickers.js';
 import { audiosNode } from './audio.js';
@@ -18,7 +18,7 @@ import { tr } from './i18n.js';
 // attachedNodes is what a message shows under its words, as openvk's
 // MessageAttachments (Web/static/js/messages/components/message.js): the
 // sticker it is, its photos in one mosaic (makimaNode), its videos, then
-// its documents, songs and the post or the photo of an album it shares.
+// its documents, songs and the post it shares.
 export function attachedNodes(m) {
   const photos = m.photos ?? [];
   const docs = m.documents ?? [];
@@ -31,7 +31,6 @@ export function attachedNodes(m) {
     docs.length ? el('div', { className: 'msg-attach-docs' }, ...docs.map(docNode)) : null,
     m.audios?.length ? el('div', { className: 'msg-attach-audio-player' }, audiosNode(m.audios)) : null,
     m.repost ? wallCardNode(m.repost) : null,
-    m.sharedPhoto ? sharedPhotoNode(m.sharedPhoto) : null,
   ];
 }
 
@@ -224,7 +223,7 @@ export function actionsNode(actions) {
 // nothing.
 export function takenBack(m) {
   return {
-    ...m, text: '', photos: [], post: '', sticker: '', repost: undefined, albumPhoto: '', sharedPhoto: undefined, forwarded: [], forwardedCount: 0, documents: [], documentCount: 0, audios: [], audioCount: 0,
+    ...m, text: '', photos: [], post: '', sticker: '', repost: undefined, forwarded: [], forwardedCount: 0, documents: [], documentCount: 0, audios: [], audioCount: 0,
     editedAt: null, deletableUntil: '', editableUntil: '', deleted: true, reactions: [], replyTo: undefined, quoted: '',
   };
 }
@@ -237,13 +236,13 @@ export function conversationOption(d) {
 // sendTo writes into the dialog or the chat a choice names: into a
 // dialog sealed for its two people, me (the caller, asked for when not
 // given) and the peer. forward are the messages carried on.
-export async function sendTo(value, text, { me = null, photos = [], post = '', forward = [], albumPhoto = '' } = {}) {
+export async function sendTo(value, text, { me = null, photos = [], post = '', forward = [] } = {}) {
   const { chat, ref } = conversationOf(value);
-  if (chat) return api.sendChatMessage(ref, text, photos, post, forward.map((m) => m.id), albumPhoto);
+  if (chat) return api.sendChatMessage(ref, text, photos, post, forward.map((m) => m.id));
 
   const caller = me ?? await api.me();
 
-  return sendSealed(caller.id, ref, text, { photos, post, forward, albumPhoto });
+  return sendSealed(caller.id, ref, text, { photos, post, forward });
 }
 
 // fromDialog: a message of a dialog, not of a chat.

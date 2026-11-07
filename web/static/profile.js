@@ -1,7 +1,6 @@
 import { api, currentUser, started } from './api.js';
 import { isBirthdayToday, relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, accusativeName, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, audioArtist, audioTitle, audiosCount, plural, MAX_RATING, titleGroups, titleIconPath } from './labels.js';
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
-import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
 import { initBlacklistLink } from './blacklist.js';
 import { initIgnoreLink } from './feedsettings.js';
@@ -17,8 +16,6 @@ import { tr } from './i18n.js';
 
 const nickname = decodeURIComponent(location.pathname.slice(1));
 const CLUBS_SHOWN = 6;
-// openvk shows the first page of albums on a person's page.
-const ALBUMS_SHOWN = 10;
 
 // rows lists the table under the name, in openvk's order; private marks
 // rows others cannot see (only the owner gets them at all, from /me).
@@ -331,32 +328,6 @@ function showCompleteness(user, isOwner) {
   $('completeness').hidden = false;
 }
 
-// showAlbums is openvk's block "Альбомы", when there are any.
-async function showAlbums(user) {
-  try {
-    const page = await api.albums({ nickname: user.nickname, limit: ALBUMS_SHOWN });
-
-    $('albums-block').replaceChildren(...albumsBlock(page.owner, page, false));
-    $('albums-block').hidden = page.total === 0;
-    linkAvatar(page.albums.find(isAvatarAlbum));
-  } catch {
-    // Not to be had: the page works without it.
-  }
-}
-
-// linkAvatar makes the photo of the page lead to "Фотографии со страницы",
-// as openvk opens the photo there.
-function linkAvatar(album) {
-  if (!album || album.photos === 0) return;
-
-  // The link takes the photo's place first: made around it, it would
-  // take the photo out of the page before.
-  const avatar = $('avatar');
-  const link = el('a', { href: albumPath(album) });
-  avatar.before(link);
-  link.append(avatar);
-}
-
 // showClubs is openvk's block "Группы": how many, "Все" and the names of
 // the newest, as the user's "Кому видно мои группы" allows.
 function showClubs(user) {
@@ -618,7 +589,6 @@ try {
     initPhoto(isOwner ? me : profile, isOwner);
     initFollow(profile, me, isOwner);
     // As openvk, the blocks the owner hides from the viewer are not there.
-    if (profile.access.photos) showAlbums(profile);
     if (profile.access.clubs) showClubs(profile);
     showGifts(profile, me, isOwner);
     showTitles(profile);

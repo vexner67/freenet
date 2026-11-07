@@ -1,5 +1,5 @@
 // Answers and reactions of messages in a dialog and a chat, as on VK:
-// "Ответить" puts a line over the form with whom one answers, the answer
+// "Ответить" puts a line under the field with whom one answers, the answer
 // shows over its words the message it answers, a click leading to it; and
 // anyone in the conversation puts one reaction of six on a message, shown
 // under it with how many put each. The reactions are smileys of the site,
@@ -32,28 +32,58 @@ export function quoteNode(q, text, open) {
   q.author && el('div', { className: 'reply-msg-header', textContent: tr('в ответ на сообщение {0}', fullName(q.author)) }));
 }
 
-// replyBar runs the line over the form: start(m, author, text) answers m,
-// cancel stops; replyingTo is the message answered, null for none.
-export function replyBar() {
+// JUMP_MS is how long a message one was led to keeps its colour, as
+// openvk's "animated" one.
+const JUMP_MS = 3000;
+
+// showJumped scrolls to the node of a message one was led to and marks it
+// for a moment, as openvk's scrollToMessage: the mark goes by itself.
+export function showJumped(node) {
+  clearTimeout(node.jumpTimer);
+  node.classList.add('jumped');
+  node.scrollIntoView({ block: 'center' });
+  node.jumpTimer = setTimeout(() => node.classList.remove('jumped'), JUMP_MS);
+}
+
+// replyBar runs the line under the field: start(m, author, text) answers
+// m, cancel stops; replyingTo is the message answered, null for none.
+// As on openvk, the message answered is marked while one answers it
+// (nodeOf finds its node), and a click on the line leads to it (open).
+export function replyBar({ nodeOf, open }) {
   let replying = null;
 
+  const mark = (on) => replying && nodeOf(replying.id)?.classList.toggle('replying-to', on);
   const cancel = () => {
+    mark(false);
     replying = null;
     $('replying').hidden = true;
   };
-  $('replying-cancel').addEventListener('click', cancel);
+  $('replying-cancel').addEventListener('click', (e) => {
+    e.stopPropagation();
+    cancel();
+  });
+  $('replying').addEventListener('click', () => replying && open(replying.id));
 
   return {
     start(m, author, text) {
+      mark(false);
       replying = m;
+      mark(true);
       $('replying-name').textContent = tr('в ответ на сообщение {0}', fullName(author)) + ':';
-      $('replying-text').replaceChildren(...smileyNodes(quoteText({ ...m, author, photoCount: m.photos?.length ?? 0, albumPhoto: Boolean(m.albumPhoto), post: Boolean(m.post) }, text)));
+      $('replying-text').replaceChildren(...smileyNodes(quoteText({ ...m, author, photoCount: m.photos?.length ?? 0, post: Boolean(m.post) }, text)));
       $('replying').hidden = false;
       $('text').focus();
     },
     cancel,
     replyingTo: () => replying,
   };
+}
+
+// showEditing shows over the form what message is edited, as openvk's
+// "Редактирование сообщения: …": its words on one line.
+export function showEditing(m, author, text) {
+  $('editing-text').replaceChildren(...smileyNodes(quoteText({ ...m, author, photoCount: m.photos?.length ?? 0, post: Boolean(m.post) }, text)));
+  $('editing').hidden = false;
 }
 
 // reactionNodes are the reactions under a message and, while picking,

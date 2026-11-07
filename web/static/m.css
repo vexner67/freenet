@@ -449,7 +449,6 @@ b, strong { font-weight: bold; }
 /* Search */
 .search-form { display: flex; gap: 6px; margin-bottom: 10px; }
 .search-form input { flex: 1; }
-.search-count { margin-bottom: 4px; color: var(--text-626262); }
 .message-actions { display: block; margin: 3px 0 0; }
 .message-actions .attach-list { left: auto; right: 0; min-width: 100px; font-size: 11px; text-align: left; }
 .safety-code { margin: 8px 0; font: bold 16px monospace; letter-spacing: 1px; text-align: center; }
@@ -649,63 +648,13 @@ label.chat-person { cursor: pointer; }
 .topic-short { padding: 4px 0; }
 .page-title .title-links { font-weight: bold; }
 .topic-form textarea { width: 100%; height: 80px; }
-/* openvk's photo albums: the list (a grey box of white items with their
-   covers), the head and the photos of an album, the upload with its white
-   box of limits, the page of a photo and the block on a page. */
+/* openvk's grey box and its white box of upload limits ("Стикеры",
+   "Документы"). */
 .gray-box { padding: 12px; background: var(--back-f6f6f6); }
 .gray-box-title { margin: 0 0 10px; font-size: 11px; }
-.summary-bar .summary-links { font-weight: normal; }
-.album-list .hint { margin: 0; }
-.album-item { display: flex; gap: 10px; margin-bottom: 6px; padding: 4px; background: var(--back-fff); border: 1px solid var(--line-dedede); }
-.album-item:last-child { margin-bottom: 0; }
-.album-cover img { display: block; width: 170px; height: 130px; object-fit: cover; }
-.album-info { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.album-form input, .album-form textarea { width: 100%; }
-.album-delete { text-align: center; }
-.album-head { margin-bottom: 12px; }
-.album-grid { display: flex; flex-wrap: wrap; }
-.album-photo { position: relative; width: 25%; margin-bottom: 8px; text-align: center; }
-.album-photo img { max-width: 83%; max-height: 120px; padding: 8px; border: 1px solid var(--line-ccc); background: var(--back-fff); vertical-align: top; }
-.album-photo-delete {
-  position: absolute;
-  top: 0;
-  right: 0;
-  margin: 4px;
-  padding: 1px 6px;
-  background: rgba(0, 0, 0, 0.3);
-  color: var(--text-fff);
-  opacity: 0;
-}
-.album-photo-delete:hover { text-decoration: none; }
-.album-photo:hover .album-photo-delete { opacity: 1; }
-.upload-box { min-height: 344px; }
-.white-box { width: 421px; max-width: 100%; margin: 7% auto 0; background: var(--back-fff); border: 1px solid var(--line-e8e8e8); }
-.white-box h4 { margin: 24px 38px 0; font-size: 11px; }
 .upload-limits { margin: 17px 38px 24px; }
 .upload-limits > b { color: var(--text-45688e); }
 .upload-limits ul { margin: 6px 0 0; padding-left: 18px; }
-.upload-button { padding-top: 4px; text-align: center; }
-.upload-tip { margin: 19px 0 0; line-height: 15px; }
-.upload-again { text-align: center; }
-.uploaded-photo { display: flex; justify-content: space-between; gap: 10px; margin-top: 9px; padding-bottom: 9px; border-bottom: 1px solid var(--line-e8e8e8); }
-.uploaded-description { display: flex; flex: 1; gap: 6px; color: var(--text-464646); }
-.uploaded-description textarea { flex: 1; height: 86px; resize: none; }
-.uploaded-image { display: flex; flex-direction: column; width: 125px; }
-.uploaded-image img { width: 125px; }
-.upload-finish { display: block; margin: 12px auto 0; }
-.photo-page-image { margin-bottom: 8pt; text-align: center; }
-.photo-page-image img { max-width: 85%; max-height: 60vh; }
-.photo-page-description { padding: 5px 30px; }
-.photo-page-description .hint { font-size: 10px; }
-.photo-page-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.photo-page-columns { display: flex; justify-content: space-between; gap: 10px; min-height: 100px; }
-.photo-page-main { width: 68%; }
-.photo-page-actions { width: 30%; }
-.photo-page-author { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
-.photo-page-author img { width: 30px; height: 30px; object-fit: cover; }
-.side-albums { padding: 5px 0; }
-.side-album { display: flex; gap: 6px; margin-bottom: 8px; overflow-wrap: anywhere; }
-.side-album img { width: 80px; max-height: 72px; object-fit: cover; }
 .about-title .edit-link, .status.empty.status-editable { margin-left: 4px; color: var(--text-c5c5c5); font-family: verdana, arial, sans-serif; font-weight: bold; }
 .status.empty.status-editable { margin-left: 0; }
 .about-text { white-space: pre-line; overflow-wrap: anywhere; }
@@ -719,7 +668,6 @@ label.chat-person { cursor: pointer; }
 .hint-email::before, .hint-telegram::before { background-image: url("/static/icons/document.svg"); }
 .hint-status::before { background-image: url("/static/icons/status.svg"); }
 .share-signs label { display: block; margin-top: 4px; }
-.photo-page-meta .like { display: inline-flex; margin-left: 4px; }
 /* "Это архив записей" over the archive of a wall, as on openvk. */
 .archive-banner { margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--line-d5ddb6); background: var(--back-f9f6e7); }
 .archive-banner b { display: block; margin-bottom: 2px; }
@@ -808,8 +756,8 @@ body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
   color: var(--text-fff);
   text-align: center;
 }
-/* A photo that came from an adult post: in the album, on its page, as a
-   cover and in the viewer. clip-path keeps the blur inside the photo. */
+/* A photo that came from an adult post: in the post, the message and the
+   viewer. clip-path keeps the blur inside the photo. */
 body:not(.nsfw-shown) img.photo-nsfw { filter: saturate(.8) blur(24px); clip-path: inset(0); cursor: pointer; }
 /* "Рейтинг" of the settings: no gauge on the pages its owner reads. */
 .rating-hidden .profile-hints { display: none; }
@@ -1844,10 +1792,6 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .story-comments-empty { margin: 6px 0 0; color: var(--text-626262); text-align: center; }
 .story-form textarea { width: 100%; height: 50px; margin-top: 6px; }
 .story-preview { display: block; width: auto; max-width: 100%; height: auto; max-height: 240px; margin: 6px auto 0; }
-/* Where nothing points, what shows on pointing is always there. */
-@media (hover: none) {
-  .album-photo-delete { opacity: 1; }
-}
 /* On the black of the story viewer, as in the dark theme. */
 .story-head img.name-checkmark.name-checkmark { filter: brightness(2.4); }
 .guest-row-new { background: var(--back-f2f5f8); }
@@ -2092,15 +2036,7 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .list-actions .profile-link { display: flex; align-items: center; min-height: 36px; }
 .message-actions { display: inline-block; margin: 0 0 0 14px; }
 .message-actions .attach-list { left: 0; right: auto; }
-/* Photos and albums */
-.album-cover img { width: 100px; height: 80px; }
-.album-photo { width: 33.33%; }
-.photo-page-columns { flex-direction: column; }
-.photo-page-main, .photo-page-actions { width: auto; }
-.photo-page-image img { max-width: 100%; }
-.photo-page-description { padding: 5px 0; }
-.uploaded-photo { flex-direction: column; }
-.white-box h4 { margin: 20px 16px 0; }
+/* Upload limits */
 .upload-limits { margin: 14px 16px 20px; }
 /* Stories over the whole screen. */
 .story-viewer { background: rgba(0, 0, 0, 1); }
@@ -2275,14 +2211,16 @@ input.step-value { font-size: 16px; }
 
 /* Controls */
 
-/* openvk's button: dark grey, white words with a shadow; a finger's size. */
+/* openvk's button: dark grey under the light top of button.png (the
+   default theme's modern_controls.css), white words with a shadow; a
+   finger's size. */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-height: 36px;
   padding: 0 16px;
-  background: var(--back-595959);
+  background: url("/static/im/button.png") var(--back-595959);
   border: 1px solid var(--line-595959);
   border-radius: 3px;
   color: var(--text-fff);
@@ -2814,6 +2752,9 @@ body:has(#peer-avatar) .im-sender,
 .im-message.out.unread::after { right: -6px; left: auto; }
 .im-message.selected { background: var(--back-f6f0d2); border-color: var(--line-d7cf9e); }
 .im-message.found { background: var(--back-f6f0d2); }
+/* The message one was led to, for a moment, and the one answered while
+   one answers it, as openvk's "animated" and msg-replying-to. */
+.im-message.jumped, .im-message.jumped.unread, .im-message.replying-to, .im-message.replying-to.unread { background: var(--back-f6f0d2); }
 .im-message.deleted .im-message-text, .im-message-text.unreadable { color: var(--text-626262); font-style: italic; }
 .chat-bar { cursor: default; }
 
@@ -3022,13 +2963,9 @@ body:has(#peer-avatar) .im-sender,
 }
 .viewer-prev { left: 0; }
 .viewer-next { right: 0; }
-.viewer-details { max-height: 40vh; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); overflow-y: auto; background: var(--back-fff); }
-.viewer-details[hidden], .viewer-overlay, body.viewer-open .viewer-nav[hidden] { display: none; }
 /* The photo viewer draws its arrows itself; those of stories are text. */
 .viewer-body .viewer-prev::before { content: "‹"; }
 .viewer-body .viewer-next::before { content: "›"; }
-.viewer-description { margin: 0 0 6px; white-space: pre-wrap; }
-.viewer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
 
 /* Who likes it: a box of photos. */
 .likers-tooltip { display: none; }
@@ -3140,6 +3077,9 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 /* The backdrop of a page has no room beside a page as wide as the
    screen. */
 .backdrop { display: none; }
+.backdrop-form + .backdrop-form { margin-top: 20px; }
+.cover-preview { display: flex; justify-content: center; margin: 10px 0; }
+.cover-preview img { max-width: 100%; max-height: 220px; border: 1px solid var(--line-d0d0d0); }
 
 /* Room to breathe: the forms, settings and lists of a computer are
    packed for a mouse; on a phone their words stand apart. The class of
@@ -3234,7 +3174,7 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 .article-card-excerpt { overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .article-card-meta { color: var(--text-626262); }
 .article-card.with-cover .article-card-meta { color: var(--text-e8e8e8); }
-.article-card-read { align-self: flex-start; margin-top: 4px; padding: 3px 10px; border-radius: 2px; background: var(--back-595959); color: var(--text-fff); }
+.article-card-read { align-self: flex-start; margin-top: 4px; padding: 3px 10px; border-radius: 2px; background: url("/static/im/button.png") var(--back-595959); color: var(--text-fff); }
 .article-card:hover .article-card-read { background: var(--back-707070); }
 
 /* The page of an article: the cover, the title and who wrote it, then the
@@ -3886,21 +3826,23 @@ button.account-slot:active { transform: translateY(1px); }
 .avatars-round .account-photo { border-radius: 50%; }
 
 /* "Поиск": the field with its loupe, the earlier searches under it. */
-.search-form { align-items: stretch; margin-bottom: 6px; }
-.search-box { position: relative; display: flex; flex: 1; align-items: center; min-width: 0; }
-.search-box .game-icon { position: absolute; left: 6px; pointer-events: none; }
-.search-box input { flex: 1; min-width: 0; height: 30px; padding: 3px 26px 3px 30px; border: 1px solid var(--line-333); border-radius: 3px; box-sizing: border-box; font-size: 13px; }
-.search-clear { position: absolute; right: 3px; width: 22px; height: 22px; padding: 0; background: none; border: 0; color: var(--text-626262); font: bold 15px tahoma, verdana, sans-serif; cursor: pointer; }
-.search-clear:hover { color: var(--text-c33); }
-.search-form .button.game-go.small { min-width: 70px; }
-.search-recent { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 0 0 8px; }
-.search-forget { margin-left: 4px; color: var(--text-626262); }
-.search-count { min-height: 14px; font-weight: bold; }
+/* openvk's search_box_button, lighter than a button. */
+.search-box-button { flex: none; padding: 0; background: linear-gradient(var(--back-8f8f8f), var(--back-757575)); border: 1px solid var(--line-616161); border-top-color: var(--line-575757); border-bottom-color: var(--line-454545); border-radius: 2px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 25%), 0 1px 0 rgb(0 0 0 / 10%); color: var(--text-fff); text-shadow: 0 1px 0 var(--text-696969); font: bold 14px tahoma, verdana, arial, sans-serif; cursor: pointer; }
+.search-box-button:active { background: linear-gradient(var(--back-a8a8a8), var(--back-868686)); box-shadow: inset 0 1px 2px rgb(0 0 0 / 35%); }
+.search-bar { display: flex; gap: 8px; margin: -10px -10px 0; padding: 10px; }
+.search-field { position: relative; display: flex; flex: 1; min-width: 0; }
+.search-field .search-input { box-sizing: border-box; flex: 1; min-width: 0; padding-left: 26px; padding-right: 40%; background: var(--back-fff) url("/static/icons/search-field.png") no-repeat 8px center; }
+.search-field .search-input::-webkit-search-cancel-button { display: none; }
+.search-field select { position: absolute; top: 0; right: 0; width: 40%; height: 100%; background: transparent; border: 0; text-align: right; }
+.search-bar .search-box-button { min-height: 38px; width: auto; padding: 0 14px; }
+.search-tabs { margin: 0 -10px; }
+.search-summary { margin-bottom: 6px; }
+.search-summary:has(.summary:empty) { display: none; }
 
 #people.searching { opacity: 0.55; }
 
 #people .person:hover { background: var(--back-f2f5f8); }
-.search-none { display: flex; flex-direction: column; gap: 6px; align-items: center; padding: 18px 0; }
+.search-none { padding: 18px 0; color: var(--text-626262); text-align: center; }
 .search-example { margin: 0 2px; }
 
 /* The pages above on a phone. */
@@ -3925,7 +3867,6 @@ button.account-slot:active { transform: translateY(1px); }
 .dating-keys { display: none; }
 .modal-box.accounts-box { width: 100%; }
 .account-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.search-box input { height: 36px; font-size: 16px; }
 
 /* Settings, notifications and groups, in the dress of the games: dark frames
    and titles, plates that are pressed, and nothing moves under the reader. */
@@ -4230,7 +4171,7 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .game-hud-name img, .game-hud-name .game-icon { display: none; }
 .game-hud-sum { color: var(--text-000); font-size: 12px; font-weight: bold; line-height: 16px; }
 
-.button.game-go, .button.game-go.sell { display: inline-block; width: auto; min-height: 0; background: var(--back-595959); font-size: 11px; font-weight: normal; }
+.button.game-go, .button.game-go.sell { display: inline-block; width: auto; min-height: 0; background: url("/static/im/button.png") var(--back-595959); font-size: 11px; font-weight: normal; }
 .button.game-go:active { background: var(--back-444); }
 .button > img, .button > .game-icon { display: none; }
 .casino-balance { background: none; border: 0; border-radius: 0; box-shadow: none; }
@@ -4324,12 +4265,15 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 /* openvk shows the time of only the first of the messages in a row. */
 .im-message.same-author .im-message-time { display: none; }
 
-/* "в ответ на сообщение …:" over the form, as openvk's input-reply: the
-   title bold, the words grey on one line, the cross at the right. */
-.messenger-box .input-reply { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 6px; padding: 6px 0; border-top: 1px solid var(--line-595959); cursor: default; }
-.messenger-box .input-reply[hidden] { display: none; }
+/* As openvk's input-m: "Редактирование сообщения: …" a strip over the
+   whole form, "в ответ на сообщение …:" under the field, a click on it
+   leading to the message; the title bold, the words grey on one line. */
+.input-reply { display: flex; align-items: center; gap: 12px; cursor: default; }
+.input-reply[hidden] { display: none; }
+.input-edit { flex-shrink: 0; justify-content: space-between; padding: 8px; background: var(--back-f2f2f2); border-top: 1px solid var(--line-595959); }
+.messenger-box .input-reply { margin: 6px 0 0; padding: 6px 0; border-top: 1px solid var(--line-595959); cursor: pointer; order: 4; }
 .input-reply-content { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; white-space: nowrap; }
-.input-reply-title { flex-shrink: 0; color: var(--text-2b587a); }
+.input-type, .input-reply-title { flex-shrink: 0; font-weight: bold; color: var(--text-2b587a); }
 .input-reply-text { min-width: 0; overflow: hidden; color: var(--text-656565); text-overflow: ellipsis; white-space: nowrap; }
 .input-reply-text img { display: none; }
 .input-close { display: flex; flex-shrink: 0; align-items: center; width: 14px; cursor: pointer; }

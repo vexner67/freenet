@@ -77,6 +77,9 @@ function playVideo(id) {
     className: 'video-frame',
     src: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1`,
     allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen',
+    // YouTube refuses to play for a page that sends no origin (error 153),
+    // and the pages' Referrer-Policy is same-origin: the frame names it.
+    referrerPolicy: 'strict-origin-when-cross-origin',
     allowFullscreen: true,
     title: tr('Видеозапись'),
   }));

@@ -115,7 +115,7 @@ async function showPush(me) {
 
 const reads = {
   'page-read': 'pageRead', 'info-read': 'infoRead', 'online-read': 'onlineRead',
-  'clubs-read': 'clubsRead', 'photos-read': 'photosRead', 'friends-read': 'friendsRead',
+  'clubs-read': 'clubsRead', 'friends-read': 'friendsRead',
   'gifts-read': 'giftsRead', 'audios-read': 'audiosRead', 'listening-read': 'listeningRead',
 };
 const readOptions = { 'page-read': pageReads, 'online-read': onlineReads };

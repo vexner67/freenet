@@ -913,16 +913,6 @@ export function suggestedInClub(n, mine) {
   return mine ? tr('Вы предложили в эту группу {0}', posts) : tr('В эту группу предложили {0}', posts);
 }
 
-// albumsCount is openvk's "albums": "Ни одного альбома", "3 альбома".
-export function albumsCount(n) {
-  return n === 0 ? tr('Ни одного альбома') : `${n} ${plural(n, ['альбом', 'альбома', 'альбомов'])}`;
-}
-
-// myAlbumsCount is the head of your own albums, openvk's "albums_list".
-export function myAlbumsCount(n) {
-  return n === 0 ? tr('У Вас нет ни одного альбома') : tr('У Вас {0}', albumsCount(n));
-}
-
 // Gifts ("Подарки" of openvk): the collections there are to choose from,
 // what each gift is called and its picture. The gifts themselves are the
 // catalogue of the user service; a picture is a file of the site, named
@@ -2429,7 +2419,7 @@ export function favesCount(n) {
   return n === 0 ? tr('Ни одной закладки') : `${n} ${plural(n, ['закладка', 'закладки', 'закладок'])}`;
 }
 
-// photosCount is under an album: openvk writes "N фотографий" whatever N
+// photosCount is how many photos: openvk writes "N фотографий" whatever N
 // ("TODO: Добавить склонения"); we decline it.
 export function photosCount(n) {
   return `${n} ${plural(n, ['фотография', 'фотографии', 'фотографий'])}`;
@@ -2655,8 +2645,6 @@ const errorTexts = {
   'post text is too long': tr('Запись длиннее 60 000 символов.'),
   'post not found': tr('Запись уже удалена.'),
   'the post can no longer be edited': tr('Запись можно редактировать только в течение недели после публикации.'),
-  'a post sharing a photo has no photos of its own': tr('К записи с фотографией из альбома нельзя прикрепить другие фотографии.'),
-  'a shared photo goes with text alone': tr('Фотографию из альбома можно отправить только с текстом.'),
   'photo not found': tr('Фотография не найдена, прикрепите её снова.'),
   'a post has at most 10 photos': tr('К записи можно прикрепить не больше 10 фотографий.'),
   'the same photo is attached twice': tr('Эта фотография уже прикреплена.'),
@@ -2683,13 +2671,6 @@ const errorTexts = {
   'you cannot write for this community': tr('Писать от имени сообщества могут только его администраторы.'),
   'the topic is closed': tr('Тема закрыта.'),
   'only a topic of the community can be restricted': tr('Ограничить комментарии можно только в теме от имени сообщества.'),
-  'album name is empty': tr('Укажите название альбома.'),
-  'album name is too long': tr('Название альбома длиннее 36 символов.'),
-  'description is too long': tr('Описание слишком длинное.'),
-  'album not found': tr('Альбом не найден или удалён.'),
-  'no photos to add': tr('Загрузите хотя бы одну фотографию.'),
-  'at most 10 photos are added at once': tr('Вы можете загружать до 10 фотографий за один раз.'),
-  'fill in your profile before creating albums': tr('Сначала заполните свою страницу.'),
   'fill in your profile before uploading photos': tr('Сначала заполните свою страницу.'),
   'partner not found': tr('Пользователь с таким никнеймом не найден.'),
   'you cannot name yourself in your relationship': tr('Нельзя указать в семейном положении себя.'),
@@ -2739,7 +2720,6 @@ const errorTexts = {
   'club website is not a link': tr('Укажите адрес сайта, например example.com.'),
   'the new owner must be an admin of the club': tr('Владельцем можно назначить только администратора группы.'),
   "this user's clubs are hidden": tr('Пользователь скрыл список своих групп.'),
-  "this user's photos are hidden": tr('Пользователь скрыл свои фотографии.'),
   "this user's gifts are hidden": tr('Пользователь скрыл свои подарки.'),
   'you cannot send a gift to this user': tr('Вы не можете отправить подарок этому пользователю.'),
   'fill in your profile before sending gifts': tr('Сначала заполните свою страницу.'),
@@ -3054,8 +3034,6 @@ const errorTexts = {
   'search query is empty': tr('Введите, что искать.'),
   'the comments are closed': tr('Комментарии к этой записи закрыты.'),
   'search query is too long': tr('Запрос длиннее 100 символов.'),
-  'this album is kept by the site': tr('Этот альбом сайт ведёт сам: его нельзя изменить.'),
-  'a photo moves between the albums of one owner': tr('Фотографию можно перенести только в другой альбом той же страницы.'),
   "this user's follows are hidden": tr('Пользователь скрыл список своих подписок.'),
   'this page is hidden': tr('Настройки приватности этого пользователя не разрешают вам смотреть на его страницу.'),
   'you cannot suggest posts here': tr('В эту группу нельзя предлагать записи.'),
@@ -3366,7 +3344,7 @@ export function messagePreview(m) {
 
   const { text, videos } = splitVideos(m.text);
   if (text) return plainMentions(text);
-  if (m.photos?.length || m.albumPhoto) return tr('Фотография');
+  if (m.photos?.length) return tr('Фотография');
   if (videos.length) return tr('Видеозапись');
   if (m.post) return tr('Запись');
   if (m.documentCount || m.documents?.length) return tr('Документ');
@@ -3457,7 +3435,7 @@ export function quoteText(q, text = q.text) {
 
   return messagePreview({
     deleted: q.deleted, sticker: q.sticker, text: text ? quoteSnippet(text) : '', photos: q.photoCount ? [q.id] : [],
-    albumPhoto: q.albumPhoto, post: q.post, documentCount: q.documentCount, audioCount: q.audioCount, forwardedCount: q.forwardedCount,
+    post: q.post, documentCount: q.documentCount, audioCount: q.audioCount, forwardedCount: q.forwardedCount,
   }) || tr('Сообщение');
 }
 
