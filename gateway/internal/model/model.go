@@ -239,10 +239,11 @@ type User struct {
 	PurgeAt     time.Time
 	About       About
 	Backdrop    Backdrop
-	// Completeness is "Заполненность страницы" in percent, Unfilled the
-	// parts missing ("interests", "email", "telegram", "status", "city").
+	// Completeness is the rating of the page ("Заполненность страницы"),
+	// in percent: how full it is plus the rating bought; Unfilled the
+	// blocks not filled in to the end, with what each would add.
 	Completeness int
-	Unfilled     []string
+	Unfilled     []Unfilled
 	Interface    Interface
 	// Votes is "Баланс": what the user has to pay for gifts with.
 	Votes int64
@@ -1428,11 +1429,20 @@ type Transferred struct {
 	Fee   int64
 }
 
-// RatingRaised is the votes and the rating the caller has after
-// "Повысить рейтинг".
+// Unfilled is a block of the page not filled in to the end: "photo",
+// "status", "main", "contacts" or "interests", and what it would add.
+type Unfilled struct {
+	Part    string
+	Percent int
+}
+
+// RatingRaised is what "Повысить рейтинг" leaves: the votes the caller
+// has, the rating bought of the page and its whole rating
+// (Completeness).
 type RatingRaised struct {
-	Balance int64
-	Rating  int
+	Balance      int64
+	Rating       int
+	Completeness int
 }
 
 // Bonus is the daily bonus of the caller: what it gives, whether it is

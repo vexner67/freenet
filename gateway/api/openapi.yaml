@@ -955,8 +955,9 @@ paths:
         order and case. The filters are the links of openvk's page: people of
         a hometown or a city (whatever the case), or who name a film, a show
         or a book among their favourites; `q` may be empty with a filter.
-        Only people with a filled-in profile are found. Newest accounts
-        first; page with `cursor` = `nextCursor`.
+        Only people with a filled-in profile are found. By their rating
+        (`completeness`), highest first, then the newest accounts; page with
+        `cursor` = `nextCursor`.
       parameters:
         - name: q
           in: query
@@ -4793,31 +4794,37 @@ paths:
   /api/v1/me/rating:
     post:
       summary: Raise your rating ("Повысить рейтинг")
-      description: '3 votes a percent, into the treasury; the rating goes up to 1000% at most: `the rating cannot go above 1000 percent` (409). Limited per user.'
+      description: 'A vote a percent, into the treasury; the rating with how full the page is goes up to 1000000000% at most: `the rating cannot go above 1000000000 percent` (409). Limited per user, together with raising the rating of others.'
       security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [percent]
-              properties:
-                percent: { type: integer, minimum: 1, maximum: 1000 }
+      requestBody: { $ref: "#/components/requestBodies/RatingRaise" }
       responses:
-        "200":
-          description: Raised
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [balance, rating]
-                properties:
-                  balance: { type: integer, format: int64, description: The votes you have now }
-                  rating: { type: integer, description: Your rating now, in percent }
+        "200": { $ref: "#/components/responses/RatingRaised" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/users/{nickname}/rating:
+    parameters:
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      summary: Raise the rating of a page with your votes ("Повысить рейтинг")
+      description: 'As `/me/rating`, for anyone''s page, your own too: not a deleted page and not across a blacklist, either way. Your statement names the page (`rating`, `peer`).'
+      security: [{ bearer: [] }]
+      requestBody: { $ref: "#/components/requestBodies/RatingRaise" }
+      responses:
+        "200": { $ref: "#/components/responses/RatingRaised" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "`this page is deleted` or `you cannot raise the rating of this user`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
@@ -9066,6 +9073,16 @@ components:
             additionalProperties: false
             properties:
               refreshToken: { type: string }
+    RatingRaise:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [percent]
+            properties:
+              percent: { type: integer, minimum: 1, maximum: 1000000000, description: How many percent to buy, a vote each }
 
   parameters:
     ArchiveYear:
@@ -9081,6 +9098,17 @@ components:
       schema: { type: string }
 
   responses:
+    RatingRaised:
+      description: Raised
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [balance, rating, completeness]
+            properties:
+              balance: { type: integer, format: int64, description: The votes you have now }
+              rating: { type: integer, description: The rating bought of the page now, in percent }
+              completeness: { type: integer, description: The rating of the page now, with how full it is, as its `completeness` }
     HoldemSeat:
       description: The table after your buy-in or payout and your balance; `table` is null when it closed as you left.
       content:
@@ -9479,7 +9507,7 @@ components:
             backdrop: { $ref: "#/components/schemas/Backdrop" }
             completeness:
               type: integer
-              description: '"Заполненность страницы" in percent, as openvk weighs it: interests, the e-mail and the city of the contacts 20 each, Telegram and the status 15 each, 10 always, and the rating vouchers gave on top, so it may pass 100'
+              description: 'The rating of the page ("Заполненность страницы"), in percent: how full it is, up to 100 (the photo 20, the status 5, the main information 25, the contacts 20, the interests 30, field by field), plus the rating bought, at most 1000000000'
             votes:
               type: integer
               description: '"Баланс": the votes you have, told by GET /api/v1/me; vouchers and transfers give them, paid gifts and transfers take them'
@@ -9514,8 +9542,17 @@ components:
                 - { type: "null" }
             unfilled:
               type: array
-              items: { type: string, enum: [interests, email, telegram, status, city] }
-              description: What is missing, for openvk's hints under the gauge
+              items: { type: string, enum: [photo, status, main, contacts, interests] }
+              description: The blocks not filled in to the end, for openvk's hints under the gauge
+            unfilledParts:
+              type: array
+              description: The blocks of `unfilled`, in the same order, with what filling each in would add
+              items:
+                type: object
+                required: [part, percent]
+                properties:
+                  part: { type: string, enum: [photo, status, main, contacts, interests] }
+                  percent: { type: integer, minimum: 1, maximum: 100 }
             interface: { $ref: "#/components/schemas/Interface" }
             pinnedClubs:
               type: array

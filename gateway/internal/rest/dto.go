@@ -273,10 +273,12 @@ type userResponse struct {
 	aboutJSON
 	// Backdrop is "Фон страницы", null for none.
 	Backdrop *backdropJSON `json:"backdrop"`
-	// Completeness is "Заполненность страницы" in percent, Unfilled what
-	// is missing for openvk's hints.
-	Completeness int      `json:"completeness"`
-	Unfilled     []string `json:"unfilled"`
+	// Completeness is the rating of the page ("Заполненность страницы")
+	// in percent; Unfilled the blocks not filled in to the end, for the
+	// hints, and UnfilledParts the same with what each would add.
+	Completeness  int            `json:"completeness"`
+	Unfilled      []string       `json:"unfilled"`
+	UnfilledParts []unfilledJSON `json:"unfilledParts"`
 	// Interface is how the site looks to the owner ("Интерфейс").
 	Interface interfaceJSON `json:"interface"`
 	// Votes is "Баланс"; Admin tells the one who makes the vouchers.
@@ -363,7 +365,8 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 		Backdrop:    toBackdropJSON(u.ID, u.Backdrop),
 
 		Completeness:   u.Completeness,
-		Unfilled:       append([]string{}, u.Unfilled...),
+		Unfilled:       unfilledNames(u.Unfilled),
+		UnfilledParts:  toUnfilledJSON(u.Unfilled),
 		Votes:          u.Votes,
 		Rating:         u.Rating,
 		Admin:          u.Admin,
@@ -484,4 +487,28 @@ func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
 
 		Completeness: p.Completeness,
 	}
+}
+
+// unfilledJSON is a block of the page not filled in to the end.
+type unfilledJSON struct {
+	Part    string `json:"part"`
+	Percent int    `json:"percent"`
+}
+
+func unfilledNames(unfilled []model.Unfilled) []string {
+	names := make([]string, 0, len(unfilled))
+	for _, u := range unfilled {
+		names = append(names, u.Part)
+	}
+
+	return names
+}
+
+func toUnfilledJSON(unfilled []model.Unfilled) []unfilledJSON {
+	out := make([]unfilledJSON, 0, len(unfilled))
+	for _, u := range unfilled {
+		out = append(out, unfilledJSON(u))
+	}
+
+	return out
 }

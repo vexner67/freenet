@@ -517,7 +517,7 @@ func (f *fakeUsers) UpdateStatus(_ context.Context, token, status string) (model
 	}
 	f.profile.Status = status
 	u := f.user()
-	u.Completeness, u.Unfilled = 85, []string{"telegram"}
+	u.Completeness, u.Unfilled = 85, []model.Unfilled{{Part: "contacts", Percent: 15}}
 	return u, nil
 }
 

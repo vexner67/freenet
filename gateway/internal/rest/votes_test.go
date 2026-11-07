@@ -25,9 +25,9 @@ func (f *fakeVotes) Transfer(_ context.Context, token, userID string, votes int6
 	return model.Transferred{Votes: 6, Fee: 1}, f.err
 }
 
-func (f *fakeVotes) RaiseRating(_ context.Context, token string, percent int) (model.RatingRaised, error) {
-	f.token, f.limit = token, percent
-	return model.RatingRaised{Balance: 85, Rating: percent}, f.err
+func (f *fakeVotes) RaiseRating(_ context.Context, token, userID string, percent int) (model.RatingRaised, error) {
+	f.token, f.userID, f.limit = token, userID, percent
+	return model.RatingRaised{Balance: 85, Rating: percent, Completeness: percent + 100}, f.err
 }
 
 func (f *fakeVotes) Statement(_ context.Context, token, cursor, flow string, limit int) (model.Statement, error) {
@@ -377,16 +377,36 @@ func TestRaiseRating(t *testing.T) {
 
 	h := newHarness(rest.Config{})
 	w := h.do("POST", "/api/v1/me/rating", `{"percent":5}`, "Authorization", "Bearer tok")
-	got := decode[struct {
-		Balance int64 `json:"balance"`
-		Rating  int   `json:"rating"`
-	}](t, w)
-	if w.Code != http.StatusOK || got.Balance != 85 || got.Rating != 5 || h.votes.limit != 5 || h.votes.token != "tok" {
+	type raised struct {
+		Balance      int64 `json:"balance"`
+		Rating       int   `json:"rating"`
+		Completeness int   `json:"completeness"`
+	}
+	got := decode[raised](t, w)
+	if w.Code != http.StatusOK || got.Balance != 85 || got.Rating != 5 || got.Completeness != 105 ||
+		h.votes.limit != 5 || h.votes.token != "tok" || h.votes.userID != "" {
 		t.Fatalf("%d %+v", w.Code, got)
 	}
 
+	// Another page's, by its address.
 	h = newHarness(rest.Config{})
-	h.votes.err = failure.New(failure.Conflict, "the rating cannot go above 1000 percent")
+	w = h.do("POST", "/api/v1/users/bob/rating", `{"percent":7}`, "Authorization", "Bearer tok")
+	if got = decode[raised](t, w); w.Code != http.StatusOK || got.Rating != 7 || h.votes.userID != "u2" || h.votes.limit != 7 {
+		t.Fatalf("of bob: %d %+v", w.Code, got)
+	}
+	if w = h.do("POST", "/api/v1/users/nobody/rating", `{"percent":7}`, "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
+		t.Fatalf("of nobody: %d", w.Code)
+	}
+	h.votes.err = failure.New(failure.PermissionDenied, "you cannot raise the rating of this user")
+	if w = h.do("POST", "/api/v1/users/bob/rating", `{"percent":7}`, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
+		t.Fatalf("across a blacklist: %d %s", w.Code, w.Body)
+	}
+	if w = newHarness(rest.Config{}).do("POST", "/api/v1/users/bob/rating", `{"percent":7}`); w.Code != http.StatusUnauthorized {
+		t.Fatalf("of bob without token: %d", w.Code)
+	}
+
+	h = newHarness(rest.Config{})
+	h.votes.err = failure.New(failure.Conflict, "the rating cannot go above 1000000000 percent")
 	if w = h.do("POST", "/api/v1/me/rating", `{"percent":5}`, "Authorization", "Bearer tok"); w.Code != http.StatusConflict {
 		t.Fatalf("past the limit: %d %s", w.Code, w.Body)
 	}

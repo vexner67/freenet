@@ -33,17 +33,21 @@ func (v *Votes) Transfer(ctx context.Context, accessToken, userID string, votes 
 	return model.Transferred{Votes: resp.GetVotes(), Fee: resp.GetFee()}, nil
 }
 
-func (v *Votes) RaiseRating(ctx context.Context, accessToken string, percent int) (model.RatingRaised, error) {
+// RaiseRating raises the rating of the page of userID, "" for the
+// caller's own.
+func (v *Votes) RaiseRating(ctx context.Context, accessToken, userID string, percent int) (model.RatingRaised, error) {
 	if percent < 0 || percent > math.MaxInt32 {
-		return model.RatingRaised{}, failure.New(failure.InvalidArgument, "the rating is raised by 1 to 1000 percent")
+		return model.RatingRaised{}, failure.New(failure.InvalidArgument, "the rating is raised by 1 to 1000000000 percent")
 	}
 
-	resp, err := v.api.RaiseRating(withToken(ctx, accessToken), &userv1.RaiseRatingRequest{Percent: int32(percent)})
+	resp, err := v.api.RaiseRating(withToken(ctx, accessToken), &userv1.RaiseRatingRequest{Percent: int32(percent), UserId: userID})
 	if err != nil {
-		return model.RatingRaised{}, errs.Wrap("v.api.RaiseRating", fromStatus(err))
+		// Why the user service refuses another's page is its to say, as
+		// with transfers.
+		return model.RatingRaised{}, errs.Wrap("v.api.RaiseRating", giftRefusal(err))
 	}
 
-	return model.RatingRaised{Balance: resp.GetBalance(), Rating: int(resp.GetRating())}, nil
+	return model.RatingRaised{Balance: resp.GetBalance(), Rating: int(resp.GetRating()), Completeness: int(resp.GetCompleteness())}, nil
 }
 
 func (v *Votes) Statement(ctx context.Context, accessToken, cursor, flow string, limit int) (model.Statement, error) {

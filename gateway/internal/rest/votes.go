@@ -419,31 +419,59 @@ func (a *api) claimBonus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, claimedBonusJSON{Votes: claimed.Votes, Balance: claimed.Balance})
 }
 
+// raiseRatingRequest is how many percent to raise a rating by.
+type raiseRatingRequest struct {
+	Percent int `json:"percent"`
+}
+
+// ratingRaisedJSON is what "Повысить рейтинг" leaves: the votes of the
+// caller, the rating bought of the page and its whole rating.
+type ratingRaisedJSON struct {
+	Balance      int64 `json:"balance"`
+	Rating       int   `json:"rating"`
+	Completeness int   `json:"completeness"`
+}
+
 // raiseRating is "Повысить рейтинг": votes of the caller into the
-// treasury, percent of rating in return.
+// treasury, percent of rating of their page in return.
 func (a *api) raiseRating(w http.ResponseWriter, r *http.Request) {
+	a.raise(w, r, false)
+}
+
+// raiseRatingOf is "Повысить рейтинг" of the page of another, or of
+// one's own by its address, for the caller's votes.
+func (a *api) raiseRatingOf(w http.ResponseWriter, r *http.Request) {
+	a.raise(w, r, true)
+}
+
+func (a *api) raise(w http.ResponseWriter, r *http.Request, ofPage bool) {
 	token, err := bearerToken(r)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	var req struct {
-		Percent int `json:"percent"`
-	}
+	var req raiseRatingRequest
 	if err = decode(w, r, &req); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	raised, err := a.votes.RaiseRating(r.Context(), token, req.Percent)
+	userID := ""
+	if ofPage {
+		page, err := a.users.GetProfile(r.Context(), token, r.PathValue("nickname"))
+		if err != nil {
+			a.writeError(w, r, err)
+			return
+		}
+		userID = page.ID
+	}
+
+	raised, err := a.votes.RaiseRating(r.Context(), token, userID, req.Percent)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, struct {
-		Balance int64 `json:"balance"`
-		Rating  int   `json:"rating"`
-	}{raised.Balance, raised.Rating})
+	writeJSON(w, http.StatusOK, ratingRaisedJSON(raised))
 }

@@ -492,8 +492,9 @@ type Votes interface {
 	// caller has left and the fee paid on top.
 	// The note goes with the transfer to both statements.
 	Transfer(ctx context.Context, accessToken, userID string, votes int64, note string) (model.Transferred, error)
-	// RaiseRating is "Повысить рейтинг": percent of rating for votes.
-	RaiseRating(ctx context.Context, accessToken string, percent int) (model.RatingRaised, error)
+	// RaiseRating is "Повысить рейтинг": percent of rating for votes, of
+	// the page of userID or, with "", the caller's own.
+	RaiseRating(ctx context.Context, accessToken, userID string, percent int) (model.RatingRaised, error)
 	// Statement is the caller's statement of votes: flow "in", "out" or
 	// empty for both.
 	Statement(ctx context.Context, accessToken, cursor, flow string, limit int) (model.Statement, error)
@@ -900,6 +901,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/treasury", a.treasury)
 	mux.HandleFunc("PUT /api/v1/economy", a.setEconomy)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/votes", a.transferVotes)
+	mux.HandleFunc("POST /api/v1/users/{nickname}/rating", a.raiseRatingOf)
 	mux.HandleFunc("GET /api/v1/vouchers", a.listVouchers)
 	mux.HandleFunc("POST /api/v1/vouchers", a.createVoucher)
 	mux.HandleFunc("DELETE /api/v1/vouchers/{id}", a.deleteVoucher)

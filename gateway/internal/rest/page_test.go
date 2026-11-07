@@ -18,11 +18,16 @@ func TestUpdateStatus(t *testing.T) {
 
 	w := h.do("PUT", "/api/v1/me/status", `{"status":"Привет"}`, "Authorization", "Bearer tok")
 	got := decode[struct {
-		Status       string   `json:"status"`
-		Completeness int      `json:"completeness"`
-		Unfilled     []string `json:"unfilled"`
+		Status        string   `json:"status"`
+		Completeness  int      `json:"completeness"`
+		Unfilled      []string `json:"unfilled"`
+		UnfilledParts []struct {
+			Part    string `json:"part"`
+			Percent int    `json:"percent"`
+		} `json:"unfilledParts"`
 	}](t, w)
-	if w.Code != http.StatusOK || got.Status != "Привет" || got.Completeness != 85 || !slices.Equal(got.Unfilled, []string{"telegram"}) {
+	if w.Code != http.StatusOK || got.Status != "Привет" || got.Completeness != 85 || !slices.Equal(got.Unfilled, []string{"contacts"}) ||
+		len(got.UnfilledParts) != 1 || got.UnfilledParts[0].Part != "contacts" || got.UnfilledParts[0].Percent != 15 {
 		t.Fatalf("%d %+v", w.Code, got)
 	}
 

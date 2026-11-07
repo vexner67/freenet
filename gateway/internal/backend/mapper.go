@@ -186,7 +186,7 @@ func toUser(u *userv1.User) model.User {
 		Deactivated:      u.GetDeactivated(),
 		Backdrop:         model.Backdrop{Left: u.GetBackdropLeft(), Right: u.GetBackdropRight(), Cover: u.GetBackdropCover()},
 		Completeness:     int(u.GetCompleteness()),
-		Unfilled:         u.GetUnfilled(),
+		Unfilled:         toUnfilled(u.GetUnfilledParts()),
 		Votes:            u.GetVotes(),
 		Rating:           int(u.GetRating()),
 		Admin:            u.GetAdmin(),
@@ -295,4 +295,13 @@ func toShownPrimeStyle(s *userv1.PrimeStyle) *model.PrimeStyle {
 	style := toPrimeStyle(s)
 
 	return &style
+}
+
+func toUnfilled(parts []*userv1.UnfilledPart) []model.Unfilled {
+	out := make([]model.Unfilled, 0, len(parts))
+	for _, p := range parts {
+		out = append(out, model.Unfilled{Part: p.GetPart(), Percent: int(p.GetPercent())})
+	}
+
+	return out
 }
