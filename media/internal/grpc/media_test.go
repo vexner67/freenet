@@ -183,6 +183,18 @@ func TestPhotos(t *testing.T) {
 		t.Fatalf("small photo: %v %s %v; a photo keeps its proportions", cfg, format, err)
 	}
 
+	// A photo behind a whole page keeps its 1600 px; another is cut to 1280.
+	for wide, want := range map[bool]int{false: 1280, true: 1600} {
+		resp, err := s.client.UploadPhoto(s.as(t, ann), &mediav1.UploadPhotoRequest{Image: picture.Bytes(), Wide: wide})
+		if err != nil {
+			t.Fatalf("UploadPhoto wide %v: %v", wide, err)
+		}
+		large, err := s.client.GetPhoto(context.Background(), &mediav1.GetPhotoRequest{UserId: ann.String(), PhotoId: resp.GetPhotoId(), Size: mediav1.PhotoSize_PHOTO_SIZE_LARGE})
+		if cfg, _, decodeErr := image.DecodeConfig(bytes.NewReader(large.GetImage())); err != nil || decodeErr != nil || cfg.Width != want {
+			t.Fatalf("large of wide %v: %v, %v, %v", wide, cfg, err, decodeErr)
+		}
+	}
+
 	// The same IDs under bob are not his.
 	stranger := uuid.NewString()
 	if got, err := s.client.ClaimPhotos(s.as(t, ann), &mediav1.ClaimPhotosRequest{PhotoIds: append(ids[:2:2], stranger)}); err != nil || got.GetClaimed() {

@@ -23,6 +23,7 @@ type AvatarService interface {
 
 type PhotoService interface {
 	Upload(ctx context.Context, ownerID uuid.UUID, data []byte) (uuid.UUID, error)
+	UploadWide(ctx context.Context, ownerID uuid.UUID, data []byte) (uuid.UUID, error)
 	Get(ctx context.Context, ownerID, photoID uuid.UUID, size photo.Size) ([]byte, error)
 	Claim(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) (bool, error)
 	Release(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
@@ -249,7 +250,12 @@ func (h *MediaHandler) UploadPhoto(ctx context.Context, req *mediav1.UploadPhoto
 		return nil, err
 	}
 
-	id, err := h.photos.Upload(ctx, ownerID, req.GetImage())
+	upload := h.photos.Upload
+	if req.GetWide() {
+		upload = h.photos.UploadWide
+	}
+
+	id, err := upload(ctx, ownerID, req.GetImage())
 	if err != nil {
 		return nil, err
 	}

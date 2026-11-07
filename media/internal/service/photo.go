@@ -94,6 +94,20 @@ func (s *PhotoService) Upload(ctx context.Context, ownerID uuid.UUID, data []byt
 		return uuid.Nil, errs.Wrap("photo.Make", err)
 	}
 
+	return s.save(ctx, ownerID, images)
+}
+
+// UploadWide is Upload of a photo behind a whole page, kept larger.
+func (s *PhotoService) UploadWide(ctx context.Context, ownerID uuid.UUID, data []byte) (uuid.UUID, error) {
+	images, err := photo.MakeWide(data)
+	if err != nil {
+		return uuid.Nil, errs.Wrap("photo.MakeWide", err)
+	}
+
+	return s.save(ctx, ownerID, images)
+}
+
+func (s *PhotoService) save(ctx context.Context, ownerID uuid.UUID, images photo.Images) (uuid.UUID, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return uuid.Nil, errs.Wrap("uuid.NewV7", err)
@@ -208,8 +222,8 @@ type PhotoCopy struct {
 	To   uuid.UUID
 }
 
-// Copy keeps photos of the owner once more: those of a post in an album,
-// which outlive the post.
+// Copy keeps photos of the owner once more: those of a forwarded message,
+// which outlive the message.
 func (s *PhotoService) Copy(ctx context.Context, ownerID uuid.UUID, copies []PhotoCopy) error {
 	if len(copies) > MaxPhotoIDs {
 		return ErrTooManyPhotoIDs

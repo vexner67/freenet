@@ -76,6 +76,22 @@ func TestMake(t *testing.T) {
 	}
 }
 
+func TestMakeWide(t *testing.T) {
+	t.Parallel()
+
+	images, err := photo.MakeWide(encodePNG(t, 3840, 2160))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if w, h := size(t, images.Of(photo.Large)); w != 2560 || h != 1440 {
+		t.Fatalf("large = %dx%d, want 2560x1440", w, h)
+	}
+	if w, h := size(t, images.Of(photo.Small)); w != 640 || h != 360 {
+		t.Fatalf("small = %dx%d, want 640x360", w, h)
+	}
+}
+
 func TestMake_Rejects(t *testing.T) {
 	t.Parallel()
 

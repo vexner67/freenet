@@ -13,6 +13,9 @@ const (
 	// high-density screens.
 	largeSide = 1280
 	smallSide = 640
+	// wideSide is the large photo behind a whole page: sharp on a wide
+	// screen, where 1280 would be blown up.
+	wideSide = 2560
 )
 
 // Size is which of the stored photos to read.
@@ -42,6 +45,16 @@ func (i Images) Of(size Size) []byte {
 // Make scales an upload to both sizes, keeping its proportions: unlike an
 // avatar, a photo is shown whole.
 func Make(data []byte) (Images, error) {
+	return scaled(data, largeSide)
+}
+
+// MakeWide is Make for a photo behind a whole page, its large photo twice
+// as big.
+func MakeWide(data []byte) (Images, error) {
+	return scaled(data, wideSide)
+}
+
+func scaled(data []byte, largeSide int) (Images, error) {
 	img, err := imaging.Decode(data)
 	if err != nil {
 		return Images{}, err

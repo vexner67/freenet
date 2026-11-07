@@ -55,10 +55,9 @@ service MediaService {
   // (they go). Idempotent; missing photos are fine.
   rpc PublishPhotos(PublishPhotosRequest) returns (google.protobuf.Empty);
   rpc DeletePublishedPhotos(DeletePublishedPhotosRequest) returns (google.protobuf.Empty);
-  // Internal, for post and message: published photos of owner_id are kept
-  // once more under new IDs, as the photos of a post in "Фотографии со
-  // стены" or of a forwarded message, so that the copy outlives the post
-  // or the message. Idempotent; missing photos are fine.
+  // Internal, for message: published photos of owner_id are kept once
+  // more under new IDs, as the photos of a forwarded message, so that the
+  // copy outlives the message. Idempotent; missing photos are fine.
   rpc CopyPhotos(CopyPhotosRequest) returns (google.protobuf.Empty);
 
   // Require an access token; the document belongs to the caller. It is
@@ -163,6 +162,9 @@ message GetAvatarResponse {
 message UploadPhotoRequest {
   // JPEG, PNG, GIF or WebP, at most 8 MB.
   bytes image = 1;
+  // A photo behind a whole page: the large one is kept up to 2560 px
+  // instead of 1280.
+  bool wide = 2;
 }
 
 message UploadPhotoResponse {

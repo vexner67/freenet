@@ -683,7 +683,10 @@ func (x *GetAvatarResponse) GetImage() []byte {
 type UploadPhotoRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// JPEG, PNG, GIF or WebP, at most 8 MB.
-	Image         []byte `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
+	Image []byte `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
+	// A photo behind a whole page: the large one is kept up to 2560 px
+	// instead of 1280.
+	Wide          bool `protobuf:"varint,2,opt,name=wide,proto3" json:"wide,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -723,6 +726,13 @@ func (x *UploadPhotoRequest) GetImage() []byte {
 		return x.Image
 	}
 	return nil
+}
+
+func (x *UploadPhotoRequest) GetWide() bool {
+	if x != nil {
+		return x.Wide
+	}
+	return false
 }
 
 type UploadPhotoResponse struct {
@@ -1772,9 +1782,10 @@ const file_api_media_v1_media_proto_rawDesc = "" +
 	"\tavatar_id\x18\x02 \x01(\tR\bavatarId\x12(\n" +
 	"\x04size\x18\x03 \x01(\x0e2\x14.media.v1.AvatarSizeR\x04size\")\n" +
 	"\x11GetAvatarResponse\x12\x14\n" +
-	"\x05image\x18\x01 \x01(\fR\x05image\"*\n" +
+	"\x05image\x18\x01 \x01(\fR\x05image\">\n" +
 	"\x12UploadPhotoRequest\x12\x14\n" +
-	"\x05image\x18\x01 \x01(\fR\x05image\"0\n" +
+	"\x05image\x18\x01 \x01(\fR\x05image\x12\x12\n" +
+	"\x04wide\x18\x02 \x01(\bR\x04wide\"0\n" +
 	"\x13UploadPhotoResponse\x12\x19\n" +
 	"\bphoto_id\x18\x01 \x01(\tR\aphotoId\"1\n" +
 	"\x12ClaimPhotosRequest\x12\x1b\n" +
