@@ -27,14 +27,16 @@ type UserRepository interface {
 	// case, as their owners write them and in no particular order.
 	Nicknames(ctx context.Context, nicknames []user.Nickname) ([]user.KnownNickname, error)
 	// Search finds users with a filled-in profile matching q, but deleted
-	// pages, newest first, with IDs below before (uuid.Nil: from the newest).
-	Search(ctx context.Context, q user.SearchQuery, before uuid.UUID, limit int) ([]*user.User, error)
+	// pages, by their rating, highest first, then newest first, after the
+	// cursor (zero: from the top).
+	Search(ctx context.Context, q user.SearchQuery, after user.SearchCursor, limit int) ([]*user.User, error)
 }
 
-// SearchPage is one screen of search results; NextCursor is uuid.Nil on the last.
+// SearchPage is one screen of search results; NextCursor is zero on the
+// last.
 type SearchPage struct {
 	Users      []user.PublicProfile
-	NextCursor uuid.UUID
+	NextCursor user.SearchCursor
 }
 
 type UserService struct {
@@ -278,7 +280,7 @@ func (s *UserService) SetAvatar(ctx context.Context, id, avatarID uuid.UUID) (*u
 	return u, nil
 }
 
-func (s *UserService) Search(ctx context.Context, q user.SearchQuery, cursor uuid.UUID, size int) (SearchPage, error) {
+func (s *UserService) Search(ctx context.Context, q user.SearchQuery, cursor user.SearchCursor, size int) (SearchPage, error) {
 	if size <= 0 || size > MaxPageSize {
 		size = DefaultPageSize
 	}
@@ -293,7 +295,7 @@ func (s *UserService) Search(ctx context.Context, q user.SearchQuery, cursor uui
 
 	if len(found) > size {
 		found = found[:size]
-		page.NextCursor = found[size-1].ID()
+		page.NextCursor = user.CursorOf(found[size-1])
 	}
 
 	page.Users = make([]user.PublicProfile, 0, len(found))

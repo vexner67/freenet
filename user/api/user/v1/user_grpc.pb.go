@@ -413,8 +413,10 @@ type UserServiceClient interface {
 	ClaimBonus(ctx context.Context, in *ClaimBonusRequest, opts ...grpc.CallOption) (*ClaimBonusResponse, error)
 	SetEconomy(ctx context.Context, in *SetEconomyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// RaiseRating sells the caller rating ("Повысить рейтинг" of openvk) for
-	// 3 votes a percent, into the treasury: FailedPrecondition "not enough
-	// votes" and "the rating cannot go above 1000 percent".
+	// a vote a percent, into the treasury, for their own page or another's:
+	// FailedPrecondition "not enough votes" and "the rating cannot go above
+	// 1000000000 percent", PermissionDenied for a deleted page or across a
+	// blacklist.
 	RaiseRating(ctx context.Context, in *RaiseRatingRequest, opts ...grpc.CallOption) (*RaiseRatingResponse, error)
 	// Freenet Prime, the subscription of the site. GetPrime is public: what
 	// its periods cost. BuyPrime sells the caller a period, for themself or
@@ -2876,8 +2878,10 @@ type UserServiceServer interface {
 	ClaimBonus(context.Context, *ClaimBonusRequest) (*ClaimBonusResponse, error)
 	SetEconomy(context.Context, *SetEconomyRequest) (*emptypb.Empty, error)
 	// RaiseRating sells the caller rating ("Повысить рейтинг" of openvk) for
-	// 3 votes a percent, into the treasury: FailedPrecondition "not enough
-	// votes" and "the rating cannot go above 1000 percent".
+	// a vote a percent, into the treasury, for their own page or another's:
+	// FailedPrecondition "not enough votes" and "the rating cannot go above
+	// 1000000000 percent", PermissionDenied for a deleted page or across a
+	// blacklist.
 	RaiseRating(context.Context, *RaiseRatingRequest) (*RaiseRatingResponse, error)
 	// Freenet Prime, the subscription of the site. GetPrime is public: what
 	// its periods cost. BuyPrime sells the caller a period, for themself or

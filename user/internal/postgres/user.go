@@ -985,13 +985,15 @@ func timeFromDB(t *time.Time) time.Time {
 	return t.UTC()
 }
 
-// searchUsersSelect is completed by searchUsersQuery with one LIKE per word.
+// searchUsersSelect is completed by searchUsersQuery with one LIKE per
+// word; score is the rating of the page (Completeness), as
+// users_score_idx keeps it.
 const searchUsersSelect = `
 	SELECT` + userColumns + `
 	FROM users
 	WHERE nickname <> ''
 		AND deactivated_at IS NULL
-		AND id < $1`
+		AND (score, id) < ($1, $2)`
 
 // searchHaystack must match the expression of users_search_idx exactly,
 // or the trigram index is not used.
@@ -1059,20 +1061,21 @@ func searchUsersQuery(conds []searchCondition) string {
 	b.WriteString(searchUsersSelect)
 	for i, c := range conds {
 		b.WriteString("\n\t\tAND ")
-		fmt.Fprintf(&b, c.sql, i+3)
+		fmt.Fprintf(&b, c.sql, i+4)
 	}
-	b.WriteString("\n\tORDER BY id DESC\n\tLIMIT $2")
+	b.WriteString("\n\tORDER BY score DESC, id DESC\n\tLIMIT $3")
 
 	return b.String()
 }
 
-func (r *UserRepository) Search(ctx context.Context, q user.SearchQuery, before uuid.UUID, limit int) ([]*user.User, error) {
-	if before == uuid.Nil {
-		before = uuid.Max
+func (r *UserRepository) Search(ctx context.Context, q user.SearchQuery, after user.SearchCursor, limit int) ([]*user.User, error) {
+	// The zero cursor starts above every page.
+	if after == (user.SearchCursor{}) {
+		after = user.SearchCursor{Rating: user.MaxRating + 1, ID: uuid.Max}
 	}
 
 	conds := searchConditions(q)
-	args := []any{before, limit}
+	args := []any{after.Rating, after.ID, limit}
 	for _, c := range conds {
 		args = append(args, c.param)
 	}

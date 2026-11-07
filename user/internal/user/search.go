@@ -1,10 +1,14 @@
 package user
 
 import (
+	"bytes"
+	"cmp"
 	"errors"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -122,4 +126,34 @@ func (q SearchQuery) Matches(u *User, now time.Time) bool {
 
 	return same(f.Hometown, u.profile.Hometown.String()) && same(f.City, u.contacts.City.String()) &&
 		names(f.Film, u.interests.Films) && names(f.Show, u.interests.Shows) && names(f.Book, u.interests.Books)
+}
+
+// SearchCursor is where a page of the search ended: the rating of its last
+// person and their ID. People come by their rating, highest first, then
+// newest first; the zero cursor starts at the top.
+type SearchCursor struct {
+	Rating int
+	ID     uuid.UUID
+}
+
+// CursorOf is the cursor that ends a page at u.
+func CursorOf(u *User) SearchCursor {
+	rating, _ := u.Completeness()
+
+	return SearchCursor{Rating: rating, ID: u.id}
+}
+
+// Passed tells whether u comes after the cursor.
+func (c SearchCursor) Passed(u *User) bool {
+	return c == SearchCursor{} || CompareSearch(CursorOf(u), c) > 0
+}
+
+// CompareSearch orders two places of the search: negative when a comes
+// first.
+func CompareSearch(a, b SearchCursor) int {
+	if a.Rating != b.Rating {
+		return cmp.Compare(b.Rating, a.Rating)
+	}
+
+	return bytes.Compare(b.ID[:], a.ID[:])
 }

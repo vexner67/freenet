@@ -304,6 +304,8 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, user.ErrPrimePriceInvalid.Error()), true
 	case errors.Is(err, user.ErrRatingLimit):
 		return status.New(codes.FailedPrecondition, user.ErrRatingLimit.Error()), true
+	case errors.Is(err, user.ErrRatingRefused):
+		return status.New(codes.PermissionDenied, user.ErrRatingRefused.Error()), true
 	case errors.Is(err, user.ErrBonusTaken):
 		return status.New(codes.FailedPrecondition, user.ErrBonusTaken.Error()), true
 	case errors.Is(err, user.ErrBonusNotYet):

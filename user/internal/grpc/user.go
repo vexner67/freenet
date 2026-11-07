@@ -3,6 +3,8 @@ package grpc
 import (
 	"context"
 	"log/slog"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,7 +29,7 @@ type UserService interface {
 	UpdatePrivacy(ctx context.Context, id uuid.UUID, privacy user.Privacy) (*user.User, error)
 	GetPublicProfiles(ctx context.Context, ids []uuid.UUID) ([]user.PublicProfile, error)
 	SetAvatar(ctx context.Context, id, avatarID uuid.UUID) (*user.User, error)
-	Search(ctx context.Context, q user.SearchQuery, cursor uuid.UUID, size int) (service.SearchPage, error)
+	Search(ctx context.Context, q user.SearchQuery, cursor user.SearchCursor, size int) (service.SearchPage, error)
 	KnownNicknames(ctx context.Context, nicknames []user.Nickname) ([]user.KnownNickname, error)
 }
 
@@ -450,11 +452,9 @@ func (h *UserHandler) SearchUsers(ctx context.Context, req *userv1.SearchUsersRe
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	var cursor uuid.UUID
-	if req.GetCursor() != "" {
-		if cursor, err = parseID(req.GetCursor(), "cursor"); err != nil {
-			return nil, err
-		}
+	cursor, err := parseSearchCursor(req.GetCursor())
+	if err != nil {
+		return nil, err
 	}
 
 	page, err := h.userService.Search(ctx, q, cursor, int(req.GetLimit()))
@@ -467,9 +467,34 @@ func (h *UserHandler) SearchUsers(ctx context.Context, req *userv1.SearchUsersRe
 		resp.Users = append(resp.Users, toProtoPublicProfile(p))
 	}
 
-	if page.NextCursor != uuid.Nil {
-		resp.NextCursor = page.NextCursor.String()
+	if page.NextCursor != (user.SearchCursor{}) {
+		resp.NextCursor = formatSearchCursor(page.NextCursor)
 	}
 
 	return resp, nil
+}
+
+// formatSearchCursor writes a place of the search as "<rating>_<id>".
+func formatSearchCursor(c user.SearchCursor) string {
+	return strconv.Itoa(c.Rating) + "_" + c.ID.String()
+}
+
+// parseSearchCursor reads formatSearchCursor; "" is the top.
+func parseSearchCursor(s string) (user.SearchCursor, error) {
+	if s == "" {
+		return user.SearchCursor{}, nil
+	}
+
+	rating, id, ok := strings.Cut(s, "_")
+	n, err := strconv.Atoi(rating)
+	if !ok || err != nil || n < 0 || n > user.MaxRating {
+		return user.SearchCursor{}, status.Error(codes.InvalidArgument, "invalid cursor")
+	}
+
+	parsed, err := parseID(id, "cursor")
+	if err != nil {
+		return user.SearchCursor{}, err
+	}
+
+	return user.SearchCursor{Rating: n, ID: parsed}, nil
 }

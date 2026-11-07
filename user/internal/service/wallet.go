@@ -420,41 +420,83 @@ func (s *WalletService) ClaimBonus(ctx context.Context, userID uuid.UUID, now ti
 	return claimed, nil
 }
 
-// RaiseRating sells userID the percent of rating ("Повысить рейтинг" of
-// openvk) for user.RatingPrice a percent, into the treasury, and returns
-// the wallet after it; user.ErrNotEnoughVotes, user.ErrRatingLimit.
-func (s *WalletService) RaiseRating(ctx context.Context, userID uuid.UUID, raise user.RatingRaise) (user.Wallet, error) {
-	u, err := s.userRepo.GetByID(ctx, userID)
+// RatingRaised is what "Повысить рейтинг" leaves: the votes of the payer
+// and the rating bought of the page with its whole rating now.
+type RatingRaised struct {
+	Balance      int64
+	Rating       int
+	Completeness int
+}
+
+// RaiseRating sells payerID the percent of rating ("Повысить рейтинг" of
+// openvk) of their own page or of pageID's, user.RatingPrice a percent,
+// into the treasury; user.ErrNotEnoughVotes, user.ErrRatingLimit and what
+// User.CheckRatingFrom refuses.
+func (s *WalletService) RaiseRating(ctx context.Context, payerID, pageID uuid.UUID, raise user.RatingRaise) (RatingRaised, error) {
+	page, err := s.ratedPage(ctx, payerID, pageID)
 	if err != nil {
-		return user.Wallet{}, errs.Wrap("s.userRepo.GetByID", err)
+		return RatingRaised{}, errs.Wrap("s.ratedPage", err)
 	}
 
 	// Refused before the votes go; the statement that raises the rating
 	// checks it again.
-	most := u.RatingMost()
-	if u.Wallet().Rating+raise.Int() > most {
-		return user.Wallet{}, user.ErrRatingLimit
+	most := page.RatingMost()
+	if page.Wallet().Rating+raise.Int() > most {
+		return RatingRaised{}, user.ErrRatingLimit
 	}
 
-	var wallet user.Wallet
+	// The statement of the payer names the page raised, if another's.
+	peer := uuid.Nil
+	if pageID != payerID {
+		peer = pageID
+	}
+
+	var raised RatingRaised
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		// The rating goes after the votes: refused, it leaves nothing
 		// raised even where no transaction rolls back (inmem).
-		if _, err := s.wallets.Spend(ctx, userID, raise.Cost(),
-			user.Entry(user.VoteRating, uuid.Nil, strconv.Itoa(raise.Int()))); err != nil {
+		raised.Balance, err = s.wallets.Spend(ctx, payerID, raise.Cost(),
+			user.Entry(user.VoteRating, peer, strconv.Itoa(raise.Int())))
+		if err != nil {
 			return errs.Wrap("s.wallets.Spend", err)
 		}
 
-		wallet, err = s.wallets.RaiseRating(ctx, userID, raise.Int(), most)
+		wallet, err := s.wallets.RaiseRating(ctx, pageID, raise.Int(), most)
+		if err != nil {
+			return errs.Wrap("s.wallets.RaiseRating", err)
+		}
 
-		return errs.Wrap("s.wallets.RaiseRating", err)
+		raised.Rating = wallet.Rating
+		raised.Completeness, _ = page.WithWallet(wallet).Completeness()
+
+		return nil
 	})
 	if err != nil {
-		return user.Wallet{}, errs.Wrap("s.tx.WithinTx", err)
+		return RatingRaised{}, errs.Wrap("s.tx.WithinTx", err)
 	}
 
-	return wallet, nil
+	return raised, nil
+}
+
+// ratedPage is the page payerID raises the rating of, if they may.
+func (s *WalletService) ratedPage(ctx context.Context, payerID, pageID uuid.UUID) (*user.User, error) {
+	if pageID == payerID {
+		page, err := s.userRepo.GetByID(ctx, pageID)
+
+		return page, errs.Wrap("s.userRepo.GetByID", err)
+	}
+
+	page, ties, err := s.permissions.ties(ctx, payerID, pageID)
+	if err != nil {
+		return nil, errs.Wrap("s.permissions.ties", err)
+	}
+
+	if err = page.CheckRatingFrom(payerID, ties); err != nil {
+		return nil, errs.Wrap("page.CheckRatingFrom", err)
+	}
+
+	return page, nil
 }
 
 // ListVouchers pages every voucher, newest first; user.ErrNotAdmin.

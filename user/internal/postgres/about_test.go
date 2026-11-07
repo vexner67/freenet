@@ -80,7 +80,7 @@ func TestUserRepository_About(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		found, err := repo.Search(ctx, q, uuid.Nil, 10)
+		found, err := repo.Search(ctx, q, user.SearchCursor{}, 10)
 		if err != nil || len(found) != 1 || found[0].ID() != ann.ID() {
 			t.Fatalf("Search(%+v) = %v, %v", f, found, err)
 		}

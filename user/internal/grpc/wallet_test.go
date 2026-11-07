@@ -91,11 +91,11 @@ func TestVouchersAndVotes(t *testing.T) {
 
 	// The rating shows on the page, the votes only to their owner.
 	me, err := s.client.GetMe(ann, &userv1.GetMeRequest{})
-	if err != nil || me.GetUser().GetVotes() != 10 || me.GetUser().GetCompleteness() != 40 {
+	if err != nil || me.GetUser().GetVotes() != 10 || me.GetUser().GetCompleteness() != 30 {
 		t.Fatalf("ann's GetMe = %v, %v", me, err)
 	}
 	page, err := s.client.GetProfile(bob, &userv1.GetProfileRequest{Nickname: "ann"})
-	if err != nil || page.GetProfile().GetCompleteness() != 40 {
+	if err != nil || page.GetProfile().GetCompleteness() != 30 {
 		t.Fatalf("ann's page = %v, %v", page, err)
 	}
 

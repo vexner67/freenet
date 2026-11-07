@@ -24,14 +24,14 @@ func TestSearchUsersQuery(t *testing.T) {
 	sql := searchUsersQuery(conds)
 
 	for _, want := range []string{
-		"AND id < $1", searchHaystack + " LIKE $3", searchHaystack + " LIKE $4",
-		"info_read = $5", "lower(city) = $6", "lower(fav_films) LIKE $7", "LIMIT $2",
+		"AND (score, id) < ($1, $2)", searchHaystack + " LIKE $4", searchHaystack + " LIKE $5",
+		"info_read = $6", "lower(city) = $7", "lower(fav_films) LIKE $8", "ORDER BY score DESC, id DESC", "LIMIT $3",
 	} {
 		if !strings.Contains(sql, want) {
 			t.Fatalf("query lacks %q:\n%s", want, sql)
 		}
 	}
-	if strings.Contains(sql, "$8") || strings.Contains(sql, "LIKE ALL") {
+	if strings.Contains(sql, "$9") || strings.Contains(sql, "LIKE ALL") {
 		t.Fatalf("one condition per word and filter:\n%s", sql)
 	}
 	if conds[2].param != "everyone" || conds[3].param != "москва" || conds[4].param != `%50\%%` {

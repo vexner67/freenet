@@ -1,7 +1,6 @@
 package inmem
 
 import (
-	"bytes"
 	"context"
 	"slices"
 	"strings"
@@ -250,7 +249,7 @@ func (r *UserRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*user
 	return found, nil
 }
 
-func (r *UserRepository) Search(ctx context.Context, q user.SearchQuery, before uuid.UUID, limit int) ([]*user.User, error) {
+func (r *UserRepository) Search(ctx context.Context, q user.SearchQuery, after user.SearchCursor, limit int) ([]*user.User, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
 	}
@@ -259,16 +258,15 @@ func (r *UserRepository) Search(ctx context.Context, q user.SearchQuery, before 
 	defer r.mu.RUnlock()
 
 	var found []*user.User
-	for id, u := range r.users {
-		if u.IsProfileCompleted() && !u.IsDeactivated() && q.Matches(&u, time.Now()) && (before == uuid.Nil || bytes.Compare(id[:], before[:]) < 0) {
+	for _, u := range r.users {
+		if u.IsProfileCompleted() && !u.IsDeactivated() && q.Matches(&u, time.Now()) && after.Passed(&u) {
 			found = append(found, &u)
 		}
 	}
 
-	// Newest first, as in PostgreSQL.
+	// By the rating, then newest first, as in PostgreSQL.
 	slices.SortFunc(found, func(a, b *user.User) int {
-		ai, bi := a.ID(), b.ID()
-		return bytes.Compare(bi[:], ai[:])
+		return user.CompareSearch(user.CursorOf(a), user.CursorOf(b))
 	})
 
 	if len(found) > limit {

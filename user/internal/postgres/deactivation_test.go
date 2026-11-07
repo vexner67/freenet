@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/vexner67/freenet/user/internal/user"
 )
 
@@ -47,7 +46,7 @@ func TestUserRepository_Deactivation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if found, err := repo.Search(ctx, q, uuid.Nil, 10); err != nil || len(found) != 0 {
+	if found, err := repo.Search(ctx, q, user.SearchCursor{}, 10); err != nil || len(found) != 0 {
 		t.Fatalf("search found a deleted page: %d, %v", len(found), err)
 	}
 
@@ -60,7 +59,7 @@ func TestUserRepository_Deactivation(t *testing.T) {
 	if again, err := repo.GetByID(ctx, u.ID()); err != nil || again.IsDeactivated() {
 		t.Fatalf("restored page = %+v, %v", again.Deactivation(), err)
 	}
-	if found, err := repo.Search(ctx, q, uuid.Nil, 10); err != nil || len(found) != 1 {
+	if found, err := repo.Search(ctx, q, user.SearchCursor{}, 10); err != nil || len(found) != 1 {
 		t.Fatalf("search after restoring: %d, %v", len(found), err)
 	}
 }

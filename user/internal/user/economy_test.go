@@ -75,9 +75,13 @@ func TestNewRatingRaise(t *testing.T) {
 		}
 	}
 
+	// A vote a percent, up to the whole MaxRating at once.
 	r, err := user.NewRatingRaise(5)
-	if err != nil || r.Int() != 5 || r.Cost() != 5*user.RatingPrice {
+	if err != nil || r.Int() != 5 || r.Cost() != 5 {
 		t.Fatalf("NewRatingRaise(5) = %v, %v", r, err)
+	}
+	if r, err = user.NewRatingRaise(user.MaxRating); err != nil || r.Cost() != 1_000_000_000 {
+		t.Fatalf("NewRatingRaise(MaxRating) = %v, %v", r, err)
 	}
 }
 

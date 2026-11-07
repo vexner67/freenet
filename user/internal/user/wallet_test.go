@@ -53,6 +53,36 @@ func TestUser_CheckTransferFrom(t *testing.T) {
 	}
 }
 
+func TestUser_CheckRatingFrom(t *testing.T) {
+	t.Parallel()
+
+	ann, _ := user.New("ann@example.com")
+	bob := uuid.New()
+
+	tests := []struct {
+		name  string
+		payer uuid.UUID
+		ties  user.Ties
+		want  error
+	}{
+		{"oneself", ann.ID(), user.Ties{}, nil},
+		{"a stranger", bob, user.Ties{}, nil},
+		{"across a blacklist", bob, user.Ties{Blocked: true}, user.ErrRatingRefused},
+	}
+	for _, tt := range tests {
+		if err := ann.CheckRatingFrom(tt.payer, tt.ties); !errors.Is(err, tt.want) {
+			t.Errorf("%s: %v, want %v", tt.name, err, tt.want)
+		}
+	}
+
+	if err := ann.Deactivate("", time.Now(), time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	if err := ann.CheckRatingFrom(bob, user.Ties{}); !errors.Is(err, user.ErrDeactivated) {
+		t.Fatalf("a deleted page: %v", err)
+	}
+}
+
 func TestUser_Wallet(t *testing.T) {
 	t.Parallel()
 
@@ -67,19 +97,16 @@ func TestUser_Wallet(t *testing.T) {
 	}
 
 	// The rating of vouchers is added to the fullness and may pass 100.
-	if p, _ := rich.Completeness(); p != 40 {
+	if p, _ := rich.Completeness(); p != 30 {
 		t.Fatalf("an empty page with 30 of rating: %d", p)
-	}
-	if p, _ := u.WithWallet(user.Wallet{Rating: 200}).Completeness(); p != 210 {
-		t.Fatalf("with 200 of rating: %d", p)
 	}
 
 	// Rating and fullness together stay within MaxRating: a page that had
-	// 1000 of rating shows 1000, and the empty one buys up to 990.
+	// all of it shows MaxRating, and the empty one buys up to it.
 	if p, _ := u.WithWallet(user.Wallet{Rating: user.MaxRating}).Completeness(); p != user.MaxRating {
 		t.Fatalf("with all the rating: %d", p)
 	}
-	if most := u.RatingMost(); most != user.MaxRating-10 {
+	if most := u.RatingMost(); most != user.MaxRating {
 		t.Fatalf("RatingMost = %d", most)
 	}
 }

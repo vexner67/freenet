@@ -91,7 +91,7 @@ func TestAccountService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if page, err := userSvc.Search(ctx, q, uuid.Nil, 10); err != nil || len(page.Users) != 1 || page.Users[0].ID != bob {
+	if page, err := userSvc.Search(ctx, q, user.SearchCursor{}, 10); err != nil || len(page.Users) != 1 || page.Users[0].ID != bob {
 		t.Fatalf("search finds %+v, %v; want bob only", page.Users, err)
 	}
 	if err = followSvc.Follow(ctx, bob, ann); !errors.Is(err, user.ErrDeactivated) {

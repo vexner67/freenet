@@ -219,8 +219,10 @@ service UserService {
   rpc ClaimBonus(ClaimBonusRequest) returns (ClaimBonusResponse);
   rpc SetEconomy(SetEconomyRequest) returns (google.protobuf.Empty);
   // RaiseRating sells the caller rating ("Повысить рейтинг" of openvk) for
-  // 3 votes a percent, into the treasury: FailedPrecondition "not enough
-  // votes" and "the rating cannot go above 1000 percent".
+  // a vote a percent, into the treasury, for their own page or another's:
+  // FailedPrecondition "not enough votes" and "the rating cannot go above
+  // 1000000000 percent", PermissionDenied for a deleted page or across a
+  // blacklist.
   rpc RaiseRating(RaiseRatingRequest) returns (RaiseRatingResponse);
 
   // Freenet Prime, the subscription of the site. GetPrime is public: what
@@ -623,9 +625,11 @@ message User {
   // A photo behind the whole page, set with Freenet Prime; kept when
   // Prime ends.
   string backdrop_cover = 39;
-  // "Заполненность страницы" of openvk, in percent, and the parts missing
-  // ("interests", "email", "telegram", "status", "city"). The percent
-  // counts the rating vouchers gave and may pass 100.
+  // The rating of the page ("Заполненность страницы" of openvk), in
+  // percent: how full it is, up to 100, plus the rating bought, at most
+  // 1000000000; and the blocks not filled in to the end ("photo",
+  // "status", "main", "contacts", "interests"), as unfilled_parts tells
+  // them with what each would add.
   int32 completeness = 26;
   repeated string unfilled = 27;
   InterfaceSettings interface = 28;
@@ -651,6 +655,17 @@ message User {
   // The rating the user has, in percent: vouchers and "Повысить рейтинг"
   // give it.
   int32 rating = 38;
+  // The blocks of unfilled, in the same order, with the percent each
+  // would add.
+  repeated UnfilledPart unfilled_parts = 40;
+}
+
+// UnfilledPart is a block of the page not filled in to the end.
+message UnfilledPart {
+  // "photo", "status", "main", "contacts" or "interests".
+  string part = 1;
+  // What filling it in would add, in percent.
+  int32 percent = 2;
 }
 
 // Ban is a block of a page by the administrators of the site.
@@ -1166,6 +1181,8 @@ message SearchUsersRequest {
   // Words in any order, each found in the name, surname or nickname;
   // may be empty with a filter.
   string query = 1;
+  // The people come by their rating, highest first, then newest first;
+  // the cursor is next_cursor of the page before.
   string cursor = 2;
   // 1-50; anything else means 20.
   int32 limit = 3;
@@ -1847,14 +1864,18 @@ message ClaimBonusResponse {
 }
 
 message RaiseRatingRequest {
-  // How many percent to buy, 1-1000.
+  // How many percent to buy, 1-1000000000, a vote each.
   int32 percent = 1;
+  // Whose rating to raise; empty: the caller's own.
+  string user_id = 2;
 }
 
 message RaiseRatingResponse {
-  // The votes the caller has left and the rating now.
+  // The votes the caller has left and the rating bought of the page now.
   int64 balance = 1;
   int32 rating = 2;
+  // The rating of the page now, as its profile tells it (completeness).
+  int32 completeness = 3;
 }
 
 // What the periods of Freenet Prime cost, in votes.

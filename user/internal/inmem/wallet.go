@@ -312,7 +312,7 @@ func (r *UserRepository) credit(userID uuid.UUID, votes int64, rating int, e use
 
 	wallet := u.Wallet()
 	wallet.Votes += votes
-	wallet.Rating += rating
+	wallet.Rating = min(wallet.Rating+rating, user.MaxRating)
 	r.users[userID] = *u.WithWallet(wallet)
 
 	return wallet, r.write(userID, votes, wallet.Votes, e)

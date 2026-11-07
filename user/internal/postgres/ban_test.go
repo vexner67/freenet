@@ -48,7 +48,7 @@ func TestUserRepository_SetBan(t *testing.T) {
 	}
 
 	q, _ := user.NewSearchQuery(nickname, user.SearchFilters{Banned: true})
-	found, err := repo.Search(ctx, q, uuid.Nil, 10)
+	found, err := repo.Search(ctx, q, user.SearchCursor{}, 10)
 	if err != nil || len(found) != 1 || found[0].ID() != u.ID() {
 		t.Fatalf("Search of the blocked = %v, %v", found, err)
 	}
@@ -68,7 +68,7 @@ func TestUserRepository_SetBan(t *testing.T) {
 	if got, err = repo.GetByID(ctx, u.ID()); err != nil || got.Ban() != (user.Ban{}) {
 		t.Fatalf("let be: %+v, %v", got.Ban(), err)
 	}
-	if found, err = repo.Search(ctx, q, uuid.Nil, 10); err != nil || len(found) != 0 {
+	if found, err = repo.Search(ctx, q, user.SearchCursor{}, 10); err != nil || len(found) != 0 {
 		t.Fatalf("Search after letting be = %v, %v", found, err)
 	}
 }

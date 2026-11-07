@@ -45,7 +45,8 @@ func toProtoUser(u *user.User) *userv1.User {
 		BackdropCover:         avatarString(u.Backdrop().Cover),
 		Interface:             toProtoInterface(u.Interface()),
 		Completeness:          int32(completeness), //nolint:gosec // a percent
-		Unfilled:              unfilled,
+		Unfilled:              unfilledNames(unfilled),
+		UnfilledParts:         toProtoUnfilled(unfilled),
 		Votes:                 u.Wallet().Votes,
 		Rating:                int32(u.Wallet().Rating), //nolint:gosec // a percent
 		Verified:              u.IsVerified(),
@@ -55,6 +56,24 @@ func toProtoUser(u *user.User) *userv1.User {
 		PrimeInvisible:        u.Prime().Invisible,
 		PrimeStyle:            toProtoPrimeStyle(u.PrimeStyle()),
 	}
+}
+
+func unfilledNames(unfilled []user.Unfilled) []string {
+	names := make([]string, 0, len(unfilled))
+	for _, part := range unfilled {
+		names = append(names, part.Part)
+	}
+
+	return names
+}
+
+func toProtoUnfilled(unfilled []user.Unfilled) []*userv1.UnfilledPart {
+	parts := make([]*userv1.UnfilledPart, 0, len(unfilled))
+	for _, part := range unfilled {
+		parts = append(parts, &userv1.UnfilledPart{Part: part.Part, Percent: int32(part.Percent)}) //nolint:gosec // a percent
+	}
+
+	return parts
 }
 
 func toProtoPrimeStyle(s user.PrimeStyle) *userv1.PrimeStyle {

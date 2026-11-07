@@ -150,3 +150,34 @@ func TestSearchQuery_Banned(t *testing.T) {
 		t.Fatal("a page whose block ended is found")
 	}
 }
+
+func TestSearchCursor(t *testing.T) {
+	t.Parallel()
+
+	older, _ := user.New("old@example.com")
+	newer, _ := user.New("new@example.com")
+	rich := newer.WithWallet(user.Wallet{Rating: 500})
+
+	// The higher rating first, then the newer page.
+	if user.CompareSearch(user.CursorOf(rich), user.CursorOf(older)) >= 0 {
+		t.Fatal("the higher rating comes first")
+	}
+	if user.CompareSearch(user.CursorOf(newer), user.CursorOf(older)) >= 0 {
+		t.Fatal("with the same rating the newer page comes first")
+	}
+	if user.CompareSearch(user.CursorOf(older), user.CursorOf(older)) != 0 {
+		t.Fatal("a place equals itself")
+	}
+
+	// The zero cursor passes everyone; a cursor, only those after it.
+	if !(user.SearchCursor{}).Passed(rich) {
+		t.Fatal("the zero cursor starts at the top")
+	}
+	at := user.CursorOf(newer)
+	if !at.Passed(older) || at.Passed(rich) || at.Passed(newer) {
+		t.Fatal("Passed")
+	}
+	if c := user.CursorOf(rich); c.Rating != 500 || c.ID != rich.ID() {
+		t.Fatalf("CursorOf = %+v", c)
+	}
+}

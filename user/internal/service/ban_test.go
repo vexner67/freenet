@@ -56,7 +56,7 @@ func TestBanService(t *testing.T) {
 	}
 
 	q, _ := user.NewSearchQuery("", user.SearchFilters{Banned: true})
-	page, err := w.userSvc.Search(ctx, q, uuid.Nil, 10)
+	page, err := w.userSvc.Search(ctx, q, user.SearchCursor{}, 10)
 	if err != nil || len(page.Users) != 1 || page.Users[0].ID != ann || page.Users[0].Ban.Reason != "spam" {
 		t.Fatalf("the blocked pages: %+v, %v", page, err)
 	}

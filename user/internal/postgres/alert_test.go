@@ -47,7 +47,7 @@ func TestUserRepository_SetAlert(t *testing.T) {
 	}
 
 	q, _ := user.NewSearchQuery(nickname, user.SearchFilters{})
-	found, err := repo.Search(ctx, q, uuid.Nil, 10)
+	found, err := repo.Search(ctx, q, user.SearchCursor{}, 10)
 	if err != nil || len(found) != 1 || found[0].Alert() != alert {
 		t.Fatalf("Search = %d, %v", len(found), err)
 	}

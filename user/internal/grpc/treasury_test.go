@@ -66,7 +66,7 @@ func TestRaiseRatingAndJackpot(t *testing.T) {
 
 	s := newServer(t)
 	admin := s.signIn(t, adminEmail)
-	ann, _ := s.member(t, "ann")
+	ann, annID := s.member(t, "ann")
 
 	made, err := s.client.CreateVoucher(admin, &userv1.CreateVoucherRequest{Votes: 10, Usages: 1})
 	if err != nil {
@@ -77,8 +77,27 @@ func TestRaiseRatingAndJackpot(t *testing.T) {
 	}
 
 	raised, err := s.client.RaiseRating(ann, &userv1.RaiseRatingRequest{Percent: 2})
-	if err != nil || raised.GetBalance() != 10-2*user.RatingPrice || raised.GetRating() != 2 {
+	if err != nil || raised.GetBalance() != 10-2*user.RatingPrice || raised.GetRating() != 2 || raised.GetCompleteness() != 2 {
 		t.Fatalf("RaiseRating = %v, %v", raised, err)
+	}
+
+	// Another page's rating, with ann's votes.
+	bob, bobID := s.member(t, "bob")
+	raised, err = s.client.RaiseRating(ann, &userv1.RaiseRatingRequest{Percent: 3, UserId: bobID})
+	if err != nil || raised.GetBalance() != 10-5*user.RatingPrice || raised.GetRating() != 3 || raised.GetCompleteness() != 3 {
+		t.Fatalf("RaiseRating of bob = %v, %v", raised, err)
+	}
+	if me, err := s.client.GetMe(bob, &userv1.GetMeRequest{}); err != nil || me.GetUser().GetCompleteness() != 3 || me.GetUser().GetRating() != 3 {
+		t.Fatalf("bob = %v, %v", me, err)
+	}
+	if _, err = s.client.RaiseRating(ann, &userv1.RaiseRatingRequest{Percent: 1, UserId: "x"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("RaiseRating of a bad id: %v", err)
+	}
+	if _, err = s.client.Block(bob, &userv1.BlockRequest{UserId: annID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.RaiseRating(ann, &userv1.RaiseRatingRequest{Percent: 1, UserId: bobID}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("RaiseRating across a blacklist: %v", err)
 	}
 	if _, err = s.client.RaiseRating(ann, &userv1.RaiseRatingRequest{}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("RaiseRating by nothing: %v", err)

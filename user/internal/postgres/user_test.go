@@ -265,7 +265,7 @@ func TestUserRepository(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		found, err := repo.Search(ctx, q, uuid.Nil, 10)
+		found, err := repo.Search(ctx, q, user.SearchCursor{}, 10)
 		if err != nil || len(found) != 1 || found[0].ID() != u.ID() || found[0].AvatarID() != avatar {
 			t.Fatalf("Search = %v, %v", found, err)
 		}
@@ -274,7 +274,7 @@ func TestUserRepository(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if found, err = repo.Search(ctx, percent, uuid.Nil, 10); err != nil || len(found) != 0 {
+		if found, err = repo.Search(ctx, percent, user.SearchCursor{}, 10); err != nil || len(found) != 0 {
 			t.Fatalf("%% must match itself, not everything: %d users, %v", len(found), err)
 		}
 

@@ -70,6 +70,23 @@ func TestSearchUsers(t *testing.T) {
 	if status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("blank query: %v", err)
 	}
+	for _, bad := range []string{"x", "1_x", "-1_" + first.GetUsers()[0].GetId(), first.GetUsers()[0].GetId()} {
+		if _, err = s.client.SearchUsers(context.Background(), &userv1.SearchUsersRequest{Query: "анна", Cursor: bad}); status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("cursor %q: %v", bad, err)
+		}
+	}
+
+	// A photo is 20 % of the rating (with the surname, 23): the older Анна comes first now.
+	ann := s.signIn(t, "ann@example.com")
+	if _, err = s.client.SetAvatar(ann, &userv1.SetAvatarRequest{AvatarId: "01a10000-0000-7000-8000-00000000a0a0"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := nicknames(search("анна", "", 0)); len(got) != 2 || got[0] != "ann" {
+		t.Fatalf("by the rating: %v", got)
+	}
+	if first = search("анна", "", 1); first.GetNextCursor() != "23_"+first.GetUsers()[0].GetId() {
+		t.Fatalf("the cursor: %q", first.GetNextCursor())
+	}
 }
 
 func TestSetAvatar(t *testing.T) {

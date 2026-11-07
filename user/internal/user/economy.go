@@ -5,20 +5,23 @@ import "errors"
 // What the rating costs and what the casino celebrates.
 const (
 	// RatingPrice is what one percent of rating costs, in votes.
-	RatingPrice = 3
-	// MaxRating is the most rating a page may buy up to.
-	MaxRating = 1000
+	RatingPrice = 1
+	// MaxRating is the most rating a page may have, fullness and the
+	// rating bought together.
+	MaxRating = 1_000_000_000
 	// DefaultJackpot is the win the casino shows as a jackpot until the
 	// administrators set another.
 	DefaultJackpot = 1000
 )
 
 var (
-	ErrRatingRaiseInvalid = errors.New("the rating is raised by 1 to 1000 percent")
-	ErrRatingLimit        = errors.New("the rating cannot go above 1000 percent")
-	ErrJackpotInvalid     = errors.New("the jackpot must be at least 1 vote")
-	ErrEconomyBonus       = errors.New("the daily bonus must be at least 1 vote")
-	ErrEconomyPercent     = errors.New("a fee must be from 0 to 100 percent")
+	ErrRatingRaiseInvalid = errors.New("the rating is raised by 1 to 1000000000 percent")
+	ErrRatingLimit        = errors.New("the rating cannot go above 1000000000 percent")
+	// ErrRatingRefused: either of the two has blacklisted the other.
+	ErrRatingRefused  = errors.New("you cannot raise the rating of this user")
+	ErrJackpotInvalid = errors.New("the jackpot must be at least 1 vote")
+	ErrEconomyBonus   = errors.New("the daily bonus must be at least 1 vote")
+	ErrEconomyPercent = errors.New("a fee must be from 0 to 100 percent")
 )
 
 // Economy is what the administrators tune of the votes that change hands:

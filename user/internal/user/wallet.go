@@ -55,6 +55,20 @@ func (u *User) WithWallet(w Wallet) *User {
 	return &changed
 }
 
+// CheckRatingFrom tells whether payerID, tied to u by t, may raise the
+// rating of u ("Повысить рейтинг" of another page): anyone may raise
+// their own, others not that of a deleted page or across a blacklist.
+func (u *User) CheckRatingFrom(payerID uuid.UUID, t Ties) error {
+	switch {
+	case u.IsDeactivated():
+		return ErrDeactivated
+	case payerID != u.id && t.Blocked:
+		return ErrRatingRefused
+	default:
+		return nil
+	}
+}
+
 // CheckTransferFrom tells whether senderID, tied to u by t, may hand u
 // votes ("Перевод голосов"): not oneself, not a deleted page and not
 // across a blacklist.

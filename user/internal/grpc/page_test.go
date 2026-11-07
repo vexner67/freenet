@@ -119,8 +119,9 @@ func TestStatusAndCompleteness(t *testing.T) {
 	ann, _ := s.member(t, "ann")
 
 	got, err := s.client.UpdateStatus(ann, &userv1.UpdateStatusRequest{Status: "  Привет  "})
-	if u := got.GetUser(); err != nil || u.GetStatus() != "Привет" || u.GetName() != "ann" || u.GetCompleteness() != 25 ||
-		!slices.Equal(u.GetUnfilled(), []string{"interests", "email", "telegram", "city"}) {
+	if u := got.GetUser(); err != nil || u.GetStatus() != "Привет" || u.GetName() != "ann" || u.GetCompleteness() != 5 ||
+		!slices.Equal(u.GetUnfilled(), []string{"photo", "main", "contacts", "interests"}) ||
+		len(u.GetUnfilledParts()) != 4 || u.GetUnfilledParts()[1].GetPart() != "main" || u.GetUnfilledParts()[1].GetPercent() != 25 {
 		t.Fatalf("UpdateStatus = %v, %v", got, err)
 	}
 
@@ -132,7 +133,7 @@ func TestStatusAndCompleteness(t *testing.T) {
 	}
 
 	page, err := s.client.GetProfile(context.Background(), &userv1.GetProfileRequest{Nickname: "ann"})
-	if err != nil || page.GetProfile().GetCompleteness() != 25 || page.GetProfile().GetStatus() != "Привет" {
+	if err != nil || page.GetProfile().GetCompleteness() != 5 || page.GetProfile().GetStatus() != "Привет" {
 		t.Fatalf("GetProfile = %v, %v", page, err)
 	}
 }

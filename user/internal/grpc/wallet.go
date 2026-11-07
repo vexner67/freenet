@@ -29,7 +29,7 @@ type WalletService interface {
 	SetEconomy(ctx context.Context, adminID uuid.UUID, e user.Economy) error
 	Bonus(ctx context.Context, userID uuid.UUID, now time.Time) (service.Bonus, error)
 	ClaimBonus(ctx context.Context, userID uuid.UUID, now time.Time) (service.Redeemed, error)
-	RaiseRating(ctx context.Context, userID uuid.UUID, raise user.RatingRaise) (user.Wallet, error)
+	RaiseRating(ctx context.Context, payerID, pageID uuid.UUID, raise user.RatingRaise) (service.RatingRaised, error)
 }
 
 func (h *UserHandler) TransferVotes(ctx context.Context, req *userv1.TransferVotesRequest) (*userv1.TransferVotesResponse, error) {
@@ -318,9 +318,16 @@ func (h *UserHandler) ClaimBonus(ctx context.Context, _ *userv1.ClaimBonusReques
 }
 
 func (h *UserHandler) RaiseRating(ctx context.Context, req *userv1.RaiseRatingRequest) (*userv1.RaiseRatingResponse, error) {
-	userID, err := currentUserID(ctx)
+	payerID, err := currentUserID(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	pageID := payerID
+	if req.GetUserId() != "" {
+		if pageID, err = parseID(req.GetUserId(), "user id"); err != nil {
+			return nil, err
+		}
 	}
 
 	raise, err := user.NewRatingRaise(int(req.GetPercent()))
@@ -328,10 +335,14 @@ func (h *UserHandler) RaiseRating(ctx context.Context, req *userv1.RaiseRatingRe
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	wallet, err := h.walletService.RaiseRating(ctx, userID, raise)
+	raised, err := h.walletService.RaiseRating(ctx, payerID, pageID, raise)
 	if err != nil {
 		return nil, err
 	}
 
-	return &userv1.RaiseRatingResponse{Balance: wallet.Votes, Rating: int32(wallet.Rating)}, nil //nolint:gosec // at most user.MaxRating and what vouchers gave
+	return &userv1.RaiseRatingResponse{
+		Balance:      raised.Balance,
+		Rating:       int32(raised.Rating),       //nolint:gosec // at most user.MaxRating
+		Completeness: int32(raised.Completeness), //nolint:gosec // at most user.MaxRating
+	}, nil
 }

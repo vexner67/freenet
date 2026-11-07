@@ -56,7 +56,7 @@ func TestUserRepository_SetVerified(t *testing.T) {
 	}
 
 	q, _ := user.NewSearchQuery(nickname, user.SearchFilters{Verified: true})
-	found, err := repo.Search(ctx, q, uuid.Nil, 10)
+	found, err := repo.Search(ctx, q, user.SearchCursor{}, 10)
 	if err != nil || len(found) != 1 || found[0].ID() != u.ID() {
 		t.Fatalf("Search = %d, %v", len(found), err)
 	}
@@ -64,7 +64,7 @@ func TestUserRepository_SetVerified(t *testing.T) {
 	if err = repo.SetVerified(ctx, u.ID(), false); err != nil {
 		t.Fatal(err)
 	}
-	if found, err = repo.Search(ctx, q, uuid.Nil, 10); err != nil || len(found) != 0 {
+	if found, err = repo.Search(ctx, q, user.SearchCursor{}, 10); err != nil || len(found) != 0 {
 		t.Fatalf("Search after taking = %d, %v", len(found), err)
 	}
 }

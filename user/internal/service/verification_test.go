@@ -52,7 +52,7 @@ func TestVerificationService_Set(t *testing.T) {
 	}
 
 	q, _ := user.NewSearchQuery("", user.SearchFilters{Verified: true})
-	page, err := w.userSvc.Search(ctx, q, uuid.Nil, 10)
+	page, err := w.userSvc.Search(ctx, q, user.SearchCursor{}, 10)
 	if err != nil || len(page.Users) != 1 || page.Users[0].ID != ann || !page.Users[0].Verified {
 		t.Fatalf("the verified pages: %+v, %v", page, err)
 	}
