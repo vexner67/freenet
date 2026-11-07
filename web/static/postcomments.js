@@ -1,5 +1,5 @@
 // The comments under a post of a wall in openvk's "Микроблог": the three
-// newest, "Показать остальные комментарии (N)" leading to the page of the
+// newest, "Посмотреть остальные комментарии (N)" leading to the page of the
 // post, and a field to answer in. The page of the post shows them all
 // (post.js).
 
@@ -16,17 +16,18 @@ import { tr } from './i18n.js';
 //     the author of the post does;
 //   path: the page of the post;
 //   canLike, onError: as of a post;
-//   onChanged() runs when a comment is added or deleted.
+//   onChanged() runs when a comment is added or deleted;
+//   placeholder: what the empty field says, openvk's "Написать" in the news.
 // It returns the node, open() that shows the field ("Комментировать") and
 // canOpen() that tells whether there is a field to show.
-export function lastComments(post, { commenter = null, moderates = false, path, canLike = false, onError, onChanged } = {}) {
+export function lastComments(post, { commenter = null, moderates = false, path, canLike = false, onError, onChanged, placeholder = tr('Комментировать...') } = {}) {
   const shown = post.lastComments ?? [];
   // Those on the page of the post only: what is not shown here.
   let others = Math.max(0, post.comments - shown.length);
 
   const more = el('a', { className: 'post-comments-more', href: path });
   const list = el('div', { className: 'post-comments-list' });
-  const text = el('textarea', { className: 'post-comment-text', rows: 1, maxLength: 60000, placeholder: tr('Комментировать...') });
+  const text = el('textarea', { className: 'post-comment-text', rows: 1, maxLength: 60000, placeholder });
   const submit = el('button', { type: 'submit', className: 'button', textContent: tr('Отправить') });
   const form = el('form', { className: 'post-comment-form', hidden: true }, text, submit);
   const node = el('div', { className: 'post-comments' }, more, list, form);

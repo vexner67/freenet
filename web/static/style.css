@@ -1997,6 +1997,25 @@ body:not(.nsfw-shown) img.photo-nsfw { filter: saturate(.8) blur(24px); clip-pat
 .post-comment-form { display: flex; align-items: flex-start; gap: 5px; padding: 5px 0 0; }
 .post-comment-text { flex: 1; min-height: 22px; height: 22px; padding: 3px 4px; resize: none; box-sizing: border-box; font: inherit; }
 
+/* The news as openvk's feed (feed.js, the option feed of postNode): the
+   old post ends in the menu of oldpost.latte — words, "Комментарии (N)",
+   "Поделиться (N)", the heart on the right with its number in its colour;
+   "Микроблог" shows its marks faintly all the time, "Посмотреть остальные
+   комментарии" as a grey bar and the field "Написать" in a grey band,
+   its button only while the field is in use. */
+.feed-posts .post-menu { min-height: 12px; padding: 4px; }
+.feed-posts .post-menu .like-count { color: var(--text-2b587a); font-size: 10px; }
+.feed-posts .post-pinned { color: var(--text-888); }
+.feed-posts .post-actions { opacity: 1; }
+.feed-posts .post-action svg { opacity: .15; }
+.feed-posts .post-action:hover svg,
+.feed-posts .post-action.on svg { opacity: .4; }
+.feed-posts .post-comments-more { height: 30px; padding: 0; background: var(--back-eee); font-size: 11px; line-height: 28px; }
+.feed-posts .post-comments-more:hover { background: var(--back-e5e5e5); text-decoration: none; }
+.feed-posts .post-comment-form { flex-wrap: wrap; margin-top: 5px; padding: 5px 7px; background: var(--back-eee); border-top: 1px solid var(--line-ccc); border-bottom: 1px solid var(--line-ccc); }
+.feed-posts .post-comment-text { flex-basis: 100%; }
+.feed-posts .post-comment-form:not(:focus-within):has(.post-comment-text:placeholder-shown) .button { display: none; }
+
 /* openvk's polls (poll.js): the block under the words of a post, with the
    options to choose from or the results as bars. */
 .poll { margin: 6px 4px; padding: 8px; border: 1px solid var(--line-e3e3e3); }

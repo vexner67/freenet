@@ -48,8 +48,13 @@ export function postPath(post) {
 //     are mixed, as in the news feed: someone else's wall is then named,
 //     "написал на стене Петра Петрова", as openvk does there only;
 //   pageOf: the owner of the page the wall is on: their own posts there
-//     go without the pattern of their page, which is already behind them.
-export function postNode(post, { viewer = null, moderates = false, onDelete, onPinned, onArchived, canLike = false, onError, withCommentsLink = true, onWallOf, pageOf, found = '' } = {}) {
+//     go without the pattern of their page, which is already behind them;
+//   feed: the post is in the news, which is openvk's feed to the letter on a
+//     computer: the old post ends in the menu of oldpost.latte — the words
+//     of what the viewer may do, "Комментарии (N)", "Поделиться (N)" and
+//     the heart on the right — and "Микроблог" has the menu and the marks of
+//     microblogpost.latte alone, with the field "Написать".
+export function postNode(post, { viewer = null, moderates = false, onDelete, onPinned, onArchived, canLike = false, onError, withCommentsLink = true, onWallOf, pageOf, found = '', feed = false } = {}) {
   const path = pagePath(post.author);
   const date = el('div', { className: 'post-date' });
   const content = el('div', { className: 'post-content' });
@@ -60,7 +65,11 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   // newest comments.
   const microblog = isMicroblog();
   const phone = isPhone();
+  const oldMenu = feed && !phone && !microblog ? el('span', {}) : null;
   const actions = el('span', { className: 'post-actions' });
+  // "закреплено" grey after the name, as openvk's "Микроблог" has it in
+  // the news, instead of after the date.
+  const pinnedMark = microblog && feed ? el('span', { className: 'post-pinned', textContent: tr('закреплено') }) : null;
   const comments = microblog && withCommentsLink
     ? lastComments(post, {
       commenter: viewer ?? onWallOf ?? null,
@@ -69,6 +78,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       canLike,
       onError,
       onChanged: () => render(),
+      placeholder: feed ? tr('Написать') : undefined,
     })
     : null;
 
@@ -76,7 +86,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     date.replaceChildren(
       el('a', { href: postPath(post), textContent: formatPostDate(post.createdAt) }),
       post.editedAt ? el('span', { className: 'post-edited', title: tr('Отредактировано'), textContent: tr(' (ред.)') }) : '',
-      post.pinned ? tr(', закреплено') : '',
+      post.pinned && !pinnedMark ? tr(', закреплено') : '',
       post.archived ? tr(', в архиве') : '',
       post.commentsClosed ? tr(', комментарии закрыты') : '',
     );
@@ -95,9 +105,11 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       signatureNode(post.signer) ?? '',
     );
     if (microblog && !phone) menu.replaceChildren(...separated(menuLinks()));
+    oldMenu?.replaceChildren(...separated(oldLinks()));
     actions.replaceChildren(...(microblog ? actionMarks() : []));
     comments?.render();
     node.classList.toggle('pinned', Boolean(post.pinned));
+    if (pinnedMark) pinnedMark.hidden = !post.pinned;
     // Marked or unmarked by an edit, it is blurred or shown again.
     node.classList.toggle('post-nsfw', Boolean(post.nsfw));
   }
@@ -118,7 +130,10 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       if (!post.archived) found.pin = { text: post.pinned ? tr('Открепить') : tr('Закрепить'), mark: pin, on: post.pinned, run: togglePin };
       found.archive = { text: post.archived ? tr('Разархивировать') : tr('Архивировать'), mark: box, on: post.archived, run: toggleArchived };
     }
-    const order = microblog ? ['edit', 'delete', 'pin', 'archive'] : ['edit', 'archive', 'delete', 'pin'];
+    // In the news the marks stand as openvk's, which float right from the
+    // cross: the pencil, the box, the pin, the cross.
+    let order = microblog ? ['edit', 'delete', 'pin', 'archive'] : ['edit', 'archive', 'delete', 'pin'];
+    if (microblog && feed) order = ['edit', 'archive', 'pin', 'delete'];
     return order.map((name) => found[name]).filter(Boolean);
   }
 
@@ -126,14 +141,25 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   // are under the post, and with none the field opens; closing them,
   // which openvk has not, goes next.
   function menuLinks() {
-    const closing = ownsWall()
+    // The news has openvk's "Комментировать" alone.
+    const closing = ownsWall() && !feed
       ? el('a', { textContent: post.commentsClosed ? tr('Открыть комментарии') : tr('Закрыть комментарии'), onclick: toggleComments })
       : null;
 
     const links = [];
     if (comments && post.comments === 0 && comments.canOpen()) links.push(el('a', { textContent: tr('Комментировать'), onclick: openComments }));
     if (closing) links.push(closing);
-    links.push(copyLink(post));
+    if (!feed) links.push(copyLink(post));
+    return links;
+  }
+
+  // oldLinks are the words of oldpost.latte's menu in the news: what the
+  // viewer may do to the post, in its order, then "Комментарии (N)" and
+  // "Поделиться (N)".
+  function oldLinks() {
+    const links = changes().map((c) => el('a', { textContent: c.text, onclick: c.run }));
+    if (withCommentsLink) links.push(commentsLink(post));
+    links.push(share);
     return links;
   }
 
@@ -248,6 +274,9 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     }
   }
 
+  // "Поделиться (N)" of the old menu keeps its count between renders.
+  const share = oldMenu ? shareButton(post, canLike, true) : null;
+
   const node = el('div', { className: 'post' },
     el('a', { className: 'post-avatar', href: path },
       el('img', { src: avatarURL(post.author, 'small'), alt: '' }),
@@ -260,12 +289,15 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
         verifiedMark(post.author),
         microblog ? null : wroteBy(post),
         ...(onWallOf !== undefined && post.wall ? [' ', wallLink(post.wall, onWallOf)] : []),
+        pinnedMark ? ' ' : null,
+        pinnedMark,
         microblog ? actions : null,
         microblog ? null : date,
       ),
       content,
       post.repost ? sharedNode(post.repost, { canVote: canLike, onError }) : null,
-      phone || !microblog ? bar() : el('div', { className: 'post-menu' },
+      oldMenu ? el('div', { className: 'post-menu' }, oldMenu, likeButton(post, { canLike, onError })) : null,
+      oldMenu ? null : phone || !microblog ? bar() : el('div', { className: 'post-menu' },
         el('span', {}, date, menu),
         el('span', { className: 'post-buttons' },
           shareButton(post, canLike),
@@ -288,8 +320,11 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
 // site, and it has a heart of the site — its server does not learn of it
 // — with local comments and reposts. The warning its
 // author put before it (summary) shows above the blurred text, as the
-// servers of Mastodon show it. onError(e) shows a failed like.
-export function remotePostNode(post, { onError, withCommentsLink = true, shared = false } = {}) {
+// servers of Mastodon show it. onError(e) shows a failed like. In the news
+// (feed) a computer ends it as openvk's old post: "Комментарии (N)",
+// "Поделиться" and the link to the original on the left, the heart on the
+// right.
+export function remotePostNode(post, { onError, withCommentsLink = true, shared = false, feed = false } = {}) {
   const remote = post.fediverse;
   const author = remote.author;
   const name = author.name || author.handle;
@@ -319,7 +354,14 @@ export function remotePostNode(post, { onError, withCommentsLink = true, shared 
       ),
       remote.summary ? el('div', { className: 'post-summary', textContent: remote.summary }) : null,
       content,
-      shared ? null : el('div', { className: 'post-menu post-bar' },
+      shared ? null : feed && !isPhone() ? el('div', { className: 'post-menu' },
+        el('span', {}, ...separated([
+          withCommentsLink ? commentsLink(post) : null,
+          remoteShareButton(post, true),
+          externalLink(remote.url, [telegram ? tr('Открыть в Telegram') : tr('Открыть в Fediverse')]),
+        ].filter(Boolean))),
+        likeButton(post, { canLike: true, onError, like: api.likeFediverse, unlike: api.unlikeFediverse, likers: api.fediverseLikers }),
+      ) : el('div', { className: 'post-menu post-bar' },
         likeButton(post, { canLike: true, onError, like: api.likeFediverse, unlike: api.unlikeFediverse, likers: api.fediverseLikers }),
         withCommentsLink ? el('a', { className: 'like post-comments-link', href: postPath(post), title: tr('Комментарии') },
           bubble(), el('span', { className: 'like-count', textContent: post.comments > 0 ? String(post.comments) : '' })) : null,
@@ -535,14 +577,17 @@ function showLink(url) {
 }
 
 // shareButton is "Поделиться": the arrow and the number, as openvk's
-// "Микроблог" has it; it changes post.reposts, as likeButton changes the
-// likes.
-function shareButton(post, canShare) {
-  const count = el('span', { className: 'like-count' });
-  const button = el(canShare ? 'a' : 'span', { className: 'like share-icon', title: tr('Поделиться') }, arrow(), count);
+// "Микроблог" has it, or the words "Поделиться (N)" of its old post
+// (words); it changes post.reposts, as likeButton changes the likes.
+function shareButton(post, canShare, words = false) {
+  const count = el('span', { className: words ? '' : 'like-count' });
+  const button = words
+    ? el(canShare ? 'a' : 'span', { className: 'post-share-link' }, tr('Поделиться'), count)
+    : el(canShare ? 'a' : 'span', { className: 'like share-icon', title: tr('Поделиться') }, arrow(), count);
 
   function render() {
-    count.textContent = post.reposts > 0 ? String(post.reposts) : '';
+    if (words) count.replaceChildren(...counted(post.reposts));
+    else count.textContent = post.reposts > 0 ? String(post.reposts) : '';
   }
 
   if (canShare) {
@@ -560,12 +605,27 @@ function shareButton(post, canShare) {
 }
 
 // remoteShareButton shares the imported post by its Freenet ID, with
-// the same destinations as local posts, without a local repost counter.
-function remoteShareButton(post) {
-  const button = el('a', { className: 'like share-icon', title: tr('Поделиться') }, arrow());
+// the same destinations as local posts, without a local repost counter:
+// the arrow, or the word of the old post (words).
+function remoteShareButton(post, words = false) {
+  const button = words
+    ? el('a', { className: 'post-share-link', textContent: tr('Поделиться') })
+    : el('a', { className: 'like share-icon', title: tr('Поделиться') }, arrow());
   button.addEventListener('click', () => openShare(post, () => {}));
 
   return button;
+}
+
+// commentsLink is openvk's "Комментарии (N)" of the old post, leading to
+// the comments on the page of the post.
+function commentsLink(post) {
+  return el('a', { className: 'post-comments-words', href: postPath(post) + '#comments' }, tr('Комментарии'), ...counted(post.comments));
+}
+
+// counted is " (N)" with the number bold after the words of openvk's old
+// menu, nothing for none.
+function counted(n) {
+  return n > 0 ? [' (', el('b', { textContent: String(n) }), ')'] : [];
 }
 
 const sharers = {

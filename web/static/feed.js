@@ -97,7 +97,7 @@ function reload(me) {
 // communities I run (post.moderated). A post of another server of the
 // Fediverse is only shown and liked.
 function feedNode(post, me) {
-  if (post.fediverse) return remotePostNode(post, { onError: (e) => showError($('error'), e) });
+  if (post.fediverse) return remotePostNode(post, { onError: (e) => showError($('error'), e), feed: true });
 
   const moderates = Boolean(post.moderated);
 
@@ -109,6 +109,7 @@ function feedNode(post, me) {
     canLike: true,
     onError: (e) => showError($('error'), e),
     onWallOf: me,
+    feed: true,
   });
 }
 

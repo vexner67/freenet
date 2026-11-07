@@ -803,7 +803,7 @@ export function myClubsCount(n) {
 // otherComments is openvk's "view_other_comments" under a post of
 // "Микроблог": how many comments are on the page of the post only.
 export function otherComments(n) {
-  return tr('Показать остальные комментарии ({0})', n);
+  return tr('Посмотреть остальные комментарии ({0})', n);
 }
 
 // aboutStatistics are the lines of "Статистика" on the page "о сайте",
