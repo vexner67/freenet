@@ -780,6 +780,9 @@ export const api = {
   claimBonus: () => authorized('POST', '/api/v1/me/bonus'),
   // raiseRating is "Повысить рейтинг": percent of rating for votes.
   raiseRating: (percent) => authorized('POST', '/api/v1/me/rating', { percent }),
+  // raiseRatingOf is "Повысить рейтинг" of the page of another, for the
+  // caller's votes.
+  raiseRatingOf: (nickname, percent) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/rating`, { percent }),
   bank: () => authorized('GET', '/api/v1/me/bank'),
   // moveBank is "deposit", "withdraw", "loan" or "repay" of amount votes.
   moveBank: (action, amount) => authorized('POST', `/api/v1/me/bank/${action}`, { amount }),

@@ -1,5 +1,5 @@
 import { api, currentUser, started } from './api.js';
-import { isBirthdayToday, relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, accusativeName, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, audioArtist, audioTitle, audiosCount, plural, MAX_RATING, titleGroups, titleIconPath } from './labels.js';
+import { isBirthdayToday, relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHint, presence, formatBirthday, formatDateTime, limitedAccess, accusativeName, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, audioArtist, audioTitle, audiosCount, plural, MAX_RATING, ratingPercent, ratingTier, balanceAmount, votesAmount, titleGroups, titleIconPath } from './labels.js';
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { giftsBlock, pickPath } from './gifts.js';
 import { initBlacklistLink } from './blacklist.js';
@@ -7,6 +7,7 @@ import { initIgnoreLink } from './feedsettings.js';
 import { initFollow } from './follow.js';
 import { initPhoto } from './photo.js';
 import { openSendBox } from './sendbox.js';
+import { button, openModal } from './modal.js';
 import { initWall } from './wall.js';
 import { showBackdrop } from './backdrop.js';
 import { personCell } from './people.js';
@@ -299,33 +300,97 @@ function editStatus(text) {
   input.focus();
 }
 
-// showCompleteness is openvk's gauge of how full the page is, to whoever
-// is signed in, and to the owner the hints of what to fill in and, as
-// openvk, "Повысить рейтинг".
+// showCompleteness is openvk's gauge of the rating of the page, to
+// whoever is signed in, and to the owner the hints of what to fill in. Up
+// to 100 % it fills as openvk's; past it the gauge is full and silver,
+// from 200 % gold and from 1000 % ruby (ratingTier).
 function showCompleteness(user, isOwner) {
   const percent = user.completeness ?? 0;
-  if (!me || !percent) return;
+  // An empty page of another, or one that tells nothing, has no gauge.
+  if (!me || (!percent && !isOwner)) return;
 
   const bar = el('div');
   bar.style.width = Math.min(percent, 100) + '%';
 
   const hints = isOwner
-    ? (user.unfilled ?? []).filter((part) => completenessHints[part]).map((part) => {
-      const [href, text] = completenessHints[part];
-      return el('a', { className: 'completeness-hint hint-' + part, href, textContent: text });
-    })
+    ? (user.unfilledParts ?? []).map(completenessHint).filter(Boolean).map(([href, text], i) =>
+      el('a', { className: 'completeness-hint hint-' + user.unfilledParts[i].part, href, textContent: text }))
     : [];
+  const tier = ratingTier(percent);
 
-  // "Повысить рейтинг" stands above the gauge it raises, a link like
-  // "Редактировать страницу" under the photo, while there is room for it.
   $('completeness').replaceChildren(
-    ...(isOwner && percent < MAX_RATING ? [el('div', { className: 'profile-links completeness-raise' },
-      el('a', { className: 'profile-link', href: '/votes?act=rating', textContent: tr('Повысить рейтинг') }))] : []),
-    el('div', { className: 'completeness-gauge' + (percent >= 100 ? ' completeness-gauge-gold' : '') },
-      bar, el('span', { textContent: percent + '%' })),
+    el('div', { className: 'completeness-gauge' + (tier ? ' rating-' + tier : '') },
+      bar, el('span', { textContent: ratingPercent(percent) })),
     ...(hints.length ? [el('div', { className: 'completeness-hints' }, ...hints)] : []),
   );
   $('completeness').hidden = false;
+}
+
+// showRaise is "Повысить рейтинг" under the photo, to whoever is signed
+// in: one raises one's own page and another's for one's votes.
+function showRaise(profile, isOwner) {
+  if (!me) return;
+
+  $('raise-rating').onclick = (event) => {
+    event.preventDefault();
+    raiseRating(profile, isOwner);
+  };
+  $('raise-rating').hidden = false;
+}
+
+// raiseRating is the window of "Повысить рейтинг": how many percent, a
+// vote each, with the balance and the cost; the gauge shows the new
+// rating at once.
+function raiseRating(profile, isOwner) {
+  const page = isOwner ? me : profile;
+  const modal = openModal(tr('Повысить рейтинг'), { tag: 'form' });
+  const error = el('div', { className: 'error', hidden: true });
+  const input = el('input', { type: 'number', className: 'modal-input', min: 1, step: 1, required: true, ariaLabel: tr('Сколько процентов') });
+  const cost = el('div', { className: 'rating-cost' });
+  const balance = el('span', { textContent: balanceAmount(me.votes ?? 0) });
+  const left = () => MAX_RATING - (page.completeness ?? 0);
+  input.max = Math.max(left(), 1);
+
+  const showCost = () => {
+    const n = Number(input.value);
+    cost.textContent = Number.isInteger(n) && n > 0 ? tr('Стоимость: {0}.', votesAmount(n)) : '\u00a0';
+  };
+  input.addEventListener('input', showCost);
+  showCost();
+
+  modal.body.append(
+    el('p', { textContent: isOwner
+      ? tr('Рейтинг вашей страницы: {0}.', ratingPercent(page.completeness ?? 0))
+      : tr('Рейтинг страницы {0}: {1}.', genitiveName(profile), ratingPercent(page.completeness ?? 0)) }),
+    el('p', { className: 'rating-balance' }, tr('Ваш баланс: '), balance),
+    el('label', { className: 'rating-field' }, tr('Сколько процентов:'), input),
+    cost,
+    el('p', { className: 'hint', textContent: tr('Один процент — один голос. Рейтинг вместе с заполненностью страницы — не больше {0}.', ratingPercent(MAX_RATING)) }),
+    error,
+  );
+  const submit = button(tr('Повысить'), null, { type: 'submit' });
+  modal.actions.append(submit, button(tr('Отмена'), modal.close, { secondary: true }));
+
+  modal.box.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    hideError(error);
+    submit.disabled = true;
+
+    try {
+      const percent = Number(input.value);
+      const raised = isOwner ? await api.raiseRating(percent) : await api.raiseRatingOf(profile.nickname, percent);
+
+      me.votes = raised.balance;
+      page.completeness = raised.completeness;
+      if (isOwner) me.rating = raised.rating;
+      modal.close();
+      showCompleteness(page, isOwner);
+    } catch (e) {
+      submit.disabled = false;
+      showError(error, e);
+    }
+  });
+  input.focus();
 }
 
 // showClubs is openvk's block "Группы": how many, "Все" and the names of
@@ -597,6 +662,7 @@ try {
     // "Гости": the owner learns of the visit, unless it leaves no trace.
     if (me && !isOwner) api.visitPage(profile.nickname).catch(() => {});
     showCompleteness(isOwner ? me : profile, isOwner);
+    showRaise(profile, isOwner);
 
     // As on openvk: write to anyone but yourself.
     if (me && !isOwner) showWrite(profile, me);

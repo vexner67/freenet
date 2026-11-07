@@ -10,7 +10,7 @@
 // too) and "Кредит" (?act=loan).
 
 import { api, currentUser, started } from './api.js';
-import { balanceAmount, MAX_RATING, RATING_PRICE, bankRate, bankVotes, cardCovers, cardNumber, grownDeposit, groupedVotes, TRANSFER_FEE_PERCENT, formatDateTime, isEndless, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, voucherGave } from './labels.js';
+import { balanceAmount, MAX_RATING, RATING_PRICE, ratingPercent, bankRate, bankVotes, cardCovers, cardNumber, grownDeposit, groupedVotes, TRANSFER_FEE_PERCENT, formatDateTime, isEndless, plural, rubles, transferFee, signedVotes, transferNickname, transferURL, voteOperation, voteRate, votesAmount, voucherGave } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError, verifiedMark } from './layout.js';
 import { chips, meter } from './controls.js';
 import { helpButton } from './game.js';
@@ -56,7 +56,7 @@ function showBalance(votes) {
 
 // showRating is the line "Рейтинг" of the account.
 function showRating(me) {
-  $('info-rating').textContent = `${me.completeness ?? me.rating ?? 0} %`;
+  $('info-rating').textContent = ratingPercent(me.completeness ?? me.rating ?? 0);
 }
 
 // quick fills input from a row of chips [label, amount], the page hearing
@@ -382,13 +382,15 @@ function initRating(me) {
   const page = () => me.completeness ?? me.rating ?? 0;
   const left = () => MAX_RATING - page();
   const full = () => left() <= 0;
-  const showMeter = () => $('rating-meter').replaceChildren(meter(page(), MAX_RATING, `${page()} %`));
-  help('rating-help', tr('Рейтинг прибавляется к заполненности страницы: страница с рейтингом может быть заполнена больше чем на 100 %, и тогда шкала становится золотой. Один процент рейтинга стоит {0} голоса. Рейтинг вместе с заполненностью — не больше {1} %.', RATING_PRICE, MAX_RATING));
+  // The meter is the fullness of the page, as its gauge; the rating past
+  // it is told in digits.
+  const showMeter = () => $('rating-meter').replaceChildren(meter(Math.min(page(), 100), 100, ratingPercent(page())));
+  help('rating-help', tr('Рейтинг прибавляется к заполненности страницы: с ним страница бывает заполнена больше чем на 100 %, и тогда шкала становится серебряной, от 200 % — золотой, от 1000 % — рубиновой. Один процент рейтинга стоит {0} голос. Рейтинг вместе с заполненностью — не больше {1}. Повысить рейтинг другому можно на его странице.', RATING_PRICE, ratingPercent(MAX_RATING)));
   showMeter();
-  quick('rating-chips', percent, [['+1', () => 1], ['+10', () => Math.min(10, left())], ['+100', () => Math.min(100, left())]]);
+  quick('rating-chips', percent, [['+10', () => Math.min(10, left())], ['+100', () => Math.min(100, left())], ['+1000', () => Math.min(1000, left())]]);
   const tellFull = () => {
     $('rating-form').hidden = true;
-    say(tr('Больше повысить нельзя'), tr('Ваш рейтинг уже {0} % — больше не бывает.', MAX_RATING));
+    say(tr('Больше повысить нельзя'), tr('Ваш рейтинг уже {0} — больше не бывает.', ratingPercent(MAX_RATING)));
   };
   if (full()) tellFull();
   else percent.focus();
@@ -416,7 +418,7 @@ function initRating(me) {
     try {
       const raised = await api.raiseRating(Number(percent.value));
       me.votes = raised.balance;
-      me.completeness = Math.min(page() + raised.rating - (me.rating ?? 0), MAX_RATING);
+      me.completeness = raised.completeness;
       me.rating = raised.rating;
       $('rating-balance').textContent = balanceAmount(raised.balance);
       showBalance(raised.balance);
@@ -424,7 +426,7 @@ function initRating(me) {
       showMeter();
       percent.value = '';
       $('rating-cost').hidden = true;
-      say(tr('Рейтинг повышен'), tr('Теперь ваш рейтинг — {0} %.', page()), ' ',
+      say(tr('Рейтинг повышен'), tr('Теперь ваш рейтинг — {0}.', ratingPercent(page())), ' ',
         el('a', { href: '/votes', textContent: tr('На вашем счету {0}.', balanceAmount(raised.balance)) }));
       if (full()) $('rating-form').hidden = true;
     } catch (e) {

@@ -1821,20 +1821,29 @@ body.viewer-open { overflow: hidden; }
 .completeness-gauge { position: relative; width: 95%; height: 16px; background: var(--back-e6e6e6); border-top: 1px solid var(--line-bbb); }
 .completeness-gauge > div { height: 100%; background: var(--back-d4d4d4); }
 .completeness-gauge > span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; line-height: 1; }
-.completeness-gauge-gold { background: var(--back-dfe3e8); border-top-color: var(--line-b9b597); }
-.completeness-gauge-gold > div { background: var(--back-e1d7a2); }
+/* Past 100 % the gauge is full and takes the colour of the rating
+   (ratingTier in labels.js): silver to 199 %, gold to 999 %, ruby from
+   1000 %; plain colours, without shine. */
+.completeness-gauge.rating-silver { border-top-color: var(--line-a7adb5); }
+.completeness-gauge.rating-silver > div { background: var(--back-cfd4db); }
+.completeness-gauge.rating-gold { background: var(--back-dfe3e8); border-top-color: var(--line-b9b597); }
+.completeness-gauge.rating-gold > div { background: var(--back-e1d7a2); }
+.completeness-gauge.rating-ruby { border-top-color: var(--line-a33a48); }
+.completeness-gauge.rating-ruby > div { background: var(--back-e2a4ab); }
 /* The hints of openvk, each with its picture: what to tell about yourself,
    how to be reached, what is new. */
 .completeness-hints { margin-top: 12px; }
 .completeness-hints a { display: flex; align-items: center; gap: 3px; margin-bottom: 2px; }
 .completeness-hint::before { content: ''; flex-shrink: 0; width: 16px; height: 16px; background-repeat: no-repeat; background-position: center; }
-.profile-links.completeness-raise { margin: 0 0 6px; }
-/* With "Повысить рейтинг" first, the hints follow the links under the
-   photo with no gap, so its grey hover touches the link above, as on openvk. */
-.profile-hints:has(> .completeness-raise:first-child) { margin-top: -10px; }
-.hint-interests::before { background-image: url("/static/icons/info.svg"); }
-.hint-email::before, .hint-telegram::before { background-image: url("/static/icons/document.svg"); }
+.hint-main::before, .hint-interests::before { background-image: url("/static/icons/info.svg"); }
+.hint-contacts::before { background-image: url("/static/icons/document.svg"); }
 .hint-status::before { background-image: url("/static/icons/status.svg"); }
+.hint-photo::before { background-image: url("/static/icons/photo.svg"); }
+/* The window of "Повысить рейтинг": the balance, the field and the cost,
+   whose line is there before anything is typed, so nothing moves. */
+.rating-field { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; }
+.rating-field .modal-input { width: 140px; margin: 0; }
+.rating-cost { min-height: 1.4em; color: var(--text-626262); }
 
 /* The status edited on the page, as openvk's box under the name. */
 .status-editable { cursor: pointer; }
@@ -1965,7 +1974,7 @@ body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
 body:not(.nsfw-shown) img.photo-nsfw { filter: saturate(.8) blur(24px); clip-path: inset(0); cursor: pointer; }
 
 /* "Рейтинг" of the settings: no gauge on the pages its owner reads. */
-.rating-hidden .profile-hints { display: none; }
+.rating-hidden .profile-hints, .rating-hidden .rating-raise { display: none; }
 
 /* openvk's "Микроблог" ("Вид постов"): no grey bar over a post, the date
    down in its menu, and a line under each. */

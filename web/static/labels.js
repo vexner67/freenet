@@ -2180,12 +2180,28 @@ export function signedVotes(amount) {
 
 // The fees of the economy until GET /treasury says the ones the
 // administrators set: a percent of a transfer on top (rounded up, at
-// least 1 vote) and of the price of a sticker pack sold; and 3 votes a
-// percent of rating, up to 1000%.
+// least 1 vote) and of the price of a sticker pack sold; and a vote a
+// percent of rating, up to a billion percent with how full the page is
+// (user.RatingPrice, user.MaxRating).
 export const TRANSFER_FEE_PERCENT = 3;
 export const STICKER_TAX_PERCENT = 10;
-export const RATING_PRICE = 3;
-export const MAX_RATING = 1000;
+export const RATING_PRICE = 1;
+export const MAX_RATING = 1_000_000_000;
+
+// ratingTier is the colour of the gauge of a rating: grey up to 100 %,
+// as openvk's, then silver up to 199 %, gold up to 999 % and ruby from
+// 1000 %.
+export function ratingTier(percent) {
+  if (percent >= 1000) return 'ruby';
+  if (percent >= 200) return 'gold';
+  if (percent >= 100) return 'silver';
+  return '';
+}
+
+// ratingPercent is a rating with its digits grouped: "1 000 000 %".
+export function ratingPercent(percent) {
+  return `${groupedVotes(percent)}\u00a0%`;
+}
 
 // transferFee is what a transfer of votes costs on top of them at percent.
 export function transferFee(votes, percent = TRANSFER_FEE_PERCENT) {
@@ -2266,7 +2282,7 @@ export function voteOperation(op, myId) {
       if (note === '#message') return { title: tr('Налог с платного сообщения'), role: tr('Отправитель:') };
       return { title: tr('Налог с продажи набора «{0}»', stickerPacks[note] ?? note), role: tr('Покупатель:') };
     case 'rating':
-      return { title: tr('Повышение рейтинга на {0} %', note), role: '' };
+      return { title: tr('Повышение рейтинга на {0} %', groupedVotes(Number(note) || 0)), role: op.peer ? tr('Страница:') : '' };
     case 'denomination':
       return { title: tr('Деноминация 1 : 1 000 000'), role: '' };
     case 'prime': {
@@ -2498,13 +2514,22 @@ export function archiveYears(years, chosen = 0, shown = 6) {
 }
 
 // completenessHints are openvk's hints under the gauge of the owner's page:
-// what is missing, where to fill it in and what it adds.
+// the blocks not filled in to the end, where to fill them in and what
+// they would add ({0}: the percent the user service counts).
 export const completenessHints = {
-  interests: ['/edit?act=interests', tr('Интересы (+20%)')],
-  email: ['/edit?act=contacts', 'Email (+20%)'],
-  telegram: ['/edit?act=contacts', 'Telegram (+15%)'],
-  status: ['/edit', tr('Статус (+15%)')],
+  photo: ['/edit?act=avatar', tr('Фотография (+{0}%)')],
+  status: ['/edit', tr('Статус (+{0}%)')],
+  main: ['/edit', tr('Основное (+{0}%)')],
+  contacts: ['/edit?act=contacts', tr('Контакты (+{0}%)')],
+  interests: ['/edit?act=interests', tr('Интересы (+{0}%)')],
 };
+
+// completenessHint is the link of a hint: [href, text], or null for a
+// block this site does not know.
+export function completenessHint({ part, percent }) {
+  const hint = completenessHints[part];
+  return hint ? [hint[0], hint[1].replace('{0}', percent)] : null;
+}
 
 // Notification phrases, as on openvk: "<name> оценил(а) вашу запись" and
 // so on; the verb agrees with the actor's gender, or is neuter for a
@@ -2904,8 +2929,9 @@ const errorTexts = {
   'the bonus is taken today': tr('Сегодня вы уже получили бонус.'),
   'the bonus is for pages a week old with a filled profile': tr('Бонус получают страницы старше недели с заполненной анкетой.'),
   'a voucher with votes has a limited number of usages': tr('Ваучер с голосами действует ограниченное число раз.'),
-  'the rating is raised by 1 to 1000 percent': tr('Рейтинг повышается на 1–1000 %.'),
-  'the rating cannot go above 1000 percent': tr('Больше нельзя: рейтинг не может быть больше 1000 %.'),
+  'the rating is raised by 1 to 1000000000 percent': tr('Рейтинг повышается на 1–1 000 000 000 %.'),
+  'the rating cannot go above 1000000000 percent': tr('Больше нельзя: рейтинг не может быть больше 1 000 000 000 %.'),
+  'you cannot raise the rating of this user': tr('Вы не можете повысить рейтинг этого пользователя.'),
   'the daily bonus must be at least 1 vote': tr('Бонус — не меньше 1 голоса.'),
   'a fee must be from 0 to 100 percent': tr('Комиссия — от 0 до 100 %.'),
   'the jackpot must be at least 1 vote': tr('Джекпот — не меньше 1 голоса.'),
