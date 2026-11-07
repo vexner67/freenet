@@ -215,15 +215,20 @@ func TestChatService_Messages(t *testing.T) {
 	})
 
 	t.Run("who has read", func(t *testing.T) {
-		readers, err := f.svc.Readers(ctx, bob, chatID, second.ID())
+		readers, err := f.svc.Readers(ctx, cat, chatID, second.ID())
 		if err != nil || !slices.Contains(readers, ann) || slices.Contains(readers, cat) || slices.Contains(readers, bob) {
 			t.Fatalf("readers of cat's message = %v, %v", readers, err)
 		}
 
-		// Bob has not read cat's answer, so of bob's own message only ann
-		// and whoever moved past it count, never bob.
-		if readers, err = f.svc.Readers(ctx, cat, chatID, first.ID()); err != nil || !slices.Contains(readers, ann) || slices.Contains(readers, bob) {
+		// Of bob's own message ann and whoever moved past it count, never
+		// bob.
+		if readers, err = f.svc.Readers(ctx, bob, chatID, first.ID()); err != nil || !slices.Contains(readers, ann) || slices.Contains(readers, bob) {
 			t.Fatalf("readers of bob's message = %v, %v", readers, err)
+		}
+
+		// Who has read a message only its sender learns.
+		if _, err = f.svc.Readers(ctx, cat, chatID, first.ID()); !errors.Is(err, message.ErrNotFound) {
+			t.Fatalf("readers of someone else's message: %v", err)
 		}
 
 		if _, err = f.svc.Readers(ctx, bob, uuid.New(), first.ID()); !errors.Is(err, message.ErrNotFound) {

@@ -1109,15 +1109,17 @@ func (s *ChatService) seenUpTo(ctx context.Context, chatID, userID uuid.UUID) (u
 }
 
 // Readers are who of the people in the chat has read a message of it,
-// besides its sender, as openvk's "Кто прочитал"; only someone who sees
-// the message may ask.
+// besides its sender, as openvk's "Кто прочитал"; only the sender may
+// ask.
 func (s *ChatService) Readers(ctx context.Context, userID, chatID, id uuid.UUID) ([]uuid.UUID, error) {
 	m, _, err := s.shown(ctx, userID, id)
 	if err != nil {
 		return nil, errs.Wrap("s.shown", err)
 	}
 
-	if m.ChatID() != chatID {
+	// Who has read a message is its sender's to know, as on openvk: to the
+	// others it is as if there were no such list.
+	if m.ChatID() != chatID || m.SenderID() != userID {
 		return nil, message.ErrNotFound
 	}
 

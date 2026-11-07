@@ -91,9 +91,15 @@ func TestChat(t *testing.T) {
 			t.Fatalf("GetChat = %v, %v", got, err)
 		}
 
-		readers, err := s.client.ListChatMessageReaders(s.as(t, ann), &messagev1.ListChatMessageReadersRequest{ChatId: chat.GetId(), MessageId: sent.GetMessage().GetId()})
+		readers, err := s.client.ListChatMessageReaders(s.as(t, bob), &messagev1.ListChatMessageReadersRequest{ChatId: chat.GetId(), MessageId: sent.GetMessage().GetId()})
 		if err != nil || !slices.Contains(readers.GetUserIds(), ann.String()) {
 			t.Fatalf("ListChatMessageReaders = %v, %v", readers, err)
+		}
+
+		// Who has read bob's message is bob's to know.
+		_, err = s.client.ListChatMessageReaders(s.as(t, ann), &messagev1.ListChatMessageReadersRequest{ChatId: chat.GetId(), MessageId: sent.GetMessage().GetId()})
+		if status.Code(err) != codes.NotFound {
+			t.Fatalf("readers of someone else's message: %v", err)
 		}
 
 		_, err = s.client.ListChatMessageReaders(s.as(t, ann), &messagev1.ListChatMessageReadersRequest{ChatId: chat.GetId(), MessageId: "nope"})
