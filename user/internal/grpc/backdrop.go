@@ -17,6 +17,7 @@ type BackdropService interface {
 var backdropSides = map[userv1.BackdropSide]user.BackdropSide{
 	userv1.BackdropSide_BACKDROP_SIDE_LEFT:  user.BackdropLeft,
 	userv1.BackdropSide_BACKDROP_SIDE_RIGHT: user.BackdropRight,
+	userv1.BackdropSide_BACKDROP_SIDE_COVER: user.BackdropCover,
 }
 
 // SetBackdrop is openvk's "Фон страницы" of the caller, one side at a time.

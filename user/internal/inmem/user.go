@@ -123,6 +123,7 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 	stored.MarkSeen(old.LastSeen())
 	stored.SetBackdrop(user.BackdropLeft, old.Backdrop().Left)
 	stored.SetBackdrop(user.BackdropRight, old.Backdrop().Right)
+	stored.SetBackdrop(user.BackdropCover, old.Backdrop().Cover)
 	r.put(&stored)
 
 	return nil

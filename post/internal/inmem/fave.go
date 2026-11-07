@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/errs"
-	"github.com/vexner67/freenet/post/internal/post"
 	"github.com/vexner67/freenet/post/internal/service"
 )
 
@@ -72,14 +71,6 @@ func (s *Store) countedComment(id uuid.UUID) bool {
 	return ok && s.countedPost(c.PostID()) && !s.commentHidden(c)
 }
 
-// shownPhoto: neither who put the photo nor the owner of its album
-// deleted the page. The caller holds the lock.
-func (r *AlbumRepository) shownPhoto(id uuid.UUID) bool {
-	p, ok := r.photos[id]
-
-	return ok && !r.photoHidden(p)
-}
-
 func (r *LikeRepository) LikedBy(ctx context.Context, userID uuid.UUID, after *service.FaveCursor, limit int) ([]service.Fave, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
@@ -123,40 +114,4 @@ func (r *CommentLikeRepository) CountLikedBy(ctx context.Context, userID uuid.UU
 	defer r.s.mu.RUnlock()
 
 	return len(faves(r.s.commentLikes, userID, r.s.countedComment, nil, everyFave)), nil
-}
-
-func (l *AlbumPhotoLikeRepository) LikedBy(ctx context.Context, userID uuid.UUID, after *service.FaveCursor, limit int) ([]service.Fave, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, errs.Wrap("ctx.Err", err)
-	}
-
-	l.r.mu.RLock()
-	defer l.r.mu.RUnlock()
-
-	return faves(l.r.photoLikes, userID, l.r.shownPhoto, after, limit), nil
-}
-
-func (l *AlbumPhotoLikeRepository) CountLikedBy(ctx context.Context, userID uuid.UUID) (int, error) {
-	all, err := l.LikedBy(ctx, userID, nil, everyFave)
-
-	return len(all), err
-}
-
-// GetMany returns the photos that exist, in no order.
-func (p *AlbumPhotoRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.AlbumPhoto, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, errs.Wrap("ctx.Err", err)
-	}
-
-	p.r.mu.RLock()
-	defer p.r.mu.RUnlock()
-
-	found := make([]*post.AlbumPhoto, 0, len(ids))
-	for _, id := range ids {
-		if photo, ok := p.r.photos[id]; ok {
-			found = append(found, p.r.seenPhoto(photo))
-		}
-	}
-
-	return found, nil
 }

@@ -323,7 +323,7 @@ func RestoreArticle(s StoredArticle) *Article {
 func (a *Article) LinkedAlone(p *Post) bool {
 	c := p.Content()
 	text := strings.TrimSpace(c.Text().String())
-	if p.AuthorID() != a.authorID || !p.OnOwnWall() || c.RepostOf() != uuid.Nil || c.hasMedia() || c.Polled() || c.SharedPhoto() != uuid.Nil {
+	if p.AuthorID() != a.authorID || !p.OnOwnWall() || c.RepostOf() != uuid.Nil || c.hasMedia() || c.Polled() {
 		return false
 	}
 

@@ -41,14 +41,10 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, "a post on your own wall speaks for you"), true
 	case errors.Is(err, post.ErrInvalidPrice), errors.Is(err, post.ErrPricedElsewhere), errors.Is(err, post.ErrPriceWithoutMedia):
 		return status.New(codes.InvalidArgument, err.Error()), true
-	case errors.Is(err, post.ErrRepostPhotos):
-		return status.New(codes.InvalidArgument, "a post sharing a photo has no photos of its own"), true
 	case errors.Is(err, post.ErrCannotPin):
 		return status.New(codes.PermissionDenied, "only the owner of the wall can pin the post"), true
 	case errors.Is(err, post.ErrReplyOtherPost):
 		return status.New(codes.InvalidArgument, "the comment to reply to is under another post"), true
-	case errors.Is(err, post.ErrReplyOtherPhoto):
-		return status.New(codes.InvalidArgument, "the comment to reply to is under another photo"), true
 	case errors.Is(err, post.ErrCommentNotFound):
 		return status.New(codes.NotFound, "comment not found"), true
 	case errors.Is(err, post.ErrSuggestionNotFound):
@@ -66,8 +62,7 @@ func toStatus(err error) (*status.Status, bool) {
 	}
 }
 
-// topicStatus is toStatus for the discussions of communities and the
-// photo albums.
+// topicStatus is toStatus for the discussions of communities.
 func topicStatus(err error) (*status.Status, bool) {
 	for _, known := range []struct {
 		err  error
@@ -88,19 +83,9 @@ func topicStatus(err error) (*status.Status, bool) {
 		{post.ErrTopicRestricted, codes.PermissionDenied},
 		{post.ErrRestrictOwnTopic, codes.InvalidArgument},
 		{post.ErrTopicClosed, codes.FailedPrecondition},
-		{post.ErrAlbumNotFound, codes.NotFound},
-		{post.ErrAlbumPhotoNotFound, codes.NotFound},
-		{post.ErrCannotChangeAlbum, codes.PermissionDenied},
-		{post.ErrCannotDescribePhoto, codes.PermissionDenied},
-		{post.ErrCannotDeleteAlbumPhoto, codes.PermissionDenied},
-		{post.ErrCannotDeletePhotoComment, codes.PermissionDenied},
 		{post.ErrCommentEmpty, codes.InvalidArgument},
-		{post.ErrNoAlbumPhotos, codes.InvalidArgument},
-		{post.ErrSystemAlbum, codes.FailedPrecondition},
-		{post.ErrCannotMovePhoto, codes.InvalidArgument},
 		{post.ErrDuplicatePhoto, codes.InvalidArgument},
 		{post.ErrInvalidPhoto, codes.InvalidArgument},
-		{service.ErrTooManyAlbumPhotos, codes.InvalidArgument},
 		{post.ErrPollNotFound, codes.NotFound},
 		{post.ErrPollDays, codes.InvalidArgument},
 		{post.ErrPollChoice, codes.InvalidArgument},

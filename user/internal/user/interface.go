@@ -66,7 +66,6 @@ func (m MainPage) String() string {
 type MenuItem string
 
 const (
-	MenuPhotos        MenuItem = "photos"
 	MenuMessages      MenuItem = "messages"
 	MenuGroups        MenuItem = "groups"
 	MenuFeed          MenuItem = "feed"
@@ -74,10 +73,16 @@ const (
 )
 
 // menuItems are all of them, in the order of the menu.
-var menuItems = []MenuItem{MenuPhotos, MenuMessages, MenuGroups, MenuFeed, MenuNotifications}
+var menuItems = []MenuItem{MenuMessages, MenuGroups, MenuFeed, MenuNotifications}
 
 func (m MenuItem) String() string {
 	return string(m)
+}
+
+// IsKnown says the menu has the link: one stored before it went (the
+// albums' "photos") is not.
+func (m MenuItem) IsKnown() bool {
+	return slices.Contains(menuItems, m)
 }
 
 // Theme is the look of the whole site ("Стиль" of openvk).

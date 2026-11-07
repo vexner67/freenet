@@ -292,7 +292,7 @@ func TestPurgeService_Music(t *testing.T) {
 	svc, playlists, _, m := newMusic(t)
 	purge := service.NewPurgeService(service.PurgeDeps{
 		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Sources: store.Sources(), Comments: store.Comments(), Suggestions: inmem.NewSuggestionRepository(),
-		Topics: inmem.NewTopicRepository(), Albums: inmem.NewAlbumRepository(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{},
+		Topics: inmem.NewTopicRepository(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{},
 		Postponed: inmem.NewPostponedRepository(), Audio: m.Audios,
 	})
 	ann, bob := uuid.New(), uuid.New()

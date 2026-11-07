@@ -10,7 +10,7 @@ import (
 	"github.com/vexner67/freenet/gateway/internal/rest"
 )
 
-// fakeFaves likes posts, comments and photos of u1 (ann), u2 (bob) and u3
+// fakeFaves likes posts and comments of u1 (ann), u2 (bob) and u3
 // (a deleted page), and wrote a post.
 type fakeFaves struct {
 	asked, token, cursor string
@@ -50,16 +50,6 @@ func (f *fakeFaves) Comments(_ context.Context, token, cursor string, limit int)
 	}, NextCursor: "1_c7", Total: 3}, nil
 }
 
-func (f *fakeFaves) Photos(_ context.Context, token, cursor string, limit int) (model.FavePhotoPage, error) {
-	f.ask("photos", token, cursor, limit)
-
-	return model.FavePhotoPage{Photos: []model.FavePhoto{
-		{AlbumPhoto: model.AlbumPhoto{ID: "f1", AlbumID: "a1", AuthorID: "u1", Description: "Море", Liked: true, Likes: 2, CreatedAt: faveTime}, OwnerID: "u1"},
-		{AlbumPhoto: model.AlbumPhoto{ID: "f2", AlbumID: "a1", AuthorID: "u3", Liked: true, CreatedAt: faveTime}, OwnerID: "u1"},
-		{AlbumPhoto: model.AlbumPhoto{ID: "f3", AlbumID: "a9", AuthorID: "u2", Liked: true, CreatedAt: faveTime}, OwnerID: "u404"},
-	}, Total: 3}, nil
-}
-
 type favePostsBody struct {
 	Posts []struct {
 		ID     string         `json:"id"`
@@ -91,7 +81,7 @@ func TestListFavePosts(t *testing.T) {
 	}
 
 	// The faves are one's own: nobody reads them without a token.
-	for _, path := range []string{"/api/v1/me/faves/posts", "/api/v1/me/faves/comments", "/api/v1/me/faves/photos", "/api/v1/me/posts"} {
+	for _, path := range []string{"/api/v1/me/faves/posts", "/api/v1/me/faves/comments", "/api/v1/me/posts"} {
 		if w = newHarness(rest.Config{}).do("GET", path, ""); w.Code != http.StatusUnauthorized {
 			t.Fatalf("%s without a token: %d", path, w.Code)
 		}
@@ -146,41 +136,5 @@ func TestListFaveComments(t *testing.T) {
 	}
 	if h.faves.asked != "comments" || h.faves.limit != 3 {
 		t.Fatalf("request = %+v", h.faves)
-	}
-}
-
-func TestListFavePhotos(t *testing.T) {
-	t.Parallel()
-
-	type body struct {
-		Photos []struct {
-			ID          string `json:"id"`
-			Large       string `json:"large"`
-			Description string `json:"description"`
-			Liked       bool   `json:"liked"`
-			Likes       int    `json:"likes"`
-		} `json:"photos"`
-		Total int `json:"total"`
-	}
-
-	h := newHarness(rest.Config{})
-	w := h.do("GET", "/api/v1/me/faves/photos", "", "Authorization", "Bearer tok")
-	got := decode[body](t, w)
-
-	// The photo of the deleted page and the one in an album of nobody are
-	// left out.
-	if w.Code != http.StatusOK || got.Total != 3 || len(got.Photos) != 1 {
-		t.Fatalf("%d %+v", w.Code, got)
-	}
-	if p := got.Photos[0]; p.ID != "f1" || p.Description != "Море" || !p.Liked || p.Likes != 2 || p.Large != "/media/photos/u1/f1/large.jpg" {
-		t.Fatalf("photo = %+v", p)
-	}
-
-	// Ann shows her photos to nobody any more.
-	h = newHarness(rest.Config{})
-	h.users.hiddenPhotos = true
-	w = h.do("GET", "/api/v1/me/faves/photos", "", "Authorization", "Bearer tok")
-	if got = decode[body](t, w); w.Code != http.StatusOK || got.Total != 3 || len(got.Photos) != 0 {
-		t.Fatalf("hidden photos: %d %+v", w.Code, got)
 	}
 }

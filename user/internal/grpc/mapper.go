@@ -42,6 +42,7 @@ func toProtoUser(u *user.User) *userv1.User {
 		RegisteredAt:          timestamppb.New(user.RegisteredAt(u.ID())),
 		BackdropLeft:          avatarString(u.Backdrop().Left),
 		BackdropRight:         avatarString(u.Backdrop().Right),
+		BackdropCover:         avatarString(u.Backdrop().Cover),
 		Interface:             toProtoInterface(u.Interface()),
 		Completeness:          int32(completeness), //nolint:gosec // a percent
 		Unfilled:              unfilled,
@@ -236,7 +237,6 @@ func toProtoPrivacy(p user.Privacy) *userv1.PrivacySettings {
 		ClubsRead:          toProtoClubsRead(p.ClubsRead),
 		PageRead:           toProtoAudience(p.PageRead),
 		InfoRead:           toProtoAudience(p.InfoRead),
-		PhotosRead:         toProtoAudience(p.PhotosRead),
 		FriendsRead:        toProtoAudience(p.FriendsRead),
 		OnlineRead:         toProtoAudience(p.OnlineRead),
 		GiftsRead:          toProtoAudience(p.GiftsRead),
@@ -293,8 +293,8 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		return user.Privacy{}, err
 	}
 
-	var reads [4]user.Audience
-	for i, a := range []userv1.Audience{p.GetInfoRead(), p.GetPhotosRead(), p.GetFriendsRead(), p.GetOnlineRead()} {
+	var reads [3]user.Audience
+	for i, a := range []userv1.Audience{p.GetInfoRead(), p.GetFriendsRead(), p.GetOnlineRead()} {
 		if reads[i], err = user.NewAudience(fromProtoAudience(a)); err != nil {
 			return user.Privacy{}, err
 		}
@@ -334,9 +334,8 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		ClubsRead:          clubsRead,
 		PageRead:           pageRead,
 		InfoRead:           reads[0],
-		PhotosRead:         reads[1],
-		FriendsRead:        reads[2],
-		OnlineRead:         reads[3],
+		FriendsRead:        reads[1],
+		OnlineRead:         reads[2],
 		GiftsRead:          optional[0],
 		AudiosRead:         optional[1],
 		ListeningRead:      optional[2],
@@ -475,6 +474,7 @@ func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
 	}
 
 	pp.BackdropLeft, pp.BackdropRight = avatarString(p.Backdrop.Left), avatarString(p.Backdrop.Right)
+	pp.BackdropCover = avatarString(p.Backdrop.Cover)
 	pp.Completeness = int32(p.Completeness) //nolint:gosec // a percent
 
 	if !p.InfoHidden {

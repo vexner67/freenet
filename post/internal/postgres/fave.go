@@ -160,81 +160,6 @@ func (r *CommentLikeRepository) CountLikedBy(ctx context.Context, userID uuid.UU
 	return n, nil
 }
 
-// listFavePhotosQuery reads album_photo_likes_faves_idx.
-const listFavePhotosQuery = `
-	SELECT
-		l.photo_id,
-		l.created_at
-	FROM album_photo_likes l
-	JOIN album_photos p ON p.id = l.photo_id
-	JOIN albums a ON a.id = p.album_id
-	WHERE l.user_id = $1
-		AND (l.created_at, l.photo_id) < ($2, $3)
-		AND NOT user_hidden(p.author_id)
-		AND NOT user_hidden(a.owner_id)
-	ORDER BY l.created_at DESC, l.photo_id DESC
-	LIMIT $4
-`
-
-func (l *AlbumPhotoLikeRepository) LikedBy(ctx context.Context, userID uuid.UUID, after *service.FaveCursor, limit int) ([]service.Fave, error) {
-	return faves(ctx, l.r.conn(ctx), listFavePhotosQuery, userID, after, limit)
-}
-
-const countFavePhotosQuery = `
-	SELECT COALESCE((
-		SELECT photos
-		FROM fave_counts
-		WHERE user_id = $1
-	), 0) - (
-		SELECT count(*)
-		FROM album_photo_likes l
-		WHERE l.user_id = $1
-			AND l.photo_id IN (
-				SELECT p.id
-				FROM hidden_users h
-				JOIN album_photos p ON p.author_id = h.user_id
-				UNION
-				SELECT p.id
-				FROM hidden_users h
-				JOIN albums a ON a.owner_id = h.user_id
-				JOIN album_photos p ON p.album_id = a.id
-			)
-	)
-`
-
-func (l *AlbumPhotoLikeRepository) CountLikedBy(ctx context.Context, userID uuid.UUID) (int, error) {
-	var n int
-	if err := l.r.conn(ctx).QueryRow(ctx, countFavePhotosQuery, userID).Scan(&n); err != nil {
-		return 0, errs.Wrap("l.r.conn.QueryRow", err)
-	}
-
-	return n, nil
-}
-
-const getAlbumPhotosQuery = `
-	SELECT
-		id,
-		album_id,
-		author_id,
-		description,
-		created_at,
-		like_count,
-		comment_count - hidden_photo_comments(id) AS comment_count,
-		nsfw
-	FROM album_photos
-	WHERE id = ANY($1)
-`
-
-// GetMany returns the photos that exist, in no order.
-func (p *AlbumPhotoRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.AlbumPhoto, error) {
-	rows, err := p.r.conn(ctx).Query(ctx, getAlbumPhotosQuery, ids)
-	if err != nil {
-		return nil, errs.Wrap("p.r.conn.Query", err)
-	}
-
-	return collectAlbumPhotos(rows)
-}
-
 // listPostsByAuthorQuery reads posts_author_id_idx: what a person wrote,
 // on whichever wall, but for what was archived on the walls of others.
 const listPostsByAuthorQuery = `
@@ -253,7 +178,6 @@ const listPostsByAuthorQuery = `
 		from_wall,
 		signed,
 		suggested,
-		shared_photo_id,
 		archived,
 		comments_closed,
 		nsfw,

@@ -72,7 +72,6 @@ type fakePhotos struct {
 	published []photoCall
 	deleted   []photoCall
 	purged    []uuid.UUID
-	copied    []service.PhotoCopy
 	outsideTx int
 	err       error
 }
@@ -99,19 +98,6 @@ func (f *fakePhotos) Publish(ctx context.Context, owner uuid.UUID, photos []uuid
 
 func (f *fakePhotos) Delete(ctx context.Context, owner uuid.UUID, photos []uuid.UUID) error {
 	return f.record(ctx, &f.deleted, photoCall{owner, photos})
-}
-
-func (f *fakePhotos) Copy(ctx context.Context, _ uuid.UUID, copies []service.PhotoCopy) error {
-	var call []photoCall
-	if err := f.record(ctx, &call, photoCall{}); err != nil {
-		return err
-	}
-
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.copied = append(f.copied, copies...)
-
-	return nil
 }
 
 func (f *fakePhotos) Purge(ctx context.Context, owner uuid.UUID) error {

@@ -50,7 +50,6 @@ const saveMessageQuery = `
 			text,
 			photo_ids,
 			post_id,
-			shared_photo_id,
 			forwarded,
 			created_at,
 			sealed,
@@ -59,7 +58,7 @@ const saveMessageQuery = `
 			audio_ids,
 			reply_to_id
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING id, sender_id, recipient_id
 	)
 	INSERT INTO dialogs (
@@ -90,7 +89,7 @@ func (r *MessageRepository) Save(ctx context.Context, m *message.Message) error 
 		return errs.Wrap("forwardedToDB", err)
 	}
 
-	_, err = r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.CreatedAt(), m.Sealed().Bytes(), m.Sticker().String(), documentIDs(m.Documents()), audioIDs(m.Audios()), postIDToDB(m.ReplyTo()))
+	_, err = r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), forwarded, m.CreatedAt(), m.Sealed().Bytes(), m.Sticker().String(), documentIDs(m.Documents()), audioIDs(m.Audios()), postIDToDB(m.ReplyTo()))
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -106,7 +105,6 @@ const getMessageQuery = `
 		text,
 		photo_ids,
 		post_id,
-		shared_photo_id,
 		created_at,
 		edited_at,
 		hidden_from_sender,
@@ -156,7 +154,6 @@ const getMessagesQuery = `
 		text,
 		photo_ids,
 		post_id,
-		shared_photo_id,
 		created_at,
 		edited_at,
 		hidden_from_sender,
@@ -196,7 +193,6 @@ const (
 			text,
 			photo_ids,
 			post_id,
-			shared_photo_id,
 			created_at,
 			edited_at,
 			hidden_from_sender,
@@ -224,7 +220,6 @@ const (
 			text,
 			photo_ids,
 			post_id,
-			shared_photo_id,
 			created_at,
 			edited_at,
 			hidden_from_sender,
@@ -294,14 +289,12 @@ type scanned struct {
 	photos    []uuid.UUID
 	post      *uuid.UUID
 	forwarded []byte
-	// sharedPhoto is NULL for no photo of an album.
-	sharedPhoto *uuid.UUID
-	editedAt    *time.Time
-	deletedAt   *time.Time
-	sealed      []byte
-	sticker     string
-	documents   []uuid.UUID
-	audios      []uuid.UUID
+	editedAt  *time.Time
+	deletedAt *time.Time
+	sealed    []byte
+	sticker   string
+	documents []uuid.UUID
+	audios    []uuid.UUID
 	// replyTo is NULL for a message answering none.
 	replyTo *uuid.UUID
 }
@@ -309,7 +302,7 @@ type scanned struct {
 // dest are the columns of a message, in the order the queries list them.
 func (s *scanned) dest() []any {
 	return []any{
-		&s.stored.ID, &s.stored.SenderID, &s.stored.RecipientID, &s.text, &s.photos, &s.post, &s.sharedPhoto, &s.stored.CreatedAt,
+		&s.stored.ID, &s.stored.SenderID, &s.stored.RecipientID, &s.text, &s.photos, &s.post, &s.stored.CreatedAt,
 		&s.editedAt, &s.stored.HiddenFromSender, &s.stored.HiddenFromRecipient, &s.forwarded, &s.deletedAt, &s.sealed, &s.sticker, &s.documents, &s.audios, &s.replyTo,
 	}
 }
@@ -345,9 +338,6 @@ func (s *scanned) message() (*message.Message, error) {
 	stored := s.stored
 	stored.Content = message.RestoreContent(message.Text(s.text), photos, postID, forwarded).WithSealed(message.Sealed(s.sealed)).WithSticker(message.Sticker(s.sticker)).
 		WithDocuments(documentsFromDB(s.documents)).WithAudios(audiosFromDB(s.audios)).Answering(orNil(s.replyTo))
-	if s.sharedPhoto != nil {
-		stored.Content = stored.Content.WithSharedPhoto(*s.sharedPhoto)
-	}
 	stored.CreatedAt = stored.CreatedAt.UTC()
 
 	if s.editedAt != nil {
@@ -367,7 +357,6 @@ type forwardedJSON struct {
 	Text      string      `json:"text,omitempty"`
 	Photos    []uuid.UUID `json:"photos,omitempty"`
 	Post      *uuid.UUID  `json:"post,omitempty"`
-	Photo     *uuid.UUID  `json:"photo,omitempty"`
 	Sticker   string      `json:"sticker,omitempty"`
 	Documents []uuid.UUID `json:"documents,omitempty"`
 	Audios    []uuid.UUID `json:"audios,omitempty"`
@@ -385,7 +374,6 @@ func forwardedToDB(forwarded message.Forwards) ([]byte, error) {
 			Text:      f.Text.String(),
 			Photos:    f.Photos,
 			Post:      postIDToDB(f.Post),
-			Photo:     postIDToDB(f.SharedPhoto),
 			Sticker:   f.Sticker.String(),
 			Documents: f.Documents,
 			Audios:    f.Audios,
@@ -429,15 +417,12 @@ func forwardedFromDB(data []byte) (message.Forwards, error) {
 		if row.Post != nil {
 			forwarded[i].Post = *row.Post
 		}
-		if row.Photo != nil {
-			forwarded[i].SharedPhoto = *row.Photo
-		}
 	}
 
 	return forwarded, nil
 }
 
-// postIDToDB is NULL for no post, and for no shared photo, chat photo or
+// postIDToDB is NULL for no post, and for no chat photo or
 // pinned message.
 func postIDToDB(id uuid.UUID) *uuid.UUID {
 	if id == uuid.Nil {
@@ -528,7 +513,6 @@ const listDialogsQuery = `
 		m.text,
 		m.photo_ids,
 		m.post_id,
-		m.shared_photo_id,
 		m.created_at,
 		m.edited_at,
 		m.hidden_from_sender,
@@ -757,7 +741,6 @@ const retractMessageQuery = `
 		reply_to_id = NULL,
 		photo_ids = '{}',
 		post_id = NULL,
-		shared_photo_id = NULL,
 		forwarded = '[]',
 		sealed = NULL,
 		sticker = '',
@@ -891,7 +874,6 @@ const deleteUserDialogsQuery = `
 			m.text,
 			m.photo_ids,
 			m.post_id,
-			m.shared_photo_id,
 			m.created_at,
 			m.edited_at,
 			m.hidden_from_sender,
@@ -919,7 +901,6 @@ const deleteUserDialogsQuery = `
 		text,
 		photo_ids,
 		post_id,
-		shared_photo_id,
 		created_at,
 		edited_at,
 		hidden_from_sender,

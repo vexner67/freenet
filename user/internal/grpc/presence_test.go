@@ -68,7 +68,7 @@ func TestPresence(t *testing.T) {
 	_, err = s.client.UpdatePrivacy(ann, &userv1.UpdatePrivacyRequest{Privacy: &userv1.PrivacySettings{
 		WallWrite: userv1.WallWrite_WALL_WRITE_EVERYONE, MessagesWrite: userv1.MessagesWrite_MESSAGES_WRITE_EVERYONE,
 		ClubsRead: userv1.ClubsRead_CLUBS_READ_EVERYONE, PageRead: userv1.Audience_AUDIENCE_EVERYONE,
-		InfoRead: userv1.Audience_AUDIENCE_EVERYONE, PhotosRead: userv1.Audience_AUDIENCE_EVERYONE,
+		InfoRead:    userv1.Audience_AUDIENCE_EVERYONE,
 		FriendsRead: userv1.Audience_AUDIENCE_EVERYONE,
 	}})
 	if status.Code(err) != codes.InvalidArgument {

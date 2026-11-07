@@ -74,7 +74,7 @@ func TestGifts(t *testing.T) {
 	if _, err = s.client.UpdatePrivacy(ann, &userv1.UpdatePrivacyRequest{Privacy: &userv1.PrivacySettings{
 		WallWrite: userv1.WallWrite_WALL_WRITE_FOLLOWING, MessagesWrite: userv1.MessagesWrite_MESSAGES_WRITE_EVERYONE,
 		ClubsRead: userv1.ClubsRead_CLUBS_READ_EVERYONE, PageRead: userv1.Audience_AUDIENCE_EVERYONE,
-		InfoRead: userv1.Audience_AUDIENCE_EVERYONE, PhotosRead: userv1.Audience_AUDIENCE_EVERYONE,
+		InfoRead:    userv1.Audience_AUDIENCE_EVERYONE,
 		FriendsRead: userv1.Audience_AUDIENCE_EVERYONE, OnlineRead: userv1.Audience_AUDIENCE_EVERYONE,
 		GiftsRead: userv1.Audience_AUDIENCE_ONLY_ME,
 	}}); err != nil {

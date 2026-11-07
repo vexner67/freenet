@@ -162,11 +162,17 @@ func (m *Media) Avatar(ctx context.Context, userID, avatarID string, small bool)
 
 // UploadPhoto stores a photo of the caller for a post and returns its ID.
 func (m *Media) UploadPhoto(ctx context.Context, accessToken string, image []byte) (string, error) {
-	resp, err := m.api.UploadPhoto(
-		withToken(ctx, accessToken),
-		&mediav1.UploadPhotoRequest{Image: image},
-		grpc.MaxCallSendMsgSize(maxMessageBytes),
-	)
+	return m.uploadPhoto(ctx, accessToken, &mediav1.UploadPhotoRequest{Image: image})
+}
+
+// UploadWidePhoto stores a photo of the caller behind their whole page,
+// its large size twice as big as a post's.
+func (m *Media) UploadWidePhoto(ctx context.Context, accessToken string, image []byte) (string, error) {
+	return m.uploadPhoto(ctx, accessToken, &mediav1.UploadPhotoRequest{Image: image, Wide: true})
+}
+
+func (m *Media) uploadPhoto(ctx context.Context, accessToken string, req *mediav1.UploadPhotoRequest) (string, error) {
+	resp, err := m.api.UploadPhoto(withToken(ctx, accessToken), req, grpc.MaxCallSendMsgSize(maxMessageBytes))
 	if err != nil {
 		return "", errs.Wrap("m.api.UploadPhoto", fromStatus(err))
 	}

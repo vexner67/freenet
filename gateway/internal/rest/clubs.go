@@ -72,11 +72,12 @@ type clubJSON struct {
 	Verified bool `json:"verified"`
 }
 
-// backdropJSON is the photos on the left and on the right of a club's
-// page; either may be null.
+// backdropJSON is the photos on the left and on the right of a page and,
+// of a person with Prime, behind it all; any may be null.
 type backdropJSON struct {
 	Left  *photoJSON `json:"left"`
 	Right *photoJSON `json:"right"`
+	Cover *photoJSON `json:"cover,omitempty"`
 }
 
 // clubResponse is a club as the viewer sees it: role is "" (not a member,
@@ -191,7 +192,7 @@ func toClubJSON(c model.Club) clubJSON {
 // toBackdropJSON is b of the page of ownerID, a person or a club; nil
 // for none.
 func toBackdropJSON(ownerID string, b model.Backdrop) *backdropJSON {
-	if b.Left == "" && b.Right == "" {
+	if b.Left == "" && b.Right == "" && b.Cover == "" {
 		return nil
 	}
 
@@ -203,7 +204,7 @@ func toBackdropJSON(ownerID string, b model.Backdrop) *backdropJSON {
 		return &p
 	}
 
-	return &backdropJSON{Left: side(b.Left), Right: side(b.Right)}
+	return &backdropJSON{Left: side(b.Left), Right: side(b.Right), Cover: side(b.Cover)}
 }
 
 func toClubsJSON(clubs []model.Club) []clubJSON {
@@ -331,7 +332,7 @@ func (a *api) club(r *http.Request, token string) (model.ClubView, error) {
 
 // openClub is the club of the path, refused unless the caller, anonymous
 // without token, sees what is in it: a closed club ("Закрытая группа")
-// shows its wall, members, discussions and albums to its members only.
+// shows its wall, members and discussions to its members only.
 func (a *api) openClub(r *http.Request, token string) (model.ClubView, error) {
 	c, err := a.club(r, token)
 	if err != nil {
@@ -664,7 +665,7 @@ func (a *api) transferClub(w http.ResponseWriter, r *http.Request) {
 }
 
 // deleteClub is the owner's "Удалить группу": the club goes with its
-// members, wall, topics, albums and photos. openvk deletes no club.
+// members, wall, topics and photos. openvk deletes no club.
 func (a *api) deleteClub(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -885,7 +886,6 @@ func (a *api) uploadClubAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.cleanUpClubAvatars(r, token, c.Club.ID, avatarID)
-	a.keepInAvatarAlbum(r, token, c.Club.ID, image)
 	a.writeClub(w, r, http.StatusOK, v)
 }
 

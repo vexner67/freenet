@@ -22,8 +22,8 @@ type FaveCursor struct {
 	ID      uuid.UUID
 }
 
-// FaveRepository reads the likes of one kind (of posts, of comments, of
-// photos of albums) from the side of who likes. What sits on an archived
+// FaveRepository reads the likes of one kind (of posts, of comments) from
+// the side of who likes. What sits on an archived
 // post is left out of both: only the owner of its wall reads it.
 type FaveRepository interface {
 	// LikedBy returns up to limit things userID likes, newest like first,
@@ -32,7 +32,7 @@ type FaveRepository interface {
 	CountLikedBy(ctx context.Context, userID uuid.UUID) (int, error)
 }
 
-// FavePosts, FaveComments and FavePhotos read what is liked, in no order;
+// FavePosts and FaveComments read what is liked, in no order;
 // what is gone meanwhile is missing.
 type FavePosts interface {
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error)
@@ -42,29 +42,17 @@ type FaveComments interface {
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Comment, error)
 }
 
-type FavePhotos interface {
-	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.AlbumPhoto, error)
-}
-
-// FaveAlbums tells whose album a liked photo is in.
-type FaveAlbums interface {
-	Get(ctx context.Context, id uuid.UUID) (*post.Album, error)
-}
-
 type FaveDeps struct {
 	PostLikes    FaveRepository
 	CommentLikes FaveRepository
-	PhotoLikes   FaveRepository
 	Posts        FavePosts
 	Comments     FaveComments
-	Photos       FavePhotos
-	Albums       FaveAlbums
 	// Walls tells the walls closed to a viewer; nil: none is.
 	Walls Walls
 }
 
 // FaveService is openvk's "Закладки": what a person likes — posts,
-// comments and photos of albums — newest like first, for them alone.
+// comments — newest like first, for them alone.
 type FaveService struct {
 	deps FaveDeps
 }
@@ -85,15 +73,6 @@ type FaveCommentPage struct {
 	Comments []*post.Comment
 	Next     *FaveCursor
 	Total    int
-}
-
-// FavePhotoPage: Owners tells whose album each photo is in, by the ID of
-// the album — who may see the photo is theirs to say.
-type FavePhotoPage struct {
-	Photos []*post.AlbumPhoto
-	Owners map[uuid.UUID]uuid.UUID
-	Next   *FaveCursor
-	Total  int
 }
 
 // Posts pages the posts userID likes.
@@ -129,36 +108,6 @@ func (s *FaveService) Comments(ctx context.Context, userID uuid.UUID, cursor *Fa
 	}
 
 	return FaveCommentPage{Comments: inFaveOrder(faves, comments, (*post.Comment).ID), Next: next, Total: total}, nil
-}
-
-// Photos pages the photos of albums userID likes.
-func (s *FaveService) Photos(ctx context.Context, userID uuid.UUID, cursor *FaveCursor, size int) (FavePhotoPage, error) {
-	faves, next, total, err := s.page(ctx, s.deps.PhotoLikes, userID, cursor, size)
-	if err != nil {
-		return FavePhotoPage{}, errs.Wrap("s.page", err)
-	}
-
-	photos, err := s.deps.Photos.GetMany(ctx, faveIDs(faves))
-	if err != nil {
-		return FavePhotoPage{}, errs.Wrap("s.deps.Photos.GetMany", err)
-	}
-
-	page := FavePhotoPage{Next: next, Total: total, Owners: make(map[uuid.UUID]uuid.UUID)}
-
-	for _, p := range inFaveOrder(faves, photos, (*post.AlbumPhoto).ID) {
-		if _, ok := page.Owners[p.AlbumID()]; !ok {
-			a, err := s.deps.Albums.Get(ctx, p.AlbumID())
-			if err != nil {
-				return FavePhotoPage{}, errs.Wrap("s.deps.Albums.Get", err)
-			}
-
-			page.Owners[p.AlbumID()] = a.OwnerID()
-		}
-
-		page.Photos = append(page.Photos, p)
-	}
-
-	return page, nil
 }
 
 // page reads one screen of the likes of userID and counts them all.

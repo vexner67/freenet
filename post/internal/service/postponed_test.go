@@ -15,7 +15,6 @@ import (
 type postponedFixture struct {
 	svc      *service.PostponedService
 	posts    *service.PostService
-	albums   *service.AlbumService
 	notifier *fakeNotifier
 	photos   *fakePhotos
 	now      time.Time
@@ -25,12 +24,12 @@ func newPostponedFixture(t *testing.T, moderators fakeModerators) *postponedFixt
 	t.Helper()
 
 	f := &postponedFixture{now: time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC), notifier: &fakeNotifier{}}
-	albums, photos := newAlbumService(t, fakeModerators{})
-	f.albums, f.photos = albums, photos
+	photos := &fakePhotos{}
+	f.photos = photos
 	store := inmem.NewStore()
 	f.posts = service.NewPostService(service.PostDeps{
 		Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{},
-		Notifier: f.notifier, Photos: photos, Moderators: moderators, WallPhotos: albums,
+		Notifier: f.notifier, Photos: photos, Moderators: moderators,
 	})
 	f.svc = service.NewPostponedService(service.PostponedDeps{
 		Postponed: inmem.NewPostponedRepository(), Poster: f.posts, Tx: fakeTx{}, Photos: photos, Moderators: moderators,
@@ -113,16 +112,13 @@ func TestPostponedService_PublishDue(t *testing.T) {
 		t.Fatalf("the wall = %+v", wall)
 	}
 
-	// The one it names hears of it, and its photo goes to "Фотографии со
-	// стены" as a copy; media is not told to keep it twice.
+	// The one it names hears of it; media is not told to keep its photo
+	// twice.
 	if n := f.notifier.notified; len(n) != 1 || n[0].Kind != service.EventPostMention || n[0].RecipientID != bob || n[0].PostID != wall[0].ID() {
 		t.Fatalf("notified = %+v", n)
 	}
-	if len(f.photos.published) != 1 || len(f.photos.copied) != 1 {
-		t.Fatalf("published %d, copied %d", len(f.photos.published), len(f.photos.copied))
-	}
-	if albums, _ := f.albums.List(ctx, ann, uuid.Nil, 0); albums.Total != 1 {
-		t.Fatalf("albums = %d", albums.Total)
+	if len(f.photos.published) != 1 {
+		t.Fatalf("published %d", len(f.photos.published))
 	}
 	if f.notifier.outsideTx != 0 {
 		t.Fatal("notified outside the transaction")
@@ -261,7 +257,7 @@ func TestPurgeService_Postponed(t *testing.T) {
 	purge := service.NewPurgeService(service.PurgeDeps{
 		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Sources: store.Sources(),
 		Comments: store.Comments(), Suggestions: inmem.NewSuggestionRepository(), Topics: inmem.NewTopicRepository(),
-		Albums: inmem.NewAlbumRepository(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{},
+		Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{},
 		Postponed: repo,
 	})
 	club, ann, bob := uuid.New(), uuid.New(), uuid.New()

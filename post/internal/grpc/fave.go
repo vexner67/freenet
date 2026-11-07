@@ -12,7 +12,6 @@ import (
 type FaveService interface {
 	Posts(ctx context.Context, userID uuid.UUID, cursor *service.FaveCursor, size int) (service.FavePostPage, error)
 	Comments(ctx context.Context, userID uuid.UUID, cursor *service.FaveCursor, size int) (service.FaveCommentPage, error)
-	Photos(ctx context.Context, userID uuid.UUID, cursor *service.FaveCursor, size int) (service.FavePhotoPage, error)
 }
 
 func (h *PostHandler) ListLikedPosts(ctx context.Context, req *postv1.ListLikedPostsRequest) (*postv1.ListLikedPostsResponse, error) {
@@ -56,33 +55,6 @@ func (h *PostHandler) ListLikedComments(ctx context.Context, req *postv1.ListLik
 	}
 	for _, c := range page.Comments {
 		resp.Comments = append(resp.Comments, excerptedComment(toProtoComment(c, true, userID), c, req.GetTextLimit()))
-	}
-
-	return resp, nil
-}
-
-func (h *PostHandler) ListLikedAlbumPhotos(ctx context.Context, req *postv1.ListLikedAlbumPhotosRequest) (*postv1.ListLikedAlbumPhotosResponse, error) {
-	userID, cursor, err := faveRequest(ctx, req.GetCursor())
-	if err != nil {
-		return nil, err
-	}
-
-	page, err := h.faveService.Photos(ctx, userID, cursor, int(req.GetLimit()))
-	if err != nil {
-		return nil, err
-	}
-
-	resp := &postv1.ListLikedAlbumPhotosResponse{
-		Photos:     make([]*postv1.AlbumPhoto, 0, len(page.Photos)),
-		OwnerIds:   make([]string, 0, len(page.Photos)),
-		NextCursor: faveCursorString(page.Next),
-		Total:      int32(page.Total), //nolint:gosec // nobody likes 2^31 photos
-	}
-	for _, p := range page.Photos {
-		pp := toProtoAlbumPhoto(p, userID)
-		pp.Liked = true
-		resp.Photos = append(resp.Photos, pp)
-		resp.OwnerIds = append(resp.OwnerIds, page.Owners[p.AlbumID()].String())
 	}
 
 	return resp, nil

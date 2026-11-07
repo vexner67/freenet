@@ -137,24 +137,23 @@ const updateUserQuery = `
 		extra_fields = $38,
 		page_read = $39,
 		info_read = $40,
-		photos_read = $41,
-		friends_read = $42,
-		online_read = $43,
-		avatar_style = $44,
-		main_page = $45,
-		hidden_menu = $46,
-		theme = $47,
-		hide_rating = $48,
-		nsfw = $49,
-		post_view = $50,
-		timezone_offset = $51,
-		chats_invite = $52,
-		closed = $53,
-		gifts_read = $54,
-		messages_prime = $55,
-		message_price = $56,
-		audios_read = $57,
-		listening_read = $58,
+		friends_read = $41,
+		online_read = $42,
+		avatar_style = $43,
+		main_page = $44,
+		hidden_menu = $45,
+		theme = $46,
+		hide_rating = $47,
+		nsfw = $48,
+		post_view = $49,
+		timezone_offset = $50,
+		chats_invite = $51,
+		closed = $52,
+		gifts_read = $53,
+		messages_prime = $54,
+		message_price = $55,
+		audios_read = $56,
+		listening_read = $57,
 		updated_at = now()
 	WHERE id = $1
 `
@@ -215,7 +214,6 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		fields,
 		pr.PageRead.String(),
 		pr.InfoRead.String(),
-		pr.PhotosRead.String(),
 		pr.FriendsRead.String(),
 		pr.OnlineRead.String(),
 		ui.AvatarStyle.String(),
@@ -331,6 +329,13 @@ var setBackdropQueries = map[user.BackdropSide]string{
 	WHERE u.id = old.id
 	RETURNING old.backdrop_right
 `,
+	user.BackdropCover: `
+	UPDATE users u
+	SET backdrop_cover = $2
+	FROM (SELECT id, backdrop_cover FROM users WHERE id = $1 FOR UPDATE) old
+	WHERE u.id = old.id
+	RETURNING old.backdrop_cover
+`,
 }
 
 func (r *UserRepository) SetBackdrop(ctx context.Context, id uuid.UUID, side user.BackdropSide, photoID uuid.UUID) (uuid.UUID, error) {
@@ -412,12 +417,12 @@ const userColumns = `
 		extra_fields,
 		page_read,
 		info_read,
-		photos_read,
 		friends_read,
 		online_read,
 		(SELECT p.last_seen_at FROM presence p WHERE p.user_id = users.id),
 		backdrop_left,
 		backdrop_right,
+		backdrop_cover,
 		avatar_style,
 		main_page,
 		hidden_menu,
@@ -490,12 +495,12 @@ const qualifiedUserColumns = `
 		u.extra_fields,
 		u.page_read,
 		u.info_read,
-		u.photos_read,
 		u.friends_read,
 		u.online_read,
 		(SELECT p.last_seen_at FROM presence p WHERE p.user_id = u.id),
 		u.backdrop_left,
 		u.backdrop_right,
+		u.backdrop_cover,
 		u.avatar_style,
 		u.main_page,
 		u.hidden_menu,
@@ -660,11 +665,11 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		interests                                  [8]string
 		extraFields                                []byte
 		hideBirthYear                              bool
-		reads                                      [5]string
+		reads                                      [4]string
 		chatsInvite, giftsRead                     string
 		audiosRead, listeningRead                  string
 		lastSeen                                   *time.Time
-		backdrop                                   [2]*uuid.UUID
+		backdrop                                   [3]*uuid.UUID
 		avatarStyle, mainPage                      string
 		hiddenMenu                                 []string
 		theme, nsfw, postView                      string
@@ -710,9 +715,9 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&interests[0], &interests[1], &interests[2], &interests[3],
 		&interests[4], &interests[5], &interests[6], &interests[7],
 		&extraFields,
-		&reads[0], &reads[1], &reads[2], &reads[3], &reads[4],
+		&reads[0], &reads[1], &reads[2], &reads[3],
 		&lastSeen,
-		&backdrop[0], &backdrop[1],
+		&backdrop[0], &backdrop[1], &backdrop[2],
 		&avatarStyle, &mainPage, &hiddenMenu,
 		&theme, &hideRating, &nsfw, &postView, &timezone,
 		&chatsInvite,
@@ -745,8 +750,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 	privacy.MessagesWrite = user.MessagesWrite(messagesWrite)
 	privacy.ClubsRead = user.ClubsRead(clubsRead)
 	privacy.PageRead, privacy.InfoRead = user.Audience(reads[0]), user.Audience(reads[1])
-	privacy.PhotosRead, privacy.FriendsRead = user.Audience(reads[2]), user.Audience(reads[3])
-	privacy.OnlineRead = user.Audience(reads[4])
+	privacy.FriendsRead, privacy.OnlineRead = user.Audience(reads[2]), user.Audience(reads[3])
 	privacy.GiftsRead = user.Audience(giftsRead)
 	privacy.AudiosRead, privacy.ListeningRead = user.Audience(audiosRead), user.Audience(listeningRead)
 	privacy.ChatsInvite = user.MessagesWrite(chatsInvite)
@@ -799,7 +803,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 			Reason:  user.DeactivationReason(reason),
 		},
 		LastSeen: timeFromDB(lastSeen),
-		Backdrop: user.Backdrop{Left: idFromDB(backdrop[0]), Right: idFromDB(backdrop[1])},
+		Backdrop: user.Backdrop{Left: idFromDB(backdrop[0]), Right: idFromDB(backdrop[1]), Cover: idFromDB(backdrop[2])},
 		Interface: user.Interface{
 			AvatarStyle: user.AvatarStyle(avatarStyle),
 			Theme:       user.Theme(theme),
@@ -878,7 +882,11 @@ func hiddenMenuFromDB(items []string) []user.MenuItem {
 
 	out := make([]user.MenuItem, 0, len(items))
 	for _, item := range items {
-		out = append(out, user.MenuItem(item))
+		// A link the menu no longer has ("photos" of the albums) is left
+		// out: the owner could not hide it again.
+		if m := user.MenuItem(item); m.IsKnown() {
+			out = append(out, m)
+		}
 	}
 
 	return out

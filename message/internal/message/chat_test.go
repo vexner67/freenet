@@ -358,17 +358,4 @@ func TestChatMessage_Content(t *testing.T) {
 	if err != nil || q.MatchesChat(renamed) || q.MatchesChat(gone) || renamed.Carried() != nil {
 		t.Fatalf("what happened and what was taken back say something: %v", err)
 	}
-
-	share, err := message.NewPhotoShare("фото", uuid.New())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	shared, err := message.NewChatMessage(chat, ann, share, now)
-	if err != nil || shared.SharedPhoto() == uuid.Nil {
-		t.Fatalf("a photo of an album = %+v, %v", shared, err)
-	}
-	if _, err = shared.Edited(ann, message.Revision{Text: "фото", Added: message.Photos{added}}, now); !errors.Is(err, message.ErrSharedPhotoAlone) {
-		t.Errorf("own photos next to a photo of an album: %v", err)
-	}
 }

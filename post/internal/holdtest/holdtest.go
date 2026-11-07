@@ -45,21 +45,6 @@ type Storage struct {
 		Get(ctx context.Context, id uuid.UUID) (*post.TopicMessage, error)
 		Like(ctx context.Context, messageID, userID uuid.UUID) (int, error)
 	}
-	Albums interface {
-		Save(ctx context.Context, a *post.Album) error
-	}
-	Photos interface {
-		Add(ctx context.Context, albumID uuid.UUID, photos []*post.AlbumPhoto, now time.Time) error
-		Get(ctx context.Context, id uuid.UUID) (*post.AlbumPhoto, error)
-	}
-	PhotoLikes interface {
-		Like(ctx context.Context, photoID, userID uuid.UUID) (int, error)
-	}
-	PhotoComments interface {
-		Save(ctx context.Context, c *post.PhotoComment) error
-		Get(ctx context.Context, id uuid.UUID) (*post.PhotoComment, error)
-		Like(ctx context.Context, commentID, userID uuid.UUID) (int, error)
-	}
 	// Holders keep aside all of the above between them.
 	Holders []service.ReactionHolder
 }
@@ -71,8 +56,6 @@ type fixture struct {
 	gone    *post.Post
 	comment *post.Comment
 	message *post.TopicMessage
-	photo   *post.AlbumPhoto
-	reply   *post.PhotoComment
 }
 
 func must(t *testing.T, err error) {
@@ -118,16 +101,6 @@ func build(ctx context.Context, t *testing.T, s Storage, ann uuid.UUID) *fixture
 	must(t, err)
 	must(t, s.Messages.Save(ctx, f.message))
 
-	album, err := post.NewAlbum(ann, "Лето", "", now)
-	must(t, err)
-	must(t, s.Albums.Save(ctx, album))
-	f.photo, err = post.NewAlbumPhoto(album, uuid.Must(uuid.NewV7()), ann, "", now)
-	must(t, err)
-	must(t, s.Photos.Add(ctx, album.ID(), []*post.AlbumPhoto{f.photo}, now))
-	f.reply, err = post.NewPhotoComment(f.photo.ID(), ann, "красиво", now)
-	must(t, err)
-	must(t, s.PhotoComments.Save(ctx, f.reply))
-
 	return f
 }
 
@@ -140,8 +113,6 @@ func (f *fixture) react(ctx context.Context, t *testing.T, userID uuid.UUID, cho
 		func() (int, error) { return f.s.Likes.Like(ctx, f.gone.ID(), userID) },
 		func() (int, error) { return f.s.CommentLikes.Like(ctx, f.comment.ID(), userID) },
 		func() (int, error) { return f.s.Messages.Like(ctx, f.message.ID(), userID) },
-		func() (int, error) { return f.s.PhotoLikes.Like(ctx, f.photo.ID(), userID) },
-		func() (int, error) { return f.s.PhotoComments.Like(ctx, f.reply.ID(), userID) },
 	}
 	for _, like := range likes {
 		_, err := like()
@@ -151,8 +122,8 @@ func (f *fixture) react(ctx context.Context, t *testing.T, userID uuid.UUID, cho
 	must(t, f.s.Polls.Vote(ctx, f.post.ID(), userID, choice, time.Now()))
 }
 
-// counts are the likes of the post, its comment, the message, the photo
-// and its comment, then the voters of the poll and the votes of its
+// counts are the likes of the post, its comment and the message, then the
+// voters of the poll and the votes of its
 // options.
 func (f *fixture) counts(ctx context.Context, t *testing.T) []int {
 	t.Helper()
@@ -163,16 +134,12 @@ func (f *fixture) counts(ctx context.Context, t *testing.T) []int {
 	must(t, err)
 	m, err := f.s.Messages.Get(ctx, f.message.ID())
 	must(t, err)
-	photo, err := f.s.Photos.Get(ctx, f.photo.ID())
-	must(t, err)
-	reply, err := f.s.PhotoComments.Get(ctx, f.reply.ID())
-	must(t, err)
 	poll, err := f.s.Polls.Get(ctx, f.post.ID())
 	must(t, err)
 
 	tally := poll.Tally()
 
-	return append([]int{p.Counters().Likes, c.Likes(), m.Likes(), photo.Likes(), reply.Likes(), tally.Voters}, tally.Votes...)
+	return append([]int{p.Counters().Likes, c.Likes(), m.Likes(), tally.Voters}, tally.Votes...)
 }
 
 func (f *fixture) each(ctx context.Context, t *testing.T, fn func(h service.ReactionHolder) error) {
@@ -203,7 +170,7 @@ func Run(t *testing.T, s Storage) {
 
 	f.react(ctx, t, bob, post.PollChoice{0, 1})
 	f.react(ctx, t, cat, post.PollChoice{0})
-	f.want(ctx, t, "both reacted", 2, 2, 2, 2, 2, 2, 2, 1)
+	f.want(ctx, t, "both reacted", 2, 2, 2, 2, 2, 1)
 
 	hold := func(id uuid.UUID) { f.each(ctx, t, func(h service.ReactionHolder) error { return h.Hold(ctx, id) }) }
 	release := func(id uuid.UUID) { f.each(ctx, t, func(h service.ReactionHolder) error { return h.Release(ctx, id) }) }
@@ -213,7 +180,7 @@ func Run(t *testing.T, s Storage) {
 	// Twice, as the outbox may deliver it.
 	hold(bob)
 	hold(bob)
-	f.want(ctx, t, "bob is held", 1, 1, 1, 1, 1, 1, 1, 0)
+	f.want(ctx, t, "bob is held", 1, 1, 1, 1, 1, 0)
 
 	// Nor are they among the faves of the page.
 	if n, err := s.Likes.CountLikedBy(ctx, bob); err != nil || n != 0 {
@@ -231,7 +198,7 @@ func Run(t *testing.T, s Storage) {
 	// Restored, he is counted again, where he liked when he did.
 	release(bob)
 	release(bob)
-	f.want(ctx, t, "bob is released", 2, 2, 2, 2, 2, 2, 2, 1)
+	f.want(ctx, t, "bob is released", 2, 2, 2, 2, 2, 1)
 
 	if n, err := s.Likes.CountLikedBy(ctx, bob); err != nil || n != 1 {
 		t.Fatalf("faves of bob once he is back = %d, %v", n, err)
@@ -243,11 +210,11 @@ func Run(t *testing.T, s Storage) {
 
 	// Releasing someone who is not held changes nothing.
 	release(ann)
-	f.want(ctx, t, "nobody to release", 2, 2, 2, 2, 2, 2, 2, 1)
+	f.want(ctx, t, "nobody to release", 2, 2, 2, 2, 2, 1)
 
 	// A page erased while held leaves nothing to put back.
 	hold(cat)
 	forget(cat)
 	release(cat)
-	f.want(ctx, t, "cat is forgotten", 1, 1, 1, 1, 1, 1, 1, 1)
+	f.want(ctx, t, "cat is forgotten", 1, 1, 1, 1, 1, 1)
 }

@@ -622,7 +622,6 @@ func toProtoChatMessage(m *message.ChatMessage) *messagev1.ChatMessage {
 		TargetId:    optionalID(m.TargetID()),
 		CreatedAt:   timestamppb.New(m.CreatedAt()),
 		PostId:      postString(m.Post()),
-		PhotoId:     postString(m.SharedPhoto()),
 		Forwarded:   toProtoForwarded(m.Forwarded()),
 		Sticker:     m.Sticker().String(),
 		DocumentIds: idStrings(m.Documents()),

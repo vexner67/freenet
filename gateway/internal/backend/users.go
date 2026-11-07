@@ -154,8 +154,8 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 
 	// An empty GiftsRead, AudiosRead or ListeningRead, from a client that
 	// does not know it, is everyone.
-	var reads [8]userv1.Audience
-	for i, a := range []string{p.PageRead, p.InfoRead, p.PhotosRead, p.FriendsRead, p.OnlineRead, p.GiftsRead, p.AudiosRead, p.ListeningRead} {
+	var reads [7]userv1.Audience
+	for i, a := range []string{p.PageRead, p.InfoRead, p.FriendsRead, p.OnlineRead, p.GiftsRead, p.AudiosRead, p.ListeningRead} {
 		v, err := enumValue(a, audiencePrefix, "audience", userv1.Audience_value)
 		if err != nil {
 			return model.User{}, errs.Wrap("enumValue", err)
@@ -174,12 +174,11 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 			ClubsRead:          userv1.ClubsRead(clubsRead),
 			PageRead:           reads[0],
 			InfoRead:           reads[1],
-			PhotosRead:         reads[2],
-			FriendsRead:        reads[3],
-			OnlineRead:         reads[4],
-			GiftsRead:          reads[5],
-			AudiosRead:         reads[6],
-			ListeningRead:      reads[7],
+			FriendsRead:        reads[2],
+			OnlineRead:         reads[3],
+			GiftsRead:          reads[4],
+			AudiosRead:         reads[5],
+			ListeningRead:      reads[6],
 			ChatsInvite:        userv1.MessagesWrite(chatsInvite),
 			Closed:             p.Closed,
 			MessagesPrime:      p.MessagesPrime,
@@ -288,7 +287,7 @@ func (u *Users) Access(ctx context.Context, accessToken, userID string) (model.A
 	}
 
 	return model.Access{
-		Page: resp.GetPage(), Info: resp.GetInfo(), Photos: resp.GetPhotos(), Friends: resp.GetFriends(), Clubs: resp.GetClubs(),
+		Page: resp.GetPage(), Info: resp.GetInfo(), Friends: resp.GetFriends(), Clubs: resp.GetClubs(),
 		Gifts: resp.GetGifts(), Audios: resp.GetAudios(), Listening: resp.GetListening(),
 	}, nil
 }
@@ -561,7 +560,7 @@ func toPublicProfile(p *userv1.PublicProfile) model.PublicProfile {
 		PrimeStyle:      toShownPrimeStyle(p.GetPrimeStyle()),
 		LastSeen:        fromTimestamp(p.GetLastSeenAt()),
 		Online:          p.GetOnline(),
-		Backdrop:        model.Backdrop{Left: p.GetBackdropLeft(), Right: p.GetBackdropRight()},
+		Backdrop:        model.Backdrop{Left: p.GetBackdropLeft(), Right: p.GetBackdropRight(), Cover: p.GetBackdropCover()},
 		Completeness:    int(p.GetCompleteness()),
 		About:           toAbout(p),
 	}
@@ -634,6 +633,7 @@ func (u *Users) SetBackdrop(ctx context.Context, accessToken, side, photoID stri
 var userBackdropSides = map[string]userv1.BackdropSide{
 	"left":  userv1.BackdropSide_BACKDROP_SIDE_LEFT,
 	"right": userv1.BackdropSide_BACKDROP_SIDE_RIGHT,
+	"cover": userv1.BackdropSide_BACKDROP_SIDE_COVER,
 }
 
 func (u *Users) Search(ctx context.Context, q model.UserQuery, cursor string, limit int) (model.UserPage, error) {

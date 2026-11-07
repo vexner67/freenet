@@ -140,11 +140,11 @@ func (f *fakeUserAPI) UpdatePrivacy(_ context.Context, req *userv1.UpdatePrivacy
 	return &userv1.UpdatePrivacyResponse{User: &userv1.User{Id: "u1", Privacy: req.GetPrivacy()}}, nil
 }
 
-// GetAccess shows the photos only, and GetProfile hides the page; both
+// GetAccess shows the gifts only, and GetProfile hides the page; both
 // keep the caller's token.
 func (f *fakeUserAPI) GetAccess(ctx context.Context, req *userv1.GetAccessRequest, _ ...grpc.CallOption) (*userv1.GetAccessResponse, error) {
 	f.md, _ = metadata.FromOutgoingContext(ctx)
-	return &userv1.GetAccessResponse{Page: req.GetUserId() == "u2", Photos: true, Gifts: true}, nil
+	return &userv1.GetAccessResponse{Page: req.GetUserId() == "u2", Gifts: true}, nil
 }
 
 func (f *fakeUserAPI) GetProfile(ctx context.Context, req *userv1.GetProfileRequest, _ ...grpc.CallOption) (*userv1.GetProfileResponse, error) {
@@ -241,7 +241,7 @@ func TestWallPrivacy(t *testing.T) {
 
 	u, err := users.UpdatePrivacy(context.Background(), "tok", model.Privacy{
 		ShowWorldview: true, WallWrite: "everyone", MessagesWrite: "nobody", ClubsRead: "only_me",
-		PageRead: "users", InfoRead: "following", PhotosRead: "only_me", FriendsRead: "everyone", OnlineRead: "following", GiftsRead: "users",
+		PageRead: "users", InfoRead: "following", FriendsRead: "everyone", OnlineRead: "following", GiftsRead: "users",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -256,15 +256,15 @@ func TestWallPrivacy(t *testing.T) {
 		t.Fatalf("sent %v, got %+v", api.privacy, u.Privacy)
 	}
 	if api.privacy.GetPageRead() != userv1.Audience_AUDIENCE_USERS || api.privacy.GetInfoRead() != userv1.Audience_AUDIENCE_FOLLOWING ||
-		api.privacy.GetPhotosRead() != userv1.Audience_AUDIENCE_ONLY_ME || api.privacy.GetFriendsRead() != userv1.Audience_AUDIENCE_EVERYONE ||
-		u.Privacy.PageRead != "users" || u.Privacy.InfoRead != "following" || u.Privacy.PhotosRead != "only_me" || u.Privacy.FriendsRead != "everyone" ||
+		api.privacy.GetFriendsRead() != userv1.Audience_AUDIENCE_EVERYONE ||
+		u.Privacy.PageRead != "users" || u.Privacy.InfoRead != "following" || u.Privacy.FriendsRead != "everyone" ||
 		api.privacy.GetOnlineRead() != userv1.Audience_AUDIENCE_FOLLOWING || u.Privacy.OnlineRead != "following" ||
 		api.privacy.GetGiftsRead() != userv1.Audience_AUDIENCE_USERS || u.Privacy.GiftsRead != "users" {
 		t.Fatalf("sent %v, got %+v", api.privacy, u.Privacy)
 	}
 
 	for _, bad := range []model.Privacy{{WallWrite: "friends", MessagesWrite: "everyone"}, {WallWrite: "everyone", MessagesWrite: "only_me"}, {WallWrite: "everyone", MessagesWrite: "everyone", ClubsRead: "nobody"},
-		{WallWrite: "everyone", MessagesWrite: "everyone", PhotosRead: "friends"},
+		{WallWrite: "everyone", MessagesWrite: "everyone", FriendsRead: "friends"},
 	} {
 		if _, err = users.UpdatePrivacy(context.Background(), "tok", bad); failure.From(err).Kind != failure.InvalidArgument {
 			t.Fatalf("privacy %+v: %v", bad, err)
@@ -272,7 +272,7 @@ func TestWallPrivacy(t *testing.T) {
 	}
 
 	access, err := users.Access(context.Background(), "tok", "u2")
-	if err != nil || access != (model.Access{Page: true, Photos: true, Gifts: true}) || api.md.Get("authorization")[0] != "Bearer tok" {
+	if err != nil || access != (model.Access{Page: true, Gifts: true}) || api.md.Get("authorization")[0] != "Bearer tok" {
 		t.Fatalf("Access = %+v, %v", access, err)
 	}
 
@@ -1047,19 +1047,6 @@ func (f *fakeFaveAPI) ListLikedComments(ctx context.Context, req *postv1.ListLik
 	return &postv1.ListLikedCommentsResponse{Comments: []*postv1.Comment{{Id: "c1", PostId: "p1", AuthorId: "u2", Text: "да", TextCut: true, Liked: true}}, Total: 1}, nil
 }
 
-func (f *fakeFaveAPI) ListLikedAlbumPhotos(ctx context.Context, req *postv1.ListLikedAlbumPhotosRequest, _ ...grpc.CallOption) (*postv1.ListLikedAlbumPhotosResponse, error) {
-	if req.GetCursor() == "bad" {
-		return nil, status.Error(codes.InvalidArgument, "invalid cursor")
-	}
-
-	f.ask(ctx, req.GetCursor(), req.GetLimit(), 0)
-
-	return &postv1.ListLikedAlbumPhotosResponse{
-		Photos:   []*postv1.AlbumPhoto{{Id: "f1", AlbumId: "a1", AuthorId: "u2", Liked: true}, {Id: "f2", AlbumId: "a2", AuthorId: "u3", Liked: true}},
-		OwnerIds: []string{"u2", "club1"}, NextCursor: "1_f2", Total: 9,
-	}, nil
-}
-
 func TestFaves(t *testing.T) {
 	t.Parallel()
 
@@ -1086,17 +1073,5 @@ func TestFaves(t *testing.T) {
 	}
 	if c := comments.Comments[0]; c.ID != "c1" || c.PostID != "p1" || !c.TextCut || !c.Liked {
 		t.Fatalf("comment = %+v", c)
-	}
-
-	photos, err := faves.Photos(ctx, "tok", "", 0)
-	if err != nil || len(photos.Photos) != 2 || photos.NextCursor != "1_f2" || photos.Total != 9 {
-		t.Fatalf("Photos = %+v, %v", photos, err)
-	}
-	if p := photos.Photos[1]; p.ID != "f2" || p.AuthorID != "u3" || p.OwnerID != "club1" || !p.Liked {
-		t.Fatalf("photo = %+v", p)
-	}
-
-	if _, err = faves.Photos(ctx, "tok", "bad", 0); failure.From(err).Kind != failure.InvalidArgument {
-		t.Fatalf("a bad cursor: %v", err)
 	}
 }

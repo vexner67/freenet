@@ -34,7 +34,7 @@ const (
 	OpenKind  = "open_wall"
 )
 
-// PurgeKind is about a club that is gone, whose wall, topics and albums
+// PurgeKind is about a club that is gone, whose wall and topics
 // go with it; the payload is its ID. The migration that deleted the
 // events wrote it too.
 const PurgeKind = "purge_club"

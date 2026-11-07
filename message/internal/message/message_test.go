@@ -11,45 +11,6 @@ import (
 	"github.com/vexner67/freenet/message/internal/message"
 )
 
-func TestNewPhotoShare(t *testing.T) {
-	t.Parallel()
-
-	if _, err := message.NewSealedPhotoShare(seal("смотри"), uuid.Nil); !errors.Is(err, message.ErrInvalidPhoto) {
-		t.Fatalf("no photo: %v", err)
-	}
-
-	ann, bob, photo := uuid.New(), uuid.New(), uuid.New()
-	sent := time.Now()
-
-	content, err := message.NewSealedPhotoShare("", photo)
-	if err != nil || content.SharedPhoto() != photo {
-		t.Fatalf("NewPhotoShare = %+v, %v", content, err)
-	}
-	m, err := message.New(ann, bob, content, sent)
-	if err != nil || m.SharedPhoto() != photo {
-		t.Fatalf("New = %+v, %v", m, err)
-	}
-
-	// Edited, it shares the photo still, with words or without.
-	edited, err := m.Edited(ann, message.Revision{Sealed: seal("смотри")}, sent.Add(time.Minute))
-	if err != nil || edited.SharedPhoto() != photo || edited.Sealed() != seal("смотри") {
-		t.Fatalf("Edited = %+v, %v", edited, err)
-	}
-	if edited, err = edited.Edited(ann, message.Revision{Sealed: ""}, sent.Add(time.Minute)); err != nil || edited.SharedPhoto() != photo {
-		t.Fatalf("Edited to nothing = %+v, %v", edited, err)
-	}
-
-	// Carried on, it is what the other message shows.
-	if carried := m.Carried(); len(carried) != 1 || carried[0].SharedPhoto != photo || carried[0].SenderID != ann {
-		t.Fatalf("Carried = %+v", carried)
-	}
-
-	// Taken back, it shares nothing.
-	if gone, err := m.TakenBack(ann, sent.Add(time.Minute)); err != nil || gone.SharedPhoto() != uuid.Nil {
-		t.Fatalf("TakenBack = %+v, %v", gone, err)
-	}
-}
-
 func TestNewContent(t *testing.T) {
 	t.Parallel()
 
@@ -591,15 +552,6 @@ func TestMessage_EditedPhotos(t *testing.T) {
 	carrying, _ := message.New(ann, bob, said("", message.Photos{old}, uuid.Nil, message.Forwards{{SenderID: bob, Text: "x", CreatedAt: sent}}), sent)
 	if bare, err := carrying.Edited(ann, message.Revision{Removed: message.Photos{old}}, sent); err != nil || len(bare.Photos()) != 0 || len(bare.Forwarded()) != 1 {
 		t.Errorf("a forward without photos = %+v, %v", bare, err)
-	}
-
-	share, _ := message.NewSealedPhotoShare(seal("фото"), uuid.New())
-	shared, _ := message.New(ann, bob, share, sent)
-	if _, err = shared.Edited(ann, message.Revision{Sealed: seal("фото"), Added: message.Photos{fresh}}, sent); !errors.Is(err, message.ErrSharedPhotoAlone) {
-		t.Errorf("photos next to a shared photo: %v", err)
-	}
-	if again, err := shared.Edited(ann, message.Revision{}, sent); err != nil || again.SharedPhoto() == uuid.Nil {
-		t.Errorf("a shared photo without words = %+v, %v", again, err)
 	}
 }
 

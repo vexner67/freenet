@@ -418,7 +418,7 @@ func TestChats_ForwardShareAndSearch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	post, albumPhoto, photo := uuid.New(), uuid.New(), uuid.New()
+	post, photo := uuid.New(), uuid.New()
 
 	said, err := svc.Send(ctx, bob, chatID, service.Draft{Text: "Идём на Эльбрус_100%", Photos: message.Photos{photo}, Post: post})
 	if err != nil {
@@ -430,12 +430,9 @@ func TestChats_ForwardShareAndSearch(t *testing.T) {
 		t.Fatalf("a post read back = %+v, %v", got, err)
 	}
 
-	shared, err := svc.Send(ctx, bob, chatID, service.Draft{Text: "фото", SharedPhoto: albumPhoto})
+	shared, err := svc.Send(ctx, bob, chatID, service.Draft{Text: "фото"})
 	if err != nil {
 		t.Fatal(err)
-	}
-	if got, _, err = svc.Message(ctx, cat, shared.ID()); err != nil || got.SharedPhoto() != albumPhoto {
-		t.Fatalf("a photo of an album read back = %+v, %v", got, err)
 	}
 
 	carrying, err := svc.Send(ctx, ann, other.Chat.ID(), service.Draft{Forward: []uuid.UUID{said.ID(), shared.ID()}})
@@ -445,7 +442,7 @@ func TestChats_ForwardShareAndSearch(t *testing.T) {
 
 	got, _, err = svc.Message(ctx, bob, carrying.ID())
 	if err != nil || len(got.Forwarded()) != 2 || got.Forwarded()[0].SenderID != bob || got.Forwarded()[0].Post != post ||
-		got.Forwarded()[0].Photos[0] == photo || got.Forwarded()[1].SharedPhoto != albumPhoto || !got.Forwarded()[0].CreatedAt.Equal(said.CreatedAt()) {
+		got.Forwarded()[0].Photos[0] == photo || got.Forwarded()[1].Text != "фото" || !got.Forwarded()[0].CreatedAt.Equal(said.CreatedAt()) {
 		t.Fatalf("carried on, read back = %+v, %v", got.Forwarded(), err)
 	}
 

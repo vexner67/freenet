@@ -88,20 +88,6 @@ func TestMentions(t *testing.T) {
 		}
 	})
 
-	t.Run("in a comment under a photo", func(t *testing.T) {
-		t.Parallel()
-
-		h := newHarness(rest.Config{})
-		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
-
-		if w := h.do("POST", "/api/v1/album-photos/ph6/comments", text, "Authorization", "Bearer tok"); w.Code != http.StatusCreated {
-			t.Fatalf("comment: %d %s", w.Code, w.Body)
-		}
-		if !slices.Equal(h.users.named, asked) || !slices.Equal(h.albums.mentioned, want) {
-			t.Fatalf("asked about %v, passed %v", h.users.named, h.albums.mentioned)
-		}
-	})
-
 	t.Run("a text that names nobody asks nothing", func(t *testing.T) {
 		t.Parallel()
 

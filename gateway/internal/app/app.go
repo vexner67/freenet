@@ -152,7 +152,6 @@ func (a *App) build(cfg config.Config) error {
 			Clubs:         backend.NewClubs(clubv1.NewClubServiceClient(a.clubConn)),
 			Chats:         backend.NewChats(messagev1.NewMessageServiceClient(a.messageConn)),
 			Topics:        backend.NewTopics(postv1.NewPostServiceClient(a.postConn)),
-			Albums:        backend.NewAlbums(postv1.NewPostServiceClient(a.postConn)),
 			Gifts:         backend.NewGifts(userv1.NewUserServiceClient(a.userConn)),
 			Stickers:      backend.NewStickers(userv1.NewUserServiceClient(a.userConn)),
 			Documents:     backend.NewDocuments(postv1.NewPostServiceClient(a.postConn)),

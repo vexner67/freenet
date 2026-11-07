@@ -96,8 +96,9 @@ func (a *api) cleanUpClubPhotos(r *http.Request, token string, c model.Club) {
 
 // uploadBackdrop takes the raw image as the request body and shows it on
 // one side, left or right, of the caller's page, as openvk's "Фон
-// страницы" of a person: an uploaded photo, kept for good before the page
-// shows it. The photo the side showed before goes after.
+// страницы" of a person, or, with Prime, behind the whole page (cover,
+// kept larger): an uploaded photo, kept for good before the page shows
+// it. The photo the side showed before goes after.
 func (a *api) uploadBackdrop(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -106,7 +107,7 @@ func (a *api) uploadBackdrop(w http.ResponseWriter, r *http.Request) {
 	}
 
 	side := r.PathValue("side")
-	if side != "left" && side != "right" {
+	if side != "left" && side != "right" && side != "cover" {
 		a.writeError(w, r, failure.New(failure.InvalidArgument, "invalid backdrop side"))
 		return
 	}
@@ -123,7 +124,15 @@ func (a *api) uploadBackdrop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	photoID, err := a.uploadClaimed(r, token, image)
+	upload := a.media.UploadPhoto
+	if side == "cover" {
+		upload = a.media.UploadWidePhoto
+	}
+
+	photoID, err := upload(r.Context(), token, image)
+	if err == nil {
+		err = a.claimPhotos(r, token, []string{photoID})
+	}
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -166,6 +175,24 @@ func (a *api) deleteBackdrop(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.deleteBackdropPhotos(r, u.ID, previous[:]...)
+	a.writeUser(w, r, u)
+}
+
+// deleteBackdropCover takes the photo behind the whole page away.
+func (a *api) deleteBackdropCover(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	u, previous, err := a.users.SetBackdrop(r.Context(), token, "cover", "")
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.deleteBackdropPhotos(r, u.ID, previous)
 	a.writeUser(w, r, u)
 }
 

@@ -104,6 +104,10 @@ func TestPresence(t *testing.T) {
 	if prev, err := repo.SetBackdrop(ctx, cat.ID(), user.BackdropRight, photo); err != nil || prev != uuid.Nil {
 		t.Fatalf("the right side = %v, %v", prev, err)
 	}
+	cover := uuid.New()
+	if prev, err := repo.SetBackdrop(ctx, cat.ID(), user.BackdropCover, cover); err != nil || prev != uuid.Nil {
+		t.Fatalf("the cover = %v, %v", prev, err)
+	}
 	c, _ := repo.GetByID(ctx, cat.ID())
 	if prev, err := repo.SetBackdrop(ctx, cat.ID(), user.BackdropLeft, uuid.Nil); err != nil || prev != photo {
 		t.Fatalf("clearing = %v, %v", prev, err)
@@ -111,7 +115,7 @@ func TestPresence(t *testing.T) {
 	if err = repo.Update(ctx, c); err != nil {
 		t.Fatal(err)
 	}
-	if c, _ = repo.GetByID(ctx, cat.ID()); c.Backdrop() != (user.Backdrop{Right: photo}) {
+	if c, _ = repo.GetByID(ctx, cat.ID()); c.Backdrop() != (user.Backdrop{Right: photo, Cover: cover}) {
 		t.Fatalf("backdrop %+v", c.Backdrop())
 	}
 	if _, err = repo.SetBackdrop(ctx, uuid.New(), user.BackdropLeft, photo); err != user.ErrNotFound {

@@ -21,17 +21,14 @@ func TestPagePrivacy(t *testing.T) {
 		PageHidden bool            `json:"pageHidden"`
 		Access     map[string]bool `json:"access"`
 	}](t, w)
-	if w.Code != http.StatusOK || !got.PageHidden || got.Name != "Bob" || got.Access["photos"] || h.users.profileToken != "tok" {
+	if w.Code != http.StatusOK || !got.PageHidden || got.Name != "Bob" || got.Access["friends"] || h.users.profileToken != "tok" {
 		t.Fatalf("%d %+v, token %q", w.Code, got, h.users.profileToken)
 	}
 
-	for _, path := range []string{"posts", "friends", "clubs", "albums"} {
+	for _, path := range []string{"posts", "friends", "clubs"} {
 		if w = h.do("GET", "/api/v1/users/bob/"+path, ""); w.Code != http.StatusForbidden || decode[errorBody](t, w).Error.Message != "this page is hidden" {
 			t.Fatalf("%s of a hidden page: %d %s", path, w.Code, w.Body)
 		}
-	}
-	if w = h.do("GET", "/api/v1/albums/a1", ""); w.Code != http.StatusNotFound {
-		t.Fatalf("an album of a hidden page: %d", w.Code)
 	}
 }
 
@@ -44,7 +41,6 @@ func TestPagePartsPrivacy(t *testing.T) {
 		path    string
 		refusal string
 	}{
-		{"photos", func(h *harness) { h.users.hiddenPhotos = true }, "albums", "this user's photos are hidden"},
 		{"friends", func(h *harness) { h.users.hiddenFriends = true }, "friends", "this user's follows are hidden"},
 		{"clubs", func(h *harness) { h.users.hiddenClubs = true }, "clubs", "this user's clubs are hidden"},
 	}
@@ -102,15 +98,7 @@ func TestProfileAccess(t *testing.T) {
 		Access     map[string]bool `json:"access"`
 	}](t, w)
 	if w.Code != http.StatusOK || !got.InfoHidden || got.Contacts["city"] != "" ||
-		!got.Access["photos"] || got.Access["friends"] || !got.Access["clubs"] || h.users.accessAsked != "u4" {
+		got.Access["friends"] || !got.Access["clubs"] || h.users.accessAsked != "u4" {
 		t.Fatalf("%d %+v", w.Code, got)
-	}
-
-	if w = h.do("GET", "/api/v1/albums/a1", ""); w.Code != http.StatusOK {
-		t.Fatalf("an album with the photos open: %d", w.Code)
-	}
-	h.users.hiddenPhotos = true
-	if w = h.do("GET", "/api/v1/albums/a1", ""); w.Code != http.StatusNotFound {
-		t.Fatalf("an album with the photos hidden: %d", w.Code)
 	}
 }

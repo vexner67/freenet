@@ -56,12 +56,10 @@ type Privacy struct {
 	ChatsInvite MessagesWrite
 	ClubsRead   ClubsRead
 	// PageRead is "Кому в интернете видно мою страницу": everyone or users;
-	// InfoRead, PhotosRead and FriendsRead are "Кому видно основную
-	// информацию моей страницы", "… мои фотографии" and "… моих друзей"
-	// (the follows here).
+	// InfoRead and FriendsRead are "Кому видно основную информацию моей
+	// страницы" and "… моих друзей" (the follows here).
 	PageRead    Audience
 	InfoRead    Audience
-	PhotosRead  Audience
 	FriendsRead Audience
 	// OnlineRead is "Кто видит мою неактивность": who sees when the owner
 	// was last online after a long absence (see LastSeen).
@@ -205,7 +203,7 @@ func New(email Email) (*User, error) {
 		email: email,
 		privacy: Privacy{
 			WallWrite: DefaultWallWrite, MessagesWrite: DefaultMessagesWrite, ClubsRead: DefaultClubsRead,
-			PageRead: AudienceEveryone, InfoRead: AudienceEveryone, PhotosRead: AudienceEveryone, FriendsRead: AudienceEveryone,
+			PageRead: AudienceEveryone, InfoRead: AudienceEveryone, FriendsRead: AudienceEveryone,
 			OnlineRead: AudienceEveryone, GiftsRead: AudienceEveryone,
 			AudiosRead: AudienceEveryone, ListeningRead: AudienceEveryone,
 			ChatsInvite: DefaultChatsInvite,
@@ -339,7 +337,7 @@ func (u *User) UpdatePrivacy(privacy Privacy) error {
 		return err
 	}
 
-	for _, a := range []Audience{privacy.InfoRead, privacy.PhotosRead, privacy.FriendsRead, privacy.OnlineRead, privacy.GiftsRead, privacy.AudiosRead, privacy.ListeningRead} {
+	for _, a := range []Audience{privacy.InfoRead, privacy.FriendsRead, privacy.OnlineRead, privacy.GiftsRead, privacy.AudiosRead, privacy.ListeningRead} {
 		if _, err := NewAudience(a.String()); err != nil {
 			return err
 		}
@@ -425,6 +423,9 @@ func (u *User) PublicProfileFor(viewerID uuid.UUID, t Ties, now time.Time) Publi
 	p := u.publicProfile(access.Info)
 	p.Prime = u.IsPrimeAt(now)
 	p.PrimeStyle = u.shownPrimeStyle(now)
+	if !u.IsDeactivated() {
+		p.Backdrop = u.shownBackdrop(now)
+	}
 	if p.LastSeen = u.lastSeenFor(viewerID, t, now); !p.LastSeen.IsZero() {
 		p.Online = u.IsOnline(now)
 	}

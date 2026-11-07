@@ -84,14 +84,14 @@ func (r *NotificationRepository) Get(ctx context.Context, id uuid.UUID) (*notifi
 
 // The delete queries match the unique indexes of the migration.
 const (
-	// Of a post or of a photo of an album alike.
+	// Of a post or of a story alike.
 	deleteLikeNotificationQuery = `
 		DELETE FROM notifications
 		WHERE kind = $1
 			AND actor_id = $2
 			AND post_id = $3
 	`
-	// Under a post or under a photo alike.
+	// Under a post or under a story alike.
 	deleteCommentNotificationQuery = `
 		DELETE FROM notifications
 		WHERE kind = $1
@@ -194,9 +194,9 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 	var err error
 
 	switch e.Kind {
-	case notification.KindLike, notification.KindPhotoLike, notification.KindStoryLike:
+	case notification.KindLike, notification.KindStoryLike:
 		_, err = r.pool.Exec(ctx, deleteLikeNotificationQuery, string(e.Kind), e.ActorID, e.PostID)
-	case notification.KindComment, notification.KindPhotoComment, notification.KindStoryComment:
+	case notification.KindComment, notification.KindStoryComment:
 		_, err = r.pool.Exec(ctx, deleteCommentNotificationQuery, string(e.Kind), e.CommentID)
 	case notification.KindFollow:
 		_, err = r.pool.Exec(ctx, deleteFollowNotificationQuery, e.ActorID, e.RecipientID)
@@ -224,7 +224,7 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 		_, err = r.pool.Exec(ctx, deleteTopicMessageNotificationQuery, e.CommentID)
 	case notification.KindPostMention:
 		_, err = r.pool.Exec(ctx, deletePostMentionNotificationQuery, e.RecipientID, e.PostID)
-	case notification.KindCommentMention, notification.KindTopicMention, notification.KindPhotoMention:
+	case notification.KindCommentMention, notification.KindTopicMention:
 		_, err = r.pool.Exec(ctx, deleteCommentMentionNotificationQuery, string(e.Kind), e.RecipientID, e.CommentID)
 	case notification.KindCommentReply:
 		_, err = r.pool.Exec(ctx, deleteCommentReplyNotificationQuery, e.CommentID)

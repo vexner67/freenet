@@ -246,7 +246,6 @@ func toProtoPost(p *post.Post, liked bool, viewerID uuid.UUID) *postv1.Post {
 		EditableUntil:  timestamppb.New(p.EditableUntil()),
 		FromWall:       p.FromWall(),
 		Signed:         p.Signed(),
-		SharedPhotoId:  idString(p.Content().SharedPhoto()),
 		Mine:           viewerID != uuid.Nil && p.BelongsTo(viewerID),
 		Archived:       p.Archived(),
 		CommentsClosed: p.CommentsClosed(),

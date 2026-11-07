@@ -55,22 +55,10 @@ func TestEventCodec(t *testing.T) {
 		t.Fatalf("deleted round trip = %v %+v %v", key, e.Deleted, err)
 	}
 
-	share, err := message.NewSealedPhotoShare("", uuid.New())
-	if err != nil {
-		t.Fatal(err)
-	}
-	shared := message.Restore(message.Stored{ID: uuid.New(), SenderID: ann, RecipientID: bob, Content: share, CreatedAt: sent.CreatedAt()})
-	if data, err = codec.Encode(bob, service.Event{Message: shared}); err != nil {
-		t.Fatalf("Encode a shared photo: %v", err)
-	}
-	if _, e, err = codec.Decode(data); err != nil || e.Message == nil || e.Message.SharedPhoto() != shared.SharedPhoto() || e.Message.Sealed() != "" {
-		t.Fatalf("a shared photo round trip = %+v, %v", e.Message, err)
-	}
-
 	// The words of what a message of a dialog carries on are sealed with
 	// its own.
 	carried := message.Forwarded{
-		SenderID: uuid.New(), Photos: message.Photos{uuid.New()}, Post: uuid.New(), SharedPhoto: uuid.New(),
+		SenderID: uuid.New(), Photos: message.Photos{uuid.New()}, Post: uuid.New(),
 		CreatedAt: sent.CreatedAt().Add(-time.Hour),
 	}
 	forward := message.Restore(message.Stored{
@@ -161,17 +149,6 @@ func TestEventCodec_Chat(t *testing.T) {
 	if _, e, err = codec.Decode(data); err != nil || e.Chat.Message.Post() != post || len(e.Chat.Message.Forwarded()) != 1 ||
 		e.Chat.Message.Forwarded()[0].Text != "дальше" || len(e.Chat.Message.Forwarded()[0].Photos) != 1 {
 		t.Fatalf("carrying round trip = %+v, %v", e.Chat, err)
-	}
-
-	albumPhoto := uuid.New()
-	sharing := message.RestoreChatMessage(message.StoredChatMessage{
-		ID: uuid.New(), ChatID: chat, SenderID: ann, Content: message.RestoreContent("", nil, uuid.Nil, nil).WithSharedPhoto(albumPhoto), CreatedAt: at,
-	})
-	if data, err = codec.Encode(bob, service.Event{Chat: &service.ChatEvent{Message: sharing}}); err != nil {
-		t.Fatalf("Encode a shared photo: %v", err)
-	}
-	if _, e, err = codec.Decode(data); err != nil || e.Chat.Message.SharedPhoto() != albumPhoto {
-		t.Fatalf("shared photo round trip = %+v, %v", e.Chat, err)
 	}
 
 	kicked := message.RestoreChatMessage(message.StoredChatMessage{

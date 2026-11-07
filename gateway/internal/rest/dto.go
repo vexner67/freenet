@@ -197,7 +197,6 @@ type privacyJSON struct {
 	ClubsRead          string `json:"clubsRead"`
 	PageRead           string `json:"pageRead"`
 	InfoRead           string `json:"infoRead"`
-	PhotosRead         string `json:"photosRead"`
 	FriendsRead        string `json:"friendsRead"`
 	OnlineRead         string `json:"onlineRead"`
 	// GiftsRead: who sees the gifts; "" is everyone.
@@ -227,7 +226,6 @@ func (p privacyJSON) toModel() model.Privacy {
 		ClubsRead:          p.ClubsRead,
 		PageRead:           p.PageRead,
 		InfoRead:           p.InfoRead,
-		PhotosRead:         p.PhotosRead,
 		FriendsRead:        p.FriendsRead,
 		OnlineRead:         p.OnlineRead,
 		GiftsRead:          p.GiftsRead,
@@ -349,7 +347,6 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 			ClubsRead:          u.Privacy.ClubsRead,
 			PageRead:           u.Privacy.PageRead,
 			InfoRead:           u.Privacy.InfoRead,
-			PhotosRead:         u.Privacy.PhotosRead,
 			FriendsRead:        u.Privacy.FriendsRead,
 			OnlineRead:         u.Privacy.OnlineRead,
 			GiftsRead:          u.Privacy.GiftsRead,

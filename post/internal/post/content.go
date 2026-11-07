@@ -40,15 +40,11 @@ func NewPhotos(ids []uuid.UUID) (Photos, error) {
 }
 
 // Content is what a post shows: text, photos, documents, a poll, a shared
-// post (a repost) or some of them, or a shared photo of an album with
-// text, never nothing.
+// post (a repost) or some of them, never nothing.
 type Content struct {
 	text     Text
 	photos   Photos
 	repostOf uuid.UUID
-	// sharedPhoto is a photo of an album shared ("Поделиться" of a photo),
-	// uuid.Nil for none; only with text, never with photos or a repost.
-	sharedPhoto uuid.UUID
 	// polled: the post asks a poll (see Poll), which is content enough.
 	polled bool
 	// documents are files of "Мои Документы" the post attaches.
@@ -154,27 +150,6 @@ func NewRepost(repostOf uuid.UUID, text Text, photos Photos) (Content, error) {
 	}
 
 	return Content{text: text, photos: photos, repostOf: repostOf}, nil
-}
-
-// NewPhotoShare is the content of a post sharing a photo of an album, with
-// what the poster says about it, if anything.
-func NewPhotoShare(photoID uuid.UUID, text Text) (Content, error) {
-	if photoID == uuid.Nil {
-		return Content{}, ErrInvalidPhoto
-	}
-
-	return Content{text: text, sharedPhoto: photoID}, nil
-}
-
-// WithSharedPhoto is c sharing photoID, restored from storage.
-func (c Content) WithSharedPhoto(photoID uuid.UUID) Content {
-	c.sharedPhoto = photoID
-	return c
-}
-
-// SharedPhoto is the photo of an album the post shares, uuid.Nil for none.
-func (c Content) SharedPhoto() uuid.UUID {
-	return c.sharedPhoto
 }
 
 // RestoreContent rebuilds content from storage without validation;

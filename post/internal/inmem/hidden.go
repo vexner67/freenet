@@ -70,43 +70,6 @@ func (r *TopicRepository) seenTopic(s post.StoredTopic) *post.Topic {
 	return post.RestoreTopic(s)
 }
 
-// seenAlbum is the album without the photos of deleted pages in its
-// count. The caller holds the lock.
-func (r *AlbumRepository) seenAlbum(s post.StoredAlbum) *post.Album {
-	for _, p := range r.photos {
-		if p.AlbumID() == s.ID && r.hidden[p.AuthorID()] {
-			s.Photos--
-		}
-	}
-
-	return post.RestoreAlbum(s)
-}
-
-// seenPhoto is the photo without the comments of deleted pages in its
-// count. The caller holds the lock.
-func (r *AlbumRepository) seenPhoto(p *post.AlbumPhoto) *post.AlbumPhoto {
-	hidden := 0
-	for _, c := range r.photoComments {
-		if c.PhotoID() == p.ID() && r.hidden[c.AuthorID()] {
-			hidden++
-		}
-	}
-
-	if hidden == 0 {
-		return p
-	}
-
-	return post.RestoreAlbumPhoto(post.StoredAlbumPhoto{
-		ID: p.ID(), AlbumID: p.AlbumID(), AuthorID: p.AuthorID(), Description: p.Description(), CreatedAt: p.CreatedAt(),
-		Likes: p.Likes(), Comments: p.Comments() - hidden, NSFW: p.NSFW(),
-	})
-}
-
-// photoHidden: who put the photo or who owns its album deleted the page.
-func (r *AlbumRepository) photoHidden(p *post.AlbumPhoto) bool {
-	return r.hidden[p.AuthorID()] || r.hidden[r.albums[p.AlbumID()].OwnerID]
-}
-
 // among tells which of the users are hidden, under the lock of the store
 // that keeps them.
 func (h hiddenUsers) among(ctx context.Context, mu *sync.RWMutex, userIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
@@ -134,9 +97,5 @@ func (r *HoldRepository) Deleted(ctx context.Context, userIDs []uuid.UUID) (map[
 }
 
 func (r *TopicRepository) Deleted(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
-	return r.hidden.among(ctx, &r.mu, userIDs)
-}
-
-func (r *AlbumRepository) Deleted(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
 	return r.hidden.among(ctx, &r.mu, userIDs)
 }

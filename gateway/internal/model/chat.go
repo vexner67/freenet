@@ -67,11 +67,9 @@ type ChatMessage struct {
 	// Seen: the caller's own, which someone else in the chat has read.
 	Seen bool
 	// What a message of a dialog may show besides its words: a shared
-	// post, a shared photo of an album ("" for none) and the messages it
-	// carries on.
-	PostID        string
-	SharedPhotoID string
-	Forwarded     []ForwardedMessage
+	// post ("" for none) and the messages it carries on.
+	PostID    string
+	Forwarded []ForwardedMessage
 	// Sticker is the sticker the message is, "" for none.
 	Sticker     string
 	DocumentIDs []string

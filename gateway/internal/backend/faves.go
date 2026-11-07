@@ -54,35 +54,6 @@ func (f *Faves) Comments(ctx context.Context, accessToken, cursor string, limit 
 	return page, nil
 }
 
-// Photos are the photos of albums the caller likes, each with whom its
-// album belongs to.
-func (f *Faves) Photos(ctx context.Context, accessToken, cursor string, limit int) (model.FavePhotoPage, error) {
-	resp, err := f.api.ListLikedAlbumPhotos(withToken(ctx, accessToken), &postv1.ListLikedAlbumPhotosRequest{
-		Cursor: cursor, Limit: toLimit(limit),
-	})
-	if err != nil {
-		return model.FavePhotoPage{}, errs.Wrap("f.api.ListLikedAlbumPhotos", fromStatus(err))
-	}
-
-	page := model.FavePhotoPage{
-		Photos:     make([]model.FavePhoto, 0, len(resp.GetPhotos())),
-		NextCursor: resp.GetNextCursor(),
-		Total:      int(resp.GetTotal()),
-	}
-
-	owners := resp.GetOwnerIds()
-	for i, pp := range resp.GetPhotos() {
-		photo := model.FavePhoto{AlbumPhoto: toAlbumPhoto(pp)}
-		if i < len(owners) {
-			photo.OwnerID = owners[i]
-		}
-
-		page.Photos = append(page.Photos, photo)
-	}
-
-	return page, nil
-}
-
 // OwnPosts are the posts the caller wrote, on whichever wall, newest
 // first.
 func (f *Faves) OwnPosts(ctx context.Context, accessToken, cursor string, limit int) (model.PostPage, error) {

@@ -20,7 +20,6 @@ func toProtoMessage(m *message.Message, read bool) *messagev1.Message {
 		Read:        read,
 		PhotoIds:    photoStrings(m.Photos()),
 		PostId:      postString(m.Post()),
-		PhotoId:     postString(m.SharedPhoto()),
 		Forwarded:   toProtoForwarded(m.Forwarded()),
 		Sealed:      m.Sealed().Bytes(),
 		Sticker:     m.Sticker().String(),
@@ -55,7 +54,6 @@ func toProtoForwarded(forwarded message.Forwards) []*messagev1.ForwardedMessage 
 			Text:        f.Text.String(),
 			PhotoIds:    photoStrings(f.Photos),
 			PostId:      postString(f.Post),
-			PhotoId:     postString(f.SharedPhoto),
 			CreatedAt:   timestamppb.New(f.CreatedAt),
 			Depth:       int32(f.Depth), //nolint:gosec // at most MaxForwarded
 			Sticker:     f.Sticker.String(),
@@ -90,7 +88,6 @@ func toProtoQuote(q message.Quote, ok bool) *messagev1.Quote {
 	pq.AudioCount = int32(q.Audios)        //nolint:gosec // at most 10
 	pq.Sticker = q.Sticker.String()
 	pq.Post = q.Post
-	pq.Photo = q.SharedPhoto
 	pq.Deleted = q.Deleted
 
 	return pq
@@ -130,7 +127,6 @@ type draftRequest interface {
 	GetText() string
 	GetPhotoIds() []string
 	GetPostId() string
-	GetPhotoId() string
 	GetForwardIds() []string
 	GetSticker() string
 	GetDocumentIds() []string
@@ -158,13 +154,6 @@ func fromProtoDraft(req draftRequest) (service.Draft, error) {
 	if req.GetPostId() != "" {
 		if post, err = uuid.Parse(req.GetPostId()); err != nil {
 			return service.Draft{}, status.Error(codes.InvalidArgument, "invalid post id")
-		}
-	}
-
-	var sharedPhoto uuid.UUID
-	if req.GetPhotoId() != "" {
-		if sharedPhoto, err = uuid.Parse(req.GetPhotoId()); err != nil {
-			return service.Draft{}, status.Error(codes.InvalidArgument, message.ErrInvalidPhoto.Error())
 		}
 	}
 
@@ -212,7 +201,7 @@ func fromProtoDraft(req draftRequest) (service.Draft, error) {
 	}
 
 	return service.Draft{
-		Text: text, Photos: photos, Post: post, SharedPhoto: sharedPhoto, Forward: forward, Sticker: sticker, Documents: documents,
+		Text: text, Photos: photos, Post: post, Forward: forward, Sticker: sticker, Documents: documents,
 		Audios: audios, ReplyTo: replyTo,
 	}, nil
 }

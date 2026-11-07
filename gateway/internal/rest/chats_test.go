@@ -119,7 +119,7 @@ func (f *fakeChats) Send(_ context.Context, token, id string, d model.MessageDra
 
 	m := model.ChatMessage{
 		ID: "m9", ChatID: id, SenderID: "u1", Text: d.Text, PhotoIDs: d.PhotoIDs, CreatedAt: chatTime, DeletableUntil: chatTime, EditableUntil: chatTime,
-		PostID: d.PostID, SharedPhotoID: d.SharedPhotoID, Sticker: d.Sticker, DocumentIDs: d.DocumentIDs, AudioIDs: d.AudioIDs,
+		PostID: d.PostID, Sticker: d.Sticker, DocumentIDs: d.DocumentIDs, AudioIDs: d.AudioIDs,
 	}
 	for range d.ForwardIDs {
 		m.Forwarded = append(m.Forwarded, model.ForwardedMessage{SenderID: "u2", Text: "дальше", CreatedAt: chatTime})
@@ -512,8 +512,6 @@ func TestChatMessages(t *testing.T) {
 			chatMessageJSON
 			Post           string         `json:"post"`
 			Repost         map[string]any `json:"repost"`
-			AlbumPhoto     string         `json:"albumPhoto"`
-			SharedPhoto    map[string]any `json:"sharedPhoto"`
 			ForwardedCount int            `json:"forwardedCount"`
 			Forwarded      []struct {
 				Text   string         `json:"text"`
@@ -532,15 +530,9 @@ func TestChatMessages(t *testing.T) {
 			t.Fatalf("sent = %+v", got)
 		}
 
-		h = newHarness(rest.Config{})
-		w = h.do("POST", "/api/v1/chats/c1/messages", `{"text":"смотрите","albumPhoto":"ph6"}`, "Authorization", annAuth)
-		if got = decode[attached](t, w); w.Code != http.StatusCreated || h.chats.draft.SharedPhotoID != "ph6" || got.AlbumPhoto != "ph6" || got.SharedPhoto == nil {
-			t.Fatalf("a photo of an album: %d %+v", w.Code, got)
-		}
-
 		// What is not there for the caller is not theirs to share, and
 		// messages of chats are not sealed.
-		for _, body := range []string{`{"post":"p404"}`, `{"text":"вот","albumPhoto":"ph404"}`, `{"sealed":"eA=="}`} {
+		for _, body := range []string{`{"post":"p404"}`, `{"sealed":"eA=="}`} {
 			h = newHarness(rest.Config{})
 			if w = h.do("POST", "/api/v1/chats/c1/messages", body, "Authorization", annAuth); w.Code != http.StatusBadRequest || len(h.chats.calls) != 0 {
 				t.Fatalf("%s: %d, calls %q", body, w.Code, h.chats.calls)

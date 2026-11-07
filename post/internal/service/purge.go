@@ -44,13 +44,6 @@ type TopicEraser interface {
 	DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*post.TopicMessage, error)
 }
 
-// AlbumEraser deletes the albums a user owns with their photos and the
-// photos they put in others' albums: all of them uploaded by the user,
-// whose images media erases with the rest of the user.
-type AlbumEraser interface {
-	DeleteByUser(ctx context.Context, userID uuid.UUID) error
-}
-
 // DocumentEraser deletes the documents a user keeps, whose bytes media
 // erases with the rest of the user.
 type DocumentEraser interface {
@@ -88,7 +81,6 @@ type PurgeService struct {
 	suggestions  SuggestionEraser
 	postponed    PostponedEraser
 	topics       TopicEraser
-	albums       AlbumEraser
 	documents    DocumentEraser
 	audio        AudioEraser
 	articles     ArticleEraser
@@ -111,7 +103,6 @@ type PurgeDeps struct {
 	Suggestions SuggestionEraser
 	Postponed   PostponedEraser
 	Topics      TopicEraser
-	Albums      AlbumEraser
 	// Documents are the files of people; nil: none kept.
 	Documents DocumentEraser
 	// Audio is the music of people; nil: none kept.
@@ -139,7 +130,6 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 		suggestions:  d.Suggestions,
 		postponed:    d.Postponed,
 		topics:       d.Topics,
-		albums:       d.Albums,
 		documents:    d.Documents,
 		audio:        d.Audio,
 		articles:     d.Articles,
@@ -154,7 +144,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 
 // PurgeUser deletes, in one transaction, the user's likes and comments on
 // others' posts, their votes in polls, what they suggested and postponed, their topics and the messages they
-// wrote in topics, their albums and the photos they put in others', their
+// wrote in topics, their
 // documents, music and articles, their
 // stories and their views of others', the posts they wrote and those on their wall (others' on it included, as a
 // deleted post takes its comments). The notifications
@@ -215,10 +205,6 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 
 		if err = deleteMessagePhotos(ctx, s.photos, messages); err != nil {
 			return errs.Wrap("deleteMessagePhotos", err)
-		}
-
-		if err = s.albums.DeleteByUser(ctx, userID); err != nil {
-			return errs.Wrap("s.albums.DeleteByUser", err)
 		}
 
 		if s.documents != nil {

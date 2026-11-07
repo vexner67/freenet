@@ -36,7 +36,7 @@ type Readers interface {
 	Left(ctx context.Context, clubID, userID uuid.UUID) error
 	Closed(ctx context.Context, clubID uuid.UUID) error
 	Opened(ctx context.Context, clubID uuid.UUID) error
-	// Deleted: the club is gone, its wall, topics, albums and photos go
+	// Deleted: the club is gone, its wall, topics and photos go
 	// with it.
 	Deleted(ctx context.Context, clubID uuid.UUID) error
 }

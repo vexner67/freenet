@@ -84,7 +84,7 @@ func (s *PermissionService) messageTies(
 }
 
 // Access tells what of ownerID's page viewerID (uuid.Nil: anonymous) may
-// see: the page, its information, albums, follows and communities.
+// see: the page, its information, follows and communities.
 // user.ErrNotFound for an unknown owner.
 func (s *PermissionService) Access(ctx context.Context, viewerID, ownerID uuid.UUID) (user.Access, error) {
 	owner, ties, err := s.ties(ctx, viewerID, ownerID)

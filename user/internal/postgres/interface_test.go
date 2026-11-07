@@ -10,7 +10,7 @@ import (
 )
 
 func TestInterface(t *testing.T) {
-	repo, _ := newRepo(t)
+	repo, pool := newRepo(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -32,7 +32,7 @@ func TestInterface(t *testing.T) {
 	offset := -210
 	ui, err := user.NewInterface(user.InterfaceForm{
 		AvatarStyle: "round", Theme: "dark", HideRating: true, NSFW: "hide", PostView: "microblog",
-		MainPage: "feed", Timezone: &offset, HiddenMenu: []string{"groups", "photos"},
+		MainPage: "feed", Timezone: &offset, HiddenMenu: []string{"groups", "feed"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -58,5 +58,14 @@ func TestInterface(t *testing.T) {
 	}
 	if got, err = repo.GetByID(ctx, u.ID()); err != nil || !reflect.DeepEqual(got.Interface(), user.DefaultInterface()) {
 		t.Fatalf("back to default = %+v, %v", got.Interface(), err)
+	}
+
+	// A link stored before it left the menu (the albums' "photos") is not
+	// read back.
+	if _, err = pool.Exec(ctx, `UPDATE users SET hidden_menu = ARRAY['photos', 'groups'] WHERE id = $1`, u.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = repo.GetByID(ctx, u.ID()); err != nil || !reflect.DeepEqual(got.Interface().HiddenMenu, []user.MenuItem{user.MenuGroups}) {
+		t.Fatalf("a link gone = %+v, %v", got.Interface().HiddenMenu, err)
 	}
 }

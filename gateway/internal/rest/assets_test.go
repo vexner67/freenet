@@ -222,7 +222,7 @@ func TestAssets_Website(t *testing.T) {
 		beside   = regexp.MustCompile(`(?:from|import)\s*['"]\./`)
 		versions = map[string]string{}
 		seen     = map[string]bool{}
-		queue    = []string{"/", "/feed", "/im", "/groups", "/albums", "/settings", "/ann"}
+		queue    = []string{"/", "/feed", "/im", "/groups", "/fave", "/settings", "/ann"}
 	)
 
 	for len(queue) > 0 {

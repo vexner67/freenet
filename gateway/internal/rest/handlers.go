@@ -289,7 +289,7 @@ func (a *api) getProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, profileWithStatsResponse{
-		Access:                accessJSON{Photos: access.Photos, Friends: access.Friends, Clubs: access.Clubs, Gifts: access.Gifts, Audios: access.Audios},
+		Access:                accessJSON{Friends: access.Friends, Clubs: access.Clubs, Gifts: access.Gifts, Audios: access.Audios},
 		publicProfileResponse: toPublicProfileResponse(profile),
 		aboutJSON:             toAboutJSON(profile.About, partner),
 		followStatsJSON:       toFollowStatsJSON(stats),

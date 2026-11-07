@@ -22,7 +22,7 @@ func TestClubBackdrop(t *testing.T) {
 	w := h.do("PUT", "/api/v1/clubs/cats/backdrop/left", "jpeg", "Authorization", "Bearer tok")
 	got := decode[struct {
 		Backdrop *struct {
-			Left, Right *struct {
+			Left, Right, Cover *struct {
 				Large string `json:"large"`
 			}
 		} `json:"backdrop"`
@@ -42,7 +42,7 @@ func TestClubBackdrop(t *testing.T) {
 	w = h.do("DELETE", "/api/v1/clubs/cats/backdrop", "", "Authorization", "Bearer tok")
 	if got = decode[struct {
 		Backdrop *struct {
-			Left, Right *struct {
+			Left, Right, Cover *struct {
 				Large string `json:"large"`
 			}
 		} `json:"backdrop"`
@@ -56,7 +56,7 @@ func TestBackdrop(t *testing.T) {
 
 	type backdrop struct {
 		Backdrop *struct {
-			Left, Right *struct {
+			Left, Right, Cover *struct {
 				Large string `json:"large"`
 			}
 		} `json:"backdrop"`
@@ -86,6 +86,17 @@ func TestBackdrop(t *testing.T) {
 	w = h.do("DELETE", "/api/v1/me/backdrop", "", "Authorization", "Bearer tok")
 	if got := decode[backdrop](t, w); w.Code != http.StatusOK || got.Backdrop != nil || !slices.Equal(h.media.unpublished, []string{"u1/ph0", "u1/ph9,ph5"}) {
 		t.Fatalf("delete: %d %s, deleted %v", w.Code, w.Body, h.media.unpublished)
+	}
+
+	// The photo behind the whole page is kept larger and goes by itself.
+	h.media.uploaded, h.media.unpublished = nil, nil
+	w = h.do("PUT", "/api/v1/me/backdrop/cover", "jpeg", "Authorization", "Bearer tok")
+	if got := decode[backdrop](t, w); w.Code != http.StatusOK || !h.media.wide || got.Backdrop == nil || got.Backdrop.Cover == nil || got.Backdrop.Left != nil {
+		t.Fatalf("cover: %d %s, wide %v", w.Code, w.Body, h.media.wide)
+	}
+	w = h.do("DELETE", "/api/v1/me/backdrop/cover", "", "Authorization", "Bearer tok")
+	if got := decode[backdrop](t, w); w.Code != http.StatusOK || got.Backdrop != nil || !slices.Equal(h.media.unpublished, []string{"u1/ph9"}) {
+		t.Fatalf("delete the cover: %d %s, deleted %v", w.Code, w.Body, h.media.unpublished)
 	}
 
 	// The page shows it to anyone.

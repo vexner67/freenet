@@ -37,14 +37,12 @@ type likeTable struct {
 	targets string
 }
 
-// The five tables of likes differ in names only, so their statements are
+// The three tables of likes differ in names only, so their statements are
 // built from these, which are constants of this file, never input.
 var likeTables = []likeTable{
 	{kind: "post_like", likes: "post_likes", column: "post_id", targets: "posts"},
 	{kind: "comment_like", likes: "comment_likes", column: "comment_id", targets: "comments"},
-	{kind: "album_photo_like", likes: "album_photo_likes", column: "photo_id", targets: "album_photos"},
 	{kind: "topic_message_like", likes: "topic_message_likes", column: "message_id", targets: "topic_messages"},
-	{kind: "photo_comment_like", likes: "photo_comment_likes", column: "comment_id", targets: "photo_comments"},
 }
 
 // holdLikesQuery moves a user's likes aside and uncounts them in one

@@ -63,8 +63,8 @@ type chatJSON struct {
 // (of Target), "leave", "return", "pin" and "unpin" (a message), "photo"
 // and "photo_remove" (the photo of the chat). Out is the caller's own, which they may
 // edit until EditableUntil and take back until DeletableUntil. It shows
-// what a message of a dialog may: a shared post, a shared photo of an
-// album and the messages it carries on, except in the list of dialogs.
+// what a message of a dialog may: a shared post and the messages it
+// carries on, except in the list of dialogs.
 type chatMessageJSON struct {
 	ID             string      `json:"id"`
 	ChatID         string      `json:"chatId"`
@@ -116,7 +116,7 @@ func toChatMessageJSON(m model.ChatMessage, me string, people map[string]model.A
 		Seen:      m.Seen,
 
 		attachedJSON: toAttachedJSON(attachment{
-			PostID: m.PostID, SharedPhotoID: m.SharedPhotoID, Sticker: m.Sticker, Forwarded: m.Forwarded, DocumentIDs: m.DocumentIDs,
+			PostID: m.PostID, Sticker: m.Sticker, Forwarded: m.Forwarded, DocumentIDs: m.DocumentIDs,
 			AudioIDs: m.AudioIDs, ReplyTo: m.ReplyTo, Reactions: m.Reactions,
 		}),
 	}

@@ -44,8 +44,6 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, "invalid sticker"), true
 	case errors.Is(err, message.ErrStickerAlone):
 		return status.New(codes.InvalidArgument, "a sticker goes alone"), true
-	case errors.Is(err, message.ErrSharedPhotoAlone):
-		return status.New(codes.InvalidArgument, "a shared photo goes with text alone"), true
 	case errors.Is(err, message.ErrTooManyPhotos):
 		return status.New(codes.InvalidArgument, message.ErrTooManyPhotos.Error()), true
 	case errors.Is(err, message.ErrNoMessages):

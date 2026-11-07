@@ -22,7 +22,7 @@ func NewMessages(api messagev1.MessageServiceClient) *Messages {
 // Send writes d to recipientID.
 func (m *Messages) Send(ctx context.Context, accessToken, recipientID string, d model.MessageDraft) (model.Message, error) {
 	resp, err := m.api.SendMessage(withToken(ctx, accessToken), &messagev1.SendMessageRequest{
-		RecipientId: recipientID, Text: d.Text, Sealed: d.Sealed, PhotoIds: d.PhotoIDs, PostId: d.PostID, PhotoId: d.SharedPhotoID, DocumentIds: d.DocumentIDs,
+		RecipientId: recipientID, Text: d.Text, Sealed: d.Sealed, PhotoIds: d.PhotoIDs, PostId: d.PostID, DocumentIds: d.DocumentIDs,
 		AudioIds:   d.AudioIDs,
 		ForwardIds: d.ForwardIDs, Sticker: d.Sticker, ReplyToId: d.ReplyToID,
 	})
@@ -294,11 +294,10 @@ func toForwarded(carried []*messagev1.ForwardedMessage) []model.ForwardedMessage
 			PostID:    f.GetPostId(),
 			CreatedAt: f.GetCreatedAt().AsTime(),
 
-			SharedPhotoID: f.GetPhotoId(),
-			Depth:         int(f.GetDepth()),
-			Sticker:       f.GetSticker(),
-			DocumentIDs:   f.GetDocumentIds(),
-			AudioIDs:      f.GetAudioIds(),
+			Depth:       int(f.GetDepth()),
+			Sticker:     f.GetSticker(),
+			DocumentIDs: f.GetDocumentIds(),
+			AudioIDs:    f.GetAudioIds(),
 		})
 	}
 
@@ -315,7 +314,7 @@ func toQuote(pq *messagev1.Quote) *model.Quote {
 		ID: pq.GetId(), SenderID: pq.GetSenderId(), Text: pq.GetText(), TextCut: pq.GetTextCut(),
 		PhotoCount: int(pq.GetPhotoCount()), ForwardedCount: int(pq.GetForwardedCount()), DocumentCount: int(pq.GetDocumentCount()),
 		AudioCount: int(pq.GetAudioCount()),
-		Sticker:    pq.GetSticker(), Post: pq.GetPost(), SharedPhoto: pq.GetPhoto(), Deleted: pq.GetDeleted(), Found: pq.GetFound(),
+		Sticker:    pq.GetSticker(), Post: pq.GetPost(), Deleted: pq.GetDeleted(), Found: pq.GetFound(),
 	}
 }
 
@@ -345,7 +344,6 @@ func toMessage(pm *messagev1.Message) model.Message {
 		Read:           pm.GetRead(),
 		DeletableUntil: fromTimestamp(pm.GetDeletableUntil()),
 		PostID:         pm.GetPostId(),
-		SharedPhotoID:  pm.GetPhotoId(),
 		Sticker:        pm.GetSticker(),
 		EditedAt:       fromTimestamp(pm.GetEditedAt()),
 		EditableUntil:  fromTimestamp(pm.GetEditableUntil()),

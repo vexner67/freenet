@@ -71,7 +71,7 @@ func fromProto(p *postv1.Post) (fedi.Post, error) {
 		Edited:   edited,
 		NSFW:     p.GetNsfw(),
 		FromWall: p.GetFromWall(),
-		Repost:   p.GetRepostOf() != "" || p.GetSharedPhotoId() != "",
+		Repost:   p.GetRepostOf() != "",
 		Paid:     p.GetPrice() > 0,
 		Archived: p.GetArchived(),
 	}, nil

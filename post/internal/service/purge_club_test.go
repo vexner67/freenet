@@ -20,12 +20,12 @@ func TestClubPurgeService(t *testing.T) {
 	notifier := &fakeNotifier{}
 	photos := &fakePhotos{}
 	suggestions, postponed := inmem.NewSuggestionRepository(), inmem.NewPostponedRepository()
-	topics, albums := inmem.NewTopicRepository(), inmem.NewAlbumRepository()
+	topics := inmem.NewTopicRepository()
 	posts := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos, Moderators: fakeModerators{}})
 	comments := service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos, Moderators: fakeModerators{}})
 	purge := service.NewClubPurgeService(service.ClubPurgeDeps{
 		Posts: store.Posts(), Comments: store.Comments(), Suggestions: suggestions, Postponed: postponed,
-		Topics: topics, Albums: albums, Sources: store.Sources(), Tx: fakeTx{}, Notifier: notifier, Media: photos,
+		Topics: topics, Sources: store.Sources(), Tx: fakeTx{}, Notifier: notifier, Media: photos,
 	})
 	ctx := context.Background()
 	now := time.Now()
@@ -84,25 +84,6 @@ func TestClubPurgeService(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	name, err := post.NewAlbumName("Фото")
-	if err != nil {
-		t.Fatal(err)
-	}
-	album, err := post.NewAlbum(club, name, "", now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = albums.Save(ctx, album); err != nil {
-		t.Fatal(err)
-	}
-	albumPhoto, err := post.NewAlbumPhoto(album, uuid.New(), bob, "", now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = albums.Photos().Add(ctx, album.ID(), []*post.AlbumPhoto{albumPhoto}, now); err != nil {
-		t.Fatal(err)
-	}
-
 	notifier.forgotten = nil
 	if err = purge.PurgeClub(ctx, club); err != nil {
 		t.Fatal(err)
@@ -126,11 +107,7 @@ func TestClubPurgeService(t *testing.T) {
 	if _, err = topics.Get(ctx, topic.ID()); !errors.Is(err, post.ErrTopicNotFound) {
 		t.Errorf("the topic is still there: %v", err)
 	}
-	if _, err = albums.Get(ctx, album.ID()); !errors.Is(err, post.ErrAlbumNotFound) {
-		t.Errorf("the album is still there: %v", err)
-	}
-
-	for _, id := range []uuid.UUID{onWall.ID(), suggested.ID(), topic.ID(), albumPhoto.ID()} {
+	for _, id := range []uuid.UUID{onWall.ID(), suggested.ID(), topic.ID()} {
 		if !slices.Contains(notifier.forgotten, id) {
 			t.Errorf("the notifications of %s were not forgotten", id)
 		}
@@ -140,7 +117,6 @@ func TestClubPurgeService(t *testing.T) {
 		annsPhoto:        ann,
 		bobsPhoto:        bob,
 		bobsMessagePhoto: bob,
-		albumPhoto.ID():  bob,
 	}
 	for photo, owner := range wantDeleted {
 		if !slices.ContainsFunc(photos.deleted, func(c photoCall) bool { return c.owner == owner && slices.Contains(c.photos, photo) }) {

@@ -69,23 +69,7 @@ func (a *api) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.cleanUpAvatars(r, token, avatarID)
-	a.keepInAvatarAlbum(r, token, "", image)
 	a.writeUser(w, r, me)
-}
-
-// keepInAvatarAlbum puts the new photo of a page (clubID: of a club, ""
-// for the caller's) in its "Фотографии со страницы", as openvk does: an
-// image of its own, so that deleting it there leaves the avatar alone.
-// The photo is changed already, so a failure is only logged.
-func (a *api) keepInAvatarAlbum(r *http.Request, token, clubID string, image []byte) {
-	photoID, err := a.uploadClaimed(r, token, image)
-	if err == nil {
-		err = a.albums.AddAvatarPhoto(r.Context(), token, clubID, photoID)
-	}
-
-	if err != nil {
-		a.logger.WarnContext(r.Context(), "new photo left out of the avatar album", "error", err)
-	}
 }
 
 func (a *api) deleteAvatar(w http.ResponseWriter, r *http.Request) {

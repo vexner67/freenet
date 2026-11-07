@@ -47,7 +47,6 @@ const savePostQuery = `
 		from_wall,
 		signed,
 		suggested,
-		shared_photo_id,
 		hashtags,
 		nsfw,
 		price,
@@ -56,7 +55,7 @@ const savePostQuery = `
 		audio_ids,
 		link
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 `
 
 // saveRepostQuery counts the repost in the shared post and adds it in one
@@ -65,7 +64,7 @@ const saveRepostQuery = `
 	WITH shared AS (
 		UPDATE posts
 		SET repost_count = repost_count + 1
-		WHERE id = $12
+		WHERE id = $11
 		RETURNING id
 	)
 	INSERT INTO posts (
@@ -78,11 +77,10 @@ const saveRepostQuery = `
 		from_wall,
 		signed,
 		suggested,
-		shared_photo_id,
 		hashtags,
 		repost_of
 	)
-	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, shared.id
+	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, shared.id
 	FROM shared
 `
 
@@ -97,11 +95,10 @@ const saveRemoteRepostQuery = `
 		from_wall,
 		signed,
 		suggested,
-		shared_photo_id,
 		hashtags,
 		repost_of
 	)
-	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 `
 
 func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
@@ -118,7 +115,7 @@ func (r *PostRepository) save(ctx context.Context, p *post.Post, remote bool) er
 
 	args := []any{
 		p.ID(), p.WallID(), p.AuthorID(), content.Text().String(), photoIDs(content.Photos()), p.CreatedAt(),
-		p.FromWall(), p.Signed(), p.Suggested(), nullID(content.SharedPhoto()),
+		p.FromWall(), p.Signed(), p.Suggested(),
 		hashtags(content.Text()),
 	}
 
@@ -163,7 +160,6 @@ const getPostQuery = `
 		from_wall,
 		signed,
 		suggested,
-		shared_photo_id,
 		archived,
 		comments_closed,
 		nsfw,
@@ -205,7 +201,6 @@ const getPostsQuery = `
 		from_wall,
 		signed,
 		suggested,
-		shared_photo_id,
 		archived,
 		comments_closed,
 		nsfw,
@@ -342,7 +337,6 @@ const getPinnedPostQuery = `
 		from_wall,
 		signed,
 		suggested,
-		shared_photo_id,
 		archived,
 		comments_closed,
 		nsfw,
@@ -384,7 +378,6 @@ const postsByWallSelect = `
 		from_wall,
 		signed,
 		suggested,
-		shared_photo_id,
 		archived,
 		comments_closed,
 		nsfw,
@@ -503,7 +496,6 @@ const listFeedQuery = `
 		from_wall,
 		signed,
 		suggested,
-		shared_photo_id,
 		archived,
 		comments_closed,
 		nsfw,
@@ -558,7 +550,6 @@ const listGlobalFeedQuery = `
 		from_wall,
 		signed,
 		suggested,
-		shared_photo_id,
 		archived,
 		comments_closed,
 		nsfw,
@@ -624,7 +615,6 @@ const listRepostsQuery = `
 		from_wall,
 		signed,
 		suggested,
-		shared_photo_id,
 		archived,
 		comments_closed,
 		nsfw,
@@ -749,7 +739,6 @@ const (
 		from_wall,
 		signed,
 		suggested,
-		shared_photo_id,
 		archived,
 		comments_closed,
 		nsfw,
@@ -986,7 +975,6 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 		photos   []uuid.UUID
 		repostOf *uuid.UUID
 		editedAt *time.Time
-		photo    *uuid.UUID
 		polled   bool
 		docs     []uuid.UUID
 		audios   []uuid.UUID
@@ -995,7 +983,7 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 
 	err := row.Scan(&s.ID, &s.WallID, &s.AuthorID, &text, &photos, &s.CreatedAt, &repostOf,
 		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.FromWall, &s.Signed, &s.Suggested,
-		&photo, &s.Archived, &s.CommentsClosed, &s.NSFW, &s.Price, &polled, &docs, &audios, &link, &s.Pinned)
+		&s.Archived, &s.CommentsClosed, &s.NSFW, &s.Price, &polled, &docs, &audios, &link, &s.Pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -1011,9 +999,6 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 	}
 
 	s.Content = post.RestoreContent(post.Text(text), post.Photos(photos), shared)
-	if photo != nil {
-		s.Content = s.Content.WithSharedPhoto(*photo)
-	}
 	if polled {
 		s.Content = s.Content.WithPoll()
 	}
@@ -1062,7 +1047,6 @@ const deletePostsByUserQuery = `
 			from_wall,
 			signed,
 			suggested,
-			shared_photo_id,
 			archived,
 			comments_closed,
 			nsfw,
@@ -1100,7 +1084,6 @@ const deletePostsByUserQuery = `
 		from_wall,
 		signed,
 		suggested,
-		shared_photo_id,
 		archived,
 		comments_closed,
 		nsfw,

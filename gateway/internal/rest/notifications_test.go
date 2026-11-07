@@ -27,10 +27,6 @@ type notificationPage struct {
 			ID    string `json:"id"`
 			Title string `json:"title"`
 		} `json:"topic"`
-		Photo *struct {
-			ID    string `json:"id"`
-			Small string `json:"small"`
-		} `json:"photo"`
 	} `json:"notifications"`
 	NextCursor string `json:"nextCursor"`
 	NewestID   string `json:"newestId"`
@@ -50,43 +46,25 @@ func TestListNotifications(t *testing.T) {
 		t.Fatalf("request = %+v; unread is the default box", h.notifications)
 	}
 
-	// The follow by a vanished account, the like of a deleted post, the
-	// message in a deleted topic and the like of a deleted photo are left
-	// out.
-	if len(got.Notifications) != 19 {
+	// The follow by a vanished account, the like of a deleted post and the
+	// message in a deleted topic are left out.
+	if len(got.Notifications) != 16 {
 		t.Fatalf("notifications = %+v", got.Notifications)
 	}
 
-	// A heart on a message names the topic, a heart and a comment on a
-	// photo the photo.
-	heart, photoLike, photoComment := got.Notifications[11], got.Notifications[12], got.Notifications[13]
+	// A heart on a message names the topic.
+	heart := got.Notifications[11]
 	if heart.Type != "topic_message_like" || heart.Topic == nil || heart.Topic.ID != "t1" || heart.Post != nil ||
 		heart.Comment == nil || heart.Comment.ID != "m1" || heart.Comment.Text != "Привет" {
 		t.Fatalf("heart on a topic message = %+v", heart)
 	}
-	for _, n := range got.Notifications[12:14] {
-		if n.Photo == nil || n.Photo.ID != "ph6" || n.Photo.Small != "/media/photos/u2/ph6/small.jpg" {
-			t.Fatalf("%s names the photo %+v", n.Type, n.Photo)
-		}
-	}
-	if photoLike.Type != "photo_like" || photoLike.Comment != nil || photoComment.Type != "photo_comment" || photoComment.Post != nil ||
-		photoComment.Comment == nil || photoComment.Comment.ID != "pc1" || photoComment.Comment.Text != "красиво" {
-		t.Fatalf("photo notifications = %+v, %+v", photoLike, photoComment)
-	}
-
-	// A mention under a photo names the photo and quotes the comment.
-	if m := got.Notifications[15]; m.Type != "photo_mention" || m.Photo == nil || m.Photo.ID != "ph6" || m.Post != nil ||
-		m.Comment == nil || m.Comment.ID != "pc1" || m.Comment.Text != "красиво" {
-		t.Fatalf("mention under a photo = %+v", m)
-	}
-
 	// A gift names no post: only who sent it.
-	if g := got.Notifications[16]; g.Type != "gift" || g.Actor["nickname"] != "bob" || g.Post != nil || g.Comment != nil {
+	if g := got.Notifications[13]; g.Type != "gift" || g.Actor["nickname"] != "bob" || g.Post != nil || g.Comment != nil {
 		t.Fatalf("gift = %+v", g)
 	}
 	// A like and a comment of a story say only who did it.
 	for i, kind := range []string{"story_like", "story_comment"} {
-		if s := got.Notifications[17+i]; s.Type != kind || s.Actor["nickname"] != "bob" || s.Post != nil || s.Comment != nil {
+		if s := got.Notifications[14+i]; s.Type != kind || s.Actor["nickname"] != "bob" || s.Post != nil || s.Comment != nil {
 			t.Fatalf("%s = %+v", kind, s)
 		}
 	}

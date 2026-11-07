@@ -57,12 +57,10 @@ var (
 	ErrTooManyPhotos  = errors.New("a message has at most 10 photos")
 	ErrDuplicatePhoto = errors.New("the same photo is attached twice")
 	ErrInvalidPhoto   = errors.New("invalid photo id")
-	// ErrSharedPhotoAlone: a photo of an album is shared with words only.
-	ErrSharedPhotoAlone = errors.New("a shared photo goes with text alone")
-	ErrCannotDelete     = errors.New("only the sender can delete the message")
-	ErrDeleteExpired    = errors.New("the message can no longer be deleted")
-	ErrCannotEdit       = errors.New("only the sender can edit the message")
-	ErrEditExpired      = errors.New("the message can no longer be edited")
+	ErrCannotDelete   = errors.New("only the sender can delete the message")
+	ErrDeleteExpired  = errors.New("the message can no longer be deleted")
+	ErrCannotEdit     = errors.New("only the sender can edit the message")
+	ErrEditExpired    = errors.New("the message can no longer be edited")
 	// ErrEditConflict: the message says something else than the edit
 	// started from; another edit was first.
 	ErrEditConflict = errors.New("the message was changed")
@@ -385,8 +383,6 @@ type Forwarded struct {
 	Text     Text
 	Photos   Photos
 	Post     uuid.UUID
-	// SharedPhoto is a photo of an album it shared, uuid.Nil for none.
-	SharedPhoto uuid.UUID
 	// Sticker is the sticker it was, "" for none.
 	Sticker Sticker
 	// Documents are the documents it attached.
@@ -429,10 +425,9 @@ func NewForwards(carried []Forwarded) (Forwards, error) {
 
 // Content is what a message shows: text, photos, a post shared into the
 // dialog (openvk's "Поделиться" "в переписку"), messages carried on from
-// other dialogs, documents or some of them, or a photo of an album shared
-// into the dialog with text, never nothing. The post and the photo of an album
-// live in the post service: the message keeps the ID, and a deleted one
-// stays "Запись удалена." or "Фотография удалена.". A message of a dialog
+// other dialogs, documents or some of them, never nothing. The post lives
+// in the post service: the message keeps the ID, and a deleted one stays
+// "Запись удалена.". A message of a dialog
 // says it all sealed instead: its words and those of what it carries on.
 type Content struct {
 	text      Text
@@ -440,9 +435,6 @@ type Content struct {
 	photos    Photos
 	post      uuid.UUID
 	forwarded Forwards
-	// sharedPhoto is a photo of an album shared ("Поделиться" under a
-	// photo), uuid.Nil for none; only with text.
-	sharedPhoto uuid.UUID
 	// sticker is the sticker the message is, "" for none; nothing goes
 	// with it.
 	sticker Sticker
@@ -489,27 +481,6 @@ func (f Forwards) wordless() Forwards {
 	return out
 }
 
-// NewPhotoShare is the content of a message sharing a photo of an album,
-// with what the sender says about it, if anything; whether the photo
-// exists the caller has checked with the post service.
-func NewPhotoShare(text Text, photoID uuid.UUID) (Content, error) {
-	if photoID == uuid.Nil {
-		return Content{}, ErrInvalidPhoto
-	}
-
-	return Content{text: text, sharedPhoto: photoID}, nil
-}
-
-// NewSealedPhotoShare is NewPhotoShare in a dialog: what the sender says
-// about the photo is sealed.
-func NewSealedPhotoShare(sealed Sealed, photoID uuid.UUID) (Content, error) {
-	if photoID == uuid.Nil {
-		return Content{}, ErrInvalidPhoto
-	}
-
-	return Content{sealed: sealed, sharedPhoto: photoID}, nil
-}
-
 // WithSealed is c saying sealed, restored from storage.
 func (c Content) WithSealed(sealed Sealed) Content {
 	c.sealed = sealed
@@ -535,18 +506,6 @@ func (c Content) plain() bool {
 	}
 
 	return false
-}
-
-// WithSharedPhoto is c sharing photoID, restored from storage.
-func (c Content) WithSharedPhoto(photoID uuid.UUID) Content {
-	c.sharedPhoto = photoID
-	return c
-}
-
-// SharedPhoto is the photo of an album the message shares, uuid.Nil for
-// none.
-func (c Content) SharedPhoto() uuid.UUID {
-	return c.sharedPhoto
 }
 
 // RestoreContent rebuilds content from storage without validation; a
@@ -592,22 +551,14 @@ func (c Content) revised(rev Revision) (Content, error) {
 
 // revisedWith is c saying what rev says, with photos.
 func (c Content) revisedWith(rev Revision, photos Photos) (Content, error) {
-	switch {
-	case c.sharedPhoto == uuid.Nil:
-		revised, err := newContent(rev.Text, rev.Sealed, photos, c.post, c.forwarded)
-		if errors.Is(err, ErrTextEmpty) && c.attached() {
-			// The documents and songs stay: they are enough.
-			revised, err = Content{text: rev.Text, sealed: rev.Sealed, photos: photos}, nil
-		}
-		revised.documents, revised.audios = c.documents, c.audios
-
-		return revised, err
-	case len(photos) > 0:
-		return Content{}, ErrSharedPhotoAlone
-	default:
-		// It shares the photo still: the words are what changes.
-		return Content{text: rev.Text, sealed: rev.Sealed, sharedPhoto: c.sharedPhoto, documents: c.documents, audios: c.audios}, nil
+	revised, err := newContent(rev.Text, rev.Sealed, photos, c.post, c.forwarded)
+	if errors.Is(err, ErrTextEmpty) && c.attached() {
+		// The documents and songs stay: they are enough.
+		revised, err = Content{text: rev.Text, sealed: rev.Sealed, photos: photos}, nil
 	}
+	revised.documents, revised.audios = c.documents, c.audios
+
+	return revised, err
 }
 
 // carried is c as another message carries it on: what senderID said at
@@ -615,15 +566,14 @@ func (c Content) revisedWith(rev Revision, photos Photos) (Content, error) {
 func (c Content) carried(senderID uuid.UUID, createdAt time.Time) []Forwarded {
 	carried := make([]Forwarded, 0, 1+len(c.forwarded))
 	carried = append(carried, Forwarded{
-		SenderID:    senderID,
-		Text:        c.text,
-		Photos:      c.photos,
-		Post:        c.post,
-		SharedPhoto: c.sharedPhoto,
-		Sticker:     c.sticker,
-		Documents:   c.documents,
-		Audios:      c.audios,
-		CreatedAt:   createdAt,
+		SenderID:  senderID,
+		Text:      c.text,
+		Photos:    c.photos,
+		Post:      c.post,
+		Sticker:   c.sticker,
+		Documents: c.documents,
+		Audios:    c.audios,
+		CreatedAt: createdAt,
 	})
 
 	for _, f := range c.forwarded {
@@ -832,11 +782,9 @@ func (r Revision) photos(old Photos) (Photos, error) {
 }
 
 // Edited returns m as rev makes it, edited by requesterID at now: only
-// its sender, for editWindow after sending. The post or the photo of an
-// album it shares and the messages it carries on stay; without them and
-// without photos it may not say nothing. A message sharing a photo of an
-// album takes no photos of its own. What it says is sealed, as when it
-// was sent.
+// its sender, for editWindow after sending. The post it shares and the
+// messages it carries on stay; without them and without photos it may not
+// say nothing. What it says is sealed, as when it was sent.
 func (m *Message) Edited(requesterID uuid.UUID, rev Revision, now time.Time) (*Message, error) {
 	if requesterID != m.senderID {
 		return nil, ErrCannotEdit
@@ -898,12 +846,6 @@ func (m *Message) Photos() Photos {
 // Post is the post shared in the message, uuid.Nil for none.
 func (m *Message) Post() uuid.UUID {
 	return m.content.post
-}
-
-// SharedPhoto is the photo of an album shared in the message, uuid.Nil
-// for none.
-func (m *Message) SharedPhoto() uuid.UUID {
-	return m.content.sharedPhoto
 }
 
 // Sticker is the sticker m is, "" for none.

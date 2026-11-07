@@ -187,9 +187,6 @@ type Message struct {
 	// text and the texts it carries on are only their beginnings: the
 	// request set text_limit, and they say more.
 	TextCut bool `protobuf:"varint,14,opt,name=text_cut,json=textCut,proto3" json:"text_cut,omitempty"`
-	// A photo of an album of the post service shared into the dialog
-	// ("Поделиться" under a photo, "в переписку"); empty for none.
-	PhotoId string `protobuf:"bytes,15,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
 	// What it says, and what the messages it carries on say, sealed by the
 	// sender's browser: version 1, the public keys of the sender and of the
 	// recipient (32 bytes each), the IV (12) and AES-GCM's ciphertext with
@@ -340,13 +337,6 @@ func (x *Message) GetTextCut() bool {
 	return false
 }
 
-func (x *Message) GetPhotoId() string {
-	if x != nil {
-		return x.PhotoId
-	}
-	return ""
-}
-
 func (x *Message) GetSealed() []byte {
 	if x != nil {
 		return x.Sealed
@@ -401,8 +391,6 @@ type ForwardedMessage struct {
 	// A post it shared; empty for none.
 	PostId    string                 `protobuf:"bytes,4,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
 	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	// A photo of an album it shared; empty for none.
-	PhotoId string `protobuf:"bytes,6,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
 	// How deep it is carried: 0 for a message forwarded itself, 1 for one
 	// that message carried on. The list is a tree written parent first.
 	Depth int32 `protobuf:"varint,7,opt,name=depth,proto3" json:"depth,omitempty"`
@@ -481,13 +469,6 @@ func (x *ForwardedMessage) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-func (x *ForwardedMessage) GetPhotoId() string {
-	if x != nil {
-		return x.PhotoId
-	}
-	return ""
-}
-
 func (x *ForwardedMessage) GetDepth() int32 {
 	if x != nil {
 		return x.Depth
@@ -531,9 +512,8 @@ type Quote struct {
 	ForwardedCount int32  `protobuf:"varint,5,opt,name=forwarded_count,json=forwardedCount,proto3" json:"forwarded_count,omitempty"`
 	DocumentCount  int32  `protobuf:"varint,6,opt,name=document_count,json=documentCount,proto3" json:"document_count,omitempty"`
 	Sticker        string `protobuf:"bytes,7,opt,name=sticker,proto3" json:"sticker,omitempty"`
-	// It shares a post, a photo of an album.
-	Post  bool `protobuf:"varint,8,opt,name=post,proto3" json:"post,omitempty"`
-	Photo bool `protobuf:"varint,9,opt,name=photo,proto3" json:"photo,omitempty"`
+	// It shares a post.
+	Post bool `protobuf:"varint,8,opt,name=post,proto3" json:"post,omitempty"`
 	// It was taken back and says nothing.
 	Deleted bool `protobuf:"varint,10,opt,name=deleted,proto3" json:"deleted,omitempty"`
 	Found   bool `protobuf:"varint,11,opt,name=found,proto3" json:"found,omitempty"`
@@ -626,13 +606,6 @@ func (x *Quote) GetSticker() string {
 func (x *Quote) GetPost() bool {
 	if x != nil {
 		return x.Post
-	}
-	return false
-}
-
-func (x *Quote) GetPhoto() bool {
-	if x != nil {
-		return x.Photo
 	}
 	return false
 }
@@ -795,10 +768,6 @@ type SendMessageRequest struct {
 	// those they carry themselves; one that is not there or was taken back
 	// fails with InvalidArgument "forwarded message not found".
 	ForwardIds []string `protobuf:"bytes,5,rep,name=forward_ids,json=forwardIds,proto3" json:"forward_ids,omitempty"`
-	// A photo of an album to share, which the caller has checked the
-	// sender may see; with text alone, anything else with it fails with
-	// InvalidArgument.
-	PhotoId string `protobuf:"bytes,6,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
 	// What it says, sealed as Message.sealed tells, and what the messages it
 	// carries on say, in their order; empty when it says nothing. Sealed
 	// between keys other than those the two have now, it fails with
@@ -885,13 +854,6 @@ func (x *SendMessageRequest) GetForwardIds() []string {
 		return x.ForwardIds
 	}
 	return nil
-}
-
-func (x *SendMessageRequest) GetPhotoId() string {
-	if x != nil {
-		return x.PhotoId
-	}
-	return ""
 }
 
 func (x *SendMessageRequest) GetSealed() []byte {
@@ -1719,8 +1681,7 @@ type EditMessageRequest struct {
 	// The photos the message shows no more, and the caller's uploads it
 	// shows from now on, after those it keeps; it may show 10. The edit
 	// names changes, so two made at once both take effect; a photo to
-	// remove that is gone and one to add that is there are fine. A message
-	// that shares a photo of an album takes none.
+	// remove that is gone and one to add that is there are fine.
 	RemovePhotoIds []string `protobuf:"bytes,5,rep,name=remove_photo_ids,json=removePhotoIds,proto3" json:"remove_photo_ids,omitempty"`
 	AddPhotoIds    []string `protobuf:"bytes,6,rep,name=add_photo_ids,json=addPhotoIds,proto3" json:"add_photo_ids,omitempty"`
 	// The text the edit started from. When set, a message that says
@@ -3024,8 +2985,6 @@ type ChatMessage struct {
 	Unread bool `protobuf:"varint,14,opt,name=unread,proto3" json:"unread,omitempty"`
 	// A post shared into the chat; empty for none.
 	PostId string `protobuf:"bytes,15,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
-	// A photo of an album shared into the chat; empty for none.
-	PhotoId string `protobuf:"bytes,16,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
 	// Messages it carries on from dialogs and chats, oldest first; their
 	// texts are cut with text.
 	Forwarded []*ForwardedMessage `protobuf:"bytes,17,rep,name=forwarded,proto3" json:"forwarded,omitempty"`
@@ -3178,13 +3137,6 @@ func (x *ChatMessage) GetUnread() bool {
 func (x *ChatMessage) GetPostId() string {
 	if x != nil {
 		return x.PostId
-	}
-	return ""
-}
-
-func (x *ChatMessage) GetPhotoId() string {
-	if x != nil {
-		return x.PhotoId
 	}
 	return ""
 }
@@ -4007,7 +3959,6 @@ type SendChatMessageRequest struct {
 	PostId   string   `protobuf:"bytes,4,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
 	// Messages of the caller's dialogs and chats to carry on.
 	ForwardIds []string `protobuf:"bytes,5,rep,name=forward_ids,json=forwardIds,proto3" json:"forward_ids,omitempty"`
-	PhotoId    string   `protobuf:"bytes,6,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
 	Sticker    string   `protobuf:"bytes,7,opt,name=sticker,proto3" json:"sticker,omitempty"`
 	// Documents of the sender, as in a dialog.
 	DocumentIds []string `protobuf:"bytes,8,rep,name=document_ids,json=documentIds,proto3" json:"document_ids,omitempty"`
@@ -4083,13 +4034,6 @@ func (x *SendChatMessageRequest) GetForwardIds() []string {
 		return x.ForwardIds
 	}
 	return nil
-}
-
-func (x *SendChatMessageRequest) GetPhotoId() string {
-	if x != nil {
-		return x.PhotoId
-	}
-	return ""
 }
 
 func (x *SendChatMessageRequest) GetSticker() string {
@@ -4900,7 +4844,7 @@ var File_api_message_v1_message_proto protoreflect.FileDescriptor
 const file_api_message_v1_message_proto_rawDesc = "" +
 	"\n" +
 	"\x1capi/message/v1/message.proto\x12\n" +
-	"message.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb4\x06\n" +
+	"message.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa9\x06\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12!\n" +
@@ -4918,27 +4862,25 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\tforwarded\x18\f \x03(\v2\x1c.message.v1.ForwardedMessageR\tforwarded\x129\n" +
 	"\n" +
 	"deleted_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tdeletedAt\x12\x19\n" +
-	"\btext_cut\x18\x0e \x01(\bR\atextCut\x12\x19\n" +
-	"\bphoto_id\x18\x0f \x01(\tR\aphotoId\x12\x16\n" +
+	"\btext_cut\x18\x0e \x01(\bR\atextCut\x12\x16\n" +
 	"\x06sealed\x18\x10 \x01(\fR\x06sealed\x12\x18\n" +
 	"\asticker\x18\x11 \x01(\tR\asticker\x12!\n" +
 	"\fdocument_ids\x18\x12 \x03(\tR\vdocumentIds\x12,\n" +
 	"\breply_to\x18\x13 \x01(\v2\x11.message.v1.QuoteR\areplyTo\x122\n" +
 	"\treactions\x18\x14 \x03(\v2\x14.message.v1.ReactionR\treactions\x12\x1b\n" +
-	"\taudio_ids\x18\x15 \x03(\tR\baudioIds\"\xbf\x02\n" +
+	"\taudio_ids\x18\x15 \x03(\tR\baudioIdsJ\x04\b\x0f\x10\x10R\bphoto_id\"\xb4\x02\n" +
 	"\x10ForwardedMessage\x12\x1b\n" +
 	"\tsender_id\x18\x01 \x01(\tR\bsenderId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x03 \x03(\tR\bphotoIds\x12\x17\n" +
 	"\apost_id\x18\x04 \x01(\tR\x06postId\x129\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x19\n" +
-	"\bphoto_id\x18\x06 \x01(\tR\aphotoId\x12\x14\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x14\n" +
 	"\x05depth\x18\a \x01(\x05R\x05depth\x12\x18\n" +
 	"\asticker\x18\b \x01(\tR\asticker\x12!\n" +
 	"\fdocument_ids\x18\t \x03(\tR\vdocumentIds\x12\x1b\n" +
 	"\taudio_ids\x18\n" +
-	" \x03(\tR\baudioIds\"\xe9\x02\n" +
+	" \x03(\tR\baudioIdsJ\x04\b\x06\x10\aR\bphoto_id\"\xe0\x02\n" +
 	"\x05Quote\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12\x12\n" +
@@ -4948,35 +4890,34 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\x0fforwarded_count\x18\x05 \x01(\x05R\x0eforwardedCount\x12%\n" +
 	"\x0edocument_count\x18\x06 \x01(\x05R\rdocumentCount\x12\x18\n" +
 	"\asticker\x18\a \x01(\tR\asticker\x12\x12\n" +
-	"\x04post\x18\b \x01(\bR\x04post\x12\x14\n" +
-	"\x05photo\x18\t \x01(\bR\x05photo\x12\x18\n" +
+	"\x04post\x18\b \x01(\bR\x04post\x12\x18\n" +
 	"\adeleted\x18\n" +
 	" \x01(\bR\adeleted\x12\x14\n" +
 	"\x05found\x18\v \x01(\bR\x05found\x12\x19\n" +
 	"\btext_cut\x18\f \x01(\bR\atextCut\x12\x1f\n" +
 	"\vaudio_count\x18\r \x01(\x05R\n" +
-	"audioCount\"?\n" +
+	"audioCountJ\x04\b\t\x10\n" +
+	"R\x05photo\"?\n" +
 	"\bReaction\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\breaction\x18\x02 \x01(\tR\breaction\"q\n" +
 	"\x06Dialog\x12\x17\n" +
 	"\apeer_id\x18\x01 \x01(\tR\x06peerId\x126\n" +
 	"\flast_message\x18\x02 \x01(\v2\x13.message.v1.MessageR\vlastMessage\x12\x16\n" +
-	"\x06unread\x18\x03 \x01(\bR\x06unread\"\xcf\x02\n" +
+	"\x06unread\x18\x03 \x01(\bR\x06unread\"\xc4\x02\n" +
 	"\x12SendMessageRequest\x12!\n" +
 	"\frecipient_id\x18\x01 \x01(\tR\vrecipientId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x03 \x03(\tR\bphotoIds\x12\x17\n" +
 	"\apost_id\x18\x04 \x01(\tR\x06postId\x12\x1f\n" +
 	"\vforward_ids\x18\x05 \x03(\tR\n" +
-	"forwardIds\x12\x19\n" +
-	"\bphoto_id\x18\x06 \x01(\tR\aphotoId\x12\x16\n" +
+	"forwardIds\x12\x16\n" +
 	"\x06sealed\x18\a \x01(\fR\x06sealed\x12\x18\n" +
 	"\asticker\x18\b \x01(\tR\asticker\x12!\n" +
 	"\fdocument_ids\x18\t \x03(\tR\vdocumentIds\x12\x1e\n" +
 	"\vreply_to_id\x18\n" +
 	" \x01(\tR\treplyToId\x12\x1b\n" +
-	"\taudio_ids\x18\v \x03(\tR\baudioIds\"D\n" +
+	"\taudio_ids\x18\v \x03(\tR\baudioIdsJ\x04\b\x06\x10\aR\bphoto_id\"D\n" +
 	"\x13SendMessageResponse\x12-\n" +
 	"\amessage\x18\x01 \x01(\v2\x13.message.v1.MessageR\amessage\"a\n" +
 	"\x12ListDialogsRequest\x12\x16\n" +
@@ -5113,7 +5054,7 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\n" +
 	"ChatMember\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x127\n" +
-	"\tjoined_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\"\xfb\x06\n" +
+	"\tjoined_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\"\xf0\x06\n" +
 	"\vChatMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\achat_id\x18\x02 \x01(\tR\x06chatId\x12\x1b\n" +
@@ -5132,15 +5073,14 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\x0eeditable_until\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\reditableUntil\x12\x19\n" +
 	"\btext_cut\x18\r \x01(\bR\atextCut\x12\x16\n" +
 	"\x06unread\x18\x0e \x01(\bR\x06unread\x12\x17\n" +
-	"\apost_id\x18\x0f \x01(\tR\x06postId\x12\x19\n" +
-	"\bphoto_id\x18\x10 \x01(\tR\aphotoId\x12:\n" +
+	"\apost_id\x18\x0f \x01(\tR\x06postId\x12:\n" +
 	"\tforwarded\x18\x11 \x03(\v2\x1c.message.v1.ForwardedMessageR\tforwarded\x12\x18\n" +
 	"\asticker\x18\x12 \x01(\tR\asticker\x12!\n" +
 	"\fdocument_ids\x18\x13 \x03(\tR\vdocumentIds\x12,\n" +
 	"\breply_to\x18\x14 \x01(\v2\x11.message.v1.QuoteR\areplyTo\x122\n" +
 	"\treactions\x18\x15 \x03(\v2\x14.message.v1.ReactionR\treactions\x12\x1b\n" +
 	"\taudio_ids\x18\x16 \x03(\tR\baudioIds\x12\x12\n" +
-	"\x04seen\x18\x17 \x01(\bR\x04seen\"H\n" +
+	"\x04seen\x18\x17 \x01(\bR\x04seenJ\x04\b\x10\x10\x11R\bphoto_id\"H\n" +
 	"\x11CreateChatRequest\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x1d\n" +
 	"\n" +
@@ -5185,20 +5125,19 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\x11DeleteChatRequest\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\".\n" +
 	"\x13ReturnToChatRequest\x12\x17\n" +
-	"\achat_id\x18\x01 \x01(\tR\x06chatId\"\xb1\x02\n" +
+	"\achat_id\x18\x01 \x01(\tR\x06chatId\"\xa6\x02\n" +
 	"\x16SendChatMessageRequest\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x03 \x03(\tR\bphotoIds\x12\x17\n" +
 	"\apost_id\x18\x04 \x01(\tR\x06postId\x12\x1f\n" +
 	"\vforward_ids\x18\x05 \x03(\tR\n" +
-	"forwardIds\x12\x19\n" +
-	"\bphoto_id\x18\x06 \x01(\tR\aphotoId\x12\x18\n" +
+	"forwardIds\x12\x18\n" +
 	"\asticker\x18\a \x01(\tR\asticker\x12!\n" +
 	"\fdocument_ids\x18\b \x03(\tR\vdocumentIds\x12\x1e\n" +
 	"\vreply_to_id\x18\t \x01(\tR\treplyToId\x12\x1b\n" +
 	"\taudio_ids\x18\n" +
-	" \x03(\tR\baudioIds\"L\n" +
+	" \x03(\tR\baudioIdsJ\x04\b\x06\x10\aR\bphoto_id\"L\n" +
 	"\x17SendChatMessageResponse\x121\n" +
 	"\amessage\x18\x01 \x01(\v2\x17.message.v1.ChatMessageR\amessage\"\xad\x01\n" +
 	"\x17ListChatMessagesRequest\x12\x17\n" +

@@ -167,15 +167,9 @@ func (a *App) build(cfg config.Config) error {
 	if err != nil {
 		return errs.Wrap("grpcserver.New", err)
 	}
-	albums := service.NewAlbumService(service.AlbumDeps{
-		Albums: repos.albums, Photos: repos.albumPhotos, Tx: repos.tx, Media: photos, Moderators: moderators,
-		Likes: repos.photoLikes, Comments: repos.photoComments, CommentLikes: repos.photoCommentLikes, Notifier: notifier,
-		Pages: repos.pages,
-	})
-
 	posts := service.NewPostService(service.PostDeps{
 		Posts: repos.posts, Pins: repos.posts, Comments: repos.comments, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
-		Moderators: moderators, AlbumPhotos: repos.albumPhotos, WallPhotos: albums, Switches: repos.posts, Walls: repos.sources,
+		Moderators: moderators, Switches: repos.posts, Walls: repos.sources,
 		Polls: repos.polls, Pages: repos.pages, Federator: federator, RemotePosts: remotePosts,
 	})
 	a.postponed = service.NewPostponedService(service.PostponedDeps{
@@ -205,7 +199,6 @@ func (a *App) build(cfg config.Config) error {
 				Topics: repos.topics, Messages: repos.topicMessages, Likes: repos.topicMessages, Tx: repos.tx,
 				Notifier: notifier, Photos: photos, Moderators: moderators, Pages: repos.pages,
 			}),
-			Albums:    albums,
 			Polls:     service.NewPollService(service.PollDeps{Polls: repos.polls, Posts: repos.posts, Moderators: moderators, Walls: repos.sources, Tx: repos.tx}),
 			Documents: service.NewDocumentService(repos.documents, repos.tx, photos),
 			Audio:     audio,
@@ -215,19 +208,19 @@ func (a *App) build(cfg config.Config) error {
 			}),
 			Stories: a.stories,
 			Faves: service.NewFaveService(service.FaveDeps{
-				PostLikes: repos.likes, CommentLikes: repos.commentLikes, PhotoLikes: repos.photoLikes,
-				Posts: repos.posts, Comments: repos.comments, Photos: repos.albumPhotos, Albums: repos.albums, Walls: repos.sources,
+				PostLikes: repos.likes, CommentLikes: repos.commentLikes,
+				Posts: repos.posts, Comments: repos.comments, Walls: repos.sources,
 			}),
 			Purge: service.NewPurgeService(service.PurgeDeps{
 				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Suggestions: repos.suggestions,
 				Votes:  repos.polls,
-				Topics: repos.topics, Albums: repos.albums, Tx: repos.tx, Notifier: notifier, Photos: photos,
+				Topics: repos.topics, Tx: repos.tx, Notifier: notifier, Photos: photos,
 				Held: repos.held, Sources: repos.sources, Postponed: repos.postponed, Documents: repos.documents,
 				Stories: repos.stories, Articles: repos.articles, Audio: repos.audios,
 			}),
 			ClubPurge: service.NewClubPurgeService(service.ClubPurgeDeps{
 				Posts: repos.posts, Comments: repos.comments, Suggestions: repos.suggestions, Postponed: repos.postponed,
-				Topics: repos.topics, Albums: repos.albums, Sources: repos.sources, Tx: repos.tx, Notifier: notifier, Media: photos,
+				Topics: repos.topics, Sources: repos.sources, Tx: repos.tx, Notifier: notifier, Media: photos,
 			}),
 			Holds:   service.NewHoldService(repos.tx, repos.held...),
 			Sources: service.NewSourceService(repos.sources),
@@ -261,21 +254,17 @@ func restrictInternal(cfg config.Config) grpc.UnaryServerInterceptor {
 // rateLimits are what each user may write how often.
 func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
-		postv1.PostService_CreatePost_FullMethodName:         cfg.PostLimits,
-		postv1.PostService_RepostPost_FullMethodName:         cfg.PostLimits,
-		postv1.PostService_CreateComment_FullMethodName:      cfg.CommentLimits,
-		postv1.PostService_LikePost_FullMethodName:           cfg.LikeLimits,
-		postv1.PostService_UnlikePost_FullMethodName:         cfg.LikeLimits,
-		postv1.PostService_VotePoll_FullMethodName:           cfg.LikeLimits,
-		postv1.PostService_RetractPollVote_FullMethodName:    cfg.LikeLimits,
-		postv1.PostService_LikeComment_FullMethodName:        cfg.LikeLimits,
-		postv1.PostService_LikeTopicMessage_FullMethodName:   cfg.LikeLimits,
-		postv1.PostService_LikeAlbumPhoto_FullMethodName:     cfg.LikeLimits,
-		postv1.PostService_CreatePhotoComment_FullMethodName: cfg.CommentLimits,
-		postv1.PostService_LikePhotoComment_FullMethodName:   cfg.LikeLimits,
-		postv1.PostService_UnlikePhotoComment_FullMethodName: cfg.LikeLimits,
-		postv1.PostService_UnlikeComment_FullMethodName:      cfg.LikeLimits,
-		postv1.PostService_EditPost_FullMethodName:           cfg.EditLimits,
+		postv1.PostService_CreatePost_FullMethodName:       cfg.PostLimits,
+		postv1.PostService_RepostPost_FullMethodName:       cfg.PostLimits,
+		postv1.PostService_CreateComment_FullMethodName:    cfg.CommentLimits,
+		postv1.PostService_LikePost_FullMethodName:         cfg.LikeLimits,
+		postv1.PostService_UnlikePost_FullMethodName:       cfg.LikeLimits,
+		postv1.PostService_VotePoll_FullMethodName:         cfg.LikeLimits,
+		postv1.PostService_RetractPollVote_FullMethodName:  cfg.LikeLimits,
+		postv1.PostService_LikeComment_FullMethodName:      cfg.LikeLimits,
+		postv1.PostService_LikeTopicMessage_FullMethodName: cfg.LikeLimits,
+		postv1.PostService_UnlikeComment_FullMethodName:    cfg.LikeLimits,
+		postv1.PostService_EditPost_FullMethodName:         cfg.EditLimits,
 		// What the owner of a wall switches on a post is an edit of it.
 		postv1.PostService_ArchivePost_FullMethodName:   cfg.EditLimits,
 		postv1.PostService_UnarchivePost_FullMethodName: cfg.EditLimits,
@@ -294,14 +283,6 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		// A topic is a post of the discussions, a message in it a comment.
 		postv1.PostService_CreateTopic_FullMethodName:        cfg.PostLimits,
 		postv1.PostService_CreateTopicMessage_FullMethodName: cfg.CommentLimits,
-		// An album and the photos added to it are posts of the albums.
-		postv1.PostService_CreateAlbum_FullMethodName:    cfg.PostLimits,
-		postv1.PostService_AddAlbumPhotos_FullMethodName: cfg.PostLimits,
-		postv1.PostService_AddAvatarPhoto_FullMethodName: cfg.PostLimits,
-		postv1.PostService_EditAlbum_FullMethodName:      cfg.EditLimits,
-		postv1.PostService_EditAlbumPhoto_FullMethodName: cfg.EditLimits,
-		postv1.PostService_SetAlbumCover_FullMethodName:  cfg.EditLimits,
-		postv1.PostService_MoveAlbumPhoto_FullMethodName: cfg.EditLimits,
 		// A document is added after every upload, which media counts too.
 		postv1.PostService_AddDocument_FullMethodName:    cfg.PostLimits,
 		postv1.PostService_RenameDocument_FullMethodName: cfg.EditLimits,
@@ -512,11 +493,6 @@ type repositories struct {
 		service.TopicMessageRepository
 		service.TopicMessageLikeRepository
 	}
-	albums interface {
-		service.AlbumRepository
-		service.AlbumEraser
-		service.OwnerAlbumEraser
-	}
 	polls interface {
 		service.PollRepository
 		service.ReactionEraser
@@ -548,20 +524,8 @@ type repositories struct {
 	// pages knows the deleted pages, for what is read by its ID.
 	pages service.Pages
 	// sources are whom each reader reads in the news.
-	sources     service.SourceRepository
-	albumPhotos interface {
-		service.AlbumPhotoRepository
-		service.FavePhotos
-	}
-	photoLikes interface {
-		service.AlbumPhotoLikeRepository
-		service.FaveRepository
-	}
-	// photoComments are the comments of photos of albums.
-	photoComments service.PhotoCommentRepository
-	// photoCommentLikes are the hearts of those comments.
-	photoCommentLikes service.PhotoCommentLikeRepository
-	tx                service.TxManager
+	sources service.SourceRepository
+	tx      service.TxManager
 	// newQueue opens a stream of the outbox.
 	newQueue func(stream string) outboxQueue
 }
@@ -570,7 +534,6 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	if cfg.Storage == config.StorageInmem {
 		store := inmem.NewStore()
 		topics := inmem.NewTopicRepository()
-		albums := inmem.NewAlbumRepository()
 		music := inmem.NewMusic()
 		return repositories{
 			posts:        store.Posts(),
@@ -584,16 +547,12 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			tx:           inmem.TxManager{},
 
 			topicMessages: topics.Messages(),
-			albums:        albums,
-			albumPhotos:   albums.Photos(),
-			photoLikes:    albums.PhotoLikes(),
-			photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
-			documents: inmem.NewDocumentRepository(),
-			audios:    music.Audios, audioLists: music.Lists, music: music.Profiles, playlists: music.Playlists,
+			documents:     inmem.NewDocumentRepository(),
+			audios:        music.Audios, audioLists: music.Lists, music: music.Profiles, playlists: music.Playlists,
 			articles: inmem.NewArticleRepository(),
 			stories:  store.Stories(), storyViews: store.StoryViews(),
 			storyLikes: store.StoryLikes(), storyComments: store.StoryComments(),
-			held: []service.ReactionHolder{store.Holds(), topics, albums},
+			held: []service.ReactionHolder{store.Holds(), topics},
 			// Every store is told of a deleted page; one answers for all.
 			pages:   store.Holds(),
 			sources: store.Sources(),
@@ -626,7 +585,6 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	}
 
 	topics := postgres.NewTopicRepository(a.pool)
-	albums := postgres.NewAlbumRepository(a.pool)
 	held := postgres.NewHoldRepository(a.pool)
 	audios := postgres.NewAudioRepository(a.pool)
 
@@ -642,12 +600,8 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		tx:           pgpool.NewTxManager(a.pool),
 
 		topicMessages: topics.Messages(),
-		albums:        albums,
-		albumPhotos:   albums.Photos(),
-		photoLikes:    albums.PhotoLikes(),
-		photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
-		documents: postgres.NewDocumentRepository(a.pool),
-		audios:    audios, audioLists: audios.AudioLists(), music: audios.Music(), playlists: postgres.NewPlaylistRepository(a.pool),
+		documents:     postgres.NewDocumentRepository(a.pool),
+		audios:        audios, audioLists: audios.AudioLists(), music: audios.Music(), playlists: postgres.NewPlaylistRepository(a.pool),
 		articles: postgres.NewArticleRepository(a.pool),
 		stories:  postgres.NewStoryRepository(a.pool), storyViews: postgres.NewStoryViewRepository(a.pool),
 		storyLikes: postgres.NewStoryLikeRepository(a.pool), storyComments: postgres.NewStoryCommentRepository(a.pool),

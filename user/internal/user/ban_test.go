@@ -97,7 +97,7 @@ func TestUser_Ban(t *testing.T) {
 	if p := banned.PublicProfileFor(ann.ID(), user.Ties{}, now); p.Hometown != "Тверь" {
 		t.Fatalf("the owner sees %+v", p)
 	}
-	if a := banned.AccessFor(uuid.New(), user.Ties{Followed: true}, now); a.Info || a.Photos || !a.Page {
+	if a := banned.AccessFor(uuid.New(), user.Ties{Followed: true}, now); a.Info || !a.Page {
 		t.Fatalf("access of a blocked page: %+v", a)
 	}
 	if p := banned.ListedProfile(now); p.Hometown != "" || p.Ban != ban {

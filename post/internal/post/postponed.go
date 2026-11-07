@@ -61,7 +61,7 @@ type PostponedDraft struct {
 // NewPostponed postpones d at now. Whether the author may speak for the
 // community is the club service's, which the caller asks.
 func NewPostponed(d PostponedDraft, now time.Time) (*Postponed, error) {
-	if d.Content.RepostOf() != uuid.Nil || d.Content.SharedPhoto() != uuid.Nil || d.Content.Polled() {
+	if d.Content.RepostOf() != uuid.Nil || d.Content.Polled() {
 		return nil, ErrPostponedContent
 	}
 

@@ -136,8 +136,8 @@ type fakeUsers struct {
 	// Privacy: the parts of every page hidden from the caller; accessAsked
 	// is whose page the gateway asked about, profileToken the token
 	// GetProfile got.
-	hiddenPage, hiddenInfo, hiddenPhotos, hiddenFriends, hiddenClubs, hiddenGifts bool
-	hiddenAudios, hiddenListening                                                 bool
+	hiddenPage, hiddenInfo, hiddenFriends, hiddenClubs, hiddenGifts bool
+	hiddenAudios, hiddenListening                                   bool
 	// closedPage: the hidden page is a closed one ("Закрытая страница").
 	closedPage                bool
 	accessAsked, profileToken string
@@ -297,13 +297,16 @@ func (f *fakeUsers) CanPostOnWall(_ context.Context, token, userID string) (bool
 	return !f.closedWall, f.err
 }
 
+// messageTime is when the fake messages were sent, deleted and edited.
+var messageTime = time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)
+
 func (f *fakeUsers) Access(_ context.Context, token, userID string) (model.Access, error) {
 	f.token, f.accessAsked = token, userID
 	if f.hiddenPage {
 		return model.Access{}, f.err
 	}
 	return model.Access{
-		Page: !f.hiddenPage, Info: !f.hiddenInfo, Photos: !f.hiddenPhotos, Friends: !f.hiddenFriends, Clubs: !f.hiddenClubs, Gifts: !f.hiddenGifts,
+		Page: !f.hiddenPage, Info: !f.hiddenInfo, Friends: !f.hiddenFriends, Clubs: !f.hiddenClubs, Gifts: !f.hiddenGifts,
 		Audios: !f.hiddenAudios, Listening: !f.hiddenListening,
 	}, f.err
 }
@@ -526,8 +529,11 @@ func (f *fakeUsers) SetBackdrop(_ context.Context, token, side, photoID string) 
 	}
 
 	previous := &f.backdrop.Left
-	if side == "right" {
+	switch side {
+	case "right":
 		previous = &f.backdrop.Right
+	case "cover":
+		previous = &f.backdrop.Cover
 	}
 	old := *previous
 	*previous = photoID
@@ -832,7 +838,7 @@ func (f *fakePosts) Unpin(ctx context.Context, token, id string) error {
 // Repost shares p1 only, as u1's repost p7.
 func (f *fakePosts) Repost(_ context.Context, token, postID string, nr model.NewRepost) (model.Post, error) {
 	f.token, f.shared, f.created, f.repost = token, postID, nr.Text, nr
-	if postID != "p1" && postID != "remote" && nr.PhotoID == "" {
+	if postID != "p1" && postID != "remote" {
 		return model.Post{}, failure.New(failure.NotFound, "post not found")
 	}
 	ann, wall := model.Author{ID: "u1"}, model.Author{ID: "u1"}
@@ -1133,8 +1139,10 @@ func (f *fakePosts) Comments(_ context.Context, token, postID, cursor string, li
 // fakeMedia: u1 has the photos ph1 and ph2.
 type fakeMedia struct {
 	uploaded []byte
-	kept     string
-	deleted  bool
+	// wide: the upload was of a photo behind a whole page.
+	wide    bool
+	kept    string
+	deleted bool
 	// clubAvatarOf is the club whose photo was uploaded or cleaned up.
 	clubAvatarOf string
 	// keptPhotos are the club's photos kept by the last clean-up.
@@ -1242,6 +1250,11 @@ func (f *fakeMedia) UploadPhoto(_ context.Context, _ string, image []byte) (stri
 	return "ph9", f.err
 }
 
+func (f *fakeMedia) UploadWidePhoto(ctx context.Context, token string, image []byte) (string, error) {
+	f.wide = true
+	return f.UploadPhoto(ctx, token, image)
+}
+
 // ClaimPhotos: the caller has uploaded ph1, ph2 and what UploadPhoto
 // returned, ph9 once it did.
 func (f *fakeMedia) ClaimPhotos(_ context.Context, _ string, photoIDs []string) (bool, error) {
@@ -1335,11 +1348,7 @@ func (f *fakeNotifications) List(_ context.Context, token string, unread bool, c
 			{ID: "n-8", Kind: "comment_mention", ActorID: "u2", PostID: "p1", CommentID: "c1", CreatedAt: at},
 			{ID: "n-9", Kind: "topic_mention", ActorID: "u2", PostID: "t1", CommentID: "m1", CreatedAt: at},
 			{ID: "n-10", Kind: "topic_message_like", ActorID: "u2", PostID: "t1", CommentID: "m1", CreatedAt: at},
-			{ID: "n-11", Kind: "photo_like", ActorID: "u2", PostID: "ph6", CreatedAt: at},
-			{ID: "n-12", Kind: "photo_comment", ActorID: "u2", PostID: "ph6", CommentID: "pc1", CreatedAt: at},
-			{ID: "n-13", Kind: "photo_like", ActorID: "u2", PostID: "gone", CreatedAt: at},
 			{ID: "n-14", Kind: "club_admin", ActorID: "k1", CreatedAt: at},
-			{ID: "n-15", Kind: "photo_mention", ActorID: "u2", PostID: "ph6", CommentID: "pc1", CreatedAt: at},
 			{ID: "n-19", Kind: "gift", ActorID: "u2", PostID: "g1", CreatedAt: at},
 			{ID: "n-20", Kind: "story_like", ActorID: "u2", PostID: "s1", CreatedAt: at},
 			{ID: "n-21", Kind: "story_comment", ActorID: "u2", PostID: "s1", CommentID: "sc1", CreatedAt: at},
@@ -1472,13 +1481,13 @@ func (f *fakeMessages) Send(_ context.Context, token, recipientID string, d mode
 			depth = 1
 		}
 		forwarded = append(forwarded, model.ForwardedMessage{
-			SenderID: sender, PhotoIDs: []string{"ph1"}, CreatedAt: albumTime, Depth: depth,
+			SenderID: sender, PhotoIDs: []string{"ph1"}, CreatedAt: messageTime, Depth: depth,
 		})
 	}
 
 	m := model.Message{
 		ID: "m9", SenderID: "u1", RecipientID: recipientID, Sealed: d.Sealed, PhotoIDs: d.PhotoIDs, PostID: d.PostID, Forwarded: forwarded,
-		SharedPhotoID: d.SharedPhotoID, Sticker: d.Sticker, DocumentIDs: d.DocumentIDs, AudioIDs: d.AudioIDs,
+		Sticker: d.Sticker, DocumentIDs: d.DocumentIDs, AudioIDs: d.AudioIDs,
 		CreatedAt: time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC),
 	}
 	// A reply quotes a photo of bob's.
@@ -1519,7 +1528,7 @@ func (f *fakeMessages) History(_ context.Context, token, peerID string, at model
 		{ID: "m2", SenderID: peerID, RecipientID: "u1", Sealed: []byte("как дела?")},
 	}
 	if at.Around != "" {
-		messages = append(messages, model.Message{ID: "m3", SenderID: "u1", RecipientID: peerID, DeletedAt: albumTime, DeletableUntil: albumTime})
+		messages = append(messages, model.Message{ID: "m3", SenderID: "u1", RecipientID: peerID, DeletedAt: messageTime, DeletableUntil: messageTime})
 	}
 
 	return model.MessagePage{
@@ -1549,7 +1558,7 @@ func (f *fakeMessages) Edit(_ context.Context, token, id string, e model.Message
 	f.addedPhotos, f.removedPhotos = e.AddPhotoIDs, e.RemovePhotoIDs
 	f.baseSealed = e.BaseSealed
 
-	return model.Message{ID: id, SenderID: "u1", RecipientID: "u2", Sealed: e.Sealed, PhotoIDs: e.AddPhotoIDs, EditedAt: albumTime, EditableUntil: albumTime}, f.err
+	return model.Message{ID: id, SenderID: "u1", RecipientID: "u2", Sealed: e.Sealed, PhotoIDs: e.AddPhotoIDs, EditedAt: messageTime, EditableUntil: messageTime}, f.err
 }
 
 func (f *fakeMessages) React(_ context.Context, token, id, reaction string) error {
@@ -1606,7 +1615,6 @@ type harness struct {
 	chats         *fakeChats
 	clubs         *fakeClubs
 	topics        *fakeTopics
-	albums        *fakeAlbums
 	faves         *fakeFaves
 	gifts         *fakeGifts
 	stickers      *fakeStickers
@@ -1649,7 +1657,6 @@ func newHarness(cfg rest.Config) harness {
 		chats:         &fakeChats{},
 		clubs:         &fakeClubs{},
 		topics:        &fakeTopics{},
-		albums:        &fakeAlbums{},
 		gifts:         &fakeGifts{},
 		stickers:      &fakeStickers{},
 		votes:         &fakeVotes{},
@@ -1687,7 +1694,6 @@ func newHarness(cfg rest.Config) harness {
 		Chats:         h.chats,
 		Clubs:         h.clubs,
 		Topics:        h.topics,
-		Albums:        h.albums,
 		Gifts:         h.gifts,
 		Stickers:      h.stickers,
 		Votes:         h.votes,
@@ -2072,8 +2078,6 @@ func TestWholeTexts(t *testing.T) {
 	}{
 		{"topic message", "/api/v1/topic-messages/m1/text", "", "Привет, целиком", http.StatusOK},
 		{"unknown topic message", "/api/v1/topic-messages/m404/text", "", "", http.StatusNotFound},
-		{"photo comment", "/api/v1/photo-comments/pc1/text", "", "красиво, целиком", http.StatusOK},
-		{"unknown photo comment", "/api/v1/photo-comments/pc404/text", "", "", http.StatusNotFound},
 		{"suggestion", "/api/v1/suggestions/s2/text", "token", "от Петра, целиком", http.StatusOK},
 		{"suggestion, anonymous", "/api/v1/suggestions/s2/text", "", "", http.StatusUnauthorized},
 		{"unknown suggestion", "/api/v1/suggestions/s404/text", "token", "", http.StatusNotFound},

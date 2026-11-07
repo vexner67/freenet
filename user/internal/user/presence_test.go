@@ -40,7 +40,7 @@ func TestUser_LastSeenFor(t *testing.T) {
 	_ = ann.UpdateProfile(user.Profile{Name: "Ann", Nickname: "ann"})
 	if err := ann.UpdatePrivacy(user.Privacy{
 		WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone,
-		PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone,
+		PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone,
 		FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceFollowing,
 	}); err != nil {
 		t.Fatal(err)
@@ -88,7 +88,7 @@ func TestUser_ListedProfile(t *testing.T) {
 	now := time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)
 	privacy := user.Privacy{
 		WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone,
-		PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone,
+		PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone,
 		FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceOnlyMe,
 	}
 

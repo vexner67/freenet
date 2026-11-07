@@ -148,7 +148,7 @@ func wait(ctx context.Context, pause time.Duration) bool {
 }
 
 // uploadClaimed uploads a photo the gateway itself puts somewhere (a post
-// about a new avatar, an album, a backdrop), taken at once: once its ID
+// about a new avatar, a backdrop), taken at once: once its ID
 // is shown, the caller cannot attach it to a post of theirs as well.
 func (a *api) uploadClaimed(r *http.Request, token string, image []byte) (string, error) {
 	photoID, err := a.media.UploadPhoto(r.Context(), token, image)

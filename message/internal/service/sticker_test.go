@@ -27,7 +27,6 @@ func TestSend_Sticker(t *testing.T) {
 		"words":     {Sticker: "cat_hi", Sealed: seal("привет")},
 		"photos":    {Sticker: "cat_hi", Photos: message.Photos{uuid.New()}},
 		"a post":    {Sticker: "cat_hi", Post: uuid.New()},
-		"a photo":   {Sticker: "cat_hi", SharedPhoto: uuid.New()},
 		"forwarded": {Sticker: "cat_hi", Forward: []uuid.UUID{m.ID()}},
 	} {
 		if _, err = f.dialogs.Send(ctx, ann, bob, d); !errors.Is(err, message.ErrStickerAlone) {

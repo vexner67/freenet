@@ -117,21 +117,19 @@ type PhotoCopy struct {
 
 // Draft is a message to send, into a dialog or a chat. Forward are the
 // messages of the sender's dialogs and chats it carries on ("Переслать"); the rest is what it says itself,
-// and one of them is there. SharedPhoto, a photo of an album to share,
-// goes with text alone. A message of a dialog says Sealed instead of
+// and one of them is there. A message of a dialog says Sealed instead of
 // Text: its words and those of what it carries on, sealed by the sender's
 // browser. A Sticker goes alone. Documents of the sender's "Мои
 // Документы" and songs of "Аудиозаписи" go with anything else, or alone.
 type Draft struct {
-	Text        message.Text
-	Sealed      message.Sealed
-	Photos      message.Photos
-	Post        uuid.UUID
-	SharedPhoto uuid.UUID
-	Forward     []uuid.UUID
-	Sticker     message.Sticker
-	Documents   message.Documents
-	Audios      message.Audios
+	Text      message.Text
+	Sealed    message.Sealed
+	Photos    message.Photos
+	Post      uuid.UUID
+	Forward   []uuid.UUID
+	Sticker   message.Sticker
+	Documents message.Documents
+	Audios    message.Audios
 	// ReplyTo is the message it answers ("Ответить"), uuid.Nil for none:
 	// an earlier one of the same dialog or chat.
 	ReplyTo uuid.UUID
@@ -139,7 +137,7 @@ type Draft struct {
 
 // sticker is the draft that is a sticker, with nothing else.
 func (d Draft) sticker() (message.Content, error) {
-	if d.Text != "" || d.Sealed != "" || len(d.Photos) > 0 || d.Post != uuid.Nil || d.SharedPhoto != uuid.Nil || len(d.Forward) > 0 {
+	if d.Text != "" || d.Sealed != "" || len(d.Photos) > 0 || d.Post != uuid.Nil || len(d.Forward) > 0 {
 		return message.Content{}, message.ErrStickerAlone
 	}
 
@@ -191,18 +189,9 @@ func (d Draft) said(forwarded message.Forwards) (message.Content, error) {
 		return d.sticker()
 	}
 
-	if d.SharedPhoto == uuid.Nil {
-		content, err := message.NewContent(d.Text, d.Photos, d.Post, forwarded)
-		return content, errs.Wrap("message.NewContent", err)
-	}
+	content, err := message.NewContent(d.Text, d.Photos, d.Post, forwarded)
 
-	if len(d.Photos) > 0 || d.Post != uuid.Nil || len(forwarded) > 0 {
-		return message.Content{}, message.ErrSharedPhotoAlone
-	}
-
-	content, err := message.NewPhotoShare(d.Text, d.SharedPhoto)
-
-	return content, errs.Wrap("message.NewPhotoShare", err)
+	return content, errs.Wrap("message.NewContent", err)
 }
 
 // sealedSaid is what the draft says in a dialog, sealed.
@@ -215,18 +204,9 @@ func (d Draft) sealedSaid(forwarded message.Forwards) (message.Content, error) {
 		return d.sticker()
 	}
 
-	if d.SharedPhoto == uuid.Nil {
-		content, err := message.NewSealedContent(d.Sealed, d.Photos, d.Post, forwarded)
-		return content, errs.Wrap("message.NewSealedContent", err)
-	}
+	content, err := message.NewSealedContent(d.Sealed, d.Photos, d.Post, forwarded)
 
-	if len(d.Photos) > 0 || d.Post != uuid.Nil || len(forwarded) > 0 {
-		return message.Content{}, message.ErrSharedPhotoAlone
-	}
-
-	content, err := message.NewSealedPhotoShare(d.Sealed, d.SharedPhoto)
-
-	return content, errs.Wrap("message.NewSealedPhotoShare", err)
+	return content, errs.Wrap("message.NewSealedContent", err)
 }
 
 // KeyRepository keeps the public key of each user that messages of

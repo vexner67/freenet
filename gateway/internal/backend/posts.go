@@ -53,7 +53,7 @@ func (p *Posts) Create(ctx context.Context, accessToken string, np model.NewPost
 // Repost shares the post on the caller's wall and returns the repost.
 func (p *Posts) Repost(ctx context.Context, accessToken, postID string, nr model.NewRepost) (model.Post, error) {
 	resp, err := p.api.RepostPost(withToken(ctx, accessToken), &postv1.RepostPostRequest{
-		PostId: postID, PhotoId: nr.PhotoID, Text: nr.Text, WallId: nr.WallID, FromWall: nr.FromWall, Signed: nr.Signed,
+		PostId: postID, Text: nr.Text, WallId: nr.WallID, FromWall: nr.FromWall, Signed: nr.Signed,
 		PhotoIds: nr.PhotoIDs, MentionedIds: nr.Mentions,
 	})
 	if err != nil {
@@ -700,7 +700,6 @@ func toPost(p *postv1.Post) model.Post {
 		NSFW:           p.GetNsfw(),
 		FromWall:       p.GetFromWall(),
 		Signed:         p.GetSigned(),
-		SharedPhotoID:  p.GetSharedPhotoId(),
 		Mine:           p.GetMine(),
 		Polled:         p.GetPolled(),
 		Link:           toLink(p.GetLink()),

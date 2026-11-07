@@ -36,18 +36,9 @@ const (
 	// EventTopicMention: the message CommentID of the topic PostID names
 	// the recipient.
 	EventTopicMention
-	// EventPhotoLike: a like of the photo PostID the recipient put into
-	// an album.
-	EventPhotoLike
-	// EventPhotoComment: the comment CommentID under the recipient's
-	// photo PostID.
-	EventPhotoComment
 	// EventTopicMessageLike: a like of the recipient's message CommentID
 	// of the topic PostID.
 	EventTopicMessageLike
-	// EventPhotoMention: the comment CommentID under the photo PostID
-	// names the recipient.
-	EventPhotoMention
 	// EventStoryLike: a like of the recipient's story PostID.
 	EventStoryLike
 	// EventStoryComment: the comment CommentID under the recipient's
@@ -89,18 +80,10 @@ type Notifier interface {
 // PhotoKeeper records what the media service has to do with the photos
 // of posts, inside the transaction of the change, as Notifier: media keeps
 // the photos of a published post for good and deletes those of a deleted
-// one. Unpublished photos it deletes after a while by itself. Copy keeps
-// photos once more under new IDs: the copies outlive the post.
+// one. Unpublished photos it deletes after a while by itself.
 type PhotoKeeper interface {
 	Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 	Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
-	Copy(ctx context.Context, ownerID uuid.UUID, copies []PhotoCopy) error
-}
-
-// PhotoCopy is a photo to keep once more as To.
-type PhotoCopy struct {
-	From uuid.UUID
-	To   uuid.UUID
 }
 
 // TxManager runs fn in one transaction: everything it saves is kept if it

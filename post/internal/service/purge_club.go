@@ -26,12 +26,6 @@ type ClubTopicEraser interface {
 	DeleteByClub(ctx context.Context, clubID uuid.UUID) ([]uuid.UUID, []*post.TopicMessage, error)
 }
 
-// OwnerAlbumEraser deletes the albums of an owner, returning the photos
-// they took with them.
-type OwnerAlbumEraser interface {
-	DeleteByOwner(ctx context.Context, ownerID uuid.UUID) ([]*post.AlbumPhoto, error)
-}
-
 // MediaPurger tells media to erase everything it keeps under an ID: the
 // photo and the backdrop of a community.
 type MediaPurger interface {
@@ -46,7 +40,6 @@ type ClubPurgeService struct {
 	suggestions WallSuggestionEraser
 	postponed   WallPostponedEraser
 	topics      ClubTopicEraser
-	albums      OwnerAlbumEraser
 	sources     SourceRepository
 	tx          TxManager
 	notifier    Notifier
@@ -60,7 +53,6 @@ type ClubPurgeDeps struct {
 	Suggestions WallSuggestionEraser
 	Postponed   WallPostponedEraser
 	Topics      ClubTopicEraser
-	Albums      OwnerAlbumEraser
 	Sources     SourceRepository
 	Tx          TxManager
 	Notifier    Notifier
@@ -74,7 +66,6 @@ func NewClubPurgeService(d ClubPurgeDeps) *ClubPurgeService {
 		suggestions: d.Suggestions,
 		postponed:   d.Postponed,
 		topics:      d.Topics,
-		albums:      d.Albums,
 		sources:     d.Sources,
 		tx:          d.Tx,
 		notifier:    d.Notifier,
@@ -84,8 +75,8 @@ func NewClubPurgeService(d ClubPurgeDeps) *ClubPurgeService {
 
 // PurgeClub deletes, in one transaction, everything of a community: the
 // posts on its wall with their comments, what was suggested and postponed
-// for it, its topics with their messages and its albums with their
-// photos. The notifications about them and their photos go with them, as
+// for it and its topics with their messages. The notifications about
+// them go with them, as
 // when each is deleted, and so do the photo and the backdrop of the
 // community. Idempotent.
 func (s *ClubPurgeService) PurgeClub(ctx context.Context, clubID uuid.UUID) error {
@@ -103,16 +94,7 @@ func (s *ClubPurgeService) PurgeClub(ctx context.Context, clubID uuid.UUID) erro
 			return err
 		}
 
-		photos, err := s.albums.DeleteByOwner(ctx, clubID)
-		if err != nil {
-			return errs.Wrap("s.albums.DeleteByOwner", err)
-		}
-
-		if err = s.forgetAlbumPhotos(ctx, photos); err != nil {
-			return err
-		}
-
-		if err = s.purgeWall(ctx, clubID); err != nil {
+		if err := s.purgeWall(ctx, clubID); err != nil {
 			return err
 		}
 
@@ -172,22 +154,6 @@ func (s *ClubPurgeService) purgeTopics(ctx context.Context, clubID uuid.UUID) er
 	}
 
 	return errs.Wrap("deleteMessagePhotos", deleteMessagePhotos(ctx, s.media, messages))
-}
-
-// forgetAlbumPhotos deletes the images of photos, each under who uploaded
-// it, and the notifications about them.
-func (s *ClubPurgeService) forgetAlbumPhotos(ctx context.Context, photos []*post.AlbumPhoto) error {
-	for _, p := range photos {
-		if err := s.notifier.ForgetPost(ctx, p.ID()); err != nil {
-			return errs.Wrap("s.notifier.ForgetPost", err)
-		}
-
-		if err := s.deletePhotos(ctx, p.AuthorID(), []uuid.UUID{p.ID()}); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // purgeWall deletes the posts on the wall with the comments on them.

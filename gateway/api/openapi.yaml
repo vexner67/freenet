@@ -16,7 +16,7 @@ info:
     `/nickname` when there is such a page (`GET /api/v1/nicknames`), and
     the first 10 people so named in a new text, a repost's words or an
     edited post are notified (`post_mention`, `comment_mention`,
-    `topic_mention`, `photo_mention`), once for a post however often it is
+    `topic_mention`), once for a post however often it is
     edited, unless a blacklist stands between them and the author.
 
     Errors always have the shape `{"error": {"code": "...", "message": "..."}}`;
@@ -475,10 +475,12 @@ paths:
       - name: side
         in: path
         required: true
-        schema: { type: string, enum: [left, right] }
+        schema: { type: string, enum: [left, right, cover] }
     put:
-      summary: Set one side of your backdrop ("Фон страницы")
-      description: The body is the image itself, as for a photo; the other side stays, the photo this one replaces is deleted.
+      summary: Set one side of your backdrop ("Фон страницы"), or the photo behind the whole page
+      description: >-
+        The body is the image itself, as for a photo; the other sides stay, the photo this one replaces is deleted.
+        cover is the photo behind the whole page, kept up to 2560 px: only with Freenet Prime (409), shown to others while Prime lasts.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -489,11 +491,21 @@ paths:
         "200": { $ref: "#/components/responses/User" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { $ref: "#/components/responses/Conflict" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/me/backdrop:
     delete:
       summary: Take your backdrop away ("Удалить фон"), both sides
+      description: The photo behind the whole page stays.
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/backdrop/cover:
+    delete:
+      summary: Take the photo behind your whole page away
       security: [{ bearer: [] }]
       responses:
         "200": { $ref: "#/components/responses/User" }
@@ -916,9 +928,7 @@ paths:
         at least 50x50), with its Content-Type. It is turned upright by its
         EXIF orientation, the middle square is kept and re-encoded, so EXIF
         data (location included) is dropped. The site crops the square you
-        choose before sending it, as openvk does. The image also goes, as a
-        photo of its own, into your "Фотографии со страницы" (an album of
-        `kind` "avatars"); failing that, the photo is changed all the same.
+        choose before sending it, as openvk does.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -985,7 +995,7 @@ paths:
         The raw image is the request body (JPEG, PNG, GIF or WebP, at most
         8 MB). It is turned upright by its EXIF orientation and scaled down
         whole, keeping its proportions; attach it to a post by its `id`.
-        A photo goes to one post, comment, message or album, the first
+        A photo goes to one post, comment or message, the first
         that takes it: attached anywhere else, it is `photo not found`
         (400), as a photo of another user is. A post that was refused
         gives its photos back. A photo that no post publishes within a
@@ -3127,7 +3137,7 @@ paths:
                 openTopics: { type: boolean }
                 topicsAboveWall: { type: boolean }
                 verified: { type: boolean, description: "The administrators of the site confirmed the community: a checkmark by its name" }
-        closed: { type: boolean, description: "A closed group (\"Закрытая группа\"): people ask to join, and only members see its wall, members, topics and albums. Left out, it stays as it is. Opening the group drops the requests that wait" }
+        closed: { type: boolean, description: "A closed group (\"Закрытая группа\"): people ask to join, and only members see its wall, members and topics. Left out, it stays as it is. Opening the group drops the requests that wait" }
       responses:
         "200": { $ref: "#/components/responses/Club" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -3148,7 +3158,7 @@ paths:
       summary: Delete the community ("Удалить группу")
       description: |
         The owner only. The community goes with its members and join
-        requests at once; its wall, topics, albums, photos and the
+        requests at once; its wall, topics, photos and the
         notifications it caused go a moment later. It cannot be undone.
       security: [{ bearer: [] }]
       responses:
@@ -4033,429 +4043,17 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/v1/users/{nickname}/albums:
-    parameters:
-      - name: nickname
-        in: path
-        required: true
-        schema: { type: string }
-    get:
-      summary: A person's photo albums ("Альбомы"), newest first
-      description: |
-        Those of a deleted page are gone, as its wall (403), and so are
-        those the owner's `photosRead` hides from you.
-      parameters:
-        - name: cursor
-          in: query
-          schema: { type: string }
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 50 }
-      responses:
-        "200": { $ref: "#/components/responses/AlbumList" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "403":
-          description: "`this page is deleted`, `this page is hidden` or `this user's photos are hidden`"
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/v1/clubs/{ref}/albums:
-    parameters:
-      - $ref: "#/components/parameters/ClubRef"
-    get:
-      summary: A community's photo albums, newest first
-      parameters:
-        - name: cursor
-          in: query
-          schema: { type: string }
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 50 }
-      responses:
-        "200": { $ref: "#/components/responses/AlbumList" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "404": { $ref: "#/components/responses/NotFound" }
-    post:
-      summary: Create an album of a community ("Создать альбом")
-      description: Its admins only. Your profile must be filled in first.
-      security: [{ bearer: [] }]
-      requestBody: { $ref: "#/components/requestBodies/Album" }
-      responses:
-        "201":
-          description: The album
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Album" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403":
-          description: Not an admin
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
 
-  /api/v1/me/albums:
-    post:
-      summary: Create an album of your own ("Создать альбом")
-      description: Your profile must be filled in first.
-      security: [{ bearer: [] }]
-      requestBody: { $ref: "#/components/requestBodies/Album" }
-      responses:
-        "201":
-          description: The album
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Album" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
 
-  /api/v1/albums/{id}:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    get:
-      summary: An album with whom it belongs to, for its page
-      description: |
-        The albums of a deleted page are not found, nor those of a person
-        whose page or photos are hidden from you.
-      responses:
-        "200": { $ref: "#/components/responses/AlbumPage" }
-        "404": { $ref: "#/components/responses/NotFound" }
-    patch:
-      summary: Rename an album ("Редактировать альбом")
-      description: Its owner or the admins of the community that owns it.
-      security: [{ bearer: [] }]
-      requestBody: { $ref: "#/components/requestBodies/Album" }
-      responses:
-        "200": { $ref: "#/components/responses/AlbumPage" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403":
-          description: Neither its owner nor an admin
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "409":
-          description: "The site keeps the album (`kind` \"avatars\"): `this album is kept by the site`"
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
-    delete:
-      summary: Delete an album with its photos ("удалить альбом")
-      description: As renaming it.
-      security: [{ bearer: [] }]
-      responses:
-        "204": { description: Deleted }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403":
-          description: Neither its owner nor an admin
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "409":
-          description: "The site keeps the album (`kind` \"avatars\"): `this album is kept by the site`"
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
 
-  /api/v1/albums/{id}/photos:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    get:
-      summary: The photos of an album, oldest first
-      description: Photos of people whose pages are deleted are left out, but counted in `total`.
-      parameters:
-        - name: cursor
-          in: query
-          schema: { type: string }
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 50 }
-      responses:
-        "200":
-          description: One page of photos
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [photos, nextCursor, total]
-                properties:
-                  photos:
-                    type: array
-                    items: { $ref: "#/components/schemas/AlbumPhoto" }
-                  nextCursor: { type: string, description: "Empty on the last page" }
-                  total: { type: integer }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "404": { $ref: "#/components/responses/NotFound" }
-    post:
-      summary: Add photos to an album ("Завершить загрузку")
-      description: |
-        Up to 10 photos you uploaded with `POST /api/v1/me/photos`, each with
-        its description; a photo is in one album at most. The owner of the
-        album or the admins of the community that owns it; your profile
-        must be filled in first.
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [photos]
-              properties:
-                photos:
-                  type: array
-                  minItems: 1
-                  maxItems: 10
-                  items:
-                    type: object
-                    required: [id]
-                    properties:
-                      id: { type: string, format: uuid }
-                      description: { type: string, maxLength: 255 }
-      responses:
-        "201":
-          description: The photos added
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [photos]
-                properties:
-                  photos:
-                    type: array
-                    items: { $ref: "#/components/schemas/AlbumPhoto" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403":
-          description: Neither the owner of the album nor an admin
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "409":
-          description: "The site keeps the album (`kind` \"avatars\"): `this album is kept by the site`"
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
 
-  /api/v1/album-photos/{id}/like:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    put:
-      summary: Like a photo of an album, as a post
-      description: Idempotent. The photo must be one you may see.
-      security: [{ bearer: [] }]
-      responses:
-        "200": { $ref: "#/components/responses/Like" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
-    delete:
-      summary: Take your like of a photo back
-      security: [{ bearer: [] }]
-      responses:
-        "200": { $ref: "#/components/responses/Like" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/v1/album-photos/{id}/likes:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    get:
-      summary: Who like a photo, newest first ("Понравилось N людям")
-      description: As the likers of a post.
-      parameters:
-        - name: cursor
-          in: query
-          schema: { type: string }
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
-      responses:
-        "200":
-          description: One page of people
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/UserPage" }
-        "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/v1/album-photos/{id}/comments:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    get:
-      summary: The comments under a photo, oldest first
-      description: Text only. Those of deleted pages are left out, still counted. With a token each tells whether you like it.
-      parameters:
-        - name: cursor
-          in: query
-          schema: { type: string }
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
-      responses:
-        "200":
-          description: One page of comments
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [comments, nextCursor, total]
-                properties:
-                  comments:
-                    type: array
-                    items: { $ref: "#/components/schemas/PhotoComment" }
-                  nextCursor: { type: string }
-                  total: { type: integer }
-        "404": { $ref: "#/components/responses/NotFound" }
-    post:
-      summary: Comment a photo
-      description: Your profile must be filled in first; not between you and who uploaded the photo when one blacklisted the other.
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [text]
-              properties:
-                text: { type: string, maxLength: 60000 }
-                replyTo:
-                  type: string
-                  description: "The comment under the same photo this one answers (\"Ответить\"); empty for none. `comment not found` when it is gone, 400 when it is under another photo"
-      responses:
-        "201":
-          description: The comment
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PhotoComment" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403":
-          description: "`you cannot comment on this photo`"
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
 
-  /api/v1/photo-comments/{id}/text:
-    get:
-      summary: What a comment under a photo says, whole
-      description: |
-        No token needed. A comment of a photo you are not shown is not found. Lists carry the beginning of a long text (`textCut`);
-        this is all of it, for "Показать больше".
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
-      responses:
-        "200":
-          description: The text
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [text]
-                properties:
-                  text: { type: string }
-        "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/v1/photo-comments/{id}/likes:
-    get:
-      summary: Who like the comment under a photo, newest first ("Понравилось N людям")
-      description: |
-        No token needed. `total` is the like counter; people whose page is
-        deleted are left out of `users`, still counted.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
-        - name: cursor
-          in: query
-          schema: { type: string }
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
-      responses:
-        "200":
-          description: One page of people
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/UserPage" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/v1/photo-comments/{id}/like:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    put:
-      summary: Like a comment under a photo
-      description: Idempotent, as the heart of a comment under a post. Only who may see the photo; nobody is notified.
-      security: [{ bearer: [] }]
-      responses:
-        "200": { $ref: "#/components/responses/Like" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
-    delete:
-      summary: Take the like back
-      description: Idempotent.
-      security: [{ bearer: [] }]
-      responses:
-        "200": { $ref: "#/components/responses/Like" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
 
-  /api/v1/photo-comments/{id}:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    delete:
-      summary: Delete a comment under a photo
-      description: Its author, who uploaded the photo, the owner of the album or the admins of its community.
-      security: [{ bearer: [] }]
-      responses:
-        "204": { description: Deleted }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403":
-          description: Not yours to delete
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/me/faves/posts:
     get:
@@ -4507,29 +4105,6 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
 
-  /api/v1/me/faves/photos:
-    get:
-      summary: The photos of albums you like, newest like first
-      description: |
-        A photo whose uploader deleted the page, or whose album's owner no
-        longer shows you their photos, is left out of `photos`, still
-        counted in `total`.
-      security: [{ bearer: [] }]
-      parameters:
-        - name: cursor
-          in: query
-          schema: { type: string }
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
-      responses:
-        "200":
-          description: A page of liked photos
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AlbumPhotoPage" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
 
   /api/v1/gifts:
     get:
@@ -8281,159 +7856,9 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
 
-  /api/v1/album-photos/{id}/reposts:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    post:
-      summary: Share a photo of an album ("Поделиться" under a photo)
-      description: As sharing a post, the same body; the post shows the photo (`sharedPhoto`).
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              properties:
-                text: { type: string, maxLength: 60000 }
-                club: { type: string }
-                fromClub: { type: boolean }
-                signed: { type: boolean }
-      responses:
-        "201":
-          description: The post sharing it
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Post" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403":
-          description: You cannot post on that community's wall
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
 
-  /api/v1/album-photos/{id}:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    get:
-      summary: A photo of an album, for its page
-      description: With who uploaded it (`author`) and its album with whom that belongs to; the photos of a deleted page are not found.
-      responses:
-        "200": { $ref: "#/components/responses/AlbumPhotoPage" }
-        "404": { $ref: "#/components/responses/NotFound" }
-    patch:
-      summary: Change the description of a photo
-      description: Who uploaded it only.
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                description: { type: string, maxLength: 255 }
-      responses:
-        "200": { $ref: "#/components/responses/AlbumPhotoPage" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403":
-          description: Not who uploaded it
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
-    delete:
-      summary: Delete a photo of an album
-      description: Who uploaded it, the owner of the album or the admins of the community that owns it; the image goes too.
-      security: [{ bearer: [] }]
-      responses:
-        "204": { description: Deleted }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403":
-          description: None of them
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404": { $ref: "#/components/responses/NotFound" }
 
-  /api/v1/album-photos/{id}/album:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    put:
-      summary: Move a photo to another album
-      description: To an album of the same owner that people fill by hand; the owner of the albums or the admins of the community that owns them. The photo no longer shows the album it leaves.
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [albumId]
-              properties:
-                albumId: { type: string, format: uuid }
-      responses:
-        "204": { description: Moved }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403":
-          description: Not who may edit the albums
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "409":
-          description: The album is kept by the site
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
 
-  /api/v1/albums/{id}/cover:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    put:
-      summary: Choose the photo that shows an album
-      description: '"Обложка альбома": a photo of the album instead of its first one, until it is deleted or moved away; the owner of the album or the admins of the community that owns it.'
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [photoId]
-              properties:
-                photoId: { type: string, format: uuid }
-      responses:
-        "204": { description: Chosen }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403":
-          description: Not who may edit the album
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/clubs/{ref}/posts:
     parameters:
@@ -8931,8 +8356,7 @@ paths:
       description: >-
         Text, photos (yours, from POST /me/photos, up to 10), a shared post
         (`post`), messages of your chats to carry on (`forward`, at most 20
-        counting those they carry themselves) or some of them; or a photo
-        of an album you are shown (`albumPhoto`), with text alone. What is
+        counting those they carry themselves) or some of them. What is
         not there for you answers 400 `post not found`, `photo not found`,
         `forwarded message not found`. Messages of chats are not
         encrypted: `sealed` answers 400 `messages of chats are not
@@ -8953,7 +8377,6 @@ paths:
                   maxItems: 10
                   items: { type: string, format: uuid }
                 post: { type: string, format: uuid }
-                albumPhoto: { type: string, format: uuid }
                 documents: { $ref: "#/components/schemas/DocumentIDs" }
                 audios: { $ref: "#/components/schemas/AudioIDs" }
                 sticker: { type: string, description: "A sticker of a pack among your stickers (GET /stickers); it goes alone, with nothing else" }
@@ -9226,9 +8649,7 @@ paths:
         dialog ("Поделиться" "в переписку"), messages of your dialogs to
         carry on ("Переслать") or some of them; photos are IDs from
         `POST /api/v1/me/photos` and must be yours, the post must be there
-        (`post not found` otherwise). `albumPhoto` shares a photo of an
-        album you can see ("Поделиться" under a photo; `photo not found`
-        otherwise), with words alone. `forward`: at most 20 messages,
+        (`post not found` otherwise). `forward`: at most 20 messages,
         counting those they carry themselves; they go oldest first, as
         copies of what they are now, with their photos, their words sealed
         in `sealed` with the message's own; one that you do not have or
@@ -9245,7 +8666,6 @@ paths:
                 sealed: { type: string, format: byte }
                 photos: { $ref: "#/components/schemas/PhotoIDs" }
                 post: { type: string, format: uuid }
-                albumPhoto: { type: string, format: uuid }
                 documents: { $ref: "#/components/schemas/DocumentIDs" }
                 audios: { $ref: "#/components/schemas/AudioIDs" }
                 sticker: { type: string, description: "A sticker of a pack among your stickers (GET /stickers); it goes alone, with nothing else" }
@@ -9636,16 +9056,6 @@ components:
             additionalProperties: false
             properties:
               code: { type: string, example: "123456" }
-    Album:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [name]
-            properties:
-              name: { type: string, maxLength: 36 }
-              description: { type: string, maxLength: 255 }
     RefreshToken:
       required: true
       content:
@@ -9716,45 +9126,6 @@ components:
                       - { $ref: "#/components/schemas/Author" }
                       - { type: "null" }
                   ownerTitle: { type: string, description: "What the owner does in the community; empty for none or without `owner`" }
-    AlbumList:
-      description: One page of albums with whom they belong to
-      content:
-        application/json:
-          schema:
-            allOf:
-              - { $ref: "#/components/schemas/AlbumOwner" }
-              - type: object
-                required: [albums, nextCursor, total]
-                properties:
-                  albums:
-                    type: array
-                    items: { $ref: "#/components/schemas/Album" }
-                  nextCursor: { type: string, description: "Empty on the last page" }
-                  total: { type: integer }
-    AlbumPage:
-      description: An album with whom it belongs to
-      content:
-        application/json:
-          schema:
-            allOf:
-              - { $ref: "#/components/schemas/AlbumOwner" }
-              - type: object
-                required: [album]
-                properties:
-                  album: { $ref: "#/components/schemas/Album" }
-    AlbumPhotoPage:
-      description: A photo with who uploaded it and its album
-      content:
-        application/json:
-          schema:
-            allOf:
-              - { $ref: "#/components/schemas/AlbumOwner" }
-              - type: object
-                required: [photo, author, album]
-                properties:
-                  photo: { $ref: "#/components/schemas/AlbumPhoto" }
-                  author: { $ref: "#/components/schemas/Author" }
-                  album: { $ref: "#/components/schemas/Album" }
     TopicPage:
       description: A topic with its community; role is what you are in it
       content:
@@ -10063,10 +9434,6 @@ components:
           type: string
           enum: [everyone, users, following, only_me]
           description: "Who sees the information of your page (\"Кому видно основную информацию моей страницы\"): all but the names, the photo, the status and the pronouns; the search filters by it find you only with everyone"
-        photosRead:
-          type: string
-          enum: [everyone, users, following, only_me]
-          description: "Who sees your photo albums (\"Кому видно мои фотографии\")"
         friendsRead:
           type: string
           enum: [everyone, users, following, only_me]
@@ -10269,7 +9636,7 @@ components:
         openTopics: { type: boolean, description: "Anyone starts topics in its discussions, not only its admins (\"Все могут создавать темы\")" }
         topicsAboveWall: { type: boolean, description: "Its page lists the topics above the wall (\"Отображать список тем над стеной\")" }
         backdrop: { $ref: "#/components/schemas/Backdrop" }
-        closed: { type: boolean, description: "A closed group (\"Закрытая группа\"): joining it (`PUT .../membership`) only asks to, and its wall, members, topics and albums answer 403 `this club is closed` (topics and albums by ID - 404) to those who are not members" }
+        closed: { type: boolean, description: "A closed group (\"Закрытая группа\"): joining it (`PUT .../membership`) only asks to, and its wall, members and topics answer 403 `this club is closed` (topics by ID - 404) to those who are not members" }
 
     Topic:
       type: object
@@ -10588,11 +9955,6 @@ components:
         liked: { type: boolean, description: "You like the post; false without a token" }
         comments: { type: integer }
         reposts: { type: integer, description: "How many times the post was shared" }
-        sharedPhoto:
-          description: 'A photo of an album the post shares ("Поделиться" under a photo); null otherwise. A deleted photo leaves only its ID'
-          oneOf:
-            - $ref: "#/components/schemas/SharedPhoto"
-            - type: "null"
         repost:
           description: The shared post when this is a repost; null otherwise
           oneOf:
@@ -10746,46 +10108,8 @@ components:
         large: { type: string, description: "URL, up to 1280 on the longer side" }
         small: { type: string, description: "URL, up to 640 on the longer side" }
 
-    Album:
-      type: object
-      required: [id, name, description, photos, createdAt, updatedAt, cover]
-      properties:
-        id: { type: string, format: uuid }
-        name: { type: string }
-        description: { type: string }
-        photos: { type: integer, description: How many photos it has }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time, description: "Renamed, photos added or deleted (\"Обновлён\")" }
-        cover:
-          description: The photo chosen to show it, else its first; null while it has none
-          oneOf:
-            - { $ref: "#/components/schemas/Photo" }
-            - { type: "null" }
-        kind:
-          type: string
-          enum: ["", avatars, wall]
-          description: '"" for an album people make; "avatars" is "Фотографии со страницы", which the site keeps with every new photo of the page, and "wall" is "Фотографии со стены", where it keeps a copy of every photo of the posts a person writes on their own wall: nobody renames, deletes or fills them by hand, their photos may be deleted and moved to other albums'
 
-    AlbumPhoto:
-      allOf:
-        - { $ref: "#/components/schemas/Photo" }
-        - type: object
-          required: [description, createdAt, mine]
-          properties:
-            description: { type: string }
-            createdAt: { type: string, format: date-time }
-            mine: { type: boolean, description: You uploaded it }
-            likes: { type: integer }
-            comments: { type: integer }
-            liked: { type: boolean, description: You like it }
-            nsfw: { type: boolean, description: "It came from a post marked as adult: blurred as the reader's settings say" }
 
-    AlbumOwner:
-      type: object
-      required: [owner, role]
-      properties:
-        owner: { $ref: "#/components/schemas/Author" }
-        role: { type: string, enum: ["", member, admin, owner], description: "What you are in the community that owns it; empty for a person" }
 
     Comment:
       type: object
@@ -10829,8 +10153,8 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, gift, votes, prime, invite, verified, club_verified, story_like, story_comment, match, call, missed_call, friend]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; prime: the actor gave you Freenet Prime; invite: the actor signed up by your invitation link and follows you; verified: the actor, an administrator, gave your page the checkmark (until it is taken); club_verified: the actor, a community you own, got the checkmark (until it is taken); story_like, story_comment: the actor liked or commented your story (until the like is taken back, the comment deleted or the story gone); match: you and the actor liked each other in \"Знакомства\"; call: you talked with the actor for `seconds` (each side gets one); missed_call: the actor called you and you did not answer; follow: the actor sent you a friend request; friend: the actor accepted your friend request"
+          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, gift, votes, prime, invite, verified, club_verified, story_like, story_comment, match, call, missed_call, friend]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; prime: the actor gave you Freenet Prime; invite: the actor signed up by your invitation link and follows you; verified: the actor, an administrator, gave your page the checkmark (until it is taken); club_verified: the actor, a community you own, got the checkmark (until it is taken); story_like, story_comment: the actor liked or commented your story (until the like is taken back, the comment deleted or the story gone); match: you and the actor liked each other in \"Знакомства\"; call: you talked with the actor for `seconds` (each side gets one); missed_call: the actor called you and you did not answer; follow: the actor sent you a friend request; friend: the actor accepted your friend request"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:
@@ -10843,7 +10167,7 @@ components:
             createdAt: { type: string, format: date-time }
             text: { type: string, description: "What the post says; empty when photos only" }
         comment:
-          description: "The comment, for the notifications about one: what it says, 1000 characters at most. Also the message of a topic (topic_message, topic_mention, topic_message_like) and the comment under a photo (photo_comment, photo_mention); null for the others and for a message of photos only"
+          description: "The comment, for the notifications about one: what it says, 1000 characters at most. Also the message of a topic (topic_message, topic_mention, topic_message_like); null for the others and for a message of photos only"
           nullable: true
           type: object
           required: [id, text]
@@ -10857,9 +10181,6 @@ components:
           properties:
             id: { type: string, format: uuid }
             title: { type: string }
-        photo:
-          description: Only for photo_like, photo_comment and photo_mention; absent otherwise
-          allOf: [{ $ref: "#/components/schemas/Photo" }]
         seconds:
           type: integer
           minimum: 1
@@ -10924,10 +10245,6 @@ components:
         repost:
           description: The shared post, as inside a repost; absent in the list of dialogs and without one
           $ref: "#/components/schemas/SharedPost"
-        albumPhoto: { type: string, description: "A photo of an album shared in it; empty for none" }
-        sharedPhoto:
-          description: The shared photo, as in a post that shares one; absent in the list of dialogs and without one
-          $ref: "#/components/schemas/SharedPhoto"
         sticker: { type: string, description: "The sticker the message is, alone; empty for none" }
         documentCount: { type: integer, description: "How many documents it attached" }
         audioCount: { type: integer, description: "How many songs it attached" }
@@ -10961,7 +10278,7 @@ components:
         The message an answer answers, in short. `author` is null, and the
         rest says nothing, when it is gone for good or the page of who
         wrote it is gone.
-      required: [id, author, text, textCut, photoCount, forwardedCount, documentCount, sticker, post, albumPhoto, deleted]
+      required: [id, author, text, textCut, photoCount, forwardedCount, documentCount, sticker, post, deleted]
       properties:
         id: { type: string, format: uuid, description: "Open the conversation around it with `?around=`" }
         author:
@@ -10974,7 +10291,6 @@ components:
         audioCount: { type: integer }
         sticker: { type: string }
         post: { type: boolean, description: It shares a post }
-        albumPhoto: { type: boolean, description: It shares a photo of an album }
         deleted: { type: boolean, description: Its sender took it back }
 
     Reaction:
@@ -10999,8 +10315,6 @@ components:
         createdAt: { type: string, format: date-time, description: "When it was written" }
         post: { type: string, description: "A post shared in it; empty for none" }
         repost: { $ref: "#/components/schemas/SharedPost" }
-        albumPhoto: { type: string, description: "A photo of an album shared in it; empty for none" }
-        sharedPhoto: { $ref: "#/components/schemas/SharedPhoto" }
         sticker: { type: string, description: "The sticker it is; empty for none" }
         documents:
           type: array
@@ -11009,16 +10323,6 @@ components:
           type: array
           items: { $ref: "#/components/schemas/Audio" }
 
-    SharedPhoto:
-      type: object
-      description: A photo of an album shared in a post or a message; a deleted photo leaves only its ID
-      required: [id, deleted, photo, albumId]
-      properties:
-        id: { type: string, format: uuid }
-        deleted: { type: boolean }
-        photo: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }] }
-        albumId: { type: string }
-        nsfw: { type: boolean, description: The photo came from a post marked as adult }
 
     Dialog:
       type: object
@@ -11066,7 +10370,7 @@ components:
 
     ChatMessage:
       type: object
-      required: [id, chatId, author, out, text, photos, action, createdAt, editedAt, deleted, deletableUntil, editableUntil, unread, post, albumPhoto, forwardedCount]
+      required: [id, chatId, author, out, text, photos, action, createdAt, editedAt, deleted, deletableUntil, editableUntil, unread, post, forwardedCount]
       properties:
         id: { type: string, format: uuid }
         chatId: { type: string, format: uuid }
@@ -11097,10 +10401,6 @@ components:
         repost:
           description: The shared post, as inside a repost; absent in the list of dialogs and without one
           $ref: "#/components/schemas/SharedPost"
-        albumPhoto: { type: string, description: "A photo of an album shared in it; empty for none" }
-        sharedPhoto:
-          description: The shared photo; absent in the list of dialogs and without one
-          $ref: "#/components/schemas/SharedPhoto"
         sticker: { type: string, description: "The sticker the message is, alone; empty for none" }
         documentCount: { type: integer, description: "How many documents it attached" }
         audioCount: { type: integer, description: "How many songs it attached" }
@@ -11372,9 +10672,8 @@ components:
     Access:
       type: object
       description: Which blocks of a page you may see, as its owner's privacy allows
-      required: [photos, friends, clubs, gifts, audios]
+      required: [friends, clubs, gifts, audios]
       properties:
-        photos: { type: boolean, description: "The albums (`photosRead`)" }
         friends: { type: boolean, description: "The follows, either way (`friendsRead`)" }
         clubs: { type: boolean, description: "The communities (`clubsRead`)" }
         gifts: { type: boolean, description: "The gifts (`giftsRead`)" }
@@ -12389,30 +11688,13 @@ components:
             clickers: { type: integer, description: By how many people }
 
     Backdrop:
-      description: '"Фон страницы": the photos on the left and on the right of a page, of a person or a community; null for none'
+      description: '"Фон страницы": the photos on the left and on the right of a page, of a person or a community, and of a person with Prime the one behind the whole page; null for none'
       oneOf:
         - type: object
           required: [left, right]
           properties:
             left: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }] }
             right: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }] }
+            cover: { $ref: "#/components/schemas/Photo", description: Behind the whole page; only of a person while Prime lasts, absent otherwise }
         - type: "null"
 
-    PhotoComment:
-      type: object
-      required: [id, author, text, createdAt, mine, replyTo, likes, liked]
-      properties:
-        id: { type: string, format: uuid }
-        author: { $ref: "#/components/schemas/Author" }
-        text: { type: string, description: "Plain text with \\n line breaks; never HTML" }
-        textCut:
-          type: boolean
-          description: "`text` is only its beginning (1000 characters): lists carry no more. GET /api/v1/photo-comments/{id}/text tells it whole. Absent when the text is whole"
-        createdAt: { type: string, format: date-time }
-        mine: { type: boolean, description: You wrote it }
-        replyTo:
-          type: [string, "null"]
-          format: uuid
-          description: The comment under the same photo it answers; null for none or when that comment is deleted
-        likes: { type: integer }
-        liked: { type: boolean, description: "You like it; false without a token" }

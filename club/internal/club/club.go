@@ -260,7 +260,7 @@ func (c *Club) Closed() bool {
 }
 
 // Admits tells whether someone who is role in the club sees what is in
-// it — its wall, members, discussions and albums: anyone in an open club,
+// it — its wall, members and discussions: anyone in an open club,
 // only the members of a closed one.
 func (c *Club) Admits(role Role) bool {
 	return !c.closed || role != RoleNone
@@ -325,8 +325,8 @@ func CheckTransfer(requester, target Role) error {
 	return nil
 }
 
-// CheckDelete: only the owner deletes a club, with its wall, topics and
-// albums; openvk deletes none.
+// CheckDelete: only the owner deletes a club, with its wall and topics;
+// openvk deletes none.
 func CheckDelete(requester Role) error {
 	if requester != RoleOwner {
 		return ErrCannotDelete

@@ -46,10 +46,9 @@ type profileWithStatsResponse struct {
 	IgnoredByMe bool `json:"ignoredByMe"`
 }
 
-// accessJSON is which blocks of a page the viewer may see: the albums, the
+// accessJSON is which blocks of a page the viewer may see: the
 // follows, the communities, the gifts and the songs.
 type accessJSON struct {
-	Photos  bool `json:"photos"`
 	Friends bool `json:"friends"`
 	Clubs   bool `json:"clubs"`
 	Gifts   bool `json:"gifts"`

@@ -559,7 +559,7 @@ func (s *ClubService) SetVerified(ctx context.Context, clubID uuid.UUID, verifie
 
 // Delete deletes the club, its owner's call: its members and requests go
 // with it, and in the same transaction post is told to delete its wall,
-// topics, albums and photos and notification what it caused. openvk
+// topics and photos and notification what it caused. openvk
 // deletes no club.
 func (s *ClubService) Delete(ctx context.Context, requesterID, clubID uuid.UUID) error {
 	if _, err := s.clubs.Get(ctx, clubID); err != nil {

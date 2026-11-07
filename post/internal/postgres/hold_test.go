@@ -11,43 +11,33 @@ import (
 func TestHoldRepository(t *testing.T) {
 	pool := newPool(t)
 	topics := postgres.NewTopicRepository(pool)
-	albums := postgres.NewAlbumRepository(pool)
 
 	holdtest.Run(t, holdtest.Storage{
-		Posts:         postgres.NewPostRepository(pool),
-		Likes:         postgres.NewLikeRepository(pool),
-		Comments:      postgres.NewCommentRepository(pool),
-		CommentLikes:  postgres.NewCommentLikeRepository(pool),
-		Polls:         postgres.NewPollRepository(pool),
-		Topics:        topics,
-		Messages:      topics.Messages(),
-		Albums:        albums,
-		Photos:        albums.Photos(),
-		PhotoLikes:    albums.PhotoLikes(),
-		PhotoComments: albums.PhotoComments(),
-		Holders:       []service.ReactionHolder{postgres.NewHoldRepository(pool)},
+		Posts:        postgres.NewPostRepository(pool),
+		Likes:        postgres.NewLikeRepository(pool),
+		Comments:     postgres.NewCommentRepository(pool),
+		CommentLikes: postgres.NewCommentLikeRepository(pool),
+		Polls:        postgres.NewPollRepository(pool),
+		Topics:       topics,
+		Messages:     topics.Messages(),
+		Holders:      []service.ReactionHolder{postgres.NewHoldRepository(pool)},
 	})
 }
 
 func TestHoldRepository_Written(t *testing.T) {
 	pool := newPool(t)
 	topics := postgres.NewTopicRepository(pool)
-	albums := postgres.NewAlbumRepository(pool)
 
 	held := postgres.NewHoldRepository(pool)
 
 	holdtest.RunWritten(t, holdtest.Written{
-		Posts:         postgres.NewPostRepository(pool),
-		Likes:         postgres.NewLikeRepository(pool),
-		Comments:      postgres.NewCommentRepository(pool),
-		CommentLikes:  postgres.NewCommentLikeRepository(pool),
-		Topics:        topics,
-		Messages:      topics.Messages(),
-		Albums:        albums,
-		Photos:        albums.Photos(),
-		PhotoLikes:    albums.PhotoLikes(),
-		PhotoComments: albums.PhotoComments(),
-		Holders:       []service.ReactionHolder{held},
-		Pages:         []service.Pages{held},
+		Posts:        postgres.NewPostRepository(pool),
+		Likes:        postgres.NewLikeRepository(pool),
+		Comments:     postgres.NewCommentRepository(pool),
+		CommentLikes: postgres.NewCommentLikeRepository(pool),
+		Topics:       topics,
+		Messages:     topics.Messages(),
+		Holders:      []service.ReactionHolder{held},
+		Pages:        []service.Pages{held},
 	})
 }

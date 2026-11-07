@@ -75,42 +75,13 @@ type TopicService interface {
 	MessagesByID(ctx context.Context, ids []uuid.UUID) ([]*post.TopicMessage, error)
 }
 
-type AlbumService interface {
-	Create(ctx context.Context, in service.CreateAlbumInput) (*post.Album, error)
-	Get(ctx context.Context, id uuid.UUID) (*post.Album, *post.AlbumPhoto, error)
-	PhotoComment(ctx context.Context, id uuid.UUID) (*post.PhotoComment, error)
-	List(ctx context.Context, ownerID, before uuid.UUID, size int) (service.AlbumPage, error)
-	Change(ctx context.Context, requesterID, id uuid.UUID, name post.AlbumName, description post.Description) (*post.Album, error)
-	Delete(ctx context.Context, requesterID, id uuid.UUID) error
-	AddPhotos(ctx context.Context, requesterID, albumID uuid.UUID, in []service.NewAlbumPhoto) ([]*post.AlbumPhoto, error)
-	AddAvatar(ctx context.Context, requesterID, ownerID, photoID uuid.UUID) (*post.AlbumPhoto, error)
-	Photos(ctx context.Context, albumID, after uuid.UUID, size int) (service.AlbumPhotoPage, error)
-	Photo(ctx context.Context, id uuid.UUID) (*post.AlbumPhoto, *post.Album, error)
-	Describe(ctx context.Context, requesterID, id uuid.UUID, description post.Description) (*post.AlbumPhoto, error)
-	DeletePhoto(ctx context.Context, requesterID, id uuid.UUID) error
-	SetCover(ctx context.Context, requesterID, albumID, photoID uuid.UUID) error
-	MovePhoto(ctx context.Context, requesterID, photoID, albumID uuid.UUID) error
-	LikePhoto(ctx context.Context, userID, photoID uuid.UUID) (int, error)
-	UnlikePhoto(ctx context.Context, userID, photoID uuid.UUID) (int, error)
-	LikedPhotos(ctx context.Context, userID uuid.UUID, photoIDs []uuid.UUID) (map[uuid.UUID]bool, error)
-	PhotoLikers(ctx context.Context, photoID uuid.UUID, cursor *service.LikerCursor, size int) (service.LikerPage, error)
-	CommentPhoto(ctx context.Context, in service.PhotoCommentInput) (*post.PhotoComment, error)
-	DeletePhotoComment(ctx context.Context, requesterID, id uuid.UUID) error
-	PhotoComments(ctx context.Context, viewerID, photoID, after uuid.UUID, size int) (service.PhotoCommentPage, error)
-	PhotoCommentsByID(ctx context.Context, ids []uuid.UUID) ([]*post.PhotoComment, error)
-	LikePhotoComment(ctx context.Context, userID, id uuid.UUID) (int, error)
-	UnlikePhotoComment(ctx context.Context, userID, id uuid.UUID) (int, error)
-	PhotoCommentLikers(ctx context.Context, id uuid.UUID, cursor *service.LikerCursor, size int) (service.LikerPage, error)
-}
-
 // PurgeService erases a user's posts, likes and comments once the page is
 // deleted for good.
 type PurgeService interface {
 	PurgeUser(ctx context.Context, userID uuid.UUID) error
 }
 
-// ClubPurgeService erases a community's wall, topics and albums once it is
-// gone.
+// ClubPurgeService erases a community's wall and topics once it is gone.
 type ClubPurgeService interface {
 	PurgeClub(ctx context.Context, clubID uuid.UUID) error
 }
@@ -148,7 +119,6 @@ type Services struct {
 	Suggestions SuggestionService
 	Postponed   PostponedService
 	Topics      TopicService
-	Albums      AlbumService
 	Polls       PollService
 	Documents   DocumentService
 	Audio       AudioService
@@ -169,7 +139,6 @@ type PostHandler struct {
 	suggestionService SuggestionService
 	postponedService  PostponedService
 	topicService      TopicService
-	albumService      AlbumService
 	pollService       PollService
 	documentService   DocumentService
 	audioService      AudioService
@@ -191,7 +160,6 @@ func NewPostHandler(s Services, logger *slog.Logger) *PostHandler {
 		suggestionService: s.Suggestions,
 		postponedService:  s.Postponed,
 		topicService:      s.Topics,
-		albumService:      s.Albums,
 		pollService:       s.Polls,
 		documentService:   s.Documents,
 		audioService:      s.Audio,
@@ -418,18 +386,16 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 	return &postv1.CreatePostResponse{Post: toProtoPost(p, false, viewerID(ctx))}, nil
 }
 
-// RepostPost shares a post or, with photo_id, a photo of an album.
+// RepostPost shares a post.
 func (h *PostHandler) RepostPost(ctx context.Context, req *postv1.RepostPostRequest) (*postv1.RepostPostResponse, error) {
 	authorID, err := currentUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	var postID uuid.UUID
-	if req.GetPhotoId() == "" {
-		if _, postID, err = likeTarget(ctx, req.GetPostId()); err != nil {
-			return nil, err
-		}
+	_, postID, err := likeTarget(ctx, req.GetPostId())
+	if err != nil {
+		return nil, err
 	}
 
 	text, photos, err := fromProtoTextPhotos(req.GetText(), req.GetPhotoIds())
@@ -445,11 +411,6 @@ func (h *PostHandler) RepostPost(ctx context.Context, req *postv1.RepostPostRequ
 	in := service.RepostInput{
 		AuthorID: authorID, PostID: postID, Text: text, Photos: photos, FromWall: req.GetFromWall(), Signed: req.GetSigned(),
 		Mentions: mentions,
-	}
-	if req.GetPhotoId() != "" {
-		if in.PhotoID, err = uuid.Parse(req.GetPhotoId()); err != nil {
-			return nil, status.Error(codes.InvalidArgument, "invalid photo id")
-		}
 	}
 	if req.GetWallId() != "" {
 		if in.WallID, err = uuid.Parse(req.GetWallId()); err != nil {

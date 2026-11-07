@@ -153,15 +153,13 @@ type Privacy struct {
 	WallWrite          string
 	MessagesWrite      string
 	ClubsRead          string
-	// PageRead ("everyone" or "users"), InfoRead, PhotosRead and
-	// FriendsRead are openvk's "Кому видно …": "everyone", "users",
+	// PageRead ("everyone" or "users"), InfoRead and FriendsRead are openvk's "Кому видно …": "everyone", "users",
 	// "following" or "only_me"; OnlineRead is "Кто видит мою
 	// неактивность", GiftsRead "Кому видны мои подарки", AudiosRead "Кто
 	// видит мои аудиозаписи" and ListeningRead "Кто видит, что я слушаю",
 	// the same.
 	PageRead      string
 	InfoRead      string
-	PhotosRead    string
 	FriendsRead   string
 	OnlineRead    string
 	GiftsRead     string
@@ -204,11 +202,10 @@ type People struct {
 }
 
 // Access is what of a page the viewer may see: the page, its information,
-// albums, follows, communities, gifts, songs and the song playing now.
+// follows, communities, gifts, songs and the song playing now.
 type Access struct {
 	Page      bool
 	Info      bool
-	Photos    bool
 	Friends   bool
 	Clubs     bool
 	Gifts     bool
@@ -296,10 +293,12 @@ type Interface struct {
 }
 
 // Backdrop is "Фон страницы" of a person: photos of the media service
-// under them, "" for a side without one.
+// under them, "" for a side without one; Cover is the photo behind the
+// whole page, set with Prime.
 type Backdrop struct {
 	Left  string
 	Right string
+	Cover string
 }
 
 // PublicProfile is what anyone may see; fields hidden by the owner are empty.
@@ -407,8 +406,6 @@ type Post struct {
 	Signed   bool
 	// Mine: the viewer wrote it; false for anonymous viewers.
 	Mine bool
-	// SharedPhotoID is a photo of an album the post shares, "" for none.
-	SharedPhotoID string
 	// Polled: the post asks a poll, which Posts.Polls tells.
 	Polled bool
 	// DocumentIDs are documents of its author it attaches, in order; a
@@ -721,8 +718,6 @@ type Message struct {
 	DeletableUntil time.Time
 	// PostID is a post shared into the dialog, "" for none.
 	PostID string
-	// SharedPhotoID is a photo of an album shared into it, "" for none.
-	SharedPhotoID string
 	// Sticker is the sticker the message is, "" for none.
 	Sticker string
 	// EditedAt is zero for a message never edited; the sender may edit it
@@ -759,9 +754,8 @@ type Quote struct {
 	DocumentCount  int
 	AudioCount     int
 	Sticker        string
-	// Post and SharedPhoto: it shares a post, a photo of an album.
-	Post        bool
-	SharedPhoto bool
+	// Post: it shares a post.
+	Post bool
 	// Deleted: it was taken back.
 	Deleted bool
 	Found   bool
@@ -777,13 +771,11 @@ type Reaction struct {
 // ForwardedMessage is a message as another one carries it on: a copy of
 // what SenderID wrote at CreatedAt.
 type ForwardedMessage struct {
-	SenderID string
-	Text     string
-	PhotoIDs []string
-	PostID   string
-	// SharedPhotoID is a photo of an album it shared, "" for none.
-	SharedPhotoID string
-	CreatedAt     time.Time
+	SenderID  string
+	Text      string
+	PhotoIDs  []string
+	PostID    string
+	CreatedAt time.Time
 	// Depth is how deep it is carried: 0 for a message forwarded itself,
 	// 1 for one that message carried on.
 	Depth int
@@ -795,18 +787,15 @@ type ForwardedMessage struct {
 
 // MessageDraft is a message to send, into a dialog or a chat: text,
 // photos, a shared post ("" for none), messages of the caller's dialogs
-// and chats to forward, or some of them;
-// or a photo of an album to share (SharedPhotoID), with text alone; or a
-// Sticker, alone. Into a dialog the text goes Sealed, with that of the
+// and chats to forward, or some of them; or a Sticker, alone. Into a dialog the text goes Sealed, with that of the
 // messages it forwards.
 type MessageDraft struct {
-	Text          string
-	Sealed        []byte
-	PhotoIDs      []string
-	PostID        string
-	SharedPhotoID string
-	ForwardIDs    []string
-	Sticker       string
+	Text       string
+	Sealed     []byte
+	PhotoIDs   []string
+	PostID     string
+	ForwardIDs []string
+	Sticker    string
 	// DocumentIDs are documents of the caller the message attaches.
 	DocumentIDs []string
 	// AudioIDs are songs the message attaches.
@@ -1216,106 +1205,6 @@ type TopicChanges struct {
 	Restricted bool
 }
 
-// Album is a photo album of a person or a community ("Альбомы"); OwnerID
-// is either. Cover is its first photo, nil while it has none.
-type Album struct {
-	ID          string
-	OwnerID     string
-	Name        string
-	Description string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	Photos      int
-	Cover       *AlbumPhoto
-	// Kind is "" for an album people make, "wall" for "Фотографии со
-	// стены" and "avatars" for "Фотографии со
-	// страницы", which the site keeps.
-	Kind string
-}
-
-// AlbumPhoto is a photo of an album: media keeps the image under its ID
-// and AuthorID, who uploaded it; Mine: the viewer did.
-type AlbumPhoto struct {
-	ID          string
-	AlbumID     string
-	AuthorID    string
-	Description string
-	CreatedAt   time.Time
-	Mine        bool
-	// Likes and Comments count them; Liked: the viewer likes it.
-	Likes    int
-	Comments int
-	Liked    bool
-	// NSFW: it came from a post marked as adult.
-	NSFW bool
-}
-
-// PhotoComment is a comment under a photo of an album, text only; Mine:
-// the viewer wrote it.
-type PhotoComment struct {
-	ID       string
-	PhotoID  string
-	AuthorID string
-	Text     string
-	// TextCut: Text is only its beginning, as lists carry it.
-	TextCut bool
-	// ReplyTo is the comment of the same photo it answers; "" for none.
-	ReplyTo string
-	// Likes are its hearts; Liked: the caller put one.
-	Likes     int
-	Liked     bool
-	CreatedAt time.Time
-	Mine      bool
-}
-
-// PhotoCommentPage is one screen of the comments of a photo, oldest first.
-type PhotoCommentPage struct {
-	Comments   []PhotoComment
-	NextCursor string
-	Total      int
-}
-
-// AlbumPage and AlbumPhotoPage are one screen of a list; NextCursor is
-// empty on the last, Total counts them on all pages.
-type AlbumPage struct {
-	Albums     []Album
-	NextCursor string
-	Total      int
-}
-
-type AlbumPhotoPage struct {
-	Photos     []AlbumPhoto
-	NextCursor string
-	Total      int
-}
-
-// FavePhoto is a photo of an album the viewer likes, with whom its album
-// belongs to, a person or a community.
-type FavePhoto struct {
-	AlbumPhoto
-	OwnerID string
-}
-
-// FavePhotoPage is one screen of them, newest like first.
-type FavePhotoPage struct {
-	Photos     []FavePhoto
-	NextCursor string
-	Total      int
-}
-
-// NewAlbum is an album to create: the caller's own, or of ClubID.
-type NewAlbum struct {
-	ClubID      string
-	Name        string
-	Description string
-}
-
-// NewAlbumPhoto is a photo the caller uploaded, to add to an album.
-type NewAlbumPhoto struct {
-	PhotoID     string
-	Description string
-}
-
 // LikerPage is one screen of who like a post or a comment, newest first
 // ("Понравилось N людям"); Total is its like counter.
 type LikerPage struct {
@@ -1327,23 +1216,12 @@ type LikerPage struct {
 // NewRepost is where and how to share a post: on the caller's wall, or on
 // a community's (WallID) for it (FromWall), maybe signed.
 type NewRepost struct {
-	// PhotoID shares a photo of an album instead of a post.
-	PhotoID string
-	Text    string
+	Text string
 	// PhotoIDs are the caller's photos added to the words about a post.
 	PhotoIDs []string
 	WallID   string
 	FromWall bool
 	Signed   bool
-	// Mentions are the IDs of the people the text names.
-	Mentions []string
-}
-
-// NewPhotoComment is a comment to put under a photo of an album.
-type NewPhotoComment struct {
-	Text string
-	// ReplyTo is the comment of the same photo it answers, "" for none.
-	ReplyTo string
 	// Mentions are the IDs of the people the text names.
 	Mentions []string
 }

@@ -103,8 +103,8 @@ service MessageService {
   // The creator deletes the chat for everyone in it, with its messages
   // and their photos; the photo of the chat is the caller's to delete.
   rpc DeleteChat(DeleteChatRequest) returns (google.protobuf.Empty);
-  // What a message of a dialog may be: text, photos, a shared post or
-  // photo of an album, forwarded messages; the gateway has checked the
+  // What a message of a dialog may be: text, photos, a shared post,
+  // forwarded messages; the gateway has checked the
   // photos are the sender's and what is shared exists. Who is not in the
   // chat anymore fails with FailedPrecondition "you are not in this chat".
   rpc SendChatMessage(SendChatMessageRequest) returns (SendChatMessageResponse);
@@ -176,9 +176,9 @@ message Message {
   // text and the texts it carries on are only their beginnings: the
   // request set text_limit, and they say more.
   bool text_cut = 14;
-  // A photo of an album of the post service shared into the dialog
-  // ("Поделиться" under a photo, "в переписку"); empty for none.
-  string photo_id = 15;
+  // A shared photo of an album, which is gone with the albums.
+  reserved 15;
+  reserved "photo_id";
   // What it says, and what the messages it carries on say, sealed by the
   // sender's browser: version 1, the public keys of the sender and of the
   // recipient (32 bytes each), the IV (12) and AES-GCM's ciphertext with
@@ -210,8 +210,9 @@ message ForwardedMessage {
   // A post it shared; empty for none.
   string post_id = 4;
   google.protobuf.Timestamp created_at = 5;
-  // A photo of an album it shared; empty for none.
-  string photo_id = 6;
+  // A shared photo of an album, which is gone with the albums.
+  reserved 6;
+  reserved "photo_id";
   // How deep it is carried: 0 for a message forwarded itself, 1 for one
   // that message carried on. The list is a tree written parent first.
   int32 depth = 7;
@@ -237,9 +238,11 @@ message Quote {
   int32 forwarded_count = 5;
   int32 document_count = 6;
   string sticker = 7;
-  // It shares a post, a photo of an album.
+  // It shares a post.
   bool post = 8;
-  bool photo = 9;
+  // It shared a photo of an album, which is gone with the albums.
+  reserved 9;
+  reserved "photo";
   // It was taken back and says nothing.
   bool deleted = 10;
   bool found = 11;
@@ -276,10 +279,9 @@ message SendMessageRequest {
   // those they carry themselves; one that is not there or was taken back
   // fails with InvalidArgument "forwarded message not found".
   repeated string forward_ids = 5;
-  // A photo of an album to share, which the caller has checked the
-  // sender may see; with text alone, anything else with it fails with
-  // InvalidArgument.
-  string photo_id = 6;
+  // A photo of an album to share, which is gone with the albums.
+  reserved 6;
+  reserved "photo_id";
   // What it says, sealed as Message.sealed tells, and what the messages it
   // carries on say, in their order; empty when it says nothing. Sealed
   // between keys other than those the two have now, it fails with
@@ -401,8 +403,7 @@ message EditMessageRequest {
   // The photos the message shows no more, and the caller's uploads it
   // shows from now on, after those it keeps; it may show 10. The edit
   // names changes, so two made at once both take effect; a photo to
-  // remove that is gone and one to add that is there are fine. A message
-  // that shares a photo of an album takes none.
+  // remove that is gone and one to add that is there are fine.
   repeated string remove_photo_ids = 5;
   repeated string add_photo_ids = 6;
   // The text the edit started from. When set, a message that says
@@ -613,8 +614,9 @@ message ChatMessage {
   bool unread = 14;
   // A post shared into the chat; empty for none.
   string post_id = 15;
-  // A photo of an album shared into the chat; empty for none.
-  string photo_id = 16;
+  // A shared photo of an album, which is gone with the albums.
+  reserved 16;
+  reserved "photo_id";
   // Messages it carries on from dialogs and chats, oldest first; their
   // texts are cut with text.
   repeated ForwardedMessage forwarded = 17;
@@ -725,7 +727,9 @@ message SendChatMessageRequest {
   string post_id = 4;
   // Messages of the caller's dialogs and chats to carry on.
   repeated string forward_ids = 5;
-  string photo_id = 6;
+  // A photo of an album to share, which is gone with the albums.
+  reserved 6;
+  reserved "photo_id";
   string sticker = 7;
   // Documents of the sender, as in a dialog.
   repeated string document_ids = 8;

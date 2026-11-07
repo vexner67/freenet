@@ -83,17 +83,17 @@ enum Kind {
   // The actor named the recipient in the message comment_id of the topic
   // post_id.
   KIND_TOPIC_MENTION = 14;
-  // The actor liked the photo post_id of an album of the recipient.
-  KIND_PHOTO_LIKE = 15;
-  // The actor wrote comment_id under the recipient's photo post_id.
-  KIND_PHOTO_COMMENT = 16;
+  // The likes and the comments of photos of albums, which are gone.
+  reserved 15, 16;
+  reserved "KIND_PHOTO_LIKE", "KIND_PHOTO_COMMENT";
   // The actor liked the recipient's message comment_id of topic post_id.
   KIND_TOPIC_MESSAGE_LIKE = 17;
   // The reminders of events, which are gone.
   reserved 18;
   reserved "KIND_EVENT_REMINDER";
-  // The actor named the recipient in comment_id under the photo post_id.
-  KIND_PHOTO_MENTION = 19;
+  // The mentions under photos of albums, which are gone.
+  reserved 19;
+  reserved "KIND_PHOTO_MENTION";
   // The comments of notes, which are gone.
   reserved 20;
   reserved "KIND_NOTE_COMMENT";

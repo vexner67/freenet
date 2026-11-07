@@ -16,7 +16,6 @@ func TestNewPostponed(t *testing.T) {
 	now := time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)
 	words, _ := post.NewContent("Завтра в 10", nil)
 	repost, _ := post.NewRepost(uuid.New(), "", nil)
-	share, _ := post.NewPhotoShare(uuid.New(), "")
 	polled := post.NewPolled("", nil)
 
 	tests := []struct {
@@ -34,7 +33,6 @@ func TestNewPostponed(t *testing.T) {
 		{"past", post.PostponedDraft{WallID: ann, AuthorID: ann, Content: words, PublishAt: now.Add(-time.Hour)}, post.ErrPublishTime},
 		{"over a year", post.PostponedDraft{WallID: ann, AuthorID: ann, Content: words, PublishAt: now.Add(post.MaxPostponedAhead + time.Second)}, post.ErrPublishTime},
 		{"repost", post.PostponedDraft{WallID: ann, AuthorID: ann, Content: repost, PublishAt: now.Add(time.Hour)}, post.ErrPostponedContent},
-		{"shared photo", post.PostponedDraft{WallID: ann, AuthorID: ann, Content: share, PublishAt: now.Add(time.Hour)}, post.ErrPostponedContent},
 		{"poll", post.PostponedDraft{WallID: ann, AuthorID: ann, Content: polled, PublishAt: now.Add(time.Hour)}, post.ErrPostponedContent},
 	}
 

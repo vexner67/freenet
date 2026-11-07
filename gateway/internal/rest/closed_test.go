@@ -28,7 +28,7 @@ func TestClosedClub(t *testing.T) {
 		t.Fatalf("the club: %d %+v", w.Code, got)
 	}
 
-	for _, path := range []string{"/posts", "/members", "/topics", "/albums"} {
+	for _, path := range []string{"/posts", "/members", "/topics"} {
 		w = h.do("GET", "/api/v1/clubs/cats"+path, "", "Authorization", "Bearer tok")
 		if w.Code != http.StatusForbidden || decode[errorBody](t, w).Error.Message != "this club is closed" {
 			t.Errorf("a stranger reads %s: %d %s", path, w.Code, w.Body)
@@ -69,7 +69,7 @@ func TestClosedClub(t *testing.T) {
 			t.Errorf("a message of a deleted page, %s: %d %s", path, w.Code, w.Body.String())
 		}
 	}
-	for _, path := range []string{"/posts", "/members", "/topics", "/albums"} {
+	for _, path := range []string{"/posts", "/members", "/topics"} {
 		if w = h.do("GET", "/api/v1/clubs/cats"+path, "", "Authorization", "Bearer tok"); w.Code != http.StatusOK {
 			t.Errorf("a member reads %s: %d %s", path, w.Code, w.Body.String())
 		}

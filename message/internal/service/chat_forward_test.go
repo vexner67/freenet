@@ -137,20 +137,11 @@ func TestChatService_Share(t *testing.T) {
 	f := newChats()
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	chatID := chatOf(t, f.svc, ann, bob, cat)
-	post, albumPhoto := uuid.New(), uuid.New()
+	post := uuid.New()
 
 	shared, err := f.svc.Send(ctx, ann, chatID, service.Draft{Post: post})
 	if err != nil || shared.Post() != post || shared.Text() != "" {
 		t.Fatalf("a post alone = %+v, %v", shared, err)
-	}
-
-	photo, err := f.svc.Send(ctx, ann, chatID, service.Draft{Text: "гляньте", SharedPhoto: albumPhoto})
-	if err != nil || photo.SharedPhoto() != albumPhoto {
-		t.Fatalf("a photo of an album = %+v, %v", photo, err)
-	}
-
-	if _, err = f.svc.Send(ctx, ann, chatID, service.Draft{SharedPhoto: albumPhoto, Post: post}); !errors.Is(err, message.ErrSharedPhotoAlone) {
-		t.Fatalf("a photo of an album with a post: %v", err)
 	}
 
 	// The words go, the post stays.
@@ -163,7 +154,7 @@ func TestChatService_Share(t *testing.T) {
 	}
 
 	details, err := f.svc.Get(ctx, bob, chatID)
-	if err != nil || details.View.LastMessage == nil || details.View.LastMessage.SharedPhoto() != albumPhoto {
+	if err != nil || details.View.LastMessage == nil || details.View.LastMessage.Post() != post {
 		t.Fatalf("the last message = %+v, %v", details.View.LastMessage, err)
 	}
 

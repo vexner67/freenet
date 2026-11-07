@@ -291,7 +291,7 @@ func TestPrivacyFlow(t *testing.T) {
 	updated, err := s.client.UpdatePrivacy(ann, &userv1.UpdatePrivacyRequest{
 		Privacy: &userv1.PrivacySettings{
 			ShowWorldview: true, WallWrite: userv1.WallWrite_WALL_WRITE_EVERYONE, MessagesWrite: userv1.MessagesWrite_MESSAGES_WRITE_FOLLOWING, ClubsRead: userv1.ClubsRead_CLUBS_READ_FOLLOWING,
-			PageRead: userv1.Audience_AUDIENCE_EVERYONE, InfoRead: userv1.Audience_AUDIENCE_EVERYONE, PhotosRead: userv1.Audience_AUDIENCE_USERS, FriendsRead: userv1.Audience_AUDIENCE_ONLY_ME, OnlineRead: userv1.Audience_AUDIENCE_EVERYONE,
+			PageRead: userv1.Audience_AUDIENCE_EVERYONE, InfoRead: userv1.Audience_AUDIENCE_EVERYONE, FriendsRead: userv1.Audience_AUDIENCE_ONLY_ME, OnlineRead: userv1.Audience_AUDIENCE_EVERYONE,
 			GiftsRead: userv1.Audience_AUDIENCE_ONLY_ME, ListeningRead: userv1.Audience_AUDIENCE_FOLLOWING,
 		},
 	})

@@ -620,6 +620,9 @@ message User {
   // a side without one.
   string backdrop_left = 24;
   string backdrop_right = 25;
+  // A photo behind the whole page, set with Freenet Prime; kept when
+  // Prime ends.
+  string backdrop_cover = 39;
   // "Заполненность страницы" of openvk, in percent, and the parts missing
   // ("interests", "email", "telegram", "status", "city"). The percent
   // counts the rating vouchers gave and may pass 100.
@@ -664,8 +667,8 @@ message InterfaceSettings {
   string avatar_style = 1;
   // "page" (the default) or "feed": where the site opens.
   string main_page = 2;
-  // The links taken out of the left menu: "photos", "messages", "groups",
-  // "feed", "notifications".
+  // The links taken out of the left menu: "messages", "groups", "feed",
+  // "notifications".
   repeated string hidden_menu = 3;
   // "default", "blue", "dark" or "gold" (the theme of Freenet Prime, set
   // with Prime only): the look of the whole site.
@@ -745,10 +748,12 @@ message PrivacySettings {
   ClubsRead clubs_read = 7;
   // Required in UpdatePrivacy, everyone by default: who sees the page
   // ("Кому в интернете видно мою страницу", everyone or users), its
-  // information, its albums and its follows.
+  // information and its follows.
   Audience page_read = 8;
   Audience info_read = 9;
-  Audience photos_read = 10;
+  // Albums are gone from the site.
+  reserved 10;
+  reserved "photos_read";
   Audience friends_read = 11;
   // Required in UpdatePrivacy, everyone by default: who sees when the
   // owner was last online after a long absence ("Кто видит мою
@@ -862,6 +867,8 @@ message PublicProfile {
   // "Фон страницы", as in User; none on a deleted or hidden page.
   string backdrop_left = 24;
   string backdrop_right = 25;
+  // The photo behind the whole page, only while Prime lasts.
+  string backdrop_cover = 34;
   // "Заполненность страницы", in percent; 0 on a deleted or hidden page.
   // Only GetProfile tells it.
   int32 completeness = 26;
@@ -1140,6 +1147,8 @@ enum BackdropSide {
   BACKDROP_SIDE_UNSPECIFIED = 0;
   BACKDROP_SIDE_LEFT = 1;
   BACKDROP_SIDE_RIGHT = 2;
+  // Behind the whole page; only with Prime (FailedPrecondition).
+  BACKDROP_SIDE_COVER = 3;
 }
 
 message SetBackdropRequest {
@@ -1199,8 +1208,9 @@ message GetAccessResponse {
   // Its information: all but the names, the photo, the status and the
   // pronouns.
   bool info = 2;
-  // Its albums.
-  bool photos = 3;
+  // Albums are gone from the site.
+  reserved 3;
+  reserved "photos";
   // Whom the user follows and who follows the user.
   bool friends = 4;
   // The communities the user is in.

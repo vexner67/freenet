@@ -162,8 +162,8 @@ type MessageServiceClient interface {
 	// The creator deletes the chat for everyone in it, with its messages
 	// and their photos; the photo of the chat is the caller's to delete.
 	DeleteChat(ctx context.Context, in *DeleteChatRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// What a message of a dialog may be: text, photos, a shared post or
-	// photo of an album, forwarded messages; the gateway has checked the
+	// What a message of a dialog may be: text, photos, a shared post,
+	// forwarded messages; the gateway has checked the
 	// photos are the sender's and what is shared exists. Who is not in the
 	// chat anymore fails with FailedPrecondition "you are not in this chat".
 	SendChatMessage(ctx context.Context, in *SendChatMessageRequest, opts ...grpc.CallOption) (*SendChatMessageResponse, error)
@@ -731,8 +731,8 @@ type MessageServiceServer interface {
 	// The creator deletes the chat for everyone in it, with its messages
 	// and their photos; the photo of the chat is the caller's to delete.
 	DeleteChat(context.Context, *DeleteChatRequest) (*emptypb.Empty, error)
-	// What a message of a dialog may be: text, photos, a shared post or
-	// photo of an album, forwarded messages; the gateway has checked the
+	// What a message of a dialog may be: text, photos, a shared post,
+	// forwarded messages; the gateway has checked the
 	// photos are the sender's and what is shared exists. Who is not in the
 	// chat anymore fails with FailedPrecondition "you are not in this chat".
 	SendChatMessage(context.Context, *SendChatMessageRequest) (*SendChatMessageResponse, error)

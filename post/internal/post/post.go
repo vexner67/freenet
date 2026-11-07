@@ -29,7 +29,6 @@ var (
 	ErrCannotDelete = errors.New("only the author or the owner of the wall can delete the post")
 	ErrCannotEdit   = errors.New("only the author can edit the post")
 	ErrEditExpired  = errors.New("the post can no longer be edited")
-	ErrRepostPhotos = errors.New("a post sharing a photo has no photos of its own")
 	ErrCannotPin    = errors.New("only the owner of the wall can pin the post")
 	ErrFromOwnWall  = errors.New("a post on your own wall speaks for you")
 	// ErrCannotArchive and ErrCannotCloseComments: the owner of the wall,
@@ -310,9 +309,8 @@ func (p *Post) Stored() Stored {
 
 // Edited returns p saying text with photos instead, edited by requesterID
 // at now. Only the author edits, and for editWindow after posting, as in
-// openvk. A repost keeps the post it shares; a post that shares a photo of
-// an album keeps it and has no photos of its own; a post that asks a poll
-// asks it still.
+// openvk. A repost keeps the post it shares; a post that asks a poll asks
+// it still.
 func (p *Post) Edited(requesterID uuid.UUID, text Text, photos Photos, now time.Time) (*Post, error) {
 	if !p.BelongsTo(requesterID) {
 		return nil, ErrCannotEdit
@@ -330,12 +328,6 @@ func (p *Post) Edited(requesterID uuid.UUID, text Text, photos Photos, now time.
 	switch {
 	case p.content.repostOf != uuid.Nil:
 		content, err = NewRepost(p.content.repostOf, text, photos)
-	case p.content.sharedPhoto != uuid.Nil:
-		// It shares the photo still: the words are what changes.
-		if len(photos) > 0 {
-			return nil, ErrRepostPhotos
-		}
-		content, err = NewPhotoShare(p.content.sharedPhoto, text)
 	case p.content.polled:
 		content = NewPolled(text, photos).WithDocuments(p.content.documents).WithAudios(p.content.audios)
 	default:
@@ -472,14 +464,6 @@ func (p *Post) Notified() uuid.UUID {
 // OnOwnWall tells whether the author wrote on their own wall.
 func (p *Post) OnOwnWall() bool {
 	return p.wallID == p.authorID
-}
-
-// InWallAlbum tells whether the photos of the post go to its author's
-// "Фотографии со стены", as openvk keeps what a person uploads writing on
-// their own wall. The photos of a paid post do not: the album would show
-// them free.
-func (p *Post) InWallAlbum() bool {
-	return p.OnOwnWall() && p.price == 0
 }
 
 func (p *Post) ID() uuid.UUID {

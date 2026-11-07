@@ -337,7 +337,7 @@ func TestChat_ForwardShareAndSearch(t *testing.T) {
 	}
 	chatID := created.GetChat().GetId()
 
-	post, albumPhoto, photo := uuid.New().String(), uuid.New().String(), uuid.New().String()
+	post, photo := uuid.New().String(), uuid.New().String()
 
 	// What bob wrote in another chat, without cat.
 	elsewhere, err := s.client.CreateChat(s.as(t, bob), &messagev1.CreateChatRequest{Title: "Без Кати", MemberIds: []string{ann.String(), uuid.NewString()}})
@@ -368,11 +368,6 @@ func TestChat_ForwardShareAndSearch(t *testing.T) {
 		t.Fatalf("sent = %v", m)
 	}
 
-	shared, err := s.client.SendChatMessage(s.as(t, bob), &messagev1.SendChatMessageRequest{ChatId: chatID, PhotoId: albumPhoto})
-	if err != nil || shared.GetMessage().GetPhotoId() != albumPhoto {
-		t.Fatalf("a photo of an album = %v, %v", shared, err)
-	}
-
 	t.Run("a chat message goes on into a dialog", func(t *testing.T) {
 		on, err := s.client.SendMessage(s.as(t, cat), &messagev1.SendMessageRequest{RecipientId: uuid.NewString(), ForwardIds: []string{m.GetId()}})
 		if err != nil || len(on.GetMessage().GetForwarded()) != 2 || on.GetMessage().GetForwarded()[1].GetDepth() != 1 {
@@ -382,7 +377,7 @@ func TestChat_ForwardShareAndSearch(t *testing.T) {
 
 	t.Run("lists cut what is carried on", func(t *testing.T) {
 		history, err := s.client.ListChatMessages(s.as(t, cat), &messagev1.ListChatMessagesRequest{ChatId: chatID, TextLimit: 10})
-		if err != nil || len(history.GetMessages()) != 3 {
+		if err != nil || len(history.GetMessages()) != 2 {
 			t.Fatalf("ListChatMessages = %v, %v", history, err)
 		}
 		if got := history.GetMessages()[1]; !got.GetTextCut() || got.GetText() != "гляньте" || got.GetForwarded()[0].GetText() != strings.Repeat("я", 10) {
@@ -390,7 +385,7 @@ func TestChat_ForwardShareAndSearch(t *testing.T) {
 		}
 
 		around, err := s.client.ListChatMessages(s.as(t, cat), &messagev1.ListChatMessagesRequest{ChatId: chatID, Around: m.GetId(), Limit: 2})
-		if err != nil || len(around.GetMessages()) != 3 || around.GetMessages()[1].GetId() != m.GetId() || around.GetNextCursor() != "" {
+		if err != nil || len(around.GetMessages()) != 2 || around.GetMessages()[1].GetId() != m.GetId() || around.GetNextCursor() != "" {
 			t.Fatalf("around = %v, %v", around, err)
 		}
 	})
@@ -441,10 +436,6 @@ func TestChat_ForwardShareAndSearch(t *testing.T) {
 			}, codes.InvalidArgument},
 			{"a message of a dialog is carried into a chat", func() error {
 				_, err := s.client.SendChatMessage(s.as(t, ann), &messagev1.SendChatMessageRequest{ChatId: chatID, ForwardIds: []string{dialog.GetMessage().GetId()}})
-				return err
-			}, codes.InvalidArgument},
-			{"a photo of an album with a post", func() error {
-				_, err := s.client.SendChatMessage(s.as(t, ann), &messagev1.SendChatMessageRequest{ChatId: chatID, PhotoId: albumPhoto, PostId: post})
 				return err
 			}, codes.InvalidArgument},
 			{"an empty query", func() error {

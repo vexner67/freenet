@@ -142,6 +142,9 @@ type Media interface {
 	DeleteClubPhotos(ctx context.Context, accessToken, clubID string, keep []string) error
 
 	UploadPhoto(ctx context.Context, accessToken string, image []byte) (string, error)
+	// UploadWidePhoto is UploadPhoto of a photo behind a whole page, kept
+	// larger.
+	UploadWidePhoto(ctx context.Context, accessToken string, image []byte) (string, error)
 	// ClaimPhotos takes the caller's uploads for the one post that is
 	// about to show them, all or none, telling whether it did;
 	// ReleasePhotos gives them back when the post was refused.
@@ -295,51 +298,12 @@ type Topics interface {
 	UnlikeMessage(ctx context.Context, accessToken, id string) (int, error)
 }
 
-// Albums are the photo albums of people and communities; methods that
-// read take an optional access token, with which photos tell whether the
-// viewer uploaded them.
-type Albums interface {
-	Create(ctx context.Context, accessToken string, na model.NewAlbum) (model.Album, error)
-	Get(ctx context.Context, accessToken, id string) (model.Album, error)
-	List(ctx context.Context, accessToken, ownerID, cursor string, limit int) (model.AlbumPage, error)
-	Edit(ctx context.Context, accessToken, id, name, description string) (model.Album, error)
-	Delete(ctx context.Context, accessToken, id string) error
-	AddPhotos(ctx context.Context, accessToken, albumID string, photos []model.NewAlbumPhoto) ([]model.AlbumPhoto, error)
-	// AddAvatarPhoto puts a new photo of a page in its "Фотографии со
-	// страницы": the caller's, or of a club they run (clubID).
-	AddAvatarPhoto(ctx context.Context, accessToken, clubID, photoID string) error
-	Photos(ctx context.Context, accessToken, albumID, cursor string, limit int) (model.AlbumPhotoPage, error)
-	Photo(ctx context.Context, accessToken, id string) (model.AlbumPhoto, model.Album, error)
-	Describe(ctx context.Context, accessToken, id, description string) (model.AlbumPhoto, error)
-	DeletePhoto(ctx context.Context, accessToken, id string) error
-	// SetCover makes a photo of the album show it; MovePhoto puts a photo
-	// in another album of the same owner.
-	SetCover(ctx context.Context, accessToken, albumID, photoID string) error
-	MovePhoto(ctx context.Context, accessToken, photoID, albumID string) error
-	// The heart, the likers and the comments under a photo.
-	LikePhoto(ctx context.Context, accessToken, id string) (int, error)
-	UnlikePhoto(ctx context.Context, accessToken, id string) (int, error)
-	PhotoLikers(ctx context.Context, id, cursor string, limit int) (model.LikerPage, error)
-	CommentPhoto(ctx context.Context, accessToken, id string, c model.NewPhotoComment) (model.PhotoComment, error)
-	DeletePhotoComment(ctx context.Context, accessToken, id string) error
-	PhotoComments(ctx context.Context, accessToken, id, cursor string, limit int) (model.PhotoCommentPage, error)
-	// PhotoComment is a comment under a photo with its whole text.
-	PhotoComment(ctx context.Context, id string) (model.PhotoComment, error)
-	// PhotoCommentsByID are the comments that exist, with the beginnings
-	// of their texts.
-	PhotoCommentsByID(ctx context.Context, ids []string) ([]model.PhotoComment, error)
-	LikePhotoComment(ctx context.Context, accessToken, id string) (int, error)
-	UnlikePhotoComment(ctx context.Context, accessToken, id string) (int, error)
-	PhotoCommentLikers(ctx context.Context, id, cursor string, limit int) (model.LikerPage, error)
-}
-
 // Faves are the lists of the caller alone: what they like ("Закладки" of
 // openvk), newest like first, and what they wrote ("Написанные мной
 // записи"), newest first.
 type Faves interface {
 	Posts(ctx context.Context, accessToken, cursor string, limit int) (model.PostPage, error)
 	Comments(ctx context.Context, accessToken, cursor string, limit int) (model.CommentPage, error)
-	Photos(ctx context.Context, accessToken, cursor string, limit int) (model.FavePhotoPage, error)
 	OwnPosts(ctx context.Context, accessToken, cursor string, limit int) (model.PostPage, error)
 }
 
@@ -442,7 +406,7 @@ type Clubs interface {
 	Describe(ctx context.Context, accessToken, clubID, userID string, change model.SeatChange) error
 	SetAdmin(ctx context.Context, accessToken, clubID, userID string, admin bool) error
 	Transfer(ctx context.Context, accessToken, clubID, userID string) error
-	// Delete deletes the club with its wall, topics and albums: the
+	// Delete deletes the club with its wall and topics: the
 	// owner's call.
 	Delete(ctx context.Context, accessToken, clubID string) error
 	OfUser(ctx context.Context, userID, cursor string, limit int, filter model.ClubFilter) (model.UserClubPage, error)
@@ -564,7 +528,6 @@ type Backends struct {
 	Clubs         Clubs
 	Chats         Chats
 	Topics        Topics
-	Albums        Albums
 	Faves         Faves
 	Gifts         Gifts
 	Stickers      Stickers
@@ -613,7 +576,6 @@ type api struct {
 	chats         Chats
 	clubs         Clubs
 	topics        Topics
-	albums        Albums
 	faves         Faves
 	gifts         Gifts
 	stickers      Stickers
@@ -816,6 +778,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/backdrop", a.deleteClubBackdrop)
 	mux.HandleFunc("PUT /api/v1/me/backdrop/{side}", a.uploadBackdrop)
 	mux.HandleFunc("DELETE /api/v1/me/backdrop", a.deleteBackdrop)
+	mux.HandleFunc("DELETE /api/v1/me/backdrop/cover", a.deleteBackdropCover)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/pin", a.pinClub)
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/pin", a.unpinClub)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/membership", a.joinClub)
@@ -858,34 +821,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/topic-messages/{id}/like", a.likeTopicMessage)
 	mux.HandleFunc("DELETE /api/v1/topic-messages/{id}/like", a.unlikeTopicMessage)
 
-	mux.HandleFunc("GET /api/v1/users/{nickname}/albums", a.listUserAlbums)
-	mux.HandleFunc("GET /api/v1/clubs/{ref}/albums", a.listClubAlbums)
-	mux.HandleFunc("POST /api/v1/me/albums", a.createAlbum)
-	mux.HandleFunc("POST /api/v1/clubs/{ref}/albums", a.createClubAlbum)
-	mux.HandleFunc("GET /api/v1/albums/{id}", a.getAlbum)
-	mux.HandleFunc("PATCH /api/v1/albums/{id}", a.editAlbum)
-	mux.HandleFunc("DELETE /api/v1/albums/{id}", a.deleteAlbum)
-	mux.HandleFunc("PUT /api/v1/albums/{id}/cover", a.setAlbumCover)
-	mux.HandleFunc("GET /api/v1/albums/{id}/photos", a.listAlbumPhotos)
-	mux.HandleFunc("POST /api/v1/albums/{id}/photos", a.addAlbumPhotos)
-	mux.HandleFunc("GET /api/v1/album-photos/{id}", a.getAlbumPhoto)
-	mux.HandleFunc("PATCH /api/v1/album-photos/{id}", a.editAlbumPhoto)
-	mux.HandleFunc("DELETE /api/v1/album-photos/{id}", a.deleteAlbumPhoto)
-	mux.HandleFunc("PUT /api/v1/album-photos/{id}/album", a.moveAlbumPhoto)
-	mux.HandleFunc("PUT /api/v1/album-photos/{id}/like", a.likeAlbumPhoto)
-	mux.HandleFunc("DELETE /api/v1/album-photos/{id}/like", a.unlikeAlbumPhoto)
-	mux.HandleFunc("GET /api/v1/album-photos/{id}/likes", a.listAlbumPhotoLikers)
-	mux.HandleFunc("GET /api/v1/album-photos/{id}/comments", a.listPhotoComments)
-	mux.HandleFunc("POST /api/v1/album-photos/{id}/comments", a.createPhotoComment)
-	mux.HandleFunc("DELETE /api/v1/photo-comments/{id}", a.deletePhotoComment)
-	mux.HandleFunc("GET /api/v1/photo-comments/{id}/text", a.photoCommentText)
-	mux.HandleFunc("PUT /api/v1/photo-comments/{id}/like", a.likePhotoComment)
-	mux.HandleFunc("DELETE /api/v1/photo-comments/{id}/like", a.unlikePhotoComment)
-	mux.HandleFunc("GET /api/v1/photo-comments/{id}/likes", a.listPhotoCommentLikers)
-	mux.HandleFunc("POST /api/v1/album-photos/{id}/reposts", a.shareAlbumPhoto)
 	mux.HandleFunc("GET /api/v1/me/faves/posts", a.listFavePosts)
 	mux.HandleFunc("GET /api/v1/me/faves/comments", a.listFaveComments)
-	mux.HandleFunc("GET /api/v1/me/faves/photos", a.listFavePhotos)
 	mux.HandleFunc("GET /api/v1/me/posts", a.listOwnPosts)
 	mux.HandleFunc("GET /api/v1/gifts", a.giftCatalog)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/gifts", a.listGifts)

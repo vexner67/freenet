@@ -68,33 +68,31 @@ type chatMessageJSON struct {
 	TargetID  uuid.UUID   `json:"target_id"`
 	CreatedAt time.Time   `json:"created_at"`
 	// EditedAt and DeletedAt are zero for never.
-	EditedAt    time.Time       `json:"edited_at"`
-	DeletedAt   time.Time       `json:"deleted_at"`
-	Post        uuid.UUID       `json:"post"`
-	SharedPhoto uuid.UUID       `json:"shared_photo"`
-	Forwarded   []forwardedJSON `json:"forwarded,omitempty"`
-	Sticker     string          `json:"sticker,omitempty"`
-	Documents   []uuid.UUID     `json:"documents,omitempty"`
-	Audios      []uuid.UUID     `json:"audios,omitempty"`
-	ReplyTo     uuid.UUID       `json:"reply_to"`
-	Quote       *quoteJSON      `json:"quote,omitempty"`
-	Reactions   []reactionJSON  `json:"reactions,omitempty"`
+	EditedAt  time.Time       `json:"edited_at"`
+	DeletedAt time.Time       `json:"deleted_at"`
+	Post      uuid.UUID       `json:"post"`
+	Forwarded []forwardedJSON `json:"forwarded,omitempty"`
+	Sticker   string          `json:"sticker,omitempty"`
+	Documents []uuid.UUID     `json:"documents,omitempty"`
+	Audios    []uuid.UUID     `json:"audios,omitempty"`
+	ReplyTo   uuid.UUID       `json:"reply_to"`
+	Quote     *quoteJSON      `json:"quote,omitempty"`
+	Reactions []reactionJSON  `json:"reactions,omitempty"`
 }
 
 // quoteJSON is what an answer shows of the message it answers.
 type quoteJSON struct {
-	ID          uuid.UUID `json:"id"`
-	SenderID    uuid.UUID `json:"sender_id"`
-	Text        string    `json:"text,omitempty"`
-	Photos      int       `json:"photos,omitempty"`
-	Forwarded   int       `json:"forwarded,omitempty"`
-	Documents   int       `json:"documents,omitempty"`
-	Audios      int       `json:"audios,omitempty"`
-	Sticker     string    `json:"sticker,omitempty"`
-	Post        bool      `json:"post,omitempty"`
-	SharedPhoto bool      `json:"shared_photo,omitempty"`
-	Deleted     bool      `json:"deleted,omitempty"`
-	Found       bool      `json:"found,omitempty"`
+	ID        uuid.UUID `json:"id"`
+	SenderID  uuid.UUID `json:"sender_id"`
+	Text      string    `json:"text,omitempty"`
+	Photos    int       `json:"photos,omitempty"`
+	Forwarded int       `json:"forwarded,omitempty"`
+	Documents int       `json:"documents,omitempty"`
+	Audios    int       `json:"audios,omitempty"`
+	Sticker   string    `json:"sticker,omitempty"`
+	Post      bool      `json:"post,omitempty"`
+	Deleted   bool      `json:"deleted,omitempty"`
+	Found     bool      `json:"found,omitempty"`
 }
 
 type reactionJSON struct {
@@ -109,7 +107,7 @@ func toQuoteJSON(q message.Quote, ok bool) *quoteJSON {
 
 	return &quoteJSON{
 		ID: q.ID, SenderID: q.SenderID, Text: q.Text.String(), Photos: q.Photos, Forwarded: q.Forwarded, Documents: q.Documents, Audios: q.Audios,
-		Sticker: q.Sticker.String(), Post: q.Post, SharedPhoto: q.SharedPhoto, Deleted: q.Deleted, Found: q.Found,
+		Sticker: q.Sticker.String(), Post: q.Post, Deleted: q.Deleted, Found: q.Found,
 	}
 }
 
@@ -126,7 +124,7 @@ func (q *quoteJSON) quote() (message.Quote, error) {
 
 	return message.Quote{
 		ID: q.ID, SenderID: q.SenderID, Text: text, Photos: q.Photos, Forwarded: q.Forwarded, Documents: q.Documents, Audios: q.Audios,
-		Sticker: message.Sticker(q.Sticker), Post: q.Post, SharedPhoto: q.SharedPhoto, Deleted: q.Deleted, Found: true,
+		Sticker: message.Sticker(q.Sticker), Post: q.Post, Deleted: q.Deleted, Found: true,
 	}, nil
 }
 
@@ -198,15 +196,14 @@ func toChatMessageJSON(m *message.ChatMessage) *chatMessageJSON {
 		EditedAt:  m.EditedAt(),
 		DeletedAt: m.DeletedAt(),
 
-		Post:        m.Post(),
-		SharedPhoto: m.SharedPhoto(),
-		Forwarded:   toForwardedJSON(m.Forwarded()),
-		Sticker:     m.Sticker().String(),
-		Documents:   m.Documents(),
-		Audios:      m.Audios(),
-		ReplyTo:     m.ReplyTo(),
-		Quote:       toQuoteJSON(m.Quote()),
-		Reactions:   toReactionsJSON(m.Reactions()),
+		Post:      m.Post(),
+		Forwarded: toForwardedJSON(m.Forwarded()),
+		Sticker:   m.Sticker().String(),
+		Documents: m.Documents(),
+		Audios:    m.Audios(),
+		ReplyTo:   m.ReplyTo(),
+		Quote:     toQuoteJSON(m.Quote()),
+		Reactions: toReactionsJSON(m.Reactions()),
 	}
 }
 
@@ -241,7 +238,7 @@ func (m *chatMessageJSON) message() (*message.ChatMessage, error) {
 		return message.RestoreChatMessage(stored), nil
 	}
 
-	content, err := contentOf(m.Text, m.Photos, m.Post, m.SharedPhoto, m.Forwarded, m.Sticker)
+	content, err := contentOf(m.Text, m.Photos, m.Post, m.Forwarded, m.Sticker)
 	if content, err = documented(content, err, m.Documents, m.Audios); err != nil {
 		return nil, errs.Wrap("contentOf", err)
 	}
@@ -301,7 +298,6 @@ type messageJSON struct {
 	Text        string      `json:"text"`
 	Photos      []uuid.UUID `json:"photos,omitempty"`
 	Post        uuid.UUID   `json:"post"`
-	SharedPhoto uuid.UUID   `json:"shared_photo"`
 	CreatedAt   time.Time   `json:"created_at"`
 	// EditedAt is zero for a message never edited.
 	EditedAt  time.Time       `json:"edited_at"`
@@ -323,7 +319,6 @@ type forwardedJSON struct {
 	Text      string      `json:"text"`
 	Photos    []uuid.UUID `json:"photos,omitempty"`
 	Post      uuid.UUID   `json:"post"`
-	Photo     uuid.UUID   `json:"shared_photo"`
 	CreatedAt time.Time   `json:"created_at"`
 	Depth     int         `json:"depth,omitempty"`
 	Sticker   string      `json:"sticker,omitempty"`
@@ -335,7 +330,7 @@ func toForwardedJSON(carried message.Forwards) []forwardedJSON {
 	forwarded := make([]forwardedJSON, len(carried))
 	for i, f := range carried {
 		forwarded[i] = forwardedJSON{
-			SenderID: f.SenderID, Text: f.Text.String(), Photos: f.Photos, Post: f.Post, Photo: f.SharedPhoto, CreatedAt: f.CreatedAt, Depth: f.Depth,
+			SenderID: f.SenderID, Text: f.Text.String(), Photos: f.Photos, Post: f.Post, CreatedAt: f.CreatedAt, Depth: f.Depth,
 			Sticker: f.Sticker.String(), Documents: f.Documents, Audios: f.Audios,
 		}
 	}
@@ -353,7 +348,6 @@ func toMessageJSON(m *message.Message) *messageJSON {
 		Text:        m.Text().String(),
 		Photos:      m.Photos(),
 		Post:        m.Post(),
-		SharedPhoto: m.SharedPhoto(),
 		CreatedAt:   m.CreatedAt(),
 		EditedAt:    m.EditedAt(),
 		Sealed:      m.Sealed().Bytes(),
@@ -383,7 +377,7 @@ func (m *messageJSON) message() (*message.Message, error) {
 		return nil, errs.Wrap("message.NewSealed", err)
 	}
 
-	content, err := sealedContentOf(sealed, m.Photos, m.Post, m.SharedPhoto, m.Forwarded, m.Sticker)
+	content, err := sealedContentOf(sealed, m.Photos, m.Post, m.Forwarded, m.Sticker)
 	if content, err = documented(content, err, m.Documents, m.Audios); err != nil {
 		return nil, errs.Wrap("sealedContentOf", err)
 	}
@@ -400,7 +394,7 @@ func (m *messageJSON) message() (*message.Message, error) {
 
 // sealedContentOf rebuilds what a message of a dialog says and shows,
 // checking it as a new one.
-func sealedContentOf(sealed message.Sealed, photoIDs []uuid.UUID, post, sharedPhoto uuid.UUID, carried []forwardedJSON, sticker string) (message.Content, error) {
+func sealedContentOf(sealed message.Sealed, photoIDs []uuid.UUID, post uuid.UUID, carried []forwardedJSON, sticker string) (message.Content, error) {
 	if sticker != "" {
 		return stickerContentOf(sticker)
 	}
@@ -415,12 +409,6 @@ func sealedContentOf(sealed message.Sealed, photoIDs []uuid.UUID, post, sharedPh
 		return message.Content{}, errs.Wrap("forwardsOf", err)
 	}
 
-	if sharedPhoto != uuid.Nil {
-		content, err := message.NewSealedPhotoShare(sealed, sharedPhoto)
-
-		return content, errs.Wrap("message.NewSealedPhotoShare", err)
-	}
-
 	content, err := message.NewSealedContent(sealed, photos, post, forwarded)
 
 	return content, errs.Wrap("message.NewSealedContent", err)
@@ -428,7 +416,7 @@ func sealedContentOf(sealed message.Sealed, photoIDs []uuid.UUID, post, sharedPh
 
 // contentOf rebuilds what a message of a chat says and shows, checking it
 // as a new one.
-func contentOf(said string, photoIDs []uuid.UUID, post, sharedPhoto uuid.UUID, carried []forwardedJSON, sticker string) (message.Content, error) {
+func contentOf(said string, photoIDs []uuid.UUID, post uuid.UUID, carried []forwardedJSON, sticker string) (message.Content, error) {
 	if sticker != "" {
 		return stickerContentOf(sticker)
 	}
@@ -446,12 +434,6 @@ func contentOf(said string, photoIDs []uuid.UUID, post, sharedPhoto uuid.UUID, c
 	forwarded, err := forwardsOf(carried)
 	if err != nil {
 		return message.Content{}, errs.Wrap("forwardsOf", err)
-	}
-
-	if sharedPhoto != uuid.Nil {
-		content, err := message.NewPhotoShare(text, sharedPhoto)
-
-		return content, errs.Wrap("message.NewPhotoShare", err)
 	}
 
 	content, err := message.NewContent(text, photos, post, forwarded)
@@ -516,7 +498,7 @@ func forwardsOf(raw []forwardedJSON) (message.Forwards, error) {
 		}
 
 		carried[i] = message.Forwarded{
-			SenderID: f.SenderID, Text: text, Photos: photos, Post: f.Post, SharedPhoto: f.Photo, CreatedAt: f.CreatedAt, Depth: f.Depth,
+			SenderID: f.SenderID, Text: text, Photos: photos, Post: f.Post, CreatedAt: f.CreatedAt, Depth: f.Depth,
 		}
 
 		if f.Sticker != "" {

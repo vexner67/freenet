@@ -34,14 +34,13 @@ type Quote struct {
 	SenderID uuid.UUID
 	Text     Text
 	// Photos, Forwarded, Documents and Audios are how many it shows.
-	Photos      int
-	Forwarded   int
-	Documents   int
-	Audios      int
-	Sticker     Sticker
-	Post        bool
-	SharedPhoto bool
-	Deleted     bool
+	Photos    int
+	Forwarded int
+	Documents int
+	Audios    int
+	Sticker   Sticker
+	Post      bool
+	Deleted   bool
 	// Found is false for a message gone for good: only ID is known.
 	Found bool
 }
@@ -49,18 +48,17 @@ type Quote struct {
 // quoteOf is the quote of what senderID wrote as message id.
 func quoteOf(id, senderID uuid.UUID, c Content, deleted bool) Quote {
 	return Quote{
-		ID:          id,
-		SenderID:    senderID,
-		Text:        c.text,
-		Photos:      len(c.photos),
-		Forwarded:   len(c.forwarded),
-		Documents:   len(c.documents),
-		Audios:      len(c.audios),
-		Sticker:     c.sticker,
-		Post:        c.post != uuid.Nil,
-		SharedPhoto: c.sharedPhoto != uuid.Nil,
-		Deleted:     deleted,
-		Found:       true,
+		ID:        id,
+		SenderID:  senderID,
+		Text:      c.text,
+		Photos:    len(c.photos),
+		Forwarded: len(c.forwarded),
+		Documents: len(c.documents),
+		Audios:    len(c.audios),
+		Sticker:   c.sticker,
+		Post:      c.post != uuid.Nil,
+		Deleted:   deleted,
+		Found:     true,
 	}
 }
 

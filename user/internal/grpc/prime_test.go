@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -51,6 +52,16 @@ func TestPrime(t *testing.T) {
 		t.Fatalf("SetPrimeStyle back to the default: %v", err)
 	}
 
+	// A photo behind the whole page as well; taking it away is free.
+	cover := uuid.NewString()
+	coverReq := &userv1.SetBackdropRequest{Side: userv1.BackdropSide_BACKDROP_SIDE_COVER, PhotoId: cover}
+	if _, err := s.client.SetBackdrop(ann, coverReq); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("a cover without Prime: %v", err)
+	}
+	if _, err := s.client.SetBackdrop(ann, &userv1.SetBackdropRequest{Side: userv1.BackdropSide_BACKDROP_SIDE_COVER}); err != nil {
+		t.Fatalf("no cover without Prime: %v", err)
+	}
+
 	voucher, err := s.client.CreateVoucher(admin, &userv1.CreateVoucherRequest{Votes: 300, Usages: 1})
 	if err != nil {
 		t.Fatalf("CreateVoucher: %v", err)
@@ -82,8 +93,12 @@ func TestPrime(t *testing.T) {
 	if me, err = s.client.GetMe(ann, &userv1.GetMeRequest{}); err != nil || me.GetUser().GetPrimeStyle().GetFrame() != "stars" {
 		t.Fatalf("GetMe dressed = %v, %v", me.GetUser(), err)
 	}
+	if set, err := s.client.SetBackdrop(ann, coverReq); err != nil || set.GetUser().GetBackdropCover() != cover {
+		t.Fatalf("a cover with Prime = %v, %v", set, err)
+	}
 	page, err := s.client.GetProfile(context.Background(), &userv1.GetProfileRequest{Nickname: "ann"})
-	if err != nil || page.GetProfile().GetPrimeStyle().GetMood() != "love" || page.GetProfile().GetPrimeStyle().GetName() != "rainbow" {
+	if err != nil || page.GetProfile().GetPrimeStyle().GetMood() != "love" || page.GetProfile().GetPrimeStyle().GetName() != "rainbow" ||
+		page.GetProfile().GetBackdropCover() != cover {
 		t.Fatalf("ann's dressed page = %v, %v", page.GetProfile(), err)
 	}
 

@@ -80,9 +80,6 @@ type postResponse struct {
 	Reposts   int         `json:"reposts"`
 	// Repost is the shared post of a repost, null for other posts.
 	Repost *repostJSON `json:"repost"`
-	// SharedPhoto is a photo of an album the post shares ("Поделиться"
-	// under a photo), null for other posts.
-	SharedPhoto *sharedPhotoJSON `json:"sharedPhoto"`
 	// Poll is the poll the post asks, null for other posts.
 	Poll *pollJSON `json:"poll"`
 	// Documents are the documents of its author it attaches, those that
@@ -132,24 +129,13 @@ type repostRequest struct {
 	// What the caller says about the shared post; may be empty.
 	Text string `json:"text"`
 	// Photos are IDs from POST /api/v1/me/photos added to the words about
-	// a post, at most 10; a shared photo of an album takes none.
+	// a post, at most 10.
 	Photos []string `json:"photos"`
 	// Club is a community to share it in ("в группу"), "" for the caller's
 	// wall; FromClub speaks for it, Signed names the caller under it.
 	Club     string `json:"club"`
 	FromClub bool   `json:"fromClub"`
 	Signed   bool   `json:"signed"`
-}
-
-// sharedPhotoJSON is a photo of an album a post shares; deleted leaves
-// only its ID.
-type sharedPhotoJSON struct {
-	ID      string     `json:"id"`
-	Deleted bool       `json:"deleted"`
-	Photo   *photoJSON `json:"photo"`
-	AlbumID string     `json:"albumId"`
-	// NSFW: the photo came from a post marked as adult.
-	NSFW bool `json:"nsfw"`
 }
 
 // repostJSON is the post a repost shares, shown inside it as openvk does:
@@ -473,7 +459,6 @@ func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, e
 		}
 
 		resp := toPostResponse(p)
-		resp.SharedPhoto = a.sharedPhoto(r, p.SharedPhotoID)
 		resp.Poll = polls[p.ID]
 		resp.Documents = documentsJSON(p.DocumentIDs, docs)
 		resp.Audios = audiosJSON(p.AudioIDs, songs)
@@ -615,23 +600,6 @@ func (a *api) withLastComments(r *http.Request, shown []postResponse, posts []mo
 	}
 
 	return nil
-}
-
-// sharedPhoto is the photo of an album a post shares, nil for none; one
-// gone, or failing to be read, is deleted.
-func (a *api) sharedPhoto(r *http.Request, id string) *sharedPhotoJSON {
-	if id == "" {
-		return nil
-	}
-
-	photo, _, err := a.albums.Photo(r.Context(), "", id)
-	if err != nil {
-		return &sharedPhotoJSON{ID: id, Deleted: true}
-	}
-
-	shown := toPhotoJSON(photo.AuthorID, photo.ID)
-
-	return &sharedPhotoJSON{ID: id, Photo: &shown, AlbumID: photo.AlbumID, NSFW: photo.NSFW}
 }
 
 // sharedPosts are the posts that reposts among posts share, by ID; those
@@ -928,13 +896,12 @@ func (a *api) wallFor(r *http.Request, token, myID, nickname string) (model.Auth
 // repostPost shares a post on the caller's wall, as openvk's "Поделиться",
 // and returns the repost with the shared post inside.
 func (a *api) repostPost(w http.ResponseWriter, r *http.Request) {
-	a.share(w, r, func(string) (string, string, error) { return r.PathValue("id"), "", nil })
+	a.share(w, r, r.PathValue("id"))
 }
 
-// share writes the repost of a post or a photo, which what tells (a
-// post's ID, or a photo's), as openvk's "Поделиться": on the caller's
-// wall or a community's.
-func (a *api) share(w http.ResponseWriter, r *http.Request, what func(token string) (postID, photoID string, err error)) {
+// share writes the repost of the post postID, as openvk's "Поделиться":
+// on the caller's wall or a community's.
+func (a *api) share(w http.ResponseWriter, r *http.Request, postID string) {
 	token, err := bearerToken(r)
 	if err != nil {
 		a.writeError(w, r, err)
@@ -958,18 +925,12 @@ func (a *api) share(w http.ResponseWriter, r *http.Request, what func(token stri
 		return
 	}
 
-	postID, photoID, err := what(token)
-	if err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
 	nr, err := a.repostTarget(r, token, req)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
-	nr.PhotoID, nr.PhotoIDs = photoID, req.Photos
+	nr.PhotoIDs = req.Photos
 
 	if nr.Mentions, err = a.mentioned(r, token, req.Text); err != nil {
 		a.writeError(w, r, err)

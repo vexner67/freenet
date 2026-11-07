@@ -190,8 +190,6 @@ type PostService struct {
 	photos      PhotoKeeper
 	moderators  WallModerators
 	now         func() time.Time
-	albumPhotos AlbumPhotoGetter
-	wallPhotos  WallPhotoKeeper
 	switches    PostSwitchRepository
 	polls       PollSaver
 	walls       Walls
@@ -249,11 +247,6 @@ type PostDeps struct {
 	Notifier   Notifier
 	Photos     PhotoKeeper
 	Moderators WallModerators
-	// AlbumPhotos are the photos of albums a post may share; nil: none.
-	AlbumPhotos AlbumPhotoGetter
-	// WallPhotos keeps the photos of posts in "Фотографии со стены"; nil:
-	// nowhere.
-	WallPhotos WallPhotoKeeper
 	// Switches archive posts and close their comments.
 	Switches PostSwitchRepository
 	// Polls keeps the polls posts ask.
@@ -263,19 +256,6 @@ type PostDeps struct {
 	// Federator hears of the posts on their authors' own walls; nil:
 	// nobody does.
 	Federator Federator
-}
-
-// WallPhotoKeeper keeps the photos people post on their own walls in
-// their "Фотографии со стены" (AlbumService): WallAlbum outside the
-// transaction, KeepWallPhotos inside it.
-type WallPhotoKeeper interface {
-	WallAlbum(ctx context.Context, ownerID uuid.UUID) (*post.Album, error)
-	KeepWallPhotos(ctx context.Context, a *post.Album, photoIDs []uuid.UUID, nsfw bool) error
-}
-
-// AlbumPhotoGetter finds a photo of an album: post.ErrAlbumPhotoNotFound.
-type AlbumPhotoGetter interface {
-	Get(ctx context.Context, id uuid.UUID) (*post.AlbumPhoto, error)
 }
 
 func NewPostService(d PostDeps) *PostService {
@@ -295,8 +275,6 @@ func NewPostService(d PostDeps) *PostService {
 		notifier:    d.Notifier,
 		photos:      d.Photos,
 		moderators:  d.Moderators,
-		albumPhotos: d.AlbumPhotos,
-		wallPhotos:  d.WallPhotos,
 		switches:    d.Switches,
 		polls:       d.Polls,
 		walls:       d.Walls,
@@ -361,11 +339,6 @@ func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, e
 		return nil, errs.Wrap("newPoll", err)
 	}
 
-	album, err := s.wallAlbum(ctx, p, content.Photos())
-	if err != nil {
-		return nil, errs.Wrap("s.wallAlbum", err)
-	}
-
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.postRepo.Save(ctx, p); err != nil {
 			return errs.Wrap("s.postRepo.Save", err)
@@ -377,7 +350,7 @@ func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, e
 			}
 		}
 
-		if err := s.publishPhotos(ctx, p, album, content.Photos()); err != nil {
+		if err := s.publishPhotos(ctx, p, content.Photos()); err != nil {
 			return errs.Wrap("s.publishPhotos", err)
 		}
 
@@ -436,29 +409,17 @@ func postEvents(p *post.Post, clubWall bool, mentions post.Mentions) []Event {
 
 // Posted writes p, a postponed post that comes out, as Create writes a
 // new one: claim runs first in the transaction and takes the postponed
-// post, so that it comes out once. Media keeps its photos already; they
-// only go to "Фотографии со стены". A postponed post is on its author's
+// post, so that it comes out once. Media keeps its photos already. A postponed post is on its author's
 // own wall or speaks for a community, so nobody owns the wall to hear of
 // it, and the people it names do.
 func (s *PostService) Posted(ctx context.Context, p *post.Post, mentions post.Mentions, claim func(context.Context) error) error {
-	photos := p.Content().Photos()
-
-	album, err := s.wallAlbum(ctx, p, photos)
-	if err != nil {
-		return errs.Wrap("s.wallAlbum", err)
-	}
-
-	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := claim(ctx); err != nil {
 			return errs.Wrap("claim", err)
 		}
 
 		if err := s.postRepo.Save(ctx, p); err != nil {
 			return errs.Wrap("s.postRepo.Save", err)
-		}
-
-		if err := s.keepWallPhotos(ctx, p, album, photos); err != nil {
-			return errs.Wrap("s.keepWallPhotos", err)
 		}
 
 		if err := federate(ctx, p, s.federator.Published); err != nil {
@@ -483,10 +444,7 @@ func (s *PostService) Posted(ctx context.Context, p *post.Post, mentions post.Me
 type RepostInput struct {
 	AuthorID uuid.UUID
 	PostID   uuid.UUID
-	// PhotoID shares a photo of an album instead of a post ("Поделиться"
-	// under a photo).
-	PhotoID uuid.UUID
-	Text    post.Text
+	Text     post.Text
 	// Photos are added to what the author says of a shared post; the
 	// caller has checked they are the author's.
 	Photos   post.Photos
@@ -526,13 +484,6 @@ func (s *PostService) Repost(ctx context.Context, in RepostInput) (*post.Post, e
 		return nil, errs.Wrap("post.New", err)
 	}
 
-	photos := content.Photos()
-
-	album, err := s.wallAlbum(ctx, repost, photos)
-	if err != nil {
-		return nil, errs.Wrap("s.wallAlbum", err)
-	}
-
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if remote {
 			if err := s.postRepo.SaveRemoteRepost(ctx, repost); err != nil {
@@ -542,7 +493,7 @@ func (s *PostService) Repost(ctx context.Context, in RepostInput) (*post.Post, e
 			return errs.Wrap("s.postRepo.Save", err)
 		}
 
-		if err := s.publishPhotos(ctx, repost, album, photos); err != nil {
+		if err := s.publishPhotos(ctx, repost, content.Photos()); err != nil {
 			return errs.Wrap("s.publishPhotos", err)
 		}
 
@@ -590,26 +541,8 @@ func speaker(p *post.Post) uuid.UUID {
 }
 
 // repostContent is what a repost shows and whom to notify: the shared
-// post, or its original when it passes it on, and that post's author; or
-// a shared photo of an album, of which nobody hears.
+// post, or its original when it passes it on, and that post's author.
 func (s *PostService) repostContent(ctx context.Context, in RepostInput) (post.Content, uuid.UUID, bool, error) {
-	if in.PhotoID != uuid.Nil {
-		if s.albumPhotos == nil {
-			return post.Content{}, uuid.Nil, false, post.ErrAlbumPhotoNotFound
-		}
-
-		if _, err := s.albumPhotos.Get(ctx, in.PhotoID); err != nil {
-			return post.Content{}, uuid.Nil, false, errs.Wrap("s.albumPhotos.Get", err)
-		}
-
-		if len(in.Photos) > 0 {
-			return post.Content{}, uuid.Nil, false, post.ErrRepostPhotos
-		}
-
-		content, err := post.NewPhotoShare(in.PhotoID, in.Text)
-		return content, uuid.Nil, false, errs.Wrap("post.NewPhotoShare", err)
-	}
-
 	shared, err := s.seen(ctx, in.AuthorID, in.PostID)
 	if err != nil {
 		return s.remoteRepost(ctx, in, in.PostID, err)
@@ -888,11 +821,6 @@ func (s *PostService) Edit(ctx context.Context, requesterID, postID uuid.UUID, e
 
 	added, removed := diffPhotos(p.Content().Photos(), photos)
 
-	album, err := s.wallAlbum(ctx, p, added)
-	if err != nil {
-		return nil, false, errs.Wrap("s.wallAlbum", err)
-	}
-
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.postRepo.Update(ctx, edited); err != nil {
 			return errs.Wrap("s.postRepo.Update", err)
@@ -902,7 +830,7 @@ func (s *PostService) Edit(ctx context.Context, requesterID, postID uuid.UUID, e
 			return errs.Wrap("federate", err)
 		}
 
-		if err := s.publishPhotos(ctx, p, album, added); err != nil {
+		if err := s.publishPhotos(ctx, p, added); err != nil {
 			return errs.Wrap("s.publishPhotos", err)
 		}
 
@@ -934,45 +862,14 @@ func (s *PostService) Edit(ctx context.Context, requesterID, postID uuid.UUID, e
 	return edited, liked[edited.ID()], nil
 }
 
-// wallAlbum is the "Фотографии со стены" that keeps the new photos of p,
-// nil when none does (see post.InWallAlbum). It is found, or made, before
-// the transaction that saves the post.
-func (s *PostService) wallAlbum(ctx context.Context, p *post.Post, photos []uuid.UUID) (*post.Album, error) {
-	if s.wallPhotos == nil || len(photos) == 0 || !p.InWallAlbum() {
-		return nil, nil
-	}
-
-	a, err := s.wallPhotos.WallAlbum(ctx, p.AuthorID())
-	if err != nil {
-		return nil, errs.Wrap("s.wallPhotos.WallAlbum", err)
-	}
-
-	return a, nil
-}
-
-// publishPhotos tells media to keep the new photos of p for good and,
-// with an album, puts copies of them there; in the transaction of ctx.
-// Media publishes before it copies: the outbox keeps the order.
-func (s *PostService) publishPhotos(ctx context.Context, p *post.Post, album *post.Album, photos []uuid.UUID) error {
+// publishPhotos tells media to keep the new photos of p for good, in the
+// transaction of ctx.
+func (s *PostService) publishPhotos(ctx context.Context, p *post.Post, photos []uuid.UUID) error {
 	if len(photos) == 0 {
 		return nil
 	}
 
-	if err := s.photos.Publish(ctx, p.AuthorID(), photos); err != nil {
-		return errs.Wrap("s.photos.Publish", err)
-	}
-
-	return errs.Wrap("s.keepWallPhotos", s.keepWallPhotos(ctx, p, album, photos))
-}
-
-// keepWallPhotos puts copies of the photos of p in album, if any; media
-// must keep them already.
-func (s *PostService) keepWallPhotos(ctx context.Context, p *post.Post, album *post.Album, photos []uuid.UUID) error {
-	if album == nil || len(photos) == 0 {
-		return nil
-	}
-
-	return errs.Wrap("s.wallPhotos.KeepWallPhotos", s.wallPhotos.KeepWallPhotos(ctx, album, photos, p.NSFW()))
+	return errs.Wrap("s.photos.Publish", s.photos.Publish(ctx, p.AuthorID(), photos))
 }
 
 // diffPhotos tells which photos an edit adds and which it takes away.

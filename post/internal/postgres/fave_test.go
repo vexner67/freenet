@@ -31,7 +31,6 @@ func TestFaves(t *testing.T) {
 	likes := postgres.NewLikeRepository(pool)
 	comments := postgres.NewCommentRepository(pool)
 	commentLikes := postgres.NewCommentLikeRepository(pool)
-	albums := postgres.NewAlbumRepository(pool)
 
 	ann, bob := uuid.New(), uuid.New()
 
@@ -179,51 +178,6 @@ func TestFaves(t *testing.T) {
 		// With the one under the archived post.
 		if n, err := commentLikes.CountLikedBy(ctx, bob); err != nil || n != 3 {
 			t.Fatalf("CountLikedBy = %d, %v", n, err)
-		}
-	})
-
-	t.Run("photos", func(t *testing.T) {
-		a, err := post.NewAlbum(ann, "Лето", "", time.Now())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err = albums.Save(ctx, a); err != nil {
-			t.Fatal(err)
-		}
-
-		photos := newAlbumPhotos(t, a, ann, 3, time.Now())
-		if err = albums.Photos().Add(ctx, a.ID(), photos, time.Now()); err != nil {
-			t.Fatalf("Add: %v", err)
-		}
-
-		for _, p := range []*post.AlbumPhoto{photos[1], photos[0]} {
-			if _, err = albums.PhotoLikes().Like(ctx, p.ID(), bob); err != nil {
-				t.Fatalf("Like: %v", err)
-			}
-		}
-
-		page, err := albums.PhotoLikes().LikedBy(ctx, bob, nil, 1)
-		if err != nil || !slices.Equal(faveIDs(page), []uuid.UUID{photos[0].ID()}) {
-			t.Fatalf("LikedBy = %v, %v", page, err)
-		}
-
-		rest, err := albums.PhotoLikes().LikedBy(ctx, bob, &service.FaveCursor{LikedAt: page[0].LikedAt, ID: page[0].ID}, 5)
-		if err != nil || !slices.Equal(faveIDs(rest), []uuid.UUID{photos[1].ID()}) {
-			t.Fatalf("the next page = %v, %v", rest, err)
-		}
-
-		if n, err := albums.PhotoLikes().CountLikedBy(ctx, bob); err != nil || n != 2 {
-			t.Fatalf("CountLikedBy = %d, %v", n, err)
-		}
-
-		many, err := albums.Photos().GetMany(ctx, []uuid.UUID{photos[2].ID(), uuid.New(), photos[0].ID()})
-		if err != nil || len(many) != 2 {
-			t.Fatalf("GetMany = %v, %v", many, err)
-		}
-		for _, p := range many {
-			if p.AlbumID() != a.ID() || p.AuthorID() != ann {
-				t.Fatalf("a photo read back = %+v", p)
-			}
 		}
 	})
 }

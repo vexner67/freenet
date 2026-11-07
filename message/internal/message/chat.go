@@ -378,7 +378,7 @@ const (
 )
 
 // ChatMessage is a message of a chat: what a member wrote there — text,
-// photos, a shared post or photo of an album, messages carried on, as a
+// photos, a shared post, messages carried on, as a
 // message of a dialog (Content) — or what happened there (Action). As
 // Message, it does not change once made.
 type ChatMessage struct {
@@ -479,12 +479,6 @@ func (m *ChatMessage) Photos() Photos {
 // Post is the post shared in the message, uuid.Nil for none.
 func (m *ChatMessage) Post() uuid.UUID {
 	return m.content.post
-}
-
-// SharedPhoto is the photo of an album shared in the message, uuid.Nil
-// for none.
-func (m *ChatMessage) SharedPhoto() uuid.UUID {
-	return m.content.sharedPhoto
 }
 
 // Sticker is the sticker m is, "" for none.

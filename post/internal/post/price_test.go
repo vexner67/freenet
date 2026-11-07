@@ -41,9 +41,6 @@ func TestPost_Priced(t *testing.T) {
 	if priced.Price() != 50 || own.Price() != 0 {
 		t.Errorf("price = %d, original %d", priced.Price(), own.Price())
 	}
-	if priced.InWallAlbum() {
-		t.Error("a paid post must not put its photos in the album")
-	}
 
 	if free, err := own.Priced(0); err != nil || free.Price() != 0 {
 		t.Errorf("Priced(0) = %v, %v", free, err)

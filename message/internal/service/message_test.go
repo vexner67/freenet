@@ -1021,18 +1021,6 @@ func TestMessageService_EditPhotos(t *testing.T) {
 	if photos.outsideTx != 0 {
 		t.Fatalf("%d photo calls outside the transaction", photos.outsideTx)
 	}
-
-	// A message that shares a photo of an album takes none of its own.
-	shared, err := svc.Send(ctx, ann, bob, service.Draft{Sealed: seal("фото"), SharedPhoto: uuid.New()})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = svc.Edit(ctx, ann, shared.ID(), message.Revision{Sealed: seal("фото"), Added: message.Photos{added}}); !errors.Is(err, message.ErrSharedPhotoAlone) {
-		t.Fatalf("photos for a shared photo: %v", err)
-	}
-	if _, err = svc.Edit(ctx, ann, shared.ID(), message.Revision{Sealed: seal("фото!")}); err != nil {
-		t.Fatalf("an edit of its words: %v", err)
-	}
 }
 
 func TestMessageService_DeleteMany(t *testing.T) {

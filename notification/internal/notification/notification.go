@@ -52,19 +52,9 @@ const (
 	// KindTopicMention: the actor named the recipient in the message
 	// CommentID of the topic PostID.
 	KindTopicMention Kind = "topic_mention"
-	// KindPhotoLike: the actor liked the photo PostID the recipient put
-	// into an album.
-	KindPhotoLike Kind = "photo_like"
-	// KindPhotoComment: the actor wrote the comment CommentID under the
-	// recipient's photo PostID ("оставил комментарий под вашей
-	// фотографией" of openvk).
-	KindPhotoComment Kind = "photo_comment"
 	// KindTopicMessageLike: the actor liked the recipient's message
 	// CommentID of the topic PostID.
 	KindTopicMessageLike Kind = "topic_message_like"
-	// KindPhotoMention: the actor named the recipient in the comment
-	// CommentID under the photo PostID.
-	KindPhotoMention Kind = "photo_mention"
 	// KindGift: the actor sent the recipient the gift PostID.
 	KindGift Kind = "gift"
 	// KindVotes: the actor transferred votes to the recipient; PostID
@@ -115,10 +105,10 @@ var (
 )
 
 // Event is what happened, to whom and by whom. PostID is set for all but
-// follows, invitations, appointments and checkmarks (it is the photo or
-// the topic for theirs),
+// follows, invitations, appointments and checkmarks (it is the topic for
+// theirs),
 // CommentID for comments, replies, comment likes, messages of topics and
-// their likes, comments of photos and mentions in comments and topics;
+// their likes and mentions in comments and topics;
 // unused IDs are uuid.Nil. Seconds is how long a call lasted, for
 // KindCall only.
 type Event struct {
@@ -153,12 +143,11 @@ func (e Event) Validate() error {
 	var ok bool
 
 	switch e.Kind {
-	case KindLike, KindWallPost, KindRepost, KindPostAccepted, KindSuggestedPost, KindPostMention, KindPhotoLike, KindGift,
+	case KindLike, KindWallPost, KindRepost, KindPostAccepted, KindSuggestedPost, KindPostMention, KindGift,
 		KindVotes, KindStoryLike, KindPrime:
 		ok = hasPost && !hasComment
 	case KindComment, KindCommentReply, KindCommentLike, KindTopicMessage, KindCommentMention, KindTopicMention,
-		KindPhotoComment, KindTopicMessageLike, KindPhotoMention,
-		KindStoryComment:
+		KindTopicMessageLike, KindStoryComment:
 		ok = hasPost && hasComment
 	case KindFollow, KindFriend, KindClubAdmin, KindInvite, KindVerified, KindClubVerified, KindMatch, KindCall, KindMissedCall:
 		ok = !hasPost && !hasComment

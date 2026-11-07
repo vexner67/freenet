@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
 )
 
@@ -129,67 +128,6 @@ func (a *api) listFaveComments(w http.ResponseWriter, r *http.Request) {
 		}
 
 		resp.Comments = append(resp.Comments, toCommentResponse(c, shown))
-	}
-
-	writeJSON(w, http.StatusOK, resp)
-}
-
-// listFavePhotos are the photos of albums the caller likes. A photo is
-// left out, but counted, when its uploader deleted the page or the owner
-// of its album no longer shows the caller their photos.
-func (a *api) listFavePhotos(w http.ResponseWriter, r *http.Request) {
-	token, limit, err := ownList(r)
-	if err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	page, err := a.faves.Photos(r.Context(), token, r.URL.Query().Get("cursor"), limit)
-	if err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	uploaders := make([]string, 0, len(page.Photos))
-	for _, p := range page.Photos {
-		uploaders = append(uploaders, p.AuthorID)
-	}
-
-	people, err := a.people(r, uploaders)
-	if err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	resp := albumPhotoPageResponse{
-		Photos:     make([]albumPhotoJSON, 0, len(page.Photos)),
-		NextCursor: page.NextCursor,
-		Total:      page.Total,
-	}
-
-	// Each owner is asked once.
-	visible := make(map[string]bool)
-
-	for _, p := range page.Photos {
-		if uploader, ok := people[p.AuthorID]; !ok || uploader.Deactivated {
-			continue
-		}
-
-		shown, asked := visible[p.OwnerID]
-		if !asked {
-			_, err = a.albumOwner(r, token, p.OwnerID)
-			if err != nil && failure.From(err).Kind != failure.NotFound {
-				a.writeError(w, r, err)
-				return
-			}
-
-			shown = err == nil
-			visible[p.OwnerID] = shown
-		}
-
-		if shown {
-			resp.Photos = append(resp.Photos, toAlbumPhotoJSON(p.AlbumPhoto))
-		}
 	}
 
 	writeJSON(w, http.StatusOK, resp)

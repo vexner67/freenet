@@ -98,7 +98,7 @@ func TestUser_PublicProfile_Privacy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = u.UpdatePrivacy(user.Privacy{ShowWorldview: true, ShowBirthday: true, WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone, PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone}); err != nil {
+	if err = u.UpdatePrivacy(user.Privacy{ShowWorldview: true, ShowBirthday: true, WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone, PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone}); err != nil {
 		t.Fatal(err)
 	}
 	got := u.PublicProfile()
@@ -128,7 +128,7 @@ func TestUser_Partner(t *testing.T) {
 	if p := u.PublicProfile(); p.Partner != uuid.Nil {
 		t.Fatalf("hidden partner shown: %v", p.Partner)
 	}
-	_ = u.UpdatePrivacy(user.Privacy{ShowRelationship: true, WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone, PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone})
+	_ = u.UpdatePrivacy(user.Privacy{ShowRelationship: true, WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone, PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone})
 	if p := u.PublicProfile(); p.Partner != bob || p.Relationship != user.RelationshipMarried {
 		t.Fatalf("partner = %v, relationship %q", p.Partner, p.Relationship)
 	}
@@ -152,7 +152,7 @@ func TestUser_BirthYearHidden(t *testing.T) {
 	birthday, _ := user.NewBirthday(time.Date(1992, 2, 29, 0, 0, 0, 0, time.UTC))
 	u, _ := user.New("ann@example.com")
 	_ = u.UpdateProfile(user.Profile{Name: "Ann", Nickname: "ann", Birthday: birthday, HideBirthYear: true})
-	_ = u.UpdatePrivacy(user.Privacy{ShowBirthday: true, WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone, PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone})
+	_ = u.UpdatePrivacy(user.Privacy{ShowBirthday: true, WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone, PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone})
 
 	p := u.PublicProfile()
 	if b := p.Birthday.Time(); !p.BirthYearHidden || b.Year() == 1992 || b.Month() != time.February || b.Day() != 29 {
@@ -291,23 +291,23 @@ func TestUser_AccessFor(t *testing.T) {
 	bob := uuid.New()
 	friend := user.Ties{Followed: true}
 
-	set := func(page, info, photos, friends user.Audience, clubs user.ClubsRead) {
+	set := func(page, info, friends user.Audience, clubs user.ClubsRead) {
 		t.Helper()
 		if err := ann.UpdatePrivacy(user.Privacy{
 			WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: clubs,
-			PageRead: page, InfoRead: info, PhotosRead: photos, FriendsRead: friends, OnlineRead: user.AudienceEveryone,
+			PageRead: page, InfoRead: info, FriendsRead: friends, OnlineRead: user.AudienceEveryone,
 		}); err != nil {
 			t.Fatal(err)
 		}
 	}
 
 	// By default everything is open, as on openvk.
-	everything := user.Access{Page: true, Info: true, Photos: true, Friends: true, Clubs: true, Gifts: true, Audios: true, Listening: true}
+	everything := user.Access{Page: true, Info: true, Friends: true, Clubs: true, Gifts: true, Audios: true, Listening: true}
 	if got := ann.AccessFor(uuid.Nil, user.Ties{}, time.Now()); got != everything {
 		t.Fatalf("default = %+v", got)
 	}
 
-	set(user.AudienceUsers, user.AudienceUsers, user.AudienceFollowing, user.AudienceOnlyMe, user.ClubsReadUsers)
+	set(user.AudienceUsers, user.AudienceUsers, user.AudienceOnlyMe, user.ClubsReadUsers)
 	for _, tt := range []struct {
 		name   string
 		viewer uuid.UUID
@@ -316,7 +316,7 @@ func TestUser_AccessFor(t *testing.T) {
 	}{
 		{"anonymous", uuid.Nil, user.Ties{}, user.Access{}},
 		{"a user", bob, user.Ties{}, user.Access{Page: true, Info: true, Clubs: true, Gifts: true, Audios: true, Listening: true}},
-		{"whom ann follows", bob, friend, user.Access{Page: true, Info: true, Photos: true, Clubs: true, Gifts: true, Audios: true, Listening: true}},
+		{"whom ann follows", bob, friend, user.Access{Page: true, Info: true, Clubs: true, Gifts: true, Audios: true, Listening: true}},
 		{"ann", ann.ID(), user.Ties{}, everything},
 	} {
 		if got := ann.AccessFor(tt.viewer, tt.ties, time.Now()); got != tt.want {
@@ -334,7 +334,7 @@ func TestUser_AccessFor(t *testing.T) {
 		t.Fatalf("list profile = %+v", p)
 	}
 
-	set(user.AudienceEveryone, user.AudienceOnlyMe, user.AudienceEveryone, user.AudienceEveryone, user.ClubsReadEveryone)
+	set(user.AudienceEveryone, user.AudienceOnlyMe, user.AudienceEveryone, user.ClubsReadEveryone)
 	if p := ann.PublicProfileFor(bob, friend, time.Now()); p.PageHidden || !p.InfoHidden || p.Hometown != "" {
 		t.Fatalf("info for ann only = %+v", p)
 	}
@@ -344,29 +344,29 @@ func TestUser_AccessFor(t *testing.T) {
 
 	if err := ann.UpdatePrivacy(user.Privacy{
 		WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone,
-		PageRead: user.AudienceFollowing, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone,
+		PageRead: user.AudienceFollowing, InfoRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone,
 	}); !errors.Is(err, user.ErrInvalidPageRead) {
 		t.Fatalf("a page for whom ann follows: %v", err)
 	}
 	if err := ann.UpdatePrivacy(user.Privacy{
 		WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone,
-		PageRead: user.AudienceEveryone, InfoRead: "friends", PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone,
+		PageRead: user.AudienceEveryone, InfoRead: "friends", FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone,
 	}); !errors.Is(err, user.ErrInvalidAudience) {
 		t.Fatalf("an unknown audience: %v", err)
 	}
 	if err := ann.UpdatePrivacy(user.Privacy{
 		WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone,
-		PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone,
+		PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone,
 		GiftsRead: "friends",
 	}); !errors.Is(err, user.ErrInvalidAudience) {
 		t.Fatalf("an unknown audience of the gifts: %v", err)
 	}
 
 	// A client that does not know the gifts leaves them to everyone.
-	set(user.AudienceEveryone, user.AudienceEveryone, user.AudienceEveryone, user.AudienceEveryone, user.ClubsReadEveryone)
+	set(user.AudienceEveryone, user.AudienceEveryone, user.AudienceEveryone, user.ClubsReadEveryone)
 	if err := ann.UpdatePrivacy(user.Privacy{
 		WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone,
-		PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone,
+		PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone,
 	}); err != nil || ann.Privacy().GiftsRead != user.AudienceEveryone {
 		t.Fatalf("gifts left out: %v, %q", err, ann.Privacy().GiftsRead)
 	}

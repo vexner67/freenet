@@ -96,7 +96,7 @@ func TestLikedPosts(t *testing.T) {
 	}
 }
 
-func TestLikedCommentsAndPhotos(t *testing.T) {
+func TestLikedComments(t *testing.T) {
 	t.Parallel()
 
 	s := newServer(t)
@@ -147,44 +147,6 @@ func TestLikedCommentsAndPhotos(t *testing.T) {
 		t.Fatalf("after the archive = %v, %v", comments, err)
 	}
 	if _, err = s.client.ListLikedComments(context.Background(), &postv1.ListLikedCommentsRequest{}); status.Code(err) != codes.Unauthenticated {
-		t.Fatalf("anonymous: %v", err)
-	}
-
-	album, err := s.client.CreateAlbum(s.as(t, ann), &postv1.CreateAlbumRequest{Name: "Лето"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	sea, hills := uuid.Must(uuid.NewV7()).String(), uuid.Must(uuid.NewV7()).String()
-	if _, err = s.client.AddAlbumPhotos(s.as(t, ann), &postv1.AddAlbumPhotosRequest{
-		AlbumId: album.GetAlbum().GetId(), Photos: []*postv1.NewAlbumPhoto{{PhotoId: sea, Description: "Море"}, {PhotoId: hills}},
-	}); err != nil {
-		t.Fatal(err)
-	}
-	for _, id := range []string{sea, hills} {
-		if _, err = s.client.LikeAlbumPhoto(s.as(t, bob), &postv1.LikeAlbumPhotoRequest{PhotoId: id}); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	photos, err := s.client.ListLikedAlbumPhotos(s.as(t, bob), &postv1.ListLikedAlbumPhotosRequest{})
-	if err != nil || photos.GetTotal() != 2 || len(photos.GetPhotos()) != 2 {
-		t.Fatalf("ListLikedAlbumPhotos = %v, %v", photos, err)
-	}
-	if p := photos.GetPhotos()[0]; p.GetId() != hills || !p.GetLiked() || p.GetMine() {
-		t.Fatalf("the newest liked photo = %v", p)
-	}
-	if !slices.Equal(photos.GetOwnerIds(), []string{ann.String(), ann.String()}) {
-		t.Fatalf("the owners = %v", photos.GetOwnerIds())
-	}
-
-	if _, err = s.client.DeleteAlbumPhoto(s.as(t, ann), &postv1.DeleteAlbumPhotoRequest{Id: hills}); err != nil {
-		t.Fatal(err)
-	}
-	photos, err = s.client.ListLikedAlbumPhotos(s.as(t, bob), &postv1.ListLikedAlbumPhotosRequest{})
-	if err != nil || photos.GetTotal() != 1 || photos.GetPhotos()[0].GetDescription() != "Море" {
-		t.Fatalf("after the delete = %v, %v", photos, err)
-	}
-	if _, err = s.client.ListLikedAlbumPhotos(context.Background(), &postv1.ListLikedAlbumPhotosRequest{}); status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("anonymous: %v", err)
 	}
 }
