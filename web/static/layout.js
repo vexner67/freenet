@@ -602,81 +602,6 @@ export function isPhone() {
 // (gateway, pages.go): "full" for the pages of a computer on a phone.
 const fullSite = /(?:^|; )site=full(?:;|$)/;
 
-// The way back through the site: the pages of Freenet visited in this
-// tab, one a section (an address without its query), so "назад" leads to
-// the page before and not to the step before on the same page — the game
-// of the casino, the enterprise of the business. A page added to the home
-// screen of a phone has no back button of its own.
-const trailKey = 'freenet.trail';
-const trailLength = 30;
-
-function readTrail() {
-  try {
-    const trail = JSON.parse(sessionStorage.getItem(trailKey));
-    return Array.isArray(trail) ? trail : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeTrail(trail) {
-  try {
-    sessionStorage.setItem(trailKey, JSON.stringify(trail.slice(-trailLength)));
-  } catch {
-    // Without storage there is no way back but the browser's.
-  }
-}
-
-// walkTrail puts the page opened on the trail: the same section takes
-// the place of the last, one gone back to cuts the trail at it.
-function walkTrail() {
-  const here = { path: location.pathname, href: location.pathname + location.search, y: 0 };
-  let trail = readTrail();
-  const last = trail.at(-1);
-  const kind = performance.getEntriesByType?.('navigation')[0]?.type;
-  const before = trail.findLastIndex((t) => t.path === here.path);
-
-  if (last?.path === here.path) trail[trail.length - 1] = { ...last, href: here.href };
-  else if (kind === 'back_forward' && before >= 0) trail = [...trail.slice(0, before), here];
-  else trail.push(here);
-  writeTrail(trail);
-
-  // The page left keeps where it was, to be opened there again.
-  addEventListener('pagehide', () => {
-    const now = readTrail();
-    if (now.at(-1)?.path !== location.pathname) return;
-    now[now.length - 1] = { ...now.at(-1), href: location.pathname + location.search, y: scrollY };
-    writeTrail(now);
-  });
-}
-
-// goBack opens the page before this one where it was left.
-function goBack(event) {
-  event.preventDefault();
-  const trail = readTrail();
-  const to = trail.at(-2);
-  if (!to) return;
-  writeTrail(trail.slice(0, -1));
-  try {
-    sessionStorage.setItem(placeKey, JSON.stringify({ to: to.href, y: to.y ?? 0, row: 0, at: Date.now() }));
-  } catch {
-    // The page opens at its top.
-  }
-  location.assign(to.href);
-}
-
-// addBackLink puts "назад" into the header when there is a page of
-// Freenet to go back to: an arrow at the left on a phone, a link of the
-// header on a computer.
-function addBackLink() {
-  const header = document.querySelector('.header');
-  if (!header || header.querySelector('.header-back') || readTrail().length < 2) return;
-  header.prepend(el('a', { className: 'header-back', href: readTrail().at(-2).href, title: tr('Назад'), ariaLabel: tr('Назад'), onclick: goBack },
-    el('img', { src: '/static/icons/back.svg', alt: '' }), el('span', { textContent: tr('назад') })));
-}
-
-if (typeof document !== 'undefined') walkTrail();
-
 // addVersionSwitch puts "Полная версия" under a page of a phone, and
 // "Мобильная версия" under a page of a computer on a phone whose owner
 // chose the full one, as m.vk.com did.
@@ -815,7 +740,6 @@ export function renderChrome(me) {
   const menu = $('menu');
 
   addHeaderSearch(me);
-  addBackLink();
   addVersionSwitch();
   resumePlayer();
   // A phone has the links of a signed-in user in the bar of sections and
@@ -1005,16 +929,19 @@ function renderDeactivatedChrome(me, links, menu) {
   if (sidebar) sidebar.hidden = !others;
   if (others) {
     addTabBar(me, { menuOnly: true });
-    menu.replaceChildren(accountsLink(me));
+    menu.replaceChildren(accountsLink());
     showAccounts(() => {});
   }
+
+  // The page of the accounts is the way to them, the block aside.
+  if (others && location.pathname === '/accounts') return;
 
   const own = profilePath(me);
   if (decodeURIComponent(location.pathname) !== own) {
     location.replace(own);
     return;
   }
-  if (me.ban) import('/static/ban-screen.js').then(({ showBanScreen }) => showBanScreen(me, others ? accountsLink(me) : null));
+  if (me.ban) import('/static/ban-screen.js').then(({ showBanScreen }) => showBanScreen(me, others ? accountsLink() : null));
 }
 
 // The clubs you run and keep in the left menu ("Добавить в левое меню"),

@@ -1572,11 +1572,11 @@ test('textParts shows the links of words of another network as the words', () =>
 });
 
 test('a song shows its length as a player does', () => {
-  assert.equal(audioTime(0), '0:00');
-  assert.equal(audioTime(65), '1:05');
-  assert.equal(audioTime(185.7), '3:05');
+  assert.equal(audioTime(0), '00:00');
+  assert.equal(audioTime(65), '01:05');
+  assert.equal(audioTime(185.7), '03:05');
   assert.equal(audioTime(3723), '1:02:03');
-  assert.equal(audioTime(undefined), '0:00');
+  assert.equal(audioTime(undefined), '00:00');
 });
 
 test('the artist and the title of an upload come from its file name', () => {

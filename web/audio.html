@@ -28,29 +28,51 @@
 
     <div class="page">
       <div class="page-title"><span id="title">Аудиозаписи</span></div>
-      <div class="page-body">
-        <div class="tabs" id="tabs">
-          <a id="tab-mine" href="/audio">Моя музыка</a>
-          <a id="tab-new" href="/audio?section=new">Новое</a>
-          <a id="tab-playlists" href="/audio?section=playlists">Плейлисты</a>
+      <div class="page-body audio-page">
+        <div class="big-player" id="big-player"></div>
+        <div class="audios-div">
+          <div class="audios-main">
+            <form class="audio-search" id="search-form" role="search">
+              <input type="search" id="search" placeholder="Поиск аудиозаписей" aria-label="Поиск аудиозаписей">
+            </form>
+            <div class="error" id="error" hidden></div>
+            <div class="playlist-block" id="playlist-head" hidden>
+              <div class="playlist-block-cover">
+                <img src="/static/song.jpg" alt="Обложка плейлиста">
+                <div class="profile-links" id="playlist-tools" hidden>
+                  <a class="profile-link" id="playlist-upload">Загрузить аудио</a>
+                  <a class="profile-link" id="rename-playlist">Редактировать плейлист</a>
+                  <a class="profile-link" id="delete-playlist">Удалить плейлист</a>
+                </div>
+              </div>
+              <div class="playlist-block-info" id="playlist-info">
+                <h4 id="playlist-name"></h4>
+                <div class="playlist-block-meta" id="playlist-meta"></div>
+                <hr>
+              </div>
+            </div>
+            <div class="audio-list audio-page-list" id="audios"></div>
+            <div class="playlist-list" id="playlists" hidden></div>
+            <div class="content-error" id="empty" hidden><span id="empty-text">Здесь пока нет аудиозаписей.</span></div>
+            <a class="wall-more" id="more" hidden>Показать ещё</a>
+          </div>
+          <div class="audio-tabs" id="tabs">
+            <div id="my-links">
+              <a id="tab-mine" href="/audio">Моя музыка</a>
+              <a id="upload">Загрузить аудио</a>
+              <a id="add-link">Добавить по ссылке</a>
+              <a id="tab-new" href="/audio?section=new">Новое</a>
+              <hr>
+              <a id="tab-playlists" href="/audio?section=playlists">Мои плейлисты</a>
+              <a id="new-playlist">Новый плейлист</a>
+            </div>
+            <div id="owner-links" hidden>
+              <hr id="owner-line">
+              <a id="tab-owner">Музыка пользователя</a>
+              <a id="tab-owner-playlists">Плейлисты пользователя</a>
+            </div>
+          </div>
         </div>
-        <div class="gray-bar">
-          <form class="gray-bar-search audio-search" id="search-form" role="search">
-            <input type="search" id="search" placeholder="Поиск аудиозаписей" aria-label="Поиск аудиозаписей">
-          </form>
-          <span class="audio-links">
-            <a id="upload" hidden>Загрузить аудио</a>
-            <a id="add-link" hidden>Добавить по ссылке</a>
-            <a id="new-playlist" hidden>Новый плейлист</a>
-          </span>
-        </div>
-        <div class="error" id="error" hidden></div>
-        <div class="playlist-tools" id="playlist-tools" hidden><a id="rename-playlist">Переименовать</a><a id="delete-playlist">Удалить плейлист</a></div>
-        <div class="summary-bar" id="summary" hidden></div>
-        <div class="audio-list" id="audios"></div>
-        <div class="playlist-list" id="playlists" hidden></div>
-        <p class="hint center audio-empty" id="empty" hidden>Здесь пока нет аудиозаписей.</p>
-        <a class="wall-more" id="more" hidden>Показать ещё</a>
       </div>
     </div>
   </div>

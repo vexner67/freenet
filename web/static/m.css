@@ -80,21 +80,6 @@ b, strong { font-weight: bold; }
   border-left: 1px solid var(--line-2f2f2f);
   box-shadow: inset 1px 0 var(--line-6f6f6f);
 }
-/* "назад" (layout.js addBackLink): an arrow at the left of the header,
-   the page of Freenet before this one, as the apps had. */
-.header-back {
-  order: -1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  margin: 0 6px 0 -10px;
-  border-right: 1px solid var(--line-2f2f2f);
-  box-shadow: inset -1px 0 var(--line-6f6f6f);
-}
-.header-back img { display: block; width: 22px; height: 22px; opacity: 0.85; }
-.header-back span { display: none; }
-.header-back:active { background: rgba(255, 255, 255, 0.1); }
 .header-search img { display: block; width: 22px; height: 22px; opacity: 0.85; }
 .header-search:active, .header-links a:active { background: rgba(255, 255, 255, 0.1); }
 
@@ -4027,49 +4012,117 @@ a.game-hud-cell:hover { background: var(--back-f2f5f8); }
 .post-video:hover .post-video-play { opacity: 1; }
 .post-video-time { position: absolute; right: 6px; bottom: 6px; padding: 1px 5px; border-radius: 3px; background: rgb(0 0 0 / 75%); color: var(--text-fff); }
 
-/* Songs, as openvk's audioEntry: a row with a small dark-grey ▶ (‖ while
-   its song plays), "Исполнитель — Название" and the length; the row of the
-   song that plays is grey, "+" and "⋯" are grey signs. */
+/* Songs, as openvk's audioEntry (Audio/player.latte, audios.css): a small
+   grey ▶ (‖ while its song plays), "Исполнитель — Название" and the
+   length, which gives way under the pointer to the grey signs of openvk's
+   sprite — "+" or "×" of one's music, the pencil of one's upload, "⋯";
+   under the row that plays lie the thin lines of the song and of the
+   loudness. On "Аудиозаписи", whose big player has the lines, the row
+   that plays is dark instead. */
 .audio-list { padding: 2px 0; }
-.audio-row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 2px; }
-.audio-row:hover { background: var(--back-f2f2f2); }
-.audio-row.playing, .audio-row.playing:hover { background: var(--back-e6e6e6); }
-.audio-play { flex: none; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 2px; background: var(--back-595959) url("/static/icons/play.svg") no-repeat center / 10px; cursor: pointer; }
-.audio-play:hover { background-color: var(--back-707070); }
-.audio-row.playing:not(.paused) .audio-play { background-image: url("/static/icons/pause.svg"); }
-.audio-label, .audio-pick { flex: 1; min-width: 0; overflow: hidden; color: var(--text-000); text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.audio-row { border-radius: 2px; }
+.audio-row:hover { background: var(--back-eef1f4); }
+.audio-entry { position: relative; display: flex; gap: 9px; align-items: center; height: 17px; padding: 9px; }
+.audio-play { flex: none; width: 16px; height: 16px; padding: 0; border: 0; background: url("/static/im/play_buttons.gif") no-repeat 0 0; cursor: pointer; }
+.audio-row.playing:not(.paused) .audio-play { background-position: 0 -16px; }
+.audio-label, .audio-pick { flex: 1; min-width: 0; overflow: hidden; color: var(--text-000); line-height: 14px; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .audio-label:hover, .audio-pick:hover { text-decoration: none; }
-.audio-artist { color: var(--text-2b587a); }
-.audio-time { flex: none; color: var(--text-626262); font-variant-numeric: tabular-nums; }
+.audio-artist { color: var(--text-464646); }
+.audio-timer { position: relative; display: flex; flex: none; align-items: center; justify-content: flex-end; min-width: 28px; height: 17px; }
+.audio-time { color: var(--text-6b6b6b); font-size: 10px; font-variant-numeric: tabular-nums; }
 .audio-site { font-size: 9px; }
-.audio-broken { display: none; flex: none; color: var(--text-626262); font-style: italic; }
+.audio-broken { display: none; color: var(--text-6b6b6b); font-size: 10px; font-style: italic; white-space: nowrap; }
 .audio-row.broken .audio-label, .audio-row.broken .audio-artist { color: var(--text-aaa); }
+.audio-row.broken .audio-time { display: none; }
 .audio-row.broken .audio-broken { display: inline; }
-.audio-row.broken .audio-play { opacity: 0.5; }
-.audio-add, .audio-more { flex: none; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 2px; background: none; color: var(--text-626262); font: bold 11px tahoma, verdana, arial, sans-serif; line-height: 18px; cursor: pointer; }
-.audio-add:hover, .audio-more:hover { background: var(--back-dfe3e8); color: var(--text-333); }
-.audio-add.done { color: var(--text-aaa); }
+.audio-row.broken .audio-play { opacity: 0.6; }
+.audio-icons { position: absolute; top: 0; right: 0; display: none; flex-direction: row-reverse; gap: 5px; align-items: center; height: 100%; padding-left: 6px; background: var(--back-eef1f4); }
+.audio-row:hover .audio-icons, .audio-icons:focus-within { display: flex; }
+.audio-icon { flex: none; width: 11px; height: 11px; padding: 0; border: 0; background: url("/static/im/audios_controls.png") no-repeat; cursor: pointer; }
+.audio-icon:disabled { opacity: 0.5; cursor: default; }
+.audio-icon-add { background-position: -80px -52px; }
+.audio-icon-remove { background-position: -108px -52px; }
+.audio-icon-edit { background-position: -137px -51px; }
+.audio-more { width: 14px; background: none; color: var(--text-828282); font: bold 11px/11px tahoma, verdana, arial, sans-serif; }
+.audio-more:hover { color: var(--text-333); }
+.audio-sub { display: none; gap: 16px; margin-top: -5px; padding: 0 12px 5px 8px; }
+.audio-row.playing .audio-sub { display: flex; }
+.audio-sub-seek { flex: 1; min-width: 0; }
+.audio-sub-volume { flex: none; width: 81px; }
+.audio-page-list .audio-row.playing .audio-sub { display: none; }
+.audio-page-list .audio-row.playing { background: var(--back-636363); outline: 1px solid var(--line-555); outline-offset: -1px; }
+.audio-page-list .audio-row.playing:hover { background: var(--back-595959); }
+.audio-page-list .audio-row.playing :is(.audio-label, .audio-artist, .audio-time, .audio-more) { color: var(--text-fff); }
+.audio-page-list .audio-row.playing .audio-icons { background: var(--back-595959); }
+.audio-page-list .audio-row.playing .audio-icon-add { background-position: -94px -52px; }
+.audio-page-list .audio-row.playing .audio-icon-remove { background-position: -108px -67px; }
+.audio-page-list .audio-row.playing .audio-icon-edit { background-position: -152px -51px; }
 .audio-attached { margin-top: 6px; }
-.audio-picker { max-height: 360px; margin-top: 6px; overflow-y: auto; }
-.audio-search { margin: 8px 0; }
-.audio-search input { box-sizing: border-box; width: 100%; }
-.gray-bar .audio-search { margin: 0; }
-.gray-bar:has(.audio-links) { align-items: center; }
 .audio-refused { margin-bottom: 8px; padding: 8px; border: 1px solid var(--line-ddd09a); background: var(--back-f9f6e7); }
-/* "Аудиозаписи": the grey strip of the search under the tabs, and what
-   may be done as plain links at its right. */
-.audio-links { display: flex; flex: none; gap: 10px; align-items: center; }
-.audio-links a { cursor: pointer; }
-.playlist-tools { display: flex; gap: 12px; margin: 6px 0; }
-.playlist-tools a { cursor: pointer; }
-/* Playlists: a grey square with the note, the title and the date. */
-.playlist-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 6px 0; }
-.playlist-item { display: flex; flex-direction: column; gap: 3px; min-width: 0; color: var(--text-000); }
-.playlist-item:hover { text-decoration: none; }
-.playlist-item:hover .playlist-name { text-decoration: underline; }
-.playlist-cover { aspect-ratio: 1; border: 1px solid var(--line-ddd); background: var(--back-f0f0f0) url("/static/icons/audio.svg") no-repeat center / 40%; }
-.playlist-name { overflow: hidden; color: var(--text-2b587a); font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
-.playlist-date { color: var(--text-626262); }
+
+/* openvk's selectableTrack: a thin dark line, a small dark block on it
+   where the song (or the loudness) is, and over the pointer the time (or
+   the loudness) it would go to. */
+.track-line { position: relative; height: 6px; margin-top: 3px; border-top: 1px solid var(--line-616161); cursor: pointer; user-select: none; touch-action: none; }
+.track-slider { position: absolute; top: 0; left: 0; width: 10px; height: 6px; background: var(--back-636363); pointer-events: none; }
+.track-tip { position: absolute; bottom: 10px; z-index: 11; padding: 2px 4px; border: 1px solid var(--line-d6d6d6); background: var(--back-f7f7f7); color: var(--text-000); font-size: 10px; white-space: nowrap; pointer-events: none; transform: translateX(-50%); }
+
+/* "Аудиозаписи", as openvk's Audio/List.latte: the big player over the
+   whole page, the songs at the left and openvk's verticalGrayTabs at the
+   right; a playlist is its cover with links under it beside its name and
+   songs (Playlist.latte). */
+.big-player { position: sticky; top: 0; z-index: 10; height: 46px; margin: -10px -10px 0; border-bottom: 1px solid var(--line-d6d6d6); background: var(--back-f0f1f2); box-shadow: 1px 0 8px rgb(34 60 80 / 20%); }
+.bp-wrap { display: flex; align-items: center; height: 46px; padding: 0 14px; }
+.bp-buttons { display: flex; flex: none; gap: 7px; align-items: center; width: 62px; }
+.bp-sign { flex: none; padding: 0; border: 0; background: url("/static/im/audios_controls.png") no-repeat; cursor: pointer; }
+.bp-sign.pressed { filter: brightness(150%); }
+.bp-play { width: 22px; height: 22px; background-position: -72px 0; }
+.bp-play.on { background-position: -168px 0; }
+.bp-arrows { display: flex; gap: 9px; align-items: center; height: 11px; }
+.bp-prev, .bp-next { width: 12px; height: 12px; }
+.bp-prev { background-position: -3px -51px; }
+.bp-next { background-position: -18px -51px; }
+.bp-track { flex: 1; min-width: 0; margin-left: 15px; padding-right: 8px; }
+.bp-info { display: flex; gap: 6px; justify-content: space-between; height: 15px; line-height: 14px; }
+.bp-name { min-width: 0; overflow: hidden; color: var(--text-000); text-overflow: ellipsis; white-space: nowrap; }
+.bp-name[href]:hover { text-decoration: underline; }
+.bp-broken { margin-left: 6px; color: var(--text-6b6b6b); font-style: italic; }
+.bp-timer { flex: none; font-size: 9px; }
+.bp-rest { cursor: pointer; }
+.bp-volume { flex: none; box-sizing: border-box; width: 73px; padding: 12px 8px 0 0; }
+.bp-extra { display: flex; flex: none; gap: 7px; align-items: center; }
+.bp-repeat, .bp-shuffle, .bp-mute { width: 13px; height: 14px; }
+.bp-repeat { background-position: -32px -49px; }
+.bp-shuffle { background-position: -50px -50px; }
+.bp-mute { background-position: -201px -50px; }
+.audios-div { display: flex; margin: 0 -10px -10px; }
+.audios-main { flex: 1; min-width: 0; padding: 8px; }
+.audio-search { padding: 7px 0 10px; }
+.audio-search input { box-sizing: border-box; width: 100%; height: 25px; padding: 3px 6px 0 21px; background: var(--back-fff) url("/static/icons/search-field.png") no-repeat 5px 6px; }
+.audio-tabs { flex: none; width: 158px; border-top: 1px solid var(--line-e7e8ec); border-left: 1px solid var(--line-d6d6d6); background: var(--back-f7f7f7); font-size: 12px; }
+.audio-tabs > div { display: flex; flex-direction: column; gap: 1px; padding: 4px; }
+.audio-tabs a { display: block; padding: 5px 9px; color: var(--text-2b587a); cursor: pointer; }
+.audio-tabs a:hover { background: var(--back-ececec); text-decoration: none; }
+.audio-tabs a.used { padding: 3px 7px; border: 2px solid var(--line-555); background: var(--back-636363); color: var(--text-fff); }
+.audio-tabs hr { width: 100%; margin: 6px 0 5px; border: 0; border-top: 1px solid var(--line-ddd); }
+#owner-links { padding-top: 0; }
+.content-error { display: flex; align-items: center; justify-content: center; min-height: 240px; border: 1px solid var(--line-dedede); background: var(--back-fff); color: var(--text-707070); text-align: center; }
+.playlist-list { display: flex; flex-direction: column; }
+.playlist-view { display: flex; gap: 13px; padding: 12px; border-radius: 2px; color: var(--text-000); }
+.playlist-view:hover { background: var(--back-f5f5f5); text-decoration: none; }
+.playlist-view-cover { flex: none; width: 100px; height: 100px; background: var(--back-f5f5f5); }
+.playlist-view-cover img { display: block; width: 100px; height: 100px; object-fit: contain; }
+.playlist-view-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.playlist-view-name { overflow: hidden; font-weight: bold; line-height: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.playlist-view-meta { color: var(--text-686868); font-size: 10px; }
+.playlist-block { display: flex; gap: 13px; margin-top: 6px; }
+.playlist-block-cover { flex: none; width: 135px; }
+.playlist-block-cover img { display: block; max-width: 135px; max-height: 135px; }
+.playlist-block-cover .profile-links { margin: 6px 0 0; }
+.playlist-block-info { flex: 1; min-width: 0; }
+.playlist-block-info h4 { margin: 0 0 6px; color: var(--text-45688e); font-size: 12px; }
+.playlist-block-meta { color: var(--text-686868); }
+.playlist-block-info hr { margin: 11px 0 6px; border: 0; border-top: 1px solid var(--line-eee); }
 .playlist-picker { display: flex; flex-direction: column; max-height: 300px; overflow-y: auto; }
 .playlist-pick { padding: 6px; border-bottom: 1px solid var(--line-eee); cursor: pointer; }
 
@@ -4138,6 +4191,9 @@ a.game-hud-cell:hover { background: var(--back-f2f5f8); }
 .player-row.broken { color: var(--text-626262); }
 /* The player of SoundCloud or YouTube: in the page, as their players must
    be to play, but in a pixel of the box and unseen. */
+/* While the big player of "Аудиозаписи" shows the song, the box is out
+   of sight and plays on: the players of SoundCloud and YouTube are in it. */
+.player.docked { visibility: hidden; }
 .player-embed { position: absolute; bottom: 0; left: 0; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
 .player-embed iframe { width: 300px; height: 200px; border: 0; }
 .with-player .layout, .framed .layout { padding-bottom: 60px; }
@@ -4171,11 +4227,51 @@ body.with-player:has(.messenger:not([hidden])) .player { bottom: 0; }
 body.with-player:has(.messenger:not([hidden])) .layout { height: calc(100dvh - 46px); }
 .shell .shell-frame { height: calc(100% - 46px); }
 .shell .player { bottom: 0; }
-.audio-row { padding: 8px 6px; }
-.audio-play { width: 28px; height: 28px; background-size: 14px; }
-.audio-add, .audio-more { width: 28px; height: 28px; line-height: 28px; font-size: 14px; }
-.audio-links { flex-wrap: wrap; }
-.playlist-list { grid-template-columns: repeat(2, 1fr); }
+.shell:has(.player.docked) .shell-frame { height: 100%; }
+/* A song for a finger: a bigger ▶, the length and "⋯", whose list from
+   the bottom of the screen has all that may be done (no pointer to hover
+   with); the lines of the song that plays are thicker. */
+.audio-entry { height: auto; min-height: 28px; padding: 6px; }
+.audio-play { width: 28px; height: 28px; background-size: 28px 56px; image-rendering: pixelated; }
+.audio-row.playing:not(.paused) .audio-play { background-position: 0 -28px; }
+.audio-timer { height: auto; gap: 4px; }
+.audio-time, .audio-broken { font-size: 12px; }
+.audio-icons, .audio-row:hover .audio-icons { position: static; display: flex; padding: 0; background: none; }
+.audio-page-list .audio-row.playing .audio-icons { background: none; }
+.audio-icon:not(.audio-more) { display: none; }
+.audio-more { width: 36px; height: 36px; font-size: 16px; line-height: 36px; }
+.audio-row:hover { background: none; }
+.audio-sub { padding: 0 12px 8px; }
+.track-line { height: 10px; }
+.track-slider { width: 14px; height: 10px; }
+/* The big player sticks under the header; the loudness is the phone's. */
+.big-player { top: 44px; }
+.bp-wrap { padding: 0 10px; }
+.bp-buttons { gap: 12px; width: auto; }
+.bp-play { transform: scale(1.4); }
+.bp-arrows { gap: 16px; }
+.bp-prev, .bp-next, .bp-repeat, .bp-shuffle { transform: scale(1.5); }
+.bp-track { margin-left: 16px; }
+.bp-timer { font-size: 11px; }
+.bp-volume, .bp-mute { display: none; }
+.bp-extra { gap: 16px; padding-left: 6px; }
+/* The grey links come over the songs as a row of words. */
+.audios-div { flex-direction: column; }
+.audio-tabs { order: -1; width: auto; border: 0; border-bottom: 1px solid var(--line-d6d6d6); font-size: 14px; }
+.audio-tabs > div { flex-flow: row wrap; padding: 6px; }
+.audio-tabs a { padding: 6px 9px; }
+.audio-tabs a.used { padding: 4px 7px; }
+.audio-tabs hr { display: none; }
+#owner-links { padding-top: 0; border-top: 1px solid var(--line-ddd); }
+.audio-search input { height: 36px; font-size: 16px; }
+.playlist-view { padding: 8px; }
+.playlist-view-cover, .playlist-view-cover img { width: 64px; height: 64px; }
+.playlist-view-name { line-height: 18px; }
+.playlist-view-meta { font-size: 12px; }
+.playlist-block-cover { width: 100px; }
+.playlist-block-cover img { max-width: 100px; max-height: 100px; }
+.playlist-block-info h4 { font-size: 15px; }
+.content-error { min-height: 160px; padding: 10px; }
 
 /* The look of the profile everywhere (the owner's word, 2026-11): a block
    of a page is the grey bar of the profile over its content, tabs are

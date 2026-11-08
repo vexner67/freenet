@@ -11,12 +11,16 @@
 import { api, currentUser, signedIn } from './api.js';
 import { MAX_AUDIOS, MAX_AUDIO_BYTES, audioArtist, audioNames, audioSite, audioTime, audioTitle, errorText } from './labels.js';
 import { el, externalLink, isPhone, showError, hideError } from './layout.js';
+import { trackAt } from './track.js';
 import { button, openMenu, openModal, openSheet, toast } from './modal.js';
 import { tr } from './i18n.js';
 
 // What plays now and the songs that would not, as the player last said.
 const playing = { id: '', on: false };
 const broken = new Set();
+// The last word of the player, whole: for the big player and the lines.
+let heard = { id: '', audio: null, on: false, position: 0, length: 0, loudness: 80, muted: false, repeat: false, shuffle: false, broken: [] };
+const listeners = new Set();
 
 // outer is the player of the tab when this page is in the frame of
 // shell.js: songs and what plays go to it and from it as JSON, so that
@@ -31,13 +35,18 @@ const outer = (() => {
 
 // player is the player of this tab, made at its first song.
 let player = null;
+// ownDock: this page has the big player; frameDock: the page in the frame
+// has it. The box hides while the page seen has one.
+let ownDock = false;
+let frameDock = false;
 
 async function bar() {
   if (outer) return outer;
   if (player) return player;
 
   const [{ createPlayer }, shell] = await Promise.all([import('/static/player.js'), import('/static/shell.js')]);
-  let state = playing;
+  let state = heard;
+  let framed = false;
   const made = createPlayer(document.body, {
     onState: (next) => {
       state = next;
@@ -45,10 +54,22 @@ async function bar() {
       shell.tellFrame({ freenetPlayer: next });
     },
   });
-  shell.startShell(made.active);
+  const dock = () => made.dock(framed ? frameDock : ownDock);
+  shell.startShell(made.active, (open) => {
+    framed = open;
+    frameDock = false;
+    dock();
+  });
+  dock();
   player = {
     play: (audio, queue) => made.play(JSON.parse(audio), JSON.parse(queue)),
     toggle: () => made.toggle(),
+    // command steers the player from the big one: name and a JSON value.
+    command: (name, value) => made[name]?.(JSON.parse(value)),
+    dockFrame: (on) => {
+      frameDock = on;
+      dock();
+    },
     state: () => JSON.stringify(state),
     restore: (saved) => made.restore(saved),
   };
@@ -71,20 +92,108 @@ if (outer) {
 }
 
 // showState marks the rows of the song that plays and of those that
-// would not.
-export function showState({ id = '', on = false, broken: gone = [] }) {
-  playing.id = id;
-  playing.on = on;
-  for (const b of gone) broken.add(b);
+// would not, moves the lines under the row that plays and tells the big
+// player.
+export function showState(state) {
+  heard = { ...heard, ...state };
+  playing.id = heard.id;
+  playing.on = heard.on;
+  for (const b of heard.broken ?? []) broken.add(b);
 
   for (const row of document.querySelectorAll('.audio-row')) markRow(row);
+  for (const fn of listeners) fn(heard);
 }
+
+// listen gives fn what plays now and whenever it changes.
+export function listen(fn) {
+  listeners.add(fn);
+  fn(heard);
+}
+
+// control steers the player of the tab: "toggle", "prev", "next",
+// "seek" (a part of the song), "skip" (seconds), "volume", "mute",
+// "repeat", "shuffle".
+export async function control(name, value = null) {
+  const p = await bar();
+  if (name === 'toggle') p.toggle();
+  else p.command(name, JSON.stringify(value));
+}
+
+// dockPlayer is said by a page with the big player: the box of the
+// player hides while it is shown.
+export function dockPlayer() {
+  if (outer) {
+    outer.dockFrame(true);
+    window.addEventListener('pagehide', () => outer.dockFrame(false));
+    return;
+  }
+  ownDock = true;
+  player?.command('dock', 'true');
+}
+
+// The lines of a row, by the row.
+const rowLines = new WeakMap();
 
 function markRow(row) {
   const id = row.dataset.audio;
-  row.classList.toggle('playing', id === playing.id);
-  row.classList.toggle('paused', id === playing.id && !playing.on);
+  const now = id === heard.id;
+  row.classList.toggle('playing', now);
+  row.classList.toggle('paused', now && !heard.on);
   row.classList.toggle('broken', broken.has(id));
+
+  const lines = now && rowLines.get(row);
+  if (!lines) return;
+  lines.seek.set(heard.length ? heard.position / heard.length : 0);
+  lines.volume.set(heard.muted ? 0 : heard.loudness / 100);
+}
+
+// trackLine is openvk's selectableTrack: a thin dark line with a small
+// dark block where the song (or the loudness) is; a press or a drag
+// moves it (onPick gets the part of the line), and tip names what is
+// under the pointer over it.
+export function trackLine({ label, onPick, tip }) {
+  const slider = el('div', { className: 'track-slider' });
+  const hint = el('div', { className: 'track-tip', hidden: true });
+  const line = el('div', { className: 'track-line', role: 'slider', ariaLabel: label }, slider, hint);
+  let dragging = false;
+
+  const at = (event) => {
+    const box = line.getBoundingClientRect();
+    return trackAt(event.clientX, box.left, box.width);
+  };
+  const set = (part) => {
+    slider.style.left = `calc((100% - 10px) * ${part})`;
+    line.ariaValueNow = String(Math.round(part * 100));
+  };
+
+  line.addEventListener('pointerdown', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    dragging = true;
+    line.setPointerCapture(event.pointerId);
+    set(at(event));
+    onPick(at(event));
+  });
+  line.addEventListener('pointermove', (event) => {
+    const part = at(event);
+    hint.hidden = false;
+    hint.textContent = tip(part);
+    hint.style.left = `${part * 100}%`;
+    if (!dragging) return;
+    set(part);
+    onPick(part);
+  });
+  const stop = () => {
+    dragging = false;
+  };
+  line.addEventListener('pointerup', stop);
+  line.addEventListener('pointercancel', stop);
+  line.addEventListener('pointerleave', () => {
+    if (!dragging) hint.hidden = true;
+  });
+  set(0);
+
+  return { node: line, set };
 }
 
 // play plays audio and after it the rest of queue, the list it is in;
@@ -95,11 +204,15 @@ export async function play(audio, queue = [audio]) {
   else p.play(JSON.stringify(audio), JSON.stringify(queue));
 }
 
-// audioNode is a song as a row. queue gives the list it plays in; pick,
-// when given, makes a click on the name choose it (the picker of a form);
-// tools are links at the right end, as the cross of an attached song;
-// menu adds to "⋯" what the page may do with it (items of openMenu).
-export function audioNode(audio, { queue = () => [audio], pick = null, tools = [], menu = null } = {}) {
+// audioNode is a song as a row, openvk's audioEntry: a small grey ▶,
+// "Исполнитель — Название" and the length, which makes way under the
+// pointer for the grey signs of what may be done (icons, then "⋯" for
+// menu, items of openMenu). Under the row that plays (but on
+// "Аудиозаписи", whose big player has them) lie the lines of the song and
+// of the loudness. queue gives the list it plays in; pick, when given,
+// makes a click on the name choose it (the picker of a form); tools are
+// links always seen, as the cross of an attached song.
+export function audioNode(audio, { queue = () => [audio], pick = null, tools = [], icons = [], menu = null } = {}) {
   const name = el('span', { className: 'audio-name' },
     el('b', { className: 'audio-artist', textContent: audioArtist(audio) }),
     ' — ',
@@ -107,18 +220,32 @@ export function audioNode(audio, { queue = () => [audio], pick = null, tools = [
   const length = audio.duration
     ? el('span', { className: 'audio-time', textContent: audioTime(audio.duration) })
     : el('span', { className: 'audio-time audio-site', textContent: audio.kind === 'file' ? '' : audioSite(audio) });
+  const signs = [...icons];
+  if (menu) {
+    signs.push(el('button', {
+      type: 'button', className: 'audio-icon audio-more', title: tr('Действия'), ariaLabel: tr('Действия'), textContent: '⋯',
+      onclick: (event) => openActions(event.currentTarget, menu()),
+    }));
+  }
 
   const row = el('div', { className: 'audio-row' },
-    el('button', { type: 'button', className: 'audio-play', title: tr('Слушать'), ariaLabel: tr('Слушать'), onclick: () => play(audio, queue()) }),
-    pick
-      ? el('a', { className: 'audio-pick', onclick: () => pick(audio) }, name)
-      : el('span', { className: 'audio-label', onclick: () => play(audio, queue()) }, name),
-    el('span', { className: 'audio-broken', textContent: tr('Трек недоступен') }),
-    length,
-    ...tools,
-    menu && el('button', { type: 'button', className: 'audio-more', title: tr('Действия'), ariaLabel: tr('Действия'), textContent: '⋯', onclick: (event) => openActions(event.currentTarget, menu()) }),
-  );
+    el('div', { className: 'audio-entry' },
+      el('button', { type: 'button', className: 'audio-play', title: tr('Слушать'), ariaLabel: tr('Слушать'), onclick: () => play(audio, queue()) }),
+      pick
+        ? el('a', { className: 'audio-pick', onclick: () => pick(audio) }, name)
+        : el('span', { className: 'audio-label', onclick: () => play(audio, queue()) }, name),
+      el('span', { className: 'audio-timer' },
+        length,
+        el('span', { className: 'audio-broken', textContent: tr('Трек недоступен') }),
+        signs.length ? el('span', { className: 'audio-icons' }, ...signs) : null),
+      ...tools));
   row.dataset.audio = audio.id;
+  if (!pick) {
+    const seek = trackLine({ label: tr('Перемотка'), onPick: (part) => control('seek', part), tip: (part) => audioTime(part * heard.length) });
+    const volume = trackLine({ label: tr('Громкость'), onPick: (part) => control('volume', part * 100), tip: (part) => `${Math.round(part * 100)}%` });
+    row.append(el('div', { className: 'audio-sub' }, el('div', { className: 'audio-sub-seek' }, seek.node), el('div', { className: 'audio-sub-volume' }, volume.node)));
+    rowLines.set(row, { seek, volume });
+  }
   markRow(row);
 
   return row;
@@ -137,22 +264,21 @@ export function audiosNode(audios) {
   const box = el('div', { className: 'audio-list' });
   box.append(...audios.map((a) => audioNode(a, {
     queue: () => audios,
-    tools: signedIn() && !a.added ? [addButton(a)] : [],
+    icons: signedIn() ? [keepIcon(a)] : [],
     menu: () => libraryItems(a),
   })));
 
   return box;
 }
 
-// libraryItems is "⋯" of a song somewhere else than one's library:
+// libraryItems is "⋯" of a song somewhere else than "Аудиозаписи":
 // "Добавить к себе" for the signed in, and its site for a track.
 function libraryItems(audio) {
   const items = [];
   if (signedIn()) {
-    items.push({
-      text: audio.added ? tr('Уже в ваших аудиозаписях') : tr('Добавить к себе'),
-      run: () => keep(audio),
-    });
+    items.push(audio.added
+      ? { text: tr('Удалить из моих аудиозаписей'), run: () => forget(audio) }
+      : { text: tr('Добавить к себе'), run: () => keep(audio) });
   }
   if (audio.link) items.push({ text: tr('Слушать на {0}', audioSite(audio)), run: () => window.open(audio.link, '_blank', 'noopener') });
   items.push({ text: tr('Добавить в плейлист'), run: () => pickPlaylist(audio) });
@@ -160,25 +286,33 @@ function libraryItems(audio) {
   return items;
 }
 
-// addButton is "+" of a song one does not keep: a click adds it, and it
-// becomes a tick.
-export function addButton(audio) {
-  const add = el('button', {
-    type: 'button', className: 'audio-add', title: tr('Добавить к себе'), ariaLabel: tr('Добавить к себе'), textContent: '+',
-    onclick: async () => {
-      add.disabled = true;
-      await keep(audio);
-      if (!audio.added) {
-        add.disabled = false;
-        return;
-      }
-      add.textContent = '✓';
-      add.title = add.ariaLabel = tr('В ваших аудиозаписях');
-      add.classList.add('done');
-    },
+// keepIcon is openvk's grey "+" of a song one does not keep, and "×" of
+// one one keeps: a click adds it to one's music or takes it away, and the
+// sign turns. onForget hears it taken away.
+export function keepIcon(audio, { onForget = () => {} } = {}) {
+  const icon = el('button', { type: 'button', className: 'audio-icon' });
+  const show = () => {
+    icon.classList.toggle('audio-icon-add', !audio.added);
+    icon.classList.toggle('audio-icon-remove', Boolean(audio.added));
+    icon.title = icon.ariaLabel = audio.added ? tr('Удалить из моих аудиозаписей') : tr('Добавить к себе');
+  };
+  icon.addEventListener('click', async () => {
+    icon.disabled = true;
+    const had = audio.added;
+    if (had) await forget(audio);
+    else await keep(audio);
+    icon.disabled = false;
+    show();
+    if (had && !audio.added) onForget();
   });
+  show();
 
-  return add;
+  return icon;
+}
+
+// addButton is the "+" of the songs of a page (profile.js).
+export function addButton(audio) {
+  return keepIcon(audio);
 }
 
 // keep is "Добавить к себе".
@@ -187,6 +321,16 @@ export async function keep(audio) {
     await api.keepAudio(audio.id);
     audio.added = true;
     toast(tr('Аудиозапись добавлена к вам.'));
+  } catch (e) {
+    toast(errorText(e));
+  }
+}
+
+// forget is "Удалить из моих аудиозаписей": the song stays for others.
+export async function forget(audio) {
+  try {
+    await api.forgetAudio(audio.id);
+    audio.added = false;
   } catch (e) {
     toast(errorText(e));
   }

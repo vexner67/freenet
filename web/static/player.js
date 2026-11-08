@@ -15,6 +15,10 @@
 // (sessionStorage): a page opened anew (a reload) opens the player where
 // the last one left it. Pages opened from it do not stop the song at all:
 // they open in the frame of shell.js.
+//
+// On "Аудиозаписи" the big player of openvk at the top of the page shows
+// and steers the same songs (bigplayer.js): the box then docks — it is
+// out of sight while that page is shown, and plays on all the same.
 
 import { dragPlayer } from './player-drag.js';
 import { api, signedIn } from './api.js';
@@ -29,6 +33,8 @@ const SKIP_AFTER = 1500;
 const STORE = 'freenet.player';
 // How many songs of the list the tab keeps for the next page.
 const KEEP = 300;
+// How often the time of the song goes to the pages, in milliseconds.
+const TICK = 250;
 
 // youTubeID is the video of a link the server made canonical
 // ("https://www.youtube.com/watch?v=<id>").
@@ -76,8 +82,9 @@ function iconButton(className, label, onclick) {
   return el('button', { type: 'button', className: 'player-btn ' + className, title: label, ariaLabel: label, onclick });
 }
 
-// createPlayer puts the player into root. onState hears what plays (the
-// id, whether it plays, the songs that would not); onStop hears the ×.
+// createPlayer puts the player into root. onState hears what plays: the
+// song and its id, whether it plays, where in it and how long it is, the
+// loudness and the modes, the songs that would not; onStop hears the ×.
 export function createPlayer(root, { onState = () => {}, onStop = () => {} } = {}) {
   const media = new Audio();
   media.preload = 'auto';
@@ -93,6 +100,9 @@ export function createPlayer(root, { onState = () => {}, onStop = () => {} } = {
   let shuffle = false;
   let repeat = false;
   let loudness = 80;
+  let muted = false;
+  let docked = false;
+  let ticked = 0;
   // resumeAt is where a song restored from the last page goes on from.
   let resumeAt = 0;
   const broken = new Set();
@@ -102,7 +112,7 @@ export function createPlayer(root, { onState = () => {}, onStop = () => {} } = {
   const gone = el('span', { className: 'player-broken', hidden: true, textContent: tr('Трек недоступен') });
   const name = el('a', { className: 'player-name' }, artist, ' — ', title, gone);
   const time = el('span', {
-    className: 'player-time', title: tr('Сколько осталось'), textContent: '0:00',
+    className: 'player-time', title: tr('Сколько осталось'), textContent: '00:00',
     onclick: () => {
       left = !left;
       showTime();
@@ -168,6 +178,8 @@ export function createPlayer(root, { onState = () => {}, onStop = () => {} } = {
   function showTime() {
     time.textContent = left && length ? '-' + audioTime(Math.max(0, length - position)) : audioTime(position);
     seek.value = length ? String(Math.round((position / length) * 1000)) : '0';
+    // The big player and the lines of the rows move with the song.
+    if (Date.now() - ticked >= TICK) say();
   }
 
   function setOn(value) {
@@ -183,21 +195,46 @@ export function createPlayer(root, { onState = () => {}, onStop = () => {} } = {
     shuffle = value;
     shuffleButton.classList.toggle('active', shuffle);
     shuffleButton.ariaPressed = String(shuffle);
+    say();
   }
 
   function setRepeat(value) {
     repeat = value;
     repeatButton.classList.toggle('active', repeat);
     repeatButton.ariaPressed = String(repeat);
+    say();
   }
 
   function setLoudness(value) {
-    loudness = value;
-    volume.value = String(value);
-    media.volume = value / 100;
+    loudness = Math.max(0, Math.min(100, Math.round(value)));
+    volume.value = String(loudness);
+    media.volume = loudness / 100;
+    sendLoudness();
+    say();
+  }
+
+  // setMuted is openvk's "Заглушить": the song plays on without a sound.
+  function setMuted(value) {
+    muted = value;
+    media.muted = muted;
+    sendLoudness();
+    say();
+  }
+
+  // sendLoudness tells the player of SoundCloud or YouTube how loud to play.
+  function sendLoudness() {
     const audio = current();
+    const value = muted ? 0 : loudness;
     if (audio?.kind === 'soundcloud') post({ method: 'setVolume', value });
     if (audio?.kind === 'youtube') post({ event: 'command', func: 'setVolume', args: [value] });
+  }
+
+  // dock hides the box while the big player of a page shows the song.
+  function dock(value) {
+    docked = value;
+    box.classList.toggle('docked', docked);
+    box.classList.remove('queue-open');
+    document.body.classList.toggle('with-player', !docked && Boolean(current()));
   }
 
   function seekTo(at) {
@@ -223,7 +260,11 @@ export function createPlayer(root, { onState = () => {}, onStop = () => {} } = {
 
   // say tells the pages what plays.
   function say() {
-    onState({ id: current()?.id ?? '', on, broken: [...broken] });
+    ticked = Date.now();
+    const audio = current();
+    onState({
+      id: audio?.id ?? '', audio, on, position, length, loudness, muted, repeat, shuffle, broken: [...broken],
+    });
   }
 
   // keep leaves what plays to the next page of the tab.
@@ -234,7 +275,7 @@ export function createPlayer(root, { onState = () => {}, onStop = () => {} } = {
     try {
       sessionStorage.setItem(STORE, JSON.stringify({
         queue: queue.slice(from, from + KEEP), index: index - from, position, on, told,
-        shuffle, repeat, loudness, broken: [...broken],
+        shuffle, repeat, loudness, muted, broken: [...broken],
       }));
     } catch {
       // A tab that keeps nothing starts with no song.
@@ -280,7 +321,7 @@ export function createPlayer(root, { onState = () => {}, onStop = () => {} } = {
 
     box.hidden = false;
     placePlayer();
-    document.body.classList.add('with-player');
+    document.body.classList.toggle('with-player', !docked);
     show(audio);
     media.pause();
     frame?.remove();
@@ -317,7 +358,7 @@ export function createPlayer(root, { onState = () => {}, onStop = () => {} } = {
       post({ event: 'listening', id: 'freenet', channel: 'widget' });
       post({ event: 'command', func: 'addEventListener', args: ['onStateChange'] });
       post({ event: 'command', func: 'addEventListener', args: ['onError'] });
-      post({ event: 'command', func: 'setVolume', args: [loudness] });
+      post({ event: 'command', func: 'setVolume', args: [muted ? 0 : loudness] });
     }
   }
 
@@ -348,7 +389,7 @@ export function createPlayer(root, { onState = () => {}, onStop = () => {} } = {
     if (method === 'ready') {
       for (const event of ['play', 'pause', 'finish', 'error', 'playProgress']) post({ method: 'addEventListener', value: event });
       post({ method: 'getDuration' });
-      post({ method: 'setVolume', value: loudness });
+      post({ method: 'setVolume', value: muted ? 0 : loudness });
       if (resumeAt > 0) post({ method: 'seekTo', value: resumeAt * 1000 });
       resumeAt = 0;
     }
@@ -483,6 +524,7 @@ export function createPlayer(root, { onState = () => {}, onStop = () => {} } = {
     setShuffle(Boolean(state.shuffle));
     setRepeat(Boolean(state.repeat));
     setLoudness(Number.isFinite(state.loudness) ? state.loudness : 80);
+    setMuted(Boolean(state.muted));
     renderQueue();
     start(state.index, { autoplay: Boolean(state.on), from: Number(state.position) || 0 });
   }
@@ -492,5 +534,15 @@ export function createPlayer(root, { onState = () => {}, onStop = () => {} } = {
     navigator.mediaSession.setActionHandler('nexttrack', () => step(1));
   }
 
-  return { play, toggle: togglePlay, restore, active: () => Boolean(current()) };
+  return {
+    play, toggle: togglePlay, restore, dock, active: () => Boolean(current()),
+    prev: () => step(-1),
+    next: () => step(1),
+    seek: (fraction) => seekTo(Math.max(0, Math.min(1, fraction)) * length),
+    skip: (seconds) => seekTo(Math.max(0, Math.min(length, position + seconds))),
+    volume: setLoudness,
+    mute: setMuted,
+    repeat: setRepeat,
+    shuffle: setShuffle,
+  };
 }

@@ -19,11 +19,13 @@ const SHELL = 'freenetShell';
 let frame = null;
 let watching = null;
 let playing = () => false;
+let framing = () => {};
 
 // startShell makes the tab the shell of the pages while playing() says a
-// song is in the player.
-export function startShell(isPlaying) {
+// song is in the player; onFrame hears the frame come (true) and go.
+export function startShell(isPlaying, onFrame = () => {}) {
   playing = isPlaying;
+  framing = onFrame;
 
   if (window.navigation?.addEventListener) {
     window.navigation.addEventListener('navigate', onNavigate);
@@ -94,6 +96,7 @@ function enter(href, push) {
   root.classList.add('shell');
   if (push) history.pushState({ [SHELL]: true }, '', href);
   pauseEvents();
+  framing(true);
 }
 
 // leave shows the page the song started on again.
@@ -105,6 +108,7 @@ function leave() {
   root.classList.remove('shell');
   document.title = root.dataset.title ?? document.title;
   resumeEvents();
+  framing(false);
 }
 
 // follow gives the tab the address and the title of the page in the frame.

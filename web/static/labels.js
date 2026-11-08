@@ -2419,14 +2419,15 @@ export function audioTitle(a) {
   return a.title || tr('Без названия');
 }
 
-// audioTime is a length in seconds as a player shows it: "3:05", "1:02:03".
+// audioTime is a length in seconds as openvk's players show it (fmtTime):
+// "03:05", "1:02:03".
 export function audioTime(seconds) {
   const s = Math.max(0, Math.floor(seconds || 0));
   const two = (n) => String(n).padStart(2, '0');
   const h = Math.floor(s / 3600);
   const m = Math.floor(s / 60) % 60;
 
-  return h ? `${h}:${two(m)}:${two(s % 60)}` : `${m}:${two(s % 60)}`;
+  return h ? `${h}:${two(m)}:${two(s % 60)}` : `${two(m)}:${two(s % 60)}`;
 }
 
 // audioNames reads the artist and the title of a song from its file
