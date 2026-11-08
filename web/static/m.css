@@ -3121,6 +3121,7 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 .m .accent-box { margin: 12px 0; padding: 14px; line-height: 1.45; }
 .m .accent-box p { margin: 0 0 10px; }
 .m .container-gray .settings-delete { margin: 20px -12px -14px; padding: 16px 12px; }
+.m .settings-notice { position: fixed; top: 50px; right: 8px; left: 8px; z-index: 40; margin: 0; }
 
 /* "Prime": the perks, the plans and the styles apart. */
 .m .prime-hero { gap: 14px; margin: 0 0 18px; }
@@ -3874,25 +3875,8 @@ button.account-slot:active { transform: translateY(1px); }
 .modal-box.accounts-box { width: 100%; }
 .account-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-/* Settings, notifications and groups, in the dress of the games: dark frames
+/* Notifications and groups, in the dress of the games: dark frames
    and titles, plates that are pressed, and nothing moves under the reader. */
-.settings-hud { min-height: 92px; margin: 0 0 10px; padding: 6px 8px; background: linear-gradient(var(--back-fff), var(--back-e4e4e4)); border: 1px solid var(--line-333); border-radius: 4px; box-shadow: 2px 2px 0 var(--back-d4d4d4); box-sizing: border-box; }
-.settings-hud-head { display: flex; gap: 4px; align-items: center; color: var(--text-000); font-weight: bold; }
-.settings-hud-sum { margin-left: auto; font-size: 14px; font-variant-numeric: tabular-nums; }
-.settings-hud-bar { display: block; height: 10px; margin: 5px 0; overflow: hidden; background: var(--back-3e3e3e); border: 1px solid var(--line-333); border-radius: 3px; }
-.settings-hud-fill { display: block; height: 100%; background: linear-gradient(var(--back-dde2e8), var(--back-c5cbd3)); transform-origin: left; }
-.settings-hud-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
-.settings-step { display: flex; gap: 4px; align-items: center; min-width: 0; padding: 3px 5px; background: var(--back-f6f6f6); border: 1px dashed var(--line-8b8b8b); border-radius: 3px; color: var(--text-626262); font: inherit; cursor: pointer; }
-.settings-step:hover { background: var(--back-f2f5f8); }
-.settings-step.done { background: var(--back-dde2e8); border: 1px solid var(--line-333); color: var(--text-000); font-weight: bold; }
-.settings-look { margin-top: 0; }
-.container-gray.settings-look h4, .container-gray.settings-look .subhead { padding: 4px 8px; background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); border: 1px solid var(--line-333); border-radius: 4px 4px 0 0; color: var(--text-fff); }
-.settings-look .field-changed input, .settings-look .field-changed select, .settings-look .field-changed textarea { background: var(--back-f2f5f8); outline: 1px solid var(--line-333); }
-.settings-look .actions { position: sticky; bottom: 0; z-index: 2; padding-top: 4px; padding-bottom: 4px; background: var(--back-f6f6f6); }
-.settings-look .actions .button { background: linear-gradient(var(--back-dde2e8), var(--back-c5cbd3)); border-color: var(--line-333); color: var(--text-000); font-weight: bold; text-shadow: none; }
-.settings-look #notice { position: fixed; top: 52px; left: 50%; z-index: 40; width: 300px; margin-left: -150px; box-shadow: 2px 2px 0 var(--back-d4d4d4); }
-.settings-look .session-row { padding: 6px; background: var(--back-fff); border: 1px solid var(--line-ccc); border-radius: 3px; margin-bottom: 4px; }
-.settings-look .session-row:hover { background: var(--back-f2f5f8); }
 .notify-filters { display: flex; flex-wrap: wrap; gap: 3px; min-height: 54px; margin: 0 0 8px; }
 .notify-filter { display: inline-flex; gap: 4px; align-items: center; padding: 3px 7px; background: linear-gradient(var(--back-fff), var(--back-e4e4e4)); border: 1px solid var(--line-8b8b8b); border-radius: 3px; color: var(--text-000); font: inherit; cursor: pointer; }
 .notify-filter b { font-variant-numeric: tabular-nums; }
@@ -3922,12 +3906,8 @@ a.game-hud-cell:hover { background: var(--back-f2f5f8); }
 #join:hover { background: var(--back-f2f5f8); }
 .club .profile-links { margin-bottom: 8px; }
 
-.settings-hud-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.settings-step { min-height: 36px; }
 .notify-filters { flex-wrap: nowrap; overflow-x: auto; }
 .notify-filter { flex: none; min-height: 36px; }
-.settings-look #notice { top: 50px; left: 8px; width: auto; right: 8px; margin: 0; }
-.settings-look .actions { width: 100%; padding-left: 0; }
 .clubs-list .list-row { margin: 0 0 6px; }
 #club-hud .game-hud-sum { font-size: 13px; }
 

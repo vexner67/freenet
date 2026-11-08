@@ -29,18 +29,18 @@
     <div class="page">
       <div class="page-title">Мои Настройки</div>
       <div class="page-body">
-        <div class="settings-hud" id="safety"></div>
-        <div class="tabs game-tabs" id="settings-tabs">
+        <div class="error" id="error" hidden></div>
+        <div class="notice settings-notice" id="notice" hidden><b>Изменения сохранены</b><br>Новые данные появятся на вашей странице.</div>
+        <div class="tabs" id="settings-tabs">
           <a id="tab-main" href="/settings">Основное</a>
           <a id="tab-security" href="/settings?act=security">Безопасность</a>
           <a id="tab-privacy" href="/settings?act=privacy">Приватность</a>
           <a href="/settings/blacklist">Чёрный список</a>
+          <a href="/votes">Голоса</a>
           <a id="tab-interface" href="/settings?act=interface">Внешний вид</a>
-            </div>
-        <div class="container-gray settings-look">
+        </div>
+        <div class="container-gray">
         <p id="loading">Загрузка…</p>
-        <div class="error" id="error" hidden></div>
-        <div class="notice" id="notice" hidden><b>Изменения сохранены</b><br>Новые данные появятся на вашей странице.</div>
 
         <div id="main" hidden>
           <h4>Адрес Вашей электронной почты</h4>
@@ -62,18 +62,27 @@
                 <th><label for="nickname">Адрес страницы</label></th>
                 <td class="control"><input type="text" id="nickname" maxlength="32" autocomplete="username" spellcheck="false"></td>
               </tr>
+              <tr>
+                <th></th>
+                <td class="control"><button class="button" type="submit">Сохранить</button></td>
+              </tr>
             </table>
-            <div class="actions"><button class="button" type="submit">Сохранить</button></div>
           </form>
 
           <h4>Уведомления на этом устройстве</h4>
-          <div class="settings-block">
-            <div class="accent-box">
-              <p id="push-state">Загрузка…</p>
-              <p class="hint">Уведомления о том, что появилось в «Моих Ответах», и о новых сообщениях приходят, даже когда сайт закрыт. Что написано в сообщении, в них не говорится. Уведомления этого браузера получает тот, кто вошёл в нём последним.</p>
-            </div>
-            <div class="center" id="push-actions"></div>
-          </div>
+          <table class="form">
+            <tr>
+              <td>
+                <div class="accent-box">
+                  <p id="push-state">Загрузка…</p>
+                  <p class="hint">Уведомления о том, что появилось в «Уведомлениях», и о новых сообщениях приходят, даже когда сайт закрыт. Что написано в сообщении, в них не говорится. Уведомления этого браузера получает тот, кто вошёл в нём последним.</p>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="center" id="push-actions"></td>
+            </tr>
+          </table>
 
           <div class="settings-delete">
             <a href="/fave">Понравившиеся записи</a> • <a href="/fave/own">Написанные мной записи</a><br><br>
@@ -86,36 +95,43 @@
           <div class="settings-block" id="two-factor"><p class="hint">Загрузка…</p></div>
 
           <h4>Сессии</h4>
-          <div class="settings-block">
-            <p class="hint" id="sessions-count"></p>
-            <div id="sessions"></div>
-            <div id="end-sessions-block" hidden>
-              <div class="accent-box">Если вы хотите выйти из Freenet на всех остальных устройствах, нажмите на кнопку ниже.</div>
-              <div class="center"><button class="button" type="button" id="end-sessions">Сбросить все сессии</button></div>
-            </div>
-          </div>
+          <table class="form">
+            <tr>
+              <td>
+                <p class="hint" id="sessions-count"></p>
+                <div id="sessions"></div>
+              </td>
+            </tr>
+            <tr id="end-sessions-block" hidden>
+              <td>
+                <div class="accent-box">Если вы хотите выйти из Freenet со всех остальных устройств, нажмите на кнопку ниже.</div>
+                <div class="center"><button class="button" type="button" id="end-sessions">Сбросить все сессии</button></div>
+              </td>
+            </tr>
+          </table>
 
           <h4>Шифрование сообщений</h4>
-          <div class="settings-block">
-            <div class="accent-box">
-              <p>Личные сообщения шифруются на ваших устройствах: прочитать их можете только вы и собеседник, сервер хранит их зашифрованными. Ключ, которым они открываются, есть только у вас — в браузере, где вы вошли на сайт.</p>
-              <p><b id="key-state"></b></p>
-            </div>
-            <div class="key-actions" id="key-actions"></div>
-            <p class="hint">Чтобы читать сообщения на другом устройстве, сохраните ключ в файл и загрузите его там с кодом, который покажет сайт. Без ключа прочитать сообщения нельзя: если он потерян, создайте новый — сообщения, зашифрованные старым, останутся непрочитанными.</p>
-          </div>
+          <table class="form">
+            <tr>
+              <td>
+                <div class="accent-box">
+                  <p>Личные сообщения шифруются на ваших устройствах: прочитать их можете только вы и собеседник, сервер хранит их зашифрованными. Ключ, которым они открываются, есть только у вас — в браузере, где вы вошли на сайт.</p>
+                  <p><b id="key-state"></b></p>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="key-actions" id="key-actions"></div>
+                <p class="hint">Чтобы читать сообщения на другом устройстве, сохраните ключ в файл и загрузите его там с кодом, который покажет сайт. Без ключа прочитать сообщения нельзя: если он потерян, создайте новый — сообщения, зашифрованные старым, останутся непрочитанными.</p>
+              </td>
+            </tr>
+          </table>
         </div>
 
         <form id="privacy" hidden>
           <b class="subhead">Информация в профиле</b>
           <table class="form">
-            <tr>
-              <th><label for="profile-type">Тип профиля</label></th>
-              <td class="control">
-                <select id="profile-type"></select>
-                <p class="hint">Закрытую страницу видят только ваши друзья.</p>
-              </td>
-            </tr>
             <tr>
               <th><label for="page-read">Кому в интернете видно мою страницу</label></th>
               <td class="control"><select id="page-read"></select></td>
@@ -123,6 +139,13 @@
             <tr>
               <th><label for="info-read">Кому видно основную информацию моей страницы</label></th>
               <td class="control"><select id="info-read"></select></td>
+            </tr>
+            <tr>
+              <th><label for="profile-type">Тип профиля</label></th>
+              <td class="control">
+                <select id="profile-type"></select>
+                <p class="hint">Закрытую страницу видят только ваши друзья.</p>
+              </td>
             </tr>
             <tr>
               <th><label for="online-read">Кто видит мою неактивность</label></th>
@@ -150,16 +173,16 @@
               <td class="control"><select id="clubs-read"></select></td>
             </tr>
             <tr>
+              <th><label for="audios-read">Кому видно мои аудиозаписи</label></th>
+              <td class="control"><select id="audios-read"></select></td>
+            </tr>
+            <tr>
               <th><label for="friends-read">Кому видно моих друзей</label></th>
               <td class="control"><select id="friends-read"></select></td>
             </tr>
             <tr>
               <th><label for="gifts-read">Кому видны мои подарки</label></th>
               <td class="control"><select id="gifts-read"></select></td>
-            </tr>
-            <tr>
-              <th><label for="audios-read">Кто видит мои аудиозаписи</label></th>
-              <td class="control"><select id="audios-read"></select></td>
             </tr>
             <tr>
               <th><label for="listening-read">Кто видит, что я слушаю</label></th>
@@ -193,80 +216,112 @@
               <td class="control"><select id="chats-invite"></select></td>
             </tr>
           </table>
-
-          <div class="actions"><button class="button" type="submit">Сохранить</button></div>
+          <table class="form">
+            <tr>
+              <th></th>
+              <td class="control"><button class="button" type="submit">Сохранить</button></td>
+            </tr>
+          </table>
 
           <div id="fediverse" hidden>
             <b class="subhead">Fediverse</b>
-            <div class="settings-block">
-              <div class="accent-box">
-                <p id="fediverse-state"></p>
-                <p class="hint">Mastodon и другие сети Fediverse смогут найти вашу страницу по адресу и подписаться на неё. Подписчикам оттуда будут приходить записи с вашей стены, которые видны всем.</p>
-              </div>
-              <div class="center" id="fediverse-actions"></div>
-            </div>
+            <table class="form">
+              <tr>
+                <td>
+                  <div class="accent-box">
+                    <p id="fediverse-state"></p>
+                    <p class="hint">Mastodon и другие сети Fediverse смогут найти вашу страницу по адресу и подписаться на неё. Подписчикам оттуда будут приходить записи с вашей стены, которые видны всем.</p>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td class="center" id="fediverse-actions"></td>
+              </tr>
+            </table>
             <b class="subhead">Чтение Fediverse и Telegram</b>
-            <div class="settings-block">
-              <div class="accent-box">
-                <p class="hint">Записи людей из Mastodon и других сетей Fediverse и публичных каналов Telegram, на которые вы подпишетесь, будут приходить в «Мои новости».</p>
-                <div class="fediverse-follow">
-                  <input id="fediverse-address" type="text" maxlength="300" autocomplete="off" spellcheck="false" placeholder="@имя@mastodon.social или t.me/канал">
-                  <span id="fediverse-subscribe"></span>
-                </div>
-              </div>
-              <div id="fediverse-subscriptions"></div>
-            </div>
+            <table class="form">
+              <tr>
+                <td>
+                  <div class="accent-box">
+                    <p class="hint">Записи людей из Mastodon и других сетей Fediverse и публичных каналов Telegram, на которые вы подпишетесь, будут приходить в «Мои Новости».</p>
+                    <div class="fediverse-follow">
+                      <input id="fediverse-address" type="text" maxlength="300" autocomplete="off" spellcheck="false" placeholder="@имя@mastodon.social или t.me/канал">
+                      <span id="fediverse-subscribe"></span>
+                    </div>
+                  </div>
+                  <div id="fediverse-subscriptions"></div>
+                </td>
+              </tr>
+            </table>
           </div>
         </form>
 
-        <form id="interface" hidden>
+        <div id="interface" hidden>
           <h4>Интерфейс</h4>
-          <table class="form">
-            <tr>
-              <th><label for="avatar-style">Отображение аватаров</label></th>
-              <td class="control"><select id="avatar-style"></select></td>
-            </tr>
-            <tr>
-              <th><label for="theme-select">Стиль</label></th>
-              <td class="control"><select id="theme-select"></select></td>
-            </tr>
-            <tr>
-              <th><label for="rating">Рейтинг</label></th>
-              <td class="control"><select id="rating"></select></td>
-            </tr>
-            <tr>
-              <th><label for="nsfw">NSFW-контент</label></th>
-              <td class="control"><select id="nsfw"></select></td>
-            </tr>
-            <tr>
-              <th><label for="post-view">Вид постов</label></th>
-              <td class="control"><select id="post-view"></select></td>
-            </tr>
-            <tr>
-              <th><label for="main-page">Главная страница</label></th>
-              <td class="control"><select id="main-page"></select></td>
-            </tr>
-            <tr>
-              <th></th>
-              <td class="control checks"><label><input type="checkbox" id="theme-device"> Применить стиль только для этого устройства</label></td>
-            </tr>
-          </table>
+          <form id="interface-look">
+            <table class="form">
+              <tr>
+                <th><label for="avatar-style">Отображение аватаров</label></th>
+                <td class="control"><select id="avatar-style"></select></td>
+              </tr>
+              <tr>
+                <th><label for="theme-select">Стиль</label></th>
+                <td class="control"><select id="theme-select"></select></td>
+              </tr>
+              <tr>
+                <th><label for="rating">Рейтинг</label></th>
+                <td class="control"><select id="rating"></select></td>
+              </tr>
+              <tr>
+                <th><label for="nsfw">NSFW-контент</label></th>
+                <td class="control"><select id="nsfw"></select></td>
+              </tr>
+              <tr>
+                <th><label for="post-view">Вид постов</label></th>
+                <td class="control"><select id="post-view"></select></td>
+              </tr>
+              <tr>
+                <th><label for="main-page">Главная страница</label></th>
+                <td class="control"><select id="main-page"></select></td>
+              </tr>
+              <tr>
+                <th class="check-cell"><input type="checkbox" id="theme-device"></th>
+                <td class="control"><label for="theme-device">Применить стиль только для этого устройства</label></td>
+              </tr>
+              <tr>
+                <th></th>
+                <td class="control"><button class="button" type="submit">Сохранить</button></td>
+              </tr>
+            </table>
+          </form>
 
           <h4>Часовой пояс</h4>
-          <table class="form">
-            <tr>
-              <th><label for="timezone">Часовой пояс</label></th>
-              <td class="control"><select id="timezone"></select></td>
-            </tr>
-          </table>
+          <form id="interface-timezone">
+            <table class="form">
+              <tr>
+                <th><label for="timezone">Часовой пояс</label></th>
+                <td class="control"><select id="timezone"></select></td>
+              </tr>
+              <tr>
+                <th></th>
+                <td class="control"><button class="button" type="submit">Сохранить</button></td>
+              </tr>
+            </table>
+          </form>
 
           <h4>Левое меню</h4>
-          <table class="form">
-            <tbody id="menu-items"></tbody>
-          </table>
-
-          <div class="actions"><button class="button" type="submit">Сохранить</button></div>
-        </form>
+          <form id="interface-menu">
+            <table class="form">
+              <tbody id="menu-items"></tbody>
+              <tbody>
+                <tr>
+                  <th></th>
+                  <td class="control"><button class="button" type="submit">Сохранить</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </form>
+        </div>
         </div>
       </div>
     </div>

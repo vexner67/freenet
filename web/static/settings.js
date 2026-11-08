@@ -1,14 +1,14 @@
 // openvk's "Мои Настройки" at /settings: "Основное" (the e-mail, the
 // page address and "удалить свою страницу"), "Безопасность" (?act=security:
 // the second step of signing in, twofactor.js, where you are signed in,
-// and the key messages are sealed with) and "Приватность" (?act=privacy:
+// and the key messages are sealed with), "Приватность" (?act=privacy:
 // who sees the page and its parts and who writes to you) and "Внешний вид"
-// (?act=interface: the style, the photos and the posts, the clock, where
-// the site opens and what the left menu shows); "Чёрный список" is a page of its own.
-// The votes, which were a tab here (?act=finance), are a page of their own
-// (/votes, votes.js); ?act=vouchers leads to "Админ-панель". The tabs change
-// without a new page; the plate over them says how protected the page is,
-// a saved form answers over the page and the fields not saved yet are yellow.
+// (?act=interface: "Интерфейс", "Часовой пояс" and "Левое меню", each
+// saved by its own button, as openvk's); "Чёрный список" and "Голоса"
+// (/votes, votes.js; once ?act=finance) are pages of their own, linked
+// among the tabs in openvk's order; ?act=vouchers leads to "Админ-панель".
+// The tabs change without a new page; a saved form answers over the page,
+// so that nothing under the reader moves.
 
 import { api, currentUser } from './api.js';
 import { deviceName, formatDateTime, keyStateText, sessionsCount, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes, pushStateTexts } from './labels.js';
@@ -18,7 +18,7 @@ import { openDeactivate } from './deactivate.js';
 import { disablePush, enablePush, pushState } from './push.js';
 import { ensureKey, exportKeys, forgetKeys, hasKeys, importKeys, KEY_READY, newCode, newKey } from './e2ee.js';
 import { showTwoFactor } from './twofactor.js';
-import { gameIcon, helpButton } from './game.js';
+import { helpButton } from './game.js';
 import { tr } from './i18n.js';
 
 const error = $('error');
@@ -50,7 +50,6 @@ function onSubmit(form, save) {
       button.disabled = false;
     }
   });
-  form.addEventListener('input', (event) => event.target.closest?.('tr, .settings-block')?.classList.add('field-changed'));
 }
 
 // How long "Изменения сохранены" stays over the page.
@@ -63,11 +62,10 @@ function showNotice() {
   noticeTimer = setTimeout(() => { $('notice').hidden = true; }, noticeTime);
 }
 
-// saved is what a saved form answers: the notice and the yellow fields
-// back to normal.
+// saved is what a saved form answers: openvk's "Изменения сохранены".
 function saved() {
+  $('notice').replaceChildren(el('b', { textContent: tr('Изменения сохранены') }), el('br'), tr('Новые данные появятся на вашей странице.'));
   showNotice();
-  for (const field of document.querySelectorAll('.field-changed')) field.classList.remove('field-changed');
 }
 
 // initMain: the page address is the nickname, saved alone, so a profile
@@ -103,7 +101,6 @@ async function showPush(me) {
       showError(error, e);
     }
     await showPush(me);
-    checkSafety(me);
   };
 
   const actions = {
@@ -142,8 +139,6 @@ function initPrivacy(me) {
   });
 }
 
-// initInterface is "Интерфейс", "Часовой пояс" and "Левое меню" of
-// openvk: saved, they show at once, in the menu on the left too.
 // showFediverse is whether the page is open to the Fediverse, and the
 // button that changes it; a site without federation has no such block.
 async function showFediverse(me) {
@@ -250,6 +245,11 @@ function openCloseFediverse(done) {
   }), button(tr('Отмена'), modal.close, { secondary: true }));
 }
 
+// initInterface is "Интерфейс", "Часовой пояс" and "Левое меню" of
+// openvk, three forms with a button each: saved, they show at once, in
+// the menu on the left too. Each sends what it shows and what the others
+// had when last saved, so a field changed but not saved in another stays
+// as it was.
 function initInterface(me) {
   const ui = me.interface;
   const device = deviceTheme();
@@ -271,27 +271,48 @@ function initInterface(me) {
       el('input', { type: 'checkbox', id: 'menu-' + item, value: item, checked: !ui.hiddenMenu.includes(item) })),
     el('td', {}, el('label', { htmlFor: 'menu-' + item, textContent: text })))));
 
-  onSubmit($('interface'), async () => {
-    const hiddenMenu = [...$('menu-items').querySelectorAll('input')].filter((box) => !box.checked).map((box) => box.value);
+  async function save(changes) {
+    const was = me.interface;
+    const updated = await api.updateInterface({
+      avatarStyle: was.avatarStyle,
+      theme: was.theme,
+      hideRating: was.hideRating,
+      nsfw: was.nsfw,
+      postView: was.postView,
+      mainPage: was.mainPage,
+      timezone: was.timezone,
+      hiddenMenu: was.hiddenMenu,
+      ...changes,
+    });
+
+    Object.assign(me, updated);
+    applyInterface(me);
+  }
+
+  onSubmit($('interface-look'), async () => {
     // A style for this device alone stays in the browser: the settings
     // keep the one they had.
     const onDevice = $('theme-device').checked;
 
-    const updated = await api.updateInterface({
+    await save({
       avatarStyle: $('avatar-style').value,
       theme: onDevice ? me.interface.theme : $('theme-select').value,
       hideRating: $('rating').value === 'hide',
       nsfw: $('nsfw').value,
       postView: $('post-view').value,
       mainPage: $('main-page').value,
-      timezone: $('timezone').value === '' ? null : Number($('timezone').value),
-      hiddenMenu,
     });
-
     setDeviceTheme(onDevice ? $('theme-select').value : null);
-    Object.assign(me, updated);
     applyInterface(me);
   });
+
+  onSubmit($('interface-timezone'), () => save({
+    timezone: $('timezone').value === '' ? null : Number($('timezone').value),
+  }));
+
+  onSubmit($('interface-menu'), () => save({
+    hiddenMenu: [...$('menu-items').querySelectorAll('input')].filter((box) => !box.checked).map((box) => box.value),
+  }));
 }
 
 // sessionRow is one place the person is signed in at: what from, the
@@ -360,10 +381,7 @@ async function showKey(me, state) {
   }
 
   const ready = state === KEY_READY;
-  const again = (next) => {
-    checkSafety(me);
-    return showKey(me, next);
-  };
+  const again = (next) => showKey(me, next);
 
   $('key-state').textContent = ready ? tr('На этом устройстве есть ключ шифрования сообщений.') : keyStateText(state);
   $('key-actions').replaceChildren(...[
@@ -464,43 +482,6 @@ function openForget(me, done) {
 function say(title, ...rest) {
   $('notice').replaceChildren(el('b', { textContent: title }), ...(rest.length ? [el('br'), ...rest] : []));
   showNotice();
-  checkSafety(me);
-}
-
-// The sections of the plate over the tabs: what guards the page, where it is
-// set up, what it says of it.
-const guards = [
-  { key: 'address', icon: '/static/icons/game/profile-card.svg', act: 'main', name: () => tr('Адрес страницы') },
-  { key: 'push', icon: '/static/icons/game/megaphone.svg', act: 'main', name: () => tr('Уведомления') },
-  { key: 'twoFactor', icon: '/static/icons/game/lock.svg', act: 'security', name: () => tr('Вход с кодом') },
-  { key: 'key', icon: '/static/icons/game/vault.svg', act: 'security', name: () => tr('Ключ сообщений') },
-];
-
-// showSafety draws what is set up.
-function showSafety(state) {
-  const done = guards.filter((g) => state[g.key]).length;
-  const share = done / guards.length;
-  const sum = el('b', { className: 'settings-hud-sum' });
-  const fill = el('span', { className: 'settings-hud-fill' });
-
-  fill.style.transform = `scaleX(${share})`;
-  sum.textContent = `${share * 100} %`;
-  $('safety').replaceChildren(
-    el('div', { className: 'settings-hud-head' }, gameIcon('/static/icons/game/star.svg'), el('span', { textContent: tr('Защита страницы') }), sum,
-      helpButton(tr('Чем больше здесь отмечено, тем труднее чужому войти на вашу страницу и прочесть вашу переписку.'))),
-    el('span', { className: 'settings-hud-bar' }, fill),
-    el('div', { className: 'settings-hud-steps' }, ...guards.map((g) => el('button', {
-      className: state[g.key] ? 'settings-step done' : 'settings-step',
-      type: 'button',
-      onclick: () => openTab(g.act, true),
-    }, gameIcon(g.icon), g.name()))),
-  );
-}
-
-async function checkSafety(me) {
-  const [push, twoFactor] = await Promise.all([pushState().catch(() => ''), api.twoFactor().catch(() => null)]);
-
-  showSafety({ address: Boolean(me.nickname), push: push === 'on', twoFactor: Boolean(twoFactor?.enabled), key: hasKeys(me.id) });
 }
 
 const opened = new Set();
@@ -547,6 +528,5 @@ if (asked === 'vouchers') {
   renderChrome(me);
   listenTabs();
   openTab(act);
-  checkSafety(me);
   $('loading').hidden = true;
 }

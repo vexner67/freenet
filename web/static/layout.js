@@ -279,7 +279,8 @@ export function pagePath(author) {
   return author.club ? '/club/' + encodeURIComponent(clubRef(author)) : '/' + author.nickname;
 }
 
-// savedPath is the page of «Избранное»: the dialog with oneself.
+// savedPath is the page of «Избранное»: the dialog with oneself, which
+// "Сообщения" opens (the menu has no link of its own, as openvk's hides it).
 export function savedPath(me) {
   return `/im/${encodeURIComponent(me.nickname)}`;
 }
@@ -739,9 +740,6 @@ export function applyInterface(me) {
     me.nickname && el('a', { href: '/friends', textContent: tr('Друзья') },
       el('span', { className: 'counter', id: 'friends-count-menu', hidden: true })),
     menuLink(me, 'messages', '/im', tr('Сообщения'), 'messages-count'),
-    // «Избранное» is the dialog with oneself, sealed as any: what the
-    // user keeps — photos, documents, posts, words — is kept there.
-    me.nickname && el('a', { href: savedPath(me), textContent: tr('Избранное') }),
     menuLink(me, 'groups', '/groups', tr('Группы')),
     el('a', { href: '/audio', textContent: tr('Аудиозаписи') }),
     menuLink(me, 'feed', '/feed', tr('Новости')),
