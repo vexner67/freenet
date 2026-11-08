@@ -13,6 +13,7 @@ import (
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/outbox"
+	"github.com/vexner67/freenet/user/internal/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -97,14 +98,16 @@ func (o *Outbox) GiftDeleted(ctx context.Context, giftID, senderID, recipientID 
 	return o.add(ctx, kindRetract, &notificationv1.RetractRequest{Event: giftEvent(giftID, senderID, recipientID)})
 }
 
-func (o *Outbox) VotesSent(ctx context.Context, transferID, senderID, recipientID uuid.UUID) error {
+func (o *Outbox) VotesSent(ctx context.Context, t service.VotesTransfer) error {
 	return o.add(ctx, kindNotify, &notificationv1.NotifyRequest{Event: &notificationv1.Event{
 		Kind:        notificationv1.Kind_KIND_VOTES,
-		RecipientId: recipientID.String(),
-		ActorId:     senderID.String(),
+		RecipientId: t.RecipientID.String(),
+		ActorId:     t.SenderID.String(),
 		// The transfer stands where other events name a post: one
 		// notification per transfer.
-		PostId: transferID.String(),
+		PostId: t.ID.String(),
+		Votes:  t.Votes,
+		Note:   t.Note,
 	}})
 }
 
@@ -233,7 +236,7 @@ func (Nop) Invited(context.Context, uuid.UUID, uuid.UUID) error    { return nil 
 func (Nop) GiftSent(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error    { return nil }
 func (Nop) GiftDeleted(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error { return nil }
 
-func (Nop) VotesSent(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error { return nil }
+func (Nop) VotesSent(context.Context, service.VotesTransfer) error { return nil }
 
 func (Nop) PrimeGiven(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error { return nil }
 

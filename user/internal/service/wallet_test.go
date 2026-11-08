@@ -16,15 +16,15 @@ import (
 // fakeVotesNotifier records the transfers told to the notification
 // service, and fails with err when set.
 type fakeVotesNotifier struct {
-	sent []giftNote
+	sent []service.VotesTransfer
 	err  error
 }
 
-func (f *fakeVotesNotifier) VotesSent(_ context.Context, transfer, sender, recipient uuid.UUID) error {
+func (f *fakeVotesNotifier) VotesSent(_ context.Context, t service.VotesTransfer) error {
 	if f.err != nil {
 		return f.err
 	}
-	f.sent = append(f.sent, giftNote{transfer, sender, recipient})
+	f.sent = append(f.sent, t)
 	return nil
 }
 
@@ -224,11 +224,13 @@ func TestWalletService_Transfer(t *testing.T) {
 	}
 
 	// The sender pays the fee on top: 4 and 1.
-	left, _, err := w.wallets.Transfer(ctx, ann, bob, 4, "")
+	left, _, err := w.wallets.Transfer(ctx, ann, bob, 4, "на кофе")
 	if err != nil || left != 5 || w.votes(t, ann) != 5 || w.votes(t, bob) != 4 {
 		t.Fatalf("Transfer = %d, %v; ann %d, bob %d", left, err, w.votes(t, ann), w.votes(t, bob))
 	}
-	if len(w.notifier.sent) != 1 || w.notifier.sent[0].sender != ann || w.notifier.sent[0].recipient != bob || w.notifier.sent[0].gift == uuid.Nil {
+	// The recipient hears how many and the message.
+	if told := w.notifier.sent; len(told) != 1 || told[0].SenderID != ann || told[0].RecipientID != bob || told[0].ID == uuid.Nil ||
+		told[0].Votes != 4 || told[0].Note != "на кофе" {
 		t.Fatalf("told = %+v", w.notifier.sent)
 	}
 

@@ -97,7 +97,17 @@ type EconomyRepository interface {
 // VotesNotifier records what the notification service has to hear about
 // transfers, in the transaction of the transfer, as Notifier does.
 type VotesNotifier interface {
-	VotesSent(ctx context.Context, transferID, senderID, recipientID uuid.UUID) error
+	VotesSent(ctx context.Context, t VotesTransfer) error
+}
+
+// VotesTransfer is a transfer the recipient hears about: who sent how many
+// votes with what message; ID names it in the notification.
+type VotesTransfer struct {
+	ID          uuid.UUID
+	SenderID    uuid.UUID
+	RecipientID uuid.UUID
+	Votes       int64
+	Note        string
 }
 
 // VoucherDraft is a voucher to make. An empty Token asks for a generated
@@ -249,7 +259,9 @@ func (s *WalletService) Transfer(
 			return errs.Wrap("s.wallets.Move", err)
 		}
 
-		return errs.Wrap("s.notifier.VotesSent", s.notifier.VotesSent(ctx, transferID, senderID, recipientID))
+		return errs.Wrap("s.notifier.VotesSent", s.notifier.VotesSent(ctx, VotesTransfer{
+			ID: transferID, SenderID: senderID, RecipientID: recipientID, Votes: votes.Int64(), Note: note.String(),
+		}))
 	})
 	if err != nil {
 		return 0, 0, errs.Wrap("s.tx.WithinTx", err)

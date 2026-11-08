@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/outbox"
+	"github.com/vexner67/freenet/user/internal/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -125,6 +126,27 @@ func TestOutbox_Gifts(t *testing.T) {
 	}
 	if e := api.retracted; e.GetKind() != notificationv1.Kind_KIND_GIFT || e.GetPostId() != gift.String() {
 		t.Fatalf("deleted gift event = %v", e)
+	}
+}
+
+func TestOutbox_Votes(t *testing.T) {
+	t.Parallel()
+
+	queue := outbox.NewMemory()
+	transfer := service.VotesTransfer{ID: uuid.New(), SenderID: uuid.New(), RecipientID: uuid.New(), Votes: 25, Note: "на кофе"}
+
+	if err := NewOutbox(queue).VotesSent(context.Background(), transfer); err != nil {
+		t.Fatal(err)
+	}
+
+	api := &fakeAPI{}
+	if errs := deliverAll(t, queue, NewDeliverer(api, time.Second)); len(errs) != 1 || errs[0] != nil {
+		t.Fatalf("deliver = %v", errs)
+	}
+	if e := api.notified; e.GetKind() != notificationv1.Kind_KIND_VOTES || e.GetActorId() != transfer.SenderID.String() ||
+		e.GetRecipientId() != transfer.RecipientID.String() || e.GetPostId() != transfer.ID.String() ||
+		e.GetVotes() != 25 || e.GetNote() != "на кофе" {
+		t.Fatalf("votes event = %v", e)
 	}
 }
 
