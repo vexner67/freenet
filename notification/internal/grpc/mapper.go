@@ -88,7 +88,7 @@ func fromProtoEvent(e *notificationv1.Event) (notification.Event, error) {
 		return notification.Event{}, status.Error(codes.InvalidArgument, "unknown notification kind")
 	}
 
-	event := notification.Event{Kind: kind, Seconds: int(e.GetSeconds())}
+	event := notification.Event{Kind: kind, Seconds: int(e.GetSeconds()), Votes: e.GetVotes(), Note: e.GetNote()}
 
 	ids := []struct {
 		raw      string
@@ -127,6 +127,8 @@ func toProtoNotification(n *notification.Notification) *notificationv1.Notificat
 		CommentId: optionalID(e.CommentID),
 		CreatedAt: timestamppb.New(n.CreatedAt()),
 		Seconds:   int32(e.Seconds), //nolint:gosec // at most notification.MaxCallSeconds
+		Votes:     e.Votes,
+		Note:      e.Note,
 	}
 }
 

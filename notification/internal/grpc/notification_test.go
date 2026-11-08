@@ -320,3 +320,36 @@ func TestSubscribe(t *testing.T) {
 		t.Fatalf("without a token: code = %v", code)
 	}
 }
+
+// TestVotes: a transfer of votes reads back with how many and its
+// message; a message on another kind is refused.
+func TestVotes(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	_, err := s.client.Notify(context.Background(), &notificationv1.NotifyRequest{Event: &notificationv1.Event{
+		Kind: notificationv1.Kind_KIND_VOTES, RecipientId: ann.String(), ActorId: bob.String(), PostId: uuid.NewString(),
+		Votes: 40, Note: "спасибо",
+	}})
+	if err != nil {
+		t.Fatalf("Notify: %v", err)
+	}
+
+	page, err := s.client.ListNotifications(s.as(t, ann), &notificationv1.ListNotificationsRequest{Box: notificationv1.Box_BOX_UNREAD})
+	if err != nil || len(page.GetNotifications()) != 1 {
+		t.Fatalf("votes = %v, %v", page, err)
+	}
+	if v := page.GetNotifications()[0]; v.GetVotes() != 40 || v.GetNote() != "спасибо" {
+		t.Fatalf("the transfer: %v", v)
+	}
+
+	_, err = s.client.Notify(context.Background(), &notificationv1.NotifyRequest{Event: &notificationv1.Event{
+		Kind: notificationv1.Kind_KIND_GIFT, RecipientId: ann.String(), ActorId: bob.String(), PostId: uuid.NewString(),
+		Note: "привет",
+	}})
+	if status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a gift with a message: %v", err)
+	}
+}

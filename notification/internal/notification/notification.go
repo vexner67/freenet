@@ -5,6 +5,7 @@ package notification
 import (
 	"errors"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 )
@@ -94,6 +95,10 @@ const (
 // MaxCallSeconds bounds how long a call is told to have lasted: a day.
 const MaxCallSeconds = 24 * 60 * 60
 
+// MaxNoteLength bounds the message of a transfer of votes, in characters,
+// as the user service bounds it.
+const MaxNoteLength = 140
+
 var (
 	ErrUnknownKind    = errors.New("unknown notification kind")
 	ErrNoRecipient    = errors.New("notification has no recipient")
@@ -101,6 +106,7 @@ var (
 	ErrActorRecipient = errors.New("nobody is notified about their own actions")
 	ErrTargetMismatch = errors.New("notification target does not match its kind")
 	ErrCallSeconds    = errors.New("invalid length of a call")
+	ErrVotes          = errors.New("invalid votes of a transfer")
 	ErrNotFound       = errors.New("notification not found")
 )
 
@@ -110,7 +116,9 @@ var (
 // CommentID for comments, replies, comment likes, messages of topics and
 // their likes and mentions in comments and topics;
 // unused IDs are uuid.Nil. Seconds is how long a call lasted, for
-// KindCall only.
+// KindCall only. Votes and Note are how many votes a transfer moved and
+// its message ("передал вам 10 голосов. Сообщение: …" of openvk), for
+// KindVotes only; 0 votes is a transfer told before they were kept.
 type Event struct {
 	Kind        Kind
 	RecipientID uuid.UUID
@@ -118,6 +126,8 @@ type Event struct {
 	PostID      uuid.UUID
 	CommentID   uuid.UUID
 	Seconds     int
+	Votes       int64
+	Note        string
 }
 
 // Validate checks that the event names exactly what its kind needs.
@@ -138,6 +148,10 @@ func (e Event) Validate() error {
 
 	if (e.Kind == KindCall) != (e.Seconds != 0) || e.Seconds < 0 || e.Seconds > MaxCallSeconds {
 		return ErrCallSeconds
+	}
+
+	if e.Votes < 0 || e.Kind != KindVotes && (e.Votes != 0 || e.Note != "") || utf8.RuneCountInString(e.Note) > MaxNoteLength {
+		return ErrVotes
 	}
 
 	var ok bool

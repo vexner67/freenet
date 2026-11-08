@@ -889,3 +889,34 @@ func TestRepositories_Calls(t *testing.T) {
 		t.Fatalf("Get = %+v, %v; want %+v", got, err, call.Event())
 	}
 }
+
+func TestRepositories_Votes(t *testing.T) {
+	ctx := context.Background()
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	pool, err := pgpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	repo := postgres.NewNotificationRepository(pool)
+
+	// A transfer reads back with its votes and message.
+	sent, err := notification.New(notification.Event{
+		Kind: notification.KindVotes, RecipientID: uuid.New(), ActorID: uuid.New(), PostID: uuid.New(),
+		Votes: 250, Note: "на кофе ☕",
+	}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if isNew, err := repo.Save(ctx, sent); err != nil || !isNew {
+		t.Fatalf("Save = %v, %v", isNew, err)
+	}
+	if got, err := repo.Get(ctx, sent.ID()); err != nil || got.Event() != sent.Event() {
+		t.Fatalf("Get = %+v, %v; want %+v", got, err, sent.Event())
+	}
+}

@@ -38,9 +38,11 @@ const saveNotificationQuery = `
 		post_id,
 		comment_id,
 		seconds,
+		votes,
+		note,
 		created_at
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	ON CONFLICT DO NOTHING
 `
 
@@ -48,7 +50,7 @@ func (r *NotificationRepository) Save(ctx context.Context, n *notification.Notif
 	e := n.Event()
 
 	tag, err := r.pool.Exec(ctx, saveNotificationQuery,
-		n.ID(), string(e.Kind), e.RecipientID, e.ActorID, nullable(e.PostID), nullable(e.CommentID), e.Seconds, n.CreatedAt())
+		n.ID(), string(e.Kind), e.RecipientID, e.ActorID, nullable(e.PostID), nullable(e.CommentID), e.Seconds, e.Votes, e.Note, n.CreatedAt())
 	if err != nil {
 		return false, errs.Wrap("r.pool.Exec", err)
 	}
@@ -65,6 +67,8 @@ const getNotificationQuery = `
 		post_id,
 		comment_id,
 		seconds,
+		votes,
+		note,
 		created_at
 	FROM notifications
 	WHERE id = $1
@@ -312,6 +316,8 @@ const (
 			post_id,
 			comment_id,
 			seconds,
+			votes,
+			note,
 			created_at
 		FROM notifications
 		WHERE recipient_id = $1
@@ -329,6 +335,8 @@ const (
 			post_id,
 			comment_id,
 			seconds,
+			votes,
+			note,
 			created_at
 		FROM notifications
 		WHERE recipient_id = $1
@@ -411,10 +419,12 @@ func scanNotification(row pgx.Row) (*notification.Notification, error) {
 		kind                     string
 		postID, commentID        *uuid.UUID
 		seconds                  int
+		votes                    int64
+		note                     string
 		createdAt                time.Time
 	)
 
-	if err := row.Scan(&id, &kind, &recipientID, &actorID, &postID, &commentID, &seconds, &createdAt); err != nil {
+	if err := row.Scan(&id, &kind, &recipientID, &actorID, &postID, &commentID, &seconds, &votes, &note, &createdAt); err != nil {
 		return nil, err
 	}
 
@@ -423,6 +433,8 @@ func scanNotification(row pgx.Row) (*notification.Notification, error) {
 		RecipientID: recipientID,
 		ActorID:     actorID,
 		Seconds:     seconds,
+		Votes:       votes,
+		Note:        note,
 	}
 	if postID != nil {
 		e.PostID = *postID

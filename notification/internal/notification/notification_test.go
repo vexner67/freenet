@@ -3,6 +3,7 @@ package notification_test
 import (
 	"bytes"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,6 +32,11 @@ func TestEvent_Validate(t *testing.T) {
 		{"accepted post with a comment", notification.Event{Kind: notification.KindPostAccepted, RecipientID: ann, ActorID: bob, PostID: post, CommentID: comment}, notification.ErrTargetMismatch},
 		{"gift", notification.Event{Kind: notification.KindGift, RecipientID: ann, ActorID: bob, PostID: post}, nil},
 		{"votes", notification.Event{Kind: notification.KindVotes, RecipientID: ann, ActorID: bob, PostID: post}, nil},
+		{"votes with the sum and the message", notification.Event{Kind: notification.KindVotes, RecipientID: ann, ActorID: bob, PostID: post, Votes: 10, Note: strings.Repeat("я", notification.MaxNoteLength)}, nil},
+		{"votes below zero", notification.Event{Kind: notification.KindVotes, RecipientID: ann, ActorID: bob, PostID: post, Votes: -1}, notification.ErrVotes},
+		{"votes with too long a message", notification.Event{Kind: notification.KindVotes, RecipientID: ann, ActorID: bob, PostID: post, Votes: 1, Note: strings.Repeat("я", notification.MaxNoteLength+1)}, notification.ErrVotes},
+		{"gift with votes", notification.Event{Kind: notification.KindGift, RecipientID: ann, ActorID: bob, PostID: post, Votes: 5}, notification.ErrVotes},
+		{"like with a message", notification.Event{Kind: notification.KindLike, RecipientID: ann, ActorID: bob, PostID: post, Note: "hi"}, notification.ErrVotes},
 		{"votes without the transfer", notification.Event{Kind: notification.KindVotes, RecipientID: ann, ActorID: bob}, notification.ErrTargetMismatch},
 		{"prime", notification.Event{Kind: notification.KindPrime, RecipientID: ann, ActorID: bob, PostID: post}, nil},
 		{"prime without the purchase", notification.Event{Kind: notification.KindPrime, RecipientID: ann, ActorID: bob}, notification.ErrTargetMismatch},

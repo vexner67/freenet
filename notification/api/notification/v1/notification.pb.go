@@ -306,7 +306,11 @@ type Event struct {
 	PostId      string                 `protobuf:"bytes,4,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
 	CommentId   string                 `protobuf:"bytes,5,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
 	// How long a call lasted, for KIND_CALL only: 1 to 86400.
-	Seconds       int32 `protobuf:"varint,6,opt,name=seconds,proto3" json:"seconds,omitempty"`
+	Seconds int32 `protobuf:"varint,6,opt,name=seconds,proto3" json:"seconds,omitempty"`
+	// How many votes a transfer moved and its message (up to 140
+	// characters), for KIND_VOTES only; 0 for unknown.
+	Votes         int64  `protobuf:"varint,7,opt,name=votes,proto3" json:"votes,omitempty"`
+	Note          string `protobuf:"bytes,8,opt,name=note,proto3" json:"note,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -381,6 +385,20 @@ func (x *Event) GetSeconds() int32 {
 		return x.Seconds
 	}
 	return 0
+}
+
+func (x *Event) GetVotes() int64 {
+	if x != nil {
+		return x.Votes
+	}
+	return 0
+}
+
+func (x *Event) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
 }
 
 type NotifyRequest struct {
@@ -613,7 +631,11 @@ type Notification struct {
 	CommentId string                 `protobuf:"bytes,5,opt,name=comment_id,json=commentId,proto3" json:"comment_id,omitempty"`
 	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// How long a call lasted, for KIND_CALL.
-	Seconds       int32 `protobuf:"varint,7,opt,name=seconds,proto3" json:"seconds,omitempty"`
+	Seconds int32 `protobuf:"varint,7,opt,name=seconds,proto3" json:"seconds,omitempty"`
+	// How many votes a transfer moved, 0 for unknown, and its message, for
+	// KIND_VOTES.
+	Votes         int64  `protobuf:"varint,8,opt,name=votes,proto3" json:"votes,omitempty"`
+	Note          string `protobuf:"bytes,9,opt,name=note,proto3" json:"note,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -695,6 +717,20 @@ func (x *Notification) GetSeconds() int32 {
 		return x.Seconds
 	}
 	return 0
+}
+
+func (x *Notification) GetVotes() int64 {
+	if x != nil {
+		return x.Votes
+	}
+	return 0
+}
+
+func (x *Notification) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
 }
 
 type ListNotificationsRequest struct {
@@ -1288,7 +1324,7 @@ var File_api_notification_v1_notification_proto protoreflect.FileDescriptor
 
 const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\n" +
-	"&api/notification/v1/notification.proto\x12\x0fnotification.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc2\x01\n" +
+	"&api/notification/v1/notification.proto\x12\x0fnotification.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xec\x01\n" +
 	"\x05Event\x12)\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\x15.notification.v1.KindR\x04kind\x12!\n" +
 	"\frecipient_id\x18\x02 \x01(\tR\vrecipientId\x12\x19\n" +
@@ -1296,7 +1332,9 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\apost_id\x18\x04 \x01(\tR\x06postId\x12\x1d\n" +
 	"\n" +
 	"comment_id\x18\x05 \x01(\tR\tcommentId\x12\x18\n" +
-	"\aseconds\x18\x06 \x01(\x05R\aseconds\"=\n" +
+	"\aseconds\x18\x06 \x01(\x05R\aseconds\x12\x14\n" +
+	"\x05votes\x18\a \x01(\x03R\x05votes\x12\x12\n" +
+	"\x04note\x18\b \x01(\tR\x04note\"=\n" +
 	"\rNotifyRequest\x12,\n" +
 	"\x05event\x18\x01 \x01(\v2\x16.notification.v1.EventR\x05event\">\n" +
 	"\x0eRetractRequest\x12,\n" +
@@ -1307,7 +1345,7 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\n" +
 	"comment_id\x18\x01 \x01(\tR\tcommentId\"+\n" +
 	"\x10PurgeUserRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"\xf1\x01\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x9b\x02\n" +
 	"\fNotification\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12)\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x15.notification.v1.KindR\x04kind\x12\x19\n" +
@@ -1317,7 +1355,9 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"comment_id\x18\x05 \x01(\tR\tcommentId\x129\n" +
 	"\n" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x18\n" +
-	"\aseconds\x18\a \x01(\x05R\aseconds\"p\n" +
+	"\aseconds\x18\a \x01(\x05R\aseconds\x12\x14\n" +
+	"\x05votes\x18\b \x01(\x03R\x05votes\x12\x12\n" +
+	"\x04note\x18\t \x01(\tR\x04note\"p\n" +
 	"\x18ListNotificationsRequest\x12&\n" +
 	"\x03box\x18\x01 \x01(\x0e2\x14.notification.v1.BoxR\x03box\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +

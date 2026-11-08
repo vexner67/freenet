@@ -144,6 +144,10 @@ message Event {
   string comment_id = 5;
   // How long a call lasted, for KIND_CALL only: 1 to 86400.
   int32 seconds = 6;
+  // How many votes a transfer moved and its message (up to 140
+  // characters), for KIND_VOTES only; 0 for unknown.
+  int64 votes = 7;
+  string note = 8;
 }
 
 message NotifyRequest {
@@ -176,6 +180,10 @@ message Notification {
   google.protobuf.Timestamp created_at = 6;
   // How long a call lasted, for KIND_CALL.
   int32 seconds = 7;
+  // How many votes a transfer moved, 0 for unknown, and its message, for
+  // KIND_VOTES.
+  int64 votes = 8;
+  string note = 9;
 }
 
 enum Box {
