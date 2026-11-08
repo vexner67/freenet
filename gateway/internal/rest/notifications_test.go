@@ -20,13 +20,16 @@ type notificationPage struct {
 			Text      string `json:"text"`
 		} `json:"post"`
 		Comment *struct {
-			ID   string `json:"id"`
-			Text string `json:"text"`
+			ID        string `json:"id"`
+			Text      string `json:"text"`
+			CreatedAt string `json:"createdAt"`
 		} `json:"comment"`
 		Topic *struct {
 			ID    string `json:"id"`
 			Title string `json:"title"`
 		} `json:"topic"`
+		Votes int64  `json:"votes"`
+		Note  string `json:"note"`
 	} `json:"notifications"`
 	NextCursor string `json:"nextCursor"`
 	NewestID   string `json:"newestId"`
@@ -48,7 +51,7 @@ func TestListNotifications(t *testing.T) {
 
 	// The follow by a vanished account, the like of a deleted post and the
 	// message in a deleted topic are left out.
-	if len(got.Notifications) != 16 {
+	if len(got.Notifications) != 17 {
 		t.Fatalf("notifications = %+v", got.Notifications)
 	}
 
@@ -69,6 +72,11 @@ func TestListNotifications(t *testing.T) {
 		}
 	}
 
+	// A transfer of votes says how many and its message.
+	if v := got.Notifications[16]; v.Type != "votes" || v.Votes != 10 || v.Note != "на кофе" || v.Post != nil {
+		t.Fatalf("votes = %+v", v)
+	}
+
 	// A mention names the post, the post and the comment, or the topic.
 	inPost, inComment, inTopic := got.Notifications[8], got.Notifications[9], got.Notifications[10]
 	if inPost.Type != "post_mention" || inPost.Actor["nickname"] != "bob" || inPost.Post == nil || inPost.Post.Text != "первая" || inPost.Comment != nil {
@@ -83,7 +91,7 @@ func TestListNotifications(t *testing.T) {
 
 	comment, like, follow, wallPost := got.Notifications[0], got.Notifications[1], got.Notifications[2], got.Notifications[3]
 	if comment.Type != "comment" || comment.Actor["nickname"] != "bob" || comment.Comment == nil || comment.Comment.Text != "согласен" ||
-		comment.Post == nil || comment.Post.CreatedAt != "2026-10-04T15:30:00Z" {
+		comment.Comment.CreatedAt != "2026-10-04T16:00:00Z" || comment.Post == nil || comment.Post.CreatedAt != "2026-10-04T15:30:00Z" {
 		t.Fatalf("comment = %+v", comment)
 	}
 	if like.Type != "like" || like.Post == nil || like.Post.ID != "p1" || like.Comment != nil {

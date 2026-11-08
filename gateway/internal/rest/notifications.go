@@ -18,6 +18,10 @@ type notificationPostJSON struct {
 type notificationCommentJSON struct {
 	ID   string `json:"id"`
 	Text string `json:"text"`
+	// CreatedAt is when the comment was written: openvk tells a like of
+	// a comment as "понравился ваш комментарий от <date>". Empty for a
+	// message of a topic.
+	CreatedAt string `json:"createdAt,omitempty"`
 }
 
 type notificationJSON struct {
@@ -32,6 +36,10 @@ type notificationJSON struct {
 	Topic *notificationTopicJSON `json:"topic,omitempty"`
 	// Seconds is how long a call lasted, for "call".
 	Seconds int `json:"seconds,omitempty"`
+	// Votes and Note are how many votes a transfer moved and its message,
+	// for "votes": "передал вам 10 голосов. Сообщение: …" of openvk.
+	Votes int64  `json:"votes,omitempty"`
+	Note  string `json:"note,omitempty"`
 }
 
 type notificationTopicJSON struct {
@@ -305,6 +313,8 @@ func toNotificationJSON(n model.Notification, t targets) (notificationJSON, bool
 		CreatedAt: n.CreatedAt.UTC().Format(time.RFC3339),
 		Actor:     toAuthorJSON(actor),
 		Seconds:   n.Seconds,
+		Votes:     n.Votes,
+		Note:      n.Note,
 	}
 
 	if namesTopic(n.Kind) {
@@ -335,7 +345,7 @@ func toNotificationJSON(n model.Notification, t targets) (notificationJSON, bool
 		if !ok {
 			return notificationJSON{}, false
 		}
-		item.Comment = &notificationCommentJSON{ID: c.ID, Text: c.Text}
+		item.Comment = &notificationCommentJSON{ID: c.ID, Text: c.Text, CreatedAt: c.CreatedAt.UTC().Format(time.RFC3339)}
 	}
 
 	return item, true

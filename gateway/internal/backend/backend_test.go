@@ -594,6 +594,7 @@ func (f *fakeNotificationAPI) ListNotifications(ctx context.Context, req *notifi
 		Notifications: []*notificationv1.Notification{
 			{Id: "n2", Kind: notificationv1.Kind_KIND_COMMENT, ActorId: "u2", PostId: "p1", CommentId: "c1", CreatedAt: timestamppb.Now()},
 			{Id: "n1", Kind: notificationv1.Kind_KIND_FOLLOW, ActorId: "u3", CreatedAt: timestamppb.Now()},
+			{Id: "n0", Kind: notificationv1.Kind_KIND_VOTES, ActorId: "u3", PostId: "v1", CreatedAt: timestamppb.Now(), Votes: 7, Note: "спасибо"},
 		},
 		NextCursor: "n1",
 	}, nil
@@ -626,6 +627,9 @@ func TestNotifications(t *testing.T) {
 	comment, follow := page.Notifications[0], page.Notifications[1]
 	if comment.Kind != "comment" || comment.PostID != "p1" || comment.CommentID != "c1" || follow.Kind != "follow" || page.NextCursor != "n1" {
 		t.Fatalf("page = %+v", page)
+	}
+	if votes := page.Notifications[2]; votes.Kind != "votes" || votes.Votes != 7 || votes.Note != "спасибо" {
+		t.Fatalf("votes = %+v", votes)
 	}
 
 	if _, err = notifications.List(context.Background(), "tok", true, "", 0); err != nil || api.req.GetBox() != notificationv1.Box_BOX_UNREAD {

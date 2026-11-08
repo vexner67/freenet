@@ -10217,6 +10217,7 @@ components:
           properties:
             id: { type: string, format: uuid }
             text: { type: string }
+            createdAt: { type: string, format: date-time, description: "When the comment was written; absent for a message of a topic" }
         topic:
           description: Only for topic_message, topic_mention and topic_message_like; absent otherwise
           type: object
@@ -10229,6 +10230,15 @@ components:
           minimum: 1
           maximum: 86400
           description: How long the call lasted; only for call, absent otherwise
+        votes:
+          type: integer
+          format: int64
+          minimum: 1
+          description: How many votes a transfer moved; only for votes, absent otherwise and for a transfer told before the sum was kept
+        note:
+          type: string
+          maxLength: 140
+          description: The message of a transfer of votes; only for votes, absent when there is none
 
     NotificationPage:
       type: object

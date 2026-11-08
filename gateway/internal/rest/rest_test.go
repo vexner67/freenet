@@ -940,7 +940,8 @@ func (f *fakePosts) CommentsByID(_ context.Context, ids []string) ([]model.Comme
 	var found []model.Comment
 	for _, id := range ids {
 		if id == "c1" {
-			found = append(found, model.Comment{ID: "c1", PostID: "p1", Author: model.Author{ID: "u2"}, Text: "согласен"})
+			found = append(found, model.Comment{ID: "c1", PostID: "p1", Author: model.Author{ID: "u2"}, Text: "согласен",
+				CreatedAt: time.Date(2026, 10, 4, 16, 0, 0, 0, time.UTC)})
 		}
 	}
 	return found, nil
@@ -1354,6 +1355,7 @@ func (f *fakeNotifications) List(_ context.Context, token string, unread bool, c
 			{ID: "n-19", Kind: "gift", ActorID: "u2", PostID: "g1", CreatedAt: at},
 			{ID: "n-20", Kind: "story_like", ActorID: "u2", PostID: "s1", CreatedAt: at},
 			{ID: "n-21", Kind: "story_comment", ActorID: "u2", PostID: "s1", CommentID: "sc1", CreatedAt: at},
+			{ID: "n-22", Kind: "votes", ActorID: "u2", PostID: "v1", CreatedAt: at, Votes: 10, Note: "на кофе"},
 		},
 		NextCursor: "n-2",
 	}, f.err

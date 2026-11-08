@@ -48,6 +48,8 @@ func (n *Notifications) List(ctx context.Context, accessToken string, unread boo
 			CommentID: pn.GetCommentId(),
 			CreatedAt: pn.GetCreatedAt().AsTime(),
 			Seconds:   int(pn.GetSeconds()),
+			Votes:     pn.GetVotes(),
+			Note:      pn.GetNote(),
 		})
 	}
 

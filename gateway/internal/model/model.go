@@ -699,6 +699,10 @@ type Notification struct {
 	CreatedAt time.Time
 	// Seconds is how long a call lasted, for "call".
 	Seconds int
+	// Votes and Note are how many votes a transfer moved (0 for unknown)
+	// and its message, for "votes".
+	Votes int64
+	Note  string
 }
 
 // NotificationPage is one screen of notifications, newest first;
