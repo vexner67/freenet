@@ -126,11 +126,13 @@ function initPrivacy(me) {
   $('messages-prime').checked = Boolean(me.privacy.messagesPrime);
   $('message-price').value = String(me.privacy.messagePrice ?? 0);
   fill($('chats-invite'), chatsInvites, me.privacy.chatsInvite);
+  // An empty value is a page saved before the setting came: anyone.
+  fill($('gifts-send'), chatsInvites, me.privacy.giftsSend || 'everyone');
   fill($('profile-type'), profileTypes, me.privacy.closed ? 'closed' : 'open');
   showFediverse(me);
 
   onSubmit($('privacy'), async () => {
-    const privacy = { wallWrite: $('wall-write').value, messagesWrite: $('messages-write').value, chatsInvite: $('chats-invite').value, closed: $('profile-type').value === 'closed' };
+    const privacy = { wallWrite: $('wall-write').value, messagesWrite: $('messages-write').value, chatsInvite: $('chats-invite').value, giftsSend: $('gifts-send').value, closed: $('profile-type').value === 'closed' };
     privacy.messagesPrime = $('messages-prime').checked;
     privacy.messagePrice = Math.max(0, Math.floor(Number($('message-price').value) || 0));
     for (const [id, key] of Object.entries(reads)) privacy[key] = $(id).value;

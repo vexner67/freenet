@@ -1524,6 +1524,7 @@ export default {
   'Кто может писать мне сообщения': 'Who can message me',
   'Вам смогут ответить, если вы напишете первыми.': 'They will be able to reply if you write first.',
   'Кто может добавлять меня в чаты': 'Who can add me to chats',
+  'Кто может отправлять мне подарки': 'Who can send me gifts',
   'Интерфейс': 'Interface',
   'Отображение аватаров': 'Avatar display',
   'Стиль': 'Style',
