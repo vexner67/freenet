@@ -223,6 +223,7 @@ func toUser(u *userv1.User) model.User {
 			AudiosRead:         enumName(u.GetPrivacy().GetAudiosRead().String(), audiencePrefix),
 			ListeningRead:      enumName(u.GetPrivacy().GetListeningRead().String(), audiencePrefix),
 			ChatsInvite:        enumName(u.GetPrivacy().GetChatsInvite().String(), messagesWritePrefix),
+			GiftsSend:          enumName(u.GetPrivacy().GetGiftsSend().String(), messagesWritePrefix),
 			Closed:             u.GetPrivacy().GetClosed(),
 			MessagesPrime:      u.GetPrivacy().GetMessagesPrime(),
 			MessagePrice:       u.GetPrivacy().GetMessagePrice(),

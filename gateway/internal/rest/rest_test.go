@@ -137,7 +137,9 @@ type fakeUsers struct {
 	// is whose page the gateway asked about, profileToken the token
 	// GetProfile got.
 	hiddenPage, hiddenInfo, hiddenFriends, hiddenClubs, hiddenGifts bool
-	hiddenAudios, hiddenListening                                   bool
+	// closedGifts: "Кто может отправлять мне подарки" leaves the caller out.
+	closedGifts                   bool
+	hiddenAudios, hiddenListening bool
 	// closedPage: the hidden page is a closed one ("Закрытая страница").
 	closedPage                bool
 	accessAsked, profileToken string
@@ -307,7 +309,7 @@ func (f *fakeUsers) Access(_ context.Context, token, userID string) (model.Acces
 	}
 	return model.Access{
 		Page: !f.hiddenPage, Info: !f.hiddenInfo, Friends: !f.hiddenFriends, Clubs: !f.hiddenClubs, Gifts: !f.hiddenGifts,
-		Audios: !f.hiddenAudios, Listening: !f.hiddenListening,
+		Audios: !f.hiddenAudios, Listening: !f.hiddenListening, SendGift: !f.closedGifts,
 	}, f.err
 }
 

@@ -4268,7 +4268,9 @@ paths:
         Needs a filled-in profile. The user hears about it (`gift`), unless
         it is you. A deleted page takes no gifts, and neither does a page
         that does not show itself to you or one with a blacklist between you
-        two, either way. You may send a gift to yourself. A gift of a paid
+        two, either way, nor one whose `giftsSend` leaves you out ("Кто может
+        отправлять мне подарки"). You may send a gift to yourself whatever
+        the settings: that is buying it in the shop. A gift of a paid
         collection takes its price from your votes (`votes` of GET
         /api/v1/me): 409 `not enough votes` when you have fewer. Limited per
         user.
@@ -4296,7 +4298,7 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: "`this page is deleted` or `you cannot send a gift to this user`"
+          description: "`this page is deleted`, `you cannot send a gift to this user` or `this user takes no gifts from you`"
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -9486,6 +9488,10 @@ components:
           type: string
           enum: [everyone, following, nobody]
           description: "Who may add you to chats (\"Кто может добавлять меня в чаты\"): `following` are your friends, the default, also when left out"
+        giftsSend:
+          type: string
+          enum: [everyone, following, nobody]
+          description: "Who may send you gifts (\"Кто может отправлять мне подарки\"): `following` are your friends; everyone, the default, also when left out. You buy yourself gifts whatever it says"
         closed:
           type: boolean
           description: "A closed profile (\"Тип профиля: закрытый\"): only your friends see anything of the page but the names and the photo, whatever the other settings say; false when left out"
@@ -10709,12 +10715,13 @@ components:
     Access:
       type: object
       description: Which blocks of a page you may see, as its owner's privacy allows
-      required: [friends, clubs, gifts, audios]
+      required: [friends, clubs, gifts, audios, sendGift]
       properties:
         friends: { type: boolean, description: "The follows, either way (`friendsRead`)" }
         clubs: { type: boolean, description: "The communities (`clubsRead`)" }
         gifts: { type: boolean, description: "The gifts (`giftsRead`)" }
         audios: { type: boolean, description: "The songs and playlists (`audiosRead`)" }
+        sendGift: { type: boolean, description: "You may send the page a gift (`giftsSend`, no blacklist either way); on your own page, buy one" }
 
     Gift:
       type: object

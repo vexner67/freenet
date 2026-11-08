@@ -238,3 +238,28 @@ func TestDeleteGift(t *testing.T) {
 		t.Fatalf("without token: %d", w.Code)
 	}
 }
+
+// TestGiftsSend is "Кто может отправлять мне подарки": the owner sets it,
+// and a profile tells the viewer whether they may send a gift.
+func TestGiftsSend(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	w := h.do("PUT", "/api/v1/me/privacy", `{"giftsSend":"following"}`, "Authorization", "Bearer tok")
+	u := decode[map[string]any](t, w)
+	if privacy, _ := u["privacy"].(map[string]any); w.Code != http.StatusOK || privacy["giftsSend"] != "following" {
+		t.Fatalf("privacy: %d %v", w.Code, u["privacy"])
+	}
+
+	type profile struct {
+		Access map[string]bool `json:"access"`
+	}
+	if got := decode[profile](t, h.do("GET", "/api/v1/users/bob", "", "Authorization", "Bearer tok")); !got.Access["sendGift"] {
+		t.Fatalf("an open page: %+v", got)
+	}
+
+	h.users.closedGifts = true
+	if got := decode[profile](t, h.do("GET", "/api/v1/users/bob", "", "Authorization", "Bearer tok")); got.Access["sendGift"] {
+		t.Fatalf("a page taking no gifts from the caller: %+v", got)
+	}
+}

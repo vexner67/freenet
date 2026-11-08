@@ -207,6 +207,8 @@ type privacyJSON struct {
 	ListeningRead string `json:"listeningRead"`
 	// ChatsInvite: who may add the user to chats; "" leaves the default.
 	ChatsInvite string `json:"chatsInvite"`
+	// GiftsSend: who may send the user gifts; "" leaves everyone.
+	GiftsSend string `json:"giftsSend"`
 	// Closed is "Тип профиля: закрытый".
 	Closed bool `json:"closed"`
 	// MessagesPrime: only people with Freenet Prime write to the user;
@@ -232,6 +234,7 @@ func (p privacyJSON) toModel() model.Privacy {
 		AudiosRead:         p.AudiosRead,
 		ListeningRead:      p.ListeningRead,
 		ChatsInvite:        p.ChatsInvite,
+		GiftsSend:          p.GiftsSend,
 		Closed:             p.Closed,
 		MessagesPrime:      p.MessagesPrime,
 		MessagePrice:       p.MessagePrice,
@@ -355,6 +358,7 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 			AudiosRead:         u.Privacy.AudiosRead,
 			ListeningRead:      u.Privacy.ListeningRead,
 			ChatsInvite:        u.Privacy.ChatsInvite,
+			GiftsSend:          u.Privacy.GiftsSend,
 			Closed:             u.Privacy.Closed,
 			MessagesPrime:      u.Privacy.MessagesPrime,
 			MessagePrice:       u.Privacy.MessagePrice,

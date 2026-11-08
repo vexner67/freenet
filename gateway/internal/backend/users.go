@@ -152,6 +152,12 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 		return model.User{}, errs.Wrap("enumValue", err)
 	}
 
+	// So does an empty GiftsSend.
+	giftsSend, err := enumValue(p.GiftsSend, messagesWritePrefix, "gifts send", userv1.MessagesWrite_value)
+	if err != nil {
+		return model.User{}, errs.Wrap("enumValue", err)
+	}
+
 	// An empty GiftsRead, AudiosRead or ListeningRead, from a client that
 	// does not know it, is everyone.
 	var reads [7]userv1.Audience
@@ -180,6 +186,7 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 			AudiosRead:         reads[5],
 			ListeningRead:      reads[6],
 			ChatsInvite:        userv1.MessagesWrite(chatsInvite),
+			GiftsSend:          userv1.MessagesWrite(giftsSend),
 			Closed:             p.Closed,
 			MessagesPrime:      p.MessagesPrime,
 			MessagePrice:       p.MessagePrice,
@@ -289,6 +296,7 @@ func (u *Users) Access(ctx context.Context, accessToken, userID string) (model.A
 	return model.Access{
 		Page: resp.GetPage(), Info: resp.GetInfo(), Friends: resp.GetFriends(), Clubs: resp.GetClubs(),
 		Gifts: resp.GetGifts(), Audios: resp.GetAudios(), Listening: resp.GetListening(),
+		SendGift: resp.GetSendGift(),
 	}, nil
 }
 

@@ -144,7 +144,7 @@ func (f *fakeUserAPI) UpdatePrivacy(_ context.Context, req *userv1.UpdatePrivacy
 // keep the caller's token.
 func (f *fakeUserAPI) GetAccess(ctx context.Context, req *userv1.GetAccessRequest, _ ...grpc.CallOption) (*userv1.GetAccessResponse, error) {
 	f.md, _ = metadata.FromOutgoingContext(ctx)
-	return &userv1.GetAccessResponse{Page: req.GetUserId() == "u2", Gifts: true}, nil
+	return &userv1.GetAccessResponse{Page: req.GetUserId() == "u2", Gifts: true, SendGift: true}, nil
 }
 
 func (f *fakeUserAPI) GetProfile(ctx context.Context, req *userv1.GetProfileRequest, _ ...grpc.CallOption) (*userv1.GetProfileResponse, error) {
@@ -242,6 +242,7 @@ func TestWallPrivacy(t *testing.T) {
 	u, err := users.UpdatePrivacy(context.Background(), "tok", model.Privacy{
 		ShowWorldview: true, WallWrite: "everyone", MessagesWrite: "nobody", ClubsRead: "only_me",
 		PageRead: "users", InfoRead: "following", FriendsRead: "everyone", OnlineRead: "following", GiftsRead: "users",
+		GiftsSend: "following",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -262,9 +263,13 @@ func TestWallPrivacy(t *testing.T) {
 		api.privacy.GetGiftsRead() != userv1.Audience_AUDIENCE_USERS || u.Privacy.GiftsRead != "users" {
 		t.Fatalf("sent %v, got %+v", api.privacy, u.Privacy)
 	}
+	if api.privacy.GetGiftsSend() != userv1.MessagesWrite_MESSAGES_WRITE_FOLLOWING || u.Privacy.GiftsSend != "following" {
+		t.Fatalf("sent %v, got %+v", api.privacy, u.Privacy)
+	}
 
 	for _, bad := range []model.Privacy{{WallWrite: "friends", MessagesWrite: "everyone"}, {WallWrite: "everyone", MessagesWrite: "only_me"}, {WallWrite: "everyone", MessagesWrite: "everyone", ClubsRead: "nobody"},
 		{WallWrite: "everyone", MessagesWrite: "everyone", FriendsRead: "friends"},
+		{WallWrite: "everyone", MessagesWrite: "everyone", GiftsSend: "friends"},
 	} {
 		if _, err = users.UpdatePrivacy(context.Background(), "tok", bad); failure.From(err).Kind != failure.InvalidArgument {
 			t.Fatalf("privacy %+v: %v", bad, err)
@@ -272,7 +277,7 @@ func TestWallPrivacy(t *testing.T) {
 	}
 
 	access, err := users.Access(context.Background(), "tok", "u2")
-	if err != nil || access != (model.Access{Page: true, Gifts: true}) || api.md.Get("authorization")[0] != "Bearer tok" {
+	if err != nil || access != (model.Access{Page: true, Gifts: true, SendGift: true}) || api.md.Get("authorization")[0] != "Bearer tok" {
 		t.Fatalf("Access = %+v, %v", access, err)
 	}
 

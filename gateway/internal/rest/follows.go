@@ -47,12 +47,14 @@ type profileWithStatsResponse struct {
 }
 
 // accessJSON is which blocks of a page the viewer may see: the
-// follows, the communities, the gifts and the songs.
+// follows, the communities, the gifts and the songs; SendGift is
+// whether the viewer may send the page a gift.
 type accessJSON struct {
-	Friends bool `json:"friends"`
-	Clubs   bool `json:"clubs"`
-	Gifts   bool `json:"gifts"`
-	Audios  bool `json:"audios"`
+	Friends  bool `json:"friends"`
+	Clubs    bool `json:"clubs"`
+	Gifts    bool `json:"gifts"`
+	Audios   bool `json:"audios"`
+	SendGift bool `json:"sendGift"`
 }
 
 type userPageResponse struct {

@@ -168,6 +168,9 @@ type Privacy struct {
 	// ChatsInvite is "Кто может добавлять меня в чаты": "everyone",
 	// "following" or "nobody"; "" leaves the default.
 	ChatsInvite string
+	// GiftsSend is "Кто может отправлять мне подарки", the same; ""
+	// leaves everyone.
+	GiftsSend string
 	// Closed is openvk's "Тип профиля: закрытый": only the owner and the
 	// people the owner follows see the page.
 	Closed bool
@@ -202,7 +205,8 @@ type People struct {
 }
 
 // Access is what of a page the viewer may see: the page, its information,
-// follows, communities, gifts, songs and the song playing now.
+// follows, communities, gifts, songs and the song playing now; SendGift
+// is whether the viewer may send the page a gift.
 type Access struct {
 	Page      bool
 	Info      bool
@@ -211,6 +215,7 @@ type Access struct {
 	Gifts     bool
 	Audios    bool
 	Listening bool
+	SendGift  bool
 }
 
 // Relation is who of the viewer and a user blacklisted the other.
