@@ -2105,10 +2105,60 @@ a.poll-result-name { cursor: pointer; }
 .gift-send-field > b { display: block; margin: 0 0 5px; }
 .gift-send-field textarea { width: 100%; height: 60px; resize: vertical; }
 .gift-recipient { display: flex; flex-wrap: wrap; gap: 3px; min-height: 24px; padding: 2px; box-sizing: border-box; border: 1px solid var(--line-bbb); background: var(--back-fff); }
-.gift-recipient span { padding: 1px 5px 2px; border-radius: 2px; background: var(--back-3e3e3e); color: var(--text-fff); font-weight: bold; line-height: 15px; }
 /* The block of a page: five of the newest, as wide as the column. */
 .gift-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 8px 5px; }
 .gift-row .gift-pic { width: 100%; height: auto; aspect-ratio: 1; }
+/* openvk's gift_limit shows on pointing, over the price; a sold out
+   gift is dimmed and takes no click. */
+.gift-sel .gift-limit { position: absolute; bottom: 21px; left: 0; box-sizing: border-box; width: 102px; margin: 0 10px; padding: 3px 4px 4px; border-radius: 3px; background: var(--back-f0f0f0); color: var(--text-333); visibility: hidden; }
+.gift-sel:hover .gift-limit { visibility: visible; }
+.gift-sel.disabled { opacity: .5; cursor: not-allowed; }
+.gift-sel.disabled:hover .gift-pic { opacity: 1; }
+/* "Получатель:" of the box: the people chosen and a field in one frame,
+   the friends offered under it. */
+.gift-recipient { position: relative; align-items: center; cursor: text; }
+.gift-tokens { display: contents; }
+.gift-token { display: inline-flex; gap: 4px; align-items: center; padding: 1px 5px 2px; border-radius: 2px; background: var(--back-3e3e3e); color: var(--text-fff); font-weight: bold; line-height: 15px; }
+.gift-token-remove { color: var(--text-ccc); cursor: pointer; }
+.gift-token-remove:hover { color: var(--text-fff); text-decoration: none; }
+.modal-body input.gift-recipient-input { flex: 1; min-width: 120px; padding: 2px; border: 0; outline: none; }
+.gift-choices { position: absolute; top: 100%; left: -1px; right: -1px; z-index: 10; max-height: 180px; overflow-y: auto; border: 1px solid var(--line-bbb); background: var(--back-fff); }
+.gift-choices[hidden] { display: none; }
+.gift-choice { display: flex; gap: 8px; align-items: center; padding: 3px 5px; cursor: pointer; }
+.gift-choice:hover { background: var(--back-f2f2f2); text-decoration: none; }
+.gift-choice img { width: 24px; height: 24px; object-fit: cover; }
+.gift-send-name { margin: 0 0 2px; font-weight: bold; }
+.gift-send .error { white-space: pre-line; }
+/* openvk's "Подтверждение": the gift and the form under it. */
+.gift-confirm { padding: 10px 0; text-align: center; }
+.gift-confirm-pic { width: 256px; height: 256px; object-fit: contain; border-radius: 3px; }
+.gift-confirm-form { width: 65%; margin: 10px auto 0; text-align: left; }
+.gift-confirm-text { display: block; width: 100%; height: 65px; box-sizing: border-box; resize: vertical; }
+.gift-confirm-actions { display: flex; gap: 10px; align-items: center; margin-top: 10px; }
+/* The shop of gifts ("Подарки" of the menu), laid out as the page of a
+   person: the balance and one's gifts beside, a block for each
+   collection. */
+.shop { display: flex; gap: 12px; align-items: flex-start; }
+.shop[hidden] { display: none; }
+.shop-side { flex: none; width: 190px; }
+.shop-main { flex: 1; min-width: 0; }
+.shop-info { margin: 0 0 4px; }
+.shop-info th { width: 60px; }
+.shop-links { margin: 0 0 10px; }
+.shop-mine { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px 0; }
+.shop-mine[hidden] { display: none; }
+.shop-mine .gift-pic { width: 100%; height: auto; aspect-ratio: 1; }
+.shop-collection + .shop-collection { margin-top: 10px; }
+.shop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 8px 0; }
+.shop-item { padding: 6px 4px 8px; text-align: center; }
+.shop-item .gift-pic { width: 102px; height: 102px; margin: 0 auto 4px; object-fit: contain; }
+.shop-item-pic { display: block; cursor: pointer; }
+.shop-item-pic:hover .gift-pic { opacity: .8; }
+.shop-item-name { color: var(--text-333); }
+.shop-item-price { margin-top: 2px; }
+.shop-item-left { min-height: 14px; color: var(--text-626262); }
+.shop-item-links { min-height: 14px; margin-top: 2px; }
+.shop-item.disabled .gift-pic { opacity: .5; }
 .collectible.thumb { width: 100%; height: auto; aspect-ratio: 1; border-radius: 8px; }
 .collectible.thumb .collectible-pattern { font-size: 11px; }
 .collectible.thumb .collectible-number { right: 3px; bottom: 3px; padding: 0 3px; font-size: 8px; }

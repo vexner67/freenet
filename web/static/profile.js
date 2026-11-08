@@ -417,27 +417,25 @@ async function showClubBlock(id, all, count, list) {
 // The newest gifts of the block "Подарки".
 const GIFTS_SHOWN = 5;
 
-// showGifts is openvk's block "Подарки" over the wall: how many, "Отправить
-// подарок", "Все" and the newest, as "Кому видны мои подарки" allows. A
-// page without gifts to show offers "Отправить подарок" under the photo.
+// showGifts is openvk's block "Подарки" over the wall: how many, "Все"
+// and the newest, as "Кому видны мои подарки" allows. Someone else's page
+// offers "Отправить подарок" under the photo, as "Кто может отправлять
+// мне подарки" allows; one's own gifts are bought in the shop.
 async function showGifts(user, me, isOwner) {
-  let shown = false;
+  if (me && !isOwner && user.access.sendGift) {
+    $('gift').href = pickPath(user);
+    $('gift').hidden = false;
+  }
 
   try {
     if (user.access.gifts) {
       const page = await api.gifts(user.nickname, '', GIFTS_SHOWN);
 
-      shown = page.total > 0;
-      $('gifts-block').replaceChildren(...giftsBlock(user, page, Boolean(me), isOwner));
-      $('gifts-block').hidden = !shown;
+      $('gifts-block').replaceChildren(...giftsBlock(user, page));
+      $('gifts-block').hidden = page.total === 0;
     }
   } catch {
     // Not to be had: the page works without it.
-  }
-
-  if (me && !isOwner && !shown) {
-    $('gift').href = pickPath(user);
-    $('gift').hidden = false;
   }
 }
 

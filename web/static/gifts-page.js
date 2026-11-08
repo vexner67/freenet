@@ -1,13 +1,15 @@
 // "Подарки" of a person, as openvk's: the gifts sent to the page, newest
 // first, and "Отправить подарок" — the collections to choose from, five
 // gifts of each, "Показать больше" to all the gifts of one, and the box
-// that sends one. /gifts is yours, /gifts?u=<nickname> someone's,
-// ?act=pick chooses a gift for them and ?act=menu&pack=<collection> in a
-// collection. On one's own page it is "Купить подарок": one for oneself.
+// that sends one (giftDialog). /gifts is yours, /gifts?u=<nickname>
+// someone's, ?act=pick chooses a gift for them,
+// ?act=menu&pack=<collection> in a collection and
+// ?act=confirm&pack=<collection>&elid=<gift> is openvk's "Подтверждение":
+// the gift sent without the box. Buying a gift for oneself is the shop.
 
 import { api, currentUser } from './api.js';
-import { balanceAmount, collectibleName, formatPostDate, genitiveName, giftCollections, giftNames, giftPrice, voteRate, votesCount } from './labels.js';
-import { collectibleCard, giftPath, giftPicture, giftRow, giftsPath, menuPath, pickPath } from './gifts.js';
+import { collectibleName, errorText, formatPostDate, genitiveName, giftCollections, giftImage, giftNames, giftOffers, votesCount } from './labels.js';
+import { SHOP, collectibleCard, confirmPath, giftDialog, giftPath, giftPicture, giftRow, giftsPath, menuPath, pickPath, primeOnly } from './gifts.js';
 import { $, avatarURL, el, fullName, hideError, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { separated } from './posts.js';
@@ -16,9 +18,12 @@ import { tr } from './i18n.js';
 const params = new URLSearchParams(location.search);
 const nickname = params.get('u') ?? '';
 const act = params.get('act');
-// The collection chosen with ?act=menu; picking is both.
-const collection = act === 'menu' ? params.get('pack') ?? '' : '';
-const picking = act === 'pick' || act === 'menu';
+// The collection chosen with ?act=menu and ?act=confirm, and the gift of
+// the latter; picking is all three.
+const collection = act === 'menu' || act === 'confirm' ? params.get('pack') ?? '' : '';
+const confirming = act === 'confirm';
+const elid = confirming ? params.get('elid') ?? '' : '';
+const picking = act === 'pick' || act === 'menu' || confirming;
 
 let cursor = '';
 
@@ -26,19 +31,23 @@ function renderHead(owner, me) {
   const mine = owner.id === me?.id;
   const link = (href, textContent) => el('a', { href, textContent });
 
-  document.title = `${picking ? tr('Выбрать подарок') : tr('Подарки')} | Freenet`;
+  document.title = `${confirming ? tr('Отправить подарок') : picking ? tr('Выбрать подарок') : tr('Подарки')} | Freenet`;
+  const name = giftCollections[collection] ?? tr('Подарки');
   if (!picking) $('title').replaceChildren(link(pagePath(owner), fullName(owner)), tr(' » Подарки'));
   else if (!collection) $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » ', link(pickPath(owner), tr('Выбрать подарок')), tr(' » Коллекции'));
-  else {
+  else if (!confirming) {
     $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » ', link(pickPath(owner), tr('Выбрать подарок')), ' » ',
-      link(pickPath(owner), tr('Коллекции')), ` » ${giftCollections[collection] ?? tr('Подарки')}`);
+      link(pickPath(owner), tr('Коллекции')), ` » ${name}`);
+  } else {
+    $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » ', link(pickPath(owner), tr('Выбрать подарок')), ' » ',
+      link(pickPath(owner), tr('Коллекции')), ' » ', link(menuPath(owner, collection), name), tr(' » Подтверждение'));
   }
 
   $('tab-list').textContent = mine ? tr('Мои подарки') : tr('Подарки');
   $('tab-list').href = giftsPath(owner);
-  // One's own page buys a gift for oneself.
+  // One buys a gift for oneself in the shop.
   $('tab-send').textContent = mine ? tr('Купить подарок') : tr('Отправить подарок');
-  $('tab-send').href = pickPath(owner);
+  $('tab-send').href = mine ? SHOP : confirming ? menuPath(owner, collection) : pickPath(owner);
   $('tab-send').hidden = !me;
   $(picking ? 'tab-send' : 'tab-list').classList.add('active');
   $('tab-page').textContent = mine ? tr('К моей странице') : tr('К странице {0}', genitiveName(owner));
@@ -165,90 +174,22 @@ async function loadMore(owner, mine) {
   }
 }
 
-// rate is what a vote is worth, asked with the page; 0 when unknown.
-const rate = api.voteRate().then((r) => r.kopecks, () => 0);
-
-// confirm is openvk's box "Отправить подарок": the gift, what it costs and
-// what one has, to whom, "Сообщение к подарку" and "Отправить анонимно".
-// One's own page buys the gift for oneself, and anonymous there is
-// nobody.
-function confirm(owner, me, gift, price) {
-  const mine = owner.id === me.id;
-  const modal = openModal(mine ? tr('Купить подарок') : tr('Отправить подарок'), { tag: 'form' });
-  const caption = el('textarea', { maxLength: 250, placeholder: tr('Прикрепить сообщение...') });
-  const anonymous = el('input', { type: 'checkbox' });
-  const error = el('div', { className: 'error', hidden: true });
-  const send = button(mine ? tr('Купить подарок') : tr('Отправить подарок'), null, { type: 'submit' });
-  const balance = el('div', { className: 'gift-send-balance', textContent: tr('У Вас {0}', balanceAmount(me.votes ?? 0)) });
-
-  rate.then((kopecks) => {
-    if (kopecks) balance.append(` (${voteRate(kopecks)})`);
-  });
-
-  modal.box.classList.add('gift-send');
-  modal.body.append(
-    el('div', { className: 'gift-send-top' },
-      giftPicture(gift),
-      el('div', { className: 'gift-send-cost' }, tr('Стоимость: '), el('b', { textContent: giftPrice(price) })),
-      balance),
-    el('div', { className: 'gift-send-field' },
-      el('b', { textContent: tr('Получатель:') }),
-      el('div', { className: 'gift-recipient' }, el('span', { textContent: fullName(owner) }))),
-    el('div', { className: 'gift-send-field' }, el('b', { textContent: tr('Сообщение к подарку:') }), caption),
-  );
-  if (!mine) modal.body.append(el('div', { className: 'gift-send-field' }, el('label', {}, anonymous, tr(' Отправить анонимно'))));
-  modal.body.append(error);
-  modal.actions.append(send, button(tr('Отмена'), modal.close, { secondary: true }));
-
-  modal.box.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    hideError(error);
-    send.disabled = true;
-
-    try {
-      await api.sendGift(owner.nickname, gift, caption.value.trim(), anonymous.checked);
-      modal.close();
-      me.votes = Math.max((me.votes ?? 0) - price, 0);
-      sent(owner, mine);
-    } catch (e) {
-      showError(error, e.message === 'not enough votes' ? tr('Недостаточно голосов для покупки.') : e);
-      send.disabled = false;
-    }
-  });
-  caption.focus();
-}
-
-// sent is openvk's "Подарок отправлен"; one bought for oneself leads to
-// one's gifts.
-function sent(owner, mine) {
-  const modal = openModal(tr('Успех'));
-
-  modal.body.append(mine
-    ? el('span', {}, tr('Подарок куплен. Он уже на вашей странице — '), el('a', { href: giftsPath(owner), textContent: tr('Мои подарки') }), '.')
-    : tr('Подарок отправлен'));
-  modal.actions.append(button('OK', modal.close));
-}
-
-// primeOnly says that a gift of Prime takes it.
-function primeOnly() {
-  const modal = openModal('Prime');
-
-  modal.body.append(el('span', {}, tr('Эти подарки могут отправлять только подписчики '),
-    el('a', { href: '/prime', textContent: 'Prime' }), '.'));
-  modal.actions.append(button('OK', modal.close));
-}
-
 // showCatalog is "Выбрать подарок": the collections, five gifts of each,
-// or all the gifts of the one chosen.
+// or all the gifts of the one chosen. A gift opens openvk's box with the
+// owner of the page chosen; one's own page is the shop's to buy on, so
+// there the box starts with oneself.
 async function showCatalog(owner, me) {
   try {
     const { collections } = await api.giftCatalog();
     // The gifts of Prime are sent only by those who have it: the
     // rest are told where to get it.
-    const pick = (c) => (gift, price) => (c.prime && !me.prime ? primeOnly() : confirm(owner, me, gift, price));
+    const pick = (c) => (gift, price) => (c.prime && !me.prime
+      ? primeOnly()
+      : giftDialog({ me, gift, price, recipients: [owner.id === me.id ? me : owner], shop: owner.id === me.id }));
+    const href = (c) => (gift) => confirmPath(owner, c.id, gift);
     const rows = collection
-      ? collections.filter((c) => c.id === collection).map((c) => giftRow(c, {}, pick(c)))
-      : collections.map((c) => giftRow(c, { more: menuPath(owner, c.id), limit: 5 }, pick(c)));
+      ? collections.filter((c) => c.id === collection).map((c) => giftRow(c, { href: href(c) }, pick(c)))
+      : collections.map((c) => giftRow(c, { more: menuPath(owner, c.id), limit: 5, href: href(c) }, pick(c)));
 
     $('catalog').replaceChildren(...rows);
     $('catalog').hidden = false;
@@ -258,6 +199,54 @@ async function showCatalog(owner, me) {
   }
 }
 
+// refuse is openvk's "Не удалось подарить" with why.
+function refuse(why) {
+  showError($('error'), `${tr('Не удалось подарить')}: ${why}`);
+}
+
+// showConfirm is openvk's "Подтверждение": the gift, "Ваше сообщение",
+// "Отправить" and "Анонимно", refused as openvk refuses it — a gift not
+// of the collection, one sold out, one of Prime without it and one the
+// votes do not pay for. Once sent, the page says so, as openvk's
+// "Подарок отправлен" does on the page of the recipient.
+async function showConfirm(owner, me) {
+  const { collections } = await api.giftCatalog();
+  const pack = collections.find((c) => c.id === collection);
+  const offer = pack && giftOffers(pack).find((o) => o.gift === elid);
+  const mine = owner.id === me.id;
+
+  if (!offer) return refuse(tr('Не удалось подтвердить права на подарок.'));
+  if (offer.left === 0) return refuse(tr('Тираж этого подарка распродан.'));
+  if (pack.prime && !me.prime) return refuse(tr('Эти подарки могут отправлять только подписчики Prime.'));
+  if (offer.price > (me.votes ?? 0)) return refuse(tr('Недостаточно голосов для покупки.'));
+
+  const caption = el('textarea', { className: 'gift-confirm-text', maxLength: 250, placeholder: tr('Ваше сообщение') });
+  const anonymous = el('input', { type: 'checkbox' });
+  const submit = el('input', { type: 'submit', className: 'button', value: tr('Отправить') });
+  const form = el('form', { className: 'gift-confirm-form' }, caption, el('div', { className: 'gift-confirm-actions' }, submit,
+    mine ? null : el('label', {}, anonymous, tr(' Анонимно'))));
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    hideError($('error'));
+    submit.disabled = true;
+
+    try {
+      await api.sendGift(owner.nickname, elid, caption.value.trim(), !mine && anonymous.checked);
+      form.replaceWith(el('div', { className: 'notice' }, el('b', { textContent: tr('Подарок отправлен') }), el('br'),
+        tr('Вы отправили подарок {0} за {1}. ', fullName(owner), votesCount(offer.price)),
+        el('a', { href: pagePath(owner), textContent: mine ? tr('К моей странице') : tr('К странице {0}', genitiveName(owner)) })));
+    } catch (e) {
+      refuse(e.message === 'not enough votes' ? tr('Недостаточно голосов для покупки.') : errorText(e));
+      submit.disabled = false;
+    }
+  });
+
+  $('catalog').replaceChildren(el('div', { className: 'gift-confirm' },
+    el('img', { className: 'gift-confirm-pic', src: giftImage(elid), alt: giftNames[elid] ?? tr('Подарок') }), form));
+  $('catalog').hidden = false;
+}
+
 async function show(me) {
   try {
     const owner = nickname ? await api.profile(nickname) : me;
@@ -265,6 +254,16 @@ async function show(me) {
 
     renderHead(owner, me);
 
+    // As openvk's: a page that takes no gifts from the viewer is not
+    // offered any.
+    if (picking && !owner.access?.sendGift) {
+      refuse(tr('Пользователь ограничил круг лиц, которые могут присылать ему подарки.'));
+      return;
+    }
+    if (confirming) {
+      await showConfirm(owner, me);
+      return;
+    }
     if (picking) {
       await showCatalog(owner, me);
       return;

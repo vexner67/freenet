@@ -11,7 +11,7 @@
 
 import { api, currentUser } from './api.js';
 import { balanceAmount, STICKER_SECTIONS, STICKER_TAX_PERCENT, installsCount, stickerIncome, shopPacks, stickerImage, stickerPackAction, stickerPackName, stickerPackPrice, stickersCount, votesCount } from './labels.js';
-import { pickPath } from './gifts.js';
+import { SHOP } from './gifts.js';
 import { $, el, fullName, pagePath, replaceInPlace, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { meter } from './controls.js';
@@ -523,8 +523,8 @@ const titles = {
 me = await currentUser().catch(() => null);
 
 if (act === 'gifts') {
-  // The gifts one bought here are bought from one's own page now.
-  location.replace(me?.nickname ? pickPath(me) : '/');
+  // The gifts one bought here are bought in the shop of gifts now.
+  location.replace(me ? SHOP : '/');
 } else if (act !== 'shop' && !me) {
   location.replace('/');
 } else {

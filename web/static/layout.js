@@ -747,6 +747,8 @@ export function applyInterface(me) {
     el('a', { href: '/settings', textContent: tr('Настройки') }),
     el('div', { className: 'menu-divider' }),
     el('a', { href: '/stickers', textContent: tr('Стикеры') }),
+    // The shop of gifts: for oneself or for anyone.
+    el('a', { href: '/giftshop', textContent: tr('Подарки') }),
     el('a', { href: '/votes', textContent: tr('Банк') }),
     el('a', { href: '/prime', textContent: 'Prime' }),
     el('a', { href: '/mine', textContent: tr('Заработок') }),

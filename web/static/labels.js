@@ -102,7 +102,8 @@ export const wallWrites = [
 
 // messagesWrites is "Кто может писать мне сообщения" of openvk; whoever
 // you wrote to may answer.
-// chatsInvites are "Кто может добавлять меня в чаты" of openvk.
+// chatsInvites are "Кто может добавлять меня в чаты" of openvk, and
+// "Кто может отправлять мне подарки" offers the same.
 export const chatsInvites = [
   ['everyone', tr('все желающие')],
   ['following', tr('друзья')],
@@ -1574,6 +1575,41 @@ export function giftCosts(collection) {
   return collection.gifts.map((gift, i) => ({ gift, price: collection.prices?.[i] ?? collection.price ?? 0 }));
 }
 
+// giftOffers are the gifts of a collection with what each costs and how
+// many of its edition are left: Infinity for an edition without end.
+export function giftOffers(collection) {
+  return giftCosts(collection).map((cost, i) => {
+    const supply = collection.supplies?.[i] ?? 0;
+
+    return { ...cost, left: supply ? Math.max(supply - (collection.sold?.[i] ?? 0), 0) : Infinity };
+  });
+}
+
+// giftsLeft is openvk's "gifts_left": "3 подарка осталось".
+export function giftsLeft(n) {
+  return n === 0 ? tr('Осталось ноль подарков') : `${n} ${plural(n, ['подарок остался', 'подарка осталось', 'подарков осталось'])}`;
+}
+
+// giftTotal is what a gift costs sent to n people, as openvk's box says
+// it: "140 голосов (70 × 2)".
+export function giftTotal(price, n) {
+  if (price <= 0) return tr('Бесплатно');
+  if (n <= 1) return votesCount(price);
+
+  return `${votesCount(price * n)} (${groupedVotes(price)} × ${n})`;
+}
+
+// recipientChoices are whom to offer as the recipients of a gift: the
+// people not chosen yet whose name, surname or nickname has every word of
+// query, at most ten.
+export function recipientChoices(people, query, chosen) {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const taken = new Set(chosen.map((person) => person.id));
+
+  return people.filter((person) => !taken.has(person.id) && words.every((word) =>
+    [person.name, person.surname, person.nickname].some((part) => (part ?? '').toLowerCase().includes(word)))).slice(0, 10);
+}
+
 // rubles is a sum in kopecks as it is written in Russian: "7 ₽",
 // "7,50 ₽", "1 250 ₽" (no-break spaces between the thousands).
 export function rubles(kopecks) {
@@ -2760,6 +2796,7 @@ const errorTexts = {
   'the price of a gift must be at least 1 vote': tr('Цена — не меньше 1 голоса.'),
   'this gift is yours': tr('Это ваш подарок.'),
   'this gift is sold out': tr('Тираж этого подарка распродан.'),
+  'this user takes no gifts from you': tr('Пользователь ограничил круг лиц, которые могут присылать ему подарки.'),
   'the edition of a gift must be from 0 to 1000000000': tr('Тираж — от 0 до 1 000 000 000.'),
   'unknown trait of a gift': tr('Такой особенности у подарков нет.'),
   'an auction runs from 1 to 168 hours': tr('Аукцион идёт от 1 до 168 часов.'),

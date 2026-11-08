@@ -1678,3 +1678,36 @@ test('the videos of a message are its lines of links of YouTube', () => {
   assert.equal(messagePreview({ text: text }), 'Смотри');
   assert.equal(quoteSnippet(withVideos('', ['9FWSRQEqhKE'])), 'https://www.youtube.com/watch?v=9FWSRQEqhKE');
 });
+
+test('giftOffers: what is left of each edition', async () => {
+  const { giftOffers } = await import('../static/labels.js');
+  assert.deepEqual(giftOffers({ gifts: ['freenet_coin', 'freenet_ring', 'freenet_cup'], price: 70, supplies: [0, 10, 5], sold: [3, 4, 7] }), [
+    { gift: 'freenet_coin', price: 70, left: Infinity },
+    { gift: 'freenet_ring', price: 70, left: 6 },
+    { gift: 'freenet_cup', price: 70, left: 0 },
+  ]);
+  // A server that does not tell the editions sells without end.
+  assert.equal(giftOffers({ gifts: ['freenet_coin'], price: 70 })[0].left, Infinity);
+});
+
+test('giftsLeft and giftTotal are as openvk says them', async () => {
+  const { giftsLeft, giftTotal } = await import('../static/labels.js');
+  assert.equal(giftsLeft(0), 'Осталось ноль подарков');
+  assert.equal(giftsLeft(1), '1 подарок остался');
+  assert.equal(giftsLeft(3), '3 подарка осталось');
+  assert.equal(giftsLeft(11), '11 подарков осталось');
+  assert.equal(giftTotal(0, 3), 'Бесплатно');
+  assert.equal(giftTotal(70, 1), '70 голосов');
+  assert.equal(giftTotal(1500, 2), '3 000 голосов (1 500 × 2)');
+});
+
+test('recipientChoices: friends by every word, not chosen twice', async () => {
+  const { recipientChoices } = await import('../static/labels.js');
+  const ann = { id: 'a', name: 'Анна', surname: 'Петрова', nickname: 'ann' };
+  const bob = { id: 'b', name: 'Борис', surname: 'Петров', nickname: 'bob' };
+  assert.deepEqual(recipientChoices([ann, bob], '', []), [ann, bob]);
+  assert.deepEqual(recipientChoices([ann, bob], 'петров', [bob]), [ann]);
+  assert.deepEqual(recipientChoices([ann, bob], 'анна ПЕТ', []), [ann]);
+  assert.deepEqual(recipientChoices([ann, bob], 'BO', []), [bob]);
+  assert.equal(recipientChoices(Array.from({ length: 12 }, (_, i) => ({ id: String(i), name: 'Ян' })), 'ян', []).length, 10);
+});
