@@ -103,6 +103,9 @@ func TestUser_GiftFrom(t *testing.T) {
 		{"blocked", func(*user.Privacy) {}, user.Ties{Blocked: true, Followed: true}, user.ErrGiftRefused},
 		{"a closed page, a stranger", func(p *user.Privacy) { p.Closed = true }, user.Ties{}, user.ErrGiftRefused},
 		{"a closed page, followed", func(p *user.Privacy) { p.Closed = true }, user.Ties{Followed: true}, nil},
+		{"gifts from friends, a stranger", func(p *user.Privacy) { p.GiftsSend = user.MessagesWriteFollowing }, user.Ties{}, user.ErrGiftsClosed},
+		{"gifts from friends, a friend", func(p *user.Privacy) { p.GiftsSend = user.MessagesWriteFollowing }, user.Ties{Followed: true}, nil},
+		{"gifts from nobody", func(p *user.Privacy) { p.GiftsSend = user.MessagesWriteNobody }, user.Ties{Followed: true}, user.ErrGiftsClosed},
 	}
 
 	for _, tt := range tests {
@@ -131,10 +134,10 @@ func TestUser_GiftFrom(t *testing.T) {
 		})
 	}
 
-	t.Run("to oneself, even on a closed page", func(t *testing.T) {
+	t.Run("to oneself, even on a closed page taking no gifts", func(t *testing.T) {
 		t.Parallel()
 
-		u := page(t, func(p *user.Privacy) { p.Closed = true })
+		u := page(t, func(p *user.Privacy) { p.Closed, p.GiftsSend = true, user.MessagesWriteNobody })
 
 		g, err := u.GiftFrom(u.ID(), user.Ties{}, "freenet_ring", "", false)
 		if err != nil {
@@ -217,6 +220,54 @@ func TestUser_AccessFor_Gifts(t *testing.T) {
 
 	privacy.GiftsRead = "friends"
 	if err = u.UpdatePrivacy(privacy); !errors.Is(err, user.ErrInvalidAudience) {
+		t.Fatalf("an unknown setting: %v", err)
+	}
+}
+
+func TestUser_GiftsSend(t *testing.T) {
+	t.Parallel()
+
+	u, err := user.New("ann@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	viewer := uuid.New()
+	if got := u.Privacy().GiftsSend; got != user.MessagesWriteEveryone {
+		t.Fatalf("default = %q", got)
+	}
+	if !u.AccessFor(viewer, user.Ties{}, time.Now()).SendGift || u.AccessFor(uuid.Nil, user.Ties{}, time.Now()).SendGift {
+		t.Fatal("anyone signed in sends gifts by default, nobody anonymous")
+	}
+	if u.AccessFor(viewer, user.Ties{Blocked: true}, time.Now()).SendGift {
+		t.Fatal("a block shuts gifts")
+	}
+
+	privacy := u.Privacy()
+	privacy.GiftsSend = user.MessagesWriteFollowing
+	if err = u.UpdatePrivacy(privacy); err != nil {
+		t.Fatal(err)
+	}
+	if u.AccessFor(viewer, user.Ties{}, time.Now()).SendGift || !u.AccessFor(viewer, user.Ties{Followed: true}, time.Now()).SendGift {
+		t.Fatal("gifts from friends only")
+	}
+
+	privacy.GiftsSend = user.MessagesWriteNobody
+	if err = u.UpdatePrivacy(privacy); err != nil {
+		t.Fatal(err)
+	}
+	if u.AccessFor(viewer, user.Ties{Followed: true}, time.Now()).SendGift || !u.AccessFor(u.ID(), user.Ties{}, time.Now()).SendGift {
+		t.Fatal("from nobody, but the owner buys one")
+	}
+
+	// A client that does not know the setting leaves it to everyone.
+	privacy.GiftsSend = ""
+	if err = u.UpdatePrivacy(privacy); err != nil || u.Privacy().GiftsSend != user.MessagesWriteEveryone {
+		t.Fatalf("an empty setting: %v, %q", err, u.Privacy().GiftsSend)
+	}
+
+	privacy.GiftsSend = "friends"
+	if err = u.UpdatePrivacy(privacy); !errors.Is(err, user.ErrInvalidMessagesWrite) {
 		t.Fatalf("an unknown setting: %v", err)
 	}
 }

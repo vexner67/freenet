@@ -127,7 +127,7 @@ func TestUserRepository(t *testing.T) {
 	t.Run("privacy settings round-trip", func(t *testing.T) {
 		privacy := user.Privacy{ShowBirthday: true, ShowPoliticalViews: true, WallWrite: user.WallWriteOnlyMe, MessagesWrite: user.MessagesWriteNobody, ClubsRead: user.ClubsReadOnlyMe,
 			PageRead: user.AudienceUsers, InfoRead: user.AudienceFollowing, FriendsRead: user.AudienceUsers, OnlineRead: user.AudienceFollowing,
-			GiftsRead: user.AudienceFollowing, ChatsInvite: user.MessagesWriteNobody, Closed: true,
+			GiftsRead: user.AudienceFollowing, ChatsInvite: user.MessagesWriteNobody, GiftsSend: user.MessagesWriteFollowing, Closed: true,
 			AudiosRead: user.AudienceUsers, ListeningRead: user.AudienceOnlyMe}
 		if err := u.UpdatePrivacy(privacy); err != nil {
 			t.Fatal(err)

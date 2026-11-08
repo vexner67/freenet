@@ -67,7 +67,9 @@ func (a Audience) admits(viewerID uuid.UUID, t Ties) bool {
 // Access is what of a page a viewer may see: the page itself, its
 // information (everything but the names, the photo, the status and the
 // pronouns, which speak of the person), the follows, the
-// communities, the gifts, the songs and what the person listens to.
+// communities, the gifts, the songs and what the person listens to;
+// SendGift is whether the viewer may send the page a gift ("Кто может
+// отправлять мне подарки", CheckGiftFrom).
 type Access struct {
 	Page      bool
 	Info      bool
@@ -76,6 +78,7 @@ type Access struct {
 	Gifts     bool
 	Audios    bool
 	Listening bool
+	SendGift  bool
 }
 
 // AccessFor is what viewerID (uuid.Nil: anonymous), tied to u by t, may
@@ -90,7 +93,7 @@ func (u *User) AccessFor(viewerID uuid.UUID, t Ties, now time.Time) Access {
 // access is AccessFor of a page banned or not.
 func (u *User) access(viewerID uuid.UUID, t Ties, banned bool) Access {
 	if viewerID == u.id {
-		return Access{Page: true, Info: true, Friends: true, Clubs: true, Gifts: true, Audios: true, Listening: true}
+		return Access{Page: true, Info: true, Friends: true, Clubs: true, Gifts: true, Audios: true, Listening: true, SendGift: !u.IsDeactivated()}
 	}
 
 	// Of a deleted or a blocked page only the page itself is shown: what
@@ -112,5 +115,6 @@ func (u *User) access(viewerID uuid.UUID, t Ties, banned bool) Access {
 		Gifts:     u.privacy.GiftsRead.admits(viewerID, t),
 		Audios:    u.privacy.AudiosRead.admits(viewerID, t),
 		Listening: u.privacy.ListeningRead.admits(viewerID, t),
+		SendGift:  viewerID != uuid.Nil && !t.Blocked && u.takesGiftsFrom(t),
 	}
 }

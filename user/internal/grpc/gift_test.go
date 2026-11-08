@@ -76,22 +76,29 @@ func TestGifts(t *testing.T) {
 		ClubsRead: userv1.ClubsRead_CLUBS_READ_EVERYONE, PageRead: userv1.Audience_AUDIENCE_EVERYONE,
 		InfoRead:    userv1.Audience_AUDIENCE_EVERYONE,
 		FriendsRead: userv1.Audience_AUDIENCE_EVERYONE, OnlineRead: userv1.Audience_AUDIENCE_EVERYONE,
-		GiftsRead: userv1.Audience_AUDIENCE_ONLY_ME,
+		GiftsRead: userv1.Audience_AUDIENCE_ONLY_ME, GiftsSend: userv1.MessagesWrite_MESSAGES_WRITE_FOLLOWING,
 	}}); err != nil {
 		t.Fatalf("UpdatePrivacy: %v", err)
 	}
 
 	me, err := s.client.GetMe(ann, &userv1.GetMeRequest{})
-	if err != nil || me.GetUser().GetPrivacy().GetGiftsRead() != userv1.Audience_AUDIENCE_ONLY_ME {
+	if err != nil || me.GetUser().GetPrivacy().GetGiftsRead() != userv1.Audience_AUDIENCE_ONLY_ME ||
+		me.GetUser().GetPrivacy().GetGiftsSend() != userv1.MessagesWrite_MESSAGES_WRITE_FOLLOWING {
 		t.Fatalf("privacy = %v, %v", me.GetUser().GetPrivacy(), err)
 	}
 
 	access, err := s.client.GetAccess(bob, &userv1.GetAccessRequest{UserId: annID})
-	if err != nil || !access.GetPage() || access.GetGifts() {
+	if err != nil || !access.GetPage() || access.GetGifts() || access.GetSendGift() {
 		t.Fatalf("bob's access = %v, %v", access, err)
 	}
-	if access, err = s.client.GetAccess(ann, &userv1.GetAccessRequest{UserId: annID}); err != nil || !access.GetGifts() {
+	if access, err = s.client.GetAccess(ann, &userv1.GetAccessRequest{UserId: annID}); err != nil || !access.GetGifts() || !access.GetSendGift() {
 		t.Fatalf("ann's access = %v, %v", access, err)
+	}
+
+	// Gifts from friends only: bob, who is not one, is refused.
+	_, err = s.client.SendGift(bob, &userv1.SendGiftRequest{UserId: annID, Gift: kind})
+	if st := status.Convert(err); st.Code() != codes.PermissionDenied || st.Message() != "this user takes no gifts from you" {
+		t.Fatalf("gifts from friends only = %v", err)
 	}
 
 	_, err = s.client.ListGifts(bob, &userv1.ListGiftsRequest{UserId: annID})

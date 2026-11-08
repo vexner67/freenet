@@ -263,6 +263,7 @@ func toProtoPrivacy(p user.Privacy) *userv1.PrivacySettings {
 		ListeningRead:      toProtoAudience(p.ListeningRead),
 		Closed:             p.Closed,
 		ChatsInvite:        toProtoMessagesWrite(p.ChatsInvite),
+		GiftsSend:          toProtoMessagesWrite(p.GiftsSend),
 		MessagesPrime:      p.MessagesPrime,
 		MessagePrice:       p.MessagePrice.Int64(),
 	}
@@ -328,12 +329,16 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		}
 	}
 
-	// A client that does not know the group chats leaves the default.
-	chatsInvite := user.DefaultChatsInvite
-	if p.GetChatsInvite() != userv1.MessagesWrite_MESSAGES_WRITE_UNSPECIFIED {
-		if chatsInvite, err = user.NewMessagesWrite(fromProtoMessagesWrite(p.GetChatsInvite())); err != nil {
-			return user.Privacy{}, err
-		}
+	// A client that does not know the group chats or the gifts leaves
+	// the defaults.
+	chatsInvite, err := optionalMessagesWrite(p.GetChatsInvite(), user.DefaultChatsInvite)
+	if err != nil {
+		return user.Privacy{}, err
+	}
+
+	giftsSend, err := optionalMessagesWrite(p.GetGiftsSend(), user.DefaultGiftsSend)
+	if err != nil {
+		return user.Privacy{}, err
 	}
 
 	messagePrice, err := user.NewMessagePrice(p.GetMessagePrice())
@@ -359,8 +364,18 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		AudiosRead:         optional[1],
 		ListeningRead:      optional[2],
 		ChatsInvite:        chatsInvite,
+		GiftsSend:          giftsSend,
 		Closed:             p.GetClosed(),
 	}, nil
+}
+
+// optionalMessagesWrite is def for a setting the client left unspecified.
+func optionalMessagesWrite(w userv1.MessagesWrite, def user.MessagesWrite) (user.MessagesWrite, error) {
+	if w == userv1.MessagesWrite_MESSAGES_WRITE_UNSPECIFIED {
+		return def, nil
+	}
+
+	return user.NewMessagesWrite(fromProtoMessagesWrite(w))
 }
 
 // optionalAudience is everyone for a setting the client left unspecified.

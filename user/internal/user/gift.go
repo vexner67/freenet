@@ -24,12 +24,19 @@ var (
 	// ErrGiftRefused: the page is not shown to the sender or either of the
 	// two has blacklisted the other.
 	ErrGiftRefused = errors.New("you cannot send a gift to this user")
+	// ErrGiftsClosed: the page takes gifts only from some ("Кто может
+	// отправлять мне подарки"), and not from the sender.
+	ErrGiftsClosed = errors.New("this user takes no gifts from you")
 	// ErrGiftsHidden: the page or its gifts are not shown to the viewer
 	// ("Кому видны мои подарки").
 	ErrGiftsHidden = errors.New("this user's gifts are hidden")
 	// ErrCannotDeleteGift: a gift is deleted by the one it was sent to.
 	ErrCannotDeleteGift = errors.New("only the owner of a gift can delete it")
 )
+
+// DefaultGiftsSend takes gifts from everyone, as before the setting and
+// as on openvk.
+const DefaultGiftsSend = MessagesWriteEveryone
 
 // GiftKind names a gift of the catalogue: what is sent.
 type GiftKind string
@@ -206,17 +213,40 @@ func (u *User) GiftFrom(senderID uuid.UUID, t Ties, kind GiftKind, caption GiftC
 }
 
 // CheckGiftFrom tells whether u takes a present from senderID, tied to u
-// by t: a gift or Freenet Prime.
+// by t: a gift or Freenet Prime. Beyond a block and a page not shown,
+// "Кто может отправлять мне подарки" of openvk decides; one's own gifts
+// are always taken.
 func (u *User) CheckGiftFrom(senderID uuid.UUID, t Ties) error {
 	if u.IsDeactivated() {
 		return ErrDeactivated
 	}
 
-	if senderID != u.id && (t.Blocked || !u.access(senderID, t, false).Page) {
+	if senderID == u.id {
+		return nil
+	}
+
+	if t.Blocked || !u.access(senderID, t, false).Page {
 		return ErrGiftRefused
 	}
 
+	if !u.takesGiftsFrom(t) {
+		return ErrGiftsClosed
+	}
+
 	return nil
+}
+
+// takesGiftsFrom tells whether u's setting lets someone tied to u by t
+// send u gifts.
+func (u *User) takesGiftsFrom(t Ties) bool {
+	switch u.privacy.GiftsSend {
+	case MessagesWriteEveryone, "":
+		return true
+	case MessagesWriteFollowing:
+		return t.Followed
+	default:
+		return false
+	}
 }
 
 // RestoreGift rebuilds a gift from storage.

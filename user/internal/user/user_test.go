@@ -315,9 +315,9 @@ func TestUser_AccessFor(t *testing.T) {
 		want   user.Access
 	}{
 		{"anonymous", uuid.Nil, user.Ties{}, user.Access{}},
-		{"a user", bob, user.Ties{}, user.Access{Page: true, Info: true, Clubs: true, Gifts: true, Audios: true, Listening: true}},
-		{"whom ann follows", bob, friend, user.Access{Page: true, Info: true, Clubs: true, Gifts: true, Audios: true, Listening: true}},
-		{"ann", ann.ID(), user.Ties{}, everything},
+		{"a user", bob, user.Ties{}, user.Access{Page: true, Info: true, Clubs: true, Gifts: true, Audios: true, Listening: true, SendGift: true}},
+		{"whom ann follows", bob, friend, user.Access{Page: true, Info: true, Clubs: true, Gifts: true, Audios: true, Listening: true, SendGift: true}},
+		{"ann", ann.ID(), user.Ties{}, user.Access{Page: true, Info: true, Friends: true, Clubs: true, Gifts: true, Audios: true, Listening: true, SendGift: true}},
 	} {
 		if got := ann.AccessFor(tt.viewer, tt.ties, time.Now()); got != tt.want {
 			t.Errorf("%s: %+v, want %+v", tt.name, got, tt.want)

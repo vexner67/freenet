@@ -188,6 +188,8 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.NotFound, user.ErrGiftNotFound.Error()), true
 	case errors.Is(err, user.ErrGiftRefused):
 		return status.New(codes.PermissionDenied, user.ErrGiftRefused.Error()), true
+	case errors.Is(err, user.ErrGiftsClosed):
+		return status.New(codes.PermissionDenied, user.ErrGiftsClosed.Error()), true
 	case errors.Is(err, user.ErrGiftsHidden):
 		return status.New(codes.PermissionDenied, user.ErrGiftsHidden.Error()), true
 	case errors.Is(err, user.ErrCannotDeleteGift):

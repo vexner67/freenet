@@ -800,6 +800,9 @@ message PrivacySettings {
   // "Кто видит, что я слушаю": the song playing now; unspecified is
   // everyone.
   Audience listening_read = 20;
+  // Who may send the owner gifts ("Кто может отправлять мне подарки");
+  // unspecified, as from a client that does not know it, is everyone.
+  MessagesWrite gifts_send = 21;
 }
 
 // Who sees a part of a page.
@@ -1241,6 +1244,9 @@ message GetAccessResponse {
   bool audios = 8;
   // The song playing now.
   bool listening = 9;
+  // The viewer may send the page a gift ("Кто может отправлять мне
+  // подарки", no blacklist either way); the owner may buy one.
+  bool send_gift = 10;
 }
 
 message CanMessageRequest {

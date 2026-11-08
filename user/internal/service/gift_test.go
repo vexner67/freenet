@@ -272,6 +272,25 @@ func TestGiftService_Refusals(t *testing.T) {
 		t.Fatalf("the owner reads: %+v, %v", page, err)
 	}
 
+	// "Кто может отправлять мне подарки": friends only. Bob is none;
+	// cat is, and ann buys herself one whatever the setting.
+	privacy.GiftsSend = user.MessagesWriteFollowing
+	if _, err = w.userSvc.UpdatePrivacy(ctx, ann, privacy); err != nil {
+		t.Fatal(err)
+	}
+	if err = w.blocks.Unblock(ctx, ann, bob); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = w.gifts.Send(ctx, bob, ann, draft); !errors.Is(err, user.ErrGiftsClosed) {
+		t.Fatalf("a stranger sends to friends only: %v", err)
+	}
+	if _, err = w.gifts.Send(ctx, cat, ann, draft); err != nil {
+		t.Fatalf("a friend sends: %v", err)
+	}
+	if _, err = w.gifts.Send(ctx, ann, ann, draft); err != nil {
+		t.Fatalf("the owner buys one: %v", err)
+	}
+
 	// A deleted page takes no gifts and shows none.
 	if _, err = w.accounts.Deactivate(ctx, ann, ""); err != nil {
 		t.Fatal(err)

@@ -54,7 +54,11 @@ type Privacy struct {
 	// UpdatePrivacy, as from a client that does not know it, means the
 	// default.
 	ChatsInvite MessagesWrite
-	ClubsRead   ClubsRead
+	// GiftsSend is "Кто может отправлять мне подарки"; empty in
+	// UpdatePrivacy, as from a client that does not know it, means
+	// everyone.
+	GiftsSend MessagesWrite
+	ClubsRead ClubsRead
 	// PageRead is "Кому в интернете видно мою страницу": everyone or users;
 	// InfoRead and FriendsRead are "Кому видно основную информацию моей
 	// страницы" and "… моих друзей" (the follows here).
@@ -206,7 +210,7 @@ func New(email Email) (*User, error) {
 			PageRead: AudienceEveryone, InfoRead: AudienceEveryone, FriendsRead: AudienceEveryone,
 			OnlineRead: AudienceEveryone, GiftsRead: AudienceEveryone,
 			AudiosRead: AudienceEveryone, ListeningRead: AudienceEveryone,
-			ChatsInvite: DefaultChatsInvite,
+			ChatsInvite: DefaultChatsInvite, GiftsSend: DefaultGiftsSend,
 		},
 		ui:         DefaultInterface(),
 		primeStyle: DefaultPrimeStyle(),
@@ -330,6 +334,14 @@ func (u *User) UpdatePrivacy(privacy Privacy) error {
 	}
 
 	if _, err := NewMessagesWrite(privacy.ChatsInvite.String()); err != nil {
+		return err
+	}
+
+	if privacy.GiftsSend == "" {
+		privacy.GiftsSend = DefaultGiftsSend
+	}
+
+	if _, err := NewMessagesWrite(privacy.GiftsSend.String()); err != nil {
 		return err
 	}
 
