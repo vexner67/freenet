@@ -1,8 +1,8 @@
 // Shared page chrome: header links, the sidebar menu and small DOM helpers.
 // User data is only ever set with textContent, never as HTML.
 
-import { button, openModal } from './modal.js';
-import { MAX_PARKED, accountName, onAccountChange, park, parkedAccounts, signedInAs, switchTo, tendParked } from './accounts.js';
+import { button } from './modal.js';
+import { accountName, onAccountChange, park, parkedAccounts, signedInAs, switchTo, tendParked } from './accounts.js';
 import { api, idle } from './api.js';
 import { ensureKey } from './e2ee.js';
 import { connectEvents, onEvent } from './events.js';
@@ -323,7 +323,7 @@ export async function switchAccount(id, me = null) {
 
 // addAccount sets the account of me aside and opens the page of signing
 // in, for another one ("Добавить аккаунт").
-async function addAccount(me) {
+export async function addAccount(me) {
   await park(me);
   forgetLook();
   location.href = '/';
@@ -342,73 +342,11 @@ export function accountLinks(me = null) {
   shortened(accountName(a), ACCOUNT_NAME_LENGTH)));
 }
 
-// accountsLink is "Аккаунты" of the left menu. The accounts that wait are
-// not in the menu itself: whoever is shown a page of the site would see
-// whose else the browser is. The link opens them in a box, each a link
-// that switches to it, with "Добавить аккаунт" while there is room for
-// one more.
-function accountsLink(me) {
-  return el('a', { textContent: tr('Аккаунты'), onclick: () => openAccounts(me) });
-}
-
-// accountSlot is a place of the box: a photo, a name and what it does.
-function accountSlot(photo, name, note, onclick, { className = '', count = 0, key = '' } = {}) {
-  return el(onclick ? 'button' : 'div', { className: `account-slot ${className}`.trim(), type: onclick ? 'button' : undefined, onclick },
-    key && el('span', { className: 'account-key', textContent: key }),
-    count > 0 && el('span', { className: 'counter', textContent: unreadCountText(count) }),
-    el('img', { className: 'account-photo', src: photo, alt: '' }),
-    el('b', { className: 'account-name', textContent: name }),
-    el('span', { className: 'account-note', textContent: note }));
-}
-
-// openAccounts is the box of the accounts: the one signed in, those that
-// wait, each one press (or its number on the keyboard) away, and the places
-// still free, so that it is seen how many more there may be.
-function openAccounts(me) {
-  const modal = openModal(tr('Аккаунты'));
-  let order = [];
-
-  function pressKey(event) {
-    if (!modal.box.isConnected) {
-      document.removeEventListener('keydown', pressKey);
-      return;
-    }
-    order[Number(event.key) - 1]?.();
-  }
-  document.addEventListener('keydown', pressKey);
-  modal.box.classList.add('accounts-box');
-
-  function draw() {
-    // Closed meanwhile: there is nothing to draw in.
-    if (!modal.box.isConnected) return;
-
-    const waiting = parkedAccounts();
-    const free = MAX_PARKED - waiting.length;
-    const go = (a, node) => {
-      node.classList.add('switching');
-      switchAccount(a.id, me);
-    };
-    const slots = waiting.map((a, i) => {
-      const slot = accountSlot(a.avatar || '/static/avatar.svg', shortened(accountName(a), ACCOUNT_NAME_LENGTH), tr('Войти'),
-        () => go(a, slot), { count: a.unread, key: String(i + 1) });
-
-      return slot;
-    });
-    const add = () => addAccount(me);
-
-    order = [...waiting.map((a, i) => () => go(a, slots[i])), ...(free > 0 ? [add] : [])];
-    modal.body.replaceChildren(
-      el('div', { className: 'account-slots' },
-        me && accountSlot(avatarURL(me, 'small'), shortened(fullName(me), ACCOUNT_NAME_LENGTH), tr('Вы здесь'), null, { className: 'account-here' }),
-        ...slots,
-        ...Array.from({ length: free }, (_, i) => accountSlot('/static/icons/game/plus.svg', tr('Добавить аккаунт'), tr('свободное место'), add,
-          { className: 'account-free', key: i === 0 ? String(waiting.length + 1) : '' }))),
-      el('div', { className: 'account-meter' }, tr('Занято мест: {0} из {1}', waiting.length + (me ? 1 : 0), MAX_PARKED + 1)),
-    );
-    modal.actions.replaceChildren(button(tr('Закрыть'), modal.close, { secondary: true }));
-  }
-
-  showAccounts(draw);
+// accountsLink is "Аккаунты" of the left menu, the page of the accounts
+// (accounts-page.js). The accounts that wait are not in the menu itself:
+// whoever is shown a page of the site would see whose else the browser is.
+function accountsLink() {
+  return el('a', { href: '/accounts', textContent: tr('Аккаунты') });
 }
 
 // showAccounts draws the accounts that wait and then looks after them:
@@ -683,8 +621,8 @@ export function applyInterface(me) {
     el('a', { href: '/top', textContent: tr('Рейтинги') }),
     el('a', { href: '/canvas', textContent: tr('Холст') }),
     el('a', { href: '/dating', textContent: tr('Знакомства') }),
-    accountsLink(me),
-    el('a', { href: '/search', textContent: tr('Поиск') }),
+    // No "Поиск": the header has it.
+    accountsLink(),
     // The administrators of the site have openvk's "Админ-панель" under
     // a line of its own.
     me.admin && el('div', { className: 'menu-divider' }),
