@@ -8,6 +8,8 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 service UserService {
+  // Internal, verified room-service identity only; no user profile data.
+  rpc GetRoomAccess(GetRoomAccessRequest) returns (GetRoomAccessResponse);
   rpc GetOrCreateByEmail(GetOrCreateByEmailRequest) returns (GetOrCreateByEmailResponse);
 
   // Requires an access token; works on the caller's own account.
@@ -3849,4 +3851,15 @@ message AnswerDatingRequest {
 
 message AnswerDatingResponse {
   bool matched = 1;
+}
+
+message GetRoomAccessRequest {
+  string owner_id = 1;
+  string viewer_id = 2;
+}
+message GetRoomAccessResponse {
+  bool friend = 1;
+  bool blocked = 2;
+  bool banned = 3;
+  bool can_invite = 4;
 }

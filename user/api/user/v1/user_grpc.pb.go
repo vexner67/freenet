@@ -20,6 +20,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	UserService_GetRoomAccess_FullMethodName      = "/user.v1.UserService/GetRoomAccess"
 	UserService_GetOrCreateByEmail_FullMethodName = "/user.v1.UserService/GetOrCreateByEmail"
 	UserService_GetMe_FullMethodName              = "/user.v1.UserService/GetMe"
 	UserService_UpdateProfile_FullMethodName      = "/user.v1.UserService/UpdateProfile"
@@ -216,6 +217,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserServiceClient interface {
+	// Internal, verified room-service identity only; no user profile data.
+	GetRoomAccess(ctx context.Context, in *GetRoomAccessRequest, opts ...grpc.CallOption) (*GetRoomAccessResponse, error)
 	GetOrCreateByEmail(ctx context.Context, in *GetOrCreateByEmailRequest, opts ...grpc.CallOption) (*GetOrCreateByEmailResponse, error)
 	// Requires an access token; works on the caller's own account.
 	GetMe(ctx context.Context, in *GetMeRequest, opts ...grpc.CallOption) (*GetMeResponse, error)
@@ -775,6 +778,16 @@ type userServiceClient struct {
 
 func NewUserServiceClient(cc grpc.ClientConnInterface) UserServiceClient {
 	return &userServiceClient{cc}
+}
+
+func (c *userServiceClient) GetRoomAccess(ctx context.Context, in *GetRoomAccessRequest, opts ...grpc.CallOption) (*GetRoomAccessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetRoomAccessResponse)
+	err := c.cc.Invoke(ctx, UserService_GetRoomAccess_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *userServiceClient) GetOrCreateByEmail(ctx context.Context, in *GetOrCreateByEmailRequest, opts ...grpc.CallOption) (*GetOrCreateByEmailResponse, error) {
@@ -2681,6 +2694,8 @@ func (c *userServiceClient) RevokeTitle(ctx context.Context, in *RevokeTitleRequ
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
 type UserServiceServer interface {
+	// Internal, verified room-service identity only; no user profile data.
+	GetRoomAccess(context.Context, *GetRoomAccessRequest) (*GetRoomAccessResponse, error)
 	GetOrCreateByEmail(context.Context, *GetOrCreateByEmailRequest) (*GetOrCreateByEmailResponse, error)
 	// Requires an access token; works on the caller's own account.
 	GetMe(context.Context, *GetMeRequest) (*GetMeResponse, error)
@@ -3242,6 +3257,9 @@ type UserServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedUserServiceServer struct{}
 
+func (UnimplementedUserServiceServer) GetRoomAccess(context.Context, *GetRoomAccessRequest) (*GetRoomAccessResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRoomAccess not implemented")
+}
 func (UnimplementedUserServiceServer) GetOrCreateByEmail(context.Context, *GetOrCreateByEmailRequest) (*GetOrCreateByEmailResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetOrCreateByEmail not implemented")
 }
@@ -3831,6 +3849,24 @@ func RegisterUserServiceServer(s grpc.ServiceRegistrar, srv UserServiceServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&UserService_ServiceDesc, srv)
+}
+
+func _UserService_GetRoomAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRoomAccessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetRoomAccess(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetRoomAccess_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetRoomAccess(ctx, req.(*GetRoomAccessRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _UserService_GetOrCreateByEmail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -7260,6 +7296,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "user.v1.UserService",
 	HandlerType: (*UserServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetRoomAccess",
+			Handler:    _UserService_GetRoomAccess_Handler,
+		},
 		{
 			MethodName: "GetOrCreateByEmail",
 			Handler:    _UserService_GetOrCreateByEmail_Handler,

@@ -1,0 +1,182 @@
+syntax = "proto3";
+package room.v1;
+option go_package = "github.com/vexner67/freenet/room/api/room/v1;roomv1";
+import "google/protobuf/timestamp.proto";
+
+service RoomService {
+ rpc AuthorizeMedia(AuthorizeMediaRequest) returns (AuthorizeMediaResponse);
+ rpc CreateRoom(CreateRoomRequest) returns (CreateRoomResponse);
+ rpc GetRoom(GetRoomRequest) returns (GetRoomResponse);
+ rpc ListLiveRooms(ListLiveRoomsRequest) returns (ListLiveRoomsResponse);
+ rpc ListUserRooms(ListUserRoomsRequest) returns (ListUserRoomsResponse);
+ rpc ListClubRooms(ListClubRoomsRequest) returns (ListClubRoomsResponse);
+ rpc UpdateRoom(UpdateRoomRequest) returns (UpdateRoomResponse);
+ rpc CloseRoom(CloseRoomRequest) returns (CloseRoomResponse);
+ rpc JoinRoom(JoinRoomRequest) returns (JoinRoomResponse);
+ rpc LeaveRoom(LeaveRoomRequest) returns (LeaveRoomResponse);
+ rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+ rpc Token(TokenRequest) returns (TokenResponse);
+ rpc SendChat(SendChatRequest) returns (SendChatResponse);
+ rpc SetPlayback(SetPlaybackRequest) returns (SetPlaybackResponse);
+ rpc KickMember(KickMemberRequest) returns (KickMemberResponse);
+ rpc MuteMember(MuteMemberRequest) returns (MuteMemberResponse);
+ rpc Invite(InviteRequest) returns (InviteResponse);
+ rpc CurrentRooms(CurrentRoomsRequest) returns (CurrentRoomsResponse);
+ rpc PurgeUser(PurgeUserRequest) returns (PurgeUserResponse);
+ rpc PurgeClub(PurgeClubRequest) returns (PurgeClubResponse);
+ rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
+}
+
+message Settings {
+ string title = 1;
+ string kind = 2;
+ string access = 3;
+ string control = 4;
+}
+message Room {
+ string id = 1;
+ string owner_id = 2;
+ string club_id = 3;
+ Settings settings = 4;
+ bool permanent = 5;
+ google.protobuf.Timestamp created_at = 6;
+ repeated Member members = 7;
+ Playback playback = 8;
+ int32 max_members = 9;
+ int32 friends = 10;
+}
+message Member {
+ string user_id = 1;
+ google.protobuf.Timestamp joined_at = 2;
+}
+message QueueItem {
+ string kind = 1;
+ string media_id = 2;
+ string title = 3;
+}
+message Playback {
+ string kind = 1;
+ string media_id = 2;
+ bool playing = 3;
+ double position = 4;
+ google.protobuf.Timestamp updated_at = 5;
+ uint64 version = 6;
+ repeated QueueItem queue = 7;
+}
+message Chat {
+ string id = 1;
+ string room_id = 2;
+ string author_id = 3;
+ string text = 4;
+ string sticker_id = 5;
+ google.protobuf.Timestamp created_at = 6;
+}
+message MediaToken {
+ string url = 1;
+ string token = 2;
+ google.protobuf.Timestamp expires_at = 3;
+}
+message CreateRoomRequest {
+ Settings settings = 1;
+ bool permanent = 2;
+ string club_id = 3;
+}
+message CreateRoomResponse { Room room = 1; }
+message GetRoomRequest { string room_id = 1; }
+message GetRoomResponse { Room room = 1; }
+message ListLiveRoomsRequest {
+ string cursor = 1;
+ int32 limit = 2;
+}
+message ListLiveRoomsResponse {
+ repeated Room rooms = 1;
+ string next_cursor = 2;
+}
+message ListUserRoomsRequest {
+ string user_id = 1;
+ string cursor = 2;
+ int32 limit = 3;
+}
+message ListUserRoomsResponse {
+ repeated Room rooms = 1;
+ string next_cursor = 2;
+}
+message ListClubRoomsRequest {
+ string club_id = 1;
+ string cursor = 2;
+ int32 limit = 3;
+}
+message ListClubRoomsResponse {
+ repeated Room rooms = 1;
+ string next_cursor = 2;
+}
+message UpdateRoomRequest {
+ string room_id = 1;
+ Settings settings = 2;
+}
+message UpdateRoomResponse { Room room = 1; }
+message CloseRoomRequest { string room_id = 1; }
+message CloseRoomResponse {}
+message JoinRoomRequest { string room_id = 1; }
+message JoinRoomResponse {
+ Room room = 1;
+ repeated Chat chat = 2;
+ repeated string muted_ids = 3;
+ MediaToken media = 4;
+ google.protobuf.Timestamp server_time = 5;
+}
+message LeaveRoomRequest { string room_id = 1; }
+message LeaveRoomResponse {}
+message HeartbeatRequest { string room_id = 1; }
+message HeartbeatResponse {}
+message TokenRequest { string room_id = 1; }
+message TokenResponse { MediaToken media = 1; }
+message SendChatRequest {
+ string room_id = 1;
+ string text = 2;
+ string sticker_id = 3;
+}
+message SendChatResponse { Chat chat = 1; }
+message SetPlaybackRequest {
+ string room_id = 1;
+ Playback playback = 2;
+}
+message SetPlaybackResponse { Playback playback = 1; }
+message KickMemberRequest {
+ string room_id = 1;
+ string user_id = 2;
+}
+message KickMemberResponse {}
+message MuteMemberRequest {
+ string room_id = 1;
+ string user_id = 2;
+}
+message MuteMemberResponse {}
+message InviteRequest {
+ string room_id = 1;
+ string user_id = 2;
+}
+message InviteResponse {}
+// Internal: gateway's verified JWT identifies the viewer, not a request field.
+message CurrentRoomsRequest { repeated string user_ids = 1; }
+message CurrentRoom {
+ string user_id = 1;
+ Room room = 2;
+}
+message CurrentRoomsResponse { repeated CurrentRoom rooms = 1; }
+message PurgeUserRequest { string user_id = 1; }
+message PurgeUserResponse {}
+message PurgeClubRequest { string club_id = 1; }
+message PurgeClubResponse {}
+message SubscribeRequest {}
+message SubscribeResponse {
+ string kind = 1;
+ string room_id = 2;
+ string user_id = 3;
+ Room room = 4;
+ Chat chat = 5;
+ Playback playback = 6;
+}
+
+message AuthorizeMediaRequest { string token = 1; }
+message AuthorizeMediaResponse {}

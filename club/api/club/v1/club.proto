@@ -10,6 +10,8 @@ import "google/protobuf/timestamp.proto";
 // Communities, the "группы" of openvk: a page with a wall that people
 // join. Every RPC requires an access token unless said otherwise.
 service ClubService {
+  // Internal, verified room-service identity only.
+  rpc GetRoomAccess(GetRoomAccessRequest) returns (GetRoomAccessResponse);
   // The caller creates a club and owns it.
   rpc CreateClub(CreateClubRequest) returns (CreateClubResponse);
   // Public: a club by its ID or address, as the caller, if any, sees it.
@@ -504,4 +506,13 @@ message CountClubsRequest {}
 
 message CountClubsResponse {
   int32 count = 1;
+}
+
+message GetRoomAccessRequest {
+  string club_id = 1;
+  string user_id = 2;
+}
+message GetRoomAccessResponse {
+  bool member = 1;
+  bool manager = 2;
 }

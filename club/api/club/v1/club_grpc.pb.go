@@ -20,6 +20,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	ClubService_GetRoomAccess_FullMethodName      = "/club.v1.ClubService/GetRoomAccess"
 	ClubService_CreateClub_FullMethodName         = "/club.v1.ClubService/CreateClub"
 	ClubService_GetClub_FullMethodName            = "/club.v1.ClubService/GetClub"
 	ClubService_GetClubs_FullMethodName           = "/club.v1.ClubService/GetClubs"
@@ -58,6 +59,8 @@ const (
 // Communities, the "группы" of openvk: a page with a wall that people
 // join. Every RPC requires an access token unless said otherwise.
 type ClubServiceClient interface {
+	// Internal, verified room-service identity only.
+	GetRoomAccess(ctx context.Context, in *GetRoomAccessRequest, opts ...grpc.CallOption) (*GetRoomAccessResponse, error)
 	// The caller creates a club and owns it.
 	CreateClub(ctx context.Context, in *CreateClubRequest, opts ...grpc.CallOption) (*CreateClubResponse, error)
 	// Public: a club by its ID or address, as the caller, if any, sees it.
@@ -156,6 +159,16 @@ type clubServiceClient struct {
 
 func NewClubServiceClient(cc grpc.ClientConnInterface) ClubServiceClient {
 	return &clubServiceClient{cc}
+}
+
+func (c *clubServiceClient) GetRoomAccess(ctx context.Context, in *GetRoomAccessRequest, opts ...grpc.CallOption) (*GetRoomAccessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetRoomAccessResponse)
+	err := c.cc.Invoke(ctx, ClubService_GetRoomAccess_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *clubServiceClient) CreateClub(ctx context.Context, in *CreateClubRequest, opts ...grpc.CallOption) (*CreateClubResponse, error) {
@@ -455,6 +468,8 @@ func (c *clubServiceClient) SetClubVerified(ctx context.Context, in *SetClubVeri
 // Communities, the "группы" of openvk: a page with a wall that people
 // join. Every RPC requires an access token unless said otherwise.
 type ClubServiceServer interface {
+	// Internal, verified room-service identity only.
+	GetRoomAccess(context.Context, *GetRoomAccessRequest) (*GetRoomAccessResponse, error)
 	// The caller creates a club and owns it.
 	CreateClub(context.Context, *CreateClubRequest) (*CreateClubResponse, error)
 	// Public: a club by its ID or address, as the caller, if any, sees it.
@@ -555,6 +570,9 @@ type ClubServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedClubServiceServer struct{}
 
+func (UnimplementedClubServiceServer) GetRoomAccess(context.Context, *GetRoomAccessRequest) (*GetRoomAccessResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetRoomAccess not implemented")
+}
 func (UnimplementedClubServiceServer) CreateClub(context.Context, *CreateClubRequest) (*CreateClubResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateClub not implemented")
 }
@@ -661,6 +679,24 @@ func RegisterClubServiceServer(s grpc.ServiceRegistrar, srv ClubServiceServer) {
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&ClubService_ServiceDesc, srv)
+}
+
+func _ClubService_GetRoomAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRoomAccessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).GetRoomAccess(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_GetRoomAccess_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).GetRoomAccess(ctx, req.(*GetRoomAccessRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ClubService_CreateClub_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -1192,6 +1228,10 @@ var ClubService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "club.v1.ClubService",
 	HandlerType: (*ClubServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetRoomAccess",
+			Handler:    _ClubService_GetRoomAccess_Handler,
+		},
 		{
 			MethodName: "CreateClub",
 			Handler:    _ClubService_CreateClub_Handler,

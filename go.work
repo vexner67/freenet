@@ -24,5 +24,6 @@ use (
 	./pkg/reqid
 	./pkg/tracing
 	./post
+	./room
 	./user
 )

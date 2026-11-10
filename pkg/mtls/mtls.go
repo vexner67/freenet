@@ -27,6 +27,7 @@ const (
 	Club         = "club"
 	Federation   = "federation"
 	Gateway      = "gateway"
+	Room         = "room"
 )
 
 // Config is embedded by services with envPrefix "TLS_": TLS_CA_PATH,
