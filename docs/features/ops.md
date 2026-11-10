@@ -19,3 +19,10 @@ CI (GitHub Actions, `.github/workflows/ci.yml`) делает то же, что �
 ## Капча при входе
 
 Запрос кода на вход можно закрыть капчей: `CAPTCHA_REQUIRED=true` (в проде так, `deploy/compose.prod.yaml`; в разработке выключена). `GET /api/v1/auth/captcha` (`NewCaptcha` в `auth`) отдаёт ID и картинку SVG с пятью цифрами из штрихов (`auth/internal/captcha`), а `POST /auth/code` принимает `captchaId` и `captchaAnswer`. Ответ хранится хешем с TTL 5 минут и проверяется один раз, даже неверный (`GETDEL` в Redis); выдача ограничена `CAPTCHA_PER_IP` в `CAPTCHA_WINDOW`. SVG приходит строкой и показывается через `data:` — `img-src` это разрешает.
+
+
+### Комнаты и LiveKit
+
+`room` — gRPC 7059, метрики 9059, отдельный room-postgres; голос — закреплённый LiveKit v1.13.11. Сигнал `/rtc` проходит через gateway и актуальную проверку членства в room, HTTP 7880 и Twirp остаются внутри сети. Перед первым выпуском на существующий сервер открыть 7881/TCP и 7882/UDP; bootstrap открывает их на новой машине. Ключи LiveKit и пароль новой БД автоматически создаются deploy/deploy.sh в серверной `.env`, сертификат CN room выпускает deploy/certs.sh. Production не принимает запасной пароль БД разработки. Подробности, пределы, тесты и состояние физической проверки браузеров — [rooms.md](rooms.md).
+
+Для локальной проверки без сборки образов — `make dev-rooms` (mTLS и dev LiveKit). Обычный `make dev` остаётся без комнат и Docker. При сборке десяти образов на небольшой Docker VM ограничить параллельность: `COMPOSE_PARALLEL_LIMIT=1 make stack`; одновременная тяжёлая сборка и интеграционные БД могут вызвать OOM. Smoke в CI задаёт `ROOM_EMPTY_TTL=3s`, `ROOM_SWEEP_INTERVAL=1s`, чтобы проверить автоматическое закрытие; обычное время жизни пустой временной комнаты — пять минут.
