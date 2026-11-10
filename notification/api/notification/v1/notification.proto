@@ -130,6 +130,8 @@ enum Kind {
   // The actor accepted the recipient's friend request: followed back the
   // recipient, who followed the actor ("Принять заявку" of openvk).
   KIND_FRIEND = 32;
+  // The actor invites the recipient to the room post_id.
+  KIND_ROOM_INVITE = 33;
 }
 
 // Event: post_id is set for all but follows, invitations, appointments

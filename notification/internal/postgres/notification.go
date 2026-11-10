@@ -198,6 +198,8 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 	var err error
 
 	switch e.Kind {
+	case notification.KindRoomInvite:
+		_, err = r.pool.Exec(ctx, deleteRoomInviteQuery, e.ActorID, e.RecipientID, e.PostID)
 	case notification.KindLike, notification.KindStoryLike:
 		_, err = r.pool.Exec(ctx, deleteLikeNotificationQuery, string(e.Kind), e.ActorID, e.PostID)
 	case notification.KindComment, notification.KindStoryComment:
@@ -509,3 +511,11 @@ func (r *ReadMarkRepository) Delete(ctx context.Context, userID uuid.UUID) error
 
 	return nil
 }
+
+const deleteRoomInviteQuery = `
+ DELETE FROM notifications
+ WHERE kind='room_invite'
+  AND actor_id=$1
+  AND recipient_id=$2
+  AND post_id=$3
+`

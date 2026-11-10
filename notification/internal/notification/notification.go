@@ -90,6 +90,8 @@ const (
 	// KindFriend: the actor accepted the recipient's friend request,
 	// following back the recipient. One per pair, as a follow.
 	KindFriend Kind = "friend"
+	// KindRoomInvite: the actor invites the recipient to the room PostID.
+	KindRoomInvite Kind = "room_invite"
 )
 
 // MaxCallSeconds bounds how long a call is told to have lasted: a day.
@@ -158,7 +160,7 @@ func (e Event) Validate() error {
 
 	switch e.Kind {
 	case KindLike, KindWallPost, KindRepost, KindPostAccepted, KindSuggestedPost, KindPostMention, KindGift,
-		KindVotes, KindStoryLike, KindPrime:
+		KindVotes, KindStoryLike, KindPrime, KindRoomInvite:
 		ok = hasPost && !hasComment
 	case KindComment, KindCommentReply, KindCommentLike, KindTopicMessage, KindCommentMention, KindTopicMention,
 		KindTopicMessageLike, KindStoryComment:

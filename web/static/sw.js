@@ -9,6 +9,7 @@
 // What someone did, in the words of "Мои Ответы" (notifications.js):
 // [he, she, unknown, a community].
 const notificationVerbs = {
+  room_invite: ['приглашает', 'приглашает', 'приглашает', 'приглашает'],
   like: ['оценил', 'оценила', 'оценил(а)', 'оценило'],
   comment: ['оставил', 'оставила', 'оставил(а)', 'оставило'],
   follow: ['хочет', 'хочет', 'хочет', 'хочет'],
@@ -27,6 +28,7 @@ const notificationVerbs = {
 // Each kind of notification: the verb and what follows it. The payload
 // says nothing of the post or the comment: a push service would read it.
 const pushTexts = {
+  room_invite: ['room_invite', 'вас в комнату'],
   like: ['like', 'вашу запись'],
   comment: ['comment', 'комментарий под вашей записью'],
   follow: ['follow', 'добавить вас в друзья'],
@@ -67,10 +69,12 @@ const callTexts = { call: 'Звонок завершён.', missed_call: 'Про
 // one form, whoever did it.
 const english = {
   verbs: {
+    room_invite: 'invites',
     like: 'liked', comment: 'left', follow: 'wants', friend: 'accepted', wall_post: 'wrote', repost: 'shared', comment_reply: 'replied',
     mention: 'mentioned', gift: 'sent', votes: 'gave', prime: 'gave', invite: 'joined', verified: 'verified',
   },
   texts: {
+    room_invite: 'you to a room',
     like: 'your post',
     comment: 'a comment under your post',
     follow: 'to add you as a friend',

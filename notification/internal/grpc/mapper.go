@@ -43,6 +43,7 @@ var (
 		notification.KindCall:         notificationv1.Kind_KIND_CALL,
 		notification.KindMissedCall:   notificationv1.Kind_KIND_MISSED_CALL,
 		notification.KindFriend:       notificationv1.Kind_KIND_FRIEND,
+		notification.KindRoomInvite:   notificationv1.Kind_KIND_ROOM_INVITE,
 	}
 	kindFromProto = map[notificationv1.Kind]notification.Kind{
 		notificationv1.Kind_KIND_LIKE:      notification.KindLike,
@@ -77,6 +78,7 @@ var (
 		notificationv1.Kind_KIND_CALL:          notification.KindCall,
 		notificationv1.Kind_KIND_MISSED_CALL:   notification.KindMissedCall,
 		notificationv1.Kind_KIND_FRIEND:        notification.KindFriend,
+		notificationv1.Kind_KIND_ROOM_INVITE:   notification.KindRoomInvite,
 	}
 )
 
