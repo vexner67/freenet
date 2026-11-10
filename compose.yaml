@@ -60,7 +60,7 @@ services:
     # twice a minute: every check starts a process in the container, and
     # a small server has no processor to spare for a dozen of them.
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${AUTH_POSTGRES_USER} -d $${AUTH_POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 30s
       start_period: 60s
       start_interval: 1s
@@ -79,7 +79,7 @@ services:
     volumes:
       - user_postgres_data:/var/lib/postgresql
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U $${USER_POSTGRES_USER} -d $${USER_POSTGRES_DB}" ]
+      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\"" ]
       interval: 30s
       start_period: 60s
       start_interval: 1s
@@ -98,7 +98,7 @@ services:
     volumes:
       - post_postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POST_POSTGRES_USER} -d $${POST_POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 30s
       start_period: 60s
       start_interval: 1s
@@ -117,7 +117,7 @@ services:
     volumes:
       - notification_postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${NOTIFICATION_POSTGRES_USER} -d $${NOTIFICATION_POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 30s
       start_period: 60s
       start_interval: 1s
@@ -136,7 +136,7 @@ services:
     volumes:
       - message_postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${MESSAGE_POSTGRES_USER} -d $${MESSAGE_POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 30s
       start_period: 60s
       start_interval: 1s
@@ -155,7 +155,7 @@ services:
     volumes:
       - club_postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${CLUB_POSTGRES_USER} -d $${CLUB_POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 30s
       start_period: 60s
       start_interval: 1s
@@ -174,7 +174,7 @@ services:
     volumes:
       - federation_postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${FEDERATION_POSTGRES_USER} -d $${FEDERATION_POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 30s
       start_period: 60s
       start_interval: 1s
@@ -193,7 +193,7 @@ services:
     volumes:
       - room_postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${ROOM_POSTGRES_USER:-freenet} -d $${ROOM_POSTGRES_DB:-freenet}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 30s
       start_period: 60s
       start_interval: 1s
