@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/coder/websocket"
@@ -31,7 +32,7 @@ const (
 
 // isStream tells the paths of the streams that live as long as their page.
 func isStream(path string) bool {
-	return path == eventsPath || path == canvasLivePath
+	return path == eventsPath || path == canvasLivePath || path == "/rtc" || strings.HasPrefix(path, "/rtc/")
 }
 
 // authMessage is what a connection sends first: the token rides in the
@@ -169,6 +170,14 @@ func (a *api) streamEvents(ctx context.Context, conn *websocket.Conn, r *http.Re
 		return err
 	}
 
+	var rooms model.RoomEvents
+	if a.rooms != nil {
+		rooms, err = a.rooms.Subscribe(ctx, token)
+		if err != nil {
+			return err
+		}
+	}
+
 	// The page sends nothing more: this reads control frames and tells
 	// when the page goes. It gets a context of its own, as cancelling it
 	// would drop the connection without the close frame that says why.
@@ -179,7 +188,7 @@ func (a *api) streamEvents(ctx context.Context, conn *websocket.Conn, r *http.Re
 	defer context.AfterFunc(gone, cancel)()
 
 	out := make(chan any, 16)
-	done := make(chan error, 3)
+	done := make(chan error, 4)
 
 	// The token came in the first message, not in a header: what live
 	// messages attach is shown as to the one connected, as their pages do.
@@ -189,6 +198,9 @@ func (a *api) streamEvents(ctx context.Context, conn *websocket.Conn, r *http.Re
 	s := &eventSession{api: a, r: viewer, token: token, me: me.ID, out: out, peers: make(map[string]authorJSON)}
 
 	go func() { done <- s.forwardMessages(ctx, messages) }()
+	if rooms != nil {
+		go func() { done <- s.forwardRooms(ctx, rooms) }()
+	}
 	go func() { done <- s.forwardNotifications(ctx, notifications) }()
 	go func() { done <- ping(ctx, conn) }()
 

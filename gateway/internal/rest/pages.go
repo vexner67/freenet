@@ -6,7 +6,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"io/fs"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -83,6 +85,8 @@ func registerPages(mux *http.ServeMux, dir string) {
 	mux.Handle("GET /help", site.page(dir, "help.html"))
 	mux.Handle("GET /language", site.page(dir, "language.html"))
 	mux.Handle("GET /invite", site.page(dir, "invite.html"))
+	mux.Handle("GET /rooms", site.page(dir, "rooms.html"))
+	mux.Handle("GET /room/{id}", site.page(dir, "room.html"))
 	mux.Handle("GET /groups", site.page(dir, "groups.html"))
 	mux.Handle("GET /groups/create", site.page(dir, "club-create.html"))
 	mux.Handle("GET /club/{ref}", site.page(dir, "club.html"))
@@ -225,7 +229,7 @@ func (a *assets) page(dir, name string) http.Handler {
 		site := a.current()
 		html = site.versioned(site.preloading(html))
 
-		w.Header().Set("Content-Security-Policy", pageCSP)
+		w.Header().Set("Content-Security-Policy", roomPageCSP(r))
 		w.Header().Set("Referrer-Policy", "same-origin")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", cacheRevalidate)
@@ -303,4 +307,18 @@ func noListing(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// Firefox and Safari do not consistently match WebSockets to CSP 'self'.
+// Name exactly this request's origin; never allow a wildcard WebSocket host.
+func roomPageCSP(r *http.Request) string {
+	if r.Host == "" || strings.ContainsAny(r.Host, ";'\" \t\r\n") {
+		return pageCSP
+	}
+	u := url.URL{Scheme: "wss", Host: r.Host}
+	hostname := u.Hostname()
+	if r.TLS == nil && (hostname == "localhost" || net.ParseIP(hostname).IsLoopback()) {
+		u.Scheme = "ws"
+	}
+	return strings.Replace(pageCSP, "connect-src 'self'", "connect-src 'self' "+u.String(), 1)
 }

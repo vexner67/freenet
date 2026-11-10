@@ -422,8 +422,9 @@ func timeString(t time.Time) string {
 }
 
 type publicProfileResponse struct {
-	ID     string      `json:"id"`
-	Avatar *avatarJSON `json:"avatar"`
+	Room   *roomSummaryJSON `json:"room,omitempty"`
+	ID     string           `json:"id"`
+	Avatar *avatarJSON      `json:"avatar"`
 	profileJSON
 	// Deactivated: the page is deleted; only names and the photo are left.
 	Deactivated bool `json:"deactivated"`

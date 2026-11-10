@@ -31,6 +31,359 @@ servers:
     description: Local development
 
 paths:
+  /api/v1/rooms:
+    parameters:
+      - name: cursor
+        in: query
+        schema: { type: string, format: uuid }
+      - name: limit
+        in: query
+        schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+    get:
+      summary: List live rooms visible to the viewer
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoomPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    post:
+      summary: Create a temporary or permanent room
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoomDraft" }
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoomResponse" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/rooms/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Read a room and participants without joining
+      description: Guests can preview public rooms; no chat or media token is returned.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoomResponse" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    patch:
+      summary: Update room settings as its owner
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoomSettings" }
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoomResponse" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Close the room and disconnect everyone
+      security: [{ bearer: [] }]
+      responses:
+        "204":
+          description: Success
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/rooms/{id}/join:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Join a room, leaving the previous room atomically
+      description: Checks access, blacklist, ban and capacity. Repeated joins refresh membership. Media grants allow microphone audio only.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoomJoined" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/rooms/{id}/token:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Renew a LiveKit token for an existing participant
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoomMediaResponse" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/rooms/{id}/heartbeat:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Refresh presence; call every 20 seconds
+      description: Membership expires after 45 seconds without a heartbeat.
+      security: [{ bearer: [] }]
+      responses:
+        "204":
+          description: Success
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/rooms/{id}/leave:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Leave the room
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                token: { type: string, writeOnly: true }
+      description: For sendBeacon only, a JSON body with token is accepted instead of Authorization. Never put tokens in the URL.
+      security: [{ bearer: [] }]
+      responses:
+        "204":
+          description: Success
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/rooms/{id}/chat:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Send plain text or one owned sticker
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoomChatInput" }
+      responses:
+        "201":
+          description: Success
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoomChatResponse" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/rooms/{id}/playback:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Replace the shared screen with compare-and-swap
+      description: Position is in seconds. Server sets updatedAt and increments version. Only the owner or permitted participants can change playback.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoomPlaybackInput" }
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoomPlaybackResponse" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "409":
+          description: Stale playback version; fetch the current room before retrying
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: { $ref: "#/components/schemas/Error" }
+                  playback: { $ref: "#/components/schemas/RoomPlayback" }
+  /api/v1/rooms/{id}/kick:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Ban a participant and immediately remove media access
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoomMemberInput" }
+      responses:
+        "204":
+          description: Success
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/rooms/{id}/mute:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Mute a participant microphone for everyone
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoomMemberInput" }
+      responses:
+        "204":
+          description: Success
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/rooms/{id}/invite:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Invite one user through notifications
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoomMemberInput" }
+      responses:
+        "204":
+          description: Success
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/users/{nickname}/rooms:
+    parameters:
+      - name: cursor
+        in: query
+        schema: { type: string, format: uuid }
+      - name: limit
+        in: query
+        schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: List permanent rooms of a person visible to the viewer
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoomPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /api/v1/clubs/{ref}/rooms:
+    parameters:
+      - name: cursor
+        in: query
+        schema: { type: string, format: uuid }
+      - name: limit
+        in: query
+        schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      - name: ref
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: List permanent rooms of a community visible to the viewer
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoomPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /api/v1/auth/captcha:
     get:
       summary: A picture of digits to read before asking for a code
@@ -1307,6 +1660,24 @@ paths:
   /api/v1/audio/{id}:
     parameters:
       - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: Read one audio recording for the shared room player
+      description: Uses the same visibility and availability checks as audio lists.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [audio]
+                properties:
+                  audio: { $ref: "#/components/schemas/Audio" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/PermissionDenied" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
     patch:
       summary: Edit a song you uploaded
       security: [{ bearer: [] }]
@@ -9240,6 +9611,148 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
 
   schemas:
+    RoomSummary:
+      type: object
+      required: [id, title]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+    RoomSettings:
+      type: object
+      properties:
+        title: { type: string, minLength: 1, maxLength: 64, description: One line, Unicode rune limit }
+        kind: { type: string, enum: [talk, watch, listen] }
+        access: { type: string, enum: [everyone, friends, link, club] }
+        control: { type: string, enum: [owner, everyone] }
+    RoomDraft:
+      allOf:
+        - { $ref: "#/components/schemas/RoomSettings" }
+        - type: object
+          required: [title]
+          properties:
+            clubId: { type: string, format: uuid }
+            permanent: { type: boolean, default: false }
+    RoomQueueItem:
+      type: object
+      required: [kind, mediaId, title]
+      properties:
+        kind: { type: string, enum: [youtube, audio] }
+        mediaId: { type: string, description: YouTube video ID or audio UUID }
+        title: { type: string, maxLength: 256 }
+    RoomPlaybackInput:
+      type: object
+      required: [kind, mediaId, playing, position, version, queue]
+      properties:
+        kind: { type: string, enum: ["", youtube, audio] }
+        mediaId: { type: string }
+        playing: { type: boolean }
+        position: { type: number, minimum: 0 }
+        version: { type: integer, minimum: 0 }
+        queue:
+          type: array
+          maxItems: 50
+          items: { $ref: "#/components/schemas/RoomQueueItem" }
+    RoomPlayback:
+      allOf:
+        - { $ref: "#/components/schemas/RoomPlaybackInput" }
+        - type: object
+          properties:
+            updatedAt: { type: string, format: date-time }
+    RoomMember:
+      type: object
+      required: [user, joinedAt]
+      properties:
+        user: { $ref: "#/components/schemas/Author" }
+        joinedAt: { type: string, format: date-time }
+    Room:
+      allOf:
+        - { $ref: "#/components/schemas/RoomSettings" }
+        - type: object
+          required: [id, ownerId, clubId, permanent, createdAt, members, playback, maxMembers, friends]
+          properties:
+            id: { type: string, format: uuid }
+            ownerId: { type: string, format: uuid }
+            clubId: { type: string, description: Empty for personal rooms }
+            permanent: { type: boolean }
+            createdAt: { type: string, format: date-time }
+            members:
+              type: array
+              items: { $ref: "#/components/schemas/RoomMember" }
+            playback: { $ref: "#/components/schemas/RoomPlayback" }
+            maxMembers: { type: integer, minimum: 1 }
+            friends: { type: integer, minimum: 0, description: Number of the viewer's friends currently in this room }
+    RoomResponse:
+      type: object
+      required: [room]
+      properties:
+        room: { $ref: "#/components/schemas/Room" }
+    RoomPage:
+      type: object
+      required: [rooms, nextCursor]
+      properties:
+        rooms:
+          type: array
+          items: { $ref: "#/components/schemas/Room" }
+        nextCursor: { type: string }
+    RoomMedia:
+      type: object
+      required: [url, token, expiresAt]
+      properties:
+        url: { type: string, description: Same-origin WebSocket signalling endpoint }
+        token: { type: string, writeOnly: true, description: Short-lived LiveKit JWT; never persist or log }
+        expiresAt: { type: string, format: date-time }
+    RoomMediaResponse:
+      type: object
+      required: [media]
+      properties:
+        media: { $ref: "#/components/schemas/RoomMedia" }
+    RoomChatInput:
+      type: object
+      additionalProperties: false
+      properties:
+        text: { type: string, maxLength: 1000 }
+        sticker: { type: string, description: Owned sticker ID; mutually exclusive with text }
+    RoomChat:
+      type: object
+      required: [id, author, text, sticker, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        author: { $ref: "#/components/schemas/Author" }
+        text: { type: string }
+        sticker: { type: string }
+        createdAt: { type: string, format: date-time }
+    RoomChatResponse:
+      type: object
+      required: [message]
+      properties:
+        message: { $ref: "#/components/schemas/RoomChat" }
+    RoomPlaybackResponse:
+      type: object
+      required: [playback]
+      properties:
+        playback: { $ref: "#/components/schemas/RoomPlayback" }
+    RoomJoined:
+      type: object
+      required: [room, chat, mutedIds, media, serverTime]
+      properties:
+        room: { $ref: "#/components/schemas/Room" }
+        chat:
+          type: array
+          maxItems: 50
+          description: Only messages visible to this participant; blacklist works in both directions
+          items: { $ref: "#/components/schemas/RoomChat" }
+        mutedIds:
+          type: array
+          items: { type: string, format: uuid }
+          description: Never subscribe to these participants' audio tracks
+        media: { $ref: "#/components/schemas/RoomMedia" }
+        serverTime: { type: string, format: date-time }
+    RoomMemberInput:
+      type: object
+      additionalProperties: false
+      required: [userId]
+      properties:
+        userId: { type: string, format: uuid }
     BetEvent:
       type: object
       description: 'An event of "Ставки": a question the administrators ask, with the votes staked on each outcome'
@@ -10193,10 +10706,11 @@ components:
       type: object
       required: [id, type, createdAt, actor, post, comment]
       properties:
+        room: { $ref: "#/components/schemas/RoomSummary", description: Target of a room_invite notification; omitted for other types }
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, gift, votes, prime, invite, verified, club_verified, story_like, story_comment, match, call, missed_call, friend]
+          enum: [room_invite, like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, gift, votes, prime, invite, verified, club_verified, story_like, story_comment, match, call, missed_call, friend]
           description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; prime: the actor gave you Freenet Prime; invite: the actor signed up by your invitation link and follows you; verified: the actor, an administrator, gave your page the checkmark (until it is taken); club_verified: the actor, a community you own, got the checkmark (until it is taken); story_like, story_comment: the actor liked or commented your story (until the like is taken back, the comment deleted or the story gone); match: you and the actor liked each other in \"Знакомства\"; call: you talked with the actor for `seconds` (each side gets one); missed_call: the actor called you and you did not answer; follow: the actor sent you a friend request; friend: the actor accepted your friend request"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
@@ -10676,6 +11190,7 @@ components:
         - type: object
           required: [id, avatar, deactivated]
           properties:
+            room: { $ref: "#/components/schemas/RoomSummary", description: Present only when the room is visible to the viewer }
             id: { type: string, format: uuid }
             avatar: { $ref: "#/components/schemas/Avatar" }
             deactivated:

@@ -520,6 +520,7 @@ type Votes interface {
 
 // Backends are the services the API is made of.
 type Backends struct {
+	Rooms         Rooms
 	Auth          Auth
 	Users         Users
 	Posts         Posts
@@ -568,6 +569,7 @@ type Previews interface {
 }
 
 type api struct {
+	rooms         Rooms
 	auth          Auth
 	users         Users
 	posts         Posts
@@ -625,6 +627,7 @@ type api struct {
 
 func (a *api) routes() *http.ServeMux {
 	mux := http.NewServeMux()
+	registerRoomRoutes(mux, a)
 
 	mux.HandleFunc("GET "+HealthPath, a.health)
 
@@ -849,6 +852,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /api/v1/documents/{id}", a.deleteDocument)
 
 	mux.HandleFunc("GET /api/v1/audio", a.searchAudios)
+	mux.HandleFunc("GET /api/v1/audio/{id}", a.getAudio)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/audio", a.listAudios)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/music", a.getMusic)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/playlists", a.listPlaylists)

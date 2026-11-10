@@ -25,6 +25,7 @@ type notificationCommentJSON struct {
 }
 
 type notificationJSON struct {
+	Room      *roomSummaryJSON         `json:"room,omitempty"`
 	ID        string                   `json:"id"`
 	Type      string                   `json:"type"`
 	CreatedAt string                   `json:"createdAt"`
@@ -117,7 +118,7 @@ func namesStory(kind string) bool {
 // namesPost tells whether PostID of a notification of kind is a post, and
 // namesComment whether its CommentID is a comment.
 func namesPost(kind string) bool {
-	return kind != kindSuggestedPost && kind != kindGift && kind != kindVotes && kind != kindPrime &&
+	return kind != "room_invite" && kind != kindSuggestedPost && kind != kindGift && kind != kindVotes && kind != kindPrime &&
 		!namesTopic(kind) && !namesStory(kind)
 }
 
@@ -128,6 +129,7 @@ func namesComment(kind string) bool {
 // targets are what a page of notifications refers to, by ID; what was
 // deleted meanwhile is missing.
 type targets struct {
+	rooms    map[string]model.RoomSummary
 	actors   map[string]model.Author
 	posts    map[string]model.Post
 	comments map[string]model.Comment
@@ -258,6 +260,23 @@ func (a *api) notificationTargets(r *http.Request, notifications []model.Notific
 		return targets{}, err
 	}
 
+	t.rooms = make(map[string]model.RoomSummary)
+	if a.rooms != nil {
+		for _, n := range notifications {
+			if n.Kind != "room_invite" {
+				continue
+			}
+			room, err := a.rooms.Get(r.Context(), viewerToken(r), n.PostID)
+			if f := failure.From(err); f.Kind == failure.NotFound || f.Kind == failure.PermissionDenied {
+				continue
+			}
+			if err != nil {
+				return targets{}, err
+			}
+			t.rooms[n.PostID] = model.RoomSummary{ID: room.ID, Title: room.Title}
+		}
+	}
+
 	return t, nil
 }
 
@@ -315,6 +334,15 @@ func toNotificationJSON(n model.Notification, t targets) (notificationJSON, bool
 		Seconds:   n.Seconds,
 		Votes:     n.Votes,
 		Note:      n.Note,
+	}
+
+	if n.Kind == "room_invite" {
+		room, ok := t.rooms[n.PostID]
+		if !ok {
+			return notificationJSON{}, false
+		}
+		item.Room = &roomSummaryJSON{ID: room.ID, Title: room.Title}
+		return item, true
 	}
 
 	if namesTopic(n.Kind) {

@@ -706,3 +706,25 @@ func (a *api) serveAudio(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, max-age=86400")
 	http.ServeContent(w, r, "", song.CreatedAt, bytes.NewReader(data))
 }
+
+// getAudio reads a song selected by a shared room, with the same public
+// visibility as an attachment in a post.
+func (a *api) getAudio(w http.ResponseWriter, r *http.Request) {
+	token, err := optionalBearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+	rows, err := a.audio.GetMany(r.Context(), token, []string{r.PathValue("id")})
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+	if len(rows) == 0 {
+		a.writeError(w, r, failure.New(failure.NotFound, "audio not found"))
+		return
+	}
+	writeJSON(w, http.StatusOK, struct {
+		Audio audioJSON `json:"audio"`
+	}{toAudioJSON(rows[0])})
+}

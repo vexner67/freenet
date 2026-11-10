@@ -147,6 +147,9 @@ func (a *api) searchUsers(w http.ResponseWriter, r *http.Request) {
 	for _, u := range page.Users {
 		resp.Users = append(resp.Users, toPublicProfileResponse(u))
 	}
-
+	if err := a.currentRoomsForPeople(r, resp.Users); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, resp)
 }

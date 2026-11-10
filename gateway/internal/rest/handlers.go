@@ -288,7 +288,19 @@ func (a *api) getProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var currentRoom *roomSummaryJSON
+	if a.rooms != nil && !profile.Deactivated && !profile.PageHidden {
+		rooms, err := a.rooms.Current(r.Context(), token, []string{profile.ID})
+		if err != nil {
+			a.writeError(w, r, err)
+			return
+		}
+		if room, ok := rooms[profile.ID]; ok {
+			currentRoom = &roomSummaryJSON{ID: room.ID, Title: room.Title}
+		}
+	}
 	writeJSON(w, http.StatusOK, profileWithStatsResponse{
+		Room:                  currentRoom,
 		Access:                accessJSON{Friends: access.Friends, Clubs: access.Clubs, Gifts: access.Gifts, Audios: access.Audios, SendGift: access.SendGift},
 		publicProfileResponse: toPublicProfileResponse(profile),
 		aboutJSON:             toAboutJSON(profile.About, partner),

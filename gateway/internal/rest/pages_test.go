@@ -156,7 +156,7 @@ func TestPages(t *testing.T) {
 			if w.Code != tt.status || !strings.Contains(w.Body.String(), tt.body) {
 				t.Fatalf("%s: %d %q", tt.path, w.Code, w.Body.String())
 			}
-			if hasCSP := w.Header().Get("Content-Security-Policy") == rest.PageCSP; hasCSP != tt.csp {
+			if hasCSP := w.Header().Get("Content-Security-Policy") == strings.Replace(rest.PageCSP, "connect-src 'self'", "connect-src 'self' wss://example.com", 1); hasCSP != tt.csp {
 				t.Fatalf("%s: page CSP = %v, want %v", tt.path, hasCSP, tt.csp)
 			}
 		})

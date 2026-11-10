@@ -16,6 +16,7 @@ import (
 const shutdownTimeout = 5 * time.Second
 
 type Config struct {
+	LiveKitURL        string
 	Addr              string
 	AllowedOrigins    []string
 	TrustForwardedFor bool
@@ -51,6 +52,7 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger, reg prometheu
 	stopping, stop := context.WithCancel(context.Background())
 
 	a := &api{
+		rooms:             backends.Rooms,
 		auth:              backends.Auth,
 		users:             backends.Users,
 		posts:             backends.Posts,
@@ -96,6 +98,15 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger, reg prometheu
 	}
 
 	mux := a.routes()
+	if cfg.LiveKitURL != "" {
+		proxy, err := liveKitProxy(cfg.LiveKitURL, backends.Rooms)
+		if err != nil {
+			stop()
+			return nil, fmt.Errorf("liveKitProxy: %w", err)
+		}
+		mux.Handle("GET /rtc", proxy)
+		mux.Handle("GET /rtc/", proxy)
+	}
 	a.batched = metrics.observe(mux)
 
 	handler := chain(

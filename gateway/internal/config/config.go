@@ -10,9 +10,11 @@ import (
 )
 
 type Config struct {
-	HTTPPort  int    `env:"HTTP_PORT,required,notEmpty"`
-	LogLevel  string `env:"LOG_LEVEL,required,notEmpty"`
-	LogFormat string `env:"LOG_FORMAT,required,notEmpty"`
+	RoomServiceAddr string `env:"ROOM_SERVICE_ADDR"`
+	LiveKitURL      string `env:"LIVEKIT_URL"`
+	HTTPPort        int    `env:"HTTP_PORT,required,notEmpty"`
+	LogLevel        string `env:"LOG_LEVEL,required,notEmpty"`
+	LogFormat       string `env:"LOG_FORMAT,required,notEmpty"`
 
 	// MetricsPort serves Prometheus metrics on a port of its own, not to
 	// be published outside; 0 does not serve them.

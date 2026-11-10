@@ -25,6 +25,7 @@ import (
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/tracing"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
+	roomv1 "github.com/vexner67/freenet/room/api/room/v1"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -32,6 +33,7 @@ import (
 )
 
 type App struct {
+	roomConn         *grpc.ClientConn
 	logger           *slog.Logger
 	tracer           *tracing.Tracer
 	authConn         *grpc.ClientConn
@@ -130,10 +132,20 @@ func (a *App) build(cfg config.Config) error {
 		federation = backend.NewFederation(federationv1.NewFederationServiceClient(a.federationConn))
 	}
 
+	var rooms rest.Rooms
+	if cfg.RoomServiceAddr != "" {
+		a.roomConn, err = a.dial(cfg.RoomServiceAddr, creds)
+		if err != nil {
+			return errs.Wrap("a.dial", err)
+		}
+		rooms = backend.NewRooms(roomv1.NewRoomServiceClient(a.roomConn))
+	}
+
 	reg := metrics.NewRegistry()
 
 	a.server, err = rest.NewServer(
 		rest.Config{
+			LiveKitURL:        cfg.LiveKitURL,
 			Addr:              fmt.Sprintf(":%d", cfg.HTTPPort),
 			AllowedOrigins:    cfg.CORSAllowedOrigins,
 			TrustForwardedFor: cfg.TrustForwardedFor,
@@ -143,6 +155,7 @@ func (a *App) build(cfg config.Config) error {
 			Trace:             a.tracer.Handler,
 		},
 		rest.Backends{
+			Rooms:         rooms,
 			Auth:          backend.NewAuth(authv1.NewAuthServiceClient(a.authConn)),
 			Users:         backend.NewUsers(userv1.NewUserServiceClient(a.userConn)),
 			Posts:         backend.NewPosts(postv1.NewPostServiceClient(a.postConn)),
@@ -247,6 +260,11 @@ func (a *App) dial(addr string, creds credentials.TransportCredentials) (*grpc.C
 
 // Close releases everything New opened; safe after a partial New.
 func (a *App) Close() {
+	if a.roomConn != nil {
+		if err := a.roomConn.Close(); err != nil {
+			a.logger.Error("room connection close", "error", err)
+		}
+	}
 	if a.tracer != nil {
 		if err := a.tracer.Close(); err != nil {
 			a.logger.Error("tracer close", "error", err)
