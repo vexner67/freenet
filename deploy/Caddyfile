@@ -10,6 +10,14 @@
 {$SITE_ADDRESS} {
 	encode zstd gzip
 
+	@room_signal path /rtc /rtc/*
+	# The SDK authenticates its WebSocket through a short-lived token in
+	# the query. Never write that URL to the access log.
+	log_skip @room_signal
+	reverse_proxy @room_signal gateway:8080 {
+		header_up X-Request-ID {http.request.uuid}
+	}
+
 	# The gateway trusts X-Request-ID from its proxy (TRUST_FORWARDED_FOR):
 	# Caddy gives every request its own, never the client's.
 	reverse_proxy gateway:8080 {

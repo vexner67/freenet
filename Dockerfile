@@ -18,7 +18,7 @@ ARG TARGETOS
 ARG TARGETARCH
 WORKDIR /src
 
-RUN test -n "$SERVICE" || (echo "pass --build-arg SERVICE=<auth|user|post|media|notification|message|club|federation|gateway>" && exit 1)
+RUN test -n "$SERVICE" || (echo "pass --build-arg SERVICE=<auth|user|post|media|notification|message|club|federation|room|gateway>" && exit 1)
 
 # Static binary without debug info; -trimpath keeps local paths out of it.
 #

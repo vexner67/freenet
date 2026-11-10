@@ -38,6 +38,18 @@ if ! grep -q '^FEDERATION_POSTGRES_PASSWORD=.' .env; then
 	} >> .env
 fi
 
+# Rooms use their own database and media-server credentials. Values stay here.
+if ! grep -q '^ROOM_POSTGRES_PASSWORD=.' .env; then
+ {
+  echo "ROOM_POSTGRES_USER=freenet"
+  echo "ROOM_POSTGRES_PASSWORD=$(openssl rand -hex 24)"
+  echo "ROOM_POSTGRES_DB=freenet"
+  echo "ROOM_POSTGRES_PORT=5440"
+ } >> .env
+fi
+grep -q '^LIVEKIT_API_KEY=.' .env || echo "LIVEKIT_API_KEY=$(openssl rand -hex 16)" >> .env
+grep -q '^LIVEKIT_API_SECRET=.' .env || echo "LIVEKIT_API_SECRET=$(openssl rand -hex 32)" >> .env
+
 docker login ghcr.io --username "$user" --password-stdin >/dev/null
 trap 'docker logout ghcr.io >/dev/null' EXIT
 

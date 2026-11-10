@@ -70,7 +70,13 @@ trap cleanup EXIT
 
 # host_port prints the host port Docker published for a container port.
 host_port() {
-	docker port "$1" "$2" | head -1 | sed 's/.*://'
+	local published port
+	published=$(docker port "$1" "$2" | head -1) || return 1
+	port=${published##*:}
+	case "$port" in
+	''|*[!0-9]*) echo "check: no published port for test container $1/$2" >&2; return 1 ;;
+	esac
+	echo "$port"
 }
 
 start_databases() {
@@ -106,8 +112,9 @@ start_databases() {
 # database_for creates a fresh database for module $1, migrated if the
 # module has migrations, and prints its URL.
 database_for() {
-	local module=$1 name=${1//\//_} url
-	url="postgres://postgres:check@127.0.0.1:$(host_port "$pg" 5432/tcp)/$name?sslmode=disable"
+	local module=$1 name=${1//\//_} url port
+	port=$(host_port "$pg" 5432/tcp) || return 1
+	url="postgres://postgres:check@127.0.0.1:$port/$name?sslmode=disable"
 
 	docker exec "$pg" psql -q -U postgres -c "CREATE DATABASE \"$name\"" >/dev/null
 

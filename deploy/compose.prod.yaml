@@ -26,6 +26,10 @@ services:
   message-postgres: *postgres
   club-postgres: *postgres
   federation-postgres: *postgres
+  room-postgres:
+    <<: *postgres
+    environment:
+      POSTGRES_PASSWORD: ${ROOM_POSTGRES_PASSWORD:?set ROOM_POSTGRES_PASSWORD}
   redis: { ports: !reset [] }
 
   notification:
@@ -69,6 +73,25 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+
+  room:
+    image: ghcr.io/vexner67/freenet-room:${FREENET_TAG:?set FREENET_TAG}
+    build: !reset null
+    environment:
+      LIVEKIT_PUBLIC_URL: wss://${SITE_ADDRESS}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:?set LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET}
+  livekit:
+    command: ["--bind", "0.0.0.0", "--node-ip", "${TURN_HOST:?set TURN_HOST}", "--udp-port", "7882"]
+    ports: !override ["7881:7881/tcp", "7882:7882/udp"]
+    environment:
+      LIVEKIT_CONFIG: |
+        port: 7880
+        rtc:
+          tcp_port: 7881
+        prometheus_port: 6789
+        keys:
+          ${LIVEKIT_API_KEY:?set LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET:?set LIVEKIT_API_SECRET}
 
   gateway:
     image: ghcr.io/vexner67/freenet-gateway:${FREENET_TAG:?set FREENET_TAG}

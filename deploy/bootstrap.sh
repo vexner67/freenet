@@ -81,6 +81,8 @@ ufw limit 22/tcp
 ufw allow 80/tcp
 ufw allow 443/tcp
 ufw allow 443/udp
+ufw allow 7881/tcp
+ufw allow 7882/udp
 ufw --force enable
 
 step "swap for a small server"
@@ -139,7 +141,7 @@ if [ ! -f "$app_dir/.env" ]; then
 		echo "# www.<domain>, redirected to SITE_ADDRESS; an unused port without a domain."
 		echo "REDIRECT_ADDRESS=:8081"
 		port=5433
-		for db in AUTH USER POST NOTIFICATION MESSAGE CLUB FEDERATION; do
+		for db in AUTH USER POST NOTIFICATION MESSAGE CLUB FEDERATION ROOM; do
 			echo "${db}_POSTGRES_USER=freenet"
 			echo "${db}_POSTGRES_PASSWORD=$(secret 24)"
 			echo "${db}_POSTGRES_DB=freenet"

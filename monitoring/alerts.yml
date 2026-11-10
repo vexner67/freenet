@@ -221,3 +221,36 @@ groups:
         annotations:
           summary: "{{ $labels.service }} dropped messages to {{ $labels.stream }}"
           description: "{{ $labels.stream }} rejected messages of {{ $labels.service }} with an error a retry cannot fix; they are lost. The ERROR lines in the log of {{ $labels.service }} say which."
+
+  - name: rooms
+    rules:
+      - alert: RoomJoinFailuresHigh
+        expr: sum(rate(room_join_failures_total[10m])) / (sum(rate(room_joins_total[10m])) + sum(rate(room_join_failures_total[10m]))) > 0.2
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "More than 20% of room joins fail"
+          description: "Room joins have failed above 20% for 10 minutes. Inspect capacity, access failures and the media server."
+      - alert: LiveKitDown
+        expr: up{job="livekit"} == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "LiveKit is down"
+          description: "Room voice is unavailable: Prometheus has not reached LiveKit for a minute."
+      - alert: LiveKitPacketLossHigh
+        expr: sum(rate(livekit_packet_loss_total[10m])) / sum(rate(livekit_packet_total[10m])) > 0.05
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "LiveKit packet loss exceeds 5%"
+          description: "Room voice has lost more than 5% of packets for 10 minutes. Check CPU, network and UDP reachability."
+      # Initial operational budget is 10 Mbit/s; set this to 80% of the
+      # provider's measured link budget before raising ROOM_MAX_LIVE.
+      - alert: LiveKitBandwidthHigh
+        expr: sum(rate(livekit_packet_bytes{direction="outgoing"}[5m])) * 8 > 8000000
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "LiveKit exceeds the initial traffic budget"
+          description: "Room voice has used over 8 Mbit/s outbound for 10 minutes. The provisional budget is 10 Mbit/s; verify the server channel before raising room capacity."

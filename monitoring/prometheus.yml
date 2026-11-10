@@ -37,6 +37,13 @@ scrape_configs:
       - targets: ["federation:9058"]
         labels: { service: federation }
 
+      - targets: ["room:9059"]
+        labels: { service: room }
+
+  - job_name: livekit
+    static_configs:
+      - targets: ["livekit:6789"]
+
   # The databases and Redis, through their exporters (compose.yaml).
   - job_name: postgres
     static_configs:
@@ -54,6 +61,9 @@ scrape_configs:
         labels: { db: club }
       - targets: ["federation-postgres-exporter:9187"]
         labels: { db: federation }
+
+      - targets: ["room-postgres-exporter:9187"]
+        labels: { db: room }
 
   - job_name: redis
     static_configs:

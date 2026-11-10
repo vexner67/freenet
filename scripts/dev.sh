@@ -6,6 +6,7 @@
 #
 #   scripts/dev.sh               storage from the .env files (inmem by default)
 #   scripts/dev.sh --persistent  PostgreSQL and Redis from compose.yaml
+#   scripts/dev.sh --rooms       add rooms, local LiveKit and development mTLS
 #
 # Written for the bash 3.2 that ships with macOS.
 set -euo pipefail
@@ -27,13 +28,20 @@ usage() {
 }
 
 persistent=false
+rooms=false
 for arg in "$@"; do
 	case "$arg" in
 	--persistent) persistent=true ;;
+	--rooms) rooms=true ;;
 	-h | --help) usage ;;
 	*) die "unknown argument $arg (see --help)" ;;
 	esac
 done
+
+if $rooms; then
+	services=(notification message club federation room user post media auth gateway)
+	[ -f room/.env ] || cp room/.env.example room/.env
+fi
 
 # port_of prints GRPC_PORT or HTTP_PORT from a service's .env.
 port_of() {
@@ -72,6 +80,25 @@ if $persistent; then
 	export REDIS_ADDR="${REDIS_ADDR:-localhost:$(sed -n 's/^REDIS_PORT=//p' .env)}"
 fi
 
+if $rooms; then
+	if [ ! -f certs/ca.pem ] || [ ! -f certs/jwt-private.pem ]; then
+		make certs
+	else
+		deploy/certs.sh certs .data/node/certs.prom
+	fi
+	export TLS_CA_PATH="$PWD/certs/ca.pem"
+	export JWT_PUBLIC_KEY_PATH="$PWD/certs/jwt-public.pem"
+	export JWT_PRIVATE_KEY_PATH="$PWD/certs/jwt-private.pem"
+	export ROOM_SERVICE_ADDR=localhost:7059
+	export LIVEKIT_URL=http://localhost:7880
+	export LIVEKIT_PUBLIC_URL=ws://localhost:8080
+	# Only the development signalling listener is published; admin JWTs stay local.
+	docker rm -f freenet-dev-livekit >/dev/null 2>&1 || true
+	docker run -d --name freenet-dev-livekit -p 127.0.0.1:7880:7880 -p 127.0.0.1:7881:7881 -p 127.0.0.1:7882:7882/udp livekit/livekit-server:v1.13.11 --dev --bind 0.0.0.0 --node-ip 127.0.0.1 --udp-port 7882 >/dev/null
+	export LIVEKIT_API_KEY=devkey
+	export LIVEKIT_API_SECRET=secret
+fi
+
 bin=$(mktemp -d)
 pids=()
 
@@ -84,6 +111,7 @@ stop() {
 		wait "${pids[@]}" 2>/dev/null || true
 	fi
 
+	$rooms && docker stop freenet-dev-livekit >/dev/null 2>&1 || true
 	rm -rf "$bin"
 }
 
@@ -109,7 +137,11 @@ for i in "${!services[@]}"; do
 	[ -t 1 ] && tag=$(printf '\033[%sm%s\033[0m' "${colors[$i]}" "$tag")
 
 	metrics_port=$(metrics_port_of "$svc")
-	(cd "$svc" && METRICS_PORT=$metrics_port exec "$bin/$svc") > >(label "$tag ") 2>&1 &
+	(cd "$svc"
+		if $rooms; then
+			export TLS_CERT_PATH="$OLDPWD/certs/$svc.pem" TLS_KEY_PATH="$OLDPWD/certs/$svc-key.pem"
+		fi
+		METRICS_PORT=$metrics_port exec "$bin/$svc") > >(label "$tag ") 2>&1 &
 	pids+=($!)
 done
 

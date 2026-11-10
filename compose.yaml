@@ -181,6 +181,25 @@ services:
       timeout: 5s
       retries: 5
 
+  room-postgres:
+    image: postgres:18
+    logging: *logging
+    environment:
+      POSTGRES_USER: ${ROOM_POSTGRES_USER:-freenet}
+      POSTGRES_PASSWORD: ${ROOM_POSTGRES_PASSWORD:-development-room-db}
+      POSTGRES_DB: ${ROOM_POSTGRES_DB:-freenet}
+    ports:
+      - "${ROOM_POSTGRES_PORT:-5440}:5432"
+    volumes:
+      - room_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${ROOM_POSTGRES_USER:-freenet} -d $${ROOM_POSTGRES_DB:-freenet}"]
+      interval: 30s
+      start_period: 60s
+      start_interval: 1s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     logging: *logging
@@ -252,6 +271,7 @@ services:
     image: freenet-club
     build: { context: ., args: { SERVICE: club } }
     environment:
+      ROOM_SERVICE_ADDR: room:7059
       <<: *env
       GRPC_PORT: 7057
       METRICS_PORT: 9057
@@ -296,6 +316,7 @@ services:
     image: freenet-user
     build: { context: ., args: { SERVICE: user } }
     environment:
+      ROOM_SERVICE_ADDR: room:7059
       <<: *env
       GRPC_PORT: 7052
       METRICS_PORT: 9052
@@ -396,14 +417,66 @@ services:
       redis: { condition: service_healthy }
       user: { condition: service_healthy }
 
+  room:
+    <<: *service
+    image: freenet-room
+    build: { context: ., args: { SERVICE: room } }
+    environment:
+      <<: *env
+      GRPC_PORT: 7059
+      METRICS_PORT: 9059
+      TLS_CERT_PATH: /certs/room.pem
+      TLS_KEY_PATH: /certs/room-key.pem
+      STORAGE: persistent
+      DATABASE_URL: postgres://${ROOM_POSTGRES_USER:-freenet}:${ROOM_POSTGRES_PASSWORD:-development-room-db}@room-postgres:5432/${ROOM_POSTGRES_DB:-freenet}?sslmode=disable
+      REDIS_ADDR: redis:6379
+      USER_SERVICE_ADDR: user:7052
+      CLUB_SERVICE_ADDR: club:7057
+      NOTIFICATION_SERVICE_ADDR: notification:7055
+      LIVEKIT_URL: http://livekit:7880
+      LIVEKIT_PUBLIC_URL: ${LIVEKIT_PUBLIC_URL:-ws://localhost:8080}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-development-only-livekit-secret-32-characters}
+      ROOM_MAX_MEMBERS: ${ROOM_MAX_MEMBERS:-5}
+      ROOM_MAX_LIVE: ${ROOM_MAX_LIVE:-20}
+      ROOM_EMPTY_TTL: ${ROOM_EMPTY_TTL:-5m}
+      ROOM_SWEEP_INTERVAL: ${ROOM_SWEEP_INTERVAL:-10s}
+    depends_on:
+      room-postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      user: { condition: service_healthy }
+      club: { condition: service_healthy }
+      notification: { condition: service_healthy }
+      livekit: { condition: service_started }
+
+  livekit:
+    profiles: [app]
+    image: livekit/livekit-server:v1.13.11
+    restart: unless-stopped
+    logging: *logging
+    command: ["--bind", "0.0.0.0", "--node-ip", "${LIVEKIT_NODE_IP:-127.0.0.1}", "--udp-port", "7882"]
+    environment:
+      LIVEKIT_CONFIG: |
+        port: 7880
+        rtc:
+          tcp_port: 7881
+        prometheus_port: 6789
+        keys:
+          ${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-development-only-livekit-secret-32-characters}
+    ports:
+      - "127.0.0.1:7881:7881/tcp"
+      - "127.0.0.1:7882:7882/udp"
+
   gateway:
     <<: *service
     image: freenet-gateway
     build: { context: ., target: gateway, args: { SERVICE: gateway } }
     environment:
+      ROOM_SERVICE_ADDR: room:7059
       LOG_LEVEL: info
       LOG_FORMAT: json
       HTTP_PORT: 8080
+      LIVEKIT_URL: http://livekit:7880
       METRICS_PORT: 9080
       TLS_CA_PATH: /certs/ca.pem
       TLS_CERT_PATH: /certs/gateway.pem
@@ -420,6 +493,7 @@ services:
     ports:
       - "${GATEWAY_PORT:-8080}:8080"
     depends_on:
+      room: { condition: service_healthy }
       auth: { condition: service_healthy }
       user: { condition: service_healthy }
       post: { condition: service_healthy }
@@ -491,6 +565,15 @@ services:
       DATA_SOURCE_PASS: ${FEDERATION_POSTGRES_PASSWORD}
     depends_on:
       federation-postgres: { condition: service_healthy }
+
+  room-postgres-exporter:
+    <<: *postgres-exporter
+    environment:
+      DATA_SOURCE_URI: room-postgres:5432/${ROOM_POSTGRES_DB:-freenet}?sslmode=disable
+      DATA_SOURCE_USER: ${ROOM_POSTGRES_USER:-freenet}
+      DATA_SOURCE_PASS: ${ROOM_POSTGRES_PASSWORD:-development-room-db}
+    depends_on:
+      room-postgres: { condition: service_healthy }
 
   redis-exporter:
     profiles: [app]
@@ -654,6 +737,7 @@ volumes:
   message_postgres_data:
   club_postgres_data:
   federation_postgres_data:
+  room_postgres_data:
   redis_data:
   alertmanager_data:
   victorialogs_data:

@@ -31,7 +31,7 @@ alertmanager=${ALERTMANAGER_URL:-http://localhost:9093}
 grafana=${GRAFANA_URL:-http://localhost:3001}
 logs=${VICTORIALOGS_URL:-http://localhost:9428}
 jaeger=${JAEGER_URL:-http://localhost:16686}
-services=(gateway auth user post media notification message club federation)
+services=(gateway auth user post media notification message club federation room)
 email="smoke-$(date +%s)-$RANDOM@example.com"
 nickname="smoke$RANDOM$RANDOM"
 
@@ -210,6 +210,34 @@ eventually() {
 	return 1
 }
 
+# Rooms: real service, database, Redis and signed LiveKit media grants.
+room=$(expect=201 call POST /api/v1/rooms '{"title":"Smoke room","control":"everyone"}' | jq -r .room.id)
+room_joined=$(call POST "/api/v1/rooms/$room/join")
+echo "$room_joined" | jq -e '.media.token != "" and .room.maxMembers == 5' >/dev/null
+room_media_token=$(echo "$room_joined" | jq -r .media.token)
+token=$token2 call POST "/api/v1/rooms/$room/join" | jq -e '.room.members | length == 2' >/dev/null
+token=$token2 expect=201 call POST "/api/v1/rooms/$room/chat" '{"text":"Room smoke"}' | jq -e '.message.text == "Room smoke"' >/dev/null
+call PUT "/api/v1/rooms/$room/playback" '{"kind":"youtube","mediaId":"dQw4w9WgXcQ","playing":false,"position":0,"version":0,"queue":[]}' | jq -e '.playback.version == 1' >/dev/null
+expect=409 call PUT "/api/v1/rooms/$room/playback" '{"kind":"youtube","mediaId":"dQw4w9WgXcQ","playing":false,"position":0,"version":0,"queue":[]}' >/dev/null
+signal_status=$(curl -sS -o /dev/null -w '%{http_code}' "$base/rtc")
+[ "$signal_status" = 401 ] || die "LiveKit signalling: $signal_status, expected 401 without token"
+signal_status=$(curl -sS -G -o /dev/null -w '%{http_code}' --data-urlencode "access_token=$room_media_token" "$base/rtc/validate")
+[ "$signal_status" = 200 ] || die "LiveKit validation: $signal_status, expected 200 for a current participant"
+token=$token2 expect=204 call POST "/api/v1/rooms/$room/leave" >/dev/null
+expect=204 call POST "/api/v1/rooms/$room/leave" >/dev/null
+signal_status=$(curl -sS -G -o /dev/null -w '%{http_code}' --data-urlencode "access_token=$room_media_token" "$base/rtc/validate")
+[ "$signal_status" = 403 ] || die "LiveKit accepted a cached token after leaving: $signal_status"
+unset room_joined room_media_token
+# CI shortens ROOM_EMPTY_TTL to 3s; production keeps its five-minute default.
+if [ "${ROOM_EMPTY_TTL:-}" = 3s ]; then
+ room_closed() { [ "$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" "$base/api/v1/rooms/$room")" = 404 ]; }
+ eventually room_closed || die "empty temporary room did not close"
+else
+ expect=204 call DELETE "/api/v1/rooms/$room" >/dev/null
+ expect=404 call GET "/api/v1/rooms/$room" >/dev/null
+fi
+step "room: two participants, chat, playback CAS, media signalling, leave and closure"
+
 token=$token2 call GET /api/v1/feed | jq -e '.posts | length == 0' >/dev/null
 token=$token2 call POST "/api/v1/users/$nickname/follow" | jq -e '.isFollowing' >/dev/null
 # The post service hears whom the second person reads, and the first one
@@ -276,7 +304,7 @@ done
 step "metrics: Prometheus scrapes every service"
 
 # Every database with a service of its own, and Redis.
-watched="auth club federation message notification post redis user"
+watched="auth club federation message notification post redis room user"
 stores=
 for _ in $(seq 1 60); do
 	stores=$(curl -sf "$prometheus/api/v1/query?query=pg_up%20or%20redis_up" |

@@ -368,3 +368,75 @@ tests:
             exp_annotations:
               summary: "The mTLS certificate of post ends in 19d 22h 0m 0s"
               description: "The services stop talking to each other when it ends. Run deploy/certs.sh on the server; the CA is replaced with scripts/gen-certs.sh and a restart of everything."
+
+  - name: room joins exceed error threshold
+    interval: 1m
+    input_series:
+      - series: "room_joins_total"
+        values: "0+60x25"
+      - series: "room_join_failures_total{reason=\"full\"}"
+        values: "0+30x25"
+    alert_rule_test:
+      - eval_time: 0m
+        alertname: RoomJoinFailuresHigh
+        exp_alerts: []
+      - eval_time: 22m
+        alertname: RoomJoinFailuresHigh
+        exp_alerts:
+          - exp_labels: {"severity": "warning"}
+            exp_annotations:
+              summary: "More than 20% of room joins fail"
+              description: "Room joins have failed above 20% for 10 minutes. Inspect capacity, access failures and the media server."
+
+  - name: LiveKit unavailable
+    interval: 1m
+    input_series:
+      - series: "up{job=\"livekit\",instance=\"livekit:6789\"}"
+        values: "0x5"
+    alert_rule_test:
+      - eval_time: 0m
+        alertname: LiveKitDown
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: LiveKitDown
+        exp_alerts:
+          - exp_labels: {"severity": "critical", "job": "livekit", "instance": "livekit:6789"}
+            exp_annotations:
+              summary: "LiveKit is down"
+              description: "Room voice is unavailable: Prometheus has not reached LiveKit for a minute."
+
+  - name: LiveKit packet loss
+    interval: 1m
+    input_series:
+      - series: "livekit_packet_loss_total"
+        values: "0+60x25"
+      - series: "livekit_packet_total"
+        values: "0+600x25"
+    alert_rule_test:
+      - eval_time: 0m
+        alertname: LiveKitPacketLossHigh
+        exp_alerts: []
+      - eval_time: 22m
+        alertname: LiveKitPacketLossHigh
+        exp_alerts:
+          - exp_labels: {"severity": "warning"}
+            exp_annotations:
+              summary: "LiveKit packet loss exceeds 5%"
+              description: "Room voice has lost more than 5% of packets for 10 minutes. Check CPU, network and UDP reachability."
+
+  - name: LiveKit outbound traffic
+    interval: 1m
+    input_series:
+      - series: "livekit_packet_bytes{direction=\"outgoing\"}"
+        values: "0+120000000x25"
+    alert_rule_test:
+      - eval_time: 0m
+        alertname: LiveKitBandwidthHigh
+        exp_alerts: []
+      - eval_time: 22m
+        alertname: LiveKitBandwidthHigh
+        exp_alerts:
+          - exp_labels: {"severity": "warning"}
+            exp_annotations:
+              summary: "LiveKit exceeds the initial traffic budget"
+              description: "Room voice has used over 8 Mbit/s outbound for 10 minutes. The provisional budget is 10 Mbit/s; verify the server channel before raising room capacity."

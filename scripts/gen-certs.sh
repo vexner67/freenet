@@ -14,7 +14,7 @@ set -euo pipefail
 out="${1:-certs}"
 days=825
 ca_days=3650
-services=(auth user post media notification message club federation gateway)
+services=(auth user post media notification message club federation room gateway)
 
 mkdir -p "$out"
 cd "$out"

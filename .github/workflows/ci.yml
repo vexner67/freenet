@@ -99,14 +99,19 @@ jobs:
           ACTOR: ${{ github.actor }}
         run: |
           printf '%s' "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
-          printf '%s\n' auth user post media notification message club federation gateway \
+          printf '%s\n' auth user post media notification message club federation room gateway \
             | xargs -P 9 -I{} sh -c 'docker pull -q "ghcr.io/vexner67/freenet-{}:$GITHUB_SHA" >/dev/null && docker tag "ghcr.io/vexner67/freenet-{}:$GITHUB_SHA" "freenet-{}"'
           echo "STACK_BUILD=--no-build" >> "$GITHUB_ENV"
 
       - name: Start
+        env:
+          ROOM_EMPTY_TTL: 3s
+          ROOM_SWEEP_INTERVAL: 1s
         run: make stack
 
       - run: make smoke
+        env:
+          ROOM_EMPTY_TTL: 3s
 
       - name: Logs
         if: failure()
@@ -126,7 +131,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        service: [auth, user, post, media, notification, message, club, federation, gateway]
+        service: [auth, user, post, media, notification, message, club, federation, room, gateway]
     steps:
       - uses: actions/checkout@v5
 

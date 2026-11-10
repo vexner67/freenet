@@ -67,3 +67,7 @@ PROD_KEY ?= ~/.ssh/freenet-prod_ed25519
 
 ssh:
 	ssh -i $(PROD_KEY) -o ControlMaster=auto -o 'ControlPath=~/.ssh/freenet-%C' -o ControlPersist=10m root@$(PROD_HOST)
+
+.PHONY: dev-rooms
+dev-rooms:
+	./scripts/dev.sh --rooms
