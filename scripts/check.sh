@@ -54,6 +54,7 @@ s3_image=versity/versitygw:v1.8.0
 pg=
 redis=
 s3=
+check_work=
 
 cleanup() {
 	local containers=()
@@ -65,8 +66,27 @@ cleanup() {
 		# -v: the images declare volumes, and without it each run leaves them behind.
 		docker rm -f -v "${containers[@]}" >/dev/null 2>&1 || true
 	fi
+	if [ -n "$check_work" ]; then
+		rm -f "$check_work" "$check_work.sum"
+	fi
 }
 trap cleanup EXIT
+
+# Go reads historical internal go.mod files even with every module in use.
+# A clean CI cache cannot fetch those from this private repository. Match
+# the Docker build's local version replacements in a temporary workspace,
+# leaving the developer's go.work and go.work.sum untouched.
+prepare_workspace() {
+	local requirement module
+	check_work=$(mktemp "$PWD/.freenet-check.XXXXXX")
+	cp go.work "$check_work"
+	export GOWORK="$check_work"
+	for requirement in $(sed -n 's|^[[:space:]]*\(require[[:space:]]*\)\{0,1\}\(github\.com/vexner67/freenet/[^[:space:]]*\)[[:space:]]\{1,\}\(v[^[:space:]]*\).*|\2@\3|p' */go.mod pkg/*/go.mod | sort -u); do
+		module=${requirement%@*}
+		go work edit -replace="$requirement=./${module#github.com/vexner67/freenet/}"
+	done
+}
+
 
 # host_port prints the host port Docker published for a container port.
 host_port() {
@@ -154,6 +174,7 @@ check_module() {
 	(cd "$module" && TEST_DATABASE_URL=$db go test -race -count=1 ./...)
 }
 
+prepare_workspace
 $integration && start_databases
 
 modules=()
