@@ -604,6 +604,7 @@ export function applyInterface(me) {
       el('span', { className: 'counter', id: 'friends-count-menu', hidden: true })),
     menuLink(me, 'messages', '/im', tr('Сообщения'), 'messages-count'),
     menuLink(me, 'groups', '/groups', tr('Группы')),
+    el('a', { href: '/rooms', textContent: tr('Комнаты') }, el('span', { className: 'counter', id: 'rooms-count', hidden: true })),
     el('a', { href: '/audio', textContent: tr('Аудиозаписи') }),
     menuLink(me, 'feed', '/feed', tr('Новости')),
     menuLink(me, 'notifications', '/notifications', tr('Уведомления'), 'notifications-count'),
@@ -702,6 +703,7 @@ export function renderChrome(me) {
     );
     addTabBar(me);
     applyInterface(me);
+    import('/static/room-menu.js').then(({ listenRooms }) => listenRooms()).catch(() => {});
     // The page was made by an invitation link: the inviter is followed.
     acceptInvite(me).catch(() => {});
 
@@ -924,6 +926,7 @@ function shortened(s, n) {
 // The unread counters of the menu, as on openvk: dialogs with unread
 // messages next to "Сообщения", notifications next to "Мои Ответы".
 const counters = {
+  rooms: { id: 'rooms-count', count: async () => ({ count: (await api.rooms()).rooms.filter((room) => room.friends > 0).length }) },
   messages: { id: 'messages-count', count: () => api.unreadDialogs() },
   notifications: { id: 'notifications-count', count: () => api.unreadNotifications() },
 };
@@ -931,7 +934,7 @@ const counters = {
 // A counter's version grows with every change, so an answer that left
 // before the change (a page reading everything) does not put the old
 // number back.
-const counterVersions = { messages: 0, notifications: 0 };
+const counterVersions = { messages: 0, notifications: 0, rooms: 0 };
 
 // showCounter fetches a counter. It is a nicety: a failure leaves it empty.
 export async function showCounter(name) {
@@ -964,7 +967,7 @@ export function guestsSeen() {
 }
 
 // Pushes about what is read here leave the notification shade.
-const pushTags = { messages: ['im:', 'chat:'], notifications: ['n:'] };
+const pushTags = { rooms: [], messages: ['im:', 'chat:'], notifications: ['n:'] };
 
 export function setCounter(name, n) {
   counterVersions[name]++;
@@ -1056,3 +1059,6 @@ function widenPastColumn() {
 }
 
 if (typeof document !== 'undefined') widenPastColumn();
+
+// A room opened inside the music shell installs its connections in the tab.
+if (typeof window !== 'undefined') window.freenetEnsureRoom = async () => (await import('/static/room-runtime.js')).roomRuntime();

@@ -20,12 +20,19 @@ let frame = null;
 let watching = null;
 let playing = () => false;
 let framing = () => {};
+const reasons = new Set();
+const frameListeners = new Set();
+let installed = false;
 
 // startShell makes the tab the shell of the pages while playing() says a
 // song is in the player; onFrame hears the frame come (true) and go.
 export function startShell(isPlaying, onFrame = () => {}) {
-  playing = isPlaying;
-  framing = onFrame;
+  reasons.add(isPlaying);
+  frameListeners.add(onFrame);
+  playing = () => [...reasons].some((reason) => reason());
+  framing = (open) => { for (const listener of frameListeners) listener(open); };
+  if (installed) return;
+  installed = true;
 
   if (window.navigation?.addEventListener) {
     window.navigation.addEventListener('navigate', onNavigate);
@@ -47,7 +54,7 @@ function opens(url) {
 }
 
 function onNavigate(event) {
-  if (frame || !playing() || !event.cancelable) return;
+  if (!playing() || !event.cancelable) return;
   if (event.navigationType !== 'push' && event.navigationType !== 'replace') return;
   if (event.destination.sameDocument || event.hashChange || event.downloadRequest !== null || event.formData) return;
 
@@ -59,7 +66,7 @@ function onNavigate(event) {
 }
 
 function onClick(event) {
-  if (frame || !playing() || event.defaultPrevented || event.button !== 0) return;
+  if (!playing() || event.defaultPrevented || event.button !== 0) return;
   if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
 
   const link = event.target.closest?.('a[href]');
@@ -74,7 +81,7 @@ function onClick(event) {
 
 function onSubmit(event) {
   const form = event.target;
-  if (frame || !playing() || event.defaultPrevented || form.method !== 'get' || form.target) return;
+  if (!playing() || event.defaultPrevented || form.method !== 'get' || form.target) return;
 
   const url = new URL(form.action, location.href);
   if (!opens(url)) return;
@@ -87,6 +94,14 @@ function onSubmit(event) {
 // enter opens href in the frame; push adds the page to the history of
 // the tab (not when going forward to it again).
 function enter(href, push) {
+  // Links in the persistent room bar belong to the outer document too.
+  // Route them into the existing frame instead of reloading its connections.
+  if (frame) {
+    frame.src = href;
+    if (push) history.pushState({ [SHELL]: true }, '', href);
+    framing(true);
+    return;
+  }
   frame = document.createElement('iframe');
   frame.className = 'shell-frame';
   frame.title = document.title;

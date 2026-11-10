@@ -14,6 +14,7 @@ import { boardPath, topicPath } from './topics.js';
 import { initIgnoreLink } from './feedsettings.js';
 import { initWall } from './wall.js';
 import { tr } from './i18n.js';
+import { roomsBlock } from './room-list.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length));
 const MEMBERS_SHOWN = 6;
@@ -235,6 +236,7 @@ async function showFaces(id, count, all) {
 
 // The page is asked for with who is signed in, in one round trip.
 const wanted = started(api.club(ref));
+const roomList = started(api.clubRooms(ref));
 const me = await currentUser().catch(() => null);
 renderChrome(me);
 
@@ -242,6 +244,10 @@ try {
   const club = await wanted;
 
   render(club, me);
+  try {
+    const rooms = (await roomList).rooms;
+    if (rooms.length || manages(club)) $('wall-block').before(roomsBlock(rooms, { more: `/rooms?club=${encodeURIComponent(club.id)}`, create: manages(club) ? `/rooms?club=${encodeURIComponent(club.id)}` : '' }));
+  } catch (error) { if (error.status !== 503) showError($('error'), error); }
   showBackdrop(club.backdrop);
   if (admitted(club)) {
     showMembers(club);

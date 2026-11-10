@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=820">
+  <title>Комната | Freenet</title>
+  <meta name="description" content="О социальной сети Freenet: для чего она, что в ней можно делать и сколько в ней людей, групп и записей.">
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#3e3e3e">
+  <link rel="stylesheet" href="/static/palette.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/theme.js"></script>
+  <script type="module" src="/static/room.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-word">freenet</span></a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Комната</span></div>
+      <div class="page-body">
+        <p class="hint" id="room-description"></p>
+        <div class="room-toolbar"><a id="room-invite" hidden>Пригласить</a><a href="#" id="room-open-screen" hidden>Общий экран</a><a id="room-copy">Скопировать ссылку</a><a id="room-settings" hidden>Настройки</a><a id="room-close" hidden>Закрыть комнату</a><a id="room-help">?</a></div>
+        <p class="hint" id="room-help-text" hidden>Разговор в комнате идёт через сервер Freenet. Личные звонки зашифрованы так, что сервер их не слышит. Запись разговоров не ведётся.</p>
+        <div class="error" id="error" hidden></div>
+        <form id="room-settings-form" class="container-gray room-form" hidden>
+          <label for="room-edit-title">Название</label><input id="room-edit-title" maxlength="64" required>
+          <label for="room-edit-kind">Вид</label><select id="room-edit-kind"><option value="talk">разговор</option><option value="watch">кино</option><option value="listen">музыка</option></select>
+          <label for="room-edit-access">Кто может войти</label><select id="room-edit-access"><option value="everyone">все желающие</option><option value="friends">друзья</option><option value="link">по ссылке</option></select>
+          <label for="room-edit-control">Кто управляет экраном</label><select id="room-edit-control"><option value="owner">только я</option><option value="everyone">все участники</option></select>
+          <button class="button" type="submit">Сохранить</button>
+        </form>
+        <form id="room-invite-form" class="room-form" hidden><label for="room-invite-name">Никнейм</label><input id="room-invite-name" maxlength="32" required><button class="button" type="submit">Пригласить</button></form>
+        <button class="button" type="button" id="room-join" hidden>Войти в комнату</button>
+        <p id="room-guest" hidden>Чтобы войти в комнату, <a href="/">войдите на сайт</a>.</p>
+        <section class="room-screen-panel" id="room-screen-panel" hidden>
+          <div class="section-title">Общий экран</div><div class="room-video-slot" id="room-video-slot"></div>
+          <p class="hint" id="room-screen-time">Общий экран пока пуст.</p>
+          <div id="room-screen-controls" hidden>
+            <button class="button" type="button" id="room-screen-toggle">Воспроизвести</button><button class="button" type="button" id="room-screen-next">Следующая</button>
+            <form class="room-seek-form" id="room-seek-form"><label for="room-seek">Позиция, с</label><input type="number" id="room-seek" min="0" step="1" value="0"><button class="button" type="submit">Перемотать</button></form>
+            <form id="room-youtube-form" class="room-youtube-form"><input id="room-youtube" type="url" placeholder="Вставьте ссылку на YouTube" aria-label="Ссылка на YouTube" required><button class="button" type="submit">Поставить видео</button></form>
+            <a id="room-add-audio">Добавить аудиозапись в очередь</a>
+          </div>
+          <ol id="room-queue" class="room-queue"></ol>
+        </section>
+        <section><div class="section-title">Участники</div><div id="room-members" class="room-members"></div></section>
+        <section><div class="section-title">Чат комнаты</div><div id="room-chat" class="room-chat" aria-live="polite"></div><p class="hint" id="room-chat-empty">После входа здесь появятся сообщения комнаты.</p>
+          <form id="room-chat-form" class="wall-form" hidden><textarea id="room-chat-text" maxlength="1000" rows="2" placeholder="Написать сообщение" aria-label="Сообщение в комнату" required></textarea><button class="button" id="room-chat-send" type="submit">Отправить</button><a id="room-show-stickers">Стикеры</a></form><div id="room-stickers" hidden></div>
+        </section>
+        <div class="room-own-controls" id="room-own-controls" hidden><button class="button" id="room-microphone" type="button">Включить микрофон</button><button class="button" id="room-leave" type="button">Выйти из комнаты</button></div>
+        <p class="hint room-status" id="room-status" role="status"></p><button class="button" id="room-enable-audio" type="button" hidden>Включить звук</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p class="footer-languages"><a class="footer-language" href="/language?lg=ru" title="Русский"><img src="/static/flags/ru.gif" alt="Русский"></a><a class="footer-language" href="/language?lg=en" title="English"><img src="/static/flags/gb.gif" alt="English"></a><a href="/language">all languages &raquo;</a></p>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

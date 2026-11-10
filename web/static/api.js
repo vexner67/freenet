@@ -282,6 +282,21 @@ async function authorized(method, path, body) {
 }
 
 export const api = {
+  rooms: (cursor = '') => authorized('GET', page('/api/v1/rooms', cursor, 20)),
+  userRooms: (nickname, cursor = '') => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/rooms`, cursor, 20)),
+  clubRooms: (ref, cursor = '') => optional('GET', page(`/api/v1/clubs/${encodeURIComponent(ref)}/rooms`, cursor, 20)),
+  room: (id) => optional('GET', `/api/v1/rooms/${encodeURIComponent(id)}`),
+  createRoom: (draft) => authorized('POST', '/api/v1/rooms', draft),
+  updateRoom: (id, changes) => authorized('PATCH', `/api/v1/rooms/${encodeURIComponent(id)}`, changes),
+  closeRoom: (id) => authorized('DELETE', `/api/v1/rooms/${encodeURIComponent(id)}`),
+  joinRoom: (id) => authorized('POST', `/api/v1/rooms/${encodeURIComponent(id)}/join`),
+  leaveRoom: (id) => authorized('POST', `/api/v1/rooms/${encodeURIComponent(id)}/leave`),
+  roomHeartbeat: (id) => authorized('POST', `/api/v1/rooms/${encodeURIComponent(id)}/heartbeat`),
+  roomToken: (id) => authorized('POST', `/api/v1/rooms/${encodeURIComponent(id)}/token`),
+  roomChat: (id, text = '', sticker = '') => authorized('POST', `/api/v1/rooms/${encodeURIComponent(id)}/chat`, { text, sticker }),
+  roomPlayback: (id, playback) => authorized('PUT', `/api/v1/rooms/${encodeURIComponent(id)}/playback`, playback),
+  roomMember: (id, action, userId) => authorized('POST', `/api/v1/rooms/${encodeURIComponent(id)}/${action}`, { userId }),
+  audioByID: (id) => optional('GET', `/api/v1/audio/${encodeURIComponent(id)}`),
   captcha: () => request('GET', '/api/v1/auth/captcha'),
   requestCode: (email, captchaId, captchaAnswer) => request('POST', '/api/v1/auth/code', { email, captchaId, captchaAnswer }),
 

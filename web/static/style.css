@@ -3254,7 +3254,7 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 /* The tab while a song plays (shell.js): the page opened from it in a
    frame over the whole tab, the page the song started on under it. */
 .shell, .shell body { height: 100%; overflow: hidden; }
-.shell body > :not(.player, .shell-frame) { display: none; }
+.shell body > :not(.player, .shell-frame, .room-banner, .room-media-host, .room-voice-audio) { display: none; }
 .shell-frame { position: fixed; inset: 0; z-index: 1; width: 100%; height: 100%; border: 0; background: var(--back-fff); }
 
 /* Phones have pages of their own (web/m/, m.css): the bar of sections
@@ -4476,3 +4476,51 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .audio-attach-toggle:hover { background: var(--back-ececec); text-decoration: none; }
 .audios-insert .show-more { display: block; padding: 8px; text-align: center; cursor: pointer; }
 .audios-insert .show-more[hidden] { display: none; }
+
+/* Rooms use the same quiet blocks and controls as the profile. */
+.room-toolbar { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 8px 0; }
+.room-form { display: grid; gap: 8px; padding: 12px; margin: 10px 0; }
+.room-form input:not([type=checkbox]), .room-form select { box-sizing: border-box; width: 100%; }
+.room-form .button { justify-self: start; }
+.room-check { display: flex; gap: 6px; align-items: center; }
+.room-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 8px; border-bottom: 1px solid var(--line-ccc); }
+.room-row > div { min-width: 0; overflow-wrap: anywhere; }
+.room-row > div > a { font-weight: bold; }
+.room-row .hint { margin-top: 4px; }
+.room-row-people { display: flex; flex-shrink: 0; gap: 3px; }
+.room-row-people img { width: 32px; height: 32px; object-fit: cover; }
+.rooms-block { margin: 12px 0; }
+.room-members { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; grid-auto-rows: 190px; min-height: calc(var(--room-rows, 1) * 190px); padding: 10px 0; }
+.room-member { min-width: 0; height: 190px; text-align: center; overflow-wrap: anywhere; }
+.room-member img { box-sizing: border-box; width: 64px; height: 64px; object-fit: cover; border: 2px solid transparent; }
+.room-member.speaking img { border-color: var(--text-45688e); }
+.room-member-name { margin-top: 4px; height: 30px; overflow: hidden; }
+.room-member-state { min-height: 26px; margin: 3px 0; }
+.room-member-tools { display: grid; gap: 4px; visibility: hidden; }
+.room-member:hover .room-member-tools, .room-member:focus-within .room-member-tools { visibility: visible; }
+.room-chat { height: 260px; overflow-y: auto; overflow-wrap: anywhere; border-bottom: 1px solid var(--line-ccc); }
+.room-chat-message { padding: 7px 4px; border-bottom: 1px solid var(--line-ccc); }
+.room-chat-text { white-space: pre-wrap; margin-top: 4px; }
+.room-chat-message > a { font-weight: bold; }
+.room-chat-message .sticker { max-width: 128px; }
+.room-own-controls { display: flex; gap: 8px; padding: 10px 0; background: var(--back-fff); }
+.room-status { min-height: 18px; }
+.room-video-slot { aspect-ratio: 16 / 9; width: 100%; background: var(--back-f0f0f0); }
+.room-screen-panel.listen .room-video-slot { display: none; }
+.room-screen-panel { margin: 12px 0; }
+.room-youtube-form { display: flex; gap: 6px; margin: 8px 0; }
+.room-youtube-form input { min-width: 0; flex: 1; }
+.room-seek-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
+.room-seek-form input { width: 70px; }
+.room-queue { min-height: 20px; padding-left: 24px; }
+.room-media-host { position: fixed; z-index: 3; overflow: hidden; background: var(--back-fff); }
+.room-media-host.room-media-away { left: -10000px !important; top: 0 !important; width: 320px !important; height: 180px !important; }
+.room-media-host .room-player { position: static; inset: auto; width: 100%; height: 100%; max-width: none; margin: 0; padding: 0; border: 0; box-shadow: none; background: var(--back-fff); }
+.room-player .player-main, .room-player .player-queue, .room-player .player-close { display: none; }
+.room-player .player-embed { position: static; width: 100%; height: 100%; overflow: hidden; opacity: 1; }
+.room-player .player-embed iframe { width: 100%; height: 100%; border: 0; pointer-events: none; }
+.room-banner { display: none; }
+.shell.with-room .room-banner { position: fixed; inset: 0 0 auto; z-index: 5; display: flex; align-items: center; gap: 12px; box-sizing: border-box; height: 34px; padding: 3px 10px; border-bottom: 1px solid var(--line-ccc); background: var(--back-f0f0f0); }
+.room-banner-title { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; }
+.shell.with-room .shell-frame { top: 34px; height: calc(100% - 34px); }
+.room-voice-audio { display: none; }

@@ -19,6 +19,13 @@ let started = false;
 let paused = false;
 let socket = null;
 let reopen = () => {};
+let roomUsers = 0;
+
+export function retainRoomEvents() {
+  roomUsers++;
+  if (paused && started && !socket) reopen();
+  return () => { roomUsers = Math.max(0, roomUsers - 1); if (paused && !roomUsers) socket?.close(1000); };
+}
 
 // onEvent calls fn with every event of type: "ready" (connected, with
 // both counters), "counters", "message", "read", "notification".
@@ -37,16 +44,17 @@ export function isLive() {
 // resumeEvents opens it again when the page comes back.
 export function pauseEvents() {
   paused = true;
-  socket?.close(1000);
+  if (!roomUsers) socket?.close(1000);
 }
 
 export function resumeEvents() {
   if (!paused) return;
   paused = false;
-  if (started) reopen();
+  if (started && !socket) reopen();
 }
 
 function dispatch(event) {
+  if (paused && roomUsers && !event.type.startsWith('room_') && event.type !== 'ready') return;
   for (const fn of handlers.get(event.type) ?? []) {
     try {
       fn(event);
@@ -68,7 +76,7 @@ export function connectEvents() {
 
   function open() {
     const tokens = session.get();
-    if (!tokens || paused) return; // signed out, or left behind
+    if (!tokens || (paused && !roomUsers)) return; // signed out, or left behind
 
     const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
     const ws = new WebSocket(`${scheme}://${location.host}/api/v1/events`);
@@ -88,7 +96,7 @@ export function connectEvents() {
     ws.addEventListener('close', async (event) => {
       live = false;
       if (socket === ws) socket = null;
-      if (paused) return;
+      if (paused && !roomUsers) return;
 
       if (event.code !== TOKEN_EXPIRED) {
         retry();

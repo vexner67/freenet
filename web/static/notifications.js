@@ -168,6 +168,8 @@ const notificationVerbs = { like: 1, comment: 1, comment_reply: 1, comment_like:
 // ourText is a notification openvk does not have, said as its are.
 function ourText(n, who) {
   switch (n.type) {
+    case 'room_invite':
+      return [...who, tr(' приглашает вас в комнату '), bold(`/room/${encodeURIComponent(n.room.id)}`, n.room.title), '.'];
     // An administrator of the site gave your page the checkmark; openvk
     // tells nobody.
     case 'verified':

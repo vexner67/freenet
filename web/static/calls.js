@@ -439,7 +439,7 @@ function voiceMeter() {
 
 // startCall calls peer from this page.
 export async function startCall(peer) {
-  if (call) return;
+  if (call || roomBusy()) return;
 
   const ui = drawWindow(peer);
   const c = { id: crypto.randomUUID(), peer, role: 'caller', ui, line: Promise.resolve(), audio: voiceMeter() };
@@ -550,7 +550,7 @@ async function onAccepted(c, signal) {
 
 async function onPeerSignal(peer, signal, peerKey) {
   if (signal.k === 'ring') {
-    if (call) {
+    if (call || roomBusy()) {
       send({ id: signal.id, peer, peerKey, line: Promise.resolve() }, { k: 'busy' });
       return;
     }
@@ -631,3 +631,13 @@ export function listenCalls(user) {
     signals = signals.then(() => onSignal(event)).catch(() => {});
   });
 }
+
+function roomBusy() {
+  try {
+    if (window.freenetRoom?.active() || window.parent.freenetRoom?.active()) return true;
+    const room = JSON.parse(localStorage.getItem('freenet.room') ?? 'null');
+    return room?.account === me?.id && room.until > Date.now();
+  } catch { return false; }
+}
+export function inCall() { return Boolean(call); }
+window.freenetCallBusy = inCall;

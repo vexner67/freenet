@@ -159,6 +159,10 @@ function render(user, isOwner, profile) {
   $('name').textContent = fullName;
 
   showStatus(user.status, isOwner);
+  if ($('room-presence')) {
+    $('room-presence').hidden = !profile.room;
+    $('room-presence').replaceChildren(...(profile.room ? [tr('в комнате: '), el('a', { href: `/room/${encodeURIComponent(profile.room.id)}`, textContent: profile.room.title })] : []));
+  }
 
   const info = rows(user, isOwner ? user.privacy : null);
   $('info').replaceChildren(...info.map(([title, value, isPrivate]) => el('tr', {},

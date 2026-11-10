@@ -11,6 +11,7 @@ import { openFeedSettings, readFeedSettings } from './feedsettings.js';
 import { initStoryBar } from './stories.js';
 import { adStream } from './ads.js';
 import { tr } from './i18n.js';
+import { showFeedRooms } from './room-list.js';
 
 // openvk's limit of a post; the counter shows near the end.
 const MAX_LENGTH = 60000;
@@ -280,6 +281,9 @@ if (!me) {
   // Without a nickname of your own you have no name to sign a post.
   if (me.profileCompleted) initForm(me);
   initStoryBar($('story-bar'), me, stories);
+  showFeedRooms($('rooms-now'));
+  const roomTimer = setInterval(() => { if (!document.hidden) showFeedRooms($('rooms-now')); }, 15_000);
+  window.addEventListener('pagehide', () => clearInterval(roomTimer), { once: true });
   $('more').addEventListener('click', () => loadMore(me));
   $('feed-settings').addEventListener('click', () => openFeedSettings({
     showIgnored,

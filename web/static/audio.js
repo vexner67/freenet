@@ -699,3 +699,8 @@ export function initAudios({ link, list, onChange = () => {} }) {
     },
   };
 }
+
+// Reuse the library picker for the shared room queue.
+export function pickRoomAudio(onPick) {
+  return openPicker({ attached: () => false, toggle(audio) { onPick(audio); return true; } });
+}

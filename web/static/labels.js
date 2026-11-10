@@ -2572,6 +2572,7 @@ export function completenessHint({ part, percent }) {
 // so on; the verb agrees with the actor's gender, or is neuter for a
 // community: "Сообщество Кошки оставило комментарий".
 const notificationVerbs = {
+  room_invite: [tr('пригласил'), tr('пригласила'), tr('пригласил(а)'), tr('пригласило')],
   like: [tr('оценил'), tr('оценила'), tr('оценил(а)'), tr('оценило')],
   comment: [tr('оставил'), tr('оставила'), tr('оставил(а)'), tr('оставило')],
   friend: [tr('принял'), tr('приняла'), tr('принял(а)'), tr('приняло')],
@@ -2658,6 +2659,26 @@ export function foundText(m, query) {
 }
 
 const errorTexts = {
+  "room is full": tr("В комнате нет свободных мест."),
+  "too many rooms": tr("Достигнут предел комнат. Закройте одну из своих комнат или попробуйте позже."),
+  "room not found": tr("Комната закрыта или недоступна."),
+  "room is closed": tr("Комната закрыта или недоступна."),
+  "room access denied": tr("Вы не можете войти в эту комнату."),
+  "removed from room": tr("Вас удалили из комнаты."),
+  "not in room": tr("Вы больше не в этой комнате."),
+  "invalid room title": tr("Название комнаты должно содержать от 1 до 64 символов в одной строке."),
+  "invalid room identifier": tr("Неверная ссылка на комнату."),
+  "invalid room kind": tr("Выберите вид комнаты."),
+  "invalid room access": tr("Выберите, кто может войти в комнату."),
+  "invalid room control": tr("Выберите, кто управляет общим экраном."),
+  "invalid room playback": tr("Проверьте ссылку, позицию и очередь общего экрана."),
+  "invalid room chat": tr("Напишите сообщение до 1000 символов или выберите один стикер."),
+  "room playback has changed": tr("Общий экран уже изменился. Состояние обновлено, повторите действие."),
+  "fill in your profile before creating a room": tr("Сначала заполните свою страницу."),
+  "end the call before joining a room": tr("Сначала завершите звонок."),
+  "room queue is full": tr("В очереди может быть не больше 50 записей."),
+  "invalid room youtube link": tr("Вставьте ссылку на видео YouTube."),
+
   'network error': tr('Нет связи с сервером. Проверьте подключение.'),
   'invalid email': tr('Похоже, в адресе почты опечатка.'),
   'invalid or expired code': tr('Неверный или устаревший код.'),
