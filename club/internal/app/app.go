@@ -16,6 +16,7 @@ import (
 	"github.com/vexner67/freenet/club/internal/notifyclient"
 	"github.com/vexner67/freenet/club/internal/postclient"
 	"github.com/vexner67/freenet/club/internal/postgres"
+	"github.com/vexner67/freenet/club/internal/roomclient"
 	"github.com/vexner67/freenet/club/internal/service"
 	"github.com/vexner67/freenet/club/migrations"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
@@ -31,6 +32,7 @@ import (
 	"github.com/vexner67/freenet/pkg/ratelimit"
 	"github.com/vexner67/freenet/pkg/tracing"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
+	roomv1 "github.com/vexner67/freenet/room/api/room/v1"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
@@ -113,6 +115,16 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("a.newLimiter", err)
 	}
 
+	if cfg.RoomServiceAddr != "" {
+		queue, err := a.newStream(cfg, roomclient.Stream, cfg.RoomServiceAddr, store.newQueue, reg, func(conn *grpc.ClientConn) outbox.Deliver {
+			return roomclient.Deliver(roomv1.NewRoomServiceClient(conn), cfg.NotifyTimeout)
+		})
+		if err != nil {
+			return errs.Wrap("a.newStream", err)
+		}
+		readers = roomclient.NewReaders(readers, queue)
+	}
+
 	publicKey, err := jwtauth.LoadPublicKey(cfg.JWTPublicKeyPath)
 	if err != nil {
 		return errs.Wrap("jwtauth.LoadPublicKey", err)
@@ -137,7 +149,7 @@ func (a *App) build(cfg config.Config) error {
 		grpc.ChainUnaryInterceptor(
 			clubgrpc.ErrorInterceptor(a.logger),
 			restrictInternal(cfg),
-			jwtauth.UnaryServerInterceptor(verifier, jwtauth.Access{Public: clubgrpc.PublicMethods()}),
+			clubgrpc.RoomAccessInterceptor(jwtauth.UnaryServerInterceptor(verifier, jwtauth.Access{Public: clubgrpc.PublicMethods()})),
 			ratelimit.UnaryServerInterceptor(limiter, rateLimits(cfg), a.logger),
 		),
 	)

@@ -22,9 +22,10 @@ const (
 )
 
 type Config struct {
-	GRPCPort  int    `env:"GRPC_PORT,required,notEmpty"`
-	LogLevel  string `env:"LOG_LEVEL,required,notEmpty"`
-	LogFormat string `env:"LOG_FORMAT,required,notEmpty"`
+	RoomServiceAddr string `env:"ROOM_SERVICE_ADDR"`
+	GRPCPort        int    `env:"GRPC_PORT,required,notEmpty"`
+	LogLevel        string `env:"LOG_LEVEL,required,notEmpty"`
+	LogFormat       string `env:"LOG_FORMAT,required,notEmpty"`
 
 	// MetricsPort serves Prometheus metrics on a port of its own, not to
 	// be published outside; 0 does not serve them.
