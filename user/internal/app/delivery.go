@@ -15,6 +15,7 @@ import (
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/outbox"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
+	roomv1 "github.com/vexner67/freenet/room/api/room/v1"
 	"github.com/vexner67/freenet/user/internal/config"
 	"github.com/vexner67/freenet/user/internal/notifyclient"
 	"github.com/vexner67/freenet/user/internal/purgeclient"
@@ -149,6 +150,9 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 		name, addr, variable string
 		deliver              func(*grpc.ClientConn) outbox.Deliver
 	}{
+		{purgeclient.RoomStream, cfg.RoomServiceAddr, "ROOM_SERVICE_ADDR", func(c *grpc.ClientConn) outbox.Deliver {
+			return purgeclient.Room(roomv1.NewRoomServiceClient(c), cfg.NotifyTimeout)
+		}},
 		{purgeclient.PostStream, cfg.PostServiceAddr, "POST_SERVICE_ADDR", func(c *grpc.ClientConn) outbox.Deliver {
 			return purgeclient.Post(postv1.NewPostServiceClient(c), cfg.NotifyTimeout)
 		}},

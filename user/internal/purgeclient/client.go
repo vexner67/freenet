@@ -18,6 +18,7 @@ import (
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/outbox"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
+	roomv1 "github.com/vexner67/freenet/room/api/room/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -60,6 +61,7 @@ const (
 	MediaStream   = "media"
 	MessageStream = "message"
 	ClubStream    = "club"
+	RoomStream    = "room"
 )
 
 // Recorder adds a message to an outbox stream in the transaction of ctx.
@@ -381,4 +383,11 @@ func outcome(err error) error {
 	default:
 		return err
 	}
+}
+
+func Room(api roomv1.RoomServiceClient, timeout time.Duration) outbox.Deliver {
+	return deliver(timeout, func(ctx context.Context, id string) error {
+		_, err := api.PurgeUser(ctx, &roomv1.PurgeUserRequest{UserId: id})
+		return err
+	})
 }

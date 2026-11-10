@@ -152,14 +152,14 @@ func (a *App) build(cfg config.Config) error {
 		a.logger.Warn("mTLS is off: internal RPCs are open to anyone who can connect, do not use in production")
 	}
 
-	interceptors = append(interceptors, jwtauth.UnaryServerInterceptor(
+	interceptors = append(interceptors, usergrpc.RoomAccessInterceptor(jwtauth.UnaryServerInterceptor(
 		jwtauth.NewVerifier(publicKey, cfg.JWTIssuer),
 		jwtauth.Access{
 			Public:      usergrpc.PublicMethods(),
 			Deactivated: usergrpc.DeactivatedMethods(),
 			Banned:      usergrpc.BannedMethods(),
 		},
-	))
+	)))
 	interceptors = append(interceptors, ratelimit.UnaryServerInterceptor(limiter, rateLimits(cfg), a.logger))
 
 	a.server, err = grpcserver.New(a.logger, reg, grpc.Creds(creds), a.tracer.ServerOption(), grpc.ChainUnaryInterceptor(interceptors...))
@@ -200,8 +200,9 @@ func (a *App) build(cfg config.Config) error {
 	userv1.RegisterUserServiceServer(
 		a.server.Registrar(),
 		usergrpc.NewUserHandler(usergrpc.Services{
-			Users:    service.NewUserService(store.users).TellingWalls(store.tx, deliver.walls),
-			Accounts: service.NewAccountService(store.users, store.tx, deliver.reactions, cfg.AccountRetention),
+			RoomPermissions: permissions,
+			Users:           service.NewUserService(store.users).TellingWalls(store.tx, deliver.walls),
+			Accounts:        service.NewAccountService(store.users, store.tx, deliver.reactions, cfg.AccountRetention),
 			Follows: service.NewFollowService(service.FollowDeps{
 				Users:    store.users,
 				Follows:  store.follows,

@@ -24,7 +24,7 @@ var (
 		"follows": {}, "freenet": {}, "friends": {}, "gift": {}, "gifts": {}, "giftshop": {}, "groups": {}, "guests": {}, "healthz": {}, "help": {}, "id": {}, "im": {}, "invite": {},
 		"language": {}, "login": {}, "logout": {}, "market": {}, "me": {}, "media": {}, "mine": {}, "news": {}, "note": {}, "notes": {},
 		"notifications": {}, "people": {}, "pet": {}, "photo": {}, "player": {}, "playlist": {}, "post": {}, "prime": {}, "search": {},
-		"settings": {}, "shop": {}, "static": {}, "stickers": {}, "stocks": {}, "support": {}, "terms": {}, "top": {}, "topic": {}, "votes": {}, "wall": {},
+		"room": {}, "rooms": {}, "rtc": {}, "settings": {}, "shop": {}, "static": {}, "stickers": {}, "stocks": {}, "support": {}, "terms": {}, "top": {}, "topic": {}, "votes": {}, "wall": {},
 	}
 )
 

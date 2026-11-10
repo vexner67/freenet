@@ -34,6 +34,7 @@ type UserService interface {
 }
 
 type UserHandler struct {
+	roomPermissions RoomPermissions
 	userv1.UnimplementedUserServiceServer
 	userService       UserService
 	accountService    AccountService
@@ -73,14 +74,15 @@ type UserHandler struct {
 
 // Services are the use cases behind the handler.
 type Services struct {
-	Users    UserService
-	Accounts AccountService
-	Follows  FollowService
-	Blocks   BlockService
-	Ignores  IgnoreService
-	Gifts    GiftService
-	Stickers StickerService
-	Wallets  WalletService
+	RoomPermissions RoomPermissions
+	Users           UserService
+	Accounts        AccountService
+	Follows         FollowService
+	Blocks          BlockService
+	Ignores         IgnoreService
+	Gifts           GiftService
+	Stickers        StickerService
+	Wallets         WalletService
 	// Verification gives and takes the checkmark.
 	Verification VerificationService
 	// Bans block pages and let them be.
@@ -132,6 +134,7 @@ type Services struct {
 
 func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 	return &UserHandler{
+		roomPermissions:   s.RoomPermissions,
 		userService:       s.Users,
 		accountService:    s.Accounts,
 		followService:     s.Follows,
