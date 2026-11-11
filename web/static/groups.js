@@ -20,12 +20,12 @@ let cursor = '';
 
 // viewLink is "Просмотр группы".
 function viewLink(club) {
-  return el('a', { className: 'profile-link', href: pagePath({ ...club, club: true }), textContent: tr('Просмотр группы') });
+  return el('a', { className: 'profile-link club-view-link', href: pagePath({ ...club, club: true }), textContent: tr('Просмотр группы') });
 }
 
 function clubNode(club) {
   const ref = clubRef(club);
-  const node = clubRow(club,
+  const node = clubRow(club, {},
     viewLink(club),
     (club.role === 'admin' || club.role === 'owner') && pinLink(club, ref),
     club.role !== 'owner' && leaveLink(club, ref, () => node),
@@ -36,7 +36,7 @@ function clubNode(club) {
 
 // pinLink is "Добавить в левое меню" or "Удалить из левого меню".
 function pinLink(club, ref) {
-  const link = el('a', { className: 'profile-link' });
+  const link = el('button', { className: 'profile-link', type: 'button' });
   const render = () => { link.textContent = club.pinned ? tr('Удалить из левого меню') : tr('Добавить в левое меню'); };
 
   link.addEventListener('click', async () => {
@@ -83,8 +83,8 @@ function leftNode(club, ref, row) {
 
 // leaveLink is "Выйти из группы"; the club then goes from the list.
 function leaveLink(club, ref, node) {
-  return el('a', {
-    className: 'profile-link',
+  return el('button', {
+    className: 'profile-link', type: 'button',
     textContent: tr('Выйти из группы'),
     onclick: async () => {
       hideError($('error'));
@@ -121,7 +121,9 @@ async function load(list, node, summary) {
 
 // applySearch leaves the groups shown whose names have the words typed.
 function applySearch() {
-  const words = $('search').value.trim().toLowerCase();
+  const search = $('search');
+  if (!search) return;
+  const words = search.value.trim().toLowerCase();
   const rows = [...$('clubs').querySelectorAll('.list-row')];
 
   for (const row of rows) row.hidden = !row.textContent.toLowerCase().includes(words);
@@ -130,10 +132,11 @@ function applySearch() {
 
 // showMine is "Мои Группы".
 async function showMine() {
-  $('search').addEventListener('input', applySearch);
+  $('search')?.addEventListener('input', applySearch);
   $(managed ? 'tab-managed' : 'tab-all').classList.add('active');
   $('tabs').hidden = false;
-  $('gray-bar').hidden = false;
+  if ($('gray-bar')) $('gray-bar').hidden = false;
+  $('create').hidden = false;
 
   const list = (c) => api.myClubs(c, managed);
   const summary = managed ? clubsCount : myClubsCount;
@@ -146,7 +149,7 @@ async function showMine() {
 // place: club.role says which. The owner cannot leave and has none.
 function membershipLink(club) {
   const ref = clubRef(club);
-  const link = el('a', { className: 'profile-link' });
+  const link = el('button', { className: 'profile-link', type: 'button' });
   // A closed group takes a request ("Подать заявку"), which may be taken back.
   const inside = () => Boolean(club.role) || Boolean(club.requested);
   const render = () => {
@@ -188,7 +191,7 @@ async function showTheirs(nickname, me) {
     return;
   }
 
-  const view = (club) => clubRow(club,
+  const view = (club) => clubRow(club, {},
     viewLink(club),
     me?.profileCompleted && club.role !== 'owner' && membershipLink(club));
   const list = (c) => api.userClubs(nickname, c);

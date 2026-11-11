@@ -70,7 +70,7 @@ function gone(node, text) {
 // first page says there are.
 const sections = {
   '': { title: tr('Поиск людей'), tab: tr('Люди'), placeholder: tr('Имя, фамилия или никнейм'), search: api.search, items: (page) => page.users, row: personRow, none: tr('Никого не нашлось.') },
-  groups: { title: tr('Поиск групп'), tab: tr('Группы'), placeholder: tr('Название или адрес группы'), search: api.searchClubs, items: (page) => page.clubs, row: (c) => clubRow(c), none: tr('Ни одной группы не нашлось.') },
+  groups: { title: tr('Поиск групп'), tab: tr('Группы'), placeholder: tr('Название или адрес группы'), search: api.searchClubs, items: (page) => page.clubs, row: (c) => clubRow(c, { search: true }), none: tr('Ни одной группы не нашлось.') },
   posts: {
     title: tr('Поиск записей'),
     tab: tr('Записи'),

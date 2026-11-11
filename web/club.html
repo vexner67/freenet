@@ -33,14 +33,18 @@
 
         <div class="club" id="club" hidden>
           <div class="club-main">
-            <div class="section-title">Информация</div>
-            <table class="info" id="info"></table>
+            <details class="club-section" id="info-block" open>
+              <summary class="section-title">Информация</summary>
+              <table class="info" id="info"></table>
+            </details>
 
-            <div id="members-block" hidden>
-              <div class="section-title">Участники</div>
+            <details class="club-section" id="members-block" open hidden>
+              <summary class="section-title">Участники</summary>
               <div class="subtitle"><span id="members-count"></span><a id="members-all">Все</a></div>
               <div class="people-grid wide" id="members-grid"></div>
-            </div>
+            </details>
+
+            <div id="topics-above"></div>
 
             <div class="sugglist" id="requests" hidden><a id="requests-link"></a></div>
             <div class="sugglist" id="suggestions" hidden><a id="suggestions-link"></a></div>
@@ -106,19 +110,24 @@
             </div>
             <div class="error" id="join-error" hidden></div>
 
-            <div class="section-title">Тип группы</div>
-            <p class="side-text" id="type-text">Это открытая группа. В неё может вступить любой желающий.</p>
+            <details class="club-section" open>
+              <summary class="section-title">Тип группы</summary>
+              <p class="side-text" id="type-text"></p>
+            </details>
 
-            <div id="owner-block" hidden>
-              <div class="section-title">Создатель</div>
+            <details class="club-section" id="owner-block" open hidden>
+              <summary class="section-title">Создатель</summary>
               <div id="owner"></div>
-            </div>
+            </details>
 
-            <div id="admins-block" hidden>
-              <div class="section-title">Администраторы</div>
+            <details class="club-section" id="admins-block" open hidden>
+              <summary class="section-title">Администраторы</summary>
               <div class="subtitle"><span id="admins-count"></span><a id="admins-all">Все</a></div>
               <div id="admins"></div>
-            </div>
+            </details>
+
+            <div id="topics-side"></div>
+            <div id="rooms-side"></div>
 
           </div>
         </div>

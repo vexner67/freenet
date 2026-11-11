@@ -80,12 +80,27 @@ test('every page of a phone has a page of a computer and wears m.css alone', () 
   }
 });
 
-test('a page of a phone has the elements of its page of a computer, for the same scripts', () => {
+// OpenVK puts previews on desktop and links to their full pages on phones.
+const layoutIDs = {
+  'club.html': [
+    ['admins', 'admins-all', 'admins-block', 'admins-count', 'club-side', 'members-grid', 'owner', 'owner-block',
+      'rooms-side', 'title-aside', 'topics-above', 'topics-side', 'type-text'],
+    ['admins-link', 'admins-mobile', 'club-menu', 'club-sign-in', 'ignore-mobile',
+      'club-rooms-count', 'rooms-link', 'rooms-mobile', 'topics-link', 'topics-mobile'],
+  ],
+  'groups.html': [['clubs-none', 'gray-bar', 'search'], []],
+};
+
+test('both layouts provide the same script hooks apart from the documented layout-specific elements', () => {
   for (const page of phonePages) {
     const html = readFileSync(new URL(page, phone), 'utf8');
     const desktop = readFileSync(new URL(page, web), 'utf8');
 
-    assert.deepEqual(ids(html), ids(desktop), page);
+    const [desktopOnly, phoneOnly] = layoutIDs[page] ?? [[], []];
+    const desktopIDs = ids(desktop);
+    const phoneIDs = ids(html);
+    assert.deepEqual(desktopIDs.filter((id) => !phoneIDs.includes(id)), desktopOnly.toSorted(), page);
+    assert.deepEqual(phoneIDs.filter((id) => !desktopIDs.includes(id)), phoneOnly.toSorted(), page);
     assert.deepEqual(modules(html), modules(desktop), page);
   }
 });

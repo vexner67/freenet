@@ -1655,7 +1655,6 @@ body.viewer-open { overflow: hidden; }
 .post-paid-title { margin-bottom: 6px; color: var(--text-555); }
 .post-paid .error { margin: 6px 0 0; }
 .post-paid-note { margin: 4px 0; color: var(--text-626262); }
-.club-role { color: var(--text-626262); }
 /* "Отображение аватаров": round small photos for whoever chose them. */
 .avatars-round .post-avatar img,
 .avatars-round .person img,
@@ -1694,7 +1693,6 @@ body.viewer-open { overflow: hidden; }
 .list-cover img { display: block; width: 75px; height: 75px; object-fit: cover; }
 .list-info { flex: 1; min-width: 0; }
 .list-info .info th { width: 70px; }
-.list-description { padding-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .list-actions { width: 200px; flex-shrink: 0; }
 .list-actions .profile-link { margin-top: 0; margin-bottom: 2px; }
 
@@ -1746,7 +1744,6 @@ body.viewer-open { overflow: hidden; }
 .topic-last { display: flex; gap: 6px; align-items: flex-start; min-width: 170px; }
 .topic-last img { width: 30px; height: 30px; object-fit: cover; }
 .topic-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; padding: 10px; background: var(--back-f2f2f2); }
-.topic-short { padding: 4px 0; }
 .page-title .title-links { font-weight: bold; }
 .topic-form textarea { width: 100%; height: 80px; }
 
@@ -4205,22 +4202,9 @@ button.game-hud-cell:hover { background: var(--back-f2f5f8); }
 .search-none { padding: 18px 0; color: var(--text-626262); text-align: center; }
 .search-example { margin: 0 2px; }
 
-/* Notifications and groups, in the dress of the games: dark frames
-   and titles, plates that are pressed, and nothing moves under the reader. */
 a.game-hud-cell { color: inherit; text-decoration: none; }
 a.game-hud-cell:hover { background: var(--back-f2f5f8); }
-#notify-hud .game-hud-sum, #groups-hud .game-hud-sum, #club-hud .game-hud-sum { font-variant-numeric: tabular-nums; white-space: nowrap; }
-#groups-hud:not([hidden]) + .tabs { margin-top: 0; }
-.clubs-list { min-height: 200px; }
-.clubs-list .list-row { margin-bottom: 6px; padding: 8px; background: linear-gradient(var(--back-fff), var(--back-f6f6f6)); border: 1px solid var(--line-333); border-radius: 4px; box-shadow: 2px 2px 0 var(--back-d4d4d4); }
-.clubs-list .list-row:hover { background: var(--back-f2f5f8); }
-.clubs-list .list-cover img { border: 1px solid var(--line-333); border-radius: 3px; box-sizing: border-box; }
-.clubs-list .post-deleted { margin-bottom: 6px; }
-.club .section-title { background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); color: var(--text-fff); }
-.club .section-title a, .club .section-title .count { color: var(--text-fff); }
-#join { background: linear-gradient(var(--back-dde2e8), var(--back-c5cbd3)); border: 1px solid var(--line-333); border-radius: 3px; color: var(--text-000); font-weight: bold; }
-#join:hover { background: var(--back-f2f5f8); }
-.club .profile-links { margin-bottom: 8px; }
+#notify-hud .game-hud-sum { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* A bold active tab would widen the row and wrap it: every board and page
    would then start lower. */
@@ -4524,3 +4508,54 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .room-banner-title { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; }
 .shell.with-room .shell-frame { top: 34px; height: calc(100% - 34px); }
 .room-voice-audio { display: none; }
+
+/* Group pages and directories follow OpenVK's flat two-column layout. */
+.club .club-section { margin: 5px 0 0; }
+.club .club-section > .section-title { margin: 0; }
+.club-section summary { display: block; cursor: pointer; }
+.club-section summary::-webkit-details-marker { display: none; }
+.club-section:not([open]) > summary { background-image: none; }
+.club-section:not([open]) > summary::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 20px;
+  height: 17px;
+  background: url("/static/icons/block-arrow.svg") no-repeat;
+  transform: rotate(-90deg);
+}
+.club-section .info { margin: 5px 0; }
+.club-section .info th { width: 30%; }
+.club-section .info td, .club-preview-item { overflow-wrap: anywhere; }
+.club-preview-item { padding: 6px 8px; }
+.club-preview-empty { margin: 0; padding: 8px; text-align: center; }
+.group-directory { margin: 0 -10px; padding: 12px; background: var(--back-f6f6f6); }
+.group-directory .list-row {
+  margin: 0 0 6px;
+  padding: 4px;
+  border: 1px solid var(--line-dedede);
+  background: var(--back-fff);
+}
+.group-directory .list-row:last-child { margin-bottom: 0; }
+.club-list-row .info th { width: 1%; padding-right: 6px; white-space: nowrap; }
+.club-list-type { text-transform: capitalize; }
+.club-list-name { display: none; }
+.group-directory .list-actions { width: 150px; }
+.group-directory .list-actions .profile-link {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 3px;
+  border: 0;
+  border-bottom: 1px solid var(--line-ccc);
+  background: transparent;
+  color: var(--text-2b587a);
+  font: inherit;
+  text-align: left;
+  text-transform: lowercase;
+}
+.group-directory .list-actions .profile-link:hover { background: var(--back-ededed); }
+.groups-body .gray-bar { align-items: center; }
+.groups-body .gray-bar-search { flex: 0 1 320px; }
+.groups-body #create { margin-left: auto; }
+.group-directory .info td { overflow-wrap: anywhere; }
+.club-member-name { font-weight: bold; overflow-wrap: anywhere; }

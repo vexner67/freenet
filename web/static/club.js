@@ -1,9 +1,3 @@
-// The page of a community at /club/<address or id>, as openvk's: on the
-// left "Информация", "Участники" and the wall; on the right the photo,
-// "Вступить в группу" or "Выйти из группы", "Редактировать группу" for
-// its admins, "Тип группы" and, as its settings say, its creator, all its
-// admins or nobody.
-
 import { api, currentUser, started } from './api.js';
 import { showBackdrop } from './backdrop.js';
 import { adminsCount, clubTypeHints, requestsLink, formatPostDate, membersCount, suggestedByEveryone, suggestedByYou, topicsCount } from './labels.js';
@@ -14,9 +8,10 @@ import { boardPath, topicPath } from './topics.js';
 import { initIgnoreLink } from './feedsettings.js';
 import { initWall } from './wall.js';
 import { tr } from './i18n.js';
-import { roomsBlock } from './room-list.js';
+import { roomKind } from './room-list.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length));
+const mobileMenu = $('club-menu');
 const MEMBERS_SHOWN = 6;
 const ADMINS_SHOWN = 5;
 const TOPICS_SHOWN = 3;
@@ -35,7 +30,7 @@ function render(club, me) {
   if (decodeURIComponent(location.pathname) !== decodeURIComponent(path)) history.replaceState(null, '', path);
 
   $('info').replaceChildren(...[
-    [tr('Название:'), el('b', { textContent: club.name })],
+    [tr('Название:'), !mobileMenu && club.name],
     [tr('Описание:'), club.description && el('span', { className: 'pre-wrap', textContent: club.description })],
     [tr('Сайт:'), club.website && el('a', { href: club.website, target: '_blank', rel: 'ugc noopener noreferrer', textContent: club.website })],
   ].filter(([, value]) => value).map(([title, value]) => el('tr', {},
@@ -43,6 +38,7 @@ function render(club, me) {
     el('td', {}, value),
   )));
 
+  $('info-block').hidden = $('info').children.length === 0;
   $('edit').hidden = !manages(club);
   $('edit').href = path + '/edit';
   if (me) {
@@ -60,11 +56,20 @@ function render(club, me) {
     error: $('join-error'),
     club: true,
   });
-  $('type-text').textContent = clubTypeHints[club.closed ? 'closed' : 'open'];
+  const type = $('type-text');
+  if (type) type.textContent = clubTypeHints[club.closed ? 'closed' : 'open'];
   $('wall-block').hidden = !admitted(club);
   showRequests(club);
-  renderOwner(club.adminsDisplay === 'creator' ? club.owner : null, club.ownerTitle);
-  if (club.adminsDisplay === 'all') showAdmins(club);
+  if (mobileMenu) {
+    $('club-sign-in').hidden = Boolean(me);
+    $('ignore-mobile').hidden = !me;
+    $('admins-link').href = path + '/members?admins=true';
+    $('admins-mobile').hidden = !admitted(club) || club.adminsDisplay !== 'all';
+    updateMobileMenu();
+  } else {
+    renderOwner(club.adminsDisplay === 'creator' ? club.owner : null, club.ownerTitle);
+    if (club.adminsDisplay === 'all') showAdmins(club);
+  }
   renderJoin(club, me);
   $('club').hidden = false;
 }
@@ -133,33 +138,74 @@ async function showSuggestions(club, me) {
   }
 }
 
-// showTopics is openvk's block "Обсуждения": how many, "Все" and the
-// most recently active topics with "Обновлено", or "Создать" when there
-// are none; above the wall or in the right column, as the club chooses.
-// Nobody sees it in a club without topics where they may start none.
+// Rooms and discussions share the same group preview on desktop and
+// the same menu rows on mobile.
+function previewItem(href, name, note) {
+  return el('div', { className: 'club-preview-item' },
+    el('b', {}, el('a', { href, textContent: name })),
+    el('div', { className: 'hint', textContent: note }),
+  );
+}
+
+function previewSection(title, count, all, items, create) {
+  return el('details', { className: 'club-section', open: true },
+    el('summary', { className: 'section-title', textContent: title }),
+    el('div', { className: 'subtitle' }, el('span', { textContent: count }),
+      items.length > 0 && el('a', { href: all, textContent: tr('Все') })),
+    ...items,
+    items.length === 0 && el('p', { className: 'club-preview-empty' },
+      el('a', { href: create, textContent: tr('Создать') })),
+  );
+}
+
+function updateMobileMenu() {
+  mobileMenu.hidden = !mobileMenu.querySelector('li:not([hidden])');
+}
+
 async function showTopics(club) {
   try {
     const page = await api.clubTopics(ref, { limit: TOPICS_SHOWN });
     if (page.total === 0 && !club.canStartTopic) return;
 
-    const items = page.topics.map((topic) => el('div', { className: 'topic-short' },
-      el('b', {}, el('a', { href: topicPath(topic), textContent: topic.title })),
-      el('div', { className: 'hint', textContent: tr('Обновлено ') + formatPostDate(topic.updatedAt) }),
-    ));
-    if (page.total === 0) {
-      items.push(el('p', { className: 'side-text' }, el('a', { href: boardPath(club) + '/create', textContent: tr('Создать') })));
+    const all = boardPath(club);
+    if (mobileMenu) {
+      $('topics-link').href = all;
+      $('topics-mobile').hidden = false;
+      updateMobileMenu();
+      return;
     }
 
-    const block = el('div', { className: 'topics-block' },
-      el('div', { className: 'section-title', textContent: tr('Обсуждения') }),
-      el('div', { className: 'subtitle' }, el('span', { textContent: topicsCount(page.total) }), el('a', { href: boardPath(club), textContent: tr('Все') })),
-      ...items,
-    );
-
-    if (club.topicsAboveWall) $('wall-title').before(block);
-    else $('club-side').append(block);
+    const items = page.topics.map((topic) => previewItem(topicPath(topic), topic.title,
+      tr('Обновлено ') + formatPostDate(topic.updatedAt)));
+    $(club.topicsAboveWall ? 'topics-above' : 'topics-side').append(
+      previewSection(tr('Обсуждения'), topicsCount(page.total), all, items, all + '/create'));
   } catch {
-    // The page works without it.
+    // The group page works without the preview.
+  }
+}
+
+async function showRooms(club, roomList) {
+  try {
+    const { rooms, nextCursor } = await roomList;
+    if (!rooms.length && !manages(club)) return;
+
+    const all = `/rooms?club=${encodeURIComponent(club.id)}`;
+    const count = rooms.length + (nextCursor ? '+' : '');
+    const create = all + '&create=1';
+    if (mobileMenu) {
+      $('rooms-link').href = rooms.length ? all : create;
+      $('club-rooms-count').textContent = count;
+      $('rooms-mobile').hidden = false;
+      updateMobileMenu();
+      return;
+    }
+
+    const items = rooms.slice(0, 3).map((room) => previewItem(
+      `/room/${encodeURIComponent(room.id)}`, room.title,
+      tr('{0} · {1} из {2}', roomKind(room.kind), room.members.length, room.maxMembers)));
+    $('rooms-side').append(previewSection(tr('Комнаты'), tr('Комнат: {0}', count), all, items, create));
+  } catch {
+    // A room service outage does not hide or delay the group wall.
   }
 }
 
@@ -200,7 +246,7 @@ function renderJoin(club, me) {
         return;
       }
       renderJoin(club, me);
-      if (admitted(club)) showMembers(club);
+      if (admitted(club)) showMembers(club, me);
     } catch (e) {
       showError(error, e);
     } finally {
@@ -211,26 +257,24 @@ function renderJoin(club, me) {
   button.onclick = () => change(() => (inside ? api.leaveClub(ref) : api.joinClub(ref)));
 }
 
-// showMembers is the block "Участники": how many, "Все" and a row of
-// faces.
-async function showMembers(club) {
-  await showFaces('members', club.members, `/club/${encodeURIComponent(clubRef(club))}/members`);
-}
+// The phone shows the member count as a menu row; the desktop shows faces.
+async function showMembers(club, me) {
+  if (!mobileMenu && !me) return;
 
-// showFaces fills one block of people: how many, "Все" and the first of
-// them; nobody, no block.
-async function showFaces(id, count, all) {
-  $(id + '-block').hidden = count === 0;
-  if (count === 0) return;
+  $('members-all').href = `/club/${encodeURIComponent(clubRef(club))}/members`;
+  $('members-count').textContent = mobileMenu ? club.members : membersCount(club.members);
+  $('members-block').hidden = !mobileMenu && club.members === 0;
+  if (mobileMenu) {
+    updateMobileMenu();
+    return;
+  }
+  if (!club.members) return;
 
   try {
     const page = await api.clubMembers(ref, { limit: MEMBERS_SHOWN });
-
-    $(id + '-count').textContent = membersCount(count);
-    $(id + '-all').href = all;
-    $(id + '-grid').replaceChildren(...page.members.map((m) => personCell(m.user)));
+    $('members-grid').replaceChildren(...page.members.map((m) => personCell(m.user)));
   } catch {
-    // The page works without it.
+    // The full list is still reachable.
   }
 }
 
@@ -244,13 +288,10 @@ try {
   const club = await wanted;
 
   render(club, me);
-  try {
-    const rooms = (await roomList).rooms;
-    if (rooms.length || manages(club)) $('wall-block').before(roomsBlock(rooms, { more: `/rooms?club=${encodeURIComponent(club.id)}`, create: manages(club) ? `/rooms?club=${encodeURIComponent(club.id)}` : '' }));
-  } catch (error) { if (error.status !== 503) showError($('error'), error); }
+  showRooms(club, roomList);
   showBackdrop(club.backdrop);
   if (admitted(club)) {
-    showMembers(club);
+    showMembers(club, me);
     showSuggestions(club, me);
     showTopics(club);
     await initWall({ ...club, club: true }, me, { moderates: manages(club), speaksForClub: manages(club) });

@@ -33,6 +33,7 @@
           <a class="active" id="tab-main">Основное</a>
           <a id="tab-backdrop">Фон</a>
           <a id="tab-members">Участники</a>
+          <a id="tab-requests" hidden>Заявки</a>
         </div>
         <form class="container-gray" id="form" hidden>
           <div class="error" id="error" hidden></div>
@@ -48,6 +49,12 @@
               <td class="control"><textarea id="description" maxlength="1000" rows="5"></textarea></td>
             </tr>
             <tr>
+              <th><label for="type">Тип группы:</label></th>
+              <td class="control">
+                <select id="type"></select>
+              </td>
+            </tr>
+            <tr>
               <th><label for="address">Адрес страницы:</label></th>
               <td class="control">
                 <input type="text" id="address" maxlength="32" spellcheck="false">
@@ -59,13 +66,6 @@
               <td class="control"><input type="text" id="website" maxlength="256" spellcheck="false" placeholder="example.com"></td>
             </tr>
             <tr>
-              <th><label for="type">Тип группы:</label></th>
-              <td class="control">
-                <select id="type"></select>
-                <div class="hint">В закрытую группу вступают по заявке, а её стену, участников и обсуждения видят только участники.</div>
-              </td>
-            </tr>
-            <tr>
               <th><label for="wall">Стена:</label></th>
               <td class="control">
                 <select id="wall">
@@ -73,7 +73,6 @@
                   <option value="suggest">предложка</option>
                   <option value="closed">закрытая</option>
                 </select>
-                <div class="hint">Открытая — писать может любой, предложка — пишут администраторы, остальные предлагают записи, закрытая — только администраторы.</div>
               </td>
             </tr>
             <tr>

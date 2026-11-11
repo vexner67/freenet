@@ -27,20 +27,46 @@
     </div>
 
     <div class="page">
-      <div class="page-title"><span id="title">Загрузка…</span><span class="aside" id="title-aside"></span></div>
       <div class="page-body">
         <div class="error" id="error" hidden></div>
 
         <div class="club" id="club" hidden>
-          <div class="club-main">
-            <div class="section-title">Информация</div>
-            <table class="info" id="info"></table>
-
-            <div id="members-block" hidden>
-              <div class="section-title">Участники</div>
-              <div class="subtitle"><span id="members-count"></span><a id="members-all">Все</a></div>
-              <div class="people-grid wide" id="members-grid"></div>
+          <div class="club-mobile-head">
+            <div class="club-identity">
+              <div class="avatar-box">
+                <img class="avatar" id="avatar" src="/static/club.svg" alt="">
+                <div class="avatar-controls" id="avatar-actions" hidden>
+                  <a class="avatar-delete" id="avatar-delete" title="Удалить фотографию" hidden>×</a>
+                  <a class="avatar-upload" id="avatar-upload">Поставить изображение</a>
+                </div>
+              </div>
+              <h1 id="title">Загрузка…</h1>
             </div>
+            <p class="hint" id="avatar-status" hidden></p>
+            <div class="club-mobile-actions">
+              <a class="button" id="edit" hidden>Редактировать группу</a>
+              <button class="button" type="button" id="join" hidden>Вступить в группу</button>
+            </div>
+            <div class="error" id="join-error" hidden></div>
+            <p id="club-sign-in" hidden><a href="/">Войдите</a>, чтобы вступить в группу.</p>
+          </div>
+
+          <div class="club-main">
+            <section class="club-section" id="info-block" hidden>
+              <h2 class="section-title">Информация</h2>
+              <table class="info" id="info"></table>
+            </section>
+
+            <section class="club-section" id="club-menu" hidden>
+              <h2 class="section-title">Меню</h2>
+              <ul class="club-menu">
+                <li id="members-block" hidden><a id="members-all">Участники<span class="hint" id="members-count"></span></a></li>
+                <li id="topics-mobile" hidden><a id="topics-link">Обсуждения</a></li>
+                <li id="rooms-mobile" hidden><a id="rooms-link">Комнаты<span class="hint" id="club-rooms-count"></span></a></li>
+                <li id="admins-mobile" hidden><a id="admins-link">Администраторы</a></li>
+                <li id="ignore-mobile" hidden><a id="ignore">Игнорировать группу</a></li>
+              </ul>
+            </section>
 
             <div class="sugglist" id="requests" hidden><a id="requests-link"></a></div>
             <div class="sugglist" id="suggestions" hidden><a id="suggestions-link"></a></div>
@@ -87,39 +113,6 @@
             <p class="hint" id="wall-empty" hidden>На стене пока нет ни одной записи.</p>
             <a class="wall-more" id="wall-more" hidden>Показать предыдущие записи</a>
             </div>
-          </div>
-
-          <div class="club-side" id="club-side">
-            <div class="avatar-box">
-              <img class="avatar" id="avatar" src="/static/club.svg" alt="">
-              <div class="avatar-controls" id="avatar-actions" hidden>
-                <a class="avatar-delete" id="avatar-delete" title="Удалить фотографию" hidden>×</a>
-                <a class="avatar-upload" id="avatar-upload">Поставить изображение</a>
-              </div>
-            </div>
-            <p class="hint center" id="avatar-status" hidden></p>
-
-            <div class="profile-links">
-              <button class="profile-link" type="button" id="join" hidden>Вступить в группу</button>
-              <a class="profile-link" id="edit" hidden>Редактировать группу</a>
-              <a class="profile-link" id="ignore" hidden>Игнорировать группу</a>
-            </div>
-            <div class="error" id="join-error" hidden></div>
-
-            <div class="section-title">Тип группы</div>
-            <p class="side-text" id="type-text">Это открытая группа. В неё может вступить любой желающий.</p>
-
-            <div id="owner-block" hidden>
-              <div class="section-title">Создатель</div>
-              <div id="owner"></div>
-            </div>
-
-            <div id="admins-block" hidden>
-              <div class="section-title">Администраторы</div>
-              <div class="subtitle"><span id="admins-count"></span><a id="admins-all">Все</a></div>
-              <div id="admins"></div>
-            </div>
-
           </div>
         </div>
       </div>

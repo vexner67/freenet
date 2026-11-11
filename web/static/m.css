@@ -573,13 +573,10 @@ label.chat-person { cursor: pointer; }
 /* The page of a community, as openvk's: the information, members and
    wall on the left, the photo and links in a narrow column on the right
    (a person's page is the other way round). */
-.club { display: flex; gap: 10px; }
 .club-main { flex: 1; min-width: 0; }
 .club-main .section-title { margin-left: 0; margin-right: 0; }
 /* Blocks that may be hidden open with their title: not the page's first. */
 .club-main > div > .section-title:first-child { margin-top: 12px; }
-.club-side { width: 200px; flex-shrink: 0; }
-.club-side .section-title, .club-side > div > .section-title:first-child { margin: 10px 0 0; }
 .people-grid.wide { grid-template-columns: repeat(6, 1fr); }
 /* "Таймер": when a postponed post comes out, under the form and in the
    box that edits it. */
@@ -587,7 +584,6 @@ label.chat-person { cursor: pointer; }
 .postponed-time input { margin: 0 2px; font: inherit; }
 .timer-remove { margin-left: 4px; color: var(--text-626262); }
 .post-options .price-input { width: 70px; margin: 0 3px; }
-.club-role { color: var(--text-626262); }
 /* The pages of text: "о сайте", "правила" and openvk's FAQ of "помощь". */
 .plain-list { margin: 6px 0; padding-left: 28px; }
 .plain-list li { margin: 3px 0; }
@@ -604,7 +600,6 @@ label.chat-person { cursor: pointer; }
 .list-cover img { display: block; width: 75px; height: 75px; object-fit: cover; }
 .list-info { flex: 1; min-width: 0; }
 .list-info .info th { width: 70px; }
-.list-description { padding-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .list-actions { width: 200px; flex-shrink: 0; }
 .list-actions .profile-link { margin-top: 0; margin-bottom: 2px; }
 /* The grey bar of "Мои Группы": search and "Создать группу". */
@@ -635,7 +630,6 @@ label.chat-person { cursor: pointer; }
 .topic-last { display: flex; gap: 6px; align-items: flex-start; min-width: 170px; }
 .topic-last img { width: 30px; height: 30px; object-fit: cover; }
 .topic-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; padding: 10px; background: var(--back-f2f2f2); }
-.topic-short { padding: 4px 0; }
 .page-title .title-links { font-weight: bold; }
 .topic-form textarea { width: 100%; height: 80px; }
 /* openvk's grey box and its white box of upload limits ("Стикеры",
@@ -2073,10 +2067,6 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .container-gray .form tr:has(.check-cell) { display: flex; gap: 6px; padding: 5px 0; }
 .container-gray .form .check-cell { padding: 0; }
 /* A community's: its photo and links first, the photo smaller. */
-.club { flex-direction: column; }
-.club-side { order: -1; width: auto; }
-.club-side .avatar-box { width: 140px; max-width: 100%; margin: 0 auto; }
-.club-side .avatar { width: 100%; height: auto; aspect-ratio: 1; }
 .people-grid.wide { grid-template-columns: repeat(4, 1fr); }
 .link-card-photo { width: 90px; height: 68px; }
 /* The small print of posts and messages, large enough for a finger. */
@@ -3901,25 +3891,9 @@ button.game-hud-cell:hover { background: var(--back-f2f5f8); }
 .dating-round { width: 110px; padding: 10px 0 8px; }
 .dating-keys { display: none; }
 
-/* Notifications and groups, in the dress of the games: dark frames
-   and titles, plates that are pressed, and nothing moves under the reader. */
 a.game-hud-cell { color: inherit; text-decoration: none; }
 a.game-hud-cell:hover { background: var(--back-f2f5f8); }
-#notify-hud .game-hud-sum, #groups-hud .game-hud-sum, #club-hud .game-hud-sum { font-variant-numeric: tabular-nums; white-space: nowrap; }
-#groups-hud:not([hidden]) + .tabs { margin-top: 0; }
-.clubs-list { min-height: 200px; }
-.clubs-list .list-row { margin-bottom: 6px; padding: 8px; background: linear-gradient(var(--back-fff), var(--back-f6f6f6)); border: 1px solid var(--line-333); border-radius: 4px; box-shadow: 2px 2px 0 var(--back-d4d4d4); }
-.clubs-list .list-row:hover { background: var(--back-f2f5f8); }
-.clubs-list .list-cover img { border: 1px solid var(--line-333); border-radius: 3px; box-sizing: border-box; }
-.clubs-list .post-deleted { margin-bottom: 6px; }
-.club .section-title { background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); color: var(--text-fff); }
-.club .section-title a, .club .section-title .count { color: var(--text-fff); }
-#join { background: linear-gradient(var(--back-dde2e8), var(--back-c5cbd3)); border: 1px solid var(--line-333); border-radius: 3px; color: var(--text-000); font-weight: bold; }
-#join:hover { background: var(--back-f2f5f8); }
-.club .profile-links { margin-bottom: 8px; }
-
-.clubs-list .list-row { margin: 0 0 6px; }
-#club-hud .game-hud-sum { font-size: 13px; }
+#notify-hud .game-hud-sum { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* A bold active tab would widen the row and wrap it: every board and page
    would then start lower. */
@@ -4512,3 +4486,41 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .m .room-banner > span { display: none; }
 .m .room-banner .button { min-height: 32px; font-size: 12px; }
 .m.shell.with-room .shell-frame { top: 44px; height: calc(100% - 44px); }
+
+/* The mobile group uses OpenVK's compact identity and plain menu rows. */
+.club { display: block; }
+.club-identity { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.club-identity .avatar-box { flex: 0 0 75px; }
+.club-identity .avatar { display: block; width: 75px; height: 75px; object-fit: cover; }
+.club-identity h1 { margin: 0; color: var(--text-555); font-size: 1.17em; overflow-wrap: anywhere; }
+.club-mobile-actions .button { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; text-align: center; }
+.club-mobile-head { padding-bottom: 10px; }
+.club-mobile-head p { margin: 8px 0 0; }
+.club-section { margin: 0 0 10px; }
+.club .club-section > .section-title { margin: 0 -10px; }
+.club-section .info { margin: 6px 0; }
+.club-menu { list-style: none; margin: 0 -10px; padding: 0; }
+.club-menu a { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line-ececec); }
+.club-menu a:active { background: var(--back-ededed); }
+.groups-body #summary { display: none; }
+.group-directory .list-row { gap: 8px; padding: 8px 10px; }
+.group-directory .list-cover img { width: 55px; height: 55px; }
+.clubs-list .club-list-row { align-items: center; }
+.clubs-list .club-list-row .info { display: none; }
+.clubs-list .club-list-name { font-weight: bold; overflow-wrap: anywhere; }
+.group-directory .list-actions { display: flex; flex-wrap: wrap; gap: 0 8px; }
+.group-directory .list-actions:empty { display: none; }
+.group-directory .list-actions .profile-link {
+  display: block;
+  flex: 0 1 auto;
+  min-height: 32px;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-2b587a);
+  font: inherit;
+  text-align: left;
+}
+.clubs-list .list-actions .club-view-link { display: none; }
+.club-member-name { font-weight: bold; overflow-wrap: anywhere; }
+.group-directory .info th { width: 1%; white-space: nowrap; }

@@ -23,6 +23,8 @@ function fill(club) {
   $('tab-main').href = path + '/edit';
   $('tab-backdrop').href = path + '/backdrop';
   $('tab-members').href = path + '/members';
+  $('tab-requests').href = path + '/members?requests=true';
+  $('tab-requests').hidden = !club.closed;
   $('name').value = club.name;
   $('description').value = club.description;
   $('address').value = club.address;

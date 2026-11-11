@@ -6,10 +6,8 @@
 
 import { api, currentUser } from './api.js';
 import { clubRoles, membersCount, requestsCount } from './labels.js';
-import { $, clubRef, el, fullName, renderChrome, showError, hideError } from './layout.js';
+import { $, avatarURL, clubRef, el, fullName, renderChrome, showError, hideError, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
-import { personRow } from './people.js';
-import { separated } from './posts.js';
 import { tr } from './i18n.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length, -'/members'.length));
@@ -21,16 +19,35 @@ const requests = params.get('requests') === 'true';
 let club;
 let cursor = '';
 
+function memberRow(user, facts, actions) {
+  const path = '/' + encodeURIComponent(user.nickname);
+  return el('div', { className: 'list-row' },
+    el('a', { className: 'list-cover', href: path }, el('img', { src: avatarURL(user, 'small'), alt: '', loading: 'lazy' })),
+    el('div', { className: 'list-info' },
+      el('a', { className: 'club-member-name', href: path, textContent: fullName(user) }),
+      verifiedMark(user), facts),
+    actions,
+  );
+}
+
+function action(text, onclick) {
+  return el('button', { className: 'profile-link', type: 'button', textContent: text, onclick });
+}
+
 function memberNode(member) {
-  const role = el('span', { className: 'club-role' });
-  const title = el('div', { className: 'hint' });
-  const links = el('span', {});
+  const role = el('td');
+  const title = el('td');
+  const comment = el('tr', {}, el('th', { textContent: tr('Комментарий:') }), title);
+  const facts = el('table', { className: 'info' },
+    el('tr', {}, el('th', { textContent: tr('Роль:') }), role), comment);
+  const links = el('div', { className: 'list-actions' });
 
   function render() {
     role.textContent = clubRoles[member.role];
-    title.textContent = member.title ? tr('Комментарий: {0}', member.title) : '';
-    title.hidden = !member.title;
-    links.replaceChildren(...separated([...appointments(), ...descriptions()].filter(Boolean)));
+    title.textContent = member.title;
+    comment.hidden = !member.title;
+    links.replaceChildren(...[...appointments(), ...descriptions()].filter(Boolean));
+    links.hidden = !links.childElementCount;
   }
 
   // The owner appoints and dismisses the admins and hands the club over to
@@ -40,11 +57,8 @@ function memberNode(member) {
 
     const appoint = member.role === 'member';
     return [
-      el('a', {
-        textContent: appoint ? tr('Назначить администратором') : tr('Снять полномочия администратора'),
-        onclick: () => setAdmin(appoint),
-      }),
-      !appoint && el('a', { textContent: tr('Назначить владельцем'), onclick: () => confirmTransfer(member.user) }),
+      action(appoint ? tr('Назначить администратором') : tr('Снять полномочия администратора'), () => setAdmin(appoint)),
+      !appoint && action(tr('Назначить владельцем'), () => confirmTransfer(member.user)),
     ];
   }
 
@@ -53,8 +67,8 @@ function memberNode(member) {
     if (!manages(club.role) || !manages(member.role)) return [];
 
     return [
-      el('a', { textContent: tr('Изменить комментарий'), onclick: () => editTitle(member, render) }),
-      el('a', { textContent: member.hidden ? tr('Скрыт: Да') : tr('Скрыт: Нет'), onclick: toggleHidden }),
+      action(tr('Изменить комментарий'), () => editTitle(member, render)),
+      action(member.hidden ? tr('Скрыт: Да') : tr('Скрыт: Нет'), toggleHidden),
     ];
   }
 
@@ -90,16 +104,16 @@ function memberNode(member) {
 
   render();
 
-  return personRow(member.user, el('div', { className: 'hint' }, role), title, el('div', {}, links));
+  return memberRow(member.user, facts, links);
 }
 
 // requestNode is one who asked to join: "Принять заявку" lets them in,
 // "Отклонить заявку" does not; either way the row goes.
 function requestNode(user) {
-  const row = personRow(user, el('div', {}, ...separated([
-    el('a', { textContent: tr('Принять заявку'), onclick: () => decide(api.acceptClubRequest, 1) }),
-    el('a', { textContent: tr('Отклонить заявку'), onclick: () => decide(api.rejectClubRequest, 0) }),
-  ])));
+  const row = memberRow(user, null, el('div', { className: 'list-actions' },
+    action(tr('Принять заявку'), () => decide(api.acceptClubRequest, 1)),
+    action(tr('Отклонить заявку'), () => decide(api.rejectClubRequest, 0)),
+  ));
 
   async function decide(act, joined) {
     hideError($('error'));
@@ -110,7 +124,6 @@ function requestNode(user) {
       club.requests -= 1;
       club.members += joined;
       $('summary').textContent = requestsCount(club.requests);
-      tabs();
     } catch (e) {
       showError($('error'), e);
     }
@@ -220,6 +233,10 @@ async function loadMore() {
   try {
     const page = await api.clubMembers(ref, { cursor, admins });
 
+    if (!cursor) {
+      $('summary').textContent = membersCount(page.total);
+      $('summary').hidden = false;
+    }
     $('people').append(...page.members.map(memberNode));
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
@@ -229,23 +246,19 @@ async function loadMore() {
   }
 }
 
-// tab is one list of the page: query picks it, active tells whether it
-// is the one shown.
-function tab(id, query, text, active) {
-  const link = $(id);
-  link.textContent = text;
-  link.href = `/club/${encodeURIComponent(clubRef(club))}/members${query}`;
-  link.classList.toggle('active', active);
-  link.hidden = false;
-}
-
-// tabs are "Участники", "Руководство" and, of a closed group for those
-// who run it, "Заявки".
 function tabs() {
-  tab('tab-all', '', tr('Участники · {0}', membersCount(club.members)), !admins && !requests);
-
-  tab('tab-admins', '?admins=true', tr('Руководство'), admins);
-  if (club.closed && manages(club.role)) tab('tab-requests', '?requests=true', tr('Заявки · {0}', club.requests ?? 0), requests);
+  const path = '/club/' + encodeURIComponent(clubRef(club));
+  const manager = manages(club.role);
+  const requestView = requests && club.closed && manager;
+  $('tab-main').href = path + '/edit';
+  $('tab-main').hidden = !manager;
+  $('tab-backdrop').href = path + '/backdrop';
+  $('tab-backdrop').hidden = !manager;
+  $('tab-all').href = path + '/members';
+  $('tab-all').classList.toggle('active', !requestView);
+  $('tab-requests').href = path + '/members?requests=true';
+  $('tab-requests').classList.toggle('active', requestView);
+  $('tab-requests').hidden = !(club.closed && manager);
   $('tabs').hidden = false;
 }
 
@@ -257,16 +270,15 @@ try {
   const path = '/club/' + encodeURIComponent(clubRef(club));
 
   document.title = tr('Участники: {0} | Freenet', club.name);
-  $('title').textContent = admins ? tr('Руководство: {0}', club.name) : tr('Участники: {0}', club.name);
-  $('back').href = path;
-
-  $('back').textContent = tr('← к группе');
-  tabs();
-
-  // "Заявки" is for those who run a closed group; the others get the members.
   const load = requests && club.closed && manages(club.role) ? loadRequests : loadMore;
-
-  if (load === loadRequests) $('title').textContent = tr('Заявки: {0}', club.name);
+  const requestView = load === loadRequests;
+  $('title').replaceChildren(el('a', { href: path, textContent: club.name }), ' » ',
+    requestView ? tr('Заявки') : tr('Участники'));
+  const filter = $('member-filter');
+  filter.href = path + (admins ? '/members' : '/members?admins=true');
+  filter.textContent = admins ? tr('Все участники') : tr('Только администраторы');
+  filter.hidden = requestView;
+  tabs();
   $('more').addEventListener('click', load);
   await load();
 } catch (e) {

@@ -28,8 +28,8 @@
 
     <div class="page">
       <div class="page-title"><span id="title">Мои Группы</span></div>
-      <div class="page-body">
-        <div class="tabs game-tabs" id="tabs" hidden>
+      <div class="page-body groups-body">
+        <div class="tabs" id="tabs" hidden>
           <a id="tab-all" href="/groups">Группы</a>
           <a id="tab-managed" href="/groups?act=managed">Управляемые</a>
         </div>
@@ -38,11 +38,11 @@
             <input type="hidden" name="section" value="groups">
             <input type="text" name="q" id="search" maxlength="64" placeholder="Найти среди групп" aria-label="Поиск">
           </form>
-          <a class="button game-go" id="create" href="/groups/create">Создать группу</a>
+          <a class="button" id="create" href="/groups/create">Создать группу</a>
         </div>
         <div class="summary-bar" id="summary"></div>
         <div class="error" id="error" hidden></div>
-        <div class="clubs-list" id="clubs"></div>
+        <div class="clubs-list group-directory" id="clubs"></div>
         <p class="hint" id="clubs-none" hidden>Среди показанных групп такой нет.</p>
         <a class="wall-more" id="more" hidden>Показать ещё</a>
       </div>

@@ -32,14 +32,16 @@ if (club && me) {
   catch (e) { showError($('error'), e); }
 }
 $('create-room').hidden = !me?.profileCompleted || !manager;
-$('create-room').addEventListener('click', () => {
+function toggleCreate() {
   $('create-room-form').hidden = !$('create-room-form').hidden;
   if (!$('create-room-form').hidden) $('room-title').focus();
-});
+}
+$('create-room').addEventListener('click', toggleCreate);
 if (club) {
   $('room-access').append(el('option', { value: 'club', textContent: tr('участники сообщества') }));
   $('room-access').value = 'club';
   $('room-permanent').checked = true;
+  if (params.get('create') === '1' && !$('create-room').hidden) toggleCreate();
 }
 $('create-room-form').addEventListener('submit', async (event) => {
   event.preventDefault();
