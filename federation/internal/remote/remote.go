@@ -125,6 +125,9 @@ func (c *Client) Actor(ctx context.Context, id fedi.URL, signer *fedi.Account) (
 	switch {
 	case resp.StatusCode == http.StatusGone || resp.StatusCode == http.StatusNotFound:
 		return fedi.RemoteDoc{}, fedi.ErrGone
+	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+		// A refused key fetch cannot authenticate the incoming activity.
+		return fedi.RemoteDoc{}, fmt.Errorf("%w: %w", fedi.ErrBadSignature, StatusError{Code: resp.StatusCode})
 	case resp.StatusCode != http.StatusOK:
 		return fedi.RemoteDoc{}, StatusError{Code: resp.StatusCode}
 	}

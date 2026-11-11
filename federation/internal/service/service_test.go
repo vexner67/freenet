@@ -49,13 +49,15 @@ func (p posts) Post(_ context.Context, id uuid.UUID) (fedi.Post, error) {
 // resolver serves the documents of remote actors; one in gone is
 // deleted for good.
 type resolver struct {
-	docs  map[fedi.URL]fedi.RemoteDoc
-	gone  map[fedi.URL]bool
-	reads int
+	docs   map[fedi.URL]fedi.RemoteDoc
+	gone   map[fedi.URL]bool
+	reads  int
+	signer *fedi.Account
 }
 
-func (r *resolver) Actor(_ context.Context, id fedi.URL, _ *fedi.Account) (fedi.RemoteDoc, error) {
+func (r *resolver) Actor(_ context.Context, id fedi.URL, signer *fedi.Account) (fedi.RemoteDoc, error) {
 	r.reads++
+	r.signer = signer
 
 	if r.gone[id] {
 		return fedi.RemoteDoc{}, fedi.ErrGone
@@ -551,6 +553,10 @@ func TestDeletedActor(t *testing.T) {
 
 	if err = f.svc.Receive(ctx, signedBy("whatever"), del, uuid.Nil); err != nil {
 		t.Fatalf("Delete of a gone actor: %v", err)
+	}
+
+	if signer := f.resolver.signer; signer == nil || signer.UserID() != uuid.Nil {
+		t.Fatal("the shared inbox did not sign the actor fetch as the site")
 	}
 
 	if n, _ := f.followers.Count(ctx, f.user); n != 0 {

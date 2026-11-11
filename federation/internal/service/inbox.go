@@ -307,6 +307,17 @@ func (s *Service) remote(ctx context.Context, id fedi.URL, signer *fedi.Account,
 		}
 	}
 
+	// A shared inbox has no recipient key. Some servers require a signed
+	// fetch even for the actor of a Delete, so use the site's key.
+	if signer == nil {
+		account, err := s.siteAccount(ctx)
+		if err != nil {
+			return nil, false, errs.Wrap("s.siteAccount", err)
+		}
+
+		signer = account
+	}
+
 	doc, err := s.resolver.Actor(ctx, id, signer)
 	if err != nil {
 		return nil, false, errs.Wrap("s.resolver.Actor", err)

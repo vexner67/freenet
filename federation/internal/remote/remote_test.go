@@ -74,6 +74,10 @@ func TestActor(t *testing.T) {
 			_, _ = io.WriteString(w, `{"id":"x","inbox":"y","publicKey":{"id":"z","publicKeyPem":"PEM"}}`)
 		case "/users/gone":
 			w.WriteHeader(http.StatusGone)
+		case "/users/unauthorized":
+			w.WriteHeader(http.StatusUnauthorized)
+		case "/users/forbidden":
+			w.WriteHeader(http.StatusForbidden)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -102,7 +106,20 @@ func TestActor(t *testing.T) {
 	}
 
 	var status remote.StatusError
-	if _, err = c.Actor(context.Background(), fedi.URL(srv.URL+"/users/broken"), nil); !errors.As(err, &status) || status.Code != 500 {
+	for _, tt := range []struct {
+		path string
+		code int
+	}{
+		{"/users/unauthorized", http.StatusUnauthorized},
+		{"/users/forbidden", http.StatusForbidden},
+	} {
+		_, err = c.Actor(context.Background(), fedi.URL(srv.URL+tt.path), signer)
+		if !errors.Is(err, fedi.ErrBadSignature) || !errors.As(err, &status) || status.Code != tt.code {
+			t.Errorf("Actor(%s) = %v, want bad signature wrapping status %d", tt.path, err, tt.code)
+		}
+	}
+
+	if _, err = c.Actor(context.Background(), fedi.URL(srv.URL+"/users/broken"), nil); !errors.As(err, &status) || status.Code != 500 || errors.Is(err, fedi.ErrBadSignature) {
 		t.Fatalf("Actor of a broken server = %v", err)
 	}
 }
