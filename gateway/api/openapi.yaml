@@ -6658,7 +6658,7 @@ paths:
   /api/v1/canvas/cells:
     post:
       summary: Paint a cell of the canvas
-      description: 'Paints the cell `x`, `y` (from 0) with `color` (0–63). 400 for a cell or color there is not. Rate limited.'
+      description: 'Paints the cell `x`, `y` (from 0) with `color` (0–63). 400 for a cell or color there is not.'
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -6676,7 +6676,6 @@ paths:
           description: Painted
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/canvas/cells/{x}/{y}:
     parameters:

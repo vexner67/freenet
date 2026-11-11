@@ -362,9 +362,6 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		userv1.UserService_StartPetBattle_FullMethodName: cfg.PetLimits,
 		userv1.UserService_MovePetBattle_FullMethodName:  cfg.PetLimits,
 		userv1.UserService_RunPetArena_FullMethodName:    cfg.PetLimits,
-		// A person paints as fast as they click; the limit is against
-		// scripts.
-		userv1.UserService_PaintCanvas_FullMethodName: cfg.CanvasLimits,
 		// Likes and skips are cheap to make by a script: the limit keeps
 		// one from answering every card at once.
 		userv1.UserService_AnswerDating_FullMethodName: cfg.PetLimits,
