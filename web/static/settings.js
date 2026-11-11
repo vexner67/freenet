@@ -273,39 +273,34 @@ function initInterface(me) {
       el('input', { type: 'checkbox', id: 'menu-' + item, value: item, checked: !ui.hiddenMenu.includes(item) })),
     el('td', {}, el('label', { htmlFor: 'menu-' + item, textContent: text })))));
 
-  async function save(changes) {
-    const was = me.interface;
-    const updated = await api.updateInterface({
-      avatarStyle: was.avatarStyle,
-      theme: was.theme,
-      hideRating: was.hideRating,
-      nsfw: was.nsfw,
-      postView: was.postView,
-      mainPage: was.mainPage,
-      timezone: was.timezone,
-      hiddenMenu: was.hiddenMenu,
-      ...changes,
+  // The endpoint replaces the whole interface. Build each request from
+  // the last saved values, even when another form is submitted in flight.
+  let pending = Promise.resolve();
+  function save(changes, deviceStyle) {
+    const saved = pending.then(async () => {
+      const updated = await api.updateInterface({ ...me.interface, ...changes });
+      me.interface = updated.interface;
+      if (deviceStyle !== undefined) setDeviceTheme(deviceStyle);
+      applyInterface(me);
     });
-
-    Object.assign(me, updated);
-    applyInterface(me);
+    pending = saved.catch(() => {});
+    return saved;
   }
 
-  onSubmit($('interface-look'), async () => {
+  onSubmit($('interface-look'), () => {
     // A style for this device alone stays in the browser: the settings
     // keep the one they had.
     const onDevice = $('theme-device').checked;
+    const theme = $('theme-select').value;
 
-    await save({
+    return save({
       avatarStyle: $('avatar-style').value,
-      theme: onDevice ? me.interface.theme : $('theme-select').value,
+      ...(!onDevice && { theme }),
       hideRating: $('rating').value === 'hide',
       nsfw: $('nsfw').value,
       postView: $('post-view').value,
       mainPage: $('main-page').value,
-    });
-    setDeviceTheme(onDevice ? $('theme-select').value : null);
-    applyInterface(me);
+    }, onDevice ? theme : null);
   });
 
   onSubmit($('interface-timezone'), () => save({

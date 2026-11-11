@@ -104,3 +104,17 @@ test('both layouts provide the same script hooks apart from the documented layou
     assert.deepEqual(modules(html), modules(desktop), page);
   }
 });
+
+test('the blacklist keeps all settings tabs in both layouts', () => {
+  const tabsOf = (root, page) => {
+    const html = readFileSync(new URL(page, root), 'utf8');
+    const tabs = html.match(/<div class="tabs"[^>]*>([\s\S]*?)<\/div>/)[1];
+    return [...tabs.matchAll(/href="([^"]+)"/g)].map((link) => link[1]);
+  };
+
+  for (const root of [web, phone]) {
+    const settings = tabsOf(root, 'settings.html');
+    assert.ok(settings.includes('/votes'));
+    assert.deepEqual(tabsOf(root, 'blacklist.html'), settings);
+  }
+});

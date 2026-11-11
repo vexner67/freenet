@@ -28,11 +28,8 @@ const reconnectAfter = 2_000;
 // A cell painted this soon after another goes on the combo.
 const comboGap = 1_500;
 const undoSize = 200;
-const pingGap = 120;
 const liveWindow = 60_000;
 const countKey = 'freenet.canvas.count';
-// How long the brush rests after the server says too many cells.
-const limitRest = 15_000;
 
 let me = null;
 let size = 100;
@@ -84,13 +81,10 @@ function savedCount() {
 let count = savedCount();
 let combo = 0;
 let lastPaint = 0;
-let lastPing = 0;
 // Cells others painted in the last minute, as times.
 let others = [];
 // What the undo button puts back.
 const strokes = [];
-// Until when the brush rests: the server refused a cell for the limit.
-let restUntil = 0;
 
 function hudCell(id, icon, name, tag = 'div') {
   const node = el(tag, { className: 'game-hud-cell', id: `hud-${id}`, type: tag === 'button' ? 'button' : undefined },
@@ -188,35 +182,15 @@ function painted({ x, y, color: value }) {
   context.fillStyle = canvasColors[value];
   context.fillRect(x, y, 1, 1);
   arrived?.push({ x, y, color: value });
-  if (!unanswered.has(`${x},${y}`) && Date.now() - lastPaint > 400) othersPainted(x, y);
-}
-
-// othersPainted counts a cell of somebody else and rings it on the canvas,
-// so that the canvas is seen alive.
-function othersPainted(x, y) {
   const now = Date.now();
-
-  others.push(now);
-  showLive();
-  if (now - lastPing < pingGap) return;
-
-  lastPing = now;
-  ring(x, y, 'canvas-ping');
+  if (!unanswered.has(`${x},${y}`) && now - lastPaint > 400) {
+    others.push(now);
+    showLive();
+  }
 }
 
 function cellPixels() {
   return (frame.clientWidth * view.zoom) / size;
-}
-
-// ring is a mark over a cell that goes by itself.
-function ring(x, y, className) {
-  const side = cellPixels();
-  const mark = el('span', { className });
-
-  mark.style.left = `${view.x + x * side + side / 2}px`;
-  mark.style.top = `${view.y + y * side + side / 2}px`;
-  mark.addEventListener('animationend', () => mark.remove());
-  frame.append(mark);
 }
 
 function showStatus() {
@@ -391,7 +365,6 @@ async function paint({ x, y }, value = color, undoable = true) {
     if (strokes.length > undoSize) strokes.shift();
   } catch (e) {
     taken = false;
-    if (e.status === 429) restUntil = Date.now() + limitRest;
     if (unanswered.get(key) === mark) {
       cells = setCell(cells, x, y, before);
       draw();
@@ -408,14 +381,12 @@ function cellColor(x, y) {
 }
 
 // brush paints a cell at once, and the server is asked after the cell is
-// on the canvas; the rewards come when it takes the cell, so a cell the
-// limit refused counts for nothing. While the limit lasts the brush rests.
+// on the canvas. Only a confirmed paint counts towards the rank.
 function brush(cell) {
   const value = inHand();
-  if (cellColor(cell.x, cell.y) === value || Date.now() < restUntil) return;
+  if (cellColor(cell.x, cell.y) === value) return;
 
   if (tool === 'brush') remember(value);
-  ring(cell.x, cell.y, 'canvas-pop');
   paint(cell, value).then((taken) => { if (taken) rewarded(); }).catch((e) => showError($('error'), e));
 }
 
