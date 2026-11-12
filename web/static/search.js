@@ -124,8 +124,22 @@ async function loadMore() {
   }
 }
 
+// holdHeight keeps the list as tall as it has been while the page is
+// scrolled: fewer results would make the page shorter, and the browser then
+// scrolls it up under the field. At the top of the page shrinking moves
+// nothing, so there the list takes its own height again.
+function holdHeight() {
+  const list = $('people');
+  if (scrollY === 0) {
+    list.style.minHeight = '';
+    return;
+  }
+  list.style.minHeight = `${Math.max(list.offsetHeight, parseFloat(list.style.minHeight) || 0)}px`;
+}
+
 // find searches anew; what is on the screen stays, dimmed, until the answer.
 async function find() {
+  holdHeight();
   asked += 1;
   const mine = asked;
   const active = Boolean(query || isFiltered()) && !guest();
@@ -243,6 +257,7 @@ $('search-form').addEventListener('submit', (event) => {
 });
 
 $('more').addEventListener('click', loadMore);
+window.addEventListener('scroll', () => { if (scrollY === 0) $('people').style.minHeight = ''; }, { passive: true });
 
 // The examples of the hints are one press from being searched.
 for (const example of document.querySelectorAll('.search-example')) {

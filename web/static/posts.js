@@ -143,8 +143,9 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   // are under the post, and with none the field opens; closing them,
   // which openvk has not, goes next.
   function menuLinks() {
-    // The news has openvk's "Комментировать" alone.
-    const closing = ownsWall() && !feed
+    // The news has openvk's "Комментировать" alone; the page of the post
+    // has closing in its column "Действия", as openvk's Post.latte.
+    const closing = ownsWall() && !feed && withCommentsLink
       ? el('a', { textContent: post.commentsClosed ? tr('Открыть комментарии') : tr('Закрыть комментарии'), onclick: toggleComments })
       : null;
 
@@ -160,7 +161,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   // out of the news closing the comments and the link to the post too.
   function oldLinks() {
     const links = changes().map((c) => el('a', { textContent: c.text, onclick: c.run }));
-    if (ownsWall() && !feed) links.push(el('a', { textContent: post.commentsClosed ? tr('Открыть комментарии') : tr('Закрыть комментарии'), onclick: toggleComments }));
+    if (ownsWall() && !feed && withCommentsLink) links.push(el('a', { textContent: post.commentsClosed ? tr('Открыть комментарии') : tr('Закрыть комментарии'), onclick: toggleComments }));
     if (withCommentsLink) links.push(commentsLink(post));
     links.push(share);
     if (!feed) links.push(copyLink(post));

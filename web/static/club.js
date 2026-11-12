@@ -191,7 +191,7 @@ async function showRooms(club, roomList) {
 
     const all = `/rooms?club=${encodeURIComponent(club.id)}`;
     const count = rooms.length + (nextCursor ? '+' : '');
-    const create = all + '&create=1';
+    const create = `/rooms/create?club=${encodeURIComponent(club.id)}`;
     if (mobileMenu) {
       $('rooms-link').href = rooms.length ? all : create;
       $('club-rooms-count').textContent = count;

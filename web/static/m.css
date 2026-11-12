@@ -1417,7 +1417,7 @@ input:not([type]), select, textarea {
 }
 input[type="number"].price-input { display: inline-block; width: 90px; min-height: 32px; padding: 4px 6px; }
 select { padding-right: 24px; background: var(--back-fff) url("/static/icons/block-arrow.svg") no-repeat right 4px center; }
-input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--line-8b8b8b); box-shadow: 0 0 0 2px var(--back-dae1e8); }
+input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--line-8b8b8b); }
 input[type="checkbox"], input[type="radio"] { width: 18px; height: 18px; margin: 0 6px 0 0; vertical-align: -4px; }
 textarea { resize: none; }
 label { cursor: pointer; }
@@ -3259,7 +3259,6 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 
 /* Rooms use the same quiet blocks and controls as the profile. */
 .room-toolbar { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 8px 0; }
-.room-check { display: flex; gap: 6px; align-items: center; }
 .room-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 8px; border-bottom: 1px solid var(--line-ccc); }
 .room-row > div { min-width: 0; overflow-wrap: anywhere; }
 .room-row > div > a { font-weight: bold; }
@@ -3285,7 +3284,7 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .room-member-state { height: 13px; margin: 1px 0; }
 .room-member-tools { display: grid; gap: 1px; visibility: hidden; }
 .room-member:hover .room-member-tools, .room-member:focus-within .room-member-tools { visibility: visible; }
-.room-main { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 10px; align-items: start; }
+.room-main { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 10px; align-items: start; }
 .room-screen-panel, .room-chat-panel { min-width: 0; }
 .room-now { margin: 6px 0 10px; }
 .room-now-title { min-height: 14px; overflow: hidden; font-weight: bold; white-space: nowrap; text-overflow: ellipsis; }
@@ -3303,12 +3302,12 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .room-chat-panel { display: flex; flex-direction: column; height: 460px; border-left: 1px solid var(--line-dedede); padding-left: 10px; }
 .room-chat { flex: 1; min-height: 0; overflow-y: auto; overflow-wrap: anywhere; }
 .room-chat-empty { margin: 6px 0; }
-.room-chat-message { padding: 5px 0; border-bottom: 1px solid var(--line-dedede); }
-.room-chat-head { display: flex; align-items: baseline; gap: 4px; }
-.room-chat-head > a { min-width: 0; overflow: hidden; font-weight: bold; white-space: nowrap; text-overflow: ellipsis; }
-.room-chat-date { margin-left: auto; flex: none; color: var(--text-888); font-size: 10px; }
-.room-chat-text { margin-top: 2px; white-space: pre-wrap; }
-.room-chat-message .sticker { max-width: 96px; }
+/* A message is one line, as in the chats of the old sites: the bold name,
+   then the words, wrapping under the line from its start. */
+.room-chat-message { padding: 2px 0; line-height: 1.4; }
+.room-chat-author { font-weight: bold; }
+.room-chat-text { white-space: pre-wrap; }
+.room-chat-message .sticker { display: block; max-width: 96px; margin: 2px 0 2px 8px; }
 .room-chat-form { flex: none; padding-top: 6px; border-top: 1px solid var(--line-ccc); }
 .room-chat-form textarea { box-sizing: border-box; width: 100%; height: 44px; resize: none; }
 .room-chat-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
@@ -3316,8 +3315,6 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .room-video-slot { aspect-ratio: 16 / 9; width: 100%; margin: 6px 0 0; background: var(--back-f0f0f0); }
 .room-youtube-form { display: flex; gap: 6px; margin: 8px 0; }
 .room-youtube-form input { min-width: 0; flex: 1; }
-.room-form table.form { width: 100%; }
-.room-form input.text, .room-form select { box-sizing: border-box; width: 100%; }
 .room-media-host { position: fixed; z-index: 3; overflow: hidden; background: var(--back-fff); }
 .room-media-host.room-media-away { left: -10000px !important; top: 0 !important; width: 320px !important; height: 180px !important; }
 .room-media-host .room-player { position: static; inset: auto; width: 100%; height: 100%; max-width: none; margin: 0; padding: 0; border: 0; box-shadow: none; background: var(--back-fff); }
@@ -3451,14 +3448,13 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 }
 .text-button:hover { text-decoration: underline; }
 
+/* The keyboard's ring is for what is clicked: a field typed into keeps
+   the grey line of the old sites, never the blue of the system. */
 a[href]:focus-visible,
 button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
+input:is([type="checkbox"], [type="radio"], [type="range"]):focus-visible,
 summary:focus-visible,
-[tabindex]:focus-visible,
-.header-search-box input[type="search"]:focus-visible {
+[tabindex]:focus-visible {
   outline: 2px solid Highlight;
   outline-offset: 2px;
 }
@@ -3486,3 +3482,29 @@ summary:focus-visible,
 .html-write .html-write-label { display: block; margin: 6px 0 3px; color: var(--text-777); }
 .html-write input.text { width: 100%; box-sizing: border-box; }
 .modal-body textarea.html-code { display: block; width: 100%; height: 260px; box-sizing: border-box; font-family: monospace; font-size: 16px; resize: none; overflow-y: auto; }
+
+/* A room in the list: up to four photos of its people in the place of a
+   club's picture, an empty grey square while nobody is in. */
+.room-cover {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 37px;
+  gap: 1px;
+  flex-shrink: 0;
+  width: 75px;
+  height: 75px;
+  background: var(--back-ececec);
+}
+.room-cover img, .list-cover.room-cover img { width: 100%; height: 100%; }
+.room-cover.single { grid-template-columns: 1fr; grid-auto-rows: 75px; }
+
+/* "Пригласить в комнату": the friends to pick from lie over the window,
+   and the line of who is picked or invited keeps its place. */
+.room-invite-input { position: relative; flex: 1; }
+.room-invite-input .modal-input { box-sizing: border-box; width: 100%; margin: 0; }
+.room-invite-input .recipient-options { position: absolute; z-index: 2; left: 0; right: 0; }
+.room-invite-place { min-height: 48px; }
+.room-invite-who { display: flex; align-items: center; gap: 6px; }
+
+/* On a phone closing the comments is in "⋯" of the post. */
+.m .post-acts { display: none; }

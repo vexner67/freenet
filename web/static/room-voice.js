@@ -2,7 +2,10 @@
 let library;
 const sdk = () => (library ??= import('/static/vendor/livekit-client.mjs'));
 
-export async function joinVoice(media, { root, mutedIDs = [], memberIDs = [], onSpeaking = () => {}, onState = () => {}, onMuted = () => {} }) {
+// joinVoice connects to the voice of a room. The microphone stays off
+// unless microphone is true (a reconnect of one who was speaking): one
+// enters a room listening and turns it on oneself.
+export async function joinVoice(media, { root, mutedIDs = [], memberIDs = [], microphone = false, onSpeaking = () => {}, onState = () => {}, onMuted = () => {} }) {
   const { Room, RoomEvent, Track } = await sdk();
   const blocked = new Set(mutedIDs);
   const silenced = new Set();
@@ -30,6 +33,16 @@ export async function joinVoice(media, { root, mutedIDs = [], memberIDs = [], on
   room.on(RoomEvent.TrackUnmuted, (publication, participant) => {
     if (participant === room.localParticipant && publication.kind === Track.Kind.Audio) onMuted(false);
   });
+  // wanted is what was asked last: a prompt answered after "Выключить
+  // микрофон" was pressed must not turn the microphone back on.
+  let wanted = microphone;
+  const enable = () => room.localParticipant.setMicrophoneEnabled(true)
+    .then(async () => {
+      if (ended) return;
+      if (!wanted) { await room.localParticipant.setMicrophoneEnabled(false); onMuted(true); return; }
+      onMuted(false);
+    })
+    .catch(() => { if (!ended) { onMuted(true); onState('microphone_denied'); } });
   try {
     await room.connect(media.url, media.token, { autoSubscribe: false });
     for (const participant of room.remoteParticipants.values()) {
@@ -38,8 +51,8 @@ export async function joinVoice(media, { root, mutedIDs = [], memberIDs = [], on
     room.startAudio().catch(() => { if (!ended) onState('audio_blocked'); });
     // A permission prompt can stay open indefinitely. Presence, chat and the
     // shared screen must be ready while the browser waits for the answer.
-    room.localParticipant.setMicrophoneEnabled(true).then(() => { if (!ended) onMuted(false); })
-      .catch(() => { if (!ended) { onMuted(true); onState('microphone_denied'); } });
+    if (microphone) enable();
+    else onMuted(true);
   } catch (error) {
     ended = true;
     await room.disconnect();
@@ -53,7 +66,11 @@ export async function joinVoice(media, { root, mutedIDs = [], memberIDs = [], on
       room.removeAllListeners();
       root.replaceChildren();
     },
-    async mute(value) { await room.localParticipant.setMicrophoneEnabled(!value); onMuted(value); },
+    async mute(value) {
+      wanted = !value;
+      if (value) { await room.localParticipant.setMicrophoneEnabled(false); onMuted(true); return; }
+      await enable();
+    },
     async startAudio() { await room.startAudio(); },
     silence(id, value) {
       if (value) silenced.add(id); else silenced.delete(id);

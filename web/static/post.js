@@ -7,7 +7,7 @@ import { initGraffiti } from './graffiti.js';
 import { commentNode } from './comments.js';
 import { genitiveName, replyMention } from './labels.js';
 import { $, clubRef, el, externalLink, fullName, pagePath, renderChrome, showError, hideError, autosize } from './layout.js';
-import { postNode, remotePostNode } from './posts.js';
+import { postNode, remotePostNode, wallOwnerID } from './posts.js';
 import { tr } from './i18n.js';
 
 // openvk's limit of a post or a comment; the counter shows near the end.
@@ -253,6 +253,36 @@ function initComments(post, me, moderates, source = localComments) {
   return loadMore();
 }
 
+// showActions is the column "Действия" by the comments, as openvk's
+// Post.latte: the owner of the wall closes the comments there and opens
+// them again. On a phone it is "⋯" of the post.
+function showActions(post) {
+  const link = $('toggle-comments');
+  let busy = false;
+  const render = () => { link.textContent = post.commentsClosed ? tr('Открыть комментарии') : tr('Закрыть комментарии'); };
+
+  link.addEventListener('click', async () => {
+    if (busy) return;
+    busy = true;
+    hideError($('comments-error'));
+    try {
+      if (post.commentsClosed) await api.openComments(post.id);
+      else await api.closeComments(post.id);
+      post.commentsClosed = !post.commentsClosed;
+      $('post').dispatchEvent(new CustomEvent('commentsclosed', { detail: post.commentsClosed }));
+    } catch (e) {
+      showError($('comments-error'), e);
+    } finally {
+      busy = false;
+    }
+  });
+  // "⋯" of the post on a phone closes them too.
+  $('post').addEventListener('commentsclosed', render);
+  render();
+  $('post-acts').hidden = false;
+  $('content').classList.add('with-acts');
+}
+
 async function removePost(post) {
   hideError($('error'));
 
@@ -302,6 +332,7 @@ try {
       withCommentsLink: false,
     }));
     $('content').hidden = false;
+    if (moderates || (me && wallOwnerID(post) === me.id)) showActions(post);
 
     await initComments(post, me, moderates);
   } else {

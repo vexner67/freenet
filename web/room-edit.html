@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=820">
+  <title>Настройки комнаты | Freenet</title>
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#3e3e3e">
+  <link rel="stylesheet" href="/static/palette.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/theme.js"></script>
+  <script type="module" src="/static/room-edit.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-word">freenet</span></a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Загрузка…</span></div>
+      <div class="page-body">
+        <div class="error" id="load-error" hidden></div>
+        <form class="container-gray" id="form" hidden>
+          <div class="error" id="error" hidden></div>
+          <div class="notice" id="saved" hidden>Изменения сохранены.</div>
+          <h4>Основная информация</h4>
+          <table class="form">
+            <tr>
+              <th><label class="required" for="name">Название:</label></th>
+              <td class="control"><input type="text" id="name" maxlength="64" required></td>
+            </tr>
+            <tr>
+              <th><label for="kind">Вид:</label></th>
+              <td class="control">
+                <select id="kind">
+                  <option value="talk">разговор</option>
+                  <option value="watch">кино</option>
+                  <option value="listen">музыка</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <th><label for="access">Кто может войти:</label></th>
+              <td class="control">
+                <select id="access">
+                  <option value="everyone">все желающие</option>
+                  <option value="friends">друзья</option>
+                  <option value="link">по ссылке</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <th><label for="control">Кто управляет экраном:</label></th>
+              <td class="control">
+                <select id="control">
+                  <option value="owner">только создатель</option>
+                  <option value="everyone">все участники</option>
+                </select>
+              </td>
+            </tr>
+            <tr>
+              <th>Комната:</th>
+              <td class="control" id="permanent-text"></td>
+            </tr>
+            <tr>
+              <th></th>
+              <td class="control"><button class="button" type="submit" id="submit">Сохранить</button></td>
+            </tr>
+          </table>
+          <div class="settings-delete">Вы также можете <a id="close">закрыть комнату</a>.</div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p class="footer-languages"><a class="footer-language" href="/language?lg=ru" title="Русский"><img src="/static/flags/ru.gif" alt="Русский"></a><a class="footer-language" href="/language?lg=en" title="English"><img src="/static/flags/gb.gif" alt="English"></a><a href="/language">all languages &raquo;</a></p>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

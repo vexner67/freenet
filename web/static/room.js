@@ -1,10 +1,12 @@
 import { api, currentUser, started } from './api.js';
-import { $, avatarURL, el, fullName, keepFocus, pagePath, renderChrome, verifiedMark } from './layout.js';
+import { $, avatarURL, el, fullName, hideError, keepFocus, pagePath, renderChrome, showError as showErrorIn, verifiedMark } from './layout.js';
+import { button, openModal } from './modal.js';
+import { recipientPicker } from './recipient.js';
 import { audioArtist, audioTime, audioTitle, errorText, formatPostDate } from './labels.js';
 import { pickRoomAudio } from './audio.js';
 import { initStickers, stickerNode } from './stickers.js';
 import { roomRuntime } from './room-runtime.js';
-import { roomKind } from './room-list.js';
+import { roomAccess, roomKind } from './room-list.js';
 import { roomYouTubeID } from './room-sync.js';
 import { inCall } from './calls.js';
 import { tr } from './i18n.js';
@@ -99,11 +101,12 @@ function renderChat() {
   const list = $('room-chat');
   const bottom = list.scrollHeight - list.scrollTop - list.clientHeight < 50;
   const old = list.scrollTop;
-  list.replaceChildren(...messages.map((message) => el('div', { className: 'room-chat-message' },
-    el('div', { className: 'room-chat-head' },
-      el('a', { href: pagePath(message.author), textContent: fullName(message.author) }), verifiedMark(message.author),
-      el('span', { className: 'room-chat-date', textContent: formatPostDate(message.createdAt) })),
-    message.sticker ? stickerNode(message.sticker) : el('div', { className: 'room-chat-text', textContent: message.text }))));
+  // A line as in the chats of the old sites: the name in bold and the words
+  // after it, so that a long name or text wraps under the line, not in a
+  // narrow column; the time is under the pointer.
+  list.replaceChildren(...messages.map((message) => el('div', { className: 'room-chat-message', title: formatPostDate(message.createdAt) },
+    el('a', { className: 'room-chat-author', href: pagePath(message.author), textContent: fullName(message.author) }), verifiedMark(message.author),
+    message.sticker ? stickerNode(message.sticker) : el('span', { className: 'room-chat-text', textContent: `: ${message.text}` }))));
   if (bottom) list.scrollTop = list.scrollHeight; else list.scrollTop = old;
 }
 
@@ -156,6 +159,7 @@ function render() {
   $('room-microphone').classList.toggle('room-mic-on', active() && !live.muted);
   $('room-invite').hidden = !active();
   $('room-settings').hidden = room.ownerId !== me?.id;
+  $('room-settings').href = `/room/${encodeURIComponent(id)}/edit`;
   $('room-close').hidden = room.ownerId !== me?.id;
   $('room-chat-form').hidden = !active();
   $('room-chat-empty').hidden = active() && live.chat.length > 0;
@@ -178,6 +182,50 @@ function render() {
   dock();
 }
 
+// invite is "Пригласить в комнату", the window of "Повысить рейтинг": what
+// the room is, whom to invite (one's friends to pick from while the field
+// is empty) and "Пригласить"; the one invited gets a notification.
+function invite() {
+  const room = current();
+  const modal = openModal(tr('Пригласить в комнату'), { tag: 'form' });
+  const error = el('div', { className: 'error', hidden: true });
+  const to = el('input', { type: 'text', className: 'modal-input', required: true, autocomplete: 'off', spellcheck: false, ariaLabel: tr('Кого пригласить') });
+  const people = el('div', { className: 'recipient-options', hidden: true });
+  const shown = el('div', { className: 'rating-cost room-invite-who', hidden: true });
+  const picker = recipientPicker({ to, people, shown, me, showAvatar: true });
+  const done = el('div', { className: 'rating-cost', textContent: '\u00a0' });
+  to.addEventListener('input', () => { done.textContent = '\u00a0'; });
+
+  modal.body.append(
+    el('p', { textContent: tr('Комната «{0}»: {1} из {2}.', room.title, room.members.length, room.maxMembers) }),
+    el('p', { className: 'rating-balance' }, tr('Кто может войти: '), el('span', { textContent: roomAccess(room.access) })),
+    el('label', { className: 'rating-field' }, tr('Кого пригласить:'), el('span', { className: 'room-invite-input' }, to, people)),
+    el('div', { className: 'room-invite-place' }, shown, done),
+    el('p', { className: 'hint', textContent: tr('Начните вводить имя или никнейм или выберите друга из списка. Приглашённый получит уведомление со ссылкой на комнату.') }),
+    error,
+  );
+  const submit = button(tr('Пригласить'), null, { type: 'submit' });
+  modal.actions.append(submit, button(tr('Закрыть'), modal.close, { secondary: true }));
+
+  modal.box.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    hideError(error);
+    submit.disabled = true;
+    try {
+      const user = picker.found() ?? await picker.lookUp();
+      if (!user) { showErrorIn(error, tr('Получатель не найден.')); return; }
+      await api.roomMember(id, 'invite', user.id);
+      picker.clear();
+      done.textContent = tr('Приглашение отправлено: {0}.', fullName(user));
+    } catch (e) {
+      showErrorIn(error, e);
+    } finally {
+      submit.disabled = false;
+    }
+  });
+  to.focus();
+}
+
 // tell says a line in the status of the bar until the room next changes.
 function tell(text) {
   $('room-status').textContent = text;
@@ -197,40 +245,13 @@ $('room-copy').addEventListener('click', () => run(async () => {
   catch { window.prompt(tr('Ссылка на комнату'), link); }
 }));
 $('room-help').addEventListener('click', () => { $('room-help-text').hidden = !$('room-help-text').hidden; });
-$('room-settings').addEventListener('click', () => {
-  $('room-settings-form').hidden = !$('room-settings-form').hidden;
-  if ($('room-settings-form').hidden) return;
-  const room = current();
-  $('room-edit-title').value = room.title; $('room-edit-kind').value = room.kind;
-  if (room.clubId && !$('room-edit-access').querySelector('option[value="club"]')) $('room-edit-access').append(el('option', { value: 'club', textContent: tr('участники сообщества') }));
-  $('room-edit-access').value = room.access; $('room-edit-control').value = room.control;
-});
-$('room-settings-form').addEventListener('submit', (event) => {
-  event.preventDefault();
-  run(async () => {
-    const result = await api.updateRoom(id, { title: $('room-edit-title').value, kind: $('room-edit-kind').value, access: $('room-edit-access').value, control: $('room-edit-control').value });
-    view = result.room; $('room-settings-form').hidden = true;
-    if (!active()) render();
-  });
-});
 $('room-close').addEventListener('click', () => run(async () => {
   if (!window.confirm(tr('Закрыть комнату для всех участников?'))) return;
   await api.closeRoom(id);
   if (active()) await runtime.leave();
   location.assign('/rooms');
 }));
-$('room-invite').addEventListener('click', () => {
-  $('room-invite-form').hidden = !$('room-invite-form').hidden;
-  if (!$('room-invite-form').hidden) $('room-invite-name').focus();
-});
-$('room-invite-form').addEventListener('submit', (event) => {
-  event.preventDefault(); run(async () => {
-    const user = await api.profile($('room-invite-name').value.trim());
-    await api.roomMember(id, 'invite', user.id);
-    $('room-invite-name').value = '';
-    tell(tr('Приглашение отправлено.'));
-  });
-});
+$('room-invite').addEventListener('click', invite);
 $('room-chat-form').addEventListener('submit', (event) => {
   event.preventDefault();
   const text = $('room-chat-text').value.trim();
@@ -269,6 +290,12 @@ $('room-chat-text').addEventListener('keydown', (event) => {
 });
 const cancel = runtime.onChange((raw) => { live = JSON.parse(raw); render(); });
 try { view = (await wanted).room; render(); } catch (e) { showError(e); }
+// The one who has just made the room is in it at once (?join=1 of
+// "Создать комнату"); the address loses the mark, so a reload does not join.
+if (new URLSearchParams(location.search).get('join') === '1') {
+  history.replaceState(null, '', location.pathname);
+  if (view && me && !active() && !inCall()) await run(() => runtime.join(id, me.id));
+}
 const ticker = setInterval(() => { if (!document.hidden) renderNow(); }, 1000);
 const poll = setInterval(() => { if (!document.hidden && !active()) api.room(id).then((result) => { view = result.room; render(); }).catch(showError); }, 15_000);
 const resize = new ResizeObserver(dock); resize.observe($('room-video-slot'));

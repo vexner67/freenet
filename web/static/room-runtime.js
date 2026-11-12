@@ -93,9 +93,11 @@ function createRuntime() {
     if (send && previous) await api.leaveRoom(previous.id);
   }
 
-  async function connect(media, mutedIDs, members, expected) {
+  // connect joins the voice; microphone says whether to speak at once, as
+  // one did before a reconnect. A new entry starts with it off.
+  async function connect(media, mutedIDs, members, expected, microphone = false) {
     const { joinVoice } = await import('/static/room-voice.js');
-    const made = await joinVoice(media, { root: audio, mutedIDs, memberIDs: members.map((m) => m.user.id),
+    const made = await joinVoice(media, { root: audio, mutedIDs, memberIDs: members.map((m) => m.user.id), microphone,
       onSpeaking: (ids) => { speaking = ids; emit(); },
       onMuted: (value) => { muted = value; emit(); },
       onState: (value) => {
@@ -121,9 +123,10 @@ function createRuntime() {
       const media = await api.roomToken(id);
       if (expected !== generation || !joined) return;
       const old = voice;
+      const talking = !muted;
       voice = null;
       await old?.leave();
-      await connect(media.media, blockedIDs, room.members, expected);
+      await connect(media.media, blockedIDs, room.members, expected, talking);
       await refresh();
     } catch (e) {
       if (expected !== generation) return;
@@ -276,7 +279,12 @@ function createRuntime() {
       catch { /* A malformed tab flag grants nobody entry. */ }
     }
   });
-  async function mute(value) { await voice?.mute(value); muted = value; emit(); }
+  // mute turns the microphone off or on; the voice says what it became
+  // (onMuted), so a refused permission leaves it off.
+  async function mute(value) {
+    if (!voice) return;
+    await voice.mute(value);
+  }
   emit();
   return {
     snapshot, join, active: () => joined, leave: () => dispose(), mute, command,

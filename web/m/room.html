@@ -36,22 +36,6 @@
         </div>
         <p class="hint" id="room-help-text" hidden>Разговор в комнате идёт через сервер Freenet. Личные звонки зашифрованы так, что сервер их не слышит. Запись разговоров не ведётся.</p>
         <div class="error" id="error" hidden></div>
-        <form id="room-settings-form" class="container-gray room-form" hidden>
-          <table class="form">
-            <tr><th scope="row"><label for="room-edit-title">Название:</label></th><td><input class="text" id="room-edit-title" maxlength="64" required></td></tr>
-            <tr><th scope="row"><label for="room-edit-kind">Вид:</label></th><td><select id="room-edit-kind"><option value="talk">разговор</option><option value="watch">кино</option><option value="listen">музыка</option></select></td></tr>
-            <tr><th scope="row"><label for="room-edit-access">Кто может войти:</label></th><td><select id="room-edit-access"><option value="everyone">все желающие</option><option value="friends">друзья</option><option value="link">по ссылке</option></select></td></tr>
-            <tr><th scope="row"><label for="room-edit-control">Кто управляет экраном:</label></th><td><select id="room-edit-control"><option value="owner">только я</option><option value="everyone">все участники</option></select></td></tr>
-            <tr><td></td><td><button class="button" type="submit">Сохранить</button></td></tr>
-          </table>
-        </form>
-        <form id="room-invite-form" class="container-gray room-form" hidden>
-          <table class="form">
-            <tr><th scope="row"><label for="room-invite-name">Никнейм:</label></th><td><input class="text" id="room-invite-name" maxlength="32" required spellcheck="false" autocomplete="off"></td></tr>
-            <tr><td></td><td><button class="button" type="submit">Пригласить</button></td></tr>
-          </table>
-        </form>
-
         <div class="room-bar" id="room-bar">
           <button class="button" type="button" id="room-join" hidden>Войти в комнату</button>
           <span id="room-guest" hidden>Чтобы войти в комнату, <a href="/">войдите на сайт</a>.</span>

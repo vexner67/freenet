@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Комнаты | Freenet</title>
-  <meta name="description" content="О социальной сети Freenet: для чего она, что в ней можно делать и сколько в ней людей, групп и записей.">
+  <meta name="description" content="Комнаты Freenet: разговор, кино и музыка вместе с друзьями.">
   <link rel="icon" href="/static/favicon.png" sizes="32x32">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
@@ -29,23 +29,23 @@
 
     <div class="page">
       <div class="page-title"><span id="title">Комнаты</span></div>
-      <div class="page-body">
-        <div class="gray-bar"><button class="button" id="create-room" type="button">Создать комнату</button></div>
+      <div class="page-body groups-body">
+        <div class="tabs" id="tabs" hidden>
+          <a id="tab-all" href="/rooms">Комнаты</a>
+          <a id="tab-managed" href="/rooms?act=managed">Управляемые</a>
+        </div>
+        <div class="gray-bar" id="gray-bar" hidden>
+          <div class="gray-bar-search">
+            <input type="text" id="search" maxlength="64" placeholder="Найти среди комнат" aria-label="Поиск">
+          </div>
+          <a class="button" id="create" href="/rooms/create" hidden>Создать комнату</a>
+        </div>
+        <div class="summary-bar" id="summary"></div>
         <div class="error" id="error" hidden></div>
-        <form id="create-room-form" class="container-gray room-form" hidden>
-          <h4>Новая комната</h4>
-          <label for="room-title">Название</label><input id="room-title" maxlength="64" required>
-          <label for="room-kind">Вид</label><select id="room-kind"><option value="talk">разговор</option><option value="watch">кино</option><option value="listen">музыка</option></select>
-          <label for="room-access">Кто может войти</label><select id="room-access"><option value="everyone">все желающие</option><option value="friends">друзья</option><option value="link">по ссылке</option></select>
-          <label for="room-control">Кто управляет экраном</label><select id="room-control"><option value="owner">только я</option><option value="everyone">все участники</option></select>
-          <label class="room-check"><input id="room-permanent" type="checkbox">Постоянная комната</label>
-          <button class="button" id="create-submit" type="submit">Создать</button>
-        </form>
-        <div class="section-title">Сейчас в комнатах</div>
-        <div id="rooms-list"></div><p class="hint" id="rooms-empty" hidden>Сейчас нет живых комнат. Создайте комнату и позовите друзей.</p>
+        <div class="group-directory" id="rooms-list" hidden></div>
+        <p class="hint" id="rooms-none" hidden>Среди показанных комнат такой нет.</p>
+        <p class="hint rooms-empty" id="rooms-empty" hidden></p>
         <a id="more" class="wall-more" hidden>Показать ещё</a>
-        <section id="permanent-block" hidden><div class="section-title">Мои постоянные комнаты</div><div id="permanent-rooms"></div></section>
-        <section id="friends-block" hidden><div class="section-title">Постоянные комнаты друзей</div><div id="friends-rooms"></div></section>
       </div>
     </div>
   </div>
