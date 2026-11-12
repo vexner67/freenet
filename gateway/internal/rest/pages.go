@@ -63,6 +63,7 @@ func registerPages(mux *http.ServeMux, dir string) {
 	// would open the page of a person named so.
 	mux.Handle("GET /favicon.ico", cached(cacheRevalidate, asset(dir, "favicon.png")))
 	mux.Handle("GET /sw.js", site.worker())
+	mux.HandleFunc("GET "+sandboxPath, sandbox)
 
 	mux.Handle("GET /{$}", site.page(dir, "index.html"))
 	mux.Handle("GET /edit", site.page(dir, "edit.html"))
