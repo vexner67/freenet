@@ -4,9 +4,8 @@
 // and the key messages are sealed with), "Приватность" (?act=privacy:
 // who sees the page and its parts and who writes to you) and "Внешний вид"
 // (?act=interface: "Интерфейс", "Часовой пояс" and "Левое меню", each
-// saved by its own button, as openvk's); "Чёрный список" and "Голоса"
-// (/votes, votes.js; once ?act=finance) are pages of their own, linked
-// among the tabs in openvk's order; ?act=vouchers leads to "Админ-панель".
+// saved by its own button, as openvk's); the blacklist has its own page
+// linked among the tabs. ?act=vouchers leads to "Админ-панель".
 // The tabs change without a new page; a saved form answers over the page,
 // so that nothing under the reader moves.
 
@@ -512,8 +511,6 @@ function listenTabs() {
 const me = await currentUser().catch(() => null);
 if (asked === 'vouchers') {
   location.replace(me?.admin ? '/admin/vouchers' : '/settings');
-} else if (asked === 'finance' || asked === 'finance.top-up') {
-  location.replace(asked === 'finance' ? '/votes' : '/votes?act=top-up');
 } else if (!me) {
   location.replace('/');
 } else if (!me.profileCompleted) {

@@ -11,8 +11,7 @@
 // the top of "Ракетка", and the antes and the pays of "Покер"), "Ставки" (/admin/bets: the
 // events people stake on, a new one, and closing, resolving, cancelling
 // and deleting them), "Бизнес" (/admin/business: the prices of the
-// enterprises and the goods, the rules of the market), "Банк" (/admin/bank: the rates and limits of
-// deposits and loans), "Шахта" (/admin/mine: the ores, the energy and the
+// enterprises and the goods, the rules of the market), "Шахта" (/admin/mine: the ores, the energy and the
 // events of a dig), "Питомцы" (/admin/pets: the prices of the pets and their
 // fights)
 // "Реклама" (/admin/ads: the ads of the global feed, the form of a new
@@ -24,7 +23,7 @@
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, handsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, bankVotes, firmKindName, goodName, formatDateTime, handleOf, titleIconPath, titleIcons, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, betEventState, foreignAgentText, adminEconomy, adminOverview, adRate, betMultiplier, betOddsField, aimReturn, typedOdds, wagersCount, casinoChance, casinoChances, casinoPayout, casinoReturn, rocketsCount, handsCount, spinsCount, votesCount, peopleCount, banEnd, banUntil, errorText, genitiveName, giftBackdrops, giftCollections, giftCosts, giftImage, giftModels, giftNames, giftPrice, giftSymbols, editionLeft, energyWait, groupedVotes, mineChance, oreName, firmKindName, goodName, formatDateTime, handleOf, titleIconPath, titleIcons, typedMineChance, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 import { tr } from './i18n.js';
 import { lookReady } from './admin-look.js';
 import { remember } from './newyear.js';
@@ -131,12 +130,11 @@ async function summary({ about, treasury }) {
   economySettings(economy);
 }
 
-// economySettings is "Бонус и комиссии": the daily bonus and the fees in
-// percent the user service takes.
+// economySettings edits the fees and taxes in percent.
 function economySettings(economy) {
   const form = $('economy-form');
   const save = form.querySelector('button[type=submit]');
-  const fields = { bonus: 'economy-bonus', transferFee: 'economy-fee', stickerTax: 'economy-tax', primeStickerTax: 'economy-prime-tax' };
+  const fields = { transferFee: 'economy-fee', stickerTax: 'economy-tax', primeStickerTax: 'economy-prime-tax' };
   for (const [key, id] of Object.entries(fields)) $(id).value = String(economy[key] ?? 0);
 
   form.addEventListener('submit', async (event) => {
@@ -147,7 +145,6 @@ function economySettings(economy) {
 
     try {
       await api.setEconomy(Object.fromEntries(Object.entries(fields).map(([key, id]) => [key, Number($(id).value)])));
-      $('count-bonus').textContent = number(Number($('economy-bonus').value));
       $('economy-saved').textContent = tr('Изменения сохранены');
       $('economy-saved').hidden = false;
     } catch (e) {
@@ -1056,44 +1053,6 @@ async function mineSettings(answered) {
   $('mine').hidden = false;
 }
 
-// bankSettings is "Банк": the rates and limits of deposits and loans, and
-// how the bank does. Rates are typed in percents a day, as mine chances.
-async function bankSettings(answered) {
-  const { settings, deposits, depositors, debts, debtors } = await answered;
-  const save = $('bank-form').querySelector('button[type=submit]');
-  const rates = { depositRate: $('bank-deposit-rate'), loanRate: $('bank-loan-rate'), penaltyRate: $('bank-penalty-rate') };
-  const counts = { depositMost: $('bank-deposit-most'), loanMost: $('bank-loan-most'), loanDays: $('bank-loan-days') };
-
-  for (const [name, field] of Object.entries(rates)) field.value = mineChance(settings[name]);
-  for (const [name, field] of Object.entries(counts)) field.value = String(settings[name]);
-
-  $('bank-stats').textContent = tr('На вкладах {0} у {1}, в долгах {2} у {3}.',
-    bankVotes(deposits), peopleCount(depositors), bankVotes(debts), peopleCount(debtors));
-
-  $('bank-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    error.hidden = true;
-    $('bank-saved').hidden = true;
-    save.disabled = true;
-
-    const typed = {};
-    for (const [name, field] of Object.entries(rates)) typed[name] = typedMineChance(field.value);
-    for (const [name, field] of Object.entries(counts)) typed[name] = Number(field.value);
-
-    try {
-      await api.setBank(typed);
-      $('bank-saved').textContent = tr('Изменения сохранены');
-      $('bank-saved').hidden = false;
-    } catch (e) {
-      showError(e);
-    } finally {
-      save.disabled = false;
-    }
-  });
-
-  $('bank').hidden = false;
-}
-
 // The settings of the enterprises and the goods in the order of the
 // columns of their tables, and the settings of the whole economy.
 const firmPlanFields = ['price', 'upgrade', 'levels', 'staff', 'upkeep'];
@@ -1855,7 +1814,6 @@ const reads = {
   '/admin/bets': () => started(api.betEvents()),
   '/admin/mine': () => started(api.mineSettings()),
   '/admin/business': () => started(api.firmSettings()),
-  '/admin/bank': () => started(api.bankSettings()),
   '/admin/pets': () => started(api.petSettings()),
   '/admin/fediverse': () => started(api.featuredFediverse()),
 }[adID ? '/admin/ads' : path]?.();
@@ -1899,8 +1857,6 @@ if (!me) {
     await mineSettings(reads).catch(showError);
   } else if (path === '/admin/business') {
     await businessSettings(reads).catch(showError);
-  } else if (path === '/admin/bank') {
-    await bankSettings(reads).catch(showError);
   } else if (path === '/admin/pets') {
     await petSettings(reads).catch(showError);
   } else if (path === '/admin/ads') {

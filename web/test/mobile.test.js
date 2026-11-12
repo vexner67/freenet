@@ -114,7 +114,17 @@ test('the blacklist keeps all settings tabs in both layouts', () => {
 
   for (const root of [web, phone]) {
     const settings = tabsOf(root, 'settings.html');
-    assert.ok(settings.includes('/votes'));
+    assert.ok(!settings.includes('/votes'));
     assert.deepEqual(tabsOf(root, 'blacklist.html'), settings);
+  }
+});
+
+test('the votes page shows the same four figures in both layouts', () => {
+  for (const root of [web, phone]) {
+    const html = readFileSync(new URL('votes.html', root), 'utf8');
+    const summary = html.match(/<table [^>]*id="summary"[^>]*>([\s\S]*?)<\/table>/)[1];
+    assert.deepEqual([...summary.matchAll(/<td id="([^"]+)"/g)].map((cell) => cell[1]),
+      ['votes', 'vote-rate', 'income', 'expense']);
+    assert.doesNotMatch(html, /class="[^"]*\btabs\b|<form\b|<button\b/);
   }
 });

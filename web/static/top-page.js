@@ -29,7 +29,6 @@ const icons = {
 
 // Where a board is climbed.
 const climbs = {
-  rich: ['/votes', () => tr('Открыть банк')],
   miners: ['/mine', () => tr('В шахту')],
   business: ['/business', () => tr('К бизнесу')],
   casino: ['/casino', () => tr('В казино')],
@@ -155,10 +154,14 @@ function showHUD(entries) {
 function show(entries) {
   const leader = Math.max(0, entries[0]?.value ?? 0);
   const rest = entries.filter((entry) => entry.place > medals.length);
-  const [href, text] = climbs[board];
+  const climb = climbs[board];
 
   shown = board;
-  $('climb').replaceChildren(helpButton(topBoardText(board)), el('a', { className: 'button game-go small', href, textContent: text() }));
+  $('climb').replaceChildren(helpButton(topBoardText(board)));
+  if (climb) {
+    const [href, text] = climb;
+    $('climb').append(el('a', { className: 'button game-go small', href, textContent: text() }));
+  }
   showHUD(entries);
   showPodium(entries);
   $('rows').replaceChildren(...rest.map((entry) => row(entry, leader)));

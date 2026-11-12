@@ -3022,35 +3022,13 @@ button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(
 .festive .rocket-sky.crashed .rocket-multiplier { color: var(--text-fff); text-shadow: 0 2px 0 var(--back-7a0f1d); }
 .festive .casino-dice-mark::before { content: "★"; position: absolute; top: 100%; left: 50%; color: var(--text-dfe3e8); font-size: 16px; line-height: 16px; transform: translateX(-50%); }
 
-/* "Мои Голоса", a small bank: the balance as in openvk's "Голоса", the
-   buttons of what can be done, the totals of 30 days and the statement —
-   a line per operation, what it brought green, what it took red. */
-.bank-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 4px; }
-.bank-form input { width: 140px; }
-.bank-in { color: var(--text-43a047); }
-.bank-out { color: var(--text-d94c4c); }
-.bank-flows { margin: 0 0 8px; padding: 6px; }
-.bank-operations { background: var(--back-fff); }
-.bank-op { display: flex; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--line-dedede); }
-.bank-op:last-child { border-bottom: 0; }
-.bank-op-about { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.bank-op-title { font-weight: bold; }
-.bank-op-note { font-style: italic; }
-.bank-op-date, .bank-op-balance { color: var(--text-626262); }
-.bank-op-sum { flex: none; text-align: right; }
-.bank-op-sum b { font-size: 13px; }
-.bank-empty { color: var(--text-626262); text-align: center; }
-.bank-recipient { margin: 3px 0 0; }
-/* Whom to send votes to, as the field is typed in: a list under it, like
-   the people of the search. */
+/* Recipient picker for gifting Prime. */
 .bank-people { max-height: 260px; overflow-y: auto; border: 1px solid var(--line-bbb); border-top: 0; background: var(--back-fff); }
 .bank-people-title { padding: 3px 6px; background: var(--back-f2f2f2); color: var(--text-626262); }
 .bank-person { display: flex; gap: 6px; align-items: center; padding: 3px 6px; border-top: 1px solid var(--line-e8e8e8); color: inherit; }
 .bank-person:hover { background: var(--back-ededed); text-decoration: none; }
 .bank-person img { flex: none; width: 30px; height: 30px; object-fit: cover; }
 .bank-person b { color: var(--text-2b587a); }
-.bank-link { display: flex; gap: 6px; margin: 10px 0; }
-.bank-link input { flex: 1; min-width: 0; }
 .voucher-keys { margin: 10px 0; }
 .voucher-keys input.voucher-key { width: 60px; text-align: center; text-transform: uppercase; }
 .voucher-code { font-family: "Courier New", monospace; white-space: nowrap; }
@@ -3993,57 +3971,6 @@ button.game-hud-cell:hover { background: var(--back-f2f5f8); }
 .pet-badges { grid-template-columns: repeat(4, 1fr); }
 .pet-badge { padding: 4px 6px; text-align: center; }
 
-/* The bank of "Мои Голоса": the card, its covers and the rewards around them. */
-.bank-tabs a { padding: 4px 6px; }
-.bank-top { display: flex; gap: 12px; align-items: stretch; margin: 0 0 12px; }
-.bank-top > .bank-card-place { flex: 0 0 56%; }
-.bank-card-place { container-type: inline-size; min-width: 0; }
-.bank-card-place.big { max-width: 400px; margin: 0 auto 10px; }
-.bank-card { position: relative; display: block; width: 100%; aspect-ratio: 340 / 214; padding: 0; border: 0; background: none; color: rgb(255 255 255); font: inherit; text-align: left; cursor: pointer; perspective: 900px; }
-
-.bank-card.ink-dark { color: rgb(38 38 48); }
-.bank-card-inner { position: absolute; inset: 0; display: block; transform-style: preserve-3d; }
-.bank-card.flipped .bank-card-inner { transform: rotateY(180deg); }
-.bank-card-face { position: absolute; inset: 0; display: block; overflow: hidden; border-radius: 4.5cqw; backface-visibility: hidden; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 35%), 2px 3px 6px rgb(0 0 0 / 40%); }
-.bank-card-back { transform: rotateY(180deg); }
-.bank-card-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.bank-card-brand, .bank-card-chip, .bank-card-number, .bank-card-since, .bank-card-holder, .bank-card-sum, .bank-card-strip, .bank-card-sign, .bank-card-note { position: absolute; }
-.bank-card-brand { top: 6%; right: 6%; font-size: 6cqw; font-style: italic; font-weight: bold; text-shadow: 0 1px 1px rgb(0 0 0 / 35%); }
-.bank-card-chip { top: 27%; left: 7%; width: 13%; height: 20%; border: 1px solid rgb(120 90 20); border-radius: 1.2cqw; background: linear-gradient(90deg, transparent 32%, rgb(120 90 20 / 60%) 33%, transparent 34%, transparent 65%, rgb(120 90 20 / 60%) 66%, transparent 67%), linear-gradient(transparent 48%, rgb(120 90 20 / 60%) 49%, transparent 51%), linear-gradient(135deg, rgb(255 240 170), rgb(214 164 58)); }
-.bank-card.small-name .bank-card-holder { font-size: 3cqw; }
-.bank-card-number { top: 52%; left: 7%; font-family: "Courier New", Courier, monospace; font-size: 7.4cqw; font-weight: bold; white-space: nowrap; text-shadow: 0 1px 0 rgb(255 255 255 / 25%), 0 -1px 0 rgb(0 0 0 / 45%); }
-.bank-card-since { top: 72%; left: 7%; font-size: 3.4cqw; }
-.bank-card-holder { right: 6%; bottom: 6%; left: 7%; overflow: hidden; font-size: 3.9cqw; font-weight: bold; letter-spacing: 0.05em; text-overflow: ellipsis; white-space: nowrap; }
-.bank-card-sum { top: 70%; right: 6%; max-width: 50%; overflow: hidden; font-size: 4.2cqw; font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
-.bank-card-strip { top: 11%; right: 0; left: 0; height: 20%; background: rgb(20 20 24); }
-.bank-card-sign { top: 40%; left: 7%; width: 72%; padding: 1.4cqw 2cqw; box-sizing: border-box; overflow: hidden; background: rgb(250 248 236); color: rgb(38 38 48); font-size: 3.6cqw; font-style: italic; text-overflow: ellipsis; white-space: nowrap; }
-.bank-card-note { right: 7%; bottom: 8%; left: 7%; font-size: 3.2cqw; }
-
-.bank-card.blank { cursor: default; }
-.bank-card-blank { display: flex; flex-direction: column; gap: 5px; align-items: center; justify-content: center; height: 100%; padding: 8px; box-sizing: border-box; border: 2px dashed var(--line-bbb); border-radius: 4.5cqw; background: var(--back-f2f5f8); color: var(--text-626262); text-align: center; }
-.bank-card-blank b { color: var(--text-45688e); }
-.bank-card-tools { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
-.bank-pips { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; margin: 0 0 6px; }
-.bank-pip { padding: 5px 0; background: linear-gradient(var(--back-fff), var(--back-e4e4e4)); border: 1px solid var(--line-bbb); border-radius: 3px; color: var(--text-626262); font-weight: bold; text-align: center; }
-.bank-pip.done { background: linear-gradient(rgb(255 255 255 / 30%), rgb(255 255 255 / 5%) 50%, transparent 50%), var(--back-3f8f35); border-color: var(--back-3f8f35); color: var(--text-fff); }
-.bank-pip.next { border-color: var(--back-3f8f35); color: var(--back-3f8f35); }
-.bank-bonus-text { margin: 0 0 6px; font-weight: bold; text-align: center; }
-.bank-bonus .hint { margin: 4px 0 0; text-align: center; }
-.bank-op > .game-icon { flex: none; }
-.bank-covers { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
-.bank-cover { display: flex; flex-direction: column; gap: 3px; align-items: center; min-width: 0; padding: 3px; background: none; border: 2px solid transparent; border-radius: 6px; color: inherit; font: inherit; cursor: pointer; }
-.bank-cover img { width: 100%; height: auto; border-radius: 4px; box-shadow: 1px 1px 3px rgb(0 0 0 / 40%); }
-
-.bank-cover.active { border-color: var(--back-3f8f35); font-weight: bold; }
-.bank-cover:disabled { opacity: 0.55; cursor: default; }
-.bank-meter { margin: 0 0 8px; }
-.bank-meter .meter { display: block; }
-.bank-big { margin: 0 0 6px; font-size: 14px; font-weight: bold; }
-.bank-forecast { flex-basis: 100%; margin: 2px 0; color: var(--text-43a047); font-weight: bold; }
-.bank-buttons { display: flex; flex-basis: 100%; gap: 6px; }
-.bank-buttons .button.game-go { flex: 1; }
-#transfer-chips .chips, #rating-chips .chips { margin: 4px 0 0; }
-
 :where(.button, button):active:not(:disabled) { transform: translateY(1px); }
 
 .pet-keeper-hud .meter { display: block; height: 7px; }
@@ -4308,17 +4235,6 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .button > img, .button > .game-icon { display: none; }
 .casino-balance { background: none; border: 0; border-radius: 0; box-shadow: none; }
 
-/* "Мои Голоса": the card and, beside it, the lines of the account; the
-   days of the bonus grey squares, the ones taken darker. */
-.bank-top { align-items: flex-start; }
-.bank-top > .bank-card-place { flex: 0 0 46%; }
-.bank-info th { width: 90px; }
-.bank-pip { background: none; border: 1px solid var(--line-ddd); border-radius: 2px; color: var(--text-626262); font-weight: normal; }
-.bank-pip.done { background: var(--back-e6e6e6); border-color: var(--line-ccc); color: var(--text-000); }
-.bank-pip.next { border-color: var(--line-707070); color: var(--text-000); font-weight: bold; }
-.bank-bonus-text, .bank-bonus .hint { font-weight: normal; text-align: left; }
-.bank-card-blank { border-width: 1px; background: var(--back-f7f7f7); }
-.bank-card-blank b { color: var(--text-000); }
 /* "Как начать" of the business: three numbered steps as plain text. */
 .firm-step { padding: 0; background: none; border: 0; }
 .firm-step-head .firm-icon { display: none; }

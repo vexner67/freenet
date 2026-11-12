@@ -613,7 +613,7 @@ export function applyInterface(me) {
     el('a', { href: '/stickers', textContent: tr('Стикеры') }),
     // The shop of gifts: for oneself or for anyone.
     el('a', { href: '/giftshop', textContent: tr('Подарки') }),
-    el('a', { href: '/votes', textContent: tr('Банк') }),
+    el('a', { href: '/votes', textContent: tr('Голоса') }),
     el('a', { href: '/prime', textContent: 'Prime' }),
     el('a', { href: '/mine', textContent: tr('Заработок') }),
     el('a', { href: '/stocks', textContent: tr('Акции') }),

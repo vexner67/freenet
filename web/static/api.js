@@ -791,22 +791,11 @@ export const api = {
   voteRate: () => request('GET', '/api/v1/vote-rate'),
   treasury: () => request('GET', '/api/v1/treasury'),
   setEconomy: (economy) => authorized('PUT', '/api/v1/economy', economy),
-  bonus: () => authorized('GET', '/api/v1/me/bonus'),
-  claimBonus: () => authorized('POST', '/api/v1/me/bonus'),
   // raiseRating is "Повысить рейтинг": percent of rating for votes.
   raiseRating: (percent) => authorized('POST', '/api/v1/me/rating', { percent }),
   // raiseRatingOf is "Повысить рейтинг" of the page of another, for the
   // caller's votes.
   raiseRatingOf: (nickname, percent) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/rating`, { percent }),
-  bank: () => authorized('GET', '/api/v1/me/bank'),
-  // moveBank is "deposit", "withdraw", "loan" or "repay" of amount votes.
-  moveBank: (action, amount) => authorized('POST', `/api/v1/me/bank/${action}`, { amount }),
-  // The virtual card: null until it is issued, then its number and cover.
-  bankCard: () => authorized('GET', '/api/v1/me/bank/card'),
-  issueBankCard: () => authorized('POST', '/api/v1/me/bank/card'),
-  setBankCardCover: (cover) => authorized('PUT', '/api/v1/me/bank/card', { cover }),
-  bankSettings: () => authorized('GET', '/api/v1/bank/settings'),
-  setBank: (settings) => authorized('PUT', '/api/v1/bank/settings', settings),
   setVoteRate: (kopecks) => authorized('PUT', '/api/v1/vote-rate', { kopecks }),
   // "Prime": its prices, buying it for oneself or as a present,
   // «Невидимка»; the administrators price it.
