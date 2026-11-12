@@ -138,6 +138,8 @@ func toStatus(err error) (*status.Status, bool) {
 	}
 
 	switch {
+	case errors.Is(err, user.ErrGamesClosed):
+		return status.New(codes.FailedPrecondition, user.ErrGamesClosed.Error()), true
 	case errors.Is(err, user.ErrNotFound):
 		return status.New(codes.NotFound, "user not found"), true
 	case errors.Is(err, user.ErrAlreadyExists):

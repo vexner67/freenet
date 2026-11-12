@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,6 +21,7 @@ import (
 	"github.com/vexner67/freenet/user/internal/notifyclient"
 	"github.com/vexner67/freenet/user/internal/purgeclient"
 	"github.com/vexner67/freenet/user/internal/service"
+	"github.com/vexner67/freenet/user/internal/user"
 	"google.golang.org/grpc"
 )
 
@@ -295,7 +297,15 @@ func (a *App) runFirms(ctx context.Context, every time.Duration) error {
 		case <-t.C:
 		}
 
-		counted, err := a.firms.Tick(ctx, time.Now())
+		var counted int
+		err := a.withGamesOpen(ctx, func(ctx context.Context) error {
+			var err error
+			counted, err = a.firms.Tick(ctx, time.Now())
+			return errs.Wrap("a.firms.Tick", err)
+		})
+		if errors.Is(err, user.ErrGamesClosed) {
+			return nil
+		}
 		if err != nil && ctx.Err() == nil {
 			a.logger.ErrorContext(ctx, "hours of the enterprises", "error", err)
 		}
@@ -318,7 +328,14 @@ func (a *App) runHoldem(ctx context.Context, every time.Duration) error {
 		case <-t.C:
 		}
 
-		if _, err := a.holdems.SweepDue(ctx); err != nil && ctx.Err() == nil {
+		err := a.withGamesOpen(ctx, func(ctx context.Context) error {
+			_, err := a.holdems.SweepDue(ctx)
+			return errs.Wrap("a.holdems.SweepDue", err)
+		})
+		if errors.Is(err, user.ErrGamesClosed) {
+			return nil
+		}
+		if err != nil && ctx.Err() == nil {
 			a.logger.ErrorContext(ctx, "poker tables", "error", err)
 		}
 	}

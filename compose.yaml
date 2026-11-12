@@ -323,6 +323,7 @@ services:
       TLS_CERT_PATH: /certs/user.pem
       TLS_KEY_PATH: /certs/user-key.pem
       STORAGE: persistent
+      CLOSE_GAMES: ${CLOSE_GAMES:-}
       DATABASE_URL: postgres://${USER_POSTGRES_USER}:${USER_POSTGRES_PASSWORD}@user-postgres:5432/${USER_POSTGRES_DB}?sslmode=disable
       REDIS_ADDR: redis:6379
       NOTIFICATION_SERVICE_ADDR: notification:7055

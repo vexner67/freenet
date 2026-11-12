@@ -67,11 +67,14 @@ type App struct {
 	holdemEvery time.Duration
 	// firms count the hours of the economy of the enterprises, looking
 	// every firmEvery whether one ended.
-	firms     *service.FirmService
-	firmEvery time.Duration
-	server    *grpcserver.Server
-	metrics   *metrics.Server
-	addr      string
+	firms        *service.FirmService
+	firmEvery    time.Duration
+	closing      *service.GamesService
+	closingStore *postgres.GamesClosingRepository
+	closingMode  string
+	server       *grpcserver.Server
+	metrics      *metrics.Server
+	addr         string
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -109,6 +112,12 @@ func (a *App) build(cfg config.Config) error {
 	store, err := a.newStorage(cfg)
 	if err != nil {
 		return errs.Wrap("a.newStorage", err)
+	}
+
+	if a.pool != nil {
+		a.closingStore = postgres.NewGamesClosingRepository(a.pool)
+		a.closing = service.NewGamesService(a.closingStore, a.closingStore, store.wallets, store.tx)
+		a.closingMode = cfg.CloseGames
 	}
 
 	deliver, err := a.newDelivery(cfg, store.newQueue, store.follows, reg)
@@ -158,6 +167,8 @@ func (a *App) build(cfg config.Config) error {
 		},
 	)))
 	interceptors = append(interceptors, ratelimit.UnaryServerInterceptor(limiter, rateLimits(cfg), a.logger))
+
+	interceptors = append(interceptors, a.gameRequests)
 
 	a.server, err = grpcserver.New(a.logger, reg, grpc.Creds(creds), a.tracer.ServerOption(), grpc.ChainUnaryInterceptor(interceptors...))
 	if err != nil {
@@ -577,6 +588,10 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 // ctx is cancelled or the gRPC or metrics server fails, which stops the
 // rest too.
 func (a *App) Run(ctx context.Context) error {
+	if err := a.closeGames(ctx); err != nil {
+		return errs.Wrap("a.closeGames", err)
+	}
+
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {

@@ -40,7 +40,8 @@ type Config struct {
 	Storage     string `env:"STORAGE" envDefault:"inmem"`
 	DatabaseURL string `env:"DATABASE_URL"`
 	// MigrateOnStart applies pending migrations before serving.
-	MigrateOnStart bool `env:"MIGRATE_ON_START" envDefault:"true"`
+	MigrateOnStart bool   `env:"MIGRATE_ON_START" envDefault:"true"`
+	CloseGames     string `env:"CLOSE_GAMES"`
 
 	// NotificationServiceAddr is optional: without it follows notify nobody.
 	NotificationServiceAddr string `env:"NOTIFICATION_SERVICE_ADDR"`
@@ -136,6 +137,16 @@ func (c Config) Validate() error {
 		}
 	default:
 		return fmt.Errorf("unknown STORAGE %q, want %q or %q", c.Storage, StorageInmem, StoragePersistent)
+	}
+
+	switch c.CloseGames {
+	case "":
+	case "preview", "run":
+		if c.Storage != StoragePersistent {
+			return errors.New("CLOSE_GAMES requires STORAGE=persistent")
+		}
+	default:
+		return errors.New("CLOSE_GAMES must be empty, preview or run")
 	}
 
 	if c.AccountRetention <= 0 || c.AccountPurgeInterval <= 0 {

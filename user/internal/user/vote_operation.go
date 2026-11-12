@@ -102,6 +102,8 @@ const (
 	// is what for: "found_state", "donate", "refund", or "closed" — what
 	// came back when the states were abolished.
 	VoteWorld VoteKind = "world"
+	// VoteClosing: a refund or buyout when the games closed.
+	VoteClosing VoteKind = "closing"
 )
 
 // VoteEntry is what a change of votes is written down as: why, with whom
