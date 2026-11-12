@@ -7,29 +7,27 @@ import { avatarURL, el, fullName, hideError, showError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { tr } from './i18n.js';
 
-// giftsPath is the list of gifts of user.
+function giftPage(user, query = {}) {
+  const params = new URLSearchParams(query);
+  if (user?.nickname) params.set('u', user.nickname);
+  return params.size ? `/gifts?${params}` : '/gifts';
+}
+
 export function giftsPath(user) {
-  return '/gifts?u=' + encodeURIComponent(user.nickname);
+  return giftPage(user);
 }
 
-// pickPath is "Выбрать подарок" for user.
 export function pickPath(user) {
-  return '/gifts?act=pick&u=' + encodeURIComponent(user.nickname);
+  return giftPage(user, { act: 'pick' });
 }
 
-// menuPath is a collection of "Выбрать подарок" for user, all its gifts.
 export function menuPath(user, collection) {
-  return `/gifts?act=menu&pack=${encodeURIComponent(collection)}&u=${encodeURIComponent(user.nickname)}`;
+  return giftPage(user, { act: 'menu', pack: collection });
 }
 
-// confirmPath is openvk's "Подтверждение" of a gift of a collection for
-// user: the page that sends it without the box.
 export function confirmPath(user, collection, gift) {
-  return `/gifts?act=confirm&pack=${encodeURIComponent(collection)}&elid=${encodeURIComponent(gift)}&u=${encodeURIComponent(user.nickname)}`;
+  return giftPage(user, { act: 'confirm', pack: collection, elid: gift });
 }
-
-// SHOP is the shop of gifts, "Подарки" of the left menu.
-export const SHOP = '/giftshop';
 
 // giftPicture is the picture of a gift.
 export function giftPicture(gift) {
@@ -45,8 +43,7 @@ export function giftThumb(gift) {
 }
 
 // giftsBlock is openvk's block "Подарки" of a page: how many, "Все" and
-// the newest. Sending one is "Отправить подарок" under the photo, buying
-// one is the shop.
+// the newest. The action under the photo links to the same catalogue.
 export function giftsBlock(user, page) {
   return [
     el('div', { className: 'section-title', textContent: tr('Подарки') }),
@@ -71,8 +68,11 @@ export function plainClick(event) {
 export function giftRow(collection, { more = '', limit = Infinity, href }, pick) {
   return el('div', { className: 'gift-cat-row' },
     el('div', { className: 'gift-cat-info' },
-      el('h4', { className: 'gift-cat-header', textContent: giftCollections[collection.id] ?? tr('Подарки') }),
-      collection.prime ? el('a', { className: 'gift-cat-prime', href: '/prime', textContent: tr('Только для Prime') }) : null,
+      el('div', {},
+        el('h4', { className: 'gift-cat-header', textContent: giftCollections[collection.id] ?? tr('Подарки') }),
+        collection.prime
+          ? el('a', { href: '/prime', textContent: tr('Только для Prime') })
+          : el('div', { className: 'hint', textContent: tr('Подарки Freenet для друзей и близких.') })),
       more ? el('a', { className: 'button', href: more, textContent: tr('Показать больше') }) : null),
     el('div', { className: 'gift-grid' }, ...giftOffers(collection).slice(0, limit).map(({ gift, price, left }) => el('a', {
       className: `gift-sel${left === 0 ? ' disabled' : ''}${left !== Infinity ? ' has-limit' : ''}`,
@@ -141,7 +141,7 @@ let rate = null;
 let friends = null;
 
 function knownFriends(me) {
-  friends ??= api.friends(me.nickname, 'all', '', 50).then((page) => page.users, () => []);
+  friends ??= api.friends(me.nickname, 'all', '', 50).then((page) => page.users ?? [], () => []);
 
   return friends;
 }
@@ -155,21 +155,21 @@ const NICKNAME = /^@?([A-Za-z][A-Za-z0-9_]*)$/;
 // has, "Получатель:" — the people chosen, each with "×", and a field that
 // offers one's friends or takes a nickname — "Сообщение к подарку:",
 // "Отправить анонимно" and the button. The gift goes to each in turn;
-// done is called with how many went and the votes spent. With shop the
-// box is the shop's: it offers "Себе" first, and one's own gift is
-// bought, not sent.
-export function giftDialog({ me, gift, price, recipients = [], shop = false, done = () => {} }) {
+// sender can add their own page from their catalogue.
+export function giftDialog({ me, gift, price, recipients = [], allowSelf = false }) {
   const chosen = [...recipients];
-  const modal = openModal(shop ? tr('Покупка подарка') : tr('Отправить подарок'), { tag: 'form' });
+  const modal = openModal(tr('Отправить подарок'), { tag: 'form' });
   const tokens = el('span', { className: 'gift-tokens' });
   const input = el('input', { type: 'text', className: 'gift-recipient-input', autocomplete: 'off' });
   const choices = el('div', { className: 'gift-choices', hidden: true });
   const box = el('div', { className: 'gift-recipient' }, tokens, input, choices);
+  const buySelf = allowSelf ? button(tr('Себе'), () => add(me), { secondary: true }) : null;
+  if (buySelf) buySelf.classList.add('gift-self');
   const cost = el('b', {});
   const caption = el('textarea', { maxLength: 250, placeholder: tr('Прикрепить сообщение...') });
   const anonymous = el('input', { type: 'checkbox' });
   const error = el('div', { className: 'error', hidden: true });
-  const send = button(shop ? tr('Купить') : tr('Отправить подарок'), null, { type: 'submit' });
+  const send = button(tr('Отправить подарок'), null, { type: 'submit' });
   const balance = el('div', { className: 'gift-send-balance', textContent: tr('У Вас {0}', balanceAmount(me.votes ?? 0)) });
 
   rate ??= api.voteRate().then((r) => r.kopecks, () => 0);
@@ -183,11 +183,15 @@ export function giftDialog({ me, gift, price, recipients = [], shop = false, don
       el('a', { className: 'gift-token-remove', title: tr('Убрать'), textContent: '×', onclick: () => remove(person) }))));
     input.placeholder = chosen.length ? tr('Добавить +') : tr('Введите имя друга или никнейм...');
     cost.textContent = giftTotal(price, Math.max(chosen.length, 1));
+    const self = chosen.length === 1 && chosen[0].id === me.id;
+    send.textContent = self ? tr('Купить себе') : tr('Отправить подарок');
+    anonymous.disabled = self;
+    if (buySelf) buySelf.hidden = chosen.some((person) => person.id === me.id);
   }
 
   function add(person) {
     hideError(error);
-    if (person.id === me.id && !shop) {
+    if (person.id === me.id && !allowSelf) {
       showError(error, tr('Вы не можете отправить подарок самому себе'));
       return;
     }
@@ -204,17 +208,13 @@ export function giftDialog({ me, gift, price, recipients = [], shop = false, don
     input.focus();
   }
 
-  // offer shows the friends that match what is typed; "Себе" leads in
-  // the shop, and a nickname typed in whole is offered when no friend is.
-  async function offer() {
+  let friends = [];
+  // Offer a typed nickname while the friends list is loading.
+  function offer() {
     const query = input.value.trim();
-    const people = recipientChoices(await knownFriends(me), query, chosen);
+    const people = recipientChoices(friends, query, chosen);
     const items = people.map((person) => el('a', { className: 'gift-choice', onclick: () => add(person) },
       el('img', { src: avatarURL(person, 'small'), alt: '' }), el('span', { textContent: fullName(person) })));
-    if (shop && !query && !chosen.some((p) => p.id === me.id)) {
-      items.unshift(el('a', { className: 'gift-choice', onclick: () => add(me) },
-        el('img', { src: avatarURL(me, 'small'), alt: '' }), el('span', { textContent: tr('Себе') })));
-    }
     const nickname = NICKNAME.exec(query)?.[1];
     if (!people.length && nickname) {
       items.push(el('a', { className: 'gift-choice', onclick: () => pickNickname(nickname) },
@@ -257,7 +257,7 @@ export function giftDialog({ me, gift, price, recipients = [], shop = false, don
       el('div', { className: 'gift-send-name', textContent: giftNames[gift] ?? tr('Подарок') }),
       el('div', { className: 'gift-send-cost' }, tr('Стоимость: '), cost),
       balance),
-    el('div', { className: 'gift-send-field' }, el('b', { textContent: tr('Получатель:') }), box),
+    el('div', { className: 'gift-send-field' }, el('b', { textContent: tr('Получатель:') }), box, buySelf),
     el('div', { className: 'gift-send-field' }, el('b', { textContent: tr('Сообщение к подарку:') }), caption),
     el('div', { className: 'gift-send-field' }, el('label', {}, anonymous, tr(' Отправить анонимно'))),
     error);
@@ -295,7 +295,6 @@ export function giftDialog({ me, gift, price, recipients = [], shop = false, don
     }
     me.votes = Math.max((me.votes ?? 0) - sent * price, 0);
     balance.firstChild.textContent = tr('У Вас {0}', balanceAmount(me.votes));
-    if (sent) done(sent, sent * price);
 
     if (!failed.length) {
       modal.close();
@@ -309,6 +308,10 @@ export function giftDialog({ me, gift, price, recipients = [], shop = false, don
     showError(error, [sent ? tr('Отправлено {0} из {1}.', sent, sent + failed.length) : '', ...failed].filter(Boolean).join('\n'));
   });
 
+  knownFriends(me).then((people) => {
+    friends = people;
+    if (document.activeElement === input) offer();
+  });
   if (!chosen.length) input.focus();
   else caption.focus();
 }

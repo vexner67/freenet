@@ -47,12 +47,8 @@ h1.page-title { font-size: inherit; }
 
 .header-links { display: flex; }
 
-/* openvk's header search (header-search-box): a white field with the loupe
-   right after the logo; in it the field takes the header, the links make
-   way, and "по людям" and "Поиск" come (search_expanded), the button once
-   there are words (search_expanded_at_all). */
+/* The header search stays beside the logo while it has focus. */
 .header-search-box { display: flex; align-items: center; gap: 6px; margin: 0 auto 0 14px; }
-.header-search-wrap { position: relative; display: flex; }
 .header-search-box input[type="search"] {
   box-sizing: border-box;
   width: 140px;
@@ -66,17 +62,8 @@ h1.page-title { font-size: inherit; }
 }
 .header-search-box input[type="search"]::placeholder { color: var(--text-6b6b6b); opacity: 1; }
 .header-search-box input[type="search"]::-webkit-search-cancel-button { display: none; }
-.header-search-box select { position: absolute; top: 0; right: 0; height: 22px; padding: 0 4px; background: transparent; border: 0; color: var(--text-222); font: 11px tahoma, verdana, arial, sans-serif; text-align: right; }
-.header-search-box select, .header-search-box .search-box-button { display: none; }
-.header.search-expanded .header-search-box { flex: 1; margin-right: 10px; }
-.header.search-expanded .header-search-wrap { flex: 1; }
-.header.search-expanded .header-search-box input[type="search"] { width: 100%; padding-right: 90px; }
-.header.search-expanded .header-search-box select { display: block; }
-.header.search-expanded-at-all .header-search-box .search-box-button { display: block; }
-.header.search-expanded .header-links { display: none; }
 
-/* openvk's search_box_button: lighter than a button, as in the header and
-   on the page of the search. */
+/* openvk's search_box_button on the search results page. */
 .search-box-button {
   flex: none;
   width: 80px;
@@ -206,7 +193,7 @@ h1.page-title { font-size: inherit; }
   background: url("/static/newyear/bauble.svg") no-repeat;
   pointer-events: none;
 }
-/* The buttons are red in a silver edge, as those of the casino. */
+/* Buttons for destructive actions. */
 .festive .button {
   border: 1px solid var(--line-9aa3ae);
   background: linear-gradient(var(--back-d23a32), var(--back-a01e28));
@@ -2081,7 +2068,6 @@ a.poll-result-name { cursor: pointer; }
 .gift-cat-row:not(:last-child) { border-bottom: 1px solid var(--line-ddd); }
 .gift-cat-info { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; min-height: 23px; margin: 0 0 4px; }
 .gift-cat-header { margin: 0; padding: 4px 0 3px; color: var(--text-45688e); font-size: 11px; }
-.gift-cat-prime { margin-right: auto; padding: 4px 0 3px; color: var(--text-6b3fb8); font-weight: bold; }
 .gift-grid { display: flex; flex-wrap: wrap; width: calc(100% + 16px); margin: 0 -8px; }
 .gift-sel { position: relative; box-sizing: border-box; width: 122px; padding: 8px 10px; border-radius: 3px; text-align: center; cursor: pointer; }
 .gift-sel:hover { text-decoration: none; }
@@ -2132,27 +2118,6 @@ a.poll-result-name { cursor: pointer; }
 /* The shop of gifts ("Подарки" of the menu), laid out as the page of a
    person: the balance and one's gifts beside, a block for each
    collection. */
-.shop { display: flex; gap: 12px; align-items: flex-start; }
-.shop[hidden] { display: none; }
-.shop-side { flex: none; width: 190px; }
-.shop-main { flex: 1; min-width: 0; }
-.shop-info { margin: 0 0 4px; }
-.shop-info th { width: 60px; }
-.shop-links { margin: 0 0 10px; }
-.shop-mine { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px 0; }
-.shop-mine[hidden] { display: none; }
-.shop-mine .gift-pic { width: 100%; height: auto; aspect-ratio: 1; }
-.shop-collection + .shop-collection { margin-top: 10px; }
-.shop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 8px 0; }
-.shop-item { padding: 6px 4px 8px; text-align: center; }
-.shop-item .gift-pic { width: 102px; height: 102px; margin: 0 auto 4px; object-fit: contain; }
-.shop-item-pic { display: block; cursor: pointer; }
-.shop-item-pic:hover .gift-pic { opacity: .8; }
-.shop-item-name { color: var(--text-333); }
-.shop-item-price { margin-top: 2px; }
-.shop-item-left { min-height: 14px; color: var(--text-626262); }
-.shop-item-links { min-height: 14px; margin-top: 2px; }
-.shop-item.disabled .gift-pic { opacity: .5; }
 .collectible.thumb { width: 100%; height: auto; aspect-ratio: 1; border-radius: 8px; }
 .collectible.thumb .collectible-pattern { font-size: 11px; }
 .collectible.thumb .collectible-number { right: 3px; bottom: 3px; padding: 0 3px; font-size: 8px; }
@@ -2323,132 +2288,29 @@ a.poll-result-name { cursor: pointer; }
 /* "Бизнес": the economy of the enterprises in tables, as the browser
    games of the 2000s had it — the balance a line over the tabs, grey
    heads of columns, numbers at the right, forms in a line. */
-.business-done { margin: 0 0 10px; padding: 8px; background: var(--back-eee5b8); border: 1px solid var(--line-d7cf9e); color: var(--text-58462a); font-weight: bold; }
-.firm-tabs { margin-bottom: 10px; }
 /* The pixel pictures of the enterprises and the goods stay sharp at any size. */
-.firm-icon { display: inline-block; flex: none; vertical-align: middle; }
-.firm-up { color: var(--text-43a047); font-weight: bold; }
 /* The hour going on in the report: it grows every second. */
-.firm-now { color: var(--text-626262); font-style: italic; }
-.firm-down { color: var(--text-c33); font-weight: bold; }
-.firm-hint { margin: 4px 0 10px; }
-.firm-back { margin: 0 0 8px; }
-.firm-good { display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
-.firm-recipe { line-height: 20px; }
-.firm-recipe .firm-icon { margin: -2px 0 0; }
-
-a.firm-tile:hover { box-shadow: 0 2px 6px var(--line-bbb); }
-
-.firm-tile-side { display: flex; flex: none; flex-direction: column; gap: 4px; align-items: center; }
-.firm-stat-trend { display: flex; gap: 6px; align-items: center; }
-
-.firm-line { display: flex; gap: 6px; align-items: center; margin: 2px 0 8px; padding: 10px; overflow: hidden; background: linear-gradient(var(--back-f2f5f8), var(--back-fff)); border: 1px solid var(--line-dae1e8); }
-.firm-line-goods { display: flex; flex: none; gap: 2px; }
-.firm-line-source { flex: none; color: var(--text-626262); font-style: italic; }
-.firm-belt { position: relative; flex: 1; min-width: 40px; height: 24px; border-bottom: 3px dashed var(--line-8b8b8b); }
-.firm-belt-item { position: absolute; bottom: 1px; left: 0; }
-.firm-belt-item .firm-icon { display: block; }
-
-.firm-line-plant { position: relative; flex: none; padding: 3px; background: var(--back-fff); border: 1px solid var(--line-bbb); }
-.firm-line-plant .firm-icon { display: block; }
-.firm-line-smoke { position: absolute; top: -2px; right: 6px; width: 8px; height: 8px; background: var(--back-d9e1ea); border-radius: 50%; }
-.firm-line-out { display: flex; flex: none; flex-direction: column; gap: 2px; align-items: center; min-width: 64px; text-align: center; }
-.firm-line-out b { color: var(--text-43a047); }
-
-.firm-line.stopped .firm-line-smoke { display: none; }
-.firm-line.stopped .firm-belt-item.n1, .firm-line.stopped .firm-belt-item.n2 { display: none; }
-.firm-line.stopped .firm-line-plant, .firm-line.stopped .firm-line-goods { filter: grayscale(1); opacity: 0.6; }
-.firm-line.stopped .firm-line-out b { color: var(--text-c33); }
 
 .biz-subtitle { margin: 12px 0 6px; padding: 0 0 2px; border-bottom: 1px solid var(--line-e8ebee); color: var(--text-45688e); font-weight: bold; }
 
 /* A strip filled in part: the level, the storage, a share. */
-.firm-bar { display: inline-block; width: 70px; height: 9px; vertical-align: middle; background: var(--back-fff); border: 1px solid var(--line-aaa); box-shadow: inset 0 1px 0 var(--line-e3e3e3); }
-.firm-bar-fill { display: block; height: 100%; background: var(--back-3e3e3e); }
-.firm-share { display: inline-flex; gap: 6px; align-items: center; }
 
 /* Tables of fixed columns: the numbers at the right, of one width. */
-.firm-scroll { max-width: 100%; overflow-x: auto; }
-.firm-table { table-layout: fixed; margin: 4px 0 10px; }
-.firm-table th, .firm-table td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.firm-table .firm-num { text-align: right; font-variant-numeric: tabular-nums; }
-.firm-table tbody tr:hover td { background: var(--back-f2f5f8); }
-.firm-table tfoot td { border-bottom: 0; background: var(--back-f6f6f6); font-weight: bold; }
 
 /* Forms: a grey label of one width at the left, the fields at the right. */
-.firm-grid { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 6px 10px; align-items: center; margin: 8px 0; }
-.firm-label { color: var(--text-626262); text-align: right; white-space: nowrap; }
-.firm-control { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 26px; }
-.firm-grid input.firm-number { width: 90px; }
-.firm-grid input.firm-name { width: 220px; }
-.firm-grid select.firm-select { width: 150px; }
-.firm-unit, .firm-note { color: var(--text-626262); }
-.firm-note a { white-space: nowrap; }
-.firm-check { display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
 
 /* "Мои предприятия": tiles of the enterprises. */
-.firm-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
-a.firm-tile { display: flex; gap: 10px; padding: 8px; background: var(--back-f9f9f9); border: 1px solid var(--line-dae1e8); color: var(--text-000); text-decoration: none; }
-a.firm-tile:hover { background: var(--back-f2f5f8); border-color: var(--line-8b8b8b); text-decoration: none; }
-.firm-tile-icon, .firm-header-icon, .firm-chosen-icon { flex: none; align-self: flex-start; padding: 3px; background: var(--back-fff); border: 1px solid var(--line-bbb); }
-.firm-tile-icon .firm-icon, .firm-header-icon .firm-icon, .firm-chosen-icon .firm-icon { display: block; }
-.firm-tile-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.firm-tile-text b { overflow: hidden; color: var(--text-45688e); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-.firm-tile-kind { color: var(--text-626262); }
-.firm-tile-facts { margin-top: 3px; border-collapse: collapse; }
-.firm-tile-facts td { padding: 1px 8px 1px 0; white-space: nowrap; }
-.firm-tile-label { width: 60px; color: var(--text-626262); }
 
 /* "Как начать": three numbered steps with pictures. */
-.firm-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0 12px; }
-.firm-step { padding: 8px; background: var(--back-f9f6e7); border: 1px solid var(--line-d7cf9e); }
-.firm-step p { margin: 4px 0 0; color: var(--text-555); }
-.firm-step-head { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
-.firm-step-number { display: inline-block; width: 22px; height: 22px; background: var(--back-595959); border-radius: 11px; color: var(--text-fff); font-size: 12px; font-weight: bold; line-height: 22px; text-align: center; }
 
 /* Founding: the kinds by tiers as picture buttons, and what the chosen does. */
-.firm-kinds { margin: 8px 0; }
-.firm-kinds-group { margin: 0 0 8px; }
-.firm-kinds-title { margin: 0 0 4px; color: var(--text-626262); }
-.firm-kinds-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-button.firm-kind { display: flex; flex-direction: column; gap: 2px; align-items: center; min-width: 0; padding: 6px 4px; background: linear-gradient(var(--back-fff), var(--back-ededed)); border: 1px solid var(--line-bbb); border-radius: 2px; color: var(--text-000); font: inherit; cursor: pointer; }
-button.firm-kind:hover { border-color: var(--line-8b8b8b); background: var(--back-f2f5f8); }
-button.firm-kind.chosen { background: var(--back-dae1e8); border-color: var(--line-333); box-shadow: inset 0 1px 2px var(--line-8b8b8b); }
-.firm-kind-name { max-width: 100%; overflow: hidden; font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
-.firm-kind-price { color: var(--text-626262); }
-.firm-chosen { display: flex; gap: 10px; padding: 8px; background: var(--back-f9f9f9); border: 1px solid var(--line-dae1e8); }
-.firm-chosen-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.firm-chosen-text b { color: var(--text-45688e); font-size: 12px; }
 
 /* The card of an enterprise and of a good: the picture, the name, the level. */
-.firm-header { display: flex; gap: 12px; margin: 0 0 10px; padding: 0 0 10px; border-bottom: 1px solid var(--line-dae1e8); }
-.firm-header-text { display: flex; flex: 1; flex-direction: column; gap: 4px; min-width: 0; }
-.firm-header-name { color: var(--text-45688e); font-size: 14px; font-weight: bold; overflow-wrap: anywhere; }
-.firm-header-kind { color: var(--text-626262); }
-.firm-header-level { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; width: 120px; }
-.firm-header-level .meter { width: 120px; }
-.firm-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 4px; }
-.firm-stat { padding: 6px 8px; background: var(--back-f7f7f7); border: 1px solid var(--line-e0e0e0); border-top: 2px solid var(--line-333); }
-.firm-stat-name { color: var(--text-626262); }
-.firm-stat-value { margin: 2px 0; font-size: 13px; font-weight: bold; white-space: nowrap; }
-.firm-stat-sub { overflow: hidden; color: var(--text-626262); text-overflow: ellipsis; white-space: nowrap; }
-.firm-subtabs { margin: 4px 0 10px; }
-.firm-dialog { max-width: 520px; }
-.firm-dialog .firm-grid { grid-template-columns: 110px minmax(0, 1fr); }
 /* A hint under a form stands under its fields. */
-.firm-grid + .firm-hint { margin-left: 140px; }
-.firm-dialog .firm-grid + .firm-hint { margin-left: 120px; }
 
 /* The orders of a good: buying and selling side by side. */
-.firm-book { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 
 /* "Справочник": the chains of pictures from the raw materials to the city. */
-.firm-chains { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
-.firm-chain { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; padding: 6px; background: var(--back-f9f9f9); border: 1px solid var(--line-e8e8e8); }
-a.firm-chain-firm { display: flex; flex-direction: column; gap: 2px; align-items: center; width: 62px; padding: 3px 0; background: var(--back-fff); border: 1px solid var(--line-bbb); font-size: 10px; line-height: 11px; text-align: center; }
-a.firm-chain-firm:hover { border-color: var(--line-333); background: var(--back-f2f5f8); text-decoration: none; }
-.firm-chain-good { display: flex; flex-direction: column; gap: 2px; align-items: center; width: 50px; color: var(--text-555); font-size: 10px; line-height: 11px; text-align: center; }
-.firm-chain-arrow { width: 10px; color: var(--text-626262); font-weight: bold; text-align: center; }
 .modal-body .hint { margin: 0; }
 
 /* The controls of "Бизнес" and "Акции" (controls.js): a mini window under
@@ -2509,10 +2371,6 @@ input.step-value.wide { width: 80px; }
 .spark { display: block; height: 26px; }
 
 /* "Акции": the stock exchange. */
-.stock-up { color: var(--text-43a047); font-weight: bold; white-space: nowrap; }
-.stock-down { color: var(--text-d94c4c); font-weight: bold; white-space: nowrap; }
-.stock-flat { color: var(--text-626262); white-space: nowrap; }
-.stock-link { color: var(--text-2b587a); }
 
 /* The running tape of prices, dark as the screens of an exchange. */
 .ticker { overflow: hidden; margin: 0 0 10px; padding: 4px 0; background: linear-gradient(var(--back-444), var(--back-3e3e3e)); border: 1px solid var(--line-2f2f2f); }
@@ -2521,52 +2379,9 @@ input.step-value.wide { width: 80px; }
 .ticker-item { display: inline-flex; gap: 5px; align-items: center; color: var(--text-fff); }
 .ticker-item:hover { text-decoration: none; }
 .ticker-item b { color: var(--text-e8e8e8); }
-.ticker .stock-up { color: var(--text-43a047); }
-.ticker .stock-down { color: var(--text-d94c4c); }
 
-.stock-table { width: 100%; margin: 4px 0 12px; }
-.stock-table th, .stock-table td { vertical-align: middle; }
-.stock-table .firm-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.stock-row { cursor: pointer; }
-.stock-row:hover td { background: var(--back-f2f5f8); }
-.stock-price { font-size: 12px; font-weight: bold; }
-.stock-spark { width: 96px; }
-.stock-holdings, .stock-news, .stock-orders { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 10px; }
-.stock-holding { display: flex; gap: 8px; align-items: center; padding: 5px 6px; background: var(--back-f9f9f9); border: 1px solid var(--line-e8e8e8); color: var(--text-000); }
-.stock-holding:hover { background: var(--back-f2f5f8); border-color: var(--line-bbb); text-decoration: none; }
-.stock-holding-name { display: flex; flex: 1; flex-direction: column; min-width: 0; }
-.stock-holding-name b { overflow: hidden; color: var(--text-45688e); text-overflow: ellipsis; white-space: nowrap; }
-.stock-holding-worth { display: flex; flex-direction: column; align-items: flex-end; }
-.stock-news-item, .firm-news-item { display: flex; gap: 8px; align-items: flex-start; padding: 5px 6px; background: var(--back-f9f9f9); border: 1px solid var(--line-e8e8e8); border-left: 3px solid var(--line-aaa); }
-.stock-news-item.good, .firm-news-item.good { border-left-color: var(--text-43a047); }
-.stock-news-item.bad, .firm-news-item.bad { border-left-color: var(--text-d94c4c); }
-.stock-order { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 4px 6px; background: var(--back-f9f9f9); border: 1px solid var(--line-e8e8e8); }
-.stock-order-side { padding: 0 5px; border-radius: 2px; color: var(--text-fff); font-weight: bold; }
-.stock-order.buy .stock-order-side { background: var(--back-3f8f35); }
-.stock-order.sell .stock-order-side { background: var(--back-d23a32); }
-.stock-order .chip { margin-left: auto; }
 
-.stock-head { display: flex; gap: 12px; margin: 0 0 8px; padding: 0 0 8px; border-bottom: 1px solid var(--line-dae1e8); }
-.stock-head .stock-head-price { display: flex; flex-direction: column; align-items: flex-end; }
-.stock-big { color: var(--text-000); font-size: 23px; font-weight: bold; line-height: 28px; }
-.stock-facts { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); margin: 0 0 8px; background: var(--back-f7f7f7); border: 1px solid var(--line-e0e0e0); }
-.stock-tenders { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; }
-.stock-tender { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px; background: var(--back-f9f9f9); border: 1px solid var(--line-e8e8e8); }
-.stock-tender.own { background: var(--back-f2f5f8); border-color: var(--line-bbb); }
-.stock-tender-text { display: flex; flex: 1; flex-direction: column; gap: 2px; min-width: 0; }
-.stock-tender .error { flex-basis: 100%; }
 .tender-sell { display: flex; gap: 4px; align-items: center; }
-.stock-tender-form { max-width: 360px; }
-.stock-fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 5px 6px; border-right: 1px solid var(--line-e0e0e0); }
-.stock-fact:last-child { border-right: 0; }
-.stock-fact span:first-child { overflow: hidden; color: var(--text-626262); text-overflow: ellipsis; white-space: nowrap; }
-.stock-fact b { white-space: nowrap; }
-.stock-tape { display: flex; flex-direction: column; max-height: 220px; margin: 4px 0 10px; overflow-y: auto; }
-.stock-tape-row { display: flex; gap: 10px; justify-content: space-between; padding: 3px 6px; border-bottom: 1px solid var(--line-e0e0e0); }
-.stock-chart-head { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
-.stock-chart-head .section-title { flex: 1; }
-.stock-trade { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
-.stock-mine { margin: 4px 0; }
 
 /* The order book: who sells above, who buys below, a strip of the shares
    behind each price. */
@@ -2586,449 +2401,14 @@ input.step-value.wide { width: 80px; }
 .book .hint { margin: 0; padding: 4px 8px; border-top: 1px solid var(--line-eee); }
 
 /* The panel of a deal: green to buy, red to sell. */
-.deal, .firm-order { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; padding: 8px; background: var(--back-f9f9f9); border: 1px solid var(--line-dae1e8); border-top: 3px solid var(--back-3f8f35); }
-.deal.sell { border-top-color: var(--back-d23a32); }
-.deal-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.deal-label { width: 50px; color: var(--text-626262); }
-.deal-summary { display: flex; flex-direction: column; gap: 2px; padding: 6px; background: var(--back-fff); border: 1px dashed var(--line-ccc); }
-.deal-summary div { display: flex; justify-content: space-between; }
-.deal-go, .deal.buy .deal-go, .deal-go.buy { padding: 6px 10px; background: var(--back-3f8f35); border-color: var(--back-3f8f35); font-size: 12px; font-weight: bold; }
-.deal.sell .deal-go, .deal-go.sell { background: var(--back-d23a32); border-color: var(--back-d23a32); }
-/* A click on an order of another enterprise: green buys, red sells. */
-.deal-take { padding: 2px 8px; background: var(--back-3f8f35); border-color: var(--back-3f8f35); font-weight: bold; }
-.deal-take.sell { background: var(--back-d23a32); border-color: var(--back-d23a32); }
-.deal-take:disabled { background: var(--back-595959); border-color: var(--back-595959); opacity: .5; }
-.deal-side.buy { color: var(--back-3f8f35); }
-.deal-side.sell { color: var(--back-d23a32); }
 
-/* The card of an enterprise: plaques that open mini windows, tiles of the
-   storage, cards of the improvements and of the orders of the city. */
-button.firm-stat { min-width: 0; color: var(--text-000); font: 11px tahoma, verdana, sans-serif; text-align: left; cursor: pointer; }
-button.firm-stat:hover { background: var(--back-f2f5f8); border-color: var(--line-8b8b8b); border-top-color: var(--line-333); }
-.firm-stat-name { display: flex; justify-content: space-between; }
-.firm-stat-more { color: var(--text-2b587a); }
-.firm-stat-value .meter { margin: 2px 0 1px; }
-.firm-header-name { display: flex; gap: 6px; align-items: center; }
-.firm-rename { padding: 0 3px; background: none; border: 1px solid transparent; color: var(--text-626262); font-size: 12px; cursor: pointer; }
-.firm-rename:hover { border-color: var(--line-bbb); color: var(--text-2b587a); }
-input.firm-name-edit { width: 220px; }
-.firm-alarm { margin: 0 0 8px; padding: 6px 8px; background: var(--back-ffefe8); border: 1px solid var(--line-e89b88); color: var(--text-b3122e); font-weight: bold; }
-.firm-close { margin: 16px 0 0; padding: 6px 0 0; border-top: 1px solid var(--line-eee); text-align: right; }
-.firm-close a { color: var(--text-626262); }
-.firm-work { display: flex; flex-wrap: wrap; gap: 4px 16px; justify-content: space-between; margin: 0 0 6px; }
-.firm-goods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 4px 0 8px; }
-.firm-good-tile { display: flex; gap: 8px; align-items: flex-start; min-width: 0; padding: 6px; background: linear-gradient(var(--back-fff), var(--back-f6f6f6)); border: 1px solid var(--line-d0d0d0); color: var(--text-000); font: 11px tahoma, verdana, sans-serif; text-align: left; }
-button.firm-good-tile { cursor: pointer; }
-button.firm-good-tile:hover { background: var(--back-f2f5f8); border-color: var(--line-8b8b8b); }
-.firm-good-text { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
-.firm-badges { display: flex; flex-wrap: wrap; gap: 3px; }
-.firm-badge { padding: 0 4px; background: var(--back-f2f2f2); border: 1px solid var(--line-ddd); color: var(--text-626262); font-size: 10px; }
-.firm-badge.on { background: var(--back-dcefd9); border-color: var(--line-d5ddb6); color: var(--text-0c7a3c); }
-.firm-upgrades { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 4px 0 8px; }
-.firm-upgrade { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; padding: 8px; background: var(--back-f9f9f9); border: 1px solid var(--line-e0e0e0); border-top: 2px solid var(--line-aaa); }
-.firm-upgrade.done { border-top-color: var(--line-333); }
-.firm-upgrade b { color: var(--text-45688e); font-size: 12px; }
-.firm-pips { display: inline-flex; gap: 3px; }
-.firm-pip { width: 14px; height: 8px; background: var(--back-fff); border: 1px solid var(--line-aaa); }
-.firm-pip.on { background: linear-gradient(var(--back-8b8b8b), var(--back-3e3e3e)); border-color: var(--line-333); }
-.firm-contracts, .firm-news { display: flex; flex-direction: column; gap: 4px; margin: 4px 0 10px; }
-.firm-contract { display: flex; gap: 8px; align-items: center; padding: 6px; background: var(--back-f9f6e7); border: 1px solid var(--line-d7cf9e); }
-.firm-contract.mine { background: var(--back-f2f5f8); border-color: var(--line-bbb); }
-.firm-contract.unfit { background: var(--back-f7f7f7); border-color: var(--line-e0e0e0); color: var(--text-626262); }
-.firm-contract.unfit .firm-icon { opacity: 0.5; }
-.firm-contract-need { color: var(--text-626262); white-space: nowrap; }
-.firm-tenders { display: flex; flex-direction: column; gap: 4px; margin: 4px 0; }
-.firm-labour { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-.firm-contract-text { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
-.firm-contract-actions { display: flex; gap: 4px; }
-.firm-pick { display: flex; gap: 6px; align-items: center; width: 100%; padding: 4px 6px; background: linear-gradient(var(--back-fff), var(--back-ededed)); border: 1px solid var(--line-bbb); color: var(--text-000); font: 11px tahoma, verdana, sans-serif; text-align: left; cursor: pointer; }
-.firm-pick:hover { background: var(--back-f2f5f8); border-color: var(--line-8b8b8b); }
-.firm-pick .hint { margin-left: auto; }
-.firm-order { border-top-color: var(--line-333); }
-.firm-good-pick { display: flex; flex-wrap: wrap; gap: 4px; }
-.firm-good-chip { display: inline-flex; gap: 4px; align-items: center; padding: 2px 6px 2px 2px; background: linear-gradient(var(--back-fff), var(--back-ededed)); border: 1px solid var(--line-bbb); color: var(--text-000); font: 11px tahoma, verdana, sans-serif; cursor: pointer; }
-.firm-good-chip.active { background: var(--back-dae1e8); border-color: var(--line-333); box-shadow: inset 0 1px 2px var(--line-8b8b8b); font-weight: bold; }
-
-/* "Казино": the prizes in cells and a light running over them; the
-   balance at the right, as in "Голоса". */
-.casino { display: flex; gap: 20px; align-items: flex-start; }
-.casino-game { flex: 1; min-width: 0; }
-.casino-lead { margin: 0 0 10px; }
-.casino-board { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
-.casino-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 58px; background: var(--back-fff); border: 1px solid var(--line-ccc); }
-.casino-cell { min-width: 0; padding: 0 5px; overflow: hidden; }
-.casino-votes { max-width: 100%; color: var(--text-45688e); font-size: 20px; font-weight: bold; line-height: 24px; white-space: nowrap; }
-.casino-unit { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.casino-unit { color: var(--text-626262); }
-.casino-empty .casino-votes { color: var(--text-aaa); }
-.casino-cell.lit { background: var(--back-eee5b8); border-color: var(--line-c3a476); }
-
-.casino-controls { margin: 10px 0; text-align: center; }
-.casino-controls .button { padding: 6px 20px; }
-.casino-result { padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); font-weight: bold; text-align: center; }
-.casino-win { background: var(--back-eee5b8); border-color: var(--line-d7cf9e); color: var(--text-58462a); }
-.casino-session { text-align: center; }
-/* "Автоигра": how many rounds to play by themselves, under the button. */
-.casino-auto { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; margin: 0 0 10px; }
-.casino-auto .casino-label { margin: 0; }
-.casino-auto select { width: auto; }
-/* "Ставка": the amount with quick buttons, the multipliers as cells and
-   a strip of 0 to 100 — green below the chance, where a roll wins. */
-.casino-tabs { margin-bottom: 10px; }
-/* While a spin or a bet is under way the game stays the same. */
-.casino-tabs a[aria-disabled="true"] { cursor: default; opacity: 0.5; }
-.casino-stake { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.casino-label { display: block; margin: 10px 0 4px; font-weight: bold; }
-.casino-stake .casino-label { margin: 0; }
-.casino-amount { width: 90px; }
-.casino-quick { display: flex; gap: 3px; }
-.casino-quick .button { padding: 2px 7px; }
-.casino-limits { margin: 4px 0 0; }
-.casino-multipliers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
-.casino-multiplier { padding: 0; color: inherit; font: inherit; cursor: pointer; }
-.casino-multiplier:hover { border-color: var(--line-c3a476); }
-.casino-multiplier:disabled { cursor: default; }
-.casino-dice { position: relative; height: 20px; margin: 24px 0 2px; background: var(--back-ffefe8); border: 1px solid var(--line-ccc); }
-.casino-dice-win { position: absolute; top: 0; bottom: 0; left: 50%; width: 0; min-width: 4px; background: var(--back-dcefd9); transform: translateX(-50%); }
-/* A field under 2 % is a few pixels wide: dark green, to be seen. */
-.casino-dice-win.narrow { background: var(--back-43a047); }
-.casino-dice-mark { position: absolute; top: -5px; bottom: -5px; left: 0; width: 3px; margin-left: -1px; background: var(--text-333); }
-
-.casino-dice-mark span { position: absolute; bottom: 100%; left: 50%; font-weight: bold; white-space: nowrap; transform: translateX(-50%); }
-.casino-dice-mark.near-start span { transform: none; }
-.casino-dice-mark.near-end span { transform: translateX(-100%); }
-.casino-dice-mark.won span { color: var(--text-43a047); }
-.casino-dice-mark.lost span { color: var(--text-c33); }
-.casino-dice-scale { display: flex; justify-content: space-between; color: var(--text-626262); }
-.casino-sum { margin: 8px 0 0; text-align: center; }
-.casino-sections { margin: 0 0 10px; border: 1px solid var(--line-dedede); }
-.casino-sections .mb-tab-row { margin: 0; }
-/* "Ракетка": a sky in a grid, the trail of the flight drawn on a canvas in
-   its colour, the rocket at its end and the multiplier big over it; green
-   once cashed, red with a burst once it explodes. */
-.rocket-target { margin-top: 8px; }
-.rocket-target .casino-label { margin: 0; }
-.rocket-target .casino-amount { width: 90px; }
-.rocket-sky {
-  position: relative;
-  height: 220px;
-  margin: 12px 0 2px;
-  overflow: hidden;
-  border: 1px solid var(--line-bbb);
-  background:
-    repeating-linear-gradient(0deg, var(--line-e0e6ec) 0 1px, transparent 1px 40px),
-    repeating-linear-gradient(90deg, var(--line-e0e6ec) 0 1px, transparent 1px 40px),
-    linear-gradient(var(--back-e9edf1), var(--back-fff));
-}
-.rocket-trail { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--back-2e7dd7); }
-.rocket-ship { position: absolute; top: 0; left: 0; width: 48px; height: 24px; background: url("/static/rocket.svg") center / contain no-repeat; }
-.rocket-sky.crashed .rocket-ship { visibility: hidden; }
-.rocket-boom { position: absolute; width: 80px; height: 80px; margin: -40px 0 0 -40px; background: url("/static/rocket-boom.svg") center / contain no-repeat; }
-.rocket-multiplier { position: absolute; top: 14px; left: 0; right: 0; color: var(--text-45688e); font-size: 33px; font-weight: bold; line-height: 40px; text-align: center; text-shadow: 0 1px 0 var(--back-fff); pointer-events: none; }
-.rocket-sky.cashed .rocket-multiplier { color: var(--text-43a047); }
-.rocket-sky.crashed .rocket-multiplier { color: var(--text-c33); }
-/* "Покер": a card table of an online casino of the 2000s — green felt in a
-   wooden rail, the dealer at the top, the board in the middle, the player
-   at the bottom; white cards with the rank and suit in the corners and a
-   big suit in the middle, a blue back for the cards of the dealer until
-   the call. The five cards of a hand are lifted once it is over. */
-.poker-table {
-  margin: 12px 0 2px;
-  padding: 8px 12px;
-  border: 6px solid var(--line-6b4423);
-  border-radius: 16px;
-  background: radial-gradient(ellipse at center, var(--back-2f7a4b), var(--back-1e5c36));
-  box-shadow: inset 0 0 0 1px var(--back-8a5a2e), inset 0 2px 8px rgba(0, 0, 0, 0.45);
-}
-.poker-row { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 6px 0; }
-.poker-row + .poker-row { border-top: 1px dashed rgba(255, 255, 255, 0.2); }
-.poker-label { color: var(--text-dfe3e8); font-size: 10px; font-weight: bold; letter-spacing: 1px; line-height: 12px; text-transform: uppercase; }
-.poker-cards { display: flex; gap: 6px; justify-content: center; }
-.poker-card {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 74px;
-  border: 1px solid var(--line-b8b8a8);
-  border-radius: 4px;
-  background: var(--back-fdfdf8);
-  color: var(--text-1a1a1a);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
-  font-family: georgia, "times new roman", serif;
-}
-.poker-card.poker-red { color: var(--text-c8102e); }
-.poker-corner { position: absolute; top: 3px; left: 4px; font-size: 13px; font-weight: bold; line-height: 13px; text-align: center; }
-.poker-corner.flip { top: auto; left: auto; right: 4px; bottom: 3px; transform: rotate(180deg); }
-.poker-pip { font-size: 27px; line-height: 28px; }
-.poker-card.back { border: 3px solid var(--back-fdfdf8); background: repeating-linear-gradient(45deg, var(--back-34568b) 0 4px, var(--back-5b7aa1) 4px 8px); }
-.poker-card.slot { border: 1px dashed rgba(255, 255, 255, 0.35); background: transparent; box-shadow: none; }
-
-.poker-cards.judged .poker-card { opacity: 0.55; }
-.poker-cards.judged .poker-card.best { opacity: 1; transform: translateY(-4px); box-shadow: 0 0 0 2px var(--line-9aa3ae), 0 3px 4px rgba(0, 0, 0, 0.45); }
-.poker-hand { min-height: 17px; padding: 1px 9px; border-radius: 9px; background: rgba(0, 0, 0, 0.35); color: var(--text-fff); font-weight: bold; line-height: 15px; }
-.poker-hand:empty { visibility: hidden; }
-.poker-bets { color: var(--text-f4f4f4); line-height: 14px; }
-.poker-controls .button + .button { margin-left: 6px; }
-.poker-pays { width: 100%; margin: 10px 0 0; border-collapse: collapse; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
-.poker-pays caption { padding: 0 0 4px; font-weight: bold; text-align: left; }
-.poker-pays td { padding: 3px 8px; border-top: 1px solid var(--line-e8e8e8); }
-.poker-pays td:last-child { color: var(--text-45688e); font-weight: bold; text-align: right; white-space: nowrap; }
-.poker-pays tr.lit td { background: var(--back-eee5b8); color: var(--text-58462a); }
-.poker-rules { margin: 6px 0 0; }
-/* "Столы" of "Покер": no-limit hold'em with people — an oval of felt in a
-   wooden rail, the seats around it with a photo, a name and the chips
-   left, the viewer at the bottom; the cards over each seat, the chips of
-   the bets before it, the board and the pot in the middle; a gold ring
-   round the seat whose turn it is, with its clock under it. */
-.holdem-forms { display: flex; gap: 10px; margin: 0 0 10px; }
-.holdem-form { flex: 1; min-width: 0; padding: 8px 10px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
-.holdem-form h4, .holdem-list h4 { margin: 0 0 4px; color: var(--text-45688e); }
-.holdem-form .hint { margin: 0 0 4px; }
-.holdem-form select, .holdem-form input[type="text"] { width: 100%; box-sizing: border-box; }
-.holdem-pair { display: flex; gap: 8px; }
-.holdem-pair > span { flex: 1; min-width: 0; }
-.holdem-pair select { width: 100%; }
-.holdem-check { display: block; margin: 8px 0 0; }
-.holdem-submit { margin: 8px 0 0; }
-.holdem-list { margin: 10px 0 0; }
-.holdem-row { padding: 5px 0; border-top: 1px solid var(--line-e8e8e8); }
-.holdem-row-name a { font-weight: bold; }
-.holdem-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
-.holdem-street { margin: 4px 0 0; }
-.holdem-felt {
-  position: relative;
-  aspect-ratio: 3 / 2;
-  margin: 70px 56px 80px;
-  border: 10px solid var(--line-6b4423);
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, var(--back-2f7a4b), var(--back-1e5c36));
-  box-shadow: inset 0 0 0 2px var(--back-8a5a2e), inset 0 4px 16px rgba(0, 0, 0, 0.5), 0 3px 8px rgba(0, 0, 0, 0.35);
-}
-.holdem-middle { position: absolute; top: 46%; left: 50%; display: flex; flex-direction: column; align-items: center; gap: 4px; transform: translate(-50%, -50%); }
-.holdem-board .poker-card { width: 34px; height: 48px; }
-.holdem-board .poker-pip { font-size: 18px; line-height: 18px; }
-.holdem-board { gap: 3px; }
-.holdem-board .poker-corner { font-size: 11px; line-height: 11px; }
-.holdem-pot-total { color: var(--text-f4f4f4); font-weight: bold; }
-.holdem-pot.empty { height: 16px; }
-.holdem-pot, .holdem-bet { display: inline-flex; gap: 4px; align-items: center; }
-.holdem-bet { position: absolute; transform: translate(-50%, -50%); }
-.holdem-chips { display: inline-flex; flex-direction: column-reverse; }
-.holdem-chip {
-  display: block;
-  width: 16px;
-  height: 5px;
-  margin-top: -2px;
-  border: 1px solid rgba(0, 0, 0, 0.45);
-  border-radius: 50%;
-  background: var(--back-fdfdf8);
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
-}
-.holdem-chip.chip-5 { background: var(--back-d23a32); }
-.holdem-chip.chip-25 { background: var(--back-43a047); }
-.holdem-chip.chip-100 { background: var(--back-3e3e3e); }
-.holdem-chip.chip-1000 { background: var(--back-6a3fd8); }
-.holdem-amount { padding: 0 5px; border-radius: 8px; background: rgba(0, 0, 0, 0.45); color: var(--text-fff); font-size: 10px; font-weight: bold; line-height: 14px; white-space: nowrap; }
-.holdem-seat { position: absolute; z-index: 1; display: flex; flex-direction: column; align-items: center; width: 100px; transform: translate(-50%, -50%); }
-.holdem-cards { display: flex; gap: 2px; height: 40px; margin-bottom: -10px; }
-.holdem-cards .poker-card { width: 28px; height: 40px; }
-.holdem-cards .poker-pip { font-size: 14px; line-height: 14px; }
-.holdem-cards .poker-corner { top: 1px; left: 2px; font-size: 9px; line-height: 9px; }
-.holdem-cards .poker-corner.flip { display: none; }
-.holdem-cards.judged .poker-card { opacity: 0.55; }
-.holdem-cards.judged .poker-card.best { opacity: 1; box-shadow: 0 0 0 2px var(--line-9aa3ae); }
-.holdem-plate { position: relative; display: flex; gap: 5px; align-items: center; width: 100%; box-sizing: border-box; padding: 4px; border: 1px solid var(--line-ccc); border-radius: 6px; background: var(--back-fff); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35); }
-.holdem-avatar { width: 28px; height: 28px; flex: none; }
-.holdem-who { min-width: 0; line-height: 13px; }
-.holdem-name { display: block; overflow: hidden; font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
-.holdem-stack { color: var(--text-626262); font-size: 10px; white-space: nowrap; }
-.holdem-status { margin-top: 2px; padding: 0 6px; border-radius: 7px; background: rgba(0, 0, 0, 0.6); color: var(--text-f4f4f4); font-size: 10px; font-weight: bold; line-height: 14px; white-space: nowrap; }
-.holdem-status:empty { display: none; }
-.holdem-seat .poker-hand { font-size: 10px; }
-.holdem-seat.turn .holdem-plate { border-color: var(--line-9aa3ae); box-shadow: 0 0 0 2px var(--line-9aa3ae); }
-.holdem-seat.folded .holdem-plate, .holdem-seat.away .holdem-plate { opacity: 0.55; }
-.holdem-seat.folded .holdem-cards { opacity: 0.35; }
-.holdem-seat.winner .holdem-plate { background: var(--back-eee5b8); border-color: var(--line-c3a476); }
-.holdem-seat.mine .holdem-cards { height: 52px; }
-.holdem-seat.mine .holdem-cards .poker-card { width: 36px; height: 52px; }
-.holdem-seat.empty { width: auto; }
-.holdem-free { padding: 4px 8px; border: 1px dashed rgba(255, 255, 255, 0.4); border-radius: 6px; color: var(--text-f4f4f4); font-size: 10px; }
-.holdem-clock { width: 100%; height: 4px; margin-top: 2px; background: rgba(0, 0, 0, 0.35); }
-.holdem-clock-bar { display: block; height: 100%; background: var(--back-43a047); }
-.holdem-clock-bar.late { background: var(--back-d23a32); }
-.holdem-dealer { position: absolute; right: -6px; bottom: 14px; width: 18px; height: 18px; border: 1px solid var(--line-b8b8a8); border-radius: 50%; background: var(--back-fdfdf8); color: var(--text-1a1a1a); font-size: 10px; font-weight: bold; line-height: 18px; text-align: center; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45); }
-.holdem-controls, .holdem-sit, .holdem-invite { margin: 8px 0 0; text-align: center; }
-.holdem-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; }
-.holdem-raise-box { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.holdem-raise-box input[type="range"] { width: 120px; }
-.holdem-own { margin: 6px 0 0; }
-.holdem-own .button + .button { margin-left: 6px; }
-.holdem-invite input[type="text"] { width: 220px; }
-
-.bet-event { margin: 0 0 10px; padding: 8px 10px; border: 1px solid var(--line-dae1e8); background: var(--back-fff); }
-.bet-event-question { color: var(--text-45688e); font-size: 13px; font-weight: bold; }
-.bet-event-meta { margin: 2px 0 6px; color: var(--text-626262); }
-.bet-event-stake { margin: 0 0 6px; }
-.bet-outcome { padding: 5px 0; border-top: 1px solid var(--line-e8e8e8); }
-.bet-outcome-head { display: flex; gap: 8px; align-items: center; }
-.bet-outcome-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.bet-outcome-sum { color: var(--text-626262); white-space: nowrap; }
-.bet-outcome-odds { padding: 1px 6px; background: var(--back-dae1e8); color: var(--text-2b587a); font-weight: bold; white-space: nowrap; }
-.bet-outcome.won .bet-outcome-odds { background: var(--text-43a047); color: var(--back-fff); }
-.bet-outcome-head .button { padding: 2px 8px; }
-.bet-outcome-track { height: 6px; margin: 4px 0 0; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
-.bet-outcome-bar { height: 100%; background: var(--back-dcefd9); }
-.bet-outcome.won .bet-outcome-name { color: var(--text-43a047); }
-.bet-outcome.won .bet-outcome-bar { background: var(--text-43a047); }
-.bet-outcome-mine { margin: 2px 0 0; color: var(--text-58462a); }
-.bet-event-mine { margin: 6px 0 0; padding: 4px 6px; background: var(--back-eee5b8); color: var(--text-58462a); font-weight: bold; }
-/* The New Year casino (html.festive): a hall of a slot machine of the
-   2000s on a holiday night — a gold banner, a board of red velvet with a
-   frame of running lights, gold cells, a light that glows, a button that
-   shines, confetti and a jumping balance on a win (casino.js). */
-.casino-festive { display: none; }
-.festive .casino-festive {
-  display: block;
-  margin: 0 0 10px;
-  padding: 10px 8px;
-  border: 2px solid var(--line-9aa3ae);
-  border-radius: 6px;
-  background: url("/static/newyear/flakes.svg"), linear-gradient(135deg, var(--back-7a0f1d), var(--back-d23a32) 50%, var(--back-7a0f1d));
-  text-align: center;
-}
-.festive .casino-festive-text {
-  background: linear-gradient(90deg, var(--text-dfe3e8), var(--text-f4f4f4), var(--text-dfe3e8), var(--text-f4f4f4), var(--text-dfe3e8));
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  font-size: 16px;
-  font-weight: bold;
-}
-.festive .casino-festive-text::before, .festive .casino-festive-text::after { display: inline-block; color: var(--text-fff); }
-.festive .casino-festive-text::before { content: "🎄"; margin-right: 8px; }
-.festive .casino-festive-text::after { content: "🎁"; margin-left: 8px; }
-
-.festive .casino-lead { padding: 6px 8px 6px 30px; border-left: 3px solid var(--back-d23a32); background: var(--back-eef1f4) url("/static/newyear/snowflake.svg") no-repeat 8px 50%; }
-
-.festive .casino-board, .festive .casino-multipliers, .festive .rocket-sky {
-  position: relative;
-  padding: 16px;
-  border: 3px solid var(--line-9aa3ae);
-  border-radius: 8px;
-  background: radial-gradient(circle at 50% 30%, var(--back-d23a32), var(--back-7a0f1d) 75%);
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.45);
-}
-/* The frame of running lights: gold and red bulbs that blink in turn. */
-.festive .casino-board::before, .festive .casino-board::after,
-.festive .casino-multipliers::before, .festive .casino-multipliers::after,
-.festive .rocket-sky::before, .festive .rocket-sky::after {
-  content: "";
-  position: absolute;
-  inset: 2px;
-  pointer-events: none;
-  background:
-    radial-gradient(circle, var(--back-c5cbd3) 2px, transparent 3px) 0 0 / 14px 10px repeat-x,
-    radial-gradient(circle, var(--back-c5cbd3) 2px, transparent 3px) 0 100% / 14px 10px repeat-x,
-    radial-gradient(circle, var(--back-c5cbd3) 2px, transparent 3px) 0 0 / 10px 14px repeat-y,
-    radial-gradient(circle, var(--back-c5cbd3) 2px, transparent 3px) 100% 0 / 10px 14px repeat-y;
-}
-.festive .casino-board::after, .festive .casino-multipliers::after, .festive .rocket-sky::after {
-  background:
-    radial-gradient(circle, var(--text-f4f4f4) 2px, transparent 3px) 7px 0 / 14px 10px repeat-x,
-    radial-gradient(circle, var(--text-f4f4f4) 2px, transparent 3px) 7px 100% / 14px 10px repeat-x,
-    radial-gradient(circle, var(--text-f4f4f4) 2px, transparent 3px) 0 7px / 10px 14px repeat-y,
-    radial-gradient(circle, var(--text-f4f4f4) 2px, transparent 3px) 100% 7px / 10px 14px repeat-y;
-}
-
-.festive .casino-cell {
-  position: relative;
-  border: 1px solid var(--line-9aa3ae);
-  border-radius: 6px;
-  background: linear-gradient(var(--back-fff), var(--back-eef1f4));
-  box-shadow: inset 0 -3px 0 rgba(122, 15, 29, 0.15);
-}
-.festive .casino-votes { color: var(--text-7a0f1d); text-shadow: 0 1px 0 var(--back-c5cbd3); }
-.festive .casino-empty .casino-votes { color: var(--text-aaa); text-shadow: none; }
-/* The lit cell glows softly around, not over its number: the number
-   stays easy to read. */
-.festive .casino-cell.lit {
-  z-index: 1;
-  border-color: var(--line-9aa3ae);
-  background: var(--back-fff);
-  box-shadow: 0 0 0 2px var(--back-c5cbd3);
-  transform: scale(1.06);
-}
-.festive .casino-cell.lit .casino-votes { text-shadow: none; }
-
-/* The buttons of the games: red and gold, with a gleam running over. */
-.festive .casino-controls .button, .festive .casino-auto .button {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid var(--line-9aa3ae);
-  border-radius: 4px;
-  background: linear-gradient(var(--back-d23a32), var(--back-a01e28));
-  color: var(--text-f4f4f4);
-  font-weight: bold;
-  text-shadow: 0 1px 1px var(--back-7a0f1d);
-}
-.festive .casino-controls .button { padding: 8px 26px; font-size: 13px; }
-.festive .casino-controls .button::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -60%;
-  width: 40%;
-  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.6), transparent);
-}
-.festive .casino-controls .button:disabled { opacity: 0.7; }
-
-/* A win: a gold plaque that bounces in, with a tree and a gift. */
-.festive .casino-result { border-radius: 6px; }
-.festive .casino-win {
-  border: 2px solid var(--line-9aa3ae);
-  background: linear-gradient(135deg, var(--back-c5cbd3), var(--text-f4f4f4) 50%, var(--back-c5cbd3));
-  color: var(--text-6b0d19);
-  font-size: 15px;
-}
-.festive .casino-win::before { content: "🎉 "; }
-.festive .casino-win::after { content: " 🎉"; }
-
-/* The balance is gold and jumps when it grows. */
-.festive .casino-balance .finance-votes {
-  background: linear-gradient(var(--back-c5cbd3), var(--back-d23a32));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  font-weight: bold;
-}
-
-/* The aim: a strip of candy cane, a zone of gold tinsel, a star marker. */
-.festive .casino-dice { height: 22px; border: 2px solid var(--line-9aa3ae); border-radius: 11px; background: repeating-linear-gradient(-45deg, var(--back-d23a32) 0 8px, var(--back-fff) 8px 16px); }
-.festive .casino-dice-win { background: repeating-linear-gradient(90deg, var(--back-43a047) 0 6px, var(--back-c5cbd3) 6px 8px); }
-.festive .casino-dice-win.narrow { background: var(--back-43a047); }
-.festive .casino-dice-mark { background: var(--back-c5cbd3); }
-/* The New Year rocket: a night sky with snow in the frame of lights, a
-   candy-striped rocket with a golden trail of sparks and a firework. */
-.festive .rocket-sky { padding: 0; background: url("/static/newyear/flakes.svg"), radial-gradient(circle at 50% 130%, var(--back-0b3d2e), var(--back-2b1055) 80%); }
-.festive .rocket-trail { color: var(--back-c5cbd3); }
-.festive .rocket-ship { background-image: url("/static/newyear/rocket.svg"); }
-.festive .rocket-boom { width: 110px; height: 110px; margin: -55px 0 0 -55px; background-image: url("/static/newyear/firework.svg"); }
-.festive .rocket-multiplier { color: var(--text-dfe3e8); text-shadow: 0 2px 0 var(--back-7a0f1d); }
-.festive .rocket-sky.cashed .rocket-multiplier { color: var(--text-f4f4f4); text-shadow: 0 2px 0 var(--back-0b3d2e); }
-.festive .rocket-sky.crashed .rocket-multiplier { color: var(--text-fff); text-shadow: 0 2px 0 var(--back-7a0f1d); }
-.festive .casino-dice-mark::before { content: "★"; position: absolute; top: 100%; left: 50%; color: var(--text-dfe3e8); font-size: 16px; line-height: 16px; transform: translateX(-50%); }
-
-/* Recipient picker for gifting Prime. */
-.bank-people { max-height: 260px; overflow-y: auto; border: 1px solid var(--line-bbb); border-top: 0; background: var(--back-fff); }
-.bank-people-title { padding: 3px 6px; background: var(--back-f2f2f2); color: var(--text-626262); }
-.bank-person { display: flex; gap: 6px; align-items: center; padding: 3px 6px; border-top: 1px solid var(--line-e8e8e8); color: inherit; }
-.bank-person:hover { background: var(--back-ededed); text-decoration: none; }
-.bank-person img { flex: none; width: 30px; height: 30px; object-fit: cover; }
-.bank-person b { color: var(--text-2b587a); }
+/* Recipient picker for transfers and Prime gifts. */
+.recipient-options { max-height: 260px; overflow-y: auto; border: 1px solid var(--line-bbb); border-top: 0; background: var(--back-fff); }
+.recipient-options-title { padding: 3px 6px; background: var(--back-f2f2f2); color: var(--text-626262); }
+.recipient-option { display: flex; gap: 6px; align-items: center; padding: 3px 6px; border-top: 1px solid var(--line-e8e8e8); color: inherit; }
+.recipient-option:hover { background: var(--back-ededed); text-decoration: none; }
+.recipient-option img { flex: none; width: 30px; height: 30px; object-fit: cover; }
+.recipient-option b { color: var(--text-2b587a); }
 .voucher-keys { margin: 10px 0; }
 .voucher-keys input.voucher-key { width: 60px; text-align: center; text-transform: uppercase; }
 .voucher-code { font-family: "Courier New", monospace; white-space: nowrap; }
@@ -3387,182 +2767,13 @@ img.name-prime.name-prime {
 
 /* "Рейтинги" (/top): a board of the forums of the 2000s, the first three
    places in medals. */
-.top-table { width: 100%; border-collapse: collapse; margin: 0 0 10px; }
-.top-table th { padding: 4px 6px; background: var(--back-e6e6e6); border-bottom: 1px solid var(--line-ccc); color: var(--text-555); font-weight: bold; text-align: left; }
-.top-table td { padding: 6px; border-bottom: 1px solid var(--line-e8ebee); vertical-align: middle; }
-.top-table th.top-place, .top-table td.top-place { width: 44px; text-align: center; }
-.top-table th.top-value, .top-table td.top-value { width: 150px; text-align: right; white-space: nowrap; font-weight: bold; }
-.top-place span { display: inline-block; min-width: 24px; line-height: 24px; color: var(--text-626262); font-weight: bold; }
-.top-medal img { display: block; margin: 0 auto; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 25%)); }
-.top-row-medal td { background: var(--back-f9f6e7); }
-.top-person { display: flex; gap: 8px; align-items: center; }
-.top-avatar { display: block; width: 36px; height: 36px; object-fit: cover; }
-.top-who { min-width: 0; }
-.top-pet { display: flex; gap: 4px; align-items: center; margin-top: 2px; color: var(--text-555); }
 
 /* "Питомец" (/pet): round drawn pets. */
-.pet-picture { display: block; }
-.pet-shop { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0 10px; }
-.pet-kind { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 6px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); text-align: center; }
-.pet-kind-chosen { background: var(--back-f9f6e7); border-color: var(--line-c3a476); }
-.pet-kind-picture { padding: 4px; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
-.pet-kind-name { font-weight: bold; }
-.pet-kind-about { flex: 1; color: var(--text-626262); }
-.pet-kind-price { font-weight: bold; color: var(--text-45688e); }
 /* The tabs of one's pets above the page, with "+" for the shop. */
-.pet-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 10px; padding: 0 0 6px; border-bottom: 1px solid var(--line-dae1e8); }
-.pet-tab { display: flex; align-items: center; gap: 4px; max-width: 140px; padding: 2px 8px 2px 2px; font: inherit; color: var(--text-2b587a); cursor: pointer; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
-.pet-tab span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pet-tab:hover { background: var(--back-e9edf1); }
-.pet-tab-chosen, .pet-tab-chosen:hover { color: var(--text-fff); background: var(--back-595959); border-color: var(--line-595959); }
-.pet-tab-more b { display: inline-block; width: 32px; font-size: 18px; text-align: center; }
-.pet-adopt { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
-.pet-adopt input { width: 160px; }
-.pet-card { display: flex; gap: 14px; align-items: flex-start; margin: 0 0 10px; padding: 10px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
-.pet-stage { flex: none; display: flex; align-items: flex-end; justify-content: center; width: 120px; height: 120px; background: var(--back-fff) linear-gradient(to top, var(--back-dcefd9) 22px, transparent 22px); border: 1px solid var(--line-bbb); }
-.pet-stage > * { margin-bottom: 8px; }
 
-.pet-sad > * { filter: grayscale(0.7); }
-.pet-info { flex: 1; min-width: 0; }
-.pet-name { font-size: 13px; }
-.pet-mood { margin: 2px 0 6px; color: var(--text-626262); }
-.pet-bars { border-collapse: collapse; margin: 0 0 8px; }
-.pet-bars td { padding: 2px 6px 2px 0; }
-.pet-bar-label { width: 90px; color: var(--text-626262); white-space: nowrap; }
-.pet-bar-value { min-width: 60px; white-space: nowrap; }
-.pet-bar { width: 150px; height: 10px; background: var(--back-e6e6e6); border: 1px solid var(--line-ccc); }
-.pet-bar-fill { height: 100%; }
-.pet-satiety { background: var(--back-43a047); }
-.pet-joy { background: var(--back-2e7dd7); }
-.pet-experience { background: var(--back-c5cbd3); }
-.pet-health { width: 100%; background: var(--back-d23a32); }
-.pet-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.pet-stats { margin: 0 0 10px; }
-.pet-stats td.label { width: 140px; color: var(--text-626262); }
-.pet-fight-box { margin: 6px 0 10px; }
-.pet-challenge { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.pet-challenge input { width: 140px; }
-.pet-arena { margin-top: 10px; padding: 10px; background: var(--back-f9f6e7); border: 1px solid var(--line-d7cf9e); }
-.pet-arena-ring { display: flex; align-items: center; justify-content: space-around; gap: 10px; }
-.pet-arena-side { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 170px; text-align: center; }
-.pet-arena-side .pet-bar { width: 140px; }
-.pet-arena-picture { padding: 4px; background: var(--back-fff); border: 1px solid var(--line-d7cf9e); }
-.pet-arena-hp { color: var(--text-555); }
-.pet-arena-vs { color: var(--text-c33); font-size: 18px; font-weight: bold; }
 
-.pet-log { max-height: 160px; margin-top: 8px; padding: 4px 6px; overflow-y: auto; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
-.pet-log-line { margin: 2px 0; color: var(--text-555); }
-.pet-log-crit { color: var(--text-c33); font-weight: bold; }
-.pet-arena-result { margin-top: 8px; font-size: 13px; font-weight: bold; text-align: center; }
-.pet-won { color: var(--text-43a047); }
-.pet-lost { color: var(--text-c33); }
-.pet-fights { margin: 0 0 10px; }
-.pet-fight { display: grid; grid-template-columns: 1fr 110px 1fr; gap: 8px; align-items: center; padding: 6px 4px; border-bottom: 1px solid var(--line-e8ebee); }
-.pet-fight-side { display: flex; gap: 6px; align-items: center; min-width: 0; }
-.pet-fight-side:last-child { flex-direction: row-reverse; text-align: right; }
-.pet-fight-name { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
-.pet-result { text-align: center; }
-.pet-links { margin: 10px 0 0; color: var(--text-626262); }
 /* Rarities, chests and clothes of pets: plates of colour and boxes with a
    bevel, as the browser games of the 2000s drew their loot. */
-.pet-dressed { position: relative; display: block; flex: none; }
-.pet-dressed > .pet-picture { position: relative; }
-.pet-dressed > .pet-picture.pet-cloth { position: absolute; top: 0; left: 0; background: none; border-color: transparent; }
-.pet-rarity { display: inline-block; padding: 0 5px; font-size: 10px; font-weight: bold; line-height: 15px; color: var(--text-fff); text-shadow: 0 1px 0 rgb(0 0 0 / 30%); border: 1px solid rgb(0 0 0 / 20%); }
-.pet-rarity-common { background: var(--back-8b8b8b); }
-.pet-rarity-rare { background: var(--back-2e7dd7); }
-.pet-rarity-epic { background: var(--back-6a3fd8); }
-.pet-rarity-legendary { color: var(--text-58462a); text-shadow: none; background: var(--back-c9cfd6); border-color: var(--line-7d8792); }
-.pet-kind-rare, .pet-kind-rare .pet-kind-picture { border-color: var(--line-8b8b8b); }
-.pet-kind-epic, .pet-kind-epic .pet-kind-picture { border-color: var(--back-c7b2ee); }
-.pet-kind-legendary, .pet-kind-legendary .pet-kind-picture { border-color: var(--line-9aa3ae); }
-.pet-cases { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 10px; }
-.pet-case { display: flex; gap: 10px; align-items: center; padding: 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); border-left-width: 4px; }
-.pet-case-bronze { border-left-color: var(--line-c3a476); }
-.pet-case-silver { border-left-color: var(--line-aaa); }
-.pet-case-gold { border-left-color: var(--line-9aa3ae); background: var(--back-f9f6e7); }
-.pet-case-picture { flex: none; padding: 4px; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
-.pet-case-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.pet-case-buy { flex: none; display: flex; flex-direction: column; gap: 4px; }
-.pet-odds { display: flex; height: 8px; margin-top: 2px; background: var(--back-e6e6e6); border: 1px solid var(--line-ccc); }
-.pet-odds-part { height: 100%; }
-.pet-odds-legend { display: flex; flex-wrap: wrap; gap: 2px 10px; color: var(--text-626262); font-size: 10px; }
-.pet-odds-legend i { display: inline-block; width: 8px; height: 8px; margin-right: 3px; vertical-align: -1px; }
-.pet-case-inside { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
-.pet-case-pet { padding: 1px; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
-.pet-roulette-modal { width: 460px; }
-.pet-roulette { position: relative; height: 84px; overflow: hidden; background: var(--back-3e3e3e); border: 1px solid var(--line-2f2f2f); box-shadow: inset 0 0 12px rgb(0 0 0 / 60%); }
-.pet-roulette-tape { display: flex; gap: 4px; padding: 6px 0; }
-
-.pet-roulette-cell { flex: none; display: flex; align-items: center; justify-content: center; width: 72px; height: 72px; background: var(--back-fff); border: 2px solid var(--line-dae1e8); }
-.pet-roulette-mark { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; background: var(--back-c5cbd3); }
-
-.pet-reveal { display: flex; gap: 12px; align-items: flex-start; margin-top: 10px; }
-.pet-reveal-picture { flex: none; padding: 6px; background: var(--back-fff); border: 2px solid var(--line-dae1e8); }
-.pet-reveal-text { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
-.pet-reveal-text input { width: 180px; }
-.pet-reveal-title { font-size: 13px; font-weight: bold; }
-.pet-powers { margin: 4px 0 6px; }
-.pet-power { display: flex; gap: 8px; align-items: center; width: 100%; padding: 3px 4px; font: inherit; color: inherit; text-align: left; cursor: pointer; background: none; border: 0; border-bottom: 1px dotted var(--line-dae1e8); }
-.pet-power:hover, .pet-power-open { background: var(--back-f2f5f8); }
-.pet-power-label { flex: none; width: 110px; color: var(--text-626262); }
-.pet-power-bar { flex: 1; display: flex; height: 12px; background: var(--back-e6e6e6); border: 1px solid var(--line-ccc); box-shadow: inset 0 1px 1px rgb(0 0 0 / 10%); }
-.pet-power-part { height: 100%; }
-.pet-power-breed { background: var(--back-3e3e3e); }
-.pet-power-levels { background: var(--back-c5cbd3); }
-.pet-power-clothes { background: var(--back-43a047); }
-.pet-power-value { flex: none; width: 40px; text-align: right; }
-.pet-power-about { margin: 0 0 4px 118px; padding: 4px 6px; color: var(--text-555); background: var(--back-f9f6e7); border: 1px solid var(--line-d7cf9e); }
-.pet-power-sum { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 3px; }
-.pet-power-sum i { display: inline-block; width: 8px; height: 8px; margin-right: 3px; vertical-align: -1px; }
-.pet-power-crit { display: flex; gap: 8px; padding: 3px 4px; }
-.pet-wardrobe { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 6px 0 10px; }
-.pet-slot { background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
-.pet-slot-title { padding: 2px 6px; font-weight: bold; color: var(--text-45688e); background: var(--back-e9edf1); border-bottom: 1px solid var(--line-dae1e8); }
-.pet-slot-items { display: grid; grid-auto-rows: 136px; gap: 4px; padding: 4px; }
-.pet-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 5px 4px; text-align: center; background: var(--back-fff); border: 1px solid var(--line-dae1e8); }
-.pet-item:hover, .pet-item:focus-within { border-color: var(--line-8b8b8b); }
-.pet-item-owned { background: var(--back-f2f5f8); }
-.pet-item-worn { background: var(--back-dcefd9); border-color: var(--line-d5ddb6); }
-.pet-item-picture { display: flex; flex: none; align-items: center; justify-content: center; width: 48px; height: 48px; }
-.pet-item-name { font-weight: bold; }
-.pet-item-bonus { color: var(--text-0c7a3c); font-size: 10px; }
-.pet-item-state { color: var(--text-626262); font-size: 10px; }
-.pet-item .button { max-width: 100%; margin-top: auto; padding-inline: 6px; white-space: normal; }
-.pet-story .pet-log-line { margin: 3px 0; }
-.pet-log-dodge { color: var(--text-626262); font-style: italic; }
-.pet-log-end { margin-top: 4px; color: var(--text-333); font-weight: bold; }
-.pet-kind-special { color: var(--text-555); }
-.pet-keeper { margin: 4px 0 8px; padding: 6px 8px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
-.pet-keeper p { margin: 4px 0 0; }
-.pet-keeper-row { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: center; margin: 2px 0; }
-.pet-pity { background: var(--back-6a3fd8); }
-.pet-stance-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0; }
-.pet-stance-row select { width: auto; }
-.pet-league-note { margin: 0 0 10px; }
-.pet-league-table { width: 100%; margin: 6px 0 10px; }
-.pet-league-table th { padding: 3px 6px; color: var(--text-626262); font-weight: normal; text-align: left; border-bottom: 1px solid var(--line-dae1e8); }
-.pet-league-table td { padding: 3px 6px; vertical-align: middle; border-bottom: 1px solid var(--line-dae1e8); }
-.pet-entrant { display: inline-flex; align-items: center; gap: 4px; }
-.pet-entrants > div { margin: 2px 0; }
-.pet-round { margin: 6px 0; }
-.pet-round > b { display: block; margin: 0 0 2px; color: var(--text-45688e); }
-.pet-match { margin: 2px 0 2px 8px; }
-.pet-places { margin: 6px 0 10px; padding-left: 20px; }
-.pet-places li { margin: 2px 0; }
-.pet-votes { width: 90px; }
-.pet-quests .pet-bar-label { width: 180px; }
-.pet-badges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 6px 0 10px; }
-.pet-badge { padding: 6px 8px; color: var(--text-626262); background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); opacity: 0.6; }
-.pet-badge-got { color: inherit; background: var(--back-f9f6e7); border-color: var(--line-c3a476); opacity: 1; }
-.pet-manual { display: inline-flex; gap: 4px; align-items: center; margin-left: 8px; }
-.pet-moves { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 6px; }
-.pet-log-special { color: var(--text-6b3fb8); }
-.pet-log-guard { color: var(--text-2b587a); }
-.pet-fight-tell { display: inline-block; margin-top: 2px; cursor: pointer; }
-.pet-fight-entry { border-bottom: 1px solid var(--line-e8ebee); }
-.pet-fight-entry .pet-fight { border-bottom: 0; }
-.pet-fight-story { margin: 0 4px 6px; padding: 4px 6px; background: var(--back-f9f6e7); border: 1px solid var(--line-d7cf9e); }
 
 /* The pet on the profile, under the clubs. */
 /* "Титулы": each award a glossy badge with its name, as the forums of the
@@ -3716,7 +2927,6 @@ img.name-prime.name-prime {
 .named-title { font-size: 16px; font-weight: bold; color: var(--back-d8dde3); }
 .named-status { color: var(--text-23e0ff); }
 
-.pet-rarity-named { color: var(--back-14103a); text-shadow: none; background: var(--text-23e0ff); border-color: var(--back-d8dde3); }
 .named-reveal { display: flex; gap: 12px; align-items: flex-start; }
 .named-pose { flex: none; }
 .named-about { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
@@ -3899,91 +3109,12 @@ button.game-hud-cell:hover { background: var(--back-f2f5f8); }
 .tabs.game-tabs a.active, .tabs.game-tabs a.active:hover { background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); border-color: var(--line-333); color: var(--text-fff); font-weight: bold; }
 
 /* The mine: the rock face is one big button. */
-.mine-meter { display: block; }
-.mine-ores { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; margin: 0 0 8px; }
-.mine-tile { display: flex; flex-direction: column; gap: 1px; align-items: center; min-width: 0; padding: 4px 2px; background: linear-gradient(var(--back-fff), var(--back-e9edf1)); border: 1px solid var(--line-bbb); border-radius: 3px; color: var(--text-000); font: 11px tahoma, verdana, sans-serif; cursor: pointer; }
-.mine-tile b, .mine-tile .hint { max-width: 100%; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mine-tile:hover { border-color: var(--line-333); background: var(--back-f2f5f8); }
-.mine-tile.chosen { background: var(--back-f2f5f8); border-color: var(--line-9aa3ae); box-shadow: inset 0 0 0 1px var(--line-9aa3ae); }
-.mine-tile.locked { background: var(--back-f2f2f2); cursor: default; }
-.mine-tile.locked .mine-icon { filter: grayscale(1); opacity: 0.5; }
-.mine-opens { display: inline-flex; gap: 2px; align-items: center; }
-.mine-icon { flex: none; width: 24px; height: 24px; background: center / contain no-repeat; }
-.mine-icon-stone { background-image: url("/static/icons/ore-stone.svg"); }
-.mine-icon-coal { background-image: url("/static/icons/ore-coal.svg"); }
-.mine-icon-iron { background-image: url("/static/icons/ore-iron.svg"); }
-.mine-icon-gold { background-image: url("/static/icons/ore-gold.svg"); }
-.mine-icon-diamond { background-image: url("/static/icons/ore-diamond.svg"); }
-.mine-icon-crystal { background-image: url("/static/icons/ore-crystal.svg"); }
-.mine-face { position: relative; display: flex; flex-direction: column; gap: 2px; align-items: center; width: 100%; min-height: 170px; margin: 0 0 8px; padding: 14px 8px; overflow: hidden; background: radial-gradient(circle at 50% 40%, var(--back-707070), var(--back-3e3e3e) 75%); border: 2px solid var(--line-333); border-radius: 4px; box-shadow: inset 0 0 0 1px var(--back-8b8b8b); color: var(--text-fff); font: 11px tahoma, verdana, sans-serif; cursor: pointer; user-select: none; touch-action: manipulation; }
-.mine-face:hover .mine-face-ore { scale: 1.08; }
-.mine-face.tired { filter: grayscale(0.8); cursor: not-allowed; }
-.mine-face-ore { width: 72px; height: 72px; }
-.mine-face-pick { position: absolute; top: 34px; left: calc(50% + 24px); pointer-events: none; transform-origin: 80% 90%; }
-
-.mine-face-text { font-size: 18px; font-weight: bold; text-shadow: 0 1px 2px var(--back-3e3e3e); }
-.mine-face-sub { color: var(--text-e8e8e8); }
-
-.mine-log { padding: 4px 6px; background: var(--back-f6f6f6); border: 1px solid var(--line-dae1e8); }
-.mine-line { margin: 1px 0; color: var(--text-626262); }
-.mine-line:first-child { color: var(--text-000); font-weight: bold; }
-.mine-line.mine-win:first-child { color: var(--text-45688e); }
-.mine-backpack { margin: 0 0 8px; }
-.mine-item { display: flex; gap: 8px; align-items: center; padding: 4px; border-bottom: 1px solid var(--line-e8ebee); }
-.mine-item-name { flex: 1; min-width: 0; }
-.mine-item-units { font-weight: bold; white-space: nowrap; }
-.mine-item-worth { min-width: 90px; text-align: right; white-space: nowrap; }
-.mine-totals { margin: 6px 0 0; text-align: center; }
 
 /* "Что сделать": what can be done now, a button a row. */
-.firm-todos { display: flex; flex-direction: column; }
-.firm-todo { display: flex; gap: 8px; align-items: center; padding: 4px 2px; border-bottom: 1px solid var(--line-e8ebee); }
-.firm-todo:last-child { border-bottom: 0; }
-.firm-todo-text { flex: 1; min-width: 0; }
-.firm-todo-text .hint { margin: 0; }
-.firm-todos + .button, .game-window-body > .button.game-go { margin-bottom: 6px; }
-.firm-good-quick { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.firm-good-quick .firm-good-tile { flex: 1; }
-.firm-good-quick .button { width: 100%; }
-.firm-stat-name .game-icon { vertical-align: -3px; }
-
-.stock-quicks { white-space: nowrap; }
-.stock-quick { width: 28px; padding: 2px 0; border: 1px solid var(--line-595959); border-radius: 3px; color: var(--text-fff); font: bold 11px tahoma, verdana, sans-serif; cursor: pointer; }
-.stock-quick + .stock-quick { margin-left: 2px; }
-.stock-quick.buy { background: linear-gradient(rgb(255 255 255 / 30%), transparent 50%), var(--back-3f8f35); }
-.stock-quick.sell { background: linear-gradient(rgb(255 255 255 / 30%), transparent 50%), var(--back-d23a32); }
-.stock-quick:disabled { filter: opacity(0.4); cursor: default; }
-.stock-rules { margin: 0; line-height: 16px; }
-.stock-trade .game-window { min-width: 0; margin-bottom: 0; }
-.stock-trade { margin-bottom: 12px; }
-
-.pet-tab { background: linear-gradient(var(--back-fff), var(--back-e9edf1)); border-radius: 4px; }
-.pet-tab:hover { background: var(--back-e9edf1); }
-.pet-tab-chosen, .pet-tab-chosen:hover { background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); border-color: var(--line-333); }
-.pet-tab-more img { flex: none; margin: 2px 2px 2px 4px; }
-.pet-kind, .pet-case { border-radius: 4px; box-shadow: inset 0 1px 0 var(--back-fff); background: linear-gradient(var(--back-fff), var(--back-f2f5f8)); }
-.pet-case-picture { border-radius: 4px; }
-.pet-rules-table { width: 100%; margin: 6px 0 0; }
-.pet-rules-table td { padding: 3px 6px; vertical-align: top; border-bottom: 1px dotted var(--line-dae1e8); }
-.pet-rules-table td.label { width: 130px; color: var(--text-45688e); font-weight: bold; }
-.pet-rules-pet { width: 36px; }
-.pet-rules p { margin: 0 0 4px; line-height: 1.45; }
-.pet-badges { grid-template-columns: repeat(4, 1fr); }
-.pet-badge { padding: 4px 6px; text-align: center; }
+.game-window-body > .button.game-go { margin-bottom: 6px; }
 
 :where(.button, button):active:not(:disabled) { transform: translateY(1px); }
 
-.pet-keeper-hud .meter { display: block; height: 7px; }
-.pet-keeper-hud .meter-text { display: none; }
-.pet-keeper-hud .game-hud-cell { font: inherit; }
-.pet-shard-row { display: flex; gap: 6px; align-items: center; min-width: 220px; margin: 0 0 6px; }
-.pet-shard-text { flex: 1; min-width: 0; }
-.pet-shard-text .meter { display: block; }
-.pet-roulette-modal { width: 460px; max-width: calc(100vw - 16px); }
-.pet-reveal-place { position: relative; height: 210px; margin-top: 10px; }
-.pet-reveal-place .pet-reveal { height: 100%; margin: 0; overflow-y: auto; visibility: hidden; }
-.pet-reveal-place .pet-reveal.open { visibility: visible; }
-.pet-reveal-wait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 
 /* The viewer of stories in the look of the 2000s. */
 .story-box { overflow: hidden; background: var(--back-fff); border: 1px solid var(--line-333); border-radius: 6px 6px 3px 3px; box-shadow: 3px 3px 0 rgb(0 0 0 / 40%); }
@@ -3998,24 +3129,6 @@ button.game-hud-cell:hover { background: var(--back-f2f5f8); }
 .story-foot { justify-content: stretch; }
 .story-foot .post-bar { flex: 1; margin: 0; }
 .story-foot .like-count { font-size: 11px; }
-
-/* The casino in the look of the 2000s. A result has its place from the
-   start: the page does not move when it comes. */
-.casino-game { background: var(--back-fff); padding: 0 8px 8px; border: 1px solid var(--line-333); border-radius: 6px 6px 3px 3px; box-shadow: 2px 2px 0 var(--back-d4d4d4); }
-.casino-game > .game-window-title { margin: 0 -8px 8px; }
-.casino-lead { display: none; }
-.casino-result[hidden] { display: block; visibility: hidden; }
-.casino-result { min-height: 16px; }
-
-.casino-cell { background: linear-gradient(var(--back-fff), var(--back-e9edf1)); border-radius: 4px; box-shadow: inset 0 1px 0 var(--back-fff); }
-.casino-balance { padding: 6px; background: linear-gradient(var(--back-fff), var(--back-e9edf1)); border: 1px solid var(--line-333); border-radius: 4px; box-shadow: 2px 2px 0 var(--back-d4d4d4); }
-.casino-controls .button.game-go { display: inline-block; width: auto; min-width: 200px; }
-.casino-hud .game-hud-cell.hot { background: linear-gradient(var(--back-eef1f4), var(--back-c5cbd3)); }
-
-/* The windows of the page of pets are the windows of the games. */
-.pet-window { margin: 0 0 12px; background: var(--back-fff); border: 1px solid var(--line-333); border-radius: 6px 6px 3px 3px; box-shadow: 2px 2px 0 var(--back-d4d4d4); }
-.pet-window-title { display: flex; gap: 6px; align-items: center; padding: 4px 8px; color: var(--text-fff); font-weight: bold; text-shadow: 0 1px 0 rgb(0 0 0 / 40%); background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); border-radius: 5px 5px 0 0; }
-.pet-window-body { padding: 8px; }
 
 /* "Холст" as a paint program of the 2000s: the box of tools at the left of
    the canvas, the colour in hand and the latest ones under it. */
@@ -4047,44 +3160,8 @@ button.game-hud-cell:hover { background: var(--back-f2f5f8); }
 /* "Рейтинги": the podium of the first three, the rest with a bar to the
    leader. */
 .top { min-height: 620px; }
-.top-loading { opacity: 0.55; }
-.top-about { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin: 0 0 8px; }
-.top-about .button { flex: none; }
-.top-podium { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; align-items: end; margin: 0 0 12px; padding: 10px 8px 0; background: linear-gradient(var(--back-fafafa), var(--back-e6e6e6)); border: 1px solid var(--line-333); border-radius: 4px; box-shadow: 2px 2px 0 var(--back-d4d4d4); }
-.top-step { display: flex; flex-direction: column; gap: 3px; align-items: center; min-width: 0; text-align: center }
-.top-step-1 { grid-column: 2; grid-row: 1; }
-.top-step-2 { grid-column: 1; grid-row: 1; }
-.top-step-3 { grid-column: 3; grid-row: 1; }
-.top-step-face { position: relative; display: block; width: 64px; height: 64px; }
-.top-step-1 .top-step-face { width: 80px; height: 80px; }
-.top-step-photo { display: block; width: 100%; height: 100%; object-fit: cover; border: 2px solid var(--line-333); border-radius: 4px; box-sizing: border-box; background: var(--back-fff); }
 
-.top-step-medal { position: absolute; right: -8px; bottom: -6px; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 35%)); }
-.top-step-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.top-step-sum { max-width: 100%; overflow: hidden; color: var(--text-000); font-size: 13px; font-variant-numeric: tabular-nums; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
-.top-step-pet { display: flex; align-items: center; justify-content: center; height: 34px; max-width: 100%; overflow: hidden; }
-.top-step-pet .top-pet { margin: 0; }
-.top-step-free { color: var(--text-626262); }
-.top-step-free .top-step-face { background: var(--back-e4e4e4); border: 2px dashed var(--line-ccc); border-radius: 4px; box-sizing: border-box; }
-.top-step-free .top-step-sum { color: var(--text-626262); }
-.top-table { table-layout: fixed; }
-.top-table td { height: 48px; box-sizing: border-box; }
-.top-table .top-pet { height: 18px; margin-top: 0; }
-.top-who { overflow: hidden; white-space: nowrap; }
-.top-value span:first-child { font-variant-numeric: tabular-nums; }
 #hud .game-hud-sum, #hud .hint { display: block; overflow: hidden; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
-.top-step-block { width: 100%; margin-top: 2px; padding-top: 4px; background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); border: 1px solid var(--line-333); border-bottom: 0; border-radius: 3px 3px 0 0; color: var(--text-fff); font-size: 16px; font-weight: bold; text-shadow: 0 1px 0 rgb(0 0 0 / 40%); box-sizing: border-box; }
-.top-step-1 .top-step-block { height: 54px; }
-.top-step-2 .top-step-block { height: 40px; }
-.top-step-3 .top-step-block { height: 28px; }
-.top-table { border: 1px solid var(--line-333); }
-.top-table th { background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); color: var(--text-fff); border-bottom-color: var(--line-333); }
-.top-row:hover td { background: var(--back-f2f5f8); }
-.top-me td, .top-me .top-step-photo { background: var(--back-dde2e8); }
-.top-me .top-step-photo { box-shadow: 0 0 0 2px var(--back-c5cbd3); }
-.top-table td.top-value { line-height: 16px; }
-.top-bar { display: block; height: 4px; margin-top: 3px; overflow: hidden; background: var(--back-e4e4e4); border-radius: 2px; }
-.top-bar-fill { display: block; height: 100%; background: var(--back-595959); transform-origin: left; }
 .tabs.game-tabs .game-icon { display: block; }
 
 /* "Знакомства": a stack of cards of one size, and the two round buttons
@@ -4145,7 +3222,6 @@ a.game-hud-cell:hover { background: var(--back-f2f5f8); }
    would then start lower. */
 .tabs.game-tabs a.active, .tabs.game-tabs a.active:hover { font-weight: normal; }
 #tabs.game-tabs { flex-wrap: nowrap; }
-.top-podium { height: 240px; box-sizing: border-box; }
 .gray-bar-search { flex: 1; min-width: 0; }
 .gray-bar-search input { width: 100%; box-sizing: border-box; }
 #create { flex: none; width: auto; }
@@ -4195,8 +3271,8 @@ a.game-hud-cell:hover { background: var(--back-f2f5f8); }
    words, buttons are the grey buttons of openvk, and numbers stand as the
    lines of "Информация" — no icons, frames and colours only for beauty.
    It comes last, over what the pages of games and money drew before. */
-.game-window, .pet-window, .casino-game { margin: 0 0 12px; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; }
-.game-window-title, .pet-window-title, .casino-game > .game-window-title {
+.game-window { margin: 0 0 12px; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; }
+.game-window-title {
   margin: 0 0 8px;
   padding: 3px 8px 3px 24px;
   background: var(--back-e6e6e6) url("/static/icons/block-arrow.svg") no-repeat 0 0;
@@ -4208,8 +3284,7 @@ a.game-hud-cell:hover { background: var(--back-f2f5f8); }
   text-shadow: none;
 }
 .game-window-title > img:first-child, .game-window-title > .game-icon:first-child,
-.pet-window-title > img:first-child, .pet-window-title > .game-icon:first-child { display: none; }
-.game-window-body, .pet-window-body { padding: 0 8px 8px; }
+.game-window-body { padding: 0 8px 8px; }
 .game-help img { display: none; }
 .game-help::before { color: var(--text-626262); font-weight: bold; content: "?"; }
 .game-help:hover::before { color: var(--text-000); }
@@ -4219,9 +3294,6 @@ a.game-hud-cell:hover { background: var(--back-f2f5f8); }
 .tabs.game-tabs a:hover { background: var(--back-e4e4e4); }
 .tabs.game-tabs a.active, .tabs.game-tabs a.active:hover { background: var(--back-707070); color: var(--text-fff); font-weight: normal; }
 .tabs img, .tabs.game-tabs img, .tabs.game-tabs .game-icon, .mb-tabs img { display: none; }
-.pet-tab, .pet-tab:hover { background: none; border-color: transparent; border-radius: 3px; }
-.pet-tab:hover { background: var(--back-e4e4e4); }
-.pet-tab-chosen, .pet-tab-chosen:hover { background: var(--back-707070); border-color: var(--line-707070); color: var(--text-fff); }
 
 .game-hud, .game-hud.four { gap: 0; margin: 0 0 10px; background: none; border: 0; border-bottom: 1px solid var(--line-e8ebee); border-radius: 0; box-shadow: none; }
 .game-hud-cell { gap: 1px; padding: 4px 8px 6px; background: none; }
@@ -4233,12 +3305,8 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .button.game-go, .button.game-go.sell { display: inline-block; width: auto; min-height: 0; background: url("/static/im/button.png") var(--back-595959); font-size: 11px; font-weight: normal; }
 .button.game-go:active { background: var(--back-444); }
 .button > img, .button > .game-icon { display: none; }
-.casino-balance { background: none; border: 0; border-radius: 0; box-shadow: none; }
 
 /* "Как начать" of the business: three numbered steps as plain text. */
-.firm-step { padding: 0; background: none; border: 0; }
-.firm-step-head .firm-icon { display: none; }
-.pet-tab-more { padding: 3px 9px; }
 
 /* Free space moves the player; controls retain their own pointer gestures. */
 .player-main { cursor: grab; touch-action: none; }
@@ -4483,3 +3551,18 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .groups-body #create { margin-left: auto; }
 .group-directory .info td { overflow-wrap: anywhere; }
 .club-member-name { font-weight: bold; overflow-wrap: anywhere; }
+
+.votes-form .info th { width: 120px; }
+.votes-form .info td { overflow-wrap: anywhere; }
+.votes-form input { box-sizing: border-box; max-width: 100%; }
+.votes-form .recipient-field { position: relative; }
+.votes-form .recipient-options { position: absolute; z-index: 2; left: 0; right: 0; }
+.votes-recipient { display: flex; align-items: center; gap: 4px; min-height: 30px; }
+.votes-recipient img { object-fit: cover; }
+.votes-feedback { min-height: 2.6em; }
+
+
+.gift-cat-info > .button { flex: none; }
+.gift-sel .gift-price, .gift-sel .gift-limit { position: static; display: block; visibility: visible; width: auto; margin: 0; background: none; }
+
+.gift-self { margin-top: 5px; }

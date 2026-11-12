@@ -1,4 +1,4 @@
-// The recipient field of the bank's "Перевести" and of "Подарить подписку"
+// The recipient field of "Перевод" and of "Подарить подписку"
 // of Prime: the recipient is named by the address of their page, or found
 // by name among the people of the site, or picked from those you follow —
 // whoever is picked is shown under the field.
@@ -17,11 +17,13 @@ export function isNickname(word) {
 // shown under it) for me; picked is called with whoever is chosen from the
 // list. It returns found, the one picked or looked up (null when none),
 // lookUp, which looks up what is typed, and clear.
-export function recipientPicker({ to, people, shown, me, picked = () => {} }) {
+export function recipientPicker({ to, people, shown, me, showAvatar = false, picked = () => {} }) {
   let found = null;
   function show(recipient) {
     found = recipient;
-    shown.replaceChildren(el('a', { href: pagePath(recipient), textContent: fullName(recipient) }), verifiedMark(recipient));
+    shown.replaceChildren(
+      ...(showAvatar ? [el('img', { src: avatarURL(recipient, 'small'), alt: '', width: 26, height: 26 })] : []),
+      el('a', { href: pagePath(recipient), textContent: fullName(recipient) }), verifiedMark(recipient));
     shown.hidden = false;
   }
 
@@ -36,6 +38,7 @@ export function recipientPicker({ to, people, shown, me, picked = () => {} }) {
       if (transferNickname(to.value) !== nickname) return null;
       show(recipient);
     } catch {
+      if (transferNickname(to.value) !== nickname) return null;
       shown.replaceChildren(tr('Получатель не найден.'));
       shown.hidden = false;
     }
@@ -65,9 +68,9 @@ export function recipientPicker({ to, people, shown, me, picked = () => {} }) {
     if (ask !== asked) return;
 
     list = list.filter((u) => u.nickname && u.nickname !== me.nickname && !u.deactivated).slice(0, 8);
-    people.replaceChildren(...(list.length ? [el('div', { className: 'bank-people-title', textContent: title }),
+    people.replaceChildren(...(list.length ? [el('div', { className: 'recipient-options-title', textContent: title }),
       ...list.map((person) => el('a', {
-        className: 'bank-person',
+        className: 'recipient-option',
         href: pagePath(person),
         onmousedown: (event) => event.preventDefault(),
         onclick: (event) => {
@@ -101,6 +104,9 @@ export function recipientPicker({ to, people, shown, me, picked = () => {} }) {
       to.value = '';
       found = null;
       shown.hidden = true;
+      people.hidden = true;
+      ++asked;
+      clearTimeout(typing);
     },
   };
 }

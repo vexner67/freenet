@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
 import {
-  callLength, declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, completenessHint, ratingTier, ratingPercent, MAX_RATING, RATING_PRICE, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, friendsCount, friendsSummary, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, untilNewYear, casinoChances, casinoChance, casinoReturn, casinoPayout, casinoPrize, spinsCount, casinoPlan, wagersCount, betMultiplier, aimReturn, betOddsField, typedOdds, betChance, betRoll, betPrize, betAmount, aimZone, betEventShare, betEventOdds, betEventState, autoplayNext, votesFontSize, groupedVotes, balanceVotes, balanceAmount, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, rocketMultiplier, rocketTime, rocketShown, rocketsCount, rocketScale, primePeriods, primeSaving, primeTerms, titleIcons, titleIconPath, titleGroups, topValue, isBirthdayToday, primeNameClass, videoDuration, handleOf, audioTime, audioNames, audioArtist, audioTitle, audiosCount, messageTime, messageDay, sameDay, emojiCode, emojiParts, offlineBar, photoMosaic, idTime, youtubeID, splitVideos, withVideos, quoteSnippet } from '../static/labels.js';
+  callLength, declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, presence, wallCount, completenessHints, completenessHint, ratingTier, ratingPercent, MAX_RATING, RATING_PRICE, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, friendsCount, friendsSummary, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, adminOverview, adminEconomy, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts, banUntil, banEnd, rubles, voteRate, foreignAgentText, adRate, peopleCount, newYearGreeting, untilNewYear, groupedVotes, balanceVotes, balanceAmount, votesAmount, signedVotes, voteOperation, transferNickname, transferFee, stickerIncome, transferURL, primePeriods, primeSaving, primeTerms, titleIcons, titleIconPath, titleGroups, isBirthdayToday, primeNameClass, videoDuration, handleOf, audioTime, audioNames, audioArtist, audioTitle, audiosCount, messageTime, messageDay, sameDay, emojiCode, emojiParts, offlineBar, photoMosaic, idTime, youtubeID, splitVideos, withVideos, quoteSnippet } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -1056,131 +1056,14 @@ test('the countdown runs to the midnight of the New Year and stops in January', 
   assert.equal(untilNewYear(new Date(2027, 0, 14)), 0);
 });
 
-test('casino: chances, return and payout', () => {
-  const prizes = [{ votes: 0, weight: 50 }, { votes: 5, weight: 25 }, { votes: 10, weight: 12 }, { votes: 20, weight: 8 }, { votes: 50, weight: 4 }, { votes: 100, weight: 1 }];
-
-  assert.deepEqual(casinoChances(prizes), [50, 25, 12, 8, 4, 1]);
-  assert.deepEqual(casinoChances([{ votes: 5, weight: 0 }, { votes: 9, weight: '' }]), [0, 0]);
-  assert.equal(casinoChance(12.345), '12,3 %');
-  assert.equal(casinoChance(0.0005), '0,0005 %');
-  assert.equal(casinoChance(0.0000083), '0,0000083 %');
-  assert.equal(casinoChance(0.04), '0,04 %');
-  assert.equal(casinoChance(0), '0 %');
-  assert.equal(casinoReturn(10, prizes), '70,5 %');
-  assert.equal(casinoReturn(0, prizes), '—');
-  assert.equal(casinoReturn(10, [{ votes: 5, weight: 0 }]), '—');
-  assert.equal(casinoPayout({ spent: 40, won: 30 }), '75 %');
-  assert.equal(casinoPayout({ spent: 0, won: 0 }), '—');
-  assert.equal(casinoPrize(0), 'Пусто');
-  assert.equal(casinoPrize(50), '50 голосов');
-  assert.equal(spinsCount(1), '1 прокрутка');
-  assert.equal(spinsCount(3), '3 прокрутки');
-  assert.equal(spinsCount(11), '11 прокруток');
-});
-
-test('casino: bets', () => {
-  assert.equal(wagersCount(1), '1 ставка');
-  assert.equal(wagersCount(2), '2 ставки');
-  assert.equal(wagersCount(5), '5 ставок');
-  assert.equal(betMultiplier(150), '×1,5');
-  assert.equal(betMultiplier(1000), '×10');
-  // What a multiplier gives back on average with its chance.
-  assert.equal(aimReturn(200, 4750), 95);
-  assert.equal(aimReturn(1000, 900), 90);
-  assert.equal(betOddsField(250), '2,5');
-  assert.equal(betOddsField(1000), '10');
-  assert.equal(typedOdds('2,5'), 250);
-  assert.equal(typedOdds(' 1.01 '), 101);
-  assert.equal(typedOdds('abc'), 0);
-  assert.equal(betChance(4750), '47,5 %');
-  assert.equal(betChance(6333), '63,3 %');
-  assert.equal(betRoll(3721), '37,21');
-  assert.equal(betRoll(5), '0,05');
-  assert.equal(betPrize(11, 150), 16);
-  assert.equal(betPrize(50, 200), 100);
-
-  const limits = { least: 10, most: 100, balance: 70 };
-  assert.equal(betAmount(40, 'least', limits), 10);
-  assert.equal(betAmount(40, 'most', limits), 70);
-  assert.equal(betAmount(40, 'most', { least: 10, most: 100, balance: 3 }), 10);
-  assert.equal(betAmount(40, 'most', { least: 10, most: 100 }), 100);
-  assert.equal(betAmount(15, 'half', limits), 10);
-  assert.equal(betAmount(40, 'double', limits), 70);
-  assert.equal(betAmount(40, 'double', { least: 10, most: 100, balance: 500 }), 80);
-  assert.equal(betAmount(500, '', limits), 100);
-  assert.equal(betAmount(Number.NaN, '', limits), 10);
-});
-
-test('casino: the highlight runs whole rounds and stops on the prize', () => {
-  const plan = casinoPlan(6, 0, 4, 2);
-
-  assert.equal(plan.length, 2 * 6 + 4);
-  assert.equal(plan[0].cell, 1);
-  assert.equal(plan.at(-1).cell, 4);
-  assert.ok(plan.every((step, i) => i === 0 || step.delay >= plan[i - 1].delay), 'it only slows down');
-
-  // Stopping where it stands takes a whole round more.
-  assert.equal(casinoPlan(6, 3, 3, 1).length, 12);
-  assert.equal(casinoPlan(6, 3, 3, 1).at(-1).cell, 3);
-  assert.deepEqual(casinoPlan(0, 0, 0), []);
-});
-
-test('aimZone is the green part of the strip in its middle, as the user service counts it', () => {
-  assert.deepEqual(aimZone(4750), { low: 2625, high: 7375 });
-  assert.deepEqual(aimZone(10000), { low: 0, high: 10000 });
-  assert.deepEqual(aimZone(951), { low: 4524, high: 5475 });
-});
-
-test('betEventShare and betEventOdds say what an outcome of an event holds and would bring', () => {
-  assert.equal(betEventShare(30, 120), 25);
-  assert.equal(betEventShare(0, 0), 0);
-  // Without odds, all staked shared by those on the outcome.
-  assert.equal(betEventOdds({ staked: 40 }, 100), '×2,5');
-  assert.equal(betEventOdds({ staked: 30, odds: 0 }, 100), '×3,33');
-  assert.equal(betEventOdds({ staked: 0 }, 100), '');
-  // With odds, the odds, whatever is staked.
-  assert.equal(betEventOdds({ staked: 0, odds: 250 }, 100), '×2,5');
-  assert.equal(betEventOdds({ staked: 90, odds: 120 }, 100), '×1,2');
-});
-
-test('betEventState says where an event stands', () => {
-  const outcomes = [{ name: 'Да' }, { name: 'Нет' }];
-
-  assert.equal(betEventState({ state: 'resolved', winner: 1, outcomes }), 'Итог: Нет.');
-  assert.equal(betEventState({ state: 'cancelled', outcomes }), 'Событие отменено, ставки вернулись.');
-  assert.equal(betEventState({ state: 'open', open: false, outcomes }), 'Ставки больше не принимаются — ждём итога.');
-  assert.equal(betEventState({ state: 'closed', open: false, outcomes }), 'Ставки больше не принимаются — ждём итога.');
-  assert.equal(betEventState({ state: 'open', open: true, closesAt: null, outcomes }), 'Ставки принимаются, пока событие не закроют.');
-  assert.match(betEventState({ state: 'open', open: true, closesAt: '2026-11-04T09:00:00Z', outcomes }), /^Ставки принимаются до 4 ноября 2026 в \d+:00\.$/);
-});
-
-test('autoplayNext plays the rounds chosen while the votes pay for them', () => {
-  assert.equal(autoplayNext({ played: 0, times: 10, balance: 10, cost: 10 }), 'go');
-  assert.equal(autoplayNext({ played: 10, times: 10, balance: 100, cost: 10 }), 'done');
-  assert.equal(autoplayNext({ played: 3, times: 10, balance: 9, cost: 10 }), 'votes');
-  assert.equal(autoplayNext({ played: 500, times: 0, balance: 10, cost: 10 }), 'go');
-  assert.equal(autoplayNext({ played: 500, times: 0, balance: 0, cost: 10 }), 'votes');
-});
-
-test('votesFontSize makes a large balance fit its box', () => {
-  assert.equal(votesFontSize(0), 48);
-  assert.equal(votesFontSize(12345), 39);
-  assert.equal(votesFontSize(1234567), 27);
-  assert.equal(votesFontSize(1234567890), 18);
-  assert.equal(votesFontSize(10 ** 20), 48);
-});
-
 test('only the endless balance of an administrator is shown as ∞', () => {
   assert.equal(balanceVotes(10 ** 15), '∞');
   assert.equal(balanceVotes(10 ** 15 - 5000), '∞');
   assert.equal(balanceVotes(10 ** 14 - 1), '99\u00a0999\u00a0999\u00a0999\u00a0999');
   assert.equal(balanceAmount(10 ** 15), '∞ голосов');
-  assert.equal(votesFontSize(10 ** 15), 48);
-  assert.equal(topValue('rich', 10 ** 15), '∞ голосов');
   // What is bought with it — shares, cash, a capitalization — is digits.
   assert.equal(groupedVotes(10 ** 15), '1\u00a0000\u00a0000\u00a0000\u00a0000\u00a0000');
   assert.equal(votesAmount(10 ** 18), '1\u00a0000\u00a0000\u00a0000\u00a0000\u00a0000\u00a0000 голосов');
-  assert.equal(topValue('business', 10 ** 15), '1\u00a0000\u00a0000\u00a0000\u00a0000\u00a0000 голосов');
 });
 
 test('the statement of votes speaks of each line', () => {
@@ -1212,31 +1095,6 @@ test('the statement of votes speaks of each line', () => {
     assert.equal(transferNickname(address), 'ann', address);
   }
   assert.equal(transferURL('https://freenet19.fun', 'ann'), 'https://freenet19.fun/votes?act=transfer&to=ann');
-});
-
-test('the rocket grows as the user service counts it', () => {
-  // The same cases as TestRocketMultiplier of the user service.
-  assert.equal(rocketMultiplier(-1000), 100);
-  assert.equal(rocketMultiplier(0), 100);
-  assert.equal(rocketMultiplier(1000), 112);
-  assert.equal(rocketMultiplier(5776), 199);
-  assert.equal(rocketMultiplier(5777), 200);
-  assert.equal(rocketMultiplier(5777.9), 200);
-  assert.equal(rocketMultiplier(3_600_000), 1_000_000);
-
-  assert.equal(rocketTime(100), 0);
-  assert.equal(rocketMultiplier(Math.ceil(rocketTime(237))), 237);
-  assert.ok(rocketMultiplier(Math.ceil(rocketTime(237)) - 2) < 237);
-
-  assert.equal(rocketShown(100), '×1,00');
-  assert.equal(rocketShown(237), '×2,37');
-  assert.equal(rocketShown(100000), '×1000,00');
-  assert.equal(rocketsCount(1), '1 полёт');
-  assert.equal(rocketsCount(3), '3 полёта');
-  assert.equal(rocketsCount(5), '5 полётов');
-
-  assert.deepEqual(rocketScale(0), { time: 8000, top: 200 });
-  assert.ok(rocketScale(20000).time > 20000 && rocketScale(20000).top > rocketMultiplier(20000));
 });
 
 test('a rocket line of the statement', () => {
@@ -1358,45 +1216,6 @@ test('collectible gifts: the traits of the domain, their pictures, fees and stat
   assert.equal(errorText({ message: 'the bid is too low' }), 'Ставка слишком мала.');
 });
 
-test('the mine counts the energy on, sells ore and logs digs', async () => {
-  const { mineEnergy, energyWait, oreValue, oreName, mineDug, mineSold, mineChance, typedMineChance, ores } = await import('../static/labels.js');
-  const settings = { energy: 10, regenSeconds: 900, events: { nuggetTimes: 3, drinkEnergy: 3 } };
-
-  assert.deepEqual(mineEnergy({ energy: 10, nextEnergySeconds: 0 }, settings, 5000), { energy: 10, next: 0 });
-  assert.deepEqual(mineEnergy({ energy: 8, nextEnergySeconds: 600 }, settings, 100), { energy: 8, next: 500 });
-  assert.deepEqual(mineEnergy({ energy: 8, nextEnergySeconds: 600 }, settings, 700), { energy: 9, next: 800 });
-  assert.deepEqual(mineEnergy({ energy: 8, nextEnergySeconds: 600 }, settings, 1500), { energy: 10, next: 0 });
-
-  assert.equal(energyWait(245), '4:05');
-  assert.equal(energyWait(3750), '1:02:30');
-  assert.equal(energyWait(0), '0:00');
-
-  assert.equal(oreValue(150, 2), 3);
-  assert.equal(oreValue(49, 2), 0);
-  assert.deepEqual(ores, ['stone', 'coal', 'iron', 'gold', 'diamond', 'crystal']);
-  assert.equal(oreName('gold'), 'Золото');
-
-  const dug = (event, units, votes = 0) => ({ event, units, votes, mine: { miner: { energy: 8, experience: 1250 } } });
-  assert.equal(mineDug('stone', dug('', 147), settings), 'Камень: +147 шт.');
-  assert.match(mineDug('gold', dug('nugget', 150), settings), /^Самородок! Руды в 3 раза больше\. Золото: \+150 шт\./);
-  assert.match(mineDug('stone', dug('chest', 150, 25), settings), /^Вы нашли сундук: \+25 голосов!/);
-  assert.match(mineDug('stone', dug('collapse', 0), settings), /^Обвал!/);
-  assert.match(mineDug('stone', dug('drink', 120), settings), /^Вы нашли энергетик: \+3 энергии\./);
-  assert.equal(mineSold({ units: 1200, votes: 24 }), 'Продано 1 200 шт. руды за 24 голоса.');
-
-  assert.equal(mineChance(300), '3');
-  assert.equal(mineChance(50), '0,5');
-  assert.equal(typedMineChance('0,5'), 50);
-  assert.equal(typedMineChance(' 3 '), 300);
-});
-
-test('the ores of the site are those of the user service', () => {
-  const source = readFileSync(new URL('../../user/internal/user/mine.go', import.meta.url), 'utf8');
-  const order = source.match(/var Ores = \[\]Ore\{([^}]*)\}/)[1].split(',').map((name) => name.trim());
-  const values = Object.fromEntries([...source.matchAll(/(Ore\w+)\s+Ore = "(\w+)"/g)].map(([, name, value]) => [name, value]));
-  return import('../static/labels.js').then(({ ores }) => assert.deepEqual(order.map((name) => values[name]), ores));
-});
-
 test('the styles of Prime of the site are those of the user service', async () => {
   const source = readFileSync(new URL('../../user/internal/user/prime_style.go', import.meta.url), 'utf8');
   const list = (name) => JSON.parse('[' + source.match(new RegExp(name + ' += \\[\\]\\w+\\{([^}]*)\\}'))[1] + ']');
@@ -1425,88 +1244,8 @@ test('the classes and the mood of a page dressed with Prime', async () => {
   assert.equal(primeMoodText('bored'), '');
 });
 
-test('the pets and the boards of the site are those of the user service', async () => {
-  const labels = await import('../static/labels.js');
-  const listed = (file, list, type) => {
-    const source = readFileSync(new URL('../../user/internal/user/' + file, import.meta.url), 'utf8');
-    const order = source.match(new RegExp(`var ${list} = \\[\\]${type}\\{([^}]*)\\}`))[1].split(',').map((name) => name.trim());
-    const values = Object.fromEntries([...source.matchAll(new RegExp(`(\\w+)\\s+${type} = "(\\w+)"`, 'g'))].map(([, name, value]) => [name, value]));
-    return order.map((name) => values[name]);
-  };
-
-  assert.deepEqual(labels.petKinds, listed('pet.go', 'PetKinds', 'PetKind'));
-  assert.deepEqual(labels.topBoards, listed('top.go', 'TopBoards', 'TopBoard'));
-  for (const kind of labels.petKinds) assert.notEqual(labels.petKindName(kind), kind);
-  for (const board of labels.topBoards) assert.notEqual(labels.topBoardName(board), board);
-});
-
-test('pets, fights, boards and guests are told', async () => {
-  const { petFightResult, petLevelProgress, petMood, petWait, petFightStory, petOdds, petBonus, petKinds, petKindName, petItemName, guestCame, petHitLines, petShards, petStances, petStanceName } = await import('../static/labels.js');
-
-  assert.deepEqual(petFightResult({ won: true, rating: 16 }, true), { won: true, text: 'Победа', rating: '+16' });
-  assert.deepEqual(petFightResult({ won: true, rating: 16 }, false), { won: false, text: 'Поражение', rating: '−16' });
-  assert.equal(petFightResult({ won: false, rating: 0 }, true).rating, '±0');
-
-  assert.equal(petLevelProgress({ experience: 150, levelExperience: 100, nextLevelExperience: 300 }), 25);
-  assert.equal(petLevelProgress({ experience: 900, levelExperience: 900, nextLevelExperience: 900 }), 100);
-  assert.equal(petMood({ satiety: 90, joy: 80 }), 'Счастлив');
-  assert.equal(petMood({ satiety: 10, joy: 80 }), 'Голоден');
-  assert.equal(petMood({ satiety: 50, joy: 10 }), 'Скучает');
-  assert.equal(petWait(61), '2 мин.');
-  assert.equal(petWait(40.2), '41 с');
-
-  const cat = { name: 'Мурка', kind: 'cat', level: 3 };
-  const dog = { name: 'Рекс', kind: 'dog', level: 2 };
-  const story = petFightStory({
-    attacker: cat, defender: dog, won: true,
-    hits: [
-      { byAttacker: true, damage: 5, attackerHealth: 40, defenderHealth: 41 },
-      { byAttacker: false, dodged: true, attackerHealth: 40, defenderHealth: 41 },
-      { byAttacker: true, crit: true, damage: 41, attackerHealth: 40, defenderHealth: 0 },
-    ],
-  });
-  assert.deepEqual(story.map((line) => line.text), [
-    'Мурка (3 ур.) вызывает на бой Рекс (2 ур.).',
-    'Мурка царапает Рекс: минус 5, остаётся 41.',
-    'Рекс бросается на Мурка, но промахивается: Мурка уворачивается.',
-    'Мурка кидается на Рекс со всей силы! Минус 41, остаётся 0.',
-    'Рекс без сил. Победитель — Мурка!',
-  ]);
-  assert.ok(story[3].crit && story[2].dodge && story[4].end);
-  const timeout = petFightStory({ attacker: cat, defender: dog, won: false, hits: [{ byAttacker: true, damage: 1, attackerHealth: 40, defenderHealth: 45 }] });
-  assert.equal(timeout.at(-1).text, 'Время вышло: у Рекс осталось больше здоровья. Победитель — Рекс!');
-
-  const fox = { name: 'Алиса', kind: 'fox', level: 1 };
-  const turtle = { name: 'Тортилла', kind: 'turtle', level: 1 };
-  const moves = petHitLines(fox, turtle, [
-    { byAttacker: true, move: 'guard', heal: 2, attackerHealth: 40, defenderHealth: 50 },
-    { byAttacker: false, move: 'strike', dodged: true, answer: 'trick', attackerHealth: 40, defenderHealth: 50 },
-    { byAttacker: true, move: 'power', damage: 9, attackerHealth: 40, defenderHealth: 41 },
-    { byAttacker: true, move: 'strike', answer: 'shell', attackerHealth: 40, defenderHealth: 20 },
-    { byAttacker: true, move: 'strike', damage: 20, answer: 'rebirth', attackerHealth: 40, defenderHealth: 12 },
-  ]);
-  assert.deepEqual(moves.map((line) => line.text), [
-    'Алиса встаёт в защиту и переводит дух: +2 здоровья.',
-    'Алиса обманывает Тортилла: удар уходит мимо.',
-    'Сильный удар! Алиса царапает Тортилла: минус 9, остаётся 41.',
-    'Тортилла прячется в панцирь — удар Алиса отскакивает!',
-    'Алиса бросается на Тортилла: минус 20. Тортилла сгорает, но возрождается из пепла с 12 здоровья!',
-  ]);
-  assert.ok(moves[0].guard && moves[1].dodge && moves[3].special);
-  assert.equal(petHitLines(fox, turtle, [{ byAttacker: true, damage: 1, attackerHealth: 1, defenderHealth: 1 }, { byAttacker: true, damage: 1, attackerHealth: 1, defenderHealth: 1 }], 1).length, 1);
-  assert.equal(petShards(1), '1 осколок');
-  assert.equal(petShards(3), '3 осколка');
-  assert.equal(petShards(25), '25 осколков');
-  assert.deepEqual(petStances.map(petStanceName), ['нападение', 'оборона', 'ловкость']);
-
-  assert.deepEqual(petOdds([700, 250, 45, 5]), ['70%', '25%', '4.5%', '0.5%']);
-  assert.equal(petBonus({ attack: 3, defense: 0, health: 0, speed: 1 }), '+3 к атаке, +1 к скорости');
-  assert.equal(petKinds.length, 13);
-  for (const kind of petKinds) assert.notEqual(petKindName(kind), kind);
-  assert.equal(petItemName('crown'), 'Корона');
-
-  assert.equal(topValue('pets', 1016), 'рейтинг 1\u00a0016');
-  assert.match(topValue('rich', 3000), /^3\s000\sголосов$/);
+test('guests are told among the notifications', async () => {
+  const { guestCame } = await import('../static/labels.js');
   assert.equal(guestCame({ user: { gender: 'female' } }), ' заходила на вашу страницу.');
   assert.equal(guestCame({ user: {} }), ' заходил на вашу страницу.');
 });
@@ -1700,4 +1439,12 @@ test('recipientChoices: friends by every word, not chosen twice', async () => {
   assert.deepEqual(recipientChoices([ann, bob], 'анна ПЕТ', []), [ann]);
   assert.deepEqual(recipientChoices([ann, bob], 'BO', []), [bob]);
   assert.equal(recipientChoices(Array.from({ length: 12 }, (_, i) => ({ id: String(i), name: 'Ян' })), 'ян', []).length, 10);
+});
+
+test('the transfer form quotes the exact fee and amount the recipient gets', async () => {
+  const { transferFeeText } = await import('../static/labels.js');
+  assert.equal(transferFeeText(100, 3), 'Комиссия 3 %: спишется 103 голоса, получит 100 голосов');
+  assert.equal(transferFeeText(1, 1), 'Комиссия 1 %: спишется 2 голоса, получит 1 голос');
+  assert.equal(transferFeeText(1, 0), 'Комиссия 0 %: спишется 1 голос, получит 1 голос');
+  assert.equal(transferFeeText(1.5, 3), '');
 });

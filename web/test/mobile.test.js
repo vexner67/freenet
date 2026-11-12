@@ -125,6 +125,8 @@ test('the votes page shows the same four figures in both layouts', () => {
     const summary = html.match(/<table [^>]*id="summary"[^>]*>([\s\S]*?)<\/table>/)[1];
     assert.deepEqual([...summary.matchAll(/<td id="([^"]+)"/g)].map((cell) => cell[1]),
       ['votes', 'vote-rate', 'income', 'expense']);
-    assert.doesNotMatch(html, /class="[^"]*\btabs\b|<form\b|<button\b/);
+    assert.deepEqual([...html.matchAll(/id="tab-([\w-]+)"/g)].map((link) => link[1]),
+      ['summary', 'transfer', 'top-up']);
+    assert.doesNotMatch(html, /id="(?:bonus|card|deposit|loan|receive|rating)"/);
   }
 });

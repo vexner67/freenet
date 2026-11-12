@@ -5,15 +5,16 @@
 // someone's, ?act=pick chooses a gift for them,
 // ?act=menu&pack=<collection> in a collection and
 // ?act=confirm&pack=<collection>&elid=<gift> is openvk's "Подтверждение":
-// the gift sent without the box. Buying a gift for oneself is the shop.
+// the gift sent without the box. Your own catalogue starts without a recipient.
 
 import { api, currentUser } from './api.js';
 import { collectibleName, errorText, formatPostDate, genitiveName, giftCollections, giftImage, giftNames, giftOffers, votesCount } from './labels.js';
-import { SHOP, collectibleCard, confirmPath, giftDialog, giftPath, giftPicture, giftRow, giftsPath, menuPath, pickPath, primeOnly } from './gifts.js';
+import { collectibleCard, confirmPath, giftDialog, giftPath, giftPicture, giftRow, giftsPath, menuPath, pickPath, primeOnly } from './gifts.js';
 import { $, avatarURL, el, fullName, hideError, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { separated } from './posts.js';
 import { tr } from './i18n.js';
+import { recipientPicker } from './recipient.js';
 
 const params = new URLSearchParams(location.search);
 const nickname = params.get('u') ?? '';
@@ -29,28 +30,28 @@ let cursor = '';
 
 function renderHead(owner, me) {
   const mine = owner.id === me?.id;
+  const target = mine ? null : owner;
   const link = (href, textContent) => el('a', { href, textContent });
 
   document.title = `${confirming ? tr('Отправить подарок') : picking ? tr('Выбрать подарок') : tr('Подарки')} | Freenet`;
   const name = giftCollections[collection] ?? tr('Подарки');
   if (!picking) $('title').replaceChildren(link(pagePath(owner), fullName(owner)), tr(' » Подарки'));
-  else if (!collection) $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » ', link(pickPath(owner), tr('Выбрать подарок')), tr(' » Коллекции'));
+  else if (!collection) $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » ', link(pickPath(target), tr('Выбрать подарок')), tr(' » Коллекции'));
   else if (!confirming) {
-    $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » ', link(pickPath(owner), tr('Выбрать подарок')), ' » ',
-      link(pickPath(owner), tr('Коллекции')), ` » ${name}`);
+    $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » ', link(pickPath(target), tr('Выбрать подарок')), ' » ',
+      link(pickPath(target), tr('Коллекции')), ` » ${name}`);
   } else {
-    $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » ', link(pickPath(owner), tr('Выбрать подарок')), ' » ',
-      link(pickPath(owner), tr('Коллекции')), ' » ', link(menuPath(owner, collection), name), tr(' » Подтверждение'));
+    $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » ', link(pickPath(target), tr('Выбрать подарок')), ' » ',
+      link(pickPath(target), tr('Коллекции')), ' » ', link(menuPath(target, collection), name), tr(' » Подтверждение'));
   }
 
   $('tab-list').textContent = mine ? tr('Мои подарки') : tr('Подарки');
-  $('tab-list').href = giftsPath(owner);
-  // One buys a gift for oneself in the shop.
-  $('tab-send').textContent = mine ? tr('Купить подарок') : tr('Отправить подарок');
-  $('tab-send').href = mine ? SHOP : confirming ? menuPath(owner, collection) : pickPath(owner);
+  $('tab-list').href = giftsPath(target);
+  $('tab-send').textContent = tr('Отправить подарок');
+  $('tab-send').href = confirming ? menuPath(target, collection) : pickPath(target);
   $('tab-send').hidden = !me;
   $(picking ? 'tab-send' : 'tab-list').classList.add('active');
-  $('tab-page').textContent = mine ? tr('К моей странице') : tr('К странице {0}', genitiveName(owner));
+  $('tab-page').textContent = mine ? tr('Вернуться на мою страницу') : tr('Вернуться к странице {0}', genitiveName(owner));
   $('tab-page').href = pagePath(owner);
   $('tabs').hidden = false;
 }
@@ -71,7 +72,7 @@ function giftNode(gift, mine) {
   const node = el('div', { className: 'post gift' },
     sender
       ? el('a', { className: 'post-avatar', href: pagePath(sender) }, el('img', { src: avatarURL(sender, 'small'), alt: '' }))
-      : el('span', { className: 'post-avatar' }, el('img', { src: '/static/club.svg', alt: '' })),
+      : el('span', { className: 'post-avatar' }, el('img', { src: '/static/avatar.svg', alt: '' })),
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' }, ...[sender
         ? [el('a', { className: 'post-name', href: pagePath(sender), textContent: fullName(sender) }),
@@ -176,23 +177,25 @@ async function loadMore(owner, mine) {
 
 // showCatalog is "Выбрать подарок": the collections, five gifts of each,
 // or all the gifts of the one chosen. A gift opens openvk's box with the
-// owner of the page chosen; one's own page is the shop's to buy on, so
-// there the box starts with oneself.
+// owner of the page chosen, or empty on the sender's own catalogue.
 async function showCatalog(owner, me) {
   try {
     const { collections } = await api.giftCatalog();
     // The gifts of Prime are sent only by those who have it: the
     // rest are told where to get it.
+    const mine = owner.id === me.id;
+    const target = mine ? null : owner;
     const pick = (c) => (gift, price) => (c.prime && !me.prime
       ? primeOnly()
-      : giftDialog({ me, gift, price, recipients: [owner.id === me.id ? me : owner], shop: owner.id === me.id }));
-    const href = (c) => (gift) => confirmPath(owner, c.id, gift);
+      : giftDialog({ me, gift, price, recipients: mine ? [] : [owner], allowSelf: mine }));
+    const href = (c) => (gift) => confirmPath(target, c.id, gift);
     const rows = collection
       ? collections.filter((c) => c.id === collection).map((c) => giftRow(c, { href: href(c) }, pick(c)))
-      : collections.map((c) => giftRow(c, { more: menuPath(owner, c.id), limit: 5, href: href(c) }, pick(c)));
+      : collections.map((c) => giftRow(c, { more: menuPath(target, c.id), limit: 5, href: href(c) }, pick(c)));
 
     $('catalog').replaceChildren(...rows);
     $('catalog').hidden = false;
+    $('gift-market-link').hidden = false;
     $('empty').hidden = rows.length > 0;
   } catch (e) {
     showError($('error'), e);
@@ -223,8 +226,9 @@ async function showConfirm(owner, me) {
   const caption = el('textarea', { className: 'gift-confirm-text', maxLength: 250, placeholder: tr('Ваше сообщение') });
   const anonymous = el('input', { type: 'checkbox' });
   const submit = el('input', { type: 'submit', className: 'button', value: tr('Отправить') });
-  const form = el('form', { className: 'gift-confirm-form' }, caption, el('div', { className: 'gift-confirm-actions' }, submit,
-    mine ? null : el('label', {}, anonymous, tr(' Анонимно'))));
+  const form = el('form', { className: 'gift-confirm-form' });
+  const recipient = mine ? confirmRecipient(form, me, submit, anonymous) : () => Promise.resolve(owner);
+  form.append(caption, el('div', { className: 'gift-confirm-actions' }, submit, el('label', {}, anonymous, tr(' Анонимно'))));
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -232,10 +236,17 @@ async function showConfirm(owner, me) {
     submit.disabled = true;
 
     try {
-      await api.sendGift(owner.nickname, elid, caption.value.trim(), !mine && anonymous.checked);
+      const person = await recipient();
+      if (!person) {
+        refuse(tr('Пожалуйста, выберите получателя подарка'));
+        submit.disabled = false;
+        return;
+      }
+      const self = person.id === me.id;
+      await api.sendGift(person.nickname, elid, caption.value.trim(), !self && anonymous.checked);
       form.replaceWith(el('div', { className: 'notice' }, el('b', { textContent: tr('Подарок отправлен') }), el('br'),
-        tr('Вы отправили подарок {0} за {1}. ', fullName(owner), votesCount(offer.price)),
-        el('a', { href: pagePath(owner), textContent: mine ? tr('К моей странице') : tr('К странице {0}', genitiveName(owner)) })));
+        tr('Вы отправили подарок {0} за {1}. ', fullName(person), votesCount(offer.price)),
+        el('a', { href: pagePath(person), textContent: self ? tr('Вернуться на мою страницу') : tr('Вернуться к странице {0}', genitiveName(person)) })));
     } catch (e) {
       refuse(e.message === 'not enough votes' ? tr('Недостаточно голосов для покупки.') : errorText(e));
       submit.disabled = false;
@@ -247,6 +258,26 @@ async function showConfirm(owner, me) {
   $('catalog').hidden = false;
 }
 
+function confirmRecipient(form, me, submit, anonymous) {
+  const to = el('input', { className: 'text', required: true, autocomplete: 'off' });
+  const people = el('div', { className: 'recipient-options', hidden: true });
+  const shown = el('div', { hidden: true });
+  const update = () => {
+    const self = to.value.trim().toLowerCase() === me.nickname.toLowerCase();
+    submit.value = self ? tr('Купить себе') : tr('Отправить');
+    anonymous.disabled = self;
+  };
+  const picker = recipientPicker({ to, people, shown, me, picked: update });
+  to.addEventListener('input', update);
+  form.append(el('label', {}, tr('Получатель: '), to), ' ', button(tr('Себе'), () => {
+    to.value = me.nickname;
+    picker.lookUp();
+    update();
+  }, { type: 'button' }), people, shown);
+
+  return async () => picker.found() ?? await picker.lookUp();
+}
+
 async function show(me) {
   try {
     const owner = nickname ? await api.profile(nickname) : me;
@@ -256,7 +287,7 @@ async function show(me) {
 
     // As openvk's: a page that takes no gifts from the viewer is not
     // offered any.
-    if (picking && !owner.access?.sendGift) {
+    if (picking && !mine && !owner.access?.sendGift) {
       refuse(tr('Пользователь ограничил круг лиц, которые могут присылать ему подарки.'));
       return;
     }
@@ -277,14 +308,18 @@ async function show(me) {
   }
 }
 
-const me = await currentUser().catch(() => null);
-renderChrome(me);
-
-if (!me && (picking || !nickname)) {
-  location.replace('/');
-} else if (!nickname && !me.profileCompleted) {
-  $('title').textContent = tr('Мои подарки');
-  showError($('error'), tr('Сначала заполните свою страницу.'));
+if (location.pathname === '/giftshop') {
+  location.replace(pickPath(null));
 } else {
-  await show(me);
+  const me = await currentUser().catch(() => null);
+  renderChrome(me);
+
+  if (!me && (picking || !nickname)) {
+    location.replace('/');
+  } else if (!nickname && !me.profileCompleted) {
+    $('title').textContent = tr('Мои подарки');
+    showError($('error'), tr('Сначала заполните свою страницу.'));
+  } else {
+    await show(me);
+  }
 }

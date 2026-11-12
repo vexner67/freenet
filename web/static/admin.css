@@ -307,12 +307,7 @@ a:hover { text-decoration: underline; }
 .aui-icon-ad { --icon: url("/static/icons/game/megaphone.svg"); }
 .aui-icon-fediverse { --icon: url("/static/icons/game/news.svg"); }
 .aui-icon-snow { --icon: url("/static/icons/game/snow.svg"); }
-.aui-icon-casino { --icon: url("/static/icons/game/cards.svg"); }
 .aui-icon-prime { --icon: url("/static/icons/game/crown.svg"); }
-.aui-icon-bets { --icon: url("/static/icons/game/bets.svg"); }
-.aui-icon-mine { --icon: url("/static/icons/game/pick.svg"); }
-.aui-icon-pet { --icon: url("/static/icons/game/paw.svg"); }
-.aui-icon-business { --icon: url("/static/icons/game/firm.svg"); }
 .aui-icon-bank { --icon: url("/static/icons/game/vault.svg"); }
 .aui-icon-users { --icon: url("/static/icons/game/people.svg"); }
 .aui-icon-clubs { --icon: url("/static/icons/game/group.svg"); }
@@ -509,9 +504,7 @@ table.aui tbody tr:hover { background: var(--aui-hover); }
 form.aui.admin-price { display: flex; gap: 8px; align-items: center; margin: 0; }
 form.aui.admin-price .text { width: 120px; }
 .admin-decor-now { color: var(--aui-subtle); }
-form.aui .admin-casino-field { width: 140px; }
-.admin-casino-stats { padding: 12px 16px; background: var(--aui-active); border-radius: 12px; color: var(--aui-text); font-weight: 600; }
-.admin-casino-add { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 12px 0; }
+form.aui .admin-number-field { width: 140px; }
 
 form.aui.admin-rate { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
 form.aui.admin-rate label { font-weight: 600; }
@@ -781,7 +774,6 @@ table.aui tbody tr:hover { background: var(--aui-hover); }
 .admin-person img.admin-avatar { width: 28px; height: 28px; border-radius: 3px; }
 .admin-person img.admin-avatar.admin-club { border-radius: 3px; }
 .admin-search { position: relative; max-width: none; margin-bottom: 8px; }
-.admin-casino-stats { padding: 6px 8px; background: var(--aui-hover); border: 1px solid var(--aui-title-line); border-radius: 3px; }
 .aui-lozenge { padding: 1px 6px; border: 1px solid currentColor; border-radius: 3px; font-size: 10px; letter-spacing: 0; text-transform: none; }
 .aui-button { height: 26px; padding: 0 10px; border: 1px solid var(--aui-frame); border-radius: 3px; font-weight: normal; line-height: 24px; text-shadow: 0 1px 0 var(--aui-shadow); transition: background-color 0.1s; }
 .aui-button:hover { color: var(--aui-button-text); }

@@ -9,7 +9,7 @@ a { color: #2b587a; }
 .page-title { background: #dae1e8; border-color: #c3cbd4; color: #45688e; }
 .page-title .aside { color: #7f93aa; }
 
-.section-title, .game-window-title, .pet-window-title, .casino-game > .game-window-title { background: #dee5eb; border-top-color: #b1bdd6; color: #45688e; }
+.section-title, .game-window-title { background: #dee5eb; border-top-color: #b1bdd6; color: #45688e; }
 .section-title::before { border-top-color: #7f93aa; }
 .section-title .count { color: #7f93aa; }
 

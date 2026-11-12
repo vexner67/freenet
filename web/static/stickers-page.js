@@ -11,7 +11,6 @@
 
 import { api, currentUser } from './api.js';
 import { STICKER_SECTIONS, STICKER_TAX_PERCENT, stickerIncome, shopPacks, stickerImage, stickerPackAction, stickerPackName, stickerPackPrice, stickersCount, votesCount } from './labels.js';
-import { SHOP } from './gifts.js';
 import { $, el, fullName, pagePath, replaceInPlace, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { fitSticker } from './sticker-fit.js';
@@ -496,7 +495,7 @@ me = await currentUser().catch(() => null);
 
 if (act === 'gifts') {
   // The gifts one bought here are bought in the shop of gifts now.
-  location.replace(me ? SHOP : '/');
+  location.replace(me ? '/gifts?act=pick' : '/');
 } else if (act !== 'shop' && !me) {
   location.replace('/');
 } else {

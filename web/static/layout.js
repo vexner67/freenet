@@ -612,14 +612,9 @@ export function applyInterface(me) {
     el('div', { className: 'menu-divider' }),
     el('a', { href: '/stickers', textContent: tr('Стикеры') }),
     // The shop of gifts: for oneself or for anyone.
-    el('a', { href: '/giftshop', textContent: tr('Подарки') }),
+    el('a', { href: '/gifts', textContent: tr('Подарки') }),
     el('a', { href: '/votes', textContent: tr('Голоса') }),
     el('a', { href: '/prime', textContent: 'Prime' }),
-    el('a', { href: '/mine', textContent: tr('Заработок') }),
-    el('a', { href: '/stocks', textContent: tr('Акции') }),
-    el('a', { href: '/casino', textContent: tr('Азартные игры') }),
-    el('a', { href: '/pet', textContent: tr('Питомцы') }),
-    el('a', { href: '/top', textContent: tr('Рейтинги') }),
     el('a', { href: '/canvas', textContent: tr('Холст') }),
     el('a', { href: '/dating', textContent: tr('Знакомства') }),
     // No "Поиск": the header has it.
@@ -816,40 +811,30 @@ function addHeaderSearch(me) {
       el('img', { src: '/static/icons/search.svg', alt: '' })));
     return;
   }
-  if (me && !me.deactivated && !me.ban) header.querySelector('.logo')?.after(headerSearch(header));
+  if (me && !me.deactivated && !me.ban) header.querySelector('.logo')?.after(headerSearch());
 }
 
-// headerSearch is openvk's header-search-box: a press in the field gives it
-// the header, with where to look and, once there are words, "Поиск";
-// Enter opens the search. Leaving an empty field puts the links back.
-function headerSearch(header) {
+// headerSearch leaves section selection to the results page.
+function headerSearch() {
   const field = el('input', {
     type: 'search', name: 'q', maxLength: 79, placeholder: tr('Поиск'), ariaLabel: tr('Поиск'), autocomplete: 'off',
     title: tr('Поиск') + ' [Alt+Shift+F]', accessKey: 'f',
   });
-  const section = el('select', { name: 'section', ariaLabel: tr('Где искать') },
-    el('option', { value: 'users', textContent: tr('по людям') }),
-    el('option', { value: 'groups', textContent: tr('по группам') }),
-    el('option', { value: 'posts', textContent: tr('по записям') }));
-  const form = el('form', { className: 'header-search-box', action: '/search', method: 'get', role: 'search' },
-    el('span', { className: 'header-search-wrap' }, field, section),
-    el('button', { className: 'search-box-button', type: 'submit', textContent: tr('Поиск') }));
-  const words = () => header.classList.toggle('search-expanded-at-all', field.value.trim() !== '');
-
-  field.addEventListener('focus', () => header.classList.add('search-expanded'));
-  field.addEventListener('input', words);
-  form.addEventListener('focusout', (event) => {
-    if (form.contains(event.relatedTarget) || field.value.trim()) return;
-    header.classList.remove('search-expanded', 'search-expanded-at-all');
-  });
-  form.addEventListener('keydown', (event) => {
+  const form = el('form', { className: 'header-search-box', action: '/search', method: 'get', role: 'search' }, field);
+  field.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && !event.isComposing) {
+      event.preventDefault();
+      form.requestSubmit();
+      return;
+    }
     if (event.key !== 'Escape') return;
+    event.preventDefault();
     field.value = '';
-    words();
     field.blur();
   });
   form.addEventListener('submit', (event) => {
-    if (!field.value.trim()) event.preventDefault();
+    field.value = field.value.trim();
+    if (!field.value) event.preventDefault();
   });
 
   return form;
