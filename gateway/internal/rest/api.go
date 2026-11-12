@@ -509,13 +509,10 @@ type Votes interface {
 	// administrators'.
 	Rate(ctx context.Context) (int64, error)
 	SetRate(ctx context.Context, accessToken string, kopecks int64) error
-	// Treasury is public; Bonus and ClaimBonus are the caller's daily
-	// bonus out of it.
+	// Treasury is public.
 	Treasury(ctx context.Context) (model.Treasury, error)
-	// SetEconomy sets the bonus and the fees; the administrators'.
+	// SetEconomy sets the fees and taxes; the administrators'.
 	SetEconomy(ctx context.Context, accessToken string, e model.Economy) error
-	Bonus(ctx context.Context, accessToken string) (model.Bonus, error)
-	ClaimBonus(ctx context.Context, accessToken string) (model.Redeemed, error)
 }
 
 // Backends are the services the API is made of.
@@ -542,7 +539,6 @@ type Backends struct {
 	Pets          Pets
 	Firms         Firms
 	Titles        Titles
-	Bank          Bank
 	Poker         Poker
 	Holdem        Holdem
 	Bets          Bets
@@ -591,7 +587,6 @@ type api struct {
 	pets          Pets
 	firmsBackend  Firms
 	titles        Titles
-	banks         Bank
 	pokers        Poker
 	holdems       Holdem
 	bets          Bets
@@ -899,8 +894,6 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /api/v1/sticker-packs/{pack}", a.deleteStickerPack)
 	mux.HandleFunc("POST /api/v1/me/vouchers", a.redeemVoucher)
 	mux.HandleFunc("GET /api/v1/me/votes", a.voteStatement)
-	mux.HandleFunc("GET /api/v1/me/bonus", a.bonus)
-	mux.HandleFunc("POST /api/v1/me/bonus", a.claimBonus)
 	mux.HandleFunc("POST /api/v1/me/rating", a.raiseRating)
 	mux.HandleFunc("GET /api/v1/treasury", a.treasury)
 	mux.HandleFunc("PUT /api/v1/economy", a.setEconomy)
@@ -1000,13 +993,6 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/stocks/{action}", a.runStocks)
 	mux.HandleFunc("GET /api/v1/firm/settings", a.firmSettings)
 	mux.HandleFunc("PUT /api/v1/firm/settings", a.setFirmSettings)
-	mux.HandleFunc("GET /api/v1/me/bank", a.bank)
-	mux.HandleFunc("POST /api/v1/me/bank/{action}", a.moveBank)
-	mux.HandleFunc("GET /api/v1/me/bank/card", a.bankCard)
-	mux.HandleFunc("POST /api/v1/me/bank/card", a.issueBankCard)
-	mux.HandleFunc("PUT /api/v1/me/bank/card", a.setBankCardCover)
-	mux.HandleFunc("GET /api/v1/bank/settings", a.bankSettings)
-	mux.HandleFunc("PUT /api/v1/bank/settings", a.setBankSettings)
 	mux.HandleFunc("GET /api/v1/bets", a.betEvents)
 	mux.HandleFunc("POST /api/v1/bets", a.createBetEvent)
 	mux.HandleFunc("POST /api/v1/bets/{id}/stakes", a.stakeBet)

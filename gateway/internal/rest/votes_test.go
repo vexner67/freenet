@@ -81,22 +81,12 @@ func (f *fakeVotes) SetRate(_ context.Context, token string, kopecks int64) erro
 }
 
 func (f *fakeVotes) Treasury(context.Context) (model.Treasury, error) {
-	return model.Treasury{Votes: 26000, Outstanding: 200, Bonus: 10, Held: 7, TransferFee: 3, StickerTax: 10, PrimeStickerTax: 5}, f.err
+	return model.Treasury{Votes: 26000, Outstanding: 200, Held: 7, TransferFee: 3, StickerTax: 10, PrimeStickerTax: 5}, f.err
 }
 
 func (f *fakeVotes) SetEconomy(_ context.Context, token string, e model.Economy) error {
 	f.token, f.economy = token, e
 	return f.err
-}
-
-func (f *fakeVotes) Bonus(_ context.Context, token string) (model.Bonus, error) {
-	f.token = token
-	return model.Bonus{Votes: 10, Eligible: true}, f.err
-}
-
-func (f *fakeVotes) ClaimBonus(_ context.Context, token string) (model.Redeemed, error) {
-	f.token = token
-	return model.Redeemed{Votes: 10, Balance: 15}, f.err
 }
 
 type voucherBody struct {
@@ -303,13 +293,12 @@ func TestTreasury(t *testing.T) {
 	w := newHarness(rest.Config{}).do("GET", "/api/v1/treasury", "")
 	got := decode[struct {
 		Votes           int64 `json:"votes"`
-		Bonus           int64 `json:"bonus"`
 		Held            int64 `json:"held"`
 		TransferFee     int   `json:"transferFee"`
 		StickerTax      int   `json:"stickerTax"`
 		PrimeStickerTax int   `json:"primeStickerTax"`
 	}](t, w)
-	if w.Code != http.StatusOK || got.Votes != 26000 || got.Bonus != 10 || got.Held != 7 ||
+	if w.Code != http.StatusOK || got.Votes != 26000 || got.Held != 7 ||
 		got.TransferFee != 3 || got.StickerTax != 10 || got.PrimeStickerTax != 5 {
 		t.Fatalf("%d %+v", w.Code, got)
 	}
@@ -319,11 +308,11 @@ func TestSetEconomy(t *testing.T) {
 	t.Parallel()
 
 	h := newHarness(rest.Config{})
-	body := `{"bonus":10000,"transferFee":2,"stickerTax":8,"primeStickerTax":4}`
+	body := `{"transferFee":2,"stickerTax":8,"primeStickerTax":4}`
 	if w := h.do("PUT", "/api/v1/economy", body, "Authorization", "Bearer tok"); w.Code != http.StatusNoContent {
 		t.Fatalf("%d %s", w.Code, w.Body)
 	}
-	want := model.Economy{Bonus: 10_000, TransferFee: 2, StickerTax: 8, PrimeStickerTax: 4}
+	want := model.Economy{TransferFee: 2, StickerTax: 8, PrimeStickerTax: 4}
 	if h.votes.token != "tok" || h.votes.economy != want {
 		t.Fatalf("SetEconomy got %q %+v", h.votes.token, h.votes.economy)
 	}
@@ -336,39 +325,6 @@ func TestSetEconomy(t *testing.T) {
 	h.votes.err = failure.New(failure.PermissionDenied, "permission denied")
 	if w := h.do("PUT", "/api/v1/economy", body, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
 		t.Fatalf("not an administrator: %d", w.Code)
-	}
-}
-
-func TestBonus(t *testing.T) {
-	t.Parallel()
-
-	h := newHarness(rest.Config{})
-	w := h.do("GET", "/api/v1/me/bonus", "", "Authorization", "Bearer tok")
-	got := decode[struct {
-		Votes    int64 `json:"votes"`
-		Taken    bool  `json:"taken"`
-		Eligible bool  `json:"eligible"`
-	}](t, w)
-	if w.Code != http.StatusOK || got.Votes != 10 || got.Taken || !got.Eligible || h.votes.token != "tok" {
-		t.Fatalf("%d %+v", w.Code, got)
-	}
-
-	w = h.do("POST", "/api/v1/me/bonus", "", "Authorization", "Bearer tok")
-	claimed := decode[struct {
-		Votes   int64 `json:"votes"`
-		Balance int64 `json:"balance"`
-	}](t, w)
-	if w.Code != http.StatusOK || claimed.Votes != 10 || claimed.Balance != 15 {
-		t.Fatalf("%d %+v", w.Code, claimed)
-	}
-
-	h = newHarness(rest.Config{})
-	h.votes.err = failure.New(failure.Conflict, "the bonus is taken today")
-	if w = h.do("POST", "/api/v1/me/bonus", "", "Authorization", "Bearer tok"); w.Code != http.StatusConflict {
-		t.Fatalf("a bonus taken: %d %s", w.Code, w.Body)
-	}
-	if w = newHarness(rest.Config{}).do("GET", "/api/v1/me/bonus", ""); w.Code != http.StatusUnauthorized {
-		t.Fatalf("without token: %d", w.Code)
 	}
 }
 

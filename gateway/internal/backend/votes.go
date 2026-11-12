@@ -157,7 +157,6 @@ func (v *Votes) Treasury(ctx context.Context) (model.Treasury, error) {
 	return model.Treasury{
 		Votes:           resp.GetVotes(),
 		Outstanding:     resp.GetOutstanding(),
-		Bonus:           resp.GetBonus(),
 		Held:            resp.GetHeld(),
 		TransferFee:     int(resp.GetTransferFee()),
 		StickerTax:      int(resp.GetStickerTax()),
@@ -166,7 +165,7 @@ func (v *Votes) Treasury(ctx context.Context) (model.Treasury, error) {
 }
 
 func (v *Votes) SetEconomy(ctx context.Context, accessToken string, e model.Economy) error {
-	req := &userv1.SetEconomyRequest{Bonus: e.Bonus}
+	req := &userv1.SetEconomyRequest{}
 
 	fees := []struct {
 		n    int
@@ -191,24 +190,6 @@ func (v *Votes) SetEconomy(ctx context.Context, accessToken string, e model.Econ
 	}
 
 	return nil
-}
-
-func (v *Votes) Bonus(ctx context.Context, accessToken string) (model.Bonus, error) {
-	resp, err := v.api.GetBonus(withToken(ctx, accessToken), &userv1.GetBonusRequest{})
-	if err != nil {
-		return model.Bonus{}, errs.Wrap("v.api.GetBonus", fromStatus(err))
-	}
-
-	return model.Bonus{Votes: resp.GetVotes(), Taken: resp.GetTaken(), Eligible: resp.GetEligible(), Streak: int(resp.GetStreak())}, nil
-}
-
-func (v *Votes) ClaimBonus(ctx context.Context, accessToken string) (model.Redeemed, error) {
-	resp, err := v.api.ClaimBonus(withToken(ctx, accessToken), &userv1.ClaimBonusRequest{})
-	if err != nil {
-		return model.Redeemed{}, errs.Wrap("v.api.ClaimBonus", fromStatus(err))
-	}
-
-	return model.Redeemed{Votes: resp.GetVotes(), Balance: resp.GetBalance()}, nil
 }
 
 func toVoucher(pv *userv1.Voucher) model.Voucher {

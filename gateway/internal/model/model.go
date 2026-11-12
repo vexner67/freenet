@@ -1412,7 +1412,6 @@ type Redeemed struct {
 type Treasury struct {
 	Votes       int64
 	Outstanding int64
-	Bonus       int64
 	// Held is the votes on the accounts of the pages.
 	Held int64
 	// The fees in percent: of a transfer, of a sale of a sticker pack and
@@ -1422,10 +1421,8 @@ type Treasury struct {
 	PrimeStickerTax int
 }
 
-// Economy is what the administrators set of the votes: the daily bonus and
-// the fees in percent.
+// Economy is what the administrators set of the votes: fees and taxes in percent.
 type Economy struct {
-	Bonus           int64
 	TransferFee     int
 	StickerTax      int
 	PrimeStickerTax int
@@ -1452,15 +1449,6 @@ type RatingRaised struct {
 	Balance      int64
 	Rating       int
 	Completeness int
-}
-
-// Bonus is the daily bonus of the caller: what it gives, whether it is
-// taken today and whether the caller may take it.
-type Bonus struct {
-	Votes    int64
-	Taken    bool
-	Eligible bool
-	Streak   int
 }
 
 // VoucherDraft is a voucher to make: Token empty for a generated serial

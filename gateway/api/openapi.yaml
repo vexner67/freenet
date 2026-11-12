@@ -5133,37 +5133,6 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
-  /api/v1/me/bonus:
-    get:
-      summary: The caller's daily bonus
-      description: What the bonus gives (the administrators set it), whether the caller took it today (a Moscow day) and whether they may take it at all.
-      security: [{ bearer: [] }]
-      responses:
-        "200":
-          description: The bonus
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Bonus" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-    post:
-      summary: Take the daily bonus
-      description: 'Once a Moscow day, for a page a week old with a filled profile, not deleted and not banned: `the bonus is for pages a week old with a filled profile`, `the bonus is taken today` (409).'
-      security: [{ bearer: [] }]
-      responses:
-        "200":
-          description: What the bonus gave
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [votes, balance]
-                properties:
-                  votes: { type: integer, format: int64 }
-                  balance: { type: integer, format: int64, description: What the caller has now }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "409": { $ref: "#/components/responses/Conflict" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
-
   /api/v1/me/rating:
     post:
       summary: Raise your rating ("Повысить рейтинг")
@@ -6132,142 +6101,6 @@ paths:
         content:
           application/json:
             schema: { $ref: "#/components/schemas/FirmSettings" }
-      responses:
-        "204": { description: Set }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403":
-          description: You are not an administrator
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-
-  /api/v1/me/bank:
-    get:
-      summary: The bank of the caller
-      description: 'The rates and limits of the bank and the account of the caller at the moment: the deposit and the debt in hundredths of a vote, with the interest of the whole days counted, what was borrowed and when it is due.'
-      security: [{ bearer: [] }]
-      responses:
-        "200":
-          description: The bank
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Bank" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-
-  /api/v1/me/bank/card:
-    get:
-      summary: The virtual card of the caller
-      description: '`card` is null until a card is issued.'
-      security: [{ bearer: [] }]
-      responses:
-        "200":
-          description: The card
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/BankCardResponse" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-    post:
-      summary: Issue the virtual card of the caller
-      description: 'A page has one card with a unique number of sixteen digits. Asked again, this gives the card it has. Rate limit RATE_LIMIT_BANK.'
-      security: [{ bearer: [] }]
-      responses:
-        "200":
-          description: The card
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/BankCardResponse" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "429": { description: Too many requests }
-    put:
-      summary: Change the cover of the card
-      description: 'Rate limit RATE_LIMIT_BANK.'
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [cover]
-              properties:
-                cover: { type: string, enum: [classic, gold, platinum, black, flame, ocean, matrix, glitter, chrome, sky] }
-      responses:
-        "200":
-          description: The card
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/BankCardResponse" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "409": { $ref: "#/components/responses/Conflict" }
-        "429": { description: Too many requests }
-
-  /api/v1/me/bank/{action}:
-    post:
-      summary: Put or take a deposit, take or repay a loan
-      description: '`deposit` puts votes on the deposit (they go to the treasury), `withdraw` takes whole votes off it (0 — all), `loan` lends votes (one loan at a time, pages a week old with a filled profile), `repay` pays the loan back (0 or more than owed — all). Rate limit RATE_LIMIT_BANK.'
-      security: [{ bearer: [] }]
-      parameters:
-        - { name: action, in: path, required: true, schema: { type: string, enum: [deposit, withdraw, loan, repay] } }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                amount: { type: integer, format: int64 }
-      responses:
-        "200":
-          description: Moved
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  votes: { type: integer, format: int64, description: The votes moved }
-                  balance: { type: integer, format: int64 }
-                  bank: { $ref: "#/components/schemas/Bank" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "404": { description: Unknown action }
-        "409": { $ref: "#/components/responses/Conflict" }
-        "429": { description: Too many requests }
-
-  /api/v1/bank/settings:
-    get:
-      summary: The bank for the administrators
-      description: 'Only for the administrators of the site: the rates and limits and how the bank does — votes on deposits and owed on loans (hundredths, as counted last) and how many pages have each.'
-      security: [{ bearer: [] }]
-      responses:
-        "200":
-          description: The settings and the stats
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  settings: { $ref: "#/components/schemas/BankSettings" }
-                  deposits: { type: integer, format: int64 }
-                  depositors: { type: integer, format: int64 }
-                  debts: { type: integer, format: int64 }
-                  debtors: { type: integer, format: int64 }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "403":
-          description: You are not an administrator
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-    put:
-      summary: Change the bank
-      description: 'Only for the administrators of the site. Rates are in hundredths of a percent a day (0–10000), limits at least 1 vote, the term 1–365 days.'
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/BankSettings" }
       responses:
         "204": { description: Set }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -11343,7 +11176,6 @@ components:
       properties:
         votes: { type: integer, format: int64, description: What the treasury has taken more than paid; below zero when it has paid more }
         outstanding: { type: integer, format: int64, description: What the vouchers promise }
-        bonus: { type: integer, format: int64, description: The daily bonus }
         held: { type: integer, format: int64, description: The votes on the accounts of the pages }
         transferFee: { type: integer, description: The fee of a transfer of votes, in percent; none with Prime }
         stickerTax: { type: integer, description: The tax the author of a sticker pack pays on its sale, in percent }
@@ -11353,18 +11185,9 @@ components:
       type: object
       required: [bonus, transferFee, stickerTax, primeStickerTax]
       properties:
-        bonus: { type: integer, format: int64, minimum: 1, description: The daily bonus }
         transferFee: { type: integer, minimum: 0, maximum: 100 }
         stickerTax: { type: integer, minimum: 0, maximum: 100 }
         primeStickerTax: { type: integer, minimum: 0, maximum: 100 }
-
-    Bonus:
-      type: object
-      required: [votes, taken, eligible]
-      properties:
-        votes: { type: integer, format: int64, description: What the bonus gives now }
-        taken: { type: boolean, description: The caller took it today }
-        eligible: { type: boolean, description: The caller may take it }
 
     Decor:
       type: object
@@ -11444,39 +11267,6 @@ components:
         price: { type: integer, format: int64, description: Hundredths of a vote a unit sells for }
         gain: { type: integer, format: int64, description: The experience a dig gives }
         energy: { type: integer, description: The energy a dig takes }
-    BankSettings:
-      type: object
-      properties:
-        depositRate: { type: integer, description: Hundredths of a percent a day }
-        depositMost: { type: integer, format: int64, description: The most a deposit grows to, in votes }
-        loanRate: { type: integer }
-        loanMost: { type: integer, format: int64 }
-        loanDays: { type: integer }
-        penaltyRate: { type: integer, description: The rate of a loan past its term }
-    BankCardResponse:
-      type: object
-      required: [card]
-      properties:
-        card:
-          type: object
-          nullable: true
-          required: [number, cover, issuedAt]
-          properties:
-            number: { type: string, description: Sixteen digits starting with 1919, unique on the site }
-            cover: { type: string }
-            issuedAt: { type: string, format: date-time }
-    Bank:
-      type: object
-      properties:
-        settings: { $ref: "#/components/schemas/BankSettings" }
-        account:
-          type: object
-          properties:
-            deposit: { type: integer, format: int64, description: Hundredths of a vote }
-            debt: { type: integer, format: int64, description: Hundredths of a vote }
-            borrowed: { type: integer, format: int64 }
-            dueAt: { type: string, format: date-time, nullable: true }
-            overdue: { type: boolean }
     FirmSettings:
       type: object
       properties:

@@ -322,7 +322,6 @@ func (a *api) setVoteRate(w http.ResponseWriter, r *http.Request) {
 type treasuryJSON struct {
 	Votes           int64 `json:"votes"`
 	Outstanding     int64 `json:"outstanding"`
-	Bonus           int64 `json:"bonus"`
 	Held            int64 `json:"held"`
 	TransferFee     int   `json:"transferFee"`
 	StickerTax      int   `json:"stickerTax"`
@@ -340,16 +339,14 @@ func (a *api) treasury(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, treasuryJSON(t))
 }
 
-// economyJSON is the bonus and the fees an administrator sets.
+// economyJSON is fees and taxes an administrator sets.
 type economyJSON struct {
-	Bonus           int64 `json:"bonus"`
-	TransferFee     int   `json:"transferFee"`
-	StickerTax      int   `json:"stickerTax"`
-	PrimeStickerTax int   `json:"primeStickerTax"`
+	TransferFee     int `json:"transferFee"`
+	StickerTax      int `json:"stickerTax"`
+	PrimeStickerTax int `json:"primeStickerTax"`
 }
 
-// setEconomy is "Экономика" of the admin panel: the daily bonus and the
-// fees of transfers and sticker packs.
+// setEconomy is "Экономика" of the admin panel: the fees of transfers and sticker packs.
 func (a *api) setEconomy(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -369,54 +366,6 @@ func (a *api) setEconomy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// bonusJSON is the daily bonus of the caller.
-type bonusJSON struct {
-	Votes    int64 `json:"votes"`
-	Taken    bool  `json:"taken"`
-	Eligible bool  `json:"eligible"`
-	Streak   int   `json:"streak"`
-}
-
-func (a *api) bonus(w http.ResponseWriter, r *http.Request) {
-	token, err := bearerToken(r)
-	if err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	b, err := a.votes.Bonus(r.Context(), token)
-	if err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	writeJSON(w, http.StatusOK, bonusJSON(b))
-}
-
-// claimedBonusJSON is what the bonus gave and the votes the caller has
-// now.
-type claimedBonusJSON struct {
-	Votes   int64 `json:"votes"`
-	Balance int64 `json:"balance"`
-}
-
-// claimBonus is "Получить бонус": the votes of the day, once.
-func (a *api) claimBonus(w http.ResponseWriter, r *http.Request) {
-	token, err := bearerToken(r)
-	if err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	claimed, err := a.votes.ClaimBonus(r.Context(), token)
-	if err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	writeJSON(w, http.StatusOK, claimedBonusJSON{Votes: claimed.Votes, Balance: claimed.Balance})
 }
 
 // raiseRatingRequest is how many percent to raise a rating by.
