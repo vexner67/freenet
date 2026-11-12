@@ -25,11 +25,8 @@ type UserRepository struct {
 	invitedBy map[uuid.UUID]uuid.UUID
 	// operations are the statement of each page, oldest first.
 	operations map[uuid.UUID][]user.VoteOperation
-	// treasury is the votes of the site (Казна) and bonuses the day of
-	// the last bonus of each page.
+	// treasury holds the votes of the site.
 	treasury user.Treasury
-	bonuses  map[uuid.UUID]time.Time
-	streaks  map[uuid.UUID]int
 	// promised is what the vouchers promise: VoucherRepository tells.
 	promised func() int64
 	// cascade drops what other repositories keep of a deleted user, as
@@ -45,8 +42,6 @@ func NewUserRepository() *UserRepository {
 		invitedBy:  make(map[uuid.UUID]uuid.UUID),
 		operations: make(map[uuid.UUID][]user.VoteOperation),
 		treasury:   user.Treasury{Votes: user.TreasuryStart},
-		bonuses:    make(map[uuid.UUID]time.Time),
-		streaks:    make(map[uuid.UUID]int),
 		promised:   func() int64 { return 0 },
 	}
 }
@@ -371,8 +366,6 @@ func (r *UserRepository) DeleteDue(ctx context.Context, now time.Time, limit int
 		}
 		delete(r.invitedBy, id)
 		delete(r.operations, id)
-		delete(r.bonuses, id)
-		delete(r.streaks, id)
 	}
 
 	for id, ops := range r.operations {

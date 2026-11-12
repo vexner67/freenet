@@ -89,7 +89,7 @@ func newServer(t *testing.T) testServer {
 		}),
 		Stickers: service.NewStickerService(stickers, inmem.NewStickerPackRepository(users, stickers), users, users, inmem.NewEconomyRepository(), inmem.TxManager{}),
 		Wallets: service.NewWalletService(service.WalletDeps{
-			Users: users, Wallets: users, Statements: users, Bonuses: users, Vouchers: inmem.NewVoucherRepository(users), Rates: inmem.NewVoteRateRepository(), Economy: inmem.NewEconomyRepository(), Permissions: permissions,
+			Users: users, Wallets: users, Statements: users, Vouchers: inmem.NewVoucherRepository(users), Rates: inmem.NewVoteRateRepository(), Economy: inmem.NewEconomyRepository(), Permissions: permissions,
 			Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Admins: admins,
 		}),
 		Verification: service.NewVerificationService(service.VerificationDeps{
@@ -110,8 +110,6 @@ func newServer(t *testing.T) testServer {
 		Pets:        service.NewPetService(users, service.PetStores{Pets: pets, Keepers: pets, Battles: pets, Events: pets, Seasons: pets, Quests: pets, Market: pets}, users, inmem.TxManager{}, admins),
 		Titles:      service.NewTitleService(users, inmem.NewTitleRepository(users), admins),
 		Firms:       service.NewFirmService(users, inmem.NewFirmRepository(), users, inmem.TxManager{}, admins),
-		Banks:       service.NewBankService(users, inmem.NewBankRepository(), users, inmem.TxManager{}, admins),
-		Cards:       service.NewCardService(inmem.NewCardRepository()),
 		Rockets:     service.NewRocketService(users, casinos, inmem.NewRocketRepository(), users, inmem.TxManager{}, admins),
 		Pokers:      service.NewPokerService(users, inmem.NewPokerRepository(), users, inmem.TxManager{}, admins),
 		Holdems:     service.NewHoldemService(users, inmem.NewHoldemRepository(), users, inmem.TxManager{}),

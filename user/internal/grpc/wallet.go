@@ -27,8 +27,6 @@ type WalletService interface {
 	Treasury(ctx context.Context) (user.Treasury, error)
 	Economy(ctx context.Context) (user.Economy, error)
 	SetEconomy(ctx context.Context, adminID uuid.UUID, e user.Economy) error
-	Bonus(ctx context.Context, userID uuid.UUID, now time.Time) (service.Bonus, error)
-	ClaimBonus(ctx context.Context, userID uuid.UUID, now time.Time) (service.Redeemed, error)
 	RaiseRating(ctx context.Context, payerID, pageID uuid.UUID, raise user.RatingRaise) (service.RatingRaised, error)
 }
 
@@ -263,7 +261,6 @@ func (h *UserHandler) GetTreasury(ctx context.Context, _ *userv1.GetTreasuryRequ
 	return &userv1.GetTreasuryResponse{
 		Votes:           treasury.Votes,
 		Outstanding:     treasury.Outstanding,
-		Bonus:           economy.Bonus,
 		Held:            treasury.Held,
 		TransferFee:     int32(economy.TransferFee),     //nolint:gosec // at most 100
 		StickerTax:      int32(economy.StickerTax),      //nolint:gosec // at most 100
@@ -277,7 +274,7 @@ func (h *UserHandler) SetEconomy(ctx context.Context, req *userv1.SetEconomyRequ
 		return nil, err
 	}
 
-	economy, err := user.NewEconomy(req.GetBonus(), int(req.GetTransferFee()), int(req.GetStickerTax()), int(req.GetPrimeStickerTax()))
+	economy, err := user.NewEconomy(user.DefaultEconomy.Bonus, int(req.GetTransferFee()), int(req.GetStickerTax()), int(req.GetPrimeStickerTax()))
 	if err != nil {
 		return nil, err
 	}
@@ -287,34 +284,6 @@ func (h *UserHandler) SetEconomy(ctx context.Context, req *userv1.SetEconomyRequ
 	}
 
 	return &emptypb.Empty{}, nil
-}
-
-func (h *UserHandler) GetBonus(ctx context.Context, _ *userv1.GetBonusRequest) (*userv1.GetBonusResponse, error) {
-	userID, err := currentUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	bonus, err := h.walletService.Bonus(ctx, userID, time.Now())
-	if err != nil {
-		return nil, err
-	}
-
-	return &userv1.GetBonusResponse{Votes: bonus.Votes, Taken: bonus.Taken, Eligible: bonus.Eligible, Streak: int32(bonus.Streak)}, nil
-}
-
-func (h *UserHandler) ClaimBonus(ctx context.Context, _ *userv1.ClaimBonusRequest) (*userv1.ClaimBonusResponse, error) {
-	userID, err := currentUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	claimed, err := h.walletService.ClaimBonus(ctx, userID, time.Now())
-	if err != nil {
-		return nil, err
-	}
-
-	return &userv1.ClaimBonusResponse{Votes: claimed.Votes, Balance: claimed.Wallet.Votes}, nil
 }
 
 func (h *UserHandler) RaiseRating(ctx context.Context, req *userv1.RaiseRatingRequest) (*userv1.RaiseRatingResponse, error) {

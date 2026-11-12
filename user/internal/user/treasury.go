@@ -39,7 +39,6 @@ const (
 var SettledBefore = time.Date(2026, time.October, 21, 21, 0, 0, 0, time.UTC)
 
 var (
-	ErrBonusTaken  = errors.New("the bonus is taken today")
 	ErrBonusNotYet = errors.New("the bonus is for pages a week old with a filled profile")
 )
 

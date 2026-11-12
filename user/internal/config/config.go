@@ -74,8 +74,6 @@ type Config struct {
 	// Actions with the enterprises of "Бизнес" and on the stock exchange,
 	// each counted apart.
 	BusinessLimits ratelimit.Rules `env:"RATE_LIMIT_BUSINESS" envDefault:"60/1m,3000/24h"`
-	// Deposits and loans put, taken, lent and paid back, each counted apart.
-	BankLimits ratelimit.Rules `env:"RATE_LIMIT_BANK" envDefault:"30/1m,500/24h"`
 	// Visits of pages written down as guests.
 	VisitLimits ratelimit.Rules `env:"RATE_LIMIT_VISITS" envDefault:"120/1m,5000/24h"`
 	// Pets adopted, fed, played with, renamed and set to fight, each
@@ -108,9 +106,6 @@ type Config struct {
 	// GiftAuctionInterval is how often the auctions of gifts that ended
 	// are settled: a gift goes to its winner that much later.
 	GiftAuctionInterval time.Duration `env:"GIFT_AUCTION_INTERVAL" envDefault:"30s"`
-
-	// BankInterval is how often the loans past their term are collected.
-	BankInterval time.Duration `env:"BANK_INTERVAL" envDefault:"10m"`
 
 	// EndlessInterval is how often the administrators get back the votes
 	// they spent (user.EndlessVotes).
@@ -149,10 +144,6 @@ func (c Config) Validate() error {
 
 	if c.GiftAuctionInterval <= 0 {
 		return errors.New("GIFT_AUCTION_INTERVAL must be positive")
-	}
-
-	if c.BankInterval <= 0 {
-		return errors.New("BANK_INTERVAL must be positive")
 	}
 
 	if c.EndlessInterval <= 0 {

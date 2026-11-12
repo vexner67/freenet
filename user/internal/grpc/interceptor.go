@@ -118,22 +118,7 @@ var petErrors = []struct {
 	{user.ErrDatingProfile, codes.FailedPrecondition},
 }
 
-// bankInvalid are the amounts and settings the bank does not take.
-var bankInvalid = []error{user.ErrBankAmount, user.ErrBankRate, user.ErrBankMost, user.ErrBankDays}
-
-// bankRefused are what the account of a page does not allow.
-var bankRefused = []error{
-	user.ErrDepositMost, user.ErrDepositShort, user.ErrLoanMost, user.ErrLoanActive, user.ErrNoLoan, user.ErrBankNotYet,
-}
-
 func toStatus(err error) (*status.Status, bool) {
-	if errors.Is(err, user.ErrCardCover) {
-		return status.New(codes.InvalidArgument, user.ErrCardCover.Error()), true
-	}
-	if errors.Is(err, user.ErrNoCard) {
-		return status.New(codes.FailedPrecondition, user.ErrNoCard.Error()), true
-	}
-
 	for _, invalid := range invalidStickerPack {
 		if errors.Is(err, invalid) {
 			return status.New(codes.InvalidArgument, invalid.Error()), true
@@ -282,10 +267,6 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.NotFound, user.ErrTableNotFound.Error()), true
 	case sentinel(err, holdemRefused) != nil:
 		return status.New(codes.FailedPrecondition, sentinel(err, holdemRefused).Error()), true
-	case sentinel(err, bankInvalid) != nil:
-		return status.New(codes.InvalidArgument, sentinel(err, bankInvalid).Error()), true
-	case sentinel(err, bankRefused) != nil:
-		return status.New(codes.FailedPrecondition, sentinel(err, bankRefused).Error()), true
 	case errors.Is(err, user.ErrRocketOver):
 		return status.New(codes.FailedPrecondition, user.ErrRocketOver.Error()), true
 	case errors.Is(err, user.ErrInvalidPostPrice), errors.Is(err, user.ErrMessagePriceChanged):
@@ -308,8 +289,6 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.FailedPrecondition, user.ErrRatingLimit.Error()), true
 	case errors.Is(err, user.ErrRatingRefused):
 		return status.New(codes.PermissionDenied, user.ErrRatingRefused.Error()), true
-	case errors.Is(err, user.ErrBonusTaken):
-		return status.New(codes.FailedPrecondition, user.ErrBonusTaken.Error()), true
 	case errors.Is(err, user.ErrBonusNotYet):
 		return status.New(codes.FailedPrecondition, user.ErrBonusNotYet.Error()), true
 	case errors.Is(err, user.ErrEconomyBonus):

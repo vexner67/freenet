@@ -58,9 +58,6 @@ type App struct {
 	// gifts settle the auctions of collectibles every auctionEvery.
 	gifts        *service.GiftService
 	auctionEvery time.Duration
-	// banks collect the loans past their term every bankEvery.
-	banks     *service.BankService
-	bankEvery time.Duration
 	// endless gives the administrators back what they spent every
 	// endlessEvery.
 	endless      *service.EndlessService
@@ -188,8 +185,6 @@ func (a *App) build(cfg config.Config) error {
 		Admins:       admins,
 	})
 	a.auctionEvery = cfg.GiftAuctionInterval
-	a.banks = service.NewBankService(store.users, store.bank, store.wallets, store.tx, admins)
-	a.bankEvery = cfg.BankInterval
 	a.endless = service.NewEndlessService(store.endless, admins)
 	a.endlessEvery = cfg.EndlessInterval
 	a.holdems = service.NewHoldemService(store.users, store.holdems, store.wallets, store.tx)
@@ -220,7 +215,6 @@ func (a *App) build(cfg config.Config) error {
 				Users:       store.users,
 				Wallets:     store.wallets,
 				Statements:  store.statements,
-				Bonuses:     store.bonuses,
 				Vouchers:    store.vouchers,
 				Rates:       store.rates,
 				Economy:     store.economy,
@@ -254,8 +248,6 @@ func (a *App) build(cfg config.Config) error {
 			Pokers:      service.NewPokerService(store.users, store.pokers, store.wallets, store.tx, admins),
 			Mines:       service.NewMineService(store.users, store.mine, store.wallets, store.tx, admins),
 			Firms:       a.firms,
-			Banks:       a.banks,
-			Cards:       service.NewCardService(store.cards),
 			Holdems:     a.holdems,
 			BetEvents:   service.NewBetEventService(store.users, store.betEvents, store.wallets, store.tx, admins),
 			Paid:        service.NewPaidService(store.users, store.wallets, store.purchases, store.economy, permissions, store.tx),
@@ -304,7 +296,6 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 
 		userv1.UserService_TransferVotes_FullMethodName: cfg.TransferLimits,
 		userv1.UserService_RedeemVoucher_FullMethodName: cfg.VoucherLimits,
-		userv1.UserService_ClaimBonus_FullMethodName:    cfg.VoucherLimits,
 		userv1.UserService_RaiseRating_FullMethodName:   cfg.TransferLimits,
 		userv1.UserService_BuyPrime_FullMethodName:      cfg.TransferLimits,
 
@@ -334,14 +325,6 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 
 		userv1.UserService_RunFirms_FullMethodName:  cfg.BusinessLimits,
 		userv1.UserService_RunStocks_FullMethodName: cfg.BusinessLimits,
-
-		userv1.UserService_PutDeposit_FullMethodName:  cfg.BankLimits,
-		userv1.UserService_TakeDeposit_FullMethodName: cfg.BankLimits,
-		userv1.UserService_TakeLoan_FullMethodName:    cfg.BankLimits,
-		userv1.UserService_RepayLoan_FullMethodName:   cfg.BankLimits,
-
-		userv1.UserService_IssueBankCard_FullMethodName:    cfg.BankLimits,
-		userv1.UserService_SetBankCardCover_FullMethodName: cfg.BankLimits,
 
 		// A visit is a row in the guests of another page.
 		userv1.UserService_VisitPage_FullMethodName: cfg.VisitLimits,
@@ -436,16 +419,14 @@ type storage struct {
 	endless service.EndlessRepository
 	// statements are the changes of their votes.
 	statements service.StatementRepository
-	// bonuses are the daily bonuses and the members of the treasury.
-	bonuses  service.BonusRepository
-	vouchers service.VoucherRepository
+	vouchers   service.VoucherRepository
 	// rates is what a vote is worth in rubles.
 	rates service.VoteRateRepository
 	// decor is how the site is dressed for the New Year.
 	decor service.DecorRepository
 	// primes are the subscriptions of Freenet Prime and their prices.
 	primes service.PrimeRepository
-	// economy is the daily bonus and the fees.
+	// economy is fees and taxes.
 	economy service.EconomyRepository
 	// casino is the casino of the site.
 	casino service.CasinoRepository
@@ -453,9 +434,6 @@ type storage struct {
 	mine service.MineRepository
 	// firms is the economy of the enterprises and its rules.
 	firms service.FirmRepository
-	// bank is the bank of the site and the accounts of pages.
-	bank  service.BankRepository
-	cards service.CardRepository
 	// rockets are the rounds of "Ракетка".
 	rockets service.RocketRepository
 	// pokers are the table and the hands of "Покер".
@@ -506,7 +484,6 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			wallets:      users,
 			endless:      users,
 			statements:   users,
-			bonuses:      users,
 			vouchers:     inmem.NewVoucherRepository(users),
 			rates:        inmem.NewVoteRateRepository(),
 			economy:      inmem.NewEconomyRepository(),
@@ -515,8 +492,6 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			casino:       inmem.NewCasinoRepository(),
 			mine:         inmem.NewMineRepository(),
 			firms:        inmem.NewFirmRepository(),
-			bank:         inmem.NewBankRepository(),
-			cards:        inmem.NewCardRepository(),
 			rockets:      inmem.NewRocketRepository(),
 			pokers:       inmem.NewPokerRepository(),
 			holdems:      inmem.NewHoldemRepository(),
@@ -569,7 +544,6 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		wallets:      postgres.NewWalletRepository(a.pool),
 		endless:      postgres.NewWalletRepository(a.pool),
 		statements:   postgres.NewWalletRepository(a.pool),
-		bonuses:      postgres.NewWalletRepository(a.pool),
 		vouchers:     postgres.NewVoucherRepository(a.pool),
 		rates:        postgres.NewVoteRateRepository(a.pool),
 		economy:      postgres.NewEconomyRepository(a.pool),
@@ -578,8 +552,6 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		casino:       postgres.NewCasinoRepository(a.pool),
 		mine:         postgres.NewMineRepository(a.pool),
 		firms:        postgres.NewFirmRepository(a.pool),
-		bank:         postgres.NewBankRepository(a.pool),
-		cards:        postgres.NewCardRepository(a.pool),
 		rockets:      postgres.NewRocketRepository(a.pool),
 		pokers:       postgres.NewPokerRepository(a.pool),
 		holdems:      postgres.NewHoldemRepository(a.pool),
@@ -629,10 +601,6 @@ func (a *App) Run(ctx context.Context) error {
 
 	g.Go(func() error {
 		return errs.Wrap("a.runAuctions", a.runAuctions(ctx, a.auctionEvery))
-	})
-
-	g.Go(func() error {
-		return errs.Wrap("a.runBank", a.runBank(ctx, a.bankEvery))
 	})
 
 	g.Go(func() error {

@@ -105,22 +105,4 @@ func TestTreasury(t *testing.T) {
 		t.Fatalf("RaiseRating of nobody: %v", err)
 	}
 
-	// A bonus once a day.
-	day := user.BonusDay(time.Now())
-	if last, _, err := wallets.LastBonus(ctx, ann.ID()); err != nil || !last.IsZero() {
-		t.Fatalf("LastBonus of a new page = %v, %v", last, err)
-	}
-	if _, err = wallets.TakeBonus(ctx, ann.ID(), day); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = wallets.TakeBonus(ctx, ann.ID(), day); !errors.Is(err, user.ErrBonusTaken) {
-		t.Fatalf("TakeBonus twice: %v", err)
-	}
-	next := day.AddDate(0, 0, 1)
-	if streak, err := wallets.TakeBonus(ctx, ann.ID(), next); err != nil || streak != 2 {
-		t.Fatal(err)
-	}
-	if last, streak, err := wallets.LastBonus(ctx, ann.ID()); err != nil || !last.Equal(next) || streak != 2 {
-		t.Fatalf("LastBonus = %v, %v; want %v", last, err, next)
-	}
 }

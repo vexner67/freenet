@@ -384,68 +384,6 @@ func (r *WalletRepository) Endow(ctx context.Context, emails []string, votes int
 	return int(tag.RowsAffected()), nil
 }
 
-// The bonus of a day is taken once: a later day replaces the one kept.
-const takeBonusQuery = `
-	INSERT INTO vote_bonuses (
-		user_id,
-		day
-	)
-	VALUES ($1, $2)
-	ON CONFLICT (user_id) DO UPDATE
-	SET day = EXCLUDED.day,
-		streak = CASE WHEN vote_bonuses.day = EXCLUDED.day - 1 THEN vote_bonuses.streak + 1 ELSE 1 END
-	WHERE vote_bonuses.day < EXCLUDED.day
-	RETURNING streak
-`
-
-// TakeBonus marks the bonus of day taken by userID and says how many days
-// in a row that makes; user.ErrBonusTaken.
-func (r *WalletRepository) TakeBonus(ctx context.Context, userID uuid.UUID, day time.Time) (int, error) {
-	var streak int
-
-	err := r.conn(ctx).QueryRow(ctx, takeBonusQuery, userID, day).Scan(&streak)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, user.ErrBonusTaken
-	}
-
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode {
-		return 0, user.ErrNotFound
-	}
-	if err != nil {
-		return 0, errs.Wrap("r.conn.QueryRow", err)
-	}
-
-	return streak, nil
-}
-
-const lastBonusQuery = `
-	SELECT
-		day,
-		streak
-	FROM vote_bonuses
-	WHERE user_id = $1
-`
-
-// LastBonus is the day userID took the last bonus on, zero for never, and
-// how many days in a row that made.
-func (r *WalletRepository) LastBonus(ctx context.Context, userID uuid.UUID) (time.Time, int, error) {
-	var (
-		day    time.Time
-		streak int
-	)
-
-	err := r.conn(ctx).QueryRow(ctx, lastBonusQuery, userID).Scan(&day, &streak)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return time.Time{}, 0, nil
-	}
-	if err != nil {
-		return time.Time{}, 0, errs.Wrap("r.conn.QueryRow", err)
-	}
-
-	return time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC), streak, nil
-}
-
 const listVoteOperationsQuery = `
 	SELECT
 		id,

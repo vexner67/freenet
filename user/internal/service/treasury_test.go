@@ -11,64 +11,6 @@ import (
 	"github.com/vexner67/freenet/user/internal/user"
 )
 
-func TestWalletService_Bonus(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-	w := newWalletWorld(t)
-	ann := w.person(t, "ann")
-	now := time.Now()
-
-	// A page without a profile, and a page younger than a week, takes no
-	// bonus.
-	if b, err := w.wallets.Bonus(ctx, ann, now); err != nil || b.Eligible || b.Taken || b.Votes != user.DefaultEconomy.Bonus {
-		t.Fatalf("Bonus = %+v, %v", b, err)
-	}
-	if _, err := w.wallets.ClaimBonus(ctx, ann, now); !errors.Is(err, user.ErrBonusNotYet) {
-		t.Fatalf("ClaimBonus without a profile: %v", err)
-	}
-	if _, err := w.userSvc.UpdateProfile(ctx, ann, profile(t, "ann"), ""); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := w.wallets.ClaimBonus(ctx, ann, now); !errors.Is(err, user.ErrBonusNotYet) {
-		t.Fatalf("ClaimBonus of a new page: %v", err)
-	}
-
-	// A week later.
-	now = now.Add(user.BonusAge + time.Hour)
-
-	claimed, err := w.wallets.ClaimBonus(ctx, ann, now)
-	if err != nil || claimed.Votes != user.DefaultEconomy.Bonus || claimed.Wallet.Votes != user.DefaultEconomy.Bonus {
-		t.Fatalf("ClaimBonus = %+v, %v", claimed, err)
-	}
-	if _, err := w.wallets.ClaimBonus(ctx, ann, now); !errors.Is(err, user.ErrBonusTaken) {
-		t.Fatalf("second ClaimBonus: %v", err)
-	}
-	if b, err := w.wallets.Bonus(ctx, ann, now); err != nil || !b.Eligible || !b.Taken {
-		t.Fatalf("Bonus after ClaimBonus = %+v, %v", b, err)
-	}
-
-	treasury, err := w.wallets.Treasury(ctx)
-	if err != nil || treasury.Votes != user.TreasuryStart-user.DefaultEconomy.Bonus {
-		t.Fatalf("Treasury = %+v, %v", treasury, err)
-	}
-
-	// The next day there is another, grown by the streak.
-	if claimed, err = w.wallets.ClaimBonus(ctx, ann, now.Add(24*time.Hour)); err != nil || claimed.Votes != user.DefaultEconomy.BonusOf(2) || claimed.Wallet.Votes != 3*user.DefaultEconomy.Bonus {
-		t.Fatalf("next ClaimBonus = %+v, %v", claimed, err)
-	}
-
-	// A day missed starts the streak over.
-	if claimed, err = w.wallets.ClaimBonus(ctx, ann, now.Add(72*time.Hour)); err != nil || claimed.Votes != user.DefaultEconomy.Bonus {
-		t.Fatalf("ClaimBonus after a gap = %+v, %v", claimed, err)
-	}
-
-	ops, err := w.wallets.Statement(ctx, ann, uuid.Nil, user.VoteFlowAll, 10, now)
-	if err != nil || len(ops.Operations) != 3 || ops.Operations[0].Kind != user.VoteBonus {
-		t.Fatalf("Operations = %+v, %v", ops, err)
-	}
-}
-
 // A voucher promises any votes: the treasury has no bottom.
 func TestWalletService_VoucherOutstanding(t *testing.T) {
 	t.Parallel()
@@ -195,7 +137,7 @@ func TestWalletService_RaiseRatingOfAnother(t *testing.T) {
 	}
 }
 
-// The administrators set the bonus and the fees; the next bonus, transfer
+// The administrators set the fees and taxes; the next transfer
 // and sale take them.
 func TestWalletService_SetEconomy(t *testing.T) {
 	t.Parallel()
@@ -213,10 +155,6 @@ func TestWalletService_SetEconomy(t *testing.T) {
 	}
 	if got, err := w.wallets.Economy(ctx); err != nil || got != economy {
 		t.Fatalf("Economy = %+v, %v", got, err)
-	}
-
-	if b, err := w.wallets.Bonus(ctx, ann, time.Now()); err != nil || b.Votes != 10_000 {
-		t.Fatalf("Bonus = %+v, %v", b, err)
 	}
 
 	for id, name := range map[uuid.UUID]string{ann: "ann", bob: "bob"} {

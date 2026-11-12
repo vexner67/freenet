@@ -191,47 +191,6 @@ func (r *UserRepository) Endow(ctx context.Context, emails []string, votes int64
 	return raised, nil
 }
 
-// TakeBonus marks the bonus of day taken by userID and says how many days
-// in a row that makes; user.ErrBonusTaken.
-func (r *UserRepository) TakeBonus(ctx context.Context, userID uuid.UUID, day time.Time) (int, error) {
-	if err := ctx.Err(); err != nil {
-		return 0, errs.Wrap("ctx.Err", err)
-	}
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	if _, ok := r.users[userID]; !ok {
-		return 0, user.ErrNotFound
-	}
-
-	last, ok := r.bonuses[userID]
-	if ok && !last.Before(day) {
-		return 0, user.ErrBonusTaken
-	}
-
-	streak := 1
-	if ok && last.AddDate(0, 0, 1).Equal(day) {
-		streak = r.streaks[userID] + 1
-	}
-	r.bonuses[userID], r.streaks[userID] = day, streak
-
-	return streak, nil
-}
-
-// LastBonus is the day userID took the last bonus on, zero for never, and
-// how many days in a row that made.
-func (r *UserRepository) LastBonus(ctx context.Context, userID uuid.UUID) (time.Time, int, error) {
-	if err := ctx.Err(); err != nil {
-		return time.Time{}, 0, errs.Wrap("ctx.Err", err)
-	}
-
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	return r.bonuses[userID], r.streaks[userID], nil
-}
-
 // Fund adds votes to the treasury, as if they had been spent: for tests
 // that pay more than the treasury starts with.
 func (r *UserRepository) Fund(votes int64) {

@@ -57,8 +57,6 @@ type UserHandler struct {
 	betEvents         BetEventService
 	mines             MineService
 	firms             FirmService
-	banks             BankService
-	cards             CardService
 	paid              PaidService
 	guests            GuestService
 	tops              TopService
@@ -109,10 +107,6 @@ type Services struct {
 	Mines MineService
 	// Firms are the enterprises of "Бизнес".
 	Firms FirmService
-	// Banks are the deposits and loans of the pages.
-	Banks BankService
-	// Cards are the virtual cards of the pages.
-	Cards CardService
 	// Paid sells paid posts and messages.
 	Paid PaidService
 	// Guests are who visited the pages.
@@ -156,8 +150,6 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		betEvents:         s.BetEvents,
 		mines:             s.Mines,
 		firms:             s.Firms,
-		banks:             s.Banks,
-		cards:             s.Cards,
 		paid:              s.Paid,
 		guests:            s.Guests,
 		tops:              s.Tops,

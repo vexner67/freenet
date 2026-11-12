@@ -44,16 +44,6 @@ type WalletRepository interface {
 	RaiseRating(ctx context.Context, userID uuid.UUID, percent, most int) (user.Wallet, error)
 }
 
-// BonusRepository keeps the daily bonuses.
-type BonusRepository interface {
-	// TakeBonus marks the bonus of day taken by userID and says how many
-	// days in a row that makes; user.ErrBonusTaken for a day taken already.
-	TakeBonus(ctx context.Context, userID uuid.UUID, day time.Time) (int, error)
-	// LastBonus is the day of the last bonus of userID, zero for never,
-	// and how many days in a row that made.
-	LastBonus(ctx context.Context, userID uuid.UUID) (time.Time, int, error)
-}
-
 // StatementRepository reads the statements of pages: every change of
 // their votes.
 type StatementRepository interface {
@@ -87,7 +77,7 @@ type VoteRateRepository interface {
 }
 
 // EconomyRepository keeps the economy the administrators tune: the daily
-// bonus and the fees.
+// fees and taxes.
 type EconomyRepository interface {
 	// Economy is user.DefaultEconomy until one is set.
 	Economy(ctx context.Context) (user.Economy, error)
@@ -136,16 +126,6 @@ type StatementPage struct {
 	Expense    int64
 }
 
-// Bonus is the daily bonus of a page: what it gives now, whether it is
-// taken today and whether the page may take it at all. Streak is the day
-// in a row the page is on, counting today's bonus.
-type Bonus struct {
-	Votes    int64
-	Streak   int
-	Taken    bool
-	Eligible bool
-}
-
 // StatementPeriod is how far back the totals of a statement go.
 const StatementPeriod = 30 * 24 * time.Hour
 
@@ -162,7 +142,6 @@ type WalletService struct {
 	userRepo    UserRepository
 	wallets     WalletRepository
 	statements  StatementRepository
-	bonuses     BonusRepository
 	vouchers    VoucherRepository
 	rates       VoteRateRepository
 	economy     EconomyRepository
@@ -178,7 +157,6 @@ type WalletDeps struct {
 	Users       UserRepository
 	Wallets     WalletRepository
 	Statements  StatementRepository
-	Bonuses     BonusRepository
 	Vouchers    VoucherRepository
 	Rates       VoteRateRepository
 	Economy     EconomyRepository
@@ -193,7 +171,6 @@ func NewWalletService(d WalletDeps) *WalletService {
 		userRepo:    d.Users,
 		wallets:     d.Wallets,
 		statements:  d.Statements,
-		bonuses:     d.Bonuses,
 		vouchers:    d.Vouchers,
 		rates:       d.Rates,
 		economy:     d.Economy,
@@ -358,80 +335,6 @@ func (s *WalletService) Treasury(ctx context.Context) (user.Treasury, error) {
 	return treasury, errs.Wrap("s.wallets.Treasury", err)
 }
 
-// Bonus is the daily bonus of userID at now.
-func (s *WalletService) Bonus(ctx context.Context, userID uuid.UUID, now time.Time) (Bonus, error) {
-	u, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		return Bonus{}, errs.Wrap("s.userRepo.GetByID", err)
-	}
-
-	last, streak, err := s.bonuses.LastBonus(ctx, userID)
-	if err != nil {
-		return Bonus{}, errs.Wrap("s.bonuses.LastBonus", err)
-	}
-
-	economy, err := s.economy.Economy(ctx)
-	if err != nil {
-		return Bonus{}, errs.Wrap("s.economy.Economy", err)
-	}
-
-	today := user.BonusDay(now)
-	taken := !last.Before(today)
-
-	switch {
-	case taken:
-	case last.Equal(today.AddDate(0, 0, -1)):
-		streak++
-	default:
-		streak = 1
-	}
-
-	return Bonus{
-		Votes:    economy.BonusOf(streak),
-		Streak:   streak,
-		Taken:    taken,
-		Eligible: u.CheckBonusAt(now) == nil,
-	}, nil
-}
-
-// ClaimBonus gives userID the bonus of the day of now out of the treasury,
-// in one transaction; user.ErrBonusNotYet, user.ErrBonusTaken.
-func (s *WalletService) ClaimBonus(ctx context.Context, userID uuid.UUID, now time.Time) (Redeemed, error) {
-	u, err := s.userRepo.GetByID(ctx, userID)
-	if err != nil {
-		return Redeemed{}, errs.Wrap("s.userRepo.GetByID", err)
-	}
-
-	if err = u.CheckBonusAt(now); err != nil {
-		return Redeemed{}, errs.Wrap("u.CheckBonusAt", err)
-	}
-
-	economy, err := s.economy.Economy(ctx)
-	if err != nil {
-		return Redeemed{}, errs.Wrap("s.economy.Economy", err)
-	}
-
-	var claimed Redeemed
-
-	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		streak, err := s.bonuses.TakeBonus(ctx, userID, user.BonusDay(now))
-		if err != nil {
-			return errs.Wrap("s.bonuses.TakeBonus", err)
-		}
-
-		claimed.Votes = economy.BonusOf(streak)
-
-		claimed.Wallet, err = s.wallets.Credit(ctx, userID, claimed.Votes, 0, user.Entry(user.VoteBonus, uuid.Nil, ""))
-
-		return errs.Wrap("s.wallets.Credit", err)
-	})
-	if err != nil {
-		return Redeemed{}, errs.Wrap("s.tx.WithinTx", err)
-	}
-
-	return claimed, nil
-}
-
 // RatingRaised is what "Повысить рейтинг" leaves: the votes of the payer
 // and the rating bought of the page with its whole rating now.
 type RatingRaised struct {
@@ -566,14 +469,14 @@ func (s *WalletService) SetRate(ctx context.Context, adminID uuid.UUID, rate use
 	return errs.Wrap("s.rates.SetRate", s.rates.SetRate(ctx, rate))
 }
 
-// Economy is the bonus and the fees of the site now; anyone may ask.
+// Economy is the fees and taxes of the site now; anyone may ask.
 func (s *WalletService) Economy(ctx context.Context) (user.Economy, error) {
 	e, err := s.economy.Economy(ctx)
 
 	return e, errs.Wrap("s.economy.Economy", err)
 }
 
-// SetEconomy sets the bonus and the fees from now on; user.ErrNotAdmin.
+// SetEconomy sets the fees and taxes from now on; user.ErrNotAdmin.
 func (s *WalletService) SetEconomy(ctx context.Context, adminID uuid.UUID, e user.Economy) error {
 	if err := checkAdmin(ctx, s.userRepo, s.admins, adminID); err != nil {
 		return errs.Wrap("checkAdmin", err)

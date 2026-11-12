@@ -19,7 +19,7 @@ func TestTreasury(t *testing.T) {
 
 	// Anyone sees the treasury.
 	got, err := s.client.GetTreasury(context.Background(), &userv1.GetTreasuryRequest{})
-	if err != nil || got.GetVotes() != user.TreasuryStart || got.GetBonus() != user.DefaultEconomy.Bonus ||
+	if err != nil || got.GetVotes() != user.TreasuryStart ||
 		got.GetTransferFee() != 3 || got.GetStickerTax() != 10 || got.GetPrimeStickerTax() != 5 {
 		t.Fatalf("GetTreasury = %v, %v", got, err)
 	}
@@ -48,16 +48,11 @@ func TestTreasury(t *testing.T) {
 		t.Fatalf("GetTreasury after a redeemed voucher = %v, %v", got, err)
 	}
 
-	// A page made today takes no bonus yet.
-	if _, err := s.client.GetBonus(context.Background(), &userv1.GetBonusRequest{}); status.Code(err) != codes.Unauthenticated {
-		t.Fatalf("GetBonus by nobody: %v", err)
+	if _, err := s.client.GetBonus(ann, &userv1.GetBonusRequest{}); status.Code(err) != codes.Unimplemented {
+		t.Fatalf("GetBonus: %v", err)
 	}
-	bonus, err := s.client.GetBonus(ann, &userv1.GetBonusRequest{})
-	if err != nil || bonus.GetEligible() || bonus.GetTaken() || bonus.GetVotes() != user.DefaultEconomy.Bonus {
-		t.Fatalf("GetBonus = %v, %v", bonus, err)
-	}
-	if _, err := s.client.ClaimBonus(ann, &userv1.ClaimBonusRequest{}); status.Code(err) != codes.FailedPrecondition {
-		t.Fatalf("ClaimBonus of a new page: %v", err)
+	if _, err := s.client.ClaimBonus(ann, &userv1.ClaimBonusRequest{}); status.Code(err) != codes.Unimplemented {
+		t.Fatalf("ClaimBonus: %v", err)
 	}
 }
 
