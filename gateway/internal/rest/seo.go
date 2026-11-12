@@ -8,7 +8,7 @@ import (
 
 // sitePages are the pages a search engine is told of: open to anyone and
 // the same for everyone. People and communities are found through links.
-var sitePages = []string{"/", "/about", "/terms", "/help"}
+var sitePages = []string{"/", "/about", "/terms", "/help", "/help/privacy", "/help/storage"}
 
 // robotsRules keep search engines off the pages of one's own (settings,
 // messages, news...), the admin panel and the internal search; "$" ends a path, so that a
