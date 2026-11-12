@@ -107,6 +107,7 @@ freenet/
 | `docs/features/notifications.md` | Уведомления и push |
 | `docs/features/federation.md` | Федерация: страницы в Fediverse (ActivityPub), подписчики с других серверов, новости из Fediverse и каналов Telegram |
 | `docs/features/profile.md` | Приглашения, анкета, приватность, сессии, присутствие, фон страницы, удаление страницы, языки, поиск людей, знакомства |
+| `docs/features/privacy.md` | Информация об обработке данных, cookie, возраст, внешние сервисы и лицензии |
 | `docs/web.md` | страницы и скрипты сайта, адреса, которые раздаёт gateway |
 | `docs/deviations.md` | известные отклонения и технический долг (бывший §9) |
 | `docs/history.md` | история работы по сессиям (бывший §10.4) |
