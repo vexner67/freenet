@@ -14,6 +14,7 @@ import { stickerNode } from './stickers.js';
 import { audiosNode } from './audio.js';
 import { videoNode } from './video.js';
 import { tr } from './i18n.js';
+import { htmlNode, isHTMLDocument } from './htmlapp.js';
 
 // attachedNodes is what a message shows under its words, as openvk's
 // MessageAttachments (Web/static/js/messages/components/message.js): the
@@ -101,6 +102,7 @@ function makimaNode(photos) {
 // is shown as one (docImageNode).
 function docNode(doc) {
   if (doc.preview) return docImageNode(doc);
+  if (isHTMLDocument(doc)) return el('div', { className: 'msg-attach-w msg-attach-w-html' }, htmlNode(doc));
 
   return el('div', { className: 'msg-attach-w msg-attach-w-doc' },
     el('a', { className: 'attachment_note attachment_doc', href: doc.url, download: doc.name },

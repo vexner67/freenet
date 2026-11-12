@@ -106,7 +106,8 @@ function placeAttachList(menu) {
 
 if (typeof document !== 'undefined') {
   document.addEventListener('input', (event) => {
-    if (event.target instanceof HTMLTextAreaElement) autosize(event.target);
+    // A field of class fixed keeps its size: a window must not grow.
+    if (event.target instanceof HTMLTextAreaElement && !event.target.classList.contains('fixed')) autosize(event.target);
   });
   document.addEventListener('click', switchAttachMenu);
   // A flag of the footer switches the language of this very page, as

@@ -2552,4 +2552,13 @@ export default {
   "списания": "outgoing",
   "Операций пока нет.": "No transactions yet.",
   "остаток {0}": "balance {0}",
+  "Запустить": "Run",
+  "Остановить": "Stop",
+  "Не удалось загрузить страницу.": "Could not load the page.",
+  "Написать HTML": "Write HTML",
+  "HTML-страница": "HTML page",
+  "Игра": "Game",
+  "Код страницы:": "Page code:",
+  "Скрипты страницы работают в песочнице: без сети и без доступа к Вашей странице.": "The page's scripts run in a sandbox: without the network and without access to your page.",
+  "Напишите код страницы.": "Write the page code.",
 };

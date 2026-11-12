@@ -8,6 +8,7 @@ import { DOCUMENT_FORMATS, MAX_DOCUMENTS, MAX_DOCUMENT_BYTES, documentFormat, fi
 import { el, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { tr } from './i18n.js';
+import { htmlNode, isHTMLDocument } from './htmlapp.js';
 
 // ACCEPT is what the file picker offers: the formats the server takes.
 export const ACCEPT = DOCUMENT_FORMATS.map((f) => '.' + f).join(',');
@@ -31,11 +32,12 @@ export function documentNode(doc, { tools = [], pick = null } = {}) {
 }
 
 // documentsNode is the documents a post or a message attaches, under its
-// words and photos; null for none.
+// words and photos; an HTML document runs there (htmlapp.js). Null for
+// none.
 export function documentsNode(docs) {
   if (!docs?.length) return null;
 
-  return el('div', { className: 'doc-list' }, ...docs.map((d) => documentNode(d)));
+  return el('div', { className: 'doc-list' }, ...docs.map((d) => (isHTMLDocument(d) ? htmlNode(d) : documentNode(d))));
 }
 
 // checkFile tells why a file is not taken before it is sent; '' when it is.
@@ -68,7 +70,13 @@ export function uploadFile(onDone) {
       el('li', { textContent: tr('Разрешены следующие типы файлов: {0}.', formats) }),
       el('li', { textContent: tr('Файл не должен нарушать авторские права и правила сайта.') })),
     frame);
-  modal.actions.append(button(tr('Закрыть'), modal.close, { secondary: true }));
+  modal.actions.append(
+    button(tr('Написать HTML'), () => {
+      modal.close();
+      writeHTML(onDone);
+    }),
+    button(tr('Закрыть'), modal.close, { secondary: true }),
+  );
 
   async function take(file) {
     if (!file) return;
@@ -100,6 +108,44 @@ export function uploadFile(onDone) {
     e.preventDefault();
     take(e.dataTransfer.files[0]);
   });
+}
+
+// writeHTML is a page written here and then, a game say: its name and
+// code become an HTML document, uploaded as any other, and onDone gets it.
+export function writeHTML(onDone) {
+  const modal = openModal(tr('HTML-страница'));
+  const error = el('div', { className: 'error', hidden: true });
+  const name = el('input', { type: 'text', className: 'text', maxLength: 120, value: tr('Игра') });
+  const code = el('textarea', { className: 'html-code fixed', spellcheck: false, placeholder: '<!DOCTYPE html>' });
+  const save = button(tr('Сохранить'), send);
+
+  modal.box.classList.add('html-write');
+  modal.body.append(error,
+    el('label', { className: 'html-write-label', textContent: tr('Название:') }), name,
+    el('label', { className: 'html-write-label', textContent: tr('Код страницы:') }), code,
+    el('p', { className: 'hint', textContent: tr('Скрипты страницы работают в песочнице: без сети и без доступа к Вашей странице.') }));
+  modal.actions.append(save, button(tr('Отмена'), modal.close, { secondary: true }));
+
+  async function send() {
+    hideError(error);
+    const title = name.value.trim().replace(/\.html$/i, '');
+    const file = new File([code.value], (title || tr('Игра')) + '.html', { type: 'text/html' });
+    const why = code.value.trim() ? checkFile(file) : tr('Напишите код страницы.');
+    if (why) {
+      showError(error, why);
+      return;
+    }
+
+    save.disabled = true;
+    try {
+      const doc = await api.uploadDocument(file);
+      modal.close();
+      onDone(doc);
+    } catch (e) {
+      showError(error, e);
+      save.disabled = false;
+    }
+  }
 }
 
 // openPicker is openvk's "Выбор документа": one's documents, newest
