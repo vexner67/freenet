@@ -30,10 +30,12 @@ var (
 )
 
 // documentFormats are the extensions openvk allows by default
-// (docs.allowedFormats).
+// (docs.allowedFormats) and html: a page, a game say, that posts and
+// messages run in a sandbox of the site. It is downloaded as any document,
+// never shown as a page of the site.
 var documentFormats = []string{
 	"jpg", "jpeg", "png", "gif", "webp", "psd", "aep", "docx", "doc", "odt", "txt", "md", "pptx", "ppt",
-	"xls", "xlsx", "pdf", "djvu", "fb2", "ps", "apk", "zip", "7z", "mp4", "avi", "mp3", "flac",
+	"xls", "xlsx", "pdf", "djvu", "fb2", "ps", "apk", "zip", "7z", "mp4", "avi", "mp3", "flac", "html",
 }
 
 // DocumentName is what a document is called: one line, trimmed, the name

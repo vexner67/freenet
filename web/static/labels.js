@@ -1672,7 +1672,7 @@ export function giftsCount(n) {
 // a post or a message attaches up to 10.
 export const DOCUMENT_FORMATS = [
   'jpg', 'jpeg', 'png', 'gif', 'webp', 'psd', 'aep', 'docx', 'doc', 'odt', 'txt', 'md', 'pptx', 'ppt',
-  'xls', 'xlsx', 'pdf', 'djvu', 'fb2', 'ps', 'apk', 'zip', '7z', 'mp4', 'avi', 'mp3', 'flac',
+  'xls', 'xlsx', 'pdf', 'djvu', 'fb2', 'ps', 'apk', 'zip', '7z', 'mp4', 'avi', 'mp3', 'flac', 'html',
 ];
 export const MAX_DOCUMENT_BYTES = 10 << 20;
 export const MAX_DOCUMENTS = 10;

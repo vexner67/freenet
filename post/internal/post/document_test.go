@@ -47,7 +47,8 @@ func TestNewDocumentExt(t *testing.T) {
 		{in: " archive.tar.7z ", want: "7z"},
 		{in: ".docx", want: "docx"},
 		{in: "script.exe", err: post.ErrDocumentFormat},
-		{in: "page.html", err: post.ErrDocumentFormat},
+		{in: "Игра.HTML", want: "html"},
+		{in: "page.htm", err: post.ErrDocumentFormat},
 		{in: "noext", err: post.ErrDocumentFormat},
 		{in: "", err: post.ErrDocumentFormat},
 	} {
