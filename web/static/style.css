@@ -2220,20 +2220,28 @@ a.poll-result-name { cursor: pointer; }
 .mb-tab:hover { background: var(--back-e4e4e4); text-decoration: none; }
 .mb-tab.active, .mb-tab.active:hover { background: var(--back-707070); color: var(--text-fff); }
 .mb-tabs input[type="search"] { box-sizing: border-box; width: 100%; padding: 3px 4px; border: 1px solid var(--line-bbb); font: inherit; }
-.sticker-summary { display: flex; justify-content: space-between; align-items: center; margin-top: -10px; }
+.stickers-page > .tabs, .stickers-page > .mb-tabs { margin-bottom: 0; }
+.stickers-page > .mb-tabs { margin-top: 0; }
+.sticker-summary { display: flex; justify-content: space-between; align-items: center; }
+.stickers-page .stickers-empty { margin: 0 -10px -10px; }
+.stickers-pages { display: flex; justify-content: flex-end; margin-top: 8px; }
+.stickers-pages a { display: block; padding: 4px 5px; border-top: 3px solid transparent; }
+.stickers-pages a:hover { border-top-color: var(--line-bbb); background: var(--back-e6e6e6); }
+.stickers-pages a.active { border-top-color: var(--line-8b8b8b); font-weight: bold; }
 .sticker-summary .button { font-weight: normal; }
 .stickers-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.stickers-pack-card { display: flex; flex-direction: column; flex: 0 0 calc((100% - 24px) / 4); max-width: calc((100% - 24px) / 4); box-sizing: border-box; padding: 8px; border: 1px solid var(--line-bbb); border-radius: 2px; background: var(--back-fff); }
+.stickers-pack-card { display: flex; flex-direction: column; flex: 0 0 calc((100% - 24px) / 4); max-width: calc((100% - 24px) / 4); box-sizing: border-box; padding: 8px; border: 1px solid var(--line-c0cad5); border-radius: 2px; background: var(--back-fff); }
 .stickers-pack-card:hover { border-color: var(--line-8b8b8b); box-shadow: 0 1px 4px rgba(0, 0, 0, .08); }
 .stickers-pack-thumb { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; margin-bottom: 6px; overflow: hidden; border-radius: 2px; background: var(--back-f7f7f7); }
 .stickers-pack-thumb img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .stickers-pack-thumb-empty { width: 100%; height: 100%; background: var(--back-f0f0f0); }
 .stickers-pack-name { overflow: hidden; font-size: 12px; font-weight: bold; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
-.stickers-pack-author { margin-top: 2px; overflow: hidden; color: var(--text-626262); text-overflow: ellipsis; white-space: nowrap; }
+.stickers-pack-name a, .stickers-pack-price.paid { color: var(--text-2a5885); }
+.stickers-pack-author { margin-top: 2px; font-size: 11px; overflow: hidden; color: var(--text-626262); text-overflow: ellipsis; white-space: nowrap; }
 .stickers-pack-author a { color: var(--text-626262); text-decoration: underline; }
-.stickers-pack-desc { display: -webkit-box; height: 42px; margin-top: 3px; overflow: hidden; color: var(--text-555); line-height: 1.25; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.stickers-pack-desc { display: -webkit-box; height: 42px; font-size: 11px; margin-top: 3px; overflow: hidden; color: var(--text-555); line-height: 1.25; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .stickers-pack-footer { margin-top: auto; padding-top: 8px; }
-.stickers-pack-price { font-weight: bold; }
+.stickers-pack-price { font-weight: bold; font-size: 11px; }
 .stickers-pack-price:hover { text-decoration: none; }
 .stickers-pack-price.free { color: var(--text-43a047); }
 .stickers-pack-price.purchased { color: var(--text-626262); }
@@ -2243,27 +2251,44 @@ a.poll-result-name { cursor: pointer; }
    stickers and the link, then the stickers five a row. */
 .modal-box.stickers-pack-modal { width: 540px; max-width: 95vw; }
 .stickers-pack-modal .modal-body { gap: 12px; }
+.stickers-pack-modal .modal-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; overflow-wrap: anywhere; }
+.stickers-modal-close { padding: 0 4px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .stickers-modal-header { display: flex; gap: 14px; align-items: flex-start; }
 .stickers-modal-cover { display: flex; align-items: center; justify-content: center; flex: none; box-sizing: border-box; width: 108px; height: 108px; padding: 4px; overflow: hidden; border: 1px solid var(--line-e0e6ec); border-radius: 4px; background: var(--back-fafafa); }
 .stickers-modal-cover img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.stickers-modal-info { display: flex; flex-direction: column; flex: 1; gap: 4px; min-width: 0; align-self: stretch; }
+.stickers-modal-info { display: flex; flex-direction: column; flex: 1; gap: 4px; min-width: 0; }
 .stickers-modal-title { color: var(--text-333); font-size: 16px; font-weight: bold; line-height: 1.25; overflow-wrap: anywhere; }
-.stickers-modal-author, .stickers-modal-author a { color: var(--text-626262); }
+.stickers-modal-author, .stickers-modal-author a { color: var(--text-626262); font-size: 11px; }
 .stickers-modal-desc { margin-bottom: 6px; color: var(--text-464646); font-size: 12px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
 .stickers-modal-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: auto; }
 .stickers-modal-subbar { display: flex; justify-content: space-between; align-items: center; margin: 4px 0 -4px; }
-.stickers-modal-count { color: var(--text-626262); }
-.stickers-modal-copy { cursor: pointer; }
-.stickers-modal-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-height: 290px; padding: 4px 0; overflow-y: auto; }
-.stickers-modal-item { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; box-sizing: border-box; padding: 4px; border: 1px solid transparent; border-radius: 4px; }
+.stickers-modal-count { color: var(--text-626262); font-size: 11px; }
+.stickers-modal-copy { padding: 0; border: 0; background: transparent; color: var(--text-2b587a); font: inherit; font-size: 11px; cursor: pointer; }
+.stickers-modal-copy:hover { text-decoration: underline; }
+.stickers-modal-grid-wrap { max-height: 290px; padding: 4px 0; overflow-y: auto; }
+.stickers-modal-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.stickers-modal-item { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; box-sizing: border-box; padding: 4px; border: 1px solid transparent; border-radius: 4px; cursor: pointer; user-select: none; }
 .stickers-modal-item:hover { border-color: var(--line-bbb); }
-.stickers-modal-item .sticker { width: 100%; height: 100%; margin: 0; }
+.stickers-modal-item .sticker { width: 100%; height: 100%; margin: 0; pointer-events: none; }
+.stickers-hold-preview {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: min(512px, 85vw);
+  height: min(512px, 85vh);
+  transform: translate(-50%, -50%);
+  object-fit: contain;
+  pointer-events: none;
+}
+.container-gray.sticker-studio { margin: 0 -10px -10px; padding: 15px 15px 24px; }
+.sticker-studio .sticker-pack-form { width: 100%; }
+.sticker-studio .section-title { margin: 10px 0 0; }
+.sticker-studio-actions { margin-top: 12px; }
 .sticker-pack-form input[type="text"], .sticker-pack-form textarea { width: 100%; }
 .sticker-pack-form input[type="number"] { width: 80px; }
-.sticker-pack-form .button.secondary { margin-left: 6px; }
-.sticker-studio-grid { margin: 0 0 6px; }
-.sticker-studio-item { display: flex; flex-direction: column; align-items: center; width: 72px; }
-.sticker-studio-item img, .sticker-studio-item .attachment-loading { width: 64px; height: 64px; object-fit: contain; background: var(--back-fff); }
+.sticker-studio-grid { gap: 10px; margin: 0 0 12px; }
+.sticker-studio-item { display: flex; flex-direction: column; align-items: center; box-sizing: border-box; width: 124px; padding: 8px; gap: 6px; border: 1px solid var(--line-c0cad5); border-radius: 3px; background: var(--back-fff); }
+.sticker-studio-item img, .sticker-studio-item .attachment-loading { width: 72px; height: 72px; object-fit: contain; background: var(--back-fff); }
 
 /* "Голоса" of the settings, as openvk's: what votes are on the left, the
    account on the right; the serial number of a voucher in four fields. */
@@ -3583,9 +3608,6 @@ img.name-prime.name-prime {
 .list-row { padding: 14px 0; }
 .list-info .info th, .list-info .info td { padding-top: 2px; padding-bottom: 2px; }
 .list-actions .profile-link { margin-bottom: 4px; }
-.stickers-pack-name { white-space: normal; overflow-wrap: anywhere; }
-.stickers-pack-author { white-space: normal; }
-.stickers-pack-desc { height: auto; max-height: 5.4em; -webkit-line-clamp: 4; }
 
 /* The card of an article in a post that links to it, as VK's: its cover
    darkened under the title, or a grey card without one (articles.js). */
@@ -4049,17 +4071,6 @@ button.game-hud-cell:hover { background: var(--back-f2f5f8); }
 .story-foot { justify-content: stretch; }
 .story-foot .post-bar { flex: 1; margin: 0; }
 .story-foot .like-count { font-size: 11px; }
-
-/* Stickers in the look of the 2000s. */
-.stickers-pack-card { background: linear-gradient(var(--back-fff), var(--back-f2f5f8)); border-radius: 4px; box-shadow: 2px 2px 0 var(--back-d4d4d4); }
-.stickers-pack-card:hover { box-shadow: 3px 4px 0 var(--back-dae1e8); }
-
-.stickers-pack-footer .button.game-go { display: block; width: 100%; margin-top: 4px; }
-.stickers-modal-item { cursor: pointer; }
-
-.sticker-lucky { display: inline-flex; gap: 4px; align-items: center; margin-bottom: 6px; }
-.sticker-votes { font-size: 13px; }
-#score .meter { display: block; }
 
 /* The casino in the look of the 2000s. A result has its place from the
    start: the page does not move when it comes. */

@@ -10,19 +10,18 @@
 // are chosen from a person's page now: ?act=gifts leads to one's own.
 
 import { api, currentUser } from './api.js';
-import { balanceAmount, STICKER_SECTIONS, STICKER_TAX_PERCENT, installsCount, stickerIncome, shopPacks, stickerImage, stickerPackAction, stickerPackName, stickerPackPrice, stickersCount, votesCount } from './labels.js';
+import { STICKER_SECTIONS, STICKER_TAX_PERCENT, stickerIncome, shopPacks, stickerImage, stickerPackAction, stickerPackName, stickerPackPrice, stickersCount, votesCount } from './labels.js';
 import { SHOP } from './gifts.js';
 import { $, el, fullName, pagePath, replaceInPlace, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
-import { meter } from './controls.js';
 import { fitSticker } from './sticker-fit.js';
 import { stickerNode } from './stickers.js';
 import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
 const act = ['settings', 'author', 'new', 'edit', 'gifts'].includes(params.get('act')) ? params.get('act') : 'shop';
-let section = Object.hasOwn(STICKER_SECTIONS, params.get('section')) ? params.get('section') : 'popular';
-let query = params.get('q') ?? '';
+const section = Object.hasOwn(STICKER_SECTIONS, params.get('section')) ? params.get('section') : 'popular';
+const query = params.get('q') ?? '';
 
 // As many stickers as a pack holds, and as many photos as one request
 // adds to it (the gateway takes no more).
@@ -41,86 +40,14 @@ function thumb(pack) {
   return el('img', { src, alt: stickerPackName(pack), loading: 'lazy' });
 }
 
-// leaf turns the stickers of a pack over on its card while the mouse is on it.
-function leaf(card, pack) {
-  const picture = card.querySelector('.stickers-pack-thumb img');
-  if (!picture || pack.stickers.length < 2) return;
-  let timer = 0;
-  let i = 0;
-  card.addEventListener('mouseenter', () => {
-    timer = setInterval(() => {
-      i = (i + 1) % pack.stickers.length;
-      picture.src = stickerImage(pack.stickers[i]);
-    }, 450);
-  });
-  card.addEventListener('mouseleave', () => {
-    clearInterval(timer);
-    i = 0;
-    picture.src = stickerImage(pack.stickers[0]);
-  });
-}
-
-// quickAdd is the button of a card of the shop: the pack is taken right from
-// it, with no box in between.
-function quickAdd(pack) {
-  if (!me || pack.added || act !== 'shop') return null;
-  const go = el('button', { type: 'button', className: 'button game-go small', textContent: pack.price && !pack.bought ? tr('Купить') : tr('Добавить') });
-  go.addEventListener('click', async () => {
-    go.disabled = true;
-    hideError($('error'));
-    try {
-      await take(pack);
-      render();
-    } catch (e) {
-      go.disabled = false;
-      showError($('error'), refused(e));
-    }
-  });
-  return go;
-}
-
 async function take(pack) {
   await api.addStickerPack(pack.id);
-  if (pack.price && !pack.bought) me.votes = Math.max((me.votes ?? 0) - pack.price, 0);
   pack.bought = true;
   pack.added = true;
 }
 
 const refused = (e) => (e.message === 'not enough votes' ? tr('Недостаточно голосов для покупки.') : e);
 
-
-// showScore is the plates over the cards: what one has of the shop, a strip
-// to the whole of it, and the votes.
-function showScore() {
-  if (!me || act === 'author') return;
-  const mine = packs.filter((p) => p.added);
-  const count = (id, value) => {
-    $(`score-${id}`).textContent = String(value);
-  };
-  count('packs', mine.length);
-  count('stickers', mine.reduce((sum, p) => sum + p.stickers.length, 0));
-  $('score-votes').textContent = balanceAmount(me.votes ?? 0);
-  $('score-bar').replaceChildren(meter(mine.length, packs.length || 1, `${mine.length} / ${packs.length}`));
-  $('score').hidden = false;
-}
-
-// lucky opens a pack one has not got yet, picked at random.
-function lucky() {
-  const left = packs.filter((p) => p.published && !p.added);
-  if (!left.length) return;
-  openPack(left[Math.floor(Math.random() * left.length)]);
-}
-
-// pickSection shows a section of the shop in place, with no trip to the server.
-function pickSection(name) {
-  section = name;
-  for (const id of Object.keys(STICKER_SECTIONS)) $(`section-${id}`).classList.toggle('active', id === name);
-  $('search-section').value = name;
-  const url = new URL(location.href);
-  url.searchParams.set('section', name);
-  history.replaceState(null, '', url);
-  render();
-}
 
 // author is who made a pack, a link to their page; a pack of the site
 // names nobody.
@@ -136,6 +63,7 @@ function packCard(pack) {
   const studio = act === 'author';
   const edit = `/stickers?act=edit&pack=${encodeURIComponent(pack.id)}`;
   const open = (event) => {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     openPack(pack);
   };
@@ -153,17 +81,15 @@ function packCard(pack) {
     if (act === 'settings') foot.push(button(tr('Убрать набор'), () => confirmRemove(pack), { secondary: true }));
   }
 
-  const card = el('div', { className: 'stickers-pack-card' },
+  const description = Array.from(pack.about ?? '');
+  const excerpt = description.length > 70 ? description.slice(0, 69).join('').trimEnd() + '…' : (pack.about ?? '');
+  return el('div', { className: 'stickers-pack-card' },
     link({ className: 'stickers-pack-thumb' }, thumb(pack)),
     el('div', { className: 'stickers-pack-name' }, link({ textContent: stickerPackName(pack), title: stickerPackName(pack) })),
-    studio
-      ? el('div', { className: 'stickers-pack-author', textContent: pack.published ? tr('в магазине') : tr('не опубликован') })
-      : pack.author ? el('div', { className: 'stickers-pack-author' }, author(pack)) : null,
-    el('div', { className: 'stickers-pack-desc', textContent: pack.about ?? '' }),
-    el('div', { className: 'stickers-pack-footer' }, ...foot, quickAdd(pack)),
+    pack.author && el('div', { className: 'stickers-pack-author' }, author(pack)),
+    el('div', { className: 'stickers-pack-desc', textContent: excerpt }),
+    el('div', { className: 'stickers-pack-footer' }, ...foot),
   );
-  leaf(card, pack);
-  return card;
 }
 
 // openPack is openvk's box "Информация о наборе": the cover, the name, who
@@ -173,7 +99,7 @@ function openPack(pack) {
   const modal = openModal(stickerPackName(pack));
   const error = el('div', { className: 'error', hidden: true });
   const action = button(stickerPackAction(pack), () => add(pack, action, error));
-  const copy = el('a', { className: 'stickers-modal-copy', textContent: tr('Скопировать ссылку') });
+  const copy = el('button', { type: 'button', className: 'stickers-modal-copy', textContent: tr('Скопировать ссылку') });
 
   action.disabled = Boolean(pack.added);
   copy.addEventListener('click', async () => {
@@ -186,12 +112,15 @@ function openPack(pack) {
     }
   });
 
-  // What one has to pay with, under the button of a pack one buys.
-  const balance = me && pack.price && !pack.bought
-    ? el('span', { className: 'hint', textContent: tr('У Вас {0}', balanceAmount(me.votes ?? 0)) })
-    : null;
+  const grid = el('div', { className: 'stickers-modal-grid' },
+    ...pack.stickers.map((sticker) => el('div', { className: 'stickers-modal-item' }, stickerNode(sticker))));
+  const preview = el('img', { className: 'stickers-hold-preview', alt: '', hidden: true });
+  holdPreview(grid, preview);
 
   modal.box.classList.add('stickers-pack-modal');
+  modal.box.querySelector('.modal-header').append(el('button', {
+    className: 'stickers-modal-close', type: 'button', textContent: '×', ariaLabel: tr('Закрыть'), onclick: modal.close,
+  }));
   modal.body.append(
     el('div', { className: 'stickers-modal-header' },
       el('div', { className: 'stickers-modal-cover' }, thumb(pack)),
@@ -199,17 +128,50 @@ function openPack(pack) {
         el('div', { className: 'stickers-modal-title', textContent: stickerPackName(pack) }),
         pack.author ? el('div', { className: 'stickers-modal-author' }, author(pack)) : null,
         pack.about ? el('div', { className: 'stickers-modal-desc', textContent: pack.about }) : null,
-        el('div', { className: 'stickers-modal-actions' }, action, balance),
+        el('div', { className: 'stickers-modal-actions' }, action),
       ),
     ),
     error,
     el('div', { className: 'stickers-modal-subbar' },
       el('span', { className: 'stickers-modal-count', textContent: stickersCount(pack.stickers.length) }),
       copy),
-    el('div', { className: 'stickers-modal-grid' },
-      ...pack.stickers.map((sticker) => el('div', { className: 'stickers-modal-item' }, stickerNode(sticker)))),
+    el('div', { className: 'stickers-modal-grid-wrap' }, grid),
+    preview,
   );
   modal.actions.append(button(tr('Закрыть'), modal.close));
+}
+
+// Hold a sticker to look at it at full size. Touch can still scroll the grid.
+function holdPreview(grid, preview) {
+  let timer;
+  const srcAt = (event) => {
+    const item = document.elementFromPoint(event.clientX, event.clientY)?.closest('.stickers-modal-item');
+    return grid.contains(item) ? item.querySelector('img')?.src : '';
+  };
+  const show = (src) => {
+    if (!src || !grid.isConnected) return;
+    preview.src = src;
+    preview.hidden = false;
+  };
+  const clear = () => {
+    clearTimeout(timer);
+    preview.hidden = true;
+  };
+
+  grid.addEventListener('pointerdown', (event) => {
+    const src = srcAt(event);
+    if (!event.isPrimary || event.button !== 0 || !src) return;
+    grid.setPointerCapture(event.pointerId);
+    if (event.pointerType === 'touch') timer = setTimeout(() => show(src), 150);
+    else {
+      event.preventDefault();
+      show(src);
+    }
+  });
+  grid.addEventListener('pointermove', (event) => {
+    if (event.isPrimary && !preview.hidden) show(srcAt(event));
+  });
+  grid.addEventListener('lostpointercapture', clear);
 }
 
 // add takes the pack; a guest is sent to sign in. Taken, the box says
@@ -226,7 +188,6 @@ async function add(pack, action, error) {
   try {
     await take(pack);
     action.textContent = stickerPackAction(pack);
-    action.nextElementSibling?.remove();
     render();
   } catch (e) {
     action.disabled = false;
@@ -254,15 +215,38 @@ function confirmRemove(pack) {
   }), button(tr('Отмена'), modal.close, { secondary: true }));
 }
 
-// render draws the cards of the packs the page shows.
+const PAGE_SIZE = 20;
+
+function pageLink(number, label, active = false) {
+  const url = new URL(location.href);
+  url.searchParams.delete('pack');
+  url.searchParams.set('p', number);
+  return el('a', { href: url.pathname + url.search, textContent: label, className: active ? 'active' : '' });
+}
+
+function showPages(page, total) {
+  const links = [];
+  if (page > 3) links.push(pageLink(1, '«'));
+  for (let n = Math.max(1, page - 2); n <= Math.min(total, page + 2); n++) {
+    links.push(pageLink(n, String(n), n === page));
+  }
+  if (page + 2 < total) links.push(pageLink(total, '»'));
+  $('pages').replaceChildren(...links);
+  $('pages').hidden = total <= 1;
+}
+
+// render draws one page of the filtered catalogue.
 function render() {
   const shown = act === 'settings' ? packs.filter((p) => p.added)
     : act === 'author' ? packs
-      : shopPacks(packs.filter((p) => p.published || p.added), section, query);
+      : shopPacks(packs.filter((p) => p.published), section, query);
+  const total = Math.ceil(shown.length / PAGE_SIZE);
+  const page = Math.max(1, Math.min(total, Math.floor(Number(params.get('p'))) || 1));
+  const from = (page - 1) * PAGE_SIZE;
 
-  replaceInPlace($('packs'), ...shown.map(packCard));
+  replaceInPlace($('packs'), ...shown.slice(from, from + PAGE_SIZE).map(packCard));
   $('empty').hidden = shown.length > 0;
-  showScore();
+  showPages(page, total);
 }
 
 async function showShop() {
@@ -270,19 +254,6 @@ async function showShop() {
   $(`section-${section}`).classList.add('active');
   $('search-section').value = section;
   $('search-query').value = query;
-  $('search-query').addEventListener('input', () => {
-    query = $('search-query').value;
-    render();
-  });
-  $('search').addEventListener('submit', (event) => event.preventDefault());
-  for (const id of Object.keys(STICKER_SECTIONS)) {
-    $(`section-${id}`).addEventListener('click', (event) => {
-      event.preventDefault();
-      pickSection(id);
-    });
-  }
-  $('lucky').hidden = !me;
-  $('lucky').addEventListener('click', lucky);
 
   try {
     ({ packs } = await api.stickers());
@@ -338,8 +309,9 @@ function initForm(pack) {
   let uploading = 0;
 
   $('studio').hidden = false;
-  $('studio-title').textContent = pack ? tr('Редактирование набора') : tr('Новый набор стикеров');
-  $('pack-save').textContent = pack ? tr('Сохранить') : tr('Сохранить набор');
+  $('summary-text').textContent = titles[act];
+  $('summary').hidden = false;
+  $('studio-back').hidden = false;
   $('pack-delete-line').hidden = !pack;
 
   if (pack) {
@@ -516,8 +488,8 @@ const titles = {
   shop: tr('Стикеры'),
   settings: tr('Установленные наборы'),
   author: tr('Студия стикеров'),
-  new: tr('Новый набор стикеров'),
-  edit: tr('Редактирование набора'),
+  new: tr('Создание набора стикеров'),
+  edit: tr('Редактирование набора стикеров'),
 };
 
 me = await currentUser().catch(() => null);
@@ -532,7 +504,7 @@ if (act === 'gifts') {
   document.title = `${titles[act]} | Freenet`;
   $(['shop', 'settings'].includes(act) ? `tab-${act}` : 'tab-author').classList.add('active');
   $('tab-settings').hidden = !me;
-  $('tab-author').hidden = !me;
+  $('tab-author').hidden = !me?.profileCompleted;
   $('tab-dialogs').hidden = !me;
 
   if (act === 'settings') await showSettings();
