@@ -28,6 +28,7 @@ func TestNewNickname(t *testing.T) {
 		{"Static", user.ErrNicknameReserved},
 		{"feed", user.ErrNicknameReserved},
 		{"Post", user.ErrNicknameReserved},
+		{"sandbox", user.ErrNicknameReserved},
 		{"notifications", user.ErrNicknameReserved},
 		{"notes", user.ErrNicknameReserved},
 		{"gifts", user.ErrNicknameReserved},
