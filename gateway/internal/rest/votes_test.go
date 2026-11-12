@@ -362,7 +362,7 @@ func TestRaiseRating(t *testing.T) {
 	}
 
 	h = newHarness(rest.Config{})
-	h.votes.err = failure.New(failure.Conflict, "the rating cannot go above 1000000000 percent")
+	h.votes.err = failure.New(failure.Conflict, "the rating bought cannot go above 999999900 percent")
 	if w = h.do("POST", "/api/v1/me/rating", `{"percent":5}`, "Authorization", "Bearer tok"); w.Code != http.StatusConflict {
 		t.Fatalf("past the limit: %d %s", w.Code, w.Body)
 	}

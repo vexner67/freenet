@@ -37,7 +37,7 @@ func (v *Votes) Transfer(ctx context.Context, accessToken, userID string, votes 
 // caller's own.
 func (v *Votes) RaiseRating(ctx context.Context, accessToken, userID string, percent int) (model.RatingRaised, error) {
 	if percent < 0 || percent > math.MaxInt32 {
-		return model.RatingRaised{}, failure.New(failure.InvalidArgument, "the rating is raised by 1 to 1000000000 percent")
+		return model.RatingRaised{}, failure.New(failure.InvalidArgument, "the rating is raised by 1 to 999999900 percent")
 	}
 
 	resp, err := v.api.RaiseRating(withToken(ctx, accessToken), &userv1.RaiseRatingRequest{Percent: int32(percent), UserId: userID})

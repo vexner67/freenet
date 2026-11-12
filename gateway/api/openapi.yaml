@@ -5136,7 +5136,7 @@ paths:
   /api/v1/me/rating:
     post:
       summary: Raise your rating ("Повысить рейтинг")
-      description: 'A vote a percent, into the treasury; the rating with how full the page is goes up to 1000000000% at most: `the rating cannot go above 1000000000 percent` (409). Limited per user, together with raising the rating of others.'
+      description: 'A vote a percent, into the treasury; the rating bought goes up to 999999900% at most, the last 100% of the 1000000000% come only from filling the page in: `the rating bought cannot go above 999999900 percent` (409). Limited per user, together with raising the rating of others.'
       security: [{ bearer: [] }]
       requestBody: { $ref: "#/components/requestBodies/RatingRaise" }
       responses:
@@ -9287,7 +9287,7 @@ components:
             additionalProperties: false
             required: [percent]
             properties:
-              percent: { type: integer, minimum: 1, maximum: 1000000000, description: How many percent to buy, a vote each }
+              percent: { type: integer, minimum: 1, maximum: 999999900, description: How many percent to buy, a vote each }
 
   parameters:
     ArchiveYear:
