@@ -22,11 +22,11 @@ func TestPrime(t *testing.T) {
 	if got, err := s.client.GetPrime(context.Background(), &userv1.GetPrimeRequest{}); err != nil || got.GetPrices().GetMonth() != 150 {
 		t.Fatalf("GetPrime = %v, %v", got, err)
 	}
-	prices := &userv1.PrimePrices{Month: 100, Quarter: 250, Year: 900}
+	prices := &userv1.PrimePrices{Month: 100, Year: 900}
 	if _, err := s.client.SetPrimePrices(ann, &userv1.SetPrimePricesRequest{Prices: prices}); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("SetPrimePrices by ann: %v", err)
 	}
-	if _, err := s.client.SetPrimePrices(admin, &userv1.SetPrimePricesRequest{Prices: &userv1.PrimePrices{Month: 0, Quarter: 1, Year: 1}}); status.Code(err) != codes.InvalidArgument {
+	if _, err := s.client.SetPrimePrices(admin, &userv1.SetPrimePricesRequest{Prices: &userv1.PrimePrices{Month: 0, Year: 1}}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("SetPrimePrices of 0: %v", err)
 	}
 	if _, err := s.client.SetPrimePrices(admin, &userv1.SetPrimePricesRequest{Prices: prices}); err != nil {
@@ -113,7 +113,7 @@ func TestPrime(t *testing.T) {
 	if me, err = s.client.GetMe(bob, &userv1.GetMeRequest{}); err != nil || me.GetUser().GetPrimeUntil() == nil {
 		t.Fatalf("bob's GetMe = %v, %v", me.GetUser(), err)
 	}
-	if _, err = s.client.BuyPrime(ann, &userv1.BuyPrimeRequest{Period: "quarter", UserId: bobID}); status.Code(err) != codes.FailedPrecondition {
+	if _, err = s.client.BuyPrime(ann, &userv1.BuyPrimeRequest{Period: "year", UserId: bobID}); status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("BuyPrime with too few votes left: %v", err)
 	}
 }

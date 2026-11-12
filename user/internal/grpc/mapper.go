@@ -967,7 +967,7 @@ func fromProtoCasinoPrizes(prizes []*userv1.CasinoPrize) []user.CasinoPrize {
 }
 
 func toProtoPrimePrices(p user.PrimePrices) *userv1.PrimePrices {
-	return &userv1.PrimePrices{Month: p.Month, Quarter: p.Quarter, Year: p.Year}
+	return &userv1.PrimePrices{Month: p.Month, Year: p.Year}
 }
 
 // friendSectionFromProto are the lists of "Друзья"; unspecified is all.

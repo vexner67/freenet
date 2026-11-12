@@ -12,7 +12,7 @@ import (
 type Prime interface {
 	Prices(ctx context.Context) (model.PrimePrices, error)
 	SetPrices(ctx context.Context, accessToken string, prices model.PrimePrices) error
-	// Buy buys period ("month", "quarter", "year") for userID, "" for the
+	// Buy buys period ("month", "year") for userID, "" for the
 	// caller.
 	Buy(ctx context.Context, accessToken, userID, period string) (model.PrimePurchase, error)
 	SetInvisible(ctx context.Context, accessToken string, invisible bool) error
@@ -22,9 +22,8 @@ type Prime interface {
 }
 
 type primePricesJSON struct {
-	Month   int64 `json:"month"`
-	Quarter int64 `json:"quarter"`
-	Year    int64 `json:"year"`
+	Month int64 `json:"month"`
+	Year  int64 `json:"year"`
 }
 
 type primePurchaseJSON struct {

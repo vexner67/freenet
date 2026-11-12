@@ -64,7 +64,7 @@ func (h *UserHandler) SetPrimePrices(ctx context.Context, req *userv1.SetPrimePr
 
 	p := req.GetPrices()
 
-	prices, err := user.NewPrimePrices(p.GetMonth(), p.GetQuarter(), p.GetYear())
+	prices, err := user.NewPrimePrices(p.GetMonth(), p.GetYear())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

@@ -28,12 +28,12 @@ func (p *Prime) Prices(ctx context.Context) (model.PrimePrices, error) {
 
 	prices := resp.GetPrices()
 
-	return model.PrimePrices{Month: prices.GetMonth(), Quarter: prices.GetQuarter(), Year: prices.GetYear()}, nil
+	return model.PrimePrices{Month: prices.GetMonth(), Year: prices.GetYear()}, nil
 }
 
 func (p *Prime) SetPrices(ctx context.Context, accessToken string, prices model.PrimePrices) error {
 	if _, err := p.api.SetPrimePrices(withToken(ctx, accessToken), &userv1.SetPrimePricesRequest{
-		Prices: &userv1.PrimePrices{Month: prices.Month, Quarter: prices.Quarter, Year: prices.Year},
+		Prices: &userv1.PrimePrices{Month: prices.Month, Year: prices.Year},
 	}); err != nil {
 		return errs.Wrap("p.api.SetPrimePrices", fromStatus(err))
 	}

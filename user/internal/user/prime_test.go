@@ -12,28 +12,30 @@ import (
 func TestPrimePeriod(t *testing.T) {
 	t.Parallel()
 
-	for s, days := range map[string]int{"month": 30, "quarter": 90, "year": 365} {
+	for s, days := range map[string]int{"month": 30, "year": 365} {
 		p, err := user.NewPrimePeriod(s)
 		if err != nil || p.Days() != days || p.String() != s {
 			t.Fatalf("NewPrimePeriod(%q) = %v (%d days), %v", s, p, p.Days(), err)
 		}
 	}
 
-	if _, err := user.NewPrimePeriod("week"); !errors.Is(err, user.ErrPrimePeriodInvalid) {
-		t.Fatalf("a week: %v", err)
+	for _, bad := range []string{"week", "quarter"} {
+		if _, err := user.NewPrimePeriod(bad); !errors.Is(err, user.ErrPrimePeriodInvalid) {
+			t.Fatalf("NewPrimePeriod(%q): %v", bad, err)
+		}
 	}
 }
 
 func TestPrimePrices(t *testing.T) {
 	t.Parallel()
 
-	p, err := user.NewPrimePrices(1, 2, user.MaxPrimePrice)
-	if err != nil || p.Of(user.PrimeMonth) != 1 || p.Of(user.PrimeQuarter) != 2 || p.Of(user.PrimeYear) != user.MaxPrimePrice {
+	p, err := user.NewPrimePrices(1, user.MaxPrimePrice)
+	if err != nil || p.Of(user.PrimeMonth) != 1 || p.Of(user.PrimeYear) != user.MaxPrimePrice {
 		t.Fatalf("NewPrimePrices = %+v, %v", p, err)
 	}
 
-	for _, bad := range [][3]int64{{0, 1, 1}, {1, -1, 1}, {1, 1, user.MaxPrimePrice + 1}} {
-		if _, err = user.NewPrimePrices(bad[0], bad[1], bad[2]); !errors.Is(err, user.ErrPrimePriceInvalid) {
+	for _, bad := range [][2]int64{{0, 1}, {1, -1}, {1, user.MaxPrimePrice + 1}} {
+		if _, err = user.NewPrimePrices(bad[0], bad[1]); !errors.Is(err, user.ErrPrimePriceInvalid) {
 			t.Fatalf("NewPrimePrices%v: %v", bad, err)
 		}
 	}

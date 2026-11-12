@@ -28,7 +28,7 @@ func TestPrimeRepository(t *testing.T) {
 	if prices, err := primes.Prices(ctx); err != nil || prices != user.DefaultPrimePrices {
 		t.Fatalf("Prices = %+v, %v", prices, err)
 	}
-	cheap, _ := user.NewPrimePrices(1, 2, 3)
+	cheap, _ := user.NewPrimePrices(1, 3)
 	if err := primes.SetPrices(ctx, cheap); err != nil {
 		t.Fatal(err)
 	}

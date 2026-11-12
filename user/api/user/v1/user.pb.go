@@ -9800,7 +9800,6 @@ func (x *RaiseRatingResponse) GetCompleteness() int32 {
 type PrimePrices struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Month         int64                  `protobuf:"varint,1,opt,name=month,proto3" json:"month,omitempty"`
-	Quarter       int64                  `protobuf:"varint,2,opt,name=quarter,proto3" json:"quarter,omitempty"`
 	Year          int64                  `protobuf:"varint,3,opt,name=year,proto3" json:"year,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -9839,13 +9838,6 @@ func (*PrimePrices) Descriptor() ([]byte, []int) {
 func (x *PrimePrices) GetMonth() int64 {
 	if x != nil {
 		return x.Month
-	}
-	return 0
-}
-
-func (x *PrimePrices) GetQuarter() int64 {
-	if x != nil {
-		return x.Quarter
 	}
 	return 0
 }
@@ -9939,7 +9931,7 @@ func (x *GetPrimeResponse) GetPrices() *PrimePrices {
 
 type BuyPrimeRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// "month", "quarter" or "year".
+	// "month" or "year".
 	Period string `protobuf:"bytes,1,opt,name=period,proto3" json:"period,omitempty"`
 	// Whom it is a present for; empty for the caller.
 	UserId        string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -26653,11 +26645,10 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x13RaiseRatingResponse\x12\x18\n" +
 	"\abalance\x18\x01 \x01(\x03R\abalance\x12\x16\n" +
 	"\x06rating\x18\x02 \x01(\x05R\x06rating\x12\"\n" +
-	"\fcompleteness\x18\x03 \x01(\x05R\fcompleteness\"Q\n" +
+	"\fcompleteness\x18\x03 \x01(\x05R\fcompleteness\"F\n" +
 	"\vPrimePrices\x12\x14\n" +
-	"\x05month\x18\x01 \x01(\x03R\x05month\x12\x18\n" +
-	"\aquarter\x18\x02 \x01(\x03R\aquarter\x12\x12\n" +
-	"\x04year\x18\x03 \x01(\x03R\x04year\"\x11\n" +
+	"\x05month\x18\x01 \x01(\x03R\x05month\x12\x12\n" +
+	"\x04year\x18\x03 \x01(\x03R\x04yearJ\x04\b\x02\x10\x03R\aquarter\"\x11\n" +
 	"\x0fGetPrimeRequest\"@\n" +
 	"\x10GetPrimeResponse\x12,\n" +
 	"\x06prices\x18\x01 \x01(\v2\x14.user.v1.PrimePricesR\x06prices\"B\n" +

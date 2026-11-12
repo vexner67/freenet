@@ -45,7 +45,7 @@ func TestPrimeService(t *testing.T) {
 	if err != nil || prices != user.DefaultPrimePrices {
 		t.Fatalf("Prices = %+v, %v", prices, err)
 	}
-	cheap, _ := user.NewPrimePrices(10, 25, 90)
+	cheap, _ := user.NewPrimePrices(10, 25)
 	if err = w.primes.SetPrices(ctx, ann, cheap); !errors.Is(err, user.ErrNotAdmin) {
 		t.Fatalf("SetPrices by ann: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestPrimeService(t *testing.T) {
 	}
 
 	// A present: bob hears of it.
-	if _, err = w.primes.Buy(ctx, ann, bob, user.PrimeQuarter); err != nil {
+	if _, err = w.primes.Buy(ctx, ann, bob, user.PrimeYear); err != nil {
 		t.Fatal(err)
 	}
 	if len(w.given.given) != 1 || w.given.given[0].sender != ann || w.given.given[0].recipient != bob {

@@ -5173,7 +5173,7 @@ paths:
   /api/v1/prime:
     get:
       summary: What Freenet Prime costs
-      description: Public. The prices of a month, a quarter and a year of Freenet Prime, in votes; the administrators set them.
+      description: Public. The prices of a month and a year of Freenet Prime, in votes; the administrators set them.
       responses:
         "200":
           description: The prices
@@ -10974,10 +10974,9 @@ components:
     PrimePrices:
       type: object
       additionalProperties: false
-      required: [month, quarter, year]
+      required: [month, year]
       properties:
         month: { type: integer, format: int64, minimum: 1 }
-        quarter: { type: integer, format: int64, minimum: 1 }
         year: { type: integer, format: int64, minimum: 1 }
 
     PrimeOrder:
@@ -10985,7 +10984,7 @@ components:
       additionalProperties: false
       required: [period]
       properties:
-        period: { type: string, enum: [month, quarter, year] }
+        period: { type: string, enum: [month, year] }
 
     PrimePurchase:
       type: object

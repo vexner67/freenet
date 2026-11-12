@@ -20,7 +20,7 @@ type fakePrime struct {
 }
 
 func (f *fakePrime) Prices(context.Context) (model.PrimePrices, error) {
-	return model.PrimePrices{Month: 150, Quarter: 400, Year: 1500}, nil
+	return model.PrimePrices{Month: 150, Year: 1500}, nil
 }
 
 func (f *fakePrime) SetPrices(_ context.Context, token string, prices model.PrimePrices) error {
@@ -53,8 +53,8 @@ func TestPrime(t *testing.T) {
 		t.Fatalf("prices: %d %v", w.Code, got)
 	}
 
-	if w = h.do("PUT", "/api/v1/prime/prices", `{"month":1,"quarter":2,"year":3}`, "Authorization", "Bearer tok"); w.Code != http.StatusNoContent ||
-		h.prime.prices != (model.PrimePrices{Month: 1, Quarter: 2, Year: 3}) {
+	if w = h.do("PUT", "/api/v1/prime/prices", `{"month":1,"year":3}`, "Authorization", "Bearer tok"); w.Code != http.StatusNoContent ||
+		h.prime.prices != (model.PrimePrices{Month: 1, Year: 3}) {
 		t.Fatalf("set prices: %d %+v", w.Code, h.prime.prices)
 	}
 

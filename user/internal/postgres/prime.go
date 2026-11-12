@@ -32,7 +32,6 @@ func (r *PrimeRepository) conn(ctx context.Context) pgpool.Querier {
 const getPrimePricesQuery = `
 	SELECT
 		month,
-		quarter,
 		year
 	FROM prime_prices
 `
@@ -40,7 +39,7 @@ const getPrimePricesQuery = `
 func (r *PrimeRepository) Prices(ctx context.Context) (user.PrimePrices, error) {
 	var p user.PrimePrices
 
-	err := r.conn(ctx).QueryRow(ctx, getPrimePricesQuery).Scan(&p.Month, &p.Quarter, &p.Year)
+	err := r.conn(ctx).QueryRow(ctx, getPrimePricesQuery).Scan(&p.Month, &p.Year)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return user.DefaultPrimePrices, nil
 	}
@@ -54,18 +53,16 @@ func (r *PrimeRepository) Prices(ctx context.Context) (user.PrimePrices, error) 
 const setPrimePricesQuery = `
 	INSERT INTO prime_prices (
 		month,
-		quarter,
 		year
 	)
-	VALUES ($1, $2, $3)
+	VALUES ($1, $2)
 	ON CONFLICT (only_row) DO UPDATE
 	SET month = EXCLUDED.month,
-		quarter = EXCLUDED.quarter,
 		year = EXCLUDED.year
 `
 
 func (r *PrimeRepository) SetPrices(ctx context.Context, p user.PrimePrices) error {
-	if _, err := r.conn(ctx).Exec(ctx, setPrimePricesQuery, p.Month, p.Quarter, p.Year); err != nil {
+	if _, err := r.conn(ctx).Exec(ctx, setPrimePricesQuery, p.Month, p.Year); err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
 

@@ -6,8 +6,7 @@ import (
 )
 
 // Freenet Prime is the subscription of the site (ours; openvk has none):
-// bought for votes, which go to the treasury, by the month, three months
-// or the year, for oneself or as a present. It gives a mark by the name, a
+// bought for votes, which go to the treasury, by the month or the year, for oneself or as a present. It gives a mark by the name, a
 // golden frame of the photo, a theme and gifts of its own, takes the ads
 // off the feed, hides when its owner is online if they wish, lets them
 // watch stories unseen and makes transfers and sales of stickers cheaper.
@@ -18,9 +17,8 @@ const (
 )
 
 // DefaultPrimePrices are what Prime costs until the administrators say
-// otherwise: half the bonuses of a month a month, cheaper by the quarter
-// and the year.
-var DefaultPrimePrices = PrimePrices{Month: 150, Quarter: 400, Year: 1500}
+// otherwise: half the bonuses of a month a month, cheaper by the year.
+var DefaultPrimePrices = PrimePrices{Month: 150, Year: 1500}
 
 var (
 	ErrPrimePeriodInvalid = errors.New("unknown period of prime")
@@ -34,14 +32,13 @@ var (
 type PrimePeriod string
 
 const (
-	PrimeMonth   PrimePeriod = "month"
-	PrimeQuarter PrimePeriod = "quarter"
-	PrimeYear    PrimePeriod = "year"
+	PrimeMonth PrimePeriod = "month"
+	PrimeYear  PrimePeriod = "year"
 )
 
 func NewPrimePeriod(s string) (PrimePeriod, error) {
 	switch p := PrimePeriod(s); p {
-	case PrimeMonth, PrimeQuarter, PrimeYear:
+	case PrimeMonth, PrimeYear:
 		return p, nil
 	default:
 		return "", ErrPrimePeriodInvalid
@@ -54,43 +51,36 @@ func (p PrimePeriod) String() string {
 
 // Days is how many days the period adds.
 func (p PrimePeriod) Days() int {
-	switch p {
-	case PrimeQuarter:
-		return 90
-	case PrimeYear:
+	if p == PrimeYear {
 		return 365
-	default:
-		return 30
 	}
+
+	return 30
 }
 
 // PrimePrices are what each period of Prime costs, in votes.
 type PrimePrices struct {
-	Month   int64
-	Quarter int64
-	Year    int64
+	Month int64
+	Year  int64
 }
 
-func NewPrimePrices(month, quarter, year int64) (PrimePrices, error) {
-	for _, price := range []int64{month, quarter, year} {
+func NewPrimePrices(month, year int64) (PrimePrices, error) {
+	for _, price := range []int64{month, year} {
 		if price < 1 || price > MaxPrimePrice {
 			return PrimePrices{}, ErrPrimePriceInvalid
 		}
 	}
 
-	return PrimePrices{Month: month, Quarter: quarter, Year: year}, nil
+	return PrimePrices{Month: month, Year: year}, nil
 }
 
 // Of is what period costs.
 func (p PrimePrices) Of(period PrimePeriod) int64 {
-	switch period {
-	case PrimeQuarter:
-		return p.Quarter
-	case PrimeYear:
+	if period == PrimeYear {
 		return p.Year
-	default:
-		return p.Month
 	}
+
+	return p.Month
 }
 
 // Prime is the subscription of a page: until when it lasts (the zero

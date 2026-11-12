@@ -1653,9 +1653,8 @@ type PrimeStyle struct {
 
 // PrimePrices are what each period of Freenet Prime costs, in votes.
 type PrimePrices struct {
-	Month   int64
-	Quarter int64
-	Year    int64
+	Month int64
+	Year  int64
 }
 
 // PrimePurchase is what a purchase of Freenet Prime did: until when the
