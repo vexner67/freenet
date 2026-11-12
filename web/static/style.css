@@ -3426,15 +3426,13 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .msg-attach-videos { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
 .msg-attach-j-video { width: 150px; }
 .compact_video { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: rgb(0 0 0); }
-.compact_video img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .compact_video .play-button { position: absolute; display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 2px; background: rgb(0 0 0 / 75%); opacity: .8; }
 .compact_video:hover .play-button { opacity: 1; }
 .compact_video .play-button-ico { width: 0; height: 0; margin-left: 3px; border-top: 7px solid transparent; border-bottom: 7px solid transparent; border-left: 12px solid var(--text-fff); opacity: .8; }
 .video-attached { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; }
 .video-attached[hidden] { display: none; }
-.video-attached-item { position: relative; width: 100px; aspect-ratio: 16 / 9; background: rgb(0 0 0); }
-.video-attached-item img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.video-attached-remove { position: absolute; top: 2px; right: 2px; display: flex; align-items: center; justify-content: center; width: 15px; height: 15px; background: var(--back-fff); cursor: pointer; }
+.video-attached-item { position: relative; display: grid; place-items: center; color: var(--text-fff); width: 100px; aspect-ratio: 16 / 9; background: rgb(0 0 0); }
+.video-attached-remove { position: absolute; border: 0; padding: 0; top: 2px; right: 2px; display: flex; align-items: center; justify-content: center; width: 15px; height: 15px; background: var(--back-fff); cursor: pointer; }
 .video-attached-remove .cross { display: block; margin: 0; }
 .modal-box.video-upload { width: 500px; max-width: calc(100vw - 32px); }
 .modal-box.video-upload .modal-body { padding: 0; min-height: 101px; }
@@ -3593,3 +3591,37 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .gift-sel .gift-price, .gift-sel .gift-limit { position: static; display: block; visibility: visible; width: auto; margin: 0; background: none; }
 
 .gift-self { margin-top: 5px; }
+
+.sidebar-form .age-confirmation { display: flex; align-items: baseline; gap: 4px; }
+
+.text-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-45688e);
+  font: inherit;
+  cursor: pointer;
+}
+.text-button:hover { text-decoration: underline; }
+
+a[href]:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible,
+.header-search-box input[type="search"]:focus-visible {
+  outline: 2px solid Highlight;
+  outline-offset: 2px;
+}
+
+.help-text h2.faq-head { font-size: inherit; }
+
+.privacy-owner-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.privacy-owner-card img { object-fit: cover; }

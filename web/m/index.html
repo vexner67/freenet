@@ -34,10 +34,12 @@
         <input type="email" id="email" autocomplete="email" required>
         <div class="captcha" id="captcha" hidden>
           <img id="captcha-image" alt="Цифры с картинки" width="170" height="54">
-          <a id="captcha-new">Другая картинка</a>
+          <button type="button" class="text-button" id="captcha-new">Другая картинка</button>
           <label for="captcha-answer">Цифры с картинки:</label>
           <input type="text" id="captcha-answer" inputmode="numeric" autocomplete="off" maxlength="5">
         </div>
+        <label class="age-confirmation"><input type="checkbox" id="age-confirmed" required> Мне уже исполнилось 14 лет.</label>
+        <p class="hint">Электронная почта нужна для входа. <a href="/help/privacy">Как Freenet обрабатывает данные</a></p>
         <button class="button" type="submit" id="email-submit">Получить код</button>
         <p class="hint">Паролей нет: мы пришлём код на почту. Аккаунт создастся сам при первом входе.</p>
       </form>
@@ -47,7 +49,7 @@
         <label for="code">Код из письма:</label>
         <input type="text" id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required>
         <button class="button" type="submit" id="code-submit">Войти</button>
-        <p class="hint"><a id="change-email">Другая почта</a> · <a id="resend">Прислать снова</a></p>
+        <p class="hint"><button type="button" class="text-button" id="change-email">Другая почта</button> · <button type="button" class="text-button" id="resend">Прислать снова</button></p>
       </form>
 
       <form class="sidebar-form" id="two-factor-form" hidden>
@@ -56,10 +58,10 @@
         <input type="text" id="two-factor-code" autocomplete="one-time-code" maxlength="11" spellcheck="false" required>
         <button class="button" type="submit" id="two-factor-submit">Войти</button>
         <p class="hint">Телефона нет под рукой — введите один из резервных кодов.</p>
-        <p class="hint"><a id="two-factor-back">Другая почта</a></p>
+        <p class="hint"><button type="button" class="text-button" id="two-factor-back">Другая почта</button></p>
       </form>
 
-      <div class="error" id="error" hidden></div>
+      <div class="error" id="error" role="alert" hidden></div>
 
       <div class="sidebar-form" id="accounts" hidden>
         <p>Войти как:</p>
@@ -77,7 +79,7 @@
         <ul class="bullets">
           <li>Рассказать о себе на своей странице.</li>
           <li>Найти людей по никнейму и узнать о них больше.</li>
-          <li>Писать друзьям личные сообщения — они шифруются, и прочесть их можете только вы и ваш собеседник.</li>
+          <li>Писать друзьям в личных диалогах со сквозным шифрованием текста.</li>
           <li>Делиться записями, фотографиями и историями и читать новости друзей.</li>
           <li>Вступать в группы и обсуждать темы.</li>
           <li>Самим решать, кто что видит: дата рождения и взгляды скрыты, пока вы их не откроете.</li>
@@ -91,7 +93,7 @@
   </div>
 
   <div class="footer">
-    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a><a href="/help/privacy">данные и приватность</a><a href="/help/storage">cookie</a>
     <p class="footer-languages"><a class="footer-language" href="/language?lg=ru" title="Русский"><img src="/static/flags/ru.gif" alt="Русский"></a><a class="footer-language" href="/language?lg=en" title="English"><img src="/static/flags/gb.gif" alt="English"></a><a href="/language">all languages &raquo;</a></p>
     <p>Freenet © 2026</p>
   </div>

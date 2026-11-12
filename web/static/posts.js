@@ -676,6 +676,7 @@ export function photosNode(photos) {
   return el('div', { className: 'post-photos ' + layout }, ...photos.map((photo, i) =>
     el('a', {
       href: photo.large,
+      ariaLabel: tr('Открыть фотографию {0} из {1}', i + 1, photos.length),
       onclick: (event) => {
         event.preventDefault();
         openViewer(photos, i);

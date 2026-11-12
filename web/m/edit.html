@@ -82,11 +82,14 @@
             </tr>
             <tr>
               <th><label for="political-views">Полит. взгляды:</label></th>
-              <td class="control"><select id="political-views"></select></td>
+              <td class="control"><select id="political-views" aria-describedby="views-privacy"></select></td>
             </tr>
             <tr>
               <th><label for="worldview">Мировоззрение:</label></th>
-              <td class="control"><select id="worldview"></select></td>
+              <td class="control">
+                <select id="worldview" aria-describedby="views-privacy"></select>
+                <p class="hint" id="views-privacy">Оба поля можно оставить пустыми. Их видимость меняется в <a href="/settings?act=privacy">настройках приватности</a>.</p>
+              </td>
             </tr>
             <tr>
               <th><label for="gender">Пол:</label></th>

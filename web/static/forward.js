@@ -64,6 +64,7 @@ function makimaNode(photos) {
     el('a', {
       className: 'msg-media-tile-link',
       href: photo.large,
+      ariaLabel: tr('Открыть фотографию {0} из {1}', i + 1, photos.length),
       onclick: (event) => {
         event.preventDefault();
         openViewer(photos, i);
@@ -118,7 +119,7 @@ function docImageNode(doc) {
       href: doc.url,
       onclick: (event) => {
         event.preventDefault();
-        openViewer([{ large: doc.preview }], 0);
+        openViewer([{ large: doc.preview, alt: doc.name }], 0);
       },
     },
     el('img', { className: 'docGalleryItem_main_preview', src: doc.preview, alt: doc.name, loading: 'lazy' }),

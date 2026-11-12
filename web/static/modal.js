@@ -10,16 +10,34 @@ import { tr } from './i18n.js';
 export function openModal(title, { tag = 'div', locked = false } = {}) {
   const body = el('div', { className: 'modal-body' });
   const actions = el('div', { className: 'modal-actions' });
-  const box = el(tag, { className: 'modal-box' }, el('div', { className: 'modal-header', textContent: title }), body, actions);
+  const box = el(tag, { className: 'modal-box', role: 'dialog', ariaModal: 'true', ariaLabel: title, tabIndex: -1 },
+    el('div', { className: 'modal-header', textContent: title }), body, actions);
   const overlay = el('div', { className: 'modal' }, box);
+  const opener = document.activeElement;
+  const isTop = () => Array.from(document.querySelectorAll('.modal')).at(-1) === overlay;
 
   function onKey(event) {
-    if (event.key === 'Escape' && !locked) close();
+    if (event.defaultPrevented || !isTop()) return;
+    if (event.key === 'Escape' && !locked) {
+      event.preventDefault();
+      close();
+    }
+    if (event.key !== 'Tab') return;
+
+    const focusable = Array.from(box.querySelectorAll('a[href], button, input, select, textarea, summary, iframe, [tabindex], [contenteditable="true"]'))
+      .filter((node) => node.tabIndex >= 0 && !node.matches(':disabled') && node.getClientRects().length > 0 && getComputedStyle(node).visibility === 'visible');
+    const current = focusable.indexOf(document.activeElement);
+    if (current === -1 || (event.shiftKey ? current === 0 : current === focusable.length - 1)) {
+      event.preventDefault();
+      (focusable[event.shiftKey ? focusable.length - 1 : 0] ?? box).focus();
+    }
   }
 
   function close() {
+    const restoreFocus = isTop() && box.contains(document.activeElement);
     overlay.remove();
     document.removeEventListener('keydown', onKey);
+    if (restoreFocus && opener?.isConnected) opener.focus();
   }
 
   overlay.addEventListener('click', (event) => {
@@ -27,6 +45,10 @@ export function openModal(title, { tag = 'div', locked = false } = {}) {
   });
   document.addEventListener('keydown', onKey);
   document.body.append(overlay);
+
+  queueMicrotask(() => {
+    if (isTop() && !box.contains(document.activeElement)) box.focus();
+  });
 
   return { box, body, actions, close };
 }

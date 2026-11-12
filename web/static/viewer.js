@@ -33,6 +33,7 @@ export function openViewer(photos, start) {
     img.src = photos[index].large;
     adult(img, photos[index].nsfw);
     counter.textContent = photos.length > 1 ? tr('Фотография {0} из {1}', index + 1, photos.length) : tr('Фотография');
+    img.alt = photos[index].alt || counter.textContent;
   }
 
   function onKey(event) {

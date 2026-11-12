@@ -116,7 +116,7 @@ function messageNode(m) {
   const mine = m.author.id === me.id;
   const node = el('div', { className: ['im-message', ...(mine ? ['out'] : []), ...((mine ? !m.seen : m.unread) ? ['unread'] : [])].join(' ') },
     el('span', { className: 'im-check' }),
-    el('a', { className: 'im-message-avatar', href: '/' + m.author.nickname }, el('img', { src: avatarURL(m.author, 'small'), alt: '' })),
+    el('a', { className: 'im-message-avatar', href: '/' + m.author.nickname, ariaLabel: fullName(m.author) }, el('img', { src: avatarURL(m.author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
       head,
       el('span', { className: 'im-sender' },

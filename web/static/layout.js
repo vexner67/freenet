@@ -674,6 +674,13 @@ export function renderChrome(me) {
   const menu = $('menu');
 
   addHeaderSearch(me);
+  const help = document.querySelector('.footer a[href="/help"]');
+  if (help && !help.parentElement.querySelector('a[href="/help/privacy"]')) {
+    help.after(
+      el('a', { href: '/help/privacy', textContent: tr('данные и приватность') }),
+      el('a', { href: '/help/storage', textContent: tr('cookie') }),
+    );
+  }
   addVersionSwitch();
   resumePlayer();
   // A phone has the links of a signed-in user in the bar of sections and

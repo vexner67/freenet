@@ -109,7 +109,7 @@ function messageNode(m) {
   // the icons and the time at the right, the name and the words.
   const node = el('div', { className: ['im-message', ...(m.out ? ['out'] : []), ...(m.read ? [] : ['unread'])].join(' ') },
     el('span', { className: 'im-check' }),
-    el('a', { className: 'im-message-avatar', href: '/' + author.nickname }, el('img', { src: avatarURL(author, 'small'), alt: '' })),
+    el('a', { className: 'im-message-avatar', href: '/' + author.nickname, ariaLabel: fullName(author) }, el('img', { src: avatarURL(author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
       head,
       el('span', { className: 'im-sender' },
