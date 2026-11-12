@@ -69,19 +69,19 @@ func TestNewEconomy(t *testing.T) {
 func TestNewRatingRaise(t *testing.T) {
 	t.Parallel()
 
-	for _, bad := range []int{-1, 0, user.MaxRating + 1} {
+	for _, bad := range []int{-1, 0, user.MaxBoughtRating + 1, user.MaxRating} {
 		if _, err := user.NewRatingRaise(bad); !errors.Is(err, user.ErrRatingRaiseInvalid) {
 			t.Errorf("NewRatingRaise(%d) = %v", bad, err)
 		}
 	}
 
-	// A vote a percent, up to the whole MaxRating at once.
+	// A vote a percent, up to all the rating that can be bought at once.
 	r, err := user.NewRatingRaise(5)
 	if err != nil || r.Int() != 5 || r.Cost() != 5 {
 		t.Fatalf("NewRatingRaise(5) = %v, %v", r, err)
 	}
-	if r, err = user.NewRatingRaise(user.MaxRating); err != nil || r.Cost() != 1_000_000_000 {
-		t.Fatalf("NewRatingRaise(MaxRating) = %v, %v", r, err)
+	if r, err = user.NewRatingRaise(user.MaxBoughtRating); err != nil || r.Cost() != 999_999_900 {
+		t.Fatalf("NewRatingRaise(MaxBoughtRating) = %v, %v", r, err)
 	}
 }
 

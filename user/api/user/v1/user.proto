@@ -222,8 +222,8 @@ service UserService {
   rpc SetEconomy(SetEconomyRequest) returns (google.protobuf.Empty);
   // RaiseRating sells the caller rating ("Повысить рейтинг" of openvk) for
   // a vote a percent, into the treasury, for their own page or another's:
-  // FailedPrecondition "not enough votes" and "the rating cannot go above
-  // 1000000000 percent", PermissionDenied for a deleted page or across a
+  // FailedPrecondition "not enough votes" and "the rating bought cannot go
+  // above 999999900 percent", PermissionDenied for a deleted page or across a
   // blacklist.
   rpc RaiseRating(RaiseRatingRequest) returns (RaiseRatingResponse);
 
@@ -629,7 +629,7 @@ message User {
   string backdrop_cover = 39;
   // The rating of the page ("Заполненность страницы" of openvk), in
   // percent: how full it is, up to 100, plus the rating bought, at most
-  // 1000000000; and the blocks not filled in to the end ("photo",
+  // 999999900; and the blocks not filled in to the end ("photo",
   // "status", "main", "contacts", "interests"), as unfilled_parts tells
   // them with what each would add.
   int32 completeness = 26;
@@ -1872,7 +1872,7 @@ message ClaimBonusResponse {
 }
 
 message RaiseRatingRequest {
-  // How many percent to buy, 1-1000000000, a vote each.
+  // How many percent to buy, 1-999999900, a vote each.
   int32 percent = 1;
   // Whose rating to raise; empty: the caller's own.
   string user_id = 2;

@@ -28,7 +28,7 @@ func TestWalletService_VoucherOutstanding(t *testing.T) {
 }
 
 // Rating is bought for votes, a vote a percent, into the treasury, up to
-// user.MaxRating.
+// user.MaxBoughtRating.
 func TestWalletService_RaiseRating(t *testing.T) {
 	t.Parallel()
 
@@ -43,9 +43,9 @@ func TestWalletService_RaiseRating(t *testing.T) {
 	if _, err = w.wallets.RaiseRating(ctx, ann, ann, five); !errors.Is(err, user.ErrNotEnoughVotes) {
 		t.Fatalf("RaiseRating without votes: %v", err)
 	}
-	// Ann's page is empty: the rating alone stays within MaxRating, so
-	// with this much she may buy 10 more.
-	if _, err = w.users.Credit(ctx, ann, 40, user.MaxRating-15, user.VoteEntry{}); err != nil {
+	// However empty Ann's page, the rating bought stays within
+	// MaxBoughtRating, so with this much she may buy 10 more.
+	if _, err = w.users.Credit(ctx, ann, 40, user.MaxBoughtRating-15, user.VoteEntry{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -55,7 +55,7 @@ func TestWalletService_RaiseRating(t *testing.T) {
 	}
 
 	raised, err := w.wallets.RaiseRating(ctx, ann, ann, five)
-	if err != nil || raised.Balance != 40-five.Cost() || raised.Rating != user.MaxRating-10 || raised.Completeness != user.MaxRating-10 {
+	if err != nil || raised.Balance != 40-five.Cost() || raised.Rating != user.MaxBoughtRating-10 || raised.Completeness != user.MaxBoughtRating-10 {
 		t.Fatalf("RaiseRating = %+v, %v", raised, err)
 	}
 	if after, err := w.wallets.Treasury(ctx); err != nil || after.Votes != before.Votes+five.Cost() {

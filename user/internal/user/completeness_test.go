@@ -87,7 +87,9 @@ func TestUser_CompletenessWithRating(t *testing.T) {
 		{0, 100},
 		{1, 101},
 		{900, 1000},
-		{user.MaxRating - 100, user.MaxRating},
+		// All the rating that can be bought and the page filled in: the
+		// whole MaxRating.
+		{user.MaxBoughtRating, user.MaxRating},
 		// What vouchers gave past the limit still shows the limit.
 		{user.MaxRating, user.MaxRating},
 	}
@@ -97,7 +99,7 @@ func TestUser_CompletenessWithRating(t *testing.T) {
 		}
 	}
 
-	if most := full.RatingMost(); most != user.MaxRating-100 {
+	if most := full.RatingMost(); most != user.MaxBoughtRating {
 		t.Fatalf("RatingMost of a full page = %d", most)
 	}
 }

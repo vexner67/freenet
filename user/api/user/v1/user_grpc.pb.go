@@ -417,8 +417,8 @@ type UserServiceClient interface {
 	SetEconomy(ctx context.Context, in *SetEconomyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// RaiseRating sells the caller rating ("Повысить рейтинг" of openvk) for
 	// a vote a percent, into the treasury, for their own page or another's:
-	// FailedPrecondition "not enough votes" and "the rating cannot go above
-	// 1000000000 percent", PermissionDenied for a deleted page or across a
+	// FailedPrecondition "not enough votes" and "the rating bought cannot go
+	// above 999999900 percent", PermissionDenied for a deleted page or across a
 	// blacklist.
 	RaiseRating(ctx context.Context, in *RaiseRatingRequest, opts ...grpc.CallOption) (*RaiseRatingResponse, error)
 	// Freenet Prime, the subscription of the site. GetPrime is public: what
@@ -2894,8 +2894,8 @@ type UserServiceServer interface {
 	SetEconomy(context.Context, *SetEconomyRequest) (*emptypb.Empty, error)
 	// RaiseRating sells the caller rating ("Повысить рейтинг" of openvk) for
 	// a vote a percent, into the treasury, for their own page or another's:
-	// FailedPrecondition "not enough votes" and "the rating cannot go above
-	// 1000000000 percent", PermissionDenied for a deleted page or across a
+	// FailedPrecondition "not enough votes" and "the rating bought cannot go
+	// above 999999900 percent", PermissionDenied for a deleted page or across a
 	// blacklist.
 	RaiseRating(context.Context, *RaiseRatingRequest) (*RaiseRatingResponse, error)
 	// Freenet Prime, the subscription of the site. GetPrime is public: what

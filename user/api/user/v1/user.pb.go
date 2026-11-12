@@ -884,7 +884,7 @@ type User struct {
 	BackdropCover string `protobuf:"bytes,39,opt,name=backdrop_cover,json=backdropCover,proto3" json:"backdrop_cover,omitempty"`
 	// The rating of the page ("Заполненность страницы" of openvk), in
 	// percent: how full it is, up to 100, plus the rating bought, at most
-	// 1000000000; and the blocks not filled in to the end ("photo",
+	// 999999900; and the blocks not filled in to the end ("photo",
 	// "status", "main", "contacts", "interests"), as unfilled_parts tells
 	// them with what each would add.
 	Completeness int32              `protobuf:"varint,26,opt,name=completeness,proto3" json:"completeness,omitempty"`
@@ -9682,7 +9682,7 @@ func (x *ClaimBonusResponse) GetBalance() int64 {
 
 type RaiseRatingRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// How many percent to buy, 1-1000000000, a vote each.
+	// How many percent to buy, 1-999999900, a vote each.
 	Percent int32 `protobuf:"varint,1,opt,name=percent,proto3" json:"percent,omitempty"`
 	// Whose rating to raise; empty: the caller's own.
 	UserId        string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`

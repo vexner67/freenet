@@ -73,8 +73,9 @@ func TestUserRepository_SearchByScore(t *testing.T) {
 	if p, _ := full.Completeness(); p != 100 {
 		t.Fatalf("a full page: %d", p)
 	}
-	// What vouchers give stops at the limit, which the database checks too.
-	if richest.Wallet().Rating != user.MaxRating {
+	// What vouchers give stops at the rating that can be bought, which the
+	// database checks too.
+	if richest.Wallet().Rating != user.MaxBoughtRating {
 		t.Fatalf("Credit past the limit: %+v", richest.Wallet())
 	}
 

@@ -183,7 +183,7 @@ const creditWalletQuery = `
 		UPDATE users
 		SET
 			votes = votes + $2,
-			rating = LEAST(rating + $3, 1000000000)
+			rating = LEAST(rating + $3, 999999900)
 		WHERE id = $1
 		RETURNING
 			votes,

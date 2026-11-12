@@ -79,10 +79,10 @@ func (u *User) Fill() int {
 	return percent
 }
 
-// RatingMost is the most rating the page may buy up to: with how full the
-// page is, it stays within MaxRating.
+// RatingMost is the most rating the page may buy up to, MaxBoughtRating
+// however full it is: with the page filled in, that is MaxRating.
 func (u *User) RatingMost() int {
-	return MaxRating - u.Fill()
+	return MaxBoughtRating
 }
 
 func (u *User) fill() (percent int, unfilled []Unfilled) {

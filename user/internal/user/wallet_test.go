@@ -102,11 +102,12 @@ func TestUser_Wallet(t *testing.T) {
 	}
 
 	// Rating and fullness together stay within MaxRating: a page that had
-	// all of it shows MaxRating, and the empty one buys up to it.
+	// all of it shows MaxRating; the empty one buys up to MaxBoughtRating,
+	// and the last 100 percent come from filling it in.
 	if p, _ := u.WithWallet(user.Wallet{Rating: user.MaxRating}).Completeness(); p != user.MaxRating {
 		t.Fatalf("with all the rating: %d", p)
 	}
-	if most := u.RatingMost(); most != user.MaxRating {
+	if most := u.RatingMost(); most != user.MaxBoughtRating {
 		t.Fatalf("RatingMost = %d", most)
 	}
 }

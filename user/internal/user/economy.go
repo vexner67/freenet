@@ -9,14 +9,17 @@ const (
 	// MaxRating is the most rating a page may have, fullness and the
 	// rating bought together.
 	MaxRating = 1_000_000_000
+	// MaxBoughtRating is the most rating a page may buy: the last 100
+	// percent of MaxRating come only from filling the page in.
+	MaxBoughtRating = MaxRating - 100
 	// DefaultJackpot is the win the casino shows as a jackpot until the
 	// administrators set another.
 	DefaultJackpot = 1000
 )
 
 var (
-	ErrRatingRaiseInvalid = errors.New("the rating is raised by 1 to 1000000000 percent")
-	ErrRatingLimit        = errors.New("the rating cannot go above 1000000000 percent")
+	ErrRatingRaiseInvalid = errors.New("the rating is raised by 1 to 999999900 percent")
+	ErrRatingLimit        = errors.New("the rating bought cannot go above 999999900 percent")
 	// ErrRatingRefused: either of the two has blacklisted the other.
 	ErrRatingRefused  = errors.New("you cannot raise the rating of this user")
 	ErrJackpotInvalid = errors.New("the jackpot must be at least 1 vote")
@@ -73,7 +76,7 @@ func (e Economy) StickerTaxOf(price int64, prime bool) int64 {
 type RatingRaise int
 
 func NewRatingRaise(percent int) (RatingRaise, error) {
-	if percent < 1 || percent > MaxRating {
+	if percent < 1 || percent > MaxBoughtRating {
 		return 0, ErrRatingRaiseInvalid
 	}
 
