@@ -245,7 +245,10 @@ h1.page-title { font-size: inherit; }
 
 /* Columns */
 
-.columns { display: flex; gap: 8px; margin-top: 6px; }
+/* The yellow title of the page lies right under the header, as openvk's
+   .page_body (margin-top: -1px); the menu stands 4px lower, as its
+   .sidebar. */
+.columns { display: flex; gap: 8px; }
 /* Until the page is drawn whole (theme.js, layout.js). */
 .pending .columns,
 .pending .footer { visibility: hidden; }
@@ -254,7 +257,7 @@ h1.page-title { font-size: inherit; }
    comes in place of a page. A slow one shows its header after a moment. */
 .pending:not(.slow) body { visibility: hidden; }
 
-.sidebar { width: 140px; flex-shrink: 0; }
+.sidebar { width: 140px; flex-shrink: 0; margin-top: 4px; }
 /* The header and the left menu stay in sight while the page scrolls (the
    menu, where the screen is tall enough for all of it). */
 html { scroll-padding-top: 52px; }
@@ -262,7 +265,7 @@ html { scroll-padding-top: 52px; }
   .sidebar { position: sticky; top: 48px; align-self: flex-start; }
 }
 
-.page { width: 643px; }
+.page { width: 643px; margin-top: -1px; }
 
 .page-title {
   display: flex;
@@ -1735,22 +1738,30 @@ body.viewer-open { overflow: hidden; }
 .topic-form textarea { width: 100%; height: 80px; }
 
 /* openvk's "Фон страницы": the photos on the sides, behind the page,
-   which a white column with soft edges keeps readable. */
+   which the white column of the page keeps readable. Unlike openvk's
+   (contain, 80 % opacity), each photo fills its half of the screen to the
+   edges, whole in colour, without the soft white edges of the column:
+   pale photos and white gaps around them glared beside the page. */
 .backdrop {
   position: fixed;
   inset: 0;
   z-index: -100;
   background-repeat: no-repeat;
-  background-size: contain;
-  background-position: center left, center right;
   pointer-events: none;
-  opacity: .8;
 }
+.backdrop-half { position: absolute; top: 0; bottom: 0; width: 50%; background-size: cover; background-position: center; background-repeat: no-repeat; }
+.backdrop-left { left: 0; }
+.backdrop-right { right: 0; }
 .backdrop-dripper {
+  position: relative;
   width: 800px;
   height: 100%;
   margin: auto;
   background: var(--back-fff);
+}
+/* The soft edges are the Prime photo's only: beside the side photos
+   they glared white over them. */
+.backdrop-cover .backdrop-dripper {
   box-shadow: -30px 0 20px 20px var(--line-fff), -70px 0 20px 20px rgb(255 255 255 / 43%), -110px 0 20px 20px rgb(255 255 255 / 28%),
     30px 0 20px 20px var(--line-fff), 70px 0 20px 20px rgb(255 255 255 / 43%), 110px 0 20px 20px rgb(255 255 255 / 28%);
 }
@@ -1758,7 +1769,7 @@ body.viewer-open { overflow: hidden; }
 /* A photo of one's own behind the whole page (Prime): the screen filled
    without stretching, still while the page scrolls, whole in colour; the
    white column with soft edges keeps the page readable. */
-.backdrop-cover { background-size: cover; background-position: center; opacity: 1; }
+.backdrop-cover { background-size: cover; background-position: center; }
 
 /* The settings: a scheme of the page with "Обзор" on each side. */
 .backdrop-form h4 { margin: 0 0 6px; }
@@ -3154,8 +3165,6 @@ button.game-hud-cell:hover { background: var(--back-f2f5f8); }
 .canvas-palette { grid-template-columns: repeat(32, 1fr); gap: 2px; margin: 0; }
 
 .canvas-swatch.active { outline-color: var(--line-333); }
-.canvas-rank { display: flex; justify-content: space-between; color: var(--text-aaa); }
-.canvas-rank.got { color: var(--text-000); }
 
 /* "Рейтинги": the podium of the first three, the rest with a bar to the
    leader. */
@@ -3552,14 +3561,32 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .group-directory .info td { overflow-wrap: anywhere; }
 .club-member-name { font-weight: bold; overflow-wrap: anywhere; }
 
-.votes-form .info th { width: 120px; }
-.votes-form .info td { overflow-wrap: anywhere; }
-.votes-form input { box-sizing: border-box; max-width: 100%; }
+/* "Перевод" and "Пополнение" are openvk's tables of its forms
+   (cellspacing 7): no room kept under the fields, the recipient shown
+   once picked and the fee under the button. */
+.votes-form .form td { overflow-wrap: anywhere; }
+.votes-form input.text { box-sizing: border-box; width: 100%; }
 .votes-form .recipient-field { position: relative; }
 .votes-form .recipient-options { position: absolute; z-index: 2; left: 0; right: 0; }
-.votes-recipient { display: flex; align-items: center; gap: 4px; min-height: 30px; }
+.votes-recipient { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+.votes-recipient:has(> [hidden]) { display: none; }
 .votes-recipient img { object-fit: cover; }
+#transfer-fee { margin-top: 4px; }
+#transfer-fee:empty { display: none; }
 .votes-feedback { min-height: 2.6em; }
+
+/* "История операций" of "Голоса": each line says what came or went, from
+   or to whom, when, how much and what was left. */
+.votes-flows a.active { color: var(--text-000); font-weight: bold; }
+.votes-op { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line-e8e8e8); }
+.votes-op-about { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.votes-op-title { font-weight: bold; }
+.votes-op-note { font-style: italic; }
+.votes-op-date, .votes-op-balance { color: var(--text-626262); }
+.votes-op-sum { flex: none; text-align: right; }
+.votes-in { color: var(--text-43a047); }
+.votes-out { color: var(--text-d94c4c); }
+.votes-empty { margin: 8px 0; text-align: center; }
 
 
 .gift-cat-info > .button { flex: none; }

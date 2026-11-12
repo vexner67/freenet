@@ -36,40 +36,44 @@
         </nav>
         <p id="loading">Загрузка…</p>
         <div class="error" id="error" hidden></div>
-        <table class="info" id="summary" hidden>
-          <tr><th scope="row">Баланс:</th><td id="votes"></td></tr>
-          <tr><th scope="row">Курс:</th><td id="vote-rate"></td></tr>
-          <tr><th scope="row">Поступило за 30 дней:</th><td id="income"></td></tr>
-          <tr><th scope="row">Списано за 30 дней:</th><td id="expense"></td></tr>
-        </table>
-        <form class="container-gray votes-form" id="transfer" hidden>
+        <div id="summary" hidden>
           <table class="info">
-            <tr><th scope="row">Баланс:</th><td id="transfer-balance"></td></tr>
+            <tr><th scope="row">Баланс:</th><td id="votes"></td></tr>
+            <tr><th scope="row">Курс:</th><td id="vote-rate"></td></tr>
+            <tr><th scope="row">Поступило за 30 дней:</th><td id="income"></td></tr>
+            <tr><th scope="row">Списано за 30 дней:</th><td id="expense"></td></tr>
+          </table>
+          <div class="section-title">История операций</div>
+          <div class="subtitle votes-flows">
+            <span><a id="flow-all" href="/votes">все операции</a> · <a id="flow-in" href="/votes?flow=in">поступления</a> · <a id="flow-out" href="/votes?flow=out">списания</a></span>
+          </div>
+          <div id="operations"></div>
+          <p class="hint votes-empty" id="operations-empty" hidden>Операций пока нет.</p>
+          <a class="wall-more" id="more" hidden>Показать ещё</a>
+        </div>
+        <form class="container-gray votes-form" id="transfer" hidden>
+          <table class="form">
             <tr>
               <th scope="row"><label for="transfer-to">Кому:</label></th>
               <td class="recipient-field">
                 <input class="text" id="transfer-to" autocomplete="off" required>
                 <div class="recipient-options" id="transfer-people" hidden></div>
-                <div class="votes-recipient"><div id="transfer-recipient" aria-live="polite"></div></div>
+                <div class="votes-recipient"><div id="transfer-recipient" aria-live="polite" hidden></div></div>
               </td>
             </tr>
             <tr>
               <th scope="row"><label for="transfer-votes">Сколько:</label></th>
-              <td>
-                <input class="text" id="transfer-votes" type="number" min="1" max="1000000000000000" step="1" inputmode="numeric" required>
-                <div class="hint votes-feedback" id="transfer-fee" aria-live="polite"></div>
-              </td>
+              <td><input class="text" id="transfer-votes" type="number" min="1" max="1000000000000000" step="1" inputmode="numeric" required></td>
             </tr>
             <tr>
               <th scope="row"><label for="transfer-note">Сообщение:</label></th>
               <td><input class="text" id="transfer-note" maxlength="140"></td>
             </tr>
-            <tr><td></td><td><button class="button" type="submit">Перевести</button></td></tr>
+            <tr><td></td><td><button class="button" type="submit">Перевести</button><div class="hint" id="transfer-fee" aria-live="polite"></div></td></tr>
           </table>
         </form>
         <form class="container-gray votes-form" id="top-up" hidden>
-          <table class="info">
-            <tr><th scope="row">Баланс:</th><td id="top-up-balance"></td></tr>
+          <table class="form">
             <tr>
               <th scope="row"><label for="voucher-code">Номер ваучера:</label></th>
               <td>

@@ -2729,8 +2729,6 @@ button.game-hud-cell:hover { background: var(--back-f2f5f8); }
 .canvas-palette { margin: 0; }
 
 .canvas-swatch.active { outline-color: var(--line-333); }
-.canvas-rank { display: flex; justify-content: space-between; color: var(--text-aaa); }
-.canvas-rank.got { color: var(--text-000); }
 
 /* "Рейтинги": the podium of the first three, the rest with a bar to the
    leader. */
@@ -3423,15 +3421,34 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .club-member-name { font-weight: bold; overflow-wrap: anywhere; }
 .group-directory .info th { width: 1%; white-space: nowrap; }
 
-.votes-form .info th { width: 120px; }
-.votes-form .info td { overflow-wrap: anywhere; }
-.votes-form input { box-sizing: border-box; max-width: 100%; }
+/* "Перевод" and "Пополнение" are openvk's tables of its forms
+   (cellspacing 7): no room kept under the fields, the recipient shown
+   once picked and the fee under the button. */
+.votes-form .form td { overflow-wrap: anywhere; }
+.votes-form input.text { box-sizing: border-box; width: 100%; }
 .votes-form .recipient-field { position: relative; }
 .votes-form .recipient-options { position: absolute; z-index: 2; left: 0; right: 0; }
-.votes-recipient { display: flex; align-items: center; gap: 4px; min-height: 30px; }
+.votes-recipient { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+.votes-recipient:has(> [hidden]) { display: none; }
 .votes-recipient img { object-fit: cover; }
+#transfer-fee { margin-top: 4px; }
+#transfer-fee:empty { display: none; }
 .votes-feedback { min-height: 2.6em; }
-.votes-form .info th { width: 32%; }
+
+/* "История операций" of "Голоса": each line says what came or went, from
+   or to whom, when, how much and what was left. */
+.votes-flows a.active { color: var(--text-000); font-weight: bold; }
+.votes-op { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--line-e8e8e8); }
+.votes-op-about { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.votes-op-title { font-weight: bold; }
+.votes-op-note { font-style: italic; }
+.votes-op-date, .votes-op-balance { color: var(--text-626262); }
+.votes-op-sum { flex: none; text-align: right; }
+.votes-in { color: var(--text-43a047); }
+.votes-out { color: var(--text-d94c4c); }
+.votes-empty { margin: 8px 0; text-align: center; }
+.votes-form .form { width: 100%; }
+.votes-form .form th { width: 32%; }
 
 
 .gift-cat-info > .button { flex: none; }

@@ -5,15 +5,14 @@
 // anew every ten seconds. It works as the paint programs of the 2000s: a box
 // of tools (each with its key), the colour in hand with the latest colours
 // beside it, a cursor of the size of a cell. The brush paints while it is
-// dragged, the hand moves the canvas, two fingers and the wheel zoom it. The
-// strip over it counts what a person has painted, their combo and their rank;
-// the count of cells and the rank are kept in this browser.
+// dragged, the hand moves the canvas, two fingers and the wheel zoom it.
+// Nothing is counted: no cells of one's own, combos or ranks, as a page of
+// openvk has none.
 
 import { api, currentUser, started } from './api.js';
 import { avatarURL, $, el, fullName, profilePath, renderChrome, showError, hideError, verifiedMark } from './layout.js';
 import { canvasCellAt, canvasColors, canvasPalette, canvasPicture, formatPostDate, primeNameClass } from './labels.js';
-import { helpButton, gameIcon } from './game.js';
-import { popover } from './controls.js';
+import { helpButton } from './game.js';
 import { tr } from './i18n.js';
 
 const answered = started(api.canvas());
@@ -25,11 +24,7 @@ const wheelZoom = 0.002;
 const dragFrom = 6;
 const hoverDelay = 120;
 const reconnectAfter = 2_000;
-// A cell painted this soon after another goes on the combo.
-const comboGap = 1_500;
 const undoSize = 200;
-const liveWindow = 60_000;
-const countKey = 'freenet.canvas.count';
 
 let me = null;
 let size = 100;
@@ -57,101 +52,8 @@ const cursor = el('span', { className: 'canvas-cursor', hidden: true });
 frame.append(cursor);
 const context = board.getContext('2d');
 
-// The ranks of a painter: how many cells make one.
-const ranks = [
-  [0, () => tr('Новичок')],
-  [10, () => tr('Маляр')],
-  [50, () => tr('Подмастерье')],
-  [200, () => tr('Художник')],
-  [500, () => tr('Мастер')],
-  [1000, () => tr('Пикассо')],
-  [5000, () => tr('Легенда холста')],
-];
-
-const rankAt = (count) => ranks.filter(([from]) => from <= count).length - 1;
-
-function savedCount() {
-  try {
-    return Math.max(0, Number(localStorage.getItem(countKey)) || 0);
-  } catch {
-    return 0;
-  }
-}
-
-let count = savedCount();
-let combo = 0;
-let lastPaint = 0;
-// Cells others painted in the last minute, as times.
-let others = [];
 // What the undo button puts back.
 const strokes = [];
-
-function hudCell(id, icon, name, tag = 'div') {
-  const node = el(tag, { className: 'game-hud-cell', id: `hud-${id}`, type: tag === 'button' ? 'button' : undefined },
-    el('span', { className: 'game-hud-name' }, gameIcon(icon), name),
-    el('b', { className: 'game-hud-sum', id: `${id}-sum` }),
-    el('span', { className: 'hint', id: `${id}-hint` }));
-
-  return node;
-}
-
-function showRankHint() {
-  const at = rankAt(count);
-  const next = ranks[at + 1];
-
-  $('rank-sum').textContent = ranks[at][1]();
-  $('rank-hint').textContent = next ? tr('ещё {0} до «{1}»', next[0] - count, next[1]()) : tr('выше некуда');
-}
-
-function showRanks() {
-  const pop = popover($('hud-rank'), tr('Звания'));
-  if (!pop) return;
-
-  pop.body.append(...ranks.map(([from, name]) => el('div', { className: count >= from ? 'canvas-rank got' : 'canvas-rank' },
-    el('b', { textContent: name() }), el('span', { textContent: String(from) }))));
-  pop.place();
-}
-
-function showHUD() {
-  $('hud').replaceChildren(
-    hudCell('count', '/static/icons/game/brush.svg', tr('Закрашено вами')),
-    hudCell('combo', '/static/icons/game/combo.svg', tr('Комбо')),
-    hudCell('rank', '/static/icons/game/crown.svg', tr('Звание'), 'button'),
-    hudCell('live', '/static/icons/game/people.svg', tr('Рисуют сейчас')),
-  );
-  $('hud-rank').addEventListener('click', showRanks);
-  $('count-sum').textContent = String(count);
-  $('count-hint').textContent = tr('клеток');
-  $('combo-sum').textContent = tr('×{0}', 0);
-  $('combo-hint').textContent = tr('рисуйте без пауз');
-  $('live-sum').textContent = '0';
-  $('live-hint').textContent = tr('клеток за минуту');
-  showRankHint();
-}
-
-function showLive() {
-  const now = Date.now();
-
-  others = others.filter((time) => now - time < liveWindow);
-  $('live-sum').textContent = String(others.length);
-}
-
-// rewarded is what a painted cell gives: the count, the combo and, now and
-// then, a rank.
-function rewarded() {
-  const now = Date.now();
-  combo = now - lastPaint < comboGap ? combo + 1 : 1;
-  lastPaint = now;
-  count += 1;
-  try {
-    localStorage.setItem(countKey, String(count));
-  } catch {
-    // The count just stays for this page.
-  }
-  $('count-sum').textContent = String(count);
-  $('combo-sum').textContent = tr('×{0}', combo);
-  showRankHint();
-}
 
 function draw() {
   board.width = size;
@@ -182,11 +84,6 @@ function painted({ x, y, color: value }) {
   context.fillStyle = canvasColors[value];
   context.fillRect(x, y, 1, 1);
   arrived?.push({ x, y, color: value });
-  const now = Date.now();
-  if (!unanswered.has(`${x},${y}`) && now - lastPaint > 400) {
-    others.push(now);
-    showLive();
-  }
 }
 
 function cellPixels() {
@@ -381,13 +278,13 @@ function cellColor(x, y) {
 }
 
 // brush paints a cell at once, and the server is asked after the cell is
-// on the canvas. Only a confirmed paint counts towards the rank.
+// on the canvas.
 function brush(cell) {
   const value = inHand();
   if (cellColor(cell.x, cell.y) === value) return;
 
   if (tool === 'brush') remember(value);
-  paint(cell, value).then((taken) => { if (taken) rewarded(); }).catch((e) => showError($('error'), e));
+  paint(cell, value).catch((e) => showError($('error'), e));
 }
 
 // stroke paints the cells between the last one and this one: a fast hand
@@ -621,7 +518,6 @@ renderChrome(me);
 
 try {
   show(await answered);
-  showHUD();
   showPalette();
   setTool(me ? 'brush' : 'look');
   $('canvas-help').replaceWith(helpButton(tr('Один холст на весь сайт: закрашивайте клетки сколько хотите. Вместе можно нарисовать что угодно — договаривайтесь в сообщениях.')));
@@ -631,7 +527,6 @@ try {
   setInterval(() => {
     if (!live) refresh();
   }, refreshEvery);
-  setInterval(showLive, refreshEvery);
 } catch (e) {
   showError($('error'), e);
 }

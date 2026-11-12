@@ -217,7 +217,7 @@ input:focus, select:focus, textarea:focus,
 .profile-link:hover { background: #303030; }
 .faq-content { border-color: #333; }
 .gray-bar, .gray-box, .topic-head { background: #222; }
-.backdrop-dripper { box-shadow: -30px 0 20px 20px #1a1a1a, -70px 0 20px 20px rgb(26 26 26 / 43%), -110px 0 20px 20px rgb(26 26 26 / 28%),
+.backdrop-cover .backdrop-dripper { box-shadow: -30px 0 20px 20px #1a1a1a, -70px 0 20px 20px rgb(26 26 26 / 43%), -110px 0 20px 20px rgb(26 26 26 / 28%),
     30px 0 20px 20px #1a1a1a, 70px 0 20px 20px rgb(26 26 26 / 43%), 110px 0 20px 20px rgb(26 26 26 / 28%); }
 .likers-tooltip { background: #1f1f1f; }
 /* Polls. */

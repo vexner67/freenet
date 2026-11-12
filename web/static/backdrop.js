@@ -8,9 +8,9 @@ import { tr } from './i18n.js';
 
 const MAX_BYTES = 8 << 20;
 
-// showBackdrop puts the photos behind the page, fading into white towards
-// the middle. The images are set through the CSSOM, which the CSP allows,
-// unlike style="".
+// showBackdrop puts the photos behind the page, each filling its half of
+// the screen to the edges, as the Prime photo fills all of it. The images
+// are set through the CSSOM, which the CSP allows, unlike style="".
 export function showBackdrop(backdrop) {
   const { left, right, cover } = backdrop ?? {};
   if (cover) {
@@ -19,9 +19,12 @@ export function showBackdrop(backdrop) {
   }
   if (!left && !right) return;
 
-  const node = el('div', { className: 'backdrop' }, el('div', { className: 'backdrop-dripper' }));
-  node.style.backgroundImage = [left, right].map((photo) => (photo ? `url("${photo.large}")` : 'none')).join(', ');
-  document.body.prepend(node);
+  const halves = [left, right].map((photo, i) => {
+    const half = el('div', { className: 'backdrop-half backdrop-' + (i ? 'right' : 'left') });
+    if (photo) half.style.backgroundImage = `url("${photo.large}")`;
+    return half;
+  });
+  document.body.prepend(el('div', { className: 'backdrop' }, ...halves, el('div', { className: 'backdrop-dripper' })));
 }
 
 // showCover puts a photo of the owner's, set with Prime, behind the whole

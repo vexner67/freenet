@@ -1,22 +1,63 @@
 import { api, currentUser } from './api.js';
-import { balanceAmount, signedVotes, transferFeeText, voteRate, votesAmount } from './labels.js';
-import { $, hideError, renderChrome, showError } from './layout.js';
+import { balanceAmount, formatDateTime, signedVotes, transferFeeText, voteOperation, voteRate, votesAmount } from './labels.js';
+import { $, el, fullName, hideError, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { recipientPicker } from './recipient.js';
 import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
 const asked = params.get('act');
 const tab = ['transfer', 'top-up'].includes(asked) ? asked : 'summary';
+// The statement shows all, or ?flow=in what came, ?flow=out what went.
+const flow = ['in', 'out'].includes(params.get('flow')) ? params.get('flow') : '';
 
-function balance(votes) {
-  for (const id of ['votes', 'transfer-balance', 'top-up-balance']) $(id).textContent = balanceAmount(votes);
+// operationRow is a line of "История операций": what it was, from or to
+// whom, when, the votes it brought or took and the balance after it.
+function operationRow(op, me) {
+  const { title, role } = voteOperation(op, me.id);
+  const about = [el('div', { className: 'votes-op-title', textContent: title })];
+
+  if (role && op.peer) {
+    about.push(el('div', {}, `${role} `,
+      el('a', { href: pagePath(op.peer), textContent: fullName(op.peer) }), verifiedMark(op.peer)));
+  }
+  if (op.kind === 'transfer' && op.note) about.push(el('div', { className: 'votes-op-note', textContent: `«${op.note}»` }));
+  about.push(el('div', { className: 'votes-op-date', textContent: formatDateTime(op.createdAt) }));
+
+  return el('div', { className: 'votes-op' },
+    el('div', { className: 'votes-op-about' }, ...about),
+    el('div', { className: 'votes-op-sum' },
+      el('b', { className: op.amount < 0 ? 'votes-out' : 'votes-in', textContent: signedVotes(op.amount) }),
+      el('div', { className: 'votes-op-balance', textContent: tr('остаток {0}', balanceAmount(op.balance)) })));
 }
 
-async function summary() {
-  const [rate, statement] = await Promise.all([api.voteRate(), api.voteStatement()]);
+async function summary(me) {
+  $('votes').textContent = balanceAmount(me.votes ?? 0);
+  $('flow-' + (flow || 'all')).classList.add('active');
+  const [rate, statement] = await Promise.all([api.voteRate(), api.voteStatement('', flow)]);
   $('vote-rate').textContent = voteRate(rate.kopecks);
   $('income').textContent = signedVotes(statement.income);
   $('expense').textContent = signedVotes(-statement.expense);
+
+  let next = '';
+  const show = (page) => {
+    $('operations').append(...page.operations.map((op) => operationRow(op, me)));
+    next = page.nextCursor;
+    $('more').hidden = !next;
+  };
+  $('operations-empty').hidden = statement.operations.length > 0;
+  show(statement);
+
+  $('more').addEventListener('click', async () => {
+    if ($('more').classList.contains('loading')) return;
+    $('more').classList.add('loading');
+    try {
+      show(await api.voteStatement(next, flow));
+    } catch (error) {
+      showError($('error'), error);
+    } finally {
+      $('more').classList.remove('loading');
+    }
+  });
 }
 
 function result(text) {
@@ -62,8 +103,7 @@ async function transfer(me) {
       return;
     }
     const votes = Number(amount.value);
-    const left = await api.transferVotes(recipient.nickname, votes, note.value.trim());
-    balance(left.votes);
+    await api.transferVotes(recipient.nickname, votes, note.value.trim());
     picker.clear();
     amount.value = '';
     note.value = '';
@@ -81,7 +121,6 @@ function topUp() {
       return;
     }
     const got = await api.redeemVoucher(code);
-    balance(got.balance);
     field.value = '';
     const credited = tr('Зачислено {0}', votesAmount(got.votes));
     result(got.rating ? tr('{0}, рейтинг +{1} %', credited, got.rating) : credited);
@@ -95,12 +134,11 @@ if (!me) {
   location.replace('/edit');
 } else {
   renderChrome(me);
-  balance(me.votes ?? 0);
   $('tab-' + tab).classList.add('active');
   $('tab-' + tab).setAttribute('aria-current', 'page');
 
   try {
-    if (tab === 'summary') await summary();
+    if (tab === 'summary') await summary(me);
     if (tab === 'transfer') await transfer(me);
     if (tab === 'top-up') topUp();
     $(tab).hidden = false;

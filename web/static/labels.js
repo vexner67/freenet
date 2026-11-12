@@ -1503,6 +1503,9 @@ export const TRANSFER_FEE_PERCENT = 3;
 export const STICKER_TAX_PERCENT = 10;
 export const RATING_PRICE = 1;
 export const MAX_RATING = 1_000_000_000;
+// MAX_BOUGHT_RATING is the most rating votes buy: the last 100 % come only
+// from filling the page in (user.MaxBoughtRating).
+export const MAX_BOUGHT_RATING = MAX_RATING - 100;
 
 // ratingTier is the colour of the gauge of a rating: grey up to 100 %,
 // as openvk's, then silver up to 199 %, gold up to 999 % and ruby from
@@ -2161,8 +2164,8 @@ const errorTexts = {
   'the bonus is taken today': tr('Сегодня вы уже получили бонус.'),
   'the bonus is for pages a week old with a filled profile': tr('Бонус получают страницы старше недели с заполненной анкетой.'),
   'a voucher with votes has a limited number of usages': tr('Ваучер с голосами действует ограниченное число раз.'),
-  'the rating is raised by 1 to 1000000000 percent': tr('Рейтинг повышается на 1–1 000 000 000 %.'),
-  'the rating cannot go above 1000000000 percent': tr('Больше нельзя: рейтинг не может быть больше 1 000 000 000 %.'),
+  'the rating is raised by 1 to 999999900 percent': tr('Рейтинг повышается на 1–999 999 900 %.'),
+  'the rating bought cannot go above 999999900 percent': tr('Больше нельзя: купить можно не больше 999 999 900 % рейтинга, остальные 100 % — за заполненную страницу.'),
   'you cannot raise the rating of this user': tr('Вы не можете повысить рейтинг этого пользователя.'),
   'the daily bonus must be at least 1 vote': tr('Бонус — не меньше 1 голоса.'),
   'a fee must be from 0 to 100 percent': tr('Комиссия — от 0 до 100 %.'),

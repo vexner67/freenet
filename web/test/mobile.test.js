@@ -119,14 +119,17 @@ test('the blacklist keeps all settings tabs in both layouts', () => {
   }
 });
 
-test('the votes page shows the same four figures in both layouts', () => {
+test('the votes page shows the same four figures and the statement in both layouts', () => {
   for (const root of [web, phone]) {
     const html = readFileSync(new URL('votes.html', root), 'utf8');
-    const summary = html.match(/<table [^>]*id="summary"[^>]*>([\s\S]*?)<\/table>/)[1];
+    const summary = html.match(/<div id="summary"[^>]*>\s*<table [^>]*>([\s\S]*?)<\/table>/)[1];
     assert.deepEqual([...summary.matchAll(/<td id="([^"]+)"/g)].map((cell) => cell[1]),
       ['votes', 'vote-rate', 'income', 'expense']);
     assert.deepEqual([...html.matchAll(/id="tab-([\w-]+)"/g)].map((link) => link[1]),
       ['summary', 'transfer', 'top-up']);
     assert.doesNotMatch(html, /id="(?:bonus|card|deposit|loan|receive|rating)"/);
+    assert.match(html, /id="operations"/);
+    // The forms of a transfer and a top-up do not show the balance.
+    assert.doesNotMatch(html, /id="(?:transfer|top-up)-balance"/);
   }
 });

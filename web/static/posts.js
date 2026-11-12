@@ -11,7 +11,7 @@ import { openShare } from './share.js';
 import { openViewer } from './viewer.js';
 import { lastComments } from './postcomments.js';
 import { pollNode } from './poll.js';
-import { button, openMenu, openModal, openSheet, toast } from './modal.js';
+import { button, openModal, openSheet, toast } from './modal.js';
 import { documentsNode } from './docs.js';
 import { audiosNode } from './audio.js';
 import { articleCardNode, articleIn } from './articles.js';
@@ -49,11 +49,13 @@ export function postPath(post) {
 //     "написал на стене Петра Петрова", as openvk does there only;
 //   pageOf: the owner of the page the wall is on: their own posts there
 //     go without the pattern of their page, which is already behind them;
-//   feed: the post is in the news, which is openvk's feed to the letter on a
-//     computer: the old post ends in the menu of oldpost.latte — the words
-//     of what the viewer may do, "Комментарии (N)", "Поделиться (N)" and
-//     the heart on the right — and "Микроблог" has the menu and the marks of
-//     microblogpost.latte alone, with the field "Написать".
+//   feed: the post is in the news, where "Микроблог" has the menu and the
+//     marks of microblogpost.latte alone, with the field "Написать".
+// On a computer every old post — on a wall, on its own page, in the news —
+// ends as openvk's feed ends it, in the menu of oldpost.latte: the words of
+// what the viewer may do, "Комментарии (N)", "Поделиться (N)" and the heart
+// on the right; out of the news, "Закрыть комментарии" and "Скопировать
+// ссылку" join the words.
 export function postNode(post, { viewer = null, moderates = false, onDelete, onPinned, onArchived, canLike = false, onError, withCommentsLink = true, onWallOf, pageOf, found = '', feed = false } = {}) {
   const path = pagePath(post.author);
   const date = el('div', { className: 'post-date' });
@@ -65,7 +67,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   // newest comments.
   const microblog = isMicroblog();
   const phone = isPhone();
-  const oldMenu = feed && !phone && !microblog ? el('span', {}) : null;
+  const oldMenu = !phone && !microblog ? el('span', {}) : null;
   const actions = el('span', { className: 'post-actions' });
   // "закреплено" grey after the name, as openvk's "Микроблог" has it in
   // the news, instead of after the date.
@@ -153,13 +155,15 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     return links;
   }
 
-  // oldLinks are the words of oldpost.latte's menu in the news: what the
-  // viewer may do to the post, in its order, then "Комментарии (N)" and
-  // "Поделиться (N)".
+  // oldLinks are the words of oldpost.latte's menu: what the viewer may do
+  // to the post, in its order, then "Комментарии (N)" and "Поделиться (N)";
+  // out of the news closing the comments and the link to the post too.
   function oldLinks() {
     const links = changes().map((c) => el('a', { textContent: c.text, onclick: c.run }));
+    if (ownsWall() && !feed) links.push(el('a', { textContent: post.commentsClosed ? tr('Открыть комментарии') : tr('Закрыть комментарии'), onclick: toggleComments }));
     if (withCommentsLink) links.push(commentsLink(post));
     links.push(share);
+    if (!feed) links.push(copyLink(post));
     return links;
   }
 
@@ -172,13 +176,12 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     return items;
   }
 
-  // bar is the bar under a post, as the apps of phones have it: the
+  // bar is the bar under a post on a phone, as its apps have it: the
   // heart, the comments and "Поделиться" with their numbers, and "⋯" for
-  // the rest — a list over the bottom of a phone, under "⋯" on a
-  // computer.
+  // the rest, a list over the bottom of the screen.
   function bar() {
     const more = el('a', { className: 'like post-more', title: tr('Действия') }, dots());
-    more.addEventListener('click', () => (phone ? openSheet(sheetItems()) : openMenu(more, sheetItems())));
+    more.addEventListener('click', () => openSheet(sheetItems()));
 
     return el('div', { className: 'post-menu post-bar' },
       likeButton(post, { canLike, onError }),
@@ -297,7 +300,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       content,
       post.repost ? sharedNode(post.repost, { canVote: canLike, onError }) : null,
       oldMenu ? el('div', { className: 'post-menu' }, oldMenu, likeButton(post, { canLike, onError })) : null,
-      oldMenu ? null : phone || !microblog ? bar() : el('div', { className: 'post-menu' },
+      oldMenu ? null : phone ? bar() : el('div', { className: 'post-menu' },
         el('span', {}, date, menu),
         el('span', { className: 'post-buttons' },
           shareButton(post, canLike),

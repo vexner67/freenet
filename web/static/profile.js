@@ -1,5 +1,5 @@
 import { api, currentUser, started } from './api.js';
-import { isBirthdayToday, relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHint, presence, formatBirthday, formatDateTime, limitedAccess, accusativeName, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, audioArtist, audioTitle, audiosCount, plural, MAX_RATING, ratingPercent, ratingTier, balanceAmount, votesAmount, titleGroups, titleIconPath } from './labels.js';
+import { isBirthdayToday, relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHint, presence, formatBirthday, formatDateTime, limitedAccess, accusativeName, banEnd, genitiveName, primeMoodIcons, primeMoodText, primeNameClass, primeStyleClasses, audioArtist, audioTitle, audiosCount, plural, MAX_RATING, MAX_BOUGHT_RATING, ratingPercent, ratingTier, balanceAmount, votesAmount, titleGroups, titleIconPath } from './labels.js';
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { giftsBlock, pickPath } from './gifts.js';
 import { initBlacklistLink } from './blacklist.js';
@@ -352,7 +352,8 @@ function raiseRating(profile, isOwner) {
   const input = el('input', { type: 'number', className: 'modal-input', min: 1, step: 1, required: true, ariaLabel: tr('Сколько процентов') });
   const cost = el('div', { className: 'rating-cost' });
   const balance = el('span', { textContent: balanceAmount(me.votes ?? 0) });
-  const left = () => MAX_RATING - (page.completeness ?? 0);
+  // Votes buy up to MAX_BOUGHT_RATING; the last 100 % are for the filled page.
+  const left = () => Math.min(MAX_RATING - (page.completeness ?? 0), MAX_BOUGHT_RATING - (page.rating ?? 0));
   input.max = Math.max(left(), 1);
 
   const showCost = () => {
@@ -369,7 +370,7 @@ function raiseRating(profile, isOwner) {
     el('p', { className: 'rating-balance' }, tr('Ваш баланс: '), balance),
     el('label', { className: 'rating-field' }, tr('Сколько процентов:'), input),
     cost,
-    el('p', { className: 'hint', textContent: tr('Один процент — один голос. Рейтинг вместе с заполненностью страницы — не больше {0}.', ratingPercent(MAX_RATING)) }),
+    el('p', { className: 'hint', textContent: tr('Один процент — один голос. Купить можно до {0}, остальные 100 % — за заполненную страницу.', ratingPercent(MAX_BOUGHT_RATING)) }),
     error,
   );
   const submit = button(tr('Повысить'), null, { type: 'submit' });
