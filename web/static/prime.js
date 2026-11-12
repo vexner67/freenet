@@ -1,13 +1,15 @@
-// "Prime" at /prime, the subscription of the site: what it gives,
-// buying a month, three months or a year for votes into the treasury,
-// giving it to another as a present (the recipient picked as in the bank) and «Невидимка» for one who has it;
-// one who has it is not offered to buy it again until it ends.
+// "Prime" at /prime, the subscription of the site, in three tabs as
+// "Голоса": "Подписка" (until when, the balance, buying a month or a year
+// for votes into the treasury, «Невидимка» and what Prime gives),
+// "Подарить" (to another, the recipient picked as in the bank) and
+// "Оформление" (the look of one's page, tried on before buying).
+// One who has it is not offered to buy it again until it ends.
 // openvk has nothing like it.
 
 import { api, currentUser, started } from './api.js';
 import {
   balanceAmount, formatDateTime, primeBackgrounds, primeFrames, primeMoodIcons, primeMoodText, primeMoods, primeNames, primePeriods,
-  primeNameClass, primeSaving, primeStyleClasses, primeTerms, transferNickname, votesAmount,
+  primeNameClass, primeSaving, primeStyleClasses, transferNickname, votesAmount,
 } from './labels.js';
 import { $, avatarURL, el, fullName, hideError, pagePath, profilePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { notify } from './modal.js';
@@ -17,6 +19,8 @@ import { isNickname, recipientPicker } from './recipient.js';
 const error = $('error');
 // The prices are asked with the page, before who is signed in is known.
 const prices = started(api.primePrices());
+const asked = new URLSearchParams(location.search).get('act');
+const tab = ['gift', 'style'].includes(asked) ? asked : 'plan';
 
 // say shows the notice above the page: a bold line and what follows it.
 function say(title, ...rest) {
@@ -25,69 +29,88 @@ function say(title, ...rest) {
   notify($('notice'), title);
 }
 
+// activeUntil is until when me has Prime, '' when they have none.
+const activeUntil = (me) => (me.primeUntil && new Date(me.primeUntil) > new Date() ? me.primeUntil : '');
+
 // showState is until when the caller has Prime, and the balance.
 function showState(me) {
-  const until = me.primeUntil && new Date(me.primeUntil) > new Date() ? me.primeUntil : '';
+  const until = activeUntil(me);
 
   $('state').textContent = until
-    ? tr('Подписка активна до {0}. Купить её снова можно, когда она закончится.', formatDateTime(until))
-    : tr('У вас пока нет Prime.');
+    ? tr('действует до {0}', formatDateTime(until))
+    : tr('не оформлена');
   // One who has Prime sees what it gives, not its prices.
   $('buy-part').hidden = Boolean(until);
-  $('balance').textContent = balanceAmount(me.votes ?? 0);
   $('invisible-part').hidden = !until;
-  $('style-part').hidden = !until;
   $('invisible').checked = Boolean(me.primeInvisible);
+  $('balance').textContent = balanceAmount(me.votes ?? 0);
+  $('give-balance').textContent = balanceAmount(me.votes ?? 0);
 }
 
-// plan is a period to buy: its name, price and what it saves.
-function plan(me, cost, [period, name, months]) {
-  const price = cost[period];
-  const saving = primeSaving(cost, months, price);
-  const buy = el('button', { className: 'button', type: 'button', textContent: tr('Купить за {0}', votesAmount(price)) });
+// chosenPeriod is the period checked in box.
+const chosenPeriod = (box) => box.querySelector('input:checked').value;
 
-  buy.addEventListener('click', async () => {
-    hideError(error);
-    $('notice').hidden = true;
-    buy.disabled = true;
+// periodChoices fills box with the periods as radios named name, the
+// month chosen: each with its price and what it saves against months,
+// and names button by label of what the chosen one costs.
+function periodChoices(box, name, cost, button, label) {
+  const named = () => {
+    button.textContent = label(votesAmount(cost[chosenPeriod(box)]));
+  };
 
-    try {
-      const bought = await api.buyPrime(period);
-      Object.assign(me, { votes: bought.balance, primeUntil: bought.until, prime: true });
-      showState(me);
-      say(tr('Prime ваш'), tr('Подписка действует до {0}.', formatDateTime(bought.until)));
-    } catch (e) {
-      showError(error, e);
-    } finally {
-      buy.disabled = false;
-    }
-  });
-
-  return el('div', { className: 'prime-plan' },
-    el('b', { className: 'prime-plan-name', textContent: name }),
-    el('div', { className: 'prime-plan-price', textContent: votesAmount(price) }),
-    el('div', { className: 'prime-plan-saving', textContent: saving ? tr('выгода {0} %', saving) : ' ' }),
-    buy);
+  box.replaceChildren(...primePeriods.map(([period, title, months], i) => {
+    const saving = primeSaving(cost, months, cost[period]);
+    return el('label', { className: 'prime-period' },
+      el('input', { type: 'radio', name, value: period, checked: i === 0 }),
+      ' ', el('b', { textContent: title }),
+      ' — ', votesAmount(cost[period]),
+      saving ? el('span', { className: 'prime-saving', textContent: tr(' (выгода {0} %)', saving) }) : '');
+  }));
+  box.addEventListener('change', named);
+  named();
 }
 
-// initGive is "Подарить подписку": the recipient picked as in the bank.
-function initGive(me) {
-  const form = $('give');
-  const period = $('give-period');
-  const picker = recipientPicker({
-    to: $('give-to'), me, people: $('give-people'), shown: $('give-recipient'),
-    picked: () => period.focus(),
-  });
-
-  period.replaceChildren(...primePeriods.map(([value]) => el('option', { value, textContent: primeTerms[value] })));
+// initBuy is "Оформить подписку" for oneself.
+function initBuy(me, cost) {
+  const form = $('buy');
+  const button = $('buy-button');
+  periodChoices($('buy-periods'), 'buy-period', cost, button, (votes) => tr('Оформить за {0}', votes));
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     hideError(error);
     $('notice').hidden = true;
+    button.disabled = true;
 
-    const submit = form.querySelector('button[type="submit"]');
-    submit.disabled = true;
+    try {
+      const bought = await api.buyPrime(chosenPeriod($('buy-periods')));
+      Object.assign(me, { votes: bought.balance, primeUntil: bought.until, prime: true });
+      showState(me);
+      say(tr('Prime ваш'), tr('Подписка действует до {0}.', formatDateTime(bought.until)), ' ',
+        el('a', { href: '/prime?act=style', textContent: tr('Оформить страницу') }));
+    } catch (e) {
+      showError(error, e);
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
+// initGive is "Подарить": the recipient picked as in the bank.
+function initGive(me, cost) {
+  const form = $('gift');
+  const button = $('give-button');
+  const picker = recipientPicker({
+    to: $('give-to'), me, people: $('give-people'), shown: $('give-recipient'),
+    picked: () => form.querySelector('input[name="give-period"]:checked')?.focus(),
+  });
+  periodChoices($('give-periods'), 'give-period', cost, button, (votes) => tr('Подарить за {0}', votes));
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    hideError(error);
+    $('notice').hidden = true;
+    button.disabled = true;
 
     try {
       const recipient = picker.found() ?? await picker.lookUp();
@@ -96,7 +119,7 @@ function initGive(me) {
         return;
       }
 
-      const given = await api.givePrime(recipient.nickname, period.value);
+      const given = await api.givePrime(recipient.nickname, chosenPeriod($('give-periods')));
       me.votes = given.balance;
       showState(me);
       picker.clear();
@@ -105,7 +128,7 @@ function initGive(me) {
     } catch (e) {
       showError(error, e);
     } finally {
-      submit.disabled = false;
+      button.disabled = false;
     }
   });
 }
@@ -146,6 +169,13 @@ function swatch(group, value, name, sample, chosen) {
 // the photo, the pattern behind the page and the smiley by the status.
 function initStyle(me) {
   const form = $('style');
+  const active = Boolean(activeUntil(me));
+
+  $('style-about').textContent = active
+    ? tr('Так ваша страница выглядит для всех, пока у вас есть Prime.')
+    : tr('Примерьте оформление: сохранить его можно, когда у вас есть Prime.');
+  $('style-save').hidden = !active;
+  $('style-buy').hidden = active;
   const style = { name: 'amethyst', frame: 'amethyst', background: '', mood: '', ...me.primeStyle };
   const photo = avatarURL(me, 'small');
 
@@ -214,17 +244,20 @@ if (!me) {
   location.replace('/');
 } else {
   renderChrome(me);
-  $('loading').hidden = true;
+  $('tab-' + tab).classList.add('active');
+  $('tab-' + tab).setAttribute('aria-current', 'page');
 
   try {
     const cost = await prices;
-    $('plans').replaceChildren(...primePeriods.map((p) => plan(me, cost, p)));
     showState(me);
-    initGive(me);
+    initBuy(me, cost);
+    initGive(me, cost);
     initInvisible(me);
     initStyle(me);
-    $('prime').hidden = false;
+    $('loading').hidden = true;
+    $(tab === 'style' ? 'style-part' : tab).hidden = false;
   } catch (e) {
+    $('loading').hidden = true;
     showError(error, e);
   }
 }

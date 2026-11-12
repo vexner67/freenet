@@ -863,9 +863,9 @@ async function decor(answered) {
   $('decor').hidden = false;
 }
 
-// prime is "Prime": what a month, three months and a year cost.
+// prime is "Prime": what a month and a year cost.
 async function prime(answered) {
-  const fields = { month: $('prime-month'), quarter: $('prime-quarter'), year: $('prime-year') };
+  const fields = { month: $('prime-month'), year: $('prime-year') };
   const save = $('prime-form').querySelector('button[type=submit]');
 
   const show = (prices) => {

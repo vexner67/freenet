@@ -29,104 +29,94 @@
     <div class="page">
       <div class="page-title">Prime</div>
       <div class="page-body">
-        <div class="container-gray">
+        <nav class="tabs" aria-label="Prime">
+          <a id="tab-plan" href="/prime">Подписка</a>
+          <a id="tab-gift" href="/prime?act=gift">Подарить</a>
+          <a id="tab-style" href="/prime?act=style">Оформление</a>
+        </nav>
         <p id="loading">Загрузка…</p>
         <div class="error" id="error" hidden></div>
         <div class="notice" id="notice" hidden></div>
 
-        <div id="prime" hidden>
-          <div class="prime-hero">
-            <img class="prime-hero-badge" src="/static/icons/prime.svg" alt="" width="48" height="48">
-            <div>
-              <b class="prime-hero-title">Prime</b>
-              <p class="prime-state" id="state"></p>
-            </div>
-          </div>
-
-          <div class="prime-window">
-            <div class="prime-window-title"><img src="/static/prime/perk-badge.svg" alt="" width="16" height="16">Что даёт Prime</div>
-            <div class="prime-window-body">
-              <ul class="prime-perks">
-                <li><img src="/static/prime/perk-badge.svg" alt="" width="32" height="32"><div><b>Значок Prime</b> после имени — везде, где у подтверждённых страниц стоит галочка.</div></li>
-                <li><img src="/static/prime/perk-style.svg" alt="" width="32" height="32"><div><b>Оформление страницы</b>: цвет имени, рамка фото, узор за страницей и смайлик настроения у статуса.</div></li>
-                <li><img src="/static/prime/perk-amethyst.svg" alt="" width="32" height="32"><div><b>Аметистовый стиль</b> сайта во «Внешнем виде» настроек.</div></li>
-                <li><img src="/static/prime/perk-gift.svg" alt="" width="32" height="32"><div><b>Подарки Prime</b> — коллекция, которую могут отправлять только подписчики.</div></li>
-                <li><img src="/static/prime/perk-noads.svg" alt="" width="32" height="32"><div><b>Без рекламы</b> в новостях.</div></li>
-                <li><img src="/static/prime/perk-invisible.svg" alt="" width="32" height="32"><div><b>Невидимка</b>: никто не видит, что вы онлайн и когда были в сети, ваши просмотры историй не считаются, а заходя на чужие страницы, вы не попадаете в их гости.</div></li>
-                <li><img src="/static/prime/perk-transfer.svg" alt="" width="32" height="32"><div><b>Переводы голосов без комиссии</b>.</div></li>
-                <li><img src="/static/prime/perk-stickers.svg" alt="" width="32" height="32"><div><b>Меньший налог с продажи своих наборов стикеров</b>.</div></li>
-              </ul>
-            </div>
-          </div>
+        <div id="plan" hidden>
+          <table class="info prime-info">
+            <tr><th scope="row">Подписка:</th><td id="state"></td></tr>
+            <tr><th scope="row">На счету:</th><td><span id="balance"></span> · <a href="/votes?act=top-up">пополнить</a></td></tr>
+          </table>
 
           <div id="buy-part" hidden>
-            <h4>Купить подписку</h4>
-            <p>Голоса уходят в Казну Freenet. На вашем счету <span id="balance"></span>.</p>
-            <div class="prime-plans" id="plans"></div>
-          </div>
-
-          <div class="prime-window prime-gift">
-            <div class="prime-window-title"><img src="/static/prime/perk-gift.svg" alt="" width="16" height="16">Подарить подписку</div>
-            <div class="prime-window-body">
-              <img class="prime-gift-picture" src="/static/prime/perk-gift.svg" alt="" width="64" height="64">
-          <form id="give">
-            <table class="form">
-              <tr>
-                <th><label for="give-to">Получатель:</label></th>
-                <td class="control">
-                  <input type="text" id="give-to" maxlength="200" required spellcheck="false" autocomplete="off" placeholder="имя, никнейм или ссылка на страницу">
-                  <div class="recipient-options" id="give-people" hidden></div>
-                  <p class="hint bank-recipient" id="give-recipient" hidden></p>
-                </td>
-              </tr>
-              <tr>
-                <th><label for="give-period">Срок:</label></th>
-                <td class="control"><select id="give-period"></select></td>
-              </tr>
-            </table>
-            <div class="actions"><button class="button" type="submit">Подарить</button></div>
-          </form>
-            </div>
-          </div>
-
-          <div id="style-part" hidden>
-            <div class="prime-window">
-            <div class="prime-window-title"><img src="/static/prime/perk-style.svg" alt="" width="16" height="16">Оформление страницы</div>
-            <div class="prime-window-body">
-            <p>Так ваша страница выглядит для всех, пока у вас есть Prime.</p>
-            <div class="prime-preview" id="style-preview">
-              <span class="prime-sparkle-box" id="style-photo"><img class="avatar" id="style-avatar" src="/static/avatar.svg" alt="" width="60" height="60"></span>
-              <div>
-                <span id="style-title"></span>
-                <div id="style-status"></div>
-              </div>
-              <img class="prime-mood" id="style-mood" src="/static/prime/mood-happy.svg" alt="" width="32" height="32" hidden>
-            </div>
-            <form id="style">
-              <p class="prime-style-label"><img src="/static/prime/style-name.svg" alt="" width="16" height="16">Цвет имени:</p>
-              <div class="prime-swatches" id="style-names"></div>
-              <p class="prime-style-label"><img src="/static/prime/style-frame.svg" alt="" width="16" height="16">Рамка фото:</p>
-              <div class="prime-swatches" id="style-frames"></div>
-              <p class="prime-style-label"><img src="/static/prime/style-pattern.svg" alt="" width="16" height="16">Узор за страницей:</p>
-              <div class="prime-swatches" id="style-backgrounds"></div>
-              <p class="prime-style-label"><img src="/static/prime/mood-happy.svg" alt="" width="16" height="16">Настроение у статуса:</p>
-              <div class="prime-swatches" id="style-moods"></div>
-              <div class="actions"><button class="button" type="submit">Сохранить</button></div>
+            <div class="section-title">Оформить подписку</div>
+            <form class="container-gray prime-form" id="buy">
+              <table class="form">
+                <tr>
+                  <th scope="row">Срок:</th>
+                  <td class="prime-periods" id="buy-periods"></td>
+                </tr>
+                <tr><td></td><td><button class="button" type="submit" id="buy-button">Оформить</button><div class="hint">Голоса уходят в Казну Freenet.</div></td></tr>
+              </table>
             </form>
-            </div>
-            </div>
           </div>
 
           <div id="invisible-part" hidden>
-            <h4>Невидимка</h4>
-            <table class="form">
-              <tr>
-                <th class="check-cell"><input type="checkbox" id="invisible"></th>
-                <td><label for="invisible">Скрывать, что я онлайн и когда был(а) в сети, смотреть истории незаметно и не оставлять следов в гостях чужих страниц</label></td>
-              </tr>
-            </table>
+            <div class="section-title">Невидимка</div>
+            <p class="prime-check"><input type="checkbox" id="invisible"> <label for="invisible">Скрывать, что я онлайн и когда был(а) в сети, смотреть истории незаметно и не оставлять следов в гостях чужих страниц</label></p>
           </div>
+
+          <div class="section-title">Что даёт Prime</div>
+          <table class="info prime-perks">
+            <tr><th scope="row">Значок:</th><td>после имени — везде, где у подтверждённых страниц стоит галочка</td></tr>
+            <tr><th scope="row">Оформление:</th><td>цвет имени, рамка фото, узор за страницей и смайлик настроения у статуса — <a href="/prime?act=style">посмотреть</a></td></tr>
+            <tr><th scope="row">Стиль сайта:</th><td>аметистовый, во «Внешнем виде» настроек</td></tr>
+            <tr><th scope="row">Подарки:</th><td>коллекция Prime, которую могут дарить только подписчики</td></tr>
+            <tr><th scope="row">Новости:</th><td>без рекламы</td></tr>
+            <tr><th scope="row">Невидимка:</th><td>никто не видит, что вы онлайн и когда были в сети, ваши просмотры историй не считаются, а на чужих страницах вы не попадаете в гости</td></tr>
+            <tr><th scope="row">Переводы голосов:</th><td>без комиссии</td></tr>
+            <tr><th scope="row">Стикеры:</th><td>меньший налог с продажи своих наборов</td></tr>
+          </table>
         </div>
+
+        <form class="container-gray prime-form" id="gift" hidden>
+          <table class="form">
+            <tr>
+              <th scope="row"><label for="give-to">Кому:</label></th>
+              <td class="recipient-field">
+                <input class="text" type="text" id="give-to" maxlength="200" required spellcheck="false" autocomplete="off" placeholder="имя, никнейм или ссылка на страницу">
+                <div class="recipient-options" id="give-people" hidden></div>
+                <p class="hint bank-recipient" id="give-recipient" hidden></p>
+              </td>
+            </tr>
+            <tr>
+              <th scope="row">Срок:</th>
+              <td class="prime-periods" id="give-periods"></td>
+            </tr>
+            <tr><td></td><td><button class="button" type="submit" id="give-button">Подарить</button><div class="hint">Получатель узнает о подарке из уведомлений. На вашем счету <span id="give-balance"></span>.</div></td></tr>
+          </table>
+        </form>
+
+        <div id="style-part" hidden>
+          <p class="hint" id="style-about"></p>
+          <div class="prime-preview" id="style-preview">
+            <span class="prime-sparkle-box" id="style-photo"><img class="avatar" id="style-avatar" src="/static/avatar.svg" alt="" width="60" height="60"></span>
+            <div>
+              <span id="style-title"></span>
+              <div id="style-status"></div>
+            </div>
+            <img class="prime-mood" id="style-mood" src="/static/prime/mood-happy.svg" alt="" width="32" height="32" hidden>
+          </div>
+          <form id="style">
+            <div class="section-title">Цвет имени</div>
+            <div class="prime-swatches" id="style-names"></div>
+            <div class="section-title">Рамка фото</div>
+            <div class="prime-swatches" id="style-frames"></div>
+            <div class="section-title">Узор за страницей</div>
+            <div class="prime-swatches" id="style-backgrounds"></div>
+            <div class="section-title">Настроение у статуса</div>
+            <div class="prime-swatches" id="style-moods"></div>
+            <div class="prime-style-save">
+              <button class="button" type="submit" id="style-save">Сохранить</button>
+              <a class="button" href="/prime" id="style-buy" hidden>Оформить Prime</a>
+            </div>
+          </form>
         </div>
       </div>
     </div>

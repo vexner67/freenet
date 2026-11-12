@@ -1133,13 +1133,12 @@ test('adminEconomy: the words under the treasury and the votes of the pages', ()
   assert.equal(adminEconomy({ votes: 5 }).held, 'голосов на счетах людей');
 });
 
-test('Prime is sold by the month, the quarter and the year', () => {
-  assert.deepEqual(primePeriods.map(([v, , months]) => [v, months]), [['month', 1], ['quarter', 3], ['year', 12]]);
-  const prices = { month: 150, quarter: 400, year: 1500 };
+test('Prime is sold by the month and the year', () => {
+  assert.deepEqual(primePeriods.map(([v, , months]) => [v, months]), [['month', 1], ['year', 12]]);
+  const prices = { month: 150, year: 1500 };
   assert.equal(primeSaving(prices, 1, 150), 0);
-  assert.equal(primeSaving(prices, 3, 400), 11);
   assert.equal(primeSaving(prices, 12, 1500), 16);
-  assert.equal(primeSaving(prices, 3, 900), 0);
+  assert.equal(primeSaving(prices, 12, 2000), 0);
   assert.deepEqual(voteOperation({ kind: 'prime', amount: -150, note: 'month' }, 'a'), { title: 'Prime на месяц', role: '' });
   assert.deepEqual(voteOperation({ kind: 'prime', amount: -400, note: 'quarter', peer: { id: 'b' } }, 'a'), { title: 'Prime на квартал', role: 'Получатель:' });
   assert.equal(notificationVerb('prime', { gender: 'female' }), 'подарила');

@@ -227,6 +227,9 @@ function createRuntime() {
         next.queue.push(value);
       }
     }
+    // remove takes the item shown at its place, so a queue changed meanwhile
+    // loses nothing else.
+    if (action === 'remove' && next.queue[value.index]?.mediaId === value.mediaId) next.queue.splice(value.index, 1);
     if (action === 'next') {
       const first = next.queue.shift();
       if (first) Object.assign(next, { kind: first.kind, mediaId: first.mediaId, playing: true, position: 0 });
@@ -288,5 +291,6 @@ function createRuntime() {
     blocked(id) { return voice?.blocked(id) ?? false; },
     startAudio() { return voice?.startAudio(); },
     dockScreen(rect, framed) { screen?.dock(rect, framed); },
+    screenNow() { return screen?.now() ?? { title: '', position: 0, length: 0 }; },
   };
 }

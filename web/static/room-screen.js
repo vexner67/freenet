@@ -2,6 +2,7 @@
 // outer document, while pages provide only a rectangle and server commands.
 import { api } from './api.js';
 import { el } from './layout.js';
+import { audioArtist, audioTitle } from './labels.js';
 import { createPlayer } from './player.js';
 import { needsRoomSeek, playbackPosition } from './room-sync.js';
 import { tr } from './i18n.js';
@@ -14,6 +15,8 @@ export function createRoomScreen({ onEnded, onError }) {
   let mediaKey = '';
   let actual = { position: 0, length: 0, on: false };
   let failed = '';
+  // title names what plays: the song, or a video of YouTube.
+  let title = '';
   const player = createPlayer(host, {
     embedded: true,
     onEnded(audio) {
@@ -46,12 +49,14 @@ export function createRoomScreen({ onEnded, onError }) {
     if (key === mediaKey) { sync(); return; }
     mediaKey = key;
     failed = '';
+    title = next.kind === 'youtube' ? tr('Видео YouTube') : '';
     if (!next.kind) { player.stop(); return; }
     try {
       const audio = next.kind === 'youtube'
         ? { id: next.mediaId, kind: 'youtube', link: `https://www.youtube.com/watch?v=${encodeURIComponent(next.mediaId)}`, artist: 'YouTube', title: tr('Общий экран') }
         : (await api.audioByID(next.mediaId)).audio;
       if (key !== mediaKey) return;
+      if (next.kind === 'audio') title = `${audioArtist(audio)} — ${audioTitle(audio)}`;
       player.restore({ queue: [audio], index: 0, on: playback.playing,
         position: playbackPosition(playback, Date.now() + clockOffset), loudness: 80, muted: false });
     } catch (error) { if (key === mediaKey) onError(error); }
@@ -67,6 +72,12 @@ export function createRoomScreen({ onEnded, onError }) {
       host.style.top = `${rect.top + (offset?.top ?? 0)}px`;
       host.style.width = `${Math.max(0, rect.width)}px`;
       host.style.height = `${Math.max(0, rect.height)}px`;
+    },
+    // now is what plays, where in it the screen is and how long it is.
+    now() {
+      if (!playback?.kind) return { title: '', position: 0, length: 0 };
+      const at = actual.id === playback.mediaId ? actual : { position: playbackPosition(playback, Date.now() + clockOffset), length: 0 };
+      return { title, position: at.position, length: at.length };
     },
     mute(value) { player.mute(value); },
     close() { clearInterval(timer); mediaKey = ''; playback = null; player.destroy(); host.remove(); },

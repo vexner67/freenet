@@ -1381,12 +1381,12 @@ export function firmActionName(action) {
 // how many months each is.
 export const primePeriods = [
   ['month', tr('Месяц'), 1],
-  ['quarter', tr('Квартал'), 3],
   ['year', tr('Год'), 12],
 ];
 
 // primeTerms name the periods in the middle of a phrase and in the list
-// of "Срок:": "Prime на квартал".
+// of "Срок:": "Prime на год". The quarter is no longer sold, but the
+// statements of those who bought it still name it.
 export const primeTerms = { month: tr('месяц'), quarter: tr('квартал'), year: tr('год') };
 
 // The choices of "Оформление страницы" of Prime with their names,

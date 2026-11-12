@@ -428,7 +428,6 @@ b, strong { font-weight: bold; }
 .prime-swatch-sample { display: block; width: 40px; height: 40px; box-sizing: border-box; background-color: var(--back-f2f2f2); }
 .prime-swatch-bg { border: 1px solid var(--line-ccc); background: var(--back-f2f5f8) var(--prime-pattern, none); }
 .prime-swatch-none { display: block; width: 16px; height: 16px; color: var(--text-626262); }
-.prime-style-label { margin: 10px 0 4px; font-weight: bold; }
 .prime-preview { display: flex; gap: 10px; align-items: center; margin: 8px 0; padding: 10px; border: 1px solid var(--line-ccc); }
 .prime-preview .avatar { width: 60px; height: 60px; }
 /* Search */
@@ -999,24 +998,6 @@ a.poll-result-name { cursor: pointer; }
 .sticker-studio-grid { gap: 10px; margin: 0 0 12px; }
 .sticker-studio-item { display: flex; flex-direction: column; align-items: center; box-sizing: border-box; width: 124px; padding: 8px; gap: 6px; border: 1px solid var(--line-c0cad5); border-radius: 3px; background: var(--back-fff); }
 .sticker-studio-item img, .sticker-studio-item .attachment-loading { width: 72px; height: 72px; object-fit: contain; background: var(--back-fff); }
-/* "Prime" (/prime): the badge with the term, the perks and the
-   three periods side by side. */
-.prime-hero { display: flex; gap: 12px; align-items: center; margin: 0 0 8px; }
-.prime-hero-title { color: var(--text-6b3fb8); font-size: 16px; }
-.prime-state { margin: 4px 0 0; }
-.prime-perks { margin: 0 0 8px; padding-left: 20px; }
-.prime-perks li { margin: 0 0 4px; }
-.prime-plans { display: flex; gap: 10px; margin: 0 0 8px; }
-.prime-plan {
-  flex: 1;
-  padding: 10px;
-  border: 1px solid var(--back-c7b2ee);
-  background: var(--back-fff);
-  text-align: center;
-}
-.prime-plan-name { display: block; margin-bottom: 6px; color: var(--text-6b3fb8); font-size: 13px; }
-.prime-plan-price { font-size: 16px; }
-.prime-plan-saving { margin: 2px 0 8px; color: var(--text-626262); }
 .finance { display: flex; gap: 20px; align-items: flex-start; }
 .finance-about { flex: 1; }
 .finance-about p { margin: 0 0 8px; }
@@ -1308,7 +1289,6 @@ input.step-value { font-size: 16px; }
    in a column of their own. */
 .finance { flex-direction: column-reverse; align-items: stretch; }
 .finance-balance { width: auto; }
-.prime-plans { flex-direction: column; }
 .collectible-page { flex-direction: column; align-items: center; }
 .collectible-info { width: 100%; }
 .collectible-grid { grid-template-columns: repeat(2, 1fr); }
@@ -2299,17 +2279,17 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 .m .container-gray .settings-delete { margin: 20px -12px -14px; padding: 16px 12px; }
 .m .settings-notice { position: fixed; top: 50px; right: 8px; left: 8px; z-index: 40; margin: 0; }
 
-/* "Prime": the perks, the plans and the styles apart. */
-.m .prime-hero { gap: 14px; margin: 0 0 18px; }
-.m .prime-perks { margin: 0 0 16px; padding-left: 20px; }
-.m .prime-perks li { margin: 0 0 10px; line-height: 1.45; }
-.m .prime-plans { gap: 12px; margin: 0 0 16px; }
-.m .prime-plan { padding: 16px 12px; }
-.m .prime-plan-name { margin-bottom: 8px; font-size: 15px; }
-.m .prime-plan-saving { margin: 6px 0 12px; }
-.m .prime-style-label { display: block; margin: 18px 0 8px; }
-.m .prime-swatches { gap: 8px; }
-.m .prime-state { margin-bottom: 12px; line-height: 1.45; }
+/* "Prime": the periods one under another, big enough for a finger. */
+.m .prime-info, .m .prime-perks { margin: 0 0 16px; }
+.m .prime-info th, .m .prime-perks th { width: 40%; }
+.m .prime-form { margin: 0 0 16px; }
+.m .prime-periods .prime-period { display: block; padding: 8px 0; }
+.m .prime-saving { color: var(--text-626262); }
+.m .prime-check { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 16px; line-height: 1.45; }
+.m .prime-check input { flex: none; margin: 3px 0 0; }
+.m #style-part .prime-swatches { gap: 8px; margin: 8px 0 16px; }
+.m .prime-style-save { margin: 16px 0 4px; }
+
 
 /* Lists of groups and the like: a row for each, with room between the
    photo, the words and the buttons, which stand side by side. */
@@ -2562,39 +2542,6 @@ body.prime-bg .page-title { background-image: linear-gradient(color-mix(in srgb,
 .call-button { width: 80px; font-size: 12px; }
 .call-disc { width: 60px; height: 60px; }
 
-/* /prime as the profile: the title of the subscription in amethyst, and
-   every part a block with a grey title bar. */
-.prime-hero { margin: 0 0 12px; }
-.prime-window { margin: 0 0 14px; background: var(--back-fff); }
-.prime-window-title {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  padding: 3px 8px;
-  background: var(--back-e6e6e6);
-  border-top: 1px solid var(--line-8b8b8b);
-  color: var(--text-626262);
-  font-weight: bold;
-  line-height: 13px;
-}
-.prime-window-body { padding: 10px 0; }
-.prime-window .prime-perks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.prime-window .prime-perks li {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-  margin: 0;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--line-dedede);
-  line-height: 1.35;
-}
-.prime-perks img { flex: none; }
-.prime-gift .prime-window-body { display: flex; gap: 12px; align-items: flex-start; }
-.prime-gift-picture { flex: none; }
-.prime-gift form { flex: 1; min-width: 0; }
-.prime-gift table.form { width: 100%; margin: 0; }
-.prime-window .prime-style-label { display: flex; gap: 6px; align-items: center; margin: 12px 0 6px; padding-bottom: 3px; border-bottom: 1px dotted var(--back-c7b2ee); color: var(--text-6b3fb8); }
-.prime-window .prime-preview { border: 1px dashed var(--text-6b3fb8); border-radius: 4px; }
 
 .prime-page.prime-frame-none .avatar { border: 0; outline: none; }
 
@@ -2622,10 +2569,6 @@ body.birthday.prime-bg.prime-bg-trip::before { content: none; }
 .avatar-box .birthday-hat { position: absolute; top: -18px; left: -10px; z-index: 2; transform: rotate(-18deg); pointer-events: none; }
 .birthday .avatar-box { position: relative; }
 
-.prime-window .prime-perks { grid-template-columns: 1fr; }
-.prime-gift .prime-window-body { flex-direction: column; }
-.prime-gift form { width: 100%; }
-.prime-gift-picture { align-self: center; }
 
 /* The line of the painter by the pointer on "Холст". */
 .canvas-tip {
@@ -3316,9 +3259,6 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 
 /* Rooms use the same quiet blocks and controls as the profile. */
 .room-toolbar { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 8px 0; }
-.room-form { display: grid; gap: 8px; padding: 12px; margin: 10px 0; }
-.room-form input:not([type=checkbox]), .room-form select { box-sizing: border-box; width: 100%; }
-.room-form .button { justify-self: start; }
 .room-check { display: flex; gap: 6px; align-items: center; }
 .room-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 8px; border-bottom: 1px solid var(--line-ccc); }
 .room-row > div { min-width: 0; overflow-wrap: anywhere; }
@@ -3327,29 +3267,57 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 .room-row-people { display: flex; flex-shrink: 0; gap: 3px; }
 .room-row-people img { width: 32px; height: 32px; object-fit: cover; }
 .rooms-block { margin: 12px 0; }
-.room-members { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; grid-auto-rows: 190px; min-height: calc(var(--room-rows, 1) * 190px); padding: 10px 0; }
-.room-member { min-width: 0; height: 190px; text-align: center; overflow-wrap: anywhere; }
-.room-member img { box-sizing: border-box; width: 64px; height: 64px; object-fit: cover; border: 2px solid transparent; }
+/* A room: the bar of one's own buttons stays at the top while the page
+   scrolls; the people in a strip with a place for each who may come; the
+   shared screen with what plays, its time and the queue on the left and the
+   chat of a fixed height beside it, so a film and the talk are seen at once. */
+.room-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin: 0 0 6px; }
+.room-head .room-toolbar { margin: 0; }
+.room-bar { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-height: 26px; margin: 0 -10px 8px; padding: 6px 10px; border-top: 1px solid var(--line-dedede); border-bottom: 1px solid var(--line-dedede); background: var(--back-f7f7f7); }
+.room-own-controls { display: flex; gap: 6px; }
+.room-status { margin: 0; }
+.room-members { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; height: 128px; margin: 0 0 8px; overflow: hidden; }
+.room-member { position: relative; min-width: 0; padding: 4px 2px; text-align: center; overflow-wrap: anywhere; }
+.room-member.empty { border: 1px dashed var(--line-dedede); }
+.room-member img { box-sizing: border-box; width: 50px; height: 50px; object-fit: cover; border: 2px solid transparent; }
 .room-member.speaking img { border-color: var(--text-45688e); }
-.room-member-name { margin-top: 4px; height: 30px; overflow: hidden; }
-.room-member-state { min-height: 26px; margin: 3px 0; }
-.room-member-tools { display: grid; gap: 4px; visibility: hidden; }
+.room-member-name { height: 26px; margin-top: 2px; overflow: hidden; line-height: 13px; }
+.room-member-state { height: 13px; margin: 1px 0; }
+.room-member-tools { display: grid; gap: 1px; visibility: hidden; }
 .room-member:hover .room-member-tools, .room-member:focus-within .room-member-tools { visibility: visible; }
-.room-chat { height: 260px; overflow-y: auto; overflow-wrap: anywhere; border-bottom: 1px solid var(--line-ccc); }
-.room-chat-message { padding: 7px 4px; border-bottom: 1px solid var(--line-ccc); }
-.room-chat-text { white-space: pre-wrap; margin-top: 4px; }
-.room-chat-message > a { font-weight: bold; }
-.room-chat-message .sticker { max-width: 128px; }
-.room-own-controls { display: flex; gap: 8px; padding: 10px 0; background: var(--back-fff); }
-.room-status { min-height: 18px; }
-.room-video-slot { aspect-ratio: 16 / 9; width: 100%; background: var(--back-f0f0f0); }
-.room-screen-panel.listen .room-video-slot { display: none; }
-.room-screen-panel { margin: 12px 0; }
+.room-main { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 10px; align-items: start; }
+.room-screen-panel, .room-chat-panel { min-width: 0; }
+.room-now { margin: 6px 0 10px; }
+.room-now-title { min-height: 14px; overflow: hidden; font-weight: bold; white-space: nowrap; text-overflow: ellipsis; }
+.room-progress { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; }
+.room-progress input { flex: 1; min-width: 0; margin: 0; accent-color: var(--back-595959); }
+.room-time { width: 36px; color: var(--text-626262); font-variant-numeric: tabular-nums; }
+.room-time:last-child { text-align: right; }
+.room-screen-controls { display: flex; gap: 6px; margin: 8px 0 0; }
+.room-queue { margin: 6px 0; padding-left: 22px; }
+.room-queue li { padding: 3px 0; border-bottom: 1px solid var(--line-dedede); }
+.room-queue-title { overflow-wrap: anywhere; }
+.room-queue-remove { margin-left: 8px; }
+.room-queue-empty { margin: 6px 0; }
+.room-add { margin: 8px 0 0; }
+.room-chat-panel { display: flex; flex-direction: column; height: 460px; border-left: 1px solid var(--line-dedede); padding-left: 10px; }
+.room-chat { flex: 1; min-height: 0; overflow-y: auto; overflow-wrap: anywhere; }
+.room-chat-empty { margin: 6px 0; }
+.room-chat-message { padding: 5px 0; border-bottom: 1px solid var(--line-dedede); }
+.room-chat-head { display: flex; align-items: baseline; gap: 4px; }
+.room-chat-head > a { min-width: 0; overflow: hidden; font-weight: bold; white-space: nowrap; text-overflow: ellipsis; }
+.room-chat-date { margin-left: auto; flex: none; color: var(--text-888); font-size: 10px; }
+.room-chat-text { margin-top: 2px; white-space: pre-wrap; }
+.room-chat-message .sticker { max-width: 96px; }
+.room-chat-form { flex: none; padding-top: 6px; border-top: 1px solid var(--line-ccc); }
+.room-chat-form textarea { box-sizing: border-box; width: 100%; height: 44px; resize: none; }
+.room-chat-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.room-stickers { flex: none; max-height: 180px; overflow-y: auto; }
+.room-video-slot { aspect-ratio: 16 / 9; width: 100%; margin: 6px 0 0; background: var(--back-f0f0f0); }
 .room-youtube-form { display: flex; gap: 6px; margin: 8px 0; }
 .room-youtube-form input { min-width: 0; flex: 1; }
-.room-seek-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
-.room-seek-form input { width: 70px; }
-.room-queue { min-height: 20px; padding-left: 24px; }
+.room-form table.form { width: 100%; }
+.room-form input.text, .room-form select { box-sizing: border-box; width: 100%; }
 .room-media-host { position: fixed; z-index: 3; overflow: hidden; background: var(--back-fff); }
 .room-media-host.room-media-away { left: -10000px !important; top: 0 !important; width: 320px !important; height: 180px !important; }
 .room-media-host .room-player { position: static; inset: auto; width: 100%; height: 100%; max-width: none; margin: 0; padding: 0; border: 0; box-shadow: none; background: var(--back-fff); }
@@ -3364,12 +3332,22 @@ a.game-hud-cell:hover, button.game-hud-cell:hover { background: var(--back-f2f2f
 /* A phone gives the room its bottom controls instead of section tabs. */
 .m.room-page .tabbar, .m.room-page .footer { display: none; }
 .m.room-page .page-body { padding-bottom: 68px; }
-.m .room-members { display: grid; grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 82px; justify-content: start; overflow-x: auto; grid-auto-rows: 190px; min-height: 190px; }
-.m .room-member { min-height: 150px; }
-.m .room-member-tools { visibility: visible; }
-.m .room-own-controls { position: fixed; inset: auto 0 0; z-index: 4; justify-content: space-evenly; box-sizing: border-box; min-height: 52px; padding: 8px; border-top: 1px solid var(--line-ccc); }
-.m .room-own-controls .button { min-height: 36px; }
+/* On a phone the room is one column: the people scroll sideways, the
+   screen and then the chat, which is as high as half the screen; one's
+   own buttons stay at the bottom. */
+.m .room-members { display: grid; grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 92px; justify-content: start; height: 196px; overflow-x: auto; }
+.m .room-member-tools { gap: 6px; visibility: visible; }
+.m .room-main { display: flex; flex-direction: column; align-items: stretch; }
+.m .room-screen-panel { display: contents; }
+.m .room-queue-head, .m .room-queue, .m .room-queue-empty, .m .room-add { order: 3; }
+.m .room-chat-panel { order: 2; height: 55vh; margin: 0 0 12px; padding-left: 0; border-left: 0; }
+.m .room-chat-form textarea { height: 52px; font-size: 16px; }
+.m .room-own-controls { position: fixed; inset: auto 0 0; z-index: 4; justify-content: space-evenly; box-sizing: border-box; min-height: 52px; padding: 8px; border-top: 1px solid var(--line-ccc); background: var(--back-fff); }
+.m .room-own-controls .button, .m .room-screen-controls .button, .m .room-bar .button { min-height: 36px; }
+.m .room-bar { position: static; margin: 0 0 8px; }
 .m .room-youtube-form { flex-wrap: wrap; }
+.m .room-time { width: 42px; }
+.m .room-progress input { height: 28px; }
 .m .room-youtube-form input { flex-basis: 100%; }
 .m .room-row { gap: 6px; padding: 10px 4px; }
 .m .room-row-people img { width: 24px; height: 24px; }
