@@ -141,6 +141,7 @@ function initForm(me) {
 
   const documents = initDocuments({
     link: $('post-doc'),
+    widget: $('post-widget'),
     list: $('post-documents'),
     onChange: () => {
       if (documents.count()) form.classList.add('expanded');

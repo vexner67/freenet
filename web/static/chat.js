@@ -383,7 +383,7 @@ async function startEdit(m) {
   documents.clear();
   audios.clear();
   videos.clear();
-  $('doc').hidden = true;
+  $('doc').hidden = $('widget').hidden = true;
   $('audio').hidden = true;
   $('video').hidden = true;
   $('send').textContent = tr('Сохранить');
@@ -399,7 +399,7 @@ function cancelEdit() {
   autosize($('text'));
   attachments.clear();
   $('editing').hidden = true;
-  $('doc').hidden = $('audio').hidden = $('video').hidden = false;
+  $('doc').hidden = $('widget').hidden = $('audio').hidden = $('video').hidden = false;
   $('send').textContent = tr('Отправить');
 }
 
@@ -894,7 +894,7 @@ function setUpInput() {
   $('my-avatar').src = avatarURL(me, 'small');
   attachments = initAttachments({ link: $('attach'), also: [$('graffiti')], input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
   initGraffiti({ link: $('graffiti'), attachments });
-  documents = initDocuments({ link: $('doc'), list: $('documents'), upload: true });
+  documents = initDocuments({ link: $('doc'), widget: $('widget'), list: $('documents'), upload: true });
   audios = initAudios({ link: $('audio'), list: $('audios') });
   videos = initVideos({ link: $('video'), list: $('videos') });
   const showStickers = initStickers({ panel: $('stickers'), error: $('error'), onPick: sendSticker, onSent: () => closeEmoji() });

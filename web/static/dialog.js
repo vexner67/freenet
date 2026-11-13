@@ -380,7 +380,7 @@ function startEdit(m) {
   documents.clear();
   audios.clear();
   videos.clear();
-  $('doc').hidden = true;
+  $('doc').hidden = $('widget').hidden = true;
   $('audio').hidden = true;
   $('video').hidden = true;
   text.focus();
@@ -394,7 +394,7 @@ function cancelEdit() {
   $('text').value = '';
   autosize($('text'));
   attachments.clear();
-  $('doc').hidden = $('audio').hidden = $('video').hidden = false;
+  $('doc').hidden = $('widget').hidden = $('audio').hidden = $('video').hidden = false;
   $('editing').hidden = true;
   $('send').textContent = tr('Отправить');
 }
@@ -735,7 +735,7 @@ async function setUpInput({ canWrite, primeOnly, messagePrice: price = 0 }) {
   $('peer-avatar').addEventListener('click', openContact);
   attachments = initAttachments({ link: $('attach'), also: [$('graffiti')], input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
   initGraffiti({ link: $('graffiti'), attachments });
-  documents = initDocuments({ link: $('doc'), list: $('documents'), upload: true });
+  documents = initDocuments({ link: $('doc'), widget: $('widget'), list: $('documents'), upload: true });
   audios = initAudios({ link: $('audio'), list: $('audios') });
   videos = initVideos({ link: $('video'), list: $('videos') });
   const showStickers = initStickers({ panel: $('stickers'), error: $('error'), onPick: sendSticker, onSent: () => closeEmoji() });

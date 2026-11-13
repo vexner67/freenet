@@ -1499,6 +1499,7 @@ label { cursor: pointer; }
 .attach-photo::before { background-image: url("/static/icons/photo.svg"); }
 .attach-graffiti::before { background-image: url("/static/icons/graffiti.svg"); }
 .attach-document::before { background-image: url("/static/icons/document.svg"); }
+.attach-widget::before { background-image: url("/static/icons/widget.svg"); }
 .attach-audio::before { background-image: url("/static/icons/audio.svg"); }
 .attach-video::before { background-image: url("/static/icons/video.svg"); }
 .attach-article::before { background-image: url("/static/icons/article.svg"); }
@@ -3508,3 +3509,18 @@ summary:focus-visible,
 
 /* On a phone closing the comments is in "⋯" of the post. */
 .m .post-acts { display: none; }
+
+/* "Во весь экран" of an HTML widget: the box takes the whole screen (the
+   browser's full screen, or the window where there is none), the frame
+   all of it but the line of its name and links. */
+.html-app.html-app-full {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border: 0;
+  background: var(--back-fff);
+}
+.html-app-full .html-app-screen { flex: 1; height: auto; min-height: 0; }

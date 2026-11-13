@@ -264,6 +264,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
 
     documents = initDocuments({
       link: $('post-doc'),
+      widget: $('post-widget'),
       list: $('post-documents'),
       onChange: () => {
         if (documents.count()) form.classList.add('expanded');
@@ -277,7 +278,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       },
     });
     // A suggested post attaches no documents and no songs.
-    if (suggest) $('post-doc').hidden = $('post-audio').hidden = true;
+    if (suggest) $('post-doc').hidden = $('post-widget').hidden = $('post-audio').hidden = true;
     // "Статья" opens the editor of an article for one's own wall: the
     // article comes back to it as a post that links to it.
     $('post-article').hidden = !(isOwner && !owner.club && !suggest);

@@ -1675,6 +1675,8 @@ export const DOCUMENT_FORMATS = [
   'xls', 'xlsx', 'pdf', 'djvu', 'fb2', 'ps', 'apk', 'zip', '7z', 'mp4', 'avi', 'mp3', 'flac', 'html',
 ];
 export const MAX_DOCUMENT_BYTES = 10 << 20;
+// MAX_HTML_BYTES is how large an HTML widget may be, as post.MaxHTMLBytes.
+export const MAX_HTML_BYTES = 32 << 10;
 export const MAX_DOCUMENTS = 10;
 
 // documentFormat is the format of a file name, as the server reads it:
@@ -2209,6 +2211,7 @@ const errorTexts = {
   'document is larger than 10 MB': tr('Файл слишком большой: не больше 10 МБ.'),
   'document is empty': tr('Файл пустой.'),
   'this file format is not allowed': tr('Формат файла не разрешён.'),
+  'an html document is at most 32 KB': tr('Файл слишком большой: не больше 32 КБ.'),
   'document name is empty': tr('Укажите название документа.'),
   'document name is too long': tr('Название слишком длинное: не больше 128 символов.'),
   'only the owner can change the document': tr('Это не ваш документ.'),
