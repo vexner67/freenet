@@ -76,6 +76,17 @@ func TestDocument(t *testing.T) {
 		t.Fatalf("empty: %v", err)
 	}
 
+	if _, err := post.NewDocument(uuid.New(), ann, "game.html", post.DocumentHTML, post.MaxHTMLBytes+1, now); !errors.Is(err, post.ErrHTMLTooLarge) {
+		t.Fatalf("an html document over 32 KB: %v", err)
+	}
+	if _, err := post.NewDocument(uuid.New(), ann, "game.html", post.DocumentHTML, post.MaxHTMLBytes, now); err != nil {
+		t.Fatalf("an html document of 32 KB: %v", err)
+	}
+	// Other formats keep the limit of the media service.
+	if _, err := post.NewDocument(uuid.New(), ann, "book.pdf", "pdf", post.MaxHTMLBytes+1, now); err != nil {
+		t.Fatalf("a pdf over 32 KB: %v", err)
+	}
+
 	d, err := post.NewDocument(uuid.New(), ann, "a.pdf", "pdf", 10, now)
 	if err != nil || !d.CreatedAt().Equal(now.Truncate(time.Microsecond)) || d.Size() != 10 {
 		t.Fatalf("NewDocument = %+v, %v", d, err)

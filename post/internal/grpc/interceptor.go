@@ -123,6 +123,7 @@ func topicStatus(err error) (*status.Status, bool) {
 		{post.ErrCannotChangeDocument, codes.PermissionDenied},
 		{post.ErrInvalidDocument, codes.InvalidArgument},
 		{post.ErrInvalidDocumentSize, codes.InvalidArgument},
+		{post.ErrHTMLTooLarge, codes.InvalidArgument},
 		{post.ErrAudioNotFound, codes.NotFound},
 		{post.ErrAudioNameTooLong, codes.InvalidArgument},
 		{post.ErrInvalidDuration, codes.InvalidArgument},

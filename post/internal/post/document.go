@@ -15,6 +15,9 @@ const (
 	maxDocumentNameLen = 128
 	// maxDocuments is how many documents a post or a message attaches.
 	maxDocuments = 10
+	// MaxHTMLBytes is how large an HTML document, a widget run in the
+	// sandbox, may be: a game of one page, not a site.
+	MaxHTMLBytes = 32 << 10
 )
 
 var (
@@ -23,6 +26,7 @@ var (
 	ErrDocumentNameTooLong  = errors.New("document name is too long")
 	ErrDocumentFormat       = errors.New("this file format is not allowed")
 	ErrInvalidDocumentSize  = errors.New("invalid document size")
+	ErrHTMLTooLarge         = errors.New("an html document is at most 32 KB")
 	ErrCannotChangeDocument = errors.New("only the owner can change the document")
 	ErrTooManyDocuments     = errors.New("a post has at most 10 documents")
 	ErrDuplicateDocument    = errors.New("the same document is attached twice")
@@ -58,6 +62,9 @@ func NewDocumentName(s string) (DocumentName, error) {
 func (n DocumentName) String() string {
 	return string(n)
 }
+
+// DocumentHTML is the format of a page run in the sandbox, an HTML widget.
+const DocumentHTML DocumentExt = "html"
 
 // DocumentExt is the format of a document: the extension of its file in
 // lower case, one of those openvk allows.
@@ -104,6 +111,10 @@ func NewDocument(id, ownerID uuid.UUID, name DocumentName, ext DocumentExt, size
 
 	if size <= 0 {
 		return nil, ErrInvalidDocumentSize
+	}
+
+	if ext == DocumentHTML && size > MaxHTMLBytes {
+		return nil, ErrHTMLTooLarge
 	}
 
 	return &Document{
