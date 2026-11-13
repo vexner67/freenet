@@ -1508,6 +1508,12 @@ type StickerPackDraft struct {
 	Removed   []string
 }
 
+// GameRecord is the best score of a player in an HTML widget.
+type GameRecord struct {
+	UserID string
+	Score  int64
+}
+
 // Document is a file of "Мои Документы": its bytes are in the media
 // service, the rest in the post service. Ext is its format, the extension
 // of its file in lower case.

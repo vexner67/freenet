@@ -180,6 +180,19 @@ type Documents interface {
 	Delete(ctx context.Context, accessToken, id string) error
 }
 
+// Games keep what HTML widgets remember of their players: a save and the
+// best score of each player in each game. All need an access token: the
+// player is the caller, never whom the widget names.
+type Games interface {
+	Save(ctx context.Context, accessToken, gameID, data string) error
+	// Load returns the caller's save; found is false without one.
+	Load(ctx context.Context, accessToken, gameID string) (data string, found bool, err error)
+	// Score keeps a result of the caller and returns their best.
+	Score(ctx context.Context, accessToken, gameID string, score int64) (int64, error)
+	// Records are the best scores of up to 1000 players, the best first.
+	Records(ctx context.Context, accessToken, gameID string, userIDs []string, limit int) ([]model.GameRecord, error)
+}
+
 // Stories are what people show for a day, VK's "истории"; all need an
 // access token.
 type Stories interface {
@@ -543,6 +556,7 @@ type Backends struct {
 	Holdem        Holdem
 	Bets          Bets
 	Documents     Documents
+	Games         Games
 	Audio         Audio
 	Articles      Articles
 	Stories       Stories
@@ -591,6 +605,7 @@ type api struct {
 	holdems       Holdem
 	bets          Bets
 	documents     Documents
+	games         Games
 	audio         Audio
 	tracks        Tracks
 	articles      Articles
@@ -845,6 +860,10 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/me/documents", a.uploadDocument)
 	mux.HandleFunc("PATCH /api/v1/documents/{id}", a.renameDocument)
 	mux.HandleFunc("DELETE /api/v1/documents/{id}", a.deleteDocument)
+	mux.HandleFunc("GET /api/v1/games/{id}/save", a.loadGame)
+	mux.HandleFunc("PUT /api/v1/games/{id}/save", a.saveGame)
+	mux.HandleFunc("POST /api/v1/games/{id}/scores", a.scoreGame)
+	mux.HandleFunc("GET /api/v1/games/{id}/records", a.gameRecords)
 
 	mux.HandleFunc("GET /api/v1/audio", a.searchAudios)
 	mux.HandleFunc("GET /api/v1/audio/{id}", a.getAudio)

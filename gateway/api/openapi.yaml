@@ -1899,6 +1899,106 @@ paths:
         "403": { description: "Not your document", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/games/{id}/save:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string }, description: The HTML document the game is }
+    get:
+      summary: Your save in an HTML widget (freenet.load of the widget)
+      description: The site hands it to the widget, which never learns who plays.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The save; found is false without one
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [found, data]
+                properties:
+                  found: { type: boolean }
+                  data: { type: string, description: What the widget saved, as JSON }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      summary: Keep your save in an HTML widget (freenet.save of the widget)
+      description: One save a player and a game, in place of the one before; at most 64 KB.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [data]
+              properties:
+                data: { type: string }
+      responses:
+        "204": { description: Saved }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/games/{id}/scores:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Keep a result of yours in an HTML widget (freenet.score of the widget)
+      description: The best result stays.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [score]
+              properties:
+                score: { type: integer, format: int64, minimum: 0, maximum: 9007199254740991 }
+      responses:
+        "200":
+          description: Your best after
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [best]
+                properties:
+                  best: { type: integer, format: int64 }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/games/{id}/records:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: '"Рекорды" of an HTML widget: the best results of your friends and yours'
+      description: Up to ten, the best first; deleted pages are left out.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The records
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [records]
+                properties:
+                  records:
+                    type: array
+                    items:
+                      type: object
+                      required: [user, score]
+                      properties:
+                        user: { $ref: "#/components/schemas/PublicProfile" }
+                        score: { type: integer, format: int64 }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/articles:
     post:
       summary: Write an article (the editor, "Статьи" of VK)
