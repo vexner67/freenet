@@ -22,7 +22,9 @@ const sandboxCSP = "sandbox allow-scripts allow-pointer-lock; default-src 'none'
 
 // sandboxPage waits for the page it is to show from the page that framed
 // it, which it tells it is ready, and becomes that page. Nothing but that
-// one string from its parent is taken.
+// one string from its parent is taken. The keys a game plays with, the
+// arrows and the space, then move the game only: unless a field takes
+// them, they no longer scroll the page around the frame.
 const sandboxPage = `<!DOCTYPE html>
 <meta charset="utf-8">
 <script>
@@ -31,6 +33,11 @@ addEventListener('message', function (e) {
   document.open();
   document.write(e.data);
   document.close();
+  addEventListener('keydown', function (k) {
+    var t = k.target;
+    if (t && t.closest && t.closest('input, textarea, select, [contenteditable]')) return;
+    if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown'].indexOf(k.key) >= 0) k.preventDefault();
+  });
 }, { once: true });
 parent.postMessage('freenet-sandbox-ready', '*');
 </script>

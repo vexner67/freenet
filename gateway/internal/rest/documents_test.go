@@ -114,6 +114,15 @@ func TestUploadDocument(t *testing.T) {
 	if w = newHarness(rest.Config{}).do("POST", "/api/v1/me/documents?name=a.txt", big, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
 		t.Fatalf("too big: %d", w.Code)
 	}
+	// An HTML widget over 32 KB never reaches media.
+	h = newHarness(rest.Config{})
+	w = h.do("POST", "/api/v1/me/documents?name=Game.HTML", string(make([]byte, 32<<10+1)), "Authorization", "Bearer tok")
+	if w.Code != http.StatusBadRequest || h.media.uploaded != nil {
+		t.Fatalf("html too big: %d %s", w.Code, w.Body)
+	}
+	if w = newHarness(rest.Config{}).do("POST", "/api/v1/me/documents?name=game.html", string(make([]byte, 32<<10)), "Authorization", "Bearer tok"); w.Code != http.StatusCreated {
+		t.Fatalf("html of 32 KB: %d %s", w.Code, w.Body)
+	}
 	if w = newHarness(rest.Config{}).do("POST", "/api/v1/me/documents?name=a.txt", "x"); w.Code != http.StatusUnauthorized {
 		t.Fatalf("anonymous: %d", w.Code)
 	}

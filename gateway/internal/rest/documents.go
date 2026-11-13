@@ -18,6 +18,9 @@ import (
 const (
 	// maxDocumentBytes matches what the media service accepts.
 	maxDocumentBytes = 10 << 20
+	// maxHTMLBytes is how large an HTML widget may be, as the post service
+	// says.
+	maxHTMLBytes = 32 << 10
 	// maxAttachedDocuments is how many documents a post or a message
 	// attaches.
 	maxAttachedDocuments = 10
@@ -202,6 +205,14 @@ func (a *api) uploadDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// An HTML widget is refused before media keeps it; the post service
+	// checks the same.
+	name := r.URL.Query().Get("name")
+	if strings.HasSuffix(strings.ToLower(strings.TrimSpace(name)), ".html") && len(data) > maxHTMLBytes {
+		a.writeError(w, r, failure.New(failure.InvalidArgument, "an html document is at most 32 KB"))
+		return
+	}
+
 	me, err := a.users.GetMe(r.Context(), token)
 	if err != nil {
 		a.writeError(w, r, err)
@@ -214,7 +225,7 @@ func (a *api) uploadDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	d, err := a.documents.Add(r.Context(), token, id, r.URL.Query().Get("name"), int64(len(data)))
+	d, err := a.documents.Add(r.Context(), token, id, name, int64(len(data)))
 	if err != nil {
 		a.dropDocument(r, me.ID, id)
 		a.writeError(w, r, err)
