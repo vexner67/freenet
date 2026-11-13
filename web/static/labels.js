@@ -795,6 +795,11 @@ export function membersCount(n) {
   return n === 0 ? tr('Ни одного участника') : `${n} ${plural(n, ['участник', 'участника', 'участников'])}`;
 }
 
+// appUsersCount is how many people added an app.
+export function appUsersCount(n) {
+  return `${n} ${plural(n, ['пользователь', 'пользователя', 'пользователей'])}`;
+}
+
 // myClubsCount is the head of "Мои Группы", openvk's "groups_list".
 export function myClubsCount(n) {
   if (n === 0) return tr('Вы не состоите ни в одной группе');

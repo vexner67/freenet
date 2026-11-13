@@ -452,6 +452,11 @@ export const api = {
   saveGame: (id, data) => authorized('PUT', `/api/v1/games/${encodeURIComponent(id)}/save`, { data }),
   gameScore: (id, score) => authorized('POST', `/api/v1/games/${encodeURIComponent(id)}/scores`, { score }),
   gameRecords: (id) => authorized('GET', `/api/v1/games/${encodeURIComponent(id)}/records`),
+  // "Приложения": section is all, installed or own.
+  apps: (section = 'all', cursor = '') => authorized('GET', withQuery('/api/v1/apps', `section=${section}${cursor ? '&cursor=' + encodeURIComponent(cursor) : ''}`)),
+  app: (id) => optional('GET', `/api/v1/apps/${encodeURIComponent(id)}`),
+  installApp: (id) => authorized('POST', `/api/v1/apps/${encodeURIComponent(id)}/install`),
+  uninstallApp: (id) => authorized('DELETE', `/api/v1/apps/${encodeURIComponent(id)}/install`),
   // "Аудиозаписи": songs uploaded as MP3 (up to 20 MB) or added by a link
   // of SoundCloud or YouTube. The library of anyone is open to anyone;
   // posts and messages attach songs by ID.

@@ -618,6 +618,8 @@ export function applyInterface(me) {
     el('a', { href: '/prime', textContent: 'Prime' }),
     el('a', { href: '/canvas', textContent: tr('Холст') }),
     el('a', { href: '/dating', textContent: tr('Знакомства') }),
+    // openvk's "Приложения": the HTML widgets people keep at hand.
+    el('a', { href: '/apps', textContent: tr('Приложения') }),
     // No "Поиск": the header has it.
     accountsLink(),
     // The administrators of the site have openvk's "Админ-панель" under

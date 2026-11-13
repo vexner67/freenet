@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru" class="m">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Приложения | Freenet</title>
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#3e3e3e">
+  <link rel="stylesheet" href="/static/palette.css">
+  <link rel="stylesheet" href="/static/m.css">
+  <script src="/static/theme.js"></script>
+  <script type="module" src="/static/apps-page.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-word">freenet</span></a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Приложения</span></div>
+      <div class="page-body">
+        <div class="tabs">
+          <a id="tab-all" href="/apps">Все приложения</a>
+          <a id="tab-installed" href="/apps?act=installed">Мои приложения</a>
+          <a id="tab-own" href="/apps?act=own">Управление</a>
+        </div>
+        <div class="error" id="error" hidden></div>
+        <p class="hint" id="about" hidden>Приложения — это HTML-виджеты: игры и страницы из одного файла, которые люди прикрепляют к записям. Загрузите свой через «Прикрепить» → «HTML-виджет», и он появится здесь.</p>
+        <div class="clubs-list" id="apps"></div>
+        <div class="nothing" id="empty" hidden>Тут ничего нет... Пока...</div>
+        <a class="wall-more" id="more" hidden>Показать ещё</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p class="footer-languages"><a class="footer-language" href="/language?lg=ru" title="Русский"><img src="/static/flags/ru.gif" alt="Русский"></a><a class="footer-language" href="/language?lg=en" title="English"><img src="/static/flags/gb.gif" alt="English"></a><a href="/language">all languages &raquo;</a></p>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

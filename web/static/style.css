@@ -3610,6 +3610,12 @@ summary:focus-visible,
 .html-app-info .doc-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .html-app-error { color: var(--text-c00); }
 .html-app-toggle { cursor: pointer; }
+.html-app-page .html-app-screen { height: 600px; }
+.app-about { display: flex; gap: 20px; align-items: flex-start; margin-top: 10px; }
+.app-about .info { flex: 1; }
+.app-links { margin: 0; width: 200px; }
+.list-info .app-info th { width: 95px; }
+.app-cover img { width: 75px; height: 75px; }
 .html-app-records { padding: 5px 7px; border-top: 1px solid var(--line-dae1e8); }
 .html-app-records-title { color: var(--text-888); margin-bottom: 3px; }
 .msg-attach-w-html { width: 100%; }

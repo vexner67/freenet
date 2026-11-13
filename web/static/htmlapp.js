@@ -31,8 +31,10 @@ export const isHTMLDocument = (doc) => doc?.ext === 'html';
 
 // htmlNode is an HTML document as a box: its screen, where it runs, with
 // "Запустить" until it does, and under it its name, which downloads it,
-// "Во весь экран" and "Запустить" or "Остановить".
-export function htmlNode(doc) {
+// "Во весь экран" and "Запустить" or "Остановить". page is the page of
+// the app (/app/<id>): a taller screen that runs at once, without the
+// link to that page the others have ("Открыть").
+export function htmlNode(doc, { page = false } = {}) {
   const screen = el('div', { className: 'html-app-screen' });
   const toggle = el('a', { className: 'html-app-toggle' });
   const full = el('a', { className: 'html-app-toggle', textContent: tr('Во весь экран') });
@@ -69,12 +71,13 @@ export function htmlNode(doc) {
     showRecords(doc, records);
   }
 
-  const box = el('div', { className: 'html-app' },
+  const box = el('div', { className: page ? 'html-app html-app-page' : 'html-app' },
     screen,
     el('div', { className: 'html-app-info' },
       el('span', { className: 'doc-icon', textContent: doc.ext }),
       el('a', { className: 'doc-name', href: doc.url, download: doc.name, textContent: doc.name }),
       error,
+      !page && el('a', { className: 'html-app-toggle', href: `/app/${encodeURIComponent(doc.id)}`, textContent: tr('Открыть') }),
       full,
       toggle),
     records,
@@ -110,6 +113,7 @@ export function htmlNode(doc) {
     idle();
   });
   idle();
+  if (page) run();
 
   return box;
 }
