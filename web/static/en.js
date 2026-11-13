@@ -2607,4 +2607,5 @@ export default {
   "Виджет — страница из одного файла .html, например игра. Она запускается прямо в записи или сообщении, в песочнице: без сети и без доступа к Вашей странице. Файл — не больше 32 КБ.": "A widget is a page of one .html file, a game for example. It runs right in the post or message, in a sandbox: without the network and without access to your page. The file is 32 KB at most.",
   "Во весь экран": "Full screen",
   "Свернуть": "Exit full screen",
+  "Рекорды": "High scores",
 };

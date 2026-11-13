@@ -446,6 +446,12 @@ export const api = {
   uploadDocument: (file) => authorized('POST', '/api/v1/me/documents?name=' + encodeURIComponent(file.name), file),
   renameDocument: (id, name) => authorized('PATCH', `/api/v1/documents/${encodeURIComponent(id)}`, { name }),
   deleteDocument: (id) => authorized('DELETE', `/api/v1/documents/${encodeURIComponent(id)}`),
+  // What HTML widgets remember of the caller (htmlapp.js): one save and
+  // the best score in each, and "Рекорды" of the caller's friends.
+  gameSave: (id) => authorized('GET', `/api/v1/games/${encodeURIComponent(id)}/save`),
+  saveGame: (id, data) => authorized('PUT', `/api/v1/games/${encodeURIComponent(id)}/save`, { data }),
+  gameScore: (id, score) => authorized('POST', `/api/v1/games/${encodeURIComponent(id)}/scores`, { score }),
+  gameRecords: (id) => authorized('GET', `/api/v1/games/${encodeURIComponent(id)}/records`),
   // "Аудиозаписи": songs uploaded as MP3 (up to 20 MB) or added by a link
   // of SoundCloud or YouTube. The library of anyone is open to anyone;
   // posts and messages attach songs by ID.
