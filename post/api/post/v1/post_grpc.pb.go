@@ -122,6 +122,10 @@ const (
 	PostService_DeleteArticle_FullMethodName          = "/post.v1.PostService/DeleteArticle"
 	PostService_GetArticle_FullMethodName             = "/post.v1.PostService/GetArticle"
 	PostService_ListArticles_FullMethodName           = "/post.v1.PostService/ListArticles"
+	PostService_SaveGame_FullMethodName               = "/post.v1.PostService/SaveGame"
+	PostService_LoadGame_FullMethodName               = "/post.v1.PostService/LoadGame"
+	PostService_RecordGameScore_FullMethodName        = "/post.v1.PostService/RecordGameScore"
+	PostService_ListGameRecords_FullMethodName        = "/post.v1.PostService/ListGameRecords"
 	PostService_PurgeUser_FullMethodName              = "/post.v1.PostService/PurgeUser"
 	PostService_PurgeClub_FullMethodName              = "/post.v1.PostService/PurgeClub"
 	PostService_HoldUserReactions_FullMethodName      = "/post.v1.PostService/HoldUserReactions"
@@ -412,6 +416,18 @@ type PostServiceClient interface {
 	GetArticle(ctx context.Context, in *GetArticleRequest, opts ...grpc.CallOption) (*GetArticleResponse, error)
 	// Public: the articles of a person, newest first, brief.
 	ListArticles(ctx context.Context, in *ListArticlesRequest, opts ...grpc.CallOption) (*ListArticlesResponse, error)
+	// Games: what HTML widgets remember of the caller, who plays them. A
+	// widget never learns who plays; the site asks for the one signed in.
+	// One save of each player in each game, at most 64 KB, in place of the
+	// one before.
+	SaveGame(ctx context.Context, in *SaveGameRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The caller's save; found is false without one.
+	LoadGame(ctx context.Context, in *LoadGameRequest, opts ...grpc.CallOption) (*LoadGameResponse, error)
+	// A result of the caller; the best of each player is kept.
+	RecordGameScore(ctx context.Context, in *RecordGameScoreRequest, opts ...grpc.CallOption) (*RecordGameScoreResponse, error)
+	// The best scores in a game among these players (one's friends and
+	// oneself), the best first.
+	ListGameRecords(ctx context.Context, in *ListGameRecordsRequest, opts ...grpc.CallOption) (*ListGameRecordsResponse, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -1479,6 +1495,46 @@ func (c *postServiceClient) ListArticles(ctx context.Context, in *ListArticlesRe
 	return out, nil
 }
 
+func (c *postServiceClient) SaveGame(ctx context.Context, in *SaveGameRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_SaveGame_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) LoadGame(ctx context.Context, in *LoadGameRequest, opts ...grpc.CallOption) (*LoadGameResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LoadGameResponse)
+	err := c.cc.Invoke(ctx, PostService_LoadGame_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) RecordGameScore(ctx context.Context, in *RecordGameScoreRequest, opts ...grpc.CallOption) (*RecordGameScoreResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RecordGameScoreResponse)
+	err := c.cc.Invoke(ctx, PostService_RecordGameScore_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListGameRecords(ctx context.Context, in *ListGameRecordsRequest, opts ...grpc.CallOption) (*ListGameRecordsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListGameRecordsResponse)
+	err := c.cc.Invoke(ctx, PostService_ListGameRecords_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -1848,6 +1904,18 @@ type PostServiceServer interface {
 	GetArticle(context.Context, *GetArticleRequest) (*GetArticleResponse, error)
 	// Public: the articles of a person, newest first, brief.
 	ListArticles(context.Context, *ListArticlesRequest) (*ListArticlesResponse, error)
+	// Games: what HTML widgets remember of the caller, who plays them. A
+	// widget never learns who plays; the site asks for the one signed in.
+	// One save of each player in each game, at most 64 KB, in place of the
+	// one before.
+	SaveGame(context.Context, *SaveGameRequest) (*emptypb.Empty, error)
+	// The caller's save; found is false without one.
+	LoadGame(context.Context, *LoadGameRequest) (*LoadGameResponse, error)
+	// A result of the caller; the best of each player is kept.
+	RecordGameScore(context.Context, *RecordGameScoreRequest) (*RecordGameScoreResponse, error)
+	// The best scores in a game among these players (one's friends and
+	// oneself), the best first.
+	ListGameRecords(context.Context, *ListGameRecordsRequest) (*ListGameRecordsResponse, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -2200,6 +2268,18 @@ func (UnimplementedPostServiceServer) GetArticle(context.Context, *GetArticleReq
 }
 func (UnimplementedPostServiceServer) ListArticles(context.Context, *ListArticlesRequest) (*ListArticlesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListArticles not implemented")
+}
+func (UnimplementedPostServiceServer) SaveGame(context.Context, *SaveGameRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SaveGame not implemented")
+}
+func (UnimplementedPostServiceServer) LoadGame(context.Context, *LoadGameRequest) (*LoadGameResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LoadGame not implemented")
+}
+func (UnimplementedPostServiceServer) RecordGameScore(context.Context, *RecordGameScoreRequest) (*RecordGameScoreResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RecordGameScore not implemented")
+}
+func (UnimplementedPostServiceServer) ListGameRecords(context.Context, *ListGameRecordsRequest) (*ListGameRecordsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListGameRecords not implemented")
 }
 func (UnimplementedPostServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
@@ -4085,6 +4165,78 @@ func _PostService_ListArticles_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_SaveGame_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveGameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).SaveGame(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_SaveGame_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).SaveGame(ctx, req.(*SaveGameRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_LoadGame_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LoadGameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).LoadGame(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_LoadGame_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).LoadGame(ctx, req.(*LoadGameRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_RecordGameScore_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RecordGameScoreRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).RecordGameScore(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_RecordGameScore_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).RecordGameScore(ctx, req.(*RecordGameScoreRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListGameRecords_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListGameRecordsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListGameRecords(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListGameRecords_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListGameRecords(ctx, req.(*ListGameRecordsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PurgeUserRequest)
 	if err := dec(in); err != nil {
@@ -4661,6 +4813,22 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListArticles",
 			Handler:    _PostService_ListArticles_Handler,
+		},
+		{
+			MethodName: "SaveGame",
+			Handler:    _PostService_SaveGame_Handler,
+		},
+		{
+			MethodName: "LoadGame",
+			Handler:    _PostService_LoadGame_Handler,
+		},
+		{
+			MethodName: "RecordGameScore",
+			Handler:    _PostService_RecordGameScore_Handler,
+		},
+		{
+			MethodName: "ListGameRecords",
+			Handler:    _PostService_ListGameRecords_Handler,
 		},
 		{
 			MethodName: "PurgeUser",

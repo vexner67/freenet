@@ -216,7 +216,7 @@ func (a *App) build(cfg config.Config) error {
 				Votes:  repos.polls,
 				Topics: repos.topics, Tx: repos.tx, Notifier: notifier, Photos: photos,
 				Held: repos.held, Sources: repos.sources, Postponed: repos.postponed, Documents: repos.documents,
-				Stories: repos.stories, Articles: repos.articles, Audio: repos.audios,
+				Stories: repos.stories, Articles: repos.articles, Audio: repos.audios, Games: repos.games,
 			}),
 			ClubPurge: service.NewClubPurgeService(service.ClubPurgeDeps{
 				Posts: repos.posts, Comments: repos.comments, Suggestions: repos.suggestions, Postponed: repos.postponed,
@@ -224,6 +224,7 @@ func (a *App) build(cfg config.Config) error {
 			}),
 			Holds:   service.NewHoldService(repos.tx, repos.held...),
 			Sources: service.NewSourceService(repos.sources),
+			Games:   service.NewGameService(repos.games, repos.documents),
 		}, a.logger),
 	)
 
@@ -307,6 +308,8 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		postv1.PostService_LikeStory_FullMethodName:          cfg.LikeLimits,
 		postv1.PostService_UnlikeStory_FullMethodName:        cfg.LikeLimits,
 		postv1.PostService_CreateStoryComment_FullMethodName: cfg.CommentLimits,
+		postv1.PostService_SaveGame_FullMethodName:           cfg.GameLimits,
+		postv1.PostService_RecordGameScore_FullMethodName:    cfg.GameLimits,
 	}
 }
 
@@ -516,6 +519,8 @@ type repositories struct {
 		service.StoryRepository
 		service.StoryEraser
 	}
+	// games are the saves and scores of HTML widgets.
+	games         service.GameRepository
 	storyViews    service.StoryViewRepository
 	storyLikes    service.StoryLikeRepository
 	storyComments service.StoryCommentRepository
@@ -548,6 +553,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 
 			topicMessages: topics.Messages(),
 			documents:     inmem.NewDocumentRepository(),
+			games:         inmem.NewGameRepository(),
 			audios:        music.Audios, audioLists: music.Lists, music: music.Profiles, playlists: music.Playlists,
 			articles: inmem.NewArticleRepository(),
 			stories:  store.Stories(), storyViews: store.StoryViews(),
@@ -601,6 +607,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 
 		topicMessages: topics.Messages(),
 		documents:     postgres.NewDocumentRepository(a.pool),
+		games:         postgres.NewGameRepository(a.pool),
 		audios:        audios, audioLists: audios.AudioLists(), music: audios.Music(), playlists: postgres.NewPlaylistRepository(a.pool),
 		articles: postgres.NewArticleRepository(a.pool),
 		stories:  postgres.NewStoryRepository(a.pool), storyViews: postgres.NewStoryViewRepository(a.pool),

@@ -68,6 +68,9 @@ type Config struct {
 	CommentLimits ratelimit.Rules `env:"RATE_LIMIT_COMMENTS" envDefault:"20/1m,500/24h"`
 	LikeLimits    ratelimit.Rules `env:"RATE_LIMIT_LIKES" envDefault:"60/1m,1000/24h"`
 	EditLimits    ratelimit.Rules `env:"RATE_LIMIT_POST_EDITS" envDefault:"10/1m,200/24h"`
+	// GameLimits are the saves and the scores of HTML widgets, each
+	// counted on its own; the site sends one of each every few seconds at most.
+	GameLimits ratelimit.Rules `env:"RATE_LIMIT_GAMES" envDefault:"30/1m,5000/24h"`
 
 	// PostponedInterval is how often the postponed posts whose time has
 	// come are published: a post comes out up to this late.

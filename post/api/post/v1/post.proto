@@ -296,6 +296,19 @@ service PostService {
   // Public: the articles of a person, newest first, brief.
   rpc ListArticles(ListArticlesRequest) returns (ListArticlesResponse);
 
+  // Games: what HTML widgets remember of the caller, who plays them. A
+  // widget never learns who plays; the site asks for the one signed in.
+  // One save of each player in each game, at most 64 KB, in place of the
+  // one before.
+  rpc SaveGame(SaveGameRequest) returns (google.protobuf.Empty);
+  // The caller's save; found is false without one.
+  rpc LoadGame(LoadGameRequest) returns (LoadGameResponse);
+  // A result of the caller; the best of each player is kept.
+  rpc RecordGameScore(RecordGameScoreRequest) returns (RecordGameScoreResponse);
+  // The best scores in a game among these players (one's friends and
+  // oneself), the best first.
+  rpc ListGameRecords(ListGameRecordsRequest) returns (ListGameRecordsResponse);
+
   // Internal, for user: the user's page was deleted and not restored in
   // time. Their posts and the posts on their wall go, with all their likes
   // and comments, and their likes and comments on others' posts. Idempotent.
@@ -1878,3 +1891,49 @@ message ListArticlesResponse {
   // The articles of the person on all pages.
   int32 total = 3;
 }
+
+message SaveGameRequest {
+  // The HTML document the game is.
+  string game_id = 1;
+  // What the game keeps, as it handed it over (JSON); at most 64 KB.
+  string data = 2;
+}
+
+message LoadGameRequest {
+  string game_id = 1;
+}
+
+message LoadGameResponse {
+  bool found = 1;
+  string data = 2;
+}
+
+message RecordGameScoreRequest {
+  string game_id = 1;
+  // A whole number from 0 to 2^53 - 1.
+  int64 score = 2;
+}
+
+message RecordGameScoreResponse {
+  // The caller's best after.
+  int64 best = 1;
+}
+
+message ListGameRecordsRequest {
+  string game_id = 1;
+  // At most 1000.
+  repeated string user_ids = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+}
+
+message GameRecord {
+  string user_id = 1;
+  int64 score = 2;
+  google.protobuf.Timestamp updated_at = 3;
+}
+
+message ListGameRecordsResponse {
+  repeated GameRecord records = 1;
+}
+

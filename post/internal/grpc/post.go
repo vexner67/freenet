@@ -130,6 +130,7 @@ type Services struct {
 	ClubPurge   ClubPurgeService
 	Holds       HoldService
 	Sources     SourceService
+	Games       GameService
 }
 
 type PostHandler struct {
@@ -150,6 +151,7 @@ type PostHandler struct {
 	clubPurgeService  ClubPurgeService
 	holdService       HoldService
 	sourceService     SourceService
+	gameService       GameService
 	logger            *slog.Logger
 }
 
@@ -171,6 +173,7 @@ func NewPostHandler(s Services, logger *slog.Logger) *PostHandler {
 		clubPurgeService:  s.ClubPurge,
 		holdService:       s.Holds,
 		sourceService:     s.Sources,
+		gameService:       s.Games,
 		logger:            logger,
 	}
 }
