@@ -193,6 +193,16 @@ type Games interface {
 	Records(ctx context.Context, accessToken, gameID string, userIDs []string, limit int) ([]model.GameRecord, error)
 }
 
+// Apps are openvk's "Приложения": HTML widgets people keep at hand. Get
+// takes an empty token for a guest; the rest need one.
+type Apps interface {
+	Get(ctx context.Context, accessToken, id string) (model.App, error)
+	// List is a section of model.Apps…, newest first.
+	List(ctx context.Context, accessToken, section, cursor string, limit int) (model.AppPage, error)
+	Install(ctx context.Context, accessToken, id string) error
+	Uninstall(ctx context.Context, accessToken, id string) error
+}
+
 // Stories are what people show for a day, VK's "истории"; all need an
 // access token.
 type Stories interface {
@@ -557,6 +567,7 @@ type Backends struct {
 	Bets          Bets
 	Documents     Documents
 	Games         Games
+	Apps          Apps
 	Audio         Audio
 	Articles      Articles
 	Stories       Stories
@@ -606,6 +617,7 @@ type api struct {
 	bets          Bets
 	documents     Documents
 	games         Games
+	apps          Apps
 	audio         Audio
 	tracks        Tracks
 	articles      Articles
@@ -864,6 +876,10 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/games/{id}/save", a.saveGame)
 	mux.HandleFunc("POST /api/v1/games/{id}/scores", a.scoreGame)
 	mux.HandleFunc("GET /api/v1/games/{id}/records", a.gameRecords)
+	mux.HandleFunc("GET /api/v1/apps", a.listApps)
+	mux.HandleFunc("GET /api/v1/apps/{id}", a.getApp)
+	mux.HandleFunc("POST /api/v1/apps/{id}/install", a.installApp)
+	mux.HandleFunc("DELETE /api/v1/apps/{id}/install", a.uninstallApp)
 
 	mux.HandleFunc("GET /api/v1/audio", a.searchAudios)
 	mux.HandleFunc("GET /api/v1/audio/{id}", a.getAudio)

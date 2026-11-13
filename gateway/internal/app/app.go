@@ -169,6 +169,7 @@ func (a *App) build(cfg config.Config) error {
 			Stickers:      backend.NewStickers(userv1.NewUserServiceClient(a.userConn)),
 			Documents:     backend.NewDocuments(postv1.NewPostServiceClient(a.postConn)),
 			Games:         backend.NewGames(postv1.NewPostServiceClient(a.postConn)),
+			Apps:          backend.NewApps(postv1.NewPostServiceClient(a.postConn)),
 			Audio:         backend.NewAudio(postv1.NewPostServiceClient(a.postConn)),
 			Articles:      backend.NewArticles(postv1.NewPostServiceClient(a.postConn)),
 			Stories:       backend.NewStories(postv1.NewPostServiceClient(a.postConn)),

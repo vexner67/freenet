@@ -1999,6 +1999,63 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/apps:
+    get:
+      summary: A tab of "Приложения" (openvk's apps)
+      description: |
+        HTML widgets people keep at hand, newest first: `all` — those someone
+        added, `installed` — yours, `own` — the widgets you uploaded.
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: section, in: query, schema: { type: string, enum: [all, installed, own], default: all } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50 } }
+      responses:
+        "200":
+          description: The apps
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [apps, nextCursor]
+                properties:
+                  apps: { type: array, items: { $ref: "#/components/schemas/App" } }
+                  nextCursor: { type: string }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/apps/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string }, description: The HTML document the app is }
+    get:
+      summary: An app, for its page (/app/{id}); open to guests
+      security: [{}, { bearer: [] }]
+      responses:
+        "200":
+          description: The app
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/App" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/apps/{id}/install:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      summary: Add an app to yours ("Добавить к себе"); again changes nothing
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Added }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Take an app away from yours
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Taken away }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
   /api/v1/articles:
     post:
       summary: Write an article (the editor, "Статьи" of VK)
@@ -11115,6 +11172,20 @@ components:
           enum: ["", happy, love, cool, wink, sad, angry, sleepy]
           description: The smiley by the status ("настроение"), "" for none
 
+    App:
+      type: object
+      description: An HTML widget as "Приложения" show it.
+      required: [id, name, document, developer, users, installed]
+      properties:
+        id: { type: string }
+        name: { type: string, description: The name of the widget without .html }
+        document: { $ref: "#/components/schemas/Document" }
+        developer:
+          description: Who uploaded it; null for a deleted page
+          allOf: [{ $ref: "#/components/schemas/PublicProfile" }]
+          nullable: true
+        users: { type: integer, description: How many added it }
+        installed: { type: boolean, description: Whether you added it }
     PublicProfile:
       allOf:
         - $ref: "#/components/schemas/Profile"

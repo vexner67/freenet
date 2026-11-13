@@ -1508,6 +1508,28 @@ type StickerPackDraft struct {
 	Removed   []string
 }
 
+// App is an HTML widget as "Приложения" show it: how many added it and
+// whether the viewer did.
+type App struct {
+	Document  Document
+	Users     int
+	Installed bool
+}
+
+// AppPage is one screen of apps; NextCursor is empty on the last.
+type AppPage struct {
+	Apps       []App
+	NextCursor string
+}
+
+// App sections: all the apps someone added, the caller's and the
+// caller's own widgets.
+const (
+	AppsAll       = "all"
+	AppsInstalled = "installed"
+	AppsOwn       = "own"
+)
+
 // GameRecord is the best score of a player in an HTML widget.
 type GameRecord struct {
 	UserID string

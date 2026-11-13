@@ -1636,6 +1636,7 @@ type harness struct {
 	bets          *fakeBets
 	documents     *fakeDocuments
 	games         *fakeGames
+	apps          *fakeApps
 	audio         *fakeAudio
 	tracks        *fakeTracks
 	articles      *fakeArticles
@@ -1678,6 +1679,7 @@ func newHarness(cfg rest.Config) harness {
 		faves:         &fakeFaves{},
 		documents:     &fakeDocuments{},
 		games:         &fakeGames{},
+		apps:          &fakeApps{},
 		audio:         &fakeAudio{},
 		tracks:        &fakeTracks{},
 		articles:      &fakeArticles{},
@@ -1715,6 +1717,7 @@ func newHarness(cfg rest.Config) harness {
 		Faves:         h.faves,
 		Documents:     h.documents,
 		Games:         h.games,
+		Apps:          h.apps,
 		Audio:         h.audio,
 		Tracks:        h.tracks,
 		Articles:      h.articles,

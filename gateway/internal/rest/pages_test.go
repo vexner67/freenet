@@ -49,6 +49,8 @@ func webDir(t *testing.T) string {
 		"stickers.html":       "STICKERS",
 		"invite.html":         "INVITE",
 		"docs.html":           "DOCS",
+		"apps.html":           "APPS",
+		"app.html":            "APP",
 
 		"votes.html":         "VOTES",
 		"prime.html":         "PRIME",
@@ -127,6 +129,8 @@ func TestPages(t *testing.T) {
 		{"/shop", 200, "STICKERS", true},
 		{"/invite", 200, "INVITE", true},
 		{"/docs", 200, "DOCS", true},
+		{"/apps", 200, "APPS", true},
+		{"/app/g1", 200, "APP", true},
 		{"/casino", 404, "", false},
 		{"/mine", 404, "", false},
 		{"/business", 404, "", false},
