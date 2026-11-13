@@ -75,6 +75,11 @@ type GameEraser interface {
 	DeleteByUser(ctx context.Context, userID uuid.UUID) error
 }
 
+// AppEraser forgets the apps a user added.
+type AppEraser interface {
+	DeleteByUser(ctx context.Context, userID uuid.UUID) error
+}
+
 // PurgeService erases what post keeps of a user whose page was deleted for
 // good.
 type PurgeService struct {
@@ -91,6 +96,7 @@ type PurgeService struct {
 	articles     ArticleEraser
 	stories      StoryEraser
 	games        GameEraser
+	apps         AppEraser
 	held         []ReactionHolder
 	sources      SourceRepository
 	tx           TxManager
@@ -119,6 +125,8 @@ type PurgeDeps struct {
 	Stories StoryEraser
 	// Games are the saves and scores of HTML widgets; nil: none kept.
 	Games GameEraser
+	// Apps are the widgets people added; nil: none kept.
+	Apps AppEraser
 	// Held keep the likes and votes of a deleted page aside.
 	Held []ReactionHolder
 	// Sources are whom everybody reads in the news.
@@ -143,6 +151,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 		articles:     d.Articles,
 		stories:      d.Stories,
 		games:        d.Games,
+		apps:         d.Apps,
 		held:         d.Held,
 		sources:      d.Sources,
 		tx:           d.Tx,
@@ -243,6 +252,12 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 		if s.games != nil {
 			if err = s.games.DeleteByUser(ctx, userID); err != nil {
 				return errs.Wrap("s.games.DeleteByUser", err)
+			}
+		}
+
+		if s.apps != nil {
+			if err = s.apps.DeleteByUser(ctx, userID); err != nil {
+				return errs.Wrap("s.apps.DeleteByUser", err)
 			}
 		}
 

@@ -309,6 +309,14 @@ service PostService {
   // oneself), the best first.
   rpc ListGameRecords(ListGameRecordsRequest) returns (ListGameRecordsResponse);
 
+  // "Приложения" of openvk: HTML widgets kept at hand. GetApp is public;
+  // the rest need a token, the caller being whose apps they are.
+  rpc GetApp(GetAppRequest) returns (GetAppResponse);
+  rpc ListApps(ListAppsRequest) returns (ListAppsResponse);
+  // "Добавить к себе"; again changes nothing.
+  rpc InstallApp(InstallAppRequest) returns (google.protobuf.Empty);
+  rpc UninstallApp(UninstallAppRequest) returns (google.protobuf.Empty);
+
   // Internal, for user: the user's page was deleted and not restored in
   // time. Their posts and the posts on their wall go, with all their likes
   // and comments, and their likes and comments on others' posts. Idempotent.
@@ -1937,3 +1945,47 @@ message ListGameRecordsResponse {
   repeated GameRecord records = 1;
 }
 
+
+// An HTML widget as "Приложения" show it.
+message App {
+  Document document = 1;
+  // How many added it.
+  int32 users = 2;
+  // Whether the caller added it.
+  bool installed = 3;
+}
+
+enum AppSection {
+  // All the apps someone added.
+  APP_SECTION_UNSPECIFIED = 0;
+  APP_SECTION_INSTALLED = 1;
+  // The caller's own widgets.
+  APP_SECTION_OWN = 2;
+}
+
+message GetAppRequest {
+  string app_id = 1;
+}
+
+message GetAppResponse {
+  App app = 1;
+}
+
+message ListAppsRequest {
+  AppSection section = 1;
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message ListAppsResponse {
+  repeated App apps = 1;
+  string next_cursor = 2;
+}
+
+message InstallAppRequest {
+  string app_id = 1;
+}
+
+message UninstallAppRequest {
+  string app_id = 1;
+}

@@ -101,6 +101,7 @@ func newServer(t *testing.T) testServer {
 		Holds:   service.NewHoldService(inmem.TxManager{}, store.Holds(), topics),
 		Sources: service.NewSourceService(store.Sources()),
 		Games:   service.NewGameService(inmem.NewGameRepository(), documents),
+		Apps:    service.NewAppService(inmem.NewAppRepository(documents), documents),
 	}, log))
 
 	go func() { _ = srv.Serve(lis) }()

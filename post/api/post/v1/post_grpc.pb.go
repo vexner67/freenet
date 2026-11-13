@@ -126,6 +126,10 @@ const (
 	PostService_LoadGame_FullMethodName               = "/post.v1.PostService/LoadGame"
 	PostService_RecordGameScore_FullMethodName        = "/post.v1.PostService/RecordGameScore"
 	PostService_ListGameRecords_FullMethodName        = "/post.v1.PostService/ListGameRecords"
+	PostService_GetApp_FullMethodName                 = "/post.v1.PostService/GetApp"
+	PostService_ListApps_FullMethodName               = "/post.v1.PostService/ListApps"
+	PostService_InstallApp_FullMethodName             = "/post.v1.PostService/InstallApp"
+	PostService_UninstallApp_FullMethodName           = "/post.v1.PostService/UninstallApp"
 	PostService_PurgeUser_FullMethodName              = "/post.v1.PostService/PurgeUser"
 	PostService_PurgeClub_FullMethodName              = "/post.v1.PostService/PurgeClub"
 	PostService_HoldUserReactions_FullMethodName      = "/post.v1.PostService/HoldUserReactions"
@@ -428,6 +432,13 @@ type PostServiceClient interface {
 	// The best scores in a game among these players (one's friends and
 	// oneself), the best first.
 	ListGameRecords(ctx context.Context, in *ListGameRecordsRequest, opts ...grpc.CallOption) (*ListGameRecordsResponse, error)
+	// "Приложения" of openvk: HTML widgets kept at hand. GetApp is public;
+	// the rest need a token, the caller being whose apps they are.
+	GetApp(ctx context.Context, in *GetAppRequest, opts ...grpc.CallOption) (*GetAppResponse, error)
+	ListApps(ctx context.Context, in *ListAppsRequest, opts ...grpc.CallOption) (*ListAppsResponse, error)
+	// "Добавить к себе"; again changes nothing.
+	InstallApp(ctx context.Context, in *InstallAppRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	UninstallApp(ctx context.Context, in *UninstallAppRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -1535,6 +1546,46 @@ func (c *postServiceClient) ListGameRecords(ctx context.Context, in *ListGameRec
 	return out, nil
 }
 
+func (c *postServiceClient) GetApp(ctx context.Context, in *GetAppRequest, opts ...grpc.CallOption) (*GetAppResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAppResponse)
+	err := c.cc.Invoke(ctx, PostService_GetApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListApps(ctx context.Context, in *ListAppsRequest, opts ...grpc.CallOption) (*ListAppsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAppsResponse)
+	err := c.cc.Invoke(ctx, PostService_ListApps_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) InstallApp(ctx context.Context, in *InstallAppRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_InstallApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) UninstallApp(ctx context.Context, in *UninstallAppRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_UninstallApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -1916,6 +1967,13 @@ type PostServiceServer interface {
 	// The best scores in a game among these players (one's friends and
 	// oneself), the best first.
 	ListGameRecords(context.Context, *ListGameRecordsRequest) (*ListGameRecordsResponse, error)
+	// "Приложения" of openvk: HTML widgets kept at hand. GetApp is public;
+	// the rest need a token, the caller being whose apps they are.
+	GetApp(context.Context, *GetAppRequest) (*GetAppResponse, error)
+	ListApps(context.Context, *ListAppsRequest) (*ListAppsResponse, error)
+	// "Добавить к себе"; again changes nothing.
+	InstallApp(context.Context, *InstallAppRequest) (*emptypb.Empty, error)
+	UninstallApp(context.Context, *UninstallAppRequest) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -2280,6 +2338,18 @@ func (UnimplementedPostServiceServer) RecordGameScore(context.Context, *RecordGa
 }
 func (UnimplementedPostServiceServer) ListGameRecords(context.Context, *ListGameRecordsRequest) (*ListGameRecordsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListGameRecords not implemented")
+}
+func (UnimplementedPostServiceServer) GetApp(context.Context, *GetAppRequest) (*GetAppResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetApp not implemented")
+}
+func (UnimplementedPostServiceServer) ListApps(context.Context, *ListAppsRequest) (*ListAppsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListApps not implemented")
+}
+func (UnimplementedPostServiceServer) InstallApp(context.Context, *InstallAppRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method InstallApp not implemented")
+}
+func (UnimplementedPostServiceServer) UninstallApp(context.Context, *UninstallAppRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UninstallApp not implemented")
 }
 func (UnimplementedPostServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
@@ -4237,6 +4307,78 @@ func _PostService_ListGameRecords_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_GetApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAppRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetApp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetApp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetApp(ctx, req.(*GetAppRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListApps_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAppsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListApps(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListApps_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListApps(ctx, req.(*ListAppsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_InstallApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InstallAppRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).InstallApp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_InstallApp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).InstallApp(ctx, req.(*InstallAppRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_UninstallApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UninstallAppRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).UninstallApp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_UninstallApp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).UninstallApp(ctx, req.(*UninstallAppRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PurgeUserRequest)
 	if err := dec(in); err != nil {
@@ -4829,6 +4971,22 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListGameRecords",
 			Handler:    _PostService_ListGameRecords_Handler,
+		},
+		{
+			MethodName: "GetApp",
+			Handler:    _PostService_GetApp_Handler,
+		},
+		{
+			MethodName: "ListApps",
+			Handler:    _PostService_ListApps_Handler,
+		},
+		{
+			MethodName: "InstallApp",
+			Handler:    _PostService_InstallApp_Handler,
+		},
+		{
+			MethodName: "UninstallApp",
+			Handler:    _PostService_UninstallApp_Handler,
 		},
 		{
 			MethodName: "PurgeUser",
